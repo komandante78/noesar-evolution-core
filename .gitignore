@@ -28,7 +28,17 @@
 # directory patterns (build/, bin/, out/, cache/) silently swallowed real vendored
 # SOURCE directories such as rust/vendor/rustversion-1.0.23/build/build.rs and
 # rust/vendor/wasm-bindgen-0.2.126/src/cache/*.rs. See docs/PATH_CONFLICTS.tsv.
-target/
+# `target/` MUST stay anchored. An un-anchored `target/` matches ANY directory
+# named target at ANY depth — it swallowed rust/vendor/cc-1.3.0/src/target/*.rs,
+# which is real upstream crate source, not build output. That is blocker B-003.
+# Cargo build output only ever appears at a workspace root, so anchor it there.
+# Regression test: tools/test-packaging-filters.mjs  (see docs/PACKAGING_FILTER_SAFETY_RULES.md)
+/target/
+/rust/target/
+/rust/*/target/
+# Defence in depth: vendored crate source is never build output.
+!**/vendor/**/src/target/**
+!**/vendor/**/target/**
 /build/
 /dist/
 /out/

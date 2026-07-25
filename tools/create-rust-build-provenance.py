@@ -17,6 +17,29 @@ def digest(path: Path) -> str:
     return h.hexdigest()
 
 
+def is_build_output(relative_parts: tuple[str, ...]) -> bool:
+    """Return True only for cargo build-output paths.
+
+    A path component named ``target`` is build output ONLY when it is not inside a
+    vendored crate. Vendored crates legitimately ship source directories called
+    ``target`` -- cc-1.3.0/src/target/{apple,generated,llvm,parser}.rs is the real
+    example. Treating every directory named ``target`` as build output deleted that
+    genuine upstream source and produced a vendor snapshot that could not build
+    offline (blocker B-003).
+
+    Note this inspects the path RELATIVE to the workspace. The previous version
+    tested ``path.parts`` on the absolute path, so a workspace located under any
+    directory called ``target`` would have excluded every file in the tree.
+
+    Regression test: tools/test-packaging-filters.mjs
+    Rules: docs/PACKAGING_FILTER_SAFETY_RULES.md
+    """
+    for index, part in enumerate(relative_parts):
+        if part == "target" and "vendor" not in relative_parts[:index]:
+            return True
+    return False
+
+
 def source_tree_digest(workspace: Path) -> str:
     candidates = [
         path for path in workspace.rglob("*")
@@ -25,7 +48,7 @@ def source_tree_digest(workspace: Path) -> str:
             path.name in {"Cargo.toml", "Cargo.lock"}
             or path.suffix == ".rs"
         )
-        and "target" not in path.parts
+        and not is_build_output(path.relative_to(workspace).parts)
     ]
     h = hashlib.sha256()
     for path in sorted(candidates):
