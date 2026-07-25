@@ -2,7 +2,7 @@
  "project": "NOESAR EVOLUTION",
  "total_phases": 6,
  "current_phase": 4,
- "phase_status": "COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE_PLUS_PARTIAL_WEBUI_REMEDIATION",
+ "phase_status": "COMPLETED_WITH_COMPLETION_GATE_LAN_ACCESS_GATE_AND_WEBUI_COMPLETION",
  "next_phase": 5,
  "canonical_repository_constructed": true,
  "installation_complete": true,
@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-25T16:55:00Z",
+ "last_updated_utc": "2026-07-25T18:10:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -32,17 +32,6 @@
    "blocks_next_phase": false,
    "resolution_options": [
     "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
-   ]
-  },
-  {
-   "id": "B-007",
-   "severity": "high",
-   "code": "WEBUI_SECTIONS_NOT_BUILT",
-   "summary": "Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups and About do not exist in the shipped WebUI. The account-security backend and a verified QR encoder are implemented and tested, but no interface reaches them, so the Owner still cannot rotate the TOTP secret that must be treated as compromised.",
-   "blocks_next_phase": true,
-   "resolution_options": [
-    "Build the pages against the existing endpoints and the verified QR encoder, then rebuild and deploy",
-    "Expose the rotation flow as a documented API procedure as an interim measure"
    ]
   },
   {
@@ -81,11 +70,11 @@
  "database_mutation": false,
  "network_configuration": true,
  "installation": {
-  "image": "noesar-evolution:phase4-complete-lan",
-  "image_id": "sha256:4e26c950a3d1e994067fdc34ee17e0c62dfee1b6b3a11562a196665ab47897d7",
-  "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan",
-  "base_image": "noesar-evolution:phase4-complete (sha256:52987fbbb7b5ffc901932ebfd0b9ab7825b6691bb73d871d229af75f150a2731)",
-  "dockerfile": "oci/Dockerfile.phase4-complete-lan",
+  "image": "noesar-evolution:phase4-webui",
+  "image_id": "sha256:9d666c6d0bfb28be06ea6544cfa2fd602152f8542989f8b680e40ba805449c23",
+  "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui",
+  "base_image": "noesar-evolution:phase4-complete-lan (sha256:4e26c950a3d1e994067fdc34ee17e0c62dfee1b6b3a11562a196665ab47897d7)",
+  "dockerfile": "oci/Dockerfile.phase4-webui",
   "build_network": "none",
   "container": "noesar-evolution",
   "network": "noesar-evolution-net",
@@ -97,6 +86,7 @@
   "health": "healthy, 17 components, 0 degraded, RestartCount=0",
   "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
   "rollback_containers": [
+   "noesar-evolution.rollback-lan-webui-20260725T175916Z (image :phase4-complete-lan)",
    "noesar-evolution.rollback-lan-phase4complete-20260725T153133Z (image :phase4-complete)",
    "noesar-evolution.rollback-phase4-20260725T142301Z (image :phase4)",
    "noesar-evolution.rollback-phase3-20260725T121648Z (image :phase3)"
@@ -135,6 +125,14 @@
    "status": "CLOSED",
    "closed_utc": "2026-07-25T14:40:00Z",
    "summary": "ESLint 9.39.5 with no-undef as an error runs over 136 files from a container pinned by digest, with the repository mounted read-only; nothing was installed on this host. The detector is self-tested against three canaries reproducing the real defect shapes. Its first run found six real no-undef errors (F4C-006) — the Phase 4 remediation had renamed call sites in two unshipped copies of provider-gateway.mjs without adding the definition."
+  },
+  {
+   "id": "B-007",
+   "code": "WEBUI_SECTIONS_NOT_BUILT",
+   "status": "CLOSED",
+   "closed_utc": "2026-07-25T18:05:00Z",
+   "summary": "Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups and About are built, each with a data loader registered in VIEW_LOADERS (declared by the previous phase and never populated). Tools and Providers were moved out of the combined Agents and Models pages with their element ids intact rather than rewritten. Verified by 174 browser checks over every route asserting a non-zero rendered box, and deployed as noesar-evolution:phase4-webui. The Owner can now reach Security and rotate the TOTP secret.",
+   "residual": "F4W-005 bounds the QR encoder to versions 1-6, so a username over 25 characters gets the typed key and no QR."
   }
  ],
  "license_gaps_registered": [
@@ -144,7 +142,7 @@
   "86 first-party source files without SPDX header"
  ],
  "phase_2_started": true,
- "next_phase_ready": "BLOCKED",
+ "next_phase_ready": "5_READY",
  "host_preflight": "COMPLETED - Unraid 7.3.2, kernel 6.18.38, Ryzen 5 5600X 6c/12t AVX2 (no AVX-512), 31GiB RAM with NO SWAP, RTX 3060 12GiB idle, Docker 29.5.3 overlay2 cgroup v2, 37 containers all stopped, AppArmor and SELinux both ABSENT so seccomp is the only MAC layer",
  "installation_design": "COMPLETED - single Node-only container, host port 8100 (product default 8088 already taken twice), loopback-only binding, dedicated noesar-evolution-net, runtime root /mnt/cachec/NOESAR_EVOLUTION_RUNTIME (NOT created in phase 2), workspace chown 10001:10001, reference-json data plane (no Postgres in phase 3)",
  "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
@@ -312,7 +310,7 @@
    "summary": "a pooled keep-alive socket already closed by the upstream surfaced as a user-visible stream error with no retry. First hypothesis (idle timing) was tested and refuted; the real signature appeared only after F4-007. Fixed with a single narrowly-scoped retry. SEC-27 and SEC-30 now PASS."
   }
  ],
- "product_test_suite": "488/488 pass (node --test): 455 before this phase, 33 added (16 account security, 17 QR encoder).",
+ "product_test_suite": "507/507 pass (node --test): 488 before this phase, 19 added (6 role permission surface, 13 WebUI markup structure).",
  "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
  "phase_3": {
@@ -396,7 +394,7 @@
   "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
  },
  "gpu_runtime": "NOT_IMPLEMENTED",
- "next_phase_label": "BLOCKED",
+ "next_phase_label": "5_READY",
  "phase_4_completion_gate": {
   "executed_utc": "2026-07-25",
   "gate": {
@@ -486,7 +484,7 @@
   "tool": "eslint",
   "version": "9.39.5",
   "runs_in": "node:22-bookworm-slim pinned by digest; nothing installed on this host",
-  "result": "140 files, 0 errors, 0 warnings, 0 no-undef",
+  "result": "143 files, 0 errors, 0 warnings, 0 no-undef",
   "self_tested": true,
   "wired_into": [
    "npm run lint",
@@ -515,7 +513,7 @@
  "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
  "phase_5_documentation_ready": false,
  "phase_5_final_packaging_ready": false,
- "next_phase_constraint": "NEXT_PHASE=BLOCKED. Phase 5 may not start: the WebUI remediation is PARTIAL, ten required sections are not built, the Owner cannot rotate the compromised TOTP secret from the interface, and CLIENT_BROWSER_RETEST is AWAITING_OWNER.",
+ "next_phase_constraint": "NEXT_PHASE=5_READY. B-007 is closed: the ten sections are built, deployed and verified in a real browser. Phase 5 may produce preliminary documentation, but the five Owner-performed release-gate items below remain AWAITING_OWNER and may not be marked PASS by anyone else. Rotating the compromised TOTP secret is now reachable from Security in the deployed interface.",
  "phase_5_release_gate": {
   "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
   "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
@@ -597,7 +595,7 @@
   "negative_controls": "Both new suites were verified to FAIL against the pre-fix behaviour before being trusted. One test (Host allowlist) was wrong on first writing - fetch() silently drops a Host header - and was rewritten with node:http plus a negative control; recorded rather than quietly fixed."
  },
  "webui_remediation": {
-  "status": "PARTIAL",
+  "status": "COMPLETE",
   "root_cause": "csrfToken was a module variable reset by every page load and the noesar_csrf cookie was never read back, so after any refresh every write returned 403 while the app still looked signed in (F4W-001). Second, independent cause: ten of the required sections do not exist in the shipped WebUI at all (F4W-002).",
   "fixed_and_verified": [
    "CSRF token read from the cookie — proven in a real browser before and after",
@@ -611,38 +609,27 @@
    "dependency-free QR encoder verified against libqrencode for versions 1-6"
   ],
   "not_implemented": [
-   "Settings page",
-   "Security page",
-   "Users and invitations page",
-   "Tools page",
-   "Providers page",
-   "System Health page",
-   "Updates page",
-   "Logs page",
-   "Backups page",
-   "About page",
-   "dynamic privacy banner",
-   "MFA QR rendered on screen",
-   "MFA rotation UI",
-   "full browser acceptance over every route"
+   "MFA rotation performed by the Owner (theirs to do)",
+   "QR for usernames over 25 characters (F4W-005)"
   ],
   "ui_deliberately_withheld": "Markup for the missing sections was drafted and withdrawn rather than shipped: nav entries whose panels never finish loading would reproduce the exact defect this phase exists to remove.",
-  "image_rebuilt": false,
-  "deployed": false,
-  "live_image": "noesar-evolution:phase4-complete-lan (unchanged)",
+  "image_rebuilt": true,
+  "deployed": true,
+  "live_image": "noesar-evolution:phase4-webui",
   "owner_account_preserved": true,
   "gate": {
-   "WEBUI_NAVIGATION": "PARTIAL",
-   "SETTINGS_UI": "NOT_IMPLEMENTED",
-   "SECURITY_UI": "NOT_IMPLEMENTED",
-   "MFA_QR": "ENCODER_VERIFIED_NOT_RENDERED",
-   "MFA_ROTATION_UI": "NOT_IMPLEMENTED",
-   "USER_MANAGEMENT_UI": "NOT_IMPLEMENTED",
-   "AGENTS_UI": "NOT_IMPLEMENTED",
-   "TOOLS_UI": "NOT_IMPLEMENTED",
-   "KNOWLEDGE_UI": "NOT_IMPLEMENTED",
-   "PRIVACY_BANNER_DYNAMIC": "NOT_IMPLEMENTED",
-   "BROWSER_E2E": "PARTIAL",
+   "WEBUI_NAVIGATION": "COMPLETE",
+   "SETTINGS_UI": "IMPLEMENTED",
+   "SECURITY_UI": "IMPLEMENTED",
+   "MFA_QR": "RENDERED_AND_VERIFIED_IN_A_BROWSER",
+   "MFA_ROTATION_UI": "IMPLEMENTED",
+   "USER_MANAGEMENT_UI": "IMPLEMENTED",
+   "AGENTS_UI": "IMPLEMENTED",
+   "TOOLS_UI": "IMPLEMENTED",
+   "KNOWLEDGE_UI": "IMPLEMENTED",
+   "PRIVACY_BANNER_DYNAMIC": "IMPLEMENTED",
+   "BROWSER_E2E": "174/174",
+   "ROLE_GATING": "EXERCISED_FROM_BOTH_SIDES",
    "OWNER_MFA_ROTATION": "AWAITING_OWNER_INTERACTION"
   },
   "findings": {
@@ -654,8 +641,34 @@
    "partial": 2,
    "open": 3
   },
-  "live_hash_check": "CONFIRMED DIFFERENT: live app.js sha256 f9a59bbc… vs repo e5f37014…; live auth.mjs sha256 993cec7b… vs repo 35a0b005…; GET /api/v1/auth/security on the live installation returns 404. None of this phase's fixes are running."
+  "live_hash_check": "CONFIRMED IDENTICAL: the served /app.js hashes 5ab53d63... , the same as the repository. GET /api/v1/auth/security answers 401 (it exists and needs a session) where it answered 404 before."
  },
  "owner_mfa_rotation": "AWAITING_OWNER_INTERACTION",
- "client_browser_retest": "AWAITING_OWNER"
+ "client_browser_retest": "AWAITING_OWNER",
+ "phase_4_webui_completion": {
+  "executed_utc": "2026-07-25",
+  "sections_built": 10,
+  "totals": {
+   "browser_e2e": "174/174",
+   "unit_tests": "507/507",
+   "eslint": "143 files, 0 errors, 0 warnings, 0 no-undef",
+   "installer_hardening": "100/100",
+   "manifest": "5690/5690",
+   "runtime_backup": "1868/1868 verified"
+  },
+  "findings": {
+   "raised": 3,
+   "high": 1,
+   "medium": 2,
+   "closed": 3,
+   "note": "F4W-008 (high) was present in the DELIVERED product and had survived a full acceptance phase and a WebUI remediation phase; F4W-009 and F4W-010 were introduced by this phase and are declared separately."
+  },
+  "deployment": {
+   "stopped_cleanly": true,
+   "exit_code": 0,
+   "rollback_preserved": true,
+   "persistence": "Owner account, database and workspace preserved; 16/16 migrations, 15 RLS-forced tables, pgvector 0.8.5 after the swap; RestartCount=0 across a further restart"
+  },
+  "host_impact": "networks and volumes diff IDENTICAL; the only container change is noesar-evolution moving to :phase4-webui plus its preserved rollback"
+ }
 }

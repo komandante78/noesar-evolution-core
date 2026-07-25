@@ -9,198 +9,194 @@ file and `PROJECT_STATE.json` alone.**
 
 | Field | Value |
 |---|---|
-| Phases completed | **4 — completion gate, LAN access gate, WebUI remediation (PARTIAL)** |
-| Phase status | `COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE_PLUS_PARTIAL_WEBUI_REMEDIATION` |
-| **Next phase** | **BLOCKED — not Phase 5** |
-| `NEXT_PHASE` | `BLOCKED` |
+| Phases completed | **4 — completion gate, LAN access gate, WebUI remediation, WebUI completion** |
+| Phase status | `COMPLETED_WITH_COMPLETION_GATE_LAN_ACCESS_GATE_AND_WEBUI_COMPLETION` |
+| **Next phase** | **5 — documentation, licensing audit, release, packaging** |
+| `NEXT_PHASE` | `5_READY` |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
 | Updated (UTC) | 2026-07-25 |
 
-**The product is installed, reachable from the local network, and the Owner has now
-bootstrapped.** Container `noesar-evolution`, image `noesar-evolution:phase4-complete-lan`
-(unchanged since the LAN access gate), published on `192.168.178.100:8100`, healthy.
-`auth/status` reports `initialized: true` — the Owner account was created since the last
-handoff was written, outside this session.
+**The interface is finished, deployed and reachable.** Container `noesar-evolution`,
+image **`noesar-evolution:phase4-webui`**, published on `192.168.178.100:8100`, healthy,
+17 components, 0 degraded, `RestartCount=0`. The Owner account, the database and the
+workspace are untouched by the swap.
 
 # ➜ http://192.168.178.100:8100
 
 ---
 
-## ⚠️ Read this before touching anything
+## What the Owner can now do that they could not before
 
-**Everything produced in the WebUI remediation phase is committed to git and verified on
-throwaway probes. None of it is running on the live installation.** Confirmed by hash,
-not assumed:
+1. **Rotate the compromised TOTP secret.** Security → *Replace authenticator*. Enter the
+   current password and a live code, scan the QR (or type the key), then confirm with
+   **two consecutive codes** from the new authenticator. The current authenticator keeps
+   working until the moment of confirmation, and the swap is atomic. Ten new recovery
+   codes are shown once afterwards. The whole flow is driven end to end by the browser
+   suite, including a check that the superseded secret is then refused with `401`.
+2. Change password, regenerate recovery codes, list and revoke sessions.
+3. Settings (time zone with its resolution tiers, locale), Users and invitations, Tools,
+   Providers, System Health, Updates, Logs with debug mode, Backups, About.
 
-```text
-live  /opt/noesar/apps/webui-static/app.js                          sha256 f9a59bbc…
-repo  apps/webui-static/app.js                                      sha256 e5f37014…   DIFFERENT
-
-live  /opt/noesar/services/reference-control-plane/src/auth.mjs     sha256 993cec7b…
-repo  services/reference-control-plane/src/auth.mjs                 sha256 35a0b005…   DIFFERENT
-
-live  GET /api/v1/auth/security                                     404 — route does not exist yet
-```
-
-Concretely, on the live installation right now:
-
-- **the CSRF bug is still present** — every write still fails after a page reload;
-- **there is no password-change, MFA-replacement, recovery-code or session-revocation
-  route** — the Owner still cannot rotate the TOTP secret shown once at bootstrap, which
-  must be treated as compromised (`F4W-003`);
-- **Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups
-  and About do not exist** in the served interface.
-
-Nothing in the runtime, the database or the Owner account was touched by this phase. The
-gap is entirely in `apps/webui-static/` and `services/reference-control-plane/src/`,
-already committed at `d57ab3e`, not yet built into any image.
+`OWNER_MFA_ROTATION=AWAITING_OWNER_INTERACTION` — it needs the Owner's own password and
+live codes, and rotating on their behalf is not this phase's to do.
 
 ---
 
-## Why nothing was deployed
+## Verified in this phase
 
-The WebUI remediation phase found and fixed the CSRF root cause, and implemented and
-tested a complete account-security backend plus a dependency-free QR encoder — but ten
-of the required WebUI sections (Settings, Security, Users, Tools, Providers, System
-Health, Updates, Logs, Backups, About) do not exist at all. Markup for them was drafted
-during the phase and **deliberately withdrawn before committing**: shipping nav entries
-whose panels have no data loader would reproduce the exact defect being fixed, dressed up
-as progress. Rebuilding and deploying only the CSRF fix, with the Owner still unable to
-reach Security or rotate MFA from the interface, was judged not worth a container swap on
-its own — the interface work is next, and a single deploy afterward covers all of it.
+```text
+browser acceptance      174/174    every route, in a real browser
+unit tests              507/507    488 before; +6 role permissions, +13 markup structure
+eslint                  143 files, 0 errors, 0 warnings, 0 no-undef
+installer hardening     100/100
+MANIFEST                5690/5690  5 refreshed, 4 appended, 0 removed
+runtime backup          1868/1868  verified, taken at rest after a clean stop
+pg_dump                 123,664 bytes with a sha256 sidecar, taken while running
+```
 
-See `docs/PHASE_4_WEBUI_REMEDIATION_REPORT.md` for the full account, and
-`docs/OPEN_FINDINGS.tsv` (`F4W-001` through `F4W-007`) for every finding.
+Live, after the swap: `livez/readyz/healthz` 200, `/metrics` and `/diagnostics` **401**
+(the LAN hardening is preserved), `auth/status.initialized true`, 16/16 migrations, 15
+RLS-forced tables, pgvector 0.8.5, and the served `app.js` hashing **identical** to the
+repository. `GET /api/v1/auth/security` answers `401` where it answered `404` before.
 
-### The two causes of "the WebUI is inactive" — both confirmed by execution, not by reading
-
-1. **Every write failed after a page reload (`F4W-001`, fixed in source).** `csrfToken`
-   was a module variable populated only by the login response; a reload resets it to
-   `''` while the session cookie survives, so the app still looks signed in and every
-   write returns `403 CSRF validation failed`. Reproduced and then re-verified fixed in a
-   real headless browser against a probe — never on the live installation.
-2. **Ten sections genuinely do not exist (`F4W-002`, not started).** Navigation itself
-   was never broken — all 11 shipped nav entries switch panels correctly with zero
-   console errors. There was simply nowhere for "Agents", "Tools", "Settings" and the
-   rest to go beyond the thin panels already there.
+A read-only browser smoke against the live installation reports 21 nav entries, 23 view
+sections and **zero nested views**. Its three console messages are all expected: the COOP
+advisory that a plaintext origin is untrustworthy (TLS is a declared gap), the favicon
+404, and the `401` from the unauthenticated `/auth/me` probe that drives the login form.
 
 ---
 
-## What changed in this repository this phase (all committed, none deployed)
+## The defect worth remembering
 
-```text
-cfb2cd5  fix(webui): restore functional application navigation and routes
-d57ab3e  feat(security): implement complete MFA lifecycle and account controls
-```
+`F4W-008`, high, **present in the delivered product**, and the actual cause of "clicking
+Agents, Tools or Knowledge does nothing".
 
-- CSRF cookie read back on load and on 403-retry; hash router (deep links, refresh,
-  Back/Forward, title, ARIA); 404 and access-denied views; global error boundary; toasts
-  with a correlation ID; no stack traces to the user.
-- `AuthService`: `securityOverview`, `changePassword`, `beginMfaReplacement` /
-  `confirmMfaReplacement` / `cancelMfaReplacement`, `regenerateRecoveryCodes`,
-  `revokeSession` / `revokeOtherSessions` — all gated on current password + a live,
-  unreplayed TOTP code; the candidate secret during replacement keeps the live one
-  working until confirmed; the swap is atomic; secrets never reach the ledger.
-- `apps/webui-static/qr.js` — a hand-written QR encoder, verified module-for-module
-  against `libqrencode` for versions 1–6. Two real bugs were found this way (format bits
-  reversed; the Reed-Solomon generator's shift and α term swapped, which silently
-  produces correct data codewords and wrong error-correction codewords). Versions 7–10
-  do not yet verify and are refused rather than emitted unproven (`F4W-005`, `D-0059`).
+`<section class="view" id="view-tasks">` was never closed — 35 `<section>` opens against
+34 closes. HTML does not auto-close a `<section>` when the next one opens, so **nine
+views became DOM children of Tasks**: Artifacts, Knowledge, Memory, Models, Agents, CodeN
+Ultra, Compute, and the 404 and access-denied pages the previous phase had just built. A
+`.view` is `display:none` unless it carries `.active`, and an element inside a
+`display:none` ancestor has no box however active it is. Those panels were fetched,
+populated, marked active — and invisible.
 
-```text
-unit tests             488/488   (455 before; 33 added: 16 account-security, 17 QR)
-eslint                 140 files, 0 errors, 0 warnings, 0 no-undef
-installer hardening    100/100   (unchanged from the LAN access gate)
-```
+It survived a full acceptance phase and a WebUI remediation phase because both checked
+`classList` rather than whether anything was on screen. The previous phase's conclusion —
+"navigation itself was not broken, all 11 nav entries switch panels correctly" — was true
+of the class and false of the screen. `services/reference-control-plane/test/webui-markup-structure.test.mjs`
+now pins tag balance and view nesting, and was verified to fail against the delivered file.
+
+Two defects introduced by this phase are declared separately: `F4W-009` (a form carrying
+both `form-stack` and `inline-form` collapsed its button to 0x0) and `F4W-010` (the first
+version of the route check tested `innerText`, which falls back to `textContent` for an
+element that is not rendered, so it passed on nine invisible pages). Three further
+defects were in the harness rather than the product and are recorded in
+`docs/PHASE_4_WEBUI_COMPLETION_REPORT.md` §3 rather than quietly fixed.
 
 ---
 
 ## Open blockers
 
-### B-007 — WebUI sections not built · high · **blocks next phase**
-Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups and
-About do not exist in the served interface. The backend they need (account security,
-users/invitations, agents, tools, sources/knowledge) mostly already exists and is tested
-or was already live; only the pages are missing. Until Security exists, the Owner cannot
-reach the MFA-replacement flow this phase built.
-
-### B-008 — two identity stores · medium · does not block
-The account that logs in lives in `RUNTIME_ROOT/state/auth.json`. `noesar_identity.users`
-in PostgreSQL — the table the Phase 4 completion gate's multi-user acceptance exercised —
-is **empty** on the real installation. That acceptance does not cover the login path.
-Needs a dedicated phase to decide the target model and migrate; not a WebUI concern.
-
 ### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. Local repository
-complete and committed.
+`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local
+repository is complete and committed.
 
 ### B-002 — secret scan is heuristic · low · unchanged
-Neither `gitleaks` nor `trufflehog` is installed; ESLint, shellcheck, semgrep and
-detect-secrets cover what they cover, credential scanning stays heuristic.
+Neither `gitleaks` nor `trufflehog` is installed. ESLint, shellcheck, semgrep and
+detect-secrets cover what they cover; credential scanning stays heuristic and is declared
+as heuristic wherever reported.
 
-### B-005, B-006 — **CLOSED** in the completion gate.
+### B-008 — two identity stores · medium · does not block Phase 5
+The account that signs in lives in `RUNTIME_ROOT/state/auth.json`.
+`noesar_identity.users` in PostgreSQL — the table the completion gate's multi-user
+acceptance exercised — is **empty** on the real installation. That acceptance does not
+cover the login path. A data-model decision with migration consequences; it needs a phase
+of its own.
 
----
-
-## The one thing waiting for the Owner
-
-**Rotating the TOTP secret shown once at the original bootstrap, which must be treated as
-compromised.** The backend is implemented and tested (`services/reference-control-plane/
-src/auth.mjs`: `beginMfaReplacement` / `confirmMfaReplacement`), but it is not deployed
-and there is no Security page to reach it from. Today the only route is the API directly:
-
-```text
-POST /api/v1/auth/mfa/replace           { password, totpCode }         -> candidate secret + otpauthUri
-POST /api/v1/auth/mfa/replace/confirm   { challenge, firstCode, secondCode }  -> atomic swap, new recovery codes
-```
-
-This requires the fix to be built into a deployed image first — it is source-only right
-now. `OWNER_MFA_ROTATION=AWAITING_OWNER_INTERACTION`, `CLIENT_BROWSER_RETEST=AWAITING_OWNER`.
+### B-005, B-006, B-007 — **CLOSED**.
 
 ---
 
 ## Exact next action
 
-**`NEXT_PHASE=BLOCKED`. Do not start Phase 5 — the product is not done, not the licensing
-step.** The next phase is finishing the WebUI:
+**Phase 5 — complete documentation, licensing audit, release and final packaging.**
+One phase per invocation, and it must not start without explicit authorisation.
 
-1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_4_WEBUI_REMEDIATION_REPORT.md`,
-   `docs/OPEN_FINDINGS.tsv` (`F4W-*`) — in that order.
-2. Build the Settings, Security, Users, Tools, Providers, System Health, Updates, Logs,
-   Backups and About pages against the endpoints already implemented and tested
-   (`/api/v1/auth/security`, `/password`, `/mfa/replace*`, `/recovery-codes`,
-   `/sessions/*`, plus the pre-existing `/api/v1/admin/*`, `/agents`, `/tools`,
-   `/sources`, `/providers`, `/updates/*`, `/logs`, `/database/*`). Render the QR with
-   `apps/webui-static/qr.js`, capped at 25-character usernames per `F4W-005`.
-3. Wire the dynamic privacy banner to `/api/v1/privacy` (`F4W-007`).
-4. Write the browser E2E suite the original remediation spec asked for, over every real
-   route, in the pinned Puppeteer container
-   (`ghcr.io/puppeteer/puppeteer@sha256:9665f5b57abc5cc7080a641878964018de219055a4d2c9d8d050ceb1161778ba`).
-5. Only then rebuild (`noesar-evolution:phase4-webui-remediated` or similar), deploy,
-   verify live, and let the Owner rotate MFA and confirm the browser retest.
-6. Separately — not blocking — `B-008`: decide whether `noesar_identity.users` becomes the
-   source of truth for login, or is retired, or the two are reconciled deliberately.
-7. The Phase 1 licensing backlog is still there for whenever Phase 5 actually starts: 12
-   Rust crates and 2 Node packages with no declared licence, no root `LICENSE`, 86 sources
-   with no SPDX header, the three-way licence split still a proposal.
+1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
+   `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` — in that order.
+2. **The licensing backlog inherited from Phase 1 is the substance of it:** 12 first-party
+   Rust crates and 2 Node packages with no declared licence, no root `LICENSE`, 86
+   first-party sources with no SPDX header, and the three-way licence split still only a
+   proposal in `docs/LICENSE_STRATEGY.md`. The source SBOM shows **0 declared licences**
+   across the Rust tree, so conclusions there have to be reached by hand.
+3. Packaging should rebuild from `oci/Dockerfile` with a recorded network step rather
+   than inheriting the apt layer again (`D-0033`, `D-0053`). The image lineage is now six
+   deep: `node:22-bookworm-slim@sha256:6c74791e… -> :phase3 -> :phase4 ->
+   :phase4-complete -> :phase4-complete-lan -> :phase4-webui`.
+4. Deferred items already recorded and still open: `F4W-005` (the QR encoder is proven
+   only for versions 1–6 and refuses above that, bounding enrolment QR codes to usernames
+   of 25 characters or fewer), `F4-013` (a filesystem backup of the workspace is not
+   encrypted and contains the auth master key — an operator duty the documentation must
+   state), `D-0039` (`tools/verify-package.py` imports `sys` unused), no TLS, no SBOM for
+   the image beyond the declared component inventory, and no independent penetration test.
+5. `B-008` is separate and not a Phase 5 concern.
+
+### Five gate items only the Owner can close
+
+```text
+CLIENT_BROWSER_TEST      AWAITING_OWNER
+OWNER_BOOTSTRAP          DONE (the Owner bootstrapped outside these sessions)
+MFA_TOTP                 AWAITING_OWNER
+TOKEN_REUSE_REJECTED     AWAITING_OWNER
+STEP_UP_AUTH             AWAITING_OWNER
+OWNER_MFA_ROTATION       AWAITING_OWNER_INTERACTION
+```
+
+None may be marked PASS by anyone but the Owner completing the flow in their own browser.
+Until then Phase 5 may produce preliminary documentation, not a final declaration.
+
+---
 
 ## Reproducing this phase's verification
 
 ```bash
-npm test                                    # 488 unit tests
-npm run lint                                # eslint, 140 files
-node tools/test-installer-hardening.mjs     # 100 checks, unchanged from the LAN gate
+npm test                                    # 507 unit tests
+npm run lint                                # eslint, 143 files
+node tools/test-installer-hardening.mjs     # 100 checks
+sha256sum -c MANIFEST.sha256                # 5690 entries
 
-# proving the CSRF fix is real (requires a throwaway probe — do NOT point at the live
-# installation without an Owner password you're authorised to use):
-#   build an overlay image copying apps/webui-static/ and services/.../src/,
-#   run it against a disposable workspace, log in, create something, press F5,
-#   create something else — must succeed with 0 failed requests.
+# Browser acceptance. Builds a DISPOSABLE probe offline from the working tree, gives it
+# an empty workspace, bootstraps a throwaway Owner from its own generated setup token,
+# and drives every route. It never touches the real installation and never uses a real
+# credential. Containers are stopped and preserved, never removed.
+bash tools/run-browser-e2e.sh               # 174 checks
 ```
 
 ## Rollback
 
-Nothing to roll back from this phase — no deployment happened. The LAN access gate's
-rollback material is unchanged: `$ARTIFACT_ROOT/backups/phase_4_lan_access_20260725T151501Z/ROLLBACK.md`,
-with `noesar-evolution.rollback-lan-phase4complete-20260725T153133Z` preserved stopped.
+```text
+container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
+backup      $ARTIFACT_ROOT/backups/phase_4_webui_pages_20260725T175916Z/
+              container-inspect.json, env.json, hostconfig.json
+              containers.before, networks.before, volumes.before
+              noesar.dump + noesar.dump.sha256      (pg_dump, taken while running)
+              runtime/ + runtime.MANIFEST.sha256    (1868/1868, taken at rest)
+```
+
+To roll back: `docker stop noesar-evolution`, rename it aside, then
+`docker start noesar-evolution.rollback-lan-webui-20260725T175916Z` and rename it back.
+The runtime bind mount is shared, so no data restore is needed unless the workspace
+itself must be reverted, in which case use `runtime/` above.
+
+Earlier rollback material is unchanged and still preserved:
+`noesar-evolution.rollback-phase4-20260725T142301Z` and
+`noesar-evolution.rollback-phase3-20260725T121648Z`.
+
+## Housekeeping left deliberately undone
+
+Eleven `noesar-evolution.e2e-probe-*` containers, eleven `e2e-runner-*` containers,
+eleven `noesar-evolution:webui-e2e-*` images and eleven `noesar-e2e-*` networks
+accumulated while the browser suite was being iterated, because the first version of the
+script stamped the network name too. Rule 12 forbids deleting them, and the script now
+reuses a single stable network (`noesar-e2e-net`), so this does not recur. Disposing of
+what already exists is a separate, explicit decision and was not taken here.

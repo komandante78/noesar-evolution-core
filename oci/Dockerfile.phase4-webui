@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 4 WebUI completion image: the LAN-access image with the finished interface.
+#
+# What changed and why this image is needed at all.
+#
+# The ten missing sections (Settings, Security, Users, Tools, Providers, System Health,
+# Updates, Logs, Backups, About) are source-only, and the running container executes what
+# is baked into its image — confirmed by hash before rebuilding, not assumed. Without a
+# new image the Owner still could not reach Security, and therefore still could not
+# rotate the TOTP secret that was shown once at the original bootstrap and must be
+# treated as compromised.
+#
+# It also carries the fix for a defect present in the DELIVERED product:
+# `<section class="view" id="view-tasks">` was never closed, so nine views — Artifacts,
+# Knowledge, Memory, Models, Agents, CodeN Ultra, Compute, and the 404 and access-denied
+# pages — were DOM children of Tasks and could never be displayed. That is the reported
+# "clicking does nothing", and it is fixed here.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile — unchanged from the reasoning
+# in Dockerfile.phase4, Dockerfile.phase4-complete and Dockerfile.phase4-complete-lan:
+#
+#   * oci/Dockerfile runs `apt-get install`, which needs the Debian archives. No network
+#     operation is authorised here, and repeating the apt step would silently re-resolve
+#     the OS package set to whatever the archive serves today.
+#   * Building FROM the audited phase4-complete-lan image inherits every layer unchanged
+#     — PostgreSQL 18.4, pgvector 0.8.5, the whole apt set — so the only difference
+#     between the two images is first-party source.
+#
+# Stated rather than hidden: this image's lineage is now six deep.
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui
+#
+# Phase 5 packaging should still rebuild from oci/Dockerfile with a recorded network
+# step, as D-0033 and D-0053 both say.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-complete-lan
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001
