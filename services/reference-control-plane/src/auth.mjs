@@ -361,6 +361,20 @@ export class AuthService {
   }
 
   /**
+   * The permissions a role actually carries, as data.
+   *
+   * The interface has to decide whether to offer a control at all — showing someone a
+   * button that can only ever answer 403 is the same defect as a panel that never
+   * finishes loading. The alternative was to restate this matrix in the browser, which
+   * is one refactor away from disagreeing with the server that enforces it. It is
+   * derived from the single ROLE_PERMISSIONS definition instead. This is a description,
+   * not a grant: every route still checks for itself.
+   */
+  permissionsFor(role) {
+    return [...(ROLE_PERMISSIONS[role] ?? [])].sort();
+  }
+
+  /**
    * Verify a TOTP code against an account record that is still being enrolled, applying
    * the same single-use rule as a login. Exposed because the multi-user invitation flow
    * enrols MFA before the account exists, and duplicating the replay check there is how

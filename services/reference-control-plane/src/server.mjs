@@ -12,7 +12,7 @@ import {
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime } from './local-model-runtime.mjs';
-import { AuthService, parseCookies } from './auth.mjs';
+import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
 import { discoverHardware, recommendRuntime } from './hardware.mjs';
@@ -284,6 +284,9 @@ function sessionResponse(res, value, status = 200) {
   json(res, status, {
     user:value.user,
     csrfToken:value.csrf,
+    // Sent here as well as on /auth/me: the interface enters the application straight
+    // from this response and must know which sections to offer before its first fetch.
+    permissions:auth.permissionsFor(value.user.role),
     session:{ expiresAt:new Date(value.session.expiresAt).toISOString(), idleExpiresAt:new Date(value.session.idleExpiresAt).toISOString() },
   }, { 'set-cookie':auth.cookieHeaders(value) });
 }
@@ -392,7 +395,11 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/v1/auth/me') {
       const authenticated = requireSession(req, res);
       if (!authenticated) return;
-      return json(res, 200, { user:authenticated.user, elevatedUntil:authenticated.session.elevatedUntil });
+      return json(res, 200, {
+        user:authenticated.user,
+        elevatedUntil:authenticated.session.elevatedUntil,
+        permissions:auth.permissionsFor(authenticated.user.role),
+      });
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/reauth') {
       const authenticated = requireSession(req, res, 'coden.owner-bypass');
@@ -918,7 +925,12 @@ const server = createServer(async (req, res) => {
     // cannot grant more than the permission name suggests.
     if (req.method === 'GET' && url.pathname === '/api/v1/admin/users') {
       const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
-      return json(res, 200, { users:userDirectory.list() });
+      // The role vocabulary travels with the directory so the interface offers exactly
+      // the roles this build accepts, rather than a copy that can fall behind it.
+      return json(res, 200, {
+        users:userDirectory.list(),
+        roles:ROLES.map((role) => ({ role, mfaRequired:MFA_REQUIRED_ROLES.has(role) })),
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/admin/invitations') {
       const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;

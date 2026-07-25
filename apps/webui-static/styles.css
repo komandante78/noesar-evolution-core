@@ -29,4 +29,19 @@ button[data-busy]{opacity:.65;cursor:progress}
 .privacy-banner.external{border-color:rgba(255,194,100,.45);background:linear-gradient(90deg,rgba(84,60,16,.42),rgba(26,20,10,.6))}
 .privacy-banner.external .verified{color:var(--amber)}
 .skeleton{position:relative;overflow:hidden;min-height:14px;border-radius:6px;background:#0d1524;color:transparent}
+/* --- sections: settings, security, users, health, updates, logs, backups, about --- */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px}
+.metric-grid .metric{display:flex;flex-direction:column;gap:4px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#080e18}
+.metric-grid .metric span{color:var(--muted);font-size:11px;letter-spacing:.04em}
+.metric-grid .metric b{font-size:14px;font-weight:600;word-break:break-word}
+.chip-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.chip-list span{padding:5px 10px;border:1px solid var(--line);border-radius:20px;background:#080e18;color:#cfdcf2;font-size:11px}
+.log-row{display:grid;grid-template-columns:150px 72px minmax(0,1fr);gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#080e18;font-size:12px;align-items:baseline}
+.log-row time{color:var(--muted);font-variant-numeric:tabular-nums}
+.log-row .log-msg{word-break:break-word}
+.log-row code{color:#8fa3c0;font-size:10px}
+.level-ERROR{color:var(--red)}.level-WARN{color:var(--amber)}.level-INFO{color:var(--green)}.level-DEBUG{color:var(--muted)}
+.token-reveal{margin-top:12px;padding:12px;border:1px solid rgba(255,194,100,.45);border-radius:10px;background:#1a1509}
+.token-reveal code{display:block;margin-top:7px;padding:10px;border-radius:8px;background:#070c15;color:#ffd489;word-break:break-all;letter-spacing:.06em}
+@media(max-width:850px){.log-row{grid-template-columns:1fr;gap:3px}}
 @media(max-width:850px){.mfa-enrol{grid-template-columns:1fr}.mfa-qr{width:100%;max-width:280px;height:auto;aspect-ratio:1}.recovery-codes{grid-template-columns:1fr}.toast-host{right:10px;left:10px;bottom:10px;max-width:none}.nav-group{display:none}}

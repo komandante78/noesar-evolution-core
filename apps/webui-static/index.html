@@ -51,12 +51,24 @@
         <button class="nav" data-view="chat">◫ <span>Ask · Create · Act</span></button>
         <button class="nav" data-view="projects">▣ <span>Projects</span></button><button class="nav" data-view="tasks">✓ <span>Tasks</span></button>
         <button class="nav" data-view="documents">▤ <span>Artifacts</span></button>
-        <button class="nav" data-view="agents">◉ <span>Agents & Tools</span></button>
+        <button class="nav" data-view="agents">◉ <span>Agents</span></button>
+        <button class="nav" data-view="tools">⊞ <span>Tools</span></button>
         <button class="nav" data-view="knowledge">◇ <span>Knowledge</span></button>
         <button class="nav" data-view="memory">◎ <span>Memory</span></button>
+        <p class="nav-group">CONFIGURE</p>
+        <button class="nav" data-view="providers">⇄ <span>Providers</span></button>
         <button class="nav" data-view="models">▱ <span>Models & APIs</span></button>
         <button class="nav" data-view="coden">&lt;/&gt; <span>CodeN Ultra</span></button>
         <button class="nav" data-view="hardware">⚙ <span>Compute</span></button>
+        <button class="nav" data-view="settings">⛭ <span>Settings</span></button>
+        <button class="nav" data-view="security">◆ <span>Security</span></button>
+        <button class="nav" data-view="users" data-requires-permission="user.manage">⊙ <span>Users</span></button>
+        <p class="nav-group">SYSTEM</p>
+        <button class="nav" data-view="health" data-requires-role="owner">◈ <span>System Health</span></button>
+        <button class="nav" data-view="updates" data-requires-role="owner">⇧ <span>Updates</span></button>
+        <button class="nav" data-view="logs" data-requires-role="owner">☰ <span>Logs</span></button>
+        <button class="nav" data-view="backups" data-requires-permission="data.manage">▦ <span>Backups</span></button>
+        <button class="nav" data-view="about">ℹ <span>About</span></button>
       </nav>
     </aside>
 
@@ -110,6 +122,7 @@
       <section class="view" id="view-tasks">
         <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h1>Tasks</h1><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option>low</option><option selected>normal</option><option>high</option><option>critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><button class="primary">Create task</button></form><section class="panel"><div class="panel-title"><h2>Work queue</h2><span>Visible status</span></div><div id="taskList" class="card-list empty-state">No tasks.</div></section></div>
+      </section>
 
       <section class="view" id="view-documents">
         <div class="section-header"><div><p class="eyebrow">VERSIONED OUTPUTS</p><h1>Artifacts</h1><p>Create and edit documents, code, tables, charts, canvas data and application specifications.</p></div></div>
@@ -126,14 +139,19 @@
         <div class="two-col"><form class="panel form-stack" id="memoryForm"><h2>Add memory</h2><label>Project<select id="memoryProject"></select></label><label>Scope<select id="memoryScope"><option value="project">Project</option><option value="conversation">Conversation</option><option value="global">Global</option></select></label><label>Conversation<select id="memoryConversation"></select></label><label>Title<input id="memoryTitle" required></label><label>Content<textarea id="memoryContent" required></textarea></label><label>Tags<input id="memoryTags"></label><button class="primary">Save memory</button></form><section class="panel"><div class="panel-title"><h2>Visible memory</h2><button id="exportData" class="text-button">Export all</button></div><div id="memoryList" class="card-list empty-state">No memory.</div></section></div>
       </section>
 
+      <section class="view" id="view-providers">
+        <div class="section-header"><div><p class="eyebrow">NO VENDOR LOCK-IN · DEFAULT DENY</p><h1>Providers</h1><p>Local endpoints remain the default. External providers stay disabled until you grant an explicit data scope.</p></div></div>
+        <div class="two-col"><form class="panel form-stack" id="providerForm"><h2>Add provider</h2><label>Provider type<select id="providerType"></select></label><label>Name<input id="providerName"></label><label>Base URL<input id="providerBaseUrl"></label><label>Default model<input id="providerModel"></label><label>Routing priority<input id="providerPriority" type="number" value="100"></label><label>Modes<select id="providerModes" multiple><option selected>ASK</option><option selected>CREATE</option><option selected>ACT</option></select></label><button class="primary">Create disabled profile</button></form><section class="panel"><div class="panel-title"><h2>Provider profiles</h2><span>Default deny</span></div><div id="providerList" class="card-list empty-state">No providers configured.</div></section></div>
+      </section>
+
       <section class="view" id="view-models">
-        <div class="section-header"><div><p class="eyebrow">NO VENDOR LOCK-IN</p><h1>Models & External APIs</h1><p>Local endpoints remain default. OpenAI, Claude, Kimi and compatible providers require explicit data-scope consent.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="providerForm"><h2>Add provider</h2><label>Provider type<select id="providerType"></select></label><label>Name<input id="providerName"></label><label>Base URL<input id="providerBaseUrl"></label><label>Default model<input id="providerModel"></label><label>Routing priority<input id="providerPriority" type="number" value="100"></label><label>Modes<select id="providerModes" multiple><option selected>ASK</option><option selected>CREATE</option><option selected>ACT</option></select></label><button class="primary">Create disabled profile</button></form><section class="panel"><div class="panel-title"><h2>Provider profiles</h2><span>Default deny</span></div><div id="providerList" class="card-list empty-state">No providers configured.</div><hr><h3>Parallel comparison</h3><label>Providers<select id="comparisonProviders" multiple></select></label><pre id="comparisonResults">Select at least two enabled providers and use “Compare models” in chat.</pre></section></div>
+        <div class="section-header"><div><p class="eyebrow">SIDE BY SIDE</p><h1>Models & External APIs</h1><p>Run the same prompt through several enabled providers and compare the answers before you trust one.</p></div></div>
+        <section class="panel"><div class="panel-title"><h2>Parallel comparison</h2><button class="text-button" data-view-link="providers">Manage providers</button></div><label>Providers<select id="comparisonProviders" multiple></select></label><pre id="comparisonResults">Select at least two enabled providers and use “Compare models” in chat.</pre></section>
       </section>
 
       <section class="view" id="view-agents">
-        <div class="section-header"><div><p class="eyebrow">PLAN · APPROVE · EXECUTE · VERIFY</p><h1>Agents & Tools</h1><p>Mutative steps remain blocked until a human grants scoped approval.</p></div></div>
-        <div class="three-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><form class="panel form-stack" id="agentForm"><h2>Create agent</h2><label>Name<input id="agentName" required></label><label>Instructions<textarea id="agentInstructions"></textarea></label><label>Tools<select id="agentTools" multiple></select></label><button class="primary">Create agent</button></form><form class="panel form-stack" id="runForm"><h2>Plan run</h2><label>Agent<select id="runAgent"></select></label><label>Goal<textarea id="runGoal"></textarea></label><button class="primary">Create approval-aware plan</button></form></div><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section><section class="panel"><div class="panel-title"><h2>Runs</h2><span>Intermediate output visible</span></div><div id="runList" class="card-list empty-state">No runs.</div></section>
+        <div class="section-header"><div><p class="eyebrow">PLAN · APPROVE · EXECUTE · VERIFY</p><h1>Agents</h1><p>Mutative steps remain blocked until a human grants scoped approval.</p></div></div>
+        <div class="two-col"><form class="panel form-stack" id="agentForm"><h2>Create agent</h2><label>Name<input id="agentName" required></label><label>Instructions<textarea id="agentInstructions"></textarea></label><label>Tools<select id="agentTools" multiple></select></label><button class="primary">Create agent</button></form><form class="panel form-stack" id="runForm"><h2>Plan run</h2><label>Agent<select id="runAgent"></select></label><label>Goal<textarea id="runGoal"></textarea></label><button class="primary">Create approval-aware plan</button></form></div><section class="panel"><div class="panel-title"><h2>Runs</h2><span>Intermediate output visible</span></div><div id="runList" class="card-list empty-state">No runs.</div></section>
       </section>
 
       <section class="view" id="view-coden">
@@ -145,6 +163,148 @@
         <div class="section-header"><div><p class="eyebrow">COMPUTE ORCHESTRATION</p><h1>Compute & Hardware</h1><p>Automatic discovery and explainable runtime selection.</p></div><button class="primary" id="refreshHardware">Refresh probe</button></div>
         <div class="hardware-grid"><section class="panel"><h2>Detected hardware</h2><pre id="hardwareOutput">Loading…</pre></section><section class="panel"><h2>Runtime recommendation</h2><div class="form-grid"><label>Model size<input id="modelSize" type="number" value="7" min="1"> B</label><label>Quantization<select id="quantBits"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16">16-bit</option></select></label></div><button class="primary" id="recommendRuntime">Recommend</button><pre id="runtimeOutput">No recommendation generated.</pre></section></div>
       </section>
+      <section class="view" id="view-tools">
+        <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h1>Tools</h1><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
+        <div class="two-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section></div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <div class="section-header"><div><p class="eyebrow">PREFERENCES</p><h1>Settings</h1><p>Time, language and locale. The server default applies wherever you have set no preference of your own.</p></div></div>
+        <div class="two-col">
+          <section class="panel form-stack">
+            <div class="panel-title"><h2>Time zone</h2><span id="settingsTimezoneTier" class="badge badge-off">—</span></div>
+            <pre id="settingsTimezoneSummary">Loading…</pre>
+            <label>Your time zone<select id="settingsTimezone"></select></label>
+            <div class="inline-form"><button class="primary" id="settingsTimezoneSave" type="button">Save my time zone</button><button id="settingsTimezoneClear" type="button">Use server default</button></div>
+            <div id="settingsServerRow" class="hidden"><hr><label>Server default (owner)<select id="settingsServerTimezone"></select></label><button class="primary" id="settingsServerSave" type="button">Save server default</button></div>
+            <p class="hint">Resolution order: your preference, then the server default, then the host, then UTC. The browser zone is recorded but never applied on its own.</p>
+          </section>
+          <section class="panel form-stack">
+            <div class="panel-title"><h2>Language and locale</h2></div>
+            <pre id="settingsLocaleSummary">Loading…</pre>
+            <label>Locale<input id="settingsLocale" placeholder="en-GB"></label>
+            <button class="primary" id="settingsLocaleSave" type="button">Save locale</button>
+            <p class="hint">Interface language is chosen in the top bar. The locale here controls how dates and numbers are formatted.</p>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-security">
+        <div class="section-header"><div><p class="eyebrow">YOUR ACCOUNT</p><h1>Security</h1><p>Every action here applies to your own account and requires your password and a live authenticator code.</p></div></div>
+        <section class="panel"><div class="panel-title"><h2>Account</h2><span id="securityMfaBadge" class="badge badge-off">—</span></div><div id="securityOverview" class="metric-grid">Loading…</div></section>
+        <div class="two-col">
+          <form class="panel form-stack" id="securityPasswordForm">
+            <h2>Change password</h2>
+            <label>Current password<input id="secCurrentPassword" type="password" autocomplete="current-password" required></label>
+            <label>Authenticator code<input id="secTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <label>New password<input id="secNewPassword" type="password" autocomplete="new-password" minlength="16" required></label>
+            <label class="check"><input id="secRevokeOthers" type="checkbox" checked> Sign out my other sessions</label>
+            <button class="primary">Change password</button>
+          </form>
+          <form class="panel form-stack" id="recoveryForm">
+            <h2>Recovery codes</h2>
+            <p class="hint">New codes replace the old ones immediately. They are shown once and stored only as digests.</p>
+            <label>Current password<input id="recoveryPassword" type="password" autocomplete="current-password" required></label>
+            <label>Authenticator code<input id="recoveryTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <button class="primary">Generate new recovery codes</button>
+            <div id="recoveryCodesBox" class="hidden"></div>
+          </form>
+        </div>
+        <section class="panel">
+          <div class="panel-title"><h2>Replace authenticator</h2><span id="mfaReplaceState" class="badge badge-off">Not started</span></div>
+          <p class="hint">Your current authenticator keeps working until the replacement is confirmed. Confirmation needs two consecutive codes from the new one.</p>
+          <form class="form-stack" id="mfaReplaceForm">
+            <label>Current password<input id="mfaPassword" type="password" autocomplete="current-password" required></label>
+            <label>Current authenticator code<input id="mfaTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <button class="primary">Begin replacement</button>
+          </form>
+          <div id="mfaEnrolBox" class="hidden">
+            <div class="mfa-enrol">
+              <div class="mfa-qr" id="mfaQr"></div>
+              <div>
+                <h3>Scan this with your authenticator</h3>
+                <p class="hint">If you cannot scan it, enter this key by hand:</p>
+                <code class="manual-key" id="mfaManualKey"></code>
+                <form class="form-stack" id="mfaConfirmForm">
+                  <label>First code<input id="mfaFirstCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+                  <label>Next code (wait for it to change)<input id="mfaSecondCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+                  <div class="inline-form"><button class="primary">Confirm replacement</button><button id="mfaCancel" type="button">Cancel</button></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="panel"><div class="panel-title"><h2>Active sessions</h2><button class="text-button" id="revokeOthers" type="button">Sign out every other session</button></div><div id="sessionList" class="card-list empty-state">Loading…</div></section>
+      </section>
+
+      <section class="view" id="view-users">
+        <div class="section-header"><div><p class="eyebrow">DIRECTORY</p><h1>Users</h1><p>Invite people by token. They choose their own password — an administrator never learns it.</p></div></div>
+        <div class="two-col">
+          <form class="panel form-stack" id="invitationForm">
+            <h2>Invite a user</h2>
+            <label>Username<input id="inviteUsername" required></label>
+            <label>Display name<input id="inviteDisplayName" required></label>
+            <label>Role<select id="inviteRole"></select></label>
+            <button class="primary">Create invitation</button>
+            <div id="invitationTokenBox" class="hidden"></div>
+          </form>
+          <section class="panel"><div class="panel-title"><h2>Open invitations</h2><span id="invitationCount">0</span></div><div id="invitationList" class="card-list empty-state">Loading…</div></section>
+        </div>
+        <section class="panel"><div class="panel-title"><h2>Accounts</h2><span id="userCount">0</span></div><div id="usersList" class="card-list empty-state">Loading…</div></section>
+      </section>
+
+      <section class="view" id="view-health">
+        <div class="section-header"><div><p class="eyebrow">LIVENESS · READINESS · RECOVERY</p><h1>System Health</h1><p>What the watchdog observes, and what safe mode is doing about it.</p></div><button class="primary" id="runWatchdog">Run check now</button></div>
+        <section class="panel"><div class="panel-title"><h2>Status</h2><span id="healthBadge" class="badge badge-off">—</span></div><div id="healthComponents" class="metric-grid">Loading…</div></section>
+        <div class="two-col">
+          <section class="panel"><div class="panel-title"><h2>Watchdog</h2><button class="text-button hidden" id="leaveSafeMode" type="button">Leave safe mode</button></div><pre id="watchdogReport">Loading…</pre></section>
+          <section class="panel"><div class="panel-title"><h2>Data plane</h2></div><pre id="databaseStatus">Loading…</pre></section>
+        </div>
+      </section>
+
+      <section class="view" id="view-updates">
+        <div class="section-header"><div><p class="eyebrow">SIGNED · OWNER-APPROVED · REVERSIBLE</p><h1>Updates</h1><p>Nothing installs itself. An update is staged, approved, applied and can be rolled back.</p></div><button class="primary" id="checkUpdates">Check for updates</button></div>
+        <section class="panel"><div class="panel-title"><h2>Current state</h2><span id="updatesBadge" class="badge badge-off">—</span></div><div id="updatesStatus" class="metric-grid">Loading…</div></section>
+        <div class="two-col">
+          <section class="panel form-stack"><div class="panel-title"><h2>Release channel</h2></div><label>Channel<select id="updateChannel"></select></label><button class="primary" id="applyChannel" type="button">Change channel</button><hr><div class="inline-form"><button id="approveUpdate" type="button">Approve staged</button><button class="primary" id="applyUpdate" type="button">Apply staged</button><button class="danger" id="rollbackUpdate" type="button">Roll back</button></div><p class="hint">No update channel key is pinned on this installation, so nothing can currently be applied. This is stated rather than hidden.</p></section>
+          <section class="panel"><div class="panel-title"><h2>History</h2></div><div id="updatesHistory" class="card-list empty-state">Loading…</div></section>
+        </div>
+      </section>
+
+      <section class="view" id="view-logs">
+        <div class="section-header"><div><p class="eyebrow">STRUCTURED · REDACTED AT THE SINK</p><h1>Logs</h1><p>Quote a correlation ID when reporting a problem — it ties one request to every record it produced.</p></div></div>
+        <section class="panel">
+          <div class="search-row">
+            <select id="logLevel"><option value="">Any level</option><option>DEBUG</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
+            <input id="logComponent" placeholder="Component">
+            <input id="logCorrelation" placeholder="Correlation ID">
+            <input id="logEvent" placeholder="Event">
+            <input id="logQuery" placeholder="Text…">
+            <input id="logLimit" type="number" min="1" max="1000" value="200">
+            <button class="primary" id="logSearch" type="button">Search</button>
+          </div>
+          <div id="logResults" class="card-list empty-state">Loading…</div>
+        </section>
+        <section class="panel"><div class="panel-title"><h2>Debug mode</h2><span id="debugBadge" class="badge badge-off">—</span></div><pre id="debugStatus">Loading…</pre><div class="inline-form"><button class="primary" id="debugEnable" type="button">Enable for 30 minutes</button><button id="debugDisable" type="button">Disable</button><button id="debugBundle" type="button">Download diagnostic bundle</button></div><p class="hint">Debug mode raises log verbosity for a bounded time and switches itself off when the window expires.</p></section>
+      </section>
+
+      <section class="view" id="view-backups">
+        <div class="section-header"><div><p class="eyebrow">EXPORT · BACKUP · RETENTION</p><h1>Backups</h1><p>Your data leaves in a format you can read. A database archive carries a checksum and a restore refuses a mismatch.</p></div></div>
+        <div class="two-col">
+          <section class="panel form-stack"><div class="panel-title"><h2>Database archive</h2><span id="backupsDbBadge" class="badge badge-off">—</span></div><label>Label<input id="backupLabel" placeholder="Optional label"></label><button class="primary" id="createBackup" type="button">Create backup</button><pre id="backupResult">No backup created in this session.</pre></section>
+          <section class="panel form-stack"><div class="panel-title"><h2>Workspace export and retention</h2></div><button class="primary" id="backupsExportData" type="button">Export workspace as JSON</button><hr><label>Retention days<input id="retentionDaysSetting" type="number" min="1" max="3650"></label><div class="inline-form"><button class="primary" id="saveRetentionSetting" type="button">Save retention</button><button id="applyRetentionSetting" type="button">Apply now</button></div><p class="hint">A full filesystem backup of the workspace is not encrypted and contains the authentication master key. Treat it as a secret.</p></section>
+        </div>
+      </section>
+
+      <section class="view" id="view-about">
+        <div class="section-header"><div><p class="eyebrow">WHAT THIS BUILD IS</p><h1>About</h1><p>Version, edition, data plane and the boundary this open core keeps.</p></div></div>
+        <section class="panel"><div class="panel-title"><h2>Product</h2><span id="aboutVersion" class="badge badge-off">—</span></div><div id="aboutProduct" class="metric-grid">Loading…</div></section>
+        <div class="two-col">
+          <section class="panel"><div class="panel-title"><h2>Capabilities</h2></div><div id="aboutFeatures" class="chip-list">Loading…</div></section>
+          <section class="panel"><div class="panel-title"><h2>Privacy and boundary</h2></div><pre id="aboutPrivacy">Loading…</pre><p class="hint">The open core is independently useful and does not require ATOM to build, start, pass its tests or deliver its documented functionality.</p></section>
+        </div>
+      </section>
+
       <section class="view" id="view-not-found">
         <div class="section-header"><div><p class="eyebrow">404</p><h1>Page not found</h1><p id="notFoundDetail">That page does not exist.</p></div></div>
         <section class="panel"><p>The address may be mistyped, or the page may have been removed.</p><button class="primary" data-view-link="home">Go to Home</button></section>
