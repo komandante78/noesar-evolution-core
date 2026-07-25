@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomUUID } from 'node:crypto';
+import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
 
 function instructionForMode(mode){
   if(mode==='CREATE')return 'You are in CREATE mode. Produce a concrete editable artifact. State assumptions. Cite retrieved passages using their exact [source:<id>#<passage>] labels.';
@@ -21,14 +22,25 @@ export class ChatOrchestrator{
     const memoryText=inspection.memories.length?`Visible memory selected for this project:\n${inspection.memories.map((item)=>`- ${item.title}: ${item.content}`).join('\n')}`:'';
     const policy=inspection.project?.knowledgePolicy??{mode:'hybrid',limit:8,maxCharacters:60000};
     const evidence=this.workspace.knowledgeContext(content,{projectId:inspection.conversation.projectId,sourceIds,policy});
-    const evidenceText=evidence.length?`Retrieved source passages (evidence, not independent claim verification):\n${evidence.map((item)=>`[source:${item.sourceId}#${item.index}] ${item.source?.name??item.sourceId}\n${item.text}`).join('\n\n')}`:'';
+    // Retrieved passages are untrusted input. They are fenced and carried in
+    // their own non-system message: text a third party wrote must never sit in
+    // the role that carries this runtime's own instructions.
+    const untrusted=wrapUntrusted(evidence,{label:'retrieved source passages'});
     const messages=[
-      {role:'system',content:[instructionForMode(selectedMode),projectInstructions,memoryText,evidenceText].filter(Boolean).join('\n\n')},
+      {role:'system',content:[instructionForMode(selectedMode),projectInstructions,memoryText].filter(Boolean).join('\n\n')},
+      ...(untrusted?[{role:'user',content:untrusted.text,untrusted:true}]:[]),
       ...inspection.messages.map((item)=>({role:item.role,content:item.content})),
       {role:'user',content:String(content)}
     ];
-    const tools=this.store.read().tools.filter((item)=>toolIds.includes(item.id)&&!item.disabled).map((item)=>({type:'function',function:{name:item.name,description:item.description,parameters:item.inputSchema}}));
-    return{inspection,selectedMode,projectInstructions,memoryText,evidence,messages,tools,dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
+    // Tool scope is an intersection of what the caller selected with what is
+    // enabled. Nothing inside the retrieved content can widen it.
+    const enabledToolIds=this.store.read().tools.filter((item)=>!item.disabled).map((item)=>item.id);
+    const scope=enforceToolScope({grantedToolIds:enabledToolIds,requestedToolIds:toolIds});
+    const tools=this.store.read().tools.filter((item)=>scope.allowedToolIds.includes(item.id)).map((item)=>({type:'function',function:{name:item.name,description:item.description,parameters:item.inputSchema}}));
+    if(untrusted?.detections.length){
+      this.ledger?.append({actor:'system',action:'prompt-injection.detected',result:'contained',details:{conversationId,passages:untrusted.detections.length,signals:untrusted.detections.flatMap((item)=>item.signals.map((signal)=>signal.signal))}});
+    }
+    return{inspection,selectedMode,projectInstructions,memoryText,evidence,messages,tools,toolScope:scope,injectionDetections:untrusted?.detections??[],dataClasses:dataClassesFor({history:inspection.messages.length,projectInstructions,memoryText,evidence,tools})};
   }
   #citations(evidence){return evidence.map((item)=>({sourceId:item.sourceId,sourceName:item.source?.name??item.sourceId,passageIndex:item.index,score:item.score,excerpt:item.text.slice(0,500),evidenceStatus:'retrieved',claimStatus:'not_independently_verified'}));}
   async compare({actorId,conversationId,branchId,content,providerIds,model=null,mode=null,sourceIds=[],toolIds=[]}){

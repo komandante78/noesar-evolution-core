@@ -11,7 +11,6 @@ CPUS="${NOESAR_CPU_LIMIT:-4}"
 ALLOWED_HOSTS="${NOESAR_ALLOWED_HOSTS:-localhost,127.0.0.1,::1}"
 SECURE_COOKIES="${NOESAR_SECURE_COOKIES:-false}"
 RELEASE_CHANNEL="${NOESAR_RELEASE_CHANNEL:-complete}"
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 
 case "$RELEASE_CHANNEL" in
   complete|development) ;;
@@ -31,7 +30,6 @@ exec docker run --rm --name "$NAME" \
   --tmpfs /run:rw,noexec,nosuid,nodev,size=16m \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
-  --security-opt "seccomp=$ROOT/security/seccomp-noesar.json" \
   --pids-limit 512 \
   --memory "$MEMORY" \
   --cpus "$CPUS" \
@@ -40,5 +38,5 @@ exec docker run --rm --name "$NAME" \
   --env NOESAR_DATA_PLANE=reference-json \
   --env "NOESAR_ALLOWED_HOSTS=$ALLOWED_HOSTS" \
   --env "NOESAR_SECURE_COOKIES=$SECURE_COOKIES" \
-  --mount "type=bind,src=$(cd "$WORKSPACE" && pwd),dst=/workspace,rw" \
+  --mount "type=bind,src=$(cd "$WORKSPACE" && pwd),dst=/workspace,readonly=false" \
   "$IMAGE"

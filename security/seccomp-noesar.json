@@ -1,4 +1,7 @@
 {
+  "x-noesar-status": "NOT_FOR_USE",
+  "x-noesar-reason": "This profile is defaultAction=SCMP_ACT_ALLOW with a 24-syscall denylist. Passing it via --security-opt seccomp= REPLACES the Docker builtin profile, which is deny-by-default over an allowlist of roughly 350 syscalls and already blocks all 24 of these and many more. Using this file therefore WEAKENS the sandbox. This host has neither AppArmor nor SELinux, so seccomp is the only mandatory-access-control layer. See docs/CONTAINER_SECURITY_PROFILE.md and decision D-0024.",
+  "x-noesar-use-instead": "Do not pass --security-opt seccomp= at all; the Docker builtin profile applies automatically.",
   "defaultAction": "SCMP_ACT_ALLOW",
   "defaultErrnoRet": 1,
   "architectures": [

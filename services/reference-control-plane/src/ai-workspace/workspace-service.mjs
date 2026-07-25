@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomUUID } from 'node:crypto';
 import { featureVector, hybridSearch } from './search.mjs';
+import { detectInjection } from './untrusted-content.mjs';
 
 function now() { return new Date().toISOString(); }
 function error(message, status=400) { return Object.assign(new Error(message), { status }); }
@@ -91,15 +92,19 @@ export class WorkspaceService {
   ingestSource({ projectId=null, name, mimeType='text/plain', text='', origin='upload', uri=null, metadata={}, actorId='system' }) {
     const content=String(text ?? '');
     const sourceName=sanitizeFilename(required(name,'source name',300));
+    // Scan at the boundary where third-party content enters the workspace, so a
+    // suspicious document is visible to the operator before it is ever retrieved.
+    // This records; containment is structural and lives in untrusted-content.mjs.
+    const injection=detectInjection(content);
     return this.store.transact((state)=>{
       if (projectId) find(state.projects,projectId,'Project');
-      const source={ id:randomUUID(), projectId, name:sourceName, mimeType, origin, uri, metadata, extractionStatus:content ? 'complete':'extractor_required', byteLength:Buffer.byteLength(content), createdAt:now(), updatedAt:now(), deletedAt:null };
+      const source={ id:randomUUID(), projectId, name:sourceName, mimeType, origin, uri, metadata, trust:'untrusted', injectionScan:{ suspicious:injection.suspicious, confidence:injection.confidence, signals:injection.signals.map((item)=>item.signal) }, extractionStatus:content ? 'complete':'extractor_required', byteLength:Buffer.byteLength(content), createdAt:now(), updatedAt:now(), deletedAt:null };
       state.sources.push(source);
       if (content) {
         for (const [index,chunk] of chunkText(content).entries()) state.knowledgeChunks.push({ id:randomUUID(), sourceId:source.id, projectId, index, start:chunk.start, end:chunk.end, text:chunk.text, vector:featureVector(chunk.text), createdAt:now() });
       }
       const project=state.projects.find((item)=>item.id===projectId); if (project) project.fileSourceIds.push(source.id);
-      this.ledger?.append({ actor:actorId, action:'source.ingested', result:source.extractionStatus, details:{ sourceId:source.id, mimeType, chunks:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length } });
+      this.ledger?.append({ actor:actorId, action:'source.ingested', result:source.extractionStatus, details:{ sourceId:source.id, mimeType, chunks:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length, injectionSuspected:injection.suspicious, injectionConfidence:injection.confidence } });
       return { ...source, chunkCount:state.knowledgeChunks.filter((item)=>item.sourceId===source.id).length };
     });
   }
