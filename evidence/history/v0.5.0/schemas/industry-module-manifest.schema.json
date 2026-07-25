@@ -1,0 +1,158 @@
+{
+  "$id": "https://schemas.noesar.local/v4/industry-module-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dataClasses": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "reference",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "excludedUse": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "humanOversight": {
+      "additionalProperties": false,
+      "properties": {
+        "decisionAuthority": {
+          "type": "string"
+        },
+        "overrideAvailable": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "required",
+        "decisionAuthority"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "type": "string"
+    },
+    "intendedUse": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "jurisdictions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "permissions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "riskClass": {
+      "enum": [
+        "standard",
+        "elevated",
+        "high",
+        "safety-critical"
+      ]
+    },
+    "safetyInterlock": {
+      "additionalProperties": false,
+      "properties": {
+        "emergencyStop": {
+          "type": "boolean"
+        },
+        "externalController": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "4.0"
+    },
+    "sector": {
+      "items": {
+        "enum": [
+          "medical",
+          "surgical",
+          "scientific-research",
+          "pharmaceutical",
+          "aviation",
+          "aerospace",
+          "finance",
+          "industrial",
+          "energy",
+          "critical-infrastructure",
+          "education",
+          "legal",
+          "other"
+        ]
+      },
+      "type": "array"
+    },
+    "trustLevel": {
+      "enum": [
+        "noesar-official",
+        "certified-partner",
+        "customer-private",
+        "community"
+      ]
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "publisher",
+    "trustLevel",
+    "sector",
+    "intendedUse",
+    "excludedUse",
+    "riskClass",
+    "humanOversight",
+    "evidence"
+  ],
+  "title": "NOESAR Industry Module Manifest V4",
+  "type": "object"
+}

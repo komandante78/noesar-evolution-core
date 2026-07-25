@@ -1,0 +1,46 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=5_OFFLINE_VALIDATION -- cargo test --workspace --locked --offline
+
+CONTAINER: rust:1-bookworm, --pull=never, --network=none, --cap-drop=ALL,
+--security-opt=no-new-privileges, --pids-limit=512, --cpus=4,
+--memory=8g --memory-swap=8g, --user <host-uid>:<host-gid>,
+CARGO_NET_OFFLINE=true, empty CARGO_HOME,
+RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu.
+
+ATTEMPT 1 (password-hash features = ["getrandom"] only, matching the
+first-pass dependency decision): FAILED.
+  error[E0277]: `argon2::password_hash::Error: StdError` is not satisfied
+    --> crates/noesar-auth/src/lib.rs:39:56
+    the trait `StdError` is not implemented for `argon2::password_hash::Error`
+    required for `anyhow::Error` to implement `From<argon2::password_hash::Error>`
+  This is a second, distinct manifest gap not visible until the first fix
+  was actually applied and re-tested -- password-hash's `Error` type only
+  implements std::error::Error under its own "std" feature (confirmed by
+  reading vendor/password-hash-0.5.0/src/errors.rs:102-103). Registered
+  as FAIL_MANIFEST (not FAIL_SOURCE -- no source code was or needed to be
+  changed, only the feature set), fed back into 03_DEPENDENCY_DECISIONS.tsv
+  and 04_CARGO_MANIFEST_DIFFS.txt as a second, additive change: features
+  = ["getrandom", "std"].
+
+ATTEMPT 2 (password-hash features = ["getrandom", "std"]): PASS.
+  Compiled all 12 workspace crates and all 113 vendored third-party
+  dependencies with zero errors. Test summary (unittests + doc-tests
+  across every workspace member):
+    noesar-security-kernel: `running 1 test / test tests::traversal_is_rejected ... ok
+                              / test result: ok. 1 passed; 0 failed`
+    all other crates (noesar-contracts, noesar-control-plane,
+    noesar-data-plane, noesar-hardware-orchestrator, noesar-audit-ledger,
+    noesar-auth, noesar-authority-api, noesar-authority-daemon,
+    noesar-authority-protocol, noesar-authority-transport,
+    noesar-canonical-json): `running 0 tests / test result: ok. 0 passed;
+    0 failed` (no test functions defined in those crates -- not a
+    failure, simply no tests written for them; doc-tests likewise 0/0
+    across every crate, i.e. no doc examples exist to run).
+  Overall process exit code: 0.
+
+RUST_TESTS=PASS
+
+Full logs: BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/logs/07_offline_test.log
+(final, passing run; the failing intermediate attempt's output is
+reproduced verbatim above since it was iterated on in-place and only the
+final log was retained on disk).

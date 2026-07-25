@@ -1,0 +1,47 @@
+ARG NODE_IMAGE=node:22-bookworm-slim
+FROM ${NODE_IMAGE}
+
+LABEL org.opencontainers.image.title="NOESAR Evolution"
+LABEL org.opencontainers.image.description="V4 complete self-hosted implementation runtime"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+LABEL org.opencontainers.image.version="1.0.0-ai-workspace"
+LABEL org.noesar.release.channel="complete"
+LABEL org.noesar.production-ready="pending-target-validation"
+LABEL org.noesar.authority="reference-node"
+LABEL org.noesar.authority-protocol="reference-hmac-v1.1"
+LABEL org.noesar.data-plane="reference-json"
+LABEL org.noesar.postgres-baseline="0.5.0"
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends unzip poppler-utils tesseract-ocr ffmpeg ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 10001 noesar \
+ && useradd --uid 10001 --gid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin noesar \
+ && mkdir -p /opt/noesar /workspace \
+ && chown -R 10001:10001 /opt/noesar /workspace
+
+WORKDIR /opt/noesar
+COPY --chown=10001:10001 package.json /opt/noesar/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+
+ENV NODE_ENV=production \
+    NOESAR_RUNTIME_ROOT=/opt/noesar \
+    NOESAR_WORKSPACE=/workspace \
+    NOESAR_HOST=0.0.0.0 \
+    NOESAR_PORT=8088 \
+    NOESAR_RELEASE_CHANNEL=complete \
+    NOESAR_AUTHORITY_MODE=reference-node \
+    NOESAR_DATA_PLANE=reference-json \
+    NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token \
+    NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
+    NOESAR_SECURE_COOKIES=false
+
+USER 10001:10001
+EXPOSE 8088
+VOLUME ["/workspace"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/healthz',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+
+ENTRYPOINT ["node", "services/reference-control-plane/src/server.mjs"]

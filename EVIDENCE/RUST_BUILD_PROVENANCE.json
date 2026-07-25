@@ -1,0 +1,71 @@
+{
+  "phase": "RUST_MANIFEST_REMEDIATION_V1",
+  "date": "2026-07-24",
+  "image": {
+    "repository": "rust:1-bookworm",
+    "id": "sha256:a0635962c16d5f26400703edd4317175cf9531f3285d632613f9da227f9c71d1",
+    "pullExecuted": false,
+    "verifiedMatchesAuthorizedId": true
+  },
+  "toolchain": {
+    "rustc": "1.97.1 (8bab26f4f 2026-07-14)",
+    "cargo": "1.97.1 (c980f4866 2026-06-30)",
+    "toolchainOverride": "1.97.1-x86_64-unknown-linux-gnu",
+    "toolchainOverrideReason": "RUSTUP_TOOLCHAIN env var used to bypass rust-toolchain.toml's 'stable' channel alias, which otherwise tries to DNS-resolve static.rust-lang.org under --network=none; no source file edited (same technique as RUST_BUILD_CONTAINER_V1/RUST_DEPENDENCY_VENDOR_V1)"
+  },
+  "hashes": {
+    "sourceTreeAggregate": {
+      "value": "bc6c2532610c2e45d4c1daa339c9062f3be69cd48ac5622cf88b87d9b052d3d4",
+      "method": "sha256 of sorted `sha256sum` output over every file under PRODUCT/rust/ excluding vendor/ and target/"
+    },
+    "cargoLock": {
+      "value": "6cbc6d3267b93e00bf83815ac149454f880c5f8db52a98ca8df2c1b9e696514b",
+      "path": "PRODUCT/rust/Cargo.lock"
+    },
+    "vendorManifestAggregate": {
+      "value": "fff872958dcb3ab82f89a8bbe9f70cea78bae091ad19323fd09ad5debf61e989",
+      "method": "sha256 of sorted `sha256sum` output over every file under PRODUCT/rust/vendor/ (5207 files, 113 crate dirs)"
+    }
+  },
+  "commandsExecuted": [
+    "docker run --rm --pull=never --network=none <staging>/rust:/work rust:1-bookworm cargo generate-lockfile --offline  (FAILED cleanly: missing getrandom ^0.2)",
+    "docker run --rm --pull=never <staging>/rust:/work rust:1-bookworm sh -c 'mv .cargo/config.toml .cargo/config.toml.disabled && cargo generate-lockfile && rm -rf vendor && cargo vendor --locked --versioned-dirs vendor && mv .cargo/config.toml.disabled .cargo/config.toml'  (network scoped to these two cargo subcommands only)",
+    "docker run --rm --pull=never --network=none --user <uid>:<gid> ... cargo generate-lockfile --offline && cargo tree --locked --offline --workspace  (re-verification, PASS)",
+    "docker run --rm --pull=never --network=none --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=512 --cpus=4 --memory=8g --memory-swap=8g --user <uid>:<gid> ... cargo metadata --locked --offline --format-version 1  (PASS)",
+    "docker run (same hardening) ... cargo tree --workspace --locked --offline  (PASS)",
+    "docker run (same hardening) ... cargo test --workspace --locked --offline  (PASS, after the getrandom+std feature fix)",
+    "docker run (same hardening) ... cargo build --workspace --release --locked --offline  (PASS)",
+    "docker run -d --pull=never --network=none --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 --cpus=1 --memory=512m --user <uid>:<gid> ... /bin/authority-daemon  (authorized-peer round-trip, PASS)",
+    "docker run -d (same hardening, ALLOWED_UIDS=99999) ... /bin/authority-daemon  (rejected-peer round-trip, PASS)"
+  ],
+  "network": {
+    "used": true,
+    "scope": "cargo generate-lockfile + cargo vendor only, one container run, with .cargo/config.toml source-replacement temporarily disabled for that window only",
+    "imagePullExecuted": false
+  },
+  "offlineConfirmation": {
+    "cargoMetadata": "PASS",
+    "cargoTree": "PASS",
+    "cargoTest": "PASS",
+    "cargoBuildRelease": "PASS"
+  },
+  "binaries": [
+    {
+      "name": "noesar-authority-daemon",
+      "sizeBytes": 944488,
+      "sha256": "838055e97d960e50a2ad55ad39b32f709907da4b0841922ccba433d00dcf15c1"
+    },
+    {
+      "name": "noesar-control-plane",
+      "sizeBytes": 1876960,
+      "sha256": "d276076f0fe1a316ecf62ac2656013a6800509e13a8b4b3b3be3c7fd607d69f2"
+    }
+  ],
+  "authorityRoundtrip": {
+    "authorizedPeer": "PASS",
+    "rejectedPeer": "PASS",
+    "notes": "See REPORTS/RUST_MANIFEST_REMEDIATION_V1/09_AUTHORITY_ROUNDTRIP_RESULT.txt for full transcript"
+  },
+  "productionReadyClaim": false,
+  "provenanceSigned": false
+}

@@ -1,0 +1,104 @@
+FINAL REPORT — NOESAR EVOLUTION CANONICAL_CANDIDATE_V1 CODE CONSOLIDATION
+=============================================================================
+
+WORKSPACE_MUTATION=YES
+PRODUCTION_MUTATION=NO
+DOCKER_TOUCHED=false
+DOCKER_COMPOSE_TOUCHED=false
+ENV_TOUCHED=false
+DATABASE_TOUCHED=false
+DATABASE_MUTATION=false
+POSTGRES_STARTED=false
+QDRANT_MUTATION=false
+NETWORK_SERVICES_STARTED=false (auth-http-smoke.mjs and the 14 node --test
+  suites bind ephemeral loopback listeners for the duration of a single
+  test run and verifiably tear down afterward; no persistent service left running)
+BASELINES_TOUCHED=false (00_MASTER..05_OPERATIONS_V0_5_0 and METADATA/
+  confirmed unmodified by mtime check against the backup timestamp)
+EXISTING_DOWNLOAD_ZIPS_MODIFIED=false
+NEW_ZIPS_CREATED=false
+
+INITIAL_FILES=392   (PRODUCT/ only; whole candidate incl. METADATA was 397)
+FINAL_FILES=366     (PRODUCT/ only; whole candidate now 371)
+
+FILES_ADDED=0
+FILES_MODIFIED=18
+FILES_MOVED=146
+FILES_REMOVED=26
+(202 files unchanged in both path and content; 392 = 202+146+18+26 reconciles
+ exactly against 366 = 202+146+18 — see 04/05/06/07_FILES_*.txt for detail)
+
+TEST_PASS=24
+TEST_FAIL=0
+TEST_BLOCKED=2
+TEST_NOT_EXECUTED=15
+(see 09_TEST_RESULTS.tsv; NOT_EXECUTED rows fold 23 individual python3-based
+ scripts plus the Rust workspace and 4 missing-launcher smoke tests into
+ fewer summary rows)
+
+NESTED_ZIPS=0
+SYMLINKS=0
+MANIFEST_VERIFY=PASS   (sha256sum -c MANIFEST.sha256: 365/365 OK)
+JSON_VALIDATION=PASS   (78/78)
+SHELL_SYNTAX=PASS      (23/23)
+JAVASCRIPT_SYNTAX=PASS (41/41)
+PYTHON_SYNTAX=BLOCKED  (python3 unavailable on this host)
+TYPESCRIPT_SYNTAX=BLOCKED (tsc unavailable on this host)
+
+MASTER_V4_COMPLETE=false
+PRODUCTION_READY=false
+FINAL_PRODUCT_READY=false
+FINAL_RELEASE_READY=false
+
+WHAT WAS REALLY CORRECTED (not just consolidated):
+  - 11 scripts had genuine path-resolution bugs (wrong parents[N] depth, or
+    dead "runtime/noesar/" references) — fixed against verified real targets.
+  - tools/verify-package.py had 3 checks against embedded ZIP archives that
+    cannot exist in this zip-free candidate — removed, would always have FAILed.
+  - PACKAGE_METADATA.json and MANIFEST.sha256 were stale/self-inconsistent
+    (referenced nonexistent embedded ZIPs) — regenerated and independently
+    re-verified (sha256sum -c PASS).
+  - 25 committed __pycache__ build artifacts and 1 exact-duplicate file removed.
+
+WHAT WAS ONLY CONSOLIDATED (structure, not logic):
+  - 8 capability/docs/operations/tests subtrees renamed to drop -v0.5.0 /
+    imported- suffixes (142+4 file relocations, byte-identical content).
+  - 18 capability JSON Schemas merged into one canonical schemas/ directory.
+  - TypeScript + Python SDK consolidated into one canonical packages/sdk/.
+  - Historical/non-adaptable material (release-controller tooling tied to
+    physical ZIPs, an obsolete standalone-package distribution verifier,
+    superseded schema/SDK versions, security/operations evidence records)
+    archived under evidence/history/, not deleted.
+
+WHAT IS STILL MISSING / OPEN (see 11_OPEN_BLOCKERS.txt for full detail):
+  - B001, B003, B004, B005 open — all require real compilation, OS-level
+    sandbox enforcement, or a live PostgreSQL server; none achievable by a
+    file-consolidation pass, and none were force-simulated.
+  - B006 (complete Master V4 scope) open — this candidate is a security-
+    authority/authentication/data-plane/capability-broker reference slice,
+    not the full AI-platform/industry-module/compliance product.
+  - oci/Dockerfile, oci/Containerfile, deployment/{linux,macos}/
+    install-portable.sh still reference the pre-consolidation nested
+    runtime/noesar/ payload layout — left unedited (product-design decision
+    needed; oci/* additionally out of scope under DOCKER_TOUCHED=false).
+  - tests/runtime/production-gate-smoke.py and 4 runtime-v0*/secure-runtime
+    smoke tests depend on runtime/bin/ files never imported into this
+    candidate at all — documented, not fabricated.
+  - python3, cargo, rustc, tsc are UNAVAILABLE on this host — 23 Python
+    scripts, the 12-crate Rust workspace, and 2 canonical TypeScript files
+    could not be executed/type-checked this pass (CARGO_LOCK=BLOCKED).
+  - apps/webui-react/package.json pins 6 dependencies to "latest" —
+    flagged, not force-pinned without registry access.
+
+ROLLBACK: see 13_ROLLBACK_INSTRUCTIONS.txt. Backup archive:
+  /mnt/cachec/NOESAR_EVOLUTION_CANONICAL_V1/BACKUPS/CANONICAL_CANDIDATE_V1_PRE_CODE_CONSOLIDATION_20260723T093724Z.tar.gz
+  (sha256: 1c254d3288b489d31e18660d3212a87374c00f397ab3d1818b4d9e8b99c09e1e)
+
+NEXT MINIMUM STEP: get a real toolchain (python3, cargo/rustc, tsc) onto a
+build host, run `cargo generate-lockfile` + `cargo test --workspace --locked`
+inside rust/, run the 23 blocked python3 verifiers/tests, and stand up a real
+PostgreSQL 18 + pgvector instance for tools/verify-postgres-migrations.py and
+the postgres-repository path — that is what would actually start closing
+B001 and B005. B003/B004/B006 require OS-level sandbox integration and
+real multi-platform deployment execution, which are larger efforts beyond
+a single follow-up step.

@@ -1,0 +1,84 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=2_ANALYSIS_INITIAL_BUILD_ERRORS
+
+Source: REPORTS/RUST_DEPENDENCY_VENDOR_V1/container2_offline_verify.log
+and .../container2_build_only.log (prior phase, not re-run here -- these
+are the real, previously captured offline `cargo test`/`cargo build`
+failures this phase is remediating).
+
+--- cargo test --workspace --locked --offline (prior phase) ---
+error[E0432]: unresolved import `uuid`
+  --> crates/noesar-security-kernel/src/lib.rs:31:9
+   |
+31 |     use uuid::Uuid;
+   |         ^^^^ use of unresolved module or unlinked crate `uuid`
+error: could not compile `noesar-security-kernel` (lib test) due to 1 previous error
+
+--- cargo build --workspace --release --locked --offline (prior phase) ---
+error[E0432]: unresolved import `argon2::password_hash::rand_core::OsRng`
+  --> crates/noesar-auth/src/lib.rs:3:29
+   |
+ 3 | use argon2::password_hash::{rand_core::OsRng, SaltString};
+   |                             ^^^^^^^^^^^^^^^^ no `OsRng` in the root
+   |
+note: found an item that was configured out
+  --> vendor/rand_core-0.6.4/src/lib.rs:49:43
+   |
+49 | #[cfg(feature = "getrandom")] pub use os::OsRng;
+   |       ---------------------               ^^^^^
+   |       the item is gated behind the `getrandom` feature
+
+error[E0433]: cannot find module or crate `hex` in this scope
+  --> crates/noesar-auth/src/lib.rs:48:5
+48 |     hex::encode(Sha256::digest(token))
+
+error[E0433]: cannot find module or crate `anyhow` in this scope
+  --> crates/noesar-auth/src/lib.rs:37:42
+37 | pub fn hash_password(password: &[u8]) -> anyhow::Result<String> {
+
+error: could not compile `noesar-auth` (lib) due to 3 previous errors
+
+--- Cargo.toml inspection (this phase, before editing) ---
+crates/noesar-security-kernel/Cargo.toml: [dependencies] listed only
+  `noesar-contracts = { path = "../noesar-contracts" }` -- no uuid entry
+  at all, dev or otherwise.
+
+crates/noesar-auth/Cargo.toml: [dependencies] listed argon2, base64,
+  chrono.workspace, hmac, rand, serde.workspace, sha1, sha2.workspace,
+  subtle, uuid.workspace -- no hex, no anyhow, no direct password-hash
+  entry (password-hash reaches this crate only transitively through
+  argon2's default features, without its "getrandom" feature enabled).
+
+--- Cargo.lock inspection ---
+Single resolved version of password-hash (0.5.0) in the lockfile;
+argon2 (0.5.3) depends on it. Two distinct rand_core versions coexist
+independently (0.6.4, used by password-hash; 0.9.5, used by rand/uuid
+elsewhere) -- confirmed no version conflict from touching only the
+0.6.4 instance's feature set.
+
+--- Vendored crate manifests inspected ---
+vendor/uuid-1.24.0/Cargo.toml        [features] v4 = ["rng"], rng = ["dep:getrandom"]
+vendor/argon2-0.5.3/Cargo.toml       [features] default = ["alloc","password-hash","rand"];
+                                        rand = ["password-hash/rand_core"] (no getrandom passthrough)
+vendor/password-hash-0.5.0/Cargo.toml [features] default = ["rand_core"];
+                                        getrandom = ["rand_core/getrandom"]
+vendor/rand_core-0.6.4/Cargo.toml     [dependencies.getrandom] optional = true (implicit
+                                        feature "getrandom" enables it; gates OsRng re-export)
+vendor/argon2-0.5.3/src/lib.rs:113   `pub use { password_hash::{self, ...} }` -- confirms
+                                        argon2::password_hash IS the password-hash crate,
+                                        single resolved instance, feature-unified with any
+                                        other direct dependency on the same version.
+
+--- Actual code usage inspected ---
+crates/noesar-security-kernel/src/lib.rs:29-34 -- `uuid::Uuid` used only
+  inside `#[cfg(test)] mod tests`, specifically `Uuid::new_v4()`.
+crates/noesar-auth/src/lib.rs:3,38 -- `argon2::password_hash::{rand_core::OsRng, ...}`,
+  `SaltString::generate(&mut OsRng)`.
+crates/noesar-auth/src/lib.rs:48 -- `hex::encode(...)`.
+crates/noesar-auth/src/lib.rs:37 -- `anyhow::Result<String>` return type.
+
+Conclusion feeding into 03_DEPENDENCY_DECISIONS.tsv: all four gaps are
+manifest-declaration omissions (three missing dependency edges, one
+missing feature flag on an already-present transitive dependency) --
+none require a source-code change, a new crate, or a version not
+already vendored.

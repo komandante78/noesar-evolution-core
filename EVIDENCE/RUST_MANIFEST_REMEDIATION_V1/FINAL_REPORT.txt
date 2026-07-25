@@ -1,0 +1,86 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+
+BACKUP_VERIFY=PASS
+
+FILES_MODIFIED=6
+  (rust/crates/noesar-security-kernel/Cargo.toml,
+   rust/crates/noesar-auth/Cargo.toml, rust/Cargo.lock,
+   rust/BUILD_STATUS.md, rust/IMPLEMENTATION_STATUS.md,
+   PRODUCT/MANIFEST.sha256 -- plus 39 new files added under one new
+   vendor crate directory, rust/vendor/getrandom-0.2.17/; full detail in
+   04_CARGO_MANIFEST_DIFFS.txt and 12_FILES_PROMOTED.txt)
+
+DEPENDENCIES_ADDED=uuid (noesar-security-kernel, dev-dependencies), anyhow (noesar-auth, dependencies), hex (noesar-auth, dependencies), password-hash (noesar-auth, dependencies, new direct edge onto an already-transitive crate), getrandom v0.2.17 (new transitive package in Cargo.lock/vendor, pulled in by password-hash's getrandom feature)
+
+FEATURES_CHANGED=uuid: +v4 (noesar-security-kernel dev-dependency); password-hash: +getrandom, +std (noesar-auth dependency, both required -- getrandom for OsRng, std for the StdError impl anyhow's `?` needs)
+
+NETWORK_USED=true
+NETWORK_SCOPE=cargo generate-lockfile + cargo vendor --locked --versioned-dirs vendor ONLY, in one container run, with .cargo/config.toml's vendored-source replacement temporarily disabled for exactly that window and restored immediately after. No test or build command ever ran with network enabled.
+IMAGE_PULL_EXECUTED=false
+
+CARGO_LOCK_STATUS=REGENERATED_VALID (113 packages, was 112; +getrandom only; verified offline via generate-lockfile --offline + metadata + tree)
+VENDOR_STATUS=REGENERATED_COMPLETE (113 crate dirs, 5207 files, +getrandom-0.2.17 only)
+VENDOR_COMPLETENESS=PASS
+
+OFFLINE_METADATA=PASS
+OFFLINE_CARGO_TREE=PASS
+RUST_TESTS=PASS
+RUST_RELEASE_BUILD=PASS
+AUTHORITY_DAEMON_CLIENT_ROUNDTRIP=PASS
+PEER_CREDENTIAL_TEST=PASS
+
+PROVENANCE_CREATED=true
+FILES_PROMOTED_TO_CANDIDATE=8
+MANIFEST_VERIFY=PASS
+
+B001_STATUS=CLOSED
+B003_STATUS=OPEN
+B004_STATUS=OPEN
+B005_STATUS=OPEN
+B006_STATUS=OPEN
+
+DOCKER_SCOPE=TEMPORARY_RUST_VALIDATION_CONTAINERS
+PRODUCTION_CONTAINERS_TOUCHED=false
+DATABASE_TOUCHED=false
+ZIP_CREATED=false
+BASELINES_TOUCHED=false
+
+PRODUCTION_READY=false
+FINAL_PRODUCT_READY=false
+NEXT_GATE=Execute and verify the remaining B00x blockers on real target
+environments (B003: implement/verify an OS-level sandbox policy, e.g.
+security/seccomp-noesar.json, currently absent; B004: run the packaged
+deployment platforms -- Linux/macOS/Windows installers and the OCI image
+-- against real target systems, not just source-path correctness; B005:
+run the Postgres migration/baseline verification against a live
+database server, not just static script inspection; B006: decide/execute
+remaining Master V4 scope beyond the current partial baseline). None of
+these require further Rust dependency work -- B001's own remediation
+(this phase) is complete. A security/production-readiness review of the
+now-passing Rust authority path (independent of B003-B006) would also be
+a reasonable next step before any PRODUCTION_READY reconsideration, but
+is explicitly out of this phase's scope.
+
+--- Supporting files in this directory ---
+00_EXECUTIVE_SUMMARY.txt
+01_PREFLIGHT_AND_BACKUP.txt
+02_INITIAL_BUILD_ERRORS.txt
+03_DEPENDENCY_DECISIONS.tsv
+04_CARGO_MANIFEST_DIFFS.txt
+05_LOCK_AND_VENDOR_UPDATE.txt
+06_OFFLINE_METADATA_RESULT.txt
+07_OFFLINE_TEST_RESULTS.txt
+08_OFFLINE_RELEASE_BUILD_RESULT.txt
+09_AUTHORITY_ROUNDTRIP_RESULT.txt
+10_BUILD_ARTIFACTS.tsv
+11_PROVENANCE.json
+12_FILES_PROMOTED.txt
+13_FINAL_MANIFEST_VERIFY.txt
+14_OPEN_BLOCKERS.txt
+15_ROLLBACK_INSTRUCTIONS.txt
+FINAL_REPORT.txt (this file)
+
+Additional evidence outside this REPORTS directory (per the phase's own
+authorized BUILD_ARTIFACTS path):
+BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/logs/*.log (raw container output)
+BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/artifacts/ (release binaries, roundtrip driver)

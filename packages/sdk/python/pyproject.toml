@@ -1,0 +1,10 @@
+[project]
+name = "noesar-sdk"
+version = "0.5.0"
+description = "NOESAR Evolution public SDK contracts"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+
+[build-system]
+requires = []
+build-backend = "noesar_sdk.build"

@@ -1,0 +1,59 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=9_B001_STATUS_AND_OPEN_BLOCKERS
+
+B001 (Rust authority not compiled) -- gate check against every required
+condition (per phase spec section 9):
+  CARGO_LOCK_VALID=true            (regenerated, resolves offline, see 05/06)
+  VENDOR_COMPLETENESS=PASS         (see 06_OFFLINE_METADATA_RESULT.txt)
+  RUST_TESTS=PASS                  (see 07_OFFLINE_TEST_RESULTS.txt)
+  RUST_RELEASE_BUILD=PASS          (see 08_OFFLINE_RELEASE_BUILD_RESULT.txt)
+  AUTHORITY_DAEMON_CLIENT_ROUNDTRIP=PASS  (see 09_AUTHORITY_ROUNDTRIP_RESULT.txt)
+  PEER_CREDENTIAL_TEST=PASS        (see 09_AUTHORITY_ROUNDTRIP_RESULT.txt)
+  PROVENANCE_CREATED=true          (see 11_PROVENANCE.json)
+
+All seven conditions are true.
+
+B001_STATUS=CLOSED
+
+Closure basis: this is the first time in this workspace's history that
+the Rust authority workspace has been verified, end to end, from a clean
+dependency graph through a real compiled daemon binary answering a
+correctly HMAC-signed request over a real Unix domain socket with
+SO_PEERCRED enforcement -- entirely offline except for the one narrowly
+scoped, already-authorized network window used to add exactly one
+missing dependency (getrandom 0.2.17) to the vendor snapshot.
+
+Remaining B00x blockers (unaffected by this phase, tracked in
+[[project_noesar_evolution_canonical_v1]] memory / prior CODE_CONSOLIDATION_V1
+report -- listed here for completeness, not re-investigated):
+  B003_STATUS=OPEN   (no OS-level sandbox enforcement; missing
+                       security/seccomp-noesar.json, per BUILD_PREPARATION_V1)
+  B004_STATUS=OPEN   (deployment platforms still unexecuted -- payload
+                       path itself was already resolved in
+                       BUILD_PREPARATION_V1, execution/testing on real
+                       target platforms remains undone)
+  B005_STATUS=OPEN   (Postgres never run against a live server)
+  B006_STATUS=OPEN   (Master V4 scope is partial by design)
+
+New, minor, non-blocking observations from this phase (documented, not
+acted on beyond what's already reflected in updated docs):
+  - noesar-control-plane has a `main.rs` and builds to a release binary,
+    but its round-trip/functional behavior was NOT exercised by this
+    phase (only noesar-authority-daemon was) -- out of scope for
+    RUST_MANIFEST_REMEDIATION_V1, which targeted the two specific
+    dependency gaps in noesar-security-kernel and noesar-auth only.
+  - Doc-tests are 0/0 across every crate (no `///` doc examples exist
+    anywhere in this workspace) -- not a defect, just an absence; noted
+    for completeness since 07_OFFLINE_TEST_RESULTS.txt reports it.
+  - AF_UNIX socket path length (108-byte sun_path limit) is a real,
+    reusable gotcha for any future work that runs the daemon under a
+    deeply nested BUILD_ARTIFACTS/REPORTS path -- worth keeping socket
+    working directories short (e.g. under /tmp) in any future round-trip
+    or integration test involving this daemon.
+
+PRODUCTION_READY=false and FINAL_PRODUCT_READY=false are maintained
+regardless of B001's closure -- closing B001 confirms the Rust authority
+workspace builds, tests, and round-trips correctly under this
+verification harness; it does not constitute a production-readiness or
+security-audit sign-off, which remains explicitly out of scope for this
+phase (see FINAL_REPORT.txt NEXT_GATE).

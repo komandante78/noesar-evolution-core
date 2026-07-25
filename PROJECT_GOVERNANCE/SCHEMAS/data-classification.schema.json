@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Data Classification",
+  "type": "object",
+  "required": [
+    "class",
+    "owner",
+    "retention",
+    "egress"
+  ],
+  "properties": {
+    "class": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted",
+        "personal",
+        "sensitive-personal",
+        "health",
+        "financial",
+        "export-controlled",
+        "safety-critical",
+        "secret"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retention": {
+      "type": "object"
+    },
+    "egress": {
+      "type": "object"
+    },
+    "training_allowed": {
+      "type": "boolean"
+    },
+    "legal_hold": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

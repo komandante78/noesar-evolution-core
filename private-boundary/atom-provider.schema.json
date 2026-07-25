@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ATOM Provider Contract",
+  "type": "object",
+  "required": [
+    "providerId",
+    "apiVersion",
+    "capabilities"
+  ],
+  "properties": {
+    "providerId": {
+      "type": "string"
+    },
+    "apiVersion": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "endpoint": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

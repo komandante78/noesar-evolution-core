@@ -1,0 +1,39 @@
+{
+  "$id": "https://schemas.noesar.local/v6/postgres-production-gate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "required": [
+        "rustAuthority",
+        "postgresqlDataPlane",
+        "migrationManifest",
+        "sandbox",
+        "platformMatrix",
+        "updateTrust",
+        "penetrationTest"
+      ],
+      "type": "object"
+    },
+    "migrationManifestSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "productionReady": {
+      "type": "boolean"
+    },
+    "release": {
+      "const": "0.6.0"
+    }
+  },
+  "required": [
+    "release",
+    "migrationManifestSha256",
+    "checks",
+    "productionReady"
+  ],
+  "type": "object"
+}

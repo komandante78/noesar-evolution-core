@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/.workspace
+**/*.zip
+**/*.sha256
+tests
+docs
+SOURCE
+MASTER

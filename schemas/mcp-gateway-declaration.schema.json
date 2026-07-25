@@ -1,0 +1,69 @@
+{
+  "$id": "https://schemas.noesar.local/v4/mcp-gateway-declaration.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "resources": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "dataClass": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "dataClass"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "serverId": {
+      "type": "string"
+    },
+    "tools": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "inputSchema": {
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "transport": {
+      "enum": [
+        "stdio",
+        "streamable-http",
+        "custom"
+      ]
+    }
+  },
+  "required": [
+    "serverId",
+    "transport",
+    "tools",
+    "resources"
+  ],
+  "title": "NOESAR MCP Gateway Declaration",
+  "type": "object"
+}

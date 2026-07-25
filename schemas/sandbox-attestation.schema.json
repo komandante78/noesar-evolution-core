@@ -1,0 +1,198 @@
+{
+  "$id": "https://schemas.noesar.local/v5/sandbox-attestation-v050.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "adapter": {
+      "enum": [
+        "bubblewrap",
+        "linux-namespace-seccomp-launcher",
+        "windows-appcontainer",
+        "macos-sandbox-exec",
+        "wasi-preview2"
+      ]
+    },
+    "authorityAttestationSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "authorityProtocolVersion": {
+      "const": "1.1"
+    },
+    "capabilityId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "capabilityPackageSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "capabilityVersion": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "createdUtc": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "escapeTestReportPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "escapeTestReportSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "escapeTestsPassed": {
+      "const": true
+    },
+    "filesystemIsolation": {
+      "const": true
+    },
+    "filesystemPolicy": {
+      "const": "allowlisted-readonly-root"
+    },
+    "gidMapRestricted": {
+      "const": true
+    },
+    "ipcNamespace": {
+      "const": true
+    },
+    "kernel": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "kind": {
+      "const": "capability-os-sandbox"
+    },
+    "launcherPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "launcherSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "mountNamespace": {
+      "const": true
+    },
+    "networkNamespace": {
+      "const": true
+    },
+    "networkPolicy": {
+      "const": "deny-by-default"
+    },
+    "noNewPrivileges": {
+      "const": true
+    },
+    "pidNamespace": {
+      "const": true
+    },
+    "planHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "platform": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "policyDecisionSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "postgresAttestationSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "processIsolation": {
+      "const": true
+    },
+    "profile": {
+      "const": "os-isolated"
+    },
+    "profileSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "release": {
+      "const": "0.5.0"
+    },
+    "resourceLimits": {
+      "const": true
+    },
+    "runtimeReadinessSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "runtimeVersion": {
+      "const": "0.5.0"
+    },
+    "schemaVersion": {
+      "const": "3.0"
+    },
+    "seccomp": {
+      "const": true
+    },
+    "seccompProfilePath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "seccompProfileSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "uidMapRestricted": {
+      "const": true
+    },
+    "userNamespace": {
+      "const": true
+    },
+    "utsNamespace": {
+      "const": true
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "release",
+    "profile",
+    "profileSha256",
+    "capabilityId",
+    "capabilityVersion",
+    "planHash",
+    "authorityProtocolVersion",
+    "runtimeVersion",
+    "adapter",
+    "launcherPath",
+    "launcherSha256",
+    "seccompProfilePath",
+    "seccompProfileSha256",
+    "escapeTestReportPath",
+    "escapeTestReportSha256",
+    "authorityAttestationSha256",
+    "postgresAttestationSha256",
+    "capabilityPackageSha256",
+    "policyDecisionSha256",
+    "runtimeReadinessSha256",
+    "platform",
+    "kernel",
+    "noNewPrivileges",
+    "userNamespace",
+    "uidMapRestricted",
+    "gidMapRestricted",
+    "mountNamespace",
+    "pidNamespace",
+    "networkNamespace",
+    "ipcNamespace",
+    "utsNamespace",
+    "seccomp",
+    "resourceLimits",
+    "filesystemIsolation",
+    "processIsolation",
+    "escapeTestsPassed",
+    "networkPolicy",
+    "filesystemPolicy",
+    "createdUtc"
+  ],
+  "type": "object"
+}

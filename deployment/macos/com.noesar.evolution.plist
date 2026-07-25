@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.noesar.evolution.v050.development</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>"$HOME/Library/Application Support/NOESAR Evolution/portable-start.sh"</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NOESAR_HOST</key><string>127.0.0.1</string>
+    <key>NOESAR_PORT</key><string>8088</string>
+    <key>NOESAR_RELEASE_CHANNEL</key><string>development</string>
+    <key>NOESAR_AUTHORITY_MODE</key><string>reference-node</string>
+    <key>NOESAR_DATA_PLANE</key><string>reference-json</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/noesar-evolution-v050.out.log</string>
+  <key>StandardErrorPath</key><string>/tmp/noesar-evolution-v050.err.log</string>
+</dict>
+</plist>

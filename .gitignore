@@ -24,24 +24,31 @@
 *.pyo
 
 # Build output
+# NOTE (phase-1): these are ANCHORED to the repository root on purpose. Un-anchored
+# directory patterns (build/, bin/, out/, cache/) silently swallowed real vendored
+# SOURCE directories such as rust/vendor/rustversion-1.0.23/build/build.rs and
+# rust/vendor/wasm-bindgen-0.2.126/src/cache/*.rs. See docs/PATH_CONFLICTS.tsv.
 target/
-build/
-dist/
-out/
-bin/
-obj/
+/build/
+/dist/
+/out/
+/bin/
+/obj/
 node_modules/
 __pycache__/
 *.egg-info/
 
 # Caches
-cache/
+/cache/
 .cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.cargo/
 .gradle/
+# NOT .cargo/ — rust/.cargo/config.toml is the vendoring configuration and is
+# required for offline builds. Cargo credentials are excluded explicitly instead.
+**/.cargo/credentials
+**/.cargo/credentials.toml
 
 # Models, weights, datasets
 models/
@@ -70,6 +77,11 @@ pgdata/
 secrets/
 credentials/
 *.pem
+# Public keys are meant to be distributed and are required by the capability
+# signature-verification examples. Verified in phase 1: the only .pem in the
+# product is an Ed25519 PUBLIC key, and zero private-key material exists anywhere.
+!*public*.pem
+!*-public.pem
 *.key
 *.p12
 *.pfx
@@ -98,3 +110,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Compiled WebAssembly modules (see docs/INSTALLABLE_ARTIFACT_MAP.md for restore)
+*.wasm

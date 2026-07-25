@@ -1,0 +1,38 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "noesar-authority-daemon-source",
+      "type": "application",
+      "version": "0.6.0"
+    },
+    {
+      "name": "noesar-postgresql-schema",
+      "type": "application",
+      "version": "0.6.0"
+    },
+    {
+      "name": "noesar-reference-control-plane",
+      "type": "application",
+      "version": "0.6.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "licenses": [
+        {
+          "license": {
+            "id": "AGPL-3.0-or-later"
+          }
+        }
+      ],
+      "name": "NOESAR Evolution Complete Product Source V4 Implementation",
+      "type": "application",
+      "version": "0.6.0"
+    },
+    "timestamp": "2026-07-23T07:48:50Z"
+  },
+  "serialNumber": "urn:uuid:noesar-complete-source-v4-implementation-0.6.0",
+  "specVersion": "1.5",
+  "version": 1
+}

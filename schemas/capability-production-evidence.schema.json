@@ -1,0 +1,60 @@
+{
+  "$id": "https://schemas.noesar.local/v5/capability-production-evidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "authorityProtocolVersion": {
+      "const": "1.1"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "capabilityVersion": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "capability-production-evidence"
+    },
+    "planHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "profileSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "release": {
+      "const": "0.5.0"
+    },
+    "runtimeVersion": {
+      "const": "0.5.0"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "release",
+    "capabilityId",
+    "capabilityVersion",
+    "planHash",
+    "profileSha256",
+    "authorityProtocolVersion",
+    "runtimeVersion",
+    "capabilityPackagePath",
+    "capabilityPackageSha256",
+    "policyDecisionPath",
+    "policyDecisionSha256",
+    "authorityAttestationPath",
+    "authorityAttestationSha256",
+    "postgresAttestationPath",
+    "postgresAttestationSha256",
+    "sandboxAttestationPath",
+    "sandboxAttestationSha256",
+    "runtimeReadinessPath",
+    "runtimeReadinessSha256"
+  ],
+  "type": "object"
+}

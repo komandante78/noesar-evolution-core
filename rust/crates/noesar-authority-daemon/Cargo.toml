@@ -1,0 +1,16 @@
+[package]
+name = "noesar-authority-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+libc.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+noesar-authority-api = { path = "../noesar-authority-api" }
+noesar-authority-protocol = { path = "../noesar-authority-protocol" }
+noesar-authority-transport = { path = "../noesar-authority-transport" }

@@ -1,0 +1,63 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-execution-receipt.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "command_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "duration_ms": {
+      "type": "integer"
+    },
+    "execution_id": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "network_enforcement": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "resource_limits": {
+      "type": "object"
+    },
+    "stderr": {
+      "type": "string"
+    },
+    "stderr_truncated": {
+      "type": "boolean"
+    },
+    "stdout": {
+      "type": "string"
+    },
+    "stdout_truncated": {
+      "type": "boolean"
+    },
+    "timed_out": {
+      "type": "boolean"
+    },
+    "workspace_destroyed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "execution_id",
+    "profile",
+    "timed_out",
+    "stdout",
+    "stderr",
+    "duration_ms",
+    "workspace_destroyed",
+    "network_enforcement",
+    "resource_limits",
+    "command_sha256"
+  ],
+  "type": "object"
+}

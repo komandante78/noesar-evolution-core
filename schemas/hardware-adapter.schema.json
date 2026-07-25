@@ -1,0 +1,77 @@
+{
+  "$id": "https://schemas.noesar.local/v4/hardware-adapter.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "deviceClasses": {
+      "items": {
+        "enum": [
+          "cpu",
+          "gpu",
+          "npu",
+          "accelerator",
+          "memory",
+          "storage"
+        ]
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "metrics": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "probe": {
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "readOnly": {
+          "const": true
+        }
+      },
+      "required": [
+        "readOnly",
+        "commands"
+      ],
+      "type": "object"
+    },
+    "requiresPrivileges": {
+      "type": "boolean"
+    },
+    "schemaVersion": {
+      "const": "4.0"
+    },
+    "topology": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "vendor",
+    "deviceClasses",
+    "probe",
+    "metrics"
+  ],
+  "title": "NOESAR Hardware Adapter V4",
+  "type": "object"
+}

@@ -1,0 +1,42 @@
+{
+  "$id": "https://schemas.noesar.local/v4/a2a-agent-declaration.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptedDataClasses": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "authentication": {
+      "type": "object"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "requestedPermissions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "skills": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "agentId",
+    "endpoint",
+    "skills",
+    "requestedPermissions"
+  ],
+  "title": "NOESAR A2A Agent Declaration",
+  "type": "object"
+}

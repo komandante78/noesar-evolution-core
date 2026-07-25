@@ -1,0 +1,64 @@
+{
+  "acceptance": {
+    "BLOCKED": 7,
+    "FAIL": 0,
+    "PASS": 31
+  },
+  "auditChecks": {
+    "FAIL": 0,
+    "PASS": 27,
+    "TOTAL": 27
+  },
+  "baselines": [
+    {
+      "filename": "NOESAR_EVOLUTION_01_COMPLETE_PRODUCT_SOURCE_V4_IMPLEMENTATION_V0_5_0.zip",
+      "member": "NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/SOURCE/NOESAR_EVOLUTION_01_COMPLETE_PRODUCT_SOURCE_V4_IMPLEMENTATION_V0_5_0.zip",
+      "sha256": "4b1418fe127aa31e0f5eb15a0412b3a61bf29e27fa2ec5cd1d98c08424033643",
+      "storage": "nested-in-zip2"
+    },
+    {
+      "filename": "NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0.zip",
+      "member": "NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0/BASELINES/NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0.zip",
+      "sha256": "bdb3d417b5e1e95ee3d5137ccc142089993d5d535adbb4d972b825b1ea5dd4a0",
+      "storage": "nested-in-zip3"
+    },
+    {
+      "filename": "NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0.zip",
+      "path": "BASELINES/NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0.zip",
+      "sha256": "6711f8b8220b6367d59fced20858d33cba7867a6063c371477d15774ef990532",
+      "storage": "direct"
+    }
+  ],
+  "createdUtc": "2026-07-23T06:52:19Z",
+  "final": false,
+  "finalProductVerdict": "BLOCKED",
+  "findings": {
+    "BLOCKER": 5,
+    "CLOSED": 1,
+    "HIGH": 5,
+    "MEDIUM": 2
+  },
+  "implementationVerdict": "PASS_WITH_BLOCKERS",
+  "master": {
+    "embedded": true,
+    "filename": "NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip",
+    "sha256": "c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a"
+  },
+  "package": "NOESAR_EVOLUTION_04_SECURITY_AND_ACCEPTANCE_V4_IMPLEMENTATION_V0_5_0",
+  "productionReady": false,
+  "redTeam": {
+    "FAIL": 0,
+    "NOT_EXECUTED": 7,
+    "PASS": 24
+  },
+  "regulatedUseVerdict": "NOT_EVALUATED",
+  "role": "security-and-acceptance-implementation",
+  "rollbackReference": {
+    "embedded": false,
+    "filename": "NOESAR_EVOLUTION_04_SECURITY_AND_ACCEPTANCE_V4_IMPLEMENTATION_V0_4_0.zip",
+    "sha256": "539f89a8dd35da210402a197c9256c7031fe1b707aa02938be8f3a3224156b95"
+  },
+  "sourceLine": "V4_IMPLEMENTATION",
+  "storageStrategy": "deduplicated-recursive-lineage",
+  "version": "0.5.0"
+}

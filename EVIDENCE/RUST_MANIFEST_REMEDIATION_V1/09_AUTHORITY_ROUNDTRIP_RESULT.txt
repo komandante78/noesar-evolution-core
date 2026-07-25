@@ -1,0 +1,123 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=6_AUTHORITY_DAEMON_CLIENT_ROUNDTRIP
+
+PRECONDITION CHECK: RUST_TESTS=PASS, RUST_RELEASE_BUILD=PASS (see
+07_OFFLINE_TEST_RESULTS.txt / 08_OFFLINE_RELEASE_BUILD_RESULT.txt) ->
+precondition satisfied, round-trip attempted.
+
+TOOLING USED (nothing invented -- reused existing, already-tested repo
+modules verbatim, unmodified):
+  - Daemon: the just-built
+    target/release/noesar-authority-daemon binary (real compiled Rust
+    authority daemon, not a stub).
+  - Client: services/reference-control-plane/src/authority-external-client.mjs
+    (ExternalAuthorityClient) -- its hardcoded client name/version
+    ("noesar-reference-control-plane" / "0.6.0") match exactly what
+    noesar-authority-daemon/src/main.rs's DaemonPolicy expects, confirming
+    this is the intended reference client for this daemon, not merely a
+    unit-test mock target.
+  - Envelope signing: services/reference-control-plane/src/authority-protocol.mjs
+    (createAuthorityEnvelope) -- HMAC-SHA256 over canonical JSON, base64url,
+    exactly matching noesar-authority-protocol's AuthorityVerifier::verify
+    (both canonical-json implementations were compared line-by-line before
+    running: rust/crates/noesar-canonical-json/src/lib.rs vs
+    services/reference-control-plane/src/canonical-json.mjs -- identical
+    algorithm: recursive sorted object keys, same separators, standard
+    JSON string/number encoding).
+  - A small driver script (BUILD_ARTIFACTS/.../artifacts/roundtrip/client-driver.mjs)
+    was written ONLY to wire these two existing modules together end-to-end
+    against a live socket + real secret file; it contains no protocol logic
+    of its own (no framing, no signing, no validation -- all delegated to
+    the imported modules). Not promoted into the candidate.
+
+ENVIRONMENT NOTE: the host-visible bind-mount path under
+BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/artifacts/roundtrip/run1/sock/authority.sock
+is 131 bytes, which exceeds Linux's AF_UNIX sun_path limit (108 bytes
+including the null terminator). The daemon itself was unaffected (it used
+its own short in-container path, /rt/sock/authority.sock), but the host
+Node client failed with `connect ENOENT` trying to reach the long path.
+Diagnosed via path-length check, then the live socket + secret for both
+round-trip runs were relocated to short-path /tmp working directories
+(/tmp/noesar_rt_run1, /tmp/noesar_rt_run2 -- e.g. 39 bytes total) purely to
+satisfy this kernel constraint; nothing else was changed. Both directories
+were deleted immediately after the round-trip concluded -- no artifact was
+left behind there, only the transcript captured in this file.
+
+--- RUN 1: AUTHORIZED PEER ---
+Setup: rust:1-bookworm container, --pull=never --network=none --cap-drop=ALL
+--security-opt=no-new-privileges --pids-limit=64 --cpus=1 --memory=512m
+--user <host-uid>:<host-gid>, NOESAR_AUTHORITY_SOCKET=/rt/sock/authority.sock,
+NOESAR_AUTHORITY_ALLOWED_UIDS=<host-uid> (i.e. the connecting client's own
+uid, so it IS authorized), NOESAR_AUTHORITY_HMAC_SECRET_FILE=/rt/secret.hex
+(64 hex chars = 32 bytes, mode 0600), NOESAR_AUTHORITY_MAX_CONNECTIONS=1.
+No TCP port published or used anywhere (unix socket only, --network=none
+throughout).
+
+Client request: requestId="roundtrip-request-0001", envelope
+{schemaVersion:"1.1", actorId:"owner-roundtrip-001",
+sessionId:"session-roundtrip-001", action:"authority.health", payload:{},
+nonce:<random>, issuedAt, expiresAt}, HMAC-signed with the shared secret.
+
+Result: RESPONSE_OK
+{
+  "action": "authority.health",
+  "actorId": "owner-roundtrip-001",
+  "authority": "rust-canonical-candidate",
+  "decision": "deny",
+  "productionReady": false,
+  "requestId": "roundtrip-request-0001",
+  "requestNonce": "hfQiplN3FjeTD8WSRQYK4uI9",
+  "schemaVersion": "1.0",
+  "sessionId": "session-roundtrip-001",
+  "transport": "unix-domain-socket-reference-client",
+  "serverPeerCredentialsVerified": false,
+  "productionEligible": false
+}
+
+This confirms, end-to-end, against the REAL compiled daemon (not a mock):
+  - SO_PEERCRED peer identity read and UID-allowlist-checked (peer accepted).
+  - requestId, nonce, actorId, sessionId, action all verified/bound
+    correctly by both the daemon (HMAC signature check + binding checks in
+    AuthorityVerifier::verify) and the client (binding checks in
+    validateResponse).
+  - productionReady=false enforced (client throws if it were ever true;
+    daemon hardcodes false in its response, per source).
+  - decision field is a valid daemon-issued value ("deny" -- the daemon's
+    handle_request always returns "deny" by source design, still a valid
+    member of {allow,deny} so response validation passes).
+  - Clean shutdown: daemon process (`docker wait`) exited with code 0 after
+    handling exactly the one permitted connection (NOESAR_AUTHORITY_MAX_CONNECTIONS=1),
+    no residual process (confirmed via `ps aux | grep authority-daemon`
+    after teardown), container explicitly removed (`docker rm`).
+
+AUTHORITY_DAEMON_CLIENT_ROUNDTRIP=PASS
+
+--- RUN 2: PEER CREDENTIAL REJECTION (negative test) ---
+Setup: identical to Run 1, except NOESAR_AUTHORITY_ALLOWED_UIDS=99999 (a
+uid that is NOT the connecting client's own uid) -- this specifically
+exercises the SO_PEERCRED UID-allowlist enforcement path
+(noesar-authority-daemon::verify_peer / DaemonPolicy.allowed_uids).
+
+Result: RESPONSE_ERROR "write EPIPE" (client side -- connection closed by
+daemon before any response frame was written, exactly as expected: the
+daemon's verify_peer() runs before any request bytes are even read).
+
+Daemon container log: `Error: Unix peer uid is not authorized` -- the
+literal error string returned by verify_peer() in
+rust/crates/noesar-authority-daemon/src/lib.rs:101, propagated through
+serve_stream's `anyhow::Error::msg` mapping up through main()'s `?`.
+Daemon process exited with code 1 (non-zero, expected for a propagated
+anyhow::Result error in main()) -- still a clean, non-hanging exit; no
+residual process; container explicitly removed.
+
+PEER_CREDENTIAL_TEST=PASS
+(the daemon correctly rejected an unauthorized peer UID and refused to
+process/respond to the request, rather than either hanging or leaking a
+response)
+
+--- CLEANUP VERIFICATION ---
+`docker ps -a --filter ancestor=rust:1-bookworm` -> empty after both
+containers were `docker rm`'d. `ps aux | grep authority-daemon` -> no
+matches. /tmp/noesar_rt_run1, /tmp/noesar_rt_run2 removed. No TCP ports
+were ever bound (grep of daemon source confirms Unix-only code path on
+Linux; `main()` on non-Linux targets refuses to run at all).

@@ -1,0 +1,50 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=15_ROLLBACK_INSTRUCTIONS
+
+If this phase's changes need to be reverted, the pre-phase state is fully
+captured in a verified backup:
+
+  BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz
+  BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz.sha256
+
+Verify integrity before restoring:
+  sha256sum -c BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz.sha256
+  tar -tzf BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz > /dev/null
+
+Full restore (replaces the entire CANONICAL_CANDIDATE_V1 directory):
+  rm -rf WORKSPACE/CANONICAL_CANDIDATE_V1
+  tar -xzf BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz -C WORKSPACE/
+
+Targeted (partial) revert -- only this phase's 6 touched files, if a full
+restore is undesirable (e.g. other work has landed in the meantime):
+  1. rust/crates/noesar-security-kernel/Cargo.toml -> restore to
+     sha256 3805cd88b43d8dcad37af472d5aaebd1aa5b5a9f13bb962949c43ecf95daf805
+     (remove the added [dev-dependencies] uuid section)
+  2. rust/crates/noesar-auth/Cargo.toml -> restore to
+     sha256 2a094b3a076aa5c6b404964add6299f03e9b2240b08489e51b7de8e97fb3f65e
+     (remove anyhow.workspace, hex.workspace, password-hash lines)
+  3. rust/Cargo.lock -> restore to
+     sha256 d0b5bafbd95cae050ed2d9ee643d6279327cfebdf065ee655acb0088555364ce
+     (the RUST_DEPENDENCY_VENDOR_V1 lockfile, 112 packages)
+  4. rust/vendor/ -> remove vendor/getrandom-0.2.17/ (the only directory
+     added this phase; all 112 other crate dirs are untouched from
+     RUST_DEPENDENCY_VENDOR_V1)
+  5. rust/.cargo/config.toml -> no change needed (byte-identical to
+     before this phase)
+  6. rust/BUILD_STATUS.md -> restore to
+     sha256 2c5d125951a8fd719b154a8ad76cfaafe008984df312dac865fdda9969c8bc52
+  7. rust/IMPLEMENTATION_STATUS.md -> restore to
+     sha256 bee8f1a27bf9e73820e5da10306db2f90e66ac505106e9f99c7096263bae94f5
+  8. Restore PRODUCT/MANIFEST.sha256 to its pre-phase 368-entry state (a
+     copy was preserved at /tmp/MANIFEST.sha256.before_remediation during
+     this session -- NOTE: /tmp is not persistent; if that file no longer
+     exists, regenerate the manifest by re-hashing the restored files
+     above and re-sorting).
+
+After any rollback, re-run `sha256sum -c PRODUCT/MANIFEST.sha256` to
+confirm 368/368 OK before considering the rollback complete.
+
+No database, deployment, or production system was touched by this phase
+-- rollback is a pure filesystem operation confined to
+WORKSPACE/CANONICAL_CANDIDATE_V1/PRODUCT/rust/ and
+WORKSPACE/CANONICAL_CANDIDATE_V1/PRODUCT/MANIFEST.sha256.

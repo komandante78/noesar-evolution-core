@@ -1,0 +1,69 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=3_MINIMAL_AUTHORIZED_MODIFICATIONS
+
+--- rust/crates/noesar-security-kernel/Cargo.toml ---
+BEFORE (sha256 3805cd88b43d8dcad37af472d5aaebd1aa5b5a9f13bb962949c43ecf95daf805):
+  [package]
+  name = "noesar-security-kernel"
+  version.workspace = true
+  edition.workspace = true
+  license.workspace = true
+  rust-version.workspace = true
+  [dependencies]
+  noesar-contracts = { path = "../noesar-contracts" }
+
+AFTER (sha256 eb95610ccccf8b743e23cbfb4e7cca8ce18484377aa8b9bbc6c88ed7dd04586c):
+  [package]
+  name = "noesar-security-kernel"
+  version.workspace = true
+  edition.workspace = true
+  license.workspace = true
+  rust-version.workspace = true
+  [dependencies]
+  noesar-contracts = { path = "../noesar-contracts" }
+
+  [dev-dependencies]
+  uuid = { version = "1", features = ["v4"] }
+
+DIFF: +1 blank line, +[dev-dependencies] section, +1 dependency line.
+No runtime [dependencies] touched.
+
+--- rust/crates/noesar-auth/Cargo.toml ---
+BEFORE (sha256 2a094b3a076aa5c6b404964add6299f03e9b2240b08489e51b7de8e97fb3f65e):
+  [dependencies]
+  argon2 = "0.5"
+  base64 = "0.22"
+  chrono.workspace = true
+  hmac = "0.12"
+  rand = "0.9"
+  serde.workspace = true
+  sha1 = "0.10"
+  sha2.workspace = true
+  subtle = "2"
+  uuid.workspace = true
+
+AFTER (sha256 4760524ff639144b01c032539116c828eab260fbc337e4b665653ad74628762c):
+  [dependencies]
+  anyhow.workspace = true
+  argon2 = "0.5"
+  base64 = "0.22"
+  chrono.workspace = true
+  hex.workspace = true
+  hmac = "0.12"
+  password-hash = { version = "0.5", features = ["getrandom", "std"] }
+  rand = "0.9"
+  serde.workspace = true
+  sha1 = "0.10"
+  sha2.workspace = true
+  subtle = "2"
+  uuid.workspace = true
+
+DIFF: +anyhow.workspace = true, +hex.workspace = true,
++password-hash = { version = "0.5", features = ["getrandom", "std"] }.
+No existing dependency line removed or changed; alphabetical ordering
+preserved (matches the file's existing convention).
+
+Full rationale for each addition: see 03_DEPENDENCY_DECISIONS.tsv.
+No other Cargo.toml in the workspace (10 other crates + workspace root)
+was touched -- verified by diffing the full candidate tree against the
+pre-phase backup (see FINAL_REPORT.txt section "scope verification").

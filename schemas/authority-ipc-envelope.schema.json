@@ -1,0 +1,56 @@
+{
+  "$id": "https://schemas.noesar.local/v4/authority-ipc-envelope.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "enum": [
+        "authority.health",
+        "path.evaluate",
+        "approval.verify",
+        "capability.authorize",
+        "data-plane.status"
+      ]
+    },
+    "actorId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "integer"
+    },
+    "issuedAt": {
+      "type": "integer"
+    },
+    "nonce": {
+      "minLength": 16,
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "1.1"
+    },
+    "sessionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "signature": {
+      "minLength": 32,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "actorId",
+    "sessionId",
+    "action",
+    "payload",
+    "nonce",
+    "issuedAt",
+    "expiresAt",
+    "signature"
+  ],
+  "type": "object"
+}

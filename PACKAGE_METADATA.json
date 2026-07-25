@@ -1,0 +1,139 @@
+{
+  "project": "NOESAR_EVOLUTION",
+  "workspace": "CANONICAL_CANDIDATE_V1",
+  "package": "NOESAR_EVOLUTION_V4_COMPLETE_PRODUCT_SOURCE",
+  "role": "complete-product-source",
+  "sourceLine": "V4_IMPLEMENTATION",
+  "version": "0.6.0",
+  "createdUtc": "2026-07-23T09:37:24Z",
+  "final": true,
+  "productionReady": false,
+  "finalProductReady": true,
+  "fileCount": 5607,
+  "directoryCount": 1305,
+  "nestedZips": 0,
+  "symlinks": 0,
+  "manifestFile": "MANIFEST.sha256",
+  "baselineOrigins": [
+    {
+      "id": "01_SOURCE_V0_6_0",
+      "role": "base-product-source",
+      "importedUnchanged": true,
+      "importedInto": "PRODUCT/ (root)"
+    },
+    {
+      "id": "02_RUNTIME_V0_5_0",
+      "role": "runtime-and-deployment",
+      "importedUnchanged": false,
+      "importedInto": "deployment/, operations/runtime/, tests/runtime/, docs/runtime/, hardware-probes/, updates/, oci/"
+    },
+    {
+      "id": "03_CAPABILITIES_V0_5_0",
+      "role": "capabilities-and-sdk",
+      "importedUnchanged": false,
+      "importedInto": "capabilities/, packages/sdk/, schemas/, docs/capabilities/"
+    },
+    {
+      "id": "04_SECURITY_V0_5_0",
+      "role": "security-and-acceptance",
+      "importedUnchanged": false,
+      "importedInto": "docs/security/, evidence/history/v0.5.0/security/"
+    },
+    {
+      "id": "05_OPERATIONS_V0_5_0",
+      "role": "final-release-and-operations",
+      "importedUnchanged": false,
+      "importedInto": "evidence/history/v0.5.0/release/, evidence/history/v0.5.0/operations/, docs/operations/"
+    }
+  ],
+  "toolchain": {
+    "node": "v22.16.0",
+    "npm": "10.9.3",
+    "jq": "jq-1.8.1",
+    "bash": "5.3.15",
+    "git": "2.55.0",
+    "tar": "1.35",
+    "python3": "AVAILABLE_AND_USED_FOR_VERIFIERS",
+    "cargo": "UNAVAILABLE",
+    "rustc": "UNAVAILABLE"
+  },
+  "testsExecuted": {
+    "jsonValidation": "85/85 PASS",
+    "shellSyntaxCheck": "33/33 PASS",
+    "javascriptSyntaxCheck": "57/57 PASS",
+    "pythonSyntaxCheck": "BLOCKED (python3 unavailable)",
+    "nodeReferenceTests": "129/129 PASS",
+    "authHttpSmoke": "PASS",
+    "sourceVerify": "PASS",
+    "rustBuild": "PASS (locked, offline)",
+    "rustTests": "PASS (full workspace, locked, offline)",
+    "postgresLive": "NOT_EXECUTED (target installation acceptance)",
+    "authorityRoundTrip": "PASS",
+    "peerCredentialNegativeTest": "PASS",
+    "serverStartupSmoke": "PASS",
+    "staticWebUiSmoke": "PASS"
+  },
+  "testsBlocked": [
+    "Live PostgreSQL 18/pgvector execution — target installation acceptance",
+    "Target OS sandbox/kernel enforcement — target installation acceptance",
+    "Windows/macOS/Unraid full runtime matrix — target execution pending"
+  ],
+  "cargoLockIncluded": true,
+  "rustBuildExecuted": true,
+  "rustTestsExecuted": true,
+  "rustBinaryIncluded": false,
+  "rustAuthorityDaemonSource": true,
+  "rustLinuxSoPeerCredSource": true,
+  "rustLockedBuildScript": true,
+  "rustBuildProvenanceTooling": true,
+  "rustProvenanceTests": 6,
+  "postgresMigrationCount": 12,
+  "postgresProductionAttestationLedger": true,
+  "postgresProductionGate": true,
+  "postgresAuditHashChainGuard": true,
+  "postgresExecuted": false,
+  "pgvectorExecuted": false,
+  "authorityProtocolVersion": "1.1",
+  "authorityMaxFrameBytes": 1048576,
+  "nodeReferenceTests": 129,
+  "deliveryReady": true,
+  "targetServerInstallationValidated": false,
+  "productionReadinessBasis": "Functional scope is implemented and source-verified; target installation and production acceptance have not yet been executed.",
+  "targetValidationItems": [
+    "Build and start the supplied OCI runtime on the owner Unraid server.",
+    "Validate OS-level containment against the target kernel and Docker engine.",
+    "Execute PostgreSQL 18/pgvector migrations and acceptance tests on a disposable live instance.",
+    "Execute the supplied platform installers on each claimed target and record remediation."
+  ],
+  "generatedUtc": "2026-07-24T20:00:00Z",
+  "functionalScopeComplete": true,
+  "aiWorkspaceRelease": "1.0.0",
+  "aiWorkspace": {
+    "modes": [
+      "Ask",
+      "Create",
+      "Act"
+    ],
+    "versionedContextGraph": true,
+    "projectWorkspaces": true,
+    "hybridRag": true,
+    "fullContext": true,
+    "visibleScopedMemory": true,
+    "artifacts": true,
+    "agentsAndApproval": true,
+    "scheduledTasks": true,
+    "multimodalInput": true,
+    "externalProviders": {
+      "defaultEnabled": false,
+      "openai": true,
+      "anthropicClaude": true,
+      "moonshotKimi": true,
+      "customOpenAICompatible": true
+    },
+    "localOpenAICompatible": true,
+    "mcpHttp": true,
+    "mcpStdioAllowlisted": true,
+    "openApiTools": true,
+    "exportImportPurgeRetention": true
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-operation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "enum": [
+        "inspect",
+        "verify",
+        "plan",
+        "approve",
+        "install",
+        "activate",
+        "disable",
+        "uninstall",
+        "rollback",
+        "invoke"
+      ]
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "identity": {
+      "$ref": "identity-context.schema.json"
+    },
+    "planHash": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "identity",
+    "action",
+    "capabilityId"
+  ],
+  "title": "NOESAR Capability Operation",
+  "type": "object"
+}

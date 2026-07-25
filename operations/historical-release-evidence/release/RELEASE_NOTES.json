@@ -1,0 +1,30 @@
+{
+  "classification": "implementation",
+  "createdUtc": "2026-07-23T06:57:34Z",
+  "highlights": [
+    "Authority Protocol V1.1 and canonical JSON",
+    "actor, session and action authority bindings",
+    "authenticated peer and one-MiB frame contracts",
+    "PostgreSQL ten-migration line",
+    "role separation, PUBLIC revocation and NOBYPASSRLS",
+    "PostgreSQL security-acceptance view",
+    "attestation V3 for Rust authority and PostgreSQL",
+    "capability production-evidence chain",
+    "signed execution ticket V1 with anti-replay",
+    "broker execution-ticket gate",
+    "27/27 executable security audit",
+    "31 implementation acceptance controls passed",
+    "24 automated red-team cases passed"
+  ],
+  "notImplementedOrNotExecuted": [
+    "compiled canonical Rust authority",
+    "operating-system peer credentials",
+    "executed PostgreSQL 18 and pgvector repositories",
+    "production sandbox adapter and signed evidence",
+    "Docker, Podman, Windows, macOS and Unraid runtime matrix",
+    "production TUF, Sigstore and SLSA pipeline",
+    "complete Master V4 product",
+    "independent penetration test"
+  ],
+  "version": "0.5.0"
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Grant Work Package",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "public_repository",
+    "license",
+    "independent_value",
+    "milestones",
+    "evidence"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "public_repository": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "independent_value": {
+      "type": "string"
+    },
+    "private_dependencies": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "other_funding": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

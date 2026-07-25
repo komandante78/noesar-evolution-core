@@ -1,0 +1,36 @@
+{
+  "dataClasses": [
+    "research-confidential"
+  ],
+  "evidence": [],
+  "excludedUse": [
+    "clinical diagnosis",
+    "physical actuation"
+  ],
+  "humanOversight": {
+    "decisionAuthority": "qualified researcher",
+    "overrideAvailable": true,
+    "required": true
+  },
+  "id": "customer.private.research-module",
+  "intendedUse": [
+    "internal research workflow support"
+  ],
+  "jurisdictions": [],
+  "permissions": [
+    "filesystem.read.project"
+  ],
+  "publisher": "customer.private",
+  "riskClass": "elevated",
+  "safetyInterlock": {
+    "emergencyStop": false,
+    "externalController": false,
+    "required": false
+  },
+  "schemaVersion": "4.0",
+  "sector": [
+    "scientific-research"
+  ],
+  "trustLevel": "customer-private",
+  "version": "0.1.0"
+}

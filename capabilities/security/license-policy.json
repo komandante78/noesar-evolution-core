@@ -1,0 +1,18 @@
+{
+  "approved": [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "AGPL-3.0-or-later",
+    "LicenseRef-NOESAR-Commercial",
+    "LicenseRef-Customer-Private"
+  ],
+  "default": "deny",
+  "reviewRequired": [
+    "MPL-2.0",
+    "LGPL-3.0-or-later",
+    "EPL-2.0"
+  ]
+}

@@ -1,0 +1,9 @@
+Artifact,Primary license,Alternative/commercial,Publication
+Open core,AGPL-3.0-or-later,NOESAR Commercial License,public
+SDK/contracts/schemas,Apache-2.0,commercial support agreement,public
+Public documentation,CC-BY-SA-4.0,commercial docs terms if needed,public
+ATOM implementation,NOESAR Proprietary,commercial agreement,private
+Owner issuer,NOESAR Proprietary,not public,private
+Official industry modules,NOESAR Proprietary,commercial module license,private
+Third-party,upstream license,n/a,per upstream
+Models/datasets,publisher-specific,separate agreement,per asset

@@ -1,0 +1,45 @@
+{
+  "$id": "https://schemas.noesar.local/v4/identity-context.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actorId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "organizationId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "projectId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "role": {
+      "enum": [
+        "owner",
+        "admin",
+        "developer",
+        "user"
+      ]
+    },
+    "sessionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "strongReauthenticated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "actorId",
+    "role",
+    "sessionId",
+    "organizationId",
+    "strongReauthenticated"
+  ],
+  "title": "NOESAR Identity Context",
+  "type": "object"
+}

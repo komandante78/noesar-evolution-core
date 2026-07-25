@@ -1,0 +1,127 @@
+{
+  "$id": "https://schemas.noesar.local/v4/runtime-adapter.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "backend": {
+      "enum": [
+        "cpu",
+        "cuda",
+        "tensorrt",
+        "rocm",
+        "migraphx",
+        "metal",
+        "coreml",
+        "openvino",
+        "directml",
+        "onnxruntime",
+        "vulkan",
+        "sycl",
+        "custom"
+      ]
+    },
+    "capabilities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "devices": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "multiDeviceModes": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "platforms": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "probe": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "command",
+            "library",
+            "host-bridge"
+          ]
+        },
+        "readOnly": {
+          "const": true
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "readOnly"
+      ],
+      "type": "object"
+    },
+    "requiresHostBridge": {
+      "type": "boolean"
+    },
+    "runtimeRequirements": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "versionConstraint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "versionConstraint"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "sandbox": {
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "4.0"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "vendor",
+    "backend",
+    "platforms",
+    "devices",
+    "capabilities",
+    "probe"
+  ],
+  "title": "NOESAR Runtime Adapter V4",
+  "type": "object"
+}

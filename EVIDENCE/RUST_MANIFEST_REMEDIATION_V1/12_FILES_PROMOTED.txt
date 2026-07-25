@@ -1,0 +1,62 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=8_PROMOTION
+
+Promoted into WORKSPACE/CANONICAL_CANDIDATE_V1/PRODUCT/:
+
+1. rust/crates/noesar-security-kernel/Cargo.toml (modified: +[dev-dependencies] uuid)
+2. rust/crates/noesar-auth/Cargo.toml (modified: +anyhow, +hex, +password-hash)
+3. rust/Cargo.lock (regenerated: 112 -> 113 packages, +getrandom only)
+4. rust/vendor/ (regenerated: 112 -> 113 crate dirs, +getrandom-0.2.17/, 39 files, 5168 -> 5207 total files)
+5. rust/.cargo/config.toml (unchanged content, re-copied from staging; hash identical to pre-phase)
+6. rust/BUILD_STATUS.md (updated: CARGO_LOCK_INCLUDED/LOCKED_BUILD_EXECUTED/
+   RUST_TESTS_EXECUTED/BUILD_PROVENANCE_ISSUED flipped from false to true,
+   reflecting this phase's real, verified results; RUST_BINARY_INCLUDED
+   correctly left false, PRODUCTION_READY note added)
+7. rust/IMPLEMENTATION_STATUS.md (updated: RUST_BUILD/RUST_TESTS/
+   RUST_BUILD_PROVENANCE/RUST_DAEMON_CLIENT_ROUND_TRIP flipped from
+   NOT_EXECUTED to their real EXECUTED_PASS/ISSUED_UNSIGNED values;
+   RUST_TOOLCHAIN_AVAILABLE left false with a clarifying note that this
+   refers to the host, not the authorized container; RUST_CANONICAL_AUTHORITY
+   deliberately left false as an out-of-scope product decision)
+8. MANIFEST.sha256 (6 entries re-hashed: the 2 Cargo.toml files,
+   Cargo.lock, .cargo/config.toml [byte-identical, no real change], and
+   the 2 status docs above; entry count unchanged at 368 since these were
+   updates to existing entries, not additions)
+
+FILES_PROMOTED_TO_CANDIDATE=8 (distinct manifest-tracked paths touched;
+vendor/ itself is one directory addition of 39 new files under one new
+crate dir, tracked as a single vendor-completeness unit per the same
+policy established in RUST_DEPENDENCY_VENDOR_V1 -- see note below)
+
+NOT promoted (per phase constraints, all confirmed absent from the
+candidate):
+  - target/ (build output) -- never copied anywhere near PRODUCT/, stayed
+    entirely inside BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/staging/
+  - Cargo home / registry cache -- container-ephemeral, destroyed with
+    each `docker run --rm`
+  - Any log file -- all logs live under
+    BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/logs/ and
+    REPORTS/RUST_MANIFEST_REMEDIATION_V1/
+  - Compiled binaries (noesar-authority-daemon, noesar-control-plane) --
+    kept only under BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/artifacts/,
+    never placed in PRODUCT/rust/ or anywhere in the source tree
+  - The ephemeral round-trip driver script
+    (BUILD_ARTIFACTS/.../artifacts/roundtrip/client-driver.mjs) -- purely
+    a test harness reusing existing repo modules, not itself part of the
+    product; not copied into PRODUCT/
+
+VENDOR MANIFEST TRACKING POLICY (continued unchanged from
+RUST_DEPENDENCY_VENDOR_V1): the 5207 individual files under
+PRODUCT/rust/vendor/ are deliberately NOT hashed individually into
+MANIFEST.sha256. Each vendored crate carries its own cargo-generated
+.cargo-checksum.json, and every package's checksum is separately recorded
+in Cargo.lock -- vendor integrity is covered by cargo's own mechanism,
+not this product-source manifest. This is the same documented decision
+from the prior phase, applied consistently rather than re-litigated.
+
+SCOPE VERIFICATION: full recursive diff of the current candidate against
+the pre-phase backup
+(BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz)
+shows differences in EXACTLY the 6 tracked paths above (plus the vendor/
+directory contents) and nothing else anywhere under PRODUCT/. No file
+outside rust/ and MANIFEST.sha256 was touched.

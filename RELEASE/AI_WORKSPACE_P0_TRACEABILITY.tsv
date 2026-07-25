@@ -1,0 +1,19 @@
+AREA	REQUIREMENT	STATUS	SOURCE_EVIDENCE	API_OR_UI	TEST_EVIDENCE
+Conversation	Streaming, stop, retry, edit, regenerate, copy/selection, undo	IMPLEMENTED	chat-orchestrator.mjs; context-graph.mjs; apps/webui-static	/api/v1/chat/stream; stop; message PATCH; branch undo	ai-context-graph.test.mjs; provider streaming tests
+Context	Visible model, project, files, memory, tools and token estimate	IMPLEMENTED	workspace-service.mjs; context inspector UI	/api/v1/conversations/:id/context	ai-workspace.test.mjs
+Branches	Fork, compare, exclude, merge and cross-branch graph	IMPLEMENTED	context-graph.mjs	conversation fork/compare/merge; message exclude	ai-context-graph.test.mjs
+Projects	Shared chat, files, instructions, agents, memory, tools and tasks	IMPLEMENTED	context-graph.mjs; workspace-service.mjs	/api/v1/projects	ai-context-graph.test.mjs
+Search	Text and semantic search across workspace entities	IMPLEMENTED	search.mjs; workspace-service.mjs	/api/v1/search	ai-workspace.test.mjs
+Sources	Passages, preview and unverified/verified distinction	IMPLEMENTED	chat-orchestrator.mjs; source preview UI	/api/v1/sources/:id; knowledge search	provider/workspace tests
+Files	PDF, Office, image, audio, video, code, ZIP and datasets	IMPLEMENTED_WITH_CONFIGURED_TRANSCRIBER	file-extractors.mjs; Docker extractor packages	/api/v1/sources/upload	binary ingestion test
+Knowledge base	Configurable hybrid RAG, full-context, OCR and source control	IMPLEMENTED	workspace-service.mjs; project knowledgePolicy	knowledge search/context APIs	ai-workspace.test.mjs
+Memory	Visible, editable, deletable, exportable and scoped	IMPLEMENTED	workspace-service.mjs; memory UI	/api/v1/memories	ai-workspace.test.mjs
+Models	Local/remote, parallel comparison, fallback and task routing	IMPLEMENTED	provider-gateway.mjs	/api/v1/models/compare; provider profiles	ai-provider-gateway.test.mjs
+Tools	Local, MCP, OpenAPI and installable tool profiles	IMPLEMENTED	tool-executor.mjs; agent-service.mjs	/api/v1/tools	ai-agent-service.test.mjs
+Agents	Plan, state, steps, intermediate output, approvals and result	IMPLEMENTED	agent-service.mjs; agents UI	/api/v1/agent-runs	ai-agent-service.test.mjs
+Security	Least privilege, secrets, audit and mutation approval	IMPLEMENTED_CORE; TARGET_SANDBOX_VALIDATION_REQUIRED	credential-vault.mjs; tool-executor.mjs; authority/security modules	consent/credential/approval APIs	security, auth, provider and agent tests
+Artifacts	Documents, code, tables, charts, canvas and applications	IMPLEMENTED	workspace-service.mjs; artifacts UI	/api/v1/artifacts	ai-workspace.test.mjs
+Multimodality	Text, voice input, images, screen, camera and files	IMPLEMENTED_INPUT; TRANSCRIPTION_PROVIDER_CONFIGURABLE	WebUI capture; file-extractors.mjs	/api/v1/sources/upload	file ingestion tests
+Personal data	Export, backup/import, deletion and retention	IMPLEMENTED	workspace-service.mjs	/api/v1/data/*	export and purge tests
+Reliability	Explicit errors, controlled retry, health checks and no silent failure	IMPLEMENTED	provider-gateway.mjs; chat-orchestrator.mjs	provider health; fallback; SSE errors	provider tests
+UX	Responsive, accessible, multilingual, shortcuts, progressive disclosure	IMPLEMENTED	index.html; styles.css; i18n.js	language selector; Ctrl-K; responsive UI	static syntax and HTTP security tests

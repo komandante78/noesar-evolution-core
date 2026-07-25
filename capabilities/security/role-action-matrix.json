@@ -1,0 +1,40 @@
+{
+  "roles": {
+    "admin": [
+      "capability.inspect",
+      "capability.verify",
+      "capability.plan",
+      "capability.install",
+      "capability.activate",
+      "capability.disable",
+      "capability.uninstall",
+      "capability.rollback",
+      "capability.invoke"
+    ],
+    "developer": [
+      "capability.inspect",
+      "capability.verify",
+      "capability.plan",
+      "capability.install",
+      "capability.invoke"
+    ],
+    "owner": [
+      "publisher.register",
+      "publisher.revoke",
+      "package.revoke",
+      "capability.inspect",
+      "capability.verify",
+      "capability.plan",
+      "capability.install",
+      "capability.activate",
+      "capability.disable",
+      "capability.uninstall",
+      "capability.rollback",
+      "capability.invoke"
+    ],
+    "user": [
+      "capability.invoke"
+    ]
+  },
+  "schemaVersion": "4.0"
+}

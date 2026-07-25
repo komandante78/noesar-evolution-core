@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>NOESAR-Evolution-V0.5.0-Development</Name>
+  <Repository>noesar-evolution:v4-implementation-0.5.0</Repository>
+  <Network>noesar-local</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Overview>Development-only authenticated NOESAR Evolution V4 runtime. Not production ready.</Overview>
+  <Category>AI: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8088]/</WebUI>
+  <ExtraParams>--read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=512</ExtraParams>
+  <Config Name="Web UI" Target="8088" Default="8088" Mode="tcp" Type="Port" Display="always" Required="true" Mask="false">8088</Config>
+  <Config Name="Workspace" Target="/workspace" Default="/mnt/user/appdata/noesar-evolution-v050-dev" Mode="rw" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/noesar-evolution-v050-dev</Config>
+  <Config Name="Release Channel" Target="NOESAR_RELEASE_CHANNEL" Default="development" Mode="" Type="Variable" Display="advanced" Required="true" Mask="false">development</Config>
+  <Config Name="Authority Mode" Target="NOESAR_AUTHORITY_MODE" Default="reference-node" Mode="" Type="Variable" Display="advanced" Required="true" Mask="false">reference-node</Config>
+  <Config Name="Data Plane" Target="NOESAR_DATA_PLANE" Default="reference-json" Mode="" Type="Variable" Display="advanced" Required="true" Mask="false">reference-json</Config>
+  <Config Name="Allowed Hosts" Target="NOESAR_ALLOWED_HOSTS" Default="localhost,127.0.0.1,::1" Mode="" Type="Variable" Display="advanced" Required="true" Mask="false">localhost,127.0.0.1,::1</Config>
+</Container>

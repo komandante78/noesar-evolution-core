@@ -1,0 +1,48 @@
+{
+  "$id": "https://schemas.noesar.local/v6/authority-daemon-config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "allowedUids": {
+      "items": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "expectedClientName": {
+      "const": "noesar-reference-control-plane"
+    },
+    "expectedClientVersion": {
+      "const": "0.6.0"
+    },
+    "maxConnections": {
+      "maximum": 4096,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "release": {
+      "const": "0.6.0"
+    },
+    "secretFile": {
+      "pattern": "^/",
+      "type": "string"
+    },
+    "socketPath": {
+      "pattern": "^/",
+      "type": "string"
+    }
+  },
+  "required": [
+    "release",
+    "socketPath",
+    "allowedUids",
+    "secretFile",
+    "expectedClientName",
+    "expectedClientVersion",
+    "maxConnections"
+  ],
+  "type": "object"
+}

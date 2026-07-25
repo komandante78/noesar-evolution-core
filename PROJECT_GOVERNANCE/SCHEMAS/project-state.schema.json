@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Project State",
+  "type": "object",
+  "required": [
+    "project",
+    "master_version",
+    "gate",
+    "implementation_started",
+    "final_zips"
+  ],
+  "properties": {
+    "project": {
+      "const": "NOESAR_EVOLUTION"
+    },
+    "master_version": {
+      "const": "V4.0"
+    },
+    "gate": {
+      "type": "string"
+    },
+    "implementation_started": {
+      "type": "boolean"
+    },
+    "final_zips": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "owner_authorization": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

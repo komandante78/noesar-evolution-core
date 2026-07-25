@@ -1,0 +1,37 @@
+{
+  "$id": "https://schemas.noesar.local/v4/authority-status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "canonical": {
+      "type": "boolean"
+    },
+    "mode": {
+      "enum": [
+        "reference-node",
+        "rust-external"
+      ]
+    },
+    "productionReady": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "recognized": {
+      "type": "boolean"
+    },
+    "releaseChannel": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "releaseChannel",
+    "mode",
+    "recognized",
+    "canonical",
+    "productionReady",
+    "reason"
+  ],
+  "type": "object"
+}

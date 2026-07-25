@@ -1,0 +1,30 @@
+{
+  "backend": "custom",
+  "capabilities": [
+    "inference"
+  ],
+  "devices": [
+    "accelerator"
+  ],
+  "id": "example.runtime.adapter",
+  "license": "Apache-2.0",
+  "multiDeviceModes": [
+    "task-per-device"
+  ],
+  "platforms": [
+    "linux"
+  ],
+  "probe": {
+    "mode": "command",
+    "readOnly": true,
+    "value": "example-runtime --version"
+  },
+  "requiresHostBridge": false,
+  "runtimeRequirements": [],
+  "sandbox": {
+    "network": "deny"
+  },
+  "schemaVersion": "4.0",
+  "vendor": "Example",
+  "version": "0.1.0"
+}

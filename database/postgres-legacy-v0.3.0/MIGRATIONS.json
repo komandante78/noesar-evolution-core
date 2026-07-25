@@ -1,0 +1,42 @@
+{
+  "generatedUtc": "2026-07-22T13:10:24Z",
+  "migrations": [
+    {
+      "bytes": 1295,
+      "filename": "0001_identity_and_sessions.sql",
+      "sha256": "253437768d7d7d98dfe47834bdcf3b0bd03108b5b7e8a1b189174f2e7bcfe8ab"
+    },
+    {
+      "bytes": 1053,
+      "filename": "0002_workspaces_projects.sql",
+      "sha256": "5f7e6d63edc0cbbacc9ed70e961af4899c1e8eaf6ec536c46c8d3bdd2e759f88"
+    },
+    {
+      "bytes": 721,
+      "filename": "0003_audit_ledger.sql",
+      "sha256": "2b53d39b51a4e3eaf26ecdc9d57ee047dcfe99e929d86194f07d42786d736701"
+    },
+    {
+      "bytes": 1625,
+      "filename": "0004_capabilities_publishers.sql",
+      "sha256": "21b14e034e1fcb665885a3122bf4f07cffd51f26d82504226892d0bfb4d2750d"
+    },
+    {
+      "bytes": 1605,
+      "filename": "0005_documents_memory_models.sql",
+      "sha256": "f3fb0c8fe57ff5883c627dd68b06d38efbe65802ffbb7f4622b178a0e1f1d158"
+    },
+    {
+      "bytes": 1202,
+      "filename": "0006_row_level_security.sql",
+      "sha256": "941ea2f41a3fc24f067d3d069d0b1e8aa17853399184f5951aefc70716b59c28"
+    },
+    {
+      "bytes": 263,
+      "filename": "0007_migration_ledger.sql",
+      "sha256": "f5e955131ef547ad898a93ba51d2f0ddef2818b4b7d8ebf669861c6fa03d2414"
+    }
+  ],
+  "schemaVersion": "1.0",
+  "target": "PostgreSQL 18 with pgvector"
+}

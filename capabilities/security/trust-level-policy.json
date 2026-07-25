@@ -1,0 +1,22 @@
+{
+  "certified-partner": {
+    "automaticActivation": false,
+    "highRiskEligible": true,
+    "publisherReview": "contract-and-security"
+  },
+  "community": {
+    "automaticActivation": false,
+    "highRiskEligible": false,
+    "publisherReview": "unverified"
+  },
+  "customer-private": {
+    "automaticActivation": false,
+    "highRiskEligible": false,
+    "publisherReview": "customer-controlled"
+  },
+  "noesar-official": {
+    "automaticActivation": false,
+    "highRiskEligible": true,
+    "publisherReview": "internal"
+  }
+}

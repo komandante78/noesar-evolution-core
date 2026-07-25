@@ -1,0 +1,112 @@
+{
+  "archives": [
+    {
+      "bytes": 40949350,
+      "filename": "NOESAR_EVOLUTION_01_COMPLETE_PRODUCT_SOURCE_V4_IMPLEMENTATION_V0_5_0.zip",
+      "final": false,
+      "manifestFiles": 159,
+      "number": 1,
+      "role": "complete-product-source-implementation",
+      "sha256": "4b1418fe127aa31e0f5eb15a0412b3a61bf29e27fa2ec5cd1d98c08424033643",
+      "storage": {
+        "containerNumber": 2,
+        "member": "NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/SOURCE/NOESAR_EVOLUTION_01_COMPLETE_PRODUCT_SOURCE_V4_IMPLEMENTATION_V0_5_0.zip",
+        "type": "nested"
+      },
+      "version": "0.5.0"
+    },
+    {
+      "bytes": 166005193,
+      "filename": "NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0.zip",
+      "final": false,
+      "manifestFiles": 257,
+      "number": 2,
+      "role": "runtime-and-deployment-implementation",
+      "sha256": "bdb3d417b5e1e95ee3d5137ccc142089993d5d535adbb4d972b825b1ea5dd4a0",
+      "storage": {
+        "containerNumber": 3,
+        "member": "NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0/BASELINES/NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0.zip",
+        "type": "nested"
+      },
+      "version": "0.5.0"
+    },
+    {
+      "bytes": 167885506,
+      "filename": "NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0.zip",
+      "final": false,
+      "manifestFiles": 134,
+      "number": 3,
+      "role": "capabilities-and-sdk-implementation",
+      "sha256": "6711f8b8220b6367d59fced20858d33cba7867a6063c371477d15774ef990532",
+      "storage": {
+        "containerNumber": 4,
+        "member": "NOESAR_EVOLUTION_04_SECURITY_AND_ACCEPTANCE_V4_IMPLEMENTATION_V0_5_0/BASELINES/NOESAR_EVOLUTION_03_CAPABILITIES_AND_SDK_V4_IMPLEMENTATION_V0_5_0.zip",
+        "type": "nested"
+      },
+      "version": "0.5.0"
+    },
+    {
+      "bytes": 169591990,
+      "filename": "NOESAR_EVOLUTION_04_SECURITY_AND_ACCEPTANCE_V4_IMPLEMENTATION_V0_5_0.zip",
+      "final": false,
+      "manifestFiles": 34,
+      "number": 4,
+      "role": "security-and-acceptance-implementation",
+      "sha256": "5873ebb41f99a5d32fd25e2d263f78b31a4e10275c88a5f67f8c334b03acd573",
+      "storage": {
+        "path": "ARCHIVES/NOESAR_EVOLUTION_04_SECURITY_AND_ACCEPTANCE_V4_IMPLEMENTATION_V0_5_0.zip",
+        "type": "direct"
+      },
+      "version": "0.5.0"
+    }
+  ],
+  "createdUtc": "2026-07-23T06:57:34Z",
+  "externalProductZipCount": 5,
+  "finalRelease": false,
+  "master": {
+    "bytes": 1665043,
+    "filename": "NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip",
+    "manifestFiles": 120,
+    "path": "MASTER/NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip",
+    "sha256": "c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a"
+  },
+  "package": "NOESAR_EVOLUTION_05_FINAL_RELEASE_AND_OPERATIONS_V4_IMPLEMENTATION_V0_5_0",
+  "productionReady": false,
+  "rollbackReference": {
+    "bytes": 159250977,
+    "embedded": false,
+    "filename": "NOESAR_EVOLUTION_05_FINAL_RELEASE_AND_OPERATIONS_V4_IMPLEMENTATION_V0_4_0.zip",
+    "reason": "The exact ZIP 5 V0.4.0 is retained as an external rollback artifact. Embedding it would duplicate the previous complete release bundle and exceed the operational package-size target.",
+    "sha256": "702f0241372fd1bd005ad046a15224dabf3863169768d5d3c305e75b0588106e"
+  },
+  "securityAcceptance": {
+    "acceptance": {
+      "BLOCKED": 7,
+      "FAIL": 0,
+      "PASS": 31
+    },
+    "audit": {
+      "FAIL": 0,
+      "PASS": 27,
+      "TOTAL": 27
+    },
+    "finalProductVerdict": "BLOCKED",
+    "findings": {
+      "BLOCKER": 5,
+      "CLOSED": 1,
+      "HIGH": 5,
+      "MEDIUM": 2
+    },
+    "implementationVerdict": "PASS_WITH_BLOCKERS",
+    "redTeam": {
+      "FAIL": 0,
+      "NOT_EXECUTED": 7,
+      "PASS": 24
+    },
+    "regulatedUseVerdict": "NOT_EVALUATED"
+  },
+  "sixthProductZipCreated": false,
+  "sourceLine": "V4_IMPLEMENTATION",
+  "storageStrategy": "deduplicated-recursive-lineage",
+  "version": "0.5.0-implementation"
+}

@@ -1,0 +1,100 @@
+{
+  "$id": "https://schemas.noesar.local/v6/rust-build-provenance-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "authorityConformancePassed": {
+      "const": true
+    },
+    "binaryPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "binarySha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "cargoLockSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "cargoVersion": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "conformanceReportPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "conformanceReportSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "createdUtc": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "kind": {
+      "const": "rust-build-provenance"
+    },
+    "release": {
+      "const": "0.6.0"
+    },
+    "rustcVersion": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "sourceTreeSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "targetTriple": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "testsPassed": {
+      "const": true
+    },
+    "testsReportPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "testsReportSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "workspaceManifestSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "workspacePath": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "release",
+    "binaryPath",
+    "binarySha256",
+    "workspaceManifestSha256",
+    "cargoLockSha256",
+    "rustcVersion",
+    "cargoVersion",
+    "targetTriple",
+    "testsPassed",
+    "authorityConformancePassed",
+    "createdUtc",
+    "workspacePath",
+    "sourceTreeSha256",
+    "testsReportPath",
+    "testsReportSha256",
+    "conformanceReportPath",
+    "conformanceReportSha256"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,79 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-ipc-envelope-v040.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "enum": [
+        "capability.plan",
+        "capability.approve",
+        "capability.execute",
+        "capability.disable",
+        "capability.rollback",
+        "capability.status"
+      ]
+    },
+    "actorId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "capabilityVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expiresAt": {
+      "type": "integer"
+    },
+    "issuedAt": {
+      "type": "integer"
+    },
+    "nonce": {
+      "minLength": 16,
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "planHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "sessionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "signature": {
+      "minLength": 32,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "actorId",
+    "sessionId",
+    "action",
+    "payload",
+    "nonce",
+    "issuedAt",
+    "expiresAt",
+    "planHash",
+    "capabilityId",
+    "capabilityVersion",
+    "signature"
+  ],
+  "type": "object"
+}

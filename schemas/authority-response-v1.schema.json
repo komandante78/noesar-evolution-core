@@ -1,0 +1,55 @@
+{
+  "$id": "https://schemas.noesar.local/v6/authority-response-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "actorId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "authority": {
+      "const": "rust-canonical-candidate"
+    },
+    "decision": {
+      "enum": [
+        "allow",
+        "deny"
+      ]
+    },
+    "productionReady": {
+      "const": false
+    },
+    "requestId": {
+      "maxLength": 128,
+      "minLength": 8,
+      "type": "string"
+    },
+    "requestNonce": {
+      "minLength": 16,
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "sessionId": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "requestNonce",
+    "actorId",
+    "sessionId",
+    "action",
+    "decision",
+    "authority",
+    "productionReady"
+  ],
+  "type": "object"
+}

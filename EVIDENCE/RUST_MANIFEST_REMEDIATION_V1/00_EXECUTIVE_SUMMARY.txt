@@ -1,0 +1,55 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+DATE=2026-07-24
+OWNER_AUTHORIZATION=CONFIRMED
+
+In one sentence: the two known missing-dependency defects in
+noesar-security-kernel and noesar-auth were fixed with minimal,
+precisely-justified Cargo.toml edits, the vendor snapshot was extended
+by exactly one new crate (getrandom 0.2.17) through a narrowly
+network-scoped step, and the entire Rust authority workspace now passes
+offline test, offline release build, and a real daemon/client round-trip
+(including a peer-credential rejection negative test) -- closing B001.
+
+What was fixed:
+  1. noesar-security-kernel: added `uuid = { version = "1", features =
+     ["v4"] }` under [dev-dependencies] (test-only usage).
+  2. noesar-auth: added `anyhow.workspace = true`, `hex.workspace = true`,
+     and `password-hash = { version = "0.5", features = ["getrandom",
+     "std"] }` (the last one discovered in two steps -- "getrandom" for
+     OsRng, then "std" for the StdError impl needed by anyhow's `?`
+     operator, found by actually re-running the offline test after the
+     first fix).
+
+What changed in the dependency graph: exactly one new package,
+`getrandom v0.2.17`, added via a strictly network-scoped
+`cargo generate-lockfile` + `cargo vendor` step (source-replacement in
+.cargo/config.toml was temporarily disabled for that window only, then
+restored verbatim). No other package was added, removed, or version-bumped.
+
+Verification results (all offline, --network=none, hardened container:
+--cap-drop=ALL --security-opt=no-new-privileges --pids-limit --cpus
+--memory limits):
+  cargo metadata            PASS
+  cargo tree                PASS
+  cargo test --workspace    PASS
+  cargo build --release     PASS
+  authority daemon/client round-trip (authorized peer)   PASS
+  authority daemon/client round-trip (rejected peer, SO_PEERCRED)  PASS
+
+B001_STATUS: CLOSED (all seven required conditions true -- see
+14_OPEN_BLOCKERS.txt). B003/B004/B005/B006 remain OPEN, untouched by
+this phase.
+
+Constraints honored: no docker build, no image pull, no production
+container touched, no database touched, no ZIP created, no baseline
+modified, network used only for the two authorized cargo subcommands.
+PRODUCTION_READY and FINAL_PRODUCT_READY remain false.
+
+One process deviation worth flagging: BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1
+did not exist and the general ROOT directory ACL did not grant write
+access to this session's user; the owner authorized and created only
+that specific narrow subdirectory (not a broad ROOT grant), which this
+phase used for all staging/logs/artifacts/provenance as instructed.
+
+Full detail in FINAL_REPORT.txt and the numbered supporting files in this
+directory.

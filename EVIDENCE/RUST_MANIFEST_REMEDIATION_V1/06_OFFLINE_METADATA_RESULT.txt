@@ -1,0 +1,49 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=5_OFFLINE_VALIDATION -- cargo metadata / cargo tree
+
+CONTAINER: rust:1-bookworm, --pull=never, --network=none, --cap-drop=ALL,
+--security-opt=no-new-privileges, --pids-limit=512, --cpus=4,
+--memory=8g --memory-swap=8g, CARGO_NET_OFFLINE=true, empty CARGO_HOME,
+RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu (env-var bypass for the
+rust-toolchain.toml "stable" channel alias, same technique already used
+and reported in RUST_BUILD_CONTAINER_V1/RUST_DEPENDENCY_VENDOR_V1 -- no
+source file edited).
+
+PERMISSION NOTE (new finding this phase): the first attempt with
+--cap-drop=ALL failed with `error: unexpected argument '--workspace'
+found` (cargo metadata has no such flag -- corrected to the valid
+invocation, see below) and separately `error: could not find Cargo.toml
+in /work or any parent directory`. Root cause of the second error:
+--cap-drop=ALL removes CAP_DAC_OVERRIDE, so container-root (uid 0) could
+no longer bypass Unix file permissions to read the bind-mounted
+staging/rust directory (drwxrwx---, owned by the host claudecode uid,
+"other" class = no access). Fixed by adding `--user <host-uid>:<host-gid>`
+so the container process's uid matches the mounted files' owner --
+avoids needing to loosen any permissions, and is arguably a tighter
+posture than relying on CAP_DAC_OVERRIDE anyway. Applied consistently to
+every subsequent --cap-drop=ALL container in this phase (metadata, tree,
+test, build, both round-trip runs).
+
+COMMAND CORRECTION: the phase spec listed
+`cargo metadata --workspace --locked --offline --format-version 1`, but
+real cargo has no `--workspace` flag for the `metadata` subcommand (it
+already always covers the full workspace by default) -- confirmed via
+the literal `error: unexpected argument '--workspace' found` output.
+Ran the equivalent valid command instead:
+`timeout 300s cargo metadata --locked --offline --format-version 1`
+
+RESULT (after both fixes):
+  cargo metadata --locked --offline --format-version 1  -> EXIT 0
+  cargo tree --workspace --locked --offline              -> EXIT 0
+    (cargo tree DOES accept --workspace; used as specified)
+
+Full dependency tree printed cleanly for all 12 workspace members with no
+unresolved/offline-resolution errors, including the new
+`[dev-dependencies] uuid v1.24.0` edge under noesar-security-kernel and
+the new getrandom v0.2.17 edge under the argon2/password-hash/rand_core
+chain.
+
+OFFLINE_METADATA=PASS
+OFFLINE_CARGO_TREE=PASS
+
+Full log: BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/logs/06_offline_metadata.log

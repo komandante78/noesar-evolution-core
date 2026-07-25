@@ -1,0 +1,25 @@
+{
+  "deviceClasses": [
+    "accelerator"
+  ],
+  "id": "example.hardware.adapter",
+  "metrics": [
+    "memory.total",
+    "memory.used",
+    "temperature",
+    "power"
+  ],
+  "probe": {
+    "commands": [
+      "example-info --json"
+    ],
+    "readOnly": true
+  },
+  "requiresPrivileges": false,
+  "schemaVersion": "4.0",
+  "topology": [
+    "pcie"
+  ],
+  "vendor": "Example",
+  "version": "0.1.0"
+}

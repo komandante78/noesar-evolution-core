@@ -1,0 +1,26 @@
+{
+  "engines": {
+    "node": ">=22"
+  },
+  "name": "noesar-evolution-source-v4-implementation",
+  "private": true,
+  "scripts": {
+    "smoke:auth": "node tools/auth-http-smoke.mjs",
+    "start": "node services/reference-control-plane/src/server.mjs",
+    "test": "node --test services/reference-control-plane/test/*.test.mjs",
+    "test:authority": "node --test services/reference-control-plane/test/authority.test.mjs services/reference-control-plane/test/data-plane.test.mjs services/reference-control-plane/test/conformance.test.mjs",
+    "test:authority-external": "node --test services/reference-control-plane/test/authority-external-client.test.mjs",
+    "test:authority-protocol": "node --test services/reference-control-plane/test/authority-protocol.test.mjs",
+    "test:canonical": "node --test services/reference-control-plane/test/canonical-json.test.mjs",
+    "test:ipc-frame": "node --test services/reference-control-plane/test/authority-ipc-frame.test.mjs",
+    "test:postgres-repository": "node --test services/reference-control-plane/test/postgres-repository.test.mjs",
+    "test:readiness": "node --test services/reference-control-plane/test/production-readiness.test.mjs",
+    "verify": "node tools/verify-source.mjs",
+    "verify:migrations": "python3 tools/verify-postgres-migrations.py",
+    "verify:postgres-contract": "python3 tools/verify-postgres-contract.py",
+    "verify:rust-provenance": "python3 tools/test-rust-build-provenance.py",
+    "verify:rust-source": "python3 tools/verify-rust-authority-source.py"
+  },
+  "type": "module",
+  "version": "0.6.0"
+}

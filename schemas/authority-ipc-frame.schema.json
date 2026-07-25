@@ -1,0 +1,26 @@
+{
+  "$id": "https://schemas.noesar.local/v5/authority-ipc-frame.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "encoding": {
+      "const": "utf-8-json"
+    },
+    "lengthPrefix": {
+      "const": "uint32-big-endian"
+    },
+    "maxFrameBytes": {
+      "const": 1048576
+    },
+    "payload": {
+      "$ref": "authority-ipc-envelope.schema.json"
+    }
+  },
+  "required": [
+    "lengthPrefix",
+    "encoding",
+    "maxFrameBytes",
+    "payload"
+  ],
+  "type": "object"
+}

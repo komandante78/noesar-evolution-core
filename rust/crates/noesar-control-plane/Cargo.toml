@@ -1,0 +1,23 @@
+[package]
+name = "noesar-control-plane"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+noesar-contracts = { path = "../noesar-contracts" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+
+noesar-authority-api = { path = "../noesar-authority-api" }
+noesar-data-plane = { path = "../noesar-data-plane" }
+
+noesar-authority-protocol = { path = "../noesar-authority-protocol" }
+
+noesar-canonical-json = { path = "../noesar-canonical-json" }
+
+noesar-authority-transport = { path = "../noesar-authority-transport" }

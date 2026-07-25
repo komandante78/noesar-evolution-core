@@ -1,0 +1,33 @@
+{
+  "compatibility": {
+    "noesar": ">=4.0.0",
+    "platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ]
+  },
+  "entrypoint": {
+    "type": "declarative",
+    "value": "payload/definition.json"
+  },
+  "id": "example.publisher.capability",
+  "kind": "tool",
+  "license": {
+    "commercialUse": true,
+    "spdx": "Apache-2.0"
+  },
+  "payload": [],
+  "permissions": [],
+  "publisher": {
+    "id": "example.publisher",
+    "keyId": "example-2026",
+    "trustLevel": "customer-private"
+  },
+  "rollback": {
+    "strategy": "restore-previous-version",
+    "supported": true
+  },
+  "schemaVersion": "4.0",
+  "version": "0.1.0"
+}

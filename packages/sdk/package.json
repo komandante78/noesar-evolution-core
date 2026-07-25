@@ -1,0 +1,12 @@
+{
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "Apache-2.0",
+  "name": "@noesar/sdk",
+  "type": "module",
+  "version": "0.5.0"
+}

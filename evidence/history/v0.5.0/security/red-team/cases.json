@@ -1,0 +1,161 @@
+{
+  "cases": [
+    {
+      "automated": true,
+      "id": "RT-001",
+      "name": "Unauthenticated protected endpoint"
+    },
+    {
+      "automated": true,
+      "id": "RT-002",
+      "name": "Missing CSRF token"
+    },
+    {
+      "automated": true,
+      "id": "RT-003",
+      "name": "Owner bypass without strong reauthentication"
+    },
+    {
+      "automated": true,
+      "id": "RT-004",
+      "name": "Production Node authority start"
+    },
+    {
+      "automated": true,
+      "id": "RT-005",
+      "name": "PostgreSQL activation by environment variable"
+    },
+    {
+      "automated": true,
+      "id": "RT-006",
+      "name": "Legacy invalid migration-line execution"
+    },
+    {
+      "automated": true,
+      "id": "RT-007",
+      "name": "Rust binary attestation tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-008",
+      "name": "Authority frame schema tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-009",
+      "name": "Authority peer credentials unverified"
+    },
+    {
+      "automated": true,
+      "id": "RT-010",
+      "name": "PostgreSQL 17 evidence"
+    },
+    {
+      "automated": true,
+      "id": "RT-011",
+      "name": "Application role with RLS bypass"
+    },
+    {
+      "automated": true,
+      "id": "RT-012",
+      "name": "Security-acceptance view unverified"
+    },
+    {
+      "automated": true,
+      "id": "RT-013",
+      "name": "Authority actor/session/action binding mismatch"
+    },
+    {
+      "automated": true,
+      "id": "RT-014",
+      "name": "Authority nonce replay"
+    },
+    {
+      "automated": true,
+      "id": "RT-015",
+      "name": "Capability production evidence identity mismatch"
+    },
+    {
+      "automated": true,
+      "id": "RT-016",
+      "name": "Capability plan hash mismatch"
+    },
+    {
+      "automated": true,
+      "id": "RT-017",
+      "name": "Capability package tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-018",
+      "name": "Policy decision tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-019",
+      "name": "Sandbox launcher tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-020",
+      "name": "Runtime readiness blocker injection"
+    },
+    {
+      "automated": true,
+      "id": "RT-021",
+      "name": "Execution ticket signature tampering"
+    },
+    {
+      "automated": true,
+      "id": "RT-022",
+      "name": "Execution ticket binding mismatch"
+    },
+    {
+      "automated": true,
+      "id": "RT-023",
+      "name": "Execution ticket replay"
+    },
+    {
+      "automated": true,
+      "id": "RT-024",
+      "name": "Native process without execution ticket or adapter"
+    },
+    {
+      "automated": false,
+      "id": "RT-025",
+      "name": "Real Unix or Windows peer-credential bypass"
+    },
+    {
+      "automated": false,
+      "id": "RT-026",
+      "name": "Production seccomp or namespace escape"
+    },
+    {
+      "automated": false,
+      "id": "RT-027",
+      "name": "Windows AppContainer escape"
+    },
+    {
+      "automated": false,
+      "id": "RT-028",
+      "name": "macOS sandbox escape"
+    },
+    {
+      "automated": false,
+      "id": "RT-029",
+      "name": "PostgreSQL live RLS adversarial isolation"
+    },
+    {
+      "automated": false,
+      "id": "RT-030",
+      "name": "Backup and restore corruption drill"
+    },
+    {
+      "automated": false,
+      "id": "RT-031",
+      "name": "Cross-platform update rollback and freeze"
+    }
+  ],
+  "createdUtc": "2026-07-23T06:48:55Z",
+  "schemaVersion": "5.0"
+}

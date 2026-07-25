@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Capability Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "publisher",
+    "license",
+    "permissions",
+    "entrypoint"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "4.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]+$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "publisher": {
+      "type": "object",
+      "required": [
+        "id",
+        "trust_level"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "trust_level": {
+          "enum": [
+            "noesar-official",
+            "certified-partner",
+            "customer-private",
+            "community"
+          ]
+        }
+      }
+    },
+    "license": {
+      "type": "string"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "network": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filesystem": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "mode"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "read",
+              "write",
+              "create",
+              "delete"
+            ]
+          }
+        }
+      }
+    },
+    "entrypoint": {
+      "type": "string"
+    },
+    "signature": {
+      "type": "object"
+    },
+    "rollback": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

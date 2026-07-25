@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "filesystem.host": {
+      "approval": "owner-scoped",
+      "broker": "PathAuthorizationBroker",
+      "default": "deny"
+    },
+    "filesystem.read.project": {
+      "approval": "project-or-session",
+      "broker": "PathAuthorizationBroker",
+      "default": "deny"
+    },
+    "filesystem.write.project": {
+      "approval": "operation-or-session",
+      "broker": "PathAuthorizationBroker",
+      "default": "deny"
+    },
+    "network.external": {
+      "approval": "destination-and-data-scoped",
+      "broker": "NetworkEgressBroker",
+      "default": "deny"
+    },
+    "physical.actuate": {
+      "approval": "not-available-in-core",
+      "broker": "CertifiedSafetyInterlock",
+      "default": "deny"
+    },
+    "secret.read": {
+      "approval": "secret-and-purpose-scoped",
+      "broker": "SecretBroker",
+      "default": "deny"
+    },
+    "shell.execute": {
+      "approval": "command-and-working-directory-scoped",
+      "broker": "ExecutionBroker",
+      "default": "deny"
+    }
+  },
+  "schemaVersion": "4.0"
+}

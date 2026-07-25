@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Update Metadata",
+  "type": "object",
+  "required": [
+    "role",
+    "version",
+    "expires",
+    "targets",
+    "signatures"
+  ],
+  "properties": {
+    "role": {
+      "enum": [
+        "root",
+        "targets",
+        "snapshot",
+        "timestamp",
+        "delegated"
+      ]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "expires": {
+      "type": "string"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "compatibility": {
+      "type": "object"
+    },
+    "permissions_diff": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,11 @@
+[package]
+name = "noesar-security-kernel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+[dependencies]
+noesar-contracts = { path = "../noesar-contracts" }
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }

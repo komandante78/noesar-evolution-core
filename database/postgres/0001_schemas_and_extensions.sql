@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+BEGIN;
+
+CREATE SCHEMA IF NOT EXISTS noesar_identity;
+CREATE SCHEMA IF NOT EXISTS noesar_core;
+CREATE SCHEMA IF NOT EXISTS noesar_audit;
+CREATE SCHEMA IF NOT EXISTS noesar_capability;
+CREATE SCHEMA IF NOT EXISTS noesar_knowledge;
+CREATE SCHEMA IF NOT EXISTS noesar_runtime;
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+COMMIT;

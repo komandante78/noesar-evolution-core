@@ -1,0 +1,16 @@
+{
+  "ociExecuted": false,
+  "postgresExecuted": false,
+  "release": "0.6.0",
+  "rustBuildExecuted": false,
+  "tools": {
+    "cargo": null,
+    "docker": null,
+    "node": "/opt/nvm/versions/node/v22.16.0/bin/node",
+    "podman": null,
+    "postgres": null,
+    "psql": null,
+    "python3": "/opt/pyvenv/bin/python3",
+    "rustc": null
+  }
+}

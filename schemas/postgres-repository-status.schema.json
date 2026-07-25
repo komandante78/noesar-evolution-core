@@ -1,0 +1,32 @@
+{
+  "$id": "https://schemas.noesar.local/v4/postgres-repository-status.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "connected": {
+      "type": "boolean"
+    },
+    "pgvectorVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "productionReady": {
+      "type": "boolean"
+    },
+    "serverVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "connected",
+    "serverVersion",
+    "pgvectorVersion",
+    "productionReady"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,239 @@
+{
+  "authorityHmac": [
+    {
+      "body": {
+        "action": "authority.health",
+        "actorId": "owner-001",
+        "expiresAt": 1800000020,
+        "issuedAt": 1800000000,
+        "nonce": "0123456789abcdef",
+        "payload": {
+          "alpha": 1,
+          "nested": {
+            "a": true,
+            "z": [
+              3,
+              2,
+              1
+            ]
+          }
+        },
+        "schemaVersion": "1.1",
+        "sessionId": "session-001"
+      },
+      "canonicalUtf8": "{\"action\":\"authority.health\",\"actorId\":\"owner-001\",\"expiresAt\":1800000020,\"issuedAt\":1800000000,\"nonce\":\"0123456789abcdef\",\"payload\":{\"alpha\":1,\"nested\":{\"a\":true,\"z\":[3,2,1]}},\"schemaVersion\":\"1.1\",\"sessionId\":\"session-001\"}",
+      "id": "AUTH-HMAC-001",
+      "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "signatureBase64Url": "w8tylDujOtDDsvLa2xFFY93YrPoLoEFBXPOs5q1r8LA"
+    }
+  ],
+  "authorityIpc": [
+    {
+      "clientProductionEligible": false,
+      "id": "AUTH-IPC-001",
+      "maxFrameBytes": 1048576,
+      "request": {
+        "client": {
+          "name": "noesar-reference-control-plane",
+          "productionEligible": false,
+          "version": "0.6.0"
+        },
+        "envelope": {
+          "action": "authority.health",
+          "actorId": "owner-001",
+          "expiresAt": 1800000020,
+          "issuedAt": 1800000000,
+          "nonce": "0123456789abcdef",
+          "payload": {
+            "alpha": 1,
+            "nested": {
+              "a": true,
+              "z": [
+                3,
+                2,
+                1
+              ]
+            }
+          },
+          "schemaVersion": "1.1",
+          "sessionId": "session-001",
+          "signature": "w8tylDujOtDDsvLa2xFFY93YrPoLoEFBXPOs5q1r8LA"
+        },
+        "requestId": "request-001",
+        "schemaVersion": "1.0"
+      },
+      "response": {
+        "action": "authority.health",
+        "actorId": "owner-001",
+        "authority": "rust-canonical-candidate",
+        "decision": "deny",
+        "productionReady": false,
+        "requestId": "request-001",
+        "requestNonce": "0123456789abcdef",
+        "schemaVersion": "1.0",
+        "sessionId": "session-001"
+      },
+      "serverPeerCredentialsRequired": true
+    }
+  ],
+  "canonicalJson": [
+    {
+      "expected": "{\"a\":1,\"b\":2}",
+      "id": "CANONICAL-001",
+      "value": {
+        "a": 1,
+        "b": 2
+      }
+    },
+    {
+      "expected": "{\"negativeZero\":0,\"unicode\":\"\u00e8\"}",
+      "id": "CANONICAL-002",
+      "value": {
+        "negativeZero": 0,
+        "unicode": "\u00e8"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "expected": {
+        "blocked": false,
+        "insideWorkspace": true,
+        "risk": "LOW"
+      },
+      "id": "PATH-001",
+      "request": {
+        "mode": "NORMAL",
+        "operation": "write",
+        "path": "project/file.txt"
+      },
+      "type": "path"
+    },
+    {
+      "expected": {
+        "blocked": true,
+        "risk": "CRITICAL"
+      },
+      "id": "PATH-002",
+      "request": {
+        "mode": "NORMAL",
+        "operation": "write",
+        "path": "/etc"
+      },
+      "type": "path"
+    },
+    {
+      "expected": {
+        "blocked": true,
+        "requiresStrongReauthentication": true,
+        "risk": "CRITICAL"
+      },
+      "id": "PATH-003",
+      "request": {
+        "mode": "OWNER_BYPASS",
+        "operation": "write",
+        "path": "/etc"
+      },
+      "type": "path"
+    },
+    {
+      "expected": {
+        "blocked": false,
+        "risk": "HIGH"
+      },
+      "id": "PATH-004",
+      "request": {
+        "mode": "NORMAL",
+        "operation": "delete",
+        "path": "project",
+        "recursive": true
+      },
+      "type": "path"
+    },
+    {
+      "expected": {
+        "allowed": true,
+        "state": "LOCAL_ONLY_VERIFIED"
+      },
+      "id": "EGRESS-001",
+      "request": {
+        "kind": "none"
+      },
+      "type": "egress"
+    },
+    {
+      "expected": {
+        "allowed": false,
+        "requiresApproval": true,
+        "state": "REMOTE_MODEL_ACTIVE"
+      },
+      "id": "EGRESS-002",
+      "request": {
+        "data": [
+          "prompt"
+        ],
+        "kind": "remote-model"
+      },
+      "type": "egress"
+    },
+    {
+      "expected": {
+        "allowed": false,
+        "requiresApproval": true,
+        "state": "EXTERNAL_METADATA_ONLY"
+      },
+      "id": "EGRESS-003",
+      "request": {
+        "kind": "signed-update-metadata"
+      },
+      "type": "egress"
+    },
+    {
+      "expected": {
+        "allowed": false,
+        "state": "POLICY_VIOLATION_BLOCKED"
+      },
+      "id": "EGRESS-004",
+      "request": {
+        "kind": "unknown"
+      },
+      "type": "egress"
+    },
+    {
+      "environment": {},
+      "expected": {
+        "mode": "reference-node",
+        "productionReady": false
+      },
+      "id": "AUTHORITY-001",
+      "type": "authority"
+    },
+    {
+      "environment": {},
+      "expected": {
+        "mode": "reference-json",
+        "productionReady": false
+      },
+      "id": "DATA-001",
+      "type": "data-plane"
+    }
+  ],
+  "postgresProductionGate": [
+    {
+      "id": "PG-GATE-001",
+      "productionReadyWhenAllPresent": true,
+      "productionReadyWhenOneMissing": false,
+      "release": "0.6.0",
+      "requiredKinds": [
+        "rust-authority",
+        "postgresql-data-plane",
+        "migration-manifest",
+        "sandbox",
+        "platform-matrix",
+        "update-trust",
+        "penetration-test"
+      ]
+    }
+  ],
+  "schemaVersion": "6.0"
+}

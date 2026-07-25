@@ -1,0 +1,131 @@
+component	kind	license	evidence	path	notes
+android_system_properties-0.1.5	vendored-rust-crate	MIT/Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/android_system_properties-0.1.5	
+anyhow-1.0.104	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/anyhow-1.0.104	
+argon2-0.5.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/argon2-0.5.3	
+atomic-waker-1.1.2	vendored-rust-crate	Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-MIT;LICENSE-THIRD-PARTY	rust/vendor/atomic-waker-1.1.2	
+autocfg-1.5.1	vendored-rust-crate	Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-MIT	rust/vendor/autocfg-1.5.1	
+axum-0.8.9	vendored-rust-crate	MIT	LICENSE	rust/vendor/axum-0.8.9	
+axum-core-0.5.6	vendored-rust-crate	MIT	LICENSE	rust/vendor/axum-core-0.5.6	
+base64-0.22.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/base64-0.22.1	
+base64ct-1.8.3	vendored-rust-crate	Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-MIT	rust/vendor/base64ct-1.8.3	
+bitflags-2.13.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/bitflags-2.13.1	
+blake2-0.10.6	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/blake2-0.10.6	
+block-buffer-0.10.4	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/block-buffer-0.10.4	
+bumpalo-3.20.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/bumpalo-3.20.3	
+bytes-1.12.1	vendored-rust-crate	MIT	LICENSE	rust/vendor/bytes-1.12.1	
+cc-1.3.0	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/cc-1.3.0	
+cfg-if-1.0.4	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/cfg-if-1.0.4	
+chrono-0.4.45	vendored-rust-crate	MIT OR Apache-2.0	LICENSE.txt	rust/vendor/chrono-0.4.45	
+core-foundation-sys-0.8.7	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/core-foundation-sys-0.8.7	
+cpufeatures-0.2.17	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/cpufeatures-0.2.17	
+crypto-common-0.1.7	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/crypto-common-0.1.7	
+digest-0.10.7	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/digest-0.10.7	
+errno-0.3.14	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/errno-0.3.14	
+find-msvc-tools-0.1.9	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/find-msvc-tools-0.1.9	
+form_urlencoded-1.2.2	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/form_urlencoded-1.2.2	
+futures-channel-0.3.33	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/futures-channel-0.3.33	
+futures-core-0.3.33	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/futures-core-0.3.33	
+futures-task-0.3.33	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/futures-task-0.3.33	
+futures-util-0.3.33	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/futures-util-0.3.33	
+generic-array-0.14.7	vendored-rust-crate	MIT	LICENSE	rust/vendor/generic-array-0.14.7	
+getrandom-0.2.17	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/getrandom-0.2.17	
+getrandom-0.3.4	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/getrandom-0.3.4	
+getrandom-0.4.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/getrandom-0.4.3	
+hex-0.4.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/hex-0.4.3	
+hmac-0.12.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/hmac-0.12.1	
+http-1.4.2	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/http-1.4.2	
+http-body-1.1.0	vendored-rust-crate	MIT	LICENSE	rust/vendor/http-body-1.1.0	
+http-body-util-0.1.4	vendored-rust-crate	MIT	LICENSE	rust/vendor/http-body-util-0.1.4	
+httparse-1.10.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/httparse-1.10.1	
+httpdate-1.0.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/httpdate-1.0.3	
+hyper-1.11.0	vendored-rust-crate	MIT	LICENSE	rust/vendor/hyper-1.11.0	
+hyper-util-0.1.20	vendored-rust-crate	MIT	LICENSE	rust/vendor/hyper-util-0.1.20	
+iana-time-zone-0.1.65	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/iana-time-zone-0.1.65	
+iana-time-zone-haiku-0.1.2	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/iana-time-zone-haiku-0.1.2	
+itoa-1.0.18	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/itoa-1.0.18	
+js-sys-0.3.103	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/js-sys-0.3.103	
+libc-0.2.189	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/libc-0.2.189	
+log-0.4.33	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/log-0.4.33	
+matchit-0.8.4	vendored-rust-crate	MIT AND BSD-3-Clause	LICENSE;LICENSE.httprouter	rust/vendor/matchit-0.8.4	
+memchr-2.8.3	vendored-rust-crate	Unlicense OR MIT	COPYING;LICENSE-MIT;UNLICENSE	rust/vendor/memchr-2.8.3	
+mime-0.3.17	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/mime-0.3.17	
+mio-1.2.2	vendored-rust-crate	MIT	LICENSE	rust/vendor/mio-1.2.2	
+num-traits-0.2.19	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/num-traits-0.2.19	
+once_cell-1.21.4	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/once_cell-1.21.4	
+password-hash-0.5.0	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/password-hash-0.5.0	
+percent-encoding-2.3.2	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/percent-encoding-2.3.2	
+pin-project-lite-0.2.17	vendored-rust-crate	Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-MIT	rust/vendor/pin-project-lite-0.2.17	
+ppv-lite86-0.2.21	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/ppv-lite86-0.2.21	
+proc-macro2-1.0.107	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/proc-macro2-1.0.107	
+quote-1.0.47	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/quote-1.0.47	
+r-efi-5.3.0	vendored-rust-crate	MIT OR Apache-2.0 OR LGPL-2.1-or-later	Cargo.toml:license	rust/vendor/r-efi-5.3.0	no license file shipped in crate
+r-efi-6.0.0	vendored-rust-crate	MIT OR Apache-2.0 OR LGPL-2.1-or-later	Cargo.toml:license	rust/vendor/r-efi-6.0.0	no license file shipped in crate
+rand-0.9.5	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/rand-0.9.5	
+rand_chacha-0.9.0	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/rand_chacha-0.9.0	
+rand_core-0.6.4	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/rand_core-0.6.4	
+rand_core-0.9.5	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/rand_core-0.9.5	
+rustversion-1.0.23	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/rustversion-1.0.23	
+ryu-1.0.23	vendored-rust-crate	Apache-2.0 OR BSL-1.0	LICENSE-APACHE;LICENSE-BOOST	rust/vendor/ryu-1.0.23	
+serde-1.0.229	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde-1.0.229	
+serde_core-1.0.229	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde_core-1.0.229	
+serde_derive-1.0.229	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde_derive-1.0.229	
+serde_json-1.0.151	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde_json-1.0.151	
+serde_path_to_error-0.1.20	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde_path_to_error-0.1.20	
+serde_urlencoded-0.7.1	vendored-rust-crate	MIT/Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/serde_urlencoded-0.7.1	
+sha1-0.10.7	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/sha1-0.10.7	
+sha2-0.10.9	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/sha2-0.10.9	
+shlex-2.0.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/shlex-2.0.1	
+signal-hook-registry-1.4.8	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/signal-hook-registry-1.4.8	
+slab-0.4.12	vendored-rust-crate	MIT	LICENSE	rust/vendor/slab-0.4.12	
+smallvec-1.15.2	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/smallvec-1.15.2	
+socket2-0.6.5	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/socket2-0.6.5	
+subtle-2.6.1	vendored-rust-crate	BSD-3-Clause	LICENSE	rust/vendor/subtle-2.6.1	
+syn-2.0.119	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/syn-2.0.119	
+syn-3.0.3	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/syn-3.0.3	
+sync_wrapper-1.0.2	vendored-rust-crate	Apache-2.0	LICENSE	rust/vendor/sync_wrapper-1.0.2	
+tokio-1.53.1	vendored-rust-crate	MIT	LICENSE	rust/vendor/tokio-1.53.1	
+tokio-macros-2.7.1	vendored-rust-crate	MIT	LICENSE	rust/vendor/tokio-macros-2.7.1	
+tower-0.5.3	vendored-rust-crate	MIT	LICENSE	rust/vendor/tower-0.5.3	
+tower-http-0.6.11	vendored-rust-crate	MIT	LICENSE	rust/vendor/tower-http-0.6.11	
+tower-layer-0.3.3	vendored-rust-crate	MIT	LICENSE	rust/vendor/tower-layer-0.3.3	
+tower-service-0.3.3	vendored-rust-crate	MIT	LICENSE	rust/vendor/tower-service-0.3.3	
+tracing-0.1.44	vendored-rust-crate	MIT	LICENSE	rust/vendor/tracing-0.1.44	
+tracing-core-0.1.36	vendored-rust-crate	MIT	LICENSE	rust/vendor/tracing-core-0.1.36	
+typenum-1.20.1	vendored-rust-crate	MIT OR Apache-2.0	LICENSE;LICENSE-APACHE;LICENSE-MIT	rust/vendor/typenum-1.20.1	
+unicode-ident-1.0.24	vendored-rust-crate	(MIT OR Apache-2.0) AND Unicode-3.0	LICENSE-APACHE;LICENSE-MIT;LICENSE-UNICODE	rust/vendor/unicode-ident-1.0.24	
+uuid-1.24.0	vendored-rust-crate	Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-MIT	rust/vendor/uuid-1.24.0	
+version_check-0.9.5	vendored-rust-crate	MIT/Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/version_check-0.9.5	
+wasi-0.11.1+wasi-snapshot-preview1	vendored-rust-crate	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-Apache-2.0_WITH_LLVM-exception;LICENSE-MIT	rust/vendor/wasi-0.11.1+wasi-snapshot-preview1	
+wasip2-1.0.4+wasi-0.2.12	vendored-rust-crate	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-Apache-2.0_WITH_LLVM-exception;LICENSE-MIT	rust/vendor/wasip2-1.0.4+wasi-0.2.12	
+wasm-bindgen-0.2.126	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/wasm-bindgen-0.2.126	
+wasm-bindgen-macro-0.2.126	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/wasm-bindgen-macro-0.2.126	
+wasm-bindgen-macro-support-0.2.126	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/wasm-bindgen-macro-support-0.2.126	
+wasm-bindgen-shared-0.2.126	vendored-rust-crate	MIT OR Apache-2.0	LICENSE-APACHE;LICENSE-MIT	rust/vendor/wasm-bindgen-shared-0.2.126	
+windows-core-0.62.2	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-core-0.62.2	
+windows-implement-0.60.2	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-implement-0.60.2	
+windows-interface-0.59.3	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-interface-0.59.3	
+windows-link-0.2.1	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-link-0.2.1	
+windows-result-0.4.1	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-result-0.4.1	
+windows-strings-0.5.1	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-strings-0.5.1	
+windows-sys-0.61.2	vendored-rust-crate	MIT OR Apache-2.0	license-apache-2.0;license-mit	rust/vendor/windows-sys-0.61.2	
+wit-bindgen-0.57.1	vendored-rust-crate	Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-Apache-2.0_WITH_LLVM-exception;LICENSE-MIT	rust/vendor/wit-bindgen-0.57.1	
+zerocopy-0.8.55	vendored-rust-crate	BSD-2-Clause OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-BSD;LICENSE-MIT	rust/vendor/zerocopy-0.8.55	
+zerocopy-derive-0.8.55	vendored-rust-crate	BSD-2-Clause OR Apache-2.0 OR MIT	LICENSE-APACHE;LICENSE-BSD;LICENSE-MIT	rust/vendor/zerocopy-derive-0.8.55	
+zmij-1.0.23	vendored-rust-crate	MIT	LICENSE-MIT	rust/vendor/zmij-1.0.23	
+noesar-audit-ledger	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-audit-ledger	no SPDX license field — must be set before publication
+noesar-auth	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-auth	no SPDX license field — must be set before publication
+noesar-authority-api	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-api	no SPDX license field — must be set before publication
+noesar-authority-daemon	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-daemon	no SPDX license field — must be set before publication
+noesar-authority-protocol	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-protocol	no SPDX license field — must be set before publication
+noesar-authority-transport	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-authority-transport	no SPDX license field — must be set before publication
+noesar-canonical-json	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-canonical-json	no SPDX license field — must be set before publication
+noesar-contracts	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-contracts	no SPDX license field — must be set before publication
+noesar-control-plane	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-control-plane	no SPDX license field — must be set before publication
+noesar-data-plane	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-data-plane	no SPDX license field — must be set before publication
+noesar-hardware-orchestrator	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-hardware-orchestrator	no SPDX license field — must be set before publication
+noesar-security-kernel	first-party-rust-crate	NOT-DECLARED	Cargo.toml	rust/crates/noesar-security-kernel	no SPDX license field — must be set before publication
+security/license-policy.json	license-file	SEE-FILE	file header	capabilities/security/license-policy.json	{
+@noesar/webui	node-package	NOT-DECLARED	package.json	apps/webui-react/package.json	no license field
+@noesar/sdk	node-package	Apache-2.0	package.json	evidence/history/v0.5.0/packages/sdk-skeleton/package.json	
+noesar-evolution-source-v4-implementation	node-package	NOT-DECLARED	package.json	package.json	no license field
+@noesar/sdk	node-package	Apache-2.0	package.json	packages/sdk/package.json	

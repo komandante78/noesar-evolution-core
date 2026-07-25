@@ -1,0 +1,53 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=1_PREFLIGHT_AND_BACKUP
+
+DOCKER_SOCKET_ACCESS:
+  - First check this session: BLOCKED (permission denied) -> reported and
+    stopped, per standing discipline for this workspace.
+  - Owner restored a temporary ACL; re-check: EXIT=0, access confirmed.
+  - `docker image inspect rust:1-bookworm --format '{{.Id}}'` =
+    sha256:a0635962c16d5f26400703edd4317175cf9531f3285d632613f9da227f9c71d1
+    -- matches EXACTLY the authorized image ID from the phase spec.
+    No pull was performed (--pull=never used throughout).
+
+BUILD_ARTIFACTS PATH ACCESS:
+  - BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1 did not exist yet and the
+    ROOT directory ACL grants `claudecode` only r-x (no write) -- unlike
+    BACKUPS/ and REPORTS/ which carry an explicit rwx ACL for this user.
+  - Asked the user how to proceed (three options: broad ROOT ACL grant,
+    narrow single-dir grant, or redirect artifacts into REPORTS/). User
+    chose a narrow grant: only
+    BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1 was created and ACL'd
+    for claudecode (rwx, with default ACL for new children). Verified
+    via `getfacl` + a write test (touch/rm) before proceeding. General
+    ROOT write access was explicitly NOT granted -- respected as scoped.
+
+MANIFEST.sha256 (pre-phase):
+  - `sha256sum -c PRODUCT/MANIFEST.sha256` -> 368/368 OK, 0 FAILED.
+
+PRE-PHASE RUST VENDORING STATE (inherited from RUST_DEPENDENCY_VENDOR_V1,
+not regenerated in this preflight step):
+  - PRODUCT/rust/Cargo.lock: PRESENT, 28245 bytes
+  - PRODUCT/rust/vendor/: PRESENT, 112 versioned crate dirs, 5168 files
+  - PRODUCT/rust/.cargo/config.toml: PRESENT
+      [source.crates-io]
+      replace-with = "vendored-sources"
+      [source.vendored-sources]
+      directory = "vendor"
+
+PRE-MODIFICATION HASHES of the two Cargo.toml files this phase is
+authorized to touch, plus the workspace root Cargo.toml and Cargo.lock
+for later diffing (see BUILD_ARTIFACTS/.../logs/01_pre_hashes.txt):
+  3805cd88b43d8dcad37af472d5aaebd1aa5b5a9f13bb962949c43ecf95daf805  rust/crates/noesar-security-kernel/Cargo.toml
+  2a094b3a076aa5c6b404964add6299f03e9b2240b08489e51b7de8e97fb3f65e  rust/crates/noesar-auth/Cargo.toml
+  6dedb3e5881595bdf63fa933405b9cff2f8c9634dd1c506217b11de8435c11d9  rust/Cargo.toml (unchanged in this phase, recorded for drift detection)
+  d0b5bafbd95cae050ed2d9ee643d6279327cfebdf065ee655acb0088555364ce  rust/Cargo.lock (pre-remediation, from RUST_DEPENDENCY_VENDOR_V1)
+
+BACKUP:
+  Path: BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz
+  Size: 12851454 bytes
+  sha256 file: BACKUPS/CANONICAL_CANDIDATE_V1_PRE_RUST_MANIFEST_REMEDIATION_20260724T052232Z.tar.gz.sha256
+  `tar -tzf` listing check: OK (no corruption)
+  `sha256sum -c`: OK
+
+BACKUP_VERIFY=PASS

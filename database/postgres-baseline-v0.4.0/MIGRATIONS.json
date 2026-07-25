@@ -1,0 +1,57 @@
+{
+  "generatedUtc": "2026-07-22T16:34:53Z",
+  "legacyV030Executable": false,
+  "migrations": [
+    {
+      "bytes": 368,
+      "filename": "0001_schemas_and_extensions.sql",
+      "sha256": "4ac650f7b4f8c6c48b755ad1df66c63f7673a2eba2425a3730a2946fcd47404e",
+      "version": "0001"
+    },
+    {
+      "bytes": 1273,
+      "filename": "0002_identity_and_sessions.sql",
+      "sha256": "4c486d5977a1d828d8fe4debf5f650dd8cdc0641e1e7a075dca29bca42d5aa75",
+      "version": "0002"
+    },
+    {
+      "bytes": 1158,
+      "filename": "0003_workspaces_projects_members.sql",
+      "sha256": "2fac5ed820ac4f400326e338d2740a97142aa3e57957bd57e59fb2a729fc5c91",
+      "version": "0003"
+    },
+    {
+      "bytes": 1263,
+      "filename": "0004_audit_ledger.sql",
+      "sha256": "54eed9862346f1f5068bb0b90fb85c5d036b94a2422524f7273719f3ece20530",
+      "version": "0004"
+    },
+    {
+      "bytes": 1801,
+      "filename": "0005_publishers_capabilities.sql",
+      "sha256": "0f5404f9dc9c79b85b6d93f852c621173b9b28102e06f59fe6fa6da87fcbffc2",
+      "version": "0005"
+    },
+    {
+      "bytes": 1803,
+      "filename": "0006_documents_memory_models.sql",
+      "sha256": "52dfb544c67502f4938296be12cb6cfcdc661c9a2f7fdfc93478ecfd3b35e0f9",
+      "version": "0006"
+    },
+    {
+      "bytes": 2497,
+      "filename": "0007_row_level_security.sql",
+      "sha256": "cfcadcc9449a3119ea43548cb24f60098826fedac749099bf350fd22a61c5f91",
+      "version": "0007"
+    },
+    {
+      "bytes": 791,
+      "filename": "0008_migration_ledger.sql",
+      "sha256": "5e57c0ec8d2b0a255f79cb0411766f91048a2c3f36f3be5725bcedca2dc3c9c0",
+      "version": "0008"
+    }
+  ],
+  "release": "0.4.0",
+  "schemaVersion": "2.0",
+  "target": "PostgreSQL 18 with pgvector"
+}

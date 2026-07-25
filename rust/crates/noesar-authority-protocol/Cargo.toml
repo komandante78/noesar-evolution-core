@@ -1,0 +1,16 @@
+[package]
+name = "noesar-authority-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64.workspace = true
+hmac.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+
+noesar-canonical-json = { path = "../noesar-canonical-json" }

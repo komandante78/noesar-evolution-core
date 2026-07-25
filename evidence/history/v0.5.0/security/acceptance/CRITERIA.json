@@ -1,0 +1,272 @@
+{
+  "createdUtc": "2026-07-23T06:48:55Z",
+  "criteria": [
+    {
+      "description": "Exact nested lineage ZIP 1 through ZIP 3",
+      "evaluation": "automated",
+      "id": "A-001",
+      "requirement": "MUST",
+      "scope": "ALL"
+    },
+    {
+      "description": "Archive safe paths, no duplicates, no symlinks and CRC",
+      "evaluation": "automated",
+      "id": "A-002",
+      "requirement": "MUST",
+      "scope": "ALL"
+    },
+    {
+      "description": "Internal manifests",
+      "evaluation": "automated",
+      "id": "A-003",
+      "requirement": "MUST",
+      "scope": "ALL"
+    },
+    {
+      "description": "No embedded private keys or common live credentials",
+      "evaluation": "automated",
+      "id": "A-004",
+      "requirement": "MUST",
+      "scope": "ALL"
+    },
+    {
+      "description": "ZIP 1 source suite 90/90",
+      "evaluation": "automated",
+      "id": "A-005",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "ZIP 1 authentication HTTP smoke",
+      "evaluation": "automated",
+      "id": "A-006",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "Authority Protocol V1.1 and canonical JSON",
+      "evaluation": "automated",
+      "id": "A-007",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "Authority actor/session/action binding and anti-replay",
+      "evaluation": "automated",
+      "id": "A-008",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "Authority frame boundary and peer identity reference",
+      "evaluation": "automated",
+      "id": "A-009",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "PostgreSQL ten-migration static verification",
+      "evaluation": "automated",
+      "id": "A-010",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "PostgreSQL role, RLS and security-view contract",
+      "evaluation": "automated",
+      "id": "A-011",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "Rust authority source structural verification",
+      "evaluation": "automated",
+      "id": "A-012",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "ZIP 1 production runtime fail-closed",
+      "evaluation": "automated",
+      "id": "A-013",
+      "requirement": "MUST",
+      "scope": "ZIP1"
+    },
+    {
+      "description": "ZIP 2 static package verification",
+      "evaluation": "automated",
+      "id": "A-014",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 source regression 90/90",
+      "evaluation": "automated",
+      "id": "A-015",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 runtime V0.5.0 smoke and setup-token lifecycle",
+      "evaluation": "automated",
+      "id": "A-016",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 development readiness",
+      "evaluation": "automated",
+      "id": "A-017",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 production preflight fail-closed",
+      "evaluation": "automated",
+      "id": "A-018",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 deterministic migration plan",
+      "evaluation": "automated",
+      "id": "A-019",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 production attestation V3 and six tamper cases",
+      "evaluation": "automated",
+      "id": "A-020",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 production-readiness compiler",
+      "evaluation": "automated",
+      "id": "A-021",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 2 OCI hardening static verification",
+      "evaluation": "automated",
+      "id": "A-022",
+      "requirement": "MUST",
+      "scope": "ZIP2"
+    },
+    {
+      "description": "ZIP 3 complete capability suite 90/90",
+      "evaluation": "automated",
+      "id": "A-023",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 production evidence chain",
+      "evaluation": "automated",
+      "id": "A-024",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 Authority V1.1 and PostgreSQL V3 evidence binding",
+      "evaluation": "automated",
+      "id": "A-025",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 package, policy, readiness and sandbox hash binding",
+      "evaluation": "automated",
+      "id": "A-026",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 production authorization separation",
+      "evaluation": "automated",
+      "id": "A-027",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 execution ticket signature, binding and expiry",
+      "evaluation": "automated",
+      "id": "A-028",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 ticket anti-replay",
+      "evaluation": "automated",
+      "id": "A-029",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 broker execution-ticket gate",
+      "evaluation": "automated",
+      "id": "A-030",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "ZIP 3 external native execution remains denied",
+      "evaluation": "automated",
+      "id": "A-031",
+      "requirement": "MUST",
+      "scope": "ZIP3"
+    },
+    {
+      "description": "Compiled canonical Rust authority and production peer credentials",
+      "evaluation": "blocked",
+      "id": "A-032",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Executed PostgreSQL 18 and pgvector repositories",
+      "evaluation": "blocked",
+      "id": "A-033",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Production sandbox adapter, seccomp and escape tests",
+      "evaluation": "blocked",
+      "id": "A-034",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Executed Docker, Podman, Windows, macOS and Unraid matrix",
+      "evaluation": "blocked",
+      "id": "A-035",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Production TUF, Sigstore and SLSA pipeline",
+      "evaluation": "blocked",
+      "id": "A-036",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Complete Master V4 implementation",
+      "evaluation": "blocked",
+      "id": "A-037",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    },
+    {
+      "description": "Independent penetration test",
+      "evaluation": "blocked",
+      "id": "A-038",
+      "requirement": "MUST",
+      "scope": "FINAL"
+    }
+  ],
+  "schemaVersion": "5.0"
+}

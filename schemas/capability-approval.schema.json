@@ -1,0 +1,76 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-approval.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actorId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "integer"
+    },
+    "issuedAt": {
+      "type": "integer"
+    },
+    "nonce": {
+      "minLength": 16,
+      "type": "string"
+    },
+    "organizationId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "planHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "projectId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "role": {
+      "enum": [
+        "owner",
+        "admin",
+        "developer",
+        "user"
+      ]
+    },
+    "scope": {
+      "enum": [
+        "operation",
+        "session",
+        "project",
+        "organization"
+      ]
+    },
+    "sessionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "capabilityId",
+    "version",
+    "planHash",
+    "scope",
+    "actorId",
+    "role",
+    "sessionId",
+    "organizationId",
+    "issuedAt",
+    "expiresAt",
+    "nonce"
+  ],
+  "title": "NOESAR Capability Approval",
+  "type": "object"
+}

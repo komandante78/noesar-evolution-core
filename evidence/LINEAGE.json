@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "embedded": true,
+    "filename": "NOESAR_EVOLUTION_01_COMPLETE_PRODUCT_SOURCE_V4_IMPLEMENTATION_V0_5_0.zip",
+    "sha256": "4b1418fe127aa31e0f5eb15a0412b3a61bf29e27fa2ec5cd1d98c08424033643"
+  },
+  "completedV050Release": {
+    "embedded": false,
+    "filename": "NOESAR_EVOLUTION_05_FINAL_RELEASE_AND_OPERATIONS_V4_IMPLEMENTATION_V0_5_0.zip",
+    "packagingReportSha256": "9b8935b8430c6effc605ebe20d19bf97f7c002218ec68237b6ea186b0659196e",
+    "sha256": "680aaefadf4c8d8e384abe9b63642990685a5d113ddf21b1deb15088ae2da279",
+    "sidecarSha256": "7b7ac38f9899f8ff98d6b8bcf97a0b116d5b8f26ee69fa69f755e2d3c3ed4c29"
+  },
+  "createdUtc": "2026-07-23T07:31:27Z",
+  "master": {
+    "embedded": true,
+    "filename": "NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip",
+    "sha256": "c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a"
+  },
+  "schemaVersion": "6.0"
+}

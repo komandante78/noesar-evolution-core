@@ -1,0 +1,163 @@
+{
+  "closedFindings": [
+    {
+      "evidence": [
+        "Owner setup and TOTP",
+        "scrypt password derivation",
+        "server-side sessions",
+        "CSRF and RBAC",
+        "rate limiting and lockout",
+        "strong Owner reauthentication"
+      ],
+      "formerId": "B-002",
+      "id": "C-002",
+      "remainingDependencies": [
+        "canonical Rust authority",
+        "PostgreSQL-backed identity repositories",
+        "independent penetration test"
+      ],
+      "status": "REMEDIATED_IN_REFERENCE_IMPLEMENTATION",
+      "title": "Authentication and session enforcement"
+    }
+  ],
+  "createdUtc": "2026-07-23T06:57:34Z",
+  "finalProductVerdict": "BLOCKED",
+  "finalZip5": false,
+  "implementationVerdict": "PASS_WITH_BLOCKERS",
+  "openFindings": [
+    {
+      "area": "Security authority",
+      "evidence": "ZIP 1 and ZIP 2 V0.5.0 pass source and reference tests. No Rust toolchain execution, compiled authority, OS peer-credential implementation or signed provenance was produced.",
+      "id": "B-001",
+      "progress": [
+        "canonical JSON source implemented in Node and Rust",
+        "Authority Protocol V1.1 implemented",
+        "actor, session and action binding implemented",
+        "authenticated peer and frame contracts implemented",
+        "attestation V3 binds binary, provenance, peer credentials and schemas"
+      ],
+      "requiredRemediation": "Compile and test the exact Rust workspace, implement authenticated local transport, execute cross-language conformance and issue signed provenance.",
+      "severity": "BLOCKER",
+      "title": "Canonical Rust Security Kernel is not compiled or active"
+    },
+    {
+      "area": "Capability isolation",
+      "evidence": "ZIP 3 V0.5.0 verifies evidence and ticket contracts. No production adapter, signed sandbox attestation, portable escape-test matrix or real ticket issuance exists.",
+      "id": "B-003",
+      "progress": [
+        "sandbox attestation V3 implemented",
+        "production evidence chain implemented",
+        "execution ticket V1 implemented",
+        "broker requires ticket and bindings",
+        "native execution remains denied without adapter"
+      ],
+      "requiredRemediation": "Integrate production adapters and execute independent escape tests with signed attestations on every supported platform.",
+      "severity": "BLOCKER",
+      "title": "Portable production OS sandbox is not accepted"
+    },
+    {
+      "area": "Deployment",
+      "evidence": "OCI build and Docker, Podman, Windows, macOS and Unraid runtime tests were not executed.",
+      "id": "B-004",
+      "progress": [
+        "V0.5.0 OCI and platform profiles updated",
+        "production preflight and promotion compiler remain fail-closed"
+      ],
+      "requiredRemediation": "Build and execute the exact release candidate across the supported matrix with signed evidence.",
+      "severity": "BLOCKER",
+      "title": "Supported deployment platforms remain unexecuted"
+    },
+    {
+      "area": "Data architecture",
+      "evidence": "No PostgreSQL 18 server, pgvector extension, live repository, role acceptance, RLS adversarial test or backup/restore drill was executed.",
+      "id": "B-005",
+      "progress": [
+        "ten-migration V0.5.0 line implemented",
+        "role separation and PUBLIC revocation implemented",
+        "application role NOBYPASSRLS implemented",
+        "security-acceptance view implemented",
+        "attestation V3 requires RLS, immutable ledgers and backup/restore"
+      ],
+      "requiredRemediation": "Execute migrations and repository on PostgreSQL 18 with pgvector, verify roles/RLS/ledgers, perform backup/restore and issue signed evidence.",
+      "severity": "BLOCKER",
+      "title": "Production PostgreSQL and pgvector data plane is not active"
+    },
+    {
+      "area": "Product completeness",
+      "evidence": "The packages remain V4 Implementation V0.5.0 and do not implement or accept the complete Master V4 scope.",
+      "id": "B-006",
+      "progress": [
+        "authentication, authority, data-plane, runtime and capability controls advanced",
+        "production readiness compiler formalizes the remaining evidence domains"
+      ],
+      "requiredRemediation": "Complete all Master V4 requirements and pass final cross-subsystem acceptance.",
+      "severity": "BLOCKER",
+      "title": "Mandatory Master V4 subsystems remain incomplete"
+    },
+    {
+      "area": "Updates",
+      "evidence": "The readiness compiler requires update trust, but no production trust hierarchy or drill exists.",
+      "id": "H-001",
+      "requiredRemediation": "Implement threshold metadata, freshness, rollback/freeze protection, transparency and provenance.",
+      "severity": "HIGH",
+      "title": "Production TUF, Sigstore and SLSA pipeline is absent"
+    },
+    {
+      "area": "WebUI",
+      "evidence": "No locked production React build, dependency audit, browser security or accessibility acceptance exists.",
+      "id": "H-002",
+      "requiredRemediation": "Produce and audit the production browser bundle.",
+      "severity": "HIGH",
+      "title": "Production WebUI build and dependency audit are unverified"
+    },
+    {
+      "area": "Protocols",
+      "evidence": "Default distrust exists; authenticated gateways and adversarial evidence are absent.",
+      "id": "H-003",
+      "requiredRemediation": "Implement brokered gateways with bounded credentials and red-team evidence.",
+      "severity": "HIGH",
+      "title": "MCP and A2A network gateways remain disabled"
+    },
+    {
+      "area": "Legal packaging",
+      "evidence": "License maps remain structural specifications rather than reviewed release documents.",
+      "id": "H-004",
+      "requiredRemediation": "Publish reviewed legal terms, notices and trademark policy.",
+      "severity": "HIGH",
+      "title": "Final release legal documents require review"
+    },
+    {
+      "area": "Capability integration",
+      "evidence": "These controls remain Python reference implementation contracts; canonical Rust integration was not built or executed.",
+      "id": "H-005",
+      "progress": [
+        "capability production evidence chain implemented",
+        "execution ticket V1 implemented",
+        "Authority Protocol V1.1 and runtime V3 binding implemented"
+      ],
+      "requiredRemediation": "Integrate capability authorization, evidence verification and ticket issuance into the compiled Rust authority.",
+      "severity": "HIGH",
+      "title": "Capability production gate is not integrated into the compiled Rust authority"
+    },
+    {
+      "area": "Hardware",
+      "evidence": "Representative NVIDIA, AMD, Intel and Apple execution evidence is absent.",
+      "id": "M-001",
+      "requiredRemediation": "Run compatibility, fallback and multi-device acceptance.",
+      "severity": "MEDIUM",
+      "title": "Real accelerator and multi-GPU matrix is absent"
+    },
+    {
+      "area": "Secret storage",
+      "evidence": "OS keystore, TPM, HSM or Vault integration remains absent.",
+      "id": "M-002",
+      "requiredRemediation": "Implement platform and enterprise secret-provider adapters.",
+      "severity": "MEDIUM",
+      "title": "Reference authentication master key remains file-backed"
+    }
+  ],
+  "productionReady": false,
+  "regulatedUseVerdict": "NOT_EVALUATED",
+  "releaseLine": "V4_IMPLEMENTATION_0.5.0",
+  "schemaVersion": "5.0"
+}

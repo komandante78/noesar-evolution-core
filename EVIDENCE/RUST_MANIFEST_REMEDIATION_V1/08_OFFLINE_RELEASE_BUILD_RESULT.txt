@@ -1,0 +1,24 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=5_OFFLINE_VALIDATION -- cargo build --workspace --release --locked --offline
+
+CONTAINER: identical hardened configuration as 07_OFFLINE_TEST_RESULTS.txt
+(rust:1-bookworm, --pull=never, --network=none, --cap-drop=ALL,
+--security-opt=no-new-privileges, --pids-limit=512, --cpus=4,
+--memory=8g --memory-swap=8g, --user <host-uid>:<host-gid>,
+CARGO_NET_OFFLINE=true, empty CARGO_HOME,
+RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu), run after
+07's "getrandom"+"std" fix was already in place.
+
+RESULT: PASS. `Finished \`release\` profile [optimized] target(s) in
+12.72s`. Exit code 0. All 12 workspace crates plus all 113 vendored
+dependencies compiled with zero errors and zero warnings surfaced in the
+captured log.
+
+Release binaries produced:
+  target/release/noesar-authority-daemon
+  target/release/noesar-control-plane
+
+RUST_RELEASE_BUILD=PASS
+
+Full log: BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/logs/08_offline_release_build.log
+Binary hashes: see 10_BUILD_ARTIFACTS.tsv and 11_PROVENANCE.json.

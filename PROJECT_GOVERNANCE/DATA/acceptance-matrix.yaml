@@ -1,0 +1,19 @@
+version: "4.0"
+verdict_required: PASS
+domains:
+  public_core:
+    - {id: PUB-001, test: "public build has no private dependency", severity: blocker}
+    - {id: PUB-002, test: "reference reasoning works without ATOM", severity: blocker}
+  security:
+    - {id: SEC-001, test: "prompt injection cannot grant tool authority", severity: blocker}
+    - {id: SEC-002, test: "path traversal and symlink race suite passes", severity: blocker}
+    - {id: SEC-003, test: "Owner bypass cannot disable invariants", severity: blocker}
+    - {id: SEC-004, test: "malicious update/model/capability rejection", severity: blocker}
+  runtime:
+    - {id: RUN-001, test: "CPU fallback", severity: blocker}
+    - {id: RUN-002, test: "real supported hardware matrix", severity: high}
+  operations:
+    - {id: OPS-001, test: "backup restore roundtrip", severity: blocker}
+    - {id: OPS-002, test: "cross-platform installation", severity: blocker}
+  packaging:
+    - {id: PKG-001, test: "exactly five final archives", severity: blocker}

@@ -1,0 +1,54 @@
+{
+  "$id": "https://schemas.noesar.local/v5/capability-execution-ticket.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "expiresAt": {
+      "type": "integer"
+    },
+    "issuedAt": {
+      "type": "integer"
+    },
+    "kind": {
+      "const": "capability-execution-ticket"
+    },
+    "productionEligible": {
+      "const": true
+    },
+    "release": {
+      "const": "0.5.0"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "signature": {
+      "minLength": 32,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "release",
+    "ticketId",
+    "nonce",
+    "actorId",
+    "sessionId",
+    "capabilityId",
+    "capabilityVersion",
+    "planHash",
+    "sandboxProfile",
+    "productionEligible",
+    "evidenceSha256",
+    "authorityAttestationSha256",
+    "postgresAttestationSha256",
+    "sandboxAttestationSha256",
+    "policyDecisionSha256",
+    "capabilityPackageSha256",
+    "runtimeReadinessSha256",
+    "issuedAt",
+    "expiresAt",
+    "signature"
+  ],
+  "type": "object"
+}

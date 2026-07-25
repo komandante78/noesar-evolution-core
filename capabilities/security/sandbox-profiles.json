@@ -1,0 +1,56 @@
+{
+  "profiles": {
+    "blocked": {
+      "externalProcess": false,
+      "filesystem": "none",
+      "network": "none",
+      "productionEligible": false
+    },
+    "declarative": {
+      "attestationRequired": false,
+      "executionTicketRequired": true,
+      "externalProcess": false,
+      "filesystem": "brokered",
+      "network": "none",
+      "productionEligible": true
+    },
+    "os-isolated": {
+      "artifactHashBindingRequired": true,
+      "attestationRequired": true,
+      "authorityProtocolVersionRequired": "1.1",
+      "capabilityBindingRequired": true,
+      "dataPlaneAttestationRequired": true,
+      "escapeTestRequired": true,
+      "executionTicketRequired": true,
+      "externalProcess": true,
+      "filesystem": "allowlisted-readonly-root",
+      "namespacesRequired": [
+        "user",
+        "mount",
+        "pid",
+        "network",
+        "ipc",
+        "uts"
+      ],
+      "network": "deny-by-default",
+      "noNewPrivilegesRequired": true,
+      "policyDecisionBindingRequired": true,
+      "productionEligible": true,
+      "resourceLimits": true,
+      "restrictedUidGidMapRequired": true,
+      "runtimeAttestationVersionRequired": "3.0",
+      "seccompRequired": true
+    },
+    "process-restricted-development-fixture": {
+      "attestationRequired": false,
+      "explicitFixtureGateRequired": true,
+      "externalProcess": true,
+      "filesystem": "ephemeral-cwd-only",
+      "network": "policy-denied-not-kernel-enforced",
+      "productionEligible": false,
+      "resourceLimits": true
+    }
+  },
+  "release": "0.5.0",
+  "schemaVersion": "5.0"
+}

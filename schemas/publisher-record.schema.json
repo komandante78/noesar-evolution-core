@@ -1,0 +1,47 @@
+{
+  "$id": "https://schemas.noesar.local/v4/publisher-record.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "fingerprintSha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "publicKey": {
+      "type": "string"
+    },
+    "registeredAt": {
+      "type": "integer"
+    },
+    "registeredBy": {
+      "type": "string"
+    },
+    "revokedAt": {
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "revoked"
+      ]
+    },
+    "trustLevel": {
+      "enum": [
+        "noesar-official",
+        "certified-partner",
+        "customer-private",
+        "community"
+      ]
+    }
+  },
+  "required": [
+    "trustLevel",
+    "publicKey",
+    "fingerprintSha256",
+    "status",
+    "registeredAt",
+    "registeredBy"
+  ],
+  "title": "NOESAR Publisher Record",
+  "type": "object"
+}

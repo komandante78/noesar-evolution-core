@@ -1,0 +1,69 @@
+PHASE=BUILD_PREPARATION_V1
+WORKSPACE_MUTATION=YES
+PRODUCTION_MUTATION=NO
+
+BACKUP_PATH=/mnt/cachec/NOESAR_EVOLUTION_CANONICAL_V1/BACKUPS/CANONICAL_CANDIDATE_V1_PRE_BUILD_PREPARATION_20260723T151147Z.tar.gz
+INITIAL_FILES=366
+FINAL_FILES=367
+FILES_MODIFIED=9
+FILES_ADDED=1
+FILES_REMOVED=0
+
+OBSOLETE_RUNTIME_REFERENCES_INITIAL=16 files (33 raw pattern matches) plus 4
+  additional issues found via broader static path validation not covered by
+  the mandated pattern list (Windows backslash path variant, missing seccomp
+  profile, missing macOS launcher, missing preflight tool) = 20 files total
+  carrying a path issue relevant to this pass.
+OBSOLETE_RUNTIME_REFERENCES_FINAL=0 operational references remain (all 6
+  container/installer/service files corrected). 12 files still contain
+  matching text, all classified HISTORICAL_EVIDENCE, GENERATED_METADATA (this
+  pass's own updated documentation), or explicitly documented BLOCKED items
+  (see 02_PATH_REFERENCE_INVENTORY.tsv).
+UNRESOLVED_PATH_DECISIONS=3 (D005 seccomp profile, D003 preflight tool,
+  D007/D008 out-of-scope version/env-contract notes — counted as
+  informational, not blocking)
+
+MANIFEST_VERIFY=PASS
+JSON_VALIDATION=PASS (1 modified file: PACKAGE_METADATA.json)
+BASH_SYNTAX=PASS (2 modified files: install-portable.sh x2)
+JAVASCRIPT_SYNTAX=NOT_REQUIRED (no .js/.mjs files modified this pass)
+STATIC_OCI_PATH_AUDIT=PASS
+INSTALLER_PATH_AUDIT=PASS (with 1 documented BLOCKED item: D005)
+
+DOCKER_TOUCHED=false
+DATABASE_TOUCHED=false
+ENV_TOUCHED=false
+NETWORK_USED=false
+DEPENDENCIES_INSTALLED=false
+ZIP_CREATED=false
+BASELINES_TOUCHED=false
+
+B001_STATUS=OPEN
+B003_STATUS=OPEN
+B004_STATUS=OPEN (advanced — see 12_OPEN_BLOCKERS.txt for what changed)
+B005_STATUS=OPEN
+B006_STATUS=OPEN
+
+PRODUCTION_READY=false
+FINAL_PRODUCT_READY=false
+NEXT_GATE=Owner sign-off on D008 (whether to relabel oci/Dockerfile /
+  oci/Containerfile from version="0.5.0" to reflect the 0.6.0-source-
+  implementation payload actually copied) and D005 (authoring a real
+  security/seccomp-noesar.json seccomp profile); after that, the next
+  functional gate is a Rust toolchain becoming available on a build host to
+  address B001 (Cargo.lock generation + cargo test --locked), which is the
+  smallest of the remaining execution-dependent blockers.
+
+CLOSURE_VERIFICATION (re-run at report finalization, independent of Fase 8):
+  MANIFEST_VERIFY=PASS (366/366, exit 0)
+  NESTED_ZIPS=0, SYMLINKS=0
+  BASELINES_UNCHANGED=PASS (0 files newer than the pre-pass backup under
+    00_MASTER, 01_SOURCE_V0_6_0, 02-05_*_V0_5_0)
+  BACKUP_SIDECAR_VERIFY=PASS (sha256sum -c, exit 0)
+  REPORT_FILE_COUNT=16/16 (00-14 numbered files + FINAL_REPORT.txt, matching
+    the mandated Fase 9 list exactly)
+  FORBIDDEN_TOOLS_INVOKED=none (docker, podman, psql, postgres, systemctl,
+    service, npm install/ci, pip install, cargo install, curl, wget, apt,
+    apk, dnf, pacman — none called at any point this pass)
+
+STATUS=CLOSED

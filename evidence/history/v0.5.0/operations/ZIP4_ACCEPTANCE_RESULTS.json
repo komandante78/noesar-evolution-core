@@ -1,0 +1,356 @@
+{
+  "createdUtc": "2026-07-23T06:52:19Z",
+  "finalProductVerdict": "BLOCKED",
+  "implementationVerdict": "PASS_WITH_BLOCKERS",
+  "regulatedUseVerdict": "NOT_EVALUATED",
+  "results": [
+    {
+      "description": "Exact nested lineage ZIP 1 through ZIP 3",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-001",
+      "requirement": "MUST",
+      "scope": "ALL",
+      "status": "PASS"
+    },
+    {
+      "description": "Archive safe paths, no duplicates, no symlinks and CRC",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-002",
+      "requirement": "MUST",
+      "scope": "ALL",
+      "status": "PASS"
+    },
+    {
+      "description": "Internal manifests",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-003",
+      "requirement": "MUST",
+      "scope": "ALL",
+      "status": "PASS"
+    },
+    {
+      "description": "No embedded private keys or common live credentials",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-004",
+      "requirement": "MUST",
+      "scope": "ALL",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 1 source suite 90/90",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-005",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 1 authentication HTTP smoke",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-006",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "Authority Protocol V1.1 and canonical JSON",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-007",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "Authority actor/session/action binding and anti-replay",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-008",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "Authority frame boundary and peer identity reference",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-009",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "PostgreSQL ten-migration static verification",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-010",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "PostgreSQL role, RLS and security-view contract",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-011",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "Rust authority source structural verification",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-012",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 1 production runtime fail-closed",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-013",
+      "requirement": "MUST",
+      "scope": "ZIP1",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 static package verification",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-014",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 source regression 90/90",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-015",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 runtime V0.5.0 smoke and setup-token lifecycle",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-016",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 development readiness",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-017",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 production preflight fail-closed",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-018",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 deterministic migration plan",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-019",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 production attestation V3 and six tamper cases",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-020",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 production-readiness compiler",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-021",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 2 OCI hardening static verification",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-022",
+      "requirement": "MUST",
+      "scope": "ZIP2",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 complete capability suite 90/90",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-023",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 production evidence chain",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-024",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 Authority V1.1 and PostgreSQL V3 evidence binding",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-025",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 package, policy, readiness and sandbox hash binding",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-026",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 production authorization separation",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-027",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 execution ticket signature, binding and expiry",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-028",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 ticket anti-replay",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-029",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 broker execution-ticket gate",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-030",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "ZIP 3 external native execution remains denied",
+      "evaluation": "automated",
+      "evidence": "Covered by executable audit V0.5.0 and exact component test evidence.",
+      "id": "A-031",
+      "requirement": "MUST",
+      "scope": "ZIP3",
+      "status": "PASS"
+    },
+    {
+      "description": "Compiled canonical Rust authority and production peer credentials",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-032",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Executed PostgreSQL 18 and pgvector repositories",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-033",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Production sandbox adapter, seccomp and escape tests",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-034",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Executed Docker, Podman, Windows, macOS and Unraid matrix",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-035",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Production TUF, Sigstore and SLSA pipeline",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-036",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Complete Master V4 implementation",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-037",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    },
+    {
+      "description": "Independent penetration test",
+      "evaluation": "blocked",
+      "evidence": "Requires production, platform, database or independent execution evidence.",
+      "id": "A-038",
+      "requirement": "MUST",
+      "scope": "FINAL",
+      "status": "BLOCKED"
+    }
+  ],
+  "schemaVersion": "5.0",
+  "summary": {
+    "BLOCKED": 7,
+    "FAIL": 0,
+    "PASS": 31
+  }
+}

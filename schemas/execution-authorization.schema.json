@@ -1,0 +1,54 @@
+{
+  "$id": "https://schemas.noesar.local/v5/execution-authorization-v050.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "type": "string"
+    },
+    "attestation_verified": {
+      "type": "boolean"
+    },
+    "capability_id": {
+      "type": "string"
+    },
+    "capability_version": {
+      "type": "string"
+    },
+    "evidence_chain_verified": {
+      "type": "boolean"
+    },
+    "evidence_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "production_eligible": {
+      "type": "boolean"
+    },
+    "sandbox_profile": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "capability_id",
+    "capability_version",
+    "actor_id",
+    "session_id",
+    "plan_hash",
+    "sandbox_profile",
+    "production_eligible",
+    "attestation_verified",
+    "evidence_chain_verified"
+  ],
+  "type": "object"
+}

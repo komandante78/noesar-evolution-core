@@ -1,0 +1,83 @@
+PHASE=RUST_MANIFEST_REMEDIATION_V1
+STEP=4_LOCK_AND_VENDOR_UPDATE
+
+ATTEMPT 1 -- FULLY OFFLINE (per spec section 4, tried first):
+  `cargo generate-lockfile --offline` inside a --network=none container,
+  against the existing inherited vendor/ (112 crates, from
+  RUST_DEPENDENCY_VENDOR_V1). Result: FAILED cleanly (no files mutated):
+    error: failed to select a version for the requirement `getrandom = "^0.2"`
+    candidate versions found: 0.4.3, 0.3.4 (neither satisfies ^0.2)
+    required by rand_core v0.6.4 (via password-hash v0.5.0's new
+    "getrandom" feature, itself required by noesar-auth)
+  Conclusion: a genuinely new dependency (getrandom 0.2.x) is needed;
+  offline-only path is insufficient. Verified staging Cargo.lock/vendor
+  were left byte-identical to their pre-attempt state (clean failure, no
+  partial mutation) before proceeding.
+  Full log: BUILD_ARTIFACTS/.../logs/03_offline_lockfile_vendor_attempt.log
+
+ATTEMPT 2 -- NETWORK-ENABLED (scoped exactly per spec section 4):
+  First sub-attempt with network enabled still failed identically -- root
+  cause: the staging copy's .cargo/config.toml still had
+  `[source.crates-io] replace-with = "vendored-sources"` active, which
+  makes cargo treat the local vendor/ directory as authoritative
+  regardless of network availability, so even with network the resolver
+  never consulted the real crates.io index.
+  Fix: temporarily renamed .cargo/config.toml to .cargo/config.toml.disabled
+  for the duration of `cargo generate-lockfile` + `cargo vendor` only,
+  restored it immediately after vendoring completed. Network was used for
+  NOTHING else -- no test, no build, no other cargo/rustup subcommand
+  touched the network in this container run.
+  Commands run online (exact): `cargo generate-lockfile`, then
+  `rm -rf vendor && cargo vendor --locked --versioned-dirs vendor`.
+  Result: SUCCESS.
+    Locking 113 packages to latest compatible versions
+      Adding base64 v0.22.1 (available: v0.23.0)        [not upgraded -- semver-compatible patch selection only]
+      Adding generic-array v0.14.7 (available: v0.14.9)
+      Adding hmac v0.12.1 (available: v0.13.0)
+      Adding matchit v0.8.4 (available: v0.8.6)
+      Adding password-hash v0.5.0 (available: v0.6.1)
+      Adding rand v0.9.5 (available: v0.10.2)
+      Adding sha1 v0.10.7 (available: v0.11.0)
+      Adding sha2 v0.10.9 (available: v0.11.0)
+      Adding tower-http v0.6.11 (available: v0.7.0)
+    (the "available" notes above are cargo informing about newer
+    semver-incompatible or requirement-excluded versions -- NONE of these
+    were adopted; the locked versions are identical to before this phase
+    for every existing package. Confirmed by package-name-level diff:
+    exactly one net-new package, `getrandom`, no other package added,
+    removed, or version-changed.)
+  Vendor result: `cargo vendor --locked --versioned-dirs vendor` exit 0,
+  113 crate dirs (112 inherited + getrandom-0.2.17, 39 files), config
+  snippet printed matched exactly what was already in .cargo/config.toml
+  (relative "vendor" directory, no absolute paths):
+    [source.crates-io]
+    replace-with = "vendored-sources"
+    [source.vendored-sources]
+    directory = "vendor"
+  stderr contained only the same benign `Downloaded`/`Vendoring` progress
+  lines as the original RUST_DEPENDENCY_VENDOR_V1 vendor run -- no real
+  errors or warnings.
+  Full log: BUILD_ARTIFACTS/.../logs/04_online_lockfile_vendor.log
+
+POST-UPDATE OFFLINE RE-VERIFICATION (before proceeding to full test/build):
+  `cargo generate-lockfile --offline` + `cargo tree --locked --offline
+  --workspace` re-run in a fresh --network=none container against the
+  updated Cargo.lock/vendor -- both PASS (exit 0), confirming the new
+  vendor snapshot resolves fully offline, including all three getrandom
+  versions now present (0.4.3, 0.3.4, and the new 0.2.17) in their
+  respective independent dependency chains.
+  Full log: BUILD_ARTIFACTS/.../logs/05_offline_relock_verify.log
+
+RESULT:
+  CARGO_LOCK_STATUS=REGENERATED (113 packages, was 112; +getrandom only)
+  VENDOR_STATUS=REGENERATED (113 crate dirs, was 112; +getrandom-0.2.17)
+  VENDOR_COMPLETENESS=PASS (offline metadata+tree both succeed against it)
+  NETWORK_USED=true
+  NETWORK_SCOPE=cargo generate-lockfile + cargo vendor ONLY, in one
+    container run, with .cargo/config.toml's source-replacement
+    temporarily and explicitly disabled for exactly that window and
+    restored immediately after. No test or build command ever ran in a
+    network-enabled container.
+  IMAGE_PULL_EXECUTED=false (--pull=never throughout; local image ID
+    sha256:a0635962c16d5f26400703edd4317175cf9531f3285d632613f9da227f9c71d1
+    verified before and reused for every container in this phase)

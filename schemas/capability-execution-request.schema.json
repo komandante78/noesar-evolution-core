@@ -1,0 +1,99 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-execution-request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actorId": {
+      "type": "string"
+    },
+    "argv": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "limits": {
+      "additionalProperties": false,
+      "properties": {
+        "cpuSeconds": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "fileBytes": {
+          "minimum": 1024,
+          "type": "integer"
+        },
+        "memoryBytes": {
+          "minimum": 16777216,
+          "type": "integer"
+        },
+        "openFiles": {
+          "minimum": 8,
+          "type": "integer"
+        },
+        "processes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "stdoutBytes": {
+          "minimum": 1024,
+          "type": "integer"
+        },
+        "wallSeconds": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "cpuSeconds",
+        "wallSeconds",
+        "memoryBytes",
+        "fileBytes",
+        "stdoutBytes",
+        "openFiles",
+        "processes"
+      ],
+      "type": "object"
+    },
+    "permissions": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "planHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "profile": {
+      "enum": [
+        "declarative",
+        "process-restricted-development-fixture",
+        "os-isolated",
+        "blocked"
+      ]
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "capabilityId",
+    "version",
+    "actorId",
+    "sessionId",
+    "planHash",
+    "profile",
+    "argv",
+    "permissions",
+    "limits"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "defaultHostFilesystem": "deny",
+  "defaultNetwork": "deny",
+  "defaultSecrets": "deny",
+  "requiredBrokers": [
+    "PathAuthorizationBroker",
+    "NetworkEgressBroker",
+    "SecretBroker",
+    "ExecutionBroker",
+    "ResourceGovernor"
+  ],
+  "requiredControls": [
+    "ephemeral-workdir",
+    "read-only-package",
+    "bounded-output",
+    "deadline",
+    "cancellation",
+    "audit",
+    "post-execution-validation"
+  ],
+  "schemaVersion": "4.0"
+}

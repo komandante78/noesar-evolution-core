@@ -1,0 +1,174 @@
+{
+  "checks": [
+    {
+      "evidence": "6711f8b8220b6367d59fced20858d33cba7867a6063c371477d15774ef990532",
+      "id": "ALL-001",
+      "name": "ZIP 3 direct archive sidecar",
+      "status": "PASS"
+    },
+    {
+      "evidence": "manifestFiles=134",
+      "id": "ALL-002",
+      "name": "ZIP 3 safe archive and internal manifest",
+      "status": "PASS"
+    },
+    {
+      "evidence": "bdb3d417b5e1e95ee3d5137ccc142089993d5d535adbb4d972b825b1ea5dd4a0",
+      "id": "ALL-003",
+      "name": "Nested ZIP 2 exact hash",
+      "status": "PASS"
+    },
+    {
+      "evidence": "manifestFiles=257",
+      "id": "ALL-004",
+      "name": "ZIP 2 safe archive and internal manifest",
+      "status": "PASS"
+    },
+    {
+      "evidence": "4b1418fe127aa31e0f5eb15a0412b3a61bf29e27fa2ec5cd1d98c08424033643",
+      "id": "ALL-005",
+      "name": "Nested ZIP 1 exact hash",
+      "status": "PASS"
+    },
+    {
+      "evidence": "manifestFiles=159",
+      "id": "ALL-006",
+      "name": "ZIP 1 safe archive and internal manifest",
+      "status": "PASS"
+    },
+    {
+      "evidence": "none",
+      "id": "ALL-007",
+      "name": "No private keys or common live credentials",
+      "status": "PASS"
+    },
+    {
+      "evidence": "c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a",
+      "id": "ALL-008",
+      "name": "Master V4 exact hash",
+      "status": "PASS"
+    },
+    {
+      "evidence": "539f89a8dd35da210402a197c9256c7031fe1b707aa02938be8f3a3224156b95",
+      "id": "ALL-009",
+      "name": "Rollback V0.4.0 external reference",
+      "status": "PASS"
+    },
+    {
+      "evidence": "equires a compatible pool\n  ---\n  duration_ms: 0.974716\n  type: 'test'\n  ...\n# Subtest: health is production ready only with PostgreSQL and pgvector versions\nok 66 - health is production ready only with PostgreSQL and pgvector versions\n  ---\n  duration_ms: 0.515484\n  type: 'test'\n  ...\n# Subtest: health is not production ready without pgvector\nok 67 - health is not production ready without pgvector\n  ---\n  duration_ms: 0.209581\n  type: 'test'\n  ...\n# Subtest: withContext sets transaction-local actor workspace and project\nok 68 - withContext sets transaction-local actor workspace and project\n  ---\n  duration_ms: 0.792105\n  type: 'test'\n  ...\n# Subtest: withContext rolls back and releases on failure\nok 69 - withContext rolls back and releases on failure\n  ---\n  duration_ms: 0.336849\n  type: 'test'\n  ...\n# Subtest: withContext requires actor and workspace\nok 70 - withContext requires actor and workspace\n  ---\n  duration_ms: 0.144054\n  type: 'test'\n  ...\n# Subtest: appendAuditEvent uses parameterized SQL\nok 71 - appendAuditEvent uses parameterized SQL\n  ---\n  duration_ms: 0.459491\n  type: 'test'\n  ...\n# Subtest: document list validates limit\nok 72 - document list validates limit\n  ---\n  duration_ms: 0.168059\n  type: 'test'\n  ...\n# Subtest: document list returns scoped rows\nok 73 - document list returns scoped rows\n  ---\n  duration_ms: 0.392713\n  type: 'test'\n  ...\n# Subtest: memory insert rejects the wrong vector dimension\nok 74 - memory insert rejects the wrong vector dimension\n  ---\n  duration_ms: 0.413173\n  type: 'test'\n  ...\n# Subtest: memory insert rejects non-finite vector values\nok 75 - memory insert rejects non-finite vector values\n  ---\n  duration_ms: 0.239284\n  type: 'test'\n  ...\n# Subtest: memory insert serializes a valid 384-dimensional vector\nok 76 - memory insert serializes a valid 384-dimensional vector\n  ---\n  duration_ms: 0.308238\n  type: 'test'\n  ...\n# Subtest: health is not production ready when RLS evidence is false\nok 77 - health is not production ready when RLS evidence is false\n  ---\n  duration_ms: 0.134009\n  type: 'test'\n  ...\n# Subtest: health is not production ready when app role can bypass RLS\nok 78 - health is not production ready when app role can bypass RLS\n  ---\n  duration_ms: 0.111395\n  type: 'test'\n  ...\n# Subtest: complete evidence is production ready\nok 79 - complete evidence is production ready\n  ---\n  duration_ms: 1.880239\n  type: 'test'\n  ...\n# Subtest: missing Rust compilation blocks promotion\nok 80 - missing Rust compilation blocks promotion\n  ---\n  duration_ms: 0.221528\n  type: 'test'\n  ...\n# Subtest: PostgreSQL 17 blocks promotion\nok 81 - PostgreSQL 17 blocks promotion\n  ---\n  duration_ms: 0.105937\n  type: 'test'\n  ...\n# Subtest: missing backup restore evidence blocks promotion\nok 82 - missing backup restore evidence blocks promotion\n  ---\n  duration_ms: 0.0946\n  type: 'test'\n  ...\n# Subtest: missing sandbox adapter blocks promotion\nok 83 - missing sandbox adapter blocks promotion\n  ---\n  duration_ms: 0.139677\n  type: 'test'\n  ...\n# Subtest: incomplete platform matrix blocks promotion\nok 84 - incomplete platform matrix blocks promotion\n  ---\n  duration_ms: 0.147809\n  type: 'test'\n  ...\n# Subtest: incomplete update trust blocks promotion\nok 85 - incomplete update trust blocks promotion\n  ---\n  duration_ms: 0.097585\n  type: 'test'\n  ...\n# Subtest: non-independent penetration test blocks promotion\nok 86 - non-independent penetration test blocks promotion\n  ---\n  duration_ms: 0.082953\n  type: 'test'\n  ...\n# Subtest: local privacy banner is exact and verified\nok 87 - local privacy banner is exact and verified\n  ---\n  duration_ms: 0.561513\n  type: 'test'\n  ...\n# Subtest: external egress always requires approval\nok 88 - external egress always requires approval\n  ---\n  duration_ms: 0.146207\n  type: 'test'\n  ...\n# Subtest: workspace path is planned without implicit execution\nok 89 - workspace path is planned without implicit execution\n  ---\n  duration_ms: 0.785855\n  type: 'test'\n  ...\n# Subtest: symlink path becomes critical risk\nok 90 - symlink path becomes critical risk\n  ---\n  duration_ms: 0.42482\n  type: 'test'\n  ...\n1..90\n# tests 90\n# suites 0\n# pass 90\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1247.525706\nSOURCE_VERIFY=PASS\nAUTH_HTTP_SMOKE=PASS\nVERDICT=PASS\nMIGRATIONS=10\nSCHEMA_QUALIFICATION=PASS\nTRANSACTION_BOUNDARIES=PASS\nCHECKSUMS=PASS\nROLE_SEPARATION=PASS\nPUBLIC_SCHEMA_REVOCATION=PASS\nAPPLICATION_ROLE_NOBYPASSRLS=PASS\nAUDIT_IMMUTABILITY=PASS\nMIGRATION_LEDGER_IMMUTABILITY=PASS\nROW_LEVEL_SECURITY=PASS\nPGVECTOR_SCHEMA=PASS\nSECURITY_ACCEPTANCE_VIEW=PASS\nLEGACY_V030_QUARANTINE=PASS\nBASELINE_V040_PRESERVED=PASS\nVERDICT=PASS\nPOSTGRES_READINESS_QUERY=PASS\nPOSTGRES_ROLE_CONTRACT=PASS\nPOSTGRES_SECURITY_ACCEPTANCE_CONTRACT=PASS\nPOSTGRES_EXECUTION=NOT_EXECUTED\nVERDICT=PASS\nRUST_CANONICAL_JSON_SOURCE=PASS\nRUST_AUTHORITY_PROTOCOL_V11_SOURCE=PASS\nRUST_AUTHORITY_TRANSPORT_SOURCE=PASS\nRUST_DATA_PLANE_READINESS_SOURCE=PASS\nRUST_BUILD=NOT_EXECUTED\nRUST_TESTS=NOT_EXECUTED\n",
+      "id": "ZIP1-001",
+      "name": "ZIP 1 complete source suite",
+      "status": "PASS"
+    },
+    {
+      "evidence": "STATUS.md inspected",
+      "id": "ZIP1-002",
+      "name": "ZIP 1 status truthfulness",
+      "status": "PASS"
+    },
+    {
+      "evidence": "authority protocol and frame sources inspected",
+      "id": "ZIP1-003",
+      "name": "Authority V1.1, canonical JSON and frame contracts",
+      "status": "PASS"
+    },
+    {
+      "evidence": "VERDICT=PASS\nMIGRATIONS=10\nSCHEMA_QUALIFICATION=PASS\nTRANSACTION_BOUNDARIES=PASS\nCHECKSUMS=PASS\nROLE_SEPARATION=PASS\nPUBLIC_SCHEMA_REVOCATION=PASS\nAPPLICATION_ROLE_NOBYPASSRLS=PASS\nAUDIT_IMMUTABILITY=PASS\nMIGRATION_LEDGER_IMMUTABILITY=PASS\nROW_LEVEL_SECURITY=PASS\nPGVECTOR_SCHEMA=PASS\nSECURITY_ACCEPTANCE_VIEW=PASS\nLEGACY_V030_QUARANTINE=PASS\nBASELINE_V040_PRESERVED=PASS\nVERDICT=PASS\nPOSTGRES_READINESS_QUERY=PASS\nPOSTGRES_ROLE_CONTRACT=PASS\nPOSTGRES_SECURITY_ACCEPTANCE_CONTRACT=PASS\nPOSTGRES_EXECUTION=NOT_EXECUTED\n",
+      "id": "ZIP1-004",
+      "name": "PostgreSQL V0.5.0 migration and security contract",
+      "status": "PASS"
+    },
+    {
+      "evidence": "VERDICT=PASS\nRUST_CANONICAL_JSON_SOURCE=PASS\nRUST_AUTHORITY_PROTOCOL_V11_SOURCE=PASS\nRUST_AUTHORITY_TRANSPORT_SOURCE=PASS\nRUST_DATA_PLANE_READINESS_SOURCE=PASS\nRUST_BUILD=NOT_EXECUTED\nRUST_TESTS=NOT_EXECUTED\n",
+      "id": "ZIP1-005",
+      "name": "Rust authority V1.1 source structural verification",
+      "status": "PASS"
+    },
+    {
+      "evidence": "VERDICT=PASS\nJSON_XML_PARSE=PASS\nSHELL_SYNTAX=PASS\nARCHIVE_REFERENCES=PASS\nMIGRATION_BASELINE_V050=PASS\nOCI_HARDENING=PASS\nPRODUCTION_FAIL_CLOSED_STATIC=PASS\nATTESTATION_V3_BINDING_STATIC=PASS\n",
+      "id": "ZIP2-001",
+      "name": "ZIP 2 static package verifier",
+      "status": "PASS"
+    },
+    {
+      "evidence": "equires a compatible pool\n  ---\n  duration_ms: 0.882949\n  type: 'test'\n  ...\n# Subtest: health is production ready only with PostgreSQL and pgvector versions\nok 66 - health is production ready only with PostgreSQL and pgvector versions\n  ---\n  duration_ms: 0.361165\n  type: 'test'\n  ...\n# Subtest: health is not production ready without pgvector\nok 67 - health is not production ready without pgvector\n  ---\n  duration_ms: 0.170453\n  type: 'test'\n  ...\n# Subtest: withContext sets transaction-local actor workspace and project\nok 68 - withContext sets transaction-local actor workspace and project\n  ---\n  duration_ms: 0.790112\n  type: 'test'\n  ...\n# Subtest: withContext rolls back and releases on failure\nok 69 - withContext rolls back and releases on failure\n  ---\n  duration_ms: 0.336869\n  type: 'test'\n  ...\n# Subtest: withContext requires actor and workspace\nok 70 - withContext requires actor and workspace\n  ---\n  duration_ms: 0.141059\n  type: 'test'\n  ...\n# Subtest: appendAuditEvent uses parameterized SQL\nok 71 - appendAuditEvent uses parameterized SQL\n  ---\n  duration_ms: 0.459732\n  type: 'test'\n  ...\n# Subtest: document list validates limit\nok 72 - document list validates limit\n  ---\n  duration_ms: 0.164865\n  type: 'test'\n  ...\n# Subtest: document list returns scoped rows\nok 73 - document list returns scoped rows\n  ---\n  duration_ms: 0.395556\n  type: 'test'\n  ...\n# Subtest: memory insert rejects the wrong vector dimension\nok 74 - memory insert rejects the wrong vector dimension\n  ---\n  duration_ms: 0.412942\n  type: 'test'\n  ...\n# Subtest: memory insert rejects non-finite vector values\nok 75 - memory insert rejects non-finite vector values\n  ---\n  duration_ms: 0.205224\n  type: 'test'\n  ...\n# Subtest: memory insert serializes a valid 384-dimensional vector\nok 76 - memory insert serializes a valid 384-dimensional vector\n  ---\n  duration_ms: 0.253806\n  type: 'test'\n  ...\n# Subtest: health is not production ready when RLS evidence is false\nok 77 - health is not production ready when RLS evidence is false\n  ---\n  duration_ms: 0.130283\n  type: 'test'\n  ...\n# Subtest: health is not production ready when app role can bypass RLS\nok 78 - health is not production ready when app role can bypass RLS\n  ---\n  duration_ms: 0.879385\n  type: 'test'\n  ...\n# Subtest: complete evidence is production ready\nok 79 - complete evidence is production ready\n  ---\n  duration_ms: 1.853589\n  type: 'test'\n  ...\n# Subtest: missing Rust compilation blocks promotion\nok 80 - missing Rust compilation blocks promotion\n  ---\n  duration_ms: 0.261167\n  type: 'test'\n  ...\n# Subtest: PostgreSQL 17 blocks promotion\nok 81 - PostgreSQL 17 blocks promotion\n  ---\n  duration_ms: 0.107269\n  type: 'test'\n  ...\n# Subtest: missing backup restore evidence blocks promotion\nok 82 - missing backup restore evidence blocks promotion\n  ---\n  duration_ms: 0.09391\n  type: 'test'\n  ...\n# Subtest: missing sandbox adapter blocks promotion\nok 83 - missing sandbox adapter blocks promotion\n  ---\n  duration_ms: 0.10068\n  type: 'test'\n  ...\n# Subtest: incomplete platform matrix blocks promotion\nok 84 - incomplete platform matrix blocks promotion\n  ---\n  duration_ms: 0.104756\n  type: 'test'\n  ...\n# Subtest: incomplete update trust blocks promotion\nok 85 - incomplete update trust blocks promotion\n  ---\n  duration_ms: 0.09471\n  type: 'test'\n  ...\n# Subtest: non-independent penetration test blocks promotion\nok 86 - non-independent penetration test blocks promotion\n  ---\n  duration_ms: 0.088671\n  type: 'test'\n  ...\n# Subtest: local privacy banner is exact and verified\nok 87 - local privacy banner is exact and verified\n  ---\n  duration_ms: 0.561362\n  type: 'test'\n  ...\n# Subtest: external egress always requires approval\nok 88 - external egress always requires approval\n  ---\n  duration_ms: 0.141129\n  type: 'test'\n  ...\n# Subtest: workspace path is planned without implicit execution\nok 89 - workspace path is planned without implicit execution\n  ---\n  duration_ms: 0.845925\n  type: 'test'\n  ...\n# Subtest: symlink path becomes critical risk\nok 90 - symlink path becomes critical risk\n  ---\n  duration_ms: 0.410549\n  type: 'test'\n  ...\n1..90\n# tests 90\n# suites 0\n# pass 90\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1284.870789\nSOURCE_VERIFY=PASS\nAUTH_HTTP_SMOKE=PASS\nVERDICT=PASS\nMIGRATIONS=10\nSCHEMA_QUALIFICATION=PASS\nTRANSACTION_BOUNDARIES=PASS\nCHECKSUMS=PASS\nROLE_SEPARATION=PASS\nPUBLIC_SCHEMA_REVOCATION=PASS\nAPPLICATION_ROLE_NOBYPASSRLS=PASS\nAUDIT_IMMUTABILITY=PASS\nMIGRATION_LEDGER_IMMUTABILITY=PASS\nROW_LEVEL_SECURITY=PASS\nPGVECTOR_SCHEMA=PASS\nSECURITY_ACCEPTANCE_VIEW=PASS\nLEGACY_V030_QUARANTINE=PASS\nBASELINE_V040_PRESERVED=PASS\nVERDICT=PASS\nPOSTGRES_READINESS_QUERY=PASS\nPOSTGRES_ROLE_CONTRACT=PASS\nPOSTGRES_SECURITY_ACCEPTANCE_CONTRACT=PASS\nPOSTGRES_EXECUTION=NOT_EXECUTED\nVERDICT=PASS\nRUST_CANONICAL_JSON_SOURCE=PASS\nRUST_AUTHORITY_PROTOCOL_V11_SOURCE=PASS\nRUST_AUTHORITY_TRANSPORT_SOURCE=PASS\nRUST_DATA_PLANE_READINESS_SOURCE=PASS\nRUST_BUILD=NOT_EXECUTED\nRUST_TESTS=NOT_EXECUTED\n",
+      "id": "ZIP2-002",
+      "name": "ZIP 2 source regression suite",
+      "status": "PASS"
+    },
+    {
+      "evidence": "RUNTIME_V050_SMOKE=PASS\n",
+      "id": "ZIP2-003",
+      "name": "ZIP 2 runtime and setup-token lifecycle",
+      "status": "PASS"
+    },
+    {
+      "evidence": "MIGRATION_PLAN_V050_SMOKE=PASS\n",
+      "id": "ZIP2-004",
+      "name": "ZIP 2 deterministic migration plan",
+      "status": "PASS"
+    },
+    {
+      "evidence": "PRODUCTION_ATTESTATION_V3_GATE_SMOKE=PASS\nATTESTATION_TAMPER_CASES=6/6 PASS\n",
+      "id": "ZIP2-005",
+      "name": "ZIP 2 attestation V3 and tamper rejection",
+      "status": "PASS"
+    },
+    {
+      "evidence": "PRODUCTION_READINESS_COMPILER_SMOKE=PASS\n",
+      "id": "ZIP2-006",
+      "name": "ZIP 2 production-readiness compiler",
+      "status": "PASS"
+    },
+    {
+      "evidence": "file:///tmp/noesar-z4-v050-audit-tn3wwkxr/extract-NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/runtime/bin/runtime-preflight.mjs:57\n  throw new Error(\n        ^\n\nError: Fail-closed: V0.5.0 reference runtime supports only development.\n    at file:///tmp/noesar-z4-v050-audit-tn3wwkxr/extract-NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/NOESAR_EVOLUTION_02_RUNTIME_AND_DEPLOYMENT_V4_IMPLEMENTATION_V0_5_0/runtime/bin/runtime-preflight.mjs:57:9\n    at ModuleJob.run (node:internal/modules/esm/module_job:274:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.16.0\n",
+      "id": "ZIP2-007",
+      "name": "ZIP 2 production preflight fails closed",
+      "status": "PASS"
+    },
+    {
+      "evidence": "STATUS.md inspected",
+      "id": "ZIP2-008",
+      "name": "ZIP 2 runtime status truthfulness",
+      "status": "PASS"
+    },
+    {
+      "evidence": "VERDICT=PASS\nLINEAGE_HASHES=PASS\nSANDBOX_PROFILE_V050=PASS\nREFERENCE_TESTS=90/90 PASS\nSDK_V050_IMPORT=PASS\nPRODUCTION_EVIDENCE_CHAIN_STATIC=PASS\nEXECUTION_TICKET_V1_STATIC=PASS\nBROKER_EXECUTION_TICKET_GATE_STATIC=PASS\nARBITRARY_EXTERNAL_EXECUTION=DENIED\n",
+      "id": "ZIP3-001",
+      "name": "ZIP 3 distribution and complete test suite",
+      "status": "PASS"
+    },
+    {
+      "evidence": "----------------------------------------------------------------------\nRan 24 tests in 0.025s\n\nOK\n",
+      "id": "ZIP3-002",
+      "name": "ZIP 3 dedicated production-evidence suite",
+      "status": "PASS"
+    },
+    {
+      "evidence": "production_evidence.py and execution_ticket.py inspected",
+      "id": "ZIP3-003",
+      "name": "ZIP 3 production evidence and execution-ticket binding",
+      "status": "PASS"
+    },
+    {
+      "evidence": "execution authority and broker inspected",
+      "id": "ZIP3-004",
+      "name": "ZIP 3 authorization separation and broker ticket gate",
+      "status": "PASS"
+    },
+    {
+      "evidence": "STATUS.md inspected",
+      "id": "ZIP3-005",
+      "name": "ZIP 3 capability status truthfulness",
+      "status": "PASS"
+    }
+  ],
+  "createdUtc": "2026-07-23T06:51:26.510875+00:00",
+  "schemaVersion": "5.0",
+  "summary": {
+    "FAIL": 0,
+    "PASS": 27,
+    "TOTAL": 27
+  },
+  "verdict": "PASS"
+}

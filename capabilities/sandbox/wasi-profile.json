@@ -1,0 +1,20 @@
+{
+  "clocks": "bounded",
+  "environment": "allowlisted",
+  "filesystem": {
+    "hostPaths": "deny",
+    "preopenedDirectories": [],
+    "temporaryDirectory": "ephemeral"
+  },
+  "limits": {
+    "cpuMilliseconds": 30000,
+    "memoryMiB": 512,
+    "outputMiB": 16
+  },
+  "network": "deny",
+  "processSpawn": "deny",
+  "profile": "noesar-wasi-restricted-v1",
+  "random": "provided",
+  "secrets": "broker-only",
+  "status": "contract-only"
+}

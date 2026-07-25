@@ -1,0 +1,36 @@
+{
+  "$id": "https://schemas.noesar.local/v5/production-readiness.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "blockers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "checks": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "required": [
+        "rustAuthority",
+        "postgresDataPlane",
+        "productionSandbox",
+        "platformMatrix",
+        "updateTrust",
+        "penetrationTest"
+      ],
+      "type": "object"
+    },
+    "productionReady": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "productionReady",
+    "checks",
+    "blockers"
+  ],
+  "type": "object"
+}

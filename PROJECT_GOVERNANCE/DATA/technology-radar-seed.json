@@ -1,0 +1,89 @@
+{
+  "version": "4.0",
+  "updated_at": "2026-07-22T00:00:00Z",
+  "rings": [
+    "adopt",
+    "trial",
+    "assess",
+    "hold",
+    "deprecated",
+    "revoked"
+  ],
+  "items": [
+    {
+      "name": "Rust security authority",
+      "ring": "adopt",
+      "domain": "core"
+    },
+    {
+      "name": "PostgreSQL + pgvector",
+      "ring": "adopt",
+      "domain": "data"
+    },
+    {
+      "name": "Qdrant scale adapter",
+      "ring": "trial",
+      "domain": "data"
+    },
+    {
+      "name": "DuckDB analytics",
+      "ring": "adopt",
+      "domain": "analytics"
+    },
+    {
+      "name": "ONNX Runtime providers",
+      "ring": "adopt",
+      "domain": "runtime"
+    },
+    {
+      "name": "CUDA/TensorRT/NCCL",
+      "ring": "adopt",
+      "domain": "nvidia"
+    },
+    {
+      "name": "ROCm/HIP/MIGraphX",
+      "ring": "trial",
+      "domain": "amd"
+    },
+    {
+      "name": "Metal/Core ML bridge",
+      "ring": "trial",
+      "domain": "apple"
+    },
+    {
+      "name": "OpenVINO CPU/GPU/NPU",
+      "ring": "trial",
+      "domain": "intel"
+    },
+    {
+      "name": "DirectML",
+      "ring": "trial",
+      "domain": "windows"
+    },
+    {
+      "name": "Wasmtime/WASI",
+      "ring": "trial",
+      "domain": "sandbox"
+    },
+    {
+      "name": "MCP gateway",
+      "ring": "assess",
+      "domain": "agents"
+    },
+    {
+      "name": "A2A gateway",
+      "ring": "assess",
+      "domain": "agents"
+    },
+    {
+      "name": "CXL memory pooling",
+      "ring": "assess",
+      "domain": "hardware"
+    },
+    {
+      "name": "Confidential computing",
+      "ring": "assess",
+      "domain": "security"
+    }
+  ]
+}

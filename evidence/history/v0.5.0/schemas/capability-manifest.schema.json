@@ -1,0 +1,326 @@
+{
+  "$id": "https://schemas.noesar.local/v4/capability-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "compatibility": {
+      "additionalProperties": false,
+      "properties": {
+        "architectures": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "noesar": {
+          "type": "string"
+        },
+        "platforms": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "runtimeAdapters": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "entrypoint": {
+      "additionalProperties": false,
+      "properties": {
+        "protocolVersion": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "builtin",
+            "declarative",
+            "wasi",
+            "native-worker",
+            "python-worker",
+            "mcp",
+            "a2a"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "filesystem": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "enum": [
+              "read",
+              "write",
+              "create",
+              "delete"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "recursive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "mode"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$",
+      "type": "string"
+    },
+    "industry": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "reference",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "excludedUse": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "intendedUse": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "jurisdictions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "riskClass": {
+          "enum": [
+            "standard",
+            "elevated",
+            "high",
+            "safety-critical"
+          ]
+        }
+      },
+      "required": [
+        "riskClass",
+        "intendedUse",
+        "excludedUse",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "kind": {
+      "enum": [
+        "app",
+        "tool",
+        "skill",
+        "connector",
+        "agent",
+        "workflow",
+        "document-processor",
+        "runtime-adapter",
+        "hardware-adapter",
+        "policy-pack",
+        "compliance-pack",
+        "industry-module"
+      ]
+    },
+    "license": {
+      "additionalProperties": false,
+      "properties": {
+        "commercialUse": {
+          "type": "boolean"
+        },
+        "noticeFile": {
+          "type": "string"
+        },
+        "spdx": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "spdx"
+      ],
+      "type": "object"
+    },
+    "network": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "dataClasses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "purpose"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "payload": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "permissions": {
+      "items": {
+        "enum": [
+          "filesystem.read.project",
+          "filesystem.write.project",
+          "filesystem.host",
+          "network.external",
+          "secret.read",
+          "shell.execute",
+          "model.download",
+          "runtime.install",
+          "memory.read",
+          "memory.write",
+          "memory.promote",
+          "camera.read",
+          "microphone.read",
+          "physical.actuate"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "publisher": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "trustLevel": {
+          "enum": [
+            "noesar-official",
+            "certified-partner",
+            "customer-private",
+            "community"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "trustLevel"
+      ],
+      "type": "object"
+    },
+    "rollback": {
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "type": "string"
+        },
+        "supported": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "supported"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "4.0"
+    },
+    "version": {
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "kind",
+    "publisher",
+    "license",
+    "entrypoint",
+    "permissions",
+    "payload"
+  ],
+  "title": "NOESAR Capability Manifest V4",
+  "type": "object"
+}

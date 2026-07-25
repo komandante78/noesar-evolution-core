@@ -1,0 +1,48 @@
+source_package	package_role	canonical_destination	files	bytes
+01_SOURCE	authoritative product source (application + API)	rust/	5235	69773723
+01_SOURCE	authoritative product source (application + API)	docs/	67	1483942
+01_SOURCE	authoritative product source (application + API)	database/	50	67194
+01_SOURCE	authoritative product source (application + API)	services/	47	245811
+01_SOURCE	authoritative product source (application + API)	capabilities/	43	176356
+01_SOURCE	authoritative product source (application + API)	MASTER_REFERENCE/	42	1473429
+01_SOURCE	authoritative product source (application + API)	schemas/	41	44848
+01_SOURCE	authoritative product source (application + API)	evidence/	30	141257
+01_SOURCE	authoritative product source (application + API)	deployment/	20	16724
+01_SOURCE	authoritative product source (application + API)	operations/	17	21721
+01_SOURCE	authoritative product source (application + API)	tools/	12	57103
+01_SOURCE	authoritative product source (application + API)	(repository root file)	8	681176
+01_SOURCE	authoritative product source (application + API)	tests/	8	35540
+01_SOURCE	authoritative product source (application + API)	DOCUMENTATION/	7	7210
+01_SOURCE	authoritative product source (application + API)	apps/	7	81587
+01_SOURCE	authoritative product source (application + API)	packages/	6	12944
+01_SOURCE	authoritative product source (application + API)	provenance/	5	1529050
+01_SOURCE	authoritative product source (application + API)	hardware-probes/	3	1386
+01_SOURCE	authoritative product source (application + API)	oci/	3	4135
+01_SOURCE	authoritative product source (application + API)	EVIDENCE/	2	4750
+01_SOURCE	authoritative product source (application + API)	private-boundary/	2	1013
+01_SOURCE	authoritative product source (application + API)	scripts/	2	580
+01_SOURCE	authoritative product source (application + API)	updates/	2	1989
+01_SOURCE	authoritative product source (application + API)	LICENSES/	1	586
+01_SOURCE	authoritative product source (application + API)	conformance/	1	5595
+01_SOURCE	authoritative product source (application + API)	sbom/	1	848
+01_SOURCE	authoritative product source (application + API)	security/	1	989
+02_RUNTIME	deployment, installers, OCI, runtime packaging, provenance	DOCUMENTATION/	16	18385
+02_RUNTIME	deployment, installers, OCI, runtime packaging, provenance	provenance/	6	39352
+02_RUNTIME	deployment, installers, OCI, runtime packaging, provenance	INSTALLATION/	4	3649
+03_SDK	SDK, schemas, capabilities, plugins, agents, examples	MASTER_REFERENCE/	17	10774
+03_SDK	SDK, schemas, capabilities, plugins, agents, examples	ai-workspace/	15	105779
+03_SDK	SDK, schemas, capabilities, plugins, agents, examples	DOCUMENTATION/	8	3350
+03_SDK	SDK, schemas, capabilities, plugins, agents, examples	provenance/	5	49796
+04_SECURITY	security policies, acceptance tests, threat model, evidence	EVIDENCE/	20	62657
+04_SECURITY	security policies, acceptance tests, threat model, evidence	MASTER_REFERENCE/	16	9737
+04_SECURITY	security policies, acceptance tests, threat model, evidence	DOCUMENTATION/	10	4739
+04_SECURITY	security policies, acceptance tests, threat model, evidence	ai-workspace/	7	57794
+04_SECURITY	security policies, acceptance tests, threat model, evidence	tests/	7	26735
+04_SECURITY	security policies, acceptance tests, threat model, evidence	provenance/	5	36127
+05_OPERATIONS	operations, governance, release, funding documentation	PROJECT_GOVERNANCE/	117	1546932
+05_OPERATIONS	operations, governance, release, funding documentation	operations/	36	50681
+05_OPERATIONS	operations, governance, release, funding documentation	FUNDING/	17	12976
+05_OPERATIONS	operations, governance, release, funding documentation	DOCUMENTATION/	6	2442
+05_OPERATIONS	operations, governance, release, funding documentation	provenance/	5	53285
+05_OPERATIONS	operations, governance, release, funding documentation	RELEASE/	5	33431
+05_OPERATIONS	operations, governance, release, funding documentation	EVIDENCE/	4	13658
