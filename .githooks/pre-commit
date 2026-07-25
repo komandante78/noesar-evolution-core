@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Pre-commit gate. Enable once per clone:
+#     git config core.hooksPath .githooks
+#
+# Set NOESAR_SKIP_HOOK=1 to bypass, which should be rare enough to be conspicuous.
+set -euo pipefail
+[ "${NOESAR_SKIP_HOOK:-0}" = "1" ] && { echo "pre-commit: SKIPPED by NOESAR_SKIP_HOOK"; exit 0; }
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "pre-commit: refusing archives, binaries, databases and environment files"
+if git diff --cached --name-only --diff-filter=A | grep -Ei '\.(zip|tar|tar\.gz|tgz|7z|exe|dll|so|dylib|sqlite[0-9]*|db|pem|key)$|(^|/)\.env'; then
+  echo "pre-commit: FAILED - repository hygiene (CLAUDE10 rules 27, 33)" >&2
+  exit 1
+fi
+
+echo "pre-commit: unit suite"
+node --test services/reference-control-plane/test/*.test.mjs > /dev/null
+
+echo "pre-commit: migration manifest"
+node tools/generate-migration-manifest.mjs --check
+
+echo "pre-commit: eslint (no-undef)"
+if command -v docker > /dev/null 2>&1; then
+  tools/run-eslint.sh
+else
+  # Never silently pass. A gate that cannot run says so.
+  echo "pre-commit: BLOCKED - docker is unavailable, so eslint could not run" >&2
+  exit 1
+fi
+
+echo "pre-commit: OK"

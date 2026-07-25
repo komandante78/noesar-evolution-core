@@ -8,10 +8,10 @@
 // leftover from a previous run.
 //
 //   node tools/acceptance/a3-security.mjs <base> <workspace> <mockBase>
-import { readFileSync, writeFileSync, mkdtempSync, chmodSync, symlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { Client, Results, stream } from './client.mjs';
 import { totpCode } from '../../services/reference-control-plane/src/auth-crypto.mjs';
@@ -244,7 +244,7 @@ await r.check('SEC-21', 'a compression bomb is capped by the extracted-text limi
   writeFileSync(join(dir, 'bomb.txt'), Buffer.alloc(200 * 1024 * 1024, 0x41));
   try { execFileSync('sh', ['-c', `cd ${dir} && zip -q -9 ../bomb.zip bomb.txt`]); } catch { return { verdict: 'BLOCKED', evidence: 'zip unavailable' }; }
   const bytes = readFileSync(join(scratch, 'bomb.zip'));
-  const before = process.memoryUsage().rss;
+  const _before = process.memoryUsage().rss;
   const res = await upload('bomb.zip', 'application/zip', bytes);
   const alive = await c.get('/livez');
   return {
@@ -436,7 +436,9 @@ await r.check('SEC-32', 'content cannot widen the tool scope for a turn', async 
 
 await r.check('SEC-33', 'the model cannot invoke a tool at all in this build', async () => {
   await new Client(mock).get('/__reset');
-  const res = await stream(base, 'POST', '/api/v1/chat/stream', {
+  // Driven for its side effect: the assertion below reads the audit ledger, not this
+  // response. Named with a leading underscore so that stays deliberate.
+  const _res = await stream(base, 'POST', '/api/v1/chat/stream', {
     body: { conversationId: injConversationId, providerId: localProvider.json.id, mode: 'ACT', content: 'Run the tool.', model: 'inject' },
     cookies: cookieHeader(), csrf: c.csrf, maxMs: 20_000,
   });
@@ -492,7 +494,7 @@ await r.check('SEC-36', 'a secret sent through the system does not appear in log
 });
 
 await r.check('SEC-37', 'audit history cannot be modified or deleted through the API', async () => {
-  const before = await c.get('/api/v1/audit?limit=10');
+  const _before = await c.get('/api/v1/audit?limit=10');
   const attempts = [
     await c.del('/api/v1/audit'),
     await c.post('/api/v1/audit', { action: 'forged' }),

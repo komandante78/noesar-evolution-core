@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Static analysis configuration.
+//
+// This exists because of blocker B-006 and the two Phase 4 findings behind it. F4-005 and
+// F4-006 were the same defect twice: an object-literal shorthand naming an identifier that
+// is not in scope. `node --check` cannot see it — it is valid syntax — and one instance
+// meant streaming chat had never worked at all, in any release, because the ReferenceError
+// fired on the first delta of every stream.
+//
+// Phase 4 wrote a homegrown checker for that class twice and rejected it both times as
+// unsound (decision D-0034): a checker whose output has to be ignored is worse than no
+// checker, because it teaches people to skip it. The correct tool was named in the blocker
+// — a linter with no-undef — and this is it.
+//
+// `no-undef` is an error everywhere. Nothing in this configuration downgrades it, and no
+// file is exempt from it.
+
+const NODE_GLOBALS = {
+  process: 'readonly',
+  console: 'readonly',
+  Buffer: 'readonly',
+  URL: 'readonly',
+  URLSearchParams: 'readonly',
+  TextEncoder: 'readonly',
+  TextDecoder: 'readonly',
+  AbortController: 'readonly',
+  AbortSignal: 'readonly',
+  fetch: 'readonly',
+  Response: 'readonly',
+  Request: 'readonly',
+  Headers: 'readonly',
+  FormData: 'readonly',
+  Blob: 'readonly',
+  ReadableStream: 'readonly',
+  WritableStream: 'readonly',
+  TransformStream: 'readonly',
+  Event: 'readonly',
+  EventTarget: 'readonly',
+  MessageChannel: 'readonly',
+  structuredClone: 'readonly',
+  performance: 'readonly',
+  queueMicrotask: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+  setInterval: 'readonly',
+  clearInterval: 'readonly',
+  setImmediate: 'readonly',
+  clearImmediate: 'readonly',
+  crypto: 'readonly',
+  global: 'readonly',
+  globalThis: 'readonly',
+  __dirname: 'readonly',
+  __filename: 'readonly',
+  require: 'readonly',
+  module: 'writable',
+  exports: 'writable',
+};
+
+const BROWSER_GLOBALS = {
+  window: 'readonly',
+  document: 'readonly',
+  Node: 'readonly',
+  NodeFilter: 'readonly',
+  HTMLElement: 'readonly',
+  navigator: 'readonly',
+  location: 'readonly',
+  history: 'readonly',
+  localStorage: 'readonly',
+  sessionStorage: 'readonly',
+  fetch: 'readonly',
+  URL: 'readonly',
+  URLSearchParams: 'readonly',
+  FormData: 'readonly',
+  Blob: 'readonly',
+  File: 'readonly',
+  FileReader: 'readonly',
+  Headers: 'readonly',
+  Request: 'readonly',
+  Response: 'readonly',
+  AbortController: 'readonly',
+  EventSource: 'readonly',
+  WebSocket: 'readonly',
+  CustomEvent: 'readonly',
+  Event: 'readonly',
+  DOMParser: 'readonly',
+  MutationObserver: 'readonly',
+  IntersectionObserver: 'readonly',
+  ResizeObserver: 'readonly',
+  requestAnimationFrame: 'readonly',
+  cancelAnimationFrame: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+  setInterval: 'readonly',
+  clearInterval: 'readonly',
+  queueMicrotask: 'readonly',
+  structuredClone: 'readonly',
+  crypto: 'readonly',
+  console: 'readonly',
+  alert: 'readonly',
+  confirm: 'readonly',
+  prompt: 'readonly',
+  performance: 'readonly',
+  getComputedStyle: 'readonly',
+  matchMedia: 'readonly',
+  Image: 'readonly',
+  DataTransfer: 'readonly',
+  MediaRecorder: 'readonly',
+  MediaStream: 'readonly',
+  Audio: 'readonly',
+  TextDecoder: 'readonly',
+  TextEncoder: 'readonly',
+  atob: 'readonly',
+  btoa: 'readonly',
+};
+
+// Rules beyond no-undef, chosen for one property: each one catches a defect that runs
+// without complaint. Style rules are deliberately absent — this is not a formatter, and a
+// linter that reports whitespace is a linter whose real findings get scrolled past.
+const CORRECTNESS_RULES = {
+  'no-undef': 'error',
+  'no-unused-vars': ['error', {
+    args: 'none',
+    caughtErrors: 'none',
+    varsIgnorePattern: '^_',
+    ignoreRestSiblings: true,
+  }],
+  'no-dupe-keys': 'error',
+  'no-dupe-args': 'error',
+  'no-dupe-class-members': 'error',
+  'no-dupe-else-if': 'error',
+  'no-duplicate-case': 'error',
+  'no-unreachable': 'error',
+  'no-fallthrough': 'error',
+  'no-self-assign': 'error',
+  'no-self-compare': 'error',
+  'no-constant-condition': ['error', { checkLoops: false }],
+  'no-const-assign': 'error',
+  'no-class-assign': 'error',
+  'no-func-assign': 'error',
+  'no-import-assign': 'error',
+  'no-obj-calls': 'error',
+  'no-sparse-arrays': 'error',
+  'no-unsafe-negation': 'error',
+  'no-unsafe-optional-chaining': 'error',
+  'use-isnan': 'error',
+  'valid-typeof': 'error',
+  'no-async-promise-executor': 'error',
+  'require-atomic-updates': 'off',
+  // 'except-parens' (the default), not 'always': the SSE framing loop uses the standard
+  // `while ((split = buffer.indexOf('\n\n')) >= 0)` idiom, where the assignment is
+  // parenthesised and the comparison explicit. 'always' flags that correct code, and a
+  // rule that flags correct code is a rule people learn to ignore.
+  'no-cond-assign': ['error', 'except-parens'],
+  'no-empty': ['error', { allowEmptyCatch: true }],
+  'no-prototype-builtins': 'error',
+  'no-shadow-restricted-names': 'error',
+  'no-with': 'error',
+  'no-eval': 'error',
+  'no-implied-eval': 'error',
+  'no-new-func': 'error',
+  'no-return-assign': ['error', 'always'],
+  'no-throw-literal': 'error',
+  'no-unused-private-class-members': 'error',
+  'no-useless-backreference': 'error',
+  eqeqeq: ['error', 'smart'],
+};
+
+export default [
+  {
+    ignores: [
+      'rust/vendor/**',
+      'node_modules/**',
+      '**/node_modules/**',
+      'BACKUPS/**',
+      'provenance/**',
+      'MASTER_REFERENCE/**',
+      'private-boundary/**',
+      // Third-party or generated JavaScript that this repository does not author. Named
+      // individually rather than by a broad glob so that adding one is a visible diff.
+      'apps/webui-react/dist/**',
+    ],
+  },
+  {
+    // Node runtime, tooling, tests, workers and Node-based installers.
+    files: ['**/*.mjs', '**/*.js', '**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: NODE_GLOBALS,
+    },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: CORRECTNESS_RULES,
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs' },
+  },
+  {
+    // The static WebUI runs in a browser, so it has a different global set. It gets the
+    // same rules — no-undef included — because that is precisely where an undeclared
+    // identifier is hardest to notice: a broken handler simply does nothing.
+    files: ['apps/webui-static/**/*.js', 'apps/webui-static/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      // ES modules: app.js imports from i18n.js, which exports. Declaring these as
+      // scripts made ESLint report a parse error on the first line of each.
+      sourceType: 'module',
+      globals: BROWSER_GLOBALS,
+    },
+    rules: CORRECTNESS_RULES,
+  },
+  {
+    files: ['apps/webui-react/**/*.{js,jsx,mjs}'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: { ...BROWSER_GLOBALS, ...NODE_GLOBALS },
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: CORRECTNESS_RULES,
+  },
+];

@@ -128,7 +128,6 @@ test('when every provider fails the error names each one', async () => {
     f.gateway.update(deadA.id, { enabled: true });
     f.gateway.update(deadB.id, { enabled: true });
     await assert.rejects(async () => {
-      // eslint-disable-next-line no-empty
       for await (const _ of f.gateway.streamWithFallback([deadA.id, deadB.id], { messages })) { /* never reached */ }
     }, (error) => {
       // The failure summary interpolates each failed provider id; before the fix this

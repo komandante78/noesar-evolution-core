@@ -300,7 +300,9 @@ export class UpdateManager {
   stage(bundleName, { actorId = 'owner' } = {}) {
     const source = join(this.root, 'inbox', String(bundleName));
     if (!existsSync(source) || !statSync(source).isDirectory()) throw fail('Unknown update bundle.', 'UNKNOWN_BUNDLE', 404);
-    const result = this.verifyBundle(source, { channel: this.state.channel });
+    // Verified for its throw, not its value: the authoritative check is the
+    // re-verification of what actually landed in staging, below.
+    this.verifyBundle(source, { channel: this.state.channel });
     const staging = join(this.root, 'staging');
     rmSync(staging, { recursive: true, force: true });
     mkdirSync(staging, { recursive: true, mode: 0o700 });
