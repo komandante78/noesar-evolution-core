@@ -8,7 +8,6 @@
 //
 //   node tools/acceptance/multi-user-isolation.mjs http://127.0.0.1:8101 <setup-token>
 
-import crypto from 'node:crypto';
 import { totpCode } from '../../services/reference-control-plane/src/auth-crypto.mjs';
 
 const base = process.argv[2] ?? 'http://127.0.0.1:8101';

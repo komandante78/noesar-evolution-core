@@ -1,0 +1,121 @@
+# SBOM report
+
+**Status:** `SBOM_CYCLONEDX=PASS` · `SBOM_SPDX=PASS`
+**Supersedes:** `SBOM_STATUS.md`, whose verdict was `SBOM_CONFORMANCE=PARTIAL`.
+
+---
+
+## Provenance
+
+| Field | Value |
+|---|---|
+| Tool | `syft` |
+| Version | **1.49.0** |
+| Container | `anchore/syft@sha256:13b53ebabe3d215268c90cf8fb9b875f0183908245f376fd4b3a2cb69d21d484` |
+| Target image | `noesar-evolution:phase4-complete` |
+| Target image id | `sha256:ec2ac8bd45510c782041ae3970d860faa6f5a5bfe48b0a3f8d4822077c5caa05` |
+| Base image | `node:22-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3` |
+| Generated (UTC) | 2026-07-25T14:11:45Z |
+| Image command | `syft scan docker-archive:image.tar -o <format>` |
+| Source command | `syft scan dir:/src -o <format>` |
+| Generator | `tools/generate-sbom.sh` |
+
+Two decisions worth recording:
+
+* **syft runs from a container pinned by digest, never installed on this host.** CLAUDE10
+  rule 45 forbids installing tooling, and "whatever `:latest` is today" would make the
+  output unreproducible.
+* **The image is exported with `docker save` and scanned as a tar archive**, not through
+  the Docker daemon. The SBOM container therefore never receives the Docker socket — the
+  socket this product's own threat model refuses to mount anywhere.
+
+The repository is mounted read-only at `/src`, so recorded paths are repository-relative
+and carry no host path.
+
+## Documents
+
+| Document | Format | Bytes | sha256 |
+|---|---|---|---|
+| `image.cyclonedx-json.json` | CycloneDX 1.7 | 3 237 561 | `842f1b14b069becda1bfed57e1afd4f5e2d65406ec39052220755848d620deb4` |
+| `image.spdx-json.json` | SPDX 2.3 | 7 178 783 | `5b2a760510df74cb88eff2099cb7d418b31fbda9efdf3be9a9253f03e6f125a1` |
+| `source.cyclonedx-json.json` | CycloneDX 1.7 | 4 308 223 | `431891b092b4ed0d2f7652877927406e816e0272f4178db79a8cdae79b9567aa` |
+| `source.spdx-json.json` | SPDX 2.3 | 7 386 983 | `aa28cf443cca284631288a83958ad9bd658a566c61feebf568504ab02822fdd2` |
+
+Location: `$ARTIFACT_ROOT/sbom/`, with `SHA256SUMS.txt` and `PROVENANCE.txt` alongside.
+
+## Coverage against the requirement
+
+| Required | Covered |
+|---|---|
+| OCI image | yes — image id, layers, labels, base digest |
+| OS packages | **333** Debian packages from the image's own dpkg database |
+| Node dependencies | **199** npm components (see the note below) |
+| Rust workspace | first-party crates, in the source scan |
+| Vendored crates | **3 586** cargo entries, 1 394 distinct name@version, 603 distinct names |
+| First-party files | **7 942** files in the image with hashes; 129 in the source scan |
+| Declared licences | 311 distinct in the image CycloneDX; 165 declared in the image SPDX |
+| Image hash | recorded above |
+| Base image digest | recorded above |
+
+Totals: image CycloneDX **8 476** components (532 libraries, 1 application, 1 operating
+system, 7 942 files); image SPDX **534** packages, 7 942 files, **10 207** relationships.
+Source SPDX **3 773** packages with **14 334** relationships.
+
+## A correction to a Phase 4 statement
+
+Phase 4's inventory recorded "Node: **0** third-party dependencies in the image". syft
+finds 199 npm components in the same image. Both numbers are right about different things,
+and the distinction matters enough to state:
+
+```text
+197  /usr/local/lib/node_modules   npm's own bundled dependency tree, from the base image
+  1  /opt/noesar/package.json      the product manifest — declares no dependencies
+  1  /opt/yarn-v1.22.22/package.json   yarn, from the base image
+```
+
+**The product** has no third-party npm dependency; that claim stands. **The image as
+shipped** carries npm and yarn with 197 bundled packages, and those are real components in
+the delivered artefact even though nothing the product imports touches them. A vulnerability
+matcher run against this image will report on them, correctly.
+
+This is not a defect, but it is a discrepancy between an existing document and reality, so
+it is recorded as informational finding **F4C-008**.
+
+## The two Rust numbers
+
+`vendor_file_count` elsewhere in this repository says **113 vendored crates**. syft reports
+3 586 cargo entries. Neither is wrong:
+
+* **113** is the number of crate directories under `rust/vendor/` — the vendored snapshot.
+* **3 586** is every cargo component syft resolves across all `Cargo.toml` files in the
+  tree, including dependency declarations and multiple versions of the same crate; 1 394
+  distinct `name@version`, 603 distinct names.
+
+Stated because the two figures look contradictory and a reader is entitled to know which
+question each answers.
+
+## Gaps that remain
+
+* **The source scan reports 0 declared licences.** syft reads licences from package
+  metadata; `Cargo.toml` licence fields in the vendored tree are not being surfaced by the
+  directory scan the way they are for image packages. The image scan's 311/165 figures are
+  the usable ones. Licence conclusions for the Rust surface remain a Phase 5 task, and the
+  Phase 1 finding still stands: **no first-party component declares a licence** — 12 Rust
+  crates and 2 Node packages, no root `LICENSE`, 86 sources without an SPDX header.
+* **No signature over any SBOM.** They are checksummed, not signed.
+* **Not reproducible bit-for-bit.** The image build is not reproducible, so a second SBOM
+  from a second build will differ. The documents record what *this* image contains.
+* **No VEX document**, so every reported component is "present", with no statement about
+  exploitability.
+* **`apps/webui-react` is declared but never built or shipped** — six dependencies, no
+  lockfile, never installed. It appears in the source SBOM and not in the image SBOM, which
+  is correct and is the reason both scans exist.
+
+## Reproducing
+
+```bash
+tools/generate-sbom.sh noesar-evolution:phase4-complete
+```
+
+Re-running against the same image with the same pinned syft digest yields the same
+component set; the documents carry a generation timestamp, so their checksums differ.

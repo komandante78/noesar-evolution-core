@@ -663,3 +663,127 @@ because the regeneration sorted paths with `localeCompare` rather than preservin
 delivered order. Verified lossless: **0 entries removed, 15 added, 0 duplicates**, and
 `sha256sum -c` passes 5645/5645. Recorded because a reviewer seeing that diff should not have
 to wonder.
+
+---
+
+# Phase 4 completion gate — installation
+
+## Image
+
+```text
+tag        noesar-evolution:phase4-complete
+id         sha256:ec2ac8bd45510c782041ae3970d860faa6f5a5bfe48b0a3f8d4822077c5caa05
+dockerfile oci/Dockerfile.phase4-complete
+lineage    node:22-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3
+             -> noesar-evolution:phase3   (preserved, not modified)
+             -> noesar-evolution:phase4   (preserved, not modified)
+             -> noesar-evolution:phase4-complete
+size       824 MB  (730 MB at :phase4; the delta is PostgreSQL 18 and pgvector)
+network    required for this build, unlike the Phase 4 overlay — the PostgreSQL 18
+           packages are not in the Debian bookworm archive
+```
+
+Packages added, each pinned to an exact version:
+
+```text
+postgresql-18            18.4-1.pgdg12+1
+postgresql-client-18     18.4-1.pgdg12+1
+postgresql-18-pgvector   0.8.5-1.pgdg12+1
+repository               https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main
+signing key              oci/keys/apt.postgresql.org.asc (public)
+                         sha256 0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76
+```
+
+`create_main_cluster = false` is written before the packages install, so
+postgresql-common does not provision a cluster under `/var/lib/postgresql`. This product's
+cluster lives under the persistent workspace and is created by the runtime supervisor; a
+package-created one would be dead weight inside a read-only root filesystem.
+
+## Installation
+
+```text
+timestamp        20260725T142301Z
+container        noesar-evolution
+previous         renamed to noesar-evolution.rollback-phase4-20260725T142301Z (Exited 0, image :phase4)
+also preserved   noesar-evolution.rollback-phase3-20260725T121648Z (Exited 0, image :phase3)
+port             127.0.0.1:8100 -> 8088          loopback only
+network          noesar-evolution-net            unchanged
+mount            /mnt/cachec/NOESAR_EVOLUTION_RUNTIME -> /workspace
+restart policy   unless-stopped
+```
+
+Hardening, unchanged from Phase 3 and re-verified:
+
+```text
+--read-only            --cap-drop ALL          --security-opt no-new-privileges:true
+--user 10001:10001     --pids-limit 512        --memory 8g   --cpus 4
+--shm-size 64m         tmpfs /run and /tmp with nosuid,nodev,noexec
+no Docker socket       no --gpus               no privileged flags
+```
+
+## Backups taken before mutation
+
+```text
+$ARTIFACT_ROOT/backups/phase4_completion_20260725T131312Z/     6400/6400 files verified
+    NOESAR_EVOLUTION (full repository, including .git)
+    NOESAR_EVOLUTION_RUNTIME
+$ARTIFACT_ROOT/backups/runtime_pre_install_20260725T142301Z/   7/7 files verified
+    NOESAR_EVOLUTION_RUNTIME
+BACKUPS/phase4c_migrations_20260725T131312Z/    migration 0012 and MIGRATIONS.json
+BACKUPS/phase4c_lint_fixes_20260725T131312Z/    every file touched by a lint or redaction fix
+BACKUPS/phase4c_docs_20260725T131312Z/          every document rewritten in this gate
+```
+
+## Post-install verification
+
+| Check | Result |
+|---|---|
+| `/livez` | 200 |
+| `/readyz` | `ready: true`, no reasons |
+| `/healthz` | healthy, 17 components, 0 degraded |
+| LAN probe to `192.168.178.100:8100` | refused |
+| PostgreSQL | 18.4, pgvector 0.8.5, 16 migrations, 15 RLS tables, `production_ready=true` |
+| Time to ready | ~1 s from process start |
+| `tools/acceptance/post-install-checks.mjs` | **15/15 PASS** |
+| Controlled restart | ready again in 2 s, `RestartCount=0`, clean PostgreSQL shutdown (`clean: true`) |
+| Persistence across restart | 16 migrations and 4 backup files intact |
+| Rollback | both phase 3 and phase 4 containers preserved, `Exited (0)` |
+| Owner account | **not created** — `initialized: false`, by design |
+
+The post-install checks ran from a **sidecar** container sharing the same workspace mount,
+not by `docker exec` into the installed container: `docker cp` cannot write into a
+read-only root filesystem, and a sidecar reaches the same cluster over the same unix socket
+without touching the running product.
+
+## Host impact
+
+`docker ps -a`, `docker network ls` and `docker volume ls` were captured before any
+mutation and diffed afterwards.
+
+```text
+containers   38 -> 39   (the new phase-4 rollback container)
+             the noesar-evolution container's image changed :phase4 -> :phase4-complete
+networks     identical
+volumes      identical
+other 37 containers   untouched, still Exited
+```
+
+No pre-existing container, image, network, volume or share was modified or removed.
+`noesar-debuglab` was **not** started in this gate.
+
+## MANIFEST.sha256
+
+```text
+entries before        5645
+hashes corrected        14   (the files this gate modified)
+entries appended        32   (the files this gate created)
+entries after         5677
+verification        5677/5677 OK
+```
+
+Two files this gate created are **not** in the manifest: `.githooks/pre-commit` and
+`eslint.config.mjs`. Both sit at repository roots the manifest has never covered, and
+widening what an integrity manifest describes is a change of meaning, not a bookkeeping
+detail. A first attempt appended every tracked file under an already-covered root, which
+would have silently added ~102 pre-existing files the manifest deliberately did not list;
+that was reverted and the scope restricted to this gate's own additions.

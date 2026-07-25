@@ -9,85 +9,116 @@ file and `PROJECT_STATE.json` alone.**
 
 | Field | Value |
 |---|---|
-| Phase just completed | **4 — end-to-end acceptance, remediation, security and rollback** |
-| Phase status | `COMPLETED` |
+| Phase just completed | **4 — plus the Phase 4 completion gate** |
+| Phase status | `COMPLETED_WITH_COMPLETION_GATE` |
 | **Next phase** | **5 — documentation, licensing audit, release and final packaging** |
-| `NEXT_PHASE` | `5_READY` |
+| `NEXT_PHASE` | `5_READY` — **but see the constraint below** |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
 | Updated (UTC) | 2026-07-25 |
 
-**The product is installed, running and accepted.** Container `noesar-evolution`, image
-`noesar-evolution:phase4`, on `127.0.0.1:8100`, healthy — and **still un-bootstrapped by
-design**.
+**The product is installed, running, and now has a real data plane.** Container
+`noesar-evolution`, image `noesar-evolution:phase4-complete`, on `127.0.0.1:8100`, healthy
+— with **PostgreSQL 18.4 and pgvector 0.8.5 running inside it**, and still
+**un-bootstrapped by design**.
+
+### The constraint on Phase 5
+
+`OWNER_BOOTSTRAP=AWAITING_OWNER_INTERACTION`. Phase 5 may begin **only for preliminary
+documentation**. It may **not** declare the installation complete and may **not** package
+the release until the Owner confirms: account created, TOTP active, one-time token
+invalidated, recovery codes stored privately, login and step-up authentication working.
 
 ---
 
-## What Phase 4 did
-
-Ran 136 acceptance checks against the live system across five suites, found 13 defects, fixed
-every high and medium one with regression tests, rebuilt and reinstalled the image twice, and
-closed the `[UNVERIFIED]` label that had stood on ATOM independence since Phase 1.
+## What the completion gate did
 
 ```text
-acceptance      136 checks: 132 PASS, 3 PARTIAL, 1 BLOCKED, 0 FAIL
-unit tests      351/351   (317 delivered baseline + 34 added)
-installers      48/48
-findings        13 raised: 3 high, 3 medium, 3 low, 3 informational, 1 withdrawn
-                9 closed (every high and medium), 4 open (all low/informational)
+POSTGRESQL_18=PASS             MULTI_USER_RUNTIME=PASS       NO_UNDEF_LINTER=PASS
+PGVECTOR=PASS                  ROW_LEVEL_SECURITY=PASS       TEST_SUITE_STRESS=PASS
+DATABASE_BACKUP_RESTORE=PASS   PROJECT_USER_ISOLATION=PASS   SBOM_CYCLONEDX=PASS
+NO_CRITICAL_FINDINGS=true      NO_HIGH_FINDINGS=true         SBOM_SPDX=PASS
+
+GPU_RUNTIME_PATH=PASS          GPU_INFERENCE_TEST=BLOCKED_NO_LOCAL_MODEL
+OWNER_BOOTSTRAP=AWAITING_OWNER_INTERACTION
 ```
 
-### The three that mattered
+```text
+unit tests            444/444    (352 at the end of Phase 4)
+postgres integration   47/47     in-container, from an empty data directory
+post-install checks    15/15     against the installed instance
+multi-user live        29/29     four accounts, three roles, real password+TOTP logins
+eslint                136 files  0 errors, 0 warnings, 0 no-undef
+flake stress          270 runs   0 failures
+findings              14 raised: 5 high, 5 medium, 2 low, 2 informational — 13 closed
+```
 
-1. **One malformed request killed the whole service** (F4-004). `POST /api/v1/chat/stream`
-   was called without `await`, so a rejection became an unhandled rejection and Node exited.
-   A missing `content` field, from any session with `provider.use`, was enough. It killed
-   three harness servers before it was understood.
-2. **Streaming chat had never worked** (F4-006). `streamWithFallback()` referenced an
-   identifier that does not exist in its scope, throwing on the first delta of every stream.
-   Every streaming reply had always been two SSE frames — `run`, then `error`. It is nine now.
-3. **A TOTP code could be replayed** (F4-002) for up to 90 seconds, so a code seen once
-   authenticated a second, independent login. Reproduced live, then fixed with per-user
-   single-use enforcement across all three flows, persisted across restarts.
+### The three that mattered most
+
+1. **The delivered migration set could never have been applied.** Migration 0012 reshapes a
+   view with `CREATE OR REPLACE VIEW`, which can only *append* columns; it fails
+   deterministically on every cluster. Proof that the SQL had never run — which is what
+   `B005=OPEN` had been saying since Phase 3. (`F4C-001`)
+
+2. **The log redactor was corrupting 6.75% of every UUID it saw.** The phone-number rule
+   matches inside a canonical UUID and rewrote the middle of it, so roughly one log record
+   in fifteen carried a correlation id, incident id or session id that matched nothing —
+   defeating the correlation-id feature Phase 3 built. **This was the "unreproduced flake"
+   Phase 4 recorded and attributed to timing races in two unrelated files.** It was neither
+   a timing race nor a test problem. (`F4C-009`)
+
+3. **The Phase 4 remediation reintroduced the defect class it was fixing.** Commit
+   `04878c4` renamed the call sites of `fetchOnceRetryingStaleSocket` in two unshipped
+   copies of `provider-gateway.mjs` without adding the definition. ESLint found it on its
+   first run — the exact class B-006 predicted, found by the exact tool B-006 asked for.
+   (`F4C-006`)
+
+**Five of the fourteen findings were defects in work done during this gate**, and four of
+the five high findings were found by *executing* the product rather than reading it.
 
 Full register: `docs/OPEN_FINDINGS.tsv`. Narrative and dismissals:
-`docs/REMEDIATION_LOG.md`. Everything else: `docs/PHASE_4_ACCEPTANCE_REPORT.md`.
+`docs/REMEDIATION_LOG.md`. Everything else: `docs/PHASE_4_COMPLETION_REPORT.md`.
 
 ---
 
-## What was verified, and how
+## What was verified, and where
 
 | Claim | Evidence |
 |---|---|
-| Auth, MFA, session, step-up | **27/27** — includes replayed-code rejection, single-use setup token, lockout, stolen-cookie-after-logout |
-| Chat, projects, memory, RAG, files, artifacts, providers | **35/35** — fork/merge/compare/undo, three memory scopes, canary-verified project isolation, 5 artifact types with versioning |
-| Web/API security, SSRF, files, injection, secrets, audit | **41 checks: 38 PASS, 2 PARTIAL, 1 BLOCKED, 0 FAIL** (in-container) |
-| Container sandbox | **20/20** — uid 10001, `CapEff: 0` , `Seccomp: 2` builtin, read-only rootfs, `noexec` tmpfs, no Docker socket, `pids.max=512` proven by a refused fork storm |
-| Restart, recovery, crash loop, safe mode, updates | **13 checks** — safe mode induced live, `/livez` 200 with `/readyz` 503, no data loss across five restarts |
-| Prompt injection | **0 bypasses**, 10 committed regression tests across text, HTML, CSV, JSON and PDF |
-| Backup and restore | 25/25 files restore byte-identical from a checksummed archive |
-| ATOM absence | zero references in everything the image ships; 351/351 tests pass with nothing proprietary present |
-| Test determinism | **352/352, with one observed unreproduced flake** in 1 of 14 runs — see `docs/PHASE_4_ACCEPTANCE_REPORT.md` §8b. Fails closed, so it cannot mask a defect |
-| Nothing else touched | `docker ps -a` / `network ls` / `volume ls` diffed against pre-phase inventories; only the phase-4 container and its rollback differ |
+| PostgreSQL 18 + pgvector, one container, supervised in-process | 47/47 in-container checks from an empty data directory, under full hardening |
+| No TCP listener, scram-sha-256 only, credentials 0600 and never in the environment | `DB-09`…`DB-13`, `PI-09`, `PI-10`, `PI-13`, `PI-14` |
+| Migrations, ledger, immutability | 16/16 applied; the application role cannot write the ledger |
+| Vector insert / search / delete, HNSW | `DB-14`…`DB-18`; on the installed instance `PI-02`, `PI-03` |
+| Per-user isolation **inside one workspace and project** | `DB-34`…`DB-40`: a private document invisible to a co-member, a shared one visible, a readable row not writable, vector search never returning another user's private entry |
+| Six roles, invitation, MFA, disable, revoke, export, erase, service accounts | 29 unit + 29 live checks across four separately authenticated accounts |
+| Backup and restore | checksummed dump; a tampered archive refused; restore keeps ledger and pgvector |
+| Failure recovery | SIGKILL of the postmaster → restarted, no committed data lost |
+| Clean shutdown | `clean: true`, `postmaster.pid` removed, verified across a real `docker restart` |
+| GPU runtime path | 20 unit tests + 3 live checks; hardware observed, **not allocated** |
+| Static analysis | 136 files clean; detector self-tested against 3 canaries |
+| SBOM | CycloneDX 1.7 + SPDX 2.3 for image and source, syft pinned by digest |
+| Nothing else on this host touched | `network ls` and `volume ls` **identical**; only the `noesar-evolution` image changed, plus two new stopped containers this gate created |
 
 ---
 
 ## What was NOT done — do not assume otherwise
 
-- **No Owner account exists on the real installation.** This was the Owner's own choice
-  (D-0031). See the next section.
-- **PostgreSQL/pgvector is not installed** (`B005=OPEN`). The runtime *fails closed* rather
-  than substituting SQLite. Blocks production promotion, not Phase 5.
-- **No GPU** (`GPU_RUNTIME=NOT_IMPLEMENTED`). There is no GPU workload in the product to test.
-- **No TLS, no external provider contacted, no `noesar.com` connectivity.** Every credential
-  used in this phase was synthetic and generated at run time.
-- **No SBOM** — a declared-`PARTIAL` component inventory instead (`docs/SBOM_STATUS.md`).
-- **No end-to-end update apply against the installation** (D-0037). The unit matrix covers it.
-- **No independent penetration test.** The same party wrote the fixes and the tests.
-- **Multi-user is unsupported.** Per-project isolation is verified; per-user isolation is
-  neither implemented nor reachable in the reference data plane (F4-008).
-- **`--memory-swap` still has no effect** — the kernel lacks swap accounting. The host has
-  zero swap, so the intended outcome holds anyway. Stated, not glossed.
+- **No Owner account exists on the real installation.** Deliberate. See the next section.
+- **No real GPU inference test.** `GPU_INFERENCE_TEST=BLOCKED_NO_LOCAL_MODEL` — there is no
+  model and no inference runtime on this host that this gate may use. The exact minimum
+  needed is in `docs/GPU_LOCAL_MODEL_RUNTIME.md`.
+- **The live multi-user acceptance ran on a probe installation**, not the real one, because
+  running it on the real one would have created the Owner account this gate must not create.
+  Same image, same hardening.
+- **No TLS**, no external provider contacted, no `noesar.com` connectivity. Every credential
+  used was synthetic and generated at run time.
+- **No independent penetration test.** The same party wrote the implementation, the tests
+  and the reports.
+- **No Phase 5 work**: no release documentation, no licensing decisions, no ZIP packaging.
+- **No push** — there is no remote (`B-001`).
+- **`noesar-debuglab` was not started** in this gate.
+- **The SBOM documents are not committed.** ~22 MB of generated JSON, reproducible from a
+  pinned tool and a pinned image; checksums are recorded in `docs/SBOM_REPORT.md`.
 
 ---
 
@@ -102,107 +133,78 @@ ssh -L 8100:127.0.0.1:8100 root@192.168.178.100
 
 Read the one-time token from
 `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME/config/first-owner-setup.token` (mode `0600`, owner
-`10001`, fingerprint `af6f7ca93c31`) and follow `docs/OWNER_BOOTSTRAP.md`. Choose the
-password yourself. Keep the TOTP seed and recovery material in a password manager — none of
-it should reach this repository, a log, or a chat transcript.
+`10001`) and follow `docs/OWNER_BOOTSTRAP.md`. Choose the password yourself. Keep the TOTP
+seed and recovery material in a password manager — none of it should reach this repository,
+a log, or a chat transcript.
 
-The token has a 72-hour TTL and will be regenerated on restart if it expires, so if setup
-fails with "Invalid setup token", re-read the file.
+> **Correction to the previous handoff.** It told you to expect fingerprint
+> `af6f7ca93c31`. That value does not match this installation and **never did** — the
+> Phase 4 container itself logged `db1cf03ef221` at 12:20 on the day Phase 4 ran. It was
+> most likely captured from the throwaway probe container used for the bootstrap rehearsal,
+> which had its own workspace and therefore its own token (`F4C-014`).
+>
+> **Verify against the live log, not against any document:**
+> ```bash
+> docker logs noesar-evolution 2>&1 | grep setup-token.available | tail -1
+> ```
+> It currently reports `db1cf03ef221`. The token rotates on expiry, so any fingerprint
+> written down goes stale by design.
+
+The whole flow was rehearsed end to end on a probe built from this exact image, so what
+remains is only the part that needs a person: choosing a password and keeping a TOTP seed.
 
 ---
 
 ## Open blockers
 
 ### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local repository
-is complete and committed. Resolve with `gh repo create NOESAR-EVOLUTION --private --source .
---remote origin --push`, or by creating the private repository manually and adding `origin`.
-**Must be private.**
+`gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local
+repository is complete and committed. Resolve with `gh repo create NOESAR-EVOLUTION
+--private --source . --remote origin --push`, or by creating the private repository
+manually and adding `origin`. **Must be private.**
 
-### B-002 — heuristic secret scanning · low · unchanged
-No `gitleaks` or `trufflehog`, and installing tooling is forbidden. Corroborated by
-`detect-secrets` and `semgrep` through `noesar-debuglab`, both reporting **zero** across the
-whole first-party surface including everything written in this phase. Re-scan the **full
-history** if a real scanner appears, before the repository is ever made public.
+### B-002 — secret scan is heuristic · low · reduced
+Neither `gitleaks` nor `trufflehog` is installed, and CLAUDE10 rule 45 forbids installing
+tooling. Still heuristic — but ESLint and syft now cover surfaces that previously had no
+tooling at all, and the heuristic scan was re-run over the full staged set.
 
-### B-005 — PostgreSQL/pgvector not installed · medium · NEW
-Blocks production promotion, not Phase 5. Detail and the exact closing procedure:
-`docs/DATABASE_ACCEPTANCE.md`.
+### B-005 — **CLOSED**
+PostgreSQL 18.4 with pgvector 0.8.5 is installed, migrated and exercised. Nothing was
+substituted with SQLite.
 
-### B-006 — no linter with a `no-undef` rule · low · NEW
-Two Phase 4 findings were that class, and one meant streaming chat had never worked.
-`node --check` cannot see it — the syntax is valid. A homegrown checker was written and
-rejected as unsound (D-0034). Mitigated by success-path coverage and process-level guards,
-not eliminated. Run `eslint` with `no-undef` before publication, on a host where installing
-it is allowed.
-
----
-
-## Open findings, all accepted and recorded
-
-| ID | Sev | What |
-|---|---|---|
-| F4-010 | low | URL validation checks the hostname string, not the resolved address (DNS rebinding). Owner/admin only. |
-| F4-011 | low | extraction routed by declared MIME, no content sniffing. Correctness, not execution risk. |
-| F4-012 | info | the 48 MiB ingestion limit is unreachable through the API — the 64 MiB body cap fires first. |
-| F4-013 | info | a full workspace backup is unencrypted and contains the auth master key: an operator duty Phase 5 must document. |
+### B-006 — **CLOSED**
+ESLint 9.39.5 with `no-undef`, self-tested, wired into the suite and the pre-commit gate.
 
 ---
 
 ## Exact next action
 
-**Phase 5 — documentation, licensing audit, release and final packaging.** Do not start it
-without an explicit instruction from the Owner.
+**Do not start Phase 5 without explicit authorisation.** When it is authorised — and
+remembering that it may only produce *preliminary* documentation until the Owner has
+bootstrapped:
 
-Worth settling first, in whatever order the Owner prefers:
+1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
+   `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` — in that order.
+2. The licensing backlog inherited from Phase 1 is still open and is Phase 5's largest
+   item: **12 Rust crates and 2 Node packages declare no licence, there is no root
+   `LICENSE`, and 86 sources have no SPDX header.** The three-way split (AGPL core /
+   Apache-2.0 SDK / CC-BY-SA-4.0 docs) is still a **proposal**, not a decision.
+3. `docs/SBOM_REPORT.md` records a related gap: the source scan surfaces **0 declared
+   licences** for the Rust tree, so licence conclusions there still need doing by hand.
+4. Enable the pre-commit gate in any fresh clone: `git config core.hooksPath .githooks`.
 
-1. **Complete the Owner bootstrap** (above). Nothing in Phase 5 requires it, but the
-   installation is not usable until it happens.
-2. **Decide on B-001.** Phase 5 produces a release; a release with no remote is a local
-   artefact. If the repository is to be published, the licensing gaps below must be closed
-   first, and the full Git history re-scanned with a real secret scanner.
+## Reproducing this gate's verification
 
-Phase 5 inherits a specific licensing backlog, unchanged since Phase 1 and still open: 12
-first-party Rust crates and 2 Node packages with no declared licence, no root `LICENSE`, 86
-first-party source files without an SPDX header, and the proposed three-way split
-(AGPL-3.0-or-later core / Apache-2.0 SDK / CC-BY-SA-4.0 docs) still a *proposal* recorded in
-`docs/LICENSE_STRATEGY.md`, not a legal determination. `docs/DUAL_LICENSE_READINESS.md` has
-the detail.
+```bash
+npm test                                    # 444 unit tests
+npm run lint                                # eslint, 136 files
+npm run lint:self-test                      # prove the detector fires
+node tools/generate-migration-manifest.mjs --check
+node tools/flake-stress.mjs --isolated 50 --suite 20 --seed 20260725
+tools/generate-sbom.sh noesar-evolution:phase4-complete
 
-Also for Phase 5 packaging: rebuild the image from `oci/Dockerfile` with a recorded network
-step rather than inheriting the Phase 3 apt layer (D-0033), and generate a real SBOM if a tool
-becomes available (`docs/SBOM_STATUS.md` §"How to close it").
-
-When authorised, follow the skill cycle from step 1: `READ STATE` (this file,
-`PROJECT_STATE.json`, `docs/PHASE_PLAN.md`, `docs/INSTALLATION_LEDGER.md`,
-`docs/DECISION_LOG.md`), then `VERIFY INPUTS`, `ASSESS RISKS`, `BACKUP`, and onward.
-
-## Rollback
-
-- **Container:** `noesar-evolution.rollback-phase3-20260725T121648Z` is stopped and intact on
-  `noesar-evolution:phase3`. Both images are on disk and the bind mount is shared, so rollback
-  is: stop the phase-4 container, `docker start` the preserved one.
-- **Data:** `$ARTIFACT_ROOT/backups/pre_phase4_swap_20260725T121648Z` (7/7 verified) and
-  `$ARTIFACT_ROOT/backups/phase_4_20260725T111435Z` (tracked HEAD 6058/6058 verified).
-- **Procedure:** `docs/PHASE_3_ROLLBACK.md`, unchanged and still valid.
-
-## Useful facts carried forward
-
-- **Acceptance drivers live in `tools/acceptance/`** and are re-runnable: `a1` auth, `a2`
-  workspace and chat, `a3` security, `a4` container sandbox, `a5` recovery and updates, plus
-  `mock-provider.mjs`, which speaks all three provider wire styles and MCP-over-HTTP with
-  switches for slow, failing, hostile and echoing behaviour.
-- **Run `a3` in-container, not on the host.** `pdftotext`, `tesseract` and `ffprobe` exist in
-  the image and not on this host, so the host run reports them absent — honestly, but it
-  cannot exercise PDF or OCR paths.
-- **The mock needs two addresses** when the product is containerised: the suite reaches it on
-  loopback, the product dials it on the bridge gateway (D-0040).
-- **Safe mode induction:** write three `{at, reason}` objects into `state/watchdog.json` —
-  **objects, not bare timestamps**, or the filter silently drops them — and restart.
-- **`freshCode()` in `a1` waits for the real TOTP rollover.** Since F4-002 a code is
-  single-use, and fabricating a future code walks outside the ±1-step window.
-- **Put fork-pressure tests last.** Spawned shells hold pids-cgroup slots, so anything exec'd
-  after them cannot fork and reports a false negative.
-- `noesar-debuglab` (`:8099`, `x-debuglab-token`, `GET /api/analyze?kind=code&target=…`,
-  SSE) is the only place on this host with semgrep, bandit, ruff, detect-secrets, shellcheck
-  and mypy. Start it for HUNT AND FIX, stop it in the same phase.
+# in-container, needs the product image:
+#   node tools/acceptance/postgres-integration.mjs
+#   node tools/acceptance/post-install-checks.mjs
+#   node tools/acceptance/multi-user-isolation.mjs <base-url> <setup-token>
+```

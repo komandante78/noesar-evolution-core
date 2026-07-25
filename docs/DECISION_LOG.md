@@ -602,3 +602,101 @@ not shared with a container. Binding to `0.0.0.0` would have exposed the mock on
 the duration; binding to the bridge gateway (`172.22.0.1`) reaches the container and nothing
 else. Two addresses for one mock process: the suite inspects it on loopback, the product dials
 it on the bridge.
+
+---
+
+## Phase 4 completion gate
+
+### D-0040 — PostgreSQL runs as a supervised child process, not a second container
+The gate requires one external container and forbids a second PostgreSQL container or a
+mandatory external database. The cluster is therefore created and supervised by the control
+plane itself, under `/workspace/postgresql`, owned by the same unprivileged uid.
+**Trade-off, stated:** the runtime process now owns a database lifecycle, so a bug in the
+supervisor can take the database down. Mitigated by bounded restarts with backoff, by
+`/livez` never touching the database, and by `/readyz` withholding readiness instead.
+
+### D-0041 — a PostgreSQL wire-protocol client is written in-tree
+Rejected: depending on `pg` (seven transitive packages, a network step in an otherwise
+offline build, a security-relevant surface outside this repository's audit) and shelling
+out to `psql` (cannot express the extended query protocol, so every value would be
+interpolated into SQL text — precisely the injection surface RLS exists to close).
+Scope is deliberately narrow: unix and TCP sockets, SCRAM-SHA-256 only, text results, one
+statement in flight. Correctness is pinned to the published RFC 7677 test vector.
+
+### D-0042 — the PGDG signing key is committed, the archive is not trusted on first use
+`oci/keys/apt.postgresql.org.asc` is a **public** key; it verifies the archive signature
+and can verify nothing else. Shipping it in-tree makes the trust anchor reviewable in the
+repository instead of being fetched — and implicitly trusted — during the build. Its
+checksum was confirmed from two independent fetches before committing.
+This build needs network access, unlike the Phase 4 overlay. Stated, not hidden: the
+PostgreSQL 18 packages do not exist in the archives Phase 3 recorded.
+
+### D-0043 — per-user RLS policies are RESTRICTIVE, not permissive
+PostgreSQL combines permissive policies with `OR`, so a second permissive policy would have
+*widened* access. Declaring the ownership rules `AS RESTRICTIVE` combines them with `AND`:
+the inherited tenancy policy from migration 0007 still has to pass, and the new rule has to
+pass as well. Nothing 0007 allowed becomes more permissive.
+
+### D-0044 — every interactive account enrols MFA, not only owner and admin
+The requirement names owner and admin as a floor. Going further was forced by the code:
+`completeLogin()` decrypts `user.totp` unconditionally, so an account created without one
+could never log in (`F4C-004`). Of the two ways out, this is the safer — the alternative
+adds a login branch that issues a session after the password step alone, and a code path
+that can skip a factor is a code path that can be reached by mistake.
+**Consequence, stated:** a `client_restricted` or `user` account cannot opt out of MFA.
+
+### D-0045 — administrators do not gain read access to user content
+Account administration is a privileged operation with its own permission and its own audit
+record. It does **not** grant a blanket `SELECT` over the identity table or over anyone's
+conversations. An administrator can disable an account; they cannot read its chats through
+the data plane. Recorded because a reader may reasonably expect the opposite.
+
+### D-0046 — credentials stay in the auth store and are never written to SQL
+Password verifiers and TOTP envelopes remain in `state/auth.json` (0600). Only id,
+username, role and status are projected into `noesar_identity.users`, with
+`password_scheme='external-auth-store'` and a single zero byte in the salt and hash columns.
+The database is dumped for backup and restored into probe databases; a dump that cannot
+contain a verifier cannot leak one. This narrows what Phase 4 finding F4-013 is about.
+**Trade-off:** two stores, and a projection that must be kept current. A projection failure
+is reported rather than swallowed.
+
+### D-0047 — the local model runtime is disabled by default and queries nothing when disabled
+"No GPU access without configuration" is implemented as a property rather than a policy:
+in `disabled` mode nothing runs `nvidia-smi`, spawns a process or opens a socket, and
+`detect()` returns `inspected: false` so the claim is checkable. The environment can only
+make the runtime more restrictive, never less. A local endpoint must be on loopback — a
+"local model runtime" that can be pointed at a remote host is an exfiltration path wearing
+a local name.
+
+### D-0048 — the GPU inference test is labelled BLOCKED, not PARTIAL
+Everything around the model was exercised end to end against a stub OpenAI-compatible
+server. A stub is not a model. No weights and no inference runtime exist on this host that
+this gate may use, and the only ones present belong to another project's container, which
+the gate forbids starting. `GPU_LOCAL_MODEL_RUNTIME.md` records the exact minimum needed.
+
+### D-0049 — ESLint runs from a pinned container; nothing is installed on this host
+CLAUDE10 rule 45 forbids installing tooling. ESLint 9.39.5 runs inside
+`node:22-bookworm-slim` pinned by digest, installed into a scratch directory outside the
+repository, with the repository mounted read-only so a lint run cannot modify what it
+judges. The detector is self-tested against canaries reproducing the real defect shapes,
+because a clean scan proves only that the scanner found nothing.
+This supersedes D-0034's conclusion that no sound tool was available: one was, it just
+could not be *installed*. Running it in a container was the missing step.
+
+### D-0050 — SBOMs are generated from a `docker save` archive, never through the daemon
+syft is pinned by digest and scans a tar export, so the SBOM container never receives the
+Docker socket — the socket this product's own threat model refuses to mount anywhere.
+The SBOM documents live under `$ARTIFACT_ROOT/sbom/` with checksums recorded in
+`SBOM_REPORT.md`, rather than in the repository: they total ~22 MB of generated JSON,
+reproducible from a pinned tool and a pinned image.
+
+### D-0051 — the restore verification database is left in place rather than dropped
+`noesar_restore_check` exists on the installed cluster. Dropping it would be a deletion,
+and nothing in this phase deletes anything. Recorded so a future reader does not mistake it
+for stray state.
+
+### D-0052 — the `postgres.ready` log field is left as it is
+It reports migrations applied *by that start*, so it reads `0` on a restart of a fully
+migrated cluster (`F4C-013`). Renaming it means rebuilding and reinstalling the image for a
+log label, and the adjacent `data-plane.ready` line already carries the unambiguous total.
+Recorded rather than changed.

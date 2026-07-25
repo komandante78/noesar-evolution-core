@@ -213,3 +213,71 @@ scanning it.
 | Persistence across the swap | setup-token fingerprint, state digest and audit record count all unchanged |
 | Health after the swap | `/livez` 200, `/readyz` ready, `/healthz` healthy, 17 components, 0 unhealthy, `RestartCount=0` |
 | Verified in the running image | 4 occurrences of `providerId:profileId`, 1 `unhandledRejection` handler, 4 `consumeTotp` call sites |
+
+---
+
+# Phase 4 completion gate — remediation
+
+14 findings raised (`F4C-001`…`F4C-014`): 5 high, 5 medium, 2 low, 2 informational.
+**Every high and medium is closed with a regression test.** One informational row is left
+open by choice. Full register: `OPEN_FINDINGS.tsv`. Narrative: `PHASE_4_COMPLETION_REPORT.md`.
+
+## Found by running the product, not by reading it
+
+Four of the five high findings were found by execution:
+
+* `F4C-001` — the first real migration run stopped dead at 0012. Static review had passed
+  over it for three phases because the SQL is syntactically fine; it is only invalid
+  against a cluster that already ran 0010.
+* `F4C-002` — the integration exercise *ended* at `restart.scheduled` and exited 0. A
+  reader would have seen a restart being scheduled and assumed it happened.
+* `F4C-004` — an invited user hit the MFA step of login with no envelope to decrypt. No
+  unit test covered it because every fixture bootstrapped an owner, which always has one.
+  This is the same shape as the Phase 4 lesson: the untested path was the *success* path.
+* `F4C-009` — reproduced by a stress harness that captures output, after Phase 4 had seen
+  it once, lost the evidence, and guessed at two unrelated files.
+
+`F4C-006` was found by static analysis — but only because the right tool was finally used.
+Three phases of `node --check` could not see it, which is what blocker B-006 said.
+
+## Triage: what was dismissed, and on what evidence
+
+| Reported | Verdict | Evidence |
+|---|---|---|
+| `no-cond-assign` ×3 | **false positive of my own configuration** | the SSE framing loop uses `while ((split = buffer.indexOf('\n\n')) >= 0)` — parenthesised assignment, explicit comparison, the standard idiom. I had set `'always'`, stricter than ESLint's default `'except-parens'`. The rule was corrected, not the code. |
+| 2 parse errors in `apps/webui-static/` | **false positive of my own configuration** | `app.js` imports and `i18n.js` exports; they are ES modules and I had declared the path `sourceType: 'script'`. |
+| `no-undef` on `DataTransfer`, `MediaRecorder` | **false positive of my own configuration** | real browser globals missing from my globals list. |
+| 14 failures in an intermediate stress run | **invalid run, not a product finding** | all in `user-directory.test.mjs`, runs 1–14, passing from run 15 — I had been editing those files while the run executed. Diagnosed from the pattern, then re-run cleanly. |
+
+A dismissal that cannot be justified is a finding. Each of the above names the specific
+evidence, and in every case the fix was to my configuration or my process rather than to
+the product.
+
+## Fixing the rule, not only the instance
+
+* `F4C-006` was one instance of "a fix applied to some copies of a duplicated file".
+  The instance was repaired by restoring three-way identity; the *rule* was repaired by
+  adding a linter that would have caught it, self-testing that linter against the exact
+  defect shape, and wiring it into the pre-commit gate.
+* `F4C-007` was a blanket `GRANT` in runtime code that silently undid a migration's
+  `REVOKE`. The instance was removed; the rule is that privileges now live in a versioned
+  migration, where they are reviewable as a diff. Privileges expressed in a loop are not.
+* `F4C-009` was one regex matching one identifier shape. The rule is that canonical UUIDs
+  are now lifted out before *any* redaction rule runs, so a future rule cannot corrupt an
+  identifier either.
+* `F4C-012` was one test depending on the wall clock. The rule is `tools/flake-stress.mjs`,
+  now committed, which captures the failing output and file order instead of losing them.
+
+## Regression coverage added
+
+| Finding | Test |
+|---|---|
+| F4C-001 | `postgres-integration.mjs` DB-06/DB-07 — all 16 migrations from an empty data directory, then re-applied |
+| F4C-002 | `postgres-integration.mjs` DB-30 — requires a **new** pid after SIGKILL, so a non-restarting supervisor fails |
+| F4C-003 | DB-41 append succeeds, DB-42 delete refused |
+| F4C-004 | `user-directory.test.mjs` universal-MFA test; `multi-user-isolation.mjs` MU-08b performs a real password+TOTP login |
+| F4C-005 | invitation replay and claim-lapse tests |
+| F4C-006 | `tools/run-eslint.sh` over the whole tree; `tools/verify-linter-detects.sh` proves the detector fires |
+| F4C-007 | DB-08b and DB-42 |
+| F4C-009/010/011 | `redaction-identifier-integrity.test.mjs`, 9 tests; **7 of the 9 fail against the pre-fix module**, which was verified by reverting the file and re-running |
+| F4C-012 | the test itself, plus the committed stress harness |
