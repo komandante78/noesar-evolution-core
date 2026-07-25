@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": 3,
+  "current_phase": 4,
   "phase_status": "COMPLETED",
-  "next_phase": 4,
+  "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "HEAD — the phase-3 documentation commit; a commit cannot contain its own hash, so read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
-  "last_updated_utc": "2026-07-25T07:45:00Z",
+  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
+  "last_updated_utc": "2026-07-25T12:45:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -33,6 +33,29 @@
       "resolution_options": [
         "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
       ]
+    },
+    {
+      "id": "B-005",
+      "severity": "medium",
+      "code": "POSTGRES_PGVECTOR_NOT_INSTALLED",
+      "summary": "PostgreSQL 18 + pgvector is not installed and was not exercised. The active data plane is reference-json. Nothing was substituted with SQLite: dataPlane reports connected=false, migrated=false, productionReady=false, and assertDevelopmentDataPlane() fails closed if NOESAR_DATA_PLANE=postgresql is set without the production adapter. Schemas 0001-0008 (pgvector, RLS) and 12 migrations ship but were never applied. This is also the only place real user-to-user isolation exists, so multi-user deployment is unsupported until it is installed.",
+      "blocks_next_phase": false,
+      "blocks_production": true,
+      "resolution_options": [
+        "Install PostgreSQL 18 with pgvector as a separate installation with its own acceptance: apply migrations, verify with tools/verify-postgres-migrations.py and tools/verify-postgres-contract.py (both need python3, absent on this host), then exercise RLS with two roles, vector insert/search/delete, isolation, backup/restore, restart and failure recovery",
+        "Keep the reference-json data plane and accept single-actor operation, documenting that multi-user is unsupported"
+      ]
+    },
+    {
+      "id": "B-006",
+      "severity": "low",
+      "code": "NO_LINTER_WITH_NO_UNDEF",
+      "summary": "No linter with a no-undef rule exists on this host and CLAUDE10 rule 45 forbids installing one. Two phase-4 findings (F4-005, F4-006) were the same class - an object-literal shorthand naming an identifier not in scope, which node --check cannot see because it is valid syntax - and one of them meant streaming chat had never worked. A homegrown checker was written and rejected as unsound (D-0034). Mitigated by success-path test coverage and process-level guards, not eliminated.",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "Run eslint with no-undef over the first-party surface on a host where installing it is permitted, before publication",
+        "Keep relying on success-path coverage plus the process-level guards, accepting that the class can recur in code paths no test executes"
+      ]
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
@@ -53,7 +76,7 @@
   "vendored_rust_crates": 113,
   "first_party_rust_crates": 12,
   "atom_boundary_audit": "PASS - no proprietary ATOM implementation present; public contract and boundary documentation only",
-  "foss_core_autonomous": "HOLDS_BY_DESIGN_UNVERIFIED - requires the Phase 4 ATOM-absent acceptance run",
+  "foss_core_autonomous": "VERIFIED - the phase 4 ATOM-absent acceptance passed (J1-J5); see docs/ATOM_ABSENT_ACCEPTANCE.md",
   "license_status": "PROPOSAL_ONLY - unchanged by this repair; NOT READY, no blocking obstacle",
   "docker_build": true,
   "container_start": true,
@@ -85,19 +108,44 @@
     "86 first-party source files without SPDX header"
   ],
   "phase_2_started": true,
-  "next_phase_ready": "4_READY",
+  "next_phase_ready": "5_READY",
   "host_preflight": "COMPLETED - Unraid 7.3.2, kernel 6.18.38, Ryzen 5 5600X 6c/12t AVX2 (no AVX-512), 31GiB RAM with NO SWAP, RTX 3060 12GiB idle, Docker 29.5.3 overlay2 cgroup v2, 37 containers all stopped, AppArmor and SELinux both ABSENT so seccomp is the only MAC layer",
   "installation_design": "COMPLETED - single Node-only container, host port 8100 (product default 8088 already taken twice), loopback-only binding, dedicated noesar-evolution-net, runtime root /mnt/cachec/NOESAR_EVOLUTION_RUNTIME (NOT created in phase 2), workspace chown 10001:10001, reference-json data plane (no Postgres in phase 3)",
   "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
   "security_matrix": "41 requirements, no BROKEN remaining: seccomp moved to MITIGATED BY CONFIGURATION after the flag was removed from all three installers; prompt injection moved from an unsupported PARTIAL to IMPLEMENTED (structural); SSRF, path traversal, ZIP limits, CSP and file quarantine moved from UNVERIFIED to verified; package/update signature implemented client side",
   "build_requires_network": "YES - node:22-bookworm-slim is not present locally (only node:20) and the Dockerfile apt-get installs 5 packages; RUNTIME is fully offline; zero third-party npm dependencies",
-  "postgres_pgvector": "schema 0001-0007 present with pgvector and RLS, but NOT installed in phase 3 - separate installation with its own acceptance",
-  "atom_boundary_reverified": "PASS - FOSS_CORE_DEPENDS_ON_ATOM=false and PRIVATE_ATOM_IMPLEMENTATION_PRESENT=false; still [UNVERIFIED] at runtime until the phase 4 ATOM-absent acceptance",
+  "postgres_pgvector": "NOT INSTALLED - schemas 0001-0008 with pgvector and RLS ship; the Node runtime fails closed on NOESAR_DATA_PLANE=postgresql rather than claiming an adapter it does not have. B005=OPEN.",
+  "atom_boundary_reverified": "PASS - verified against the built artefact, not only the source tree: zero ATOM references in package.json, services/reference-control-plane/ and apps/webui-static/, the only content the Dockerfile copies",
   "vps_access": false,
   "network_mutation": false,
   "phase_3_started": true,
   "phase_cycle": "14 steps (HUNT AND FIX added between TEST and DOCUMENT) - defects are repaired inside the phase, not filed for later",
-  "open_findings": [],
+  "open_findings": [
+    {
+      "id": "F4-010",
+      "severity": "low",
+      "status": "OPEN - accepted",
+      "summary": "provider and tool URL validation checks the hostname string, not the address actually reached, so a name resolving to an internal address passes. Exploitation requires provider.manage or agent.manage."
+    },
+    {
+      "id": "F4-011",
+      "severity": "low",
+      "status": "OPEN - accepted",
+      "summary": "file extraction is routed by extension and client-declared MIME type with no magic-byte sniffing. A correctness limitation, not an execution risk."
+    },
+    {
+      "id": "F4-012",
+      "severity": "informational",
+      "status": "OPEN - recorded",
+      "summary": "the extractor 48 MiB ingestion limit is unreachable through the JSON API: base64 inflates it to exactly the 64 MiB body cap, so body() rejects first and mid-upload."
+    },
+    {
+      "id": "F4-013",
+      "severity": "informational",
+      "status": "OPEN - for phase 5 documentation",
+      "summary": "a full workspace backup is not encrypted and contains the auth master key. The product data export does exclude credentials; a filesystem backup is an operator duty that the documentation must state."
+    }
+  ],
   "resolved_findings": [
     {
       "id": "F-001",
@@ -172,10 +220,64 @@
       "summary": "Inside a container /etc/localtime describes the image, not the host, so tier 3 of the timezone chain shadowed the installer TZ with Etc/UTC and the operator setting was silently ignored.",
       "fix": "tier 3 reports unavailable-in-container when /.dockerenv is present, unless NOESAR_HOST_LOCALTIME exposes the host zoneinfo",
       "evidence": "live: timezone Europe/Berlin at tier 4, offset +120 in July"
+    },
+    {
+      "id": "F4-001",
+      "severity": "informational",
+      "status": "CLOSED - wording corrected",
+      "summary": "the temporary start of noesar-debuglab modified its own ephemeral container layer (25 files: bytecode caches, semgrep settings, a detect-secrets temp file). Host data unchanged, before and after both phases. The phase 3 claim was true of host data and over-broad at container level."
+    },
+    {
+      "id": "F4-002",
+      "severity": "high",
+      "status": "CLOSED - fixed and tested",
+      "summary": "a TOTP code could be replayed within the +/-1 step window, defeating the second factor for up to 90 seconds. Fixed with per-user single-use step enforcement across setup, login and step-up, persisted across restarts. 8 regression tests; AUTH-19 now PASS."
+    },
+    {
+      "id": "F4-003",
+      "severity": "withdrawn",
+      "status": "WITHDRAWN",
+      "summary": "reported as an SSE stream aborting with no error frame; the test written to prove it passed against unmodified code. The abort was caused by F4-004 killing the process. Recorded because it was reported before it was verified."
+    },
+    {
+      "id": "F4-004",
+      "severity": "high",
+      "status": "CLOSED - fixed and tested",
+      "summary": "POST /api/v1/chat/stream was invoked without await, so a rejection became an unhandled rejection and terminated the process. One malformed request from any session with provider.use killed the service. Fixed by awaiting, validating before writing SSE headers, making json() safe when headers are sent, and adding process-level guards. 5 regression tests including one that asserts the child process survives."
+    },
+    {
+      "id": "F4-005",
+      "severity": "medium",
+      "status": "CLOSED - fixed and tested",
+      "summary": "ProviderGateway.probe() referenced an undeclared providerId, so a reachable provider reported 500 while an unreachable one reported a tidy 502. Only the failure path had ever executed. 3 regression tests."
+    },
+    {
+      "id": "F4-006",
+      "severity": "high",
+      "status": "CLOSED - fixed and tested",
+      "summary": "streamWithFallback() referenced the same undeclared providerId, throwing a ReferenceError on the first delta of every stream: streaming chat had never worked, always returning exactly two SSE frames. After the fix the same request returns nine. 9 regression tests covering every public gateway method."
+    },
+    {
+      "id": "F4-007",
+      "severity": "low",
+      "status": "CLOSED - fixed",
+      "summary": "fetch transport failures were propagated as the single word \"fetch failed\", discarding error.cause and making a provider outage undiagnosable. Adding cause reporting is what made F4-009 findable."
+    },
+    {
+      "id": "F4-008",
+      "severity": "medium",
+      "status": "CLOSED - documentation corrected, tests added",
+      "summary": "two security-matrix rows described behaviour the code does not have: CORS cited a test file containing no CORS test, and user/project isolation claimed IMPLEMENTED while the reference data plane has no per-user ownership and no route creates a second user. Both rewritten to the real mechanism; per-project isolation verified live with a canary."
+    },
+    {
+      "id": "F4-009",
+      "severity": "medium",
+      "status": "CLOSED - fixed and tested",
+      "summary": "a pooled keep-alive socket already closed by the upstream surfaced as a user-visible stream error with no retry. First hypothesis (idle timing) was tested and refuted; the real signature appeared only after F4-007. Fixed with a single narrowly-scoped retry. SEC-27 and SEC-30 now PASS."
     }
   ],
-  "product_test_suite": "317/317 pass (node --test) - 137 delivered plus 180 added in phase 3",
-  "session_closed": "2026-07-25 - phases 0,1,2 complete; B-003, product B001 and F-001 closed; NEXT_PHASE=3_READY",
+  "product_test_suite": "352/352 pass (node --test): 137 delivered, 180 added in phase 3, 35 added in phase 4. One unreproduced flake observed in 1 of 14 runs and recorded rather than dismissed (PHASE_4_ACCEPTANCE_REPORT.md section 8b); the two timing-sensitive candidates both fail closed.",
+  "session_closed": "2026-07-25 - phase 4 complete: 136 acceptance checks (132 PASS, 3 PARTIAL, 1 BLOCKED, 0 FAIL), 351/351 unit tests, 13 findings with every high and medium fixed and regression-tested, installation swapped to noesar-evolution:phase4 with rollback preserved, ATOM-absent [UNVERIFIED] closed. NEXT_PHASE=5_READY.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
   "phase_3": {
     "image": "noesar-evolution:phase3",
@@ -201,12 +303,61 @@
     "final_verification": "317/317 tests, 48/48 installer hardening, MANIFEST 5630/5630, container healthy, working tree clean"
   },
   "installer_hardening_regression": "48/48 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives",
-  "manifest": "MANIFEST.sha256 5630/5630 OK (7 hashes updated, 19 entries added)",
+  "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates.",
   "deferred_items": [
-    "tools/verify-package.py imports sys without using it (ruff F401) - cosmetic, pre-existing, recorded for phase 5",
-    "no SBOM generated for noesar-evolution:phase3 - no syft or cyclonedx on this host",
+    "tools/verify-package.py imports sys without using it (ruff F401) - phase 3 deferred it to phase 5 and phase 4 deliberately did not override that deferral (D-0039)",
+    "no SBOM for the image: a declared-PARTIAL component inventory was produced instead (tools/generate-inventory.mjs); no syft or cyclonedx on this host",
     "WebUI settings pane for timezone and locale not built; the server contract exists and is tested",
-    "update signing side and portal not implemented - only the offline channel is usable",
-    "audit ledger append is O(n) per write: the whole file is re-read to find the last hash"
-  ]
+    "update signing side and portal not implemented - only the offline channel is usable, and no channel key is pinned, so nothing can be applied",
+    "audit ledger append is O(n) per write: the whole file is re-read to find the last hash",
+    "apps/webui-react is unbuilt, has no lockfile and is not shipped in the image; its 6 npm dependencies are repository-only (recorded in the component inventory)",
+    "passkey / WebAuthn absent (matrix: MISSING)",
+    "no TLS: the installation is loopback-only and NOESAR_SECURE_COOKIES=false follows from that",
+    "independent penetration test not performed - required by PRODUCTION_READINESS_V050.md before promotion",
+    "phase 5 packaging should rebuild from oci/Dockerfile with a recorded network step rather than inheriting the phase 3 apt layer (D-0033)"
+  ],
+  "phase_4": {
+    "status": "COMPLETED",
+    "image": "noesar-evolution:phase4",
+    "image_id": "sha256:1cf0ada84d2b46abfeb1f4a4826108adf1cfb9d18af4590024671038eac05973",
+    "base_image": "noesar-evolution:phase3 (overlay, so the phase-3 apt layer is inherited unchanged; see D-0033)",
+    "dockerfile": "oci/Dockerfile.phase4",
+    "build_network": "none",
+    "container": "noesar-evolution",
+    "bind": "127.0.0.1:8100->8088",
+    "rollback_container": "noesar-evolution.rollback-phase3-20260725T121648Z",
+    "backups": [
+      "$ARTIFACT_ROOT/backups/phase_4_20260725T111435Z (tracked HEAD 6058/6058 verified + runtime 7/7 + docker inventories)",
+      "$ARTIFACT_ROOT/backups/pre_phase4_swap_20260725T121648Z (runtime 7/7 verified, immediately before the swap)"
+    ],
+    "acceptance_checks": "136 total: 132 PASS, 3 PARTIAL, 1 BLOCKED, 0 FAIL",
+    "acceptance_sections": {
+      "AUTH": 27,
+      "WORK": 35,
+      "SEC": 41,
+      "SBX": 20,
+      "REC": 13
+    },
+    "unit_tests": "352/352 pass (node --test): 137 delivered, 180 added in phase 3, 35 added in phase 4. One unreproduced flake observed in 1 of 14 runs and recorded rather than dismissed (PHASE_4_ACCEPTANCE_REPORT.md section 8b); the two timing-sensitive candidates both fail closed.",
+    "installer_hardening": "48/48",
+    "health": "livez 200, readyz ready, healthz healthy, 17 components, 0 degraded, RestartCount=0",
+    "persistence_across_swap": "PASS - setup token fingerprint, state digest and audit record count all identical before and after",
+    "owner_bootstrap": "PASS as a flow (27/27 on throwaway instances). The REAL installation is deliberately still un-bootstrapped: the owner chose to do it themselves via an SSH tunnel (D-0031). See PHASE_4_ACCEPTANCE_REPORT.md section 2 for the exact command.",
+    "other_containers_modified": false,
+    "debuglab_started_and_stopped": true,
+    "probe_created_and_removed": "noesar-evolution-probe4",
+    "gpu": "GPU_RUNTIME=NOT_IMPLEMENTED - no GPU workload exists in the product; no GPU allocated (D-0032)",
+    "postgres": "B005=OPEN - not installed, not active; the runtime fails closed rather than substituting SQLite. Blocks production promotion, not phase 5.",
+    "atom_absent": "VERIFIED - FOSS_CORE_DEPENDS_ON_ATOM=false is no longer [UNVERIFIED]; zero ATOM references in everything the image ships, 351/351 tests and the whole matrix pass with nothing proprietary present",
+    "sbom": "PARTIAL - a declared component inventory, not an SBOM; no syft/cyclonedx on this host",
+    "security_matrix": "41 requirements, no BROKEN rows; six rows corrected to match reality (F4-008)",
+    "commits": [
+      "fd5a61f test(phase-4): execute NOESAR Evolution acceptance suite",
+      "04878c4 fix(phase-4): remediate acceptance and security findings",
+      "d59de30 docs(phase-4): record acceptance evidence and residual risks",
+      "HEAD chore(phase-4): finalize acceptance state and handoff"
+    ],
+    "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
+  },
+  "gpu_runtime": "NOT_IMPLEMENTED"
 }
