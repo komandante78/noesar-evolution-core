@@ -94,3 +94,31 @@ strategic decision for the project owner, not one to settle inside a phase.
 8. Legal review of the whole set, including trademark policy.
 
 Until every item is closed and recorded, the licensing status stays **proposed**.
+
+---
+
+## 6. Status after the B-003 vendor repair (2026-07-25)
+
+**Unchanged. No licence was applied, altered, or removed** — `LICENSE_RELICENSING=false`
+and `NO_LICENSE_RELICENSING_IN_PHASE_1=true` were both honoured. The verdict stays
+**NOT READY, no blocking obstacle**.
+
+The four gaps remain registered and require a decision by the rights holder, not an
+engineering change:
+
+```text
+12 first-party Rust crates without declared license
+2 first-party Node packages without declared license
+root LICENSE missing
+86 first-party source files without SPDX header
+```
+
+One data point strengthened: the vendored dependency position is now fully verified
+rather than merely inventoried — all 113 crates pass their own checksum manifests
+(5,094 files, 0 missing, 0 corrupt), and all remain permissive with zero copyleft-only
+dependencies. Criterion 1 ("no copyleft-only dependency blocking AGPL distribution")
+is therefore evidence-backed. Criteria 5–11 are untouched.
+
+The repair added `rust/vendor/cc-1.3.0/src/target/*.rs` — official upstream MIT OR
+Apache-2.0 material, already covered by the existing `cc-1.3.0` inventory row; it adds
+no new licence obligation.

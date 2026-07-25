@@ -209,3 +209,38 @@ secret scanning only), **B-003** (new: `cc-1.3.0` missing 4 upstream files).
 None blocks Phase 2.
 
 **Phase 2 was not started.**
+
+---
+
+## 11. Addendum — B-003 repaired (2026-07-25)
+
+`B-003` (§5) is **CLOSED**. It was repaired in a dedicated follow-up,
+`NOESAR_PHASE_1_B003_VENDOR_REPAIR`; full detail in
+`docs/PHASE_1_B003_VENDOR_REPAIR_REPORT.md`.
+
+Corrections to what §5 and §6 of this report stated while the blocker was open:
+
+- The four `cc-1.3.0/src/target/*.rs` files **were recoverable** — two independent
+  authoritative copies were already on this server, including the delivery's own build
+  staging. **No network was used**, and nothing was fabricated. Each file hash-matches
+  the crates.io-published `.cargo-checksum.json`.
+- Vendor verification is now **5,094 files OK, 0 missing, 0 corrupt** across 113
+  crates (was 5,090 OK / 4 missing). The tree holds **5,207 files**, matching the
+  delivered provenance, and is byte-for-byte identical to the authoritative staging.
+- The **same defect was live in this repository**: `.gitignore`'s un-anchored
+  `target/` was ignoring the restored files, and
+  `tools/create-rust-build-provenance.py` carried the same idiom. Both fixed, with a
+  19/19 regression test (`tools/test-packaging-filters.mjs`) and rules recorded in
+  `docs/PACKAGING_FILTER_SAFETY_RULES.md`.
+- The offline build is now **verified, not assumed**: `cargo metadata`, `tree`, `test`
+  (5 passed / 0 failed) and `--release` build all pass in an isolated container with
+  no network and an empty `CARGO_HOME`, producing both binaries.
+- `MANIFEST.sha256` now verifies **5,610/5,610** (was 5,606) after two authorised
+  updates.
+
+§4's statement that the product manifest verified 5,606/5,606 was accurate **for the
+tree as delivered**; it is superseded by 5,610/5,610 for the repaired tree.
+
+Unchanged by the repair: the ATOM boundary result (§8), the licensing position (§9),
+and the fact that nothing has been installed or started. `production_ready` remains
+`false`.

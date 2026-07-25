@@ -142,3 +142,47 @@ Authored by this project, not by the delivery:
   `docs/PHASE_1_CANONICAL_EXTRACTION_REPORT.md`.
 
 The original archives were never modified, renamed, or repackaged.
+
+---
+
+## 8. Update — the §6 findings, resolved and unresolved (2026-07-25)
+
+### B-003 — resolved
+The four missing `rust/vendor/cc-1.3.0/src/target/*.rs` files were recovered from two
+independent authoritative copies already present on this server:
+
+| Role | Path |
+|---|---|
+| primary | `NOESAR_EVOLUTION_CANONICAL_V1/BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/staging/rust/vendor/cc-1.3.0/` |
+| corroborating | `NOESAR_EVOLUTION_CANONICAL_V1/WORKSPACE/CANONICAL_CANDIDATE_V1/PRODUCT/rust/vendor/cc-1.3.0/` |
+
+**No network was used.** Provenance of each file is established by hash against the
+crates.io-published `.cargo-checksum.json`:
+
+```text
+src/target/apple.rs      da9411b2c4db419e0fa39f765ee53b8665b3837fb39827679a53238734a4a1c1
+src/target/generated.rs  74af61aa7b73356d5476b03e646d97105c42d973736b2a20dcc41129b147ce90
+src/target/llvm.rs       06d6351653e23314de3e0ebe3125ddea7a2617303bff639dbbef787b16691e2a
+src/target/parser.rs     26b064a952858635ac38531874c0aa6db2c4a99bef8dd55f36a761370c3ac270
+```
+
+The `cc 1.3.0` package checksum matches `Cargo.lock` (`c89588d0…`), the crate now
+verifies 26/26, and the whole vendor tree is byte-for-byte identical to the
+authoritative staging: **5,207 files, `diff -rq` → 0 differences**.
+
+Vendored-tree verification is now **5,094 OK, 0 missing, 0 corrupt** across 113 crates.
+
+### Vendor aggregate hash — still unresolved, and now attributable
+The recorded `vendorManifestAggregate` (`fff87295…`) still does not reproduce. Seven
+path conventions were tried, and the decisive test is that it **does not reproduce
+from the delivery's own build staging either**. The record is therefore unreliable in
+itself, independently of anything done here — not evidence of a defect in this tree.
+A second supporting discrepancy: the method string claims the digest excludes
+`vendor/`, but the script that computes it does not.
+
+### Files not from the archives — additions
+`tools/test-packaging-filters.mjs` (new, authored here) and the Phase-1 repair
+documents `docs/PHASE_1_B003_VENDOR_REPAIR_REPORT.md` and
+`docs/PACKAGING_FILTER_SAFETY_RULES.md`. Two delivered files were modified:
+`tools/create-rust-build-provenance.py` (filter fix) and `MANIFEST.sha256`
+(authorised updates). The original archives remain untouched.

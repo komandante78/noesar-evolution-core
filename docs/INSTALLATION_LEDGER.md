@@ -282,3 +282,90 @@ attempted, `gh` not installed, no token requested.
 `NETWORK_CONFIGURATION` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` ·
 `LICENSE_RELICENSING` — all **false**. Nothing outside `PROJECT_ROOT`,
 `$STAGING` and `$ARTIFACT_ROOT` was written.
+
+---
+
+## Phase 1 — B-003 vendor repair (`NOESAR_PHASE_1_B003_VENDOR_REPAIR`)
+
+**UTC:** 2026-07-25T05:15:00Z
+**Result:** REPAIRED AND VERIFIED — `B-003 = CLOSED`, `B001 = CLOSED`
+**Network used: NO.** Phase 2 not started.
+
+### Entry state
+`current_phase=1 COMPLETED`, working tree clean at `290ed5a`, B-003 open, all four
+`cc-1.3.0/src/target/*.rs` confirmed still missing.
+
+### Backup (before any mutation)
+`/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups/pre_b003_repair_20260725T050034Z/` —
+full export of git HEAD + the crate as-was + `SHA256SUMS.txt` (6,027 entries,
+self-verified PASS) + `ROLLBACK.md`. 6,034 files, 91 MB.
+
+### Authoritative recovery — no network
+Two independent copies were already on this server, so the authorised temporary
+network access was **never used**:
+- primary: `NOESAR_EVOLUTION_CANONICAL_V1/BUILD_ARTIFACTS/RUST_MANIFEST_REMEDIATION_V1/staging/rust/vendor/cc-1.3.0/`
+  (the delivery's own build staging — the phase named in its `PROVENANCE.json`)
+- corroborating: `NOESAR_EVOLUTION_CANONICAL_V1/WORKSPACE/CANONICAL_CANDIDATE_V1/PRODUCT/rust/vendor/cc-1.3.0/`
+
+The two are byte-identical. All four files hash-match the crates.io-published
+`.cargo-checksum.json`; `cc 1.3.0` package checksum matches `Cargo.lock`
+(`c89588d0…`); `diff -rq` against the authoritative copy showed **only** the missing
+`src/target` directory — no unexplained differences. Only the four official files
+were promoted.
+
+### Filter correction — the same defect was live in this repository
+`git check-ignore` proved all four restored files were ignored by `.gitignore:31`
+(`target/`): the repair would never have been committed, and a fresh clone would have
+reproduced B-003.
+- `.gitignore`: `target/` → `/target/`, `/rust/target/`, `/rust/*/target/` + negations for `**/vendor/**`
+- `tools/create-rust-build-provenance.py:28`: `"target" not in path.parts` →
+  `not is_build_output(path.relative_to(workspace).parts)`, which also fixes a latent
+  absolute-path bug
+- new `tools/test-packaging-filters.mjs`: **19/19 PASS** (12 gitignore cases via real
+  `git check-ignore`, 7 against the actual Python predicate, run in-container because
+  `python3` is absent on the host)
+
+No other packaging filter in the repository uses that idiom. The script that built the
+original ZIPs is **not on this host** and could not be corrected at its origin —
+recorded as residual.
+
+### Offline validation (isolated container, `--network=none`, empty `CARGO_HOME`)
+Toolchain `rustc/cargo 1.97.1` — identical to the delivery's recorded provenance, and
+the local `rust:1-bookworm` digest matches the recorded image ID.
+
+| Gate | Result |
+|---|---|
+| `cargo metadata --locked --offline` | PASS — 125 packages, 12 workspace members |
+| `cargo tree --locked --offline` | PASS — 252 lines |
+| `cargo test --workspace --locked --offline` | PASS — 5 passed, 0 failed (thin suite: 21/24 binaries have no tests) |
+| `cargo build --workspace --release --locked --offline` | PASS — 9.20s, 0 warnings |
+| authority daemon / control plane | both built |
+
+`--workspace` is not accepted by `cargo metadata`; the correct equivalent was used and
+the discrepancy recorded. `cc` reachability measured, not assumed: absent from the host
+graph, present only via `iana-time-zone-haiku` on the Haiku target.
+
+### Vendor completeness
+113 crates, **5,094 files OK, 0 missing, 0 corrupt** (was 4 missing). File count
+**5,207**, matching the delivered provenance. Byte-for-byte identical to the
+authoritative staging (`diff -rq` → 0). `rust/.cargo/config.toml` proven active.
+
+The recorded `vendorManifestAggregate` still does not reproduce (7 conventions tried)
+— proven to be an upstream record defect, since it does not reproduce from the
+delivery's own build staging either.
+
+### Manifest updates (authorised)
+`MANIFEST.sha256` was generated from the damaged tree (5,203 vendor files, zero
+`cc-1.3.0/src/target/` entries). Updated: 1 corrected hash
+(`tools/create-rust-build-provenance.py`, `dfe9c0eb…` → `e530f2cf…`) + 4 added entries
+at their official upstream hashes. Now **5,610/5,610 OK**, still sorted, diff of
+exactly 6 lines.
+
+### Licensing
+Untouched. `LICENSE_RELICENSING=false`. The four gaps remain registered verbatim.
+
+### Prohibitions honoured
+`PHASE_2_START` · `DOCKER_BUILD_PRODUCT` · `CONTAINER_START` · `INSTALLATION` ·
+`DATABASE_MUTATION` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` · `LICENSE_RELICENSING`
+— all false. The only container used was an ephemeral `--rm --network=none`
+toolchain container for verification; no product image was built and no service started.

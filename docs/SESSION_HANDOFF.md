@@ -10,12 +10,12 @@ A cold session should be able to continue from this file alone, together with
 
 | Field | Value |
 |---|---|
-| Phase just completed | **1 — Canonical extraction and repository construction** |
+| Phase just completed | **1 — Canonical extraction** + **B-003 vendor repair** |
 | Phase status | `COMPLETED` |
 | **Next phase** | **2 — Host preflight and installation design** |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
-| Last commit | `f6140d8` (main) + the state commit that follows it |
-| Updated (UTC) | 2026-07-25T01:49:50Z |
+| Last commit | see `PROJECT_STATE.json.last_commit` |
+| Updated (UTC) | 2026-07-25T05:15:00Z |
 | Canonical repository | **constructed** — 6,007 tracked files, 90 MB |
 
 ---
@@ -85,21 +85,25 @@ rose this phase because 5,976 third-party files entered the repository, but the 
 found no key material. Re-scan the **full history** if a real scanner appears, before
 the repository is ever made public.
 
-### B-003 — `cc-1.3.0` is missing 4 upstream source files (NEW) · medium
-`rust/vendor/cc-1.3.0/src/target.rs` declares `mod apple; mod generated; mod llvm;
-mod parser;` and **none of the four files ship in any archive**. The packaging filter
-that strips `target/` build output removed a legitimate source directory — there are
-zero `/target/` paths anywhere in the ZIPs.
+### B-003 — CLOSED (repaired 2026-07-25)
 
-This contradicts two of the delivery's own claims: the recorded
-`vendorManifestAggregate` counts 5,207 vendor files where 5,203 ship, and the `B001`
-closure evidence asserts a "complete vendor snapshot".
+The four missing `cc-1.3.0/src/target/*.rs` files were recovered from **two
+independent authoritative copies already on this server** — the delivery own build
+staging (`RUST_MANIFEST_REMEDIATION_V1`) and the canonical candidate tree, which are
+byte-identical to each other. **No network was used.** Every file hash-matches the
+crates.io-published `.cargo-checksum.json`; the package checksum matches
+`Cargo.lock`; the crate verifies 26/26; the whole vendor tree is byte-for-byte
+identical to the authoritative staging (5,207 files, `diff -rq` → 0).
 
-**Origin: upstream packaging defect, not introduced here. Deliberately not fixed.**
-Impact is bounded — `cc` is reachable only through `iana-time-zone-haiku` (Haiku OS)
-and is not compiled for linux-x86_64. **Phase 2 must decide**: re-vendor from
-crates.io, request a corrected archive, or accept the gap with the platform
-restriction documented.
+The **same defect was live in this repository** — `.gitignore` was ignoring the
+restored files, and `tools/create-rust-build-provenance.py` carried the same idiom.
+Both fixed and locked down by a 19/19 regression test.
+
+Offline validation in an isolated container (no network, empty `CARGO_HOME`):
+metadata, tree, tests (5 passed / 0 failed) and release build all PASS; both binaries
+produced. **`B001 = CLOSED`, `B-003 = CLOSED`.**
+
+Full detail: `docs/PHASE_1_B003_VENDOR_REPAIR_REPORT.md`.
 
 ---
 
@@ -161,3 +165,57 @@ When authorized, follow the skill cycle from step 1:
 
 **Decide early in Phase 2:** the B-003 resolution and the `wit-bindgen` fragment
 question, because both affect whether an offline build is viable on the target host.
+
+---
+
+## Addendum — B-003 vendor repair (2026-07-25)
+
+**`B-003` and the product's own `B001` are both CLOSED.** All seven gates pass:
+
+```text
+VENDOR_COMPLETENESS=PASS      CARGO_CHECKSUMS=PASS       OFFLINE_METADATA=PASS
+OFFLINE_TREE=PASS             OFFLINE_TESTS=PASS         OFFLINE_RELEASE_BUILD=PASS
+PACKAGING_FILTER_REGRESSION=PASS
+```
+
+### What changed in the repository
+- `rust/vendor/cc-1.3.0/src/target/{apple,generated,llvm,parser}.rs` — restored,
+  official, hash-verified.
+- `.gitignore` — `target/` anchored (`/target/`, `/rust/target/`, `/rust/*/target/`)
+  plus negations for `**/vendor/**`.
+- `tools/create-rust-build-provenance.py` — `is_build_output()` replaces the
+  name-fragment test and now works on workspace-relative paths.
+- `tools/test-packaging-filters.mjs` — **new**, 19/19.
+- `MANIFEST.sha256` — 1 corrected hash + 4 added entries → **5,610/5,610 OK**.
+- New docs: `PHASE_1_B003_VENDOR_REPAIR_REPORT.md`, `PACKAGING_FILTER_SAFETY_RULES.md`.
+
+### Facts worth carrying into Phase 2
+- **The offline build works and is verified**, in a container with no network and an
+  empty `CARGO_HOME`, on `rustc/cargo 1.97.1` — the exact versions in the delivery's
+  provenance, from a local `rust:1-bookworm` whose digest matches the recorded image ID.
+  Release build: 9.20s, 0 warnings, both binaries produced.
+- **The Rust test suite is thin** — 5 tests total, 21 of 24 binaries empty. Treat
+  `OFFLINE_TESTS=PASS` as a weak signal; the substantial suites are the Node ones.
+- **`cc` reachability is now measured**: absent from the host build graph, present only
+  via `iana-time-zone-haiku` on the Haiku target.
+- The `wit-bindgen` compiled-fragment question (Phase-2 deferred item) is **unaffected**
+  and still open — those 4 files remain excluded from Git and preserved in
+  `$ARTIFACT_ROOT/vendor-binary-fragments/`.
+
+### Residual items (recorded, not fixed)
+1. **The upstream packaging script is not on this host** — the ZIPs were built
+   elsewhere, so the filter could not be corrected at its origin. A future archive from
+   that pipeline could reintroduce the defect; `tools/test-packaging-filters.mjs` plus
+   the §4 procedure in `docs/PACKAGING_FILTER_SAFETY_RULES.md` will catch it.
+2. **`vendorManifestAggregate` is not reproducible** by its documented method — proven
+   to be an upstream record defect (it does not reproduce from the delivery's own build
+   staging either). Phase 5 should correct or drop it.
+3. **Release binaries are not bit-identical** to the delivered prebuilt ones — expected,
+   different build paths; bit-reproducibility is not claimed.
+
+### Exact next action
+**Phase 2 — Host preflight and installation design.** Not started, and not to be
+started without an explicit instruction from the owner. `NEXT_PHASE=2_READY`.
+
+Backup for this repair: `/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups/pre_b003_repair_20260725T050034Z/`
+(6,034 files, self-verified, `ROLLBACK.md` included).

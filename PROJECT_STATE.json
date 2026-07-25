@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f6140d86257a7fccb3db8fca7448213473552208",
-  "last_updated_utc": "2026-07-25T01:49:50Z",
+  "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
+  "last_updated_utc": "2026-07-25T05:15:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -33,22 +33,6 @@
       "resolution_options": [
         "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
       ]
-    },
-    {
-      "id": "B-003",
-      "severity": "medium",
-      "code": "VENDOR_INCOMPLETE_CC_1_3_0",
-      "summary": "rust/vendor/cc-1.3.0/src/target.rs declares 'mod apple; mod generated; mod llvm; mod parser;' but none of the four module files ship in any of the five archives. The packaging filter that strips Rust build output (target/) also stripped this legitimate source directory - there are zero /target/ paths anywhere in the ZIPs. This contradicts the delivery's own vendorManifestAggregate (5207 files recorded vs 5203 shipped) and the B001 'complete vendor snapshot' closure claim. NOT FIXED: recreating upstream source would mean fabricating content. Impact is bounded - cc is reachable only through iana-time-zone-haiku (Haiku OS) and is not compiled for linux-x86_64.",
-      "discovered_in_phase": 1,
-      "origin": "upstream packaging defect, not introduced by this project",
-      "classification": "DEFERRED_TO_PHASE_2",
-      "blocks_next_phase": false,
-      "evidence": "vendored crates verified against .cargo-checksum.json: 5090 OK, 0 corrupt, 4 missing; zipinfo confirms the files were never in the archive",
-      "resolution_options": [
-        "Re-vendor cc-1.3.0 from crates.io (requires network) and re-verify .cargo-checksum.json",
-        "Obtain a corrected archive from the delivery author",
-        "Accept the gap and document the platform restriction (not built on linux-x86_64)"
-      ]
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
@@ -70,7 +54,7 @@
   "first_party_rust_crates": 12,
   "atom_boundary_audit": "PASS - no proprietary ATOM implementation present; public contract and boundary documentation only",
   "foss_core_autonomous": "HOLDS_BY_DESIGN_UNVERIFIED - requires the Phase 4 ATOM-absent acceptance run",
-  "license_status": "PROPOSAL_ONLY - dual-licence readiness NOT READY, no blocking obstacle found",
+  "license_status": "PROPOSAL_ONLY - unchanged by this repair; NOT READY, no blocking obstacle",
   "docker_build": false,
   "container_start": false,
   "database_mutation": false,
@@ -78,5 +62,28 @@
   "installation": false,
   "production_touched": false,
   "zip_repackaging": false,
-  "license_relicensing": false
+  "license_relicensing": false,
+  "vendor_integrity": "PASS - 113 crates, 5094 files verified against .cargo-checksum.json, 0 missing, 0 corrupt",
+  "vendor_file_count": 5207,
+  "offline_build_verified": "PASS - cargo metadata/tree/test/release-build all green in an isolated container with no network and an empty CARGO_HOME (rustc/cargo 1.97.1, matching the delivery provenance)",
+  "packaging_filter_regression": "PASS - 19/19 cases (tools/test-packaging-filters.mjs)",
+  "b001_product_blocker": "CLOSED - all seven gates pass (VENDOR_COMPLETENESS, CARGO_CHECKSUMS, OFFLINE_METADATA, OFFLINE_TREE, OFFLINE_TESTS, OFFLINE_RELEASE_BUILD, PACKAGING_FILTER_REGRESSION)",
+  "resolved_blockers": [
+    {
+      "id": "B-003",
+      "code": "VENDOR_INCOMPLETE_CC_1_3_0",
+      "status": "CLOSED",
+      "closed_utc": "2026-07-25T05:15:00Z",
+      "summary": "The four missing cc-1.3.0/src/target/*.rs files were recovered from two independent authoritative copies already on this server (the delivery own build staging RUST_MANIFEST_REMEDIATION_V1, corroborated by the canonical candidate tree). NO NETWORK WAS USED. Each file hash-matches the crates.io-published .cargo-checksum.json; the package checksum matches Cargo.lock; the whole crate now verifies 26/26. The vendor tree is byte-for-byte identical to the authoritative staging (5207 files, diff -rq = 0). The same defective un-anchored target filter was found and fixed in this repository (.gitignore and tools/create-rust-build-provenance.py) with a 19/19 regression test.",
+      "residual": "The upstream packaging script that produced the ZIPs is not present on this host and could not be corrected at its origin; the recorded vendorManifestAggregate remains non-reproducible by its documented method, which was proven to be an upstream record defect (it does not reproduce from the delivery own build staging either)."
+    }
+  ],
+  "license_gaps_registered": [
+    "12 first-party Rust crates without declared license",
+    "2 first-party Node packages without declared license",
+    "root LICENSE missing",
+    "86 first-party source files without SPDX header"
+  ],
+  "phase_2_started": false,
+  "next_phase_ready": true
 }

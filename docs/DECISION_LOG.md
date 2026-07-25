@@ -188,3 +188,73 @@ headers). *Notable:* the delivered licensing matrix independently matches the
 Phase-0 proposal, and adds a three-way split (AGPL core / Apache-2.0 SDK /
 CC-BY-SA-4.0 docs) that `docs/LICENSE_STRATEGY.md` should adopt in Phase 5.
 *Reversible:* n/a — no change was made.
+
+---
+
+## D-0016 — B-003 repaired from local authoritative copies; no network used
+**Phase:** 1 (B-003 repair) · **UTC:** 2026-07-25T05:15:00Z · **Status:** adopted
+
+Temporary, limited network access was authorised for recovering Cargo dependencies.
+It was **not used**: two independent authoritative copies of `cc-1.3.0` were already
+on this server, the primary being the delivery's own build staging
+(`RUST_MANIFEST_REMEDIATION_V1`, the phase named in its `PROVENANCE.json`).
+
+*Why:* the authorisation was a fallback, not an instruction. Local recovery is
+strictly better — it needs no trust in a network path and the result is provable
+against the crates.io-published `.cargo-checksum.json`, which every recovered file
+matches exactly. *Reversible:* yes (backup `pre_b003_repair_20260725T050034Z`).
+
+## D-0017 — Only the four official files were promoted, nothing reconstructed
+**Phase:** 1 (B-003 repair) · **Status:** adopted
+
+Recovery was accepted only after: the four hashes matched the upstream checksum
+manifest, the package checksum matched `Cargo.lock`, and `diff -rq` against the
+authoritative copy showed the missing `src/target` directory as the *only* difference.
+
+*Why:* "restore the files" and "make the tree look complete" are different things.
+Anything beyond an exactly-matching official file would have been fabrication. The
+diff was the check that the damage was exactly what it appeared to be and nothing
+else had moved. *Reversible:* yes.
+
+## D-0018 — The identical filter defect was found live in this repository and fixed
+**Phase:** 1 (B-003 repair) · **Status:** adopted · **Classification:** `FIXED`
+
+`git check-ignore` proved `.gitignore`'s un-anchored `target/` was ignoring all four
+just-restored files. The repair would have sat on disk, never been committed, and a
+fresh clone would have reproduced B-003 exactly. The same idiom was then found in
+`tools/create-rust-build-provenance.py` (which also tested the *absolute* path, so a
+checkout under any directory named `target` would have excluded everything).
+
+*Why:* fixing the data without fixing the rule that destroyed it guarantees the defect
+returns. The fix is anchoring — build output only exists at a workspace root — plus a
+regression test asserting both directions (19/19).
+*Not fixed:* the upstream packaging script that built the ZIPs is not on this host, so
+its origin could not be corrected. Recorded as residual, not as done.
+*Reversible:* yes, but should not be.
+
+## D-0019 — The unreproducible vendor aggregate was investigated, not papered over
+**Phase:** 1 (B-003 repair) · **Status:** adopted
+
+After repair the vendor tree still does not reproduce the recorded
+`vendorManifestAggregate`. Seven path conventions were tried. The decisive test:
+the recorded value does not reproduce from the **delivery's own build staging**
+either — the same tree this repair restored from, now byte-identical to the repository.
+
+*Why:* the honest conclusion is that the recorded number is unreliable, not that the
+tree is wrong. Fabricating a matching hash, or quietly adjusting the method until it
+matched, would have destroyed the only signal that record carries. A supporting
+discrepancy: the method string claims the digest excludes `vendor/`, but the script
+computing it does not. *Consequence:* Phase 5 should correct or drop the number.
+*Reversible:* n/a — an open finding, not a change.
+
+## D-0020 — `MANIFEST.sha256` updated, and only where the repair required it
+**Phase:** 1 (B-003 repair) · **Status:** adopted
+
+The product manifest was generated from the damaged tree: 5,203 vendor entries and
+zero for `cc-1.3.0/src/target/`. Two changes: the hash of the one file this repair
+legitimately modified, and four new entries at their official upstream hashes.
+
+*Why:* the phase authorises "necessary manifest updates". Leaving it unchanged would
+have left the manifest permanently failing and encoding the defect. Touching anything
+else would have blurred the audit trail — hence a diff of exactly 6 lines, verified
+5,610/5,610, still sorted. *Reversible:* yes.
