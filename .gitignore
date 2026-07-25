@@ -1,0 +1,100 @@
+# NOESAR EVOLUTION — strict ignore policy (see CLAUDE10.md §9)
+
+# Archives — the five source ZIPs must never enter the repository
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.gz
+*.bz2
+*.xz
+
+# Compiled binaries and shared objects
+*.exe
+*.dll
+*.so
+*.so.*
+*.dylib
+*.a
+*.o
+*.class
+*.pyc
+*.pyo
+
+# Build output
+target/
+build/
+dist/
+out/
+bin/
+obj/
+node_modules/
+__pycache__/
+*.egg-info/
+
+# Caches
+cache/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cargo/
+.gradle/
+
+# Models, weights, datasets
+models/
+weights/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.npz
+
+# Databases and data stores
+*.sqlite
+*.sqlite3
+*.db
+*.rdb
+*.mdb
+data/qdrant/
+pgdata/
+
+# Secrets and credentials — never versioned
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*_token
+*.secret
+*.secret.*
+id_rsa*
+id_ed25519*
+
+# Project-local operational directories
+BACKUPS/
+BUILD_ARTIFACTS/
+SOURCE_ARCHIVES/
+tmp/
+scratch/
+
+# Logs
+*.log
+logs/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

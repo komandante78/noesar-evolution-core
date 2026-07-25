@@ -1,0 +1,20 @@
+{
+  "project": "NOESAR EVOLUTION",
+  "total_phases": 6,
+  "current_phase": 0,
+  "phase_status": "IN_PROGRESS",
+  "next_phase": 1,
+  "installation_complete": false,
+  "production_ready": false,
+  "repository_private": true,
+  "source_zip_count": 5,
+  "last_commit": null,
+  "last_updated_utc": "2026-07-25T01:13:11Z",
+  "blockers": [],
+  "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
+  "source_archives": "/mnt/user/downloads/NOESAR_EVOLUTION_FINAL",
+  "repository_name": "NOESAR-EVOLUTION",
+  "source_zip_checksums_verified": true,
+  "github_status": "PENDING",
+  "product_extracted": false
+}
