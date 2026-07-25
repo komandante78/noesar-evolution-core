@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
-  "last_updated_utc": "2026-07-25T07:00:00Z",
+  "last_updated_utc": "2026-07-25T07:20:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -97,12 +97,13 @@
   "network_mutation": false,
   "phase_3_started": false,
   "phase_cycle": "14 steps (HUNT AND FIX added between TEST and DOCUMENT) - defects are repaired inside the phase, not filed for later",
-  "open_findings": [
+  "open_findings": [],
+  "resolved_findings": [
     {
       "id": "F-001",
       "severity": "medium",
       "rule": "gcm-no-tag-length",
-      "status": "OPEN - fix designed, awaiting owner authorisation",
+      "status": "CLOSED - fixed, tested, re-scanned clean",
       "sites": [
         "services/reference-control-plane/src/ai-workspace/credential-vault.mjs:28",
         "services/reference-control-plane/src/auth-crypto.mjs:128",
@@ -111,7 +112,11 @@
       ],
       "summary": "createDecipheriv(aes-256-gcm) called without {authTagLength:16}, then setAuthTag() on a stored attacker-influenceable value. Node accepts 4-16 byte GCM tags, so a truncated tag drops authentication from 128 to 32 bits. Contextual severity medium: requires prior write access to the workspace credential store. Defence-in-depth in the credential vault; cheap to fix; product is not installed or running.",
       "fix": "pass {authTagLength:16} to createDecipheriv and validate the decoded tag length is exactly 16 before setAuthTag, at all 4 sites",
-      "found_by": "semgrep via noesar-debuglab, first HUNT AND FIX sweep"
+      "found_by": "semgrep via noesar-debuglab, first HUNT AND FIX sweep",
+      "closed_utc": "2026-07-25T07:20:00Z",
+      "fix_applied": "authTagLength pinned to GCM_TAG_BYTES=16 on both createCipheriv and createDecipheriv, plus an explicit tag-length check before setAuthTag, at all 4 sites",
+      "evidence": "vulnerability reproduced first (a 4-byte tag decrypted successfully before the fix); 8 new regression tests in services/reference-control-plane/test/gcm-tag-length.test.mjs; full product suite 137/137 pass (was 129 delivered + 8 new); semgrep re-scan of services/ and ai-workspace/ reports 0 gcm-no-tag-length findings"
     }
-  ]
+  ],
+  "product_test_suite": "137/137 pass (node --test), including 8 new F-001 regression tests"
 }

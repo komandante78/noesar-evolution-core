@@ -475,3 +475,41 @@ canary self-test that fired 3 issues, so the clean result is meaningful).
 **Governance amended:** phase cycle 13 → 14 steps; `CLAUDE10.md` §16 and the skill's
 standing rules gained a narrow exception permitting `noesar-debuglab` for step 7,
 started and stopped within the same phase. Nothing else was loosened.
+
+---
+
+## F-001 — `gcm-no-tag-length` fixed (owner-authorised)
+
+**UTC:** 2026-07-25T07:20:00Z · **Result:** CLOSED
+
+**Reproduced before fixing.** A standalone harness using the exact shape of the
+shipped code showed Node accepting a **4-byte** GCM tag and decrypting successfully —
+authentication strength 32 bits instead of 128. Not taken on semgrep's word.
+
+**Fix, 4 sites** (backup: `.../backups/pre_f001_gcm_fix_20260725T064102Z/`, self-verified):
+`GCM_TAG_BYTES = 16` pinned via `{ authTagLength: GCM_TAG_BYTES }` on both
+`createCipheriv` and `createDecipheriv`, plus an explicit decoded-tag-length check
+before `setAuthTag`:
+
+- `services/reference-control-plane/src/auth-crypto.mjs` (`encryptSecret`/`decryptSecret`)
+- `services/reference-control-plane/src/ai-workspace/credential-vault.mjs`
+- `ai-workspace/credential-vault.mjs`
+- `ai-workspace/runtime/credential-vault.mjs`
+
+The three `credential-vault.mjs` copies were byte-identical before and remain
+byte-identical after (single md5 across all three).
+
+**Evidence:**
+- 8 new regression tests, `services/reference-control-plane/test/gcm-tag-length.test.mjs`
+  — 8/8 pass; they reject 4/8/12/13/14/15-byte tags, a flipped tag byte and a tampered
+  ciphertext, and assert the round-trip and the 16-byte tag are unchanged.
+- Full product suite **137/137 pass, 0 fail** (delivery recorded 129; +8 new).
+- semgrep re-scan of `services/` and `ai-workspace/`: **0** `gcm-no-tag-length`
+  findings, 0 findings overall. `noesar-debuglab` was started for the re-scan and
+  **stopped again**; host back to 0 running containers of 37.
+- `MANIFEST.sha256` updated (2 hashes + 1 new entry) → **5611/5611 OK**, still sorted.
+
+**Note:** the two top-level `ai-workspace/` copies are not covered by
+`MANIFEST.sha256` — that manifest tracks the package-01 product tree, while those
+copies originate from packages 03/04. Expected, recorded so it is not mistaken for
+manifest drift later.

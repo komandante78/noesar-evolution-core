@@ -3,6 +3,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+const GCM_TAG_BYTES = 16;
+
 export class CredentialVault {
   constructor({ keyPath }) {
     this.keyPath = keyPath;
@@ -20,13 +22,18 @@ export class CredentialVault {
     return key;
   }
   encrypt(value) {
-    const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', this.key, iv);
+    const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', this.key, iv, { authTagLength: GCM_TAG_BYTES });
     const ciphertext = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()]);
     return { v:1, alg:'A256GCM', iv:iv.toString('base64url'), tag:cipher.getAuthTag().toString('base64url'), ciphertext:ciphertext.toString('base64url') };
   }
   decrypt(record) {
-    const decipher = createDecipheriv('aes-256-gcm', this.key, Buffer.from(record.iv, 'base64url'));
-    decipher.setAuthTag(Buffer.from(record.tag, 'base64url'));
+    // GCM_TAG_BYTES is pinned and the decoded tag length is checked before use. Node
+    // accepts GCM tags of 4-16 bytes, so a stored record carrying a truncated tag would
+    // authenticate with as little as 32 bits instead of 128.
+    const tag = Buffer.from(record.tag, 'base64url');
+    if (tag.length !== GCM_TAG_BYTES) throw new Error('invalid authentication tag length');
+    const decipher = createDecipheriv('aes-256-gcm', this.key, Buffer.from(record.iv, 'base64url'), { authTagLength: GCM_TAG_BYTES });
+    decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(Buffer.from(record.ciphertext, 'base64url')), decipher.final()]).toString('utf8');
   }
   setEphemeral(profileId, value) { this.ephemeral.set(profileId, String(value)); }

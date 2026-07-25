@@ -111,9 +111,11 @@ export function verifyTotp(secret, supplied, timestamp = Date.now(), window = 1)
   return false;
 }
 
+const GCM_TAG_BYTES = 16;
+
 export function encryptSecret(secret, masterKey) {
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', masterKey, iv);
+  const cipher = createCipheriv('aes-256-gcm', masterKey, iv, { authTagLength: GCM_TAG_BYTES });
   const ciphertext = Buffer.concat([cipher.update(String(secret), 'utf8'), cipher.final()]);
   return {
     algorithm: 'aes-256-gcm',
@@ -125,8 +127,15 @@ export function encryptSecret(secret, masterKey) {
 
 export function decryptSecret(value, masterKey) {
   if (!value || value.algorithm !== 'aes-256-gcm') throw new Error('Unsupported secret envelope');
-  const decipher = createDecipheriv('aes-256-gcm', masterKey, Buffer.from(value.iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(value.tag, 'base64'));
+  // GCM_TAG_BYTES is pinned and the decoded tag length is checked before use. Node
+  // accepts GCM tags of 4-16 bytes, so a stored envelope carrying a truncated tag
+  // would authenticate with as little as 32 bits instead of 128.
+  const tag = Buffer.from(value.tag, 'base64');
+  if (tag.length !== GCM_TAG_BYTES) throw new Error('Invalid authentication tag length');
+  const decipher = createDecipheriv('aes-256-gcm', masterKey, Buffer.from(value.iv, 'base64'), {
+    authTagLength: GCM_TAG_BYTES,
+  });
+  decipher.setAuthTag(tag);
   return Buffer.concat([
     decipher.update(Buffer.from(value.ciphertext, 'base64')),
     decipher.final(),
