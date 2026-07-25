@@ -333,3 +333,72 @@ seccomp profile were **not** fixed.
 *Why not:* none of them certainly blocks installation, and the specification forbids
 fixing hypothetical problems. They are designed and scheduled instead, with Phase-4
 acceptance tests. *Reversible:* yes (backup `pre_phase2_fix_20260725T060825Z`).
+
+---
+
+## D-0027 — Defects are hunted and fixed inside the phase, not filed for later
+**Phase:** cross-cutting (owner instruction) · **UTC:** 2026-07-25T07:00:00Z · **Status:** adopted
+
+The phase cycle gains a 7th step, `HUNT AND FIX`, between `TEST` and `DOCUMENT`. Every
+phase must now actively look for defects with real tooling and repair what it finds,
+rather than closing with a list of known problems.
+
+*Why:* the previous cycle rewarded discovery and was silent about repair, so a phase
+could end "successfully" while leaving working defects behind. Phases 1 and 2 both
+ended that way by design — B-003 and the seccomp finding were correctly recorded, but
+recording is not fixing.
+
+*Guardrails kept deliberately:* fixing is still refused when it would exceed scope,
+require fabricating unverifiable content, demand a destructive or outward-facing
+action, or rest on a root cause not yet found — the same reasoning that made *not*
+recreating the four `cc-1.3.0` files the right call. Triage before repair is mandatory,
+because a false positive "fixed" is a real regression introduced for nothing.
+
+*Consequence:* two governance rules had to be amended, or the new step would have been
+unusable — `CLAUDE10.md` §16 and the skill's standing rules both forbade touching any
+container, and the only analysis tooling on this host lives inside `noesar-debuglab`.
+Both now carry a narrow, named exception: that one read-only container, started for
+step 7 and stopped again in the same phase. Nothing else was loosened.
+*Reversible:* yes.
+
+## D-0028 — First `HUNT AND FIX` sweep: one real defect, the rest triaged as noise
+**Phase:** post-Phase-2 (owner-requested scan) · **Status:** recorded; fix pending authorisation
+
+`noesar-debuglab` (`project-scanner-v7`: semgrep, bandit, ruff, detect-secrets,
+shellcheck, mypy — none present on the host) was started, used, and stopped again.
+
+**Real defect — `gcm-no-tag-length`, 4 sites.** `createDecipheriv('aes-256-gcm', …)`
+is called without `{ authTagLength: 16 }`, then `setAuthTag()` is applied to a stored,
+attacker-influenceable value, in `services/reference-control-plane/src/ai-workspace/credential-vault.mjs:28`,
+`src/auth-crypto.mjs:128`, and the two `ai-workspace/` copies. Node accepts GCM tags of
+4–16 bytes, so a truncated tag drops authentication from 128 to 32 bits. Contextual
+severity is **medium, not critical**: exploitation requires prior write access to the
+workspace store. It is defence-in-depth in the credential vault, cheap to fix, and not
+urgent — the product is neither installed nor running.
+
+**Dismissed after triage, with evidence:** `SC1007` ×5 on the correct `CDPATH= cd`
+idiom; `insecure-file-permissions` ×2 where semgrep recommends 0o644 over 0o700, which
+is *less* restrictive; `B105` on a test canary literally named `must-not-leak`;
+`insecure-object-assign` where the keys are literals on a freshly created `Error`;
+`B603/B607/S603/S607` ×34 in tests and build tooling.
+
+**Secret scan — materially strengthens B-002.** `detect-secrets` (27 plugins) over the
+whole repository: 5,148 raw hits across 303 files, of which 5,078 are SHA-256 checksums
+in manifests. **Zero real secrets**: no private key, AWS/GitHub/Slack/Stripe/JWT/OpenAI
+token anywhere. Two of the seven `Basic Auth Credentials` hits were this project's own
+documentation of the scan pattern. Independent corroboration of every heuristic scan
+run in Phases 0–2.
+
+**Also confirmed clean:** `rust/crates/` (12 first-party crates) 0 findings; `oci/`
+0 findings; shellcheck clean on `INSTALLATION/` including the `install-unraid.sh`
+fixed in Phase 2 — verified with a canary self-test that fired 3 issues, so the clean
+result is meaningful.
+
+**Upgrade to the Phase-2 security matrix:** `apps/webui-static/app.js` uses an
+`x-noesar-csrf` header with `credentials:'same-origin'` and an `escapeHtml` helper, so
+the `CSRF = PARTIAL` and `CSP/XSS = UNVERIFIED` rows have more support than recorded.
+To be settled by the Phase-4 runtime tests, not by reading.
+
+**Limit stated plainly:** none of this reaches the weak seccomp profile, the port 8088
+collision, the missing endpoints, or prompt injection. Those are configuration, host
+and semantic defects, invisible to every scanner used.

@@ -53,6 +53,13 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 ## 5. External systems are off-limits
 
 16. Do not create, start, stop, restart, remove, or exec into any Docker container.
+    **One named exception**, added by the owner so that defect hunting is possible at
+    all: the read-only analysis container `noesar-debuglab` may be started for the
+    `HUNT AND FIX` step of the phase cycle and **must be stopped again within the same
+    phase**. It is not part of this product, it mounts the host read-only, and it is
+    the only place on this host carrying semgrep / bandit / ruff / detect-secrets /
+    shellcheck / mypy. No other container may be touched, and no product container may
+    be created or started outside an authorised installation phase.
 17. Do not modify Docker networks, volumes, `docker-compose` files, or `.env` files
     belonging to any system.
 18. Do not read, write, migrate, or mutate any database, vector store, or queue
@@ -113,6 +120,18 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 39. Errors, gaps, and blockers are declared explicitly and immediately, in the
     phase output and in `PROJECT_STATE.json.blockers`.
 40. Do not fabricate state, checksums, test counts, or command output.
+40a. **Defects are hunted and repaired, not merely reported.** Every phase runs the
+    `HUNT AND FIX` step of the skill cycle before it closes. Finding a defect and
+    leaving it for "a later phase" is acceptable only for the reasons that step names:
+    out of scope, unverifiable without fabricating content, requiring a destructive or
+    outward-facing action, or resting on a root cause not yet found. Otherwise it is
+    fixed here — with a backup, a test, and an atomic commit.
+40b. **Triage before repairing.** A false positive "fixed" is a real regression
+    introduced for nothing. Every finding is checked against the actual code, and
+    every dismissal is recorded with its evidence.
+40c. **Fix the rule, not only the instance.** When a filter, ignore rule, or check
+    caused the defect, correct it and add a regression test. A clean scan proves the
+    scanner found nothing — never that the code is correct.
 
 ## 11. Documentation duty
 

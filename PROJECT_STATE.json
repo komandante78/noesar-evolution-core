@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
-  "last_updated_utc": "2026-07-25T06:30:00Z",
+  "last_updated_utc": "2026-07-25T07:00:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -44,7 +44,7 @@
   "repository_remote_configured": false,
   "github_status": "BLOCKED_AUTHENTICATION",
   "git_push": "BLOCKED_NO_REMOTE",
-  "secret_scan_method": "heuristic",
+  "secret_scan_method": "heuristic (host) + detect-secrets 27 plugins via noesar-debuglab (repository-wide, 2026-07-25): 5148 raw hits, 5078 of them SHA-256 checksums, ZERO real secrets - no private key or provider token anywhere",
   "source_zip_checksums_verified": true,
   "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; archives are identified by SHA-256 only, never by filename",
   "product_extracted": true,
@@ -95,5 +95,23 @@
   "atom_boundary_reverified": "PASS - FOSS_CORE_DEPENDS_ON_ATOM=false and PRIVATE_ATOM_IMPLEMENTATION_PRESENT=false; still [UNVERIFIED] at runtime until the phase 4 ATOM-absent acceptance",
   "vps_access": false,
   "network_mutation": false,
-  "phase_3_started": false
+  "phase_3_started": false,
+  "phase_cycle": "14 steps (HUNT AND FIX added between TEST and DOCUMENT) - defects are repaired inside the phase, not filed for later",
+  "open_findings": [
+    {
+      "id": "F-001",
+      "severity": "medium",
+      "rule": "gcm-no-tag-length",
+      "status": "OPEN - fix designed, awaiting owner authorisation",
+      "sites": [
+        "services/reference-control-plane/src/ai-workspace/credential-vault.mjs:28",
+        "services/reference-control-plane/src/auth-crypto.mjs:128",
+        "ai-workspace/credential-vault.mjs",
+        "ai-workspace/runtime/credential-vault.mjs"
+      ],
+      "summary": "createDecipheriv(aes-256-gcm) called without {authTagLength:16}, then setAuthTag() on a stored attacker-influenceable value. Node accepts 4-16 byte GCM tags, so a truncated tag drops authentication from 128 to 32 bits. Contextual severity medium: requires prior write access to the workspace credential store. Defence-in-depth in the credential vault; cheap to fix; product is not installed or running.",
+      "fix": "pass {authTagLength:16} to createDecipheriv and validate the decoded tag length is exactly 16 before setAuthTag, at all 4 sites",
+      "found_by": "semgrep via noesar-debuglab, first HUNT AND FIX sweep"
+    }
+  ]
 }

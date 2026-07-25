@@ -45,7 +45,7 @@ The canonical repository as constructed in Phase 1. File counts are tracked file
 | Path | Purpose |
 |---|---|
 | `CLAUDE.md` → `CLAUDE10.md` | the binding operating authority |
-| `.claude/skills/noesar-evolution/SKILL.md` | the mandatory 13-step phase cycle |
+| `.claude/skills/noesar-evolution/SKILL.md` | the mandatory 14-step phase cycle (includes HUNT AND FIX) |
 | `PROJECT_STATE.json` | machine-readable resume point |
 | `docs/SESSION_HANDOFF.md` | human-readable resume point |
 | `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` | append-only records |

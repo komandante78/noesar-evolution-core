@@ -440,3 +440,38 @@ with detector self-test.
 `DOCKER_BUILD` · `CONTAINER_START` · `INSTALLATION` · `DATABASE_MUTATION` ·
 `NETWORK_MUTATION` · `VPS_ACCESS` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` ·
 `LICENSE_RELICENSING` — all false. `PROPOSED_RUNTIME_ROOT` deliberately **not** created.
+
+---
+
+## Post-Phase-2 — first `HUNT AND FIX` sweep (owner-requested)
+
+**UTC:** 2026-07-25T07:00:00Z
+**Result:** 1 real defect found (`F-001`, fix designed, **not applied** — awaiting
+authorisation). Policy amended so future phases repair rather than file.
+
+`noesar-debuglab` was started for the scan and **stopped again**; the host is back to
+0 running containers of 37, exactly as before. It mounts the host read-only. No product
+container was built or started, nothing was installed.
+
+**Tooling used** (none of it exists on the host): semgrep, bandit, ruff,
+detect-secrets, shellcheck, mypy — image `noesar-debuglab:project-scanner-v7`.
+
+**Found:** `gcm-no-tag-length` ×4 (credential vault + auth-crypto) — recorded as
+`F-001` in `PROJECT_STATE.json.open_findings`.
+
+**Dismissed after per-item triage:** SC1007 ×5 (`CDPATH= cd` is the correct idiom),
+`insecure-file-permissions` ×2 (0o700 is *more* restrictive than the suggested 0o644),
+B105 (test canary `must-not-leak`), `insecure-object-assign` (literal keys on a fresh
+`Error`), B603/B607/S603/S607 ×34 (tests and build tooling).
+
+**Secret scan:** repository-wide `detect-secrets`, 5,148 raw hits / 303 files,
+**zero real secrets** — 5,078 were SHA-256 checksums; two hits were this project's own
+documentation of the scan pattern. Independently corroborates every heuristic scan from
+Phases 0–2 and materially strengthens blocker B-002.
+
+**Clean:** `rust/crates/` 0, `oci/` 0, `INSTALLATION/` 0 (shellcheck, verified with a
+canary self-test that fired 3 issues, so the clean result is meaningful).
+
+**Governance amended:** phase cycle 13 → 14 steps; `CLAUDE10.md` §16 and the skill's
+standing rules gained a narrow exception permitting `noesar-debuglab` for step 7,
+started and stopped within the same phase. Nothing else was loosened.

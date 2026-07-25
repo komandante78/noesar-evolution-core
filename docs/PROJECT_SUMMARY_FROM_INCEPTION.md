@@ -58,7 +58,7 @@ Roles are taken from the archive names as supplied; their contents are unexamine
 - **`CLAUDE10.md`** — the sole binding authority: scope, non-destruction, external
   systems off-limits, secrets, honesty, documentation duty, Git discipline,
   language, open core, ATOM boundary, licensing posture.
-- **`.claude/skills/noesar-evolution/SKILL.md`** — the fixed 13-step phase cycle
+- **`.claude/skills/noesar-evolution/SKILL.md`** — the fixed 14-step phase cycle
   every phase must follow, ending in `STOP`.
 - **`PROJECT_STATE.json`** — machine-readable resume point.
 - **`docs/SESSION_HANDOFF.md`** — human-readable resume point, rewritten each phase.
