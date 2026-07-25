@@ -9,8 +9,11 @@
 # bootstraps its own throwaway Owner from its own generated setup token, so no real
 # credential is ever supplied to, or read by, this script.
 #
-# Containers are STOPPED and preserved at the end, never removed: CLAUDE10.md §4 rule 12
-# forbids deleting containers, and the host inventory already keeps stopped probes.
+# Containers, the probe image and the runner are REMOVED at the end, pass or fail:
+# CLAUDE10.md §5a requires this run to clean up after itself. Probe logs are dumped to
+# stdout before removal, so nothing diagnostic is lost with the container. Set
+# NOESAR_E2E_KEEP=1 to preserve them for interactive debugging; anything left behind that
+# way is a survivor you must remove yourself.
 #
 # The repository is mounted UNDER the Puppeteer image's home directory on purpose. An
 # `import 'puppeteer'` from a file outside that tree cannot resolve: NODE_PATH is a
@@ -93,9 +96,31 @@ docker run -d --name "${PROBE_NAME}" \
 echo "PROBE=${PROBE_NAME}"
 
 cleanup() {
-  echo "--- stopping probe and runner (preserved, not removed) ---"
-  docker stop "${PROBE_NAME}" >/dev/null 2>&1 || true
-  docker stop "${RUNNER_NAME}" >/dev/null 2>&1 || true
+  local rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    echo "--- probe logs (dumped before removal; exit ${rc}) ---"
+    docker logs "${PROBE_NAME}" 2>&1 | tail -60 || true
+  fi
+  docker stop "${PROBE_NAME}" "${RUNNER_NAME}" >/dev/null 2>&1 || true
+  if [ "${NOESAR_E2E_KEEP:-0}" = "1" ]; then
+    echo "--- probe and runner PRESERVED (NOESAR_E2E_KEEP=1) — remove them yourself ---"
+    return
+  fi
+  # CLAUDE10.md §5a: this run removes what it created. Targets are named, never pruned.
+  echo "--- removing probe, runner and probe image ---"
+  docker rm "${PROBE_NAME}" "${RUNNER_NAME}" >/dev/null 2>&1 || true
+  docker rmi "${PROBE_IMAGE}" >/dev/null 2>&1 || true
+  # The workspace holds this run's throwaway PostgreSQL cluster. On failure it is the
+  # only forensic artifact left, so it is kept and its path reported; it is only deleted
+  # when the run passed. The guard is insurance against ARTIFACT_ROOT being overridden
+  # into something unexpected: refuse to recurse unless the path is this run's own.
+  if [ "${rc}" -ne 0 ]; then
+    echo "--- workspace PRESERVED for diagnosis: ${WORKSPACE} ---"
+  elif [ -n "${STAMP}" ] && [ "${WORKSPACE}" = "${ARTIFACT_ROOT}/e2e/${STAMP}/workspace" ]; then
+    rm -rf "${ARTIFACT_ROOT:?}/e2e/${STAMP:?}" 2>/dev/null || true
+  else
+    echo "--- workspace NOT removed: path failed the safety check (${WORKSPACE}) ---"
+  fi
 }
 trap cleanup EXIT
 

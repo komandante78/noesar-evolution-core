@@ -215,7 +215,7 @@ sha256sum -c MANIFEST.sha256                # 5690 entries
 # Browser acceptance. Builds a DISPOSABLE probe offline from the working tree, gives it
 # an empty workspace, bootstraps a throwaway Owner from its own generated setup token,
 # and drives every route. It never touches the real installation and never uses a real
-# credential. Containers are stopped and preserved, never removed.
+# credential. It removes its own probe, runner and probe image on exit.
 bash tools/run-browser-e2e.sh               # 174 checks
 ```
 
@@ -235,15 +235,29 @@ To roll back: `docker stop noesar-evolution`, rename it aside, then
 The runtime bind mount is shared, so no data restore is needed unless the workspace
 itself must be reverted, in which case use `runtime/` above.
 
-Earlier rollback material is unchanged and still preserved:
-`noesar-evolution.rollback-phase4-20260725T142301Z` and
-`noesar-evolution.rollback-phase3-20260725T121648Z`.
+Earlier rollback **containers** were removed on 2026-07-26 under `D-0068`; their
+**images are still on disk**, so those paths still work — recreate the container from the
+run command with the tag you need:
 
-## Housekeeping left deliberately undone
+```text
+:phase4-complete-lan   what the kept rollback container above runs (immediate predecessor)
+:phase4-complete       state before the LAN bind
+:phase4                state before the completion gate
+:phase3                state before Phase 4
+```
 
-Eleven `noesar-evolution.e2e-probe-*` containers, eleven `e2e-runner-*` containers,
-eleven `noesar-evolution:webui-e2e-*` images and eleven `noesar-e2e-*` networks
-accumulated while the browser suite was being iterated, because the first version of the
-script stamped the network name too. Rule 12 forbids deleting them, and the script now
-reuses a single stable network (`noesar-e2e-net`), so this does not recur. Disposing of
-what already exists is a separate, explicit decision and was not taken here.
+## Housekeeping — done, and now enforced by the tooling
+
+Owner instruction, 2026-07-26: *work clean*. The eleven `e2e-probe-*` containers, eleven
+`e2e-runner-*` containers, twelve `noesar-evolution:webui-e2e-*` images and eleven
+`noesar-e2e-*` networks left by the browser suite were removed, together with three
+superseded rollback containers and two gate probes — 30 containers, 14 image tags and 11
+networks in total. Evidence and full before/after verification are in
+`docs/INSTALLATION_LEDGER.md` under *Container hygiene cleanup*.
+
+This is now governance, not a one-off: `CLAUDE10.md` §5a, and `CLEAN UP` as step 13 of the
+15-step skill cycle. **Two containers survive a phase** — the running installation and one
+rollback. `tools/run-browser-e2e.sh` removes its own probe, runner and probe image on exit
+(dumping probe logs first, and preserving the workspace only when the run failed);
+`NOESAR_E2E_KEEP=1` opts out for interactive debugging. Host-wide `prune` in any form is
+forbidden — removals name their targets.
