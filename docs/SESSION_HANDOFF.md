@@ -10,12 +10,12 @@ A cold session should be able to continue from this file alone, together with
 
 | Field | Value |
 |---|---|
-| Phase just completed | **1 — Canonical extraction** + **B-003 vendor repair** |
+| Phase just completed | **2 — Host preflight and installation design** |
 | Phase status | `COMPLETED` |
-| **Next phase** | **2 — Host preflight and installation design** |
+| **Next phase** | **3 — Isolated build and Unraid installation** |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Last commit | see `PROJECT_STATE.json.last_commit` |
-| Updated (UTC) | 2026-07-25T05:15:00Z |
+| Updated (UTC) | 2026-07-25T06:30:00Z |
 | Canonical repository | **constructed** — 6,007 tracked files, 90 MB |
 
 ---
@@ -219,3 +219,75 @@ started without an explicit instruction from the owner. `NEXT_PHASE=2_READY`.
 
 Backup for this repair: `/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups/pre_b003_repair_20260725T050034Z/`
 (6,034 files, self-verified, `ROLLBACK.md` included).
+
+---
+
+## Addendum — Phase 2 complete (2026-07-25) · `NEXT_PHASE=3_READY`
+
+Host preflight and full installation design are done. **Nothing was installed, built,
+started, or reconfigured; no container, network or dataset on the host was touched.**
+
+### The four decisions that change how Phase 3 must be run
+
+1. **Host port is 8100, not 8088.** The product default is already claimed twice
+   (`fridayn-model-factory`, `nova-ai`). Found by enumerating `docker inspect` bindings
+   — with all 37 containers stopped, a live port scan shows 8088 as free.
+2. **A dedicated network `noesar-evolution-net`**, never the installer default
+   `noesar-local`, which belongs to the unrelated NOESAR V3 stack on this host.
+3. **`chown 10001:10001` on the workspace.** The container is non-root 10001, Unraid
+   shares default to 99:100, and the delivered installer only `chmod`s. Without this the
+   container starts and then cannot persist.
+4. **Do not pass `--security-opt seccomp=`.** The shipped profile is allow-by-default
+   with a 24-syscall denylist — weaker than the Docker builtin it would replace, on a
+   host with no AppArmor and no SELinux.
+
+### Host facts worth carrying
+
+Unraid 7.3.2 · Ryzen 5 5600X 6c/12t, **AVX2 only** · 31 GiB RAM, **no swap** (so the
+memory cap is explicit) · RTX 3060 12 GiB idle, not claimed by this product ·
+`/mnt/cachec` 324 G free · Docker 29.5.3, cgroup v2 · **37 containers, all stopped** ·
+**AppArmor and SELinux both absent** · host TZ `Europe/Berlin`, `/etc/timezone` absent ·
+**no python3, no cargo/rustc, no psql, no gh, no gitleaks** on the host.
+
+### Defect fixed in this phase
+
+`INSTALLATION/install-unraid.sh` hardcoded the package-02 `RUNTIME_SOURCE/` layout and
+aborted at its own guard on a canonical checkout. Fixed with layout detection; `bash -n`
+clean on all 10 installer scripts. `deployment/unraid/install-complete.sh` was already
+correct and was verified, not modified.
+
+### Build needs one bounded network step
+
+`node:22-bookworm-slim` is **not** present locally (only `node:20`), and the Dockerfile
+`apt-get`s five packages. The **runtime** is fully offline and there are **zero
+third-party npm dependencies** — but the build is not offline. Both installers already
+fail loudly rather than auto-pulling, which is correct. Phase 3 step 3 is that
+authorised pull.
+
+### What Phase 3 installs — and does not
+
+Installs: the single Node container, `reference-json` data plane, loopback only.
+Does **not** install: PostgreSQL/pgvector (separate, own acceptance), the Rust authority
+daemon, any GPU allocation, any external provider, any `noesar.com` connectivity, TLS.
+
+Phase 3 also **implements** (all designed, none blocking install): `/livez` `/readyz`
+`/metrics` `/diagnostics`, structured logging with correlation IDs, debug mode with TTL,
+watchdog levels 0–4 plus safe mode, and the timezone chain.
+
+### Open blockers — unchanged
+
+**B-001** no GitHub remote (`gh` absent, `GIT_PUSH=BLOCKED_NO_REMOTE`) · **B-002**
+heuristic secret scanning only. Neither blocks Phase 3.
+
+### Standing `[UNVERIFIED]`
+
+`FOSS_CORE_DEPENDS_ON_ATOM=false` is re-verified at source level but stays
+`[UNVERIFIED]` until the Phase-4 ATOM-absent acceptance (§J) actually runs it.
+
+### Exact next action
+
+**Phase 3 — Isolated build and Unraid installation.** Do not start without explicit
+owner authorisation, which must cover **both** the installation and the bounded
+build-time network step. Follow `docs/PHASE_3_EXECUTION_PLAN.md` from its pre-flight
+gates; every step has a stop criterion and rollback is in
+`docs/ROLLBACK_AND_RECOVERY_PLAN.md`.

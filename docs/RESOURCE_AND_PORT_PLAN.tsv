@@ -1,0 +1,28 @@
+resource	planned_value	host_capacity_or_conflict	rationale	phase_3_action
+host_port_webui_api	8100	free; 8088 (product default) is ALREADY TAKEN by fridayn-model-factory AND nova-ai	first free port outside the existing NOESAR 8080-8099 band; verified against all 23 container-reserved ports	publish 127.0.0.1:8100:8088
+container_port	8088	internal only, no conflict possible	image EXPOSE/HEALTHCHECK/NOESAR_PORT all use 8088; only the host mapping moves	leave unchanged
+bind_address	127.0.0.1 (loopback)	host has nginx on 80/443 for TLS termination	private-by-default; no LAN exposure of the container port	--publish 127.0.0.1:8100:8088
+docker_network	noesar-evolution-net (new, bridge)	noesar-local exists but belongs to the unrelated NOESAR V3 stack	product isolation; gives egress control a real boundary; avoids cross-product coupling	docker network create noesar-evolution-net
+memory_limit	8g	31 GiB total, 24 GiB free, NO SWAP configured	with zero swap an overrun is an instant OOM kill, so the cap must be explicit and well under free RAM	--memory 8g
+cpu_limit	4	12 threads (6c/12t Ryzen 5 5600X)	leaves 8 threads for the host and other workloads	--cpus 4
+pids_limit	512	cgroup v2 pids controller available	fork-bomb containment; delivered default retained	--pids-limit 512
+tmpfs_tmp	128m rw,noexec,nosuid,nodev	RAM-backed	container is --read-only; /tmp must be a hardened tmpfs	--tmpfs /tmp
+tmpfs_run	16m rw,noexec,nosuid,nodev	RAM-backed	same rationale as /tmp	--tmpfs /run
+runtime_root	/mnt/cachec/NOESAR_EVOLUTION_RUNTIME	324 G free on XFS/NVMe	NOT created in Phase 2 by instruction; direct XFS beats the /mnt/user FUSE overlay for a stateful workload	mkdir in Phase 3
+workspace_bind	/mnt/cachec/NOESAR_EVOLUTION_RUNTIME/workspace -> /workspace	free, no collision	overrides delivered default /mnt/user/appdata/noesar-evolution (FUSE shfs)	--mount type=bind,rw
+workspace_owner	10001:10001	Unraid share convention is 99:100	container runs non-root as 10001 and CANNOT write a workspace left at default ownership	chown 10001:10001 + chmod 0700
+image_tag	noesar-evolution:v4-complete	/var/lib/docker has 144 G free; ~200 MB image	delivered default tag; previous tag retained for rollback	docker build --pull=false
+container_name	noesar-evolution	no existing container uses this name	installers already abort if the name exists	docker run --name
+gpu	NOT allocated	RTX 3060 12 GiB, idle, shared host-wide	the Node container does not use the GPU; claiming it would contend with other projects	no --gpus flag
+seccomp	Docker builtin profile	shipped profile is SCMP_ACT_ALLOW + 24-syscall denylist = WEAKER than the builtin it replaces	host has no AppArmor and no SELinux, so seccomp is the only MAC layer	omit --security-opt seccomp=
+capabilities	drop ALL	kernel supports full capability drop	product needs no capability; delivered default retained	--cap-drop ALL
+no_new_privileges	true	supported	blocks setuid escalation inside the container	--security-opt no-new-privileges:true
+read_only_rootfs	true	supported	only /workspace and the two tmpfs are writable	--read-only
+restart_policy	unless-stopped	supported	Docker is the supervisor; the image has no internal supervisor	--restart unless-stopped
+data_plane	reference-json (file-backed in /workspace)	no external DB required	keeps DATABASE_MUTATION=false true by construction for the first install	--env NOESAR_DATA_PLANE=reference-json
+postgres_pgvector	NOT installed in phase 3	schema + acceptance plan exist in-repo	separate installation with its own credentials and acceptance	deferred
+timezone	TZ=Europe/Berlin	host /etc/localtime -> Europe/Berlin, ntpd running	display only; all stored timestamps stay UTC	--env TZ
+base_image	node:22-bookworm-slim	NOT present locally (only node:20, node:20-slim)	build cannot proceed without it; installers correctly fail loudly rather than auto-pull	bounded authorised pull
+build_network	required (base image + apt-get)	Dockerfile installs 5 Debian packages	runtime is fully offline, but BUILD is not; stated as an explicit gate	authorised bounded network during build only
+disk_build	~2 G headroom	144 G free in /var/lib/docker	image layers + build cache	no action
+disk_runtime	grows with workspace	324 G free on /mnt/cachec	JSON data plane, logs, uploads	monitor in phase 4

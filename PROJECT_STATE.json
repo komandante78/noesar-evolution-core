@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": 1,
+  "current_phase": 2,
   "phase_status": "COMPLETED",
-  "next_phase": 2,
+  "next_phase": 3,
   "canonical_repository_constructed": true,
   "installation_complete": false,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
-  "last_updated_utc": "2026-07-25T05:15:00Z",
+  "last_updated_utc": "2026-07-25T06:30:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -85,5 +85,15 @@
     "86 first-party source files without SPDX header"
   ],
   "phase_2_started": false,
-  "next_phase_ready": true
+  "next_phase_ready": "3_READY",
+  "host_preflight": "COMPLETED - Unraid 7.3.2, kernel 6.18.38, Ryzen 5 5600X 6c/12t AVX2 (no AVX-512), 31GiB RAM with NO SWAP, RTX 3060 12GiB idle, Docker 29.5.3 overlay2 cgroup v2, 37 containers all stopped, AppArmor and SELinux both ABSENT so seccomp is the only MAC layer",
+  "installation_design": "COMPLETED - single Node-only container, host port 8100 (product default 8088 already taken twice), loopback-only binding, dedicated noesar-evolution-net, runtime root /mnt/cachec/NOESAR_EVOLUTION_RUNTIME (NOT created in phase 2), workspace chown 10001:10001, reference-json data plane (no Postgres in phase 3)",
+  "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
+  "security_matrix": "41 requirements: 20 IMPLEMENTED, 9 PARTIAL, 5 UNVERIFIED, 4 MISSING, 1 NOT_APPLICABLE, 1 IMPLEMENTED_BY_DESIGN, 1 BROKEN (shipped seccomp profile is allow-by-default and weaker than the Docker builtin it would replace - phase 3 uses the builtin instead)",
+  "build_requires_network": "YES - node:22-bookworm-slim is not present locally (only node:20) and the Dockerfile apt-get installs 5 packages; RUNTIME is fully offline; zero third-party npm dependencies",
+  "postgres_pgvector": "schema 0001-0007 present with pgvector and RLS, but NOT installed in phase 3 - separate installation with its own acceptance",
+  "atom_boundary_reverified": "PASS - FOSS_CORE_DEPENDS_ON_ATOM=false and PRIVATE_ATOM_IMPLEMENTATION_PRESENT=false; still [UNVERIFIED] at runtime until the phase 4 ATOM-absent acceptance",
+  "vps_access": false,
+  "network_mutation": false,
+  "phase_3_started": false
 }

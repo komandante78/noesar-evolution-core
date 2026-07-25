@@ -258,3 +258,78 @@ legitimately modified, and four new entries at their official upstream hashes.
 have left the manifest permanently failing and encoding the defect. Touching anything
 else would have blurred the audit trail — hence a diff of exactly 6 lines, verified
 5,610/5,610, still sorted. *Reversible:* yes.
+
+---
+
+## D-0021 — Host port 8100, loopback-only
+**Phase:** 2 · **UTC:** 2026-07-25T06:30:00Z · **Status:** adopted
+
+The product's default host port 8088 is already claimed on this host by two containers
+(`fridayn-model-factory` and `nova-ai` — themselves a pre-existing double allocation).
+Port 8100 is free and sits outside the existing NOESAR 8080–8099 band. Binding is
+`127.0.0.1` only.
+
+*Why:* found by enumerating `docker inspect` port bindings rather than live listeners —
+with all 37 containers stopped, a port scan would have shown 8088 as free and the
+conflict would have surfaced only when something restarted. *Reversible:* yes.
+
+## D-0022 — Dedicated network, not the installer default `noesar-local`
+**Phase:** 2 · **Status:** adopted
+
+`noesar-evolution-net` will be created instead of joining `noesar-local`.
+
+*Why:* `noesar-local` already belongs to the unrelated NOESAR V3 stack on this host,
+where network binding is load-bearing (moving `noesar-webui` off it breaks login with a
+502). Sharing it would couple two products that must stay independent, for no benefit,
+and would blur the boundary egress control needs. *Reversible:* yes.
+
+## D-0023 — Runtime root on `/mnt/cachec`, and not created in this phase
+**Phase:** 2 · **Status:** adopted
+
+Runtime goes to `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME`, not the delivered default
+`/mnt/user/appdata/noesar-evolution`.
+
+*Why:* `/mnt/user` is a FUSE (`shfs`) overlay with weaker fsync semantics for a
+stateful workload; `/mnt/cachec` is direct XFS-on-NVMe with 324 G free and already
+hosts the project, so source, artifacts and runtime back up and roll back as one
+consistent unit. The directory was deliberately **not** created — the phase says design
+only. *Reversible:* yes.
+
+## D-0024 — Use Docker's builtin seccomp profile, not the shipped one
+**Phase:** 2 · **Status:** adopted · **Classification:** configuration, no source change
+
+`security/seccomp-noesar.json` is `defaultAction: SCMP_ACT_ALLOW` with a 24-syscall
+denylist. Passing it replaces Docker's builtin profile, which is deny-by-default with a
+~350-syscall allowlist and already blocks all 24 of those and more. The shipped profile
+is therefore strictly weaker than the one it displaces.
+
+*Why it matters here specifically:* this host has **no AppArmor and no SELinux**, so
+seccomp is the only mandatory-access-control layer left. *Decision:* omit
+`--security-opt seccomp=` in Phase 3. The file is left untouched and the reasoning
+recorded; if a builtin-blocked syscall is ever genuinely needed, the fix is a
+deny-by-default profile derived from Docker's, never an allow-by-default one.
+*Reversible:* fully — it is a run flag.
+
+## D-0025 — Postgres/pgvector deliberately excluded from Phase 3
+**Phase:** 2 · **Status:** adopted
+
+Phase 3 installs the `reference-json` data plane only.
+
+*Why:* it needs no external service, so the first installation has zero external
+dependencies and `DATABASE_MUTATION=false` holds by construction. The Postgres schema
+(`0001–0007`, pgvector, RLS) and its acceptance plan already exist and deserve their own
+installation with their own credentials and acceptance, not a side effect of the first
+install. *Reversible:* yes — switching data planes later is a configuration change plus
+a migration.
+
+## D-0026 — The installer fix was in scope; the other gaps were not
+**Phase:** 2 · **Status:** adopted · **Classification:** `FIXED_IN_PHASE_2`
+
+`INSTALLATION/install-unraid.sh` was fixed because it *certainly* blocked installation
+from the canonical layout and could be corrected statically — exactly the test the phase
+specification sets. The missing health endpoints, the absent update manager and the
+seccomp profile were **not** fixed.
+
+*Why not:* none of them certainly blocks installation, and the specification forbids
+fixing hypothetical problems. They are designed and scheduled instead, with Phase-4
+acceptance tests. *Reversible:* yes (backup `pre_phase2_fix_20260725T060825Z`).

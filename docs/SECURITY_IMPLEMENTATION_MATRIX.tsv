@@ -1,0 +1,42 @@
+requirement	STATUS	SOURCE_PATH	TEST_PATH	RISK	PHASE_3_ACTION	PHASE_4_ACCEPTANCE
+authentication (login, session)	IMPLEMENTED	services/reference-control-plane/src/auth.mjs; auth-store.mjs; auth-crypto.mjs	tests/auth.test.mjs	LOW	none - verify at runtime	login as owner, session cookie issued, /api/v1/auth/me returns identity
+first-owner bootstrap	IMPLEMENTED	src/auth.mjs (setup + setup/confirm); NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token	tests/auth.test.mjs	MEDIUM	read token from workspace only; never copy into repo/log/commit	token single-use; second setup attempt rejected
+MFA / TOTP	IMPLEMENTED	src/auth-crypto.mjs; src/auth.mjs; /api/v1/auth/login/mfa	tests/auth.test.mjs; tools/auth-http-smoke.mjs	LOW	enable for owner	login without TOTP rejected; with valid TOTP accepted; replayed code rejected
+passkey / WebAuthn	MISSING	-	-	LOW	none (TOTP is sufficient for phase 3)	documented as not present
+RBAC / roles	IMPLEMENTED	src/ai-workspace/agent-service.mjs; workspace-service.mjs; path-auth.mjs	tests/security.test.mjs	MEDIUM	verify owner vs non-owner separation	non-owner denied owner-only endpoints (403)
+brute-force protection	IMPLEMENTED	src/auth.mjs (loginAttempts map, failedLoginCount, lockedUntil, per ip+username, 15-min sliding window)	tests/auth.test.mjs	LOW	none	N failed logins trigger lockout; lockout expires
+session handling	IMPLEMENTED	src/auth-store.mjs; src/auth.mjs	tests/auth.test.mjs	MEDIUM	set NOESAR_SECURE_COOKIES=true if published over TLS	logout invalidates session; reauth required for sensitive ops
+private network by default	IMPLEMENTED_BY_DESIGN	docs/INSTALLATION_DESIGN.md sec.3	-	LOW	publish 127.0.0.1:8100:8088 only; dedicated bridge network	port not reachable from LAN; only loopback
+TLS for remote access	NOT_APPLICABLE (phase 3)	deployment/reverse-proxy/nginx.conf.example; Caddyfile.example	-	MEDIUM	not published remotely in phase 3	if ever published: TLS terminated at nginx AND NOESAR_SECURE_COOKIES=true
+allowed hosts / Host header	IMPLEMENTED	NOESAR_ALLOWED_HOSTS env; src/server.mjs	tests/http-security.test.mjs	LOW	set to localhost,127.0.0.1,::1	request with foreign Host header rejected
+CORS	IMPLEMENTED	src/server.mjs	tests/http-security.test.mjs	LOW	verify default deny	cross-origin request without allowlist rejected
+CSRF	PARTIAL	src/server.mjs (same-origin + reauth); no explicit CSRF token	tests/http-security.test.mjs	MEDIUM	confirm state-changing routes require same-origin	forged cross-origin POST rejected
+CSP / XSS	UNVERIFIED	apps/webui-static/index.html; src/server.mjs headers	tests/http-security.test.mjs	MEDIUM	inspect response headers at runtime; add CSP if absent	response carries CSP; reflected-XSS probe not executed
+WebSocket / stream origin	UNVERIFIED	src/server.mjs (/api/v1/chat/stream is SSE)	-	MEDIUM	verify origin check on the streaming route	stream from disallowed origin rejected
+SSRF / egress control	IMPLEMENTED	ai-workspace/provider-gateway.mjs; runtime/tool-executor.mjs; /api/v1/privacy/egress-plan	ai-workspace/tests/ai-provider-gateway.test.mjs	MEDIUM	keep all external providers default-deny	tool fetch to internal IP/metadata endpoint blocked
+external providers default-deny	IMPLEMENTED	ai-workspace/provider-gateway.mjs (IMPLEMENTED_OPTIONAL_DEFAULT_DENY)	ai-workspace/tests/ai-provider-gateway.test.mjs	LOW	enable none	with no credentials configured, no external call is attempted
+prompt injection (direct)	PARTIAL	ai-workspace/workspace-service.mjs	ai-workspace/tests/ai-workspace.test.mjs	HIGH	do not rely on it; treat as unproven	injected instruction in user prompt does not escalate tool scope
+prompt injection (indirect via documents)	PARTIAL	ai-workspace/workspace-service.mjs; file-extractors.mjs	ai-workspace/tests/ai-workspace.test.mjs	HIGH	same	malicious instruction inside an ingested file does not trigger tool use
+agent least privilege	IMPLEMENTED	ai-workspace/agent-service.mjs; tool-executor.mjs; capabilities/reference/noesar_capabilities/	capabilities/reference/tests/test_sandbox.py	MEDIUM	verify tool allowlist per agent	agent cannot invoke a tool outside its granted capability set
+quotas and limits	PARTIAL	--pids-limit/--memory/--cpus at container level; app-level quotas unverified	-	MEDIUM	apply container limits	container respects memory/cpu/pids caps
+sandbox non-root	IMPLEMENTED	oci/Dockerfile (USER 10001:10001, groupadd/useradd)	-	LOW	chown workspace to 10001:10001	whoami inside container is 10001, not root
+capability drop	IMPLEMENTED	INSTALLATION/install-unraid.sh; deployment/unraid/install-complete.sh (--cap-drop ALL)	-	LOW	retain	container has no effective capabilities
+no-new-privileges	IMPLEMENTED	both installers (--security-opt no-new-privileges:true)	-	LOW	retain	setuid binary inside container cannot escalate
+read-only rootfs	IMPLEMENTED	both installers (--read-only + hardened tmpfs)	-	LOW	retain	write outside /workspace and tmpfs fails
+seccomp	BROKEN (weaker than default)	security/seccomp-noesar.json - defaultAction SCMP_ACT_ALLOW with a 24-syscall denylist	-	HIGH	DO NOT pass --security-opt seccomp=; use Docker builtin (deny-by-default ~350-syscall allowlist) which blocks all 24 and more. Host has no AppArmor/SELinux so seccomp is the only MAC layer	container runs under the builtin profile; a syscall outside the builtin allowlist is denied
+file quarantine	UNVERIFIED	ai-workspace/file-extractors.mjs	ai-workspace/tests/ai-workspace.test.mjs	MEDIUM	inspect upload path	uploaded file is not executed and is stored outside any exec path
+ZIP bomb / decompression limits	UNVERIFIED	ai-workspace/file-extractors.mjs (unzip present in image)	-	MEDIUM	inspect extraction limits	oversized archive rejected without exhausting memory/disk
+path traversal	UNVERIFIED	src/path-auth.mjs	tests/security.test.mjs	MEDIUM	inspect	../ in an upload or artifact path cannot escape /workspace
+plugin / MCP signature verification	PARTIAL	capabilities/reference/ (signature verification example + public Ed25519 key)	capabilities/reference/tests/test_capabilities.py	MEDIUM	install no plugins	unsigned/tampered capability package rejected
+secret vault	IMPLEMENTED	ai-workspace/credential-vault.mjs	ai-workspace/tests/	MEDIUM	store any provider key here, never in env	stored credential is not readable in plaintext via API or logs
+secret redaction in logs	IMPLEMENTED	ai-workspace/privacy-redaction.mjs; provider-gateway.mjs	ai-workspace/tests/	MEDIUM	verify	a known secret injected into a request never appears in logs or the diagnostic bundle
+user / project isolation	IMPLEMENTED	ai-workspace/workspace-service.mjs; context-graph.mjs; database RLS (0007_row_level_security.sql)	ai-workspace/tests/ai-context-graph.test.mjs	HIGH	verify at runtime	user A cannot read user B project data via API or vector search
+audit ledger append-only	PARTIAL	src/data-plane.mjs; database/postgres/0004_audit_ledger.sql; noesar-audit-ledger crate	tests/	MEDIUM	verify JSON data plane audit behaviour	audit entry cannot be modified or deleted through the API
+tamper-evident audit (hash chain)	PARTIAL	docs/AUDIT_HASH_CHAIN_V060.md; noesar-audit-ledger crate (Rust, not in the Node image)	rust/crates/noesar-audit-ledger	MEDIUM	document that the Node data plane does not chain	altering a stored audit record is detectable
+SBOM	IMPLEMENTED	sbom/	-	LOW	none	SBOM present and parses
+build provenance	IMPLEMENTED	tools/create-rust-build-provenance.py (filter FIXED in phase 1); ARTIFACT_ROOT/prebuilt/linux-x86_64/PROVENANCE.json	tools/test-rust-build-provenance.py; tools/test-packaging-filters.mjs	LOW	none	provenance regenerates and the packaging-filter regression test passes
+package/update signature	MISSING	updates/verify-offline-update.py exists; no signing/update manager	-	HIGH	design only - see docs/UPDATE_MANAGER_DESIGN.md	unsigned update package rejected (once implemented)
+backup / restore	PARTIAL	operations/docs/BACKUP_RESTORE.md (documented, not automated)	-	MEDIUM	take a pre-install backup; script the workspace backup	restore from backup reproduces a working install
+integrity monitoring	PARTIAL	MANIFEST.sha256 (5610/5610 verified); no runtime FIM	-	LOW	verify manifest before build	manifest verifies before and after install
+incident response	MISSING	-	-	LOW	none	documented runbook exists (phase 5)
+red-team testing	MISSING	-	-	MEDIUM	none	adversarial suite defined in docs/PHASE_4_ACCEPTANCE_PLAN.md

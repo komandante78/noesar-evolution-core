@@ -369,3 +369,74 @@ Untouched. `LICENSE_RELICENSING=false`. The four gaps remain registered verbatim
 `DATABASE_MUTATION` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` · `LICENSE_RELICENSING`
 — all false. The only container used was an ephemeral `--rm --network=none`
 toolchain container for verification; no product image was built and no service started.
+
+---
+
+## Phase 2 — Host preflight and installation design
+
+**UTC:** 2026-07-25T06:30:00Z
+**Result:** `COMPLETED` — `NEXT_PHASE=3_READY`
+**Host mutations: NONE.** No container started or stopped, no network or dataset changed.
+
+### Entry state
+`current_phase=1 COMPLETED`, `B001=CLOSED`, `B-003=CLOSED`, `next_phase=2`, tree clean at `ccca61b`.
+
+### Host inventory (read-only)
+Unraid 7.3.2 / kernel 6.18.38 / Ryzen 5 5600X 6c-12t (AVX2, no AVX-512, AES+SHA-NI) /
+31 GiB RAM, 24 GiB free, **NO SWAP** / RTX 3060 12 GiB idle, `nvidia` runtime + CDI /
+`/mnt/cachec` 324 G free, `/var/lib/docker` 144 G free / Docker 29.5.3, overlay2,
+cgroup v2 / **37 containers, 0 running**, 99 images / seccomp available, **AppArmor and
+SELinux both ABSENT** / TZ `Europe/Berlin`, ntpd running, `/etc/timezone` absent /
+absent tooling: python3, cargo, rustc, psql, gh, gitleaks.
+
+23 host ports are reserved by existing container configuration — derived from
+`docker inspect`, because with every container stopped a live port scan shows nothing.
+
+### Installability verdict
+Build context complete; zero old-workspace dependencies in code or config; zero
+third-party npm dependencies. `/healthz` implemented, `/livez` `/readyz` `/metrics`
+`/diagnostics` missing. Data plane defaults to file-backed `reference-json`; the full
+Postgres+pgvector schema exists but is a separate installation. Update manager absent.
+Runtime is fully offline; **build is not** (`node:22-bookworm-slim` absent locally,
+plus `apt-get` for 5 packages).
+
+### Defect found and FIXED
+`INSTALLATION/install-unraid.sh` hardcoded `RUNTIME_ROOT="$PACKAGE_ROOT/RUNTIME_SOURCE"`
+(the package-02 layout) and aborted at its own `test -f "$RUNTIME_ROOT/oci/Dockerfile"`
+guard on a canonical checkout — a certain installation blocker, statically fixable.
+Backup `.../backups/pre_phase2_fix_20260725T060825Z/` (checksummed), minimal layout
+detection applied, `bash -n` clean on all 10 installer scripts, dry evaluation confirms
+both guards pass. `deployment/unraid/install-complete.sh` was already correct and was
+verified, not modified.
+
+### Key design decisions
+Host port **8100** (product default 8088 already claimed twice by `fridayn-model-factory`
+and `nova-ai`) · **loopback-only** binding · dedicated **`noesar-evolution-net`** instead
+of the installer default `noesar-local`, which belongs to the unrelated NOESAR V3 stack ·
+runtime root on `/mnt/cachec` rather than the `/mnt/user` FUSE overlay, **not created in
+this phase** · workspace **`chown 10001:10001`** because the container is non-root and
+Unraid shares default to 99:100 · limits 8 G / 4 CPU / 512 pids, explicit because the
+host has no swap · **Docker builtin seccomp profile instead of the shipped one**, which
+is allow-by-default with a 24-syscall denylist and therefore weaker than the
+deny-by-default builtin it would replace.
+
+### Security matrix
+41 requirements: 20 IMPLEMENTED, 9 PARTIAL, 5 UNVERIFIED, 4 MISSING, 1 NOT_APPLICABLE,
+1 IMPLEMENTED_BY_DESIGN, 1 BROKEN. Highest residual risk: prompt injection (direct and
+indirect, PARTIAL), user/project isolation (implemented, unproven at runtime), update
+package signing (MISSING), seccomp (BROKEN, mitigated by configuration).
+
+### Licences and ATOM
+Nothing relicensed. The four gaps remain open verbatim. `FOSS_CORE_DEPENDS_ON_ATOM=false`
+and `PRIVATE_ATOM_IMPLEMENTATION_PRESENT=false` re-verified; still `[UNVERIFIED]` at
+runtime until the Phase-4 ATOM-absent acceptance. **No VPS contacted.**
+
+### Verification
+`bash -n` 10/10 · `MANIFEST.sha256` 5610/5610 · vendor 113 crates / 5,094 files / 0
+missing / 0 corrupt · packaging filters 12/12 + 7/7 · heuristic secret scan 0 findings
+with detector self-test.
+
+### Prohibitions honoured
+`DOCKER_BUILD` · `CONTAINER_START` · `INSTALLATION` · `DATABASE_MUTATION` ·
+`NETWORK_MUTATION` · `VPS_ACCESS` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` ·
+`LICENSE_RELICENSING` — all false. `PROPOSED_RUNTIME_ROOT` deliberately **not** created.
