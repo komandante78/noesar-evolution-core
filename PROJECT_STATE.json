@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-26T00:20:00Z",
+ "last_updated_utc": "2026-07-26T00:55:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -525,7 +525,7 @@
  "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
  "phase_5_documentation_ready": false,
  "phase_5_final_packaging_ready": false,
- "next_phase_constraint": "NOT Phase 5. docs/WORK_PLAN_V4_ALIGNMENT.md is the plan of record: WP-0 brings the 46 missing specification files into the repository so the rest is measurable; WP-3 is an Owner decision on the WebUI direction (prototype published for review); WP-1 closes acceptance blockers SEC-003 and OPS-002; WP-2 builds the required features that are absent; WP-4 is the original Phase 5. B-007 stays closed and that was never the same as satisfying the specification.",
+ "next_phase_constraint": "First action on reopening: WebUI proposal v2, per docs/WEBUI_DESIGN_REVIEW_V1.md. v1 was reviewed and NOT accepted; the Owner asked for the new preview in a fresh session and expects further iterations. Only after that, docs/WORK_PLAN_V4_ALIGNMENT.md: WP-0 brings the 46 missing specification files in so the rest is measurable, then WP-1 blockers SEC-003 and OPS-002, then WP-2 absent features, then WP-4 the original Phase 5.",
  "phase_5_release_gate": {
   "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
   "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
@@ -709,5 +709,20 @@
   "OPS-002": "OPEN - blocker - four installer scripts covered; linux, macos, windows and podman never executed or tested",
   "PKG-001": "NOT DONE - Gate 8"
  },
- "plan_of_record": "docs/WORK_PLAN_V4_ALIGNMENT.md"
+ "plan_of_record": "docs/WORK_PLAN_V4_ALIGNMENT.md",
+ "webui_proposal_v1": {
+  "status": "NOT_ACCEPTED",
+  "reviewed_utc": "2026-07-26",
+  "record": "docs/WEBUI_DESIGN_REVIEW_V1.md",
+  "preview": "published artifact, interactive prototype",
+  "corrections": [
+   "the right context rail must be a dockable, dismissible panel, not a fixed 268px column",
+   "three conversational surfaces are missing entirely: a Claude-style chat, a CodeN Ultra chat, and the CodeN Ultra TUI",
+   "the sidebar must collapse",
+   "one Settings destination holding language, appearance (all nine themes), licence activation and product settings, instead of eleven administrative destinations in the navigation"
+  ],
+  "note": "The fourth correction is the Owner agreeing with the specification against the proposal: 01_PRODUCT/11 requires progressive disclosure and the binding reference carries a single Settings entry. v2 must re-derive the information architecture, not restyle v1.",
+  "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
+  "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
+ }
 }

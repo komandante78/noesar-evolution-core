@@ -146,9 +146,23 @@ should not be read as implying otherwise.
 
 ## Exact next action
 
-**Not Phase 5 yet.** Follow `docs/WORK_PLAN_V4_ALIGNMENT.md`: bring the 46 missing
-specification files into the repository (WP-0) so the rest is measurable, take the Owner
-decision on the WebUI direction (WP-3, a prototype is published for review), then the two
+**First action on reopening: produce WebUI proposal v2.** The Owner reviewed v1 on
+2026-07-26, did **not** accept it, and asked explicitly that the new preview be made in a
+fresh session rather than in the one that took the feedback. He expects more attempts.
+
+Read `docs/WEBUI_DESIGN_REVIEW_V1.md` first — it holds the four corrections verbatim and
+what each one means. In short: the context rail becomes a dockable, dismissible panel; the
+rail collapses; **three conversational surfaces that v1 omitted entirely** (Claude-style
+chat, CodeN Ultra chat, CodeN Ultra TUI) must be drawn; and the eleven administrative
+destinations collapse into **one Settings page** holding language, appearance (all nine
+themes), licence activation and the product's settings. That last one requires
+re-deriving the information architecture, not restyling v1.
+
+There is **one open question to ask before building**: three separate chat destinations,
+or one Chat destination containing three surfaces.
+
+**Then, not before:** `docs/WORK_PLAN_V4_ALIGNMENT.md` — bring the 46 missing
+specification files into the repository (WP-0) so the rest is measurable, then the two
 acceptance blockers (WP-1), then the missing features (WP-2).
 
 Phase 5 as originally described — documentation, licensing audit, release, packaging —

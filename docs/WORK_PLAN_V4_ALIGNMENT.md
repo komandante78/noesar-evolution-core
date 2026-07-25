@@ -125,7 +125,25 @@ critical state unreadable.
 not wired to the API, 22 of the 26 views are undrawn, and nothing has been through a
 keyboard-only or screen-reader pass. Accessibility is measured after the shape is agreed.
 
-**Gate: Owner review.** Nothing is built from this until the direction is accepted.
+**Gate: Owner review. → v1 was reviewed on 2026-07-26 and NOT ACCEPTED.**
+
+See `docs/WEBUI_DESIGN_REVIEW_V1.md` for the full record. Four corrections, one of which
+changes the information architecture rather than the styling:
+
+- the right context rail must be a **dockable, dismissible panel**, not a fixed column;
+- **three conversational surfaces are missing entirely** — a Claude-style chat, a CodeN
+  Ultra chat, and the CodeN Ultra TUI. The existing CodeN Ultra product is the reference
+  for what is meant;
+- the rail must **collapse**;
+- **one Settings destination**, holding language, appearance (all nine themes), licence
+  activation and the product's own settings — instead of eleven administrative
+  destinations promoted into the navigation.
+
+The last one is the Owner agreeing with the specification against v1: `01_PRODUCT/11`
+requires progressive disclosure and the binding reference has a single `Settings` entry.
+v2 must re-derive the whole IA from that constraint, not restyle v1.
+
+Nothing is built until a revised proposal is accepted.
 
 ---
 
