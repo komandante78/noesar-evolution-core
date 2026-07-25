@@ -211,6 +211,21 @@ export default [
     rules: CORRECTNESS_RULES,
   },
   {
+    // The browser acceptance harness is a Node program that also carries code destined
+    // for the page: the callbacks handed to page.evaluate() are serialised and run
+    // inside the browser, where `document` and `location` do exist. Linting it as pure
+    // Node reported six no-undef errors that were all correct code, and a check that
+    // cries wolf is a check people learn to skip. It gets BOTH global sets, and keeps
+    // no-undef switched on — the rule still catches a genuine typo in either half.
+    files: ['tools/browser-e2e.mjs'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: { ...NODE_GLOBALS, ...BROWSER_GLOBALS },
+    },
+    rules: CORRECTNESS_RULES,
+  },
+  {
     files: ['apps/webui-react/**/*.{js,jsx,mjs}'],
     languageOptions: {
       ecmaVersion: 2024,
