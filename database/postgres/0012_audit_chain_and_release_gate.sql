@@ -56,7 +56,17 @@ ON noesar_audit.events
 FOR EACH ROW
 EXECUTE FUNCTION noesar_audit.enforce_hash_chain();
 
-CREATE OR REPLACE VIEW noesar_runtime.security_acceptance AS
+-- CREATE OR REPLACE VIEW may only APPEND columns: PostgreSQL rejects any change to the
+-- name, order or type of an existing one with
+--   cannot change name of view column "migration_ledger_immutable" to "audit_hash_chain_guard"
+-- Migration 0010 defined this view with migration_ledger_immutable in sixth position, and
+-- this migration inserts audit_hash_chain_guard before it. Replacing therefore fails
+-- deterministically on every cluster that ran 0010 first, which is every cluster.
+-- Dropping and recreating is the only way to reshape a view; nothing depends on this one,
+-- so there is nothing to cascade to and no CASCADE is used.
+DROP VIEW IF EXISTS noesar_runtime.security_acceptance;
+
+CREATE VIEW noesar_runtime.security_acceptance AS
 SELECT
   current_setting('server_version_num')::integer >= 180000
     AS postgres_18_or_newer,

@@ -168,6 +168,13 @@ export function buildReadiness({ watchdog, auth, dataPlane }) {
   if (report.safeMode.active) reasons.push('safe-mode');
   for (const name of report.essentialFailures) reasons.push(`essential-subject-down:${name}`);
   if (!dataPlane) reasons.push('data-plane-unresolved');
+  // A declared PostgreSQL data plane that is not connected is a readiness failure, not a
+  // degradation: serving requests against a database the runtime cannot reach would mean
+  // answering with an empty workspace and calling it success. /livez is unaffected, so a
+  // database still recovering never causes the container to be killed.
+  if (dataPlane?.mode === 'postgresql' && dataPlane.connected !== true) {
+    reasons.push('data-plane-not-connected');
+  }
   return {
     ready: reasons.length === 0,
     status: reasons.length === 0 ? 'ready' : 'not-ready',

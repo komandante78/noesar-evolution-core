@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 4 completion image: the Phase 4 image plus an in-container PostgreSQL 18
+# data plane with pgvector, the multi-user runtime and the local model runtime.
+#
+# Lineage, stated rather than implied:
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> noesar-evolution:phase3   (audited OS package set, Phase 3)
+#     -> noesar-evolution:phase4   (first-party remediations, Phase 4)
+#     -> noesar-evolution:phase4-complete  (this file)
+#
+# Why FROM the Phase 4 image and not a fresh build of oci/Dockerfile: the Debian
+# package set of the running container stays provably the one Phase 3 recorded and
+# audited. This file adds packages, and every one it adds is pinned to an exact
+# version so the addition is auditable in isolation.
+#
+# Network is required for this build, unlike the Phase 4 overlay, because the
+# PostgreSQL 18 packages are not in the Debian bookworm archive. Only the PostgreSQL
+# Global Development Group archive is added, its signing key is shipped in this
+# repository rather than fetched at build time, and every package version is pinned.
+ARG BASE_IMAGE=noesar-evolution:phase4
+FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.version="1.0.0-ai-workspace-phase4-complete"
+LABEL org.noesar.phase="4-complete"
+LABEL org.noesar.base-image="noesar-evolution:phase4"
+LABEL org.noesar.data-plane="postgresql"
+LABEL org.noesar.postgresql.version="18.4-1.pgdg12+1"
+LABEL org.noesar.pgvector.version="0.8.5-1.pgdg12+1"
+
+USER root
+
+# The PostgreSQL Global Development Group repository signing key. This is a PUBLIC
+# key: it verifies the archive's signature and can verify nothing else. It is shipped
+# in-tree instead of downloaded during the build so that the trust anchor is reviewable
+# in the repository rather than being trust-on-first-use at build time.
+COPY oci/keys/apt.postgresql.org.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+
+# create_main_cluster=false stops postgresql-common's postinst from provisioning a
+# cluster under /var/lib/postgresql. This product's cluster lives under the persistent
+# workspace and is created by the runtime supervisor, not by the package manager, so a
+# package-created cluster would be dead weight inside a read-only root filesystem.
+RUN set -eux; \
+    install -d -m 0755 /usr/share/postgresql-common/pgdg /etc/postgresql-common; \
+    printf 'create_main_cluster = false\n' > /etc/postgresql-common/createcluster.conf; \
+    echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' \
+      > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      postgresql-18=18.4-1.pgdg12+1 \
+      postgresql-client-18=18.4-1.pgdg12+1 \
+      postgresql-18-pgvector=0.8.5-1.pgdg12+1; \
+    rm -rf /var/lib/apt/lists/*; \
+    /usr/lib/postgresql/18/bin/postgres --version; \
+    test -f /usr/share/postgresql/18/extension/vector.control
+
+# The packaged cluster directories are owned by the Debian `postgres` user and live on a
+# read-only root filesystem at run time. The runtime never writes there, but leaving them
+# owned by another uid makes an accidental write fail with EACCES rather than succeed and
+# then vanish on restart. Ownership is left exactly as the package set it.
+
+WORKDIR /opt/noesar
+COPY --chown=10001:10001 package.json /opt/noesar/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 database/ /opt/noesar/database/
+
+ENV NOESAR_DATA_PLANE=postgresql \
+    NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin \
+    NOESAR_POSTGRES_ROOT=/workspace/postgresql \
+    NOESAR_MIGRATIONS_DIR=/opt/noesar/database/postgres \
+    NOESAR_LOCAL_MODEL_RUNTIME=disabled \
+    PATH=/usr/lib/postgresql/18/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+USER 10001:10001
+EXPOSE 8088
+VOLUME ["/workspace"]
+
+# Liveness, not readiness. The container must be restarted only when the process is
+# genuinely dead; /healthz and /readyz report dependency state, so using either here
+# would restart a perfectly alive process whenever a dependency is briefly degraded.
+# With PostgreSQL supervised in-process, that distinction matters more, not less: a
+# database still recovering is a readiness fact, never a reason to kill the container.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+
+ENTRYPOINT ["node", "services/reference-control-plane/src/server.mjs"]

@@ -11,21 +11,45 @@ import {
   randomToken,
   tokenDigest,
   verifyPassword,
-  verifyTotp,
   verifyTotpStep,
 } from './auth-crypto.mjs';
 import { AuthStore } from './auth-store.mjs';
 
 const AI_USER = ['workspace.read','workspace.write','provider.use','memory.manage','artifact.manage','knowledge.manage'];
 const AI_ADMIN = [...AI_USER,'provider.manage','agent.manage','data.manage'];
+// A restricted client may hold a conversation and read what it is given. It may not
+// register a provider, define an agent or a tool, or promote anything into shared
+// memory — every capability that would let one account change what another account's
+// session executes.
+const AI_CLIENT_RESTRICTED = ['workspace.read','workspace.write','provider.use'];
+// A service account is non-interactive: it authenticates with a bearer token, has no
+// password and no TOTP, and therefore must not hold a permission whose blast radius
+// depends on a human noticing in time. It reads, and it uses a provider.
+const AI_SERVICE_ACCOUNT = ['workspace.read','provider.use'];
+
+export const ROLES = Object.freeze([
+  'owner', 'admin', 'developer', 'user', 'client_restricted', 'service_account',
+]);
+
+// Owner and admin carry MFA. Enforced here and again as a CHECK constraint in migration
+// 0013: a rule that lives in exactly one layer is one refactor away from gone.
+export const MFA_REQUIRED_ROLES = Object.freeze(new Set(['owner', 'admin']));
+
+// Roles that authenticate with a bearer token instead of a password.
+export const NON_INTERACTIVE_ROLES = Object.freeze(new Set(['service_account']));
+
 const ROLE_PERMISSIONS = Object.freeze({
-  owner: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','coden.owner-bypass','audit.read','auth.manage',...AI_ADMIN]),
-  admin: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','audit.read','auth.manage',...AI_ADMIN]),
+  owner: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','coden.owner-bypass','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
+  admin: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
   developer: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize',...AI_ADMIN]),
   user: new Set(['user.read','hardware.read','runtime.plan',...AI_USER]),
+  client_restricted: new Set(['user.read',...AI_CLIENT_RESTRICTED]),
+  service_account: new Set(['user.read',...AI_SERVICE_ACCOUNT]),
 });
 
-function normalizeUsername(value) {
+export const RolePermissions = ROLE_PERMISSIONS;
+
+export function normalizeUsername(value) {
   const username = String(value ?? '').trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username)) throw new Error('Username must contain 3-64 lowercase-safe characters.');
   return username;
@@ -37,9 +61,19 @@ function publicUser(user) {
     username: user.username,
     displayName: user.displayName,
     role: user.role,
+    // Absent on records written before multi-user existed, which are all owners, and an
+    // owner that predates the field is by definition active.
+    status: user.status ?? 'active',
     mfaEnabled: Boolean(user.totp),
+    mfaRequired: MFA_REQUIRED_ROLES.has(user.role),
     createdAt: user.createdAt,
+    disabledAt: user.disabledAt ?? null,
+    lastLoginAt: user.lastLoginAt ?? null,
   };
+}
+
+export function isActive(user) {
+  return (user?.status ?? 'active') === 'active';
 }
 
 function nowIso() { return new Date().toISOString(); }
@@ -174,6 +208,18 @@ export class AuthService {
     const state = this.store.read();
     if (!state.initialized) throw Object.assign(new Error('NOESAR setup is incomplete.'), { status:409 });
     const user = state.users.find((item) => item.username === normalized);
+    // A disabled account, a revoked account and a non-interactive service account all
+    // fail here, down the same branch as a wrong password and with the same message and
+    // the same timing. Answering "that account is disabled" would turn the login form
+    // into an account-status oracle for anyone who can guess a username.
+    if (user && (!isActive(user) || NON_INTERACTIVE_ROLES.has(user.role))) {
+      this.#recordFailure(ip, normalized);
+      this.ledger.append({
+        actor:user.id, action:'auth.login-denied', result:'denied',
+        details:{ username:normalized, reason:isActive(user) ? 'non-interactive-role' : user.status },
+      });
+      throw Object.assign(new Error('Invalid credentials or account temporarily locked.'), { status:401 });
+    }
     if (!user || user.lockedUntil > Date.now() || !verifyPassword(password, user.password)) {
       this.#recordFailure(ip, normalized);
       if (user) {
@@ -213,6 +259,13 @@ export class AuthService {
     if (!item || item.expiresAt < Date.now() || item.ip !== ip) throw Object.assign(new Error('Invalid or expired login challenge.'), { status:401 });
     const user = state.users.find((candidate) => candidate.id === item.userId);
     if (!user) throw Object.assign(new Error('User no longer exists.'), { status:401 });
+    if (!user.totp) {
+      // Defence in depth. Every interactive account enrols MFA before it exists, so
+      // reaching here means an account was created by some path that did not. Refuse it
+      // rather than dereferencing a null envelope and answering 500.
+      this.ledger.append({ actor:user.id, action:'auth.mfa-missing', result:'denied' });
+      throw Object.assign(new Error('This account cannot complete authentication.'), { status:403 });
+    }
     const secret = decryptSecret(user.totp, this.masterKey);
     const consumed = consumeTotp(secret, totpCode, user);
     if (!consumed.accepted) {
@@ -266,6 +319,10 @@ export class AuthService {
     if (!session || session.expiresAt < now || session.idleExpiresAt < now) return null;
     const user = state.users.find((item) => item.id === session.userId);
     if (!user) return null;
+    // Disabling an account must take effect on the account's LIVE sessions, not only on
+    // the next login. Checked here, on the authentication path every request passes
+    // through, rather than at revocation time where a missed session would survive.
+    if (!isActive(user)) return null;
     this.store.update((next) => {
       const current = next.sessions.find((item) => item.id === session.id);
       if (current) {
@@ -284,11 +341,28 @@ export class AuthService {
     return Boolean(ROLE_PERMISSIONS[user?.role]?.has(permission));
   }
 
+  /**
+   * Verify a TOTP code against an account record that is still being enrolled, applying
+   * the same single-use rule as a login. Exposed because the multi-user invitation flow
+   * enrols MFA before the account exists, and duplicating the replay check there is how
+   * the replay defect (F4-002) would come back through a second door.
+   */
+  consumeEnrolmentCode(userRecord, code) {
+    if (!userRecord?.totp) return { accepted:false, reason:'no-secret', step:null };
+    const secret = decryptSecret(userRecord.totp, this.masterKey);
+    return consumeTotp(secret, code, userRecord);
+  }
+
   reauthenticate({ sessionId, password, totpCode }) {
     const state = this.store.read();
     const session = state.sessions.find((item) => item.id === sessionId);
     const user = state.users.find((item) => item.id === session?.userId);
-    if (!session || !user || user.role !== 'owner') throw Object.assign(new Error('Owner session required.'), { status:403 });
+    // Step-up reauthentication is available to every role that carries MFA, which since
+    // multi-user means owner AND admin. Restricting it to owner would have left an
+    // administrator holding auth.manage with no way to prove presence before using it.
+    if (!session || !user || !MFA_REQUIRED_ROLES.has(user.role) || !isActive(user)) {
+      throw Object.assign(new Error('An owner or administrator session with MFA is required.'), { status:403 });
+    }
     const secret = decryptSecret(user.totp, this.masterKey);
     const consumed = consumeTotp(secret, totpCode, user);
     if (!verifyPassword(password, user.password) || !consumed.accepted) {

@@ -71,10 +71,34 @@
       "version": "0011"
     },
     {
-      "bytes": 3109,
+      "bytes": 3798,
       "filename": "0012_audit_chain_and_release_gate.sql",
-      "sha256": "2818a4ab0ca39760ac02fc1e70914fda298df5f69d6cde97900580f521c4a558",
+      "sha256": "247890a4c286f13b981a2fc7d3f0f919fdad6c3c6262b3390c458a4ec6826111",
       "version": "0012"
+    },
+    {
+      "bytes": 6065,
+      "filename": "0013_multi_user_identity.sql",
+      "sha256": "199375cf1c1215003d3bccff9bbe6b70b08805147dde912e3d53edd6ccefad24",
+      "version": "0013"
+    },
+    {
+      "bytes": 8891,
+      "filename": "0014_multi_user_resources.sql",
+      "sha256": "6b0ad9b44d13cc263f0a663787c347286029a2b806a2a8b07fd3892709999a4b",
+      "version": "0014"
+    },
+    {
+      "bytes": 13974,
+      "filename": "0015_multi_user_row_level_security.sql",
+      "sha256": "43c578b83daac9ec6ef0b6a0cf143a07c3b996824950f3cf717d950df080862b",
+      "version": "0015"
+    },
+    {
+      "bytes": 2564,
+      "filename": "0016_application_privileges.sql",
+      "sha256": "defc2b5930f02ac37a3e64f9350f4812c68e7925ae9792c17132e066344530f8",
+      "version": "0016"
     }
   ],
   "release": "0.6.0",

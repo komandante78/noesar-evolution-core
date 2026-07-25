@@ -6,7 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
 import { authorityStatus, assertReferenceRuntimeAllowed } from './authority.mjs';
-import { dataPlaneStatus, assertDevelopmentDataPlane } from './data-plane.mjs';
+import {
+  DataPlaneMode, dataPlaneStatus, assertDevelopmentDataPlane, describeDataPlane,
+} from './data-plane.mjs';
+import { PostgresSupervisor } from './postgres-supervisor.mjs';
+import { UserDirectory } from './user-directory.mjs';
+import { LocalModelRuntime } from './local-model-runtime.mjs';
 import { AuthService, parseCookies } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -40,7 +45,16 @@ const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 const secureCookies = process.env.NOESAR_SECURE_COOKIES === 'true';
 const authority = assertReferenceRuntimeAllowed(authorityStatus(process.env));
-const dataPlane = assertDevelopmentDataPlane(dataPlaneStatus(process.env));
+
+// The PostgreSQL data plane comes up asynchronously, so this starts as the declared
+// configuration and is replaced by describeDataPlane() once the supervisor is ready —
+// `let` rather than `const` for exactly that reason. In reference-json mode the original
+// fail-closed assertion still runs here, at module load, unchanged.
+const declaredDataPlane = dataPlaneStatus(process.env);
+const postgresEnabled = declaredDataPlane.mode === DataPlaneMode.POSTGRESQL;
+let dataPlane = postgresEnabled
+  ? { ...declaredDataPlane, reason:'PostgreSQL is starting; readiness is withheld until it answers.' }
+  : assertDevelopmentDataPlane(declaredDataPlane);
 const allowedHosts = new Set(
   (process.env.NOESAR_ALLOWED_HOSTS ?? 'localhost,127.0.0.1,::1')
     .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean)
@@ -72,6 +86,19 @@ const auth = new AuthService({
   ledger,
   secureCookies,
 });
+
+// --- data plane and multi-user directory -------------------------------------
+const postgres = postgresEnabled
+  ? new PostgresSupervisor({
+    root: process.env.NOESAR_POSTGRES_ROOT ?? join(workspace, 'postgresql'),
+    secretsDir: join(workspace, 'config/postgres'),
+  })
+  : null;
+// A function, not the supervisor itself: the directory is constructed now and the
+// database becomes available later, so capturing the value here would capture `null`.
+const userDirectory = new UserDirectory({ auth, ledger, dataPlane: () => postgres });
+const localModels = new LocalModelRuntime({ workspace });
+
 let currentPrivacyState = PrivacyState.LOCAL_ONLY_VERIFIED;
 
 const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:'1.0.0-complete-ai-workspace', releaseVersion:'0.6.0' });
@@ -806,6 +833,185 @@ const server = createServer(async (req, res) => {
         features:['Ask','Create','Act','Versioned Context Graph','Projects','Documents','Artifacts','Agents','Workflows','CodeN Ultra','Knowledge','Memory','Local and External Providers','MCP and OpenAPI Tools','Compute & Hardware','Data Export and Retention','Update Center'],
       });
     }
+
+    // --- multi-user administration -------------------------------------------
+    // Every mutating route here requires user.manage, which only owner and admin hold,
+    // plus the CSRF header. The directory itself enforces the narrower rules — an
+    // administrator may not mint an owner, nor disable the last one — so a future route
+    // cannot grant more than the permission name suggests.
+    if (req.method === 'GET' && url.pathname === '/api/v1/admin/users') {
+      const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
+      return json(res, 200, { users:userDirectory.list() });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/admin/invitations') {
+      const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
+      return json(res, 200, { invitations:userDirectory.listInvitations() });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/admin/invitations') {
+      const authenticated = requireSession(req, res, 'user.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const created = userDirectory.createInvitation({ actorId:authenticated.user.id, ...payload });
+      // The token is in the response and nowhere else: it is not logged, not stored in
+      // cleartext, and cannot be read back from any later request.
+      return json(res, 201, { ...created, note:'This token is shown once. It cannot be retrieved again.' });
+    }
+    {
+      const match = url.pathname.match(/^\/api\/v1\/admin\/invitations\/([0-9a-f-]{36})$/);
+      if (match && req.method === 'DELETE') {
+        const authenticated = requireSession(req, res, 'user.manage');
+        if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+        return json(res, 200, userDirectory.revokeInvitation({
+          actorId:authenticated.user.id, invitationId:match[1],
+        }));
+      }
+    }
+    // Invitation acceptance is unauthenticated by necessity — the account does not exist
+    // yet — and is protected by the one-time token instead.
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/invitation/accept') {
+      return json(res, 200, userDirectory.acceptInvitation(await body(req)));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/invitation/confirm') {
+      const confirmed = userDirectory.confirmInvitationMfa(await body(req));
+      // A session is established here for the same reason first-owner setup establishes
+      // one: the caller has just presented the invitation token, chosen a password and
+      // proved possession of the TOTP secret. That is a complete authentication, and
+      // making them log in again immediately afterwards adds a step without adding a
+      // check.
+      const record = userDirectory.find(confirmed.user.id);
+      return sessionResponse(res, auth.createSession(record, { mfa:true }), 201);
+    }
+    {
+      const match = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})(\/[a-z-]+)?$/);
+      if (match) {
+        const userId = match[1];
+        const action = (match[2] ?? '').replace('/', '');
+        const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
+        if (req.method === 'GET' && action === '') {
+          const found = userDirectory.list().find((user) => user.id === userId);
+          return json(res, found ? 200 : 404, found ?? { error:'No such account.' });
+        }
+        if (req.method === 'GET' && action === 'export') {
+          return json(res, 200, userDirectory.exportUser({ userId }));
+        }
+        if (req.method === 'GET' && action === 'events') {
+          return json(res, 200, {
+            events:userDirectory.administrativeEvents({ subjectUserId:userId, limit:200 }),
+          });
+        }
+        if (!requireCsrf(req, res, authenticated)) return;
+        const payload = req.method === 'DELETE' ? {} : await body(req);
+        if (req.method === 'POST' && action === 'role') {
+          return json(res, 200, userDirectory.setRole({
+            actorId:authenticated.user.id, userId, role:payload.role,
+          }));
+        }
+        if (req.method === 'POST' && action === 'disable') {
+          return json(res, 200, userDirectory.disableUser({
+            actorId:authenticated.user.id, userId, reason:payload.reason ?? null,
+          }));
+        }
+        if (req.method === 'POST' && action === 'revoke') {
+          return json(res, 200, userDirectory.revokeUser({
+            actorId:authenticated.user.id, userId, reason:payload.reason ?? null,
+          }));
+        }
+        if (req.method === 'POST' && action === 'reinstate') {
+          return json(res, 200, userDirectory.reinstateUser({ actorId:authenticated.user.id, userId }));
+        }
+        if (req.method === 'POST' && action === 'tokens') {
+          return json(res, 201, userDirectory.issueServiceToken({
+            actorId:authenticated.user.id, userId, name:payload.name, ttlDays:payload.ttlDays ?? null,
+          }));
+        }
+        if (req.method === 'DELETE' && action === '') {
+          return json(res, 200, userDirectory.eraseUser({
+            actorId:authenticated.user.id, userId, reason:payload.reason ?? null,
+          }));
+        }
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/admin/service-accounts') {
+      const authenticated = requireSession(req, res, 'user.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const created = userDirectory.createServiceAccount({
+        actorId:authenticated.user.id, ...(await body(req)),
+      });
+      return json(res, 201, { ...created, note:'This token is shown once. It cannot be retrieved again.' });
+    }
+    {
+      const match = url.pathname.match(/^\/api\/v1\/admin\/service-tokens\/([0-9a-f-]{36})$/);
+      if (match && req.method === 'DELETE') {
+        const authenticated = requireSession(req, res, 'user.manage');
+        if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+        return json(res, 200, userDirectory.revokeServiceToken({
+          actorId:authenticated.user.id, tokenId:match[1],
+        }));
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/admin/events') {
+      const authenticated = requireSession(req, res, 'audit.read'); if (!authenticated) return;
+      return json(res, 200, {
+        events:userDirectory.administrativeEvents({ limit:Number(url.searchParams.get('limit') ?? 100) }),
+      });
+    }
+
+    // --- local model runtime --------------------------------------------------
+    if (req.method === 'GET' && url.pathname === '/api/v1/runtime/local-model') {
+      const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
+      return json(res, 200, localModels.status());
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/runtime/local-model/profiles') {
+      const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
+      return json(res, 200, await localModels.profiles());
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/runtime/local-model/selection') {
+      const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
+      const required = url.searchParams.get('requiredVramMiB');
+      return json(res, 200, await localModels.select({
+        requiredVramMiB:required ? Number(required) : null,
+      }));
+    }
+    if (req.method === 'PUT' && url.pathname === '/api/v1/runtime/local-model') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, await localModels.configure(await body(req)));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/attach') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, await localModels.attach());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/launch') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 202, await localModels.launch());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/release') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, await localModels.release());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/complete') {
+      const authenticated = requireSession(req, res, 'provider.use');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, await localModels.complete(await body(req)));
+    }
+
+    // --- database -------------------------------------------------------------
+    if (req.method === 'GET' && url.pathname === '/api/v1/database/status') {
+      const authenticated = requireSession(req, res, 'audit.read'); if (!authenticated) return;
+      if (!postgres) return json(res, 200, { mode:dataPlane.mode, postgresql:null });
+      return json(res, 200, { mode:dataPlane.mode, postgresql:postgres.status(), health:await postgres.health() });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/database/backup') {
+      const authenticated = requireOwner(req, res, 'data.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (!postgres) return json(res, 409, { error:'No PostgreSQL data plane is active.' });
+      const payload = await body(req);
+      return json(res, 201, await postgres.backup({ label:payload.label ?? null }));
+    }
+
     if (req.method === 'GET' && serveStatic(url.pathname, res)) return;
     return json(res, 404, { error:'Not found', requestId });
   } catch (error) {
@@ -870,16 +1076,60 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         note:'first-run setup cannot proceed: set NOESAR_SETUP_TOKEN_FILE',
       });
     }
+    // The database is brought up AFTER the listener, on purpose. /livez must answer from
+    // the first moment so the container's health check never kills a process that is
+    // legitimately still starting a cluster; /readyz reports not-ready throughout, which
+    // is exactly the distinction those two endpoints exist to draw.
+    if (postgres) {
+      try {
+        await postgres.start();
+        const health = await postgres.health();
+        dataPlane = describeDataPlane({ env:process.env, supervisor:postgres, health });
+        logger.info('data-plane.ready', {
+          component:'data-plane', mode:dataPlane.mode,
+          server_version:health.serverVersion, pgvector:health.pgvectorVersion,
+          migrations:health.migrationCount, rls_tables:health.rlsTables,
+          production_ready:health.productionReady,
+        });
+        const projection = await userDirectory.projectToDataPlane();
+        logger.info('data-plane.identity-projected', { component:'data-plane', ...projection });
+      } catch (error) {
+        // Fail closed and loudly. A runtime that could not open its declared data plane
+        // must not fall back to writing JSON files that nobody will ever read again.
+        logger.error('data-plane.failed', {
+          component:'data-plane', error:error.message,
+          stack:error.stack?.split('\n').slice(0, 6).join(' | '),
+          note:'the declared PostgreSQL data plane did not start; refusing to serve against a substitute',
+        });
+        process.exitCode = 1;
+        server.close(() => process.exit(1));
+        return;
+      }
+    }
+
     await watchdog.runOnce({ force:true }).catch(() => {});
     watchdog.start(Number(process.env.NOESAR_WATCHDOG_INTERVAL_MS ?? 15_000));
     // Debug sessions expire on their own even when no request arrives.
     const sweeper = setInterval(() => debugMode.sweep(), 30_000);
     sweeper.unref?.();
+    let stopping = false;
     for (const signal of ['SIGTERM', 'SIGINT']) {
       process.on(signal, () => {
+        // A second signal during shutdown must not start a second shutdown: two
+        // concurrent stops of the same cluster is how a checkpoint gets interrupted.
+        if (stopping) return;
+        stopping = true;
         logger.warn('runtime.stopping', { component:'control-plane', signal });
         watchdog.stop();
-        server.close(() => process.exit(0));
+        server.close(async () => {
+          try {
+            await localModels.release();
+            if (postgres) await postgres.stop();
+          } catch (error) {
+            logger.error('runtime.stop-failed', { component:'control-plane', error:error.message });
+          }
+          process.exit(0);
+        });
       });
     }
   });
