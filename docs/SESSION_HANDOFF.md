@@ -291,3 +291,80 @@ owner authorisation, which must cover **both** the installation and the bounded
 build-time network step. Follow `docs/PHASE_3_EXECUTION_PLAN.md` from its pre-flight
 gates; every step has a stop criterion and rollback is in
 `docs/ROLLBACK_AND_RECOVERY_PLAN.md`.
+
+---
+
+## Chiusura sessione — 2026-07-25 · `NEXT_PHASE=3_READY`
+
+Tutto lo stato di questo progetto vive **qui**, in `PROJECT_STATE.json`,
+`docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` e questo file. Non è replicato
+nei file di memoria di NOESAR o CodeN Ultra: sono prodotti diversi, con governance
+diverse, e mescolarli è esattamente ciò che `CLAUDE10.md` §1-4 vieta.
+
+### Fatto dopo la chiusura di Fase 2
+
+1. **Scansione difetti con `noesar-debuglab`** (semgrep, bandit, ruff, detect-secrets,
+   shellcheck, mypy — nessuno presente sull'host). Container avviato e **rifermato**;
+   host restituito a 0 container attivi su 37.
+   - **1 difetto reale**: `gcm-no-tag-length` in 4 siti.
+   - Tutto il resto triagiato come rumore **con evidenza** (SC1007 sull'idioma corretto
+     `CDPATH= cd`; semgrep che consiglia 0o644 al posto di 0o700, che è *meno*
+     restrittivo; canary di test `must-not-leak`; 34 subprocess in test e tooling).
+   - **`detect-secrets` su tutto il repo: ZERO segreti reali** — 5.078 dei 5.148 hit
+     erano checksum SHA-256, due erano la documentazione stessa di questo progetto.
+     Corrobora in modo indipendente gli scan euristici delle Fasi 0-2 e rafforza B-002.
+
+2. **Policy cambiata dal proprietario** — il ciclo passa da 13 a **14 step**, con
+   `HUNT AND FIX` fra `TEST` e `DOCUMENT`: i difetti vanno **riparati**, non solo
+   registrati. Triage obbligatorio prima di correggere; va corretta anche *la regola*
+   che ha prodotto il difetto. Due regole emendate perché altrimenti lo step era
+   inapplicabile (`CLAUDE10.md` §16 e le standing rules vietavano ogni container, e
+   l'unico tooling di analisi vive in un container): eccezione **stretta e nominata**
+   al solo `noesar-debuglab`, read-only, da rifermare nella stessa fase.
+   `CLAUDE10.md` guadagna anche le regole 40a-40c.
+
+3. **F-001 corretto** (`gcm-no-tag-length`). Riprodotto **prima** di correggere: un tag
+   GCM da 4 byte decifrava correttamente, cioè 32 bit di autenticazione invece di 128.
+   `authTagLength` fissato su **entrambi** i lati cifratura/decifratura + controllo
+   esplicito della lunghezza del tag prima di `setAuthTag`, in tutti e 4 i siti.
+   - 8 test di regressione nuovi (`test/gcm-tag-length.test.mjs`)
+   - **suite prodotto 137/137 pass** (la consegna ne dichiarava 129)
+   - re-scan semgrep: **0 findings**
+   - `MANIFEST.sha256` → **5611/5611 OK**
+   - backup: `.../backups/pre_f001_gcm_fix_20260725T064102Z`
+
+### Commit di questa sessione (nessuno pushato — non esiste alcun remote)
+
+```text
+471b0a7  security(f-001): pin GCM authentication tag length and reject truncated tags
+5576744  chore(governance): add HUNT AND FIX step
+3b5baf9  docs(phase-2): complete host preflight and installation design
+bde70fa  fix(phase-2): remediate installation preflight blockers
+ccca61b  docs(phase-1): close vendor integrity remediation and update handoff
+e9726f0  fix(phase-1): restore complete cc vendor source and harden packaging filters
+```
+
+### Stato di chiusura
+
+| | |
+|---|---|
+| Fasi completate | 0, 1, 2 |
+| Blocker chiusi | B-003, B001 (del prodotto) |
+| Finding chiusi | F-001 |
+| Blocker aperti | B-001 (nessun remote), B-002 (scan euristico host) — **nessuno bloccante** |
+| Prossima fase | **3 — build isolata e installazione Unraid** |
+| Container avviati dal prodotto | **nessuno** — nulla è stato installato, costruito o avviato |
+| Host | 0 container attivi su 37, come all'apertura |
+
+### Prossima azione esatta
+
+**Fase 3.** Non iniziarla senza autorizzazione esplicita del proprietario, che deve
+coprire **sia** l'installazione **sia** lo step di rete limitato per il pull di
+`node:22-bookworm-slim` (assente in locale). Seguire `docs/PHASE_3_EXECUTION_PLAN.md`
+dai suoi gate pre-volo; ogni step ha un criterio di arresto e il rollback è in
+`docs/ROLLBACK_AND_RECOVERY_PLAN.md`.
+
+Da decidere **all'inizio** della Fase 3, perché entrambe influenzano la fattibilità
+della build offline: la questione dei 4 frammenti compilati di `wit-bindgen`, e se
+restituire il profilo seccomp consegnato o restare sul builtin Docker (la decisione
+corrente, D-0024, è restare sul builtin).

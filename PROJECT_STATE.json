@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
-  "last_updated_utc": "2026-07-25T07:20:00Z",
+  "last_updated_utc": "2026-07-25T07:35:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -118,5 +118,7 @@
       "evidence": "vulnerability reproduced first (a 4-byte tag decrypted successfully before the fix); 8 new regression tests in services/reference-control-plane/test/gcm-tag-length.test.mjs; full product suite 137/137 pass (was 129 delivered + 8 new); semgrep re-scan of services/ and ai-workspace/ reports 0 gcm-no-tag-length findings"
     }
   ],
-  "product_test_suite": "137/137 pass (node --test), including 8 new F-001 regression tests"
+  "product_test_suite": "137/137 pass (node --test), including 8 new F-001 regression tests",
+  "session_closed": "2026-07-25 - phases 0,1,2 complete; B-003, product B001 and F-001 closed; NEXT_PHASE=3_READY",
+  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4)."
 }
