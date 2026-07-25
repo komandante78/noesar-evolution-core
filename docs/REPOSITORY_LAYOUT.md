@@ -68,6 +68,6 @@ The canonical repository as constructed in Phase 1. File counts are tracked file
 
 ## Scale
 
-6,002 files on disk, **5,984 tracked**, 90 MB. `rust/vendor/` alone is 5,203 files
+6,025 files on disk, **6,007 tracked**, 90 MB. `rust/vendor/` alone is 5,203 files
 and ~80 MB — 87% of the repository is vendored third-party Rust source, retained
 deliberately so the workspace can build offline.

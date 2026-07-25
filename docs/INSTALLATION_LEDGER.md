@@ -248,7 +248,7 @@ exclusions remain. **No build or installation performed.**
 
 ### Secret scan — heuristic, declared
 
-Over 5,984 staged files: private keys **0**, provider tokens **0**, credential URLs
+Over the staged set (5,984 files at main-commit time): private keys **0**, provider tokens **0**, credential URLs
 **0**, credential-keyword hits **2** (both the xkcd passphrase
 `correct horse battery staple` in `tools/auth-http-smoke.mjs`, a deliberate
 smoke-test fixture). Forbidden artefacts staged: archives **0**, `.env` **0**,

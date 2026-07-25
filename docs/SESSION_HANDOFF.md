@@ -16,7 +16,7 @@ A cold session should be able to continue from this file alone, together with
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Last commit | `f6140d8` (main) + the state commit that follows it |
 | Updated (UTC) | 2026-07-25T01:49:50Z |
-| Canonical repository | **constructed** — 5,984 tracked files, 90 MB |
+| Canonical repository | **constructed** — 6,007 tracked files, 90 MB |
 
 ---
 
