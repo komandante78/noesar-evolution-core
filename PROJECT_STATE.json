@@ -1,53 +1,82 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": 0,
-  "phase_status": "COMPLETE_WITH_BLOCKER",
-  "next_phase": 1,
+  "current_phase": 1,
+  "phase_status": "COMPLETED",
+  "next_phase": 2,
+  "canonical_repository_constructed": true,
   "installation_complete": false,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "c3ad683e977c44e421a9141a3c7640720c48f84d",
-  "last_updated_utc": "2026-07-25T01:20:34Z",
+  "last_commit": "f6140d86257a7fccb3db8fca7448213473552208",
+  "last_updated_utc": "2026-07-25T01:49:50Z",
   "blockers": [
     {
       "id": "B-001",
       "severity": "medium",
       "code": "GITHUB_STATUS=BLOCKED_AUTHENTICATION",
-      "summary": "GitHub CLI (gh) is not installed on this host and no GH_TOKEN/GITHUB_TOKEN is set; the private repository NOESAR-EVOLUTION could not be created and no remote was configured. No token was written to any file. The local repository was completed regardless.",
-      "blocks_phase_1": false,
+      "summary": "GitHub CLI (gh) is not installed on this host and no GH_TOKEN/GITHUB_TOKEN is set; the private repository NOESAR-EVOLUTION could not be created and no remote is configured. No token was written to any file. The local repository is complete and committed.",
+      "blocks_next_phase": false,
       "resolution_options": [
         "Install gh, run 'gh auth login', then 'gh repo create NOESAR-EVOLUTION --private --source . --remote origin --push' from PROJECT_ROOT",
         "Create the private repository manually in the GitHub web UI, then 'git remote add origin <url> && git push -u origin main'",
-        "Proceed to Phase 1 with the local repository only and resolve the remote later"
+        "Continue with the local repository only and resolve the remote later"
       ]
     },
     {
       "id": "B-002",
       "severity": "low",
       "code": "SECRET_SCAN=HEURISTIC_ONLY",
-      "summary": "Neither gitleaks nor trufflehog is installed and installing new tooling is forbidden by CLAUDE10.md rule 45; a 5-pattern heuristic scan was run instead and is declared as heuristic. The detector was self-tested against a synthetic canary and fired correctly.",
-      "blocks_phase_1": false,
+      "summary": "Neither gitleaks nor trufflehog is installed and installing new tooling is forbidden by CLAUDE10.md rule 45; a heuristic pattern scan is used instead and is declared as heuristic wherever reported. The detector was self-tested against a synthetic canary and fired correctly. Phase 1 raised severity relevance because 5,976 third-party files entered the repository, but the scan found no key material.",
+      "blocks_next_phase": false,
       "resolution_options": [
         "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
+      ]
+    },
+    {
+      "id": "B-003",
+      "severity": "medium",
+      "code": "VENDOR_INCOMPLETE_CC_1_3_0",
+      "summary": "rust/vendor/cc-1.3.0/src/target.rs declares 'mod apple; mod generated; mod llvm; mod parser;' but none of the four module files ship in any of the five archives. The packaging filter that strips Rust build output (target/) also stripped this legitimate source directory - there are zero /target/ paths anywhere in the ZIPs. This contradicts the delivery's own vendorManifestAggregate (5207 files recorded vs 5203 shipped) and the B001 'complete vendor snapshot' closure claim. NOT FIXED: recreating upstream source would mean fabricating content. Impact is bounded - cc is reachable only through iana-time-zone-haiku (Haiku OS) and is not compiled for linux-x86_64.",
+      "discovered_in_phase": 1,
+      "origin": "upstream packaging defect, not introduced by this project",
+      "classification": "DEFERRED_TO_PHASE_2",
+      "blocks_next_phase": false,
+      "evidence": "vendored crates verified against .cargo-checksum.json: 5090 OK, 0 corrupt, 4 missing; zipinfo confirms the files were never in the archive",
+      "resolution_options": [
+        "Re-vendor cc-1.3.0 from crates.io (requires network) and re-verify .cargo-checksum.json",
+        "Obtain a corrected archive from the delivery author",
+        "Accept the gap and document the platform restriction (not built on linux-x86_64)"
       ]
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
   "source_archives": "/mnt/user/downloads/NOESAR_EVOLUTION_FINAL",
+  "staging_root": "/mnt/cachec/NOESAR_EVOLUTION_STAGING/PHASE_1",
+  "artifact_root": "/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS",
   "repository_name": "NOESAR-EVOLUTION",
   "repository_local_initialized": true,
   "repository_remote_configured": false,
-  "source_zip_checksums_verified": true,
-  "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; content verified byte-correct by SHA-256; deliberately not renamed (decision D-0003) - Phase 1 must match by glob",
   "github_status": "BLOCKED_AUTHENTICATION",
+  "git_push": "BLOCKED_NO_REMOTE",
   "secret_scan_method": "heuristic",
-  "product_extracted": false,
+  "source_zip_checksums_verified": true,
+  "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; archives are identified by SHA-256 only, never by filename",
+  "product_extracted": true,
+  "tracked_files": 5984,
+  "repository_size_mb": 90,
+  "vendored_rust_crates": 113,
+  "first_party_rust_crates": 12,
+  "atom_boundary_audit": "PASS - no proprietary ATOM implementation present; public contract and boundary documentation only",
+  "foss_core_autonomous": "HOLDS_BY_DESIGN_UNVERIFIED - requires the Phase 4 ATOM-absent acceptance run",
+  "license_status": "PROPOSAL_ONLY - dual-licence readiness NOT READY, no blocking obstacle found",
   "docker_build": false,
   "container_start": false,
   "database_mutation": false,
+  "network_configuration": false,
   "installation": false,
   "production_touched": false,
-  "zip_repackaging": false
+  "zip_repackaging": false,
+  "license_relicensing": false
 }

@@ -153,3 +153,132 @@ phase specification requires.
 `COMPLETE_WITH_BLOCKER` — all local objectives met; the GitHub remote (B-001) and
 real secret scanning (B-002) remain open. Neither blocks Phase 1.
 `NEXT_PHASE=1`. Phase 1 was **not** started.
+
+---
+
+## Phase 1 — Canonical extraction and repository construction
+
+**UTC:** 2026-07-25T01:49:50Z
+**Result:** `COMPLETED` (1 new blocker recorded, upstream origin)
+**Main commit:** `f6140d86257a7fccb3db8fca7448213473552208`
+
+### Entry state
+
+`current_phase=0`, `next_phase=1`, working tree clean at `ce34bf4`, all 13 Phase-0
+files unmodified. The specification expected the label `CURRENT_PHASE=0_COMPLETED`
+while the state file said `COMPLETE_WITH_BLOCKER`; these are substantively the same
+(both Phase-0 blockers carry `blocks_phase_1: false`, and that status is exactly what
+Phase 0's own specification prescribed when `gh` is absent). Recorded, proceeded.
+
+### Archive identification — by hash, never by name
+
+| Role | SHA-256 | Real filename | Size | Entries |
+|---|---|---|---|---|
+| PACKAGE_01_SOURCE | `0b128b16…a033c` | `…01_COMPLETE_PRODUCT_SOURCE_V4_FINAL(2).zip` | 18,186,438 | 5,663 |
+| PACKAGE_02_RUNTIME | `c15193ee…d5ffb` | `…02_RUNTIME_AND_DEPLOYMENT_V4_FINAL(2).zip` | 1,232,478 | 134 |
+| PACKAGE_03_SDK | `e6a68bf1…2de76` | `…03_CAPABILITIES_AND_SDK_V4_FINAL(2).zip` | 196,014 | 176 |
+| PACKAGE_04_SECURITY | `4ffb0d4f…1ed72` | `…04_SECURITY_AND_ACCEPTANCE_V4_FINAL(2).zip` | 160,315 | 129 |
+| PACKAGE_05_OPERATIONS | `7a58bdda…424c5` | `…05_FINAL_RELEASE_AND_OPERATIONS_V4_FINAL(2).zip` | 1,616,521 | 203 |
+
+5/5 matched. Originals never renamed, modified, or repackaged.
+
+### Safe extraction
+
+Pre-extraction, per archive: `unzip -t` PASS; 0 absolute paths; 0 `../` traversal;
+0 symlinks/devices/FIFOs/sockets; 0 nested archives; 0 case-insensitive collisions;
+exactly one internal root directory. Extracted to `$STAGING/PHASE_1/<package>/`,
+never into the Git root. 6,305 files, 0 non-regular files after extraction.
+
+### Integrity evidence
+
+- Per-package `SHA256SUMS.txt`: **6,300 / 6,300 OK**.
+- Product `MANIFEST.sha256` at repository root: **5,606 / 5,606 OK** — independent
+  proof the canonical placement is correct.
+- Vendored crates vs `.cargo-checksum.json`: **5,090 OK, 0 corrupt, 4 missing**.
+- `rust/Cargo.lock` matches the delivered provenance hash `6cbc6d32…`.
+
+### Canonical construction
+
+Package 01 `SOURCE/PRODUCT/` → repository root, no wrapper level. Packages 02–05
+contributed role material; envelopes preserved under `provenance/package-0N/`.
+
+| Outcome | Count |
+|---|---|
+| Unique canonical destinations written | 5,989 |
+| Identical duplicates collapsed | 281 destinations |
+| Differing paths, all explicitly resolved | 4 |
+| Excluded from Git (compiled binaries) → `$ARTIFACT_ROOT` | 5 |
+| Unmapped | **0** |
+| Collisions with Phase-0 protected paths | **0** |
+
+All 13 Phase-0 files byte-compared against the pre-merge backup
+(`BACKUPS/phase1_pre_merge_20260725T012849Z/`): unchanged.
+
+### Defects
+
+- **FIXED_IN_PHASE_1** — the Phase-0 `.gitignore`, written before any product was
+  visible, used un-anchored patterns (`build/`, `bin/`, `out/`, `cache/`, `.cargo/`,
+  `*.pem`) that silently excluded **real source**: `rust/.cargo/config.toml` (the
+  vendoring configuration, listed as a required artefact in the delivery's own
+  `BUILD_ARTIFACTS.tsv`), vendored `build/`, `src/cache/` and `bin/` source
+  directories, and a **public** Ed25519 key needed by the signature examples.
+  Patterns anchored to the repository root; `.cargo/` replaced by
+  `**/.cargo/credentials*`; `*public*.pem` negated. Verified: zero private-key
+  material exists anywhere in the product.
+- **DEFERRED_TO_PHASE_2** — 4 compiled fragments in `wit-bindgen-0.57.1` (`.a`,
+  2×`.o`, `.wasm`) are checksummed by cargo but forbidden by `CLAUDE10.md` §33.
+  Excluded from Git, preserved byte-identical in
+  `$ARTIFACT_ROOT/vendor-binary-fragments/` with `SHA256SUMS.txt` and a restore
+  procedure. Reachable only via `wasip2`; not built for linux-x86_64.
+- **B-003, DEFERRED_TO_PHASE_2** — `rust/vendor/cc-1.3.0/src/target/` is missing four
+  source files declared by `src/target.rs`. The packaging `target/` filter stripped a
+  legitimate source directory; zero `/target/` paths exist in any ZIP. Contradicts the
+  delivery's `vendorManifestAggregate` (5,207 vs 5,203) and its `B001` "complete
+  vendor snapshot" claim. **Not fixed — fabricating upstream source is forbidden.**
+- **DEFERRED_TO_PHASE_5** — root `README.md` claims "57 files PASS" for JS syntax; the
+  merged repository has 87, all passing. Product documentation was not rewritten.
+
+### Static checks
+
+JSON **121/121** valid · `bash -n` **46/46** clean · `node --check` **87/87** clean ·
+product manifest **5,606/5,606** · nested archives **0** · old-workspace absolute
+paths **0** · `PREVIEW|DRAFT|SKELETON|RELEASE_CANDIDATE = true` assertions **0** ·
+product blocker `B001` open **no** · `.gitignore` effective, only 4 intended
+exclusions remain. **No build or installation performed.**
+
+### Secret scan — heuristic, declared
+
+Over 5,984 staged files: private keys **0**, provider tokens **0**, credential URLs
+**0**, credential-keyword hits **2** (both the xkcd passphrase
+`correct horse battery staple` in `tools/auth-http-smoke.mjs`, a deliberate
+smoke-test fixture). Forbidden artefacts staged: archives **0**, `.env` **0**,
+databases **0**, shared libraries **0**, ELF executables **0**. Remaining 29
+non-text files: 3 product design PNGs, 1 vendor SVG icon, 25 crypto test vectors.
+
+### ATOM boundary
+
+**PASS.** Only `private-boundary/atom-provider.schema.json` (a public JSON-Schema
+contract) and boundary documentation. `atomic-store.mjs` and 26 vendored
+atomics-related files are false positives on the substring "atom". No quarantine
+required. `FOSS_CORE_MUST_REMAIN_AUTONOMOUS` holds by design but stays
+`[UNVERIFIED]` until the Phase-4 ATOM-absent run.
+
+### Licensing — inventory only, nothing relicensed
+
+113 vendored crates, **all permissive**, **zero copyleft-only**. Gap: no first-party
+licence declarations (12 crates + 2 Node packages), no root `LICENSE`, 86 sources
+without SPDX headers. Readiness: **NOT READY**, no blocking obstacle. The delivered
+licensing matrix independently matches the Phase-0 proposal.
+
+### Git
+
+Main commit `f6140d8` (5,995 files changed, 1,681,617 insertions). State commit
+follows. **`GIT_PUSH=BLOCKED_NO_REMOTE`** — no `origin` configured (B-001); no push
+attempted, `gh` not installed, no token requested.
+
+### Prohibitions honoured
+
+`DOCKER_BUILD` · `CONTAINER_START` · `INSTALLATION` · `DATABASE_MUTATION` ·
+`NETWORK_CONFIGURATION` · `PRODUCTION_TOUCHED` · `ZIP_REPACKAGING` ·
+`LICENSE_RELICENSING` — all **false**. Nothing outside `PROJECT_ROOT`,
+`$STAGING` and `$ARTIFACT_ROOT` was written.

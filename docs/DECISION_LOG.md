@@ -80,3 +80,111 @@ interfaces only.
 *Why:* deciding this at inception is cheap; retrofitting a boundary into a coupled
 codebase is not. It is also a precondition for FOSS funding eligibility.
 *Reversible:* no — treated as an architectural invariant.
+
+---
+
+## D-0008 — Archives identified by SHA-256 only, never by filename
+**Phase:** 1 · **UTC:** 2026-07-25T01:49:50Z · **Status:** adopted
+
+Every archive was matched to its role by hash. Filenames were never used for
+identification or dispatch.
+
+*Why:* all five carry a ` (2)` duplicate-download suffix, so name-based matching
+would have failed or, worse, silently mismatched a package to the wrong role.
+*Reversible:* n/a — this is the correct method regardless.
+
+## D-0009 — Product tree placed at repository root with no wrapper level
+**Phase:** 1 · **Status:** adopted, independently confirmed
+
+Package 01's `SOURCE/PRODUCT/` became the repository root. The
+`NOESAR_EVOLUTION_01_…_V4_FINAL/` directory appears nowhere.
+
+*Why:* required by the phase specification, and it is what the product itself
+expects. *Confirmation:* the product's own `MANIFEST.sha256` verifies **5,606/5,606**
+against the repository root — its paths are product-relative and every one resolves.
+That is independent proof rather than an assertion. *Reversible:* expensive; the
+manifest would stop resolving.
+
+## D-0010 — Package envelopes preserved under `provenance/package-0N/`
+**Phase:** 1 · **Status:** adopted
+
+Each package's `README.md`, `PACKAGE_METADATA.json`, `CONTENTS_MANIFEST.tsv`,
+`SHA256SUMS.txt` and `LICENSES/` were kept, but namespaced per package.
+
+*Why:* the delivery record is evidence worth keeping, but the envelope files collide
+by name with the product's own `README.md` and `LICENSES/`. Namespacing keeps both
+without either overwriting the other. This also *caused* two of the four recorded
+path conflicts, which is why it is logged as a decision rather than a detail.
+*Reversible:* yes.
+
+## D-0011 — Differing files are preserved side by side, never silently chosen
+**Phase:** 1 · **Status:** adopted
+
+Where the same path held different content, no variant was discarded:
+`FOSS_SCOPE.md` (four role-scoped documents) and `CURRENT_RELEASE_STATUS.md` (a
+delivery status and a feature matrix) were all retained under role-distinct names.
+
+*Why:* the phase forbids choosing silently between two different files, and these
+turned out not to be versions of one document at all — they are different documents
+that happen to share a filename. Renaming is the only resolution that invents no
+content and loses nothing. *Reversible:* yes; all originals remain in `$STAGING`.
+
+## D-0012 — The Phase-0 `.gitignore` was fixed, not worked around
+**Phase:** 1 · **Status:** adopted · **Classification:** `FIXED_IN_PHASE_1`
+
+Un-anchored patterns (`build/`, `bin/`, `out/`, `cache/`, `.cargo/`, `*.pem`) were
+silently excluding real source — including `rust/.cargo/config.toml`, without which
+cargo ignores the vendored tree entirely, and a **public** Ed25519 key required by
+the signature-verification examples. Patterns were anchored to the repository root,
+`.cargo/` was replaced with `**/.cargo/credentials*`, and `*public*.pem` was negated.
+
+*Why:* a `.gitignore` authored before the product was visible encoded guesses. Left
+alone it would have produced a repository that looks complete and cannot build —
+the worst possible failure mode, because it is invisible until much later.
+*Verified:* the product contains zero private-key material, so relaxing `*.pem` for
+public keys costs nothing. *Reversible:* yes, but should not be.
+
+## D-0013 — Compiled vendored fragments excluded from Git, preserved outside it
+**Phase:** 1 · **Status:** adopted · **Classification:** `DEFERRED_TO_PHASE_2`
+
+Four compiled files in `wit-bindgen-0.57.1` (`.a`, 2×`.o`, `.wasm`) are listed in
+cargo's checksum manifest but are binaries, which `CLAUDE10.md` §33 forbids. They
+were excluded from Git and preserved byte-identical in
+`$ARTIFACT_ROOT/vendor-binary-fragments/` with checksums and a restore procedure.
+
+*Why:* this is a genuine tension between two rules that both matter — no binaries in
+the repository, and a vendored tree that must stay verifiable. Overriding the policy
+silently would have been wrong; deleting the files would have destroyed evidence.
+Excluding while preserving keeps both options open for whoever decides in Phase 2.
+*Mitigation:* the crate is reachable only via `wasip2` and is not built for
+linux-x86_64. *Reversible:* fully — restoring is a documented `cp`.
+
+## D-0014 — B-003 recorded, deliberately not "fixed"
+**Phase:** 1 · **Status:** adopted · **Classification:** `DEFERRED_TO_PHASE_2`
+
+`rust/vendor/cc-1.3.0/src/target.rs` declares four modules whose files ship in none
+of the five archives. The packaging filter that strips `target/` build output also
+stripped a legitimate source directory.
+
+*Why not fixed:* the only ways to "fix" it here would be to write the four files
+(fabricating upstream source — forbidden) or to fetch them from the network (out of
+scope this phase, and a supply-chain decision in its own right). Recording it
+accurately is the honest action.
+*Significance:* it falsifies two of the delivery's own claims — the recorded
+`vendorManifestAggregate` (5,207 vs 5,203 files) and the `B001` "complete vendor
+snapshot" closure. Those claims should not be relied on downstream without checking.
+*Reversible:* n/a — it is an open item, not a change.
+
+## D-0015 — Licensing inventoried, nothing relicensed
+**Phase:** 1 · **Status:** adopted
+
+`NO_LICENSE_RELICENSING_IN_PHASE_1=true` was honoured: no licence field, header, or
+file was added, changed, or removed anywhere.
+
+*Finding:* all 113 vendored crates are permissive, with zero copyleft-only
+dependencies — nothing blocks the proposed AGPL core. The gap is entirely on the
+first-party side (no declarations, no root `LICENSE`, 86 sources without SPDX
+headers). *Notable:* the delivered licensing matrix independently matches the
+Phase-0 proposal, and adds a three-way split (AGPL core / Apache-2.0 SDK /
+CC-BY-SA-4.0 docs) that `docs/LICENSE_STRATEGY.md` should adopt in Phase 5.
+*Reversible:* n/a — no change was made.
