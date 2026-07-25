@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 4 image: the Phase 3 image with the Phase 4 remediations applied.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile:
+#
+#   * oci/Dockerfile runs `apt-get install` for unzip, poppler-utils, tesseract-ocr,
+#     ffmpeg and ca-certificates. That needs network access to the Debian archives, and
+#     the only network operation this phase authorises is none: Phase 3 recorded the base
+#     image digest and the package set, and repeating the apt step now would silently
+#     re-resolve those packages to whatever the archive currently serves.
+#   * Building FROM the audited Phase 3 image inherits that layer unchanged, so the OS
+#     package set of the running container is provably the one Phase 3 recorded, and the
+#     only difference is first-party source.
+#
+# The trade-off, stated rather than hidden: this image's lineage is
+# node:22-bookworm-slim@sha256:6c74791e… -> noesar-evolution:phase3 -> noesar-evolution:phase4,
+# so it carries Phase 3's layers. Phase 5 packaging should rebuild from oci/Dockerfile
+# with a recorded network step when a fresh package set is actually wanted.
+ARG BASE_IMAGE=noesar-evolution:phase3
+FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.version="1.0.0-ai-workspace-phase4"
+LABEL org.noesar.phase="4"
+LABEL org.noesar.phase4.remediations="F4-002 F4-004 F4-005 F4-006 F4-007 F4-008"
+LABEL org.noesar.base-image="noesar-evolution:phase3"
+
+USER root
+COPY --chown=10001:10001 package.json /opt/noesar/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001
+
+# Unchanged from oci/Dockerfile, restated because a derived image does not inherit
+# HEALTHCHECK semantics if the parent's is ever altered. Liveness, not readiness.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+
+ENTRYPOINT ["node", "services/reference-control-plane/src/server.mjs"]

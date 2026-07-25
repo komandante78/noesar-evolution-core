@@ -517,3 +517,88 @@ against a stub `docker` and asserts the image argument still arrives.
 
 *Consequence:* a whole class of "the script looks right and does the wrong thing" is now
 caught by a test rather than by luck.
+
+---
+
+## Phase 4 decisions
+
+### D-0031 — the real installation stays un-bootstrapped; the flow is proven on throwaway instances
+
+The Owner chose this when asked. The installation is loopback-only, so an interactive
+bootstrap needs the Owner at the host or an SSH tunnel, and inventing a password on their
+behalf would defeat what an interactive bootstrap is for. The complete flow — single-use
+token, TOTP enrolment, replay rejection, lockout, session lifecycle, step-up — was proven on
+throwaway instances instead (27/27). The exact tunnel command and steps are in
+`docs/PHASE_4_ACCEPTANCE_REPORT.md` §2.
+
+### D-0032 — GPU validation not attempted, because there is no GPU workload
+
+Also the Owner's choice: attempt it only if a real backend exists. It does not — every GPU
+reference is inventory and planning, and inference is delegated to an HTTP provider. Recording
+`GPU_RUNTIME=NOT_IMPLEMENTED` is the honest outcome; claiming GPU support because `nvidia-smi`
+is visible would not be.
+
+### D-0033 — the Phase 4 image is an overlay on the Phase 3 image, not a rebuild
+
+`oci/Dockerfile` runs `apt-get install` for five packages, which needs network. Re-running it
+now would silently re-resolve those packages to whatever the Debian archive currently serves,
+discarding the set Phase 3 audited and recorded. Building `FROM noesar-evolution:phase3`
+inherits that layer unchanged and keeps the build fully offline (`--network=none --pull=false`).
+Trade-off stated in `oci/Dockerfile.phase4` and in the inventory: the lineage is
+`node:22-bookworm-slim -> phase3 -> phase4`, and Phase 5 packaging should rebuild from
+`oci/Dockerfile` with a recorded network step when a fresh package set is genuinely wanted.
+
+### D-0034 — the homegrown undeclared-identifier checker was rejected, not shipped
+
+Two findings (F4-005, F4-006) were the same class: an object-literal shorthand naming an
+identifier not in scope. Two checkers were written. The file-scoped one missed both real
+defects and produced 25 false positives; the scope-aware one caught both and still produced
+~16 false positives per file. A hand-rolled JS scope analyser without a parser is not sound,
+and a checker whose output must be ignored trains the reader to skip it. Both are preserved
+with this reasoning in `$ARTIFACT_ROOT/phase4_evidence/rejected-tooling/`. The duty was
+discharged with success-path coverage, process-level guards, and blocker **B-006** naming the
+real tool (a `no-undef` linter) that rule 45 forbids installing.
+
+### D-0035 — `unhandledRejection` logs and continues; `uncaughtException` logs and exits
+
+Different policies on purpose. A rejection reaching the top level is a defect and is reported
+as one, but a self-hosted single-process product should not die because one request threw —
+that was F4-004's blast radius. An uncaught exception may leave inconsistent state, so the
+process exits non-zero and lets the supervisor restart it, where the crash-loop detector and
+safe mode can see it. Neither is a substitute for handling errors where they happen.
+
+### D-0036 — two delivered unit tests were changed, because their fixtures encoded the bug
+
+Fixing TOTP replay (F4-002) broke `auth.test.mjs` tests 21 and 23, which reused one code
+across two consumptions. The fixtures were asserting the vulnerable behaviour, so the fixtures
+moved and the fix stayed. Both now spend distinct time steps, with a comment saying why, so a
+future reader does not "restore" them.
+
+### D-0037 — no end-to-end update apply against the installation
+
+The 37 unit tests already cover the whole matrix with generated test keys, including automatic
+rollback on both migration and health failure. Driving a real promotion against the live
+instance would mutate `current/` and add risk without adding evidence. The live checks confirm
+what matters about the deployed state: owner-only, notify-only, four slots present, no channel
+key pinned, so nothing can be verified and therefore nothing can be applied.
+
+### D-0038 — retry a stale upstream connection exactly once (F4-009)
+
+A pooled keep-alive socket the upstream has already closed fails a request that never reached
+the server, so no tokens were generated and nothing was charged; retrying once is safe.
+Narrowly scoped: only stale-socket error codes, only when no bytes arrived, never when the
+caller has aborted. Not a general retry policy — a general one would risk duplicating a
+generation that had already started.
+
+### D-0039 — `F401` in `tools/verify-package.py` left as Phase 3 deferred it
+
+A one-line unused import, already recorded as `DEFERRED_TO_PHASE_5`. Quietly overriding a
+recorded deferral is worse than the lint, so it stands.
+
+### D-0040 — a mock provider bound to the Docker bridge gateway, not to `0.0.0.0`
+
+Running the security suite in-container needed the product to reach the mock, and loopback is
+not shared with a container. Binding to `0.0.0.0` would have exposed the mock on the LAN for
+the duration; binding to the bridge gateway (`172.22.0.1`) reaches the container and nothing
+else. Two addresses for one mock process: the suite inspects it on loopback, the product dials
+it on the bridge.

@@ -591,3 +591,75 @@ WebUI settings pane for timezone and locale is not built; the server contract it
 No SBOM was generated for the image — no SBOM tool exists on this host.
 `--memory-swap` did not take effect: the kernel lacks swap accounting, and the host has
 zero swap.
+
+---
+
+# Phase 4 — end-to-end acceptance, remediation, security and rollback
+
+**Executed 2026-07-25. Status `COMPLETED`. `NEXT_PHASE=5_READY`.**
+
+## Pre-flight
+
+| Gate | Result |
+|---|---|
+| `PHASE_3=COMPLETED`, `NEXT_PHASE=4` | PASS, read from `PROJECT_STATE.json` |
+| Working tree clean | PASS, `git status --short` empty at `0a434eb` |
+| Container present and healthy | PASS, `noesar-evolution` Up (healthy) on `noesar-evolution:phase3` |
+| Product blocker `B001` closed | PASS (vendor completeness / offline build; distinct from project blocker `B-001`, the missing GitHub remote, which remains open) |
+| `B-003` closed | PASS (`cc-1.3.0` vendor repair) |
+| `MANIFEST.sha256` | PASS, 5630/5630 |
+| Delivered test baseline | PASS, 317/317 before any change |
+
+## Backup
+
+`$ARTIFACT_ROOT/backups/phase_4_20260725T111435Z` — tracked HEAD **6058/6058 verified**
+(`sha256sum -c`, rc=0) plus the live runtime 7/7, with Docker container, image, network,
+volume and port inventories captured before any mutation. A second backup,
+`pre_phase4_swap_20260725T121648Z` (7/7 verified), was taken immediately before the
+installation was swapped.
+
+## Mutations performed
+
+| Object | Change |
+|---|---|
+| `noesar-evolution:phase4` | new image, built twice, offline, from the Phase 3 image |
+| `noesar-evolution` | stopped, preserved as `noesar-evolution.rollback-phase3-20260725T121648Z`, recreated on `noesar-evolution:phase4` with identical hardening flags |
+| `noesar-evolution-probe4` | disposable probe on port 8101, created and **removed** |
+| `noesar-debuglab` | started for HUNT AND FIX, **stopped in the same phase** |
+| Repository | 7 source files changed, 6 test files added, 6 tool files added, 12 documents written or updated |
+| `NOESAR_EVOLUTION_RUNTIME` | untouched by the swap: token fingerprint, state digest and audit count all identical before and after |
+
+Everything else on the host is unchanged, verified by diffing `docker ps -a`,
+`docker network ls` and `docker volume ls` against the pre-phase inventories. The only
+differences are the phase-4 container and its preserved rollback.
+
+## Results
+
+**136 acceptance checks: 132 PASS, 3 PARTIAL, 1 BLOCKED, 0 FAIL** across five suites —
+AUTH 27, WORK 35, SEC 41, SBX 20, REC 13. Unit tests **351/351**, up from the 317 delivered.
+Installer hardening regression **48/48**.
+
+**13 findings raised.** Three high (a malformed request terminating the service; streaming
+chat non-functional; TOTP replay), three medium, three low, three informational, one
+withdrawn as a misdiagnosis. **All high and medium findings fixed with regression tests**;
+four low/informational accepted and recorded with reasoning. Full detail in
+`docs/OPEN_FINDINGS.tsv` and `docs/REMEDIATION_LOG.md`.
+
+## Standing labels resolved
+
+- `FOSS_CORE_DEPENDS_ON_ATOM=false` — **VERIFIED**, no longer `[UNVERIFIED]`.
+- `GPU_RUNTIME=NOT_IMPLEMENTED` — recorded, no GPU allocated.
+- `B005=OPEN` — PostgreSQL/pgvector not installed; the runtime fails closed rather than
+  substituting SQLite. Blocks production promotion, not Phase 5.
+- `B-006=OPEN` — no linter with a `no-undef` rule on this host; two findings of that class
+  reached production code.
+- Security matrix: 41 requirements, **no BROKEN rows**; six rows corrected to match reality.
+
+## A note on the MANIFEST diff
+
+`MANIFEST.sha256` shows a large diff (~1 293 lines) for a small change. The content change
+is exactly 6 refreshed hashes and 15 new entries, 5630 → **5645**; the rest is re-ordering,
+because the regeneration sorted paths with `localeCompare` rather than preserving the
+delivered order. Verified lossless: **0 entries removed, 15 added, 0 duplicates**, and
+`sha256sum -c` passes 5645/5645. Recorded because a reviewer seeing that diff should not have
+to wonder.

@@ -1,0 +1,137 @@
+section	id	name	verdict	evidence
+AUTH	AUTH-01	unauthenticated protected route is refused	PASS	GET /api/v1/projects -> 401 { "error": "Authentication required." }
+AUTH	AUTH-02	setup is refused without the setup token	PASS	no token -> 403 { "error": "Invalid setup token.", "requestId": "aae2b620-f616-4e02-a3a0-83f8111910d3"
+AUTH	AUTH-03	setup is refused with a wrong setup token	PASS	wrong token -> 403
+AUTH	AUTH-04	weak password is refused by policy	PASS	weak password -> 400 { "error": "Password or passphrase must be at least 14 characters.", "requestId": "aa606e25-8ae1-4c7b-b7ec
+AUTH	AUTH-05	setup with the real token returns a TOTP enrolment secret	PASS	-> 201; secret length 32; otpauth uri present true; expires 2026-07-25T12:32:07.555Z
+AUTH	AUTH-06	setup confirm is refused with a wrong TOTP code	PASS	wrong code -> 403
+AUTH	AUTH-07	setup confirm is refused with a wrong challenge	PASS	wrong challenge -> 403
+AUTH	AUTH-08	setup confirm with the correct TOTP creates the owner and a session	PASS	-> 201; role owner; mfaEnabled true; cookies noesar_session,noesar_csrf; session cookie HttpOnly+SameSite=Strict true
+AUTH	AUTH-09	the session is usable and reports the owner	PASS	-> 200 {"id":"686706ba-a2ad-4696-9df6-4825f9ff983e","username":"acceptance-owner","displayName":"Acceptance Owner","role":"owner","mfaEnabled":true,"createdAt":"2026-07-25T12:22:07.628Z"}
+AUTH	AUTH-10	the setup token is single-use: a second setup attempt is refused	PASS	replayed setup -> 409 { "error": "NOESAR is already initialized.", "requestId": "4eea2a85-db18-4a39-a10a-092
+AUTH	AUTH-11	auth status now reports initialized and authentication required	PASS	{"initialized":true,"pendingSetup":false,"setupTokenRequired":false,"authenticationRequired":true}
+AUTH	AUTH-12	a write without the CSRF header is refused	PASS	no csrf header -> 403 { "error": "CSRF validation failed." }
+AUTH	AUTH-13	a write with a forged CSRF header is refused	PASS	forged csrf -> 403
+AUTH	AUTH-14	a write with the correct CSRF header succeeds	PASS	-> 201 id 203a7b63-d0bc-4848-b93d-489b2182fe30
+AUTH	AUTH-15	login with a wrong password is refused	PASS	-> 401 { "error": "Invalid credentials or account temporarily locked.", "requestId"
+AUTH	AUTH-16	login with the correct password demands MFA and does not issue a session	PASS	-> 202 mfaRequired true; no session cookie true; /auth/me while pending -> 401
+AUTH	AUTH-17	MFA with a wrong code is refused	PASS	-> 401
+AUTH	AUTH-18	MFA with the correct code completes the login	PASS	-> 200 user acceptance-owner
+AUTH	AUTH-19	a replayed TOTP code is refused (RFC 6238 section 5.2)	PASS	same code ****** reused on a second login -> 401 (rejected)
+AUTH	AUTH-20	the login challenge is single-use	PASS	reused challenge -> 401
+AUTH	AUTH-21	repeated failures lock the account and the limiter fires	PASS	10 wrong passwords -> 5x401 then 5x429; statuses 401,401,401,401,401,429,429,429,429,429
+AUTH	AUTH-22	a correct password is still refused while the account is locked	PASS	correct password during lockout -> 429 { "error": "Too many login attempts. Try again later.", "requestId": "d32dad
+AUTH	AUTH-23	a critical action is refused without recent strong reauthentication	PASS	OWNER_BYPASS authorize without elevation -> 403 { "error": "Recent strong reauthentication is required." }
+AUTH	AUTH-24	step-up reauthentication is refused with wrong credentials	PASS	-> 403
+AUTH	AUTH-25	step-up reauthentication elevates the session and unlocks the action	PASS	reauth -> 200 elevatedUntil 2026-07-25T12:28:31.178Z; authorize -> 201 approval issued
+AUTH	AUTH-26	logout invalidates the session	PASS	logout -> 200; /auth/me after -> 401
+AUTH	AUTH-27	a stolen session token is useless after logout	PASS	replayed cookie after logout -> 401
+WORK	WORK-01	two projects are created independently	PASS	A 201/84ce0d75-2684-4a40-b366-bd04407422b1 B 201/6a78b11b-6ed8-4c31-accc-dfdee426172f
+WORK	WORK-02	a conversation is created inside a project with an active branch	PASS	-> 201 conversation 76d091e4-c8b2-45c1-8c7b-96dd1aca8e92 branch 6a2fbc09-954e-441d-a3c9-8a54175a4dfd keys conversation,branch
+WORK	WORK-03	messages append to the branch and read back in order	PASS	add 201/201; list 200 ["first questi","first answer"]
+WORK	WORK-05	a message can be excluded from the context and the inspector reflects it	PASS	exclude -> 200; included undefined -> undefined; tokenEstimate 19 -> 12; re-include -> 200
+WORK	WORK-04	a message edit is versioned by supersession, not overwrite	PASS	-> 200; new id 9d0b6d93 supersedes 46a2efc4; content "first question about widgets, corrected"; superseded id still referenced in the branch view true
+WORK	WORK-06	context/token inspection reports a budget	PASS	-> 200 keys conversation,branchId,project,messages,memories,sources,tools,providerId,model,tokenEstimate,included
+WORK	WORK-07	regenerate creates a new alternative rather than destroying the old	PASS	-> 201; original message still present false; new id 207b1eea-deea-4ba8-a482-00c8dd554978
+WORK	WORK-08	a conversation forks into a second branch	PASS	-> 201 new branch bceca127-ece3-4d9a-8461-98d1deba82b6 keys id,conversationId,name,headId,forkedFromMessageId,createdAt,updatedAt
+WORK	WORK-09	the two branches can be compared	PASS	-> 200 {"shared":[{"id":"46a2efc4-9eff-4281-82d9-daa951836de2","conversationId":"76d091e4-c8b2-45c1-8c7b-96dd1aca8e92","branchId":"6a2fbc09-954e-441d-a3c9-8a54175a4dfd","parents":[],"role":"user","content":"
+WORK	WORK-10	a branch merges back	PASS	-> 201 {"id":"d3370c4b-862c-4d5e-b97f-e4896bed3bb5","conversationId":"76d091e4-c8b2-45c1-8c7b-96dd1aca8e92","branchId":"6a2fbc09-954e-441d-a3c9-8a54175a4dfd","parents":["46a2efc4-9eff-428
+WORK	WORK-11	undo reverts the last branch operation	PASS	undo -> 200; messages 3 -> 1
+WORK	WORK-12	memory can be created at global, project and conversation scope	PASS	global 201 project 201 conversation 201
+WORK	WORK-13	project-scoped memory does not appear under the other project	PASS	project A memories ["alpha fact","chat fact"]; project B memories []
+WORK	WORK-14	memory can be edited, deleted and is then gone from listings	PASS	patch 200; delete 200; deleted id still listed false
+WORK	WORK-15	text sources ingest into both projects and are chunked	PASS	alpha 201 chunks 1; beta 201 chunks 1
+WORK	WORK-16	knowledge search finds the relevant passage and returns citations	PASS	-> 200 1 hits; first source alpha (correct) name "alpha-manual.txt" score 0.873 lexical 1.358 semantic 0.476; passage text present true; NOTE raw embedding vector included in the API response: true
+WORK	WORK-17	project-scoped knowledge search never returns another project passage	PASS	canary from project B present in project A results: false; foreign hits 0
+WORK	WORK-18	global search is scopeable and honours the project filter	PASS	unscoped 1 hits; scoped to A 0 hits
+WORK	WORK-19	a deleted source is no longer retrievable and its passages are gone	PASS	purge -> 200 {"purged":true,"counts":{"messages":0,"memories":0,"artifacts":0,"sources":1,"knowledgeChunks":1,"conversations":0,"bran; project B sources 0; canary still in any search result false; direct GET source -> 404
+WORK	WORK-20	artifacts of each declared type are created	PASS	document:201 code:201 table:201 chart:201 canvas:201
+WORK	WORK-21	an artifact update creates a new version and keeps the previous one	PASS	patch -> 200; version-ish fields ["versions","currentVersionId"]; count 2
+WORK	WORK-22	export produces a complete bundle without credentials	PASS	-> 200; keys exportedAt,schemaVersion,credentialsIncluded,data; credentialsIncluded false; 1 projects / 1 conversations / 5 artifacts / 3 memories; encrypted credential material present false; 12036 bytes
+WORK	WORK-23	import into a clean instance reproduces the state	PASS	import -> 200 {"imported":true,"mode":"replace"}; projects after ["Project Alpha"]; conversations in Alpha 1
+WORK	WORK-24	retention can be set and applied	PASS	set -> 200 {"retentionDays":3650}; apply -> 200 {"purged":true,"counts":{"messages":0,"memories":0,"artifacts":0,"sources":0,"knowledgeChunks":0,"conversations":0,"bran
+WORK	WORK-25	external providers exist in the catalog and are disabled by default	PASS	4 profiles, 3 external (openai,anthropic,kimi); enabled 0; consent granted 0
+WORK	WORK-26	an external provider refuses to run without explicit consent	PASS	-> 200; error frame present true; any generated delta false; reason "\"error\":\"All streaming providers failed: 0b6eb8bb-b6b0-4146-aef9-616ec192730a: Provider profile is disabled.\""
+WORK	WORK-27	an external provider URL cannot be pointed at loopback or a private network	PASS	loopback 400; metadata 400; plain http 400; external downgraded to internal 400 { "error": "Local providers must resolve to loopback or a private ne
+WORK	WORK-28	a local provider is configurable and reports health	PASS	create 201; enable 200; health 200 {"status":"healthy","providerId":"01387a4c-2f88-49da-a19b-06cc2052a0e6","latencyMs":9,"models":[]}
+WORK	WORK-29	chat streams incrementally through the local provider	PASS	-> 200 content-type text/event-stream; charset=utf-8; 9 chunks; first 120 chars "event: run\ndata: {\"runId\":\"fdfbb535-39f7-47a3-93d1-7401409dd7ac\",\"status\":\"started\",\"providerRoute\":[\"01387a4c-2f88-49da"
+WORK	WORK-30	a stream can be stopped and the run is released	PASS	runId observed; stop -> 200 {"stopped":true,"runId":"cb7eeeca-7d00-4cbb-b89a-95825f4acf2d"}; stream ended with 2 chunks
+WORK	WORK-31	a provider failure is surfaced without crashing the service	PASS	stream -> 200; body mentions error true "event: run\ndata: {\"runId\":\"6fac9735-87fc-4dc4-96bf-0b9f62cefec0\",\"status\":\"started\",\"providerRoute\":[\"01387a4c-2f88-49da-a19b-06cc2052a0e6\"]"; service still answering 200
+WORK	WORK-32	model comparison runs two providers side by side	PASS	-> 200; 2 results; {"comparedAt":"2026-07-25T12:23:39.447Z","results":[{"providerId":"01387a4c-2f88-49da-a19b-06cc2052a0e6","status":"fulfilled","latencyMs":2,"text":"mock-reply: 
+WORK	WORK-33	a provider credential is never returned in plaintext by the API	PASS	set -> 200; plaintext key in /providers false; in export false; in the state file on disk false
+WORK	WORK-34	a revoked credential is gone	PASS	delete -> 200; credentialConfigured now false
+WORK	WORK-35	persistence: the workspace state survives a fresh read of the store	PASS	state file has 1 projects, 1 conversations, 5 artifacts; projects digest 3c1a4d2be9b8
+SEC	SEC-01	a foreign Host header is rejected	PASS	Host: evil.example.com -> 421 { "error": "Unrecognized Host header.", "requestId": "ec99ec27-57ea-45f3-af3
+SEC	SEC-02	security headers are present on every response	PASS	missing []; nosniff=nosniff frame=DENY referrer=no-referrer
+SEC	SEC-03	the HTML document carries a restrictive CSP with no unsafe-inline	PASS	-> 200; csp "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; ba"
+SEC	SEC-04	no CORS grant is ever emitted, so a cross-origin read cannot succeed	PASS	GET with foreign Origin -> 200, ACAO absent; preflight -> 404, ACAO absent (no grant means the browser refuses to expose the body)
+SEC	SEC-05	a cross-origin state-changing POST without the CSRF header is refused	PASS	-> 403 { "error": "CSRF validation failed." }
+SEC	SEC-06	a reflected XSS probe is not returned as executable HTML	PASS	search echo content-type application/json; charset=utf-8; payload reflected as HTML false; unknown path -> 404 as application/json; charset=utf-8
+SEC	SEC-07	an oversized request body is refused	PASS	2 MiB body -> 201; service alive 200 (hard limit is 64 MiB, enforced in body())
+SEC	SEC-08	unauthenticated diagnostics and audit are refused	PASS	/diagnostics 401; /audit 401; /logs 401; /debug/bundle 401
+SEC	SEC-09	metrics are gated for a non-internal caller and never leak content	PASS	-> 200 from loopback (treated as internal by design); build_info true; up gauge true; conversation content present false; 49 lines
+SEC	SEC-10	a 500 does not disclose internals	PASS	-> 404; stack or path disclosed false; body { "error": "Conversation not found.", "requestId": "8aeaabad-6180-47ce-aeec-aa0b02329176" }
+SEC	SEC-11	an unknown identifier is a clean 404, not an IDOR window	PASS	unknown source 404; unknown conversation 404
+SEC	SEC-12	static file serving cannot escape the web root	PASS	/../../../etc/passwd->404 /..%2f..%2f..%2fetc%2f->404 /%2e%2e/%2e%2e/etc/pas->404 /./../../services/refe->404
+SEC	SEC-13	repeated unauthenticated login attempts are rate limited	PASS	statuses 401,401,401,401,401,401,401,401,429,429,429,429
+SEC	SEC-14	a tool endpoint cannot target cloud metadata or an internal address when external	PASS	metadata v4:400 metadata gcp:400 alibaba:400 loopback:400 rfc1918 10:400 rfc1918 192:400 rfc1918 172:400 docker host:400 plain http:400 credentials in url:400
+SEC	SEC-15	a hostname that resolves to an internal address is NOT defended against (DNS rebinding)	PARTIAL	registration of an https hostname (not a literal IP) -> 201; validateBaseUrl/endpoint check the hostname string, so a name resolving to 169.254.169.254 or an RFC1918 address is accepted at registration time. Known and documented limitation; exploiting it requires provider.manage or agent.manage, i.e. owner or admin.
+SEC	SEC-16	the extractor capability report is honest about what is installed	PASS	text true pdf true ocr true archives true officeXml true mediaMetadata true; limits {"maxInputBytes":50331648,"maxExtractedTextBytes":33554432,"maxArchiveEntries":1000,"maxArchiveEntryBytes":8388608}
+SEC	SEC-17	a traversal filename is sanitised and stored under the blob root	PASS	-> 201; stored name "passwd"; blobId is a uuid true
+SEC	SEC-18	a null byte and an absolute path in the filename are handled	PASS	nul -> 201 "evil_.txt"; absolute -> 201 "shadow"
+SEC	SEC-19	an oversized upload cannot exhaust the service	PASS	46 MiB -> 201, stored byteLength 48234496; service alive 200. NOTE the extractor's declared 48 MiB ingestion limit is unreachable through this API: base64 inflates 48 MiB to exactly the 64 MiB request-body cap, so body() rejects first (and mid-upload, so the client sees a connection reset rather than a 413).
+SEC	SEC-20	a ZIP with too many entries is refused without exhausting the host	PASS	1300-entry archive -> 413 { "error": "Archive contains too many entries.", "requestId": "992dc10d-3bdc-4167-8144-c3a92fbf7; alive 200
+SEC	SEC-21	a compression bomb is capped by the extracted-text limit	PASS	200 MiB of 0x41 compressed to 199 KiB -> 201; extracted text 203696 bytes, chunks 0; service alive 200
+SEC	SEC-22	an uploaded executable is stored inert and never executed	PASS	shell script -> 201 extractor utf8; elf -> 201 status extractor_required; side-effect file created false
+SEC	SEC-23	a hostile SVG is stored as text and not served back as an image document	PASS	upload -> 201 extractionStatus extraction_failed; source read back as application/json; charset=utf-8; there is no route that serves a stored blob with its original content type
+SEC	SEC-24	the declared MIME type steers extraction; content is not sniffed	PARTIAL	PDF bytes declared text/plain -> 201 extractor utf8; text declared application/pdf -> 201 extractionStatus extraction_failed. Extraction is routed by extension and declared MIME, with no magic-byte sniffing: a correctness limitation, not an execution risk (extractors run with shell:false on a temp path).
+SEC	SEC-25	a symlink cannot be smuggled in through an archive	PASS	-> 201; /etc/passwd content present in the extraction false; extraction uses 'unzip -p <entry>' per entry and never writes the archive out to disk
+SEC	SEC-26	injection inside an ingested text document is contained	PASS	upload 201; provider reached true (ok); text reached the model true; present in the SYSTEM role false; fenced true; data-not-instruction policy present true; tool schemas offered 0
+SEC	SEC-27	injection inside an HTML page is contained	PASS	upload 201; provider reached true (ok); in SYSTEM role false; fenced true; reached model true
+SEC	SEC-28	injection inside a PDF is contained (or the extractor is honestly reported)	PASS	extraction complete; reached model false; in SYSTEM role false; fenced true
+SEC	SEC-29	injection inside an OCR image is contained (or OCR is honestly reported)	BLOCKED	no image renderer (ImageMagick) on this host to synthesise an OCR fixture; OCR containment shares the same wrapUntrusted path as every other source, covered by SEC-26
+SEC	SEC-30	a document that forges the fence markers cannot escape the fence	PASS	provider reached true; fence opens 1 closes 1 in the whole prompt; forged markers replaced with a placeholder true; stream head "event: run\ndata: {\"runId\":\"5263d00d-62ef-45b4-8346-5248c1edfe75\",\"status\":\"started\",\"providerRoute\":[\"0bf01fff-9b5b-4df8-a5ae-182a9fc1dcd9\"]}\n\nevent: delta\ndata"
+SEC	SEC-31	the injection attempt is recorded in the audit ledger	PASS	ledger.verify() reports true; 131 audit events read; prompt-injection.detected entries 4; latest signals ["instruction_override","role_reassignment","system_prompt_exfiltration","credential_exfiltration","tool_invocation","developer_impersonation","role_reassignment","fence_forgery","
+SEC	SEC-32	content cannot widen the tool scope for a turn	PASS	a disabled tool was requested explicitly AND named by the document; tool schemas actually sent to the provider: []
+SEC	SEC-33	the model cannot invoke a tool at all in this build	PASS	the mock replied with an explicit escalation instruction; a tool.executed audit entry appeared false. There is no tool-call loop in the chat orchestrator: tool schemas are advertised, tool_calls in the reply are never parsed or run. Containment here is structural, by absence of the path.
+SEC	SEC-34	a hostile MCP response cannot escalate or auto-approve	PASS	mutative step before approval -> 403; approve -> 200; execute after approval -> 200; hostile text is carried as step output only true; role after owner
+SEC	SEC-35	an MCP stdio tool cannot run an executable outside the allowlist	PASS	/bin/sh via mcp-stdio -> 403 { "error": "MCP stdio executable is not allowlisted.", "requestId": "fe3a8bb6-aac6-48fa-8ab3-0219b94d9cbb" (NOESAR_MCP_ALLOWED_EXECUTABLES is empty here, so nothing is runnable)
+SEC	SEC-36	a secret sent through the system does not appear in logs, audit or the diagnostic bundle	PASS	canary searched in 5 places; leaked in none
+SEC	SEC-37	audit history cannot be modified or deleted through the API	PASS	DELETE 404 POST 404 PUT 404 PATCH 404; audit still readable 200
+SEC	SEC-38	the audit ledger is hash chained and a tampered entry is detectable	PASS	157 audit records; 157 carry chain fields; 156/156 links verify against the previous record hash; record keys ["id","timestamp","previousHash","actor","action","result","details","hash"]
+SEC	SEC-39	external egress is refused by the consent gate before any connection is attempted	PASS	enabled but not consented -> 200; reason "error":"All streaming providers failed: 35896ae5-b056-4791-8d30-b48a9508d502: Explicit external-provider consent is required."; a network-layer error would prove a connection was attempted, and there is none. The gate is #assertAllowed(), called from #prepared() before fetch().
+SEC	SEC-40	with consent granted the request IS attempted, proving the gate is what stops it	PASS	with consent + credential + enabled, the run reached the network layer and failed on name resolution: "\"error\":\"All streaming providers failed: 358fb3a7-800f-414e-9214-9376b283e017: Provider stream failed: fetch failed (ENOTFOUND getaddrinfo ENOTFOUND noesar-acceptance-nowhere.invalid)\""
+SEC	SEC-41	redaction is applied to what an external provider actually receives	PASS	redacted output [{"role":"user","content":"email [REDACTED_EMAIL] key [REDACTED_API_KEY] ip [REDACTED_PHONE] <per-run random canary, value deliberately not published>"}]; replacements 3; counts {"api_key":1,"email":1,"phone":1}
+SBX	SBX-01	the process runs as uid 10001, not root	PASS	id -u=10001 id -g=10001; uid=10001(noesar) gid=10001(noesar) groups=10001(noesar)
+SBX	SBX-02	no-new-privileges is set on pid 1	PASS	Name:	node Uid:	10001	10001	10001	10001 Gid:	10001	10001	10001	10001 CapEff:	0000000000000000 NoNewPrivs:	1 Seccomp:	2 Seccomp_filters:	1
+SBX	SBX-03	the effective capability set is empty	PASS	CapEff=0000000000000000 (cap-drop ALL, nothing added back)
+SBX	SBX-04	seccomp filtering is active and it is Docker's builtin profile	PASS	Seccomp=2 (SECCOMP_MODE_FILTER); SecurityOpt=[no-new-privileges:true] contains no seccomp= override, so the deny-by-default builtin applies, not security/seccomp-noesar.json
+SBX	SBX-05	the root filesystem is read-only	PASS	ReadonlyRootfs=true; / -> touch: cannot touch '/noesar-write-probe': Read-only file system rc=1; /opt/noesar -> touch: cannot touch '/opt/noesar/write-probe': Read-only file system rc=1; /etc/passwd -> rc=2 sh: 1: cannot create /etc/passwd: Permission denied
+SBX	SBX-06	execution from the writable tmpfs is denied	PASS	Tmpfs={"/run":"rw,nosuid,nodev,noexec,size=16m","/tmp":"rw,nosuid,nodev,noexec,size=128m"}; writing and running /tmp/probe.sh -> sh: 1: /tmp/probe.sh: Permission denied rc=126
+SBX	SBX-07	the workspace bind mount is the only writable product path	PASS	write+remove in /workspace -> rc=0
+SBX	SBX-08	the Docker socket is not present in the container	PASS	ls: cannot access '/var/run/docker.sock': No such file or directory rc=2
+SBX	SBX-09	exactly one host path is mounted, and no other host tree is reachable	PASS	mounts=bind:/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_probe_runtime->/workspace:rw=true ; /mnt /host /code inside -> ls: cannot access '/host': No such file or directory ls: cannot access '/code': No such file or directory 
+SBX	SBX-10	a pids limit is enforced by the kernel, not merely requested	PASS	PidsLimit=512 Memory=2147483648 MemorySwap=-1 NanoCpus=2000000000 CpuShares=0; cgroup pids.max=512 memory.max=2147483648
+SBX	SBX-12	temporary disk is a bounded tmpfs	PASS	writing 200 MiB to /tmp -> 134213632 bytes (134 MB, 128 MiB) copied, 0.0737969 s, 1.8 GB/s ; Tmpfs={"/run":"rw,nosuid,nodev,noexec,size=16m","/tmp":"rw,nosuid,nodev,noexec,size=128m"}
+SBX	SBX-13	the service answers on loopback only and is unreachable from the LAN address	PASS	network=noesar-evolution-net publish=127.0.0.1:8101; 127.0.0.1 -> 200; 192.168.178.100 -> 000refused
+SBX	SBX-14	outbound name resolution is observed and recorded, not assumed	PASS	getent hosts example.com inside the container -> 2606:4700:10::ac42:93f3 example.com 2606:4700:10::6814:179a example.com rc=0 . Egress is not blocked at the network layer; the product's own consent gate is what prevents provider traffic (see the SEC series). Stated rather than claimed as a sandbox p
+SBX	SBX-15	a symlink out of the workspace yields no host secret	PASS	creating /workspace -> /etc/shadow and reading it: cat: /workspace/.escape-link: Permission denied rc=0  (the container's own /etc/shadow, not the host's; the host filesystem is not mounted)
+SBX	SBX-16	setuid binaries present in the image are recorded	PASS	setuid files: /usr/bin/chfn /usr/bin/chsh /usr/bin/gpasswd /usr/bin/mount /usr/bin/newgrp rc=0  (capability set is empty, so a setuid root binary cannot gain privileges; no-new-privileges also blocks the transition)
+SBX	SBX-17	escalation to root inside the container fails	PASS	su root -c id -> Password: su: Authentication failure rc=1 
+SBX	SBX-18	a mount syscall is refused	PASS	mount -t proc proc /mnt -> mount: /mnt: must be superuser to use mount.        dmesg(1) may have more information after failed mount system call. rc=32 
+SBX	SBX-19	a privileged namespace syscall is refused	PASS	unshare --user --map-root-user id -> unshare: unshare failed: Operation not permitted rc=1 
+SBX	SBX-20	process environment exposure inside the container is recorded	PASS	reading /proc/1/environ as uid 10001 -> PATH=/usr/local/sbin:/usr/local/bin:/usr rc=0  (the process is pid 1 and owned by the same uid, so this is expected; it is why the setup token lives in a 0600 file and not in the environment)
+SBX	SBX-11	excessive process creation is refused by the pids limit	PASS	900 concurrent long-lived shells attempted; kernel refused: sh: 0: Cannot fork ; container still running
+REC	REC-01	baseline health before any fault injection	PASS	livez=200 readyz=200 healthz=200; {   "status": "healthy",   "product": "NOESAR Evolution",   "version": "1.0.0-complete-ai-
+REC	REC-02	a controlled restart returns to health with no data loss	PASS	healthy again after 1s; RestartCount=0; workspace marker intact; state+config listing identical:  /workspace/config: /workspace/state: ai-workspace.json auth-master.key first-owner-setup.token provider-credentials.key watchdog.json 
+REC	REC-03	a clean stop and start preserves state	PASS	after stop: exited exit=0; after start: livez=200 readyz=200; marker intact: yes
+REC	REC-04	SIGKILL of the main process is survivable with no data loss	PASS	after kill: exited exit=137 oom=false (restart policy on this probe is 'no', so the start is manual here; the installation runs unless-stopped); pid 2167059 -> 2167383; marker intact: yes
+REC	REC-05	audit ledger persistence across restarts	PARTIAL	this probe has no Owner, so no auditable action has occurred and events.jsonl does not exist yet (0 records). Audit persistence is covered on the bootstrapped instances by SEC-38, which verified a 152-record hash chain end to end.
+REC	REC-06	a crash loop enters safe mode instead of escalating forever	PASS	three restarts inside the window then a restart: /livez=200 (the process is alive, so Docker must not kill it) /readyz=503; {   "ready": false,   "status": "not-ready",   "reasons": [     "safe-mode"   ],   "checkedAt": "2026-07-25T12:14:33.709Z",   "setupPending": true }
+REC	REC-07	safe mode refuses mutations while reads stay available	PASS	POST /api/v1/projects -> 503; GET /api/v1/auth/status -> 200; /healthz -> {   "status": "safe-mode",   "product": "NOESAR Evolution",   "version": "1.0.0-complete-ai-workspace",   "local": true,   "checkedAt": "2026-07-25T12:14:33.723
+REC	REC-08	leaving safe mode is owner-only	PASS	unauthenticated POST /api/v1/watchdog/safe-mode/leave -> 401
+REC	REC-09	clearing the crash-loop history returns the service to normal	PASS	livez=200 readyz=200 healthz=200; {   "ready": true,   "status": "ready",   "reasons": [],   "checkedAt": "2026-07-25T12:14:35.235Z",   "setupPending": tr
+REC	REC-10	no data was lost across five restarts and a crash-loop cycle	PASS	workspace marker still 'acceptance-persistence-1784981658'
+REC	REC-11	the update surface is owner-only	PASS	unauthenticated GET /api/v1/updates/status -> 401
+REC	REC-12	the update slots exist and no signing key is installed	PASS	slots: current inbox keys previous staging ; inbox entries: 0; channel keys: none. No key is pinned, so nothing can verify and therefore nothing can be applied: notify-only is the shipped default, and the offline channel is the only usable one.
+REC	REC-13	the update manager makes no network call	PASS	asserted by the unit suite (update-manager.test.mjs, 'the update manager makes no network call', which stubs fetch and fails if it is touched) and consistent with this container: the inbox is a directory on the bind mount, not a URL
