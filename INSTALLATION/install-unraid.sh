@@ -2,7 +2,15 @@
 set -euo pipefail
 
 PACKAGE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-RUNTIME_ROOT="$PACKAGE_ROOT/RUNTIME_SOURCE"
+# Layout detection. In the delivered package-02 layout the product sits under
+# RUNTIME_SOURCE/; in the canonical repository the product IS the root. Hardcoding
+# RUNTIME_SOURCE made this installer abort at the `test -f` below on a canonical
+# checkout. Detect the layout instead of assuming it, so both work unchanged.
+if [ -f "$PACKAGE_ROOT/RUNTIME_SOURCE/oci/Dockerfile" ]; then
+  RUNTIME_ROOT="$PACKAGE_ROOT/RUNTIME_SOURCE"
+else
+  RUNTIME_ROOT="$PACKAGE_ROOT"
+fi
 IMAGE="${NOESAR_IMAGE:-noesar-evolution:v4-complete}"
 CONTAINER="${NOESAR_CONTAINER:-noesar-evolution}"
 PORT="${NOESAR_PORT:-8088}"
