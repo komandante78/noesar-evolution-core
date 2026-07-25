@@ -281,3 +281,114 @@ the product.
 | F4C-007 | DB-08b and DB-42 |
 | F4C-009/010/011 | `redaction-identifier-integrity.test.mjs`, 9 tests; **7 of the 9 fail against the pre-fix module**, which was verified by reverting the file and re-running |
 | F4C-012 | the test itself, plus the committed stress harness |
+
+---
+
+# Phase 4 LAN access gate — remediation
+
+Seven findings: two medium fixed in code, one medium fixed in code and documentation,
+two low fixed, one low corrected in documentation, one informational recorded.
+
+## The one that mattered
+
+**`F4L-001` — a correct conclusion resting on a premise that was about to change.**
+
+The gate on `/metrics` was `if (!isInternalAddress(clientIp(req)))`, with this comment
+sitting directly above it:
+
+> *Authenticated, or restricted to the internal network. The container publishes on
+> loopback only, so an internal caller is already inside the trust boundary; anything
+> else must present a session.*
+
+The comment is the finding. Everything it says was true, and all of it depended on a
+fact this gate had been asked to change. It is also subtler than "loopback-only, so
+private is safe": **behind a published Docker port every external caller arrives from
+the bridge gateway, `172.22.0.1`, which is itself an RFC1918 address.** The predicate
+never distinguished a host-local process from anything else — it could not. It was
+*right by accident of the publish*, because on a loopback publish nothing but a
+host-local process can reach the port at all.
+
+Found by executing the product on the new bind, not by reading the diff: `/metrics`
+answered `200` with 28 series to a LAN request after the first recreation.
+
+**The fix addresses the reasoning, not the line.** `isInternalAddress` was not deleted —
+it is a correct statement about an address, and it now lives in `http-security.mjs` with
+unit tests. What was wrong was drawing a trust conclusion from it *without knowing the
+exposure*, so the exposure became a declared input (`D-0054`) rather than an assumption
+in a comment. Loopback installations behave exactly as before, which the test asserts
+positively so that a future reader cannot mistake the change for a blanket lockdown.
+
+## Found by executing, not by reading
+
+| Finding | How it surfaced |
+|---|---|
+| `F4L-001` | `curl http://192.168.178.100:8100/metrics` → `200` after the container was already on the LAN bind |
+| `F4L-004` | `curl -H 'Host: 192.168.178.100:8100'` against the *old* loopback publish → `421`, before anything was changed |
+| `F4L-002` | comparing `docker inspect` against `PROJECT_STATE.json` instead of trusting the state file |
+| `F4L-007` | the daemon's own warning on `docker run`, then `MemorySwap = -1` in the result |
+
+`F4L-003` and `F4L-005` came from reading the installers against the change, which is
+what reading is good for: neither could have been executed here without a full install.
+
+## A test that was wrong, recorded rather than quietly fixed
+
+The Host-allowlist check was first written with `fetch()` and a `host` header. `Host` is
+a **forbidden header name** for fetch — undici drops it silently — so the request went
+out carrying the real host, the server answered `200`, and the assertion passed while
+exercising nothing at all. Both halves of the test were meaningless: the positive case
+passed for the wrong reason and the negative case failed for the right one, which is the
+only reason it was caught.
+
+Rewritten with `node:http`, which sends what it is given, plus a negative control
+(`192.168.178.101` must also be refused) so the test cannot pass by the allowlist being
+permissive.
+
+## Both new suites were verified to fail first
+
+A test that cannot fail proves nothing, so each was run against the defect it exists to
+catch:
+
+```text
+/metrics gate reverted to the old predicate   -> lan-exposure: 1 failure, the LAN case
+address validation neutered in the library    -> installer hardening: 12 failures
+```
+
+## Triage: what was dismissed, and on what evidence
+
+| Hit | Evidence for dismissal |
+|---|---|
+| `SC1007` on `CDPATH= cd --` (×2) | the correct idiom for neutralising `CDPATH` before `cd`; already triaged on this project, and named as a known false positive in the phase skill |
+| `SC1091` "not following source" (×3) | the sourced path is built at run time from `RUNTIME_ROOT`; shellcheck cannot resolve it from its own working directory. The file it cannot follow *is* checked, directly |
+| `SC2034` unused `NOESAR_RESOLVED_*` | they are the library's return values, read by the installer that sourced it. Silenced at the three assignments with a stated reason, not by disabling the rule globally |
+
+**`SC2148` was not dismissed.** It fired because a sourced library has no shebang, and
+without a shell directive shellcheck **skips the file entirely** — a clean result that
+meant nothing had been analysed. Adding `# shellcheck shell=sh` is what made the file
+actually get checked; only then was it clean. This is the same class as `F4C-006`: a
+check that silently passes is worse than no check.
+
+## Fixing the rule, not only the instance
+
+* **The publish address and the Host allowlist are now driven from one setting.** They
+  were two independent values that had to agree, and `F4L-004` is what happens when they
+  do not. A single `NOESAR_BIND_ADDRESS` feeds the publish, the allowlist and the scope.
+* **The readiness probe follows the publish** rather than assuming loopback, so
+  `F4L-003` cannot recur for any future bind address.
+* **The three installers share one library** instead of three copies of the same logic.
+  The first version of `noesar_address_is_on_host` was wrong in a way that mattered — a
+  `while read` loop inside a pipeline runs in a subshell, so its `exit 0` set the
+  subshell's status and the caller read the **inverse** of what was meant, accepting
+  exactly the addresses it was written to reject. Rewritten with `awk`, with the reason
+  recorded in the code.
+
+## Regression coverage added
+
+| Finding | Test |
+|---|---|
+| `F4L-001` | `lan-exposure.test.mjs` — scope derivation, the gating matrix, and live `401`/`200` per scope |
+| `F4L-003` | `test-installer-hardening.mjs` — probe targets the published address *and* does not fall back to loopback |
+| `F4L-004` | `lan-exposure.test.mjs` — declared address accepted, subnet neighbour and foreign host both `421` |
+| `F4L-005` | `test-installer-hardening.mjs` — all three installers run through every access-mode scenario |
+| default safety | `0.0.0.0` refused without override, address not on host refused, non-interactive run takes loopback |
+| persistence | install with a LAN address, reinstall with an empty environment, assert the address survives |
+| no CORS | asserted positively on four routes, on a LAN scope, with an `Origin` header present |

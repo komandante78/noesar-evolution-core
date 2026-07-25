@@ -18,7 +18,8 @@ The exact runtime posture of the installed container, and why each choice was ma
 | pids | 512 | `pids.max = 512` |
 | tmpfs | `/tmp` 128 M, `/run` 16 M, both `rw,nosuid,nodev,noexec` | executing from `/tmp` is denied |
 | network | `noesar-evolution-net` (dedicated bridge) | not `noesar-local` |
-| published port | `127.0.0.1:8100 → 8088` | LAN probe to the host IP is refused |
+| published port | `192.168.178.100:8100 → 8088` | `docker port`; loopback now refuses, the publish moved rather than widened |
+| exposure scope | `lan` (declared) | `runtime.started` reports `exposure_scope=lan` |
 | Docker socket | not mounted | 0 socket mounts |
 | mounts | one bind: `RUNTIME_ROOT → /workspace` | nothing else |
 | restart policy | `unless-stopped` | |
@@ -60,16 +61,34 @@ would be strictly more risk for no gain.
 `WARNING: Your kernel does not support swap limit capabilities or the cgroup is not
 mounted`, and `/sys/fs/cgroup/memory.swap.max` reads `max`.
 
+Re-confirmed when the container was recreated for LAN access: the flag was passed again,
+the same warning was printed again, and `HostConfig.MemorySwap` reads `-1` in the
+resulting container — the daemon accepts the flag and discards it (`F4L-007`).
+
 This is stated rather than glossed: the intended effect — no swap spill — holds anyway,
 because the host has **zero swap configured** (`swap_total_bytes = 0`). If swap is ever
 added to this host, the container would be able to use it until swap accounting is
 enabled in the kernel cgroup configuration.
 
+## Network exposure
+
+The port is published on `192.168.178.100:8100`, so the WebUI is reachable from the
+local network and from nowhere else: no router rule, no UPnP mapping and no port
+forward was created, and the installers cannot create one. The publish **moved** rather
+than widened — `127.0.0.1:8100` no longer answers, and `0.0.0.0` was never used.
+
+One control-plane behaviour is keyed to this. `/metrics` is served without a session
+only when the exposure scope is `loopback` **and** the peer is a private address; on a
+LAN or wildcard scope it requires `audit.read`. The reason the peer address alone is not
+enough: behind a published Docker port every external caller arrives from the bridge
+gateway, which is itself RFC1918. See `LAN_ACCESS_CONFIGURATION.md` and `F4L-001`.
+
 ## What this profile does not cover
 
-- **TLS.** Nothing is published beyond loopback, so there is no transport to protect.
-  If the port is ever exposed, TLS must terminate at a reverse proxy **and**
-  `NOESAR_SECURE_COOKIES=true` must be set.
+- **TLS.** There is none, and LAN access does not add any: session cookie, CSRF token,
+  password and TOTP code all cross the local network in plaintext. Acceptable only on a
+  network the Owner controls. Before publication any wider, TLS must terminate at a
+  reverse proxy **and** `NOESAR_SECURE_COOKIES=true` must be set.
 - **Runtime file-integrity monitoring.** `MANIFEST.sha256` covers the repository, not the
   running container.
 - **Adversarial testing.** Phase 4.

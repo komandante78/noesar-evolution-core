@@ -700,3 +700,56 @@ It reports migrations applied *by that start*, so it reads `0` on a restart of a
 migrated cluster (`F4C-013`). Renaming it means rebuilding and reinstalling the image for a
 log label, and the adjacent `data-plane.ready` line already carries the unambiguous total.
 Recorded rather than changed.
+
+### D-0053 — the LAN fix is deployed through an offline overlay image, a declared deviation
+The gate specified "use the same image, `noesar-evolution:phase4-complete`". The fix for
+`F4L-001` is source-only, and the container executes the code baked into its image, so
+the fix could not reach the installation without a new one. Confirmed rather than
+assumed: after the first recreation `/metrics` still answered `200` over the LAN, the
+`server.mjs` inside the container hashed differently from the repository's, and the only
+mount is `/workspace`.
+
+That left three options, none of them free, and they were put to the Owner rather than
+chosen here: accept a LAN-readable `/metrics` until Phase 5 rebuilds, rebuild now, or
+roll back to loopback. The Owner authorised the rebuild.
+
+`noesar-evolution:phase4-complete-lan` is an overlay built `--network=none --pull=false`
+over the audited image, copying exactly two files. Same pattern and same reasoning as
+`D-0033`/`Dockerfile.phase4`: rebuilding from `oci/Dockerfile` would re-run `apt-get`
+and silently re-resolve the OS package set. The lineage is now five images deep and is
+stated in the Dockerfile itself rather than hidden. Phase 5 packaging should still
+rebuild from `oci/Dockerfile` with a recorded network step.
+
+### D-0054 — the exposure scope is a declaration, not something the runtime detects
+A process cannot observe the address its container was published on: inside the network
+namespace it sees `NOESAR_HOST=0.0.0.0` whether Docker forwards from `127.0.0.1` or from
+a LAN address. Worse, behind a published port every external caller arrives from the
+bridge gateway — an RFC1918 address — so peer-address inspection cannot distinguish a
+LAN browser from a host-local process either.
+
+So `NOESAR_BIND_ADDRESS` is declared by whoever published the port, and
+`NOESAR_BIND_SCOPE` is derived from it. Unset means `loopback`. The alternative —
+inferring exposure from the peer — is precisely the reasoning that produced `F4L-001`.
+
+### D-0055 — `0.0.0.0` is refused rather than offered
+The installers will not publish on a wildcard without `NOESAR_ALLOW_PUBLIC_BIND=true`,
+and will not auto-select a public, VPN or Docker-bridge address for "local network".
+An installer cannot tell from inside the host which of its interfaces face the internet,
+and NOESAR ships without TLS, so it refuses the guess instead of making it. `F-003` was
+this defect in its original form: both Unraid installers published with no bind address
+at all, which Docker resolves to `0.0.0.0`.
+
+### D-0056 — the bootstrap endpoint is not restricted by source address
+`/api/v1/auth/setup` is protected by the one-time token, not by the network. A
+source-IP restriction was considered and rejected as unimplementable-and-untrustworthy
+here: behind Docker's published port the peer address is the bridge gateway for every
+caller, so such a check would either pass everything or block everything, while
+appearing to do something. Stated in `LAN_ACCESS_CONFIGURATION.md` rather than
+approximated in code.
+
+### D-0057 — no CORS layer is added for LAN access
+The WebUI is same-origin with its API, so a browser on the LAN needs no cross-origin
+grant. No `Access-Control-Allow-Origin` is emitted on any route — there is no wildcard
+because there is no CORS at all — and `SameSite=Strict` stays correct precisely because
+all access is same-origin. A regression test asserts the absence positively, so that
+"no CORS" cannot later be mistaken for "nobody configured CORS".

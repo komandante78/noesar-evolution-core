@@ -230,3 +230,29 @@ step-up authentication working.
   real one would have created the Owner account this gate must not create.
 * 270 stress runs is not proof of determinism; it is evidence that two specific,
   understood failure modes are gone.
+
+---
+
+## 11. Superseded by the LAN access gate (2026-07-25)
+
+A later gate made the WebUI reachable from the local network. Three statements in this
+report no longer describe the installation, and one number in it was wrong when written.
+
+| This report says | Now |
+|---|---|
+| the installation is published on `127.0.0.1:8100` | `192.168.178.100:8100`; loopback no longer answers |
+| the image is `noesar-evolution:phase4-complete` | `noesar-evolution:phase4-complete-lan`, an offline two-file overlay on it |
+| the Owner reaches it through an SSH tunnel | the Owner opens `http://192.168.178.100:8100` directly |
+
+**The image ID recorded for `phase4-complete` in `PROJECT_STATE.json` was stale**
+(`F4L-002`). It named `sha256:ec2ac8bd…`, but the tag had already been moved to
+`sha256:52987fbb…` a minute before the container was created, so the digest in the state
+file was never the one the installation ran. Corrected.
+
+Everything else in this report — the gate criteria, the 444 tests, the 14 findings, the
+database, the multi-user work, the SBOMs — stands unchanged. The LAN gate added 11 unit
+tests (455 total) and 52 installer checks (100 total), and raised seven findings of its
+own. See `docs/PHASE_4_LAN_ACCESS_REPORT.md`.
+
+`OWNER_BOOTSTRAP=AWAITING_OWNER_INTERACTION` is still true, and still the reason nothing
+here may be called production-ready.

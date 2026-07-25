@@ -16,10 +16,21 @@ no `python3`, no `cargo`, no `psql`, no `gh`, no `gitleaks` on the host.
 PROJECT_ROOT   = /mnt/cachec/NOESAR_EVOLUTION
 RUNTIME_ROOT   = /mnt/cachec/NOESAR_EVOLUTION_RUNTIME
 ARTIFACT_ROOT  = /mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS
-IMAGE          = noesar-evolution:phase3
+IMAGE          = noesar-evolution:phase3          (Phase 3; see below for current)
 CONTAINER      = noesar-evolution
 NETWORK        = noesar-evolution-net
-BIND           = 127.0.0.1:8100  ->  container 8088
+BIND           = 127.0.0.1:8100  ->  container 8088   (Phase 3)
+```
+
+**The installation has moved on from what this section records.** The steps below are
+the Phase 3 procedure, kept because they are the reproducible recipe. As it stands
+today:
+
+```text
+IMAGE          = noesar-evolution:phase4-complete-lan
+BIND           = 192.168.178.100:8100  ->  container 8088
+DATA PLANE     = PostgreSQL 18.4 + pgvector 0.8.5, inside the same container
+URL            = http://192.168.178.100:8100
 ```
 
 **Port 8100, not the product default 8088.** 8088 is already claimed twice on this host
@@ -105,8 +116,11 @@ Three details that matter, each of them a defect found and fixed in Phase 3:
 - **`readonly=false`, not `rw`.** Docker 29 rejects a bare `rw` field in `--mount`
   (`invalid field 'rw' must be a key=value pair`). Every delivered installer used `rw` and
   would have failed on this host.
-- **`--publish 127.0.0.1:8100`, with the address.** Publishing without a bind address
-  means `0.0.0.0`, i.e. the whole LAN, with no TLS.
+- **`--publish <address>:8100`, always with an address.** Publishing without one means
+  `0.0.0.0` — every interface, including any public one, with no TLS. The address is a
+  choice, and `127.0.0.1` is the default; **this installation is now published on
+  `192.168.178.100:8100`** so the Owner can reach it from a browser on the local
+  network. See `LAN_ACCESS_CONFIGURATION.md`.
 
 Expect `WARNING: Your kernel does not support swap limit capabilities`. That is accurate:
 `--memory-swap` does not take effect here. The host has zero swap, so the intended
@@ -121,9 +135,10 @@ file, a log or a commit.
 ### 7. Verify
 
 ```bash
-curl -s http://127.0.0.1:8100/livez
-curl -s http://127.0.0.1:8100/readyz
-curl -s http://127.0.0.1:8100/healthz
+curl -s http://192.168.178.100:8100/livez
+curl -s http://192.168.178.100:8100/readyz
+curl -s http://192.168.178.100:8100/healthz
+curl -s -o /dev/null -w '%{http_code}\n' http://192.168.178.100:8100/metrics   # 401 on a LAN scope
 bash INSTALLATION/verify-installation.sh
 ```
 
@@ -135,17 +150,53 @@ an equivalent result. Both were repaired in Phase 3 and are covered by
 every hardening flag actually arrives. Relevant variables:
 
 ```text
-NOESAR_BIND_ADDRESS   default 127.0.0.1
-NOESAR_PORT           default 8088 — set 8100 on this host
-NOESAR_NETWORK        set noesar-evolution-net; never noesar-local
-NOESAR_WORKSPACE      set /mnt/cachec/NOESAR_EVOLUTION_RUNTIME
+NOESAR_BIND_ADDRESS        default 127.0.0.1 — where the WebUI is published
+NOESAR_PORT                default 8088 — set 8100 on this host
+NOESAR_NETWORK             set noesar-evolution-net; never noesar-local
+NOESAR_WORKSPACE           set /mnt/cachec/NOESAR_EVOLUTION_RUNTIME
+NOESAR_RUN_AS              default 10001:10001
+NOESAR_ALLOW_PUBLIC_BIND   default false — required before 0.0.0.0 is accepted
 ```
+
+### Choosing where the WebUI is reachable
+
+On a terminal the installers ask:
+
+```text
+Access mode:
+1. Local server only
+2. Local network
+3. Custom interface
+```
+
+Option 2 offers only private addresses on real interfaces — Docker bridges, VM bridges
+and VPN endpoints are never proposed, and a public address is never chosen for you. The
+choice is remembered in `RUNTIME_ROOT/config/network-access.json`, so an update or a
+reinstall keeps the same URL, and the address is printed when the container comes up:
+
+```text
+Open NOESAR Evolution:
+http://192.168.178.100:8100
+```
+
+Setting `NOESAR_BIND_ADDRESS` skips the prompt; a non-interactive run with nothing
+configured takes `127.0.0.1`. An address this host does not carry is refused before
+anything starts, as is `0.0.0.0` unless `NOESAR_ALLOW_PUBLIC_BIND=true`.
+
+**Nothing outside this host is touched** — no router, no UPnP, no port forwarding, no
+firewall rule. Publishing wider than a trusted LAN requires TLS first. Full detail,
+including what changes about `/metrics` once the scope is not loopback:
+`docs/LAN_ACCESS_CONFIGURATION.md`.
 
 ## Not installed
 
-PostgreSQL/pgvector · the Rust authority daemon and control-plane binaries · GPU
-allocation · any external AI provider · any `noesar.com` connectivity · TLS or remote
-publication. Each is a separate decision with its own acceptance.
+The Rust authority daemon and control-plane binaries · GPU allocation · any external AI
+provider · any `noesar.com` connectivity · TLS · publication beyond the local network.
+Each is a separate decision with its own acceptance.
+
+> PostgreSQL and pgvector **were** on this list until the Phase 4 completion gate
+> installed them. They now run as a supervised child process inside the same container,
+> with no TCP listener. See `POSTGRESQL_18_PGVECTOR_IMPLEMENTATION.md`.
 
 ## Uninstalling
 

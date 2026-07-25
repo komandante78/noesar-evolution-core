@@ -56,11 +56,26 @@ preserved one. The mechanism was exercised in the other direction during this ph
 installation was swapped twice, and each swap left the workspace bit-identical:
 
 ```text
-setup token fingerprint   af6f7ca93c31  ->  af6f7ca93c31
+setup token fingerprint   db1cf03ef221  ->  db1cf03ef221
 state digest              b32fb63038a077db  ->  b32fb63038a077db
 audit records             4  ->  4
 RestartCount              0
 ```
+
+> **Corrected in the LAN access gate.** This table originally recorded the fingerprint
+> as `af6f7ca93c31`. That value never belonged to this installation — it came from the
+> throwaway probe container used for the bootstrap rehearsal, which had its own
+> workspace and therefore its own token (`F4C-014`, `F4L-006`). The real installation
+> has logged `db1cf03ef221` since Phase 4. What this table demonstrates — that the value
+> was unchanged across the swap — is unaffected; only the value itself was wrong.
+>
+> Do not trust a fingerprint transcribed into any document, including this one: the
+> token rotates on expiry, so a written value goes stale by design. Verify against the
+> live runtime instead:
+>
+> ```bash
+> docker logs noesar-evolution 2>&1 | grep setup-token.available | tail -1
+> ```
 
 The full procedure, including the case where an install fails midway, is
 `docs/PHASE_3_ROLLBACK.md`; nothing in this phase invalidated it, and the pre-swap backup

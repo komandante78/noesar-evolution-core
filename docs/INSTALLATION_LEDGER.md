@@ -787,3 +787,99 @@ widening what an integrity manifest describes is a change of meaning, not a book
 detail. A first attempt appended every tracked file under an already-covered root, which
 would have silently added ~102 pre-existing files the manifest deliberately did not list;
 that was reverted and the scope restricted to this gate's own additions.
+
+---
+
+## Phase 4 LAN access gate — 2026-07-25
+
+The installation was recreated twice: once to move the publish, once to deploy the fix
+that move made necessary. Nothing was reinstalled from scratch, and the runtime root was
+never replaced.
+
+```text
+before   noesar-evolution:phase4-complete       127.0.0.1:8100->8088
+step 1   noesar-evolution:phase4-complete       192.168.178.100:8100->8088
+after    noesar-evolution:phase4-complete-lan   192.168.178.100:8100->8088
+```
+
+### Backup
+
+`/backups/phase_4_lan_access_20260725T151501Z/`
+
+```text
+files hashed                  1886
+manifest verification    1886/1886 OK
+diff vs live runtime             0 differences (byte-identical)
+database dump               113080 bytes, sha256 5632cca8…, 226 TOC entries
+0600 modes on secrets      preserved, owner 10001:10001
+```
+
+The logical dump was taken while the cluster ran (MVCC-coherent); the physical copy was
+taken after a clean shutdown (`postgres.stopped clean:true`, `postmaster.pid` removed),
+so it is a consistent data directory rather than a smear across a checkpoint.
+
+### Image
+
+```text
+noesar-evolution:phase4-complete-lan   sha256:4e26c950a3d1…
+  FROM noesar-evolution:phase4-complete (sha256:52987fbbb7b5…)
+  build network   none          pull   disabled
+  files changed      2          apt steps   0
+```
+
+Two source files, nothing else. Built offline so the OS package set of the audited image
+is inherited rather than re-resolved (`D-0053`).
+
+### Containers
+
+```text
+created    noesar-evolution                                            :phase4-complete-lan
+preserved  noesar-evolution.rollback-lan-phase4complete-20260725T153133Z  :phase4-complete
+preserved  noesar-evolution.rollback-phase4-20260725T142301Z              :phase4
+preserved  noesar-evolution.rollback-phase3-20260725T121648Z              :phase3
+```
+
+`noesar-debuglab` was started for the HUNT AND FIX step and **stopped in the same
+phase**, as the cycle requires. Nothing else on this host was touched: `docker network
+ls` and `docker volume ls` diff **identical** against the pre-gate inventories, and the
+37 unrelated containers are the same set, none started and none removed.
+
+### Verification
+
+```text
+LIVEZ 200   READYZ 200   HEALTHZ 200   WEBUI 200
+METRICS 401 (was 200)    DIAGNOSTICS 401
+AUTH_INITIALIZED false   DATABASE_CONNECTED true
+POSTGRESQL 18.4          PGVECTOR 0.8.5          SAFE_MODE false
+migrations 16/16         RLS forced 15           audit chain 11 records, 0 broken links
+uid 10001  CapEff 0  Seccomp 2  rootfs read-only  1 mount  no docker socket
+RestartCount 0           persistence identical across two restarts
+```
+
+### Not done
+
+The Owner account was **not** created. `OWNER_BOOTSTRAP=AWAITING_OWNER_INTERACTION`.
+The setup token was verified (`db1cf03ef221`, `0600`, `10001:10001`, unused, 7.9 h of
+72) and deliberately **not** rotated, because it has not expired.
+
+### MANIFEST
+
+```text
+entries before        5677
+hashes refreshed         6   (the tracked files this gate modified)
+entries appended         5   (the files this gate created)
+entries after         5682
+verification        5682/5682 OK
+removed                  0   duplicates 0
+```
+
+Two modified files are **not** in the manifest and were not added:
+`INSTALLATION/install-unraid.sh` and `PROJECT_STATE.json` sit at roots the manifest has
+never covered.
+
+A first pass appended nine **pre-existing** documents — `SESSION_HANDOFF.md`,
+`DECISION_LOG.md`, `OPEN_FINDINGS.tsv` and the rest — because they live under `docs/`,
+which is a covered root. That was reverted. They were deliberately never listed: they
+change in every phase, and hashing them would make the integrity manifest churn on every
+commit and stop meaning anything. This is the same mistake the completion gate recorded
+and reverted, made again here from the same reasoning and caught by the same check.

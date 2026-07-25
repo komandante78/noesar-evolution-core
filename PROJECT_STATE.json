@@ -2,7 +2,7 @@
  "project": "NOESAR EVOLUTION",
  "total_phases": 6,
  "current_phase": 4,
- "phase_status": "COMPLETED_WITH_COMPLETION_GATE",
+ "phase_status": "COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE",
  "next_phase": 5,
  "canonical_repository_constructed": true,
  "installation_complete": true,
@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-25T14:40:00Z",
+ "last_updated_utc": "2026-07-25T15:45:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -60,18 +60,29 @@
  "database_mutation": false,
  "network_configuration": true,
  "installation": {
-  "image": "noesar-evolution:phase4-complete",
-  "image_id": "sha256:ec2ac8bd45510c782041ae3970d860faa6f5a5bfe48b0a3f8d4822077c5caa05",
+  "image": "noesar-evolution:phase4-complete-lan",
+  "image_id": "sha256:4e26c950a3d1e994067fdc34ee17e0c62dfee1b6b3a11562a196665ab47897d7",
+  "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan",
+  "base_image": "noesar-evolution:phase4-complete (sha256:52987fbbb7b5ffc901932ebfd0b9ab7825b6691bb73d871d229af75f150a2731)",
+  "dockerfile": "oci/Dockerfile.phase4-complete-lan",
+  "build_network": "none",
   "container": "noesar-evolution",
-  "port": "127.0.0.1:8100 -> 8088 (loopback only, LAN probe refused)",
+  "network": "noesar-evolution-net",
+  "port": "192.168.178.100:8100 -> 8088 (local network; loopback no longer answers; NOT published to the internet)",
+  "url": "http://192.168.178.100:8100",
+  "bind_address": "192.168.178.100",
+  "bind_scope": "lan",
+  "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
   "health": "healthy, 17 components, 0 degraded, RestartCount=0",
-  "owner_account": "NOT CREATED — awaiting the Owner, by design",
+  "owner_account": "NOT CREATED - awaiting the Owner, by design",
   "rollback_containers": [
+   "noesar-evolution.rollback-lan-phase4complete-20260725T153133Z (image :phase4-complete)",
    "noesar-evolution.rollback-phase4-20260725T142301Z (image :phase4)",
    "noesar-evolution.rollback-phase3-20260725T121648Z (image :phase3)"
   ],
-  "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z (stopped; used for the flows that would have created an Owner)",
-  "host_impact": "networks and volumes identical to the pre-gate inventory; the 37 unrelated containers untouched and still Exited"
+  "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z and .probe-reverify-20260725T142301Z (stopped; created by the completion gate)",
+  "host_impact": "networks and volumes diff IDENTICAL against the pre-gate inventory; the 37 unrelated containers untouched and still Exited; noesar-debuglab started for HUNT AND FIX and stopped in the same phase",
+  "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002."
  },
  "production_touched": false,
  "zip_repackaging": false,
@@ -280,8 +291,8 @@
    "summary": "a pooled keep-alive socket already closed by the upstream surfaced as a user-visible stream error with no retry. First hypothesis (idle timing) was tested and refuted; the real signature appeared only after F4-007. Fixed with a single narrowly-scoped retry. SEC-27 and SEC-30 now PASS."
   }
  ],
- "product_test_suite": "352/352 pass (node --test): 137 delivered, 180 added in phase 3, 35 added in phase 4. One unreproduced flake observed in 1 of 14 runs and recorded rather than dismissed (PHASE_4_ACCEPTANCE_REPORT.md section 8b); the two timing-sensitive candidates both fail closed.",
- "session_closed": "2026-07-25 - phase 4 complete: 136 acceptance checks (132 PASS, 3 PARTIAL, 1 BLOCKED, 0 FAIL), 351/351 unit tests, 13 findings with every high and medium fixed and regression-tested, installation swapped to noesar-evolution:phase4 with rollback preserved, ATOM-absent [UNVERIFIED] closed. NEXT_PHASE=5_READY.",
+ "product_test_suite": "455/455 pass (node --test): 137 delivered, 180 added in phase 3, 35 added in phase 4, 92 added in the phase 4 completion gate, 11 added in the LAN access gate.",
+ "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
  "phase_3": {
   "image": "noesar-evolution:phase3",
@@ -306,7 +317,7 @@
   ],
   "final_verification": "317/317 tests, 48/48 installer hardening, MANIFEST 5630/5630, container healthy, working tree clean"
  },
- "installer_hardening_regression": "48/48 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives",
+ "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
  "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates.",
  "deferred_items": [
   "tools/verify-package.py imports sys without using it (ruff F401) - phase 3 deferred it to phase 5 and phase 4 deliberately did not override that deferral (D-0039)",
@@ -454,7 +465,7 @@
   "tool": "eslint",
   "version": "9.39.5",
   "runs_in": "node:22-bookworm-slim pinned by digest; nothing installed on this host",
-  "result": "136 files, 0 errors, 0 warnings, 0 no-undef",
+  "result": "137 files, 0 errors, 0 warnings, 0 no-undef",
   "self_tested": true,
   "wired_into": [
    "npm run lint",
@@ -476,5 +487,92 @@
   ],
   "location": "$ARTIFACT_ROOT/sbom/ with SHA256SUMS.txt and PROVENANCE.txt",
   "note": "checksums recorded in docs/SBOM_REPORT.md; documents are not committed (~22 MB of generated JSON, reproducible from a pinned tool and image)"
+ },
+ "phase_4_technical_gate": "PASS",
+ "lan_webui_server_bind": "PASS",
+ "client_browser_test": "AWAITING_OWNER",
+ "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
+ "phase_5_documentation_ready": true,
+ "phase_5_final_packaging_ready": false,
+ "next_phase_constraint": "5_READY is valid for documentation, licensing audit and preparation ONLY. Final declaration and packaging are forbidden until ALL of: CLIENT_BROWSER_TEST=PASS, OWNER_BOOTSTRAP=PASS, MFA_TOTP=PASS, TOKEN_REUSE_REJECTED=PASS, STEP_UP_AUTH=PASS.",
+ "phase_5_release_gate": {
+  "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
+  "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
+  "MFA_TOTP": "AWAITING_OWNER",
+  "TOKEN_REUSE_REJECTED": "AWAITING_OWNER",
+  "STEP_UP_AUTH": "AWAITING_OWNER",
+  "note": "All five are Owner-performed. None may be marked PASS by anyone but the Owner completing the flow in docs/OWNER_BOOTSTRAP.md. Until then Phase 5 may produce preliminary documentation only."
+ },
+ "network_access": {
+  "setting": "NOESAR_BIND_ADDRESS",
+  "secure_default": "127.0.0.1",
+  "configured": "192.168.178.100",
+  "host_port": "8100",
+  "container_port": "8088",
+  "scope": "lan",
+  "wildcard_bind_refused_by_default": true,
+  "wildcard_override": "NOESAR_ALLOW_PUBLIC_BIND=true",
+  "public_internet_exposure": false,
+  "router_mutation": false,
+  "upnp": false,
+  "port_forwarding": false,
+  "persisted_at": "RUNTIME_ROOT/config/network-access.json (0600, owned by the container user)",
+  "tls": "NONE - LAN traffic is plaintext including password and TOTP code. Required before any exposure beyond a trusted LAN.",
+  "metrics_requires_authentication": true,
+  "cors": "no Access-Control-Allow-Origin is emitted on any route, on any scope; the WebUI is same-origin with its API",
+  "websocket": "the product has no WebSocket endpoint; streaming is SSE over the same origin",
+  "documentation": "docs/LAN_ACCESS_CONFIGURATION.md"
+ },
+ "phase_4_lan_access_gate": {
+  "executed_utc": "2026-07-25",
+  "authorised": "OWNER_AUTHORIZATION=CONFIRMED, LAN_WEBUI_ACCESS=AUTHORIZED, CONTAINER_RECREATION=AUTHORIZED_ONLY_FOR_NOESAR",
+  "gate": {
+   "LAN_WEBUI_SERVER_BIND": "PASS",
+   "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
+   "PORT_BIND": "192.168.178.100:8100->8088",
+   "LIVEZ": 200,
+   "READYZ": 200,
+   "HEALTHZ": 200,
+   "WEBUI": 200,
+   "AUTH_INITIALIZED": false,
+   "DATABASE_CONNECTED": true,
+   "POSTGRESQL": "18.4",
+   "PGVECTOR": "0.8.5",
+   "SAFE_MODE": false,
+   "METRICS_UNAUTHENTICATED": "401 (was 200 before this gate)",
+   "DIAGNOSTICS_UNAUTHENTICATED": "401",
+   "MIGRATIONS": "16/16",
+   "RLS_FORCED_TABLES": 15,
+   "AUDIT_CHAIN": "11 records, 0 broken links",
+   "RESTART_AND_PERSISTENCE": "PASS - RestartCount=0, token fingerprint, state digest and audit records identical across two restarts",
+   "UNRELATED_CONTAINERS_TOUCHED": false,
+   "NETWORKS_AND_VOLUMES": "IDENTICAL to the pre-gate inventory",
+   "PUBLIC_INTERNET_EXPOSURE": false,
+   "ROUTER_MUTATION": false,
+   "VPS_ACCESS": false,
+   "OWNER_CREDENTIAL_CREATION_BY_CODE": false
+  },
+  "totals": {
+   "unit_tests": "455/455 (444 before; 11 added)",
+   "installer_hardening": "100/100 (48 before; 52 added)",
+   "eslint": "137 files, 0 errors, 0 warnings, 0 no-undef",
+   "linter_self_test": "3/3 canaries detected",
+   "shellcheck": "all installers and the new library clean",
+   "semgrep": "0 findings on the changed surface",
+   "detect_secrets": "0 findings on the changed surface",
+   "backup_manifest": "1886/1886 verified, byte-identical to the live runtime"
+  },
+  "findings": {
+   "raised": 7,
+   "medium": 3,
+   "low": 3,
+   "informational": 1,
+   "closed": 6,
+   "open": 1,
+   "open_detail": "F4L-007, informational: --memory-swap is accepted by the daemon and discarded by this kernel",
+   "note": "F4L-001 was found by executing the product on the new bind, not by reading the diff. The gate on /metrics was correct only because of a premise this gate was about to change."
+  },
+  "deviation": "The fix is source-only and the container runs the code baked into its image, so it could not be deployed without a new image. Built as an offline two-file overlay after the Owner chose that over accepting the exposure or rolling back. See D-0053.",
+  "negative_controls": "Both new suites were verified to FAIL against the pre-fix behaviour before being trusted. One test (Host allowlist) was wrong on first writing - fetch() silently drops a Host header - and was rewritten with node:http plus a negative control; recorded rather than quietly fixed."
  }
 }
