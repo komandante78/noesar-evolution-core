@@ -753,3 +753,33 @@ grant. No `Access-Control-Allow-Origin` is emitted on any route — there is no 
 because there is no CORS at all — and `SameSite=Strict` stays correct precisely because
 all access is same-origin. A regression test asserts the absence positively, so that
 "no CORS" cannot later be mistaken for "nobody configured CORS".
+
+### D-0058 — the drafted WebUI sections were withdrawn rather than shipped unwired
+Markup for Settings, Security, Users, Tools, Providers, System Health, Updates, Logs,
+Backups and About was written in this phase. Their data loaders were not. Shipping them
+would have produced twelve nav entries whose panels never finish loading — the exact
+defect the phase exists to remove — while presenting as progress. They were removed
+before the commit and the router was restricted to routes with a working page. The
+backend they will consume is implemented and tested, so the remaining work is interface
+work against a known-good surface.
+
+### D-0059 — the QR encoder is bounded at version 6 instead of being shipped unproven
+Versions 1-6 match libqrencode module-for-module; 7-10 do not, after a version-
+information block was implemented and two real bugs were fixed. Rather than emit a
+symbol that renders and may not decode, `chooseVersion` refuses above version 6 with an
+explicit error. This bounds enrolment QR codes to usernames of 25 characters or fewer.
+The alternative — shipping and hoping — is the failure mode this project has a standing
+rule against.
+
+### D-0060 — no rebuild and no deployment in this phase
+`CONTAINER_REBUILD` was authorised, but there was nothing safe to deploy: the only
+user-visible change ready was the CSRF fix, and shipping it alongside half-built
+navigation would have been worse than the current state. The live installation still
+runs `noesar-evolution:phase4-complete-lan` with the Owner account intact.
+
+### D-0061 — the Owner's TOTP secret is still not rotated
+The replacement flow is implemented and tested, but it requires the Owner's own password
+and two consecutive live codes, and this phase forbids rotating on their behalf. The
+Security page that would expose it is not built, so the only route today is the API.
+`OWNER_MFA_ROTATION=AWAITING_OWNER_INTERACTION`, and the original enrolment secret —
+which must be treated as compromised — remains in force.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import {
   createTotpSecret,
   decryptSecret,
@@ -92,6 +92,25 @@ function consumeTotp(secret, code, user) {
   if (!result.valid) return { accepted: false, reason: 'invalid', step: null };
   if (Number(user.lastTotpStep ?? 0) >= result.step) return { accepted: false, reason: 'replayed', step: result.step };
   return { accepted: true, reason: null, step: result.step };
+}
+
+const RECOVERY_CODE_COUNT = 10;
+// Crockford-style alphabet: no I, L, O or U, so a code read off a screen and typed back
+// cannot become a DIFFERENT valid code through an ordinary transcription slip.
+const RECOVERY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+/**
+ * Mint recovery codes. The plaintext is returned ONCE to the caller and never stored:
+ * only digests are persisted, so a copy of the state file yields no working codes.
+ */
+function buildRecoveryCodes(count = RECOVERY_CODE_COUNT) {
+  const codes = [];
+  for (let index = 0; index < count; index += 1) {
+    let text = '';
+    for (const byte of randomBytes(10)) text += RECOVERY_ALPHABET[byte % RECOVERY_ALPHABET.length];
+    codes.push(`${text.slice(0, 5)}-${text.slice(5, 10)}`);
+  }
+  return { codes, digests: codes.map((code) => ({ digest: tokenDigest(code), usedAt: null })) };
 }
 
 export class AuthService {
@@ -378,6 +397,228 @@ export class AuthService {
     });
     this.ledger.append({ actor:user.id, action:'auth.reauthenticated', result:'success', details:{ expiresAt:new Date(elevatedUntil).toISOString() } });
     return { elevatedUntil, expiresAt:new Date(elevatedUntil).toISOString() };
+  }
+
+  // --- account security -----------------------------------------------------
+  //
+  // Everything below is gated on proof of presence: the current password AND a current,
+  // unreplayed authenticator code. A stolen session cookie is therefore not enough to
+  // change a password, replace an authenticator or mint recovery codes — which is the
+  // entire point of holding a second factor.
+
+  /** Verify presence and consume the TOTP step, so one code cannot drive two changes. */
+  #assertPresence(user, password, totpCode, action) {
+    const secret = decryptSecret(user.totp, this.masterKey);
+    const consumed = consumeTotp(secret, totpCode, user);
+    if (!verifyPassword(password, user.password) || !consumed.accepted) {
+      this.ledger.append({ actor:user.id, action:`${action}.denied`, result:'denied',
+        details:{ reason:consumed.reason === 'replayed' ? 'code-replayed' : 'credentials' } });
+      throw Object.assign(new Error(consumed.reason === 'replayed'
+        ? 'This authentication code has already been used. Wait for the next one.'
+        : 'Current password or authenticator code is incorrect.'), { status:403 });
+    }
+    return consumed.step;
+  }
+
+  #requireUser(userId) {
+    const user = this.store.read().users.find((item) => item.id === userId);
+    if (!user) throw Object.assign(new Error('Account not found.'), { status:404 });
+    return user;
+  }
+
+  securityOverview(userId, currentSessionId = null) {
+    const state = this.store.read();
+    const user = state.users.find((item) => item.id === userId);
+    if (!user) throw Object.assign(new Error('Account not found.'), { status:404 });
+    const now = Date.now();
+    const sessions = state.sessions
+      .filter((item) => item.userId === userId && item.expiresAt > now)
+      .map((item) => ({
+        id:item.id, current:item.id === currentSessionId,
+        createdAt:new Date(item.createdAt).toISOString(),
+        lastSeenAt:new Date(item.lastSeenAt).toISOString(),
+        expiresAt:new Date(item.expiresAt).toISOString(),
+        mfa:Boolean(item.mfa), elevated:Number(item.elevatedUntil ?? 0) > now,
+      }));
+    return {
+      username:user.username, displayName:user.displayName, role:user.role,
+      mfaEnabled:Boolean(user.totp),
+      mfaUpdatedAt:user.totpUpdatedAt ? new Date(user.totpUpdatedAt).toISOString() : null,
+      // Only the COUNT of unused codes is exposed. The codes are stored as digests and
+      // cannot be re-shown, by construction.
+      recoveryCodesRemaining:(user.recoveryCodes ?? []).filter((item) => !item.usedAt).length,
+      recoveryCodesGeneratedAt:user.recoveryCodesGeneratedAt ? new Date(user.recoveryCodesGeneratedAt).toISOString() : null,
+      sessions, sessionCount:sessions.length,
+      locked:Number(user.lockedUntil ?? 0) > now,
+      lockedUntil:Number(user.lockedUntil ?? 0) > now ? new Date(user.lockedUntil).toISOString() : null,
+      failedLoginCount:Number(user.failedLoginCount ?? 0),
+      passkeySupported:false,
+      passwordUpdatedAt:user.passwordUpdatedAt ? new Date(user.passwordUpdatedAt).toISOString() : null,
+    };
+  }
+
+  changePassword({ userId, sessionId, currentPassword, totpCode, newPassword, revokeOtherSessions = true }) {
+    const user = this.#requireUser(userId);
+    // passwordPolicy returns { valid, reasons } — not { ok, reason }. Getting that
+    // wrong reads as "policy passed" for every password, including an empty one.
+    const policy = passwordPolicy(newPassword);
+    if (!policy.valid) throw Object.assign(new Error(policy.reasons.join(' ')), { status:400 });
+    if (verifyPassword(newPassword, user.password)) {
+      throw Object.assign(new Error('The new password must differ from the current one.'), { status:400 });
+    }
+    const step = this.#assertPresence(user, currentPassword, totpCode, 'auth.password-change');
+    const descriptor = hashPassword(newPassword);
+    let revoked = 0;
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.password = descriptor; target.passwordUpdatedAt = Date.now();
+      target.lastTotpStep = step; target.failedLoginCount = 0; target.lockedUntil = 0;
+      if (revokeOtherSessions) {
+        const before = next.sessions.length;
+        next.sessions = next.sessions.filter((item) => item.userId !== userId || item.id === sessionId);
+        revoked = before - next.sessions.length;
+      }
+    });
+    this.ledger.append({ actor:userId, action:'auth.password-changed', result:'success', details:{ revokedSessions:revoked } });
+    return { changed:true, revokedSessions:revoked };
+  }
+
+  /**
+   * Step 1 of replacing the authenticator: prove presence, then mint a CANDIDATE
+   * secret held aside. The live secret keeps working until the new one is confirmed,
+   * so an abandoned rotation cannot lock anybody out of their own installation.
+   */
+  beginMfaReplacement({ userId, password, totpCode }) {
+    const user = this.#requireUser(userId);
+    const step = this.#assertPresence(user, password, totpCode, 'auth.mfa-replace');
+    const secret = createTotpSecret();
+    const challenge = randomToken(24);
+    const issuer = 'NOESAR Evolution';
+    const label = `${issuer}:${user.username}`;
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.lastTotpStep = step;
+      target.pendingTotp = {
+        challengeDigest:tokenDigest(challenge),
+        secret:encryptSecret(secret, this.masterKey),
+        createdAt:Date.now(), expiresAt:Date.now() + 10 * 60_000,
+      };
+    });
+    this.ledger.append({ actor:userId, action:'auth.mfa-replace-started', result:'success' });
+    return {
+      challenge, secret,
+      // Two forms, deliberately.
+      //
+      // otpauthUri is the compact Key URI: when 'issuer' is present as a parameter the
+      // label prefix is redundant, and SHA-1 / 6 digits / 30 seconds are the
+      // specification defaults this server verifies against. It is what Google
+      // Authenticator itself emits, and it stays inside the QR encoder's verified
+      // capacity (version 1-6, level M, 106 bytes) for any username this product allows.
+      //
+      // otpauthUriExplicit spells those parameters out for anyone transcribing by hand
+      // or importing into a tool that does not assume the defaults. Both enrol the
+      // same secret and produce the same codes.
+      otpauthUri:`otpauth://totp/${encodeURIComponent(user.username)}?secret=${secret}`
+        + `&issuer=${encodeURIComponent(issuer)}`,
+      otpauthUriExplicit:`otpauth://totp/${encodeURIComponent(label)}?secret=${secret}`
+        + `&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`,
+      totpAlgorithm:'SHA1', totpDigits:6, totpPeriodSeconds:30,
+      expiresAt:new Date(Date.now() + 10 * 60_000).toISOString(),
+    };
+  }
+
+  /**
+   * Step 2: two CONSECUTIVE codes from the candidate. One code proves the secret was
+   * transcribed; two consecutive ones prove the clock agrees as well, and cannot both
+   * come from a single screenshot of one stale code.
+   */
+  confirmMfaReplacement({ userId, sessionId, challenge, firstCode, secondCode, revokeOtherSessions = true }) {
+    const user = this.#requireUser(userId);
+    const pending = user.pendingTotp;
+    if (!pending) throw Object.assign(new Error('No authenticator replacement is in progress.'), { status:409 });
+    if (pending.expiresAt < Date.now()) throw Object.assign(new Error('The replacement expired. Start again.'), { status:410 });
+    if (tokenDigest(String(challenge ?? '')) !== pending.challengeDigest) {
+      throw Object.assign(new Error('Invalid replacement challenge.'), { status:403 });
+    }
+    const candidate = decryptSecret(pending.secret, this.masterKey);
+    const first = verifyTotpStep(candidate, firstCode);
+    const second = verifyTotpStep(candidate, secondCode);
+    if (!first.valid || !second.valid) {
+      this.ledger.append({ actor:userId, action:'auth.mfa-replace-denied', result:'denied', details:{ reason:'invalid-code' } });
+      throw Object.assign(new Error('Those codes do not match the new authenticator.'), { status:403 });
+    }
+    if (second.step !== first.step + 1) {
+      this.ledger.append({ actor:userId, action:'auth.mfa-replace-denied', result:'denied', details:{ reason:'not-consecutive' } });
+      throw Object.assign(new Error('The two codes must be consecutive. Enter one, wait for it to change, then enter the next.'), { status:400 });
+    }
+    const { codes, digests } = buildRecoveryCodes();
+    let revoked = 0;
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      // Atomic swap: the old secret is overwritten in the same update that clears the
+      // candidate, so there is no window where both work or neither does.
+      target.totp = pending.secret; target.totpUpdatedAt = Date.now();
+      target.lastTotpStep = second.step;
+      target.recoveryCodes = digests; target.recoveryCodesGeneratedAt = Date.now();
+      delete target.pendingTotp;
+      if (revokeOtherSessions) {
+        const before = next.sessions.length;
+        next.sessions = next.sessions.filter((item) => item.userId !== userId || item.id === sessionId);
+        revoked = before - next.sessions.length;
+      }
+    });
+    // The secret is never written to the ledger, in any form.
+    this.ledger.append({ actor:userId, action:'auth.mfa-replaced', result:'success',
+      details:{ revokedSessions:revoked, recoveryCodesIssued:codes.length } });
+    return { replaced:true, recoveryCodes:codes, revokedSessions:revoked };
+  }
+
+  cancelMfaReplacement(userId) {
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      if (target) delete target.pendingTotp;
+    });
+    this.ledger.append({ actor:userId, action:'auth.mfa-replace-cancelled', result:'success' });
+    return { cancelled:true };
+  }
+
+  regenerateRecoveryCodes({ userId, password, totpCode }) {
+    const user = this.#requireUser(userId);
+    const step = this.#assertPresence(user, password, totpCode, 'auth.recovery-regenerate');
+    const { codes, digests } = buildRecoveryCodes();
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.recoveryCodes = digests; target.recoveryCodesGeneratedAt = Date.now();
+      target.lastTotpStep = step;
+    });
+    this.ledger.append({ actor:userId, action:'auth.recovery-codes-regenerated', result:'success', details:{ issued:codes.length } });
+    return { codes };
+  }
+
+  revokeSession({ userId, sessionId, targetSessionId }) {
+    if (targetSessionId === sessionId) {
+      throw Object.assign(new Error('Use sign out to end the session you are using.'), { status:400 });
+    }
+    let revoked = 0;
+    this.store.update((next) => {
+      const before = next.sessions.length;
+      next.sessions = next.sessions.filter((item) => !(item.id === targetSessionId && item.userId === userId));
+      revoked = before - next.sessions.length;
+    });
+    if (!revoked) throw Object.assign(new Error('That session no longer exists.'), { status:404 });
+    this.ledger.append({ actor:userId, action:'auth.session-revoked', result:'success', details:{ sessionId:targetSessionId } });
+    return { revoked };
+  }
+
+  revokeOtherSessions({ userId, sessionId }) {
+    let revoked = 0;
+    this.store.update((next) => {
+      const before = next.sessions.length;
+      next.sessions = next.sessions.filter((item) => item.userId !== userId || item.id === sessionId);
+      revoked = before - next.sessions.length;
+    });
+    this.ledger.append({ actor:userId, action:'auth.sessions-revoked', result:'success', details:{ revoked } });
+    return { revoked };
   }
 
   logout(sessionId, actorId) {

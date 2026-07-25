@@ -2,7 +2,7 @@
  "project": "NOESAR EVOLUTION",
  "total_phases": 6,
  "current_phase": 4,
- "phase_status": "COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE",
+ "phase_status": "COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE_PLUS_PARTIAL_WEBUI_REMEDIATION",
  "next_phase": 5,
  "canonical_repository_constructed": true,
  "installation_complete": true,
@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-25T15:45:00Z",
+ "last_updated_utc": "2026-07-25T16:40:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -32,6 +32,27 @@
    "blocks_next_phase": false,
    "resolution_options": [
     "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
+   ]
+  },
+  {
+   "id": "B-007",
+   "severity": "high",
+   "code": "WEBUI_SECTIONS_NOT_BUILT",
+   "summary": "Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups and About do not exist in the shipped WebUI. The account-security backend and a verified QR encoder are implemented and tested, but no interface reaches them, so the Owner still cannot rotate the TOTP secret that must be treated as compromised.",
+   "blocks_next_phase": true,
+   "resolution_options": [
+    "Build the pages against the existing endpoints and the verified QR encoder, then rebuild and deploy",
+    "Expose the rotation flow as a documented API procedure as an interim measure"
+   ]
+  },
+  {
+   "id": "B-008",
+   "severity": "medium",
+   "code": "TWO_IDENTITY_STORES",
+   "summary": "The signing-in account lives in state/auth.json while noesar_identity.users in PostgreSQL is empty. The multi-user acceptance recorded by the Phase 4 completion gate does not cover the login path (F4W-006).",
+   "blocks_next_phase": false,
+   "resolution_options": [
+    "Decide the target identity model and migrate deliberately, in a phase of its own"
    ]
   }
  ],
@@ -123,7 +144,7 @@
   "86 first-party source files without SPDX header"
  ],
  "phase_2_started": true,
- "next_phase_ready": "5_READY",
+ "next_phase_ready": "BLOCKED",
  "host_preflight": "COMPLETED - Unraid 7.3.2, kernel 6.18.38, Ryzen 5 5600X 6c/12t AVX2 (no AVX-512), 31GiB RAM with NO SWAP, RTX 3060 12GiB idle, Docker 29.5.3 overlay2 cgroup v2, 37 containers all stopped, AppArmor and SELinux both ABSENT so seccomp is the only MAC layer",
  "installation_design": "COMPLETED - single Node-only container, host port 8100 (product default 8088 already taken twice), loopback-only binding, dedicated noesar-evolution-net, runtime root /mnt/cachec/NOESAR_EVOLUTION_RUNTIME (NOT created in phase 2), workspace chown 10001:10001, reference-json data plane (no Postgres in phase 3)",
  "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
@@ -291,7 +312,7 @@
    "summary": "a pooled keep-alive socket already closed by the upstream surfaced as a user-visible stream error with no retry. First hypothesis (idle timing) was tested and refuted; the real signature appeared only after F4-007. Fixed with a single narrowly-scoped retry. SEC-27 and SEC-30 now PASS."
   }
  ],
- "product_test_suite": "455/455 pass (node --test): 137 delivered, 180 added in phase 3, 35 added in phase 4, 92 added in the phase 4 completion gate, 11 added in the LAN access gate.",
+ "product_test_suite": "488/488 pass (node --test): 455 before this phase, 33 added (16 account security, 17 QR encoder).",
  "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
  "phase_3": {
@@ -375,7 +396,7 @@
   "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
  },
  "gpu_runtime": "NOT_IMPLEMENTED",
- "next_phase_label": "5_READY",
+ "next_phase_label": "BLOCKED",
  "phase_4_completion_gate": {
   "executed_utc": "2026-07-25",
   "gate": {
@@ -465,7 +486,7 @@
   "tool": "eslint",
   "version": "9.39.5",
   "runs_in": "node:22-bookworm-slim pinned by digest; nothing installed on this host",
-  "result": "137 files, 0 errors, 0 warnings, 0 no-undef",
+  "result": "140 files, 0 errors, 0 warnings, 0 no-undef",
   "self_tested": true,
   "wired_into": [
    "npm run lint",
@@ -492,9 +513,9 @@
  "lan_webui_server_bind": "PASS",
  "client_browser_test": "AWAITING_OWNER",
  "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
- "phase_5_documentation_ready": true,
+ "phase_5_documentation_ready": false,
  "phase_5_final_packaging_ready": false,
- "next_phase_constraint": "5_READY is valid for documentation, licensing audit and preparation ONLY. Final declaration and packaging are forbidden until ALL of: CLIENT_BROWSER_TEST=PASS, OWNER_BOOTSTRAP=PASS, MFA_TOTP=PASS, TOKEN_REUSE_REJECTED=PASS, STEP_UP_AUTH=PASS.",
+ "next_phase_constraint": "NEXT_PHASE=BLOCKED. Phase 5 may not start: the WebUI remediation is PARTIAL, ten required sections are not built, the Owner cannot rotate the compromised TOTP secret from the interface, and CLIENT_BROWSER_RETEST is AWAITING_OWNER.",
  "phase_5_release_gate": {
   "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
   "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
@@ -574,5 +595,66 @@
   },
   "deviation": "The fix is source-only and the container runs the code baked into its image, so it could not be deployed without a new image. Built as an offline two-file overlay after the Owner chose that over accepting the exposure or rolling back. See D-0053.",
   "negative_controls": "Both new suites were verified to FAIL against the pre-fix behaviour before being trusted. One test (Host allowlist) was wrong on first writing - fetch() silently drops a Host header - and was rewritten with node:http plus a negative control; recorded rather than quietly fixed."
- }
+ },
+ "webui_remediation": {
+  "status": "PARTIAL",
+  "root_cause": "csrfToken was a module variable reset by every page load and the noesar_csrf cookie was never read back, so after any refresh every write returned 403 while the app still looked signed in (F4W-001). Second, independent cause: ten of the required sections do not exist in the shipped WebUI at all (F4W-002).",
+  "fixed_and_verified": [
+   "CSRF token read from the cookie — proven in a real browser before and after",
+   "hash router with deep links, refresh, back/forward, title and ARIA announcement",
+   "404 and access-denied pages",
+   "global error boundary, toasts with correlation ID",
+   "password change",
+   "authenticator replacement with step-up and two consecutive codes",
+   "recovery codes",
+   "session listing and revocation",
+   "dependency-free QR encoder verified against libqrencode for versions 1-6"
+  ],
+  "not_implemented": [
+   "Settings page",
+   "Security page",
+   "Users and invitations page",
+   "Tools page",
+   "Providers page",
+   "System Health page",
+   "Updates page",
+   "Logs page",
+   "Backups page",
+   "About page",
+   "dynamic privacy banner",
+   "MFA QR rendered on screen",
+   "MFA rotation UI",
+   "full browser acceptance over every route"
+  ],
+  "ui_deliberately_withheld": "Markup for the missing sections was drafted and withdrawn rather than shipped: nav entries whose panels never finish loading would reproduce the exact defect this phase exists to remove.",
+  "image_rebuilt": false,
+  "deployed": false,
+  "live_image": "noesar-evolution:phase4-complete-lan (unchanged)",
+  "owner_account_preserved": true,
+  "gate": {
+   "WEBUI_NAVIGATION": "PARTIAL",
+   "SETTINGS_UI": "NOT_IMPLEMENTED",
+   "SECURITY_UI": "NOT_IMPLEMENTED",
+   "MFA_QR": "ENCODER_VERIFIED_NOT_RENDERED",
+   "MFA_ROTATION_UI": "NOT_IMPLEMENTED",
+   "USER_MANAGEMENT_UI": "NOT_IMPLEMENTED",
+   "AGENTS_UI": "NOT_IMPLEMENTED",
+   "TOOLS_UI": "NOT_IMPLEMENTED",
+   "KNOWLEDGE_UI": "NOT_IMPLEMENTED",
+   "PRIVACY_BANNER_DYNAMIC": "NOT_IMPLEMENTED",
+   "BROWSER_E2E": "PARTIAL",
+   "OWNER_MFA_ROTATION": "AWAITING_OWNER_INTERACTION"
+  },
+  "findings": {
+   "raised": 7,
+   "high": 2,
+   "medium": 4,
+   "low": 1,
+   "closed": 2,
+   "partial": 2,
+   "open": 3
+  }
+ },
+ "owner_mfa_rotation": "AWAITING_OWNER_INTERACTION",
+ "client_browser_retest": "AWAITING_OWNER"
 }

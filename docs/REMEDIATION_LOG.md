@@ -392,3 +392,79 @@ check that silently passes is worse than no check.
 | default safety | `0.0.0.0` refused without override, address not on host refused, non-interactive run takes loopback |
 | persistence | install with a LAN address, reinstall with an empty environment, assert the address survives |
 | no CORS | asserted positively on four routes, on a LAN scope, with an `Origin` header present |
+
+---
+
+# Phase 4 WebUI product remediation
+
+## The report was accurate, and the cause was not what it looked like
+
+Every nav click in the shipped WebUI **does** switch panels. Verified in a headless
+browser: 11 of 11 nav entries activate the right section, no console errors, no failed
+requests beyond `404 /favicon.ico`. So "clicking Agents does nothing" was not a broken
+click handler.
+
+Two separate things were true instead.
+
+**One: after any page reload, every write in the entire application failed.** The CSRF
+token was captured from the login response into a module variable, and a reload resets it
+to `''`. The session cookie survives, so the app still looks signed in — reads work,
+writes return `403`. Reproduced, then fixed, then re-verified in the same harness:
+
+```text
+before fix   login -> create project OK   |  F5 -> create project 403 CSRF validation failed
+after fix    login -> create project OK   |  F5 -> create project OK, 0 failed requests
+```
+
+**Two: Settings, Security, Users, Tools, Providers, System Health, Updates, Logs,
+Backups and About were never built.** Not broken — absent. Agents and Tools shared one
+nav entry, so there was no Tools item to click.
+
+## A decision that cost work rather than saved it
+
+Markup for the ten missing sections was written during this phase and then **withdrawn
+before committing**. Their data loaders were not written, and twelve nav entries opening
+panels stuck on "Loading…" would have reproduced precisely the defect being remediated,
+while looking like progress. The router now advertises only routes that have a working
+page. No rebuild and no deployment followed, because there was nothing safe to deploy.
+
+## Two QR bugs that reading would never have found
+
+The encoder is hand-written — a CDN or a chart service would send the TOTP secret to a
+third party, and the product declares zero third-party npm dependencies. It was verified
+against `libqrencode`, which found two defects:
+
+1. **format-information bits placed in reverse order**;
+2. **a Reed-Solomon generator polynomial with its shift and its α term swapped.**
+
+The second is the instructive one. It produces **correct data codewords and wrong
+error-correction codewords** — a symbol that renders as a perfectly convincing QR code
+and does not decode. It was localised by extracting the reference symbol's codewords and
+diffing them: indices 0–15 matched byte for byte, and divergence began exactly at index
+16, the first EC codeword. That single number identified the faulty function.
+
+Versions 1–6 now match module-for-module. Versions 7–10 still do not, so the encoder
+**refuses** to emit them rather than guess. That bounds enrolment to usernames of 25
+characters or fewer; longer ones fall back to the manual key and say why (`F4W-005`).
+
+## Defects in this phase's own work, found by its own tests
+
+* `changePassword` read `policy.ok` and `policy.reason` from `passwordPolicy`, which
+  returns `{ valid, reasons }`. Every password would have passed, including an empty one.
+  Caught by the test written for that exact assertion.
+* The first Host-allowlist-style verification of the new tests used TOTP codes minutes in
+  the future, outside the ±1-step acceptance window, so the tests failed against correct
+  code. The helper now spends codes in increasing step order and the constraint is
+  documented in the file — the replay guard allows a test roughly three codes per
+  authenticator, and reaching past that reads as a product bug and is not one.
+* A `buildRecoveryCodes` insertion landed between a JSDoc block and the function it
+  documented, silently re-attributing the comment. Corrected.
+
+## Triage: what was dismissed
+
+| Observation | Why it is not a finding |
+|---|---|
+| `404 /favicon.ico` in every browser session | no favicon ships; cosmetic, does not affect any route |
+| `Cross-Origin-Opener-Policy header has been ignored` | the browser refuses COOP over plain HTTP on a non-loopback origin. Correct browser behaviour and a consequence of having no TLS, already recorded |
+| `401 /api/v1/auth/me` on first load | that is how the client detects it is signed out; it then shows the login form |
+| nav clicks "not working" | falsified by execution — every nav entry switches correctly |

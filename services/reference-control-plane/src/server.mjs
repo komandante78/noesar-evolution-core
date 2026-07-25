@@ -399,6 +399,73 @@ const server = createServer(async (req, res) => {
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       return json(res, 200, auth.reauthenticate({ sessionId:authenticated.session.id, ...(await body(req)) }));
     }
+    // --- account security ----------------------------------------------------
+    // Every route here acts on the CALLER's own account. There is deliberately no
+    // "change another user's password" or "replace another user's authenticator": an
+    // administrator can disable, revoke or erase an account from the directory, but
+    // must not be able to silently take one over and keep operating as that person.
+    if (req.method === 'GET' && url.pathname === '/api/v1/auth/security') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated) return;
+      return json(res, 200, auth.securityOverview(authenticated.user.id, authenticated.session.id));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/password') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.changePassword({
+        userId:authenticated.user.id, sessionId:authenticated.session.id,
+        currentPassword:payload.currentPassword, totpCode:payload.totpCode,
+        newPassword:payload.newPassword, revokeOtherSessions:payload.revokeOtherSessions !== false,
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/mfa/replace') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.beginMfaReplacement({
+        userId:authenticated.user.id, password:payload.password, totpCode:payload.totpCode,
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/mfa/replace/confirm') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.confirmMfaReplacement({
+        userId:authenticated.user.id, sessionId:authenticated.session.id,
+        challenge:payload.challenge, firstCode:payload.firstCode, secondCode:payload.secondCode,
+        revokeOtherSessions:payload.revokeOtherSessions !== false,
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/mfa/replace/cancel') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, auth.cancelMfaReplacement(authenticated.user.id));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/recovery-codes') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 201, auth.regenerateRecoveryCodes({
+        userId:authenticated.user.id, password:payload.password, totpCode:payload.totpCode,
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/sessions/revoke-others') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 200, auth.revokeOtherSessions({
+        userId:authenticated.user.id, sessionId:authenticated.session.id,
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/sessions/revoke') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.revokeSession({
+        userId:authenticated.user.id, sessionId:authenticated.session.id,
+        targetSessionId:payload.sessionId,
+      }));
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/logout') {
       const authenticated = requireSession(req, res);
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
