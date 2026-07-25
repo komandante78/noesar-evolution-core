@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 4 LAN-access image: the phase4-complete image with the exposure-scope fix.
+#
+# Why this image exists at all.
+#
+# Publishing the WebUI on a LAN address invalidated one premise the runtime held:
+# `/metrics` was served without a session to any caller with a private peer address,
+# on the reasoning — written into the code — that the container publishes on loopback
+# only. Behind a published port every external caller arrives from the Docker bridge
+# gateway, which is itself RFC1918, so that predicate says "trusted" for a LAN client
+# exactly as readily as for a host-local one. Correct while the publish was
+# 127.0.0.1; false the moment it was not.
+#
+# The fix is source-only and lives in services/reference-control-plane/src/. The
+# running container executes the code baked into its image, so the fix could not
+# reach the installation without a new image.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile — the same reasoning
+# Dockerfile.phase4 recorded, and it has not changed:
+#
+#   * oci/Dockerfile runs `apt-get install`, which needs the Debian archives. This
+#     gate authorises no network operation, and repeating the apt step would silently
+#     re-resolve the OS package set to whatever the archive serves today.
+#   * Building FROM the audited phase4-complete image inherits every layer unchanged —
+#     PostgreSQL 18.4, pgvector 0.8.5, the whole apt set — so the only difference
+#     between the two images is two first-party source files.
+#
+# Stated rather than hidden: this image's lineage is
+# node:22-bookworm-slim@sha256:6c74791e… -> :phase3 -> :phase4 -> :phase4-complete ->
+# :phase4-complete-lan, so it carries all of their layers. Phase 5 packaging should
+# still rebuild from oci/Dockerfile with a recorded network step (D-0033).
+#
+# Build offline, and only offline:
+#   docker build --network=none --pull=false \
+#     -f oci/Dockerfile.phase4-complete-lan \
+#     -t noesar-evolution:phase4-complete-lan .
+ARG BASE_IMAGE=noesar-evolution:phase4-complete
+FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.version="1.0.0-ai-workspace-phase4-complete-lan"
+LABEL org.noesar.phase="4-complete-lan"
+LABEL org.noesar.base-image="noesar-evolution:phase4-complete"
+LABEL org.noesar.phase4.lan-remediations="F4L-001"
+LABEL org.noesar.exposure.default="loopback"
+
+USER root
+# Exactly the two files that changed. Copying the whole service tree would make the
+# diff between this image and its base unreviewable, which is the opposite of why an
+# overlay was chosen.
+COPY --chown=10001:10001 services/reference-control-plane/src/http-security.mjs \
+     /opt/noesar/services/reference-control-plane/src/http-security.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs \
+     /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001

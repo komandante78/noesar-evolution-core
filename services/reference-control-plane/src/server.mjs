@@ -16,7 +16,10 @@ import { AuthService, parseCookies } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
 import { discoverHardware, recommendRuntime } from './hardware.mjs';
-import { securityHeaders, validHostHeader } from './http-security.mjs';
+import {
+  securityHeaders, validHostHeader, isWildcardAddress,
+  resolveBindScope, allowsUnauthenticatedMetrics,
+} from './http-security.mjs';
 import { createPathPlan } from './path-auth.mjs';
 import { PrivacyState, evaluateEgress, privacyBanner } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -60,6 +63,19 @@ const allowedHosts = new Set(
     .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean)
 );
 if (host !== '0.0.0.0' && host !== '::') allowedHosts.add(host.toLowerCase());
+
+// The address the operator published this container on, and the exposure scope that
+// follows from it. Both are declarations: from inside the namespace the process only
+// ever sees NOESAR_HOST (0.0.0.0), which is identical for a loopback publish and a
+// LAN publish. Unset means loopback — an installation nobody configured is reachable
+// locally and nowhere else.
+//
+// Declaring the publish address here rather than only in the installer keeps the Host
+// allowlist and the publish from drifting apart: a LAN publish whose address is not in
+// the allowlist answers 421 to every browser request, which looks like an outage.
+const bindAddress = (process.env.NOESAR_BIND_ADDRESS ?? '').trim();
+const exposureScope = resolveBindScope({ bindAddress, bindScope:process.env.NOESAR_BIND_SCOPE });
+if (bindAddress && !isWildcardAddress(bindAddress)) allowedHosts.add(bindAddress.toLowerCase());
 
 const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
 const store = new JsonStore(join(workspace, 'state/state.json'));
@@ -169,16 +185,6 @@ const SAFE_MODE_WRITE_ALLOWLIST = new Set([
 ]);
 
 function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
-
-function isInternalAddress(address) {
-  const value = String(address ?? '').replace(/^::ffff:/, '');
-  if (value === '127.0.0.1' || value === '::1') return true;
-  const parts = value.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(Number.isNaN)) return false;
-  return parts[0] === 10 || parts[0] === 127
-    || (parts[0] === 192 && parts[1] === 168)
-    || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31);
-}
 
 function json(res, status, value, extraHeaders = {}) {
   // A response whose headers are already out cannot be given a status any more.
@@ -323,10 +329,14 @@ const server = createServer(async (req, res) => {
       return json(res, health.status === 'unhealthy' ? 503 : 200, health);
     }
     if (req.method === 'GET' && url.pathname === '/metrics') {
-      // Authenticated, or restricted to the internal network. The container
-      // publishes on loopback only, so an internal caller is already inside the
-      // trust boundary; anything else must present a session.
-      if (!isInternalAddress(clientIp(req))) {
+      // Authenticated, unless this container is published on loopback AND the peer is
+      // a private address. The unauthenticated path is deliberately narrow: behind a
+      // published port every caller arrives from the bridge gateway, which is itself
+      // an RFC1918 address, so a private peer only implies "a process on this host"
+      // while the publish is loopback-only. On a LAN publish it implies nothing, and
+      // the exporter (request paths, status codes, safe-mode state, log volume) would
+      // otherwise be readable by the whole subnet. See docs/LAN_ACCESS_CONFIGURATION.md.
+      if (!allowsUnauthenticatedMetrics(exposureScope, clientIp(req))) {
         const authenticated = requireSession(req, res, 'audit.read');
         if (!authenticated) return;
       }
@@ -1055,7 +1065,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       // literals by product policy, which would turn it into [REDACTED_IP] and make
       // the line useless for the operator who needs it.
       component:'control-plane', port,
+      // `bind_scope` is what this process listens on INSIDE its namespace, which in a
+      // container is always all-interfaces and therefore says nothing about who can
+      // reach it. `exposure_scope` is what the operator published it on OUTSIDE, and
+      // it is what the /metrics gate keys off. Neither field carries an address: the
+      // sink redacts IPv4 literals, so printing one produces [REDACTED_IP].
       bind_scope: host === '0.0.0.0' || host === '::' ? 'all-interfaces' : 'single-interface',
+      exposure_scope:exposureScope,
+      metrics_requires_authentication:exposureScope !== 'loopback',
       version:PRODUCT.releaseVersion,
       release_channel:process.env.NOESAR_RELEASE_CHANNEL ?? 'complete',
       data_plane:dataPlane.mode ?? 'reference-json',
