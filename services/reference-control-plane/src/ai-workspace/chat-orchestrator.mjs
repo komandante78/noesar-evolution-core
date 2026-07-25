@@ -54,13 +54,17 @@ export class ChatOrchestrator{
     const selectedMode=String(mode??initial.conversation.mode??'ASK').toUpperCase();
     const providerRoute=this.providers.route({requestedProviderId:providerId??initial.providerId,mode:selectedMode});
     if(!providerRoute.length)throw Object.assign(new Error('No enabled model provider is available for this mode.'),{status:409});
-    const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});
-    res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});
-    sse(res,'run',{runId,status:'started',providerRoute});
+    // Everything that can reject on malformed input happens BEFORE a single byte is
+    // written. Once the 200 and the event-stream headers are out there is no way to
+    // answer with a status code any more, and a rejection from here used to escape the
+    // request handler entirely and take the process down with it.
     const user=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'user',content,metadata:{mode:selectedMode,sourceIds,toolIds}});
     const built=this.#buildContext({conversationId,branchId:branchId??initial.branchId,content,mode:selectedMode,sourceIds,toolIds});
     // #buildContext includes the just-persisted user message; remove its duplicate final copy.
     built.messages=built.messages.filter((message,index)=>!(index===built.messages.length-2&&message.role==='user'&&message.content===user.content));
+    const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});
+    res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});
+    sse(res,'run',{runId,status:'started',providerRoute});
     let answer='';let selectedProvider=null;
     try{
       for await(const event of this.providers.streamWithFallback(providerRoute,{actorId,projectId:built.inspection.conversation.projectId,model,messages:built.messages,tools:built.tools,dataClasses:built.dataClasses},{signal:controller.signal})){

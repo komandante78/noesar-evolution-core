@@ -12,6 +12,7 @@ import {
   tokenDigest,
   verifyPassword,
   verifyTotp,
+  verifyTotpStep,
 } from './auth-crypto.mjs';
 import { AuthStore } from './auth-store.mjs';
 
@@ -42,6 +43,22 @@ function publicUser(user) {
 }
 
 function nowIso() { return new Date().toISOString(); }
+
+/**
+ * Accept a TOTP code at most once (RFC 6238 section 5.2).
+ *
+ * A valid code stays valid for the whole +/-1-step acceptance window, so without this a
+ * code seen once — shoulder-surfed, screenshotted, captured by a proxy — can be replayed
+ * on a second, independent login for up to 90 seconds. The highest step accepted so far
+ * is recorded per user; anything at or below it is refused even though the arithmetic
+ * still checks out.
+ */
+function consumeTotp(secret, code, user) {
+  const result = verifyTotpStep(secret, code);
+  if (!result.valid) return { accepted: false, reason: 'invalid', step: null };
+  if (Number(user.lastTotpStep ?? 0) >= result.step) return { accepted: false, reason: 'replayed', step: result.step };
+  return { accepted: true, reason: null, step: result.step };
+}
 
 export class AuthService {
   constructor({ workspace, setupToken, ledger, secureCookies = false }) {
@@ -122,8 +139,9 @@ export class AuthService {
     if (!pending || pending.expiresAt < Date.now()) throw Object.assign(new Error('Setup challenge expired.'), { status:400 });
     if (tokenDigest(String(challenge ?? '')) !== pending.challengeDigest) throw Object.assign(new Error('Invalid setup challenge.'), { status:403 });
     const secret = decryptSecret(pending.user.totp, this.masterKey);
-    if (!verifyTotp(secret, totpCode)) throw Object.assign(new Error('Invalid TOTP code.'), { status:403 });
-    const user = pending.user;
+    const consumed = consumeTotp(secret, totpCode, pending.user);
+    if (!consumed.accepted) throw Object.assign(new Error(consumed.reason === 'replayed' ? 'This authentication code has already been used.' : 'Invalid TOTP code.'), { status:403 });
+    const user = { ...pending.user, lastTotpStep: consumed.step };
     this.store.update((next) => {
       next.users = [user];
       next.pendingOwner = null;
@@ -196,13 +214,16 @@ export class AuthService {
     const user = state.users.find((candidate) => candidate.id === item.userId);
     if (!user) throw Object.assign(new Error('User no longer exists.'), { status:401 });
     const secret = decryptSecret(user.totp, this.masterKey);
-    if (!verifyTotp(secret, totpCode)) {
+    const consumed = consumeTotp(secret, totpCode, user);
+    if (!consumed.accepted) {
       this.#recordFailure(ip, user.username);
-      this.ledger.append({ actor:user.id, action:'auth.mfa-failed', result:'denied' });
-      throw Object.assign(new Error('Invalid TOTP code.'), { status:401 });
+      this.ledger.append({ actor:user.id, action:consumed.reason === 'replayed' ? 'auth.mfa-replayed' : 'auth.mfa-failed', result:'denied' });
+      throw Object.assign(new Error(consumed.reason === 'replayed' ? 'This authentication code has already been used.' : 'Invalid TOTP code.'), { status:401 });
     }
     this.store.update((next) => {
       next.loginChallenges = next.loginChallenges.filter((candidate) => candidate.id !== item.id);
+      const target = next.users.find((candidate) => candidate.id === user.id);
+      if (target) target.lastTotpStep = consumed.step;
     });
     return this.createSession(user, { mfa:true });
   }
@@ -269,14 +290,17 @@ export class AuthService {
     const user = state.users.find((item) => item.id === session?.userId);
     if (!session || !user || user.role !== 'owner') throw Object.assign(new Error('Owner session required.'), { status:403 });
     const secret = decryptSecret(user.totp, this.masterKey);
-    if (!verifyPassword(password, user.password) || !verifyTotp(secret, totpCode)) {
-      this.ledger.append({ actor:user.id, action:'auth.reauth-failed', result:'denied' });
-      throw Object.assign(new Error('Strong reauthentication failed.'), { status:403 });
+    const consumed = consumeTotp(secret, totpCode, user);
+    if (!verifyPassword(password, user.password) || !consumed.accepted) {
+      this.ledger.append({ actor:user.id, action:consumed.reason === 'replayed' ? 'auth.reauth-replayed' : 'auth.reauth-failed', result:'denied' });
+      throw Object.assign(new Error(consumed.reason === 'replayed' ? 'This authentication code has already been used.' : 'Strong reauthentication failed.'), { status:403 });
     }
     const elevatedUntil = Date.now() + 5 * 60_000;
     this.store.update((next) => {
       const current = next.sessions.find((item) => item.id === session.id);
       current.elevatedUntil = elevatedUntil;
+      const target = next.users.find((candidate) => candidate.id === user.id);
+      if (target) target.lastTotpStep = consumed.step;
     });
     this.ledger.append({ actor:user.id, action:'auth.reauthenticated', result:'success', details:{ expiresAt:new Date(elevatedUntil).toISOString() } });
     return { elevatedUntil, expiresAt:new Date(elevatedUntil).toISOString() };

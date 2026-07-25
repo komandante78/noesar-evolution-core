@@ -201,16 +201,19 @@ export class ProviderGateway {
   async probe(profileId,{signal}={}) {
     const profile=this.get(profileId);const credential=this.#assertAllowed(profile,{projectId:profile.consent?.projectIds?.[0]??null,tools:[],dataClasses:[]});
     const started=Date.now();const timeout=AbortSignal.timeout(Math.min(profile.timeoutMs,15000));const combined=signal?AbortSignal.any([signal,timeout]):timeout;
-    const response=await fetch(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined});
+    // Same stale-socket treatment as the other two call sites: a health probe that reports
+    // a reachable provider as unhealthy because a pooled connection had been closed is a
+    // false negative, and false negatives on a health check get acted on.
+    const response=await fetchOnceRetryingStaleSocket(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined});
     const value=await response.json().catch(()=>({}));if(!response.ok)throw statusError(`Provider health check failed (${response.status}).`,502);
-    return{status:'healthy',providerId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[]};
+    return{status:'healthy',providerId:profileId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[]};
   }
   async complete(profileId, request, { signal } = {}) {
     const profile = this.get(profileId);
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:false});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetch(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined });
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined });
     const value = await response.json().catch(() => ({}));
     if (!response.ok) throw statusError(`Provider request failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
     const text = profile.apiStyle === 'openai-responses' ? extractOpenAiResponses(value) : profile.apiStyle === 'anthropic-messages' ? extractAnthropic(value) : extractOpenAiChat(value);
@@ -240,7 +243,7 @@ export class ProviderGateway {
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:true});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetch(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined });
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined });
     if (!response.ok) {
       const value = await response.json().catch(() => ({}));
       throw statusError(`Provider stream failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
@@ -253,10 +256,10 @@ export class ProviderGateway {
     for(const profileId of [...new Set(profileIds.filter(Boolean))]){
       let emitted=false;
       try{
-        for await(const delta of this.stream(profileId,request,options)){emitted=true;yield{providerId,delta};}
+        for await(const delta of this.stream(profileId,request,options)){emitted=true;yield{providerId:profileId,delta};}
         return;
       }catch(error){
-        failures.push({providerId,error:error.message});
+        failures.push({providerId:profileId,error:error.message});
         if(emitted)throw error;
       }
     }

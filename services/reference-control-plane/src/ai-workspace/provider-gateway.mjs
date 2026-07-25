@@ -14,6 +14,30 @@ const DEFAULT_CATALOG = Object.freeze([
 ]);
 
 function now() { return new Date().toISOString(); }
+// A pooled keep-alive connection that the upstream has already closed fails with
+// UND_ERR_SOCKET "other side closed". Every provider closes idle connections eventually,
+// so the first request after a pause can fail for a reason that has nothing to do with
+// the request. undici does not retry it because a POST is not idempotent in general — but
+// a request that never reached the server produced no tokens and cost no money, so
+// retrying exactly once, only on this class of failure, is safe and is the difference
+// between a working chat and an intermittent error the operator cannot explain.
+function isStaleConnection(error){
+  const code=error?.cause?.code??error?.code;
+  const message=String(error?.cause?.message??'');
+  return code==='UND_ERR_SOCKET'||code==='ECONNRESET'||code==='EPIPE'||/other side closed|socket hang up/i.test(message);
+}
+async function fetchOnceRetryingStaleSocket(url,init){
+  try { return await fetch(url,init); }
+  catch(error){
+    if(!isStaleConnection(error)||init?.signal?.aborted)throw error;
+    return await fetch(url,init);
+  }
+}
+function describeFetchFailure(error){
+  const cause=error?.cause;
+  const detail=[cause?.code,cause?.message].filter(Boolean).join(' ');
+  return detail?`${error.message} (${detail})`:String(error?.message??error);
+}
 function statusError(message, status=400) { return Object.assign(new Error(message), { status }); }
 function isPrivateIpv4(host) {
   const parts = host.split('.').map(Number); if (parts.length !== 4 || parts.some(Number.isNaN)) return false;
@@ -201,16 +225,23 @@ export class ProviderGateway {
   async probe(profileId,{signal}={}) {
     const profile=this.get(profileId);const credential=this.#assertAllowed(profile,{projectId:profile.consent?.projectIds?.[0]??null,tools:[],dataClasses:[]});
     const started=Date.now();const timeout=AbortSignal.timeout(Math.min(profile.timeoutMs,15000));const combined=signal?AbortSignal.any([signal,timeout]):timeout;
-    const response=await fetch(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined});
+    // Same stale-socket treatment as the other two call sites: a health probe that reports
+    // a reachable provider as unhealthy because a pooled connection had been closed is a
+    // false negative, and false negatives on a health check get acted on.
+    const response=await fetchOnceRetryingStaleSocket(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined});
     const value=await response.json().catch(()=>({}));if(!response.ok)throw statusError(`Provider health check failed (${response.status}).`,502);
-    return{status:'healthy',providerId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[]};
+    // `providerId` was never declared here, so this line threw a ReferenceError on the
+    // success path: a reachable, healthy provider answered 500 while an unreachable one
+    // answered a tidy 502. Only the failure path had ever been exercised.
+    return{status:'healthy',providerId:profileId,latencyMs:Date.now()-started,models:Array.isArray(value.data)?value.data.slice(0,100).map((item)=>item.id??item.name).filter(Boolean):[]};
   }
   async complete(profileId, request, { signal } = {}) {
     const profile = this.get(profileId);
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:false});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetch(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined });
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined })
+      .catch((error)=>{throw statusError(`Provider request failed: ${describeFetchFailure(error)}`,502);});
     const value = await response.json().catch(() => ({}));
     if (!response.ok) throw statusError(`Provider request failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
     const text = profile.apiStyle === 'openai-responses' ? extractOpenAiResponses(value) : profile.apiStyle === 'anthropic-messages' ? extractAnthropic(value) : extractOpenAiChat(value);
@@ -240,7 +271,8 @@ export class ProviderGateway {
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:true});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetch(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined });
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined })
+      .catch((error)=>{throw statusError(`Provider stream failed: ${describeFetchFailure(error)}`,502);});
     if (!response.ok) {
       const value = await response.json().catch(() => ({}));
       throw statusError(`Provider stream failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
@@ -253,10 +285,14 @@ export class ProviderGateway {
     for(const profileId of [...new Set(profileIds.filter(Boolean))]){
       let emitted=false;
       try{
-        for await(const delta of this.stream(profileId,request,options)){emitted=true;yield{providerId,delta};}
+        // `providerId` was never declared in this scope; the loop variable is `profileId`.
+        // In an ES module that is a ReferenceError thrown on the FIRST delta, so every
+        // streaming reply failed with "providerId is not defined" and the fallback loop
+        // could not report which provider had failed either.
+        for await(const delta of this.stream(profileId,request,options)){emitted=true;yield{providerId:profileId,delta};}
         return;
       }catch(error){
-        failures.push({providerId,error:error.message});
+        failures.push({providerId:profileId,error:error.message});
         if(emitted)throw error;
       }
     }

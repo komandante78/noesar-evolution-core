@@ -101,14 +101,32 @@ export function totpCode(secret, timestamp = Date.now(), stepSeconds = 30, digit
   return String(binary % (10 ** digits)).padStart(digits, '0');
 }
 
-export function verifyTotp(secret, supplied, timestamp = Date.now(), window = 1) {
+/**
+ * Verify a TOTP code and report WHICH time step matched.
+ *
+ * The step is what makes single-use enforcement possible. RFC 6238 section 5.2 requires
+ * that a code be accepted at most once: without knowing the step, a caller can only ask
+ * "is this code currently valid", and a code observed by anyone — over the operator's
+ * shoulder, in a screenshot, in a proxy log — stays valid for the whole acceptance
+ * window and can be replayed on a second, independent login.
+ *
+ * @returns {{valid: boolean, step: number|null}} step is the counter value that matched.
+ */
+export function verifyTotpStep(secret, supplied, timestamp = Date.now(), window = 1, stepSeconds = 30) {
   const candidate = String(supplied ?? '').trim();
-  if (!/^\d{6}$/.test(candidate)) return false;
+  if (!/^\d{6}$/.test(candidate)) return { valid: false, step: null };
   for (let offset = -window; offset <= window; offset += 1) {
-    const expected = totpCode(secret, timestamp + offset * 30_000);
-    if (equalBuffers(Buffer.from(expected), Buffer.from(candidate))) return true;
+    const at = timestamp + offset * stepSeconds * 1000;
+    const expected = totpCode(secret, at, stepSeconds);
+    if (equalBuffers(Buffer.from(expected), Buffer.from(candidate))) {
+      return { valid: true, step: Math.floor(at / 1000 / stepSeconds) };
+    }
   }
-  return false;
+  return { valid: false, step: null };
+}
+
+export function verifyTotp(secret, supplied, timestamp = Date.now(), window = 1) {
+  return verifyTotpStep(secret, supplied, timestamp, window).valid;
 }
 
 const GCM_TAG_BYTES = 16;

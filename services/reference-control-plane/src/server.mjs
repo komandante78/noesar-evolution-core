@@ -154,6 +154,13 @@ function isInternalAddress(address) {
 }
 
 function json(res, status, value, extraHeaders = {}) {
+  // A response whose headers are already out cannot be given a status any more.
+  // Writing one anyway throws ERR_HTTP_HEADERS_SENT from inside an error handler,
+  // which is how a single bad request used to become a process-wide failure.
+  if (res.headersSent) {
+    if (!res.writableEnded) res.end();
+    return;
+  }
   const body = JSON.stringify(value, null, 2);
   res.writeHead(status, {
     ...securityHeaders({ secureTransport:secureCookies }),
@@ -589,7 +596,9 @@ const server = createServer(async (req, res) => {
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/chat/stream'){
       const authenticated=requireSession(req,res,'provider.use');if(!authenticated||!requireCsrf(req,res,authenticated))return;
-      return chatOrchestrator.streamToResponse({res,actorId:authenticated.user.id,...await body(req)});
+      // `await`, not a bare `return`: an un-awaited promise escapes the try/catch below,
+      // becomes an unhandled rejection, and Node terminates the process for it.
+      return await chatOrchestrator.streamToResponse({res,actorId:authenticated.user.id,...await body(req)});
     }
     match=url.pathname.match(/^\/api\/v1\/chat\/runs\/([^/]+)\/stop$/);
     if(match&&req.method==='POST'){
@@ -802,8 +811,35 @@ const server = createServer(async (req, res) => {
   } catch (error) {
     const status = Number(error.status ?? 500);
     ledger.append({ actor:'system', action:'request.error', result:'error', details:{ requestId, status, message:error.message } });
+    logger.log(status >= 500 ? 'ERROR' : 'WARN', 'http.request.failed', {
+      correlation_id:requestId, component:'control-plane',
+      http:{ method:req.method, path:url.pathname, status }, error:error.message,
+    });
     return json(res, status, { error:status >= 500 ? 'Internal request failure.' : error.message, requestId });
   }
+});
+
+// Last resort, not a substitute for handling errors where they happen.
+//
+// A rejection that reaches this point is a bug, and it is reported as one — but a
+// self-hosted single-process product must not die because one request threw. Node's
+// default for an unhandled rejection is to terminate; that turned a malformed body
+// into a service outage. An uncaught exception is treated differently: the process
+// state may be inconsistent, so it exits non-zero and lets the supervisor restart it,
+// where the crash-loop detector and safe mode can see it.
+process.on('unhandledRejection', (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error('process.unhandled-rejection', {
+    component:'control-plane', error:error.message, stack:error.stack?.split('\n').slice(0, 6).join(' | '),
+    note:'request-scoped failure contained; this is a defect, not a normal path',
+  });
+});
+process.on('uncaughtException', (error) => {
+  logger.error('process.uncaught-exception', {
+    component:'control-plane', error:error.message, stack:error.stack?.split('\n').slice(0, 6).join(' | '),
+    note:'process state may be inconsistent; exiting so the supervisor can restart cleanly',
+  });
+  process.exit(1);
 });
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

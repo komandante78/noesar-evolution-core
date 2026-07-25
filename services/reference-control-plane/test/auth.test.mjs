@@ -13,7 +13,11 @@ function setup() {
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken:'setup-secret-value', ledger });
   const pending = auth.beginSetup({ suppliedSetupToken:'setup-secret-value', username:'owner', displayName:'Owner', password:'correct horse battery staple' });
-  const session = auth.confirmSetup({ challenge:pending.challenge, totpCode:totpCode(pending.totpSecret) });
+  // Setup spends the PREVIOUS time step, leaving the current one unspent for the tests
+  // below. Since F4-002 a TOTP code is single-use (RFC 6238 section 5.2), so a fixture
+  // that bootstraps with the current code would make every following login fail as a
+  // replay — correctly, but for a reason the test did not intend to exercise.
+  const session = auth.confirmSetup({ challenge:pending.challenge, totpCode:totpCode(pending.totpSecret, Date.now() - 30_000) });
   return { workspace, ledger, auth, session, secret:pending.totpSecret };
 }
 
@@ -55,8 +59,10 @@ test('CSRF token is bound to the session', () => {
 test('Owner reauthentication requires password and TOTP', () => {
   const { auth, session, secret } = setup();
   const authenticated = auth.authenticate(session.token);
+  // A wrong password with a valid code must fail on the password. The code is not spent by
+  // a failed attempt, but use distinct steps anyway so the two assertions stay independent.
   assert.throws(() => auth.reauthenticate({ sessionId:authenticated.session.id, password:'wrong', totpCode:totpCode(secret) }), /failed/);
-  const elevated = auth.reauthenticate({ sessionId:authenticated.session.id, password:'correct horse battery staple', totpCode:totpCode(secret) });
+  const elevated = auth.reauthenticate({ sessionId:authenticated.session.id, password:'correct horse battery staple', totpCode:totpCode(secret, Date.now() + 30_000) });
   assert.ok(elevated.elevatedUntil > Date.now());
 });
 
