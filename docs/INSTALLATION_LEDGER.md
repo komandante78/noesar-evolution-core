@@ -953,3 +953,50 @@ created           noesar-e2e-net                                 the stable netw
 
 Nothing was removed. `docker volume ls` diffs **identical**. No unrelated container was
 started, stopped or modified, and the real installation was not driven by any test.
+
+## Container hygiene cleanup — 2026-07-26 (owner-instructed, outside the phase cycle)
+
+**Governance amended:** phase cycle 14 → 15 steps (`CLEAN UP` added between `PUSH` and
+`WRITE HANDOFF`); `CLAUDE10.md` gains §5a and carve-outs in rules 12 and 16; `D-0068`
+supersedes `D-0066`. Backup taken first:
+`BACKUPS/container_hygiene_amendment_20260725T225702Z/`.
+Pre-cleanup inventory: `EVIDENCE/docker_inventory_pre_cleanup_20260725T225542Z.txt`.
+
+### Removed
+
+```text
+containers  30   11x e2e-probe, 11x e2e-runner, 1x shot, 2x gate probe,
+                 3x superseded rollback (phase3, phase4, lan-phase4complete)
+image tags  14   12x noesar-evolution:webui-e2e-<stamp>, :webui-probe,
+                 :phase4-complete-probe   (4 real images; the rest were tag aliases
+                 of :phase4-webui, so untagging freed no layers)
+networks    11   noesar-e2e-<stamp>, all with zero attached containers
+```
+
+### Kept
+
+```text
+container   noesar-evolution                                        running installation
+container   noesar-evolution.rollback-lan-webui-20260725T175916Z    :phase4-complete-lan
+images      :phase4-webui  :phase4-complete-lan  :phase4-complete  :phase4  :phase3
+images      ghcr.io/puppeteer/puppeteer:latest                      e2e harness base
+networks    noesar-evolution-net, noesar-e2e-net
+```
+
+The three superseded rollback **containers** were removed but their images were not, so
+every rollback path recorded above still works — recreate the container from the run
+command with the tag named in the relevant phase entry.
+
+### Verification
+
+```text
+docker containers   69 -> 39      non-project containers 37 -> 37   unchanged
+docker networks     14 -> 3 noesar-*   noesar-local (NOESAR V3) untouched
+docker volumes      diff vs pre-cleanup inventory: IDENTICAL
+noesar-evolution    running / healthy / RestartCount=0
+GET /livez          HTTP 200
+GET /readyz         HTTP 200
+```
+
+No `prune` command was used at any point; every removal named its targets explicitly. No
+container, network or volume belonging to any other project was touched.

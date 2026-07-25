@@ -42,6 +42,10 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 
 12. **No deletion.** Do not delete files, directories, containers, images, volumes,
     branches, or history. Not with `rm -rf`, not with `git clean`, not implicitly.
+    **One named exception**, added by the owner on 2026-07-26: the throwaway Docker
+    containers and image tags this project itself creates are not artifacts to be
+    preserved — they are litter, and leaving them is the violation. They are removed
+    under §5a, which states exactly what may be removed and what must survive.
 13. **No destructive modification by implication.** Overwriting, truncating,
     renaming, moving, or replacing an existing artifact requires that the phase
     specification explicitly asks for it, and requires a backup first (§6).
@@ -59,7 +63,8 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
     phase**. It is not part of this product, it mounts the host read-only, and it is
     the only place on this host carrying semgrep / bandit / ruff / detect-secrets /
     shellcheck / mypy. No other container may be touched, and no product container may
-    be created or started outside an authorised installation phase.
+    be created or started outside an authorised installation phase. Containers this
+    project is authorised to create are also **removed** by it — see §5a.
 17. Do not modify Docker networks, volumes, `docker-compose` files, or `.env` files
     belonging to any system.
 18. Do not read, write, migrate, or mutate any database, vector store, or queue
@@ -68,6 +73,40 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 20. Host-level changes (packages, services, cron, firewall) are out of scope.
 21. Actions the phase requires but these rules forbid are raised as blockers, not
     performed "just this once".
+
+## 5a. Container hygiene — work clean
+
+Owner instruction, 2026-07-26: *"devi lavorare pulito"*. Every container this project
+creates for a transient purpose is removed by this project. The duty is narrow and the
+boundary is absolute — it authorises cleaning up **our own litter**, nothing else.
+
+21a. **Every transient container is removed inside the phase that created it**, whether
+     it passed or failed: e2e probes and runners, screenshot instances, one-off
+     verification and analysis containers, and any container-sonda used to avoid mutating
+     the real installation. "I might need it later" is not a reason to keep one — the
+     image it ran from is what makes it reproducible, not the stopped container.
+21b. **At phase close exactly two containers may exist**: the running installation
+     `noesar-evolution`, and **one** rollback container — the most recent one, the
+     immediate predecessor of what is running. Older rollback containers are removed;
+     their **images stay on disk**, so every documented rollback path survives.
+21c. **Throwaway image tags and networks are removed too** — build overlays such as
+     `noesar-evolution:webui-e2e-<ts>`, probe tags, and per-run bridge networks such as
+     `noesar-e2e-<ts>`. Networks are not free: each bridge consumes a subnet from Docker's
+     finite address pool, and exhausting it breaks network creation for every project on
+     this host. Kept: the lineage of images referenced by the running container, by the
+     kept rollback, or by a documented procedure; and the stable, unstamped networks
+     (`noesar-evolution-net`, `noesar-e2e-net`). `noesar-local` belongs to NOESAR V3 and
+     is never touched.
+21d. **Scope is by name prefix `noesar-evolution` only**, and never wider.
+     `docker system prune`, `docker container prune`, `docker image prune` and
+     `docker volume prune` are **forbidden without exception** — they act host-wide and
+     would destroy other projects on this host. Removal always names its targets.
+21e. **Never remove a running container.** Before removing anything: capture the full
+     `docker ps -a` / `images` / `network ls` / `volume ls` inventory to `EVIDENCE/`,
+     confirm no target is `Up`, and after removal diff networks and volumes against that
+     inventory and re-count the non-project containers. Both must be unchanged.
+21f. After cleanup, **prove the product is still healthy** (`docker inspect` state plus a
+     live `/livez` and `/readyz`) before declaring the step done.
 
 ## 6. Backups before mutation
 

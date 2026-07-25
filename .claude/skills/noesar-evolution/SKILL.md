@@ -1,6 +1,6 @@
 ---
 name: noesar-evolution
-description: MANDATORY for every NOESAR EVOLUTION phase. Imposes the fixed 14-step phase cycle (READ STATE → … → HUNT AND FIX → … → STOP), the duty to fix defects as they are found rather than only logging them, atomic phase-scoped commits, and the non-negotiable stop condition. Use before starting, resuming, or closing any phase of the NOESAR EVOLUTION installation, and before any commit or push in /mnt/cachec/NOESAR_EVOLUTION.
+description: MANDATORY for every NOESAR EVOLUTION phase. Imposes the fixed 15-step phase cycle (READ STATE → … → HUNT AND FIX → … → CLEAN UP → STOP), the duty to fix defects as they are found rather than only logging them, the duty to remove every throwaway container the phase created, atomic phase-scoped commits, and the non-negotiable stop condition. Use before starting, resuming, or closing any phase of the NOESAR EVOLUTION installation, and before any commit or push in /mnt/cachec/NOESAR_EVOLUTION.
 ---
 
 # NOESAR EVOLUTION — Phase Execution Skill
@@ -25,6 +25,7 @@ SECRET SCAN
 GIT DIFF REVIEW
 COMMIT
 PUSH
+CLEAN UP              <- remove every throwaway container and tag this phase created
 WRITE HANDOFF
 STOP
 ```
@@ -132,13 +133,61 @@ Push when a remote exists and is authenticated. Never force-push. If the remote 
 unavailable or unauthenticated, complete the local repository and record the
 condition as a blocker.
 
-### 13. WRITE HANDOFF
+### 13. CLEAN UP
+
+**Work clean.** Every container this phase created for a transient purpose is removed
+before the phase closes — passed or failed, no exceptions, no "I might need it later".
+The stopped container is not what makes a run reproducible; the image and the evidence
+file are. Governing rules: `CLAUDE10.md` §5a.
+
+**What survives a phase — exactly two containers:**
+
+| Keep | Why |
+|---|---|
+| `noesar-evolution` (running) | the installation itself |
+| **one** rollback container, the most recent | the parachute for what is running now |
+
+Everything else named `noesar-evolution.*` is removed: e2e probes and runners,
+screenshot instances, verification and analysis sondas, and **older rollback containers**
+— their images stay on disk, so every rollback path documented in
+`docs/INSTALLATION_LEDGER.md` still works.
+
+**Image tags and networks are litter too, and are easy to forget.** Build overlays
+(`noesar-evolution:webui-e2e-<ts>`), probe tags, and per-run bridge networks
+(`noesar-e2e-<ts>`) all go. Networks are not free: each bridge takes a subnet from
+Docker's finite address pool, and exhausting it breaks network creation for **every**
+project on this host — so a forgotten network is worse than a forgotten container, not
+better. Kept: the image lineage referenced by the running container, the kept rollback or
+a documented procedure; and the stable unstamped networks `noesar-evolution-net` and
+`noesar-e2e-net`. `noesar-local` belongs to NOESAR V3 — never touch it.
+
+**Procedure — never skip a line of it:**
+
+1. Write the full inventory to `EVIDENCE/docker_inventory_pre_cleanup_<UTC>.txt`:
+   `docker ps -a`, `docker images`, `docker network ls`, `docker volume ls`.
+2. Build the target list **by name prefix (`noesar-evolution`, `noesar-e2e-<stamp>`)
+   only**, excluding the keepers. Print it and confirm **no target is `Up`** — and, for a
+   network, that it has zero attached containers — before removing anything.
+3. `docker rm` / `docker rmi` / `docker network rm` the named targets. **Never**
+   `docker system prune`, `container prune`, `image prune`, `network prune` or
+   `volume prune` — they act host-wide and would destroy other projects on this host.
+   This is forbidden without exception.
+4. Diff `volume ls` against the pre-cleanup inventory, re-count the non-project
+   containers, and confirm the surviving networks are exactly the intended ones. Anything
+   outside this project must be **unchanged** — say so with the real output.
+5. Prove the product still works: `docker inspect` state/health plus a live `/livez` and
+   `/readyz`. A cleanup that ends without this proof is not finished.
+
+If a container must be kept beyond the two above, name it in `docs/DECISION_LOG.md` with
+the reason and the phase that will remove it. An unexplained survivor is a defect.
+
+### 14. WRITE HANDOFF
 Rewrite `docs/SESSION_HANDOFF.md` so a cold session can resume with no other
 context: what was done, what was verified, what was **not** done, open blockers,
 and the exact next action. Update `PROJECT_STATE.json` (`current_phase`,
 `phase_status`, `next_phase`, `last_commit`, `last_updated_utc`, `blockers`).
 
-### 14. STOP
+### 15. STOP
 Emit the phase output and **stop**. Do not begin, scaffold, or preview the next
 phase. Continuation requires a new, explicit instruction from the owner.
 
@@ -154,6 +203,9 @@ phase. Continuation requires a new, explicit instruction from the owner.
   container `noesar-debuglab` may be started for step 7 and **must be stopped again in
   the same phase**. It mounts the host read-only, is not part of this product, and
   nothing it reports is trusted without triage against the real code.
+- **Whatever this project creates, this project removes.** Containers created under an
+  authorised installation phase are cleaned up in step 13 — two survive a phase, the
+  running installation and one rollback. Host-wide `prune` commands are never used.
 - No secret is ever written to a tracked file.
 - No archive, binary, model, cache, or database is ever committed.
 - English is canonical for all artifacts.

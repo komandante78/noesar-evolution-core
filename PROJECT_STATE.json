@@ -153,7 +153,7 @@
  "vps_access": false,
  "network_mutation": false,
  "phase_3_started": true,
- "phase_cycle": "14 steps (HUNT AND FIX added between TEST and DOCUMENT) - defects are repaired inside the phase, not filed for later",
+ "phase_cycle": "15 steps (HUNT AND FIX between TEST and DOCUMENT; CLEAN UP between PUSH and WRITE HANDOFF) - defects are repaired inside the phase, and every throwaway container the phase created is removed before it closes",
  "open_findings": [
   {
    "id": "F4-010",

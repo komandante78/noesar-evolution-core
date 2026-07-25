@@ -839,3 +839,28 @@ told. It now says so plainly and marks itself external. The `.external` class �
 the stylesheet in the previous phase and applied by nothing — is driven from
 `banner.external`, the server's own verdict, rather than from a state-string comparison:
 the first attempt compared against `LOCAL_ONLY`, which this server never emits.
+
+### D-0068 — throwaway containers, tags and networks are removed; D-0066 is superseded
+Owner instruction, 2026-07-26: *"devi lavorare pulito"* — always delete the containers
+this project created that serve no purpose, keeping the rollback and the one that is
+needed. D-0066 preserved eleven probe containers, eleven images and eleven `noesar-e2e-*`
+networks on the reading that rule 12 forbade deleting them, and recorded that disposing
+of them would be a separate explicit decision. That decision has now been taken.
+
+Rule 12 was written in Phase 0, before this project created any container of its own. It
+protects artifacts; a stopped e2e runner is not an artifact, it is litter, and what makes
+a run reproducible is the image plus the evidence file, not the corpse of the container.
+`CLAUDE10.md` now carries §5a with the boundary spelled out, and the skill cycle has a
+`CLEAN UP` step (13 of 15) between `PUSH` and `WRITE HANDOFF`.
+
+Two containers survive a phase: the running installation and **one** rollback, the
+immediate predecessor of what is running. Older rollback containers go — their images
+stay on disk, so every rollback path in `docs/INSTALLATION_LEDGER.md` still works.
+
+The networks were the part nearly missed, and they were the more damaging omission. Each
+bridge takes a subnet from Docker's finite address pool; eleven abandoned ones are eleven
+subnets denied to **every** project on this host, and exhaustion breaks network creation
+globally, not just here. The rule therefore names networks explicitly.
+
+Host-wide `prune` in any form is forbidden without exception: removal names its targets,
+scoped by name prefix, or it does not happen.
