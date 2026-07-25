@@ -1,14 +1,123 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { initI18n, applyTranslations } from './i18n.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
-let csrfToken='';let currentUser=null;let setupChallenge='';let loginChallenge='';let codenMode='NORMAL';let currentPathPlan=null;let activeRunId=null;let currentMode='ASK';
+// The CSRF token is a double-submit value: the server sets `noesar_csrf` as a
+// deliberately NON-HttpOnly cookie so that this script can read it back and echo it in
+// the x-noesar-csrf header. It used to be captured only from the login response into a
+// module variable, and a page reload resets that to ''. The session cookie survives the
+// reload, so the app still looked signed in while api() silently stopped sending the
+// header and EVERY write returned 403 "CSRF validation failed" — which is what "clicking
+// does nothing" was. Reproduced in a real browser: create a project right after login
+// (succeeds), press F5, create another (403). Reading the cookie back is what makes a
+// refreshed tab, a second tab and a bookmarked URL work at all.
+function readCsrfCookie(){
+  const entry=document.cookie.split(';').map((part)=>part.trim()).find((part)=>part.startsWith('noesar_csrf='));
+  return entry?decodeURIComponent(entry.slice('noesar_csrf='.length)):'';
+}
+let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let loginChallenge='';let codenMode='NORMAL';let currentPathPlan=null;let activeRunId=null;let currentMode='ASK';
 const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
 const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
-async function api(path,options={}){const headers={...(options.body?{'content-type':'application/json'}:{}),...(csrfToken?{'x-noesar-csrf':csrfToken}:{}),...(options.headers??{})};const response=await fetch(path,{credentials:'same-origin',...options,headers});const text=await response.text();let value={};try{value=text?JSON.parse(text):{};}catch{value={error:text||'Invalid response'};}if(!response.ok)throw Object.assign(new Error(value.error??'Request failed'),{value,status:response.status});return value;}
+
+// --- user-visible feedback -------------------------------------------------
+// Every action must end in a visible outcome. A silent failure is indistinguishable
+// from a dead button, which is how a working page gets reported as "nothing happens".
+function toast(message,{kind='info',correlationId=null}={}){
+  const host=$('#toastHost');if(!host)return setStatus(message,kind==='error');
+  const node=document.createElement('div');
+  node.className=`toast toast-${kind}`;
+  node.setAttribute('role',kind==='error'?'alert':'status');
+  node.innerHTML=`<span>${escapeHtml(message)}</span>`;
+  if(correlationId){
+    const tag=document.createElement('code');
+    tag.className='toast-correlation';tag.textContent=correlationId;
+    tag.title='Correlation ID — quote this when reporting the problem';
+    node.appendChild(tag);
+  }
+  const close=document.createElement('button');
+  close.className='toast-close';close.type='button';close.textContent='×';
+  close.setAttribute('aria-label','Dismiss');
+  close.addEventListener('click',()=>node.remove());
+  node.appendChild(close);
+  host.appendChild(node);
+  setStatus(message,kind==='error');
+  if(kind!=='error')setTimeout(()=>node.remove(),6000);
+}
+// Errors are reported with their message and correlation ID, never a stack trace.
+function reportError(error,context=''){
+  const message=error?.status===403&&/csrf/i.test(error?.message??'')
+    ?'Your session security token expired. Reload the page and try again.'
+    :(error?.message||'Something went wrong.');
+  toast(context?`${context}: ${message}`:message,{kind:'error',correlationId:error?.correlationId??null});
+}
+// A button that fires a request must not stay clickable while it is in flight, and
+// must come back even when the request throws.
+export async function withBusy(button,work,{busyLabel='Working…'}={}){
+  if(!button)return work();
+  const original=button.textContent;const wasDisabled=button.disabled;
+  button.disabled=true;button.dataset.busy='true';button.textContent=busyLabel;
+  try{return await work();}
+  finally{button.disabled=wasDisabled;delete button.dataset.busy;button.textContent=original;}
+}
+async function api(path,options={}){
+  // Re-read the cookie on every call rather than trusting the captured value: the
+  // session (and its CSRF token) can be reissued by the server at any point, and a
+  // stale in-memory copy is exactly the failure this whole comment block exists for.
+  if(!csrfToken)csrfToken=readCsrfCookie();
+  const headers={...(options.body?{'content-type':'application/json'}:{}),...(csrfToken?{'x-noesar-csrf':csrfToken}:{}),...(options.headers??{})};
+  const response=await fetch(path,{credentials:'same-origin',...options,headers});
+  const correlationId=response.headers.get('x-correlation-id')??null;
+  const text=await response.text();
+  let value={};try{value=text?JSON.parse(text):{};}catch{value={error:text||'Invalid response'};}
+  if(!response.ok){
+    // A 403 on a write with a token that came from the cookie means the cookie went
+    // stale, not that the user did something wrong. Refresh it once and say so plainly.
+    if(response.status===403&&/csrf/i.test(value.error??'')){
+      const fresh=readCsrfCookie();
+      if(fresh&&fresh!==csrfToken){csrfToken=fresh;return api(path,options);}
+    }
+    throw Object.assign(new Error(value.error??'Request failed'),{value,status:response.status,correlationId});
+  }
+  return value;
+}
 function showOnly(form){['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));}
 function authError(message=''){$('#authError').textContent=message;}
-function activate(view){$$('.nav').forEach((node)=>node.classList.toggle('active',node.dataset.view===view));$$('.view').forEach((node)=>node.classList.toggle('active',node.id===`view-${view}`));}
+// --- routing ---------------------------------------------------------------
+// Views used to be toggled by a click handler alone, so the URL never changed: a
+// refresh always landed on Home, the browser Back button left the app entirely, and
+// no view could be linked to. The hash is now the source of truth.
+// Only routes that have a real, wired page. Adding a name here before its page loads
+// data turns a 404 into something worse: a blank panel that looks like a broken app.
+const ROUTES=new Set(['home','chat','projects','tasks','documents','agents','knowledge','memory','models','coden','hardware']);
+function viewFromHash(){
+  const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
+  return raw||'home';
+}
+function activate(view,{updateHash=true}={}){
+  const known=ROUTES.has(view)&&document.querySelector(`#view-${view}`);
+  const target=known?view:'not-found';
+  if(!known)renderNotFound(view);
+  $$('.nav').forEach((node)=>node.classList.toggle('active',node.dataset.view===target));
+  $$('.view').forEach((node)=>node.classList.toggle('active',node.id===`view-${target}`));
+  if(updateHash&&viewFromHash()!==target)location.hash=`#/${target}`;
+  const heading=document.querySelector(`#view-${target} h1`);
+  document.title=heading?`${heading.textContent.trim()} · NOESAR Evolution`:'NOESAR Evolution';
+  // Announce the change for assistive technology, which does not observe a class flip.
+  const live=$('#routeAnnouncer');if(live)live.textContent=`${heading?heading.textContent.trim():target} view`;
+  if(known&&typeof VIEW_LOADERS[view]==='function')VIEW_LOADERS[view]();
+}
+function renderNotFound(view){
+  const panel=$('#view-not-found');if(!panel)return;
+  const slot=$('#notFoundDetail');
+  if(slot)slot.textContent=view?`No page is registered for "${view}".`:'That page does not exist.';
+}
+// Populated further down, once each section's loader is defined. A view with no
+// loader is static markup and needs no fetch.
+const VIEW_LOADERS={};
+function initRouter(){
+  window.addEventListener('hashchange',()=>activate(viewFromHash(),{updateHash:false}));
+  activate(viewFromHash(),{updateHash:false});
+}
 function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>item.id,selected=null}={}){return `<option value="">${escapeHtml(empty)}</option>${items.map((item)=>`<option value="${escapeHtml(value(item))}" ${value(item)===selected?'selected':''}>${escapeHtml(label(item))}</option>`).join('')}`;}
 async function initializeAuth(){const status=await api('/api/v1/auth/status');if(!status.initialized){$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';showOnly('#setupForm');return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;await enterApplication();}catch{showOnly('#loginForm');}}
 async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities()]);}
@@ -162,4 +271,27 @@ $('#refreshHardware').addEventListener('click',refreshHardware);$('#recommendRun
 $$('[data-mode]').forEach((button)=>button.addEventListener('click',()=>{if(button.disabled)return;codenMode=button.dataset.mode;$$('[data-mode]').forEach((item)=>item.classList.toggle('selected',item===button));$('#modeLabel').textContent=`${codenMode.replace('_',' ')} MODE`;$('#ownerReauth').classList.toggle('hidden',codenMode!=='OWNER_BYPASS');}));
 $('#analyzePath').addEventListener('click',async()=>{try{currentPathPlan=await api('/api/v1/coden/path-plan',{method:'POST',body:JSON.stringify({path:$('#pathInput').value,operation:$('#operation').value,recursive:$('#recursive').checked,mode:codenMode,dependencies:[],commands:[]})});$('#pathResult').textContent=JSON.stringify(currentPathPlan,null,2);$('#approvalControls').classList.remove('hidden');}catch(error){$('#pathResult').textContent=JSON.stringify(error.value??{error:error.message},null,2);}});
 $('#reauthButton').addEventListener('click',async()=>{try{const result=await api('/api/v1/auth/reauth',{method:'POST',body:JSON.stringify({password:$('#reauthPassword').value,totpCode:$('#reauthTotp').value})});$('#pathResult').textContent=`Owner scope unlocked until ${result.expiresAt}`;}catch(error){setStatus(error.message,true);}});$('#authorizePlan').addEventListener('click',async()=>{if(!currentPathPlan)return;try{$('#pathResult').textContent=JSON.stringify(await api('/api/v1/coden/authorize',{method:'POST',body:JSON.stringify({plan:currentPathPlan,consentScope:$('#consentScope').value,durationMinutes:Number($('#duration').value)})}),null,2);}catch(error){setStatus(error.message,true);}});
-initI18n();initializeAuth().catch((error)=>authError(error.message));
+// --- global error boundary -------------------------------------------------
+// Nothing may fail silently. Anything that escapes a handler surfaces here as a
+// message with a correlation ID, never as a stack trace, and never as a console-only
+// event the operator will not see.
+window.addEventListener('error',(event)=>{
+  toast('Unexpected interface error. The action did not complete.',{kind:'error'});
+  if(window.__noesarDebug)console.error(event.error??event.message);
+});
+window.addEventListener('unhandledrejection',(event)=>{
+  const error=event.reason;
+  if(error?.status===401){
+    // The session ended underneath us. Say so instead of failing mutely.
+    toast('Your session ended. Please sign in again.',{kind:'error'});
+    currentUser=null;csrfToken='';$('#authGate').classList.remove('hidden');showOnly('#loginForm');
+    event.preventDefault();return;
+  }
+  reportError(error,'Unexpected error');
+  if(window.__noesarDebug)console.error(error);
+  event.preventDefault();
+});
+
+initI18n();
+initRouter();
+initializeAuth().catch((error)=>authError(error.message));

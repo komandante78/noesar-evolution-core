@@ -145,9 +145,20 @@
         <div class="section-header"><div><p class="eyebrow">COMPUTE ORCHESTRATION</p><h1>Compute & Hardware</h1><p>Automatic discovery and explainable runtime selection.</p></div><button class="primary" id="refreshHardware">Refresh probe</button></div>
         <div class="hardware-grid"><section class="panel"><h2>Detected hardware</h2><pre id="hardwareOutput">Loading…</pre></section><section class="panel"><h2>Runtime recommendation</h2><div class="form-grid"><label>Model size<input id="modelSize" type="number" value="7" min="1"> B</label><label>Quantization<select id="quantBits"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16">16-bit</option></select></label></div><button class="primary" id="recommendRuntime">Recommend</button><pre id="runtimeOutput">No recommendation generated.</pre></section></div>
       </section>
+      <section class="view" id="view-not-found">
+        <div class="section-header"><div><p class="eyebrow">404</p><h1>Page not found</h1><p id="notFoundDetail">That page does not exist.</p></div></div>
+        <section class="panel"><p>The address may be mistyped, or the page may have been removed.</p><button class="primary" data-view-link="home">Go to Home</button></section>
+      </section>
+
+      <section class="view" id="view-access-denied">
+        <div class="section-header"><div><p class="eyebrow">403</p><h1>Access denied</h1><p id="accessDeniedDetail">Your role does not include this area.</p></div></div>
+        <section class="panel"><p>If you believe you should have access, ask an administrator to review your role.</p><button class="primary" data-view-link="home">Go to Home</button></section>
+      </section>
     </main>
 
     <aside class="rightbar"><section class="mini-panel"><div class="panel-title"><h3>System trust</h3></div><div class="metric"><span>Local runtime</span><b class="green">Available</b></div><div class="metric"><span>External egress</span><b id="egressMetric">Blocked</b></div><div class="metric"><span>Secrets</span><b>Encrypted</b></div></section><section class="mini-panel"><h3>Context control</h3><p>Model, project, messages, memory, sources, tools and estimated tokens are visible before each request.</p></section><section class="mini-panel"><h3>Data controls</h3><label>Retention days<input id="retentionDays" type="number" min="1" max="3650" value="365"></label><button class="wide-button" id="saveRetention">Save retention</button><button class="wide-button" id="applyRetention">Apply now</button><button class="wide-button" id="rightExportData">Export workspace</button><button class="wide-button danger" id="purgeProject">Delete active project data</button></section></aside>
+    <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="false"></div>
+    <div id="routeAnnouncer" class="visually-hidden" aria-live="polite"></div>
     <footer class="statusbar"><span class="status-good" id="footerPrivacy">● Local-only verified</span><span>Context graph versioned</span><span>Mutations approval-gated</span><span id="statusMessage">Ready</span></footer>
   </div>
   <script type="module" src="/app.js"></script>

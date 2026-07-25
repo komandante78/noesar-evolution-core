@@ -3,3 +3,30 @@
 @media(max-width:1250px){.rightbar{display:none}.app-shell{grid-template-columns:210px minmax(0,1fr)}.topbar,.statusbar{grid-column:1/3}.main{grid-column:2}.chat-grid{grid-template-columns:1fr}.context-panel{order:-1}.top-actions .chip{display:none}}
 @media(max-width:850px){.app-shell{display:block}.topbar{position:sticky;height:auto;flex-wrap:wrap;padding:10px}.brand{min-width:auto}.command{order:3;flex-basis:100%}.sidebar{position:sticky;top:112px;z-index:10;overflow:auto;padding:6px}.sidebar nav{display:flex}.nav span{display:none}.main{padding:14px}.rightbar,.statusbar{display:none}.mode-cards,.dashboard-grid,.two-col,.three-col,.coden-layout,.hardware-grid{grid-template-columns:1fr}.chat-toolbar label{min-width:45%}.hero h1,.section-header h1{font-size:30px}.privacy-banner .verified{display:none}}
 .language-picker{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}.language-picker select{width:auto;padding:6px}.inline-form{flex-wrap:wrap}
+/* --- remediation: routing, feedback, security and MFA surfaces --- */
+.nav-group{margin:16px 0 4px;padding:0 12px;font-size:10px;letter-spacing:.14em;color:#5f6c82}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.toast-host{position:fixed;right:18px;bottom:56px;z-index:900;display:grid;gap:8px;max-width:min(420px,90vw)}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:#0e1725;box-shadow:0 18px 50px #0008;color:#e6eeff;font-size:13px;line-height:1.45}
+.toast-error{border-color:rgba(255,124,139,.45);background:#1d1017}
+.toast-success{border-color:rgba(76,224,164,.4);background:#0d1a17}
+.toast span{flex:1}
+.toast-correlation{padding:2px 6px;border-radius:5px;background:#070c15;color:#8fa3c0;font-size:10px}
+.toast-close{border:0;background:transparent;color:#8d9ab0;font-size:17px;line-height:1;padding:0 2px;cursor:pointer}
+button[data-busy]{opacity:.65;cursor:progress}
+.hint{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.55}
+.mfa-enrol{display:grid;grid-template-columns:236px minmax(0,1fr);gap:22px;align-items:start;margin-top:14px}
+.mfa-qr{display:grid;place-items:center;width:236px;height:236px;padding:12px;border:1px solid var(--line);border-radius:13px;background:#fff}
+.mfa-qr svg{width:100%;height:100%;display:block}
+.manual-key{display:block;margin-top:6px;padding:10px;border-radius:8px;background:#080c13;color:#cfe0ff;word-break:break-all;letter-spacing:.09em;font-size:13px}
+.recovery-codes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.recovery-codes code{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#070c15;color:#d6e4ff;letter-spacing:.08em;text-align:center}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;letter-spacing:.07em;border:1px solid var(--line)}
+.badge-on{color:var(--green);border-color:rgba(76,224,164,.4)}
+.badge-off{color:var(--muted)}
+.badge-warn{color:var(--amber);border-color:rgba(255,194,100,.4)}
+.badge-danger{color:var(--red);border-color:rgba(255,124,139,.4)}
+.privacy-banner.external{border-color:rgba(255,194,100,.45);background:linear-gradient(90deg,rgba(84,60,16,.42),rgba(26,20,10,.6))}
+.privacy-banner.external .verified{color:var(--amber)}
+.skeleton{position:relative;overflow:hidden;min-height:14px;border-radius:6px;background:#0d1524;color:transparent}
+@media(max-width:850px){.mfa-enrol{grid-template-columns:1fr}.mfa-qr{width:100%;max-width:280px;height:auto;aspect-ratio:1}.recovery-codes{grid-template-columns:1fr}.toast-host{right:10px;left:10px;bottom:10px;max-width:none}.nav-group{display:none}}
