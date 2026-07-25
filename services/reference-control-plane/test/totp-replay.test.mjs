@@ -27,6 +27,35 @@ function fixture() {
 
 const PASSWORD = 'a-sufficiently-long-test-passphrase';
 
+const STEP_MS = 30_000;
+
+/**
+ * Block until there is at least `headroomMs` left in the current TOTP step.
+ *
+ * Why this exists: several tests below generate a code, run a login, and then assert that
+ * the code is still arithmetically valid. That holds only while the wall clock stays
+ * inside the same step. Crossing a boundary mid-test pushes the previous step's code two
+ * steps behind "now", outside the +/-1 acceptance window, and the assertion fails for a
+ * reason the test was never about.
+ *
+ * Observed, not hypothesised: 1 failure in 50 isolated runs of this file, reproduced by
+ * tools/flake-stress.mjs, with exactly this signature. Phase 4 saw the same failure once,
+ * could not reproduce it, and recorded it as an unexplained flake.
+ *
+ * A synchronous spin is used rather than an async sleep because these tests are
+ * synchronous, and the wait is bounded by one step and only happens when a test would
+ * otherwise start in the last few seconds of one.
+ */
+function anchorInsideStep(headroomMs = 10_000) {
+  for (;;) {
+    const now = Date.now();
+    if (STEP_MS - (now % STEP_MS) >= headroomMs) return now;
+    // Busy-wait to the boundary. Bounded by headroomMs, in practice a few seconds.
+    const until = now + (STEP_MS - (now % STEP_MS)) + 5;
+    while (Date.now() < until) { /* spin to the next step boundary */ }
+  }
+}
+
 /**
  * Bootstrap an owner, deliberately spending the PREVIOUS time step.
  *
@@ -112,20 +141,27 @@ test('a code used for login cannot then be used for step-up reauthentication', (
 });
 
 test('an older code from within the window is refused once a newer one has been spent', () => {
+  // Start with a whole step of headroom, so the sequence below cannot cross a boundary.
+  const anchor = anchorInsideStep();
   const f = fixture();
   try {
     const { secret } = bootstrap(f);
     // Spend the current step, then present the previous step's code — still
     // arithmetically valid inside the window, but strictly older.
-    const current = totpCode(secret);
-    const previous = totpCode(secret, Date.now() - 30_000);
+    const current = totpCode(secret, anchor);
+    const previous = totpCode(secret, anchor - STEP_MS);
     // bootstrap already spent step-1, so this is the same step it spent: still valid
     // arithmetically, strictly older than the step just consumed by the login below.
     const a = f.auth.beginLogin({ username: 'owner', password: PASSWORD, ip: '127.0.0.1' });
     f.auth.completeLogin({ challenge: a.challenge, totpCode: current, ip: '127.0.0.1' });
     const b = f.auth.beginLogin({ username: 'owner', password: PASSWORD, ip: '127.0.0.1' });
-    if (previous === current) return; // step boundary raced; the assertion above already holds
-    assert.equal(verifyTotp(secret, previous), true, 'the older code is still arithmetically valid, which is the point');
+    // Two adjacent steps can produce the same six digits by coincidence (about one time
+    // in a million); there is then no "older" code to present and nothing to assert.
+    if (previous === current) return;
+    // Verified against the anchor, not against a freshly sampled clock: re-sampling is
+    // precisely what made this assertion depend on when it happened to run.
+    assert.equal(verifyTotp(secret, previous, anchor), true,
+      'the older code is still arithmetically valid, which is the point');
     assert.throws(() => f.auth.completeLogin({ challenge: b.challenge, totpCode: previous, ip: '127.0.0.1' }), /already been used/);
   } finally { rmSync(f.workspace, { recursive: true, force: true }); }
 });
