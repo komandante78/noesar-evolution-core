@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-25T16:40:00Z",
+ "last_updated_utc": "2026-07-25T16:55:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -95,7 +95,7 @@
   "bind_scope": "lan",
   "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
   "health": "healthy, 17 components, 0 degraded, RestartCount=0",
-  "owner_account": "NOT CREATED - awaiting the Owner, by design",
+  "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
   "rollback_containers": [
    "noesar-evolution.rollback-lan-phase4complete-20260725T153133Z (image :phase4-complete)",
    "noesar-evolution.rollback-phase4-20260725T142301Z (image :phase4)",
@@ -653,7 +653,8 @@
    "closed": 2,
    "partial": 2,
    "open": 3
-  }
+  },
+  "live_hash_check": "CONFIRMED DIFFERENT: live app.js sha256 f9a59bbc… vs repo e5f37014…; live auth.mjs sha256 993cec7b… vs repo 35a0b005…; GET /api/v1/auth/security on the live installation returns 404. None of this phase's fixes are running."
  },
  "owner_mfa_rotation": "AWAITING_OWNER_INTERACTION",
  "client_browser_retest": "AWAITING_OWNER"

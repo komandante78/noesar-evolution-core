@@ -9,233 +9,198 @@ file and `PROJECT_STATE.json` alone.**
 
 | Field | Value |
 |---|---|
-| Phase just completed | **4 — completion gate, then the LAN access gate** |
-| Phase status | `COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE` |
-| **Next phase** | **5 — documentation, licensing audit, release and final packaging** |
-| `NEXT_PHASE` | `5_READY` — **documentation only; see the constraint below** |
+| Phases completed | **4 — completion gate, LAN access gate, WebUI remediation (PARTIAL)** |
+| Phase status | `COMPLETED_WITH_COMPLETION_GATE_AND_LAN_ACCESS_GATE_PLUS_PARTIAL_WEBUI_REMEDIATION` |
+| **Next phase** | **BLOCKED — not Phase 5** |
+| `NEXT_PHASE` | `BLOCKED` |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
 | Updated (UTC) | 2026-07-25 |
 
-**The product is installed, running, and now reachable from the local network.**
-Container `noesar-evolution`, image `noesar-evolution:phase4-complete-lan`, published on
-`192.168.178.100:8100`, healthy — with PostgreSQL 18.4 and pgvector 0.8.5 inside it, and
-still **un-bootstrapped by design**.
+**The product is installed, reachable from the local network, and the Owner has now
+bootstrapped.** Container `noesar-evolution`, image `noesar-evolution:phase4-complete-lan`
+(unchanged since the LAN access gate), published on `192.168.178.100:8100`, healthy.
+`auth/status` reports `initialized: true` — the Owner account was created since the last
+handoff was written, outside this session.
 
 # ➜ http://192.168.178.100:8100
 
-No PowerShell. No SSH tunnel. No port forwarding. Open it in a browser on any machine on
-the local network.
+---
 
-### The constraint on Phase 5
+## ⚠️ Read this before touching anything
 
-```text
-PHASE_4_TECHNICAL_GATE          PASS
-LAN_WEBUI_SERVER_BIND           PASS
-CLIENT_BROWSER_TEST             AWAITING_OWNER
-OWNER_BOOTSTRAP                 AWAITING_OWNER_INTERACTION
-PHASE_5_DOCUMENTATION_READY     true
-PHASE_5_FINAL_PACKAGING_READY   false
-PRODUCTION_READY                false
-```
-
-Phase 5 may begin **for documentation, licensing audit and preparation only**. It may
-**not** declare the installation complete and may **not** package the release until all
-five of these are `PASS`, and all five are things only the Owner can do:
+**Everything produced in the WebUI remediation phase is committed to git and verified on
+throwaway probes. None of it is running on the live installation.** Confirmed by hash,
+not assumed:
 
 ```text
-CLIENT_BROWSER_TEST      OWNER_BOOTSTRAP      MFA_TOTP
-TOKEN_REUSE_REJECTED     STEP_UP_AUTH
+live  /opt/noesar/apps/webui-static/app.js                          sha256 f9a59bbc…
+repo  apps/webui-static/app.js                                      sha256 e5f37014…   DIFFERENT
+
+live  /opt/noesar/services/reference-control-plane/src/auth.mjs     sha256 993cec7b…
+repo  services/reference-control-plane/src/auth.mjs                 sha256 35a0b005…   DIFFERENT
+
+live  GET /api/v1/auth/security                                     404 — route does not exist yet
 ```
+
+Concretely, on the live installation right now:
+
+- **the CSRF bug is still present** — every write still fails after a page reload;
+- **there is no password-change, MFA-replacement, recovery-code or session-revocation
+  route** — the Owner still cannot rotate the TOTP secret shown once at bootstrap, which
+  must be treated as compromised (`F4W-003`);
+- **Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups
+  and About do not exist** in the served interface.
+
+Nothing in the runtime, the database or the Owner account was touched by this phase. The
+gap is entirely in `apps/webui-static/` and `services/reference-control-plane/src/`,
+already committed at `d57ab3e`, not yet built into any image.
 
 ---
 
-## What the LAN access gate did
+## Why nothing was deployed
 
-Made the WebUI reachable from a browser on the local network, without weakening
-anything — and found that doing so quietly broke one security assumption.
+The WebUI remediation phase found and fixed the CSRF root cause, and implemented and
+tested a complete account-security backend plus a dependency-free QR encoder — but ten
+of the required WebUI sections (Settings, Security, Users, Tools, Providers, System
+Health, Updates, Logs, Backups, About) do not exist at all. Markup for them was drafted
+during the phase and **deliberately withdrawn before committing**: shipping nav entries
+whose panels have no data loader would reproduce the exact defect being fixed, dressed up
+as progress. Rebuilding and deploying only the CSRF fix, with the Owner still unable to
+reach Security or rotate MFA from the interface, was judged not worth a container swap on
+its own — the interface work is next, and a single deploy afterward covers all of it.
 
-```text
-before   noesar-evolution:phase4-complete       127.0.0.1:8100->8088
-after    noesar-evolution:phase4-complete-lan   192.168.178.100:8100->8088
-```
+See `docs/PHASE_4_WEBUI_REMEDIATION_REPORT.md` for the full account, and
+`docs/OPEN_FINDINGS.tsv` (`F4W-001` through `F4W-007`) for every finding.
 
-```text
-unit tests               455/455    (444 before)
-installer hardening      100/100    (48 before)
-eslint                   137 files, 0 errors, 0 warnings, 0 no-undef
-shellcheck / semgrep / detect-secrets    clean on the changed surface
-backup                   1886/1886 verified, byte-identical to the live runtime
-findings                 7 raised: 3 medium, 3 low, 1 informational — 6 closed
-```
+### The two causes of "the WebUI is inactive" — both confirmed by execution, not by reading
 
-### The one that mattered
-
-**`/metrics` was readable without a session, and LAN access would have handed it to the
-whole subnet.** The gate was `if (!isInternalAddress(clientIp(req)))`, justified by a
-comment saying the container publishes on loopback only. That was true, and it was
-load-bearing — and the trap is subtler than it looks: **behind a published Docker port
-every external caller arrives from the bridge gateway, which is itself an RFC1918
-address**, so the predicate could never tell a LAN browser from a host-local process. It
-was right only because, on a loopback publish, nothing else can reach the port at all.
-
-Found by *executing* the product on the new bind — `200`, 28 series — not by reading the
-diff. Now `401` unless the exposure scope is `loopback`. Loopback installations are
-unchanged, which the tests assert positively.
-
-### Also found
-
-* **A LAN publish would have answered `421` to every browser request** — the Host
-  allowlist is baked as `localhost,127.0.0.1,::1`. Verified live *before* changing
-  anything. Publish and allowlist are now driven from one setting so they cannot drift.
-* **The installers' readiness loop always probed `127.0.0.1`**, so a LAN install would
-  have printed `INSTALLATION_STARTUP=FAIL` for a container that was healthy.
-* **`deployment/docker/run.sh` hardcoded the publish address** — no supported way to
-  reach it from another machine at all.
-* **`PROJECT_STATE.json` recorded an image ID the installation was not running.** It
-  said `ec2ac8bd`; the tag had been moved to `52987fbb` a minute before the container was
-  created. Corrected.
-* **The wrong setup-token fingerprint `af6f7ca93c31` still survived in two documents**
-  after `F4C-014` was closed. Corrected; it now appears only where it is being corrected.
-
-Full register: `docs/OPEN_FINDINGS.tsv`. Narrative and dismissals:
-`docs/REMEDIATION_LOG.md`. Everything else: `docs/PHASE_4_LAN_ACCESS_REPORT.md` and
-`docs/LAN_ACCESS_CONFIGURATION.md`.
+1. **Every write failed after a page reload (`F4W-001`, fixed in source).** `csrfToken`
+   was a module variable populated only by the login response; a reload resets it to
+   `''` while the session cookie survives, so the app still looks signed in and every
+   write returns `403 CSRF validation failed`. Reproduced and then re-verified fixed in a
+   real headless browser against a probe — never on the live installation.
+2. **Ten sections genuinely do not exist (`F4W-002`, not started).** Navigation itself
+   was never broken — all 11 shipped nav entries switch panels correctly with zero
+   console errors. There was simply nowhere for "Agents", "Tools", "Settings" and the
+   rest to go beyond the thin panels already there.
 
 ---
 
-## What was verified, and where
-
-| Claim | Evidence |
-|---|---|
-| Published on the LAN address, and only there | `docker port`; `127.0.0.1:8100` now refuses — the publish moved, it was not duplicated |
-| Health and WebUI over the LAN address | `/livez` `/readyz` `/healthz` `/` all `200`; 17 components, 0 degraded |
-| `/metrics` no longer public | `401` unauthenticated, from the LAN address; `/diagnostics` still `401` |
-| Host allowlist | declared address `200`; `192.168.178.101` and `attacker.example` both `421` |
-| No CORS | no `Access-Control-Allow-Origin` on any route, with an `Origin` header present |
-| Hardening unchanged | from **inside** the container: uid `10001`, `CapEff 0`, `Seccomp 2`, rootfs read-only, `/tmp` exec denied, no Docker socket, 1 mount, `pids.max 512` |
-| Data intact | migrations 16/16, RLS forced on 15 tables, `noesar_app` no BYPASSRLS, no TCP listener, audit chain 11 records 0 broken links |
-| Persistence | token fingerprint, state digest and audit records identical across two restarts; `RestartCount=0` |
-| Nothing else touched | `network ls` and `volume ls` **identical**; 37 unrelated containers same set, none started |
-
----
-
-## What was NOT done — do not assume otherwise
-
-- **No Owner account exists.** Deliberate. See the next section.
-- **The client-side browser test is not claimed.** `curl` from the server proves the port
-  is bound and the app answers. It does not prove a browser on another machine can open
-  it — that depends on the Owner's own machine. `CLIENT_BROWSER_TEST=AWAITING_OWNER`.
-- **No TLS.** LAN traffic is plaintext, including the password and TOTP code on first
-  login. Acceptable on a trusted network; required before anything wider.
-- **Nothing was exposed to the internet.** No router change, no UPnP, no port forwarding,
-  no VPS access. The installers cannot do any of it.
-- **No independent penetration test.** Same party wrote the code, the tests and the
-  reports.
-- **No Phase 5 work**: no release documentation, no licensing decisions, no packaging.
-- **No push** — there is no remote (`B-001`).
-- `noesar-debuglab` was started for HUNT AND FIX and **stopped in the same phase**.
-
-### One declared deviation
-
-The gate said "use the same image". The `/metrics` fix is source-only and the container
-runs the code baked into its image, so it could not be deployed without a new one —
-confirmed, not assumed: `/metrics` still answered `200` after the first recreation. The
-alternatives were put to the Owner, who chose the rebuild. It is an **offline two-file
-overlay** (`--network=none --pull=false`) on the audited image, so no `apt` step re-ran
-and the OS package set is inherited unchanged. See `D-0053`.
-
----
-
-## The one thing waiting for the Owner
-
-1. **Read the token** on the Unraid host:
-   ```bash
-   cat /mnt/cachec/NOESAR_EVOLUTION_RUNTIME/config/first-owner-setup.token
-   ```
-2. **Open `http://192.168.178.100:8100`** in a browser on the local network.
-3. Choose **Create Owner account**, enter the token, pick a username and password.
-4. Configure **TOTP**, save the **recovery codes** privately.
-5. Complete the **first login**, then a **step-up authentication**.
-6. Confirm the token is **not reusable** — a second setup must be refused.
-
-Full procedure: `docs/OWNER_BOOTSTRAP.md`. Choose the password yourself; keep the TOTP
-seed and recovery codes in a password manager. None of it should reach this repository,
-a log, or a chat transcript.
-
-**Token status, verified in this gate after the recreation and a restart:**
+## What changed in this repository this phase (all committed, none deployed)
 
 ```text
-fingerprint   db1cf03ef221   (file on disk and live container log agree)
-mode          0600           owner  10001:10001
-age           7.9 h of 72    expires 2026-07-28T07:34:24Z
-rotated       no — it has not expired, so it was left alone
-used          no             auth/status: initialized false
+cfb2cd5  fix(webui): restore functional application navigation and routes
+d57ab3e  feat(security): implement complete MFA lifecycle and account controls
 ```
 
-> **Verify the fingerprint against the live log, never against a document** — including
-> this one. The token rotates on expiry, so any written value goes stale by design:
-> ```bash
-> docker logs noesar-evolution 2>&1 | grep setup-token.available | tail -1
-> ```
-> The previous handoff's `af6f7ca93c31` was wrong and never matched this installation
-> (`F4C-014`); two documents that still carried it were corrected here (`F4L-006`).
+- CSRF cookie read back on load and on 403-retry; hash router (deep links, refresh,
+  Back/Forward, title, ARIA); 404 and access-denied views; global error boundary; toasts
+  with a correlation ID; no stack traces to the user.
+- `AuthService`: `securityOverview`, `changePassword`, `beginMfaReplacement` /
+  `confirmMfaReplacement` / `cancelMfaReplacement`, `regenerateRecoveryCodes`,
+  `revokeSession` / `revokeOtherSessions` — all gated on current password + a live,
+  unreplayed TOTP code; the candidate secret during replacement keeps the live one
+  working until confirmed; the swap is atomic; secrets never reach the ledger.
+- `apps/webui-static/qr.js` — a hand-written QR encoder, verified module-for-module
+  against `libqrencode` for versions 1–6. Two real bugs were found this way (format bits
+  reversed; the Reed-Solomon generator's shift and α term swapped, which silently
+  produces correct data codewords and wrong error-correction codewords). Versions 7–10
+  do not yet verify and are refused rather than emitted unproven (`F4W-005`, `D-0059`).
+
+```text
+unit tests             488/488   (455 before; 33 added: 16 account-security, 17 QR)
+eslint                 140 files, 0 errors, 0 warnings, 0 no-undef
+installer hardening    100/100   (unchanged from the LAN access gate)
+```
 
 ---
 
 ## Open blockers
 
+### B-007 — WebUI sections not built · high · **blocks next phase**
+Settings, Security, Users, Tools, Providers, System Health, Updates, Logs, Backups and
+About do not exist in the served interface. The backend they need (account security,
+users/invitations, agents, tools, sources/knowledge) mostly already exists and is tested
+or was already live; only the pages are missing. Until Security exists, the Owner cannot
+reach the MFA-replacement flow this phase built.
+
+### B-008 — two identity stores · medium · does not block
+The account that logs in lives in `RUNTIME_ROOT/state/auth.json`. `noesar_identity.users`
+in PostgreSQL — the table the Phase 4 completion gate's multi-user acceptance exercised —
+is **empty** on the real installation. That acceptance does not cover the login path.
+Needs a dedicated phase to decide the target model and migrate; not a WebUI concern.
+
 ### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local
-repository is complete and committed. Resolve with `gh repo create NOESAR-EVOLUTION
---private --source . --remote origin --push`, or by creating the private repository
-manually and adding `origin`. **Must be private.**
+`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. Local repository
+complete and committed.
 
 ### B-002 — secret scan is heuristic · low · unchanged
-Neither `gitleaks` nor `trufflehog` is installed, and CLAUDE10 rule 45 forbids installing
-tooling. ESLint, shellcheck, semgrep and detect-secrets cover what they cover; the
-credential scan over the staged set remains heuristic and is declared as such.
+Neither `gitleaks` nor `trufflehog` is installed; ESLint, shellcheck, semgrep and
+detect-secrets cover what they cover, credential scanning stays heuristic.
 
 ### B-005, B-006 — **CLOSED** in the completion gate.
 
 ---
 
+## The one thing waiting for the Owner
+
+**Rotating the TOTP secret shown once at the original bootstrap, which must be treated as
+compromised.** The backend is implemented and tested (`services/reference-control-plane/
+src/auth.mjs`: `beginMfaReplacement` / `confirmMfaReplacement`), but it is not deployed
+and there is no Security page to reach it from. Today the only route is the API directly:
+
+```text
+POST /api/v1/auth/mfa/replace           { password, totpCode }         -> candidate secret + otpauthUri
+POST /api/v1/auth/mfa/replace/confirm   { challenge, firstCode, secondCode }  -> atomic swap, new recovery codes
+```
+
+This requires the fix to be built into a deployed image first — it is source-only right
+now. `OWNER_MFA_ROTATION=AWAITING_OWNER_INTERACTION`, `CLIENT_BROWSER_RETEST=AWAITING_OWNER`.
+
+---
+
 ## Exact next action
 
-**Do not start Phase 5 without explicit authorisation.** When it is authorised — and
-remembering it may produce only *preliminary* documentation until the Owner has
-bootstrapped:
+**`NEXT_PHASE=BLOCKED`. Do not start Phase 5 — the product is not done, not the licensing
+step.** The next phase is finishing the WebUI:
 
-1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
-   `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` — in that order.
-2. The licensing backlog inherited from Phase 1 is Phase 5's largest item: **12 Rust
-   crates and 2 Node packages declare no licence, there is no root `LICENSE`, and 86
-   sources have no SPDX header.** The three-way split (AGPL core / Apache-2.0 SDK /
-   CC-BY-SA-4.0 docs) is still a **proposal**, not a decision.
-3. `docs/SBOM_REPORT.md` records a related gap: the source scan surfaces **0 declared
-   licences** for the Rust tree, so licence conclusions there still need doing by hand.
-4. Phase 5 packaging should rebuild from `oci/Dockerfile` with a recorded network step
-   rather than inheriting the overlay chain, which is now five images deep
-   (`D-0033`, `D-0053`).
-5. Enable the pre-commit gate in any fresh clone: `git config core.hooksPath .githooks`.
+1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_4_WEBUI_REMEDIATION_REPORT.md`,
+   `docs/OPEN_FINDINGS.tsv` (`F4W-*`) — in that order.
+2. Build the Settings, Security, Users, Tools, Providers, System Health, Updates, Logs,
+   Backups and About pages against the endpoints already implemented and tested
+   (`/api/v1/auth/security`, `/password`, `/mfa/replace*`, `/recovery-codes`,
+   `/sessions/*`, plus the pre-existing `/api/v1/admin/*`, `/agents`, `/tools`,
+   `/sources`, `/providers`, `/updates/*`, `/logs`, `/database/*`). Render the QR with
+   `apps/webui-static/qr.js`, capped at 25-character usernames per `F4W-005`.
+3. Wire the dynamic privacy banner to `/api/v1/privacy` (`F4W-007`).
+4. Write the browser E2E suite the original remediation spec asked for, over every real
+   route, in the pinned Puppeteer container
+   (`ghcr.io/puppeteer/puppeteer@sha256:9665f5b57abc5cc7080a641878964018de219055a4d2c9d8d050ceb1161778ba`).
+5. Only then rebuild (`noesar-evolution:phase4-webui-remediated` or similar), deploy,
+   verify live, and let the Owner rotate MFA and confirm the browser retest.
+6. Separately — not blocking — `B-008`: decide whether `noesar_identity.users` becomes the
+   source of truth for login, or is retired, or the two are reconciled deliberately.
+7. The Phase 1 licensing backlog is still there for whenever Phase 5 actually starts: 12
+   Rust crates and 2 Node packages with no declared licence, no root `LICENSE`, 86 sources
+   with no SPDX header, the three-way licence split still a proposal.
 
-## Reproducing this gate's verification
+## Reproducing this phase's verification
 
 ```bash
-npm test                                    # 455 unit tests
-npm run lint                                # eslint, 137 files
-npm run lint:self-test                      # prove the detector fires
-node tools/test-installer-hardening.mjs     # 100 checks, incl. the access-mode matrix
+npm test                                    # 488 unit tests
+npm run lint                                # eslint, 140 files
+node tools/test-installer-hardening.mjs     # 100 checks, unchanged from the LAN gate
 
-curl -i http://192.168.178.100:8100/livez     # 200
-curl -i http://192.168.178.100:8100/metrics   # 401 — the LAN scope gate
-docker port noesar-evolution
-docker logs noesar-evolution 2>&1 | grep runtime.started   # exposure_scope=lan
+# proving the CSRF fix is real (requires a throwaway probe — do NOT point at the live
+# installation without an Owner password you're authorised to use):
+#   build an overlay image copying apps/webui-static/ and services/.../src/,
+#   run it against a disposable workspace, log in, create something, press F5,
+#   create something else — must succeed with 0 failed requests.
 ```
 
 ## Rollback
 
-`$ARTIFACT_ROOT/backups/phase_4_lan_access_20260725T151501Z/ROLLBACK.md` holds the exact
-recreation command for the loopback configuration. The previous container is preserved
-stopped as `noesar-evolution.rollback-lan-phase4complete-20260725T153133Z`, alongside the
-`:phase4` and `:phase3` parachutes.
+Nothing to roll back from this phase — no deployment happened. The LAN access gate's
+rollback material is unchanged: `$ARTIFACT_ROOT/backups/phase_4_lan_access_20260725T151501Z/ROLLBACK.md`,
+with `noesar-evolution.rollback-lan-phase4complete-20260725T153133Z` preserved stopped.
