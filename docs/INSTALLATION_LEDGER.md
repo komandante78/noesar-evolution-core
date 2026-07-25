@@ -85,19 +85,71 @@ verification of prior content was required.
 | `PRODUCTION_TOUCHED` | false — no existing container, service, or dataset read or written |
 | `ZIP_REPACKAGING` | false |
 
-### Git
+### Git — local repository
 
-Repository initialised locally inside `PROJECT_ROOT`. The five archives are excluded
-by `.gitignore` and were never staged.
+`git init -b main` inside `PROJECT_ROOT`. 12 files staged and committed; the five
+archives are excluded by `.gitignore` and were never staged.
 
-### Secret scan
+Staged-set audit before commit:
 
-`gitleaks` is not installed on this host and the rules forbid installing new tooling
-to satisfy the scan, so a **heuristic scan** was run instead and is declared as such.
-Result and method are recorded in `docs/SESSION_HANDOFF.md`.
+- `git ls-files` → 12 files.
+- `file(1)` on each → all plain UTF-8 text or JSON. **No binary of any kind.**
+- Pattern check for `.zip|.tar|.gz|.7z|.exe|.dll|.so|.dylib|.sqlite|.db|.pem|.key|.env`,
+  `secrets/`, `credentials/`, `BACKUPS/` in the staged set → **no match**.
+- Absolute paths published: only `/mnt/cachec/NOESAR_EVOLUTION` (the project root)
+  and `/mnt/user/downloads/NOESAR_EVOLUTION_FINAL` (the archive location). Both are
+  technically necessary for the state/handoff mechanism to resume across sessions,
+  per rule 29. No third-party infrastructure, hostname, or credential path exposed.
+- `git diff --cached --stat` → 12 files, 976 insertions, 0 deletions.
 
-### GitHub
+**Commit 1:** `c3ad683e977c44e421a9141a3c7640720c48f84d`
+`chore(phase-0): bootstrap NOESAR Evolution governance and resumable workflow`
 
-`gh` is not installed on this host, so the private remote could not be created.
-Recorded as `GITHUB_STATUS=BLOCKED_AUTHENTICATION`. No token was written to any file.
-The local repository was completed regardless.
+**Commit 2:** state and handoff (this update), committed separately as an atomic
+follow-up because the state file must record the SHA of commit 1.
+
+### Secret scan — heuristic, declared
+
+`gitleaks` and `trufflehog` are both absent from this host, and rule 45 forbids
+installing new tooling to satisfy the scan. A **heuristic scan** was run instead.
+
+Five patterns over the staged set, all returning **zero matches**:
+
+| # | Pattern | Result |
+|---|---|---|
+| 1 | credential keyword (`api_key`/`secret`/`token`/`password`/`cookie`/`bearer`/…) followed by an assignment to a quoted value ≥6 chars | no match |
+| 2 | `BEGIN … PRIVATE KEY` / `BEGIN CERTIFICATE` blocks | no match |
+| 3 | known provider token shapes (`ghp_`/`gho_`/`sk-`/`xox*-`/`AKIA…`/`AIza…`) | no match |
+| 4 | credential-bearing connection strings (`scheme://user:pass@host`) | no match |
+| 5 | contiguous hex runs ≥40 chars (possible key material) | no match |
+
+**Detector self-test:** the patterns were run against a synthetic canary file written
+outside the repository containing an api-key assignment, a `ghp_` token, a
+credential-bearing URL, and a private-key header. **All four were flagged**, then the
+canary was removed. The zero-match result on the staged set is therefore meaningful
+rather than a silently broken check.
+
+An initial scan attempt placed `--cached` after the pattern, which git interpreted as
+a revision; it errored and produced misleading "no match" output. This was caught and
+the scan was re-run with correct argument order. The results above are from the
+corrected run.
+
+### GitHub — blocked
+
+`gh` is **not installed** on this host. Verified by `command -v gh`, by checking
+`/usr/local/bin`, `/usr/bin`, `/opt/gh/bin`, `/root/.local/bin`, `/mnt/user/appdata/gh`,
+and by a bounded `find` over `/usr/local`, `/usr/bin`, `/opt` — absent everywhere.
+No `GH_TOKEN`, `GITHUB_TOKEN`, or `GH_ENTERPRISE_TOKEN` is set in the environment
+(checked by variable name only; no value was printed).
+
+Consequently `gh repo create NOESAR-EVOLUTION --private --source . --remote origin --push`
+could not be executed. Recorded as `GITHUB_STATUS=BLOCKED_AUTHENTICATION` (blocker
+B-001). **No token was written to any file** and no remote was configured
+(`git remote -v` → empty). The local repository was completed regardless, as the
+phase specification requires.
+
+### Phase 0 outcome
+
+`COMPLETE_WITH_BLOCKER` — all local objectives met; the GitHub remote (B-001) and
+real secret scanning (B-002) remain open. Neither blocks Phase 1.
+`NEXT_PHASE=1`. Phase 1 was **not** started.

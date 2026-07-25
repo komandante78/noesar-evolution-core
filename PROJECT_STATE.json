@@ -2,19 +2,52 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 0,
-  "phase_status": "IN_PROGRESS",
+  "phase_status": "COMPLETE_WITH_BLOCKER",
   "next_phase": 1,
   "installation_complete": false,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": null,
-  "last_updated_utc": "2026-07-25T01:13:11Z",
-  "blockers": [],
+  "last_commit": "c3ad683e977c44e421a9141a3c7640720c48f84d",
+  "last_updated_utc": "2026-07-25T01:20:34Z",
+  "blockers": [
+    {
+      "id": "B-001",
+      "severity": "medium",
+      "code": "GITHUB_STATUS=BLOCKED_AUTHENTICATION",
+      "summary": "GitHub CLI (gh) is not installed on this host and no GH_TOKEN/GITHUB_TOKEN is set; the private repository NOESAR-EVOLUTION could not be created and no remote was configured. No token was written to any file. The local repository was completed regardless.",
+      "blocks_phase_1": false,
+      "resolution_options": [
+        "Install gh, run 'gh auth login', then 'gh repo create NOESAR-EVOLUTION --private --source . --remote origin --push' from PROJECT_ROOT",
+        "Create the private repository manually in the GitHub web UI, then 'git remote add origin <url> && git push -u origin main'",
+        "Proceed to Phase 1 with the local repository only and resolve the remote later"
+      ]
+    },
+    {
+      "id": "B-002",
+      "severity": "low",
+      "code": "SECRET_SCAN=HEURISTIC_ONLY",
+      "summary": "Neither gitleaks nor trufflehog is installed and installing new tooling is forbidden by CLAUDE10.md rule 45; a 5-pattern heuristic scan was run instead and is declared as heuristic. The detector was self-tested against a synthetic canary and fired correctly.",
+      "blocks_phase_1": false,
+      "resolution_options": [
+        "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
+      ]
+    }
+  ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
   "source_archives": "/mnt/user/downloads/NOESAR_EVOLUTION_FINAL",
   "repository_name": "NOESAR-EVOLUTION",
+  "repository_local_initialized": true,
+  "repository_remote_configured": false,
   "source_zip_checksums_verified": true,
-  "github_status": "PENDING",
-  "product_extracted": false
+  "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; content verified byte-correct by SHA-256; deliberately not renamed (decision D-0003) - Phase 1 must match by glob",
+  "github_status": "BLOCKED_AUTHENTICATION",
+  "secret_scan_method": "heuristic",
+  "product_extracted": false,
+  "docker_build": false,
+  "container_start": false,
+  "database_mutation": false,
+  "installation": false,
+  "production_touched": false,
+  "zip_repackaging": false
 }
