@@ -117,10 +117,43 @@ of its own.
 
 ---
 
+## ⚠️ Read this before planning anything
+
+**The product has never been measured against its own master specification.**
+
+`NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip` was verified this session (SHA-256
+`c8d536f5…`, matching its sidecar; internal manifest 120/120; 121 files). Of those, 75
+are already in `MASTER_REFERENCE/` and **byte-identical** — and **46 are absent**. The
+absent ones are precisely the measuring instruments: `08_OPERATIONS/85_ACCEPTANCE_MATRIX.md`,
+`DATA/acceptance-matrix.yaml`, `IMPLEMENTATION_GATES.yaml`, `TRACEABILITY_MATRIX.csv`,
+`OWNER_REVIEW_CHECKLIST.md`, the `HANDOFF/`, `09_LEGAL_TEMPLATES/`, `DATA/`, `REFERENCES/`
+and `TOOLS/` directories.
+
+So every phase so far has been checked against the documentation shipped inside the five
+product ZIPs, never against the specification those ZIPs were meant to satisfy. Against
+the master acceptance matrix, two `severity: blocker` items are open — `SEC-003` (Owner
+bypass cannot disable invariants: **never tested**) and `OPS-002` (cross-platform
+installation: **four scripts covered of the Linux / macOS / Windows / Podman / Unraid
+set**) — and several required features are absent, including **Workflows, which
+`/api/v1/bootstrap` already claims in its feature list**.
+
+**`docs/WORK_PLAN_V4_ALIGNMENT.md` is the current plan of record.** Read it before this
+section.
+
+`B-007` remains genuinely closed — the ten sections were built, deployed and verified.
+Closing it was never the same thing as satisfying the specification, and this handoff
+should not be read as implying otherwise.
+
 ## Exact next action
 
-**Phase 5 — complete documentation, licensing audit, release and final packaging.**
-One phase per invocation, and it must not start without explicit authorisation.
+**Not Phase 5 yet.** Follow `docs/WORK_PLAN_V4_ALIGNMENT.md`: bring the 46 missing
+specification files into the repository (WP-0) so the rest is measurable, take the Owner
+decision on the WebUI direction (WP-3, a prototype is published for review), then the two
+acceptance blockers (WP-1), then the missing features (WP-2).
+
+Phase 5 as originally described — documentation, licensing audit, release, packaging —
+is WP-4 and stays below. One phase per invocation, and none starts without explicit
+authorisation.
 
 1. Read `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
    `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` — in that order.

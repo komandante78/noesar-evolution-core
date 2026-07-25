@@ -10,7 +10,7 @@
  "repository_private": true,
  "source_zip_count": 5,
  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
- "last_updated_utc": "2026-07-25T18:10:00Z",
+ "last_updated_utc": "2026-07-26T00:20:00Z",
  "blockers": [
   {
    "id": "B-001",
@@ -178,6 +178,18 @@
    "severity": "informational",
    "status": "OPEN - for phase 5 documentation",
    "summary": "a full workspace backup is not encrypted and contains the auth master key. The product data export does exclude credentials; a filesystem backup is an operator duty that the documentation must state."
+  },
+  {
+   "id": "F4W-011",
+   "severity": "high",
+   "status": "OPEN - recorded, plan written, not started",
+   "summary": "The product has never been measured against MASTER PROJECT V4. 46 of its 121 files, including the acceptance matrix, implementation gates, traceability matrix and Owner review checklist, were never brought into the repository. Against that matrix two blockers are open (SEC-003 never tested; OPS-002 covers one platform family of five) and several required features are absent - Workflows, the approval queue, passkeys/OIDC/SAML/SCIM, two of the seven privacy states, compliance packs, the industry module framework, ML-BOM and any WCAG 2.2 AA evidence. Separately, /api/v1/bootstrap advertises Workflows as a feature that does not exist."
+  },
+  {
+   "id": "F4W-012",
+   "severity": "medium",
+   "status": "OPEN - prototype published for review",
+   "summary": "The deployed WebUI diverges from DESIGN/APPROVED_WEBUI_REFERENCE.png, which 01_PRODUCT/11 calls binding: no central composer, no quick actions, no active-tasks panel and no bottom approval strip on Home, and 21 flat nav entries against the spec rule of simple-before-technical progressive disclosure. The specification also requires visual regression and Owner review before the UI is final; neither has happened. A reorganised prototype (26 destinations in 5 categories, 9 selectable themes) is published for the Owner decision."
   }
  ],
  "resolved_findings": [
@@ -513,7 +525,7 @@
  "owner_bootstrap": "AWAITING_OWNER_INTERACTION",
  "phase_5_documentation_ready": false,
  "phase_5_final_packaging_ready": false,
- "next_phase_constraint": "NEXT_PHASE=5_READY. B-007 is closed: the ten sections are built, deployed and verified in a real browser. Phase 5 may produce preliminary documentation, but the five Owner-performed release-gate items below remain AWAITING_OWNER and may not be marked PASS by anyone else. Rotating the compromised TOTP secret is now reachable from Security in the deployed interface.",
+ "next_phase_constraint": "NOT Phase 5. docs/WORK_PLAN_V4_ALIGNMENT.md is the plan of record: WP-0 brings the 46 missing specification files into the repository so the rest is measurable; WP-3 is an Owner decision on the WebUI direction (prototype published for review); WP-1 closes acceptance blockers SEC-003 and OPS-002; WP-2 builds the required features that are absent; WP-4 is the original Phase 5. B-007 stays closed and that was never the same as satisfying the specification.",
  "phase_5_release_gate": {
   "CLIENT_BROWSER_TEST": "AWAITING_OWNER",
   "OWNER_BOOTSTRAP": "AWAITING_OWNER_INTERACTION",
@@ -670,5 +682,32 @@
    "persistence": "Owner account, database and workspace preserved; 16/16 migrations, 15 RLS-forced tables, pgvector 0.8.5 after the swap; RestartCount=0 across a further restart"
   },
   "host_impact": "networks and volumes diff IDENTICAL; the only container change is noesar-evolution moving to :phase4-webui plus its preserved rollback"
- }
+ },
+ "master_specification": {
+  "package": "NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip",
+  "sha256": "c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a",
+  "sha256_verified": "PASS - matches its own sidecar",
+  "internal_manifest": "120/120",
+  "files": 121,
+  "present_in_repository": 75,
+  "present_and_byte_identical": true,
+  "absent_from_repository": 46,
+  "absent_detail": "08_OPERATIONS (7), 09_LEGAL_TEMPLATES (6), DATA (9), HANDOFF (4), REFERENCES (6), TOOLS (2), and 12 root files including IMPLEMENTATION_GATES.yaml, TRACEABILITY_MATRIX.csv and OWNER_REVIEW_CHECKLIST.md",
+  "consequence": "The acceptance matrix, the implementation gates, the traceability matrix and the Owner review checklist have never been in the repository, so no phase has been measured against them. Recorded as F4W-011.",
+  "package_self_declared_state": "IMPLEMENTATION=NOT_STARTED, FINAL_PRODUCT_ZIPS=0/5, current_gate=GATE_0_OWNER_REVIEW, dated 2026-07-22; the five product ZIPs are dated 2026-07-25"
+ },
+ "master_acceptance_matrix_status": {
+  "PUB-001": "PASS",
+  "PUB-002": "PASS",
+  "SEC-001": "PASS",
+  "SEC-002": "PARTIAL - path traversal verified, no symlink-race suite exists",
+  "SEC-003": "OPEN - blocker - Owner bypass invariants never tested",
+  "SEC-004": "PARTIAL - signature and anti-rollback implemented, no channel key pinned so the rejection path is not exercisable",
+  "RUN-001": "PASS",
+  "RUN-002": "PARTIAL - GPU detected, not allocated, inference BLOCKED_NO_LOCAL_MODEL",
+  "OPS-001": "PASS",
+  "OPS-002": "OPEN - blocker - four installer scripts covered; linux, macos, windows and podman never executed or tested",
+  "PKG-001": "NOT DONE - Gate 8"
+ },
+ "plan_of_record": "docs/WORK_PLAN_V4_ALIGNMENT.md"
 }
