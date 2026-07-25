@@ -10,361 +10,158 @@ A cold session should be able to continue from this file alone, together with
 
 | Field | Value |
 |---|---|
-| Phase just completed | **2 — Host preflight and installation design** |
+| Phase just completed | **3 — Implementation and Unraid installation** |
 | Phase status | `COMPLETED` |
-| **Next phase** | **3 — Isolated build and Unraid installation** |
+| **Next phase** | **4 — Acceptance** (`docs/PHASE_4_ACCEPTANCE_PLAN.md`) |
+| `NEXT_PHASE` | `4_READY` |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
-| Last commit | see `PROJECT_STATE.json.last_commit` |
-| Updated (UTC) | 2026-07-25T06:30:00Z |
-| Canonical repository | **constructed** — 6,007 tracked files, 90 MB |
+| Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
+| Updated (UTC) | 2026-07-25 |
+
+**The product is installed and running.** Container `noesar-evolution`, image
+`noesar-evolution:phase3`, on `127.0.0.1:8100`, healthy, un-bootstrapped.
 
 ---
 
-## What was done
+## What Phase 3 did
 
-1. **Re-verified all five archives by SHA-256** (never by filename — all carry a
-   ` (2)` suffix). 5/5 exact. Mapped hash → role, recorded in
-   `docs/SOURCE_ARCHIVE_MAP.tsv`.
-2. **Safety-scanned every archive before opening it** — `unzip -t` PASS ×5, and
-   zero absolute paths, traversal, symlinks, device files, nested archives or
-   case-collisions. Each has exactly one internal root directory.
-3. **Extracted to `$STAGING/PHASE_1/`**, one directory per package, never into the
-   Git root. 6,305 files, reconciling exactly with ZIP entry counts.
-4. **Constructed the canonical repository**: package 01's `SOURCE/PRODUCT/` at the
-   repository root with no artificial wrapper level; packages 02–05 contributed
-   role material only; package envelopes preserved under `provenance/package-0N/`.
-5. **Resolved every path conflict explicitly** — 281 identical duplicates collapsed,
-   4 differing paths resolved and recorded, **0 unmapped**, **0 collisions** with
-   Phase-0 files.
-6. **Relocated binaries out of Git** to `$ARTIFACT_ROOT`, with checksums and a
-   documented restore procedure.
-7. **Ran the static checks, the secret scan and the ATOM boundary audit**, and wrote
-   the full Phase-1 documentation set.
+1. **Implemented** everything Phase 2 designed plus the Update Manager core: structured
+   logging, timezone and locale, `/livez` `/readyz` `/healthz` `/diagnostics` `/metrics`,
+   owner-only debug mode with a TTL, watchdog levels 0–5 with safe mode, a signed local
+   update manager, a file-backed bootstrap token, and structural prompt-injection
+   containment.
+2. **Repaired nine defects**, six of them in the delivered product (see below).
+3. **Built one image** from the canonical repository after an authorised base-image pull.
+4. **Installed it** in isolation: dedicated network, loopback-only port, non-root,
+   read-only rootfs, all capabilities dropped, Docker's builtin seccomp.
+5. **Verified it live**, restarted it, and confirmed persistence.
 
 ## What was verified, and how
 
 | Claim | Evidence |
 |---|---|
-| Archives authentic | 5/5 SHA-256 exact, re-verified this phase (Phase-0's result not taken on trust) |
-| Extraction faithful | per-package `SHA256SUMS.txt`: **6,300 / 6,300 OK** |
-| **Canonical placement correct** | product `MANIFEST.sha256` verifies **5,606 / 5,606** at repository root — its paths are product-relative and all resolve |
-| Vendored tree intact | every crate vs `.cargo-checksum.json`: **5,090 OK, 0 corrupt, 4 missing** (B-003) |
-| `Cargo.lock` authentic | matches the hash in the delivered `PROVENANCE.json` |
-| Phase-0 files untouched | all 13 byte-compared against a pre-merge backup: unchanged |
-| Static correctness | JSON **121/121**, `bash -n` **46/46**, `node --check` **87/87**, nested archives **0** |
-| No secrets | heuristic scan: 0 private keys, 0 provider tokens, 0 credential URLs; 2 benign hits (xkcd test passphrase). Zero private-key material in the product |
-| No forbidden artefacts | staged set: 0 archives, 0 `.env`, 0 databases, 0 shared libraries, 0 ELF executables |
-| ATOM boundary | **PASS** — public JSON-Schema contract + boundary docs only; no implementation |
+| Tests pass | **317 / 317** (`npm test`), up from the 137 delivered |
+| Installers are actually hardened | **48 / 48** — each installer run against a stub `docker`, flags inspected |
+| Vendored Rust intact | 113 crates, 5 094 files, **0 corrupt, 0 missing** |
+| Repository intact | `MANIFEST.sha256` **5 630 / 5 630 OK** |
+| Backup restorable | `phase_3_20260725T065555Z`, **6 035 / 6 035**, exit code 0 |
+| Container hardened | read-only rootfs, `CapDrop=[ALL]`, `no-new-privileges`, uid 10001, no Docker socket, one bind mount |
+| Loopback only | `127.0.0.1:8100` answers; `192.168.178.100:8100` refused |
+| Health | `/livez` 200, `/readyz` ready, `/healthz` healthy — 17 components, 0 degraded |
+| Restart and persistence | healthy in seconds, `RestartCount=0`, state and token unchanged |
+| Safe mode and crash loop | proven live on a probe container: 3 restarts in the window → safe mode, `/livez` 200, `/readyz` 503, writes refused, Owner able to leave |
+| Bootstrap | token file `0600`, fingerprint matches the log, wrong/absent token refused and audited; full flow including single use and MFA proven on the probe |
+| Nothing else touched | `docker ps -a`, `network ls`, `volume ls` all diffed against the pre-install inventory |
 
 ## What was NOT done — and must not be assumed
 
-- **Nothing was built, compiled, installed, started, or executed.** No container, no
-  database, no network configuration, no production system was touched.
-- **The core has not been proven to run without ATOM.** It holds *by design* (a
-  functional `ReferenceReasoningProvider` ships in the core), but stays
-  **`[UNVERIFIED]`** until the Phase-4 ATOM-absent acceptance run.
-- **Nothing was relicensed.** Licensing remains a proposal.
-- **No GitHub remote exists**, so nothing was pushed.
-- **The 4 missing `cc-1.3.0` files were not recreated** — fabricating upstream source
-  is forbidden.
+- **No Owner account exists.** Username, password and TOTP are the Owner's interactive
+  choices, which §10 of the phase specification forbids making on their behalf. Steps are
+  in `docs/OWNER_BOOTSTRAP.md`.
+- **PostgreSQL/pgvector is not installed.** Neither is the Rust authority daemon.
+- **No GPU is allocated.** The RTX 3060 is reported as present and unallocated.
+- **No external provider, no TLS, no `noesar.com` connectivity.**
+- **No SBOM was generated for the image** — no SBOM tool exists on this host.
+- **`--memory-swap` did not take effect.** The kernel lacks swap accounting; the host has
+  zero swap, so the intended outcome holds anyway. Stated, not glossed.
+- **`FOSS_CORE_DEPENDS_ON_ATOM=false` is still `[UNVERIFIED]` at runtime** until the
+  Phase-4 ATOM-absent acceptance run.
+- **Prompt-injection containment is structural, not proven complete.** Adversarial
+  evaluation is Phase 4.
 
 ---
 
-## Open blockers
+## Defects repaired in this phase
 
-### B-001 — no GitHub remote (`GITHUB_STATUS=BLOCKED_AUTHENTICATION`) · medium
+| # | Defect | Severity |
+|---|---|---|
+| F-002 | all three installers passed the weakened seccomp profile to Docker | high |
+| F-003 | both Unraid installers published on `0.0.0.0`, i.e. the whole LAN | high |
+| F-004 | retrieved document text was injected into the `system` message | high |
+| F-005 | the documented bootstrap token file was never read by any code | medium |
+| F-006 | log rotation overwrote archives within a millisecond, losing records | medium |
+| F-007 | all three installers fail on Docker 29 (`--mount …,rw` is invalid) | medium |
+| F-008 | the installer's `TZ` was silently ignored inside the container | low |
+
+Plus two found in code written this phase: `Logger.child()` threw on every call, and a
+comment placed inside a `docker run` line continuation silently truncated the command —
+caught before commit by running the installers, which is why
+`tools/test-installer-hardening.mjs` now exists.
+
+Findings dismissed as false positives, each with its evidence, are listed in
+`docs/PHASE_3_IMPLEMENTATION_AND_INSTALL_REPORT.md` §3.
+
+---
+
+## Open blockers — unchanged, neither blocking
+
+### B-001 — no GitHub remote · medium
 `gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local
 repository is complete and committed. Resolve by installing `gh` and running
 `gh repo create NOESAR-EVOLUTION --private --source . --remote origin --push`, or by
-creating the private repo manually and adding `origin`. **Must be private.**
-Does not block Phase 2.
+creating the private repository manually and adding `origin`. **Must be private.**
 
-### B-002 — heuristic secret scanning only · low
-`gitleaks`/`trufflehog` unavailable; installing new tooling is forbidden. Relevance
-rose this phase because 5,976 third-party files entered the repository, but the scan
-found no key material. Re-scan the **full history** if a real scanner appears, before
-the repository is ever made public.
-
-### B-003 — CLOSED (repaired 2026-07-25)
-
-The four missing `cc-1.3.0/src/target/*.rs` files were recovered from **two
-independent authoritative copies already on this server** — the delivery own build
-staging (`RUST_MANIFEST_REMEDIATION_V1`) and the canonical candidate tree, which are
-byte-identical to each other. **No network was used.** Every file hash-matches the
-crates.io-published `.cargo-checksum.json`; the package checksum matches
-`Cargo.lock`; the crate verifies 26/26; the whole vendor tree is byte-for-byte
-identical to the authoritative staging (5,207 files, `diff -rq` → 0).
-
-The **same defect was live in this repository** — `.gitignore` was ignoring the
-restored files, and `tools/create-rust-build-provenance.py` carried the same idiom.
-Both fixed and locked down by a 19/19 regression test.
-
-Offline validation in an isolated container (no network, empty `CARGO_HOME`):
-metadata, tree, tests (5 passed / 0 failed) and release build all PASS; both binaries
-produced. **`B001 = CLOSED`, `B-003 = CLOSED`.**
-
-Full detail: `docs/PHASE_1_B003_VENDOR_REPAIR_REPORT.md`.
+### B-002 — heuristic secret scanning on the host · low
+`gitleaks`/`trufflehog` are unavailable and installing tooling is forbidden. Corroborated
+by `detect-secrets` and `semgrep` run through `noesar-debuglab`, which reported **zero**
+findings across the whole first-party surface including everything written this phase.
+Re-scan the **full history** if a real scanner appears, before the repository is ever made
+public.
 
 ---
 
-## Deferred items (classified, not forgotten)
+## Deferred, classified
 
 | Item | Classification |
 |---|---|
-| 4 compiled `wit-bindgen` fragments excluded from Git, preserved in `$ARTIFACT_ROOT` — decide whether to restore, re-vendor, or leave out | `DEFERRED_TO_PHASE_2` |
-| B-003 `cc-1.3.0` resolution | `DEFERRED_TO_PHASE_2` |
-| Root `README.md` claims "57 files PASS" for JS syntax; the merged repository actually has 87, all passing | `DEFERRED_TO_PHASE_5` |
-| No first-party licence declarations, no root `LICENSE`, 86 sources without SPDX headers | `DEFERRED_TO_PHASE_5` |
-| Verbatim third-party notices; record the selected option for disjunctive licences (notably `r-efi`) | `DEFERRED_TO_PHASE_5` |
-| Adopt the product's three-way licence split (AGPL core / Apache-2.0 SDK / CC-BY-SA-4.0 docs) into `docs/LICENSE_STRATEGY.md` | `DEFERRED_TO_PHASE_5` |
-| ATOM-absent acceptance run to close `FOSS_CORE_MUST_REMAIN_AUTONOMOUS` | `DEFERRED_TO_PHASE_4` |
+| WebUI settings pane for timezone and locale (picker, mismatch notice, shared formatter) | `DEFERRED` — server contract exists and is tested |
+| Update signing side and portal; entitlement binding for the `owner` channel | `DEFERRED` — offline channel is fully functional |
+| SBOM for the built image | `DEFERRED` — needs a tool this host does not have |
+| Audit ledger `append` is O(n): the whole file is re-read to find the last hash | `DEFERRED` — correctness is fine, cost grows with history |
+| `tools/verify-package.py` imports `sys` unused (ruff F401) | `DEFERRED_TO_PHASE_5` |
+| 4 compiled `wit-bindgen` fragments excluded from Git, preserved in `$ARTIFACT_ROOT` | `DEFERRED` — unchanged since Phase 1 |
+| First-party licence declarations, root `LICENSE`, SPDX headers, three-way licence split | `DEFERRED_TO_PHASE_5` |
+| ATOM-absent acceptance run | `DEFERRED_TO_PHASE_4` |
 
 ---
 
-## Useful facts for Phase 2
+## Useful facts for Phase 4
 
-- **Shape of the product**: only **12 first-party Rust crates (13 `.rs` files)** plus
-  **113 vendored crates (5,203 files, ~80 MB)**. 87% of the repository is vendored
-  third-party source, kept deliberately so the workspace builds offline.
-- **Offline build entry point**: `cd rust && cargo build --workspace --release
-  --locked --offline`. It depends on `rust/.cargo/config.toml` — which the Phase-0
-  `.gitignore` was silently deleting until this phase fixed it.
-- **Recorded toolchain** (from the delivery, not re-verified): `rust:1-bookworm`,
-  rustc/cargo `1.97.1`.
-- **Prebuilt Linux binaries** already exist in `$ARTIFACT_ROOT/prebuilt/linux-x86_64/`
-  (`noesar-authority-daemon`, `noesar-control-plane`) with provenance — Phase 2 can
-  choose to install these or rebuild from source.
-- **The delivery declares** `productionReady=false` and
-  `targetServerInstallationValidated=false` on all five packages, and names the
-  outstanding work: first target Unraid installation, live PostgreSQL/pgvector
-  acceptance, sandbox validation, platform execution matrix.
-- Product work packages already scoped: `DOCUMENTATION/B003_SANDBOX_WORK_PACKAGE.md`,
-  `B004_PLATFORM_ACCEPTANCE_PLAN.md`, `B005_POSTGRES_PGVECTOR_ACCEPTANCE_PLAN.md`.
-  **Note the collision of identifiers**: the product's `B001`/`B003` are unrelated to
-  this project's `B-001`/`B-003`.
+- **Health endpoints to drive acceptance from:** `/livez` (no dependency checks — the
+  container `HEALTHCHECK` uses this), `/readyz` (dependencies plus safe mode), `/healthz`
+  (17 components), `/diagnostics` (owner-only, redacted), `/metrics` (Prometheus text,
+  authenticated or internal-network).
+- **Safe mode can be induced deterministically** by writing three restart entries inside a
+  ten-minute window into `state/watchdog.json` and restarting the container. That is how it
+  was proven; do it on a probe, not on the installation.
+- **The update manager has no signing key.** Phase 4 acceptance must generate a test key
+  pair, install the public key with `installChannelKey`, and drop a bundle in
+  `updates/inbox/`. Nothing signs artefacts today, by design.
+- **Owner-only routes** need a session **and** the `x-noesar-csrf` header on writes, and
+  `updates/apply` additionally needs recent strong reauthentication.
+- **The probe pattern works well**: a disposable container on port 8101 with a throwaway
+  workspace proves behaviour without touching the installation. Remove it afterwards.
+- `noesar-debuglab` (`:8099`, `x-debuglab-token`) is the only place on this host carrying
+  semgrep, bandit, ruff, detect-secrets and shellcheck. Start it for HUNT AND FIX, stop it
+  in the same phase.
 
 ---
 
 ## Exact next action
 
-**Phase 2 — Host preflight and installation design.** Do not start it without an
-explicit instruction from the owner.
+**Phase 4 — Acceptance.** Do not start it without an explicit instruction from the Owner.
 
-When authorized, follow the skill cycle from step 1:
+Before the acceptance matrix runs, two things are worth settling, in whichever order the
+Owner prefers:
 
-1. `READ STATE` — this file, `PROJECT_STATE.json`, `docs/PHASE_PLAN.md`,
-   `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`, plus the Phase-1 outputs
-   (`docs/PHASE_1_CANONICAL_EXTRACTION_REPORT.md`, `docs/REPOSITORY_LAYOUT.md`,
-   `docs/INSTALLABLE_ARTIFACT_MAP.md`).
-2. `VERIFY INPUTS` — confirm the working tree is clean and the canonical repository
-   still verifies (`sha256sum -c MANIFEST.sha256` should give 5,606/5,606).
-3. `ASSESS RISKS` — Phase 2 is **design only**: nothing is installed, no container is
-   built or started, no database is touched.
-4. Continue through `BACKUP`, `EXECUTE MINIMAL SCOPE`, `TEST`, `DOCUMENT`,
-   `SECRET SCAN`, `GIT DIFF REVIEW`, `COMMIT`, `PUSH`, `WRITE HANDOFF`, `STOP`.
+1. **Complete the Owner bootstrap** (`docs/OWNER_BOOTSTRAP.md`). Most of the acceptance
+   matrix needs an authenticated owner session.
+2. **Decide whether the GPU is allocated** for Phase 4, which the Phase 3 specification
+   deliberately left to a separate test.
 
-**Decide early in Phase 2:** the B-003 resolution and the `wit-bindgen` fragment
-question, because both affect whether an offline build is viable on the target host.
+When authorised, follow the skill cycle from step 1: `READ STATE` (this file,
+`PROJECT_STATE.json`, `docs/PHASE_4_ACCEPTANCE_PLAN.md`, `docs/INSTALLATION_LEDGER.md`,
+`docs/DECISION_LOG.md`), then `VERIFY INPUTS`, `ASSESS RISKS`, `BACKUP`, and onward.
 
----
-
-## Addendum — B-003 vendor repair (2026-07-25)
-
-**`B-003` and the product's own `B001` are both CLOSED.** All seven gates pass:
-
-```text
-VENDOR_COMPLETENESS=PASS      CARGO_CHECKSUMS=PASS       OFFLINE_METADATA=PASS
-OFFLINE_TREE=PASS             OFFLINE_TESTS=PASS         OFFLINE_RELEASE_BUILD=PASS
-PACKAGING_FILTER_REGRESSION=PASS
-```
-
-### What changed in the repository
-- `rust/vendor/cc-1.3.0/src/target/{apple,generated,llvm,parser}.rs` — restored,
-  official, hash-verified.
-- `.gitignore` — `target/` anchored (`/target/`, `/rust/target/`, `/rust/*/target/`)
-  plus negations for `**/vendor/**`.
-- `tools/create-rust-build-provenance.py` — `is_build_output()` replaces the
-  name-fragment test and now works on workspace-relative paths.
-- `tools/test-packaging-filters.mjs` — **new**, 19/19.
-- `MANIFEST.sha256` — 1 corrected hash + 4 added entries → **5,610/5,610 OK**.
-- New docs: `PHASE_1_B003_VENDOR_REPAIR_REPORT.md`, `PACKAGING_FILTER_SAFETY_RULES.md`.
-
-### Facts worth carrying into Phase 2
-- **The offline build works and is verified**, in a container with no network and an
-  empty `CARGO_HOME`, on `rustc/cargo 1.97.1` — the exact versions in the delivery's
-  provenance, from a local `rust:1-bookworm` whose digest matches the recorded image ID.
-  Release build: 9.20s, 0 warnings, both binaries produced.
-- **The Rust test suite is thin** — 5 tests total, 21 of 24 binaries empty. Treat
-  `OFFLINE_TESTS=PASS` as a weak signal; the substantial suites are the Node ones.
-- **`cc` reachability is now measured**: absent from the host build graph, present only
-  via `iana-time-zone-haiku` on the Haiku target.
-- The `wit-bindgen` compiled-fragment question (Phase-2 deferred item) is **unaffected**
-  and still open — those 4 files remain excluded from Git and preserved in
-  `$ARTIFACT_ROOT/vendor-binary-fragments/`.
-
-### Residual items (recorded, not fixed)
-1. **The upstream packaging script is not on this host** — the ZIPs were built
-   elsewhere, so the filter could not be corrected at its origin. A future archive from
-   that pipeline could reintroduce the defect; `tools/test-packaging-filters.mjs` plus
-   the §4 procedure in `docs/PACKAGING_FILTER_SAFETY_RULES.md` will catch it.
-2. **`vendorManifestAggregate` is not reproducible** by its documented method — proven
-   to be an upstream record defect (it does not reproduce from the delivery's own build
-   staging either). Phase 5 should correct or drop it.
-3. **Release binaries are not bit-identical** to the delivered prebuilt ones — expected,
-   different build paths; bit-reproducibility is not claimed.
-
-### Exact next action
-**Phase 2 — Host preflight and installation design.** Not started, and not to be
-started without an explicit instruction from the owner. `NEXT_PHASE=2_READY`.
-
-Backup for this repair: `/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups/pre_b003_repair_20260725T050034Z/`
-(6,034 files, self-verified, `ROLLBACK.md` included).
-
----
-
-## Addendum — Phase 2 complete (2026-07-25) · `NEXT_PHASE=3_READY`
-
-Host preflight and full installation design are done. **Nothing was installed, built,
-started, or reconfigured; no container, network or dataset on the host was touched.**
-
-### The four decisions that change how Phase 3 must be run
-
-1. **Host port is 8100, not 8088.** The product default is already claimed twice
-   (`fridayn-model-factory`, `nova-ai`). Found by enumerating `docker inspect` bindings
-   — with all 37 containers stopped, a live port scan shows 8088 as free.
-2. **A dedicated network `noesar-evolution-net`**, never the installer default
-   `noesar-local`, which belongs to the unrelated NOESAR V3 stack on this host.
-3. **`chown 10001:10001` on the workspace.** The container is non-root 10001, Unraid
-   shares default to 99:100, and the delivered installer only `chmod`s. Without this the
-   container starts and then cannot persist.
-4. **Do not pass `--security-opt seccomp=`.** The shipped profile is allow-by-default
-   with a 24-syscall denylist — weaker than the Docker builtin it would replace, on a
-   host with no AppArmor and no SELinux.
-
-### Host facts worth carrying
-
-Unraid 7.3.2 · Ryzen 5 5600X 6c/12t, **AVX2 only** · 31 GiB RAM, **no swap** (so the
-memory cap is explicit) · RTX 3060 12 GiB idle, not claimed by this product ·
-`/mnt/cachec` 324 G free · Docker 29.5.3, cgroup v2 · **37 containers, all stopped** ·
-**AppArmor and SELinux both absent** · host TZ `Europe/Berlin`, `/etc/timezone` absent ·
-**no python3, no cargo/rustc, no psql, no gh, no gitleaks** on the host.
-
-### Defect fixed in this phase
-
-`INSTALLATION/install-unraid.sh` hardcoded the package-02 `RUNTIME_SOURCE/` layout and
-aborted at its own guard on a canonical checkout. Fixed with layout detection; `bash -n`
-clean on all 10 installer scripts. `deployment/unraid/install-complete.sh` was already
-correct and was verified, not modified.
-
-### Build needs one bounded network step
-
-`node:22-bookworm-slim` is **not** present locally (only `node:20`), and the Dockerfile
-`apt-get`s five packages. The **runtime** is fully offline and there are **zero
-third-party npm dependencies** — but the build is not offline. Both installers already
-fail loudly rather than auto-pulling, which is correct. Phase 3 step 3 is that
-authorised pull.
-
-### What Phase 3 installs — and does not
-
-Installs: the single Node container, `reference-json` data plane, loopback only.
-Does **not** install: PostgreSQL/pgvector (separate, own acceptance), the Rust authority
-daemon, any GPU allocation, any external provider, any `noesar.com` connectivity, TLS.
-
-Phase 3 also **implements** (all designed, none blocking install): `/livez` `/readyz`
-`/metrics` `/diagnostics`, structured logging with correlation IDs, debug mode with TTL,
-watchdog levels 0–4 plus safe mode, and the timezone chain.
-
-### Open blockers — unchanged
-
-**B-001** no GitHub remote (`gh` absent, `GIT_PUSH=BLOCKED_NO_REMOTE`) · **B-002**
-heuristic secret scanning only. Neither blocks Phase 3.
-
-### Standing `[UNVERIFIED]`
-
-`FOSS_CORE_DEPENDS_ON_ATOM=false` is re-verified at source level but stays
-`[UNVERIFIED]` until the Phase-4 ATOM-absent acceptance (§J) actually runs it.
-
-### Exact next action
-
-**Phase 3 — Isolated build and Unraid installation.** Do not start without explicit
-owner authorisation, which must cover **both** the installation and the bounded
-build-time network step. Follow `docs/PHASE_3_EXECUTION_PLAN.md` from its pre-flight
-gates; every step has a stop criterion and rollback is in
-`docs/ROLLBACK_AND_RECOVERY_PLAN.md`.
-
----
-
-## Chiusura sessione — 2026-07-25 · `NEXT_PHASE=3_READY`
-
-Tutto lo stato di questo progetto vive **qui**, in `PROJECT_STATE.json`,
-`docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md` e questo file. Non è replicato
-nei file di memoria di NOESAR o CodeN Ultra: sono prodotti diversi, con governance
-diverse, e mescolarli è esattamente ciò che `CLAUDE10.md` §1-4 vieta.
-
-### Fatto dopo la chiusura di Fase 2
-
-1. **Scansione difetti con `noesar-debuglab`** (semgrep, bandit, ruff, detect-secrets,
-   shellcheck, mypy — nessuno presente sull'host). Container avviato e **rifermato**;
-   host restituito a 0 container attivi su 37.
-   - **1 difetto reale**: `gcm-no-tag-length` in 4 siti.
-   - Tutto il resto triagiato come rumore **con evidenza** (SC1007 sull'idioma corretto
-     `CDPATH= cd`; semgrep che consiglia 0o644 al posto di 0o700, che è *meno*
-     restrittivo; canary di test `must-not-leak`; 34 subprocess in test e tooling).
-   - **`detect-secrets` su tutto il repo: ZERO segreti reali** — 5.078 dei 5.148 hit
-     erano checksum SHA-256, due erano la documentazione stessa di questo progetto.
-     Corrobora in modo indipendente gli scan euristici delle Fasi 0-2 e rafforza B-002.
-
-2. **Policy cambiata dal proprietario** — il ciclo passa da 13 a **14 step**, con
-   `HUNT AND FIX` fra `TEST` e `DOCUMENT`: i difetti vanno **riparati**, non solo
-   registrati. Triage obbligatorio prima di correggere; va corretta anche *la regola*
-   che ha prodotto il difetto. Due regole emendate perché altrimenti lo step era
-   inapplicabile (`CLAUDE10.md` §16 e le standing rules vietavano ogni container, e
-   l'unico tooling di analisi vive in un container): eccezione **stretta e nominata**
-   al solo `noesar-debuglab`, read-only, da rifermare nella stessa fase.
-   `CLAUDE10.md` guadagna anche le regole 40a-40c.
-
-3. **F-001 corretto** (`gcm-no-tag-length`). Riprodotto **prima** di correggere: un tag
-   GCM da 4 byte decifrava correttamente, cioè 32 bit di autenticazione invece di 128.
-   `authTagLength` fissato su **entrambi** i lati cifratura/decifratura + controllo
-   esplicito della lunghezza del tag prima di `setAuthTag`, in tutti e 4 i siti.
-   - 8 test di regressione nuovi (`test/gcm-tag-length.test.mjs`)
-   - **suite prodotto 137/137 pass** (la consegna ne dichiarava 129)
-   - re-scan semgrep: **0 findings**
-   - `MANIFEST.sha256` → **5611/5611 OK**
-   - backup: `.../backups/pre_f001_gcm_fix_20260725T064102Z`
-
-### Commit di questa sessione (nessuno pushato — non esiste alcun remote)
-
-```text
-471b0a7  security(f-001): pin GCM authentication tag length and reject truncated tags
-5576744  chore(governance): add HUNT AND FIX step
-3b5baf9  docs(phase-2): complete host preflight and installation design
-bde70fa  fix(phase-2): remediate installation preflight blockers
-ccca61b  docs(phase-1): close vendor integrity remediation and update handoff
-e9726f0  fix(phase-1): restore complete cc vendor source and harden packaging filters
-```
-
-### Stato di chiusura
-
-| | |
-|---|---|
-| Fasi completate | 0, 1, 2 |
-| Blocker chiusi | B-003, B001 (del prodotto) |
-| Finding chiusi | F-001 |
-| Blocker aperti | B-001 (nessun remote), B-002 (scan euristico host) — **nessuno bloccante** |
-| Prossima fase | **3 — build isolata e installazione Unraid** |
-| Container avviati dal prodotto | **nessuno** — nulla è stato installato, costruito o avviato |
-| Host | 0 container attivi su 37, come all'apertura |
-
-### Prossima azione esatta
-
-**Fase 3.** Non iniziarla senza autorizzazione esplicita del proprietario, che deve
-coprire **sia** l'installazione **sia** lo step di rete limitato per il pull di
-`node:22-bookworm-slim` (assente in locale). Seguire `docs/PHASE_3_EXECUTION_PLAN.md`
-dai suoi gate pre-volo; ogni step ha un criterio di arresto e il rollback è in
-`docs/ROLLBACK_AND_RECOVERY_PLAN.md`.
-
-Da decidere **all'inizio** della Fase 3, perché entrambe influenzano la fattibilità
-della build offline: la questione dei 4 frammenti compilati di `wit-bindgen`, e se
-restituire il profilo seccomp consegnato o restare sul builtin Docker (la decisione
-corrente, D-0024, è restare sul builtin).
+Rollback for anything Phase 3 installed is in `docs/PHASE_3_ROLLBACK.md`; the verified
+pre-install backup is `phase_3_20260725T065555Z`.

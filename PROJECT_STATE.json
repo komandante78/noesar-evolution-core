@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": 2,
+  "current_phase": 3,
   "phase_status": "COMPLETED",
-  "next_phase": 3,
+  "next_phase": 4,
   "canonical_repository_constructed": true,
-  "installation_complete": false,
+  "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "e9726f0254783cf658eeff76d6def68ddf69e230",
-  "last_updated_utc": "2026-07-25T07:35:00Z",
+  "last_commit": "HEAD — the phase-3 documentation commit; a commit cannot contain its own hash, so read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
+  "last_updated_utc": "2026-07-25T07:45:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -44,7 +44,7 @@
   "repository_remote_configured": false,
   "github_status": "BLOCKED_AUTHENTICATION",
   "git_push": "BLOCKED_NO_REMOTE",
-  "secret_scan_method": "heuristic (host) + detect-secrets 27 plugins via noesar-debuglab (repository-wide, 2026-07-25): 5148 raw hits, 5078 of them SHA-256 checksums, ZERO real secrets - no private key or provider token anywhere",
+  "secret_scan_method": "heuristic (host) + detect-secrets and semgrep via noesar-debuglab over services/, ai-workspace/, capabilities/, tools/, apps/, oci/, deployment/ and the new tests: ZERO real secrets",
   "source_zip_checksums_verified": true,
   "source_zip_filename_deviation": "all five archives carry a ' (2)' duplicate-download suffix; archives are identified by SHA-256 only, never by filename",
   "product_extracted": true,
@@ -55,18 +55,18 @@
   "atom_boundary_audit": "PASS - no proprietary ATOM implementation present; public contract and boundary documentation only",
   "foss_core_autonomous": "HOLDS_BY_DESIGN_UNVERIFIED - requires the Phase 4 ATOM-absent acceptance run",
   "license_status": "PROPOSAL_ONLY - unchanged by this repair; NOT READY, no blocking obstacle",
-  "docker_build": false,
-  "container_start": false,
+  "docker_build": true,
+  "container_start": true,
   "database_mutation": false,
-  "network_configuration": false,
-  "installation": false,
+  "network_configuration": true,
+  "installation": true,
   "production_touched": false,
   "zip_repackaging": false,
   "license_relicensing": false,
-  "vendor_integrity": "PASS - 113 crates, 5094 files verified against .cargo-checksum.json, 0 missing, 0 corrupt",
+  "vendor_integrity": "PASS - 113 crates, 5094 files, 0 corrupt, 0 missing (re-verified in phase 3)",
   "vendor_file_count": 5207,
   "offline_build_verified": "PASS - cargo metadata/tree/test/release-build all green in an isolated container with no network and an empty CARGO_HOME (rustc/cargo 1.97.1, matching the delivery provenance)",
-  "packaging_filter_regression": "PASS - 19/19 cases (tools/test-packaging-filters.mjs)",
+  "packaging_filter_regression": "PARTIAL - 12/12 gitignore cases; the python half is UNVERIFIED on this host (no python3)",
   "b001_product_blocker": "CLOSED - all seven gates pass (VENDOR_COMPLETENESS, CARGO_CHECKSUMS, OFFLINE_METADATA, OFFLINE_TREE, OFFLINE_TESTS, OFFLINE_RELEASE_BUILD, PACKAGING_FILTER_REGRESSION)",
   "resolved_blockers": [
     {
@@ -84,18 +84,18 @@
     "root LICENSE missing",
     "86 first-party source files without SPDX header"
   ],
-  "phase_2_started": false,
-  "next_phase_ready": "3_READY",
+  "phase_2_started": true,
+  "next_phase_ready": "4_READY",
   "host_preflight": "COMPLETED - Unraid 7.3.2, kernel 6.18.38, Ryzen 5 5600X 6c/12t AVX2 (no AVX-512), 31GiB RAM with NO SWAP, RTX 3060 12GiB idle, Docker 29.5.3 overlay2 cgroup v2, 37 containers all stopped, AppArmor and SELinux both ABSENT so seccomp is the only MAC layer",
   "installation_design": "COMPLETED - single Node-only container, host port 8100 (product default 8088 already taken twice), loopback-only binding, dedicated noesar-evolution-net, runtime root /mnt/cachec/NOESAR_EVOLUTION_RUNTIME (NOT created in phase 2), workspace chown 10001:10001, reference-json data plane (no Postgres in phase 3)",
   "phase_2_source_fix": "INSTALLATION/install-unraid.sh hardcoded RUNTIME_SOURCE/ (package-02 layout) and aborted at its own test -f guard on a canonical checkout; fixed with layout detection; bash -n clean on all 10 installer scripts",
-  "security_matrix": "41 requirements: 20 IMPLEMENTED, 9 PARTIAL, 5 UNVERIFIED, 4 MISSING, 1 NOT_APPLICABLE, 1 IMPLEMENTED_BY_DESIGN, 1 BROKEN (shipped seccomp profile is allow-by-default and weaker than the Docker builtin it would replace - phase 3 uses the builtin instead)",
+  "security_matrix": "41 requirements, no BROKEN remaining: seccomp moved to MITIGATED BY CONFIGURATION after the flag was removed from all three installers; prompt injection moved from an unsupported PARTIAL to IMPLEMENTED (structural); SSRF, path traversal, ZIP limits, CSP and file quarantine moved from UNVERIFIED to verified; package/update signature implemented client side",
   "build_requires_network": "YES - node:22-bookworm-slim is not present locally (only node:20) and the Dockerfile apt-get installs 5 packages; RUNTIME is fully offline; zero third-party npm dependencies",
   "postgres_pgvector": "schema 0001-0007 present with pgvector and RLS, but NOT installed in phase 3 - separate installation with its own acceptance",
   "atom_boundary_reverified": "PASS - FOSS_CORE_DEPENDS_ON_ATOM=false and PRIVATE_ATOM_IMPLEMENTATION_PRESENT=false; still [UNVERIFIED] at runtime until the phase 4 ATOM-absent acceptance",
   "vps_access": false,
   "network_mutation": false,
-  "phase_3_started": false,
+  "phase_3_started": true,
   "phase_cycle": "14 steps (HUNT AND FIX added between TEST and DOCUMENT) - defects are repaired inside the phase, not filed for later",
   "open_findings": [],
   "resolved_findings": [
@@ -116,9 +116,97 @@
       "closed_utc": "2026-07-25T07:20:00Z",
       "fix_applied": "authTagLength pinned to GCM_TAG_BYTES=16 on both createCipheriv and createDecipheriv, plus an explicit tag-length check before setAuthTag, at all 4 sites",
       "evidence": "vulnerability reproduced first (a 4-byte tag decrypted successfully before the fix); 8 new regression tests in services/reference-control-plane/test/gcm-tag-length.test.mjs; full product suite 137/137 pass (was 129 delivered + 8 new); semgrep re-scan of services/ and ai-workspace/ reports 0 gcm-no-tag-length findings"
+    },
+    {
+      "id": "F-002",
+      "severity": "high",
+      "status": "CLOSED",
+      "summary": "All three delivered installers passed security/seccomp-noesar.json to Docker. That profile is allow-by-default with a 24-syscall denylist and REPLACES the Docker builtin deny-by-default allowlist, weakening the sandbox on a host with no AppArmor and no SELinux.",
+      "fix": "flag removed from INSTALLATION/install-unraid.sh, deployment/unraid/install-complete.sh and deployment/docker/run.sh; profile marked x-noesar-status=NOT_FOR_USE in its own body; regression test added",
+      "evidence": "tools/test-installer-hardening.mjs 48/48; live container has no seccomp= in SecurityOpt"
+    },
+    {
+      "id": "F-003",
+      "severity": "high",
+      "status": "CLOSED",
+      "summary": "Both Unraid installers published the WebUI with no bind address, which Docker resolves to 0.0.0.0 - the whole LAN, with no TLS. The security matrix claimed the port was not reachable from the LAN.",
+      "fix": "BIND_ADDRESS defaults to 127.0.0.1 and is used in the publish and the printed URL",
+      "evidence": "live: 127.0.0.1:8100 answers, 192.168.178.100:8100 refused"
+    },
+    {
+      "id": "F-004",
+      "severity": "high",
+      "status": "CLOSED",
+      "summary": "Retrieved document passages were concatenated into the SYSTEM message, placing third-party content in the highest-trust position - indirect prompt injection.",
+      "fix": "ai-workspace/untrusted-content.mjs: fenced non-system message with an explicit data-not-instruction policy, fence-forgery neutralisation, tool-scope intersection, advisory detector, audit entry; ingestion marks every source trust=untrusted",
+      "evidence": "27 security tests; a canary marker in an ingested document never appears in the system role"
+    },
+    {
+      "id": "F-005",
+      "severity": "medium",
+      "status": "CLOSED",
+      "summary": "NOESAR_SETUP_TOKEN_FILE was declared in oci/Dockerfile and described in the phase plan and the security matrix, but no code read it. The only working bootstrap path was an environment variable, visible in docker inspect and /proc/<pid>/environ.",
+      "fix": "src/setup-token.mjs generates a 32-byte CSPRNG token on first run, writes it 0600, repairs the mode, rotates after a TTL and logs only a fingerprint",
+      "evidence": "11 tests; live: file 0600 owner 10001:10001, fingerprint matches the startup log, only the path is in the container environment"
+    },
+    {
+      "id": "F-006",
+      "severity": "medium",
+      "status": "CLOSED",
+      "summary": "Log rotation produced the same archive filename for two rotations inside the same millisecond and the second overwrote the first, silently destroying records.",
+      "fix": "zero-padded sequence suffix in a fixed shape; an existing archive is never overwritten",
+      "evidence": "60 records written under a frozen clock, 60 recovered"
+    },
+    {
+      "id": "F-007",
+      "severity": "medium",
+      "status": "CLOSED",
+      "summary": "All three delivered installers use --mount type=bind,...,rw, which Docker 29 rejects: invalid field rw must be a key=value pair. Every installer would fail on this host.",
+      "fix": "readonly=false, plus a regression assertion",
+      "evidence": "tools/test-installer-hardening.mjs"
+    },
+    {
+      "id": "F-008",
+      "severity": "low",
+      "status": "CLOSED",
+      "summary": "Inside a container /etc/localtime describes the image, not the host, so tier 3 of the timezone chain shadowed the installer TZ with Etc/UTC and the operator setting was silently ignored.",
+      "fix": "tier 3 reports unavailable-in-container when /.dockerenv is present, unless NOESAR_HOST_LOCALTIME exposes the host zoneinfo",
+      "evidence": "live: timezone Europe/Berlin at tier 4, offset +120 in July"
     }
   ],
-  "product_test_suite": "137/137 pass (node --test), including 8 new F-001 regression tests",
+  "product_test_suite": "317/317 pass (node --test) - 137 delivered plus 180 added in phase 3",
   "session_closed": "2026-07-25 - phases 0,1,2 complete; B-003, product B001 and F-001 closed; NEXT_PHASE=3_READY",
-  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4)."
+  "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
+  "phase_3": {
+    "image": "noesar-evolution:phase3",
+    "image_id": "sha256:24dfc4923536a1128bce86146db60cd0d7907a02a0e3f91a031371aea4a56844",
+    "base_image": "node:22-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3",
+    "container": "noesar-evolution",
+    "network": "noesar-evolution-net",
+    "bind": "127.0.0.1:8100->8088",
+    "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
+    "backup": "/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups/phase_3_20260725T065555Z (6035/6035 verified)",
+    "health": "livez 200, readyz ready, healthz healthy, 17 components, 0 degraded",
+    "restart_and_persistence": "PASS - RestartCount=0, state and setup token unchanged, no crash loop",
+    "owner_bootstrap": "NOT completed on the real installation by design - interactive choice; mechanism verified, full flow proven on a disposable probe container that was removed",
+    "rollback": "NOT_REQUIRED - available and documented in docs/PHASE_3_ROLLBACK.md",
+    "other_containers_modified": false,
+    "debuglab_started_and_stopped": true,
+    "commits": [
+      "cd85eda feat(phase-3): implement runtime health observability and recovery",
+      "a3cc822 feat(phase-3): implement signed local update and first-run bootstrap services",
+      "f4b0aff fix(phase-3): harden Unraid installation and container runtime",
+      "HEAD docs(phase-3): record implementation installation and handoff"
+    ],
+    "final_verification": "317/317 tests, 48/48 installer hardening, MANIFEST 5630/5630, container healthy, working tree clean"
+  },
+  "installer_hardening_regression": "48/48 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives",
+  "manifest": "MANIFEST.sha256 5630/5630 OK (7 hashes updated, 19 entries added)",
+  "deferred_items": [
+    "tools/verify-package.py imports sys without using it (ruff F401) - cosmetic, pre-existing, recorded for phase 5",
+    "no SBOM generated for noesar-evolution:phase3 - no syft or cyclonedx on this host",
+    "WebUI settings pane for timezone and locale not built; the server contract exists and is tested",
+    "update signing side and portal not implemented - only the offline channel is usable",
+    "audit ledger append is O(n) per write: the whole file is re-read to find the last hash"
+  ]
 }

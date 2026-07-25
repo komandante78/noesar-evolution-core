@@ -513,3 +513,81 @@ byte-identical after (single md5 across all three).
 `MANIFEST.sha256` — that manifest tracks the package-01 product tree, while those
 copies originate from packages 03/04. Expected, recorded so it is not mistaken for
 manifest drift later.
+
+---
+
+# Phase 3 — Implementation and installation (2026-07-25)
+
+`PHASE_3 = COMPLETED` · `NEXT_PHASE = 4_READY` · `PHASE_3_ROLLBACK = NOT_REQUIRED`
+
+## What was done, in order
+
+1. **Pre-flight** — working tree clean; `MANIFEST.sha256` 5 611/5 611; vendor 113 crates /
+   5 094 files / 0 corrupt / 0 missing; container name free; network name free; port 8100
+   free; 144 G free on `/var/lib/docker`, 324 G on `/mnt/cachec`. `happy_bhaskara` does not
+   exist on this host at all — recorded rather than assumed.
+2. **Backup** — `ARTIFACT_ROOT/backups/phase_3_20260725T065555Z`, `git archive` of HEAD plus
+   full Docker inventories, self-verifying at **6 035 / 6 035**.
+3. **Implementation** — logging, timezone/locale, health + metrics, debug mode, watchdog +
+   safe mode, update manager, bootstrap token, prompt-injection containment.
+4. **Test** — 137 → **317 / 317** passing, plus 48/48 installer hardening and 12/12
+   packaging filters (Python half unverifiable here).
+5. **HUNT AND FIX** — `noesar-debuglab` started, semgrep / detect-secrets / ruff / bandit /
+   shellcheck run over the first-party surface, findings triaged, container stopped again.
+6. **Base image** — `docker pull node:22-bookworm-slim`, digest recorded.
+7. **Build** — `noesar-evolution:phase3`.
+8. **Runtime root** — created, `10001:10001`, `0700`, nothing world-writable.
+9. **Network** — `noesar-evolution-net` created; `noesar-local` untouched.
+10. **Run** — container started with the full hardening set; `Up (healthy)`.
+11. **Verify** — every §11 check; controlled restart; persistence; no crash loop.
+12. **Bootstrap** — mechanism verified on the real installation, full flow proven on a
+    disposable probe, no Owner account created.
+13. **Document, secret-scan, commit.**
+
+## Defects found and repaired in this phase
+
+| # | Defect | Where |
+|---|---|---|
+| D1 | log rotation overwrote archives inside the same millisecond, losing records | `src/logging.mjs` |
+| D2 | `Logger.child()` threw on every call | `src/logging.mjs` |
+| D3 | all three installers passed the weakened seccomp profile to Docker | installers |
+| D4 | two installers published on `0.0.0.0`, i.e. the whole LAN | Unraid installers |
+| D5 | all three installers fail on Docker 29 (`--mount …,rw` invalid) | installers |
+| D6 | retrieved document text was injected into the `system` message | `chat-orchestrator.mjs` |
+| D7 | the documented bootstrap token file was never read by any code | `server.mjs` |
+| D8 | the installer's `TZ` was silently ignored inside the container | `timezone.mjs` |
+| D9 | a comment inside a line continuation truncated `docker run` (self-inflicted, caught before commit) | installers |
+
+Full detail, including what was dismissed as a false positive and on what evidence, in
+`PHASE_3_IMPLEMENTATION_AND_INSTALL_REPORT.md`.
+
+## Installed state
+
+```text
+container   noesar-evolution        running, healthy, RestartCount=0
+image       noesar-evolution:phase3 sha256:24dfc492…
+base        node:22-bookworm-slim   sha256:6c74791e…
+network     noesar-evolution-net    bridge f55f74343e47
+port        127.0.0.1:8100 -> 8088  loopback only, LAN probe refused
+runtime     /mnt/cachec/NOESAR_EVOLUTION_RUNTIME  10001:10001 0700
+health      /livez 200  /readyz ready  /healthz healthy, 17 components, 0 degraded
+timezone    Europe/Berlin, tier 4 (installer TZ)
+updates     NOTIFY_ONLY, channel offline, no portal configured
+owner       NOT created — interactive choice, see OWNER_BOOTSTRAP.md
+```
+
+## Host impact
+
+Containers defined 37 → 38, running 0 → 1. Networks 8 → 9. Volumes unchanged. No
+pre-existing container, image, network, volume or share was modified.
+`noesar-debuglab` was started and stopped within the phase under the one named exception,
+and is `Exited (0)` again.
+
+## Not done, and why
+
+PostgreSQL/pgvector, the Rust authority daemon, GPU allocation, external providers, TLS
+and any `noesar.com` connectivity are all out of scope for Phase 3 by specification. The
+WebUI settings pane for timezone and locale is not built; the server contract it needs is.
+No SBOM was generated for the image — no SBOM tool exists on this host.
+`--memory-swap` did not take effect: the kernel lacks swap accounting, and the host has
+zero swap.

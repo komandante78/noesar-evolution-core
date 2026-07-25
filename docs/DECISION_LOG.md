@@ -402,3 +402,118 @@ To be settled by the Phase-4 runtime tests, not by reading.
 **Limit stated plainly:** none of this reaches the weak seccomp profile, the port 8088
 collision, the missing endpoints, or prompt injection. Those are configuration, host
 and semantic defects, invisible to every scanner used.
+
+---
+
+## D-0025 — Do not replace the shipped seccomp profile; mark it and remove it from the installers
+
+*Context:* Phase 2 (D-0024) decided not to pass `security/seccomp-noesar.json` in the
+manual `docker run`. Phase 3 found that all three delivered installers **were** passing
+it, so the decision had no force where it mattered.
+
+*Options:* (a) leave it and rely on documentation; (b) replace it with a derived
+allowlist profile; (c) mark it `NOT_FOR_USE`, remove the flag from the installers, and
+lock it with a regression test.
+
+*Decision:* **(c)**. Docker's builtin is already a tested deny-by-default allowlist;
+writing a substitute would be strictly more risk for no gain, and a wrong allowlist breaks
+the container in ways that are hard to diagnose. The file stays, marked in its own body
+with `x-noesar-status: NOT_FOR_USE` (Docker's JSON decoder ignores unknown fields, so it
+remains loadable if anyone ever does). `tools/test-installer-hardening.mjs` fails if the
+flag returns.
+
+*Consequence:* the profile is no longer `BROKEN` in the matrix — it is
+`MITIGATED BY CONFIGURATION`, with the mitigation enforced by a test rather than by prose.
+
+## D-0026 — Installers bind to loopback by default
+
+*Context:* both Unraid installers used `--publish "${PORT}:8088"` with no bind address,
+which Docker resolves to `0.0.0.0`. The security matrix claimed the port was not reachable
+from the LAN.
+
+*Decision:* `BIND_ADDRESS="${NOESAR_BIND_ADDRESS:-127.0.0.1}"`, used in the publish and in
+the printed URL. Exposure beyond loopback becomes a deliberate, named choice.
+
+*Consequence:* an operator who wants LAN access must set `NOESAR_BIND_ADDRESS` and, by
+implication, think about TLS and `NOESAR_SECURE_COOKIES` first.
+
+## D-0027 — The bootstrap token lives in a file, not in the environment
+
+*Context:* `NOESAR_SETUP_TOKEN_FILE` was declared in `oci/Dockerfile` and described in the
+Phase 3 plan and the security matrix, but no code read it. The only working path was
+`NOESAR_SETUP_TOKEN`, an environment variable — visible in `docker inspect` and
+`/proc/<pid>/environ`.
+
+*Decision:* implement `src/setup-token.mjs`. A 32-byte CSPRNG token is generated on first
+run, written `0600`, mode-repaired if it drifts, rotated after a TTL (72 h default), and
+never logged — only a 12-hex fingerprint. The environment variable still wins when set, so
+the smoke tooling and tests keep working.
+
+*Rejected:* generating a new token on every boot. It would invalidate a token an operator
+had already copied, for no security gain once the file is `0600`.
+
+## D-0028 — Untrusted content is contained structurally, not by detection
+
+*Context:* `chat-orchestrator.mjs` concatenated retrieved document passages into the
+`system` message — the highest-trust position available. The matrix recorded prompt
+injection as `PARTIAL`, pointing at code that contained no injection handling at all.
+
+*Decision:* three layers, in order of how much each is worth.
+1. **Structural** — retrieved passages move to their own non-`system` message, fenced,
+   behind an explicit "this is data, not instruction" policy.
+2. **Non-forgeable boundary** — fence markers are stripped from the untrusted text, so a
+   document cannot close the fence, and an attempt is itself a detection signal.
+3. **Authority** — tool scope is the intersection of granted and requested. Nothing in the
+   content can widen it.
+
+The nine-signal detector is **advisory**: it feeds the audit ledger and the operator, and
+is deliberately not a gate. A heuristic that can be evaded must not be the thing standing
+between a document and a tool call.
+
+*Consequence:* the matrix moves to `IMPLEMENTED (structural)` with the residual risk
+stated rather than hidden. Adversarial evaluation stays Phase 4.
+
+## D-0029 — Inside a container, tier 3 of the timezone chain reports itself unavailable
+
+*Context:* the installed container reported `Etc/UTC` at tier 3 despite `TZ=Europe/Berlin`.
+`/etc/localtime` inside a container describes the **image**, not the host, so tier 3 was
+shadowing the operator's explicit setting with a base-image default.
+
+*Options:* (a) reorder the chain so `TZ` outranks the host; (b) bind-mount the host's
+`/etc/localtime`; (c) make tier 3 report honestly that it cannot see the host.
+
+*Decision:* **(c)**. (a) contradicts the Phase 2 design without cause; (b) would add a host
+mount the phase specification does not permit. When `/.dockerenv` is present, tier 3 is
+unavailable unless the host zoneinfo is deliberately exposed via `NOESAR_HOST_LOCALTIME`.
+
+*Consequence:* the documented tier order is unchanged; the effective zone is now
+`Europe/Berlin` at tier 4, which is what the operator asked for.
+
+## D-0030 — No Owner account was created on the real installation
+
+*Context:* §10 of the phase specification requires running the first-run procedure but
+forbids creating definitive credentials on the Owner's behalf when the product requires an
+interactive choice. NOESAR requires the Owner to choose a username, a password and to
+enrol TOTP.
+
+*Decision:* verify the **mechanism** on the real installation — the token file's mode and
+ownership, its fingerprint matching the log, refusal without a token, refusal with a wrong
+token, both audited — and prove the **full flow**, including single-use and MFA
+enforcement, in a disposable probe container on a throwaway workspace.
+
+*Consequence:* the installation is running and un-bootstrapped. `OWNER_BOOTSTRAP.md`
+carries the exact steps. The probe container was removed; its audit evidence is kept.
+
+## D-0031 — Comments never go inside a shell line continuation
+
+*Context:* the first attempt at D-0025 placed the explanatory comment between
+`--security-opt no-new-privileges:true \` and `--pids-limit 512 \`. That is syntactically
+valid, `bash -n` passes, and it **truncates** the `docker run` command — silently
+discarding every flag after it, including all the hardening.
+
+*Decision:* explanations go above the command. And, because the class of defect is
+invisible to syntax checking, `tools/test-installer-hardening.mjs` now runs every installer
+against a stub `docker` and asserts the image argument still arrives.
+
+*Consequence:* a whole class of "the script looks right and does the wrong thing" is now
+caught by a test rather than by luck.
