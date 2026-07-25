@@ -783,3 +783,59 @@ and two consecutive live codes, and this phase forbids rotating on their behalf.
 Security page that would expose it is not built, so the only route today is the API.
 `OWNER_MFA_ROTATION=AWAITING_OWNER_INTERACTION`, and the original enrolment secret —
 which must be treated as compromised — remains in force.
+
+### D-0062 — Tools and Providers were moved out of their combined pages, not rewritten
+Both surfaces already existed and worked: tool registration, credential and consent
+lived inside "Agents & Tools", and provider profiles inside "Models & External APIs".
+The reported gap was that there was no Tools entry to click at all. Writing new pages
+against the same endpoints would have produced two renderers for one dataset, which
+drift. The markup was relocated with its element ids unchanged, so every existing
+handler continues to work untouched and nothing is duplicated. "Models & External APIs"
+keeps the parallel-comparison surface.
+
+### D-0063 — role gating is derived from the server, never restated in the browser
+The interface must decide whether to offer a section, because a nav entry whose every
+request answers 403 is the same defect as a panel that never loads. The obvious
+implementation — a copy of the role/permission matrix in `app.js` — is one refactor away
+from disagreeing with the server that enforces it, and the disagreement would be
+invisible in both directions. `AuthService.permissionsFor(role)` exposes the single
+`ROLE_PERMISSIONS` definition instead; `/api/v1/auth/me` and the session response carry
+it, and `/api/v1/admin/users` carries the role vocabulary for the same reason. This is a
+description, not a grant: every route still checks for itself, and a test asserts that
+what the server reports and what it enforces agree in both directions for every role.
+
+### D-0064 — the browser suite asserts a rendered box, not an active class
+The first version of the route check tested `classList.contains('active')` and the
+length of `innerText`, and passed on all 21 routes while nine of them were inside a
+`display:none` ancestor: `innerText` falls back to `textContent` for an element that is
+not rendered, so the text was there to measure. The previous phase reached the same false
+conclusion by the same route, reporting that "navigation is not broken" from the class
+alone. The check now requires `offsetParent` and a non-zero bounding box. A check that
+cannot fail on the defect it is aimed at is not evidence.
+
+### D-0065 — the denied path is exercised with a real second account
+As the Owner, `may()` returns true for everything, so an error in role gating is
+invisible from the only account that exists. This project has twice shipped a defect
+because only one side of a branch was ever executed — most recently accounts that could
+not log in at all, because every fixture bootstrapped an owner and the *success* path of
+the other case was never run. The suite therefore creates a second account through the
+real invitation flow, signs in as it, and asserts what it is offered and what it is
+refused.
+
+### D-0066 — probe containers, images and networks are preserved, not removed
+Rule 12 forbids deleting containers, images and networks, and the host inventory already
+keeps stopped probes from earlier gates. Eleven probe containers, eleven images and
+eleven `noesar-e2e-*` networks accumulated while the suite was being iterated, because
+the first version stamped the network name too. The script now reuses one stable network
+(`noesar-e2e-net`); isolation still holds because the probe and runner names carry the
+stamp. Disposing of what already exists is a separate, explicit decision and was not
+taken here.
+
+### D-0067 — the privacy banner reports UNVERIFIED rather than keeping its claim
+`refreshPrivacy()` swallowed every failure in an empty `catch{}`, so an unreachable
+privacy check left the hardcoded "LOCAL-ONLY VERIFIED" chip on screen looking confirmed.
+A banner that asserts a privacy guarantee must never assert one it has not just been
+told. It now says so plainly and marks itself external. The `.external` class — added to
+the stylesheet in the previous phase and applied by nothing — is driven from
+`banner.external`, the server's own verdict, rather than from a state-string comparison:
+the first attempt compared against `LOCAL_ONLY`, which this server never emits.

@@ -883,3 +883,73 @@ which is a covered root. That was reverted. They were deliberately never listed:
 change in every phase, and hashing them would make the integrity manifest churn on every
 commit and stop meaning anything. This is the same mistake the completion gate recorded
 and reverted, made again here from the same reasoning and caught by the same check.
+
+## Phase 4 — WebUI completion (2026-07-25)
+
+Ten sections built, `B-007` closed. Source and verification only up to the deploy step
+recorded below.
+
+### Backups taken before any mutation
+
+```text
+BACKUPS/webui_pages_20260725T171426Z          7/7 verified (index.html, app.js, styles.css,
+                                              qr.js, i18n.js, server.mjs, auth.mjs)
+BACKUPS/MANIFEST.sha256.pre_webui_pages_*     the manifest as it stood before refresh
+```
+
+Disclosed: the first `MANIFEST.sha256` written inside that backup directory included
+itself and therefore could not verify. It was regenerated excluding itself, in the same
+step, before anything was changed. The file removed was an artefact created seconds
+earlier by the failed step, not project content.
+
+### Verification
+
+```text
+browser acceptance     174/174    digest-pinned Puppeteer, disposable probe
+unit tests             507/507    488 before; +6 role permissions, +13 markup structure
+eslint                 143 files, 0 errors, 0 warnings, 0 no-undef
+installer hardening    100/100    unchanged
+MANIFEST               5690/5690  5 refreshed, 4 appended, 0 removed, 0 duplicates
+```
+
+The ESLint configuration gained one entry, for `tools/browser-e2e.mjs`: it is a Node
+program that also carries code destined for the page, and linting it as pure Node
+reported six `no-undef` errors on `document` inside `page.evaluate` callbacks — all
+correct code. A check that cries wolf is a check people learn to skip, so the rule was
+corrected rather than the instances silenced. **Negative control:** a deliberate
+undefined identifier was appended to that file, ESLint reported `ESLINT_NO_UNDEF=1`, and
+the file was restored byte-identical and re-linted clean.
+
+### HUNT AND FIX
+
+`noesar-debuglab` was started for the scan and **stopped in the same phase**.
+
+```text
+apps/webui-static                  1 finding   — false positive, dismissed with evidence
+services/reference-control-plane   0 findings
+tools                             12 findings  — all pre-existing, out of scope
+tools/browser-e2e.mjs, run-browser-e2e.sh      0 findings
+```
+
+The dismissal: `semgrep insecure-object-assign` at `app.js:85` is `Object.assign` on a
+freshly constructed `Error` with three literal keys. Prototype pollution requires
+attacker-controlled keys; there are none. The twelve `tools` hits are subprocess warnings
+in two Python files last modified in Phase 1 and untouched here, one of which is the
+`F401` already deferred as `D-0039`.
+
+Every defect that mattered was found by execution, not by the scanners — including
+`F4W-008`, which had survived a full acceptance phase and a WebUI remediation phase.
+
+### Containers, networks and images
+
+```text
+started/stopped   noesar-debuglab                                (analysis only, same phase)
+created           noesar-evolution.e2e-probe-<stamp>       x11   all Exited, preserved
+created           noesar-evolution.e2e-runner-<stamp>      x11   all Exited, preserved
+created           noesar-evolution:webui-e2e-<stamp>       x11   images, preserved
+created           noesar-e2e-<stamp> networks              x11   preserved (see D-0066)
+created           noesar-e2e-net                                 the stable network from now on
+```
+
+Nothing was removed. `docker volume ls` diffs **identical**. No unrelated container was
+started, stopped or modified, and the real installation was not driven by any test.
