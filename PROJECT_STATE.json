@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "COMPLETED_WITH_COMPLETION_GATE_LAN_ACCESS_GATE_AND_WEBUI_COMPLETION",
+  "phase_status": "PHASE_4_COMPLETE_WP1_SEC003_RESIDUAL_DONE",
   "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "e2abbc6",
+  "last_commit": "f94b42f",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -323,10 +323,10 @@
     }
   ],
   "product_test_suite": {
-    "total": 513,
-    "passing": 513,
-    "failing": 0,
-    "note": "507 -> 513: six added by the SEC-003 regression suite"
+    "unit": "524/524",
+    "eslint": "148 files, 0 errors, 0 warnings, 0 no-undef",
+    "browser_acceptance": "178/178",
+    "adversarial_invariants": "11/11"
   },
   "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -354,7 +354,14 @@
     "final_verification": "317/317 tests, 48/48 installer hardening, MANIFEST 5630/5630, container healthy, working tree clean"
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
-  "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates.",
+  "manifest": {
+    "entries": 5692,
+    "verification": "5692/5692 OK, 0 failed, 0 duplicates",
+    "refreshed": 7,
+    "appended": 2,
+    "drift_found_on_entry": "sha256sum -c failed on tools/run-browser-e2e.sh, stale since s261 (7597a54) while the handoff reported 5690/5690; test/coden-path-authorization.test.mjs from s262 was never appended. Both repaired.",
+    "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
+  },
   "deferred_items": [
     "tools/verify-package.py imports sys without using it (ruff F401) - phase 3 deferred it to phase 5 and phase 4 deliberately did not override that deferral (D-0039)",
     "no SBOM for the image: a declared-PARTIAL component inventory was produced instead (tools/generate-inventory.mjs); no syft or cyclonedx on this host",
@@ -730,7 +737,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "COSTRUIRE. Istruzione Owner 2026-07-26: si lavora per finire il progetto, da questo repository. Riprendere da docs/WORK_PLAN_V4_ALIGNMENT.md nell ordine WP-1 (blocker SEC-003 residuo + OPS-002) -> WP-2 (Workflows, coda approvazioni) -> WP-3 (WebUI v2, gate Owner) -> WP-4 (Fase 5). PRIMA DI TUTTO leggere D-0069: gli strumenti di misura sono 80 righe e non sono una suite. URGENTE: il fix SEC-003 e nel sorgente e NON e installato, il container vivo serve ancora l endpoint falsificabile; il deploy richiede autorizzazione esplicita dell Owner.",
+  "next_action": "WP-1 remainder: OPS-002 cross-platform installation. Then WP-2 (Workflows and the approval queue). WP-3 WebUI v2 and the CodeN Evolution design conversation remain open and unchanged.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -784,12 +791,9 @@
     "master_gate_note": "IMPLEMENTATION_GATES.yaml records current_gate GATE_0_OWNER_REVIEW: by the master own gate model the Owner has never approved the master specification, and OWNER_REVIEW_CHECKLIST.md is 14 unticked boxes"
   },
   "security_fix_pending_deployment": {
-    "id": "SEC-003",
-    "commit": "e2abbc6",
-    "state": "IN SOURCE, NOT DEPLOYED",
+    "status": "TWO_FIXES_IN_SOURCE_NOT_INSTALLED",
     "live_image": "noesar-evolution:phase4-webui",
-    "consequence": "the running installation on 192.168.178.100:8100 still serves the forgeable /api/v1/coden/authorize endpoint",
-    "required": "an authorised installation phase - do not deploy on initiative"
+    "detail": "The live installation predates both e2abbc6 (forgeable authorize) and f512041 (unvalidated consent scope), so it still serves both defects. Deployment is an installation phase and requires the Owner explicit authorisation."
   },
   "atom_blueprint": {
     "repository": "/mnt/cachec/NOESAR-ATOM-PRIVATE",
@@ -800,5 +804,38 @@
     "implemented": false,
     "blocking_dependency": "ReasoningProvider is zero files in the core; ATOM has nothing to attach to. That contract belongs to the public core and is the first line of code.",
     "boundary": "CLAUDE10.md section 14 binds: FOSS core fully usable without ATOM; nothing from that repository ever enters a public one"
+  },
+  "wp1_sec003_residual": {
+    "status": "DONE_BUT_SEC003_NOT_PASS",
+    "what": "Adversarial suite, one attempt per declared invariant, from a genuinely elevated Owner Bypass session.",
+    "attacks_landed_against_unfixed_code": 3,
+    "attacks_detail": [
+      "recursive delete + PERSISTENT_FOLDER -> 201 stored approval (standing licence to destroy)",
+      "consentScope DENY -> 201 stored approval (the plan own refusal option minted an approval)",
+      "consentScope UNLIMITED_FOREVER -> 201 stored approval (invented scope stored verbatim)"
+    ],
+    "invariants_enforced_and_defended": [
+      "credential_theft_prevention",
+      "signed_update_verification",
+      "audit_integrity",
+      "destructive_action_confirmation"
+    ],
+    "invariants_not_enforced_at_this_layer": [
+      "malware_prevention",
+      "illegal_cyberattack_prevention",
+      "physical_harm_prevention"
+    ],
+    "denylist_deliberately_not_written": "A textual denylist over commands was rejected on the evidence of the round-3 experiment; it would convert an honest gap into a false assurance.",
+    "sec003_verdict": "OPEN. Must not be marked PASS. Three of seven are enforced at a layer this build does not run.",
+    "decisions": [
+      "D-0071",
+      "D-0072",
+      "D-0073",
+      "D-0074"
+    ],
+    "commits": [
+      "f512041",
+      "f94b42f"
+    ]
   }
 }

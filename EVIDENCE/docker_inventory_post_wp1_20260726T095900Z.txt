@@ -1,0 +1,73 @@
+=== docker ps -a ===
+noesar-evolution	Up 16 hours (healthy)	noesar-evolution:phase4-webui
+noesar-evolution.rollback-lan-webui-20260725T175916Z	Exited (0) 16 hours ago	noesar-evolution:phase4-complete-lan
+coden-ultra-full-product	Exited (0) 11 hours ago	coden-ultra-full-product:untagged-filename-fix-s254
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	Exited (0) 46 hours ago	coden-ultra-full-product:skill-context-secret-gate-s250
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	Exited (0) 2 days ago	coden-ultra-full-product:triple-cue-secret-gate-s250
+noesar-coden-ultra-nllb	Exited (0) 33 hours ago	noesar-coden-ultra-nllb:v1
+ai-lab	Exited (0) 33 hours ago	ai-lab:auth-hardening-s247
+noesar-debuglab	Exited (0) 4 minutes ago	noesar-debuglab:project-scanner-v7
+binhex-prowlarr	Up 11 hours (healthy)	binhex/arch-prowlarr
+sonarr	Up 11 hours	lscr.io/linuxserver/sonarr:latest
+radarr	Up 11 hours	lscr.io/linuxserver/radarr:latest
+qbittorrent	Up 11 hours	ghcr.io/hotio/qbittorrent:latest
+Plex-Media-Server	Up 11 hours (healthy)	plexinc/pms-docker
+ai-lab-prev-s214b	Exited (0) 8 days ago	ai-lab:phaseE-s214
+stats-hub	Exited (0) 33 hours ago	stats-hub:v3
+schema-service	Exited (0) 10 days ago	nous-trainer:v3-s134
+coden-ultra-brainlab	Exited (0) 33 hours ago	0b8d6776ec19
+nous-simulator-engine	Exited (0) 12 days ago	nous-simulator-engine:v5
+noesar-webui	Exited (0) 33 hours ago	noesar-webui:coden-ultra-bench-s190
+coden-ultra-brainlab-phase4-bak	Exited (0) 11 days ago	coden-ultra-brainlab:phase4
+coden-ultra-trainer	Exited (0) 12 days ago	coden-ultra-trainer:phase2
+coden-nous-train	Exited (0) 2 weeks ago	nous-trainer:v3-s134
+nous-phase0-training	Exited (0) 11 days ago	nous-trainer:v3-s134
+nova-ai	Exited (137) 4 weeks ago	nova-ai:V.0.0.6
+coden-benchmark-lab	Exited (0) 33 hours ago	coden-benchmark-lab:2.4.2
+fridayn-model-factory	Exited (143) 5 weeks ago	fridayn-model-factory:v1
+noesar-fridayn-tei-embedder-v2	Exited (0) 33 hours ago	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9
+Nginx-Proxy-Manager-Official	Up 11 hours	jc21/nginx-proxy-manager
+noesar-fridayn-tei-reranker-v1	Exited (0) 3 weeks ago	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9
+binhex-flaresolverr	Up 11 hours (healthy)	ghcr.io/binhex/arch-flaresolverr
+EmbyServer	Up 11 hours	emby/embyserver:latest
+noesar-core	Exited (2) 33 hours ago	noesar-core:data-factory-curated-api-20260525T153414Z
+noesar-dataset-factory	Exited (137) 3 weeks ago	noesar-dataset-factory:worker-job-ui-20260525T133055Z
+noesar-gateway	Exited (2) 3 weeks ago	noesar-gateway:stage2a
+noesar-qdrant	Exited (143) 2 weeks ago	qdrant/qdrant:v1.12.6
+noesar-db	Exited (0) 33 hours ago	postgres:16-alpine
+Krusader	Exited (143) 2 weeks ago	ich777/krusader
+Unraid-Cloudflared-Tunnel	Up 11 hours	figro/unraid-cloudflared-tunnel
+Cloudflare-DDNS	Up 11 hours	oznu/cloudflare-ddns
+
+=== images (noesar-evolution) ===
+noesar-evolution:phase4-webui
+noesar-evolution:phase4-complete-lan
+noesar-evolution:phase4-complete
+noesar-evolution:phase4
+noesar-evolution:phase3
+
+=== networks ===
+br0
+bridge
+coden-bridge
+coden-local
+deploy_default
+host
+noesar-e2e-net
+noesar-evolution-net
+noesar-local
+none
+
+=== volumes ===
+2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+ai_lab_data
+brainlab_data
+c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+stats_hub_data
