@@ -1175,3 +1175,62 @@ to the evidence and the audit ledger rather than quietly repaired. Attempt recor
 now opened when an attempt starts instead of only when it ends, so an interrupted attempt
 leaves a trace at all. Proved by removing the reconciliation and watching five of the seven
 tests fail on exactly that assertion.
+
+---
+
+## WCAG 2.2 AA — the first measurement (2026-07-26)
+
+### D-0084 — accessibility was measured before it was fixed, with only sound checks
+
+`01_PRODUCT/15` targets WCAG 2.2 AA and the work plan recorded the honest state: *never
+tested, no evidence either way*. `tools/accessibility-audit.mjs` is that evidence. It runs
+in a real Chromium against the disposable probe, and every check computes from what the
+browser actually resolved.
+
+Two soundness decisions are worth recording, because the alternative in each case was a
+checker whose output would have to be ignored — which this project has twice rejected:
+
+* **Contrast against a gradient.** No single ratio exists. Skipping those elements would
+  have silently exempted almost the whole interface, since every panel is a gradient. The
+  audit instead parses the gradient's colour stops and takes the **worst** ratio across
+  them. Conservative in the correct direction: it can report a failure a given pixel does
+  not have, never the reverse. Elements over a raster `background-image` are reported
+  `unresolved` and **not** counted as passing.
+* **Screen readers are not tested and the audit says so.** No screen reader runs here. What
+  is inspected is the accessibility tree — names, roles, landmarks — which is a necessary
+  condition, not a sufficient one. The run prints an eight-line NOT_TESTED block every time,
+  so a clean result can never be read as conformance.
+
+The measurement found **seven failures across five criteria**, all repaired: no skip link
+(2.4.1), the global search input's `outline:0` with no replacement so 23 controls showed
+nothing on focus (2.4.7), `.text-button` at 19px and two checkboxes at 13x13 (2.5.8, new in
+2.2), white text on the `.primary` gradient at 4.19:1 (1.4.3), `reauthPassword` without an
+autocomplete token (1.3.5), six `!important` colour declarations with no forced-colors
+override, and RTL horizontal overflow.
+
+### D-0085 — the !important colour check asks the real question
+
+The first version failed on the existence of any `!important` colour declaration. That was
+wrong: six of them legitimately carry good / warning / critical meaning. The defect is not
+that they exist, it is that in forced-colors mode they would survive and defeat the palette
+the user chose — the one place where "no critical action represented only by colour"
+(`01_PRODUCT/11`) is enforced by the platform rather than by us.
+
+The check now asks whether each `!important` colour is **neutralised inside a
+`forced-colors: active` block**, and the stylesheet gained that block. Emulating the media
+feature itself is refused by this Chromium build; that is reported as NOT TESTED rather than
+thrown away or claimed.
+
+### D-0086 — three of the findings were in my own work, including one the audit caught immediately
+
+Two harness defects were triaged out before any repair, because a false positive "fixed" is a
+real regression introduced for nothing: form fields wrapped in a `<label>` were counted as
+having no accessible name (they do), and the audit's own sign-in used a same-document hash
+navigation, so the application never re-read its session and every gated route resolved to
+access-denied — five checks were failing on my harness, not on the product.
+
+And the skip link **I added** was hidden with `left:-9999px`. In RTL that extends the
+scrollable area to 11439px, so the page then required horizontal scrolling — breaking the
+criterion the skip link exists to help. The audit reported it on the next run. It is now
+hidden by clipping, and the RTL check reports the outermost offending elements by selector,
+because a failure that says only `overflow=true` cannot be acted on without guessing.

@@ -1358,3 +1358,98 @@ described code that no longer existed. Inventory 39 containers throughout, exact
 states, compliance evidence packs, the Industry Module Framework, ML-BOM and WCAG 2.2 AA.
 **None of those were touched.** Workflows and the approval queue were taken first because one
 of them was a claim the API already made.
+
+---
+
+## WCAG 2.2 AA — measured, then repaired (2026-07-26)
+
+**Source only. Nothing deployed, no product container created, started or stopped.**
+
+`01_PRODUCT/15` targets WCAG 2.2 AA. The work plan's entry was *"never tested, no evidence
+either way"* — the only row of WP-2 in that state rather than simply absent, which is why it
+was taken next: cheap to measure now, expensive after WP-3 redraws the interface.
+
+### The measurement, against the untouched interface
+
+`npm run test:accessibility` — a new driver, reusing the existing disposable-probe apparatus
+rather than copying 160 lines of container plumbing (`tools/run-browser-e2e.sh` now takes
+`NOESAR_E2E_DRIVER`).
+
+```text
+FAIL  skip link before the navigation                    2.4.1  — absent
+FAIL  visible focus indicator                            2.4.7  — 23 of 783 controls
+FAIL  target size 24x24                                  2.5.8  — 18 in views + 1 in chrome
+FAIL  contrast minimum                                   1.4.3  — 21 distinct, over 832 measured
+FAIL  identity fields declare input purpose              1.3.5  — reauthPassword
+FAIL  !important colours neutralised in forced-colors     —     — 6 declarations
+FAIL  RTL-ready layout                                   1.3.2  — horizontal overflow
+```
+
+### Repaired, each against the criterion that failed
+
+- **2.4.1** a skip link, hidden by clipping (see below), with `#mainContent` as its target.
+- **2.4.7** the cause was `.command input{outline:0}` with no replacement — the global search
+  box, on all 23 routes. A single `:focus-visible` indicator is now defined for every
+  focusable element rather than per control, so a control added later cannot arrive without
+  one. 0 of 783 now fail.
+- **2.5.8** `.text-button` measured 19px high and `#toolExternal` / `#toolMutative` 13x13.
+  Minimum 24px applied to text buttons, checkboxes, radios and the toast close button.
+- **1.4.3** white on `linear-gradient(135deg,#3e71ff,#7859ff)` measured **4.19:1** against
+  its blue stop. Replaced with `#2f5ae0 -> #6442d6`, measuring **5.74** and **6.38** —
+  computed, not eyeballed. Same for the brand mark badge. `.nav-group` measured 2.90 and
+  needed to clear the body's radial-gradient stop `#142443`, not just the sidebar colour;
+  `#8d9ab0` gives 5.42 there.
+- **1.3.5** `autocomplete="current-password"` on `reauthPassword`, the one identity field of
+  eight without a token.
+- **forced colours** a `@media (forced-colors: active)` block that re-declares the six
+  meaning-carrying colours to system colours, at equal specificity and importance, declared
+  later so it wins.
+- **1.3.2 RTL** six `margin-left:auto` rules replaced with `margin-inline-start`, plus
+  direction-aware overrides for the nav indicator, citations border and chat message
+  alignment.
+- **2.3.3** a `prefers-reduced-motion: reduce` block was added even though the check already
+  passed, so a future animation inherits the answer rather than reintroducing the question.
+
+### Result
+
+```text
+A11Y_TOTAL=26   A11Y_PASS=26   A11Y_FAIL=0
+```
+
+Regression after the visual changes: unit **600/600**, eslint **157 files, 0 errors, 0
+no-undef**, browser acceptance **213/213**, MANIFEST **5701/5701, 0 duplicates**.
+
+### Three of the findings were mine, and one was caught by my own audit
+
+Triaged out **before** repairing, because a false positive "fixed" is a real regression for
+nothing:
+
+- form fields wrapped in a `<label>` were reported as having no accessible name. They have
+  one; the check now defers to the label logic for form fields.
+- the audit's sign-in navigated by hash only, which is a same-document navigation, so the
+  application never re-read the session it had just been given and every gated route resolved
+  to access-denied. Five checks were failing on the harness, not the product.
+
+Found by the audit, in my own new code:
+
+- the skip link I added was hidden with `left:-9999px`. **In RTL that extends the scrollable
+  area to 11439px**, so the page then required horizontal scrolling — breaking the very
+  criterion the skip link was added to help. Now hidden by clipping. The RTL check was also
+  improved to name the outermost offending elements, because `overflow=true` alone cannot be
+  acted on without guessing.
+
+And ESLint's `no-undef` objected to a `KeyboardEvent` global, which exposed something worse
+than a lint error: that check dispatched a **synthetic** keyboard event, which no browser
+translates into an activation, so it would have passed on a button the keyboard cannot
+operate. It now presses a real key through the browser's input pipeline. This is the second
+time `no-undef` has paid for itself here, which is what `B-006` exists for.
+
+### Declared limits
+
+The audit prints these every run so a clean result is never mistaken for conformance: no real
+screen reader (only the accessibility tree), no human judgement of link purpose, heading
+meaning or reading order, no cognitive-load or plain-language review, not 1.4.12 text spacing
+or 1.4.13 content on hover, not 2.5.7 dragging (no drag interaction exists to test), not
+3.2.6 / 3.3.7 across multi-step flows, no time-based media (this build ships none), and
+`forced-colors` emulation is refused by this Chromium so only the static stylesheet checks
+hold. **WCAG 2.2 AA is therefore measured and materially improved, not certified.**

@@ -91,7 +91,7 @@ never been executed or tested. `Install-Noesar.ps1` has never run on Windows.
 | **Compliance evidence packs** per jurisdiction | `06_COMPLIANCE/60-66` | Absent |
 | **Industry Module Framework** | `07_INDUSTRY_MODULES/70-77` | Absent (Gate 6) |
 | **ML-BOM** alongside SBOM | `00_CONTROL/06` Definition of Done | SBOM exists (CycloneDX 1.7 + SPDX 2.3). No ML-BOM |
-| **WCAG 2.2 AA** — keyboard, screen reader, visible focus, scaling, reduced motion, high contrast, RTL | `01_PRODUCT/15` | Never tested. No evidence either way |
+| **WCAG 2.2 AA** — keyboard, screen reader, visible focus, scaling, reduced motion, high contrast, RTL | `01_PRODUCT/15` | **MEASURED and repaired in source, 2026-07-26.** `npm run test:accessibility` reports 26/26 after seven failures across five criteria were found and fixed: no skip link (2.4.1), 23 controls with no focus indicator (2.4.7), 19 sub-24px targets (2.5.8), 4.19:1 contrast on every primary button (1.4.3), a missing input-purpose token (1.3.5), six unneutralised `!important` colours, and RTL horizontal overflow. **Measured, not certified** — no real screen reader runs, and the audit prints its own NOT_TESTED block every run (`D-0084`). **Not deployed.** |
 
 ---
 
