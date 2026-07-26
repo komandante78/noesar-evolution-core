@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_WP2_WORKFLOWS_AND_APPROVAL_QUEUE_BUILT_NOT_DEPLOYED",
+  "phase_status": "PHASE_4_COMPLETE_WP2_WORKFLOWS_APPROVALS_AND_WCAG_MEASURED_NOT_DEPLOYED",
   "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "210ac85",
+  "last_commit": "91a0ab0",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -936,5 +936,68 @@
     "detector_self_test": "a canary with eval(), command injection and an AWS key was scanned before trusting any clean result; semgrep reported the eval as CRITICAL, but detect-secrets reported 0 on the AWS key — evidence strengthening B-002",
     "deployed": false,
     "next": "WP-2 continues: passkeys/WebAuthn, OIDC, SAML, SCIM, the six-role model, seven privacy states, compliance evidence packs, Industry Module Framework, ML-BOM, WCAG 2.2 AA — none touched"
+  },
+  "wcag_2_2_aa": {
+    "status": "MEASURED_AND_REPAIRED_IN_SOURCE_NOT_CERTIFIED_NOT_DEPLOYED",
+    "specification": "MASTER_REFERENCE/01_PRODUCT/15_ACCESSIBILITY_LOCALIZATION_TIMEZONE.md",
+    "previous_state": "never tested, no evidence either way",
+    "tool": "tools/accessibility-audit.mjs via npm run test:accessibility",
+    "result": "26/26",
+    "failures_found_and_fixed": [
+      {
+        "criterion": "2.4.1 Bypass Blocks",
+        "finding": "no skip link before 23 nav entries"
+      },
+      {
+        "criterion": "2.4.7 Focus Visible",
+        "finding": "23 of 783 controls changed nothing on focus; .command input had outline:0 with no replacement"
+      },
+      {
+        "criterion": "2.5.8 Target Size (new in 2.2)",
+        "finding": "18 text buttons at 19px high and 2 checkboxes at 13x13"
+      },
+      {
+        "criterion": "1.4.3 Contrast",
+        "finding": "white on the primary gradient measured 4.19:1; nav-group 2.90:1"
+      },
+      {
+        "criterion": "1.3.5 Identify Input Purpose",
+        "finding": "reauthPassword had no autocomplete token"
+      },
+      {
+        "criterion": "forced colours",
+        "finding": "6 !important colour declarations with no forced-colors override"
+      },
+      {
+        "criterion": "1.3.2 RTL",
+        "finding": "horizontal overflow from six margin-left:auto rules"
+      }
+    ],
+    "soundness": {
+      "contrast_over_gradients": "worst ratio across every colour stop; raster backgrounds reported unresolved and never counted as passing",
+      "screen_readers": "NOT tested — accessibility tree only, a necessary not sufficient condition",
+      "forced_colors_emulation": "refused by this Chromium; reported NOT TESTED, static stylesheet checks still hold"
+    },
+    "my_own_defects": [
+      "two harness false positives triaged out before repairing",
+      "the skip link I added used left:-9999px and caused the RTL overflow the audit then caught",
+      "a synthetic KeyboardEvent check that could never have detected a keyboard-inoperable button, exposed by eslint no-undef"
+    ],
+    "not_covered": [
+      "a real screen reader",
+      "human judgement of link purpose and reading order",
+      "cognitive-load and plain-language",
+      "1.4.12 text spacing",
+      "1.4.13 content on hover",
+      "2.5.7 dragging (none exists)",
+      "3.2.6 / 3.3.7 across flows",
+      "time-based media (none shipped)"
+    ],
+    "decisions": [
+      "D-0084",
+      "D-0085",
+      "D-0086"
+    ],
+    "deployed": false
   }
 }

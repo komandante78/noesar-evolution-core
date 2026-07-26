@@ -10,12 +10,12 @@ file and `PROJECT_STATE.json` alone.**
 | Field | Value |
 |---|---|
 | Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
-| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2 started: Workflows and the approval queue built** |
-| Phase status | `PHASE_4_COMPLETE_WP2_WORKFLOWS_AND_APPROVAL_QUEUE_BUILT_NOT_DEPLOYED` |
-| **Next work** | **WP-2 continues** — the nine remaining items in its table, none of them touched |
+| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2: Workflows, the approval queue and WCAG 2.2 AA done** |
+| Phase status | `PHASE_4_COMPLETE_WP2_WORKFLOWS_APPROVALS_AND_WCAG_MEASURED_NOT_DEPLOYED` |
+| **Next work** | **WP-2 continues** — eight remaining items; the role model needs the Owner in the loop |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `210ac85` |
+| Last commit | `91a0ab0` |
 | Updated (UTC) | 2026-07-26 |
 
 > ## ➜ What this session did
@@ -89,6 +89,57 @@ file and `PROJECT_STATE.json` alone.**
 > backup, which the update path already takes. **A read alone never rewrites the file**, so
 > starting the new build and stopping it again without creating a workflow is reversible.
 
+> ## ➜ And then WCAG 2.2 AA — measured for the first time, then repaired
+>
+> `01_PRODUCT/15` targets WCAG 2.2 AA and the work plan said *never tested, no evidence
+> either way*. It was the only WP-2 row in that state rather than simply absent, which is why
+> it came next: cheap to measure now, expensive after WP-3 redraws the interface.
+>
+> `npm run test:accessibility` reuses the existing disposable-probe apparatus through a new
+> `NOESAR_E2E_DRIVER` hook instead of copying 160 lines of container plumbing. Against the
+> untouched interface it found **seven failures across five criteria**:
+>
+> ```text
+> 2.4.1  no skip link before 23 navigation entries
+> 2.4.7  23 of 783 controls changed nothing on focus — .command input{outline:0}
+> 2.5.8  18 text buttons at 19px high, two checkboxes at 13x13   (new in WCAG 2.2)
+> 1.4.3  white on the primary gradient measured 4.19:1; .nav-group 2.90:1
+> 1.3.5  reauthPassword, the one identity field of eight with no autocomplete token
+> RTL    horizontal overflow from six margin-left:auto rules
+> ---    six !important colours with no forced-colors override
+> ```
+>
+> All repaired; the audit now reports **26/26**. Contrast was fixed by computing replacement
+> colours, not by eye: the new gradient stops measure 5.74 and 6.38, and `.nav-group` had to
+> clear the body's radial-gradient stop `#142443` rather than just the sidebar colour.
+>
+> **26/26 is not conformance, and the tool says so itself** — it prints an eight-line
+> NOT_TESTED block every run. No real screen reader participates; only the accessibility tree
+> is inspected. `forced-colors` emulation is refused by this Chromium, so only the static
+> stylesheet checks hold there. `D-0084`.
+>
+> **Two soundness decisions.** Contrast over a gradient has no single ratio, so the audit takes
+> the **worst** across every colour stop rather than exempting those elements — which would
+> have silently excused almost the whole interface, since every panel is a gradient. And the
+> `!important` colour check was rewritten: failing on their mere existence was wrong, since
+> six of them carry good/warning/critical meaning. The defect is an `!important` colour with
+> **no forced-colors override**, and that is what it now tests. `D-0085`.
+>
+> **Three of the findings were mine** (`D-0086`). Two harness false positives were triaged out
+> *before* repairing anything — labelled form fields counted as nameless, and a hash-only
+> navigation that left the audit signed out, so five checks were failing on the harness rather
+> than the product. And the skip link **this work added** was first hidden with
+> `left:-9999px`, which in RTL extends the scrollable area to 11439px and breaks the very
+> criterion a skip link serves. My own audit caught it on the next run; it is now hidden by
+> clipping, and the RTL check names the outermost offending elements, because `overflow=true`
+> alone cannot be acted on without guessing.
+>
+> ESLint's `no-undef` objected to a `KeyboardEvent` global and exposed something worse than
+> a lint error: that check dispatched a **synthetic** keyboard event, which no browser turns
+> into an activation — so it would have passed on a button the keyboard cannot operate. It now
+> presses a real key. Second time `no-undef` has paid for itself here, which is what
+> `B-006` exists for.
+
 ---
 
 ## Verified in this session
@@ -100,11 +151,12 @@ unit tests             600/600   524 before; +76 across five new suites; 0 failu
   state migration        9/9     5 failed with the version bumped and no migration
   approval queue        10/10
   interrupted step       7/7     5 failed with the reconciliation removed
-eslint                 156 files, 0 errors, 0 warnings, 0 no-undef   (149 before)
+eslint                 157 files, 0 errors, 0 warnings, 0 no-undef   (149 before)
 browser acceptance    213/213   178 before; +35 checks, real browser, real boxes
 installer hardening   100/100   unchanged
 cross-platform          0 failures, unchanged
-MANIFEST             5700/5700  0 failed, 0 duplicates
+MANIFEST             5701/5701  0 failed, 0 duplicates
+accessibility           26/26    7 failures across 5 criteria found and repaired
 static analysis        src/, apps/, tools/ — no new finding
 ```
 
@@ -180,7 +232,7 @@ PostgreSQL is empty. Needs a phase of its own.
 
 ## Exact next action
 
-**WP-2 continues.** Two of its eleven rows are now built; **nine are untouched**, and the
+**WP-2 continues.** Three of its eleven rows are now done; **eight are untouched**, and the
 table in `docs/WORK_PLAN_V4_ALIGNMENT.md` is the list:
 
 ```text
@@ -190,16 +242,10 @@ Seven privacy states                       01_PRODUCT/12   five implemented
 Compliance evidence packs                  06_COMPLIANCE   absent
 Industry Module Framework                  07_INDUSTRY     absent (Gate 6)
 ML-BOM alongside SBOM                      00_CONTROL/06   SBOM exists, no ML-BOM
-WCAG 2.2 AA                                01_PRODUCT/15   never tested, no evidence either way
+WCAG 2.2 AA                                01_PRODUCT/15   DONE — 26/26 repaired, NOT certified
 ```
 
-**The recommended next one is WCAG 2.2 AA**, for the same reason Workflows was taken first:
-it is the only row where the honest state is *"never tested, no evidence either way"* rather
-than *"absent"*. Everything else on that list is a feature to build; this one is a claim that
-has never been measured, and measuring it is cheap now and expensive after WP-3 redraws the
-interface. The browser harness already drives a real Chromium, so the keyboard-only pass,
-visible focus, contrast and reduced-motion checks belong in `tools/browser-e2e.mjs` beside
-the checks added this session.
+**WCAG 2.2 AA is done** (measured, repaired, 26/26 — not certified). Of what remains, the honest ordering is: **the seven privacy states** and **ML-BOM** are the smallest and self-contained; **compliance evidence packs** and the **Industry Module Framework** are whole subsystems and Gate 6 work; **passkeys/WebAuthn, OIDC, SAML and SCIM** are four separate integrations that each need an Owner decision about what this product federates with.
 
 **Take the role model only with the Owner in the loop.** `01_PRODUCT/14` names six roles that
 are neither a superset nor a subset of the six that ship, so satisfying it means changing who
@@ -274,6 +320,7 @@ node --test services/reference-control-plane/test/workflow-engine.test.mjs
 node --test services/reference-control-plane/test/workflow-interrupted-step.test.mjs
 node --test services/reference-control-plane/test/ai-state-migration.test.mjs
 node --test services/reference-control-plane/test/approval-queue.test.mjs
+npm run test:accessibility                  # 26 WCAG 2.2 AA checks, real Chromium
 npm run test:installers                     # 100 hardening checks
 npm run test:installers-cross-platform      # cross-platform, 0 failures
 sha256sum -c MANIFEST.sha256                # 5700 entries
@@ -284,7 +331,9 @@ bash tools/run-browser-e2e.sh               # 213 checks, disposable probe, self
 
 ```text
 container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
-this phase  BACKUPS/wp2_workflows_20260726T112259Z/   server.mjs, atomic-store.mjs,
+this phase  BACKUPS/wcag_20260726T120938Z/            index.html, styles.css, app.js, MANIFEST
+            BACKUPS/MANIFEST.sha256.pre_wcag_*
+            BACKUPS/wp2_workflows_20260726T112259Z/   server.mjs, atomic-store.mjs,
                                                       index.html, app.js, styles.css,
                                                       MANIFEST.sha256, PROJECT_STATE.json
             BACKUPS/MANIFEST.sha256.pre_wp2_workflows_20260726T114748Z

@@ -1,0 +1,71 @@
+# captured 2026-07-26T12:24:00Z — post WCAG 2.2 AA
+
+## docker ps -a
+CONTAINER ID   IMAGE                                                     COMMAND                  CREATED        STATUS                      PORTS                            NAMES
+e75958165d0b   noesar-evolution:phase4-webui                             "node services/refer…"   18 hours ago   Up 18 hours (healthy)       192.168.178.100:8100->8088/tcp   noesar-evolution
+59728092558d   noesar-evolution:phase4-complete-lan                      "node services/refer…"   21 hours ago   Exited (0) 18 hours ago                                      noesar-evolution.rollback-lan-webui-20260725T175916Z
+264f562d1a64   coden-ultra-full-product:untagged-filename-fix-s254       "/app/entrypoint.sh"     2 days ago     Exited (0) 13 hours ago                                      coden-ultra-full-product
+a21393fae7cb   coden-ultra-full-product:skill-context-secret-gate-s250   "/app/entrypoint.sh"     2 days ago     Exited (0) 2 days ago                                        coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z
+aa1221880607   coden-ultra-full-product:triple-cue-secret-gate-s250      "/app/entrypoint.sh"     2 days ago     Exited (0) 2 days ago                                        coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z
+4b022fd829bd   noesar-coden-ultra-nllb:v1                                "uvicorn app:app --h…"   2 days ago     Exited (0) 36 hours ago                                      noesar-coden-ultra-nllb
+2bd6b8fa9027   ai-lab:auth-hardening-s247                                "uvicorn main:app --…"   3 days ago     Exited (0) 36 hours ago                                      ai-lab
+d3b8d003ce25   noesar-debuglab:project-scanner-v7                        "uvicorn app.main:ap…"   3 days ago     Exited (0) 39 minutes ago                                    noesar-debuglab
+6c9e19acebc3   binhex/arch-prowlarr                                      "/usr/bin/dumb-init …"   3 days ago     Up 14 hours (healthy)                                        binhex-prowlarr
+1ffd8185eee3   lscr.io/linuxserver/sonarr:latest                         "/init"                  6 days ago     Up 14 hours                                                  sonarr
+e359e9c60f21   lscr.io/linuxserver/radarr:latest                         "/init"                  6 days ago     Up 14 hours                                                  radarr
+3214747a0b69   ghcr.io/hotio/qbittorrent:latest                          "/init"                  6 days ago     Up 14 hours                                                  qbittorrent
+8da6b7c8690b   plexinc/pms-docker                                        "/init"                  6 days ago     Up 14 hours (healthy)                                        Plex-Media-Server
+1844fc9b3cfc   ai-lab:phaseE-s214                                        "uvicorn main:app --…"   8 days ago     Exited (0) 8 days ago                                        ai-lab-prev-s214b
+ed3ff4e6e74f   stats-hub:v3                                              "uvicorn main:app --…"   9 days ago     Exited (0) 36 hours ago                                      stats-hub
+3abc38757fcb   nous-trainer:v3-s134                                      "bash -c 'pip instal…"   11 days ago    Exited (0) 11 days ago                                       schema-service
+2625e035f293   0b8d6776ec19                                              "python -m uvicorn a…"   11 days ago    Exited (0) 36 hours ago                                      coden-ultra-brainlab
+aa120b8eb4eb   nous-simulator-engine:v5                                  "python3 -m uvicorn …"   12 days ago    Exited (0) 12 days ago                                       nous-simulator-engine
+b3c375756cf2   noesar-webui:coden-ultra-bench-s190                       "uvicorn app.main:ap…"   2 weeks ago    Exited (0) 36 hours ago                                      noesar-webui
+2c8e597187a8   coden-ultra-brainlab:phase4                               "python -m uvicorn a…"   2 weeks ago    Exited (0) 11 days ago                                       coden-ultra-brainlab-phase4-bak
+f572c4629ea0   coden-ultra-trainer:phase2                                "uvicorn app.main:ap…"   2 weeks ago    Exited (0) 12 days ago                                       coden-ultra-trainer
+2d12eaca1dbc   nous-trainer:v3-s134                                      "python3 train_run.p…"   2 weeks ago    Exited (0) 2 weeks ago                                       coden-nous-train
+03da0a8dc4ce   nous-trainer:v3-s134                                      "python3 -m nous_v3.…"   3 weeks ago    Exited (0) 11 days ago                                       nous-phase0-training
+90304f2311fd   nova-ai:V.0.0.6                                           "/app/install/docker…"   4 weeks ago    Exited (137) 4 weeks ago                                     nova-ai
+58093b52d931   coden-benchmark-lab:2.4.2                                 "uvicorn app.main:ap…"   5 weeks ago    Exited (0) 36 hours ago                                      coden-benchmark-lab
+944ceffa426b   fridayn-model-factory:v1                                  "/usr/bin/tini -- /a…"   5 weeks ago    Exited (143) 5 weeks ago                                     fridayn-model-factory
+593f59711ae8   ghcr.io/huggingface/text-embeddings-inference:cuda-1.9    "./entrypoint.sh --m…"   7 weeks ago    Exited (0) 36 hours ago                                      noesar-fridayn-tei-embedder-v2
+c405eff0f976   jc21/nginx-proxy-manager                                  "/init"                  7 weeks ago    Up 14 hours                                                  Nginx-Proxy-Manager-Official
+0bd09cfbf6ad   ghcr.io/huggingface/text-embeddings-inference:cuda-1.9    "./entrypoint.sh --m…"   8 weeks ago    Exited (0) 3 weeks ago                                       noesar-fridayn-tei-reranker-v1
+32bb8d3f64dc   ghcr.io/binhex/arch-flaresolverr                          "/usr/bin/dumb-init …"   8 weeks ago    Up 14 hours (healthy)                                        binhex-flaresolverr
+6b6205e79d8e   emby/embyserver:latest                                    "/init"                  8 weeks ago    Up 14 hours                                                  EmbyServer
+4124ebf112c2   noesar-core:data-factory-curated-api-20260525T153414Z     "/usr/local/bin/noes…"   2 months ago   Exited (2) 36 hours ago                                      noesar-core
+17375b0ac642   noesar-dataset-factory:worker-job-ui-20260525T133055Z     "python -m src.worker"   2 months ago   Exited (137) 3 weeks ago                                     noesar-dataset-factory
+79761a33e8eb   noesar-gateway:stage2a                                    "/usr/local/bin/noes…"   2 months ago   Exited (2) 3 weeks ago                                       noesar-gateway
+d0ac1ed56fd8   qdrant/qdrant:v1.12.6                                     "./entrypoint.sh"        2 months ago   Exited (143) 2 weeks ago                                     noesar-qdrant
+b40388b0c52e   postgres:16-alpine                                        "docker-entrypoint.s…"   2 months ago   Exited (0) 36 hours ago                                      noesar-db
+3c0e420a9a7b   ich777/krusader                                           "/opt/scripts/start.…"   2 months ago   Exited (143) 2 weeks ago                                     Krusader
+876b5eb75595   figro/unraid-cloudflared-tunnel                           "./cloudflared.sh"       2 months ago   Up 14 hours                                                  Unraid-Cloudflared-Tunnel
+3d72932d01e9   oznu/cloudflare-ddns                                      "/init"                  2 months ago   Up 13 hours                                                  Cloudflare-DDNS
+
+## docker network ls
+NETWORK ID     NAME                   DRIVER    SCOPE
+c06d787e975c   br0                    macvlan   local
+b77b4fe2593a   bridge                 bridge    local
+f6241d9ccde6   coden-bridge           bridge    local
+7175c4af2fec   coden-local            bridge    local
+40f4ceaab3ec   deploy_default         bridge    local
+112b7d278067   host                   host      local
+a3383158800a   noesar-e2e-net         bridge    local
+f55f74343e47   noesar-evolution-net   bridge    local
+f4b140b767f9   noesar-local           bridge    local
+8528d96f624f   none                   null      local
+
+## docker volume ls
+DRIVER    VOLUME NAME
+local     2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+local     5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+local     7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+local     07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+local     15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+local     017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+local     ai_lab_data
+local     brainlab_data
+local     c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+local     d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+local     db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+local     stats_hub_data
