@@ -725,7 +725,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "DISCUSS the CodeN Evolution design proposal with the Owner (docs/CODEN_EVOLUTION_DESIGN_V1.md). Do NOT start Phase 5 and do NOT start building. Five open decisions are listed at the end of that document.",
+  "next_action": "ESAMINARE INSIEME il progetto riscritto: /mnt/user/downloads/NOESAR_EVOLUTION/ (10 documenti, italiano) e docs/progetto-italiano/. NON iniziare a costruire. Una sola decisione aperta: lo stack (Rust vs JavaScript) - vedi 10_DECISIONI.md sezione D-A.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -743,6 +743,18 @@
       "one container or a second supervised process",
       "renaming 47_CODEN_ULTRA_PRODUCT_SPEC"
     ],
+    "implemented": false
+  },
+  "progetto_riscritto": {
+    "status": "DA_ESAMINARE_CON_OWNER",
+    "location_owner": "/mnt/user/downloads/NOESAR_EVOLUTION/",
+    "location_repo": "docs/progetto-italiano/",
+    "language": "italiano su richiesta esplicita; versione canonica inglese dopo approvazione",
+    "documents": 10,
+    "date_utc": "2026-07-26",
+    "original_position": "Prova di Sessione - il prodotto dimostra meccanicamente cio che afferma invece di affermarlo",
+    "decisions_taken": 11,
+    "decisions_open": 1,
     "implemented": false
   }
 }
