@@ -725,7 +725,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "ESAMINARE INSIEME il progetto riscritto: /mnt/user/downloads/NOESAR_EVOLUTION/ (10 documenti, italiano) e docs/progetto-italiano/. NON iniziare a costruire. Una sola decisione aperta: lo stack (Rust vs JavaScript) - vedi 10_DECISIONI.md sezione D-A.",
+  "next_action": "CONTINUARE LA CONVERSAZIONE sul progetto riscritto. Leggere in ordine: /mnt/user/downloads/NOESAR_EVOLUTION/ 00_LEGGIMI -> 02_ATOM -> 13_IL_VERIFICATORE. NON iniziare a costruire. Zero decisioni aperte, ma D-11 (Prova di Sessione) e D-12 (stack) sono state prese da me su delega e vanno confermate.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -756,5 +756,16 @@
     "decisions_taken": 11,
     "decisions_open": 1,
     "implemented": false
+  },
+  "verificatore_a_proiezioni": {
+    "status": "PROPOSTO_CON_ESPERIMENTI_REALI",
+    "documento": "13_IL_VERIFICATORE.md",
+    "esperimenti": "experiments/verificatore/ (testbed.mjs, avversario.mjs, chiusure.mjs, REPORT.md) - deterministici, seme fisso",
+    "round1": "1200 prove: ricalcolo 1.0000 cattura / 0.0000 falsi allarmi / 1.0000 localizzazione, contro giudice di superficie 0.4246 / 0.2834. 5 soglie KILL dichiarate prima: PASS",
+    "round2": "avversario: 5 attacchi su 6 SFUGGONO. E il risultato vero: il metodo cattura esattamente gli errori che spostano una proiezione controllata, e nientaltro",
+    "round3": "5/5 chiusure, ognuna con controllo negativo piccolo - da integrare nel banco principale a 1200 prove",
+    "invenzione": "copertura di proiezione: verificare non e una proprieta si/no ma una copertura misurabile",
+    "limiti": "nessun modello vero nel circuito; giudice di controllo di superficie e non un LLM; domini sintetici",
+    "implementato": false
   }
 }
