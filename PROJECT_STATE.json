@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_PLAN_OF_RECORD_SWITCHED_TO_REWRITE_AWAITING_OWNER_REVIEW",
+  "phase_status": "PHASE_4_COMPLETE_REWRITE_IS_PLAN_OF_RECORD_ATOM_SEPARATED_AWAITING_OWNER_REVIEW",
   "next_phase": "REWRITE_PHASE_1_BACKBONE (docs/WORK_PLAN_V5_REWRITE.md) — bloccata finche l Owner non conferma il piano",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -998,5 +998,13 @@
     ],
     "deployed": false
   },
-  "plan_of_record_previous": "MASTER_REFERENCE/ (master V4) — rimosso dall albero, recuperabile da git c28d8a2 e dagli archivi sigillati, D-0097"
+  "plan_of_record_previous": "MASTER_REFERENCE/ (master V4) — rimosso dall albero, recuperabile da git c28d8a2 e dagli archivi sigillati, D-0097",
+  "atom": {
+    "definition": "NOESAR-ATOM-PRIVATE soltanto (D-0099). MASTER_PROJECT/02_ATOM.md tiene il contratto pubblico e il puntatore.",
+    "crate": "45 file .rs, compila offline, 0 warning",
+    "L0": "IMPLEMENTED — 27 test, 0 falliti",
+    "L1_L8": "DECLARED_NOT_IMPLEMENTED — AtomError::NotImplemented, mai todo!()",
+    "product_ready": false,
+    "commit": "c7b7db6"
+  }
 }

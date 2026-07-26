@@ -28,6 +28,20 @@ dell'Owner.**
 4. `MASTER_PROJECT/00_LEGGIMI.md` → poi `01` e `02`, che reggono tutto il resto
 5. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
 
+## ➜ ATOM È SEPARATO, E IL CRATE ESISTE
+
+Per decisione dell Owner ATOM e definito **solo** in `NOESAR-ATOM-PRIVATE` (`D-0099`). La
+riscrittura teneva una sua descrizione che divergeva dal blueprint su `L0-L8` — nove moduli
+la, quattro fasce di maturita qua — e la stessa riga si leggeva in due modi opposti. Ora c e
+una sola fonte. `MASTER_PROJECT/02_ATOM.md` tiene il **contratto pubblico** (che non e ATOM:
+e core, e spostarlo sarebbe stata la regola 56 al contrario) e il puntatore.
+
+Il crate ATOM ora esiste (`c7b7db6`): 45 file `.rs` sull albero esatto della specifica, ogni
+modulo di livello con gli **undici campi** nel proprio doc. **L0 e implementato** (27 test,
+0 falliti, 0 warning, container effimero offline); **L1-L8 restituiscono
+`AtomError::NotImplemented`**, mai `todo!()`. `clippy` non e nell immagine e installarlo
+richiede rete: non eseguito, dichiarato. `D-0100`.
+
 ## ➜ LA PROSSIMA AZIONE È UNA CONVERSAZIONE, NON DEL CODICE
 
 L'Owner ha annunciato che **porrà domande per verificare che il progetto coincida con il suo

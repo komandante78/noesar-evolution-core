@@ -1423,3 +1423,59 @@ integrità: 0 dei 119 file di `MASTER_REFERENCE/` erano nel manifest. Il difetto
 i quindici file di `MASTER_PROJECT/` sono nel manifest dalla prima ora. **5719/5719 OK, 0
 falliti, 0 duplicati.** Da ora una modifica non dichiarata al progetto di riferimento fa
 fallire `sha256sum -c`.
+
+### D-0099 — ATOM ha una sola definizione, e non è nella riscrittura
+
+Deciso dall'Owner. La riscrittura descriveva ATOM e il blueprint privato lo descriveva pure,
+e le due descrizioni **divergevano su una cosa che non poteva restare ambigua**: `L0-L8`
+significava *nove moduli architetturali* nel blueprint e *quattro fasce di maturità* nella
+riscrittura. La frase «il provider di riferimento sta a L3-L5» si leggeva come «implementa
+Simulator + Evaluator + Safety» in un vocabolario e «sa fare ipotesi in competizione»
+nell'altro. Nessuno dei due documenti citava l'altro.
+
+Ora ATOM è definito **solo** in `NOESAR-ATOM-PRIVATE`. `MASTER_PROJECT/02_ATOM.md` tiene il
+puntatore e la documentazione della collisione, perché chi legge «L5» fra sei mesi deve sapere
+perché quel termine ha un solo significato.
+
+**Cosa resta nella riscrittura, e perché non è una deroga.** Il contratto `ReasoningProvider`
+**non è ATOM**: è la superficie pubblica e versionata che il core definisce e che qualunque
+implementazione può soddisfare. Spostarlo nel repository privato avrebbe portato un pezzo di
+core pubblico dentro il proprietario — la regola 56 vietata nella direzione opposta. La
+separazione risultante è più pulita di prima: **contratto pubblico di qua, implementazione
+privata di là.**
+
+### D-0100 — il crate ATOM esiste, L0 è implementato, L1-L8 rifiutano in modo dichiarato
+
+L'albero richiesto esisteva come directory vuote: nessun `Cargo.toml`, nessun `lib.rs`,
+nessun `.rs`. Un blueprint senza un crate che lo regga è descritto, non implementabile.
+
+Ora sono 45 file `.rs` sull'albero esatto della specifica, e **ogni modulo di livello porta
+nel proprio doc gli undici campi presi dal blueprint**, così il contratto sta accanto al
+codice che deve rispettarlo invece che in un documento che nessuno riapre.
+
+**L0 è implementato davvero** — è l'unico livello che non richiede un modello, perché è puro
+per contratto. Tre scelte che valgono la pena di essere registrate:
+
+- la canonicalizzazione usa **prefissi di lunghezza** invece di delimitatori, così nessun
+  contenuto può imitare la struttura e far collidere due stati diversi;
+- l'hash è **FNV-1a** e non `DefaultHasher`, che non è stabile fra versioni di Rust e avrebbe
+  rotto il vettore «10⁴ ripetizioni, varianza zero» senza che nessuno cambi una riga;
+- il registro delle espressioni è **chiuso**: nessuna valutazione dinamica, perché valutare
+  un'espressione fornita dall'esterno consegnerebbe esattamente la superficie d'esecuzione che
+  L0 dichiara di non avere (AUTHORITY: nessuna). Stessa logica di `D-0079`.
+
+**Da L1 a L8 ogni ingresso restituisce `AtomError::NotImplemented`, non `todo!()`**: un panic
+non è un rifiuto e non è catturabile. Un livello che rispondesse senza fare il lavoro sarebbe
+indistinguibile da uno che funziona — il difetto che il principio radice esiste per rimuovere.
+
+**Zero dipendenze esterne**, per due ragioni che si rinforzano: L0 vieta I/O, orologio e RNG,
+e una dipendenza li reintrodurrebbe in un punto che nessuno rilegge; e la build è offline per
+regola 45.
+
+Verificato in container effimero `rust:1-bookworm` con `--network=none`: **build 0 warning,
+27 test passati, 0 falliti**. `clippy` non è nell'immagine e installarlo richiede rete: **non
+eseguito, e dichiarato** invece che taciuto.
+
+Due difetti miei corretti prima del commit: un invariante che **ignorava il proprio parametro**
+e ne controllava un altro, e uno con due cicli che non facevano nulla. Un invariante che non
+controlla ciò che dichiara è peggio di nessun invariante.

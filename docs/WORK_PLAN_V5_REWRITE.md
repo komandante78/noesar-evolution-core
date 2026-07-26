@@ -119,6 +119,12 @@ L'ordine è **per dipendenza, non per importanza**. Da `MASTER_PROJECT/09_PIANO.
 5. Traduzione canonica in inglese, **dopo** l'approvazione dei contenuti ⏸
 6. Emendamenti registrati a `V4-D001` / `V4-D002` ⏸
 
+### Fase 0-bis — ATOM separato (fatto 2026-07-26)
+
+ATOM e definito solo in `NOESAR-ATOM-PRIVATE` (`D-0099`). Il crate esiste: 45 file `.rs`,
+L0 implementato con 27 test, L1-L8 che rifiutano in modo dichiarato (`D-0100`). La
+riscrittura tiene il contratto pubblico e il puntatore.
+
 ### Fase 1 — La spina dorsale
 
 > *Esiste un Piano come oggetto, e nulla cambia senza uno.*

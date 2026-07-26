@@ -35,7 +35,7 @@ altri no.
 | # | Documento | Cosa contiene |
 |---|---|---|
 | 01 | `01_VISIONE_E_POSIZIONE.md` | Cos'è, per chi, e la posizione originale che nessun concorrente ha |
-| 02 | `02_ATOM.md` | **Il cuore.** Cos'è ATOM, come funziona, come lavora, cosa è già dimostrato |
+| 02 | `02_ATOM.md` | **Il contratto pubblico `ReasoningProvider`** — e il puntatore all'unico documento che definisce ATOM, nel repository privato |
 | 03 | `03_ARCHITETTURA.md` | Come è fatto dentro: piani, processi, contratti |
 | 04 | `04_SICUREZZA_E_AUTORIZZAZIONI.md` | La regola sola, i capability token, le sette modalità |
 | 05 | `05_MEMORIA_E_PRIVACY.md` | Le tre semantiche, la contaminazione, l'egress verificato |

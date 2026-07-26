@@ -48,8 +48,12 @@ L'ordine non è per importanza: è per **dipendenza**. Ogni passo rende possibil
 
 1. **Il contratto `ReasoningProvider`**, pubblico e versionato. Prima riga di codice del
    progetto nuovo.
-2. **Il provider di riferimento** a L3-L5: `interpret`, `hypothesize`, `plan`, `decompose`,
+2. **Il provider di riferimento** — le undici superfici obbligatorie del contratto (vedi `02`):
+   `interpret`, `hypothesize`, `plan`, `decompose`,
    `expect`, `constrain`, `classify`, `confidence`, `evidence`, `cancel`, `fixtures`.
+   *(Diceva «a L3-L5». Tolto: `L0-L8` ora indica una cosa sola — i nove livelli
+   architetturali del blueprint privato — e usarlo anche per la maturità del provider era la
+   collisione che ha reso quella riga leggibile in due modi opposti.)*
 3. **I capability token** e il motore che li conia da un Piano autorizzato.
 4. **L'esecuzione in ombra**: copia copy-on-write del workspace, test mirati, confronto
    atteso/reale.
