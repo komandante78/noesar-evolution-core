@@ -864,3 +864,69 @@ globally, not just here. The rule therefore names networks explicitly.
 
 Host-wide `prune` in any form is forbidden without exception: removal names its targets,
 scoped by name prefix, or it does not happen.
+
+### D-0069 — the master specification's measuring instruments are in the repository
+`F4W-011` recorded that the product had never been measured against
+`NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip` because the 46 files that define "done" were
+never brought in. They are now: 44 into `MASTER_REFERENCE/`, and the two nested
+`REFERENCES/*.zip` archives to `$ARTIFACT_ROOT` under §9 rule 33, with their checksums
+recorded and matching their tracked sidecars exactly.
+
+Verification, not assumption: the package hash matches its sidecar, its internal
+`MANIFEST.sha256` verifies 120/120, the 75 files already present were confirmed
+**byte-identical** rather than trusted, and all 119 tracked files were re-compared after
+the copy. Nothing was edited on the way in.
+
+What they turned out to be is itself the finding, and it changes what WP-0 is worth.
+The instruments total **80 lines**: `acceptance-matrix.yaml` is 11 one-line test names
+with severities, `IMPLEMENTATION_GATES.yaml` 9 gate names, `TRACEABILITY_MATRIX.csv` 14
+requirement rows, `OWNER_REVIEW_CHECKLIST.md` 14 unticked boxes. They name **what** must
+be true; they do not say how it is measured or what counts as passing. So WP-0 delivers a
+canonical vocabulary and a set of acceptance IDs to report against — real value, and the
+reason SEC-003 could be worked next — but it does **not** deliver an executable
+definition of done. Claiming otherwise would repeat the error the plan was written to
+correct.
+
+`IMPLEMENTATION_GATES.yaml` also records `current_gate: GATE_0_OWNER_REVIEW`. By the
+master's own gate model the Owner has never approved the master specification, and the
+14 checklist items are the approval. That is an Owner action, not an engineering one.
+
+### D-0070 — the authorization endpoint recomputes the plan instead of believing it
+`SEC-003` ("Owner bypass cannot disable invariants", severity **blocker**) had no test
+anywhere. Writing one found that the requirement was not merely unproven but false.
+
+`/api/v1/coden/authorize` read `request.plan` straight from the request body and never
+recomputed it. Every field the plan carries — `blocked`, `canonicalPath`, `mode`,
+`nonBypassableInvariants` — was an assertion the caller made about itself, and nothing
+obliged the caller to have called `/api/v1/coden/path-plan` at all. Proven by execution
+against the unfixed code, three of five attacks landed:
+
+```text
+hand-written plan declaring /etc/... unblocked   -> 201, approval stored   (expected 403)
+nonBypassableInvariants stripped to []           -> approval recorded []
+canonicalPath rewritten to /etc/passwd           -> approval recorded /etc/passwd
+mode raised to OWNER_BYPASS without elevation    -> 403  (this gate held)
+ordinary in-workspace path (negative control)    -> 201  (correct)
+```
+
+Reach: `coden.authorize` is held by `developer` and `admin` as well as `owner`, while
+`coden.owner-bypass` is owner-only — so a caller two roles below Owner could mint an
+approval naming any path and carrying an empty invariant list. Host mutation is disabled
+today (`executionEnabled:false`), which bounds the impact now but not the defect: the
+approval record *is* the artifact that authorizes action, and it was forgeable.
+
+The fix recomputes the plan server-side from the operands the submission names (path,
+operation, mode, recursive, and the command/dependency/network/secret flags) and uses
+only the recomputation thereafter. This is the rule the projection-verifier experiments
+state for any checked answer: **recalculate from the original operands, never read the
+verdict back off the answer's own path.** A disagreement between what was submitted and
+what the server computes is recorded as `coden.plan-mismatch` rather than silently
+normalised, so tampering stays visible.
+
+Regression suite: `test/coden-path-authorization.test.mjs`, six tests including a
+negative control — a closure that also breaks the working path is not a closure. Suite
+507 -> 513, 0 failures; ESLint 147 files, 0 errors.
+
+`SEC-003` is not therefore closed. The matrix item is broader than this endpoint: seven
+invariants are declared and none of the other six has an enforcement mechanism anywhere
+in the code. What is closed is that the authorization record can no longer be forged.

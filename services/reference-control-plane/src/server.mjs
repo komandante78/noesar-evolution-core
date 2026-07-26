@@ -516,8 +516,41 @@ const server = createServer(async (req, res) => {
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       const request = await body(req);
       if (!request.plan || !request.consentScope) return json(res, 400, { error:'plan and consentScope are required' });
-      if (request.plan.blocked) return json(res, 403, { error:'Blocked path cannot be authorized' });
-      if (request.plan.mode === 'OWNER_BYPASS') {
+      // SEC-003. The submitted plan is a claim the caller makes about itself, not
+      // evidence: `blocked`, `canonicalPath` and `nonBypassableInvariants` are all
+      // caller-writable, and nothing obliges the caller to have called path-plan at
+      // all. Recompute the verdict from the operands the plan names, and use only the
+      // recomputation from here on — the same rule the verifier work states for any
+      // checked answer: recalculate from the original operands, never read the verdict
+      // back off the answer's own path.
+      let plan;
+      try {
+        plan = createPathPlan({
+          path:request.plan.requestedPath,
+          operation:request.plan.operation,
+          mode:request.plan.mode,
+          recursive:request.plan.recursive,
+          commands:request.plan.commands,
+          dependencies:request.plan.dependencies,
+          networkRequested:request.plan.networkRequested,
+          secretsRequested:request.plan.secretsRequested,
+        }, workspace);
+      } catch {
+        return json(res, 400, { error:'The submitted plan does not name a path that can be re-planned.' });
+      }
+      // A disagreement between what the caller submitted and what the server computes
+      // is either tampering or a stale plan. The recomputation wins either way, but it
+      // is recorded rather than silently normalised.
+      if (request.plan.blocked !== plan.blocked
+        || request.plan.canonicalPath !== plan.canonicalPath
+        || String(request.plan.mode ?? 'NORMAL') !== plan.mode) {
+        ledger.append({ actor:authenticated.user.id, action:'coden.plan-mismatch', result:'recomputed', details:{ submittedPath:String(request.plan.canonicalPath ?? ''), canonicalPath:plan.canonicalPath, submittedBlocked:Boolean(request.plan.blocked), blocked:plan.blocked } });
+      }
+      if (plan.blocked) {
+        ledger.append({ actor:authenticated.user.id, action:'coden.authorize', result:'blocked', details:{ canonicalPath:plan.canonicalPath, risk:plan.risk, mode:plan.mode } });
+        return json(res, 403, { error:'Blocked path cannot be authorized' });
+      }
+      if (plan.mode === 'OWNER_BYPASS') {
         if (!auth.hasPermission(authenticated.user, 'coden.owner-bypass')) return json(res, 403, { error:'Owner role required.' });
         if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required.' });
       }
@@ -527,10 +560,10 @@ const server = createServer(async (req, res) => {
         createdAt:new Date().toISOString(),
         expiresAt:new Date(Date.now() + Math.min(Number(request.durationMinutes ?? 15), 60) * 60000).toISOString(),
         consentScope:request.consentScope,
-        mode:request.plan.mode,
-        canonicalPath:request.plan.canonicalPath,
-        operation:request.plan.operation,
-        nonBypassableInvariants:request.plan.nonBypassableInvariants,
+        mode:plan.mode,
+        canonicalPath:plan.canonicalPath,
+        operation:plan.operation,
+        nonBypassableInvariants:plan.nonBypassableInvariants,
       };
       store.addApproval(approval);
       ledger.append({ actor:authenticated.user.id, action:'coden.authorize', result:'approved', details:{ id:approval.id, scope:approval.consentScope, path:approval.canonicalPath, mode:approval.mode } });
