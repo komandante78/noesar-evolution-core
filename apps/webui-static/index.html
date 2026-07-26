@@ -38,6 +38,9 @@
     </section>
   </div>
 
+  <!-- 2.4.1 Bypass Blocks. There are 23 navigation entries before the content; without this
+       a keyboard or screen-reader user tabs through all of them on every single page. -->
+  <a class="skip-link" href="#mainContent">Skip to main content</a>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
@@ -74,7 +77,7 @@
       </nav>
     </aside>
 
-    <main class="main">
+    <main class="main" id="mainContent" tabindex="-1">
       <section class="privacy-banner" id="privacyBanner" aria-live="polite">
         <span class="shield">◆</span><div><strong>NOESAR runs locally on your device.</strong><small>No data is sent to external servers.</small></div><span class="verified">LOCAL-ONLY VERIFIED</span>
       </section>
@@ -186,7 +189,7 @@
 
       <section class="view" id="view-coden">
         <div class="section-header"><div><p class="eyebrow">NATIVE CODING WORKSPACE</p><h1>CodeN Ultra</h1><p>Plan first. Authorize exact paths. Verify every mutation.</p></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
-        <div class="coden-layout"><section class="panel code-panel"><div class="panel-title"><h2>Path authorization</h2><span id="modeLabel">NORMAL MODE</span></div><label>Server or workspace path<input id="pathInput" value="projects/example"></label><div class="form-grid"><label>Operation<select id="operation"><option>write</option><option>delete</option><option>execute</option><option>install</option><option>read</option></select></label><label>Duration<select id="duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label></div><label class="check"><input type="checkbox" id="recursive"> Recursive scope</label><button class="primary" id="analyzePath">Analyze path and permissions</button><div class="owner-reauth hidden" id="ownerReauth"><h3>Owner strong reauthentication</h3><label>Owner passphrase<input id="reauthPassword" type="password"></label><label>Authenticator code<input id="reauthTotp" inputmode="numeric" maxlength="6"></label><button class="primary" id="reauthButton" type="button">Unlock Owner scope</button></div><div class="approval-controls hidden" id="approvalControls"><label>Consent scope<select id="consentScope"><option>ONE_OPERATION</option><option>LISTED_FILES</option><option>FOLDER_FOR_SESSION</option></select></label><button class="primary" id="authorizePlan" type="button">Authorize plan</button></div><div id="pathResult" class="result empty">No authorization plan generated.</div></section><section class="panel"><h2>Non-bypassable invariants</h2><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section></div>
+        <div class="coden-layout"><section class="panel code-panel"><div class="panel-title"><h2>Path authorization</h2><span id="modeLabel">NORMAL MODE</span></div><label>Server or workspace path<input id="pathInput" value="projects/example"></label><div class="form-grid"><label>Operation<select id="operation"><option>write</option><option>delete</option><option>execute</option><option>install</option><option>read</option></select></label><label>Duration<select id="duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label></div><label class="check"><input type="checkbox" id="recursive"> Recursive scope</label><button class="primary" id="analyzePath">Analyze path and permissions</button><div class="owner-reauth hidden" id="ownerReauth"><h3>Owner strong reauthentication</h3><label>Owner passphrase<input id="reauthPassword" type="password" autocomplete="current-password"></label><label>Authenticator code<input id="reauthTotp" inputmode="numeric" maxlength="6"></label><button class="primary" id="reauthButton" type="button">Unlock Owner scope</button></div><div class="approval-controls hidden" id="approvalControls"><label>Consent scope<select id="consentScope"><option>ONE_OPERATION</option><option>LISTED_FILES</option><option>FOLDER_FOR_SESSION</option></select></label><button class="primary" id="authorizePlan" type="button">Authorize plan</button></div><div id="pathResult" class="result empty">No authorization plan generated.</div></section><section class="panel"><h2>Non-bypassable invariants</h2><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section></div>
       </section>
 
       <section class="view" id="view-hardware">

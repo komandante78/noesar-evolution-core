@@ -146,6 +146,15 @@ if [ -z "${SETUP_TOKEN}" ]; then echo "SETUP_TOKEN=missing"; exit 1; fi
 echo "SETUP_TOKEN=present"
 
 # --- drive the browser -------------------------------------------------------
+# The driver is selectable so a second suite can reuse this whole probe apparatus instead
+# of copying it. Duplicating 160 lines of container plumbing would mean two places to fix
+# the next time the probe's environment changes, and they would drift.
+DRIVER="${NOESAR_E2E_DRIVER:-tools/browser-e2e.mjs}"
+if [ ! -f "${PROJECT_ROOT}/${DRIVER}" ]; then
+  echo "DRIVER_MISSING=${DRIVER}"
+  exit 1
+fi
+echo "DRIVER=${DRIVER}"
 set +e
 docker run --name "${RUNNER_NAME}" \
   --network "${NETWORK}" \
@@ -153,7 +162,7 @@ docker run --name "${RUNNER_NAME}" \
   -e NOESAR_E2E_BASE_URL="http://${PROBE_NAME}:8088" \
   -e NOESAR_E2E_SETUP_TOKEN="${SETUP_TOKEN}" \
   --entrypoint node \
-  "${PUPPETEER_IMAGE}" /home/pptruser/repo/tools/browser-e2e.mjs
+  "${PUPPETEER_IMAGE}" "/home/pptruser/repo/${DRIVER}"
 RESULT=$?
 set -e
 

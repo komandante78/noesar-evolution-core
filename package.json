@@ -10,6 +10,7 @@
     "smoke:auth": "node tools/auth-http-smoke.mjs",
     "start": "node services/reference-control-plane/src/server.mjs",
     "test": "node --test services/reference-control-plane/test/*.test.mjs",
+    "test:accessibility": "NOESAR_E2E_DRIVER=tools/accessibility-audit.mjs bash tools/run-browser-e2e.sh",
     "test:authority": "node --test services/reference-control-plane/test/authority.test.mjs services/reference-control-plane/test/data-plane.test.mjs services/reference-control-plane/test/conformance.test.mjs",
     "test:authority-external": "node --test services/reference-control-plane/test/authority-external-client.test.mjs",
     "test:authority-protocol": "node --test services/reference-control-plane/test/authority-protocol.test.mjs",

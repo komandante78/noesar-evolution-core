@@ -217,7 +217,8 @@ export default [
     // Node reported six no-undef errors that were all correct code, and a check that
     // cries wolf is a check people learn to skip. It gets BOTH global sets, and keeps
     // no-undef switched on — the rule still catches a genuine typo in either half.
-    files: ['tools/browser-e2e.mjs'],
+    // The WCAG audit is the same shape of program and gets the same treatment.
+    files: ['tools/browser-e2e.mjs', 'tools/accessibility-audit.mjs'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
