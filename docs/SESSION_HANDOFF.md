@@ -17,7 +17,20 @@ file and `PROJECT_STATE.json` alone.**
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
 | Updated (UTC) | 2026-07-26 |
 
-> ## ➜ The actual next action is a conversation, not a phase
+> ## ➜ Il progetto è stato riscritto. La prossima azione è esaminarlo insieme.
+>
+> 2026-07-26 — l'Owner ha commissionato la riscrittura completa del progetto e ha chiesto di
+> esaminarla insieme alla riapertura. **Sta in `/mnt/user/downloads/NOESAR_EVOLUTION/`**
+> (10 documenti, in italiano su sua richiesta) con copia in `docs/progetto-italiano/`.
+>
+> **Non iniziare a costruire.** Undici decisioni sono registrate; **una sola è aperta** — lo
+> stack, in `10_DECISIONI.md` sezione D-A.
+>
+> Da leggere per primi: `00_LEGGIMI.md`, poi `02_ATOM.md`. Il resto discende da quei due.
+> L'analisi dei difetti che ha motivato la riscrittura è in
+> `docs/GAP_ANALYSIS_AND_ORIGINALITY_V1.md`.
+
+> ## ➜ The design conversation that preceded it
 >
 > On 2026-07-26 the Owner commissioned a **design for CodeN Evolution** and said explicitly
 > that the next session would discuss the proposal. It is written and waiting:
