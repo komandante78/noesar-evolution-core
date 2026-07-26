@@ -286,7 +286,146 @@ a fresh decision. And leaving it is one keystroke from anywhere.
 **Recovery mode** is not in the Owner's list and is added deliberately. When a task has
 gone wrong, the instinct is to keep going. A mode where forward progress is impossible and
 only inspection and restoration are available is how you stop a bad session from becoming
-a bad day.
+a bad day. It is entered by a person, never by the engine giving up — see §5a.
+
+---
+
+## 5a. Autonomy — persistence by design
+
+*Owner decision, 2026-07-26: the limits must be a strength, not a brake. The system has to
+keep looking for a solution and must not freeze. **ATOM exists partly for this.***
+
+The models doing the work are small. Small models do not fail by stopping; they fail by
+repeating themselves confidently. So the control cannot be "stop when it struggles" — that
+converts a capability into a limitation and hands the problem back to you at the first
+bump. The control is **enforced novelty**: the engine may work for a long time, on one
+condition — that each attempt is genuinely different from the last.
+
+### 5a.1 A surprise is a fork, not a full stop
+
+Stage 9 predicts the diff and the test outcome. A **surprise** is a measurable divergence
+between that prediction and reality:
+
+| Surprise | Detected by |
+|---|---|
+| Real diff ≠ predicted diff | direct comparison |
+| Test outcome ≠ predicted | failing count and names |
+| A file outside the plan is needed | the token does not exist |
+| An error class the plan did not anticipate | failure signature not in the anticipated set |
+| The same test fails with a *different* error | signature drift |
+
+None of these requires the model to notice it is struggling, which matters, because small
+models do not notice.
+
+**What happens next is the point.** A surprise re-enters **stage 6** — `hypothesize` — with
+the surprise attached as new evidence. The ranked hypothesis set is exactly what this is
+for: hypothesis 1 was wrong in a specific, now-documented way, and hypothesis 2 is
+evaluated in the light of that. The engine keeps going. It has *learned* something, which
+is the opposite of being stuck.
+
+### 5a.2 The escalation ladder
+
+Each rung is a **different kind of change**, never the same thing louder. The engine climbs
+only when the rung below produced no new information.
+
+```text
+  1  Retry              transient failure — network blip, flaky test, timing
+  2  Replan             next ranked hypothesis, with the surprise as evidence     [ATOM]
+  3  Widen the evidence  read more of the repository; look at neighbours, history, tests
+  4  Research            verified sources — the dependency's own docs, versioned  §5a.4
+  5  Decompose           split into a smaller sub-problem that can be verified alone [ATOM]
+  6  Escalate the model  route this step to a stronger model; keep the same plan
+  7  Alternative plan    ATOM evaluates structurally different approaches, not variants [ATOM L7–L8]
+  8  Ask                 a specific question, with everything already tried attached
+```
+
+Rung 5 is the one that matters most for small models and is the reason the ladder is not
+just "try harder". A small model that cannot fix a subsystem can very often fix one
+function, if something else does the decomposition and can verify the piece in isolation.
+Rung 7 is what `L7–L8` evolutionary plan evaluation is for: generating *structurally
+different* approaches rather than rewording the same one.
+
+Rung 8 is not failure. It is the engine arriving with a specific question and a full
+account of what it has already ruled out — which is worth considerably more than a
+transcript of it trying the same thing nine times.
+
+### 5a.3 The budget is on novelty, not on effort
+
+This is the whole design in one rule:
+
+> **A repeated approach does not count as an attempt. A new one does.**
+
+- **Two consecutive identical failure signatures = the rung is exhausted**, and the engine
+  climbs. It does not stop, and it does not retry. Signature changed? It is learning —
+  it stays on this rung.
+- **While stuck, the plan may only shrink, never widen.** Broadening when it should be
+  narrowing is the single most common small-model failure ("while I'm here, let me also
+  refactor…"). Forbidden by construction.
+- **Invented symbols are caught before execution.** The symbol index and LSP are already
+  there: an API or flag that does not exist stops the step before the tests run. Cheap, and
+  it removes an entire class of small-model error from the loop.
+- **Time limits are a backstop, not a control.** They catch hangs. They never decide
+  whether the work was good.
+
+The result is a system that can legitimately work for an hour, provided each of those
+minutes contained something it had not tried before. That is the strength the Owner asked
+for: not permission to thrash, but no artificial ceiling on genuine persistence.
+
+### 5a.4 Research, without breaking the privacy commitment
+
+Rung 4 reaches the network, which collides head-on with the rule that work data never
+leaves the machine. It is resolved, not traded away:
+
+1. **The engine builds the query, not the model, and the query is inspectable.** It is
+   assembled from the failure signature, the dependency name and **version** from the
+   manifest, and the symbol name. Never your source, never your file paths, never document
+   content. The exact string is written to the log before it is sent.
+2. **"Verified sources" means an allowlist derived from your own dependencies** — the
+   official documentation of the libraries the project declares, the language's own
+   reference, docs vendored in the repository. A general tier exists and is **off by
+   default**.
+3. **What comes back is untrusted data**, exactly like repository content. It is
+   **evidence**: it may produce a hypothesis; it may never issue an instruction. No new
+   defence is required — this is §1 again. A web page has no more of an action surface than
+   a file does.
+4. **Research must change the hypothesis.** The attempt that follows a search has to be a
+   genuinely different approach, and the engine checks that it is. Same signature after
+   research means the search rung is exhausted and the engine climbs — searching in circles
+   is precisely how a small model burns an hour while looking busy.
+5. In Sandboxed autonomous mode the research grant is **pre-authorized at task start**, as
+   part of the autonomy grant, with its allowlist and its visible query log. Withhold it and
+   the engine climbs past rung 4 rather than stalling on a permission prompt nobody is there
+   to answer.
+
+Every source consulted is cited in the plan and in the final report, so a change of approach
+can be traced to what caused it.
+
+### 5a.5 Ceilings, and the one uncomfortable consequence
+
+| Control | Default | Why |
+|---|---|---|
+| Surprise | **fork, never a stop** | it is information, and it is what makes the next attempt different |
+| File outside the plan | new authorization | not a numeric cap — the plan already names the files |
+| Identical failure signature | climb after 2 | the rung is exhausted, the task is not |
+| Repeated approach | not counted as an attempt | the novelty rule |
+| Research per task | 3, allowlisted, queries logged | more than that is circling |
+| Same hypothesis after research | climb immediately | the loop signature |
+| Wall clock | 20 min per stage · 60 per task, extendable | a backstop for hangs, not a quality control |
+| Provider level | **L7–L8 for unattended work** | see below |
+
+**The uncomfortable consequence, stated plainly:** without simulation there is no prediction
+to compare reality against, so "surprise" cannot be defined, and the ladder loses the signal
+that drives it. A provider below L5 would leave only timers and counters — blind autonomy.
+Unattended work therefore requires a provider that can simulate. This is not a commercial
+fence around ATOM; it is what makes the persistence safe. It does, however, make open
+decision 4 heavier than it first appeared: giving the reference provider simulation would
+also give the public build honest unattended work.
+
+**This will be wrong in places, and that is expected.** The Owner's position is that the
+tests will show where, and the thresholds will move. The numbers above are defaults with
+reasons attached, not constants — every one of them is observable in the audit log
+(signatures, rungs climbed, approaches tried, searches made), so tuning them will be a
+matter of reading what actually happened rather than guessing.
 
 ---
 
@@ -688,8 +827,13 @@ Named, so the omissions are decisions rather than oversights.
 
 ## 20. Open decisions for the next session
 
-1. **How far does Sandboxed autonomous go without a person?** A time limit, a file-count
-   limit, a "stop at the first surprise" rule — or all three.
+1. ~~**How far does Sandboxed autonomous go without a person?**~~ **Settled 2026-07-26 —
+   see §5a.** All three limits, but reframed: the limits must be a strength, not a brake.
+   A surprise forks to the next hypothesis instead of halting; the budget is on **novelty**,
+   not effort; an eight-rung escalation ladder — retry, replan, widen evidence, research,
+   decompose, escalate the model, alternative plan, ask — keeps the engine looking for a
+   solution rather than freezing. Thresholds are defaults to be tuned from the test runs,
+   not constants.
 2. **Where do the shells diverge, if at all?** My position is nowhere, which is expensive
    and is the reason to decide it now rather than discover it later.
 3. **Does CodeN Evolution ship inside the single container, or as a second supervised

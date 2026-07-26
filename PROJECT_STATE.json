@@ -734,10 +734,10 @@
       "name is CodeN Evolution",
       "one program, two shells (WebUI + SSH) attaching to the same live session",
       "ATOM is the mandatory reasoning path but never a requirement — reference provider keeps the product fully usable",
-      "work data never reaches the internet and never enters product semantics"
+      "work data never reaches the internet and never enters product semantics",
+      "autonomy: persistence by design — a surprise forks to the next hypothesis, budget is on novelty not effort, 8-rung escalation ladder, research on an allowlist with engine-built queries; unattended work needs an L7-L8 provider"
     ],
     "open_decisions": [
-      "unattended autonomy limits",
       "whether the two shells ever diverge",
       "one container or a second supervised process",
       "does the reference provider get simulation",
