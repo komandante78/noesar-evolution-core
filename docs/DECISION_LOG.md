@@ -1527,3 +1527,50 @@ stessa cosa. Registrato come primo punto del lavoro, e come decisione dell'Owner
 migrazione di dati vivi.
 
 Cinque decisioni restano aperte, elencate in `MASTER_PROJECT/14_MEMORIA_A_CUBI.md` §7.
+
+### D-0102 — quattro cubi, e il criterio che decide quando ne serve un altro
+
+L'Owner ha lasciato aperto il numero. **Quattro**, ma il criterio conta più del numero perché
+serve anche fra un anno:
+
+> Un cubo è **uno stato epistemico**. Due cose stanno in cubi diversi quando la domanda «come
+> faccio a sapere che è vero?» ha risposte di *tipo* diverso. Se la risposta è la stessa e
+> cambia solo il modo di verificare, sono due **categorie** dentro lo stesso cubo.
+
+Biblioteca (asserito), Officina (in attesa), Corpus (fonte), **Esperienza (indotto)**.
+
+La quarta è la scelta meno ovvia e la ragione è precisa: una `decisione` è vera perché
+qualcuno l'ha presa; una **lezione** è vera perché è successo N volte, ed è **l'unico tipo di
+memoria che un solo controesempio ribalta**. In biblioteca sembrerebbe autoritativa quanto una
+decisione dell'Owner, e non lo è. Porta `confirmations`/`refutations` e va rimessa alla prova.
+È anche `L7` del blueprint ATOM e il registro delle firme di fallimento della fase 2.
+
+Scartati dopo averli provati contro il criterio: cronologia conversazioni (materiale di
+sessione), artefatti (output, non memoria), configurazione (stato, ha già le sue tabelle),
+audit (è il ledger; duplicarlo creerebbe una seconda verità su cosa è successo). **Ogni cubo
+in più è un confine che il codice deve rispettare, e un confine che non corrisponde a una
+differenza reale prima o poi viene attraversato per sbaglio.**
+
+### D-0103 — i vettori non hanno identità di modello, ed è un difetto presente
+
+Trovato progettando i cubi, e **non dipende dai cubi**: né `memory_items` né `vector_entries`
+registrano quale modello ha prodotto l'embedding.
+
+Conseguenza peggiore di una svista: due modelli possono coesistere nella stessa tabella ed
+**essere confrontati**. La distanza coseno fra spazi diversi non solleva un errore — **dà un
+numero**. Il richiamo restituirebbe risultati plausibili e privi di senso, cioè esattamente
+l'allucinazione che i cubi esistono per impedire, prodotta dallo schema invece che dal modello.
+Ed è anche il motivo per cui oggi **non si può cambiare modello di embedding**: non c'è modo di
+sapere quali righe reindicizzare.
+
+Rimedio proposto (§9.2): tabella `embedding_models` con un solo `is_current` applicato da un
+indice unico parziale, e `memory_vectors` con chiave `(record_id, model_id)`. Il cambio di
+modello diventa: inserisci, riempi in incrementale mentre il vecchio indice serve, commuta in
+una transazione, cancella il vecchio. In nessun momento la ricerca è rotta e in nessun momento
+due spazi vengono confrontati.
+
+**Questo punto si può fare da solo e subito**, indipendentemente dalla decisione sui cubi.
+
+Lo schema completo è scritto in `MASTER_PROJECT/14_MEMORIA_A_CUBI.md` §9.2 e **non** in
+`database/postgres/`: un file lì viene raccolto dal manifesto delle migrazioni e applicato al
+prossimo deploy, e questo tocca dati vivi. Diventa la migrazione `0017` quando l'Owner approva.
