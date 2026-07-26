@@ -10,184 +10,169 @@ file and `PROJECT_STATE.json` alone.**
 | Field | Value |
 |---|---|
 | Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
-| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — **WP-0 done; WP-1 worked, both blockers still OPEN** |
-| Phase status | `PHASE_4_COMPLETE_WP1_WORKED_BOTH_BLOCKERS_STILL_OPEN` |
-| **Next work** | **WP-2 — Workflows and the approval queue** |
+| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2 started: Workflows and the approval queue built** |
+| Phase status | `PHASE_4_COMPLETE_WP2_WORKFLOWS_AND_APPROVAL_QUEUE_BUILT_NOT_DEPLOYED` |
+| **Next work** | **WP-2 continues** — the nine remaining items in its table, none of them touched |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `1a458dd` |
+| Last commit | `210ac85` |
 | Updated (UTC) | 2026-07-26 |
 
-> ## ➜ What this session did: the SEC-003 residual
+> ## ➜ What this session did
 >
-> The previous session closed the *forgery* half of `SEC-003` and said plainly that the
-> invariants themselves were untested — seven declared, and the names appeared in exactly
-> one place in the tree: the list that declares them. Nothing read, enforced or tested
-> them. This session wrote the adversarial suite the acceptance matrix asks for and
-> repaired what it caught.
+> The previous handoff named the first step and the reason for it: **write the test that the
+> claim is true, and run it against the current code.** `/api/v1/bootstrap` advertised
+> `Workflows` in its feature list while no page, no route and no engine existed.
 >
-> **The suite runs one attempt per invariant from a genuinely elevated Owner Bypass
-> session** — owner role, real password, unreplayed authenticator code — so that the
-> invariant answers rather than the elevation gate. A suite refused one step early proves
-> nothing. Against the **unfixed** code:
+> That test was written first. Against the unmodified code:
 >
 > ```text
-> credential_theft_prevention      ~/.ssh/authorized_keys, /etc/shadow    403  held
-> audit_integrity                  bypass action then chain verify        ok   held
-> signed_update_verification       stage an unsigned bundle               4xx  held
-> destructive_action_confirmation  recursive delete + PERSISTENT_FOLDER   201  LANDED
-> destructive_action_confirmation  consentScope "DENY"                    201  LANDED
-> destructive_action_confirmation  consentScope "UNLIMITED_FOREVER"       201  LANDED
-> malware / cyberattack / physical harm    no mechanism existed to attack
-> negative control                 ordinary bypass write                  201  correct
+> # tests 19   # pass 18   # fail 1
+> error: '"Workflows" is advertised by /api/v1/bootstrap but its route answered 404 —
+>         the claim is not honoured'
 > ```
 >
-> **The consent scope was never validated.** It was copied from the request body onto the
-> stored approval, so `DENY` — the plan's own refusal option — minted an approval, an
-> invented scope was stored verbatim, and a recursive delete could be granted a standing,
-> reusable licence to destroy. Fixed in `f512041`: `checkConsentScope` runs against the
-> **recomputed** plan, so Owner Bypass does not relax it; refusals are appended to the
-> ledger instead of being silent. `D-0072`.
+> One claim false, sixteen true — which is worth having established. The probe map lives in
+> the test, not beside the feature list: kept together, one edit could add a feature and its
+> own proof in the same breath. Adding a feature to the server now fails with "no probe
+> defined for advertised feature".
 >
-> **No denylist was written for the other three.** Malware, illegal cyberattack and
-> physical harm prevention are properties of what is *executed*, not of a filesystem path,
-> and this layer has no execution surface (`executionEnabled:false`). A keyword denylist
-> over `commands` would let the planner claim protection it does not provide, and the
-> round-3 experiment in this repository already showed textual denylists are defeated by
-> any indirection (`psql -f x.sql` never contains the forbidden verb). Instead every
-> invariant now carries `status` and `enforcedBy`, and a test refuses any invariant added
-> as a bare string again. `D-0071`.
->
-> **The WebUI was making a separate claim.** The panel hardcoded five invariants that
-> matched neither the seven in code nor each other — it listed "Scoped approvals and
-> rollback", which is not an invariant, and omitted two that are. It now renders from the
-> server's declaration, verified in a real browser with a real box, not by class
-> inspection. `D-0073`.
+> Then the engine, covering the nine properties `04_AI_PLATFORM/46` names — typed steps,
+> retries, compensation, idempotency, timeout, cancellation, human approval, evidence,
+> replay — and the approval queue and permanent bottom strip `01_PRODUCT/11` requires.
 
-> ## ➜ `SEC-003` STILL MUST NOT BE MARKED PASS
+> ## ➜ Three design decisions worth reading before extending this
 >
-> What is now true: the authorization record cannot be forged (s262), and the consent
-> scope cannot be forged, invented, or stretched into an unattended licence (this
-> session). Four of the seven invariants are enforced and defended by tests.
+> **A step type declares its effects, and one of them is refused** (`D-0079`). `transform`
+> computes from a closed operation registry — no dynamic evaluation, because evaluating a
+> user-supplied expression would hand every workflow author the execution surface this build
+> deliberately lacks. `host_mutation` is declared and **fails closed**, naming the layer that
+> owns it, because `executionEnabled` is `false` here. Treating it as a no-op that "succeeded"
+> would have been a workflow claiming mutations it cannot perform — the same false claim this
+> phase set out to remove. Same reasoning as `D-0071`.
 >
-> **Three of the seven are enforced at a layer this build does not run.** They are
-> honestly declared as such rather than advertised, which is the right state — but it is
-> not the same as the matrix item passing. Closing `SEC-003` requires either the execution
-> layer that owns them, or an Owner decision that the item is satisfied by an authorization
-> layer that cannot reach them.
+> **A run is bound to the definition it started from** (`D-0080`). Runs snapshot their
+> workflow. Without it, editing a workflow would rewrite the history of every run already made
+> from it, and a replay would replay the edit rather than the event.
+>
+> **The approval queue owns nothing** (`D-0081`). It reads the three subsystems that own
+> approvals and routes each decision back to the one that raised it. A copy would be a second
+> source of truth and the two would drift — which is not hypothetical here: the WebUI held
+> five hardcoded invariants matching neither the code nor each other.
 
-> ## ➜ MANIFEST did not verify when this session opened
+> ## ➜ Two defects found in the engine itself, one of them serious
 >
-> The previous handoff reported `MANIFEST 5690/5690`. It was not true:
-> `sha256sum -c MANIFEST.sha256` failed on `tools/run-browser-e2e.sh`, changed by `7597a54`
-> in s261 while the manifest was last refreshed at the earlier `5e4dbef`. Separately,
-> `test/coden-path-authorization.test.mjs`, created by s262, was never appended. Both are
-> repaired — **0 failed, 0 duplicates** (5692 entries at that point, 5693 after the
-> `OPS-002` work below).
+> **`advance()` could report a run `completed` when a step never finished** (`D-0083`). It
+> looked for the next step whose status was `pending` or `awaiting_approval`. A step left
+> `running` by a process that died is neither, so it was skipped — and if every other step had
+> finished, the run was declared a success. Found by reading the engine; no scanner on this
+> host can see it, because nothing is syntactically wrong. Such a step is now reconciled to
+> `interrupted`, kept distinct from `failed`, written to the evidence and the audit ledger,
+> and the run fails and compensates. Attempts are now recorded when they **start**, so an
+> interrupted attempt leaves a trace at all.
 >
-> **Open, and deliberately not acted on:** the manifest covers the delivered product tree
-> and does **not** cover `MASTER_REFERENCE/` — 0 of its 119 tracked files are listed. The
-> measuring instruments WP-0 imported are therefore not integrity-protected: the acceptance
-> matrix the whole plan is measured against could be altered and the manifest would not
-> notice. Widening the manifest changes what the artifact means, so it is the Owner's call.
-> `D-0074`.
+> **The AI state schema bump needed a migration, and got one** (`D-0082`). Adding `workflows`
+> and `workflowRuns` raised `AI_STATE_VERSION` from 1 to 2. The installed workspace carries
+> `"schemaVersion": 1` and `validateState` demanded an exact match, so bumping the constant
+> alone would have made the AI workspace refuse to load on the next deployment. That is
+> migration `0012` again in a different file. The fixture in the test is the shape of the real
+> installed file, not an invented one.
 
-> ## ➜ And then `OPS-002`, the other blocker — worked, also NOT closed
+> ## ➜ Read this before deploying: the schema bump has a rollback cost
 >
-> The hardening regression covered four scripts, all Docker/Unraid. `deployment/` also
-> carries `linux/`, `macos/`, `windows/` and `podman/`, and **none of those had ever been
-> executed or tested**. Two defects, both in the Podman path:
+> Once the upgraded build performs its **first write**, `state/ai-workspace.json` is version 2
+> and **every older image in the rollback lineage will refuse to read it**. That refusal is
+> deliberate — an older build operating on state whose invariants it does not know would not
+> fail loudly, it would corrupt quietly.
 >
-> **The Podman installer had never installed anything.** `run.sh` referenced
-> `$RELEASE_CHANNEL` and never assigned it; under `set -eu` the script aborted with
-> `RELEASE_CHANNEL: unbound variable`, after the network probe and **before** `podman run`.
-> That is why it looks like it works when read or run casually. `bash -n` accepts the file
-> — only running it against a `podman` stub could see it. `D-0075`.
->
-> **The Podman build file carried a defect the Docker one had fixed.** `oci/Containerfile`
-> still health-checked `/healthz` while `oci/Dockerfile` had been corrected to `/livez`,
-> because `/healthz` and `/readyz` report *dependency* state and would restart a live
-> process whenever a dependency was briefly degraded. Propagated; the regression now
-> asserts the two files **agree**, so the next divergence fails. `D-0076`.
->
-> **`OPS-002` cannot be closed from this host, and the tool says so in its own output.**
-> There is no macOS, no Windows, no PowerShell and no podman here, and rule 45 forbids
-> installing tooling to satisfy a rule.
->
-> ```text
-> EXECUTED   linux/install-portable.sh    a real install into a pinned temporary HOME
-> EXECUTED   macos/install-portable.sh    POSIX sh; default path has a space, exercised
-> EXECUTED   podman/run.sh                against a podman stub
-> EXECUTED   {docker,podman}/build.sh     against stubs
-> NOT RUN    windows/*.ps1                structural only, reported as static
-> ```
->
-> Running a script under a stub is not installing on the platform. **Recorded, not
-> repaired:** `Install-Noesar.ps1` has no equivalent of the `rm -rf "$DESTINATION/noesar"`
-> the Linux and macOS installers perform before copying, and PowerShell `Copy-Item
-> -Recurse` into an existing directory copies *into* it — so a Windows reinstall is
-> expected to nest the tree. Not reproducible here, so not repaired blind. `D-0077`.
+> Rolling back therefore requires restoring `state/ai-workspace.json` from the pre-update
+> backup, which the update path already takes. **A read alone never rewrites the file**, so
+> starting the new build and stopping it again without creating a workflow is reversible.
 
 ---
 
 ## Verified in this session
 
 ```text
-adversarial suite       11/11    5 of 11 failed against the unfixed code, 0 after
-cross-platform          73/73    6 failed against the unfixed installers, 0 after
-installer hardening    100/100   unchanged, no regression
-unit tests             524/524   513 before; +11 this suite; 0 failures
-eslint                 149 files, 0 errors, 0 warnings, 0 no-undef
-browser acceptance     178/178   174 before; +4 invariant panel, real browser
-MANIFEST              5693/5693  0 failed, 0 duplicates
-static analysis        src/, deployment/, INSTALLATION/  0 findings
-shellcheck             6 findings, all SC1007 on the correct `CDPATH= cd` idiom, dismissed
+unit tests             600/600   524 before; +76 across five new suites; 0 failures
+  bootstrap claims      19/19    1 failed against the unfixed code
+  workflow engine       31/31    4 seeded defects, each caught by exactly 1 test
+  state migration        9/9     5 failed with the version bumped and no migration
+  approval queue        10/10
+  interrupted step       7/7     5 failed with the reconciliation removed
+eslint                 156 files, 0 errors, 0 warnings, 0 no-undef   (149 before)
+browser acceptance    213/213   178 before; +35 checks, real browser, real boxes
+installer hardening   100/100   unchanged
+cross-platform          0 failures, unchanged
+MANIFEST             5700/5700  0 failed, 0 duplicates
+static analysis        src/, apps/, tools/ — no new finding
 ```
 
-Both new suites were run against the **unfixed** code first and shown to fail. A suite
-that has never been observed failing proves only that it is quiet.
+The engine is new code, so there was no "unfixed version" to watch fail. Five deliberate
+defects were seeded instead and each was caught by exactly one test: compensation reversed to
+forward order, replay reading the live definition instead of the run's snapshot, a
+non-executable step type allowed to run, the idempotency check disabled, and the migration
+removed. The file was restored and re-verified clean after each.
 
-`noesar-debuglab` was started for the hunt step and **stopped again in the same phase**.
-Container inventory **39 throughout**, exactly two `noesar-evolution*`, networks and
-volumes untouched, no product container created, started or stopped. The browser suite
-removed its own probe, runner and image. Live check after the work: `livez`/`readyz` 200,
-`/metrics` 401, `health=healthy`, `RestartCount=0`, still `:phase4-webui`.
+The browser suite was run **twice**. The first 213/213 described code that no longer existed
+once the interrupted-step fix landed, so it was re-run against the final tree.
 
-Dismissed with evidence, not silently: one semgrep `insecure-object-assign` on `app.js:85`
-(the target is a freshly created local `Error` with three fixed literal keys — no mass
-assignment, no redirect; pre-existing), and the `tools/*.py` bandit/ruff `subprocess`
-hits (hardcoded argv, not untrusted input; `sys` unused is already `D-0039`).
+### Three defects of my own, fixed before commit
+
+`fillProjectSelect` did not exist; `toast` takes an options object, not a string; and
+`.status-bad` / `.status-warn` were set by the new code and **absent from the stylesheet**, so
+a failure would have rendered in ordinary body text. A class the application sets and the
+presentation layer does not honour is the same defect shape as a declared protection nothing
+enforces.
+
+### Dismissed with evidence, not silently
+
+- `app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing, already dismissed last
+  phase; the target is a freshly created local `Error` with three fixed literal keys.
+  Re-confirmed pre-existing against this phase's backup copy.
+- `tools/*.py` `B603`/`B607`/`S603`/`S607` — pre-existing, hardcoded argv, no untrusted
+  input. `F401 sys` unused is `D-0039`.
+- **Not a dismissal — new evidence for `B-002`:** before trusting any clean scan, a canary
+  outside the repository was scanned. semgrep reported its `eval()` as CRITICAL, so the
+  detector fires. But **`detect-secrets` reported 0 findings on a literal `AKIA…` key and a
+  matching `aws_secret_access_key` line in the same file.** The heuristic secret scan is
+  weaker than its name suggests. The canary was removed; it was never inside the repository.
 
 ---
 
-## ⚠️ Two security fixes are in the source and NOT installed
+## ⚠️ THREE security fixes are in the source and NOT installed
 
-The live installation on `192.168.178.100:8100` runs `:phase4-webui`, built **before**
-both of them. It therefore still serves:
+The live installation on `192.168.178.100:8100` runs `:phase4-webui`, built before all of
+them. It therefore still serves:
 
-1. the forgeable `/api/v1/coden/authorize` (s262, `e2abbc6`), and
-2. the unvalidated consent scope (this session, `f512041`) — so on the live box `DENY`
-   still mints an approval and a recursive delete can still be granted `PERSISTENT_FOLDER`.
+1. the forgeable `/api/v1/coden/authorize` (s262, `e2abbc6`),
+2. the unvalidated consent scope (s263, `f512041`) — on the live box `DENY` still mints an
+   approval and a recursive delete can still be granted `PERSISTENT_FOLDER`, and
+3. no Workflows or approval queue at all, while its own `/api/v1/bootstrap` still advertises
+   `Workflows` (this session, `9912462`).
 
-**Deployment is an installation phase and requires the Owner's explicit authorisation.**
-Do not do it on initiative.
+**Deployment is an installation phase and requires the Owner's explicit authorisation.** Do
+not do it on initiative — and when it is authorised, read the schema-rollback note above
+first.
 
 ---
 
 ## Open blockers
 
 ### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local repository
-is complete and committed.
+`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local repository is
+complete and committed.
 
-### B-002 — secret scan is heuristic · low · unchanged
-Neither `gitleaks` nor `trufflehog` is installed. The scan run this session was heuristic
-and is declared as heuristic; its matches were all identifier names, a pre-existing CSS
-class, test fixture constants and SHA-256 checksums in the manifest.
+### B-002 — secret scan is heuristic · low · **evidence strengthened this session**
+Neither `gitleaks` nor `trufflehog` is installed and rule 45 forbids installing tooling to
+satisfy a rule. New this session: `detect-secrets`, the one real scanner available, was shown
+to report **0 findings on a textbook AWS key canary**. Treat its clean results as weak
+evidence. The heuristic scan run before each commit matched only identifier names, header
+names and test constants declared as non-secrets.
 
-### B-008 — two identity stores · medium
-The account that signs in lives in `RUNTIME_ROOT/state/auth.json`; `noesar_identity.users`
-in PostgreSQL is empty. Needs a phase of its own.
+### B-008 — two identity stores · medium · unchanged
+The account that signs in lives in `RUNTIME_ROOT/state/auth.json`; `noesar_identity.users` in
+PostgreSQL is empty. Needs a phase of its own.
 
 ### B-005, B-006, B-007 — **CLOSED**.
 
@@ -195,40 +180,61 @@ in PostgreSQL is empty. Needs a phase of its own.
 
 ## Exact next action
 
-**WP-1 is worked through. Both its blockers were materially advanced and neither is
-closed** — the reasons are stated above and in the ledger, and neither may be marked PASS.
+**WP-2 continues.** Two of its eleven rows are now built; **nine are untouched**, and the
+table in `docs/WORK_PLAN_V4_ALIGNMENT.md` is the list:
 
-**Next is WP-2 — Workflows and the approval queue.** Start with Workflows, because
-`/api/v1/bootstrap` already advertises `Workflows` in its feature list while **no page, no
-route and no engine exist**. That is the same class of unhonoured claim this session fixed
-twice: an interface asserting something the code does not do. Everything needed to judge
-the requirement is in `MASTER_REFERENCE/04_AI_PLATFORM/46` (typed steps, retries,
-compensation, idempotency, timeout, cancellation, human approval, replay) and
-`01_PRODUCT/11` for the approval strip, which is binding.
+```text
+Passkeys / WebAuthn, OIDC, SAML, SCIM      01_PRODUCT/14   passkeySupported:false; zero references
+Role model (six named roles)               01_PRODUCT/14   a DIFFERENT model ships, not a subset
+Seven privacy states                       01_PRODUCT/12   five implemented
+Compliance evidence packs                  06_COMPLIANCE   absent
+Industry Module Framework                  07_INDUSTRY     absent (Gate 6)
+ML-BOM alongside SBOM                      00_CONTROL/06   SBOM exists, no ML-BOM
+WCAG 2.2 AA                                01_PRODUCT/15   never tested, no evidence either way
+```
 
-Before building, take the same first step that worked twice this session: **write the test
-that the claim is true, and run it against the current code.** The bootstrap feature list
-is the claim; a test that asserts every advertised feature has a route behind it will
-fail today, and that failure is the honest starting point for WP-2 — as well as a
-regression that stops the next feature being advertised before it exists.
+**The recommended next one is WCAG 2.2 AA**, for the same reason Workflows was taken first:
+it is the only row where the honest state is *"never tested, no evidence either way"* rather
+than *"absent"*. Everything else on that list is a feature to build; this one is a claim that
+has never been measured, and measuring it is cheap now and expensive after WP-3 redraws the
+interface. The browser harness already drives a real Chromium, so the keyboard-only pass,
+visible focus, contrast and reduced-motion checks belong in `tools/browser-e2e.mjs` beside
+the checks added this session.
 
-**Still open and unchanged from the previous handoff:**
+**Take the role model only with the Owner in the loop.** `01_PRODUCT/14` names six roles that
+are neither a superset nor a subset of the six that ship, so satisfying it means changing who
+can do what on a running installation. This session deliberately reused `agent.manage` for
+every workflow route rather than inventing a permission, precisely so that decision stays
+open and undisturbed.
 
-- **WP-3 / WebUI v2.** The Owner reviewed v1 on 2026-07-26 and did **not** accept it, and
-  asked that the new preview be produced in a fresh session. Read
+**Still open and unchanged:**
+
+- **`SEC-003` must not be marked PASS.** Forgery of the authorization record and of the
+  consent scope is closed, and four of seven invariants are enforced and defended by tests.
+  **Three are enforced at a layer this build does not run** — honestly declared, which is the
+  right state but not the same as the matrix item passing.
+- **`OPS-002` must not be marked PASS** and cannot be closed from this host: no macOS, no
+  Windows, no PowerShell, no podman, and rule 45 forbids installing them. `Install-Noesar.ps1`
+  is expected to nest the tree on reinstall — recorded, not repaired, because it cannot be
+  run here (`D-0077`).
+- **`MANIFEST.sha256` does not cover `MASTER_REFERENCE/`** — 0 of its 119 files. The
+  acceptance matrix the whole plan is measured against is not integrity-protected. Widening
+  the manifest changes what the artifact means, so it is the Owner's call (`D-0074`).
+- **WP-3 / WebUI v2.** v1 was reviewed on 2026-07-26 and **not accepted**. Read
   `docs/WEBUI_DESIGN_REVIEW_V1.md` first — four corrections, one of which re-derives the
-  information architecture rather than restyling. One open question to ask before
-  building: three separate chat destinations, or one Chat destination with three surfaces.
-- **The CodeN Evolution design conversation.** `docs/CODEN_EVOLUTION_DESIGN_V1.md` is
-  written and waiting; five decisions at the end are the Owner's.
+  information architecture rather than restyling. Note that this session added **two** nav
+  entries to the v1 shell; WP-3 re-derives the whole navigation from `01_PRODUCT/11`'s single
+  `Settings` entry, so treat `Workflows` and `Approvals` as destinations that must find a
+  home in the new IA, not as settled navigation.
+- **The CodeN Evolution design conversation.** `docs/CODEN_EVOLUTION_DESIGN_V1.md` is written
+  and waiting; five decisions at the end are the Owner's.
 - **ATOM.** Blueprint at `/mnt/cachec/NOESAR-ATOM-PRIVATE/` (private, no remote, nothing
-  implemented). Its first step is not in that repository: `ReasoningProvider` is **zero
-  files in the core**, and that contract belongs to the public core.
+  implemented). Its first step is not in that repository: `ReasoningProvider` is **zero files
+  in the core**, and that contract belongs to the public core.
 - **Phase 5** is WP-4 and stays below all of the above.
 
 Read in this order on reopening: `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
-`docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`, then
-`docs/WORK_PLAN_V4_ALIGNMENT.md`.
+`docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`, then `docs/WORK_PLAN_V4_ALIGNMENT.md`.
 
 ### Five gate items only the Owner can close
 
@@ -246,42 +252,49 @@ None may be marked PASS by anyone but the Owner completing the flow in their own
 ### Deferred items, still open
 
 `F4W-005` (the QR encoder is proven only for versions 1–6, bounding enrolment QR codes to
-usernames of 25 characters or fewer), `F4-013` (a filesystem backup of the workspace is
-not encrypted and contains the auth master key — an operator duty the documentation must
-state), `D-0039` (`tools/verify-package.py` imports `sys` unused), no TLS, no SBOM for the
-image beyond the declared component inventory, no independent penetration test, and the
-licensing backlog inherited from Phase 1 (12 first-party Rust crates and 2 Node packages
-with no declared licence, no root `LICENSE`, 86 sources with no SPDX header, 0 declared
-licences across the Rust tree in the source SBOM).
+usernames of 25 characters or fewer), `F4-013` (a filesystem backup of the workspace is not
+encrypted and contains the auth master key — an operator duty the documentation must state),
+`D-0039` (`tools/verify-package.py` imports `sys` unused), **rejecting a staged update answers
+501** (the update manager has no discard verb; nothing has been applied at that point, and
+inventing one would be scope creep — `D-0081`), no TLS, no SBOM for the image beyond the
+declared component inventory, no independent penetration test, and the licensing backlog
+inherited from Phase 1 (12 first-party Rust crates and 2 Node packages with no declared
+licence, no root `LICENSE`, 86 sources with no SPDX header, 0 declared licences across the
+Rust tree in the source SBOM).
 
 ---
 
 ## Reproducing this session's verification
 
 ```bash
-npm test                                    # 524 unit tests
-npm run lint                                # eslint, 149 files
-node --test services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
+npm test                                    # 600 unit tests
+npm run lint                                # eslint, 156 files
+node --test services/reference-control-plane/test/bootstrap-feature-claims.test.mjs
+node --test services/reference-control-plane/test/workflow-engine.test.mjs
+node --test services/reference-control-plane/test/workflow-interrupted-step.test.mjs
+node --test services/reference-control-plane/test/ai-state-migration.test.mjs
+node --test services/reference-control-plane/test/approval-queue.test.mjs
 npm run test:installers                     # 100 hardening checks
-npm run test:installers-cross-platform      # 73 cross-platform checks
-sha256sum -c MANIFEST.sha256                # 5693 entries
-bash tools/run-browser-e2e.sh               # 178 checks, disposable probe, self-cleaning
+npm run test:installers-cross-platform      # cross-platform, 0 failures
+sha256sum -c MANIFEST.sha256                # 5700 entries
+bash tools/run-browser-e2e.sh               # 213 checks, disposable probe, self-cleaning
 ```
 
 ## Rollback
 
 ```text
 container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
-backup      $ARTIFACT_ROOT/backups/phase_4_webui_pages_20260725T175916Z/
-this phase  BACKUPS/sec003_invariants_20260726T094716Z/     path-auth.mjs, server.mjs, index.html
-            BACKUPS/ops002_installers_20260726T102941Z/      podman/run.sh, oci/Containerfile
-            BACKUPS/MANIFEST.sha256.pre_sec003_invariants_20260726T095620Z
-            BACKUPS/MANIFEST.sha256.pre_ops002_*
+this phase  BACKUPS/wp2_workflows_20260726T112259Z/   server.mjs, atomic-store.mjs,
+                                                      index.html, app.js, styles.css,
+                                                      MANIFEST.sha256, PROJECT_STATE.json
+            BACKUPS/MANIFEST.sha256.pre_wp2_workflows_20260726T114748Z
 ```
 
 To roll back the installation: `docker stop noesar-evolution`, rename it aside, then
-`docker start noesar-evolution.rollback-lan-webui-20260725T175916Z` and rename it back.
-The runtime bind mount is shared, so no data restore is needed.
+`docker start noesar-evolution.rollback-lan-webui-20260725T175916Z` and rename it back. The
+runtime bind mount is shared, so no data restore is needed **today** — but once a build
+carrying the version-2 AI state schema has written to that workspace, a rollback also needs
+`state/ai-workspace.json` restored from the pre-update backup. See the schema note above.
 
 Image lineage, all still on disk:
 
@@ -295,10 +308,12 @@ Image lineage, all still on disk:
 
 ## Housekeeping
 
-`CLAUDE10.md` §5a and step 13 of the 15-step skill cycle. **Two containers survive a
-phase** — the running installation and one rollback — and that is exactly what exists.
-This session created no container of its own except the browser suite's disposable probe
-and runner, which the suite removed on exit, plus `noesar-debuglab` for the hunt step,
-which was stopped again in the same phase. Host-wide `prune` in any form remains
-forbidden. Inventory evidence:
-`EVIDENCE/docker_inventory_post_wp1_20260726T095900Z.txt`.
+`CLAUDE10.md` §5a and step 13 of the 15-step skill cycle. **Two containers survive a phase**
+— the running installation and one rollback — and that is exactly what exists. This session
+created no product container. The browser suite created its own probe, runner and image and
+removed all three on exit, both times it ran. `noesar-debuglab` was started for the hunt step
+and **stopped again in the same phase**; three read-only `docker exec` calls were made into it
+to read its own route table, because its API is undocumented on this host. Inventory **39
+containers throughout**, exactly two `noesar-evolution*`, networks and volumes untouched.
+Live product after the work: `livez` 200, `readyz` 200, `/metrics` 401, `health=healthy`,
+`RestartCount=0`, still `:phase4-webui`. Host-wide `prune` in any form remains forbidden.

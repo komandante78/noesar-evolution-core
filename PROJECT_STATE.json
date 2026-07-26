@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_WP1_WORKED_BOTH_BLOCKERS_STILL_OPEN",
+  "phase_status": "PHASE_4_COMPLETE_WP2_WORKFLOWS_AND_APPROVAL_QUEUE_BUILT_NOT_DEPLOYED",
   "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "1a458dd",
+  "last_commit": "210ac85",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -864,5 +864,77 @@
       "fc8bed4",
       "1a458dd"
     ]
+  },
+  "wp2_workflows_and_approvals": {
+    "status": "BUILT_IN_SOURCE_NOT_DEPLOYED",
+    "specification": [
+      "MASTER_REFERENCE/04_AI_PLATFORM/46_AGENT_WORKFLOW_PROGRAMMABLE_DOCS.md",
+      "MASTER_REFERENCE/01_PRODUCT/11_USER_EXPERIENCE_AND_APPROVED_WEBUI.md"
+    ],
+    "started_from": "a test asserting every feature /api/v1/bootstrap advertises has a route behind it; it failed on Workflows (404) against the unmodified code",
+    "properties_implemented": [
+      "typed steps",
+      "retries",
+      "compensation",
+      "idempotency",
+      "timeout",
+      "cancellation",
+      "human approval",
+      "evidence",
+      "replay"
+    ],
+    "declared_but_refused": {
+      "step_type": "host_mutation",
+      "reason": "executionEnabled=false and this layer has no execution surface",
+      "enforced_by": "execution layer, not present in this build",
+      "decision": "D-0079"
+    },
+    "ai_state_schema": {
+      "from": 1,
+      "to": 2,
+      "migration": "registered and tested against a version-1 fixture matching the installed file",
+      "rollback_cost": "once the upgraded build performs its first write the file is version 2 and older images cannot read it; restore state/ai-workspace.json from the pre-update backup to roll back",
+      "decision": "D-0082"
+    },
+    "approval_queue": {
+      "sources": [
+        "workflow human_approval steps",
+        "agent run steps awaiting approval",
+        "a staged unapproved update"
+      ],
+      "owns_no_copy": true,
+      "known_limit": "rejecting a staged update answers 501; the update manager has no discard verb and nothing has been applied",
+      "decision": "D-0081"
+    },
+    "approval_strip": {
+      "required_by": "01_PRODUCT/11 (binding)",
+      "state": "permanent, reports the count even at zero, kept visible below 850px where the status bar is hidden"
+    },
+    "defect_found_by_review": {
+      "id": "D-0083",
+      "summary": "advance() skipped a step left running by a dead process and could report the run completed",
+      "fixed": true,
+      "proved": "5 of 7 tests fail with the reconciliation removed"
+    },
+    "my_own_defects_fixed_before_commit": [
+      "fillProjectSelect did not exist",
+      "toast takes an options object not a string",
+      ".status-bad and .status-warn were set by the code and absent from the stylesheet"
+    ],
+    "verification": {
+      "unit_tests": "600/600 (524 before)",
+      "new_suites": 5,
+      "eslint": "156 files, 0 errors, 0 warnings, 0 no-undef",
+      "browser_acceptance": "213/213 in a real browser (178 before)",
+      "installer_hardening": "100/100 unchanged",
+      "cross_platform": "0 failures unchanged",
+      "manifest": "5700/5700, 0 failed, 0 duplicates",
+      "static_analysis": "no new finding across src/, apps/, tools/"
+    },
+    "suites_observed_failing_first": true,
+    "mutation_checks": "5 deliberate defects seeded (compensation order, replay snapshot, non-executable step allowed, idempotency disabled, migration absent); each caught, file restored and re-verified clean after each",
+    "detector_self_test": "a canary with eval(), command injection and an AWS key was scanned before trusting any clean result; semgrep reported the eval as CRITICAL, but detect-secrets reported 0 on the AWS key — evidence strengthening B-002",
+    "deployed": false,
+    "next": "WP-2 continues: passkeys/WebAuthn, OIDC, SAML, SCIM, the six-role model, seven privacy states, compliance evidence packs, Industry Module Framework, ML-BOM, WCAG 2.2 AA — none touched"
   }
 }
