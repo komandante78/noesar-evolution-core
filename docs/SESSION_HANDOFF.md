@@ -15,7 +15,27 @@ file and `PROJECT_STATE.json` alone.**
 | `NEXT_PHASE` | `5_READY` |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Updated (UTC) | 2026-07-25 |
+| Updated (UTC) | 2026-07-26 |
+
+> ## ➜ The actual next action is a conversation, not a phase
+>
+> On 2026-07-26 the Owner commissioned a **design for CodeN Evolution** and said explicitly
+> that the next session would discuss the proposal. It is written and waiting:
+>
+> - **`docs/CODEN_EVOLUTION_DESIGN_V1.md`** — the full design.
+> - **`docs/WEBUI_DESIGN_REVIEW_V1.md`** — what was rejected in WebUI proposal v1.
+>
+> **Do not start Phase 5, and do not start building CodeN Evolution.** Both wait on that
+> conversation. Five decisions are listed at the end of the design document and are the
+> Owner's to take — how far unattended autonomy goes, whether the two shells ever diverge,
+> one container or a second supervised process, whether the reference provider gets
+> simulation, and how to rename `47_CODEN_ULTRA_PRODUCT_SPEC`.
+>
+> Settled already, and not to be reopened: the name is **CodeN Evolution**; it is **one
+> program in two shells** (WebUI and SSH) attaching to the same live session; **ATOM is the
+> mandatory reasoning path but never a requirement** — the public reference provider must
+> keep the product fully usable; and **work data never reaches the internet and never enters
+> the product's own semantics**.
 
 **The interface is finished, deployed and reachable.** Container `noesar-evolution`,
 image **`noesar-evolution:phase4-webui`**, published on `192.168.178.100:8100`, healthy,
