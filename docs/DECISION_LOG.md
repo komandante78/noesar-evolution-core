@@ -930,3 +930,89 @@ negative control — a closure that also breaks the working path is not a closur
 `SEC-003` is not therefore closed. The matrix item is broader than this endpoint: seven
 invariants are declared and none of the other six has an enforcement mechanism anywhere
 in the code. What is closed is that the authorization record can no longer be forged.
+
+### D-0071 — an invariant declares where it is enforced, or it is not a claim this layer makes
+
+`SEC-003` asks whether Owner Bypass can disable the declared invariants. Answering it
+required first establishing what "declared" meant. `createPathPlan` returned seven
+strings under `nonBypassableInvariants`, and a search of the whole tree found those names
+in exactly one place — the list itself. Nothing read them, enforced them, or tested them.
+
+The adversarial suite ran one attempt per invariant from inside a genuinely elevated
+Owner Bypass session (owner role, password, unreplayed authenticator code, so the
+elevation gate was open and the invariant, not the gate, was what answered). Three of the
+seven held; one failed outright; three had no mechanism to attack at all.
+
+Two repairs were possible for the last three and only one is honest. A denylist over
+`commands` would let the planner claim it prevents malware and cyberattack, and this
+project's own round-3 experiment already established that a textual denylist is defeated
+by any indirection — `psql -f x.sql` never contains the forbidden verb. Shipping one
+would convert an honest gap into a false assurance, which is worse than the gap.
+
+So the declaration became a contract instead. Each invariant now carries `status` and
+`enforcedBy`: `ACTIVE` names the code that enforces it on every request through this
+layer; `NOT_ENFORCED_AT_THIS_LAYER` names the layer that owns it. Malware, illegal
+cyberattack and physical harm prevention are commitments about what is *executed* or
+*produced*, not properties of a filesystem path, and this layer has no execution surface
+at all (`executionEnabled:false`). They remain declared — they are real product
+commitments — but they no longer appear as something path authorization guarantees.
+
+A test asserts every declared invariant resolves to an enforcement entry with a
+recognised status and a named point, so a future invariant cannot be added as a bare
+string again.
+
+### D-0072 — the consent scope is enforced against the plan, not copied from the request
+
+Found by execution, not by reading. `/api/v1/coden/authorize` took `consentScope`
+straight from the request body and wrote it onto the stored approval without ever
+checking it against the plan's own `consentOptions`. Three attacks from inside Owner
+Bypass, all of which returned `201` with a stored approval:
+
+```text
+recursive delete + PERSISTENT_FOLDER   -> 201  a standing licence to destroy, issued once
+consentScope: "DENY"                   -> 201  the plan's own refusal minted an approval
+consentScope: "UNLIMITED_FOREVER"      -> 201  an invented scope stored verbatim
+```
+
+The second is the sharpest: `DENY` is listed in `consentOptions` as the refusal, and
+submitting the refusal produced an approval. `destructive_action_confirmation` cannot
+mean anything if the confirmation may be spent once and then reused unattended, or if
+declining produces the same artifact as consenting.
+
+`checkConsentScope` now runs against the **recomputed** plan, so Owner Bypass does not
+relax it either: the scope must be one the plan offered (`400` otherwise), `DENY` never
+produces an approval (`403`), and a destructive operation — `delete`, or anything
+recursive — may only be granted a per-operation or per-file scope, never
+`FOLDER_FOR_SESSION` or `PERSISTENT_FOLDER` (`403`). Every refusal is appended to the
+ledger with the scope that was requested, so a rejected attempt is visible rather than
+silent.
+
+### D-0073 — the invariant panel is rendered from the server's declaration
+
+The WebUI stated the invariants as five hardcoded `<li>` elements. They matched neither
+the seven the planner declares nor each other: the panel listed "Scoped approvals and
+rollback", which is not an invariant in the code, and omitted illegal cyberattack and
+physical harm prevention, which are. Two independent claims, neither derived from the
+other, with no mechanism that could ever bring them back into agreement.
+
+The declaration now travels on `/api/v1/bootstrap` and the panel renders from it, each
+row showing whether this layer enforces the invariant or naming the layer that does.
+Verified in a real browser rather than by class inspection — the lesson `F4W-010`
+recorded — with four checks in the browser suite asserting seven rows, four enforced
+here, three elsewhere, each naming a layer.
+
+### D-0074 — MANIFEST drift is repaired, and its scope is stated rather than widened
+
+`sha256sum -c MANIFEST.sha256` did not pass on entry to this phase, while the handoff
+reported it as `5690/5690`. `tools/run-browser-e2e.sh` was changed by `7597a54` in s261
+and the manifest was last refreshed at the earlier `5e4dbef`, so one entry had been
+failing for a session. Separately, `test/coden-path-authorization.test.mjs`, created by
+s262, was never appended. Both are repaired here: 7 hashes refreshed (6 changed by this
+phase, 1 stale since s261), 2 entries appended, **5692/5692 OK, 0 failed, 0 duplicates**.
+
+Noted and deliberately **not** acted on: the manifest covers the delivered product tree
+and does not cover `MASTER_REFERENCE/` — 0 of its 119 tracked files are listed. That
+means the measuring instruments WP-0 imported are not integrity-protected, and the
+acceptance matrix on which the whole plan depends could be altered without the manifest
+noticing. Widening the manifest's scope changes what the artifact means, which is the
+Owner's decision and not a side effect of a security fix. Recorded as an open finding.

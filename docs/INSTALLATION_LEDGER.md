@@ -1034,3 +1034,99 @@ staged. Detail in `D-0069` and `D-0070`.
 **Not deployed.** The fix is in the source tree only. The live installation still runs the
 image built before it and therefore still serves the vulnerable endpoint. Deployment is an
 installation phase and needs the Owner's explicit authorisation.
+
+## WP-1 · SEC-003 residual — the invariants themselves (2026-07-26)
+
+Source and verification only. **Nothing was deployed, no product container was created,
+started or stopped, and the live installation was not touched.**
+
+The previous session closed the forgery half of `SEC-003` and stated plainly that the
+other half was open: seven invariants declared, and no enforcement mechanism found for
+six of them. This work is that half — the adversarial suite the matrix asks for, one
+attempt per invariant, from inside Owner Bypass.
+
+### The attempts, run against the unfixed code first
+
+Each attempt runs from a genuinely elevated session — owner role, real password, an
+unreplayed authenticator code — so that the invariant answers rather than the elevation
+gate. A suite that is refused one step early proves nothing about invariants.
+
+```text
+credential_theft_prevention     write ~/.ssh/authorized_keys      403  held
+credential_theft_prevention     write /etc/shadow, both routes    403  held
+audit_integrity                 bypass action, then chain verify  ok   held
+signed_update_verification      stage an unsigned bundle          4xx  held
+destructive_action_confirmation recursive delete + PERSISTENT_FOLDER  201  LANDED
+destructive_action_confirmation consentScope "DENY"                    201  LANDED
+destructive_action_confirmation consentScope "UNLIMITED_FOREVER"       201  LANDED
+malware_prevention              — no mechanism exists to attack
+illegal_cyberattack_prevention  — no mechanism exists to attack
+physical_harm_prevention        — no mechanism exists to attack
+negative control                ordinary bypass write             201  correct
+```
+
+Three attacks produced a **stored approval**. The consent scope was copied from the
+request onto the approval with no validation of any kind, so the plan's own refusal
+option minted an approval, an invented scope was stored verbatim, and a recursive delete
+could be granted a standing, reusable licence. Detail and reasoning in `D-0072`.
+
+### What was changed
+
+```text
+src/path-auth.mjs        INVARIANT_ENFORCEMENT — each invariant names status + enforcedBy
+                         checkConsentScope / isDestructive — the scope is now enforced
+src/server.mjs           authorize checks the scope against the RECOMPUTED plan; refusals
+                         are appended to the ledger; bootstrap carries the declaration
+apps/webui-static/*      the invariant panel renders from the server, not five hardcoded
+                         list items that matched neither the code nor each other
+tools/browser-e2e.mjs    four checks that the panel is populated and states enforcement
+test/coden-invariant-adversarial.test.mjs   the suite above, 11 tests, negative control
+```
+
+Deliberately **not** done: no keyword denylist over `commands`. It would let the planner
+claim malware and cyberattack prevention it does not perform, and the round-3 experiment
+in this repository already showed textual denylists are defeated by any indirection.
+`D-0071` records the reasoning.
+
+### Verification — produced in this session
+
+```text
+adversarial suite       11/11    5 failing against the unfixed code, 0 after the fix
+unit tests             524/524   513 before; +11 this suite; 0 failures
+eslint                 148 files, 0 errors, 0 warnings, 0 no-undef
+browser acceptance     178/178   174 before; +4 invariant panel, real browser, real box
+MANIFEST              5692/5692  7 refreshed, 2 appended, 0 removed, 0 duplicates
+static analysis        src/ 0 findings (semgrep, bandit, ruff, detect-secrets)
+```
+
+`noesar-debuglab` was started for the hunt step and **stopped again in the same phase**,
+as `CLAUDE10.md` §5 requires. Container inventory unchanged at 39 throughout, exactly two
+`noesar-evolution*` containers, networks and volumes untouched. The browser suite removed
+its own probe, runner and image on exit.
+
+### Findings triaged and dismissed, with the evidence
+
+```text
+semgrep insecure-object-assign  app.js:85   FALSE POSITIVE — the target is a freshly
+                                            created local Error with three fixed literal
+                                            keys; no mass assignment, no redirect.
+                                            Pre-existing; this phase's change is at 962+.
+bandit/ruff B603 S603 B404      tools/*.py  Pre-existing, files not touched here.
+                                            subprocess with hardcoded argv, not untrusted
+                                            input.
+bandit/ruff B607 S607           tools/*.py  Partial executable path. A real hardening nit,
+                                            pre-existing, out of this phase's scope.
+ruff F401 sys unused            verify-package.py   Already recorded as D-0039.
+```
+
+### MANIFEST drift found on entry
+
+`sha256sum -c MANIFEST.sha256` did **not** pass when this phase opened, though the
+handoff reported `5690/5690`. One entry had been stale since s261 and one file created by
+s262 was never appended. Both repaired; the manifest now verifies clean. `MASTER_REFERENCE/`
+remains outside the manifest's scope — stated, not widened. `D-0074`.
+
+**Not deployed.** Everything above is source-tree only. The live installation still runs
+`:phase4-webui`, built before both this work and the s262 fix, and therefore still serves
+the forgeable endpoint *and* the unvalidated consent scope. Deployment is an installation
+phase and requires the Owner's explicit authorisation.
