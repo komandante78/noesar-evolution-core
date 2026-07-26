@@ -8,6 +8,32 @@ description: MANDATORY for every NOESAR EVOLUTION phase. Imposes the fixed 15-st
 Applies **only** to NOESAR EVOLUTION (`/mnt/cachec/NOESAR_EVOLUTION`).
 Subordinate to `CLAUDE10.md`; where they conflict, `CLAUDE10.md` wins.
 
+## 🛑 REGOLA ZERO — un solo progetto esiste
+
+**Ordine esplicito dell'Owner, 2026-07-26:** *"non devi fare riferimento ad altri progetti…
+altrimenti non finiamo più"*.
+
+Lavorando qui, **l'unico progetto che esiste è NOESAR EVOLUTION**. Non si nomina, non si cita,
+non si confronta e non si tocca nessun altro sistema di questo host — **CodeN Ultra, NOESAR V3,
+ATOM, EvalBench, BrainLab, DataFactory, NOVA, CodeN Mind**. Non come riferimento, non come
+esempio, non come precedente, nemmeno "solo per contesto".
+
+**CodeN Evolution è un prodotto nuovo.** Non è CodeN Ultra e non eredita da esso nome, codice,
+architettura o convenzioni. Il nome "CodeN Ultra" dentro un artefatto di questo progetto è un
+**difetto**: si rimuove, non si spiega. (Rimosso dal prodotto il 2026-07-26 — era nella feature
+list di `/api/v1/bootstrap`, quindi il prodotto dichiarava di contenere un altro prodotto.)
+
+**In pratica:**
+
+- Si leggono solo `PROJECT_STATE.json`, `docs/SESSION_HANDOFF.md`,
+  `docs/WORK_PLAN_V5_REWRITE.md`, `MASTER_PROJECT/`, `docs/DECISION_LOG.md`,
+  `docs/INSTALLATION_LEDGER.md`. **Non** si apre il file di memoria di un altro progetto.
+- Tutto fuori da `PROJECT_ROOT` è **sola lettura** e fuori discussione: non si cancella, non si
+  sposta, non si modifica. Una richiesta di cancellare artefatti di altri progetti è un
+  **blocker**, non un compito — si dichiara e ci si ferma.
+- Se una risposta sta per contenere il nome di un altro progetto, l'unica forma ammessa è
+  dichiarare che non c'entra e proseguire.
+
 ## ⚠️ IL PROGETTO DI RIFERIMENTO È `MASTER_PROJECT/` — leggilo per primo
 
 **Deciso dall'Owner il 2026-07-26.** Il progetto di riferimento è la **riscrittura**, che vive

@@ -76,7 +76,7 @@ const FEATURE_PROBES = Object.freeze({
   'Artifacts': () => get('/api/v1/artifacts'),
   'Agents': () => get('/api/v1/agents'),
   'Workflows': () => get('/api/v1/workflows'),
-  'CodeN Ultra': () => post('/api/v1/coden/path-plan', { mode: 'NORMAL', operation: 'read', path: 'projects' }),
+  'CodeN Evolution': () => post('/api/v1/coden/path-plan', { mode: 'NORMAL', operation: 'read', path: 'projects' }),
   'Knowledge': () => get('/api/v1/knowledge/search?q=probe'),
   'Memory': () => get('/api/v1/memories'),
   'Local and External Providers': () => get('/api/v1/providers'),

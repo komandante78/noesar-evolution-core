@@ -10,7 +10,7 @@ if (health.status !== 'healthy') throw new Error('health failed');
 const privacy = await fetch(`${base}/api/v1/privacy`).then((r)=>r.json());
 if (privacy.banner.detail !== 'No data is sent to external servers.') throw new Error('privacy failed');
 const bootstrap = await fetch(`${base}/api/v1/bootstrap`).then((r)=>r.json());
-if (!bootstrap.features.includes('CodeN Ultra')) throw new Error('bootstrap failed');
+if (!bootstrap.features.includes('CodeN Evolution')) throw new Error('bootstrap failed');
 const page = await fetch(base).then((r)=>r.text());
 if (!page.includes('Owner Bypass')) throw new Error('webui failed');
 server.close();
