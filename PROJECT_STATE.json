@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_WP2_DEPLOYED_PHASE4_WP2",
-  "next_phase": 5,
+  "phase_status": "PHASE_4_COMPLETE_PLAN_OF_RECORD_SWITCHED_TO_REWRITE_AWAITING_OWNER_REVIEW",
+  "next_phase": "REWRITE_PHASE_1_BACKBONE (docs/WORK_PLAN_V5_REWRITE.md) — bloccata finche l Owner non conferma il piano",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -708,11 +708,9 @@
     "package_self_declared_state": "IMPLEMENTATION=NOT_STARTED, FINAL_PRODUCT_ZIPS=0/5, current_gate=GATE_0_OWNER_REVIEW, dated 2026-07-22; the five product ZIPs are dated 2026-07-25"
   },
   "master_acceptance_matrix_status": {
-    "SEC-003": "OPEN — forgery closed, consent scope closed, but three of seven invariants are enforced at a layer this build does not run",
-    "OPS-002": "OPEN — four of five platforms exercised at script level, Windows never executed, no installation performed on any other platform",
-    "note": "Neither blocker may be marked PASS. Both were materially advanced and both remain open for reasons stated in the ledger."
+    "note": "Il master V4 non e piu il metro (D-0096). La riscrittura NON ha una matrice di accettazione: va ricostruita dentro di essa, altrimenti non esiste un modo controllabile di dire fatto. Registrato come rischio 4 in docs/WORK_PLAN_V5_REWRITE.md."
   },
-  "plan_of_record": "docs/WORK_PLAN_V4_ALIGNMENT.md",
+  "plan_of_record": "MASTER_PROJECT/ (la riscrittura) — deciso dall Owner il 2026-07-26, D-0096",
   "webui_proposal_v1": {
     "status": "NOT_ACCEPTED",
     "reviewed_utc": "2026-07-26",
@@ -999,5 +997,6 @@
       "D-0086"
     ],
     "deployed": false
-  }
+  },
+  "plan_of_record_previous": "MASTER_REFERENCE/ (master V4) — rimosso dall albero, recuperabile da git c28d8a2 e dagli archivi sigillati, D-0097"
 }

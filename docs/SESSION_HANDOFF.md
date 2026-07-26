@@ -1,360 +1,138 @@
 # NOESAR EVOLUTION — Session Handoff
 
-**Rewritten at the end of every phase. A cold session should be able to resume from this
-file and `PROJECT_STATE.json` alone.**
+**Riscritto alla fine di ogni fase. Una sessione fredda deve poter ripartire da questo file e
+da `PROJECT_STATE.json` soltanto.**
 
 ---
 
-## Current position
+## ⚠️ IL PROGETTO DI RIFERIMENTO È CAMBIATO — 2026-07-26
 
-| Field | Value |
-|---|---|
-| Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
-| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2: Workflows, approval queue, WCAG 2.2 AA and the seven privacy states done** |
-| Phase status | `PHASE_4_COMPLETE_WP2_DEPLOYED_PHASE4_WP2` |
-| **Next work** | **WP-2 continues** — five remaining rows; the role model needs the Owner in the loop |
-| Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
-| Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `ea1f103` + the deployment commit below |
-| Updated (UTC) | 2026-07-26 |
+**Deciso dall'Owner.** Il metro non è più il master V4: è la **riscrittura**, in
+`MASTER_PROJECT/` (14 documenti italiani, importati con checksum di provenienza e verificati
+byte-identici all'originale in `/mnt/user/downloads/NOESAR_EVOLUTION/`).
 
-> ## ➜ What this session did
->
-> WP-2's smallest self-contained row: the local-first privacy indicator, `01_PRODUCT/12`.
-> It was **measured before it was changed** — the discipline that has now paid twice running.
->
-> The specification is ten lines and makes three separable claims: seven named states; an
-> external state disclosing destination, service identity, data categories, purpose,
-> duration, retention, consent scope and a revoke control; and telemetry off with no user
-> content in licence or update metadata. Against the shipped code:
->
-> ```text
-> # tests 25   # pass 7   # fail 18
-> ```
->
-> The seven passes included the four published `EGRESS` conformance vectors, which is why the
-> new suite asserts them: the repair had to leave them intact, and it did.
+`MASTER_REFERENCE/` **è stata rimossa dall'albero di lavoro** — 119 file. È un'eccezione
+nominata alla regola 12, registrata in `CLAUDE10.md` §1a e in `D-0097`, **non** un
+aggiramento. È recuperabile su tre percorsi, con le prove registrate *prima* della rimozione
+in `EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`: il commit `c28d8a2`, i cinque archivi
+sigillati con i loro SHA-256, e un manifest sha256 dei 119 file così che il recupero sia
+verificabile file per file. **Non reintrodurre il V4 come metro senza una nuova decisione
+dell'Owner.**
 
-> ## ➜ The sharpest finding was not a missing state
->
-> `REMOTE_MODEL_ACTIVE` was being reported by an installation whose remote-model request had
-> just been **refused**.
->
-> The state lived in `let currentPrivacyState`, assigned at module load and then overwritten
-> by whatever egress plan any authenticated caller last evaluated. Two defects came out of
-> that one line: asking *what would happen if I used a remote model* repainted the indicator
-> for every user until restart, on the strength of a plan the server had denied; and it
-> initialised to `LOCAL_ONLY_`**`VERIFIED`** before anything had been verified, resetting to
-> that optimistic claim on every restart.
->
-> `derivePrivacy()` now computes the state from enabled providers and consented connectors.
-> There is nothing for a caller to set and nothing to go stale across a restart.
-> `evaluateEgress()` stays separate and unchanged — it answers a hypothetical, and a
-> hypothetical is not a state. `D-0087`.
+## ➜ Leggi in quest'ordine
 
-> ## ➜ Four design decisions worth reading before extending this
->
-> **A registered provider is a menu item, not a pending connection** (`D-0088`). This was my
-> own defect, caught by this phase's own test. `ProviderGateway.seed()` registers OpenAI,
-> Anthropic and Kimi in every workspace, disabled and unconsented. Counting those as pending
-> meant **a fresh installation could never once report `LOCAL_ONLY_VERIFIED`** — a permanent
-> false alarm, and a warning that is always on is one people learn to skip past. "Pending"
-> now means enabled without consent, or consented without being enabled.
->
-> **Retention at a third party is declared unknowable, not invented** (`D-0089`). The
-> disclosure carries `UNKNOWN_AT_DESTINATION` with the reason, beside the local retention
-> this installation does control. A figure would have been fabrication; a blank would have
-> left a required element empty.
->
-> **The revoke control is not advertised to callers who cannot use it** (`D-0091`). `user`,
-> `client_restricted` and `service_account` all hold `user.read`, so they read the indicator,
-> but none holds `provider.manage`, so the route answers them 403. Widening the permission
-> was rejected — revoke disables providers workspace-wide, so a restricted account could
-> switch off everyone's access. The disclosure reports `available` for **this** caller,
-> answered by the same `hasPermission` call the route enforces.
->
-> **`POLICY_VIOLATION_BLOCKED` is fed by refused sends, never by refused plans** (`D-0093`).
-> Feeding it from a plan would let any caller repaint the indicator by asking a bad question —
-> `D-0087` in the opposite direction. It expires from the indicator after 15 minutes; the
-> ledger is the permanent record, and a state that never clears is `D-0088` again.
+1. `PROJECT_STATE.json` e questo file
+2. **`docs/WORK_PLAN_V5_REWRITE.md`** — cosa è fatto, cosa cambia, cosa va modificato, il piano
+3. **`MASTER_PROJECT/09_PIANO.md`** — §1 dice *dove siamo davvero, misurato*; §3 dice *quando
+   la fase 1 è finita*. Quei due paragrafi valgono più di qualsiasi riassunto.
+4. `MASTER_PROJECT/00_LEGGIMI.md` → poi `01` e `02`, che reggono tutto il resto
+5. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
 
-> ## ➜ Two defects found after the tests were already green
->
-> **`POLICY_VIOLATION_BLOCKED` was unreachable in the running product.** `lastPolicyViolation`
-> was declared in the server and only ever *cleared* — nothing set it. The unit tests proved a
-> pure function could produce the state, which is not the same as the product reaching it, and
-> is exactly the gap the bootstrap feature-claims suite exists to close. Found by reading the
-> staged diff; no scanner on this host sees it. `ProviderGateway.#assertAllowed` now reports
-> each external refusal once, through one place, and the test drives it over HTTP.
->
-> **That test's first version proved nothing.** It asserted `status >= 400`, which a 404 from
-> a mistyped route satisfies — it "passed" the attempt while the indicator had not moved. It
-> now asserts `403` exactly, using the provider health probe, which runs the same
-> `#assertAllowed` gate and then genuinely reaches out.
+## ➜ LA PROSSIMA AZIONE È UNA CONVERSAZIONE, NON DEL CODICE
 
-> ## ➜ Defects of my own, declared
->
-> Three harness defects were triaged out **before** anything was repaired, because a false
-> positive "fixed" is a real regression introduced for nothing: the wrong key for the
-> conformance file (`vectors` for `cases`), the wrong field on the providers response
-> (`items` for `providers`), and the wrong verb for granting consent (`POST` for `PUT`).
->
-> Two more were in the browser harness. Waiting on a native checkbox's `checked` — true the
-> instant it is clicked, while the round trip was still in flight — meant the next click hit a
-> stale client copy, and the UI **correctly** refused it with "Grant explicit external consent
-> first". Waiting only on the server's answer then raced the client's own re-render and
-> detached the node mid-click. The barrier now marks the node before acting, so it can only
-> clear once a re-render has replaced it.
->
-> And `toast` takes `(message, {kind})`. The previous handoff said it takes an options object;
-> the code is the authority, and the code was checked.
+L'Owner ha annunciato che **porrà domande per verificare che il progetto coincida con il suo
+pensiero**. Il piano in `docs/WORK_PLAN_V5_REWRITE.md` è **proposto, non approvato**.
 
----
+**Non iniziare la fase 1.** Della fase 0 (governo) sono fatti i punti 1-3; i punti 4-6 —
+domande dell'Owner, traduzione canonica in inglese, emendamenti a `V4-D001`/`V4-D002` — sono
+in attesa, e il primo blocca gli altri due.
 
-## Verified in this session
+## ➜ Cosa è stato fatto in questa sessione, in ordine
+
+1. **WP-2 · i sette stati di privacy** — l'ultimo lavoro fatto col metro V4. Misurato prima di
+   cambiare: **18 check falliti su 25** contro il codice non corretto. Il difetto più grave non
+   era uno stato mancante: l'indicatore dichiarava `REMOTE_MODEL_ACTIVE` per un invio che il
+   server aveva **rifiutato**, perché lo stato era una variabile scritta dal piano di egress
+   dell'ultimo chiamante, e partiva asserendo "verified" prima di aver verificato alcunché.
+   Ora è **derivato** dalla configurazione. `D-0087` → `D-0093`.
+2. **Deploy autorizzato dall'Owner** dei quattro fix accumulati → `:phase4-wp2`, vivo e sano.
+3. **`docs/REMAINING_WORK.md`** — e nel produrlo, due miei errori di misura corretti.
+4. **Il cambio di progetto di riferimento** (questo), con piano di lavoro e skill aggiornati.
+
+## ➜ L'installazione, verificata dopo il deploy
 
 ```text
-unit tests             631/631   600 before; +31 in one new suite; 0 failures
-  privacy states        31/31    18 of 25 failed against the unfixed code
-eslint                 158 files, 0 errors, 0 warnings, 0 no-undef
-browser acceptance    233/233   213 before; +20 checks, real browser, real box
-accessibility          26/26    unchanged with the new markup
-installer hardening   100/100   unchanged
-MANIFEST             5702/5702  0 failed, 0 duplicates
-static analysis       services/ clean · apps/ 1 pre-existing MEDIUM · tools/ pre-existing only
+container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
+endpoint    livez 200 · readyz 200 · / 200 · /metrics 401 (hardening LAN intatto)
+rotte       workflows 401 · approvals 401 · privacy/revoke 401 · rotta inesistente 404
+dati        PostgreSQL 18.4 + pgvector 0.8.5, 16 migrazioni, 15 tabelle RLS, Owner intatto
+errori      0 dall'avvio
+schema      ai-workspace.json ancora "schemaVersion": 1 — vedi rollback
 ```
 
-Six deliberate defects were seeded one at a time and each was caught by exactly one test:
-any registered external provider counted as pending, `observed:false` assuming local-only,
-the metadata producer spreading its caller's object, the revoke control advertised
-regardless of permission, the indicator stored again from the caller's plan, and the
-egress-blocked wiring removed. Every source file was restored and confirmed
-**byte-identical** to its pre-seed copy after each round.
+**Non verificato dal vivo, e serve l'Owner:** il comportamento di tre dei quattro fix
+(authorize ricalcolato, `DENY` rifiutato, indicatore non ripitturabile) richiede una sessione
+Owner autenticata, e queste sessioni non hanno le credenziali. Provato sul box: le rotte
+esistono e sono protette, e i byte installati sono identici all'albero che ha passato le suite.
 
-The browser suite ran four times. Two of those runs failed on my own harness races, described
-above rather than hidden; the final 233/233 was run against the final tree.
-
-### Dismissed with evidence, not silently
-
-- `apps/webui-static/app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing,
-  dismissed in the two previous phases. Re-confirmed by diffing line 85 against this phase's
-  own backup copy: byte-identical, untouched by this work. The target is a freshly created
-  local `Error` with three fixed literal keys.
-- `tools/verify-package.py`, `tools/create-rust-build-provenance.py` — `B603`/`B607`/`S603`/
-  `S607` (reported CRITICAL/HIGH by the scanner), `B404`, `F401`. Neither file is staged.
-  Verified at the flagged lines: argv-list form, no `shell=True`, fixed command names, and the
-  only variable part is a path from a local `rglob` walk. `F401 sys` is `D-0039`.
-- **`B-002` unchanged and still weak.** `detect-secrets` was shown last phase to report 0
-  findings on a literal `AKIA…` key. Its clean result here is weak evidence, and the
-  pre-commit scan is heuristic and declared as such.
-
----
-
-## ✅ The four accumulated fixes are now DEPLOYED — `:phase4-wp2`
-
-Deployed 2026-07-26 on the Owner's explicit authorisation. The live installation on
-`192.168.178.100:8100` now runs `noesar-evolution:phase4-wp2` and carries:
-
-1. the recalculated `/api/v1/coden/authorize` (s262, `e2abbc6`),
-2. consent-scope validation, so `DENY` no longer mints an approval (s263, `f512041`),
-3. Workflows and the approval queue — `/api/v1/workflows` answered **404** before this
-   deployment and answers 401 now (s264, `9912462`), and
-4. the derived privacy indicator (s265, `12dd1f7`), plus the WCAG 2.2 AA repairs.
-
-Verified live: `health=healthy`, `RestartCount=0`, `livez`/`readyz` 200, `/metrics` 401,
-PostgreSQL 18.4 + pgvector 0.8.5 with 16 migrations and 15 RLS tables, the bootstrapped Owner
-account intact. The deployed image's `src/` and `apps/webui-static/` were hashed **after the
-build** and match this repository exactly, which is what ties the running artifact to the
-test evidence. Full record in `docs/INSTALLATION_LEDGER.md`; configuration reasoning in
-`D-0094`.
-
-**Not verified on the live box, and it needs the Owner:** the behaviour of fixes 1, 2 and 4
-requires an authenticated Owner session, and these sessions hold no Owner credentials. What
-is proven live is that the routes exist and are gated, and that the bytes match the tested
-tree. The end-to-end proof of those three behaviours **on this installation** belongs with
-the other gate items only the Owner can close.
-
-## The schema rollback cost — where it stands now
-
-`AI_STATE_VERSION` went from 1 to 2 with this image. Immediately after the deployment
-`state/ai-workspace.json` was still `"schemaVersion": 1`, because a read alone does not
-rewrite it — **so until the new build's first write, rolling back is just starting the old
-container.** After the first write the file is version 2 and every older image refuses to
-read it, deliberately: an older build operating on state whose invariants it does not know
-would corrupt quietly rather than fail loudly. From that point a rollback also needs
-`state/ai-workspace.json` restored from
-`BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/`, a full 75 MB copy taken with the service
-stopped.
-
----
-
-## Open blockers
-
-### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`, confirmed again this
-phase (`git remote -v` is empty). The local repository is complete and committed.
-
-### B-002 — secret scan is heuristic · low · unchanged
-Neither `gitleaks` nor `trufflehog` is installed, and rule 45 forbids installing tooling to
-satisfy a rule. `detect-secrets`, the one real scanner available, was shown last phase to
-report **0 findings on a textbook AWS key canary**. Treat its clean results as weak evidence.
-
-### B-008 — two identity stores · medium · unchanged
-The account that signs in lives in `RUNTIME_ROOT/state/auth.json`; `noesar_identity.users` in
-PostgreSQL is empty. Needs a phase of its own.
-
-### B-005, B-006, B-007 — **CLOSED**.
-
----
-
-## Exact next action
-
-**WP-2 continues.** Four of its eleven rows are done; **five are untouched**, and the table in
-`docs/WORK_PLAN_V4_ALIGNMENT.md` is the list:
+## ➜ Verifiche prodotte in sessione
 
 ```text
-Passkeys / WebAuthn, OIDC, SAML, SCIM      01_PRODUCT/14   passkeySupported:false; zero references
-Role model (six named roles)               01_PRODUCT/14   a DIFFERENT model ships, not a subset
-Compliance evidence packs                  06_COMPLIANCE   absent
-Industry Module Framework                  07_INDUSTRY     absent (Gate 6)
-ML-BOM alongside SBOM                      00_CONTROL/06   SBOM exists, no ML-BOM
+unit test              631/631   600 prima; +31 in una suite nuova
+  stati di privacy      31/31    18 di 25 falliti contro il codice non corretto
+eslint                 158 file, 0 errori, 0 warning, 0 no-undef
+accettazione browser  233/233   213 prima; +20 check, browser vero, box vero
+accessibilità          26/26    invariata con il markup nuovo
+MANIFEST             5719/5719  0 falliti, 0 duplicati (include MASTER_PROJECT/)
 ```
 
-Of what remains, **ML-BOM is the smallest and most self-contained** — it was the other half of
-the pair this session drew from, and it is the obvious next one. `00_CONTROL/06` requires it
-beside the SBOM, and `03_SECURITY/35` and `06_COMPLIANCE/65` both reference it.
+Sei difetti seminati uno alla volta, ognuno catturato da esattamente un test, file ripristinati
+**byte-identici** dopo ogni giro.
 
-One thing to settle before starting it: this build ships **no model weights**. An honest
-ML-BOM therefore describes the model *surfaces* the product declares — the provider
-catalogue entries and the local runtime's expected formats — and states plainly that no model
-artifact is distributed. An ML-BOM that invented model entries to look complete would be the
-exact defect class this project keeps removing.
+## ➜ Due errori di misura miei, corretti e registrati
 
-**Compliance evidence packs** and the **Industry Module Framework** are whole subsystems and
-Gate 6 work. **Passkeys/WebAuthn, OIDC, SAML and SCIM** are four separate integrations that
-each need an Owner decision about what this product federates with.
+1. **Un solo strumento scambiato per il tutto.** Il primo elenco di "cosa manca" era ricavato
+   dalla sola matrice a 11 item e presentato come il progetto intero. Ora `REMAINING_WORK.md`
+   tiene separati i tre livelli.
+2. **Cercare identificatori invece dello schema.** Quattro componenti riportati come "0 file"
+   grepando nomi come `SecretBroker`, che questo codice non usa. Riverificato: Secret Broker e
+   Resource Governor sono **parziali**; il Model Trust Registry è **peggio che assente** —
+   `model_descriptors.trust_state` esiste con i quattro stati giusti e **nessun codice lo legge
+   o lo scrive**. **Schema morto**: una colonna che nessuno usa dice al prossimo che la funzione
+   c'è. È la stessa categoria che la riscrittura aveva già documentato a luglio.
 
-**Take the role model only with the Owner in the loop.** `01_PRODUCT/14` names six roles that
-are neither a superset nor a subset of the six that ship, so satisfying it means changing who
-can do what on a running installation. This session again avoided touching it: the revoke
-route reuses `provider.manage` rather than inventing a permission.
+## ➜ Blocker aperti
 
-**Still open and unchanged:**
+`B-001` nessun remote GitHub · `B-002` secret scan euristico (`detect-secrets` restituisce 0
+finding su una chiave AWS letterale) · `B-008` due store di identità.
 
-- **`SEC-003` must not be marked PASS.** Forgery of the authorization record and of the
-  consent scope is closed, and four of seven invariants are enforced and defended by tests.
-  **Three are enforced at a layer this build does not run** — honestly declared, which is the
-  right state but not the same as the matrix item passing.
-- **`OPS-002` must not be marked PASS** and cannot be closed from this host: no macOS, no
-  Windows, no PowerShell, no podman, and rule 45 forbids installing them. `Install-Noesar.ps1`
-  is expected to nest the tree on reinstall — recorded, not repaired (`D-0077`).
-- **`MANIFEST.sha256` does not cover `MASTER_REFERENCE/`** — 0 of its 119 files. The
-  acceptance matrix the whole plan is measured against is not integrity-protected. Widening
-  the manifest changes what the artifact means, so it is the Owner's call (`D-0074`). The two
-  specification files this phase consumed were verified individually against
-  `MASTER_REFERENCE/MANIFEST.sha256`, which does cover them: both OK.
-- **WP-3 / WebUI v2.** v1 was reviewed on 2026-07-26 and **not accepted**. Read
-  `docs/WEBUI_DESIGN_REVIEW_V1.md` first. WP-2 has now added **three** things to the v1
-  shell — `Workflows`, `Approvals`, and the privacy disclosure panel on Home. WP-3 re-derives
-  the whole navigation from `01_PRODUCT/11`, so treat all three as destinations and surfaces
-  that must find a home in the new information architecture, not as settled layout.
-- **The CodeN Evolution design conversation.** `docs/CODEN_EVOLUTION_DESIGN_V1.md` is written
-  and waiting; five decisions at the end are the Owner's.
-- **ATOM.** Blueprint at `/mnt/cachec/NOESAR-ATOM-PRIVATE/` (private, no remote, nothing
-  implemented). Its first step is not in that repository: `ReasoningProvider` is **zero files
-  in the core**, and that contract belongs to the public core.
-- **Phase 5** is WP-4 and stays below all of the above.
+## ➜ I rischi che il cambio di progetto si porta dietro
 
-Read in this order on reopening: `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
-`docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`, then `docs/WORK_PLAN_V4_ALIGNMENT.md`.
+1. **Nessun toolchain Rust sull'host** e la regola 45 vieta di installarlo. La fase 1 è Rust
+   dalla prima riga: si costruisce in container `rust:1-bookworm` effimeri.
+2. **La fase 1 è quattro sottosistemi a zero file**, in un linguaggio dove il prodotto ha
+   ~1.100 righe contro ~24.500 di JavaScript.
+3. **Il supervisore a tre figli tocca l'avvio dell'installazione viva** — va fatto blue/green
+   con rollback preservato, come il deploy di oggi.
+4. **La riscrittura non ha apparato di accettazione**: zero matrici con ID e severità, zero
+   tracciabilità. Il V4 li aveva e non sono più nell'albero. Vanno ricostruiti dentro la
+   riscrittura, o si perde il modo controllabile di dire "fatto".
+5. **La parte legale, licenze, conformità e confini d'uso** che la riscrittura dichiara di
+   conservare è conservata **per decisione, non per contenuto**: era nei documenti V4 `50-57`,
+   `60-66`, `70-77`, `09_LEGAL_TEMPLATES`. La fase 7 ne avrà bisogno.
+6. **Nessuno dei due progetti ha avuto una revisione indipendente.**
 
-### Gate items only the Owner can close
+## ➜ Rollback
 
 ```text
-CLIENT_BROWSER_TEST      AWAITING_OWNER
-OWNER_BOOTSTRAP          DONE (the Owner bootstrapped outside these sessions)
-MFA_TOTP                 AWAITING_OWNER
-TOKEN_REUSE_REJECTED     AWAITING_OWNER
-STEP_UP_AUTH             AWAITING_OWNER
-OWNER_MFA_ROTATION       AWAITING_OWNER_INTERACTION
+container    noesar-evolution.rollback-webui-20260726T155330Z     immagine :phase4-webui
+runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB,
+                                                                  presa a servizio fermo
+progetto V4  git c28d8a2 · archivi sigillati ·
+             EVIDENCE/v4_removal_recovery_20260726T163433Z.txt
 ```
 
-None may be marked PASS by anyone but the Owner completing the flow in their own browser.
+Per tornare indietro sull'installazione: `docker stop -t 60 noesar-evolution`, rinominarlo da
+parte, poi `docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo
+la build attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora
+`"schemaVersion": 1` — serve anche ripristinarlo dal backup, o `:phase4-webui` rifiuterà di
+caricare il workspace AI.
 
-### Deferred items, still open
+## ➜ Igiene
 
-`F4W-005` (the QR encoder is proven only for versions 1–6, bounding enrolment QR codes to
-usernames of 25 characters or fewer), `F4-013` (a filesystem backup of the workspace is not
-encrypted and contains the auth master key — an operator duty the documentation must state),
-`D-0039` (`tools/verify-package.py` imports `sys` unused), **rejecting a staged update answers
-501** (the update manager has no discard verb; nothing has been applied at that point, and
-inventing one would be scope creep — `D-0081`), no TLS, no SBOM for the image beyond the
-declared component inventory, no independent penetration test, and the licensing backlog
-inherited from Phase 1 (12 first-party Rust crates and 2 Node packages with no declared
-licence, no root `LICENSE`, 86 sources with no SPDX header, 0 declared licences across the
-Rust tree in the source SBOM).
-
----
-
-## Reproducing this session's verification
-
-```bash
-npm test                                    # 631 unit tests
-npm run lint                                # eslint, 158 files
-node --test services/reference-control-plane/test/privacy-states.test.mjs   # 31
-npm run test:accessibility                  # 26 WCAG 2.2 AA checks, real Chromium
-npm run test:installers                     # 100 hardening checks
-npm run test:installers-cross-platform      # cross-platform, 0 failures
-sha256sum -c MANIFEST.sha256                # 5702 entries
-bash tools/run-browser-e2e.sh               # 233 checks, disposable probe, self-cleaning
-```
-
-## Rollback
-
-```text
-container   noesar-evolution.rollback-webui-20260726T155330Z      image :phase4-webui
-runtime     BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/      full 75 MB copy, taken
-                                                                  with the service stopped
-source      BACKUPS/wp2_privacy_states_20260726T151829Z/   privacy.mjs, server.mjs,
-                                                           update-manager.mjs, app.js,
-                                                           index.html, styles.css,
-                                                           MANIFEST.sha256, SESSION_HANDOFF.md,
-                                                           CHECKSUMS.txt
-            BACKUPS/MANIFEST.sha256.pre_wp2_privacy_20260726T151829Z
-```
-
-To roll back the installation: `docker stop -t 60 noesar-evolution`, rename it aside, then
-`docker start noesar-evolution.rollback-webui-20260726T155330Z` and rename it back. **If the
-current build has written to `state/ai-workspace.json` by then** — check whether it still
-reads `"schemaVersion": 1` — the rollback also needs that file restored from the runtime
-backup above, or `:phase4-webui` will refuse to load the AI workspace.
-
-Image lineage, all still on disk:
-
-```text
-:phase4-wp2            what is running now
-:phase4-webui          the kept rollback container (immediate predecessor)
-:phase4-complete-lan   state before the WebUI completion
-:phase4-complete       state before the LAN bind
-:phase4                state before the completion gate
-:phase3                state before Phase 4
-```
-
-## Housekeeping
-
-`CLAUDE10.md` §5a and step 13 of the 15-step skill cycle. **Two containers survive a phase** —
-the running installation and one rollback — and that is exactly what exists. This session
-created no product container. The browser suite created its own probe, runner and image and
-removed all three on exit, on each of its four runs. `noesar-debuglab` was started for the
-hunt step and **stopped again in the same phase**; one read-only `docker exec` was made into
-it to read its own route table, because its API is undocumented on this host.
-
-Inventory **39 containers throughout**, exactly two `noesar-evolution*`, networks and volumes
-diffed against `EVIDENCE/docker_inventory_pre_cleanup_20260726T154521Z.txt` and **unchanged**.
-Live product after the work: `livez` 200, `readyz` 200, `/metrics` 401, `health=healthy`,
-`RestartCount=0`, still `:phase4-webui`. Host-wide `prune` in any form remains forbidden.
-
-Noted, not acted on: `run-browser-e2e.sh` preserves its workspace when a run fails, so the two
-failed runs left `20260726T153315Z` and `20260726T153436Z` under
-`/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e/`. That preservation is the script's deliberate
-behaviour, the directories lie outside `PROJECT_ROOT`, and rule 12 forbids deleting them.
+Due container sopravvivono alla fase, ed è quello che esiste: l'installazione e un solo
+rollback. Il rollback più vecchio è stato rimosso (solo il container; l'immagine
+`:phase4-complete-lan` resta su disco). Reti e volumi diffati contro
+`EVIDENCE/docker_inventory_pre_cleanup_20260726T155449Z.txt`: invariati. Container non-progetto
+37 prima e 37 dopo. `noesar-debuglab` avviato per la caccia e **rifermato nella stessa fase**.
+Nessun `prune`, in nessuna forma.

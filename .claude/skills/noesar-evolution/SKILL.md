@@ -8,6 +8,42 @@ description: MANDATORY for every NOESAR EVOLUTION phase. Imposes the fixed 15-st
 Applies **only** to NOESAR EVOLUTION (`/mnt/cachec/NOESAR_EVOLUTION`).
 Subordinate to `CLAUDE10.md`; where they conflict, `CLAUDE10.md` wins.
 
+## ⚠️ IL PROGETTO DI RIFERIMENTO È `MASTER_PROJECT/` — leggilo per primo
+
+**Deciso dall'Owner il 2026-07-26.** Il progetto di riferimento è la **riscrittura**, che vive
+in `MASTER_PROJECT/` (14 documenti in italiano, importati da
+`/mnt/user/downloads/NOESAR_EVOLUTION/` con checksum di provenienza in
+`MASTER_PROJECT/PROVENANCE.sha256`).
+
+**La documentazione V4 (`MASTER_REFERENCE/`) è stata rimossa dall'albero di lavoro** e non è
+più il metro di niente. Resta recuperabile dalla storia git e dagli archivi sigillati in
+`/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`, i cui SHA-256 sono registrati nel repository.
+**Non reintrodurla come metro senza una nuova decisione dell'Owner.**
+
+Ordine di lettura, ogni sessione:
+
+1. `PROJECT_STATE.json`, `docs/SESSION_HANDOFF.md`
+2. **`docs/WORK_PLAN_V5_REWRITE.md`** — cosa è fatto, cosa cambia, cosa va modificato, il piano
+3. **`MASTER_PROJECT/09_PIANO.md`** — l'ordine di costruzione e il criterio di "fatto"
+4. `MASTER_PROJECT/00_LEGGIMI.md` → `01` e `02` sono i due che reggono tutto il resto
+5. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
+
+Se hai poco contesto: `09_PIANO.md` §1 dice **dove siamo davvero, misurato**, e §3 dice
+**quando la fase 1 si può dire finita**. Quei due paragrafi valgono più di qualsiasi riassunto.
+
+**Tre cose della riscrittura che cambiano il lavoro, non solo la prosa:**
+
+- I **dodici componenti** del kernel di sicurezza **collassano in uno**: i capability token.
+  Non si costruiscono dodici sottosistemi.
+- Lo **stack è deciso** (`11_REVISIONE_E_CORREZIONI.md`, D-A): **Rust** per ciò che *decide e
+  confina*, **JavaScript** per ciò che *propone e presenta*.
+- Il criterio di "fatto" della fase 1 **si misura senza ATOM**. Se passa solo con ATOM, non è
+  finita.
+
+**Lingua.** `MASTER_PROJECT/` è in italiano su richiesta esplicita dell'Owner. La regola 49
+(inglese canonico) resta valida per il codice e per gli artefatti prodotti; la traduzione
+canonica del progetto si fa **dopo** l'approvazione dei contenuti, mai prima.
+
 ## The cycle — mandatory, ordered, no step skipped
 
 Every phase executes exactly these steps, in this order:

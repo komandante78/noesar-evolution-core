@@ -1373,3 +1373,53 @@ This is the same class as `D-0074`, and the rule behind it is the one worth stat
 file in a directory the manifest already covers is not covered by inheritance. Nothing
 enumerates `oci/*`, so each recipe has to be appended by the phase that writes it, and the
 previous phase did not.
+
+---
+
+## Il cambio di progetto di riferimento — 2026-07-26
+
+### D-0096 — la riscrittura sostituisce il master V4 come progetto di riferimento
+
+Deciso dall'Owner. Il metro di ogni piano, decisione e criterio di "fatto" è ora
+`MASTER_PROJECT/` — quattordici documenti importati da `/mnt/user/downloads/NOESAR_EVOLUTION/`
+con checksum di provenienza, verificati byte-identici all'originale.
+
+**Perché la decisione è difendibile e non un capriccio.** Il master V4 è uno scheletro: 1.369
+righe su 89 documenti, circa quindici righe per documento, che dicono *cosa* deve essere vero
+senza dire *come* si misura — la stessa cosa che WP-0 aveva già scoperto quando trovò che gli
+strumenti di misura erano 80 righe. La riscrittura è 2.632 righe in quattordici documenti, ha
+un centro (il contratto `ReasoningProvider`), un ordine per dipendenza, un criterio di "fatto"
+che non è "compila", e zero decisioni aperte.
+
+**E cosa la decisione costa, dichiarato invece che taciuto.** La riscrittura **non ha**
+matrice di accettazione con ID e severità (0 documenti su 14), **non ha** tracciabilità dei
+requisiti (0 su 14) e cita appena il registro dei rischi (2 su 14). Il V4 aveva tutti e tre.
+Vanno ricostruiti dentro la riscrittura: sono ciò che ha reso possibile, in questa stessa
+sessione, scoprire che un elenco precedente era sbagliato.
+
+### D-0097 — la rimozione del V4 è un'eccezione nominata alla regola 12, non un aggiramento
+
+La regola 12 di `CLAUDE10.md` vieta le cancellazioni. L'Owner ha istruito di rimuovere la
+documentazione V4. La via corretta non è eseguire l'istruzione in silenzio contro il file che
+governa: è **emendare il file**, con lo stesso meccanismo della §5a, che è già un'eccezione
+concessa dall'Owner. Registrato in `CLAUDE10.md` §1a, punti 4a–4d.
+
+**La rimozione è recuperabile su tre percorsi indipendenti, e le prove sono state registrate
+prima di eseguirla** (`EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`):
+
+1. il commit `c28d8a2` contiene `MASTER_REFERENCE/` intatta — recupero verificato leggendo
+   `acceptance-matrix.yaml` dalla storia **dopo** la rimozione;
+2. i cinque archivi sigillati più il master V4, con i loro SHA-256 calcolati e registrati;
+3. un manifest sha256 dei 119 file rimossi, così il recupero è **verificabile** file per file,
+   non soltanto possibile.
+
+`MANIFEST.sha256` non copriva `MASTER_REFERENCE/` (`D-0074`), quindi la rimozione non tocca
+l'integrità dell'albero.
+
+### D-0098 — il nuovo progetto entra nel MANIFEST, e questo chiude D-0074
+
+`D-0074` aveva registrato che il metro su cui si misura tutto il piano non era protetto in
+integrità: 0 dei 119 file di `MASTER_REFERENCE/` erano nel manifest. Il difetto non si ripete:
+i quindici file di `MASTER_PROJECT/` sono nel manifest dalla prima ora. **5719/5719 OK, 0
+falliti, 0 duplicati.** Da ora una modifica non dichiarata al progetto di riferimento fa
+fallire `sha256sum -c`.

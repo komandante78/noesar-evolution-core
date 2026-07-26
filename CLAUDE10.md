@@ -19,11 +19,29 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 4. Work performed under this authority stays inside `PROJECT_ROOT`. Anything outside
    it is read-only unless the phase specification names the path explicitly.
 
+## 1a. Il progetto di riferimento — deciso dall'Owner il 2026-07-26
+
+4a. **Il progetto di riferimento è la riscrittura, in `MASTER_PROJECT/`.** Sostituisce il
+    master V4 come metro di ogni decisione, di ogni piano e di ogni criterio di "fatto".
+4b. **La documentazione V4 (`MASTER_REFERENCE/`) è rimossa dall'albero di lavoro** per
+    istruzione esplicita dell'Owner. Questa è un'eccezione nominata alla regola 12, concessa
+    con lo stesso meccanismo dell'eccezione §5a: l'Owner emenda questo file, non lo si aggira.
+    La rimozione è **recuperabile** — il contenuto resta nella storia git e negli archivi
+    sigillati in `/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`, i cui SHA-256 sono registrati.
+    Nessun file è stato distrutto.
+4c. **Conseguenza dichiarata, non nascosta:** la parte legale, di licenza, di conformità e di
+    confine d'uso che la riscrittura dichiara di conservare (`50-57`, `60-66`, `70-77`,
+    `09_LEGAL_TEMPLATES`) è conservata **per decisione, non per contenuto**. La fase 7 ne avrà
+    bisogno e andrà recuperata dagli archivi. Allo stesso modo, la riscrittura **non ha**
+    matrice di accettazione, tracciabilità né registro dei rischi: vanno ricostruiti dentro di
+    essa, o si perde il modo di dire "fatto" in maniera controllabile.
+4d. Il V4 **non si reintroduce come metro** senza una nuova decisione registrata dell'Owner.
+
 ## 2. State and handoff — read before operating
 
 5. Before any action in a new session or a new phase, read **in this order**:
-   `PROJECT_STATE.json`, `docs/SESSION_HANDOFF.md`, `docs/PHASE_PLAN.md`,
-   `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`.
+   `PROJECT_STATE.json`, `docs/SESSION_HANDOFF.md`, **`docs/WORK_PLAN_V5_REWRITE.md`**,
+   **`MASTER_PROJECT/09_PIANO.md`**, `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`.
 6. Never infer project state from memory, from a summary, or from a previous
    conversation. The files on disk are the only source of truth.
 7. If state files are missing, inconsistent, or contradict observable reality,
