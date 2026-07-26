@@ -10,12 +10,12 @@ file and `PROJECT_STATE.json` alone.**
 | Field | Value |
 |---|---|
 | Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
-| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — **WP-0 done, WP-1 half done** |
-| Phase status | `PHASE_4_COMPLETE_WP1_SEC003_RESIDUAL_DONE` |
-| **Next work** | **WP-1 remainder (`OPS-002`), then WP-2** |
+| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — **WP-0 done; WP-1 worked, both blockers still OPEN** |
+| Phase status | `PHASE_4_COMPLETE_WP1_WORKED_BOTH_BLOCKERS_STILL_OPEN` |
+| **Next work** | **WP-2 — Workflows and the approval queue** |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `f94b42f` |
+| Last commit | `1a458dd` |
 | Updated (UTC) | 2026-07-26 |
 
 > ## ➜ What this session did: the SEC-003 residual
@@ -82,7 +82,8 @@ file and `PROJECT_STATE.json` alone.**
 > `sha256sum -c MANIFEST.sha256` failed on `tools/run-browser-e2e.sh`, changed by `7597a54`
 > in s261 while the manifest was last refreshed at the earlier `5e4dbef`. Separately,
 > `test/coden-path-authorization.test.mjs`, created by s262, was never appended. Both are
-> repaired — **5692/5692 OK, 0 failed, 0 duplicates**.
+> repaired — **0 failed, 0 duplicates** (5692 entries at that point, 5693 after the
+> `OPS-002` work below).
 >
 > **Open, and deliberately not acted on:** the manifest covers the delivered product tree
 > and does **not** cover `MASTER_REFERENCE/` — 0 of its 119 tracked files are listed. The
@@ -91,18 +92,60 @@ file and `PROJECT_STATE.json` alone.**
 > notice. Widening the manifest changes what the artifact means, so it is the Owner's call.
 > `D-0074`.
 
+> ## ➜ And then `OPS-002`, the other blocker — worked, also NOT closed
+>
+> The hardening regression covered four scripts, all Docker/Unraid. `deployment/` also
+> carries `linux/`, `macos/`, `windows/` and `podman/`, and **none of those had ever been
+> executed or tested**. Two defects, both in the Podman path:
+>
+> **The Podman installer had never installed anything.** `run.sh` referenced
+> `$RELEASE_CHANNEL` and never assigned it; under `set -eu` the script aborted with
+> `RELEASE_CHANNEL: unbound variable`, after the network probe and **before** `podman run`.
+> That is why it looks like it works when read or run casually. `bash -n` accepts the file
+> — only running it against a `podman` stub could see it. `D-0075`.
+>
+> **The Podman build file carried a defect the Docker one had fixed.** `oci/Containerfile`
+> still health-checked `/healthz` while `oci/Dockerfile` had been corrected to `/livez`,
+> because `/healthz` and `/readyz` report *dependency* state and would restart a live
+> process whenever a dependency was briefly degraded. Propagated; the regression now
+> asserts the two files **agree**, so the next divergence fails. `D-0076`.
+>
+> **`OPS-002` cannot be closed from this host, and the tool says so in its own output.**
+> There is no macOS, no Windows, no PowerShell and no podman here, and rule 45 forbids
+> installing tooling to satisfy a rule.
+>
+> ```text
+> EXECUTED   linux/install-portable.sh    a real install into a pinned temporary HOME
+> EXECUTED   macos/install-portable.sh    POSIX sh; default path has a space, exercised
+> EXECUTED   podman/run.sh                against a podman stub
+> EXECUTED   {docker,podman}/build.sh     against stubs
+> NOT RUN    windows/*.ps1                structural only, reported as static
+> ```
+>
+> Running a script under a stub is not installing on the platform. **Recorded, not
+> repaired:** `Install-Noesar.ps1` has no equivalent of the `rm -rf "$DESTINATION/noesar"`
+> the Linux and macOS installers perform before copying, and PowerShell `Copy-Item
+> -Recurse` into an existing directory copies *into* it — so a Windows reinstall is
+> expected to nest the tree. Not reproducible here, so not repaired blind. `D-0077`.
+
 ---
 
 ## Verified in this session
 
 ```text
 adversarial suite       11/11    5 of 11 failed against the unfixed code, 0 after
+cross-platform          73/73    6 failed against the unfixed installers, 0 after
+installer hardening    100/100   unchanged, no regression
 unit tests             524/524   513 before; +11 this suite; 0 failures
-eslint                 148 files, 0 errors, 0 warnings, 0 no-undef
+eslint                 149 files, 0 errors, 0 warnings, 0 no-undef
 browser acceptance     178/178   174 before; +4 invariant panel, real browser
-MANIFEST              5692/5692  7 refreshed, 2 appended, 0 removed, 0 duplicates
-static analysis        services/…/src  0 findings (semgrep, bandit, ruff, detect-secrets)
+MANIFEST              5693/5693  0 failed, 0 duplicates
+static analysis        src/, deployment/, INSTALLATION/  0 findings
+shellcheck             6 findings, all SC1007 on the correct `CDPATH= cd` idiom, dismissed
 ```
+
+Both new suites were run against the **unfixed** code first and shown to fail. A suite
+that has never been observed failing proves only that it is quiet.
 
 `noesar-debuglab` was started for the hunt step and **stopped again in the same phase**.
 Container inventory **39 throughout**, exactly two `noesar-evolution*`, networks and
@@ -152,26 +195,22 @@ in PostgreSQL is empty. Needs a phase of its own.
 
 ## Exact next action
 
-**WP-1 is half done. The remaining half is `OPS-002`, the other `severity: blocker`.**
+**WP-1 is worked through. Both its blockers were materially advanced and neither is
+closed** — the reasons are stated above and in the ledger, and neither may be marked PASS.
 
-`OPS-002` — *cross-platform installation*. `deployment/` carries `linux/`, `macos/`,
-`windows/`, `podman/` and `unraid/`. The hardening regression covers **four scripts**
-(`INSTALLATION/install-unraid.sh`, `deployment/unraid/install-complete.sh`,
-`deployment/docker/run.sh`, `deployment/lib/network-access.sh`). The Linux, macOS, Windows
-and Podman installers have never been executed or tested, and `Install-Noesar.ps1` has
-never run on Windows.
+**Next is WP-2 — Workflows and the approval queue.** Start with Workflows, because
+`/api/v1/bootstrap` already advertises `Workflows` in its feature list while **no page, no
+route and no engine exist**. That is the same class of unhonoured claim this session fixed
+twice: an interface asserting something the code does not do. Everything needed to judge
+the requirement is in `MASTER_REFERENCE/04_AI_PLATFORM/46` (typed steps, retries,
+compensation, idempotency, timeout, cancellation, human approval, replay) and
+`01_PRODUCT/11` for the approval strip, which is binding.
 
-Note before planning it: much of that cannot be *executed* on this host — there is no
-macOS, no Windows, and Podman is not installed. Rule 45 forbids installing tooling to
-satisfy a rule. So `OPS-002` will need the honest split stated up front: what can be
-verified behaviourally here (the same `bash -n`-is-not-enough technique already used —
-run the installers against a fake `docker` binary, which caught a real defect in Phase 3),
-what can only be statically reviewed, and what is genuinely `[UNVERIFIED]` for want of a
-platform. Do not report a platform as covered because its script was read.
-
-**Then WP-2** — Workflows and the approval queue first, since `/api/v1/bootstrap` already
-advertises `Workflows` in its feature list and the engine does not exist. That claim is a
-defect of the same class this session just fixed twice.
+Before building, take the same first step that worked twice this session: **write the test
+that the claim is true, and run it against the current code.** The bootstrap feature list
+is the claim; a test that asserts every advertised feature has a route behind it will
+fail today, and that failure is the honest starting point for WP-2 — as well as a
+regression that stops the next feature being advertised before it exists.
 
 **Still open and unchanged from the previous handoff:**
 
@@ -221,9 +260,11 @@ licences across the Rust tree in the source SBOM).
 
 ```bash
 npm test                                    # 524 unit tests
-npm run lint                                # eslint, 148 files
+npm run lint                                # eslint, 149 files
 node --test services/reference-control-plane/test/coden-invariant-adversarial.test.mjs
-sha256sum -c MANIFEST.sha256                # 5692 entries
+npm run test:installers                     # 100 hardening checks
+npm run test:installers-cross-platform      # 73 cross-platform checks
+sha256sum -c MANIFEST.sha256                # 5693 entries
 bash tools/run-browser-e2e.sh               # 178 checks, disposable probe, self-cleaning
 ```
 
@@ -233,7 +274,9 @@ bash tools/run-browser-e2e.sh               # 178 checks, disposable probe, self
 container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
 backup      $ARTIFACT_ROOT/backups/phase_4_webui_pages_20260725T175916Z/
 this phase  BACKUPS/sec003_invariants_20260726T094716Z/     path-auth.mjs, server.mjs, index.html
+            BACKUPS/ops002_installers_20260726T102941Z/      podman/run.sh, oci/Containerfile
             BACKUPS/MANIFEST.sha256.pre_sec003_invariants_20260726T095620Z
+            BACKUPS/MANIFEST.sha256.pre_ops002_*
 ```
 
 To roll back the installation: `docker stop noesar-evolution`, rename it aside, then

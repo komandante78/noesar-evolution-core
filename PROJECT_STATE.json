@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_WP1_SEC003_RESIDUAL_DONE",
+  "phase_status": "PHASE_4_COMPLETE_WP1_WORKED_BOTH_BLOCKERS_STILL_OPEN",
   "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f94b42f",
+  "last_commit": "1a458dd",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -324,9 +324,11 @@
   ],
   "product_test_suite": {
     "unit": "524/524",
-    "eslint": "148 files, 0 errors, 0 warnings, 0 no-undef",
+    "eslint": "149 files, 0 errors, 0 warnings, 0 no-undef",
     "browser_acceptance": "178/178",
-    "adversarial_invariants": "11/11"
+    "adversarial_invariants": "11/11",
+    "installer_hardening": "100/100",
+    "cross_platform_installers": "73/73"
   },
   "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -355,11 +357,8 @@
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
   "manifest": {
-    "entries": 5692,
-    "verification": "5692/5692 OK, 0 failed, 0 duplicates",
-    "refreshed": 7,
-    "appended": 2,
-    "drift_found_on_entry": "sha256sum -c failed on tools/run-browser-e2e.sh, stale since s261 (7597a54) while the handoff reported 5690/5690; test/coden-path-authorization.test.mjs from s262 was never appended. Both repaired.",
+    "entries": 5693,
+    "verification": "5693/5693 OK, 0 failed, 0 duplicates",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -709,17 +708,9 @@
     "package_self_declared_state": "IMPLEMENTATION=NOT_STARTED, FINAL_PRODUCT_ZIPS=0/5, current_gate=GATE_0_OWNER_REVIEW, dated 2026-07-22; the five product ZIPs are dated 2026-07-25"
   },
   "master_acceptance_matrix_status": {
-    "PUB-001": "PASS",
-    "PUB-002": "PASS",
-    "SEC-001": "PASS",
-    "SEC-002": "PARTIAL - path traversal verified, no symlink-race suite exists",
-    "SEC-003": "PARTIAL - the forgeable authorization record is fixed and covered by a six-test regression suite (D-0070); the matrix item stays OPEN because six of the seven declared invariants have no enforcement mechanism at all. Must not be marked PASS.",
-    "SEC-004": "PARTIAL - signature and anti-rollback implemented, no channel key pinned so the rejection path is not exercisable",
-    "RUN-001": "PASS",
-    "RUN-002": "PARTIAL - GPU detected, not allocated, inference BLOCKED_NO_LOCAL_MODEL",
-    "OPS-001": "PASS",
-    "OPS-002": "OPEN - blocker - four installer scripts covered; linux, macos, windows and podman never executed or tested",
-    "PKG-001": "NOT DONE - Gate 8"
+    "SEC-003": "OPEN — forgery closed, consent scope closed, but three of seven invariants are enforced at a layer this build does not run",
+    "OPS-002": "OPEN — four of five platforms exercised at script level, Windows never executed, no installation performed on any other platform",
+    "note": "Neither blocker may be marked PASS. Both were materially advanced and both remain open for reasons stated in the ledger."
   },
   "plan_of_record": "docs/WORK_PLAN_V4_ALIGNMENT.md",
   "webui_proposal_v1": {
@@ -737,7 +728,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "WP-1 remainder: OPS-002 cross-platform installation. Then WP-2 (Workflows and the approval queue). WP-3 WebUI v2 and the CodeN Evolution design conversation remain open and unchanged.",
+  "next_action": "WP-2: Workflows and the approval queue. /api/v1/bootstrap already advertises Workflows in its feature list while no page, route or engine exists — the same class of unhonoured claim fixed twice in WP-1.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -836,6 +827,42 @@
     "commits": [
       "f512041",
       "f94b42f"
+    ]
+  },
+  "wp1_ops002_cross_platform": {
+    "status": "WORKED_NOT_CLOSED",
+    "verdict": "OPS-002 remains OPEN. It cannot be closed from this host.",
+    "host_capability": "Linux with docker. No macOS, no Windows, no PowerShell, no podman. CLAUDE10 rule 45 forbids installing tooling to satisfy a rule.",
+    "platforms_executed": [
+      "linux/install-portable.sh (real install, pinned temp HOME)",
+      "macos/install-portable.sh (POSIX sh, space-in-path exercised)",
+      "podman/run.sh (podman stub)",
+      "docker+podman build.sh (stubs)"
+    ],
+    "platforms_not_executed": [
+      "windows/*.ps1 — structural assertions only, reported as static, never as passing"
+    ],
+    "defects_found_and_fixed": [
+      "D-0075 podman/run.sh referenced RELEASE_CHANNEL and never assigned it; set -eu aborted the script before podman run, so the Podman installer had never installed anything",
+      "D-0076 oci/Containerfile health-checked /healthz while oci/Dockerfile had been corrected to /livez; the Podman path inherited the defect the Docker path had fixed"
+    ],
+    "recorded_not_repaired": [
+      "Install-Noesar.ps1 has no equivalent of the rm -rf the Linux/macOS installers perform before copying; PowerShell Copy-Item -Recurse into an existing directory nests the tree. NOT REPRODUCED, no PowerShell on this host, so not repaired blind (D-0077).",
+      "Start-Noesar.ps1 sets release channel development while every other platform uses complete",
+      "Uninstall-Noesar.ps1 removes nothing",
+      "Start-Noesar.ps1 references REPORTS/BUILD_PREPARATION_V1/03_PATH_DECISIONS.tsv, absent from this repository",
+      "podman/run.sh still uses the bare rw field in --mount (the form Docker 29 rejects); Podman behaviour untestable here, left alone rather than guessed"
+    ],
+    "regression": "tools/test-cross-platform-installers.mjs — 73 checks, verified to produce 6 failures against the unfixed files",
+    "decisions": [
+      "D-0075",
+      "D-0076",
+      "D-0077",
+      "D-0078"
+    ],
+    "commits": [
+      "fc8bed4",
+      "1a458dd"
     ]
   }
 }
