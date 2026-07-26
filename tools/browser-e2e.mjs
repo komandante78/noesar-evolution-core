@@ -180,9 +180,9 @@ try {
   // saying "Loading…" and nothing reported an error, because a nav entry whose panel
   // never resolves is the exact defect being removed.
   const ROUTES = [
-    'home', 'chat', 'projects', 'tasks', 'documents', 'agents', 'tools', 'knowledge',
-    'memory', 'providers', 'models', 'coden', 'hardware', 'settings', 'security',
-    'users', 'health', 'updates', 'logs', 'backups', 'about',
+    'home', 'chat', 'projects', 'tasks', 'documents', 'agents', 'workflows', 'approvals',
+    'tools', 'knowledge', 'memory', 'providers', 'models', 'coden', 'hardware', 'settings',
+    'security', 'users', 'health', 'updates', 'logs', 'backups', 'about',
   ];
   for (const route of ROUTES) {
     resetObservations();
@@ -255,6 +255,131 @@ try {
     invariants.enforcedHere === 4 && invariants.elsewhere === 3, JSON.stringify(invariants));
   check('every rendered invariant names where it is enforced',
     invariants.allNameALayer, JSON.stringify(invariants));
+
+  at('workflows');
+  // --- WP-2: a workflow, its approval gate, the strip, and the decision ----
+  // Driven the way an operator drives it: define a workflow in the form, start it, watch
+  // the run suspend at its gate, see the bottom approval strip say so, decide it on the
+  // Approvals page and watch the run finish. Nothing here reads the API to decide whether
+  // the interface worked — the assertions are on what is on screen, because a check on
+  // `classList` has already passed on a page no user could see (F4W-010).
+  resetObservations();
+  await page.goto(`${BASE}/#/workflows`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#workflowForm', { timeout: 15000 });
+
+  // The step vocabulary must come from the server, and must say which types this build
+  // cannot execute. A hardcoded copy in the page is the defect the invariant panel had.
+  await page.waitForFunction(
+    () => !/Loading the step vocabulary/.test(document.querySelector('#workflowStepTypes')?.textContent ?? ''),
+    { timeout: 15000 });
+  const vocabulary = await page.evaluate(() => document.querySelector('#workflowStepTypes')?.textContent ?? '');
+  check('the workflow step vocabulary is rendered from the server',
+    /transform/.test(vocabulary) && /human_approval/.test(vocabulary), vocabulary.slice(0, 200));
+  check('the interface states which step types this build cannot execute',
+    /not executable in this build/.test(vocabulary), vocabulary.slice(0, 200));
+
+  await page.type('#workflowName', 'Browser acceptance workflow');
+  await page.type('#workflowSteps', JSON.stringify([
+    { key: 'gate', type: 'human_approval', title: 'Confirm before proceeding' },
+    { key: 'finish', type: 'transform', operation: 'constant', config: { value: 'done' } },
+  ]));
+  await clickOrExplain(page, '#workflowForm button.primary');
+  await page.waitForSelector('[data-workflow-run]', { timeout: 15000 });
+  const defined = await page.evaluate(() => ({
+    cards: document.querySelectorAll('#workflowList article').length,
+    count: document.querySelector('#workflowCount')?.textContent ?? '',
+    rendered: (document.querySelector('#view-workflows')?.getBoundingClientRect().height ?? 0) > 0,
+  }));
+  check('a workflow defined in the browser appears in the list',
+    defined.cards >= 1 && defined.count === '1' && defined.rendered, JSON.stringify(defined));
+
+  await clickOrExplain(page, '[data-workflow-run]');
+  // The run must suspend at its gate, and the run card must say so on screen.
+  await page.waitForFunction(
+    () => /awaiting_approval/.test(document.querySelector('#workflowRunList')?.textContent ?? ''),
+    { timeout: 15000 });
+  const suspended = await page.evaluate(() => ({
+    runText: (document.querySelector('#workflowRunList')?.textContent ?? '').slice(0, 240),
+    hasCancel: Boolean(document.querySelector('[data-workflow-cancel]')),
+  }));
+  check('a started run suspends at its approval gate and says so',
+    /awaiting_approval/.test(suspended.runText), suspended.runText);
+  check('a suspended run offers cancellation', suspended.hasCancel);
+
+  // The bottom approval strip. 01_PRODUCT/11 names it as binding; this is the check that
+  // it is a real, visible box carrying a real count, not markup that exists in the DOM.
+  const strip = await page.evaluate(() => {
+    const node = document.querySelector('#approvalStrip');
+    const box = node ? node.getBoundingClientRect() : { width: 0, height: 0 };
+    const state = document.querySelector('#approvalStripState');
+    return {
+      onScreen: Boolean(node && node.offsetParent !== null && box.width > 0 && box.height > 0),
+      width: Math.round(box.width), height: Math.round(box.height),
+      state: state?.textContent ?? '',
+      warned: Boolean(state?.classList.contains('status-warn')),
+      detail: document.querySelector('#approvalStripDetail')?.textContent ?? '',
+      navCount: document.querySelector('#navApprovalCount')?.textContent ?? '',
+      navCountVisible: (document.querySelector('#navApprovalCount')?.getBoundingClientRect().height ?? 0) > 0,
+    };
+  });
+  check('the bottom approval strip is a real box on screen',
+    strip.onScreen, `box=${strip.width}x${strip.height}`);
+  check('the strip reports the pending count', /Approvals: 1/.test(strip.state), strip.state);
+  check('the strip changes tone when something is waiting', strip.warned, strip.state);
+  check('the strip names what is waiting', strip.detail.length > 3, strip.detail);
+  check('the nav badge shows the pending count and is visible',
+    strip.navCount === '1' && strip.navCountVisible, JSON.stringify(strip));
+
+  // The queue must show the workflow gate, and the decision must resume the run.
+  resetObservations();
+  await page.goto(`${BASE}/#/approvals`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-approve]', { timeout: 15000 });
+  const queued = await page.evaluate(() => {
+    const card = document.querySelector('#approvalList article');
+    return {
+      cards: document.querySelectorAll('#approvalList article').length,
+      text: card ? card.textContent.replace(/\s+/g, ' ').trim().slice(0, 240) : '',
+      badge: document.querySelector('#approvalCount')?.textContent ?? '',
+      rendered: (document.querySelector('#view-approvals')?.getBoundingClientRect().height ?? 0) > 0,
+    };
+  });
+  check('the approval queue shows the waiting workflow step',
+    queued.cards === 1 && /workflow-step/.test(queued.text) && queued.rendered, JSON.stringify(queued));
+  check('the queued item states the permission that decides it',
+    /agent\.manage/.test(queued.text), queued.text);
+  check('the queue badge agrees with the list', queued.badge === '1', queued.badge);
+
+  await clickOrExplain(page, '[data-approve]');
+  await page.waitForFunction(
+    () => /Nothing is waiting/.test(document.querySelector('#approvalList')?.textContent ?? ''),
+    { timeout: 15000 });
+  const afterDecision = await page.evaluate(() => ({
+    list: (document.querySelector('#approvalList')?.textContent ?? '').trim().slice(0, 120),
+    state: document.querySelector('#approvalStripState')?.textContent ?? '',
+    good: Boolean(document.querySelector('#approvalStripState')?.classList.contains('status-good')),
+    navHidden: document.querySelector('#navApprovalCount')?.classList.contains('hidden') === true,
+  }));
+  check('approving empties the queue', /Nothing is waiting/.test(afterDecision.list), afterDecision.list);
+  check('the strip returns to zero and says so',
+    /Approvals: 0/.test(afterDecision.state) && afterDecision.good, JSON.stringify(afterDecision));
+  check('the nav badge is hidden when nothing is waiting', afterDecision.navHidden);
+
+  // And the run itself must have resumed to completion — the approval is only meaningful
+  // if the work it was gating actually proceeded.
+  await page.goto(`${BASE}/#/workflows`, { waitUntil: 'networkidle2' });
+  await page.waitForFunction(
+    () => /completed/.test(document.querySelector('#workflowRunList')?.textContent ?? ''),
+    { timeout: 15000 });
+  const finished = await page.evaluate(() => ({
+    runText: (document.querySelector('#workflowRunList')?.textContent ?? '').replace(/\s+/g, ' ').slice(0, 300),
+    hasReplay: Boolean(document.querySelector('[data-workflow-replay]')),
+  }));
+  check('the approved run resumes and completes', /completed/.test(finished.runText), finished.runText);
+  check('every step of the completed run is recorded',
+    /gate — completed/.test(finished.runText) && /finish — completed/.test(finished.runText), finished.runText);
+  check('a finished run offers replay', finished.hasReplay);
+  check('the workflow pages produced no console errors', consoleErrors.length === 0, consoleErrors.join(' | '));
+  check('the workflow pages produced no failed requests', failedRequests.length === 0, failedRequests.join(' | '));
 
   at('deep-link');
   // --- deep link and reload on a gated page --------------------------------

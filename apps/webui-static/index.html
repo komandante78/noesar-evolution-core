@@ -52,6 +52,8 @@
         <button class="nav" data-view="projects">▣ <span>Projects</span></button><button class="nav" data-view="tasks">✓ <span>Tasks</span></button>
         <button class="nav" data-view="documents">▤ <span>Artifacts</span></button>
         <button class="nav" data-view="agents">◉ <span>Agents</span></button>
+        <button class="nav" data-view="workflows">⇉ <span>Workflows</span></button>
+        <button class="nav" data-view="approvals">✔ <span>Approvals</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
         <button class="nav" data-view="tools">⊞ <span>Tools</span></button>
         <button class="nav" data-view="knowledge">◇ <span>Knowledge</span></button>
         <button class="nav" data-view="memory">◎ <span>Memory</span></button>
@@ -152,6 +154,34 @@
       <section class="view" id="view-agents">
         <div class="section-header"><div><p class="eyebrow">PLAN · APPROVE · EXECUTE · VERIFY</p><h1>Agents</h1><p>Mutative steps remain blocked until a human grants scoped approval.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="agentForm"><h2>Create agent</h2><label>Name<input id="agentName" required></label><label>Instructions<textarea id="agentInstructions"></textarea></label><label>Tools<select id="agentTools" multiple></select></label><button class="primary">Create agent</button></form><form class="panel form-stack" id="runForm"><h2>Plan run</h2><label>Agent<select id="runAgent"></select></label><label>Goal<textarea id="runGoal"></textarea></label><button class="primary">Create approval-aware plan</button></form></div><section class="panel"><div class="panel-title"><h2>Runs</h2><span>Intermediate output visible</span></div><div id="runList" class="card-list empty-state">No runs.</div></section>
+      </section>
+
+      <section class="view" id="view-workflows">
+        <div class="section-header"><div><p class="eyebrow">TYPED STEPS · RETRIES · COMPENSATION · REPLAY</p><h1>Workflows</h1><p>A workflow declares what each step may do. A step with declared effects waits for a human.</p></div></div>
+        <div class="two-col">
+          <form class="panel form-stack" id="workflowForm">
+            <h2>Define workflow</h2>
+            <label>Project<select id="workflowProject"></select></label>
+            <label>Name<input id="workflowName" required></label>
+            <label>Description<textarea id="workflowDescription"></textarea></label>
+            <label>Steps<textarea id="workflowSteps" class="large-text" placeholder='[{"key":"count","type":"transform","operation":"count"}]'></textarea></label>
+            <small class="hint" id="workflowStepTypes">Loading the step vocabulary…</small>
+            <button class="primary">Create workflow</button>
+          </form>
+          <section class="panel">
+            <div class="panel-title"><h2>Workflows</h2><span id="workflowCount">0</span></div>
+            <div id="workflowList" class="card-list empty-state">No workflows.</div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-title"><h2>Runs</h2><span>Evidence per attempt</span></div>
+          <div id="workflowRunList" class="card-list empty-state">No runs.</div>
+        </section>
+      </section>
+
+      <section class="view" id="view-approvals">
+        <div class="section-header"><div><p class="eyebrow">ONE QUEUE · EVERY SUBSYSTEM</p><h1>Approvals</h1><p>Everything waiting for a human decision, whichever subsystem raised it.</p></div><button class="primary" id="refreshApprovals" type="button">Refresh</button></div>
+        <section class="panel"><div class="panel-title"><h2>Waiting</h2><span id="approvalCount" class="badge badge-off">—</span></div><div id="approvalList" class="card-list empty-state">Loading…</div></section>
       </section>
 
       <section class="view" id="view-coden">
@@ -319,7 +349,18 @@
     <aside class="rightbar"><section class="mini-panel"><div class="panel-title"><h3>System trust</h3></div><div class="metric"><span>Local runtime</span><b class="green">Available</b></div><div class="metric"><span>External egress</span><b id="egressMetric">Blocked</b></div><div class="metric"><span>Secrets</span><b>Encrypted</b></div></section><section class="mini-panel"><h3>Context control</h3><p>Model, project, messages, memory, sources, tools and estimated tokens are visible before each request.</p></section><section class="mini-panel"><h3>Data controls</h3><label>Retention days<input id="retentionDays" type="number" min="1" max="3650" value="365"></label><button class="wide-button" id="saveRetention">Save retention</button><button class="wide-button" id="applyRetention">Apply now</button><button class="wide-button" id="rightExportData">Export workspace</button><button class="wide-button danger" id="purgeProject">Delete active project data</button></section></aside>
     <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="false"></div>
     <div id="routeAnnouncer" class="visually-hidden" aria-live="polite"></div>
-    <footer class="statusbar"><span class="status-good" id="footerPrivacy">● Local-only verified</span><span>Context graph versioned</span><span>Mutations approval-gated</span><span id="statusMessage">Ready</span></footer>
+    <!-- The bottom approval strip. 01_PRODUCT/11 names it as part of the binding visual
+         direction; until WP-2 this footer was a static status bar that could not tell the
+         operator anything was waiting. It is permanent, and it states the count even when
+         that count is zero — a strip that appears only when something is pending gives no
+         way to tell "nothing waiting" from "not working". -->
+    <footer class="statusbar approval-strip" id="approvalStrip" aria-live="polite">
+      <span class="status-good" id="footerPrivacy">● Local-only verified</span>
+      <span class="approval-strip-state" id="approvalStripState">Approvals: —</span>
+      <span class="approval-strip-detail" id="approvalStripDetail">Checking the approval queue…</span>
+      <button class="text-button" id="approvalStripOpen" type="button" data-view-link="approvals">Open queue</button>
+      <span id="statusMessage">Ready</span>
+    </footer>
   </div>
   <script type="module" src="/app.js"></script>
 </body>

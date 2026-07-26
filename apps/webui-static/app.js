@@ -94,7 +94,7 @@ function authError(message=''){$('#authError').textContent=message;}
 // no view could be linked to. The hash is now the source of truth.
 // Only routes that have a real, wired page. Adding a name here before its page loads
 // data turns a 404 into something worse: a blank panel that looks like a broken app.
-const ROUTES=new Set(['home','chat','projects','tasks','documents','agents','tools','knowledge','memory','providers','models','coden','hardware','settings','security','users','health','updates','logs','backups','about']);
+const ROUTES=new Set(['home','chat','projects','tasks','documents','agents','workflows','approvals','tools','knowledge','memory','providers','models','coden','hardware','settings','security','users','health','updates','logs','backups','about']);
 // What a route needs before it is worth offering at all. `role` mirrors the routes the
 // server guards with requireOwner — a literal role check, not a permission — and
 // `permission` is tested against the set the server itself reports for this account,
@@ -171,7 +171,10 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // re-activate the requested route now that we know who is signed in.
   applyNavAccess();
   activate(viewFromHash(),{updateHash:false});
-  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities()]);}
+  // The approval strip is permanent, so it is filled on sign-in rather than only when the
+  // Approvals page is opened — a strip that says nothing until you visit the page it links
+  // to cannot do the one job it exists for.
+  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
@@ -208,7 +211,7 @@ async function refreshPrivacy(){
 }
 async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
 function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;applyTranslations();}
-function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject']){const select=$(id);const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
+function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
 function renderProjects(){$('#projectCount').textContent=state.projects.length;$('#projectList').innerHTML=state.projects.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.tags.join(' · '))}</small><button data-select-project="${item.id}">Use project</button></article>`).join('')||'No projects.';$$('[data-select-project]').forEach((button)=>button.addEventListener('click',async()=>{state.activeProjectId=button.dataset.selectProject;state.activeConversationId=null;renderProjectOptions();activate('chat');await refreshWorkspace();}));}
 $('#projectForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:$('#projectName').value,description:$('#projectDescription').value,instructions:$('#projectInstructions').value,tags:$('#projectTags').value.split(',').map((v)=>v.trim()).filter(Boolean),knowledgePolicy:{mode:$('#projectKnowledgeMode').value,limit:Number($('#projectKnowledgeLimit').value),maxCharacters:60000}})});state.activeProjectId=project.id;event.target.reset();await refreshWorkspace();setStatus('Project created.');}catch(error){setStatus(error.message,true);}});
@@ -981,9 +984,166 @@ async function loadCoden(){
   }
 }
 
+// --- workflows -------------------------------------------------------------
+// WP-2. The step vocabulary is rendered from what the server reports, not from a copy
+// kept here. A hardcoded list in this file is exactly how the invariant panel came to
+// declare five invariants that matched neither the seven in the code nor each other.
+function workflowRunCard(run){
+  const tone=run.status==='completed'?'green':['failed','compensation_failed','rejected'].includes(run.status)?'red':'';
+  const steps=run.steps.map((step)=>{
+    const attempts=step.attempts.length>1?` ×${step.attempts.length}`:'';
+    const compensated=step.compensation?.status==='compensated'?' · compensated':step.compensation?.status==='failed'?' · compensation failed':'';
+    return `<li>${escapeHtml(step.key)} — ${escapeHtml(step.status)}${attempts}${compensated}</li>`;
+  }).join('');
+  const actions=[
+    ['failed','completed','cancelled','rejected','compensation_failed'].includes(run.status)
+      ? `<button class="text-button" data-workflow-replay="${escapeHtml(run.id)}" type="button">Replay</button>` : '',
+    ['pending','running','awaiting_approval','cancelling','rejecting'].includes(run.status)
+      ? `<button class="text-button" data-workflow-cancel="${escapeHtml(run.id)}" type="button">Cancel</button>` : '',
+  ].join('');
+  return `<article class="card"><h3>${escapeHtml(run.definition?.name??'Workflow run')} <b class="${tone}">${escapeHtml(run.status)}</b></h3>`
+    +`<p>Version ${escapeHtml(String(run.definition?.version??'?'))}${run.replayOf?' · replay':''}${run.idempotencyKey?` · key ${escapeHtml(run.idempotencyKey)}`:''}</p>`
+    +`<ul class="invariants">${steps}</ul>`
+    +(run.error?`<p class="status-bad">${escapeHtml(run.error)}</p>`:'')
+    +`<p>${escapeHtml(String(run.evidence?.length??0))} evidence records</p>${actions}</article>`;
+}
+async function loadWorkflows(){
+  const list=$('#workflowList');
+  await panel(list,'workflows',async()=>{
+    const payload=await api('/api/v1/workflows');
+    const types=payload.stepTypes??[];
+    const hint=$('#workflowStepTypes');
+    if(hint){
+      hint.textContent=types.length
+        ?`Step types: ${types.map((type)=>`${type.type}${type.executable?'':' (declared, not executable in this build)'}`).join(' · ')}`
+        :'The server reported no step types.';
+    }
+    const workflows=payload.workflows??[];
+    $('#workflowCount').textContent=String(workflows.length);
+    list.classList.toggle('empty-state',workflows.length===0);
+    list.innerHTML=workflows.length?workflows.map((workflow)=>
+      `<article class="card"><h3>${escapeHtml(workflow.name)} <b>v${escapeHtml(String(workflow.version))}</b></h3>`
+      +`<p>${escapeHtml(workflow.description||'No description.')}</p>`
+      +`<p>${workflow.steps.map((step)=>escapeHtml(`${step.key}:${step.type}`)).join(' → ')}</p>`
+      +`<button class="text-button" data-workflow-run="${escapeHtml(workflow.id)}" type="button">Start run</button></article>`).join('')
+      :'No workflows.';
+    bindWorkflowActions();
+  });
+  const runs=$('#workflowRunList');
+  await panel(runs,'workflow runs',async()=>{
+    const payload=await api('/api/v1/workflow-runs');
+    const list=payload.runs??[];
+    runs.classList.toggle('empty-state',list.length===0);
+    runs.innerHTML=list.length?list.slice(-25).reverse().map(workflowRunCard).join(''):'No runs.';
+    bindWorkflowActions();
+  });
+}
+function bindWorkflowActions(){
+  $$('[data-workflow-run]').forEach((button)=>{button.onclick=async()=>{
+    try{await api(`/api/v1/workflows/${button.dataset.workflowRun}/runs`,{method:'POST',body:JSON.stringify({})});toast('Run started.');await loadWorkflows();await refreshApprovals();}
+    catch(error){toast(error.message,{kind:'error'});}
+  };});
+  $$('[data-workflow-cancel]').forEach((button)=>{button.onclick=async()=>{
+    try{await api(`/api/v1/workflow-runs/${button.dataset.workflowCancel}/cancel`,{method:'POST',body:JSON.stringify({reason:'cancelled from the interface'})});toast('Run cancelled.');await loadWorkflows();await refreshApprovals();}
+    catch(error){toast(error.message,{kind:'error'});}
+  };});
+  $$('[data-workflow-replay]').forEach((button)=>{button.onclick=async()=>{
+    try{await api(`/api/v1/workflow-runs/${button.dataset.workflowReplay}/replay`,{method:'POST',body:JSON.stringify({})});toast('Replay started.');await loadWorkflows();}
+    catch(error){toast(error.message,{kind:'error'});}
+  };});
+}
+const workflowForm=$('#workflowForm');
+if(workflowForm)workflowForm.addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  let steps=null;
+  // A malformed step list is reported as such. Sending it anyway would surface the
+  // server's parse failure as an opaque 400 with no hint about which field was wrong.
+  try{steps=JSON.parse($('#workflowSteps').value||'[]');}
+  catch(error){toast(`Steps must be valid JSON: ${error.message}`,{kind:'error'});return;}
+  try{
+    await api('/api/v1/workflows',{method:'POST',body:JSON.stringify({
+      name:$('#workflowName').value,
+      description:$('#workflowDescription').value,
+      projectId:$('#workflowProject').value||null,
+      steps,
+    })});
+    toast('Workflow created.');
+    $('#workflowName').value='';$('#workflowDescription').value='';$('#workflowSteps').value='';
+    await loadWorkflows();
+  }catch(error){toast(error.message,{kind:'error'});}
+});
+
+// --- the approval queue and the bottom strip -------------------------------
+// The strip is permanent and states the count even at zero: a strip that only appears
+// when something is pending gives an operator no way to distinguish "nothing waiting"
+// from "this stopped working".
+function approvalCard(item){
+  const effects=item.effects?.length?` · ${item.effects.map((effect)=>escapeHtml(effect)).join(', ')}`:'';
+  const owner=item.ownerOnly?' · Owner only':'';
+  return `<article class="card"><h3>${escapeHtml(item.title)} <b>${escapeHtml(item.kind)}</b></h3>`
+    +`<p>${escapeHtml(item.summary)}</p>`
+    +`<p>Requested ${escapeHtml(isoToLocal(item.requestedAt))}${effects}${owner}</p>`
+    +`<p>Requires ${escapeHtml(item.requiredPermission)}</p>`
+    +`<div class="inline-form"><button class="primary" data-approve="${escapeHtml(item.id)}" type="button">Approve</button>`
+    +`<button class="danger" data-reject="${escapeHtml(item.id)}" type="button">Reject</button></div></article>`;
+}
+async function refreshApprovals(){
+  const strip=$('#approvalStripState');
+  const detail=$('#approvalStripDetail');
+  const navCount=$('#navApprovalCount');
+  try{
+    const payload=await api('/api/v1/approvals');
+    const items=payload.approvals??[];
+    const total=payload.counts?.total??items.length;
+    if(strip){
+      strip.textContent=`Approvals: ${total}`;
+      strip.className=`approval-strip-state ${total>0?'status-warn':'status-good'}`;
+    }
+    if(detail){
+      detail.textContent=total===0
+        ?'Nothing is waiting for a decision.'
+        :items.slice(0,2).map((item)=>item.title).join(' · ')+(total>2?` and ${total-2} more`:'');
+    }
+    if(navCount){navCount.textContent=String(total);navCount.classList.toggle('hidden',total===0);}
+    const list=$('#approvalList');
+    if(list){
+      list.classList.toggle('empty-state',items.length===0);
+      list.innerHTML=items.length?items.map(approvalCard).join(''):'Nothing is waiting for a decision.';
+      bindApprovalActions();
+    }
+    const count=$('#approvalCount');
+    if(count)badge(count,String(total),total>0?'warn':'on');
+    return items;
+  }catch(error){
+    // A queue that cannot be read says so. Showing "0 waiting" on a failed fetch would
+    // be a false all-clear on the one surface whose job is to raise the alarm.
+    if(strip){strip.textContent='Approvals: unavailable';strip.className='approval-strip-state status-bad';}
+    if(detail)detail.textContent=error.message;
+    if(navCount)navCount.classList.add('hidden');
+    return null;
+  }
+}
+function bindApprovalActions(){
+  const decide=async(id,decision)=>{
+    const reason=decision==='reject'?window.prompt('Reason for rejecting:')??'':'';
+    try{
+      await api(`/api/v1/approvals/${encodeURIComponent(id)}/decision`,{method:'POST',body:JSON.stringify({decision,reason:reason||null})});
+      toast(decision==='approve'?'Approved.':'Rejected.');
+      await refreshApprovals();
+      if(ROUTES.has('workflows'))await loadWorkflows();
+    }catch(error){toast(error.message,{kind:'error'});}
+  };
+  $$('[data-approve]').forEach((button)=>{button.onclick=()=>decide(button.dataset.approve,'approve');});
+  $$('[data-reject]').forEach((button)=>{button.onclick=()=>decide(button.dataset.reject,'reject');});
+}
+const refreshApprovalsButton=$('#refreshApprovals');
+if(refreshApprovalsButton)refreshApprovalsButton.addEventListener('click',()=>{refreshApprovals();});
+
 // Registered last, once every loader above exists. This object is what makes a nav
 // entry mean something: `activate()` calls the loader for the view being opened.
 Object.assign(VIEW_LOADERS,{
+  workflows:loadWorkflows,
+  approvals:refreshApprovals,
   coden:loadCoden,
   settings:loadSettings,
   security:loadSecurity,

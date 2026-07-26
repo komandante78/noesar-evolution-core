@@ -29,6 +29,8 @@ import { CredentialVault } from './ai-workspace/credential-vault.mjs';
 import { ProviderGateway } from './ai-workspace/provider-gateway.mjs';
 import { WorkspaceService } from './ai-workspace/workspace-service.mjs';
 import { AgentService } from './ai-workspace/agent-service.mjs';
+import { WorkflowService } from './ai-workspace/workflow-service.mjs';
+import { ApprovalQueue } from './approval-queue.mjs';
 import { ChatOrchestrator } from './ai-workspace/chat-orchestrator.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
 import { ToolExecutor } from './ai-workspace/tool-executor.mjs';
@@ -88,6 +90,7 @@ const fileExtractor = new FileExtractor({ blobRoot:join(workspace, 'files') });
 const aiWorkspace = new WorkspaceService({ store:aiStore, graph:contextGraph, ledger, fileExtractor });
 const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
 const agentService = new AgentService({ store:aiStore, ledger, executor:toolExecutor, vault:credentialVault });
+const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
 const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
@@ -168,6 +171,9 @@ const updateManager = new UpdateManager({
   },
   healthCheck: async () => !watchdog.safeMode.active,
 });
+// The approval queue reads the three subsystems that own approvals and owns none itself,
+// so it is constructed last — after the update manager it reads from.
+const approvalQueue = new ApprovalQueue({ workflowService, agentService, aiStore, updateManager, ledger });
 registerWatchdogSubjects(watchdog, {
   workspace, webRoot, dataStore:aiStore, auditLedger:ledger, logger,
   providerGateway, updateManager, agentService, toolExecutor, hardware,
@@ -793,6 +799,101 @@ const server = createServer(async (req, res) => {
     if(match&&req.method==='PATCH'){
       const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,200,agentService.updateStep(match[1],match[2],await body(req),authenticated.user.id));
     }
+    // --- workflows -----------------------------------------------------------
+    // WP-2. `/api/v1/bootstrap` advertised `Workflows` while none of this existed;
+    // test/bootstrap-feature-claims.test.mjs is what caught it and now prevents it.
+    //
+    // Reading takes workspace.read; defining, running, deciding and cancelling take
+    // agent.manage — the same permission the agent runs already use, rather than a new
+    // permission invented here. The role model itself is a separate open item in the work
+    // plan and is not quietly changed on the way past.
+    if(req.method==='GET'&&url.pathname==='/api/v1/workflows'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,{
+        workflows:workflowService.listWorkflows({projectId:url.searchParams.get('projectId'),includeArchived:url.searchParams.get('includeArchived')==='true'}),
+        // The typed-step vocabulary travels with the list so the interface offers exactly
+        // the types this build accepts, and states which of them it cannot execute.
+        stepTypes:workflowService.stepTypes(),
+      });
+    }
+    if(req.method==='POST'&&url.pathname==='/api/v1/workflows'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      return json(res,201,workflowService.createWorkflow(await body(req),authenticated.user.id));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflows\/([^/]+)$/);
+    if(match&&req.method==='GET'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,workflowService.getWorkflow(match[1]));
+    }
+    if(match&&req.method==='PATCH'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      return json(res,200,workflowService.updateWorkflow(match[1],await body(req),authenticated.user.id));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflows\/([^/]+)\/runs$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const request=await body(req);
+      const run=workflowService.createRun({workflowId:match[1],input:request.input??null,idempotencyKey:request.idempotencyKey??null,projectId:request.projectId??null},authenticated.user.id);
+      // A deduplicated start is not a new resource, so it answers 200 with the run the
+      // first call created rather than 201 with a second one.
+      if(run.deduplicated)return json(res,200,run);
+      const advanced=request.start===false?run:await workflowService.advance(run.id,authenticated.user.id);
+      return json(res,201,advanced);
+    }
+    if(req.method==='GET'&&url.pathname==='/api/v1/workflow-runs'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,{runs:workflowService.listRuns({projectId:url.searchParams.get('projectId'),workflowId:url.searchParams.get('workflowId'),status:url.searchParams.get('status')})});
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)$/);
+    if(match&&req.method==='GET'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,workflowService.getRun(match[1]));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/advance$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      return json(res,200,await workflowService.advance(match[1],authenticated.user.id));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/cancel$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      return json(res,200,await workflowService.cancelRun(match[1],{reason:(await body(req)).reason??'cancelled by operator'},authenticated.user.id));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/replay$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const replay=workflowService.replayRun(match[1],authenticated.user.id);
+      return json(res,201,await workflowService.advance(replay.id,authenticated.user.id));
+    }
+    match=url.pathname.match(/^\/api\/v1\/workflow-runs\/([^/]+)\/steps\/([^/]+)\/decision$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const request=await body(req);
+      return json(res,200,await workflowService.decideApproval(match[1],match[2],{decision:request.decision,reason:request.reason??null},authenticated.user.id));
+    }
+
+    // --- the approval queue --------------------------------------------------
+    // 01_PRODUCT/11 names the bottom approval strip as binding. One place to see
+    // everything waiting for a human, across workflows, agent runs and staged updates.
+    if(req.method==='GET'&&url.pathname==='/api/v1/approvals'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      const projectId=url.searchParams.get('projectId');
+      return json(res,200,{approvals:approvalQueue.list({projectId}),counts:approvalQueue.counts({projectId})});
+    }
+    match=url.pathname.match(/^\/api\/v1\/approvals\/([^/]+)\/decision$/);
+    if(match&&req.method==='POST'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const request=await body(req);
+      return json(res,200,await approvalQueue.decide(decodeURIComponent(match[1]),{
+        decision:request.decision,
+        reason:request.reason??null,
+        actorId:authenticated.user.id,
+        // A staged update is Owner-only. The queue refuses it without this, and the check
+        // is made here from the session rather than taken from the request body.
+        isOwner:authenticated.user.role==='owner',
+      }));
+    }
+
     if(req.method==='GET'&&url.pathname==='/api/v1/data/export'){
       const authenticated=requireSession(req,res,'data.manage');if(!authenticated)return;return json(res,200,aiWorkspace.exportUserData());
     }

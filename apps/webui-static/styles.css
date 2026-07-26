@@ -45,3 +45,22 @@ button[data-busy]{opacity:.65;cursor:progress}
 .token-reveal code{display:block;margin-top:7px;padding:10px;border-radius:8px;background:#070c15;color:#ffd489;word-break:break-all;letter-spacing:.06em}
 @media(max-width:850px){.log-row{grid-template-columns:1fr;gap:3px}}
 @media(max-width:850px){.mfa-enrol{grid-template-columns:1fr}.mfa-qr{width:100%;max-width:280px;height:auto;aspect-ratio:1}.recovery-codes{grid-template-columns:1fr}.toast-host{right:10px;left:10px;bottom:10px;max-width:none}.nav-group{display:none}}
+
+/* WP-2 — the bottom approval strip (01_PRODUCT/11, binding) and the two new destinations.
+   `.status-bad` and `.status-warn` are defined here because the code that sets them is
+   new: a class name written by the application and absent from the stylesheet is a claim
+   the presentation layer does not honour, which renders a failure in ordinary body text. */
+.status-warn{color:var(--amber)!important}
+.status-bad{color:var(--red)!important}
+.approval-strip{gap:14px}
+.approval-strip-state{padding:2px 9px;border:1px solid var(--line);border-radius:7px;letter-spacing:.04em;white-space:nowrap}
+.approval-strip-detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw;color:var(--muted)}
+.nav-count{margin-left:auto;min-width:20px;padding:1px 6px;border-radius:9px;background:rgba(255,194,100,.18);border:1px solid rgba(255,194,100,.4);color:var(--amber);font-size:10px;text-align:center}
+/* The status bar is hidden below 850px, but the approval strip must not be: an approval
+   nobody is shown is an approval that waits forever, and 01_PRODUCT/11 asks for responsive
+   density rather than removal. It becomes compact instead of disappearing. */
+@media(max-width:850px){
+  .approval-strip{display:flex!important;position:sticky;bottom:0;z-index:15;flex-wrap:nowrap;gap:8px;padding:6px 10px;height:auto;min-height:38px}
+  .approval-strip #footerPrivacy,.approval-strip #statusMessage{display:none}
+  .approval-strip-detail{max-width:52vw}
+}
