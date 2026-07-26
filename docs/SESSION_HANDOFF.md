@@ -5,179 +5,175 @@ da `PROJECT_STATE.json` soltanto.**
 
 ---
 
-## ⚠️ IL PROGETTO DI RIFERIMENTO È CAMBIATO — 2026-07-26
+## 🛑 REGOLA ZERO — un solo progetto esiste
 
-**Deciso dall'Owner.** Il metro non è più il master V4: è la **riscrittura**, in
-`MASTER_PROJECT/` (14 documenti italiani, importati con checksum di provenienza e verificati
-byte-identici all'originale in `/mnt/user/downloads/NOESAR_EVOLUTION/`).
+**Ordine esplicito dell'Owner, 2026-07-26.** Lavorando qui, l'unico progetto che esiste è
+**NOESAR EVOLUTION**. Nessun altro sistema di questo host si nomina, si cita, si confronta o si
+tocca — non come riferimento, non come esempio, nemmeno "solo per contesto". Scritta in
+`CLAUDE10.md` §1 e ora anche in cima alla skill, perché veniva letta e poi aggirata.
 
-`MASTER_REFERENCE/` **è stata rimossa dall'albero di lavoro** — 119 file. È un'eccezione
-nominata alla regola 12, registrata in `CLAUDE10.md` §1a e in `D-0097`, **non** un
-aggiramento. È recuperabile su tre percorsi, con le prove registrate *prima* della rimozione
-in `EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`: il commit `c28d8a2`, i cinque archivi
-sigillati con i loro SHA-256, e un manifest sha256 dei 119 file così che il recupero sia
-verificabile file per file. **Non reintrodurre il V4 come metro senza una nuova decisione
-dell'Owner.**
+**CodeN Evolution è un prodotto nuovo** e non eredita nome, codice, architettura o convenzioni da
+nessun altro. Il nome sbagliato che stava nel prodotto è stato rimosso oggi (vedi sotto).
+
+**Tutto ciò che sta fuori da `PROJECT_ROOT` è in sola lettura.** Una richiesta di cancellare
+artefatti di altri progetti è un **blocker**, non un compito.
+
+## ➜ IL PROGETTO DI RIFERIMENTO È `MASTER_PROJECT/`
+
+Deciso dall'Owner il 2026-07-26. Il metro non è il master V4: è la **riscrittura**.
+`MASTER_REFERENCE/` è stata rimossa dall'albero — eccezione nominata, registrata in
+`CLAUDE10.md` §1a e `D-0097`, recuperabile su tre percorsi con le prove in
+`EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`. **Non reintrodurla come metro senza una
+nuova decisione dell'Owner.**
 
 ## ➜ Leggi in quest'ordine
 
 1. `PROJECT_STATE.json` e questo file
-2. **`docs/WORK_PLAN_V5_REWRITE.md`** — cosa è fatto, cosa cambia, cosa va modificato, il piano
-3. **`MASTER_PROJECT/09_PIANO.md`** — §1 dice *dove siamo davvero, misurato*; §3 dice *quando
-   la fase 1 è finita*. Quei due paragrafi valgono più di qualsiasi riassunto.
-4. `MASTER_PROJECT/00_LEGGIMI.md` → poi `01` e `02`, che reggono tutto il resto
-5. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
+2. **`MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md`** — **il progetto di CodeN Evolution**: le
+   tre malattie misurate, le sei invenzioni, gli oggetti, la memoria, la rete, la sandbox,
+   l'ordine di costruzione e la **matrice di accettazione CE-001…CE-024**
+3. `MASTER_PROJECT/09_PIANO.md` — §1 *dove siamo davvero, misurato*; §3 *quando la fase 1 è finita*
+4. `docs/WORK_PLAN_V5_REWRITE.md`
+5. `MASTER_PROJECT/00_LEGGIMI.md` → poi `01` e `02`
+6. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
 
-## ➜ ATOM È SEPARATO, E IL CRATE ESISTE
+---
 
-Per decisione dell Owner ATOM e definito **solo** in `NOESAR-ATOM-PRIVATE` (`D-0099`). La
-riscrittura teneva una sua descrizione che divergeva dal blueprint su `L0-L8` — nove moduli
-la, quattro fasce di maturita qua — e la stessa riga si leggeva in due modi opposti. Ora c e
-una sola fonte. `MASTER_PROJECT/02_ATOM.md` tiene il **contratto pubblico** (che non e ATOM:
-e core, e spostarlo sarebbe stata la regola 56 al contrario) e il puntatore.
+## ➜ LA PROSSIMA AZIONE — deciso dall'Owner
 
-Il crate ATOM ora esiste (`c7b7db6`): 45 file `.rs` sull albero esatto della specifica, ogni
-modulo di livello con gli **undici campi** nel proprio doc. **L0 e implementato** (27 test,
-0 falliti, 0 warning, container effimero offline); **L1-L8 restituiscono
-`AtomError::NotImplemented`**, mai `todo!()`. `clippy` non e nell immagine e installarlo
-richiede rete: non eseguito, dichiarato. `D-0100`.
+> **All'apertura della prossima sessione si parla della GRAFICA DELLA WEBUI, che va cambiata.**
 
-## ➜ LA MEMORIA A CUBI — progettata, PostgreSQL deciso, nulla implementato
+È una conversazione, non un compito già scopato. Materiale utile prima di iniziare:
+`MASTER_PROJECT/07_INTERFACCIA.md` (il riferimento vincolante, la palette estratta dai pixel,
+**undici destinazioni contro le ventitré di oggi**, il banco di lavoro, la striscia di
+approvazione) e `15_…DA_ZERO.md` §12 (la metrica: il revisore deve leggere evidenza, non prosa).
 
-Richiesta dell Owner. `MASTER_PROJECT/14_MEMORIA_A_CUBI.md`, 642 righe.
+**Non iniziare la fase 1.** Della fase 0 restano aperti i punti 5 e 6 — traduzione canonica in
+inglese e emendamenti a `V4-D001`/`V4-D002`.
 
-**Quattro cubi**, e il criterio conta piu del numero: *un cubo e uno stato epistemico* — due
-cose stanno in cubi diversi quando «come faccio a sapere che e vero» ha risposte di tipo
-diverso. Biblioteca (asserito) · Officina (in attesa) · Corpus (fonte) · Esperienza (indotto,
-e l unico che un solo controesempio ribalta). `D-0102`.
+---
 
-**La regola che regge tutto:** il record e la memoria, il vettore e solo un indice usa e
-getta. Un vettore ha senso solo nello spazio del modello che l ha prodotto, quindi
-«qualsiasi modello, memoria sempre presente» si ottiene rendendo il vettore ricalcolabile,
-non conservandolo. `D-0101`.
+## ➜ Cosa è stato fatto in questa sessione
 
-**PostgreSQL e autoritativo** — `B-009` chiuso su decisione dell Owner. La migrazione tocca
-dati vivi e non e ancora eseguita. `D-0104`.
+### 1 · Il prodotto dichiarava di contenere un altro prodotto — rimosso
 
-**Difetto presente trovato progettando e indipendente dai cubi** (`D-0103`): i vettori non
-registrano quale modello li ha prodotti, quindi due spazi diversi possono essere confrontati
-e la distanza coseno **restituisce un numero invece di un errore**. E anche il motivo per cui
-oggi non si puo cambiare modello di embedding. **Si puo riparare da solo e subito.**
+Non era un'etichetta: il nome sbagliato stava nella **feature list di `/api/v1/bootstrap`**,
+quindi il prodotto lo *dichiarava di sé stesso*, con un test che certificava la dichiarazione.
+Rinominate insieme la dichiarazione, la sua prova e lo smoke test — 5 occorrenze, 4 file, zero
+residui. **Nessuna dipendenza da un altro prodotto è mai esistita**: nessuna chiamata di rete,
+nessun import, solo il nome. Seminato il nome vecchio → il test fallisce 2/19; ripristinato →
+19/19.
 
-**Ricerca fatta** su autorizzazione dell Owner, e ha corretto una mia affermazione troppo
-forte (`D-0106`): Matryoshka Representation Learning rende le dimensioni davvero elastiche,
-e pgvector 0.8.5 — che gia gira — offre `halfvec` a 4.000 dimensioni, quantizzazione binaria
-a 64.000 e `sparsevec`. Tre vincoli recepiti ora perche costano zero e una migrazione dopo.
+### 2 · Ricerca, poi il progetto di CodeN Evolution da zero
 
-**Lo schema e scritto in §9.2 e NON in `database/postgres/`**: un file li viene raccolto dal
-manifesto e applicato al prossimo deploy. Diventa la migrazione `0017` quando l Owner approva.
+Su richiesta dell'Owner: **prima cercare**, poi progettare, senza copiare nessuno. Il dato che
+decide la strategia — **lo scaffold sposta il punteggio di 10–20 punti a modello invariato** —
+significa che *il prodotto è lo scaffold*. Le tre malattie misurate e le **sei invenzioni** sono
+in `15_CODEN_EVOLUTION_DA_ZERO.md`, con le fonti. In sintesi:
 
-## ➜ LA PROSSIMA AZIONE È UNA CONVERSAZIONE, NON DEL CODICE
+| | Invenzione |
+|---|---|
+| I | il contesto è una **proiezione ricostruita da stato**, mai un accumulo → il context rot diventa impossibile, l'attribuzione esatta |
+| II | le convenzioni si **inducono dalla storia git** → **profilo di divergenza**, mai un punteggio |
+| III | **l'ombra precede l'autorizzazione**: si promuove un risultato misurato, non si approva un'intenzione |
+| IV | verifica **per ricalcolo**, con la **copertura di proiezione** dichiarata: ciò che non è misurato è detto |
+| V | **a riposo zero strumenti**; effetti dichiarati invece di denylist; installare è un passo autorizzato |
+| VI | **ATOM entra dal contratto** `ReasoningProvider`, e la copertura di proiezione ne **misura** il valore |
 
-L'Owner ha annunciato che **porrà domande per verificare che il progetto coincida con il suo
-pensiero**. Il piano in `docs/WORK_PLAN_V5_REWRITE.md` è **proposto, non approvato**.
+Più le quattro richieste dell'Owner recepite: **ATOM deve funzionare** (dal contratto, misurato,
+e il criterio di "fatto" passa comunque senza — CE-022); **la rete entra come ipotesi da
+falsificare in sandbox**, mai come risposta; **la sandbox è il luogo primario** dell'esecuzione,
+non il recinto; **la memoria è ciò da cui la proiezione attinge**, quindi qualità della memoria =
+qualità del lavoro.
 
-**Non iniziare la fase 1.** Della fase 0 (governo) sono fatti i punti 1-3; i punti 4-6 —
-domande dell'Owner, traduzione canonica in inglese, emendamenti a `V4-D001`/`V4-D002` — sono
-in attesa, e il primo blocca gli altri due.
+E la **matrice di accettazione CE-001…CE-024** con ID e severità, che **colma il rischio 4**: la
+riscrittura non aveva matrici né tracciabilità, quindi non esisteva un modo controllabile di dire
+"fatto". `D-0107` → `D-0116`.
 
-## ➜ Cosa è stato fatto in questa sessione, in ordine
+### 3 · Tre difetti trovati ESEGUENDO, e la regola che li produceva
 
-1. **WP-2 · i sette stati di privacy** — l'ultimo lavoro fatto col metro V4. Misurato prima di
-   cambiare: **18 check falliti su 25** contro il codice non corretto. Il difetto più grave non
-   era uno stato mancante: l'indicatore dichiarava `REMOTE_MODEL_ACTIVE` per un invio che il
-   server aveva **rifiutato**, perché lo stato era una variabile scritta dal piano di egress
-   dell'ultimo chiamante, e partiva asserendo "verified" prima di aver verificato alcunché.
-   Ora è **derivato** dalla configurazione. `D-0087` → `D-0093`.
-2. **Deploy autorizzato dall'Owner** dei quattro fix accumulati → `:phase4-wp2`, vivo e sano.
-3. **`docs/REMAINING_WORK.md`** — e nel produrlo, due miei errori di misura corretti.
-4. **Il cambio di progetto di riferimento** (questo), con piano di lavoro e skill aggiornati.
+**`verify-source.mjs` falliva a ogni giro** e nessuna lettura l'avrebbe visto: il codice è
+corretto e l'intenzione è giusta. Leggeva `migrations.length !== 12` — il conteggio della release
+V0.6.0, **congelato**. Da quando `0013` è atterrata lanciava sempre.
 
-## ➜ L'installazione, verificata dopo il deploy
+**La conseguenza è più grave della causa:** `scripts/test.sh` gira sotto `set -eu` con questo come
+**secondo di sette passi**, quindi i **cinque successivi non sono mai stati eseguiti**. Fra questi
+`auth-http-smoke`, che era **rotto a sua volta** — usava lo stesso codice TOTP per login e
+ri-autenticazione, e la difesa contro il replay (corretta) lo rifiutava — e nessuno poteva
+accorgersene.
 
-```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
-endpoint    livez 200 · readyz 200 · / 200 · /metrics 401 (hardening LAN intatto)
-rotte       workflows 401 · approvals 401 · privacy/revoke 401 · rotta inesistente 404
-dati        PostgreSQL 18.4 + pgvector 0.8.5, 16 migrazioni, 15 tabelle RLS, Owner intatto
-errori      0 dall'avvio
-schema      ai-workspace.json ancora "schemaVersion": 1 — vedi rollback
-```
-
-**Non verificato dal vivo, e serve l'Owner:** il comportamento di tre dei quattro fix
-(authorize ricalcolato, `DENY` rifiutato, indicatore non ripitturabile) richiede una sessione
-Owner autenticata, e queste sessioni non hanno le credenziali. Provato sul box: le rotte
-esistono e sono protette, e i byte installati sono identici all'albero che ha passato le suite.
+Riparata **l'intenzione** (le dodici della V0.6.0 presenti, non riordinate, non rimosse; il totale
+libero di crescere) e riparata **la regola**: `scripts/test.sh` nomina ogni passo e chiude con un
+riepilogo, e **un passo che non può girare è DICHIARATO, mai contato come passato**.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit test              631/631   600 prima; +31 in una suite nuova
-  stati di privacy      31/31    18 di 25 falliti contro il codice non corretto
-eslint                 158 file, 0 errori, 0 warning, 0 no-undef
-accettazione browser  233/233   213 prima; +20 check, browser vero, box vero
-accessibilità          26/26    invariata con il markup nuovo
-MANIFEST             5719/5719  0 falliti, 0 duplicati (include MASTER_PROJECT/)
+unit                    631/631   0 falliti
+scripts/test.sh         3 PASS · 0 FAIL · 4 UNAVAILABLE dichiarati (prima moriva al 2º passo)
+eslint                  158 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST              5721/5721   0 falliti · 0 duplicati
+difetti seminati        5 — ognuno catturato, ogni file ripristinato byte-identico
 ```
 
-Sei difetti seminati uno alla volta, ognuno catturato da esattamente un test, file ripristinati
-**byte-identici** dopo ogni giro.
+**Non eseguibile su questo host, dichiarato e non contato come passato:** i quattro passi Python
+di `scripts/test.sh` (`pg-migrations`, `pg-contract`, `rust-source`, `rust-provenance`).
+`python3` non è installato e la **regola 45 vieta di installarlo**.
 
-## ➜ Due errori di misura miei, corretti e registrati
+## ➜ L'installazione — intoccata
 
-1. **Un solo strumento scambiato per il tutto.** Il primo elenco di "cosa manca" era ricavato
-   dalla sola matrice a 11 item e presentato come il progetto intero. Ora `REMAINING_WORK.md`
-   tiene separati i tre livelli.
-2. **Cercare identificatori invece dello schema.** Quattro componenti riportati come "0 file"
-   grepando nomi come `SecretBroker`, che questo codice non usa. Riverificato: Secret Broker e
-   Resource Governor sono **parziali**; il Model Trust Registry è **peggio che assente** —
-   `model_descriptors.trust_state` esiste con i quattro stati giusti e **nessun codice lo legge
-   o lo scrive**. **Schema morto**: una colonna che nessuno usa dice al prossimo che la funzione
-   c'è. È la stessa categoria che la riscrittura aveva già documentato a luglio.
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
+endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
+schema      state/ai-workspace.json ancora "schemaVersion": 1 — vedi rollback
+```
+
+**Nessun container di prodotto è stato creato, avviato o fermato.** Le due riparazioni al
+prodotto (`§1` sopra) sono **nel sorgente e NON installate**: il box vivo dichiara ancora il nome
+sbagliato in `/api/v1/bootstrap`. Il deploy è una fase di installazione e **richiede
+autorizzazione esplicita dell'Owner**.
+
+## ➜ Igiene
+
+Questa fase **non ha creato container transitori**: nessun tag stampato, nessuna rete per-run,
+nessuna rimozione necessaria. Sopravvivono esattamente i due ammessi da §5a — l'installazione e
+**un solo** rollback. Container totali **39 all'apertura e 39 in chiusura**. Reti: solo le due
+stabili (`noesar-evolution-net`, `noesar-e2e-net`); `noesar-local` non è di questo progetto e non
+è stata toccata. Nessun `prune`, in nessuna forma. Inventario in
+`EVIDENCE/docker_inventory_pre_cleanup_20260726T191041Z.txt`.
 
 ## ➜ Blocker aperti
 
-`B-001` nessun remote GitHub · `B-002` secret scan euristico (`detect-secrets` restituisce 0
-finding su una chiave AWS letterale) · `B-008` due store di identità. **`B-009` chiuso**
-(PostgreSQL autoritativo per la memoria, migrazione non ancora eseguita).
+`B-001` nessun remote GitHub (nessun commit è mai stato pushato) · `B-002` secret scan euristico
+(`detect-secrets` restituisce 0 finding su una chiave AWS letterale) · `B-008` due store di
+identità. **`B-009` chiuso** (PostgreSQL autoritativo per la memoria; la migrazione tocca dati
+vivi e non è ancora eseguita).
 
-## ➜ I rischi che il cambio di progetto si porta dietro
-
-1. **Nessun toolchain Rust sull'host** e la regola 45 vieta di installarlo. La fase 1 è Rust
-   dalla prima riga: si costruisce in container `rust:1-bookworm` effimeri.
-2. **La fase 1 è quattro sottosistemi a zero file**, in un linguaggio dove il prodotto ha
-   ~1.100 righe contro ~24.500 di JavaScript.
-3. **Il supervisore a tre figli tocca l'avvio dell'installazione viva** — va fatto blue/green
-   con rollback preservato, come il deploy di oggi.
-4. **La riscrittura non ha apparato di accettazione**: zero matrici con ID e severità, zero
-   tracciabilità. Il V4 li aveva e non sono più nell'albero. Vanno ricostruiti dentro la
-   riscrittura, o si perde il modo controllabile di dire "fatto".
-5. **La parte legale, licenze, conformità e confini d'uso** che la riscrittura dichiara di
-   conservare è conservata **per decisione, non per contenuto**: era nei documenti V4 `50-57`,
-   `60-66`, `70-77`, `09_LEGAL_TEMPLATES`. La fase 7 ne avrà bisogno.
-6. **Nessuno dei due progetti ha avuto una revisione indipendente.**
+**Non un blocker ma va detto:** l'Owner ha chiesto di cancellare i file di memoria di altri
+progetti e di conservare credenziali VPS/git in un file. Entrambe **non eseguite**, con la
+ragione data: `/mnt/cachec/NOESAR` non è un repository git, quindi quella cancellazione sarebbe
+**irreversibile**; e la regola 25 vieta qualunque segreto in un artefatto tracciato. Alternativa
+proposta e non ancora autorizzata: archiviare invece di cancellare, e un `.env.example` che
+**nomina** le variabili senza valori.
 
 ## ➜ Rollback
 
 ```text
 container    noesar-evolution.rollback-webui-20260726T155330Z     immagine :phase4-webui
-runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB,
-                                                                  presa a servizio fermo
+runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB
+sorgente     BACKUPS/coden_rename_20260726T181132Z/               i 4 file del rename
+             BACKUPS/verify_source_fix_20260726T190515Z/          verify-source, auth-smoke,
+                                                                  test.sh, MANIFEST
 progetto V4  git c28d8a2 · archivi sigillati ·
              EVIDENCE/v4_removal_recovery_20260726T163433Z.txt
 ```
 
 Per tornare indietro sull'installazione: `docker stop -t 60 noesar-evolution`, rinominarlo da
-parte, poi `docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo
-la build attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora
-`"schemaVersion": 1` — serve anche ripristinarlo dal backup, o `:phase4-webui` rifiuterà di
+parte, poi `docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo la
+build attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora
+`"schemaVersion": 1` — va ripristinato anche quello dal backup, o `:phase4-webui` rifiuterà di
 caricare il workspace AI.
 
-## ➜ Igiene
+## ➜ Commit
 
-Due container sopravvivono alla fase, ed è quello che esiste: l'installazione e un solo
-rollback. Il rollback più vecchio è stato rimosso (solo il container; l'immagine
-`:phase4-complete-lan` resta su disco). Reti e volumi diffati contro
-`EVIDENCE/docker_inventory_pre_cleanup_20260726T155449Z.txt`: invariati. Container non-progetto
-37 prima e 37 dopo. `noesar-debuglab` avviato per la caccia e **rifermato nella stessa fase**.
-Nessun `prune`, in nessuna forma.
+`254ed06` il nome · `3cc295b` il progetto da zero e i tre difetti. **Nessuno pushato** (`B-001`).

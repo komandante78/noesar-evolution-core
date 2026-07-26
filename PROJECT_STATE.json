@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_REWRITE_PLAN_OF_RECORD_MEMORY_CUBES_DESIGNED_AWAITING_OWNER_CONVERSATION",
-  "next_phase": "REWRITE_PHASE_1_BACKBONE (docs/WORK_PLAN_V5_REWRITE.md) — bloccata finche l Owner non conferma il piano",
+  "phase_status": "PHASE_0_GOVERNANCE_CODEN_EVOLUTION_DESIGNED_FROM_ZERO_AWAITING_WEBUI_CONVERSATION",
+  "next_phase": "CONVERSAZIONE: la grafica della WebUI va cambiata (deciso dall Owner). NON iniziare la fase 1. Fase 0 punti 5-6 ancora aperti.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f90a7a5",
+  "last_commit": "3cc295b",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -1016,5 +1016,6 @@
     "L1_L8": "DECLARED_NOT_IMPLEMENTED — AtomError::NotImplemented, mai todo!()",
     "product_ready": false,
     "commit": "c7b7db6"
-  }
+  },
+  "scope_rule": "REGOLA ZERO (Owner, 2026-07-26): lavorando su NOESAR EVOLUTION esiste SOLO NOESAR EVOLUTION. Nessun altro sistema di questo host si nomina, si cita o si tocca. Tutto fuori da PROJECT_ROOT e in sola lettura; cancellare artefatti di altri progetti e un blocker, non un compito. CodeN Evolution e un prodotto nuovo e non eredita nulla."
 }
