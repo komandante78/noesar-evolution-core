@@ -46,6 +46,7 @@ altri no.
 | 10 | `10_DECISIONI.md` | Le decisioni prese, chi le ha prese, e quelle ancora aperte |
 | **11** | **`11_REVISIONE_E_CORREZIONI.md`** | **Revisione critica del mio lavoro: 3 errori d'analisi e 7 difetti di progetto, tutti corretti. Le 2 decisioni aperte, chiuse.** |
 | **12** | **`12_COSA_E_CAMBIATO.md`** | **Dal progetto reale a questo: cosa è cambiato davvero** |
+| **14** | **`14_MEMORIA_A_CUBI.md`** | **I tre cubi: biblioteca, officina, corpus. La struttura della biblioteca, la compattazione che non inventa, e i cinque meccanismi contro l allucinazione** |
 | **13** | **`13_IL_VERIFICATORE.md`** | **La soluzione al problema della probabilità — con esperimenti veri, rieseguibili** |
 
 Leggerli in ordine funziona. Se hai poco tempo: **01 e 02**. Il resto discende da quei due.

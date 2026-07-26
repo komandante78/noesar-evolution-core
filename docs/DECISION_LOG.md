@@ -1479,3 +1479,51 @@ eseguito, e dichiarato** invece che taciuto.
 Due difetti miei corretti prima del commit: un invariante che **ignorava il proprio parametro**
 e ne controllava un altro, e uno con due cicli che non facevano nulla. Un invariante che non
 controlla ciò che dichiara è peggio di nessun invariante.
+
+### D-0101 — la memoria a cubi: il record è la memoria, il vettore è un indice usa e getta
+
+Richiesta dell'Owner. Il requisito che la governa — *«qualsiasi modello mettiamo, c'è sempre
+la memoria precedente»* — **non è soddisfacibile conservando vettori**: un vettore ha senso
+solo nello spazio del modello che l'ha prodotto, e cambiando modello i vecchi vettori non
+diventano imprecisi, diventano privi di significato.
+
+Da qui la regola: il record è autoritativo, il vettore è un indice ricalcolabile. Lo schema
+attuale lo permette già — `memory_items.embedding` è `NULL`-abile e `content` è `NOT NULL`.
+
+Conseguenza di progetto: **una tabella di indice per modello di embedding, non una colonna**.
+`vector(384)` è fisso in pgvector, quindi «elastico nelle dimensioni» dentro una colonna è
+impossibile; elastico nel posto dove si mette l'indice, invece, è banale e permette al vecchio
+indice di servire mentre il nuovo si riempie.
+
+**Tre cubi, e il terzo non è un pari.** Biblioteca (semantica del prodotto, affermazioni
+verificate), Officina (compito → candidato, affermazioni in attesa), Corpus (semantica di
+lavoro, **fonti**). Un documento *è* la fonte; un ricordo è un'*affermazione su qualcosa*.
+Tenerli insieme è il meccanismo con cui il riassunto di un documento torna indietro come se
+fosse il documento.
+
+**Struttura della biblioteca:** una sola collocazione canonica — la segnatura
+`<semantica>/<progetto>/<anno>/<mese>/<giorno>/<sequenza>-<categoria>`, immutabile perché è
+ciò che rende un'affermazione citabile — e sette cataloghi che ci puntano, **sei dei quali
+funzionano senza vettori**. Otto categorie in registro chiuso, ognuna con una regola di
+verifica diversa: è questo che impedisce alla biblioteca di marcire.
+
+**Il punto più delicato è la compattazione**, perché riassumere significa generare, e il testo
+generato non ha provenienza. Tre regole: estrarre prima di generare; ciò che è generato è
+marcato `derivato` e non esce mai senza le sue fonti; e **fallire chiuso** — un candidato non
+tracciabile a un record di sessione non viene emesso, non «emesso con confidenza bassa». Una
+memoria senza provenienza non è una memoria debole, è un'invenzione con una data sopra.
+
+**Contro l'allucinazione cinque meccanismi sovrapposti**, non uno: richiamo che restituisce
+record e mai prosa; ogni elemento citabile per segnatura; il richiamo dichiara **cosa non ha
+trovato**; stato di contaminazione e canary; e le tre semantiche separate **dallo schema**.
+L'ultimo è il più importante perché gli altri quattro sono discipline che il codice deve
+ricordare di applicare, mentre quello è una proprietà della struttura e regge anche quando
+qualcuno dimentica.
+
+**Trovato progettando, e va risolto prima:** le memorie vive stanno in `ai-workspace.json`,
+mentre `memory_items` in PostgreSQL — con provenienza, embedding e la pipeline di promozione a
+sei stati — **non è sul percorso vivo**. È la stessa forma di `B-008`: due archivi per la
+stessa cosa. Registrato come primo punto del lavoro, e come decisione dell'Owner perché è una
+migrazione di dati vivi.
+
+Cinque decisioni restano aperte, elencate in `MASTER_PROJECT/14_MEMORIA_A_CUBI.md` §7.

@@ -43,6 +43,17 @@
       "resolution_options": [
         "Decide the target identity model and migrate deliberately, in a phase of its own"
       ]
+    },
+    {
+      "id": "B-009",
+      "severity": "medium",
+      "code": "TWO_MEMORY_STORES",
+      "summary": "Le memorie vive stanno in ai-workspace.json mentre noesar_knowledge.memory_items in PostgreSQL — con provenance, embedding e promotion_state a sei stati — non e sul percorso vivo. Stessa forma di B-008. Va deciso quale e autoritativo prima di costruire la memoria a cubi (D-0101).",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "Migrare le memorie su PostgreSQL: i muri fra le tre semantiche sono applicabili solo li",
+        "Tenere il JSON come autoritativo e rimuovere memory_items, che altrimenti resta schema morto"
+      ]
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
