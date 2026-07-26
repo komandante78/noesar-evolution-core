@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_WP2_WORKFLOWS_APPROVALS_AND_WCAG_MEASURED_NOT_DEPLOYED",
+  "phase_status": "PHASE_4_COMPLETE_WP2_PRIVACY_STATES_BUILT_NOT_DEPLOYED",
   "next_phase": 5,
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "91a0ab0",
+  "last_commit": "12dd1f7",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {

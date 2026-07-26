@@ -10,217 +10,184 @@ file and `PROJECT_STATE.json` alone.**
 | Field | Value |
 |---|---|
 | Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
-| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2: Workflows, the approval queue and WCAG 2.2 AA done** |
-| Phase status | `PHASE_4_COMPLETE_WP2_WORKFLOWS_APPROVALS_AND_WCAG_MEASURED_NOT_DEPLOYED` |
-| **Next work** | **WP-2 continues** — eight remaining items; the role model needs the Owner in the loop |
+| Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2: Workflows, approval queue, WCAG 2.2 AA and the seven privacy states done** |
+| Phase status | `PHASE_4_COMPLETE_WP2_PRIVACY_STATES_BUILT_NOT_DEPLOYED` |
+| **Next work** | **WP-2 continues** — five remaining rows; the role model needs the Owner in the loop |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `91a0ab0` |
+| Last commit | `12dd1f7` |
 | Updated (UTC) | 2026-07-26 |
 
 > ## ➜ What this session did
 >
-> The previous handoff named the first step and the reason for it: **write the test that the
-> claim is true, and run it against the current code.** `/api/v1/bootstrap` advertised
-> `Workflows` in its feature list while no page, no route and no engine existed.
+> WP-2's smallest self-contained row: the local-first privacy indicator, `01_PRODUCT/12`.
+> It was **measured before it was changed** — the discipline that has now paid twice running.
 >
-> That test was written first. Against the unmodified code:
->
-> ```text
-> # tests 19   # pass 18   # fail 1
-> error: '"Workflows" is advertised by /api/v1/bootstrap but its route answered 404 —
->         the claim is not honoured'
-> ```
->
-> One claim false, sixteen true — which is worth having established. The probe map lives in
-> the test, not beside the feature list: kept together, one edit could add a feature and its
-> own proof in the same breath. Adding a feature to the server now fails with "no probe
-> defined for advertised feature".
->
-> Then the engine, covering the nine properties `04_AI_PLATFORM/46` names — typed steps,
-> retries, compensation, idempotency, timeout, cancellation, human approval, evidence,
-> replay — and the approval queue and permanent bottom strip `01_PRODUCT/11` requires.
-
-> ## ➜ Three design decisions worth reading before extending this
->
-> **A step type declares its effects, and one of them is refused** (`D-0079`). `transform`
-> computes from a closed operation registry — no dynamic evaluation, because evaluating a
-> user-supplied expression would hand every workflow author the execution surface this build
-> deliberately lacks. `host_mutation` is declared and **fails closed**, naming the layer that
-> owns it, because `executionEnabled` is `false` here. Treating it as a no-op that "succeeded"
-> would have been a workflow claiming mutations it cannot perform — the same false claim this
-> phase set out to remove. Same reasoning as `D-0071`.
->
-> **A run is bound to the definition it started from** (`D-0080`). Runs snapshot their
-> workflow. Without it, editing a workflow would rewrite the history of every run already made
-> from it, and a replay would replay the edit rather than the event.
->
-> **The approval queue owns nothing** (`D-0081`). It reads the three subsystems that own
-> approvals and routes each decision back to the one that raised it. A copy would be a second
-> source of truth and the two would drift — which is not hypothetical here: the WebUI held
-> five hardcoded invariants matching neither the code nor each other.
-
-> ## ➜ Two defects found in the engine itself, one of them serious
->
-> **`advance()` could report a run `completed` when a step never finished** (`D-0083`). It
-> looked for the next step whose status was `pending` or `awaiting_approval`. A step left
-> `running` by a process that died is neither, so it was skipped — and if every other step had
-> finished, the run was declared a success. Found by reading the engine; no scanner on this
-> host can see it, because nothing is syntactically wrong. Such a step is now reconciled to
-> `interrupted`, kept distinct from `failed`, written to the evidence and the audit ledger,
-> and the run fails and compensates. Attempts are now recorded when they **start**, so an
-> interrupted attempt leaves a trace at all.
->
-> **The AI state schema bump needed a migration, and got one** (`D-0082`). Adding `workflows`
-> and `workflowRuns` raised `AI_STATE_VERSION` from 1 to 2. The installed workspace carries
-> `"schemaVersion": 1` and `validateState` demanded an exact match, so bumping the constant
-> alone would have made the AI workspace refuse to load on the next deployment. That is
-> migration `0012` again in a different file. The fixture in the test is the shape of the real
-> installed file, not an invented one.
-
-> ## ➜ Read this before deploying: the schema bump has a rollback cost
->
-> Once the upgraded build performs its **first write**, `state/ai-workspace.json` is version 2
-> and **every older image in the rollback lineage will refuse to read it**. That refusal is
-> deliberate — an older build operating on state whose invariants it does not know would not
-> fail loudly, it would corrupt quietly.
->
-> Rolling back therefore requires restoring `state/ai-workspace.json` from the pre-update
-> backup, which the update path already takes. **A read alone never rewrites the file**, so
-> starting the new build and stopping it again without creating a workflow is reversible.
-
-> ## ➜ And then WCAG 2.2 AA — measured for the first time, then repaired
->
-> `01_PRODUCT/15` targets WCAG 2.2 AA and the work plan said *never tested, no evidence
-> either way*. It was the only WP-2 row in that state rather than simply absent, which is why
-> it came next: cheap to measure now, expensive after WP-3 redraws the interface.
->
-> `npm run test:accessibility` reuses the existing disposable-probe apparatus through a new
-> `NOESAR_E2E_DRIVER` hook instead of copying 160 lines of container plumbing. Against the
-> untouched interface it found **seven failures across five criteria**:
+> The specification is ten lines and makes three separable claims: seven named states; an
+> external state disclosing destination, service identity, data categories, purpose,
+> duration, retention, consent scope and a revoke control; and telemetry off with no user
+> content in licence or update metadata. Against the shipped code:
 >
 > ```text
-> 2.4.1  no skip link before 23 navigation entries
-> 2.4.7  23 of 783 controls changed nothing on focus — .command input{outline:0}
-> 2.5.8  18 text buttons at 19px high, two checkboxes at 13x13   (new in WCAG 2.2)
-> 1.4.3  white on the primary gradient measured 4.19:1; .nav-group 2.90:1
-> 1.3.5  reauthPassword, the one identity field of eight with no autocomplete token
-> RTL    horizontal overflow from six margin-left:auto rules
-> ---    six !important colours with no forced-colors override
+> # tests 25   # pass 7   # fail 18
 > ```
 >
-> All repaired; the audit now reports **26/26**. Contrast was fixed by computing replacement
-> colours, not by eye: the new gradient stops measure 5.74 and 6.38, and `.nav-group` had to
-> clear the body's radial-gradient stop `#142443` rather than just the sidebar colour.
+> The seven passes included the four published `EGRESS` conformance vectors, which is why the
+> new suite asserts them: the repair had to leave them intact, and it did.
+
+> ## ➜ The sharpest finding was not a missing state
 >
-> **26/26 is not conformance, and the tool says so itself** — it prints an eight-line
-> NOT_TESTED block every run. No real screen reader participates; only the accessibility tree
-> is inspected. `forced-colors` emulation is refused by this Chromium, so only the static
-> stylesheet checks hold there. `D-0084`.
+> `REMOTE_MODEL_ACTIVE` was being reported by an installation whose remote-model request had
+> just been **refused**.
 >
-> **Two soundness decisions.** Contrast over a gradient has no single ratio, so the audit takes
-> the **worst** across every colour stop rather than exempting those elements — which would
-> have silently excused almost the whole interface, since every panel is a gradient. And the
-> `!important` colour check was rewritten: failing on their mere existence was wrong, since
-> six of them carry good/warning/critical meaning. The defect is an `!important` colour with
-> **no forced-colors override**, and that is what it now tests. `D-0085`.
+> The state lived in `let currentPrivacyState`, assigned at module load and then overwritten
+> by whatever egress plan any authenticated caller last evaluated. Two defects came out of
+> that one line: asking *what would happen if I used a remote model* repainted the indicator
+> for every user until restart, on the strength of a plan the server had denied; and it
+> initialised to `LOCAL_ONLY_`**`VERIFIED`** before anything had been verified, resetting to
+> that optimistic claim on every restart.
 >
-> **Three of the findings were mine** (`D-0086`). Two harness false positives were triaged out
-> *before* repairing anything — labelled form fields counted as nameless, and a hash-only
-> navigation that left the audit signed out, so five checks were failing on the harness rather
-> than the product. And the skip link **this work added** was first hidden with
-> `left:-9999px`, which in RTL extends the scrollable area to 11439px and breaks the very
-> criterion a skip link serves. My own audit caught it on the next run; it is now hidden by
-> clipping, and the RTL check names the outermost offending elements, because `overflow=true`
-> alone cannot be acted on without guessing.
+> `derivePrivacy()` now computes the state from enabled providers and consented connectors.
+> There is nothing for a caller to set and nothing to go stale across a restart.
+> `evaluateEgress()` stays separate and unchanged — it answers a hypothetical, and a
+> hypothetical is not a state. `D-0087`.
+
+> ## ➜ Four design decisions worth reading before extending this
 >
-> ESLint's `no-undef` objected to a `KeyboardEvent` global and exposed something worse than
-> a lint error: that check dispatched a **synthetic** keyboard event, which no browser turns
-> into an activation — so it would have passed on a button the keyboard cannot operate. It now
-> presses a real key. Second time `no-undef` has paid for itself here, which is what
-> `B-006` exists for.
+> **A registered provider is a menu item, not a pending connection** (`D-0088`). This was my
+> own defect, caught by this phase's own test. `ProviderGateway.seed()` registers OpenAI,
+> Anthropic and Kimi in every workspace, disabled and unconsented. Counting those as pending
+> meant **a fresh installation could never once report `LOCAL_ONLY_VERIFIED`** — a permanent
+> false alarm, and a warning that is always on is one people learn to skip past. "Pending"
+> now means enabled without consent, or consented without being enabled.
+>
+> **Retention at a third party is declared unknowable, not invented** (`D-0089`). The
+> disclosure carries `UNKNOWN_AT_DESTINATION` with the reason, beside the local retention
+> this installation does control. A figure would have been fabrication; a blank would have
+> left a required element empty.
+>
+> **The revoke control is not advertised to callers who cannot use it** (`D-0091`). `user`,
+> `client_restricted` and `service_account` all hold `user.read`, so they read the indicator,
+> but none holds `provider.manage`, so the route answers them 403. Widening the permission
+> was rejected — revoke disables providers workspace-wide, so a restricted account could
+> switch off everyone's access. The disclosure reports `available` for **this** caller,
+> answered by the same `hasPermission` call the route enforces.
+>
+> **`POLICY_VIOLATION_BLOCKED` is fed by refused sends, never by refused plans** (`D-0093`).
+> Feeding it from a plan would let any caller repaint the indicator by asking a bad question —
+> `D-0087` in the opposite direction. It expires from the indicator after 15 minutes; the
+> ledger is the permanent record, and a state that never clears is `D-0088` again.
+
+> ## ➜ Two defects found after the tests were already green
+>
+> **`POLICY_VIOLATION_BLOCKED` was unreachable in the running product.** `lastPolicyViolation`
+> was declared in the server and only ever *cleared* — nothing set it. The unit tests proved a
+> pure function could produce the state, which is not the same as the product reaching it, and
+> is exactly the gap the bootstrap feature-claims suite exists to close. Found by reading the
+> staged diff; no scanner on this host sees it. `ProviderGateway.#assertAllowed` now reports
+> each external refusal once, through one place, and the test drives it over HTTP.
+>
+> **That test's first version proved nothing.** It asserted `status >= 400`, which a 404 from
+> a mistyped route satisfies — it "passed" the attempt while the indicator had not moved. It
+> now asserts `403` exactly, using the provider health probe, which runs the same
+> `#assertAllowed` gate and then genuinely reaches out.
+
+> ## ➜ Defects of my own, declared
+>
+> Three harness defects were triaged out **before** anything was repaired, because a false
+> positive "fixed" is a real regression introduced for nothing: the wrong key for the
+> conformance file (`vectors` for `cases`), the wrong field on the providers response
+> (`items` for `providers`), and the wrong verb for granting consent (`POST` for `PUT`).
+>
+> Two more were in the browser harness. Waiting on a native checkbox's `checked` — true the
+> instant it is clicked, while the round trip was still in flight — meant the next click hit a
+> stale client copy, and the UI **correctly** refused it with "Grant explicit external consent
+> first". Waiting only on the server's answer then raced the client's own re-render and
+> detached the node mid-click. The barrier now marks the node before acting, so it can only
+> clear once a re-render has replaced it.
+>
+> And `toast` takes `(message, {kind})`. The previous handoff said it takes an options object;
+> the code is the authority, and the code was checked.
 
 ---
 
 ## Verified in this session
 
 ```text
-unit tests             600/600   524 before; +76 across five new suites; 0 failures
-  bootstrap claims      19/19    1 failed against the unfixed code
-  workflow engine       31/31    4 seeded defects, each caught by exactly 1 test
-  state migration        9/9     5 failed with the version bumped and no migration
-  approval queue        10/10
-  interrupted step       7/7     5 failed with the reconciliation removed
-eslint                 157 files, 0 errors, 0 warnings, 0 no-undef   (149 before)
-browser acceptance    213/213   178 before; +35 checks, real browser, real boxes
+unit tests             631/631   600 before; +31 in one new suite; 0 failures
+  privacy states        31/31    18 of 25 failed against the unfixed code
+eslint                 158 files, 0 errors, 0 warnings, 0 no-undef
+browser acceptance    233/233   213 before; +20 checks, real browser, real box
+accessibility          26/26    unchanged with the new markup
 installer hardening   100/100   unchanged
-cross-platform          0 failures, unchanged
-MANIFEST             5701/5701  0 failed, 0 duplicates
-accessibility           26/26    7 failures across 5 criteria found and repaired
-static analysis        src/, apps/, tools/ — no new finding
+MANIFEST             5702/5702  0 failed, 0 duplicates
+static analysis       services/ clean · apps/ 1 pre-existing MEDIUM · tools/ pre-existing only
 ```
 
-The engine is new code, so there was no "unfixed version" to watch fail. Five deliberate
-defects were seeded instead and each was caught by exactly one test: compensation reversed to
-forward order, replay reading the live definition instead of the run's snapshot, a
-non-executable step type allowed to run, the idempotency check disabled, and the migration
-removed. The file was restored and re-verified clean after each.
+Six deliberate defects were seeded one at a time and each was caught by exactly one test:
+any registered external provider counted as pending, `observed:false` assuming local-only,
+the metadata producer spreading its caller's object, the revoke control advertised
+regardless of permission, the indicator stored again from the caller's plan, and the
+egress-blocked wiring removed. Every source file was restored and confirmed
+**byte-identical** to its pre-seed copy after each round.
 
-The browser suite was run **twice**. The first 213/213 described code that no longer existed
-once the interrupted-step fix landed, so it was re-run against the final tree.
-
-### Three defects of my own, fixed before commit
-
-`fillProjectSelect` did not exist; `toast` takes an options object, not a string; and
-`.status-bad` / `.status-warn` were set by the new code and **absent from the stylesheet**, so
-a failure would have rendered in ordinary body text. A class the application sets and the
-presentation layer does not honour is the same defect shape as a declared protection nothing
-enforces.
+The browser suite ran four times. Two of those runs failed on my own harness races, described
+above rather than hidden; the final 233/233 was run against the final tree.
 
 ### Dismissed with evidence, not silently
 
-- `app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing, already dismissed last
-  phase; the target is a freshly created local `Error` with three fixed literal keys.
-  Re-confirmed pre-existing against this phase's backup copy.
-- `tools/*.py` `B603`/`B607`/`S603`/`S607` — pre-existing, hardcoded argv, no untrusted
-  input. `F401 sys` unused is `D-0039`.
-- **Not a dismissal — new evidence for `B-002`:** before trusting any clean scan, a canary
-  outside the repository was scanned. semgrep reported its `eval()` as CRITICAL, so the
-  detector fires. But **`detect-secrets` reported 0 findings on a literal `AKIA…` key and a
-  matching `aws_secret_access_key` line in the same file.** The heuristic secret scan is
-  weaker than its name suggests. The canary was removed; it was never inside the repository.
+- `apps/webui-static/app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing,
+  dismissed in the two previous phases. Re-confirmed by diffing line 85 against this phase's
+  own backup copy: byte-identical, untouched by this work. The target is a freshly created
+  local `Error` with three fixed literal keys.
+- `tools/verify-package.py`, `tools/create-rust-build-provenance.py` — `B603`/`B607`/`S603`/
+  `S607` (reported CRITICAL/HIGH by the scanner), `B404`, `F401`. Neither file is staged.
+  Verified at the flagged lines: argv-list form, no `shell=True`, fixed command names, and the
+  only variable part is a path from a local `rglob` walk. `F401 sys` is `D-0039`.
+- **`B-002` unchanged and still weak.** `detect-secrets` was shown last phase to report 0
+  findings on a literal `AKIA…` key. Its clean result here is weak evidence, and the
+  pre-commit scan is heuristic and declared as such.
 
 ---
 
-## ⚠️ THREE security fixes are in the source and NOT installed
+## ⚠️ FOUR security or feature fixes are in the source and NOT installed
 
 The live installation on `192.168.178.100:8100` runs `:phase4-webui`, built before all of
 them. It therefore still serves:
 
 1. the forgeable `/api/v1/coden/authorize` (s262, `e2abbc6`),
 2. the unvalidated consent scope (s263, `f512041`) — on the live box `DENY` still mints an
-   approval and a recursive delete can still be granted `PERSISTENT_FOLDER`, and
+   approval and a recursive delete can still be granted `PERSISTENT_FOLDER`,
 3. no Workflows or approval queue at all, while its own `/api/v1/bootstrap` still advertises
-   `Workflows` (this session, `9912462`).
+   `Workflows` (s264, `9912462`), and
+4. a privacy indicator any authenticated caller can repaint by evaluating an egress plan, and
+   which claims `LOCAL_ONLY_VERIFIED` before verifying anything (this session, `12dd1f7`).
 
 **Deployment is an installation phase and requires the Owner's explicit authorisation.** Do
-not do it on initiative — and when it is authorised, read the schema-rollback note above
-first.
+not do it on initiative — and when it is authorised, read the schema-rollback note first.
+
+## Read this before deploying: the schema bump has a rollback cost
+
+Once the upgraded build performs its **first write**, `state/ai-workspace.json` is version 2
+and **every older image in the rollback lineage will refuse to read it**. That refusal is
+deliberate — an older build operating on state whose invariants it does not know would not
+fail loudly, it would corrupt quietly. Rolling back therefore requires restoring
+`state/ai-workspace.json` from the pre-update backup, which the update path already takes.
+**A read alone never rewrites the file**, so starting the new build and stopping it again
+without creating a workflow is reversible.
 
 ---
 
 ## Open blockers
 
 ### B-001 — no GitHub remote · medium · unchanged
-`gh` is not installed, no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`. The local repository is
-complete and committed.
+`gh` is not installed and no token is set. `GIT_PUSH=BLOCKED_NO_REMOTE`, confirmed again this
+phase (`git remote -v` is empty). The local repository is complete and committed.
 
-### B-002 — secret scan is heuristic · low · **evidence strengthened this session**
-Neither `gitleaks` nor `trufflehog` is installed and rule 45 forbids installing tooling to
-satisfy a rule. New this session: `detect-secrets`, the one real scanner available, was shown
-to report **0 findings on a textbook AWS key canary**. Treat its clean results as weak
-evidence. The heuristic scan run before each commit matched only identifier names, header
-names and test constants declared as non-secrets.
+### B-002 — secret scan is heuristic · low · unchanged
+Neither `gitleaks` nor `trufflehog` is installed, and rule 45 forbids installing tooling to
+satisfy a rule. `detect-secrets`, the one real scanner available, was shown last phase to
+report **0 findings on a textbook AWS key canary**. Treat its clean results as weak evidence.
 
 ### B-008 — two identity stores · medium · unchanged
 The account that signs in lives in `RUNTIME_ROOT/state/auth.json`; `noesar_identity.users` in
@@ -232,26 +199,35 @@ PostgreSQL is empty. Needs a phase of its own.
 
 ## Exact next action
 
-**WP-2 continues.** Three of its eleven rows are now done; **eight are untouched**, and the
-table in `docs/WORK_PLAN_V4_ALIGNMENT.md` is the list:
+**WP-2 continues.** Four of its eleven rows are done; **five are untouched**, and the table in
+`docs/WORK_PLAN_V4_ALIGNMENT.md` is the list:
 
 ```text
 Passkeys / WebAuthn, OIDC, SAML, SCIM      01_PRODUCT/14   passkeySupported:false; zero references
 Role model (six named roles)               01_PRODUCT/14   a DIFFERENT model ships, not a subset
-Seven privacy states                       01_PRODUCT/12   five implemented
 Compliance evidence packs                  06_COMPLIANCE   absent
 Industry Module Framework                  07_INDUSTRY     absent (Gate 6)
 ML-BOM alongside SBOM                      00_CONTROL/06   SBOM exists, no ML-BOM
-WCAG 2.2 AA                                01_PRODUCT/15   DONE — 26/26 repaired, NOT certified
 ```
 
-**WCAG 2.2 AA is done** (measured, repaired, 26/26 — not certified). Of what remains, the honest ordering is: **the seven privacy states** and **ML-BOM** are the smallest and self-contained; **compliance evidence packs** and the **Industry Module Framework** are whole subsystems and Gate 6 work; **passkeys/WebAuthn, OIDC, SAML and SCIM** are four separate integrations that each need an Owner decision about what this product federates with.
+Of what remains, **ML-BOM is the smallest and most self-contained** — it was the other half of
+the pair this session drew from, and it is the obvious next one. `00_CONTROL/06` requires it
+beside the SBOM, and `03_SECURITY/35` and `06_COMPLIANCE/65` both reference it.
+
+One thing to settle before starting it: this build ships **no model weights**. An honest
+ML-BOM therefore describes the model *surfaces* the product declares — the provider
+catalogue entries and the local runtime's expected formats — and states plainly that no model
+artifact is distributed. An ML-BOM that invented model entries to look complete would be the
+exact defect class this project keeps removing.
+
+**Compliance evidence packs** and the **Industry Module Framework** are whole subsystems and
+Gate 6 work. **Passkeys/WebAuthn, OIDC, SAML and SCIM** are four separate integrations that
+each need an Owner decision about what this product federates with.
 
 **Take the role model only with the Owner in the loop.** `01_PRODUCT/14` names six roles that
 are neither a superset nor a subset of the six that ship, so satisfying it means changing who
-can do what on a running installation. This session deliberately reused `agent.manage` for
-every workflow route rather than inventing a permission, precisely so that decision stays
-open and undisturbed.
+can do what on a running installation. This session again avoided touching it: the revoke
+route reuses `provider.manage` rather than inventing a permission.
 
 **Still open and unchanged:**
 
@@ -261,17 +237,17 @@ open and undisturbed.
   right state but not the same as the matrix item passing.
 - **`OPS-002` must not be marked PASS** and cannot be closed from this host: no macOS, no
   Windows, no PowerShell, no podman, and rule 45 forbids installing them. `Install-Noesar.ps1`
-  is expected to nest the tree on reinstall — recorded, not repaired, because it cannot be
-  run here (`D-0077`).
+  is expected to nest the tree on reinstall — recorded, not repaired (`D-0077`).
 - **`MANIFEST.sha256` does not cover `MASTER_REFERENCE/`** — 0 of its 119 files. The
   acceptance matrix the whole plan is measured against is not integrity-protected. Widening
-  the manifest changes what the artifact means, so it is the Owner's call (`D-0074`).
+  the manifest changes what the artifact means, so it is the Owner's call (`D-0074`). The two
+  specification files this phase consumed were verified individually against
+  `MASTER_REFERENCE/MANIFEST.sha256`, which does cover them: both OK.
 - **WP-3 / WebUI v2.** v1 was reviewed on 2026-07-26 and **not accepted**. Read
-  `docs/WEBUI_DESIGN_REVIEW_V1.md` first — four corrections, one of which re-derives the
-  information architecture rather than restyling. Note that this session added **two** nav
-  entries to the v1 shell; WP-3 re-derives the whole navigation from `01_PRODUCT/11`'s single
-  `Settings` entry, so treat `Workflows` and `Approvals` as destinations that must find a
-  home in the new IA, not as settled navigation.
+  `docs/WEBUI_DESIGN_REVIEW_V1.md` first. WP-2 has now added **three** things to the v1
+  shell — `Workflows`, `Approvals`, and the privacy disclosure panel on Home. WP-3 re-derives
+  the whole navigation from `01_PRODUCT/11`, so treat all three as destinations and surfaces
+  that must find a home in the new information architecture, not as settled layout.
 - **The CodeN Evolution design conversation.** `docs/CODEN_EVOLUTION_DESIGN_V1.md` is written
   and waiting; five decisions at the end are the Owner's.
 - **ATOM.** Blueprint at `/mnt/cachec/NOESAR-ATOM-PRIVATE/` (private, no remote, nothing
@@ -282,7 +258,7 @@ open and undisturbed.
 Read in this order on reopening: `PROJECT_STATE.json`, this file, `docs/PHASE_PLAN.md`,
 `docs/INSTALLATION_LEDGER.md`, `docs/DECISION_LOG.md`, then `docs/WORK_PLAN_V4_ALIGNMENT.md`.
 
-### Five gate items only the Owner can close
+### Gate items only the Owner can close
 
 ```text
 CLIENT_BROWSER_TEST      AWAITING_OWNER
@@ -313,30 +289,26 @@ Rust tree in the source SBOM).
 ## Reproducing this session's verification
 
 ```bash
-npm test                                    # 600 unit tests
-npm run lint                                # eslint, 156 files
-node --test services/reference-control-plane/test/bootstrap-feature-claims.test.mjs
-node --test services/reference-control-plane/test/workflow-engine.test.mjs
-node --test services/reference-control-plane/test/workflow-interrupted-step.test.mjs
-node --test services/reference-control-plane/test/ai-state-migration.test.mjs
-node --test services/reference-control-plane/test/approval-queue.test.mjs
+npm test                                    # 631 unit tests
+npm run lint                                # eslint, 158 files
+node --test services/reference-control-plane/test/privacy-states.test.mjs   # 31
 npm run test:accessibility                  # 26 WCAG 2.2 AA checks, real Chromium
 npm run test:installers                     # 100 hardening checks
 npm run test:installers-cross-platform      # cross-platform, 0 failures
-sha256sum -c MANIFEST.sha256                # 5700 entries
-bash tools/run-browser-e2e.sh               # 213 checks, disposable probe, self-cleaning
+sha256sum -c MANIFEST.sha256                # 5702 entries
+bash tools/run-browser-e2e.sh               # 233 checks, disposable probe, self-cleaning
 ```
 
 ## Rollback
 
 ```text
 container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
-this phase  BACKUPS/wcag_20260726T120938Z/            index.html, styles.css, app.js, MANIFEST
-            BACKUPS/MANIFEST.sha256.pre_wcag_*
-            BACKUPS/wp2_workflows_20260726T112259Z/   server.mjs, atomic-store.mjs,
-                                                      index.html, app.js, styles.css,
-                                                      MANIFEST.sha256, PROJECT_STATE.json
-            BACKUPS/MANIFEST.sha256.pre_wp2_workflows_20260726T114748Z
+this phase  BACKUPS/wp2_privacy_states_20260726T151829Z/   privacy.mjs, server.mjs,
+                                                           update-manager.mjs, app.js,
+                                                           index.html, styles.css,
+                                                           MANIFEST.sha256, SESSION_HANDOFF.md,
+                                                           CHECKSUMS.txt
+            BACKUPS/MANIFEST.sha256.pre_wp2_privacy_20260726T151829Z
 ```
 
 To roll back the installation: `docker stop noesar-evolution`, rename it aside, then
@@ -357,12 +329,19 @@ Image lineage, all still on disk:
 
 ## Housekeeping
 
-`CLAUDE10.md` §5a and step 13 of the 15-step skill cycle. **Two containers survive a phase**
-— the running installation and one rollback — and that is exactly what exists. This session
+`CLAUDE10.md` §5a and step 13 of the 15-step skill cycle. **Two containers survive a phase** —
+the running installation and one rollback — and that is exactly what exists. This session
 created no product container. The browser suite created its own probe, runner and image and
-removed all three on exit, both times it ran. `noesar-debuglab` was started for the hunt step
-and **stopped again in the same phase**; three read-only `docker exec` calls were made into it
-to read its own route table, because its API is undocumented on this host. Inventory **39
-containers throughout**, exactly two `noesar-evolution*`, networks and volumes untouched.
+removed all three on exit, on each of its four runs. `noesar-debuglab` was started for the
+hunt step and **stopped again in the same phase**; one read-only `docker exec` was made into
+it to read its own route table, because its API is undocumented on this host.
+
+Inventory **39 containers throughout**, exactly two `noesar-evolution*`, networks and volumes
+diffed against `EVIDENCE/docker_inventory_pre_cleanup_20260726T154521Z.txt` and **unchanged**.
 Live product after the work: `livez` 200, `readyz` 200, `/metrics` 401, `health=healthy`,
 `RestartCount=0`, still `:phase4-webui`. Host-wide `prune` in any form remains forbidden.
+
+Noted, not acted on: `run-browser-e2e.sh` preserves its workspace when a run fails, so the two
+failed runs left `20260726T153315Z` and `20260726T153436Z` under
+`/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e/`. That preservation is the script's deliberate
+behaviour, the directories lie outside `PROJECT_ROOT`, and rule 12 forbids deleting them.
