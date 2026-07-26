@@ -10,6 +10,17 @@ MEMORY="${NOESAR_MEMORY_LIMIT:-8g}"
 CPUS="${NOESAR_CPU_LIMIT:-4}"
 ALLOWED_HOSTS="${NOESAR_ALLOWED_HOSTS:-localhost,127.0.0.1,::1}"
 SECURE_COOKIES="${NOESAR_SECURE_COOKIES:-false}"
+# OPS-002. This was referenced below as a bare $RELEASE_CHANNEL and never assigned
+# anywhere. Under `set -u` that aborts the script, so the Podman installer exited 1 with
+# "RELEASE_CHANNEL: unbound variable" before ever reaching `podman run` — it had never
+# been able to install anything. Defined and validated exactly as deployment/docker/run.sh
+# already does it, so the two paths agree on the channel vocabulary.
+RELEASE_CHANNEL="${NOESAR_RELEASE_CHANNEL:-complete}"
+
+case "$RELEASE_CHANNEL" in
+  complete|development) ;;
+  *) echo "Unsupported release channel: $RELEASE_CHANNEL" >&2; exit 1 ;;
+esac
 
 mkdir -p "$WORKSPACE"
 chmod 0700 "$WORKSPACE"

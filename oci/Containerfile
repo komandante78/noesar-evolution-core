@@ -41,7 +41,12 @@ USER 10001:10001
 EXPOSE 8088
 VOLUME ["/workspace"]
 
+# Liveness, not readiness. The container must be restarted only when the process is
+# genuinely dead; /healthz and /readyz report dependency state, so using either here
+# would restart a perfectly alive process whenever a dependency is briefly degraded.
+# OPS-002: this correction was made in oci/Dockerfile and never propagated here, so the
+# Podman path still carried the defect the Docker path had already fixed.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/healthz',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
 
 ENTRYPOINT ["node", "services/reference-control-plane/src/server.mjs"]

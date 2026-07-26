@@ -14,6 +14,8 @@
     "test:authority-external": "node --test services/reference-control-plane/test/authority-external-client.test.mjs",
     "test:authority-protocol": "node --test services/reference-control-plane/test/authority-protocol.test.mjs",
     "test:canonical": "node --test services/reference-control-plane/test/canonical-json.test.mjs",
+    "test:installers": "node tools/test-installer-hardening.mjs",
+    "test:installers-cross-platform": "node tools/test-cross-platform-installers.mjs",
     "test:ipc-frame": "node --test services/reference-control-plane/test/authority-ipc-frame.test.mjs",
     "test:postgres-integration": "node tools/acceptance/postgres-integration.mjs",
     "test:postgres-repository": "node --test services/reference-control-plane/test/postgres-repository.test.mjs",
