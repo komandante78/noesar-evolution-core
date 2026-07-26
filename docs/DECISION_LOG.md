@@ -1092,3 +1092,86 @@ immediately, leaving `$HOME/.local` exactly as found.
 The containment is now part of the harness rather than a caution: every installer run
 happens inside a sandbox with `HOME` and `XDG_BIN_HOME` pinned into a temporary
 directory. A test that can escape into the operator's home is a test that will.
+
+---
+
+## WP-2 — Workflows and the approval queue (2026-07-26)
+
+### D-0079 — a typed step declares its effects, and a step this build cannot execute says so
+
+`04_AI_PLATFORM/46` requires "typed steps". The choice was what a type *is*: a label, or a
+declaration with consequences.
+
+It is a declaration. Each of the five step types states the effects it can have and whether
+this build can execute it, and the vocabulary travels to the interface from the server so
+the page cannot hold a divergent copy. `transform` computes from a closed operation registry
+— no dynamic evaluation, because evaluating a user-supplied expression would hand every
+workflow author precisely the execution surface this build does not have.
+
+`host_mutation` is therefore declared and **refused**: `executionEnabled` is `false` and
+there is no execution surface here, so a step of that type fails closed and names the layer
+that owns it. The alternative — quietly treating it as a no-op that "succeeded" — would have
+been a workflow claiming to perform host mutations it cannot perform, which is the same
+false claim as `Workflows` in the feature list. This follows `D-0071`: the honest response to
+a capability this layer does not have is to name the layer that has it.
+
+### D-0080 — a run is bound to the definition it started from
+
+Runs snapshot their workflow definition. Without the snapshot, editing a workflow would
+silently rewrite the history of every run already made from it, and a replay would replay
+the edit rather than the event. Editing the steps increments the version; runs in flight and
+replays of finished runs are unaffected. Tested in both directions: a replay reproduces the
+original output, and a new run uses the current definition.
+
+### D-0081 — the approval queue owns nothing, and reads the subsystems that do
+
+The queue aggregates workflow gates, agent steps awaiting approval, and a staged unapproved
+update, and routes each decision back to whichever subsystem raised it. It deliberately
+keeps no copy of any pending approval.
+
+A copy would be a second source of truth, and the two would drift. That is not a
+hypothetical on this project: the WebUI held five hardcoded invariants that matched neither
+the code nor each other, and the security matrix carried rows describing behaviour the code
+did not have. A test pins the property by deciding an approval in the owning subsystem and
+requiring the queue to follow.
+
+One limitation is stated rather than hidden: **rejecting a staged update answers 501.**
+Nothing has been applied at that point, so a rejection is not a rollback, and the update
+manager has no discard verb. Inventing one would be scope creep into the update path; the
+honest answer is that the operator must not apply it. Unreachable on this installation
+anyway, which pins no channel key.
+
+### D-0082 — the AI state schema was bumped WITH a migration, and the rollback cost is stated
+
+Adding `workflows` and `workflowRuns` raised `AI_STATE_VERSION` from 1 to 2. The installed
+workspace carries `"schemaVersion": 1`, and `validateState` demanded an exact match — so
+bumping the constant alone would have made the AI workspace refuse to load on the next
+deployment. That is `0012` again in a different file: a schema change that could never be
+applied is proof it was never executed.
+
+The alternative considered was not bumping at all and tolerating absent collections, which
+would have been compatible in both directions. It was rejected because a version-1 and a
+version-2 file would then be indistinguishable, so an older build would operate on state
+whose invariants it does not know — and it would not fail loudly, it would corrupt quietly.
+Refusing is better than corrupting.
+
+**The cost, stated plainly:** once the upgraded build performs its first write, the state
+file is version 2 and the older images in the rollback lineage cannot read it. Rolling back
+therefore requires restoring `state/ai-workspace.json` from the pre-update backup, which the
+update path already takes. A read alone never rewrites the file, so merely starting the new
+build and stopping it again is reversible.
+
+### D-0083 — a step abandoned by a dead process is not skipped
+
+Found by reviewing the engine, not by any scanner — nothing is syntactically wrong.
+`advance()` looked for the next step whose status was `pending` or `awaiting_approval`. A
+step left `running` by a process that died is neither, so it was passed over, and if every
+other step had finished **the run was reported `completed`** — success declared for a run
+whose step never finished.
+
+Such a step is now reconciled to `interrupted`, distinctly from `failed`, before anything
+else happens; the run fails, completed work is compensated, and the interruption is written
+to the evidence and the audit ledger rather than quietly repaired. Attempt records are also
+now opened when an attempt starts instead of only when it ends, so an interrupted attempt
+leaves a trace at all. Proved by removing the reconciliation and watching five of the seven
+tests fail on exactly that assertion.

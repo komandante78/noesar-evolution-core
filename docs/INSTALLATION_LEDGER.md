@@ -1237,3 +1237,124 @@ Inventory 39 throughout, exactly two `noesar-evolution*`.
 **Not deployed.** `OPS-002` remains **OPEN**: four of five platforms are now exercised at
 the script level, one platform's scripts have never been run at all, and no installation
 was performed on any platform other than this one.
+
+---
+
+## WP-2 — Workflows and the approval queue (2026-07-26)
+
+**Source only. Nothing was deployed and no product container was created, started or
+stopped.** The live installation still runs `:phase4-webui`.
+
+### The starting point was a test, and it failed
+
+`/api/v1/bootstrap` advertised `Workflows` in its feature list while no page, no route and
+no engine existed. Before building anything,
+`test/bootstrap-feature-claims.test.mjs` was written to assert that every advertised feature
+has a route behind it, and run against the unmodified code:
+
+```text
+# tests 19   # pass 18   # fail 1
+error: '"Workflows" is advertised by /api/v1/bootstrap but its route answered 404 —
+        the claim is not honoured'
+```
+
+That is the honest starting point, and it also established that the other sixteen claims
+were already true. The probe map lives in the test rather than beside the feature list on
+purpose: kept together, one edit could add a feature and its own proof in the same breath.
+Adding a feature to the server now fails this test with "no probe defined".
+
+### What was built
+
+| Requirement (`04_AI_PLATFORM/46`) | Where |
+|---|---|
+| typed steps | `STEP_TYPES`, five types, each declaring effects and executability |
+| retries | per-step `maxAttempts` (clamped 1–5) with per-attempt records |
+| compensation | reverse-order over completed steps, on failure **and** cancellation |
+| idempotency | `(workflowId, idempotencyKey)`; a repeat returns the first run with 200 |
+| timeout | per-step, `timed_out` recorded distinctly from `failed` |
+| cancellation | honoured between attempts and while suspended; compensates on the way out |
+| human approval | `human_approval` suspends the run; the queue is where it surfaces |
+| evidence | append-only sequenced record per run, including failed attempts |
+| replay | new run from the run's **definition snapshot**; the original is never mutated |
+
+`01_PRODUCT/11`'s bottom approval strip replaces the static status bar, and is permanent —
+it states the count even at zero, because a strip that appears only when something is
+pending gives no way to tell "nothing waiting" from "this stopped working". Two destinations
+were added, `Workflows` and `Approvals`, with a nav badge carrying the pending count.
+
+Permissions reuse the existing model: `workspace.read` to read, `agent.manage` to define,
+run, cancel, replay and decide — the same permission the agent runs already use. The work
+plan lists the role model itself as a separate open item and it was **not** quietly changed.
+
+### Verified in this phase
+
+```text
+unit tests             600/600   524 before; +76 across five new suites; 0 failures
+  bootstrap claims      19/19    1 failed against the unfixed code
+  workflow engine       31/31    4 seeded mutations each caught by exactly 1 test
+  state migration        9/9     5 failed with the version bumped and no migration
+  approval queue        10/10
+  interrupted step       7/7     5 failed with the reconciliation removed
+eslint                 156 files, 0 errors, 0 warnings, 0 no-undef   (149 before)
+browser acceptance    213/213   178 before; +35, real browser, real boxes
+installer hardening   100/100   unchanged
+cross-platform          0 failures, unchanged
+MANIFEST             5700/5700  0 failed, 0 duplicates
+static analysis        src/, apps/, tools/ — no new finding
+```
+
+Every new suite was run against the unfixed code and **observed failing** first. Where no
+"unfixed code" existed — the engine is new — the property was instead seeded with a
+deliberate defect and the suite shown to catch it: compensation reversed to forward order,
+replay reading the live definition instead of the snapshot, a non-executable step type
+allowed to run, and the idempotency check disabled. Each was caught by exactly one test, and
+the file was restored and re-verified clean after each.
+
+### Two defects of my own, found and fixed before commit
+
+`fillProjectSelect` did not exist and `toast` takes an options object, not a string — both
+written by me while wiring the WebUI, both in code paths a passing test suite would not have
+touched. Also `.status-bad` and `.status-warn` were written by the new code and **absent from
+the stylesheet**, so a failure would have rendered in ordinary body text: a class the
+application sets and the presentation layer does not honour is the same defect shape as a
+declared protection nothing enforces. All three fixed; ESLint `no-undef` is what would have
+caught the first, and it is the tool `B-006` exists to keep in the loop.
+
+### A defect no scanner could see
+
+`advance()` skipped a step left `running` by a dead process and could report the run
+`completed`. Found by reading the engine, fixed, and pinned by a suite that drives the
+service directly — there is no route that leaves a step `running`, and there should not be.
+`D-0083`.
+
+### Findings triaged and dismissed, with evidence
+
+- `app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing and already dismissed
+  in the previous phase; the target is a freshly created local `Error` with three fixed
+  literal keys. Confirmed still pre-existing by checking this phase's backup copy.
+- `tools/*.py` `B603`/`B607`/`S603`/`S607` (7 critical, 2 high) — pre-existing, hardcoded
+  argv, no untrusted input. `F401 sys` unused is `D-0039`.
+- **Evidence for `B-002`, not a dismissal:** the detector was proved to fire before its clean
+  result was trusted — a canary outside the repository with `eval()`, a command injection and
+  an AWS key was scanned, and semgrep reported the `eval` as CRITICAL. But
+  **`detect-secrets` reported 0 findings on a literal `AKIA…` key and a matching
+  `aws_secret_access_key` line.** The heuristic secret scan is weaker than its name suggests,
+  which strengthens rather than resolves `B-002`. The canary was removed.
+
+### Container use
+
+`noesar-debuglab` was started for the hunt and **stopped again in the same phase**. Three
+read-only `docker exec` calls were made into it to read its own route table and endpoint
+signature, because its API is undocumented on this host; nothing was written. The browser
+acceptance suite created its own disposable probe, runner and image and removed all three on
+exit, twice — the suite was re-run after the engine changed, because the first 213/213
+described code that no longer existed. Inventory 39 containers throughout, exactly two
+`noesar-evolution*`, networks and volumes untouched, live product `livez`/`readyz` 200 and
+`/metrics` 401 after the work.
+
+### Not done
+
+`WP-2` also lists passkeys/WebAuthn, OIDC, SAML, SCIM, the six-role model, the seven privacy
+states, compliance evidence packs, the Industry Module Framework, ML-BOM and WCAG 2.2 AA.
+**None of those were touched.** Workflows and the approval queue were taken first because one
+of them was a claim the API already made.

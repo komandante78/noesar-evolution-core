@@ -83,8 +83,8 @@ never been executed or tested. `Install-Noesar.ps1` has never run on Windows.
 
 | Requirement | Source | Reality |
 |---|---|---|
-| **Workflows** — typed steps, retries, compensation, idempotency, timeout, cancellation, human approval, replay | `04_AI_PLATFORM/46` | No page, no route, no engine. **`/api/v1/bootstrap` claims `Workflows` in its feature list** — a claim the code does not honour, which is a defect in its own right |
-| **Approval queue** and the bottom approval strip | `01_PRODUCT/11` (binding) | Absent. The footer is a static status bar |
+| **Workflows** — typed steps, retries, compensation, idempotency, timeout, cancellation, human approval, replay | `04_AI_PLATFORM/46` | **BUILT in source, 2026-07-26.** Engine, routes and a `Workflows` destination; all nine named properties covered by tests, each shown to fail before it passed. One honest limit: `host_mutation` is a declared step type this build **refuses**, because `executionEnabled:false` and there is no execution surface here — `D-0079`. **Not deployed.** |
+| **Approval queue** and the bottom approval strip | `01_PRODUCT/11` (binding) | **BUILT in source, 2026-07-26.** One queue over workflow gates, agent steps and staged updates, owning no copy of any of them; the footer is now a permanent approval strip. Rejecting a staged update answers 501 and says why — `D-0081`. **Not deployed.** |
 | **Passkeys / WebAuthn, OIDC, SAML, SCIM** | `01_PRODUCT/14` | `passkeySupported:false`; zero references to OIDC, SAML or SCIM anywhere in the source |
 | **Role model**: User, Professional, Developer, Workspace Admin, Security Admin, Owner | `01_PRODUCT/14` | Shipped model is owner / admin / developer / user / client_restricted / service_account. Neither a superset nor a subset — a different model |
 | **Seven privacy states** incl. `EXTERNAL_CONNECTOR_PENDING`, `STATUS_UNKNOWN` | `01_PRODUCT/12` | Five implemented |
