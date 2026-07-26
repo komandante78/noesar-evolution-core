@@ -44,8 +44,12 @@ altri no.
 | 08 | `08_INSTALLAZIONE.md` | **Cosa va installato**, com'è fatto il container, come si aggiorna |
 | 09 | `09_PIANO.md` | In che ordine si costruisce, e quando si può dire "fatto" |
 | 10 | `10_DECISIONI.md` | Le decisioni prese, chi le ha prese, e quelle ancora aperte |
+| **11** | **`11_REVISIONE_E_CORREZIONI.md`** | **Revisione critica del mio lavoro: 3 errori d'analisi e 7 difetti di progetto, tutti corretti. Le 2 decisioni aperte, chiuse.** |
+| **12** | **`12_COSA_E_CAMBIATO.md`** | **Dal progetto reale a questo: cosa è cambiato davvero** |
 
 Leggerli in ordine funziona. Se hai poco tempo: **01 e 02**. Il resto discende da quei due.
+Se vuoi sapere **cosa è cambiato** rispetto al progetto consegnato: vai diritto al **12**.
+Se vuoi sapere **cosa ho sbagliato io** e come l'ho corretto: il **11**.
 
 ---
 

@@ -5,6 +5,24 @@
 code actually in this repository. Every count below comes from the tree, not from memory.
 **Status:** analysis. Nothing was changed.
 
+> ### CORRECTION, same day — three claims in this document were wrong
+>
+> Re-reviewed on request. I searched for component names **in code** and never searched the
+> **database schema**, so three "0 files" claims below are false:
+>
+> - **Model Trust Registry** — `model_descriptors.trust_state` exists in the schema with the
+>   right states (`quarantined/verified/active/revoked`), but **no code reads or writes it**.
+>   That is a category I missed entirely: **dead schema**, which is *worse* than absence,
+>   because a column that exists looks like a feature that exists.
+> - **Secret Broker** — 13 files; a vault exists and the tool executor uses it.
+> - **Resource Governor** — 4 files with quota/rlimit.
+> - **MEVCM** — I conflated the acronym with the concept. `memory_items.provenance` exists and
+>   is written and read. Contamination state, canary and the promotion pipeline do not.
+>
+> **Confirmed correct:** `ReasoningProvider` 0 files, Capability Token 0 files, Emergency Stop
+> 0 files, no Policy Decision Point, security pipeline absent from code. The two critical
+> findings stand. Full correction: `docs/progetto-italiano/11_REVISIONE_E_CORREZIONI.md`.
+
 ---
 
 ## Part 1 — What was actually built, measured

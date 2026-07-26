@@ -64,8 +64,28 @@ Ogni lavoro emette un pacchetto firmato e autoconsistente:
 ```
 
 Lo consegni a un revisore, a un cliente, a un regolatore — o a te stesso fra sei mesi.
-Chiunque abbia il pacchetto e la stessa release può **rieseguirlo e ottenere le stesse
-decisioni**.
+
+### Cosa significa esattamente "rieseguibile" *(corretto — vedi documento 11, P1)*
+
+**Il replay non rigenera: riesegue il livello delle decisioni contro gli output di modello
+registrati.** I modelli linguistici non sono deterministici — nemmeno a temperatura zero, per
+via dell'aritmetica in virgola mobile su GPU — quindi promettere di riprodurre le loro risposte
+sarebbe una promessa che si rompe alla prima verifica.
+
+| Livello | Nel replay |
+|---|---|
+| Output dei modelli | **riprodotti dalle fixture registrate** |
+| Interpretazione, ipotesi, piano, attesa, classificazione | **rieseguiti, e devono coincidere** |
+| Policy, autorizzazioni, emissione dei token | **rieseguiti, e devono coincidere** |
+| Esecuzione in ombra e verifica | **rieseguite sui file registrati** |
+
+Così il replay è **deterministico al 100%** e non dipende dalla riproducibilità dei modelli.
+Risponde alla domanda che conta: *«dato quello che il modello ha detto, la macchina avrebbe
+deciso la stessa cosa?»* — cioè verifica **la parte di cui il prodotto è responsabile**.
+
+E se ne guadagna una in più: si può **rieseguire una vecchia sessione contro una versione più
+recente del prodotto**, e vedere se una policy nuova avrebbe rifiutato ciò che allora era stato
+permesso. Con la rigenerazione sarebbe stato impossibile.
 
 ### Perché i concorrenti non lo copiano in fretta
 

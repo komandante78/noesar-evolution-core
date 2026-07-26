@@ -12,18 +12,31 @@ verificata dall'interno.
 
 **Non costruito, e sono i pezzi centrali:**
 
-| Manca | Peso |
-|---|---|
-| `ReasoningProvider` — zero file | **critico** — è la cucitura di ATOM |
-| Kernel di sicurezza reale — 37 righe, cinque componenti a zero | **critico** |
-| Capability token — zero file | **critico** — è il meccanismo che unifica dodici componenti |
-| Esecuzione in ombra | alto — senza, non c'è autocorrezione |
-| MEVCM e stato di contaminazione — zero file | alto |
-| Isolamento per capacità (Landlock, seccomp per profilo, WASM) | alto |
-| Framework moduli di settore e pacchetti di conformità | alto |
-| Technology Radar | è il meccanismo del "domani" |
-| OIDC / SAML / SCIM | medio |
-| Verificatore post-esecuzione | medio |
+*Tabella corretta dopo la revisione: tre delle mie dichiarazioni "zero file" erano sbagliate,
+perché avevo cercato per nome nel codice senza mai cercare nello schema. Vedi documento 11, A1.*
+
+| Manca | Stato reale misurato | Peso |
+|---|---|---|
+| `ReasoningProvider` | **zero file** — confermato | **critico** — è la cucitura di ATOM |
+| Capability token | **zero file** — confermato | **critico** — unifica dodici componenti in uno |
+| Emergency Stop | **zero file** — confermato | critico |
+| Policy Decision Point e la pipeline `AI_PROPOSES→…` | **assenti dal codice** — confermato | **critico** |
+| Kernel di sicurezza | 37 righe che controllano stringhe di percorso | **critico** |
+| Esecuzione in ombra | assente | alto — senza, non c'è autocorrezione |
+| Stato di contaminazione, canary, promozione | assenti — ma `memory_items.provenance` **esiste già ed è usato** | alto, **e si estende invece di partire da zero** |
+| Model Trust Registry | **schema morto**: `model_descriptors.trust_state` esiste con gli stati giusti, **nessun codice lo legge o lo scrive** | alto — vedi A3: è peggio dell'assenza |
+| Secret Broker | **parziale** — 13 file, un vault esiste e il tool executor lo usa | medio, da consolidare |
+| Resource Governor | **parziale** — 4 file con quota/rlimit | medio |
+| Isolamento per capacità (Landlock, seccomp per profilo, WASM) | assente | alto |
+| Framework moduli di settore e pacchetti di conformità | assenti | alto |
+| Technology Radar | assente | è il meccanismo del "domani" |
+| OIDC / SAML / SCIM | zero file | medio |
+| Verificatore post-esecuzione | assente | medio |
+
+**La categoria che avevo mancato — schema morto.** Una colonna che esiste e che nessun codice
+legge o scrive è **peggio** di una funzione assente: chi legge lo schema conclude che la
+funzione c'è. Regola che ne discende: *una colonna che nessuno usa va rimossa oppure cablata.
+Lasciarla è fabbricare evidenza falsa per il prossimo che guarda.*
 
 ## 2. Come si costruisce, in ordine, e perché quest'ordine
 
@@ -42,6 +55,10 @@ L'ordine non è per importanza: è per **dipendenza**. Ogni passo rende possibil
    atteso/reale.
 5. **L'esecutore che non accetta altro che token**, e la sandbox che li spende.
 6. **Il registro degli eventi** con correlazione, causazione e digest.
+7. **Comprensione minima del repository** — rilevamento linguaggi, punti d'ingresso, indice dei
+   simboli, ricerca letterale, mappa delle dipendenze. *(Spostata qui dalla fase 2: pianificare
+   la richiede comunque, e senza di essa la fase 1 non poteva superare il proprio criterio di
+   "fatto" — vedi documento 11, P5.)*
 
 Alla fine della fase 1 **la regola sola è vera**: il motore non può cambiare nulla se non
 eseguendo un Piano autorizzato. Da qui in poi ogni cosa che si aggiunge nasce già dentro quella
@@ -51,48 +68,49 @@ regola, invece di doverci essere infilata dopo.
 
 > Obiettivo: CodeN Evolution funziona, in una shell.
 
-7. Il ciclo a sedici stadi, con il binario visibile.
-8. Mappa del repository, indice dei simboli, indice semantico nella semantica di lavoro.
-9. Editor, diff, terminale, checkpoint, rollback, git.
-10. La scala di persistenza a otto gradini e il registro delle firme di fallimento.
-11. Il rapporto finale in forma fissa, con `NON FATTO` obbligatorio.
+8. Il ciclo a sedici stadi, con il binario visibile, e il **percorso proporzionato al rischio**.
+9. **Segnali di secondo livello** sulla mappa: proprietà, fragilità, criticità, copertura per
+   modulo, ambiguità dichiarata. Più l'indice semantico nella semantica di lavoro.
+10. Editor, diff, terminale, checkpoint, rollback, git.
+11. La scala di persistenza a otto gradini e il registro delle firme di fallimento.
+12. Il rapporto finale in forma fissa, con `NON FATTO` obbligatorio.
 
 ### Fase 3 — Le due shell, e la Prova di Sessione
 
 > Obiettivo: un solo programma con due shell, e il primo pacchetto firmato.
 
-12. Il protocollo di sessione su socket unix, pubblico e versionato.
-13. La shell da terminale, con forma da tastiera per **ogni** capacità.
-14. Il supervisore a tre figli pari.
-15. **La Prova di Sessione**: a questo punto è *assemblaggio*, non invenzione — ogni campo ha
+13. Il protocollo di sessione su socket unix, pubblico e versionato.
+14. La shell da terminale, con forma da tastiera per **ogni** capacità.
+15. Il supervisore a tre figli pari.
+16. **La Prova di Sessione**: a questo punto è *assemblaggio*, non invenzione — ogni campo ha
     già la sua fonte.
 
 ### Fase 4 — Memoria e privacy, per intero
 
-16. Le tre semantiche con i muri applicati dallo schema.
-17. MEVCM: stato di contaminazione, canary, pipeline di promozione, legami causali.
-18. Il broker di egress a sette stati, e i dati di lavoro vincolati all'esecuzione locale.
-19. La ricerca su fonti verificate, con la query costruita dal motore.
+17. Le tre semantiche con i muri applicati dallo schema.
+18. MEVCM: stato di contaminazione, canary, pipeline di promozione, legami causali.
+19. Il broker di egress a sette stati, e i dati di lavoro vincolati all'esecuzione locale.
+20. La ricerca su fonti verificate, con la query costruita dal motore.
 
 ### Fase 5 — Isolamento vero
 
-20. cgroups per figlio, Landlock, seccomp per profilo, WASM per i moduli portabili.
-21. Governatore di risorse: i tetti scritti nel token diventano veri.
-22. Emergency Stop: revoca globale, immediata.
+21. cgroups per figlio, Landlock, seccomp per profilo, WASM per i moduli portabili.
+22. Governatore di risorse: i tetti scritti nel token diventano veri.
+23. Emergency Stop: la sequenza in sei passi (congela, revoca, uccide, smonta, registra, Recupero).
 
 ### Fase 6 — ATOM
 
-23. Simulazione predittiva, ricerca causale multi-passo, valutazione di piani alternativi.
-24. Libreria di esperti che si accumula, un esperto per scheda.
-25. Sotto-agenti in parallelo con revisore indipendente.
+24. Simulazione predittiva, ricerca causale multi-passo, valutazione di piani alternativi.
+25. Libreria di esperti che si accumula, un esperto per scheda.
+26. Sotto-agenti in parallelo con revisore indipendente.
 
 ### Fase 7 — Il mondo esterno
 
-26. Framework moduli di settore e livelli di fiducia.
-27. Pacchetti di conformità firmati e datati.
-28. Technology Radar.
-29. OIDC, SAML, SCIM.
-30. SBOM, ML-BOM, CBOM, build riproducibili, firme.
+27. Framework moduli di settore e livelli di fiducia.
+28. Pacchetti di conformità firmati e datati.
+29. Technology Radar.
+30. OIDC, SAML, SCIM.
+31. SBOM, ML-BOM, CBOM, build riproducibili, firme.
 
 ## 3. Quando si può dire "fatto" per la fase 1
 

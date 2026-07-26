@@ -14,7 +14,13 @@
 | D-08 | **Rinominare** `47_CODEN_ULTRA_PRODUCT_SPEC` nella master reference, non annotarlo. | Alessandro |
 | D-09 | **Architettura dell'informazione: 11 destinazioni**, non 26. Quindici cose tornano sezioni dentro l'unica pagina Impostazioni. | concordata |
 | D-10 | **Igiene dei container**: chi crea container, tag e reti temporanee li rimuove. Sopravvivono due container. `prune` host-wide vietato senza eccezioni. | Alessandro |
-| D-11 | **La posizione originale è la Prova di Sessione**: il prodotto dimostra meccanicamente ciò che afferma, invece di affermarlo. | mia proposta, da approvare |
+| D-11 | **La posizione originale è la Prova di Sessione**: il prodotto dimostra meccanicamente ciò che afferma, invece di affermarlo — con il replay **al livello delle decisioni**, non dei modelli. | **decisa** su tua autorizzazione |
+| D-12 | **Lo stack: opzione B.** Rust per ciò che decide e confina (supervisore, kernel di sicurezza, enforcement, token, indicizzazione); JavaScript per ciò che propone e presenta. `V4-D001` e `V4-D002` vanno emendati; `apps/webui-react` va rimossa. | **decisa** su tua autorizzazione |
+| D-13 | **Il percorso è proporzionato al rischio classificato**, e governa le mutazioni non le conversazioni. Non si salta mai: Piano, attesa, token, esecuzione in ombra, audit. | **decisa** su tua autorizzazione |
+| D-14 | **Il token di lettura dentro il workspace è concesso dalla modalità**, non da un piano — altrimenti il prodotto non si avvia. Ogni mutazione resta legata a un Piano autorizzato. | **decisa** su tua autorizzazione |
+| D-15 | **Il gradino 6 della scala è "modello locale più forte".** Passare a un modello remoto è una decisione separata, con concessione esplicita, e i dati di lavoro restano trattenuti. | **decisa** su tua autorizzazione |
+
+**Decisioni aperte: nessuna.**
 
 ## 2. Ereditate dal V4 e confermate
 
@@ -26,24 +32,11 @@ Bypass delimitato e a scadenza, invarianti di sicurezza non aggirabili, nessuna 
 silenziosa, aggiornamenti firmati con rollback, un solo container come default, cinque archivi
 finali, il framework dei moduli di settore va nel core.
 
-## 3. Da decidere — la sola aperta con conseguenze grosse
+## 3. Da decidere
 
-### D-A · Lo stack: il codice si muove verso la decisione, o la decisione verso il codice?
-
-Il registro V4 approva Rust per i servizi privilegiati e TypeScript/React per la WebUI. Il
-prodotto è 24.563 righe di JavaScript, 1.145 di Rust, e una WebUI in JavaScript semplice.
-
-| Opzione | Cosa comporta |
-|---|---|
-| **A** — riscrivere il piano di controllo in Rust | Onesta rispetto alla specifica. Cara. Rischia di rifare cose che oggi funzionano e sono testate. |
-| **B** — emendare `V4-D001`/`V4-D002` con un confine preciso | **Raccomandata.** Rust per ciò che *decide* e *confina*: supervisore, kernel di sicurezza, enforcement filesystem, token, indicizzazione. JavaScript per ciò che *propone e presenta*. |
-
-La ragione della raccomandazione: la parte che deve reggere quando tutto il resto è
-compromesso deve essere **piccola, tipizzata e separata** — e oggi non è nessuna delle tre. Non
-serve riscrivere tutto per ottenerlo; serve riscrivere il poco che decide.
-
-**Ciò che non è accettabile è lasciarli in contraddizione.** Un registro che dice "Approvato"
-mentre il codice fa altro è il modo in cui un progetto smette di sapere cosa ha deciso.
+**Nessuna.** L'unica che era rimasta aperta — lo stack — è stata decisa su tua
+autorizzazione ed è registrata come **D-12** qui sopra. Il ragionamento completo sta nel
+documento 03, §6, e nel documento 11, parte C.
 
 ## 4. Domande minori, da chiudere quando capita
 
@@ -65,6 +58,9 @@ Registrati perché ripetuti sono più cari.
 | Avevo fatto della **sorpresa un capolinea**. Un modello piccolo che si ferma al primo intoppo restituisce il problema a te: un pregio diventato limite. | La sorpresa è un **bivio**. Il budget è sulla novità. |
 | Avevo aperto il progetto **elencando i vincoli** che avrebbero ristretto l'ambizione, invece di progettare. | I vincoli danno lo **stile**, non il tetto. Dove confliggono davvero, si progetta la riconciliazione e la si dichiara come decisione. |
 | Nella prima proposta di interfaccia avevo promosso **undici voci amministrative** a destinazioni: lo stesso errore dell'interfaccia consegnata, solo ordinato meglio. | Una destinazione è dove **decidi di andare**. Il resto è una sezione. |
+| Avevo promesso un **replay deterministico** che i modelli linguistici non possono garantire: si sarebbe rotto alla prima verifica di un revisore. | Il replay riesegue **il livello delle decisioni** contro gli output registrati. Vero, e più forte. |
+| Avevo scritto che senza token non si può **nemmeno leggere** — ma un Piano si produce leggendo, e un token nasce da un Piano. Il prodotto non si avviava. | Il token di lettura nel workspace lo concede la **modalità**. |
+| Avevo dichiarato **zero file** per tre componenti che esistono, avendo cercato per nome nel codice senza mai guardare lo schema. | Tabella corretta nel documento 09, e la categoria **schema morto** aggiunta. |
 
 ## 6. Cosa questo progetto NON ha ancora deciso, e va bene così
 

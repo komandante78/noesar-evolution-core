@@ -43,12 +43,41 @@ Un Piano autorizzato conia token. Un token è:
 
 Le proprietà che ne discendono, e sono il punto:
 
-- **Nessuna autorità ambientale.** Senza token l'esecutore non può fare *nulla* — nemmeno
-  leggere. Non esiste una superficie "permesso di default" in cui rifugiarsi.
+- **Nessuna autorità ambientale.** Senza token l'esecutore non può fare *nulla*. Non esiste una
+  superficie "permesso di default" in cui rifugiarsi.
+
+  **Con una precisazione senza la quale il prodotto non si avvia** *(documento 11, P2)*: un
+  Piano si produce **leggendo** il repository, e un token nasce **da un Piano**. Detto senza
+  eccezioni, non si potrebbe né leggere né pianificare. Quindi:
+
+  | Accesso | Da dove nasce l'autorità |
+  |---|---|
+  | **Lettura dentro il workspace** | **token permanente concesso dalla modalità**, all'apertura del progetto |
+  | Lettura fuori dal workspace | serve un piano |
+  | Qualunque mutazione | serve un piano autorizzato |
+  | Comandi, rete, segreti, database | serve un piano autorizzato |
+
+  Il token di lettura resta **un token**: ha ambito (questo workspace), scadenza (la sessione),
+  è nel registro, è revocabile. La regola resta vera nella forma corretta: **nulla cambia senza
+  un Piano autorizzato.** La lettura non cambia niente.
 - **Un token non si allarga**, si spende o si revoca. Un agente che scopre di aver bisogno di
   un file in più torna da una persona; non può reinterpretare la propria concessione.
-- **La revoca è immediata e globale.** Un pannello elenca ogni token vivo in ogni sessione,
-  con una revoca su ciascuno e un comando che li uccide tutti — che è l'Emergency Stop.
+- **La revoca è immediata e globale.** Un pannello elenca ogni token vivo in ogni sessione, con
+  una revoca su ciascuno e un comando che li uccide tutti.
+
+  **Ma revocare un token non ferma un processo già partito** *(documento 11, P7)*: un `rm -rf`
+  in corso continua. L'arresto d'emergenza è quindi una sequenza, in quest'ordine:
+
+  ```text
+    1  congela l'emissione di nuovi token            nessun lavoro nuovo può iniziare
+    2  revoca tutti i token vivi                     nessuna nuova azione autorizzata
+    3  uccide l'albero dei processi di ogni sandbox  ciò che gira si ferma davvero
+    4  smonta i mount scrivibili delle sandbox       niente scritture in coda
+    5  registra tutto e conserva i checkpoint        si capisce cosa stava succedendo
+    6  entra in modalità Recupero                    progresso in avanti impossibile
+  ```
+
+  Si esce solo con un'azione umana esplicita.
 - **Ogni spesa è un evento di audit**, con piano, passo, attore, risorsa ed esito. Ricostruire
   non è interpretare dei log: è rieseguire.
 - **I dinieghi sono di prima classe.** Cosa un agente *continua a chiedere* e continua a

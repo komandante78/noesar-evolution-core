@@ -1,6 +1,10 @@
 # CodeN Evolution — Design v1
 
-**Status:** proposal. Nothing here is implemented.
+**Status:** SUPERSEDED for the parts it duplicates. The canonical content is now the Italian
+project in `docs/progetto-italiano/` (and `/mnt/user/downloads/NOESAR_EVOLUTION/`), which
+corrects several defects found in this document — most importantly the deterministic-replay
+overclaim, the read-token circular dependency, and the escalation rung that broke local-first.
+This file is kept as the record of the design conversation. Nothing here is implemented.
 **Date:** 2026-07-26
 **Scope:** the CodeN Evolution workspace of NOESAR Evolution, in both its shells.
 

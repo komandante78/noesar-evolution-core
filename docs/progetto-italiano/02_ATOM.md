@@ -11,7 +11,27 @@ Questo è il documento centrale. Tutto il resto del progetto discende da qui.
 > ricontrolla — e lascia dietro di sé la prova di averlo fatto.**
 
 Non è un modello. Non è un assistente. È il **percorso obbligatorio** che ogni decisione
-attraversa prima che il prodotto possa cambiare qualcosa.
+attraversa prima che il prodotto possa **cambiare** qualcosa.
+
+**Due precisazioni che evitano di rendere il prodotto inutilizzabile** *(documento 11, P6)*:
+
+1. **Il percorso governa le mutazioni, non le conversazioni.** La Chat non ha superficie
+   d'azione: non produce piani, non chiede token, non paga il costo del percorso. Fa domande e
+   risponde.
+2. **Il percorso è proporzionato al rischio.** Sedici stadi con sei chiamate al modello per
+   *"correggi questo refuso"* sarebbe assurdo — e un prodotto assurdo sulle cose piccole viene
+   aggirato sulle cose grandi.
+
+| Rischio | Percorso |
+|---|---|
+| **Banale** — un file, nessun comando, nessuna dipendenza | `interpret → plan → expect → autorizza → esegui → verifica` |
+| **Normale** | + ipotesi in competizione, decomposizione, raggio d'azione |
+| **Alto o distruttivo** | tutti e sedici, simulazione obbligatoria |
+
+**Non si salta mai, a nessun livello:** il Piano come oggetto, l'attesa dichiarata, il token,
+l'esecuzione in ombra, l'audit. Quindi la Prova di Sessione è completa anche sul percorso breve
+— ha solo meno ipotesi da mostrare. E un percorso breve che incontra una **sorpresa** viene
+promosso automaticamente a quello completo: è il momento in cui si scopre che banale non lo era.
 
 ## 2. Attenzione — "ATOM" indica tre cose su questo server
 
@@ -218,7 +238,8 @@ aveva ancora provato.**
   3  Allarga l'evidenza   vicini, cronologia, test, chiamanti
   4  Ricerca              fonti verificate, versionate, query registrate
   5  Decomponi            spezza in un sotto-problema verificabile da solo       [ATOM]
-  6  Modello più forte    instrada questo passo su un modello più capace
+  6  Modello locale più forte   instrada su un modello più capace CHE È SU QUESTA MACCHINA
+                               (se non esiste, il gradino si salta — vedi documento 11, P3)
   7  Piano alternativo    approcci strutturalmente diversi, non varianti         [ATOM L8]
   8  Chiedi               una domanda precisa, con allegato tutto ciò che ha escluso
 ```
@@ -234,9 +255,25 @@ che è già stato escluso.
 ### La ricerca sul web, senza rompere la privacy
 
 1. **La query la costruisce il motore, non il modello, ed è ispezionabile.** È assemblata da:
-   firma dell'errore, nome **e versione** della dipendenza dal manifest, nome del simbolo. Mai
-   il tuo sorgente, mai i percorsi dei file, mai il contenuto dei documenti. La stringa esatta
-   finisce nel registro **prima** di partire.
+   firma dell'errore **normalizzata**, nome **e versione** della dipendenza dal manifest, nome
+   del simbolo. La stringa esatta finisce nel registro **prima** di partire.
+
+   **La normalizzazione è obbligatoria e non è un dettaglio** *(vedi documento 11, P4)*: una
+   firma grezza contiene percorsi, nomi di variabili e spesso **valori** — un errore di
+   validazione può portarsi dietro il nome e l'IBAN di un cliente.
+
+   ```text
+     grezza        TypeError: cannot read 'iban' of undefined
+                     at /workspace/src/billing/customer-4471.mjs:82:14
+                     valore: { nome: "Mario Rossi", iban: "IT60X054..." }
+          │ normalizzazione
+          ▼
+     normalizzata  TypeError: cannot read property of undefined
+                   modulo: <first-party> · libreria: node:22.18
+   ```
+
+   Se una firma **non è normalizzabile in sicurezza**, il gradino della ricerca **è bloccato** e
+   si sale. Meglio saltare un gradino che esportare un IBAN.
 2. **"Fonti verificate" significa una allowlist derivata dalle tue stesse dipendenze**:
    documentazione ufficiale delle librerie che il progetto dichiara, riferimento del
    linguaggio, docs presenti nel repository. Un livello generico esiste ed è **spento di

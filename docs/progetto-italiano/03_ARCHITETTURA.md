@@ -124,15 +124,28 @@ in JavaScript semplice mentre la cartella React contiene tre file e nessun compo
 | **A — il codice si muove verso la decisione** | Riscrivere il piano di controllo in Rust. Onesto rispetto alla specifica, costoso, e rischia di rifare da capo cose che oggi funzionano e sono testate. |
 | **B — la decisione si muove verso il codice** | Emendare `V4-D001`/`V4-D002`, tenere JavaScript per il piano applicativo e **Rust solo dove l'autorità lo richiede davvero**: supervisore, sandbox, applicazione dei percorsi, token. |
 
-**La raccomandazione è B, con un confine preciso**: Rust per ciò che *decide* e per ciò che
-*confina* (supervisore, kernel di sicurezza, enforcement filesystem, indicizzazione pesante);
-JavaScript per ciò che *propone e presenta*. Non perché Rust sia migliore in astratto, ma
-perché la parte che deve reggere quando tutto il resto è compromesso deve essere piccola,
-tipizzata e separata — e oggi non è nessuna delle tre.
+### ✔ Decisa: opzione B, con questo confine
 
-**Ciò che non è accettabile è lasciare i due in contraddizione**: un registro delle decisioni
-che dice "Approvato" mentre il codice fa un'altra cosa è il modo in cui un progetto smette di
-sapere cosa ha deciso.
+| In **Rust** — ciò che **decide** e ciò che **confina** | In **JavaScript** — ciò che **propone** e **presenta** |
+|---|---|
+| Supervisore (PID 1) | Piano applicativo: chat, documenti, agenti, flussi |
+| Kernel di sicurezza: policy, capability token, audit | Provider di ragionamento di riferimento |
+| Applicazione dei percorsi, sandbox, Landlock/seccomp | Gateway modelli, recupero, orchestrazione |
+| Verifica di aggiornamenti e firme | WebUI |
+| Indicizzazione pesante del repository | Shell da terminale |
+
+**Perché:** la parte che deve reggere quando tutto il resto è compromesso deve essere
+**piccola, tipizzata e separata**. Oggi non è nessuna delle tre. Ma non serve riscrivere tutto
+per ottenerlo: serve scrivere **il poco che decide** — che è anche il poco che **oggi non
+esiste**, quindi nasce in Rust dalla prima riga invece di dover essere portato.
+
+**Due conseguenze operative:**
+
+1. `V4-D001` e `V4-D002` vanno **emendati**, non ignorati. Lasciare registro e codice in
+   contraddizione è il modo in cui un progetto smette di sapere cosa ha deciso.
+2. `apps/webui-react` — tre file, nessun componente — va **rimossa**. È schema morto applicato
+   al codice: sembra una scelta tecnologica in corso, e non lo è. La WebUI resta JavaScript
+   semplice, che è costruita e funziona.
 
 ## 7. Isolamento: oggi il container è l'unico confine
 
