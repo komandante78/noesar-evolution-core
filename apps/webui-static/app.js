@@ -959,9 +959,32 @@ async function loadAbout(){
   });
 }
 
+// SEC-003. The invariant panel used to be five hardcoded list items, which matched
+// neither the seven the planner declares nor each other. A claim the interface makes on
+// its own can drift away from the code silently, and this one had. It is now rendered
+// from the server's own enforcement declaration, and each entry says whether this layer
+// enforces it or names the layer that does.
+async function loadCoden(){
+  const list=$('#invariantList');
+  if(!list)return;
+  try{
+    const data=await api('/api/v1/bootstrap');
+    const invariants=data.coden?.invariants??[];
+    list.innerHTML=invariants.map((entry)=>{
+      const name=escapeHtml(String(entry.id??'').replace(/_/g,' '));
+      const active=entry.status==='ACTIVE';
+      const where=escapeHtml(String(entry.enforcedBy??''));
+      return `<li title="${where}">${name}<span class="invariant-status ${active?'on':'off'}">${active?'enforced here':'enforced elsewhere'}</span></li>`;
+    }).join('')||'<li>No invariant declaration was returned.</li>';
+  }catch(error){
+    list.innerHTML=`<li>${escapeHtml(error.message)}</li>`;
+  }
+}
+
 // Registered last, once every loader above exists. This object is what makes a nav
 // entry mean something: `activate()` calls the loader for the view being opened.
 Object.assign(VIEW_LOADERS,{
+  coden:loadCoden,
   settings:loadSettings,
   security:loadSecurity,
   users:loadUsers,

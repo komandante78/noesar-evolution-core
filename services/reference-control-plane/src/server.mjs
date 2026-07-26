@@ -20,7 +20,7 @@ import {
   securityHeaders, validHostHeader, isWildcardAddress,
   resolveBindScope, allowsUnauthenticatedMetrics,
 } from './http-security.mjs';
-import { createPathPlan } from './path-auth.mjs';
+import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
 import { PrivacyState, evaluateEgress, privacyBanner } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -554,6 +554,16 @@ const server = createServer(async (req, res) => {
         if (!auth.hasPermission(authenticated.user, 'coden.owner-bypass')) return json(res, 403, { error:'Owner role required.' });
         if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required.' });
       }
+      // SEC-003 · destructive_action_confirmation. The consent scope was previously
+      // copied onto the stored approval unvalidated, so `DENY` — the plan's own refusal
+      // option — minted an approval, an invented scope was stored verbatim, and a
+      // recursive delete could be granted a standing unattended licence. The scope is
+      // checked against the recomputed plan, so Owner Bypass does not relax it either.
+      const scopeRefusal = checkConsentScope(plan, request.consentScope);
+      if (scopeRefusal) {
+        ledger.append({ actor:authenticated.user.id, action:'coden.authorize', result:'refused', details:{ canonicalPath:plan.canonicalPath, mode:plan.mode, requestedScope:String(request.consentScope ?? ''), reason:scopeRefusal.error } });
+        return json(res, scopeRefusal.status, { error:scopeRefusal.error });
+      }
       const approval = {
         id:randomUUID(),
         actorId:authenticated.user.id,
@@ -946,7 +956,11 @@ const server = createServer(async (req, res) => {
         privacy:{ state:currentPrivacyState, banner:privacyBanner(currentPrivacyState) },
         hardware,
         runtimeRecommendation:recommendRuntime(hardware, {}),
-        coden:{ modes:authenticated.user.role === 'owner' ? ['NORMAL','OWNER_BYPASS'] : ['NORMAL'], executionEnabled:false, explanation:'Planning and scoped authorization are implemented; host mutation remains disabled.' },
+        // SEC-003. The invariant declaration travels with the bootstrap so the interface
+        // renders what this build actually enforces. The panel used to hardcode five
+        // invariants of its own, which matched neither each other nor the seven the
+        // planner declares — two independent claims, neither derived from the code.
+        coden:{ modes:authenticated.user.role === 'owner' ? ['NORMAL','OWNER_BYPASS'] : ['NORMAL'], executionEnabled:false, explanation:'Planning and scoped authorization are implemented; host mutation remains disabled.', invariants:INVARIANT_ENFORCEMENT },
         features:['Ask','Create','Act','Versioned Context Graph','Projects','Documents','Artifacts','Agents','Workflows','CodeN Ultra','Knowledge','Memory','Local and External Providers','MCP and OpenAPI Tools','Compute & Hardware','Data Export and Retention','Update Center'],
       });
     }

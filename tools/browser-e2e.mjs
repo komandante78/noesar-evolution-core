@@ -225,6 +225,37 @@ try {
       state.title !== '' && state.title.includes('NOESAR'), state.title);
   }
 
+  at('invariants');
+  // --- SEC-003: the invariant panel states what the code enforces ----------
+  // This panel used to be five hardcoded <li> elements. They matched neither the seven
+  // invariants the planner declares nor the enforcement that actually exists, and being
+  // static they could not drift back into agreement — the interface was simply making a
+  // separate claim. It is now rendered from the server's own declaration, so the check
+  // is that the rendered rows came from the API and each one says where it is enforced.
+  resetObservations();
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#invariantList li', { timeout: 15000 });
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  const invariants = await page.evaluate(() => {
+    const items = [...document.querySelectorAll('#invariantList li')];
+    return {
+      count: items.length,
+      stillLoading: items.some((item) => /Loading…/.test(item.textContent)),
+      withStatus: items.filter((item) => item.querySelector('.invariant-status')).length,
+      enforcedHere: items.filter((item) => item.querySelector('.invariant-status.on')).length,
+      elsewhere: items.filter((item) => item.querySelector('.invariant-status.off')).length,
+      allNameALayer: items.every((item) => (item.getAttribute('title') ?? '').length > 10),
+    };
+  });
+  check('the invariant panel is populated from the server, not hardcoded',
+    invariants.count === 7 && !invariants.stillLoading, JSON.stringify(invariants));
+  check('every rendered invariant carries an enforcement status',
+    invariants.withStatus === invariants.count, JSON.stringify(invariants));
+  check('the panel distinguishes what this layer enforces from what it does not',
+    invariants.enforcedHere === 4 && invariants.elsewhere === 3, JSON.stringify(invariants));
+  check('every rendered invariant names where it is enforced',
+    invariants.allNameALayer, JSON.stringify(invariants));
+
   at('deep-link');
   // --- deep link and reload on a gated page --------------------------------
   // The router runs before the role is known. A cold load of an owner-only route used
