@@ -1574,3 +1574,59 @@ due spazi vengono confrontati.
 Lo schema completo è scritto in `MASTER_PROJECT/14_MEMORIA_A_CUBI.md` §9.2 e **non** in
 `database/postgres/`: un file lì viene raccolto dal manifesto delle migrazioni e applicato al
 prossimo deploy, e questo tocca dati vivi. Diventa la migrazione `0017` quando l'Owner approva.
+
+### D-0104 — PostgreSQL è autoritativo per la memoria, e `B-009` è chiuso
+
+Deciso dall'Owner. `ai-workspace.json` smette di essere una seconda verità. La ragione che
+regge: i muri fra le tre semantiche di `05` sono applicabili **solo** dove c'è l'isolamento a
+livello di riga, che è già costruito, forzato e provato contro un avversario nello stesso
+progetto. Un muro in un file JSON è una convenzione che il prossimo `writeFile` attraversa.
+
+La migrazione tocca dati vivi e segue lo schema del deploy di oggi: backup a servizio fermo,
+scrittura doppia finché i conteggi non coincidono, lettura commutata in una transazione, JSON
+in sola lettura per una release. **Non ancora eseguita.**
+
+### D-0105 — la semplicità è un vincolo di progetto, e il suo costo è nostro
+
+Vincolo dell'Owner: non complicato per gli utenti. Tradotto in una regola verificabile:
+
+> **L'utente non deve sapere che esistono quattro cubi.** I cubi sono il modo in cui il
+> prodotto tiene onesta la propria memoria, non una tassonomia da imparare.
+
+Una sola destinazione `Memoria` fra le undici di `07`; tre gesti (cerca, sfoglia, approva);
+parole normali in interfaccia mentre il registro chiuso vive nello schema; nessuna
+configurazione per iniziare; divulgazione progressiva di provenienza e contaminazione.
+
+**Il costo è nostro, non suo:** ogni campo che l'utente non vede è un campo che il codice deve
+riempire correttamente da solo. Registrato perché è la ragione per cui la compattazione deve
+fallire chiusa: non c'è un umano che corregge un campo sbagliato prima che entri.
+
+### D-0106 — una mia affermazione era troppo forte, e la ricerca l'ha corretta
+
+Avevo scritto che «elastico nelle dimensioni» è impossibile. È impossibile **in una colonna a
+dimensione fissa**; non in generale.
+
+**Matryoshka Representation Learning** addestra applicando la perdita anche ai prefissi
+troncati dell'embedding, così l'informazione si dispone dal grossolano al fine e un solo
+checkpoint serve molte dimensioni, troncabili a tempo di interrogazione senza riaddestrare.
+Un vettore salvato alla dimensione piena può alimentare indici più piccoli per troncamento.
+
+E il tetto vero di pgvector non è quello che pensavo: `vector` si ferma a 2.000 dimensioni
+indicizzabili, ma `halfvec` arriva a 4.000 a metà spazio, la quantizzazione binaria a 64.000,
+e `sparsevec` copre gli sparsi. Giriamo su 0.8.5: **è tutto già disponibile.**
+
+Tre conseguenze recepite nel progetto perché costano zero adesso e una migrazione dopo:
+`memory_vectors` non assume il tipo del vettore; `embedding_models` registra anche se il
+modello supporta il troncamento e a quali dimensioni; e la segnatura del Corpus arriva al
+**passaggio**, non al documento — perché l'attribuzione fine cita il passaggio, e la segnatura
+è immutabile per progetto.
+
+La letteratura 2026 sull'attribuzione conferma il principio di §5 e gli dà un nome utile:
+**vincolo architetturale contro rilevamento probabilistico**. Verificare meccanicamente che
+una citazione esista nel contesto recuperato previene l'allucinazione per costruzione, e batte
+qualunque punteggio di confidenza calcolato dopo. È il motivo per cui `derived_must_cite` è un
+`CHECK` e non una revisione.
+
+**Limite dichiarato:** nessuno di quei modelli è installato qui, e nulla di tutto ciò è stato
+misurato su dati nostri. Vale come direzione, non come prova — la copertura di proiezione
+impone che una cosa non misurata non sia dichiarata vera.

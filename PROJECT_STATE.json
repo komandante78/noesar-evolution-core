@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_4_COMPLETE_REWRITE_IS_PLAN_OF_RECORD_ATOM_SEPARATED_AWAITING_OWNER_REVIEW",
+  "phase_status": "PHASE_4_COMPLETE_REWRITE_PLAN_OF_RECORD_MEMORY_CUBES_DESIGNED_AWAITING_OWNER_CONVERSATION",
   "next_phase": "REWRITE_PHASE_1_BACKBONE (docs/WORK_PLAN_V5_REWRITE.md) — bloccata finche l Owner non conferma il piano",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -46,13 +46,12 @@
     },
     {
       "id": "B-009",
-      "severity": "medium",
-      "code": "TWO_MEMORY_STORES",
-      "summary": "Le memorie vive stanno in ai-workspace.json mentre noesar_knowledge.memory_items in PostgreSQL — con provenance, embedding e promotion_state a sei stati — non e sul percorso vivo. Stessa forma di B-008. Va deciso quale e autoritativo prima di costruire la memoria a cubi (D-0101).",
+      "severity": "resolved",
+      "code": "TWO_MEMORY_STORES=RESOLVED_POSTGRESQL_AUTHORITATIVE",
+      "summary": "CHIUSO 2026-07-26 su decisione dell Owner: PostgreSQL e autoritativo per la memoria. I muri fra le tre semantiche sono applicabili solo li. La migrazione tocca dati vivi: backup a servizio fermo, scrittura doppia, commutazione in transazione, JSON in sola lettura per una release. Non ancora eseguita.",
       "blocks_next_phase": false,
       "resolution_options": [
-        "Migrare le memorie su PostgreSQL: i muri fra le tre semantiche sono applicabili solo li",
-        "Tenere il JSON come autoritativo e rimuovere memory_items, che altrimenti resta schema morto"
+        "Eseguire la migrazione quando la fase 1 arriva ai cubi"
       ]
     }
   ],

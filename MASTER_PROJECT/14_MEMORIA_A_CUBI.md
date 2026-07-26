@@ -498,3 +498,145 @@ non una revisione.
 **Il punto 2 si può fare subito e da solo**: non è la memoria a cubi, è la riparazione di un
 difetto che oggi rende impossibile cambiare modello di embedding senza corrompere in silenzio
 la ricerca. Vale la pena farlo anche se decidessi di non costruire i cubi.
+
+---
+
+## 10. PostgreSQL è autoritativo — deciso dall'Owner
+
+`B-009` è chiuso: **PostgreSQL è l'archivio autoritativo della memoria.** `ai-workspace.json`
+smette di essere una seconda verità.
+
+Perché regge: i muri fra le tre semantiche di `05` sono applicabili **solo** lì. L'isolamento a
+livello di riga è già costruito, forzato e provato contro un avversario nello stesso progetto.
+Un muro in un file JSON è una convenzione che il prossimo `writeFile` può attraversare.
+
+La migrazione tocca dati vivi, quindi: backup a servizio fermo · scrittura doppia finché i
+conteggi non coincidono · lettura commutata in una transazione · JSON tenuto in sola lettura
+per una release, poi rimosso. Lo stesso schema del deploy di oggi, con il rollback preservato.
+
+---
+
+## 11. Non complicato per gli utenti
+
+Vincolo dell'Owner, e viene prima delle scelte tecniche: se la memoria si vede, ha fallito.
+
+> **L'utente non deve sapere che esistono quattro cubi.** I cubi sono il modo in cui il
+> prodotto tiene onesta la propria memoria, **non una tassonomia da imparare.**
+
+Concretamente:
+
+- **Non si scrive mai una memoria a mano.** Il prodotto la scrive a fine sessione. Nessun file
+  da mantenere, nessuna sintassi. È la differenza che hai chiesto rispetto a un `CLAUDE.md`:
+  già scritta e già organizzata.
+- **Una sola destinazione**, `Memoria`, dentro le undici di `07`. Non quattro pagine.
+- **Tre gesti, e basta:** *cerca* (una casella) · *sfoglia* (per tempo, progetto, argomento) ·
+  *approva* (la striscia in fondo che esiste già).
+- **Parole normali.** Il registro chiuso vive nello schema; l'utente legge «decisioni»,
+  «procedure», «cose imparate». Mai `promotion_state`, mai `contamination`, mai `cube`.
+- **Nessuna configurazione per iniziare.** Modello di embedding, dimensioni, indici: il
+  prodotto sceglie e lo dice se cambia qualcosa.
+- **Divulgazione progressiva.** Provenienza, contaminazione, quale modello ha indicizzato:
+  disponibili su un elemento quando li chiedi, mai davanti quando non servono.
+
+La domanda che l'utente deve potersi fare è **«cosa sai di questo progetto?»**, non «in quale
+cubo sta?». E l'approvazione deve leggersi come una frase, non come un modulo:
+
+```text
+Dalla sessione di oggi ho imparato 3 cose su noesar-evolution.
+   • PostgreSQL e autoritativo per la memoria          [tieni] [scarta] [vedi da dove viene]
+```
+
+**Il costo di questa semplicità è nostro, non suo:** ogni campo che l'utente non vede è un
+campo che il codice deve riempire correttamente da solo.
+
+---
+
+## 12. Come invecchia — e perché NOESAR EVOLUTION deve guardare a domani
+
+Vincolo dell'Owner: questo è un progetto **evolutivo**. Un'architettura di memoria progettata
+solo sull'oggi diventa il vincolo di domani. Quanto segue è ricerca fatta il 26 luglio 2026,
+non previsione.
+
+### 12.1 · Una mia affermazione era troppo forte, e la correggo
+
+In §1 ho scritto che «elastico nelle dimensioni» è impossibile. **È impossibile in una colonna
+a dimensione fissa. Non è impossibile in generale**, e il meccanismo esiste già ed è maturo.
+
+**Matryoshka Representation Learning (MRL).** Il modello è addestrato applicando la stessa
+funzione di perdita anche a *prefissi troncati* dell'embedding, il che costringe
+l'informazione a disporsi dal grossolano al fine: le prime dimensioni portano la semantica
+universale, le ultime il dettaglio. La conseguenza è che **un solo checkpoint serve molte
+dimensioni** — 32, 64, 128, 512, 1024 — e si tronca *a tempo di interrogazione* senza
+riaddestrare e senza perdita apprezzabile di qualità.
+
+Cosa cambia per noi: un vettore Matryoshka salvato una volta **alla dimensione piena** può
+alimentare indici più piccoli per troncamento, senza ricalcolare gli embedding. L'elasticità
+diventa una proprietà del dato, non solo dello schema.
+
+E abilita il pattern che conta davvero su una biblioteca che cresce per anni: **restringi e
+riordina** — prima passata su vettori corti e economici per fare una lista breve, seconda
+passata a dimensione piena solo su quella. Il costo cresce col quadrato dei candidati, non
+della memoria.
+
+### 12.2 · La scala di quantizzazione che pgvector ha già
+
+Il limite che conta non è quello che pensavo. Per `vector`, **l'indice si ferma a 2.000
+dimensioni** — ma pgvector offre già tre uscite, e noi giriamo su **0.8.5**:
+
+| Tipo | Tetto indicizzabile | Costo |
+|---|---|---|
+| `vector` | 2.000 dimensioni | 4 byte per dimensione |
+| `halfvec` | **4.000** | 2 byte — **metà dello spazio** |
+| `bit` (quantizzazione binaria) | **64.000** | 1 bit per dimensione |
+| `sparsevec` | 1.000 elementi non nulli | solo i non nulli |
+
+Questo rende la scala di domani già disponibile oggi: `bit` per la lista breve, `halfvec` per
+il riordino, `vector` pieno solo dove serve precisione. E siccome `memory_vectors` è già
+separata per `(record_id, model_id)`, **aggiungere un livello di quantizzazione è una tabella
+in più, non una migrazione dei record.**
+
+### 12.3 · Il principio che la ricerca conferma, e che avevamo già
+
+La letteratura 2026 sull'attribuzione arriva alla stessa conclusione di §5, e le dà un nome
+utile: **vincolo architetturale contro rilevamento probabilistico**. Verificare
+meccanicamente che una citazione esista nel contesto recuperato previene l'allucinazione
+*per costruzione* — un modello non può citare ciò che non ha visto — e questo batte qualunque
+punteggio di confidenza calcolato a posteriori.
+
+È esattamente il motivo per cui le tre semantiche sono separate **dallo schema** e non dalla
+buona condotta, e perché `derived_must_cite` è un `CHECK` e non una revisione.
+
+Un affinamento che prendiamo dalla stessa letteratura: l'attribuzione fine cita **il passaggio
+esatto**, non l'identificatore del documento. Conseguenza sulla segnatura: per il Corpus
+l'indirizzo deve arrivare al **passaggio**, non al file. Un elemento del Corpus è
+`.../<documento>#<passaggio>`, e senza quel suffisso non è citabile.
+
+### 12.4 · Cosa questo impone al progetto, oggi
+
+Tre vincoli che non costano nulla adesso e che risparmiano una migrazione dopo:
+
+1. **`memory_vectors` non assume il tipo del vettore.** La colonna sia sostituibile
+   (`vector` → `halfvec` → `bit`) senza toccare `memory_records`. È già così: il tipo vive
+   nell'indice, non nel record.
+2. **`embedding_models` registra anche `supports_matryoshka` e le dimensioni valide.**
+   Una riga in più oggi; senza, il giorno in cui si adotta MRL non si sa quali vettori si
+   possono troncare e quali no.
+3. **La segnatura del Corpus arriva al passaggio.** Cambiarla dopo significherebbe invalidare
+   ogni citazione già emessa — e la segnatura è immutabile per progetto.
+
+### 12.5 · Cosa resta onestamente aperto
+
+- **Nessuno dei modelli citati è installato qui.** MRL è una proprietà del modello: si ottiene
+  scegliendone uno addestrato così, non aggiungendo codice.
+- **Non abbiamo misurato niente di tutto questo su dati nostri.** I numeri della letteratura
+  valgono come direzione, non come prova: la copertura di proiezione impone che una cosa non
+  misurata non sia dichiarata vera.
+- **Il riordino a due passate ha senso oltre una certa scala**, e sotto è complessità in più.
+  La soglia va misurata quando la biblioteca esiste, non decisa adesso.
+
+**Fonti:** [Matryoshka Embeddings — Sentence Transformers](https://sbert.net/examples/sentence_transformer/training/matryoshka/README.html) ·
+[pgvector](https://github.com/pgvector/pgvector) ·
+[Scalar and binary quantization for pgvector — Jonathan Katz](https://jkatz05.com/post/postgres/pgvector-scalar-binary-quantization/) ·
+[What's new in pgvector v0.7.0](https://supabase.com/blog/pgvector-0-7-0) ·
+[Learning Fine-Grained Grounded Citations for Attributed LLMs](https://arxiv.org/pdf/2408.04568) ·
+[Citation-Grounded Code Comprehension](https://arxiv.org/html/2512.12117v1)

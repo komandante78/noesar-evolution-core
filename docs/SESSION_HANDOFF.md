@@ -42,6 +42,36 @@ modulo di livello con gli **undici campi** nel proprio doc. **L0 e implementato*
 `AtomError::NotImplemented`**, mai `todo!()`. `clippy` non e nell immagine e installarlo
 richiede rete: non eseguito, dichiarato. `D-0100`.
 
+## ➜ LA MEMORIA A CUBI — progettata, PostgreSQL deciso, nulla implementato
+
+Richiesta dell Owner. `MASTER_PROJECT/14_MEMORIA_A_CUBI.md`, 642 righe.
+
+**Quattro cubi**, e il criterio conta piu del numero: *un cubo e uno stato epistemico* — due
+cose stanno in cubi diversi quando «come faccio a sapere che e vero» ha risposte di tipo
+diverso. Biblioteca (asserito) · Officina (in attesa) · Corpus (fonte) · Esperienza (indotto,
+e l unico che un solo controesempio ribalta). `D-0102`.
+
+**La regola che regge tutto:** il record e la memoria, il vettore e solo un indice usa e
+getta. Un vettore ha senso solo nello spazio del modello che l ha prodotto, quindi
+«qualsiasi modello, memoria sempre presente» si ottiene rendendo il vettore ricalcolabile,
+non conservandolo. `D-0101`.
+
+**PostgreSQL e autoritativo** — `B-009` chiuso su decisione dell Owner. La migrazione tocca
+dati vivi e non e ancora eseguita. `D-0104`.
+
+**Difetto presente trovato progettando e indipendente dai cubi** (`D-0103`): i vettori non
+registrano quale modello li ha prodotti, quindi due spazi diversi possono essere confrontati
+e la distanza coseno **restituisce un numero invece di un errore**. E anche il motivo per cui
+oggi non si puo cambiare modello di embedding. **Si puo riparare da solo e subito.**
+
+**Ricerca fatta** su autorizzazione dell Owner, e ha corretto una mia affermazione troppo
+forte (`D-0106`): Matryoshka Representation Learning rende le dimensioni davvero elastiche,
+e pgvector 0.8.5 — che gia gira — offre `halfvec` a 4.000 dimensioni, quantizzazione binaria
+a 64.000 e `sparsevec`. Tre vincoli recepiti ora perche costano zero e una migrazione dopo.
+
+**Lo schema e scritto in §9.2 e NON in `database/postgres/`**: un file li viene raccolto dal
+manifesto e applicato al prossimo deploy. Diventa la migrazione `0017` quando l Owner approva.
+
 ## ➜ LA PROSSIMA AZIONE È UNA CONVERSAZIONE, NON DEL CODICE
 
 L'Owner ha annunciato che **porrà domande per verificare che il progetto coincida con il suo
@@ -108,7 +138,8 @@ Sei difetti seminati uno alla volta, ognuno catturato da esattamente un test, fi
 ## ➜ Blocker aperti
 
 `B-001` nessun remote GitHub · `B-002` secret scan euristico (`detect-secrets` restituisce 0
-finding su una chiave AWS letterale) · `B-008` due store di identità.
+finding su una chiave AWS letterale) · `B-008` due store di identità. **`B-009` chiuso**
+(PostgreSQL autoritativo per la memoria, migrazione non ancora eseguita).
 
 ## ➜ I rischi che il cambio di progetto si porta dietro
 
