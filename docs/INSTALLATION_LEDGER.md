@@ -1658,3 +1658,87 @@ older rollback `noesar-evolution.rollback-lan-webui-20260725T175916Z` was remove
 documented here still works. Networks and volumes diffed against
 `EVIDENCE/docker_inventory_pre_cleanup_20260726T155449Z.txt`: unchanged. Non-project
 containers: 37 before, 37 after. No `prune` of any kind was used.
+
+---
+
+## 2026-07-26 · Fase 0 · Il nome, e tre difetti che si nascondevano a vicenda
+
+**Nessuna mutazione dell'installazione.** Il container `noesar-evolution` non è stato creato,
+avviato, fermato né toccato: resta `running · healthy · RestartCount=0 · :phase4-wp2`, con
+`/livez` 200, `/readyz` 200 e `/metrics` 401. Tutto il lavoro è sul sorgente.
+
+### 1 · Il prodotto dichiarava di contenere un altro prodotto
+
+Per istruzione dell'Owner il nome è **CodeN Evolution**, mai un altro. Il nome sbagliato non era
+un'etichetta: stava nella **feature list di `/api/v1/bootstrap`**, quindi il prodotto lo
+*dichiarava di sé stesso*, e un test certificava quella dichiarazione.
+
+Rinominati insieme la dichiarazione, la sua prova e lo smoke test — 5 occorrenze in 4 file, zero
+residui nel codice. Nessuna dipendenza da un altro prodotto è mai esistita: nessuna chiamata di
+rete, nessun import, solo il nome.
+
+*Prova:* seminato il nome vecchio nella dichiarazione → `bootstrap-feature-claims` fallisce 2/19.
+Ripristinato → 19/19.
+
+### 2 · `verify-source.mjs` falliva su ogni esecuzione, e nascondeva cinque passi
+
+Trovato **eseguendo** `npm run verify` per aggiornare il manifesto — nessuna lettura l'avrebbe
+visto, perché il codice è sintatticamente corretto e la sua intenzione è giusta.
+
+Il check leggeva `manifest.migrations.length !== 12`: il **conteggio della release V0.6.0**,
+congelato. Quando sono arrivate le migrazioni `0013`-`0016` ha cominciato a lanciare a ogni giro.
+
+**La conseguenza è più grave della causa.** `scripts/test.sh` girava sotto `set -eu` con questo
+come **secondo di sette passi**: i **cinque passi successivi non sono mai stati eseguiti** da
+quando `0013` è atterrata. Fra questi `auth-http-smoke`, che infatti era rotto a sua volta (§3) e
+nessuno poteva accorgersene.
+
+**Riparata l'intenzione, non il numero:** le dodici migrazioni della V0.6.0 devono essere ancora
+presenti, **non riordinate e non rimosse**, e il totale è libero di crescere. È strettamente più
+forte del controllo precedente e non si rompe aggiungendo una migrazione.
+
+*Prove:* baseline riordinata → spara nominando la posizione; baseline accorciata a 8 → spara
+nominando il conteggio; ripristinata → `SOURCE_VERIFY=PASS migrations=16 baseline=12/12 intact`,
+file byte-identico.
+
+### 3 · `auth-http-smoke.mjs` era rotto da una riparazione di sicurezza corretta
+
+Usava **lo stesso codice TOTP** per il login e per la ri-autenticazione. Entro un passo da 30
+secondi è lo stesso codice, e la difesa contro il replay — corretta, e voluta — lo rifiutava.
+Il difetto era nello strumento, non nel prodotto. Ora chiede il codice del **passo successivo**:
+diverso, dentro la finestra ±1 del server, e senza dormire 30 secondi.
+
+*Prova:* `AUTH_HTTP_SMOKE=PASS`.
+
+### 4 · Riparata la regola, non solo le istanze
+
+Il difetto che conta non è il numero 12: è che **uno script a sette passi sotto `set -eu`
+nasconde l'esistenza di tutto ciò che segue il primo passo non eseguibile**. `scripts/test.sh`
+ora nomina ogni passo e chiude con un riepilogo:
+
+```text
+STEP unit = PASS            STEP pg-migrations   = UNAVAILABLE (no python3 on this host)
+STEP source-verify = PASS   STEP pg-contract     = UNAVAILABLE
+STEP auth-smoke = PASS      STEP rust-source     = UNAVAILABLE
+                            STEP rust-provenance = UNAVAILABLE
+TEST_SUMMARY pass=3 fail=0 unavailable=4
+UNAVAILABLE (declared, NOT passed): pg-migrations pg-contract rust-source rust-provenance
+```
+
+**Un passo che non può girare è DICHIARATO, mai contato come passato.** I quattro passi Python
+restano non eseguibili: `python3` non è su questo host e la regola 45 vieta di installarlo.
+
+*Prova:* seminato un fallimento in `verify-source` → `STEP source-verify = FAIL`,
+`fail=1`, **uscita 1**. Ripristinato → `pass=3 fail=0`, uscita 0. Uno script che non può più
+fallire sarebbe stato un difetto peggiore di quello riparato.
+
+### Verifiche prodotte in sessione
+
+```text
+unit                    631/631   0 falliti
+scripts/test.sh         3 PASS · 0 FAIL · 4 UNAVAILABLE dichiarati (prima: si fermava al 2°)
+eslint                  158 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST              5721/5721   0 falliti · 0 duplicati
+difetti seminati        5, ognuno catturato, ogni file ripristinato byte-identico
+installazione           intoccata · healthy · RestartCount=0 · livez/readyz 200 · metrics 401
+```

@@ -68,7 +68,11 @@ try {
   const denied = await request('/api/v1/coden/authorize', { method:'POST', value:{ plan:plan.data, consentScope:'ONE_OPERATION', durationMinutes:15 } });
   if (denied.status !== 403) throw new Error('Owner authorization should require reauth');
 
-  const reauth = await request('/api/v1/auth/reauth', { method:'POST', value:{ password:'correct horse battery staple', totpCode:totpCode(begin.data.totpSecret) } });
+  // A TOTP code is accepted at most once (RFC 6238 5.2), so reauthentication cannot reuse the
+  // code the login above already spent: within one 30s step totpCode() returns the same digits
+  // and the server correctly rejects it as a replay. Ask for the NEXT step instead — a
+  // different code, still inside the server's +/-1 step window, and no 30-second sleep here.
+  const reauth = await request('/api/v1/auth/reauth', { method:'POST', value:{ password:'correct horse battery staple', totpCode:totpCode(begin.data.totpSecret, Date.now() + 30_000) } });
   if (reauth.status !== 200) throw new Error(JSON.stringify(reauth));
   const approved = await request('/api/v1/coden/authorize', { method:'POST', value:{ plan:plan.data, consentScope:'ONE_OPERATION', durationMinutes:15 } });
   if (approved.status !== 201) throw new Error(JSON.stringify(approved));

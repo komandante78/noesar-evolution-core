@@ -167,9 +167,47 @@ if (
   manifest.schemaVersion !== '4.0'
   || manifest.release !== '0.6.0'
   || manifest.baselineV050Preserved !== true
-  || manifest.migrations.length !== 12
 ) {
   throw new Error('PostgreSQL V0.6.0 migration manifest is invalid');
 }
 
-console.log('SOURCE_VERIFY=PASS');
+// The V0.6.0 release shipped these twelve migrations. This asserts they are still present,
+// unaltered and still first — it deliberately does NOT assert the total count.
+//
+// It used to read `manifest.migrations.length !== 12`, which froze the check at the release
+// count. When 0013-0016 landed, this file began throwing on every run; and because
+// scripts/test.sh runs under `set -eu` with this as its second of seven steps, the five steps
+// after it stopped running at all. A check that always fails is a check that gets skipped, so
+// the intent — the baseline set is intact, nothing reordered or dropped — is expressed here in
+// a form that adding a migration cannot break.
+const V060_BASELINE = [
+  '0001_schemas_and_extensions.sql',
+  '0002_identity_and_sessions.sql',
+  '0003_workspaces_projects_members.sql',
+  '0004_audit_ledger.sql',
+  '0005_publishers_capabilities.sql',
+  '0006_documents_memory_models.sql',
+  '0007_row_level_security.sql',
+  '0008_migration_ledger.sql',
+  '0009_roles_and_privileges.sql',
+  '0010_runtime_security_acceptance.sql',
+  '0011_production_attestation_ledger.sql',
+  '0012_audit_chain_and_release_gate.sql',
+];
+
+if (manifest.migrations.length < V060_BASELINE.length) {
+  throw new Error(
+    `PostgreSQL migration manifest lost migrations: ${manifest.migrations.length} < ${V060_BASELINE.length}`,
+  );
+}
+
+for (const [index, filename] of V060_BASELINE.entries()) {
+  const actual = manifest.migrations[index]?.filename;
+  if (actual !== filename) {
+    throw new Error(
+      `PostgreSQL V0.6.0 baseline altered at position ${index + 1}: expected ${filename}, found ${actual}`,
+    );
+  }
+}
+
+console.log(`SOURCE_VERIFY=PASS migrations=${manifest.migrations.length} baseline=${V060_BASELINE.length}/12 intact`);

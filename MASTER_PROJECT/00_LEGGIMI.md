@@ -48,8 +48,10 @@ altri no.
 | **12** | **`12_COSA_E_CAMBIATO.md`** | **Dal progetto reale a questo: cosa è cambiato davvero** |
 | **14** | **`14_MEMORIA_A_CUBI.md`** | **I tre cubi: biblioteca, officina, corpus. La struttura della biblioteca, la compattazione che non inventa, e i cinque meccanismi contro l allucinazione** |
 | **13** | **`13_IL_VERIFICATORE.md`** | **La soluzione al problema della probabilità — con esperimenti veri, rieseguibili** |
+| **15** | **`15_CODEN_EVOLUTION_DA_ZERO.md`** | **Il progetto di CodeN Evolution da zero: le tre malattie misurate, le sei invenzioni, gli oggetti, la memoria come ciò da cui il contesto attinge, la rete come ipotesi, la sandbox come luogo primario, e la matrice di accettazione CE-001…CE-024** |
 
 Leggerli in ordine funziona. Se hai poco tempo: **01 e 02**. Il resto discende da quei due.
+Se vuoi sapere **come si lavora davvero** e cosa rende CodeN Evolution originale: il **15**.
 Se vuoi sapere **cosa è cambiato** rispetto al progetto consegnato: vai diritto al **12**.
 Se vuoi sapere **cosa ho sbagliato io** e come l'ho corretto: il **11**.
 

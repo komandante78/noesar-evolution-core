@@ -1630,3 +1630,41 @@ qualunque punteggio di confidenza calcolato dopo. È il motivo per cui `derived_
 **Limite dichiarato:** nessuno di quei modelli è installato qui, e nulla di tutto ciò è stato
 misurato su dati nostri. Vale come direzione, non come prova — la copertura di proiezione
 impone che una cosa non misurata non sia dichiarata vera.
+
+---
+
+## D-0107 … D-0116 · Il progetto di CodeN Evolution da zero — 2026-07-26
+
+**Contesto.** L'Owner ha chiesto di progettare CodeN Evolution da zero, **originale e non
+copiato**, dopo una ricerca reale sullo stato degli agenti di coding. La ricerca è stata fatta e
+i numeri sono registrati in `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §2 con le fonti.
+
+Il dato che decide la strategia: **lo scaffold intorno al modello sposta il punteggio di 10–20
+punti a modello invariato**. Quindi il prodotto è lo scaffold, non il modello.
+
+Le tre malattie misurate: **l'oracolo** (24 punti di scarto fra "i test passano" e "il
+manutentore lo unisce", METR 2026-03-10), **la persistenza** (crollo oltre le 4 ore, coerenza
+rotta dopo 25–30 chiamate, attribuzione del fallimento accurata solo al 14–53%), **la
+decomposizione della fiducia** (pianificatore stocastico su esecutore privilegiato senza
+mediazione). Sulla terza la risposta — capability token — è corretta ma non originale.
+
+| ID | Decisione |
+|---|---|
+| `D-0107` | Il contesto è una **proiezione ricostruita da stato**, mai una trascrizione che si accumula. Nessun componente può appendere testo libero al contesto: chi vuole influenzare il modello scrive nello stato, e lo stato ha uno schema. Rende il context rot strutturalmente impossibile e l'attribuzione esatta |
+| `D-0108` | Le convenzioni del repository si **inducono dalla storia git** — grafo di co-modifica, rapporto test-per-modifica, forma dei commit accettati — e producono un **profilo di divergenza**. Mai un punteggio, mai un veto. Sotto una soglia di storia si dichiara `campione insufficiente` invece di inventare una convenzione |
+| `D-0109` | **L'esecuzione in ombra precede l'autorizzazione.** Si promuove un risultato misurato, non si approva un'intenzione. Costo dichiarato e accettato dall'Owner: si esegue due volte |
+| `D-0110` | La **copertura di proiezione** è obbligatoria e non arrotondabile: ciò che non è stato ricalcolato è dichiarato tale, con la ragione. Un rapporto "6 su 9, e le 3 sono queste" è più utile di un ✅ |
+| `D-0111` | **A riposo zero strumenti, skill, plugin e connettori.** La superficie è derivata dal Piano; gli strumenti dichiarano i propri **effetti** e il token si conia contro quelli. Un effetto non dichiarato è impossibile, non vietato. **Nessuna denylist testuale** — è battuta da qualunque indirezione. Installare è a sua volta un passo autorizzato con provenienza verificata |
+| `D-0112` | **ATOM entra come implementazione di `ReasoningProvider`**, selezionabile per superficie, e il suo valore è **misurato** dalla copertura di proiezione a ogni compito invece che asserito. Il criterio di "fatto" passa **senza** ATOM (CE-022, e regola 54 `FOSS_CORE_DEPENDS_ON_ATOM=false`) |
+| `D-0113` | **La rete entra come ipotesi da falsificare in sandbox, mai come risposta da applicare.** Query costruita dal motore, risultato nel Corpus con provenienza, promozione a Esperienza solo dopo esecuzione verificata, fallimento registrato come firma |
+| `D-0114` | **La sandbox è il luogo primario dell'esecuzione, non il recinto**: ambiente eseguibile intero, persistente per il compito, più istanze in parallelo, rete **mediata per dominio** dal token invece che spenta. Il repository vero si tocca solo per promozione |
+| `D-0115` | La metrica del prodotto è il **tempo di revisione umana per cambiamento accettato**, non la velocità di produzione del codice. Motivata dai numeri: 38% delle PR agentiche rifiutate per abbandono del revisore, +31,3% di PR unite senza alcuna revisione |
+| `D-0116` | **Matrice di accettazione CE-001…CE-024 con ID e severità.** Colma il **rischio 4** del piano di lavoro: la riscrittura non aveva matrici, tracciabilità né registro dei rischi, quindi non esisteva un modo controllabile di dire "fatto" |
+
+**Non implementato.** Nulla di tutto questo è codice: è il progetto. La fase 1 resta non
+iniziata e il suo primo passo è invariato — il contratto `ReasoningProvider`, oggi **zero file**.
+
+**Limite dichiarato.** I numeri della ricerca vengono da pubblicazioni di terzi e **non sono
+stati riprodotti qui**. Valgono come direzione e come motivazione delle decisioni, non come
+misure di questo prodotto — la stessa regola che `D-0110` impone al prodotto vale per il
+documento che la introduce.
