@@ -95,7 +95,13 @@ async function *parseSse(response, style, signal) {
 }
 
 export class ProviderGateway {
-  constructor({ store, vault, ledger }) { this.store = store; this.vault = vault; this.ledger = ledger; }
+  // `onEgressBlocked` is how POLICY_VIOLATION_BLOCKED (01_PRODUCT/12) becomes reachable in
+  // the running product rather than only inside a pure function. A refusal here is a real
+  // attempt to send data to an external destination that policy stopped, which is exactly
+  // what that state is for. A refused egress *plan* deliberately does not feed it: a plan
+  // is a question, and letting any caller's question repaint the indicator is the defect
+  // `D-0087` removed.
+  constructor({ store, vault, ledger, onEgressBlocked = null }) { this.store = store; this.vault = vault; this.ledger = ledger; this.onEgressBlocked = onEgressBlocked; }
   catalog() { return DEFAULT_CATALOG; }
   ensureDefaults() {
     const existing=new Set(this.store.read().providerProfiles.map((item)=>item.type));const created=[];
@@ -175,12 +181,21 @@ export class ProviderGateway {
   #assertAllowed(profile, { projectId=null, tools=[], dataClasses=['prompt'] } = {}) {
     if (!profile.enabled) throw statusError('Provider profile is disabled.',403);
     if (profile.external) {
-      if (!profile.consent?.granted) throw statusError('Explicit external-provider consent is required.',403);
-      if (profile.consent.projectIds.length && (!projectId || !profile.consent.projectIds.includes(projectId))) throw statusError('Provider consent does not cover this project.',403);
-      if (tools.length && !profile.consent.allowTools) throw statusError('Provider consent does not allow tool schemas.',403);
+      // Every refusal below is a blocked attempt to reach an external destination, so each
+      // one is reported once, through one place, before it is thrown.
+      const blocked=(reason)=>{
+        let destination='UNKNOWN_DESTINATION';
+        try{ destination=new URL(String(profile.baseUrl)).host; }catch{ /* leave unknown */ }
+        this.onEgressBlocked?.({ reason, destination, providerId:profile.id, at:new Date().toISOString() });
+        this.ledger?.append({ actor:'system', action:'provider.egress-blocked', result:'blocked', details:{ providerId:profile.id, destination, reason } });
+        return statusError(reason,403);
+      };
+      if (!profile.consent?.granted) throw blocked('Explicit external-provider consent is required.');
+      if (profile.consent.projectIds.length && (!projectId || !profile.consent.projectIds.includes(projectId))) throw blocked('Provider consent does not cover this project.');
+      if (tools.length && !profile.consent.allowTools) throw blocked('Provider consent does not allow tool schemas.');
       const approved=new Set(profile.consent.dataClasses ?? []);
       const denied=(dataClasses ?? []).filter((item)=>!approved.has(item));
-      if (denied.length) throw statusError(`Provider consent does not cover data classes: ${denied.join(', ')}.`,403);
+      if (denied.length) throw blocked(`Provider consent does not cover data classes: ${denied.join(', ')}.`);
     }
     const credential = this.vault.resolve(profile);
     if (profile.credentialRequired === true && !credential) throw statusError('Provider credential is not configured.',409);

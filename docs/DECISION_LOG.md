@@ -1234,3 +1234,112 @@ scrollable area to 11439px, so the page then required horizontal scrolling — b
 criterion the skip link exists to help. The audit reported it on the next run. It is now
 hidden by clipping, and the RTL check reports the outermost offending elements by selector,
 because a failure that says only `overflow=true` cannot be acted on without guessing.
+
+---
+
+## WP-2 · the local-first privacy indicator (`01_PRODUCT/12`)
+
+### D-0087 — the indicator is derived from configuration, never stored
+
+`01_PRODUCT/12` names seven states; five were defined and the state was a module-level
+`let currentPrivacyState`, initialised to `LOCAL_ONLY_VERIFIED` at module load and then
+**assigned from whatever egress plan any authenticated caller last evaluated**. Two defects
+came out of that one line, and neither is hypothetical:
+
+- Asking *what would happen if I used a remote model* left the whole installation reporting
+  `REMOTE_MODEL_ACTIVE` — for every user, until restart — on the strength of a plan the
+  server had just **refused**. The indicator reported the last question anyone asked.
+- It asserted `LOCAL_ONLY_*VERIFIED*` before anything had been verified, and reset to that
+  optimistic claim on every restart.
+
+`derivePrivacy()` now computes the state from enabled providers and consented connectors,
+so there is nothing for a caller to set and nothing to go stale. `evaluateEgress()` is kept
+separate and unchanged: it answers a hypothetical, its four answers are published in
+`conformance/authority-vectors.json`, and this phase asserts those vectors still hold so the
+two cannot be silently merged again.
+
+### D-0088 — a registered provider is a menu item, not a pending connection
+
+`ProviderGateway.seed()` registers OpenAI, Anthropic and Kimi in every workspace, disabled
+and unconsented, as a catalogue to choose from. The first implementation of `derivePrivacy`
+treated any external profile as pending, which meant **a fresh installation that had never
+gone near an external provider reported `EXTERNAL_CONNECTOR_PENDING` for ever and could
+never once say `LOCAL_ONLY_VERIFIED`**. A warning that is always on is a warning people
+learn to skip past; it would have made the indicator worse than none.
+
+"Pending" now means a destination someone has moved *towards* use and that is not yet
+authorised — enabled without consent, or consented without being enabled. Caught by this
+phase's own test, and kept out by a named regression test plus a real-browser check.
+
+### D-0089 — retention at a third party is declared unknowable, not invented
+
+The specification requires an external state to show retention information. What a remote
+service retains is governed by its operator and is not observable from this host. Reporting
+a figure would be fabrication and reporting nothing would leave a required element blank, so
+the disclosure carries `atDestination: UNKNOWN_AT_DESTINATION` with the reason, alongside
+`localRetentionDays`, which this installation does control and does know.
+
+### D-0090 — the disclosed update metadata is derived from the producer, and bounded by construction
+
+`privacy.mjs` used to state that an update check sends "product version, platform, update
+channel" — a hand-written list beside code that builds no payload at all. That is two
+independent claims again, the shape that put five wrong invariants in the WebUI.
+
+`updateCheckMetadata()` in `update-manager.mjs` is now the single producer, and the
+disclosure derives its data categories from that function's keys; a field added there with
+no declared label surfaces as `UNDECLARED FIELD: <key>` rather than being disclosed as
+nothing. The payload is assembled field by field from three named values rather than
+filtered, so no caller-supplied key can be carried along — a denylist would have to
+anticipate every name user content might arrive under, which this project has already
+established is not a control (`D-0071`, `D-0073`).
+
+This build contacts no portal, so nothing calls it in anger today. It exists so the
+disclosure has a real producer, and so the payload is already bounded and tested on the day
+a check is wired up.
+
+### D-0091 — the revoke control is not advertised to callers who cannot use it
+
+`01_PRODUCT/12` requires a revoke control. Wiring one raised a question no scanner asks:
+`user`, `client_restricted` and `service_account` all hold `user.read`, so they can read the
+indicator, but none holds `provider.manage`, so `/api/v1/privacy/revoke` answers them 403.
+Showing all three a control that refuses them is the same false claim this indicator exists
+to remove, only aimed at the reader instead of the operator.
+
+Widening the permission was considered and rejected: revoke disables providers for the whole
+workspace, so a restricted account could switch off everyone's access. The disclosure now
+reports `available` for **this** caller — answered by the same `hasPermission` call the
+route enforces, not by a second copy of the rule — and names what is required when it is
+not. A test asserts the route still requires the permission the disclosure names.
+
+### D-0092 — telemetry is stated, and the absence is what enforces it
+
+The specification says telemetry is off by default. This build has no telemetry, analytics or
+crash-reporting client at all, which is the strongest form of that guarantee — but an absence
+nobody states cannot be shown in an indicator and cannot be regression-tested. The posture is
+now declared in the privacy answer, and a source-level test fails if any first-party file
+ever enables one, so the declaration cannot quietly become false.
+
+### D-0093 — a state the pure function can produce but the product cannot reach is still decoration
+
+Reviewing this phase's own staged diff caught the gap: `lastPolicyViolation` was declared in
+the server and only ever **cleared**. Nothing set it, so `POLICY_VIOLATION_BLOCKED` was
+reachable in `derivePrivacy()` and unreachable in the running product — the unit tests
+proved a pure function, which is precisely the gap the bootstrap feature-claims suite exists
+to close. Caught by reading the diff, not by any scanner.
+
+The tempting wiring was the wrong one. Feeding it from a **refused egress plan** would let
+any authenticated caller repaint the indicator by asking a bad question — `D-0087` in the
+opposite direction. The legitimate producer is a real attempt that policy stopped, so
+`ProviderGateway.#assertAllowed` now reports each external refusal once, through one place,
+to an `onEgressBlocked` handler and the audit ledger.
+
+Two consequences worth stating:
+
+- **The state expires from the indicator after 15 minutes.** The ledger is the permanent
+  record; the indicator describes the situation now. Without a window, one refusal would pin
+  the banner to `POLICY_VIOLATION_BLOCKED` indefinitely — the always-on alarm `D-0088`
+  removed from the pending state, reintroduced elsewhere.
+- **The test drives it through HTTP**, using the provider health probe, which runs the same
+  `#assertAllowed` gate and then genuinely reaches out. Its first version asserted only
+  `status >= 400`, which a 404 from a mistyped route satisfies — it "passed" the attempt
+  while proving nothing. It now asserts `403` exactly.

@@ -27,6 +27,32 @@ export const CHANNELS = Object.freeze(['stable', 'security', 'beta', 'owner', 'o
 export const DEFAULT_MODE = 'NOTIFY_ONLY';
 export const APPLY_CONFIRMATION = 'APPLY UPDATE';
 
+/**
+ * The complete set of fields an update check may carry off this host — `01_PRODUCT/12`:
+ * "User content is never included in license/update metadata."
+ *
+ * This is an allowlist, and it is built by construction rather than by filtering: the
+ * returned object is assembled field by field from three named values, so nothing a caller
+ * passes can be carried along by accident. Rejecting a denylist here is deliberate — a
+ * denylist would have to anticipate every field name user content might arrive under, and
+ * this project has already established that guessing the shape of what you mean to exclude
+ * is not a control (`D-0071`, `D-0073`).
+ *
+ * `privacy.mjs` derives its disclosed data categories from the keys of this function, so
+ * the indicator cannot describe a payload different from the one that would be sent.
+ *
+ * This build contacts no portal, so nothing calls this in anger today. It exists so the
+ * disclosure has a real producer to derive from, and so that on the day a check is wired
+ * up the payload is already bounded and already tested.
+ */
+export function updateCheckMetadata({ installedVersion, channel } = {}) {
+  return {
+    productVersion: String(installedVersion ?? '0.0.0'),
+    platform: `${process.platform}-${process.arch}`,
+    channel: String(channel ?? 'offline'),
+  };
+}
+
 const SLOTS = Object.freeze(['current', 'previous', 'staging', 'inbox', 'keys']);
 
 function fail(message, code, status = 400) {

@@ -21,7 +21,7 @@ import {
   resolveBindScope, allowsUnauthenticatedMetrics,
 } from './http-security.mjs';
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
-import { PrivacyState, evaluateEgress, privacyBanner } from './privacy.mjs';
+import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
 import { ContextGraph } from './ai-workspace/context-graph.mjs';
@@ -118,7 +118,57 @@ const postgres = postgresEnabled
 const userDirectory = new UserDirectory({ auth, ledger, dataPlane: () => postgres });
 const localModels = new LocalModelRuntime({ workspace });
 
-let currentPrivacyState = PrivacyState.LOCAL_ONLY_VERIFIED;
+// The privacy indicator is DERIVED, never stored — 01_PRODUCT/12.
+//
+// This used to be `let currentPrivacyState = PrivacyState.LOCAL_ONLY_VERIFIED`, assigned
+// at module load and then overwritten by whatever egress plan any authenticated caller
+// last evaluated. Two defects followed from that one line. It asserted "verified" before
+// anything had been verified; and a caller asking what *would* happen if they used a
+// remote model left the whole installation reporting REMOTE_MODEL_ACTIVE — on the strength
+// of a plan that had just been refused. Deriving the state from enabled providers and
+// consented connectors leaves nothing for a caller to set and nothing to go stale across
+// a restart.
+//
+// The one part of this that genuinely is an event rather than configuration is a refusal,
+// so that is the only piece kept here — and it is fed by the provider gateway when a real
+// attempt to reach an external destination is stopped, never by an egress *plan*, which is
+// only a question. Without this wiring POLICY_VIOLATION_BLOCKED would be a state the pure
+// function can produce and the running product never reaches: a named state with no
+// producer, which is the decoration this phase set out to remove.
+let lastPolicyViolation = null;
+providerGateway.onEgressBlocked = (violation) => { lastPolicyViolation = violation; };
+
+// A blocked attempt is news for a while and then it is history. The audit ledger is the
+// permanent record; the indicator describes the situation now. With no window, a single
+// refusal would pin the banner to POLICY_VIOLATION_BLOCKED indefinitely — the same
+// always-on alarm `D-0088` removed from the pending state.
+const VIOLATION_VISIBLE_MS = 15 * 60 * 1000;
+function recentViolation() {
+  if (!lastPolicyViolation) return null;
+  const age = Date.now() - Date.parse(lastPolicyViolation.at);
+  if (!Number.isFinite(age) || age > VIOLATION_VISIBLE_MS) return null;
+  return lastPolicyViolation;
+}
+
+function currentPrivacy(user = null) {
+  try {
+    const state = aiStore.read();
+    return derivePrivacy({
+      observed: true,
+      providers: state.providerProfiles ?? [],
+      tools: state.tools ?? [],
+      retentionDays: state.settings?.retentionDays,
+      lastViolation: recentViolation(),
+      // Answered by the same check the revoke route enforces, so the disclosure cannot
+      // advertise a control this particular caller would be refused.
+      ...(user ? { canRevoke: auth.hasPermission(user, 'provider.manage') } : {}),
+    });
+  } catch {
+    // The configuration could not be read, so no guarantee can be made in either
+    // direction. Reporting LOCAL_ONLY_VERIFIED here would be the original defect again.
+    return derivePrivacy({ observed: false });
+  }
+}
 
 const PRODUCT = Object.freeze({ name:'NOESAR Evolution', version:'1.0.0-complete-ai-workspace', releaseVersion:'0.6.0' });
 
@@ -488,16 +538,43 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/v1/privacy') {
       const authenticated = requireSession(req, res, 'user.read'); if (!authenticated) return;
-      return json(res, 200, { state:currentPrivacyState, banner:privacyBanner(currentPrivacyState) });
+      const privacy = currentPrivacy(authenticated.user);
+      return json(res, 200, { ...privacy, banner:privacyBanner(privacy.state) });
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/privacy/egress-plan') {
       const authenticated = requireSession(req, res, 'user.read');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       const request = await body(req);
       const plan = evaluateEgress(request);
-      currentPrivacyState = plan.state;
+      // The plan is an answer to a question, not a change to this installation. It is
+      // deliberately NOT written to the indicator: see the note beside `currentPrivacy`.
       ledger.append({ actor:authenticated.user.id, action:'egress.plan', result:plan.allowed ? 'allowed':'approval-required', details:plan });
       return json(res, 200, plan);
+    }
+    // The revoke control every external disclosure advertises. A control named in a
+    // disclosure and wired to nothing would be exactly the class of false claim this
+    // indicator exists to prevent, so it withdraws consent everywhere at once and the
+    // test suite asserts the state actually returns to local-only afterwards.
+    if (req.method === 'POST' && url.pathname === '/api/v1/privacy/revoke') {
+      const authenticated = requireSession(req, res, 'provider.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const before = currentPrivacy();
+      const revoked = { providers:[], tools:[] };
+      for (const profile of aiStore.read().providerProfiles ?? []) {
+        if (!profile.external) continue;
+        providerGateway.grantConsent(profile.id, { granted:false });
+        providerGateway.update(profile.id, { enabled:false });
+        revoked.providers.push(profile.id);
+      }
+      for (const tool of aiStore.read().tools ?? []) {
+        if (!tool.external) continue;
+        agentService.grantToolConsent(tool.id, { granted:false }, authenticated.user.id);
+        revoked.tools.push(tool.id);
+      }
+      lastPolicyViolation = null;
+      const after = currentPrivacy();
+      ledger.append({ actor:authenticated.user.id, action:'privacy.revoke', result:'success', details:{ ...revoked, from:before.state, to:after.state } });
+      return json(res, 200, { revoked, state:after.state, disclosures:after.disclosures, banner:privacyBanner(after.state) });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/hardware') {
       const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
@@ -1054,7 +1131,7 @@ const server = createServer(async (req, res) => {
         authority,
         dataPlane,
         user:authenticated.user,
-        privacy:{ state:currentPrivacyState, banner:privacyBanner(currentPrivacyState) },
+        privacy:(() => { const p = currentPrivacy(authenticated.user); return { ...p, banner:privacyBanner(p.state) }; })(),
         hardware,
         runtimeRecommendation:recommendRuntime(hardware, {}),
         // SEC-003. The invariant declaration travels with the bootstrap so the interface

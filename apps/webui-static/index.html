@@ -81,6 +81,17 @@
       <section class="privacy-banner" id="privacyBanner" aria-live="polite">
         <span class="shield">◆</span><div><strong>NOESAR runs locally on your device.</strong><small>No data is sent to external servers.</small></div><span class="verified">LOCAL-ONLY VERIFIED</span>
       </section>
+      <!-- 01_PRODUCT/12 requires an external state to SHOW destination, service identity,
+           data categories, purpose, duration, retention, consent scope and a revoke
+           control. A one-line banner can carry a headline, not eight elements, so the
+           disclosures live here. Hidden while the state is local-only: there is nothing to
+           disclose then, and an empty panel only invites the reader to wonder what it is
+           for. -->
+      <section class="privacy-disclosures hidden" id="privacyDisclosures" aria-live="polite" aria-labelledby="privacyDisclosuresTitle">
+        <div class="panel-title"><h2 id="privacyDisclosuresTitle">External connections</h2><button class="secondary" id="privacyRevoke" type="button">Revoke all external access</button></div>
+        <div id="privacyDisclosureList"></div>
+        <p class="hint" id="privacyTelemetry"></p>
+      </section>
 
       <section class="view active" id="view-home">
         <div class="hero"><p class="eyebrow">CONTROLLED AI WORK ENVIRONMENT</p><h1>Ask. Create. Act.</h1><p>Use local models or explicitly approved external APIs. Every project keeps its own chat graph, memory, files, tools and artifacts.</p></div>

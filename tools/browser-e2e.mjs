@@ -330,6 +330,119 @@ try {
   check('the nav badge shows the pending count and is visible',
     strip.navCount === '1' && strip.navCountVisible, JSON.stringify(strip));
 
+  // --- the local-first privacy indicator, 01_PRODUCT/12 --------------------
+  //
+  // Driven through the real provider controls rather than the API, because the defect
+  // being guarded against lived in the browser: the footer used to print "● Local-only
+  // verified" straight from the provider dropdown, whatever the server thought.
+  at('privacy indicator');
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#privacyBanner', { timeout: 15000 });
+  const privacyLocal = await page.evaluate(() => ({
+    verified: document.querySelector('#privacyBanner .verified')?.textContent?.trim() ?? '',
+    external: document.querySelector('#privacyBanner')?.classList.contains('external') ?? null,
+    footer: document.querySelector('#footerPrivacy')?.textContent?.trim() ?? '',
+    disclosuresHidden: document.querySelector('#privacyDisclosures')?.classList.contains('hidden') ?? null,
+  }));
+  // The seeded catalogue registers three external providers in every workspace. A first
+  // implementation of derivePrivacy counted those as pending, so a fresh installation
+  // could never once report local-only. That regression is checked here in a real browser.
+  check('a fresh installation reports LOCAL ONLY VERIFIED despite the seeded external catalogue',
+    privacyLocal.verified === 'LOCAL ONLY VERIFIED' && privacyLocal.external === false,
+    JSON.stringify(privacyLocal));
+  check('the footer chip agrees with the banner instead of being written by the dropdown',
+    /local only verified/i.test(privacyLocal.footer), privacyLocal.footer);
+  check('nothing is disclosed while the state is local-only',
+    privacyLocal.disclosuresHidden === true, JSON.stringify(privacyLocal));
+
+  // Consent to, and enable, an external provider through the real controls.
+  await page.goto(`${BASE}/#/providers`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-provider-consent]', { timeout: 15000 });
+  const externalProviderId = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('#providerList .provider-card')]
+      .find((node) => /External/.test(node.querySelector('small')?.textContent ?? ''));
+    return card?.querySelector('[data-provider-consent]')?.dataset.providerConsent ?? null;
+  });
+  check('the provider list offers an external provider to consent to', Boolean(externalProviderId));
+  // Granting consent and then enabling is two clicks with an asynchronous round trip and a
+  // full re-render of #providerList between them, and getting the barrier wrong produced
+  // two different failures before this settled:
+  //   - waiting on `checkbox.checked` — true the instant it is clicked, while the PUT was
+  //     still in flight — clicked Enable against a stale client copy, and the UI correctly
+  //     refused with "Grant explicit external consent first";
+  //   - waiting only on the server's answer raced the client's own re-render, so the node
+  //     selected for the second click was detached before it landed.
+  // Marking the node BEFORE acting makes the barrier deterministic: the mark can only
+  // disappear when renderAll() has replaced that node with one built from fresh state.
+  await page.evaluate((id) => {
+    document.querySelector(`[data-provider-consent="${id}"]`).dataset.e2eStale = '1';
+  }, externalProviderId);
+  await clickOrExplain(page, `[data-provider-consent="${externalProviderId}"]`);
+  await page.waitForFunction(
+    (id) => document.querySelector(`[data-provider-consent="${id}"]`)?.dataset.e2eStale === undefined,
+    { timeout: 15000 }, externalProviderId);
+  await clickOrExplain(page, `[data-toggle-provider="${externalProviderId}"]`);
+  await page.waitForFunction(
+    (id) => /Enabled/.test([...document.querySelectorAll('#providerList .provider-card')]
+      .find((node) => node.querySelector(`[data-provider-consent="${id}"]`))
+      ?.querySelector('small')?.textContent ?? ''),
+    { timeout: 15000 }, externalProviderId);
+
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForFunction(
+    () => document.querySelector('#privacyBanner .verified')?.textContent?.trim() === 'REMOTE MODEL ACTIVE',
+    { timeout: 15000 });
+  const privacyExternal = await page.evaluate(() => {
+    const panel = document.querySelector('#privacyDisclosures');
+    const box = panel ? panel.getBoundingClientRect() : { width: 0, height: 0 };
+    const card = document.querySelector('#privacyDisclosureList .privacy-disclosure');
+    return {
+      onScreen: Boolean(panel && panel.offsetParent !== null && box.width > 0 && box.height > 0),
+      external: document.querySelector('#privacyBanner')?.classList.contains('external') ?? null,
+      footer: document.querySelector('#footerPrivacy')?.textContent?.trim() ?? '',
+      runtime: document.querySelector('#runtimeState')?.textContent?.trim() ?? '',
+      labels: [...(card?.querySelectorAll('p strong') ?? [])].map((node) => node.textContent.replace(':', '').trim()),
+      text: card?.textContent ?? '',
+      telemetry: document.querySelector('#privacyTelemetry')?.textContent ?? '',
+      revokeEnabled: document.querySelector('#privacyRevoke')?.disabled === false,
+    };
+  });
+  check('enabling a consented external provider moves the indicator to REMOTE MODEL ACTIVE',
+    privacyExternal.external === true, JSON.stringify({ footer: privacyExternal.footer }));
+  check('the disclosure panel is a real box on screen, not markup in the DOM',
+    privacyExternal.onScreen, JSON.stringify(privacyExternal.labels));
+  // The eight elements 01_PRODUCT/12 names, asserted as rendered text rather than as an
+  // API field — the specification says the external state SHOWS them.
+  for (const label of ['Destination', 'Service identity', 'Data categories', 'Purpose',
+    'Duration', 'Retention', 'Consent scope', 'Revoke']) {
+    check(`the disclosure shows "${label}"`, privacyExternal.labels.includes(label),
+      privacyExternal.labels.join(', '));
+  }
+  check('the disclosure names the real destination host',
+    /api\.openai\.com|api\.anthropic\.com|api\.moonshot\.cn/.test(privacyExternal.text));
+  check('retention at the destination is shown as unknowable rather than invented',
+    /UNKNOWN_AT_DESTINATION/.test(privacyExternal.text));
+  check('the footer and runtime chips follow the server, not the dropdown',
+    /remote model active/i.test(privacyExternal.footer) && /External by consent/.test(privacyExternal.runtime),
+    `${privacyExternal.footer} | ${privacyExternal.runtime}`);
+  check('the telemetry posture is stated rather than assumed',
+    /Telemetry: off/i.test(privacyExternal.telemetry), privacyExternal.telemetry);
+  check('the owner is offered the revoke control', privacyExternal.revokeEnabled);
+
+  // The revoke control must actually revoke. A button describing an effect it does not
+  // have is the defect this whole indicator exists to remove.
+  await clickOrExplain(page, '#privacyRevoke');
+  await page.waitForFunction(
+    () => document.querySelector('#privacyBanner .verified')?.textContent?.trim() === 'LOCAL ONLY VERIFIED',
+    { timeout: 20000 });
+  const privacyRevoked = await page.evaluate(() => ({
+    verified: document.querySelector('#privacyBanner .verified')?.textContent?.trim() ?? '',
+    hidden: document.querySelector('#privacyDisclosures')?.classList.contains('hidden') ?? null,
+  }));
+  check('the revoke control returns the installation to local-only',
+    privacyRevoked.verified === 'LOCAL ONLY VERIFIED' && privacyRevoked.hidden === true,
+    JSON.stringify(privacyRevoked));
+
   // The queue must show the workflow gate, and the decision must resume the run.
   resetObservations();
   await page.goto(`${BASE}/#/approvals`, { waitUntil: 'networkidle2' });

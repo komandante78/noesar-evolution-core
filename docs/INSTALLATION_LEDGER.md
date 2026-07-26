@@ -1453,3 +1453,110 @@ or 1.4.13 content on hover, not 2.5.7 dragging (no drag interaction exists to te
 3.2.6 / 3.3.7 across multi-step flows, no time-based media (this build ships none), and
 `forced-colors` emulation is refused by this Chromium so only the static stylesheet checks
 hold. **WCAG 2.2 AA is therefore measured and materially improved, not certified.**
+
+---
+
+## WP-2 · the local-first privacy indicator (`01_PRODUCT/12`) — 2026-07-26
+
+Source-only. No container was created, started or stopped for this work; the installation on
+`192.168.178.100:8100` was not touched and still runs `:phase4-webui`.
+
+### Measured first, against the unmodified code
+
+`services/reference-control-plane/test/privacy-states.test.mjs` was written before any change
+and run against the shipped implementation. It measures the three separable claims of the
+ten-line specification: seven named states, an external state disclosing eight named
+elements, and telemetry off with no user content in licence or update metadata.
+
+```text
+# tests 25   # pass 7   # fail 18
+```
+
+The seven passes included the four published `EGRESS` conformance vectors, which is why they
+are asserted here: the fix had to leave them intact.
+
+Three of the eighteen initial failures were defects in my own harness and were triaged out
+**before** anything was repaired — the wrong key for the conformance file (`vectors` for
+`cases`), the wrong field on the providers response (`items` for `providers`), and the wrong
+verb for granting consent (`POST` for `PUT`). A false positive "fixed" is a real regression
+introduced for nothing.
+
+### The sharpest finding was not a missing feature
+
+`REMOTE_MODEL_ACTIVE` was reported by an installation where the remote-model request had
+just been **refused**. The state lived in a module-level variable assigned from whatever
+egress plan any authenticated caller last evaluated, and it initialised to
+`LOCAL_ONLY_VERIFIED` — "verified" — before anything had been verified. `D-0087`.
+
+### What was built
+
+- Seven states, each with a producer the test exercises; a named state nothing can produce is
+  decoration, exactly as an advertised feature with no route is a false claim.
+- `derivePrivacy()`, computing the state from enabled providers and consented connectors.
+  `evaluateEgress()` is kept separate and unchanged, and its published vectors are asserted.
+- Eight disclosure elements per external destination, with retention at the destination
+  declared unknowable rather than invented (`D-0089`).
+- `POST /api/v1/privacy/revoke`, and a disclosure that reports whether **this** caller may
+  use it (`D-0091`).
+- `updateCheckMetadata()` as the single bounded producer of update metadata, with the
+  disclosure derived from its keys (`D-0090`).
+- A declared telemetry posture defended by a source-level test (`D-0092`).
+- The WebUI now renders the server's verdict. It previously wrote `● Local-only verified`
+  into the footer directly from the provider dropdown — a privacy guarantee asserted by a
+  `<select>` element.
+
+### One defect of my own, caught by my own test
+
+The first `derivePrivacy` treated any registered external provider as pending. Because
+`ProviderGateway.seed()` registers OpenAI, Anthropic and Kimi in every workspace, **a fresh
+installation would have reported `EXTERNAL_CONNECTOR_PENDING` for ever and could never once
+say `LOCAL_ONLY_VERIFIED`** — a permanent false alarm, which would have made the indicator
+worse than none. Fixed, and kept out by both a named unit regression and a real-browser
+check. `D-0088`.
+
+Two further defects were mine and both were in the browser harness, not the product: waiting
+on a native checkbox's `checked` (true before the round trip completed, so the next click hit
+a stale client copy and the UI correctly refused it), then waiting only on the server's
+answer (which raced the client's re-render, detaching the node mid-click). The barrier now
+marks the node before acting, so it can only clear when a re-render has replaced it.
+
+### Verified
+
+```text
+unit tests                600/600 → 627/627   0 failures
+  privacy states           30/30    18 of 25 failed against the unfixed code
+eslint                    158 files, 0 errors, 0 warnings, 0 no-undef
+accessibility              26/26    unchanged with the new markup
+browser acceptance        see below, real browser, real box
+static analysis           services/ 0 findings; apps/ 1 pre-existing MEDIUM, dismissed
+MANIFEST                  see below
+```
+
+Five deliberate defects were seeded one at a time and each was caught: any registered
+external provider counted as pending, `observed:false` assuming local-only, the metadata
+producer spreading its caller's object, the revoke control advertised regardless of
+permission, and the indicator stored again from the caller's plan. The three source files
+were restored and confirmed byte-identical to their pre-seed copies after every round.
+
+### Dismissed with evidence
+
+`apps/webui-static/app.js:85 insecure-object-assign` (semgrep, MEDIUM) — pre-existing and
+dismissed in the two previous phases. Re-confirmed here by diffing line 85 against this
+phase's own backup copy: byte-identical, untouched by this work. The target is a freshly
+created local `Error` with three fixed literal keys, not a user-controlled assignment.
+
+### Found in the diff review, after the tests were already green
+
+`lastPolicyViolation` was declared and only ever cleared, so `POLICY_VIOLATION_BLOCKED` could
+be produced by the pure function and never by the running product. Wired to real refused
+external sends — not to refused *plans*, which would hand the indicator back to any caller —
+with a 15-minute visibility window and an HTTP-level test. `D-0093`.
+
+### Also dismissed with evidence
+
+`tools/verify-package.py` and `tools/create-rust-build-provenance.py` — `B603`/`B607`/`S603`/
+`S607` (bandit/ruff, reported CRITICAL/HIGH by the scanner) and `B404`/`F401`. Pre-existing
+and unchanged by this phase, neither file staged. Verified at the flagged lines: every call
+uses the argv-list form with no `shell=True` and a fixed command name; the only variable part
+is a path from a local `rglob` walk, not untrusted input. `B607` (partial executable path)
+is a hardening nit in a developer-side tool. `F401 sys` is `D-0039`.

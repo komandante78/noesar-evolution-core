@@ -139,3 +139,10 @@ button[data-busy]{opacity:.65;cursor:progress}
 /* A stamped max-width in viewport units cannot know about the scrollbar the other direction
    introduces; the strip's detail line is allowed to shrink instead of forcing the shell wide. */
 .approval-strip-detail{min-width:0;flex:0 1 auto}
+
+/* --- 01_PRODUCT/12: external-connection disclosures --- */
+.privacy-disclosures{margin:-12px 0 24px;padding:15px;border:1px solid rgba(255,194,100,.28);border-radius:13px;background:linear-gradient(145deg,var(--panel),var(--panel2))}
+.privacy-disclosures .panel-title{margin-bottom:10px}
+.privacy-disclosure{margin-bottom:10px}
+.privacy-disclosure p{margin:6px 0;color:#c3cfe2;font-size:12px;line-height:1.55;word-break:break-word}
+.privacy-disclosure strong{color:#e6eeff}

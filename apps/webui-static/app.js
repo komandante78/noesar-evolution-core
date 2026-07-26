@@ -192,7 +192,7 @@ $$('[data-chat-mode]').forEach((button)=>button.addEventListener('click',()=>set
 async function refreshPrivacy(){
   const box=$('#privacyBanner');if(!box)return;
   try{
-    const {banner,state:privacyState}=await api('/api/v1/privacy');
+    const {banner,state:privacyState,disclosures,telemetry}=await api('/api/v1/privacy');
     box.querySelector('strong').textContent=banner.headline;
     box.querySelector('small').textContent=banner.detail;
     box.querySelector('.verified').textContent=privacyState.replaceAll('_',' ');
@@ -201,12 +201,77 @@ async function refreshPrivacy(){
     // at it tested for 'LOCAL_ONLY', a value this server never emits, which would have
     // left the banner permanently amber.
     box.classList.toggle('external',Boolean(banner.external));
+    renderPrivacyDisclosures(disclosures??[],telemetry);
+    // The footer chip and the runtime chip report the SAME derived state, because they
+    // are the same claim shown twice. They used to be written from the provider dropdown:
+    // the footer read "● Local-only verified" whenever a local model happened to be
+    // selected, whatever the server thought — a privacy guarantee asserted by a <select>.
+    setPrivacyChips(privacyState,Boolean(banner.external));
   }catch(error){
     box.classList.add('external');
     box.querySelector('strong').textContent='Privacy state could not be confirmed.';
     box.querySelector('small').textContent='The server did not answer the privacy check, so this banner is not reporting a verified state.';
     box.querySelector('.verified').textContent='UNVERIFIED';
+    // Same rule for the chips: an unanswered check is not a local-only guarantee.
+    setPrivacyChips('STATUS_UNKNOWN',false,true);
+    renderPrivacyDisclosures([],null);
     if(window.__noesarDebug)console.error(error);
+  }
+}
+
+function setPrivacyChips(privacyState,external,unconfirmed=false){
+  const label=unconfirmed?'not confirmed':String(privacyState).replaceAll('_',' ').toLowerCase();
+  const footer=$('#footerPrivacy');
+  if(footer){footer.textContent=`● ${label}`;footer.className=unconfirmed?'amber':(external?'amber':'status-good');}
+  const runtime=$('#runtimeState');
+  if(runtime)runtime.textContent=unconfirmed?'● Privacy state not confirmed':(external?'● External by consent':'● Local-first');
+  const egress=$('#egressMetric');
+  if(egress){egress.textContent=unconfirmed?'Unknown':(external?'Available by consent':'Blocked');egress.className=external||unconfirmed?'amber':'';}
+}
+
+// The eight elements 01_PRODUCT/12 requires, rendered from the server's disclosure record.
+// Nothing here is computed locally: a second derivation in the browser is exactly how the
+// invariant panel came to display five numbers that matched neither the code nor itself.
+function renderPrivacyDisclosures(disclosures,telemetry){
+  const panel=$('#privacyDisclosures');if(!panel)return;
+  const list=$('#privacyDisclosureList');
+  panel.classList.toggle('hidden',disclosures.length===0);
+  if(telemetry&&$('#privacyTelemetry'))$('#privacyTelemetry').textContent=`Telemetry: ${telemetry.enabled?'ENABLED':'off'}. ${telemetry.detail??''}`;
+  if(!disclosures.length){list.textContent='';return;}
+  // The button follows the server's answer for THIS caller. A role that cannot revoke is
+  // told so, rather than being shown a button that answers 403.
+  const revokeButton=$('#privacyRevoke');
+  const canRevoke=disclosures.every((item)=>item.revoke?.available!==false);
+  if(revokeButton){
+    revokeButton.disabled=!canRevoke;
+    revokeButton.title=canRevoke?'':(disclosures[0]?.revoke?.unavailableReason??'');
+    revokeButton.textContent=canRevoke?'Revoke all external access':'Revoke requires an administrator';
+  }
+  list.textContent='';
+  for(const item of disclosures){
+    const card=document.createElement('article');
+    card.className='entity-card privacy-disclosure';
+    const rows=[
+      ['Destination',item.destination],
+      ['Service identity',item.serviceIdentity],
+      ['Data categories',(item.dataCategories??[]).join(', ')],
+      ['Purpose',item.purpose],
+      ['Duration',item.duration],
+      ['Retention',`${item.retention?.atDestination??'unknown'} — ${item.retention?.note??''} Local retention: ${item.retention?.localRetentionDays??'unset'} days.`],
+      ['Consent scope',`projects: ${Array.isArray(item.consentScope?.projects)?item.consentScope.projects.join(', '):item.consentScope?.projects}; data classes: ${(item.consentScope?.dataClasses??[]).join(', ')}; tool schemas: ${item.consentScope?.toolSchemas?'yes':'no'}; anonymised: ${item.consentScope?.anonymised?'yes':'no'}`],
+      ['Revoke',`${item.revoke?.method} ${item.revoke?.path} — ${item.revoke?.effect??''}`],
+    ];
+    const heading=document.createElement('h3');
+    heading.textContent=`${item.destination} · ${item.kind}`;
+    card.append(heading);
+    for(const [label,value] of rows){
+      const row=document.createElement('p');
+      const strong=document.createElement('strong');
+      strong.textContent=`${label}: `;
+      row.append(strong,document.createTextNode(String(value??'—')));
+      card.append(row);
+    }
+    list.append(card);
   }
 }
 async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
@@ -321,8 +386,30 @@ function syncProviderDefaults(){const descriptor=state.providerCatalog.find((ite
 $('#providerType').addEventListener('change',syncProviderDefaults);$('#providerForm').addEventListener('submit',async(event)=>{event.preventDefault();const descriptor=state.providerCatalog.find((item)=>item.type===$('#providerType').value);await api('/api/v1/providers',{method:'POST',body:JSON.stringify({type:descriptor.type,name:$('#providerName').value,baseUrl:$('#providerBaseUrl').value,defaultModel:$('#providerModel').value,priority:Number($('#providerPriority').value),modes:[...$('#providerModes').selectedOptions].map((o)=>o.value),external:descriptor.external,apiStyle:descriptor.apiStyle})});await refreshWorkspace();});
 function bindProviderActions(){$$('[data-save-key]').forEach((button)=>button.addEventListener('click',async()=>{const id=button.dataset.saveKey;const input=$(`[data-provider-key="${id}"]`);await api(`/api/v1/providers/${id}/credential`,{method:'PUT',body:JSON.stringify({apiKey:input.value,persistence:$(`[data-provider-persistence="${id}"]`).value})});input.value='';await refreshWorkspace();}));$$('[data-provider-consent]').forEach((checkbox)=>checkbox.addEventListener('change',async()=>{const id=checkbox.dataset.providerConsent;await api(`/api/v1/providers/${id}/consent`,{method:'PUT',body:JSON.stringify({granted:checkbox.checked,projectIds:state.activeProjectId?[state.activeProjectId]:[],dataClasses:['prompt','selected messages','project instructions','selected memory','selected sources'],allowTools:true,anonymize:$(`[data-provider-anonymize="${id}"]`).checked})});await refreshWorkspace();}));$$('[data-toggle-provider]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.providers.find((p)=>p.id===button.dataset.toggleProvider);if(item.external&&!item.consent?.granted&&!item.enabled)return setStatus('Grant explicit external consent first.',true);await api(`/api/v1/providers/${item.id}`,{method:'PATCH',body:JSON.stringify({enabled:!item.enabled})});await refreshWorkspace();}));bindProviderRoutingActions();}
 function bindProviderRoutingActions(){$$('[data-save-routing]').forEach((button)=>button.addEventListener('click',async()=>{const id=button.dataset.saveRouting;const select=$(`[data-provider-fallbacks="${id}"]`);await api(`/api/v1/providers/${id}`,{method:'PATCH',body:JSON.stringify({fallbackProviderIds:[...select.selectedOptions].map((o)=>o.value)})});await refreshWorkspace();}));$$('[data-probe-provider]').forEach((button)=>button.addEventListener('click',async()=>{const result=$(`[data-provider-health-result="${button.dataset.probeProvider}"]`);result.classList.remove('hidden');result.textContent='Checking…';try{result.textContent=JSON.stringify(await api(`/api/v1/providers/${button.dataset.probeProvider}/health`),null,2);}catch(error){result.textContent=error.message;}}));}
-function updatePrivacyFromProvider(){const selected=state.providers.find((item)=>item.id===$('#chatProvider').value);const externalEnabled=state.providers.some((item)=>item.external&&item.enabled);$('#egressMetric').textContent=externalEnabled?'Available by consent':'Blocked';$('#egressMetric').className=externalEnabled?'amber':'';if(selected?.external){$('#privacyBanner').classList.add('external');$('#privacyBanner').querySelector('strong').textContent='External model selected.';$('#privacyBanner').querySelector('small').textContent=`Requests may be sent to ${selected.baseUrl} within the approved data scope.`;$('#privacyBanner').querySelector('.verified').textContent='EXPLICIT CONSENT REQUIRED';$('#footerPrivacy').textContent='● External provider selected';$('#runtimeState').textContent='● External by consent';}else{refreshPrivacy();$('#footerPrivacy').textContent='● Local-only verified';$('#runtimeState').textContent='● Local-first';}$('#modelChip').textContent=`Model: ${$('#chatModel').value||selected?.defaultModel||'none'}`;}
+// Selecting a provider in a dropdown is an intention, not a privacy fact, and this
+// function used to conflate the two: it wrote the banner, the footer and the runtime chip
+// directly from the <select>, including the literal string "● Local-only verified" for
+// any local selection — regardless of what was actually enabled and consented on the
+// server. That is the WebUI asserting a guarantee nothing verified, the same defect shape
+// as the five hardcoded invariants. It now shows the selected model, which is genuinely
+// local UI state, and asks the server to re-derive everything else.
+function updatePrivacyFromProvider(){
+  const selected=state.providers.find((item)=>item.id===$('#chatProvider').value);
+  $('#modelChip').textContent=`Model: ${$('#chatModel').value||selected?.defaultModel||'none'}`;
+  refreshPrivacy();
+}
 $('#chatProvider').addEventListener('change',updatePrivacyFromProvider);$('#chatModel').addEventListener('input',updatePrivacyFromProvider);
+// The revoke control the disclosure advertises. Wiring it here rather than only naming it
+// in the disclosure text is the whole point: a control a panel describes and no button
+// performs is a claim, not a control.
+$('#privacyRevoke')?.addEventListener('click',async()=>{
+  try{
+    await api('/api/v1/privacy/revoke',{method:'POST',body:JSON.stringify({})});
+    await refreshWorkspace();
+    await refreshPrivacy();
+    toast('External provider and connector consent withdrawn.',{kind:'success'});
+  }catch(error){toast(error.message,{kind:'error'});}
+});
 $('#compareModels').addEventListener('click',async()=>{if(!state.activeConversationId)return setStatus('Create a conversation first.',true);const providerIds=[...$('#comparisonProviders').selectedOptions].map((item)=>item.value);if(providerIds.length<2){activate('models');return setStatus('Select at least two enabled providers for comparison.',true);}const content=$('#chatInput').value.trim()||prompt('Prompt to compare');if(!content)return;try{const result=await api('/api/v1/models/compare',{method:'POST',body:JSON.stringify({conversationId:state.activeConversationId,branchId:state.activeBranchId,content,providerIds,model:$('#chatModel').value.trim()||null,mode:currentMode})});$('#comparisonResults').textContent=JSON.stringify(result,null,2);activate('models');setStatus('Model comparison completed.');}catch(error){setStatus(error.message,true);}});
 async function loadExtractorCapabilities(){try{const c=await api('/api/v1/sources/capabilities');$('#extractorStatus').textContent=`Local extractors: PDF ${c.pdf?'ready':'missing'} · OCR ${c.ocr?'ready':'missing'} · Office/ZIP ${c.archives?'ready':'missing'} · media metadata ${c.mediaMetadata?'ready':'missing'}. Audio/video transcription uses a configured local tool or approved multimodal provider.`;}catch{}}
 async function capturedBlobToInput(blob,name){const file=new File([blob],name,{type:blob.type||'application/octet-stream'});const dt=new DataTransfer();dt.items.add(file);$('#sourceBinary').files=dt.files;$('#sourceName').value=name;$('#sourceMime').value=file.type;activate('knowledge');}
