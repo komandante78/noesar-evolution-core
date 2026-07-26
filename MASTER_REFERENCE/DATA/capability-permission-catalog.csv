@@ -1,0 +1,11 @@
+Permission,Default,Approval,Broker
+filesystem.read.project,deny,project/session,Path Authorization Broker
+filesystem.write.project,deny,operation/session,Path Authorization Broker
+filesystem.host,deny,Owner scoped,Path Authorization Broker
+network.external,deny,destination/data scoped,Network Egress Broker
+secret.read,deny,secret/purpose scoped,Secret Broker
+shell.execute,deny,command/cwd scoped,Execution Broker
+model.download,deny,asset/license scoped,Model Trust Registry
+runtime.install,deny,Owner scoped,System Change Broker
+memory.promote,deny,policy/human,Memory Sentinel
+physical.actuate,deny,separate certified module,Safety Interlock

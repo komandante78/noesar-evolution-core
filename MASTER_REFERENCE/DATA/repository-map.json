@@ -1,0 +1,31 @@
+{
+  "public_org": "github.com/noesar-evolution",
+  "public_repositories": [
+    "noesar-core",
+    "noesar-webui",
+    "noesar-sdk",
+    "noesar-runtime-contracts",
+    "noesar-hardware-runtime-orchestrator",
+    "noesar-path-authorization",
+    "noesar-egress-broker",
+    "noesar-capability-sandbox",
+    "noesar-secure-update-client",
+    "noesar-model-descriptors",
+    "noesar-industry-module-framework",
+    "noesar-reference-modules",
+    "noesar-documentation"
+  ],
+  "private_repositories": [
+    "noesar-atom-evolution",
+    "noesar-owner-edition",
+    "noesar-commercial-licensing",
+    "noesar-signing-infrastructure",
+    "noesar-enterprise-private",
+    "noesar-official-medical",
+    "noesar-official-surgical",
+    "noesar-official-aerospace",
+    "noesar-official-financial",
+    "noesar-official-industrial",
+    "noesar-commercial-release-builder"
+  ]
+}

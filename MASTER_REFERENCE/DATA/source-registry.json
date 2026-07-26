@@ -1,0 +1,230 @@
+[
+  {
+    "title": "NLnet stocktaking",
+    "url": "https://nlnet.nl/news/2026/20260612-NGIZero-stocktaking.html",
+    "purpose": "Funding transition and paused calls",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NLnet Office Hour",
+    "url": "https://nlnet.nl/officehour/",
+    "purpose": "FOSS deliverables and open-core guidance",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NLnet Restack",
+    "url": "https://nlnet.nl/restack/",
+    "purpose": "Open Internet Stack and local-first infrastructure",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NLnet CodeSupply",
+    "url": "https://nlnet.nl/codesupply/",
+    "purpose": "Supply-chain and cybersecurity program",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NLnet ELFA",
+    "url": "https://nlnet.nl/ELFA/",
+    "purpose": "Local-first program context",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Sovereign Tech Fund",
+    "url": "https://www.sovereign.tech/programs/fund",
+    "purpose": "Reusable FOSS criteria",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Open Source Definition",
+    "url": "https://opensource.org/osd",
+    "purpose": "Open-source criteria",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "AGPL-3.0",
+    "url": "https://opensource.org/license/agpl-v3",
+    "purpose": "Network copyleft option",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Apache License 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "purpose": "SDK option",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "EU GDPR",
+    "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng",
+    "purpose": "Data protection",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "EU AI Act",
+    "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng",
+    "purpose": "AI roles/risk",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "EU Cyber Resilience Act",
+    "url": "https://eur-lex.europa.eu/eli/reg/2024/2847/oj/eng",
+    "purpose": "Product cybersecurity",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "EDPB Opinion 28/2024",
+    "url": "https://www.edpb.europa.eu/documents/opinion-of-the-board-art-64/opinion-282024-on-certain-data-protection-aspects-related-to_en",
+    "purpose": "AI models and GDPR",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NIST AI RMF",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "purpose": "AI risk governance",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NIST GenAI Profile",
+    "url": "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence",
+    "purpose": "Generative AI risk",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "CISA Memory Safe Roadmaps",
+    "url": "https://www.cisa.gov/case-memory-safe-roadmaps",
+    "purpose": "Memory-safe roadmap",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "OWASP LLM Top 10 2025",
+    "url": "https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/",
+    "purpose": "AI application risks",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "PostgreSQL docs",
+    "url": "https://www.postgresql.org/docs/current/",
+    "purpose": "Primary database",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "pgvector",
+    "url": "https://github.com/pgvector/pgvector",
+    "purpose": "Vector search",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Qdrant docs",
+    "url": "https://qdrant.tech/documentation/",
+    "purpose": "Scale vector adapter",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "DuckDB docs",
+    "url": "https://duckdb.org/docs/current/",
+    "purpose": "Analytics",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "ONNX Runtime providers",
+    "url": "https://onnxruntime.ai/docs/execution-providers/",
+    "purpose": "Hardware abstraction",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NVIDIA TensorRT",
+    "url": "https://docs.nvidia.com/deeplearning/tensorrt/latest/index.html",
+    "purpose": "NVIDIA inference",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "NVIDIA NCCL",
+    "url": "https://docs.nvidia.com/deeplearning/nccl/install-guide/index.html",
+    "purpose": "Multi-GPU collectives",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "AMD ROCm compatibility",
+    "url": "https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html",
+    "purpose": "AMD compatibility",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Apple Core ML",
+    "url": "https://developer.apple.com/documentation/coreml/",
+    "purpose": "Apple acceleration",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Apple Metal",
+    "url": "https://developer.apple.com/metal/",
+    "purpose": "Apple GPU compute",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "The Update Framework",
+    "url": "https://theupdateframework.io/docs/security/",
+    "purpose": "Secure updates",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Sigstore Cosign",
+    "url": "https://docs.sigstore.dev/quickstart/quickstart-cosign/",
+    "purpose": "Artifact signing",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "SLSA",
+    "url": "https://slsa.dev/spec/v1.2/",
+    "purpose": "Build provenance",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "CycloneDX",
+    "url": "https://cyclonedx.org/",
+    "purpose": "BOM standards",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "OpenTelemetry",
+    "url": "https://opentelemetry.io/docs/",
+    "purpose": "Observability",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Cedar Policy",
+    "url": "https://www.cedarpolicy.com/",
+    "purpose": "Policy model",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Wasmtime Security",
+    "url": "https://docs.wasmtime.dev/security.html",
+    "purpose": "WASM isolation",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "MCP",
+    "url": "https://modelcontextprotocol.io/specification/",
+    "purpose": "Tool interoperability",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "A2A",
+    "url": "https://www.linuxfoundation.org/press/linux-foundation-launches-the-agent2agent-protocol-project-to-enable-secure-intelligent-communication-between-ai-agents",
+    "purpose": "Agent interoperability",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "21 CFR Part 11",
+    "url": "https://www.ecfr.gov/current/title-21/chapter-I/subchapter-A/part-11",
+    "purpose": "Electronic records/signatures",
+    "accessed": "2026-07-22"
+  },
+  {
+    "title": "Federal Reserve SR 26-2",
+    "url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf",
+    "purpose": "Model risk management",
+    "accessed": "2026-07-22"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "project": "NOESAR_EVOLUTION",
+  "package": "NOESAR_EVOLUTION_MASTER_PROJECT_V4",
+  "version": "V4.0",
+  "created_utc": "2026-07-22T00:00:00Z",
+  "canonical_language": "English",
+  "implementation_included": false,
+  "public_core_license": "AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial",
+  "sdk_license": "Apache-2.0",
+  "documentation_license": "CC-BY-SA-4.0",
+  "private_components_included": false,
+  "approved_webui_reference_included": true,
+  "v2_reference_included": true,
+  "v3_1_reference_included": true,
+  "final_product_zips": 0,
+  "next_gate": "GATE_0_OWNER_REVIEW"
+}

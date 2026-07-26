@@ -1,0 +1,13 @@
+project: NOESAR_EVOLUTION
+master: V4.0
+current_gate: GATE_0_OWNER_REVIEW
+gates:
+  - {id: GATE_0, name: "Master V4 approval", mutation: false, owner_authorization: required}
+  - {id: GATE_1, name: "Repository and legal skeleton", mutation: true, owner_authorization: required}
+  - {id: GATE_2, name: "Security authority foundation", mutation: true, owner_authorization: required}
+  - {id: GATE_3, name: "Core platform implementation", mutation: true, owner_authorization: required}
+  - {id: GATE_4, name: "Hardware and model runtime", mutation: true, owner_authorization: required}
+  - {id: GATE_5, name: "Private providers", mutation: true, owner_authorization: required}
+  - {id: GATE_6, name: "Enterprise and module framework", mutation: true, owner_authorization: required}
+  - {id: GATE_7, name: "Full acceptance", mutation: true, owner_authorization: required}
+  - {id: GATE_8, name: "Five final ZIPs", mutation: true, owner_authorization: required}
