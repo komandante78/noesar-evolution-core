@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# WP-2 image: the four fixes that were in the source and not in the installation.
+#
+# The running box was built before all of them, so until this image it served:
+#
+#   1. a forgeable `/api/v1/coden/authorize` — the endpoint believed the plan supplied in
+#      the request body and never recalculated it, so `blocked`, `canonicalPath`, `mode`
+#      and `nonBypassableInvariants` were assertions the caller made about itself
+#      (s262, `e2abbc6`);
+#   2. an unvalidated consent scope — `consentScope: "DENY"` minted an approval, and a
+#      recursive delete could be granted `PERSISTENT_FOLDER` (s263, `f512041`);
+#   3. no Workflows and no approval queue at all, while its own `/api/v1/bootstrap`
+#      advertised `Workflows` and the route answered 404 (s264, `9912462`);
+#   4. a privacy indicator any authenticated caller could repaint by evaluating an egress
+#      plan, and which claimed LOCAL_ONLY_VERIFIED before verifying anything
+#      (s265, `12dd1f7`).
+#
+# It also carries the WCAG 2.2 AA repairs (s264, `4db4a7a`): visible focus on 23 controls
+# that had none, 4.19:1 contrast raised on every primary button, 19 sub-24px targets, a
+# skip link, and an input-purpose token.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile — unchanged from the reasoning
+# in Dockerfile.phase4 through Dockerfile.phase4-webui:
+#
+#   * oci/Dockerfile runs `apt-get install`, which needs the Debian archives. No network
+#     operation is authorised here, and repeating the apt step would silently re-resolve
+#     the OS package set to whatever the archive serves today.
+#   * Building FROM the audited :phase4-webui image inherits every layer unchanged —
+#     PostgreSQL 18.4, pgvector 0.8.5, the whole apt set — so the only difference between
+#     the two images is first-party source.
+#
+# The two COPY trees below are provably the whole delta. Before building, the contents of
+# `/opt/noesar` in the running image were hashed against this repository: `database/` is
+# byte-identical, so no new SQL migration is carried, and `package.json` differs only in
+# developer-side test scripts that no runtime path reads.
+#
+# ⚠️ SCHEMA ROLLBACK COST — read before deploying this image.
+#
+# `AI_STATE_VERSION` goes from 1 to 2 (D-0082). The installed workspace carries
+# `"schemaVersion": 1`, verified again immediately before this build. Once THIS image
+# performs its first write, `state/ai-workspace.json` is version 2 and every older image
+# in the lineage will refuse to read it. That refusal is deliberate: an older build
+# operating on state whose invariants it does not know would not fail loudly, it would
+# corrupt quietly. Rolling back therefore requires restoring `state/ai-workspace.json`
+# — a full backup of the runtime is taken with the service stopped, before this image
+# is ever started.
+#
+# Stated rather than hidden: this image's lineage is now seven deep.
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2
+#
+# Phase 5 packaging should still rebuild from oci/Dockerfile with a recorded network
+# step, as D-0033 and D-0053 both say.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-webui
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

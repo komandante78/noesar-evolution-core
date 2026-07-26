@@ -11,11 +11,11 @@ file and `PROJECT_STATE.json` alone.**
 |---|---|
 | Phases completed | **4** — completion gate, LAN access gate, WebUI remediation, WebUI completion |
 | Plan of record | `docs/WORK_PLAN_V4_ALIGNMENT.md` — WP-0 done; WP-1 worked, both blockers still OPEN; **WP-2: Workflows, approval queue, WCAG 2.2 AA and the seven privacy states done** |
-| Phase status | `PHASE_4_COMPLETE_WP2_PRIVACY_STATES_BUILT_NOT_DEPLOYED` |
+| Phase status | `PHASE_4_COMPLETE_WP2_DEPLOYED_PHASE4_WP2` |
 | **Next work** | **WP-2 continues** — five remaining rows; the role model needs the Owner in the loop |
 | Project root | `/mnt/cachec/NOESAR_EVOLUTION` |
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
-| Last commit | `12dd1f7` |
+| Last commit | `ea1f103` + the deployment commit below |
 | Updated (UTC) | 2026-07-26 |
 
 > ## ➜ What this session did
@@ -150,31 +150,41 @@ above rather than hidden; the final 233/233 was run against the final tree.
 
 ---
 
-## ⚠️ FOUR security or feature fixes are in the source and NOT installed
+## ✅ The four accumulated fixes are now DEPLOYED — `:phase4-wp2`
 
-The live installation on `192.168.178.100:8100` runs `:phase4-webui`, built before all of
-them. It therefore still serves:
+Deployed 2026-07-26 on the Owner's explicit authorisation. The live installation on
+`192.168.178.100:8100` now runs `noesar-evolution:phase4-wp2` and carries:
 
-1. the forgeable `/api/v1/coden/authorize` (s262, `e2abbc6`),
-2. the unvalidated consent scope (s263, `f512041`) — on the live box `DENY` still mints an
-   approval and a recursive delete can still be granted `PERSISTENT_FOLDER`,
-3. no Workflows or approval queue at all, while its own `/api/v1/bootstrap` still advertises
-   `Workflows` (s264, `9912462`), and
-4. a privacy indicator any authenticated caller can repaint by evaluating an egress plan, and
-   which claims `LOCAL_ONLY_VERIFIED` before verifying anything (this session, `12dd1f7`).
+1. the recalculated `/api/v1/coden/authorize` (s262, `e2abbc6`),
+2. consent-scope validation, so `DENY` no longer mints an approval (s263, `f512041`),
+3. Workflows and the approval queue — `/api/v1/workflows` answered **404** before this
+   deployment and answers 401 now (s264, `9912462`), and
+4. the derived privacy indicator (s265, `12dd1f7`), plus the WCAG 2.2 AA repairs.
 
-**Deployment is an installation phase and requires the Owner's explicit authorisation.** Do
-not do it on initiative — and when it is authorised, read the schema-rollback note first.
+Verified live: `health=healthy`, `RestartCount=0`, `livez`/`readyz` 200, `/metrics` 401,
+PostgreSQL 18.4 + pgvector 0.8.5 with 16 migrations and 15 RLS tables, the bootstrapped Owner
+account intact. The deployed image's `src/` and `apps/webui-static/` were hashed **after the
+build** and match this repository exactly, which is what ties the running artifact to the
+test evidence. Full record in `docs/INSTALLATION_LEDGER.md`; configuration reasoning in
+`D-0094`.
 
-## Read this before deploying: the schema bump has a rollback cost
+**Not verified on the live box, and it needs the Owner:** the behaviour of fixes 1, 2 and 4
+requires an authenticated Owner session, and these sessions hold no Owner credentials. What
+is proven live is that the routes exist and are gated, and that the bytes match the tested
+tree. The end-to-end proof of those three behaviours **on this installation** belongs with
+the other gate items only the Owner can close.
 
-Once the upgraded build performs its **first write**, `state/ai-workspace.json` is version 2
-and **every older image in the rollback lineage will refuse to read it**. That refusal is
-deliberate — an older build operating on state whose invariants it does not know would not
-fail loudly, it would corrupt quietly. Rolling back therefore requires restoring
-`state/ai-workspace.json` from the pre-update backup, which the update path already takes.
-**A read alone never rewrites the file**, so starting the new build and stopping it again
-without creating a workflow is reversible.
+## The schema rollback cost — where it stands now
+
+`AI_STATE_VERSION` went from 1 to 2 with this image. Immediately after the deployment
+`state/ai-workspace.json` was still `"schemaVersion": 1`, because a read alone does not
+rewrite it — **so until the new build's first write, rolling back is just starting the old
+container.** After the first write the file is version 2 and every older image refuses to
+read it, deliberately: an older build operating on state whose invariants it does not know
+would corrupt quietly rather than fail loudly. From that point a rollback also needs
+`state/ai-workspace.json` restored from
+`BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/`, a full 75 MB copy taken with the service
+stopped.
 
 ---
 
@@ -302,8 +312,10 @@ bash tools/run-browser-e2e.sh               # 233 checks, disposable probe, self
 ## Rollback
 
 ```text
-container   noesar-evolution.rollback-lan-webui-20260725T175916Z   image :phase4-complete-lan
-this phase  BACKUPS/wp2_privacy_states_20260726T151829Z/   privacy.mjs, server.mjs,
+container   noesar-evolution.rollback-webui-20260726T155330Z      image :phase4-webui
+runtime     BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/      full 75 MB copy, taken
+                                                                  with the service stopped
+source      BACKUPS/wp2_privacy_states_20260726T151829Z/   privacy.mjs, server.mjs,
                                                            update-manager.mjs, app.js,
                                                            index.html, styles.css,
                                                            MANIFEST.sha256, SESSION_HANDOFF.md,
@@ -311,17 +323,18 @@ this phase  BACKUPS/wp2_privacy_states_20260726T151829Z/   privacy.mjs, server.m
             BACKUPS/MANIFEST.sha256.pre_wp2_privacy_20260726T151829Z
 ```
 
-To roll back the installation: `docker stop noesar-evolution`, rename it aside, then
-`docker start noesar-evolution.rollback-lan-webui-20260725T175916Z` and rename it back. The
-runtime bind mount is shared, so no data restore is needed **today** — but once a build
-carrying the version-2 AI state schema has written to that workspace, a rollback also needs
-`state/ai-workspace.json` restored from the pre-update backup. See the schema note above.
+To roll back the installation: `docker stop -t 60 noesar-evolution`, rename it aside, then
+`docker start noesar-evolution.rollback-webui-20260726T155330Z` and rename it back. **If the
+current build has written to `state/ai-workspace.json` by then** — check whether it still
+reads `"schemaVersion": 1` — the rollback also needs that file restored from the runtime
+backup above, or `:phase4-webui` will refuse to load the AI workspace.
 
 Image lineage, all still on disk:
 
 ```text
-:phase4-webui          what is running now
-:phase4-complete-lan   the kept rollback container (immediate predecessor)
+:phase4-wp2            what is running now
+:phase4-webui          the kept rollback container (immediate predecessor)
+:phase4-complete-lan   state before the WebUI completion
 :phase4-complete       state before the LAN bind
 :phase4                state before the completion gate
 :phase3                state before Phase 4

@@ -1560,3 +1560,101 @@ and unchanged by this phase, neither file staged. Verified at the flagged lines:
 uses the argv-list form with no `shell=True` and a fixed command name; the only variable part
 is a path from a local `rglob` walk, not untrusted input. `B607` (partial executable path)
 is a hardening nit in a developer-side tool. `F401 sys` is `D-0039`.
+
+---
+
+## Deployment · `:phase4-wp2` — 2026-07-26, on the Owner's explicit authorisation
+
+Authorised in session with the words *"autorizzo tutti i fix"*, in direct answer to the
+handoff's statement that four fixes were in the source, not in the installation, and that
+deployment required explicit authorisation.
+
+### What was verified before anything was stopped
+
+The image is an overlay `FROM noesar-evolution:phase4-webui`, built `--network=none
+--pull=false`. Before building, the running image's `/opt/noesar` was hashed against this
+repository to establish that the two COPY trees really are the whole delta:
+
+```text
+database/       byte-identical  → no new SQL migration is carried
+package.json    differs only in developer-side test scripts no runtime path reads
+```
+
+After building, the image's contents were hashed against the repository again:
+
+```text
+services/reference-control-plane/src/   matches the repository exactly
+apps/webui-static/                      matches the repository exactly
+```
+
+That matters because it is what connects the deployed artifact to the evidence: this is the
+same tree that passed 631 unit tests, 233 real-browser checks and 26/26 accessibility checks
+in this session.
+
+### Sequence
+
+1. Image built and content-verified, with the service still running — no downtime yet.
+2. `docker stop -t 60`. Clean shutdown confirmed in the log, not assumed:
+   `postgres.stopped clean:true`, exit code 0.
+3. **Full runtime backup taken with the service stopped**, so the PostgreSQL copy is
+   consistent: `BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/` (75 MB, all 12 directories).
+   `state/ai-workspace.json` verified byte-identical to the live file and still
+   `"schemaVersion": 1`.
+4. Old container renamed aside to `noesar-evolution.rollback-webui-20260726T155330Z`.
+5. New container started with the configuration read back from the old one rather than from
+   memory: uid 10001, read-only rootfs, `cap-drop ALL`, `no-new-privileges`, pids 512,
+   memory 8 GiB, `noesar-evolution-net`, `192.168.178.100:8100->8088`, the same bind mount,
+   both `noexec` tmpfs mounts, and the three container-level environment variables that are
+   not baked into the image (`NOESAR_BIND_SCOPE`, `NOESAR_BIND_ADDRESS`,
+   `NOESAR_ALLOWED_HOSTS`).
+
+### Verified after
+
+```text
+state=running  health=healthy  restarts=0  image=noesar-evolution:phase4-wp2
+livez 200 · readyz 200 · /metrics 401      LAN hardening preserved
+postgres.ready   18.4, pgvector 0.8.5, migrations 16, rls_tables 15, production_ready
+data-plane.ready postgresql
+owner account    1, role owner — the bootstrapped identity survived
+WebUI            / and /app.js 200; the new privacy disclosure markup is served
+```
+
+Route existence, tested without credentials by the 401-versus-404 distinction — a route that
+exists demands a session, a route that does not answers 404:
+
+```text
+GET  /api/v1/workflows            401   (this endpoint answered 404 before the deployment)
+GET  /api/v1/approvals            401
+POST /api/v1/coden/authorize      401
+POST /api/v1/privacy/revoke       401   (new this session)
+POST /api/v1/no-such-post-route   404   (the control: 401 above is meaningful)
+```
+
+### Stated plainly: what was NOT verified on the live installation
+
+The behaviour of three of the four fixes — the recalculated authorization plan, the consent
+scope refusing `DENY`, and the privacy indicator refusing to be repainted — requires an
+authenticated Owner session, and these sessions hold no Owner credentials. What is proven on
+the live box is that the routes exist and are gated, and that the deployed bytes are
+identical to the tree whose behaviour the suites exercised. The end-to-end proof of those
+three behaviours **on this installation** is an Owner action, and belongs with the other
+gate items only the Owner can close.
+
+### Rollback, and the point at which it gets more expensive
+
+`state/ai-workspace.json` was still `"schemaVersion": 1` after the new build came up healthy,
+because a read alone does not rewrite it. **Until the first write, rolling back is just
+starting the old container.** After the first write the file is version 2 and every older
+image refuses to read it — deliberately, since an older build operating on state whose
+invariants it does not know would corrupt quietly rather than fail loudly. From that point
+rollback also requires restoring `state/ai-workspace.json` (or the whole directory) from
+`BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/`.
+
+### Cleanup
+
+§5a: exactly two containers survive a phase. The new deployment produced a third, so the
+older rollback `noesar-evolution.rollback-lan-webui-20260725T175916Z` was removed — the
+**container only**; its image `:phase4-complete-lan` stays on disk, so every rollback path
+documented here still works. Networks and volumes diffed against
+`EVIDENCE/docker_inventory_pre_cleanup_20260726T155449Z.txt`: unchanged. Non-project
+containers: 37 before, 37 after. No `prune` of any kind was used.

@@ -1343,3 +1343,33 @@ Two consequences worth stating:
   `#assertAllowed` gate and then genuinely reaches out. Its first version asserted only
   `status >= 400`, which a 404 from a mistyped route satisfies — it "passed" the attempt
   while proving nothing. It now asserts `403` exactly.
+
+### D-0094 — the deployment replicates the observed configuration, not a remembered one
+
+The Owner authorised deploying the four accumulated fixes. The new container's flags were
+read back out of the running container with `docker inspect` — security options, limits,
+mount, tmpfs, port binding — and the environment was **diffed against the image** to find the
+three variables that are container-level rather than baked in (`NOESAR_BIND_SCOPE`,
+`NOESAR_BIND_ADDRESS`, `NOESAR_ALLOWED_HOSTS`). Re-typing a run command from documentation is
+how a hardening flag silently goes missing; this project has already lost `--gpus all` that
+way on another system.
+
+The image delta was likewise established by hashing rather than by assumption: `database/`
+proved byte-identical, so no SQL migration travels with this image, and the two COPY trees
+were verified to match the repository **after** the build, which is what ties the deployed
+artifact to the test evidence.
+
+The backup was taken **after** a confirmed-clean stop rather than while the service ran,
+because a file-level copy of a live PostgreSQL data directory is not a consistent backup.
+
+### D-0095 — the build recipe of the previously running image was not in the manifest
+
+Adding `oci/Dockerfile.phase4-wp2` to `MANIFEST.sha256` exposed that
+`oci/Dockerfile.phase4-webui` had never been added — the recipe that built the image the
+installation had been running for a day was not integrity-protected, while its three
+predecessors were. Both are listed now: **5704/5704 OK, 0 failed, 0 duplicates.**
+
+This is the same class as `D-0074`, and the rule behind it is the one worth stating: a new
+file in a directory the manifest already covers is not covered by inheritance. Nothing
+enumerates `oci/*`, so each recipe has to be appended by the phase that writes it, and the
+previous phase did not.
