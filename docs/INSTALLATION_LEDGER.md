@@ -1130,3 +1130,110 @@ remains outside the manifest's scope — stated, not widened. `D-0074`.
 `:phase4-webui`, built before both this work and the s262 fix, and therefore still serves
 the forgeable endpoint *and* the unvalidated consent scope. Deployment is an installation
 phase and requires the Owner's explicit authorisation.
+
+## WP-1 · OPS-002 — cross-platform installation (2026-07-26)
+
+Source and verification only. **Nothing was deployed, no product container was created,
+started or stopped, and the live installation was not touched.**
+
+`OPS-002` is `severity: blocker` in the master acceptance matrix. The hardening regression
+covered four scripts, all on the Docker/Unraid path; `deployment/` also carries `linux/`,
+`macos/`, `windows/` and `podman/`, and none of those had ever been executed or tested.
+
+### What this host can honestly verify
+
+Linux, with `docker`. No macOS, no Windows, no PowerShell, no `podman`, and rule 45
+forbids installing tooling to satisfy a rule. The split is stated up front and is printed
+by the tool itself rather than left for a reader to infer from a green result.
+
+```text
+EXECUTED   deployment/linux/install-portable.sh    a real install into a pinned temp HOME
+EXECUTED   deployment/macos/install-portable.sh    POSIX sh; default path contains a space
+EXECUTED   deployment/podman/run.sh                against a podman stub
+EXECUTED   deployment/{docker,podman}/build.sh     against stubs
+NOT RUN    deployment/windows/*.ps1                structural assertions only
+```
+
+### Two defects found, both in the Podman path, both repaired
+
+**`D-0075` — the Podman installer had never installed anything.** `run.sh` referenced
+`$RELEASE_CHANNEL` and never assigned it; under `set -eu` that aborts:
+
+```text
+deployment/podman/run.sh: line 19: RELEASE_CHANNEL: unbound variable   EXIT=1
+podman calls observed: "network inspect noesar-local", and nothing further
+```
+
+It died after the network probe and before `podman run`. `bash -n` accepts the file and
+could not have caught this — the stub technique could, and did.
+
+**`D-0076` — the Podman build file carried a defect the Docker one had fixed.**
+`oci/Containerfile` still health-checked `/healthz` while `oci/Dockerfile` had been
+corrected to `/livez`, because `/healthz` and `/readyz` report dependency state and would
+restart a live process whenever a dependency was briefly degraded. Propagated, and the
+regression now asserts the two files **agree** rather than checking each alone.
+
+### Verification — produced in this session
+
+```text
+cross-platform regression   73/73    6 failures against the unfixed files, 0 after
+installer hardening        100/100   unchanged, no regression
+unit tests                 524/524   unchanged
+eslint                     149 files, 0 errors, 0 warnings, 0 no-undef
+MANIFEST                  5693/5693  3 refreshed, 1 appended, 0 removed, 0 duplicates
+shellcheck                 6 findings, all SC1007, all dismissed (see below)
+```
+
+The regression was run against the **unfixed** files first and produced 6 failures naming
+both defects; a clean run that has never been shown to fail proves only that it is quiet.
+
+### Findings triaged and dismissed, with the evidence
+
+```text
+SC1007 x6        deployment/*, INSTALLATION/*   FALSE POSITIVE — all six are the correct
+                 `CDPATH= cd --` idiom, which clears CDPATH for the duration of one cd so
+                 that cd cannot print or jump elsewhere. shellcheck reads it as a botched
+                 assignment. This exact dismissal is already recorded on this project.
+                 No shellcheck code other than SC1007 was reported at -S warning.
+Test-Noesar.ps1  asserts $result.status -eq "healthy" and $result.local. VERIFIED CORRECT
+                 against the running installation: /healthz returns status "healthy" and
+                 local true. Dismissed on evidence rather than on reading.
+semgrep/bandit/ruff over deployment/ and INSTALLATION/   0 findings.
+```
+
+### Recorded, deliberately not repaired
+
+- `Install-Noesar.ps1` has no equivalent of the `rm -rf "$DESTINATION/noesar"` the Linux
+  and macOS installers perform before copying. PowerShell `Copy-Item -Recurse` into an
+  existing destination copies the source *into* it, so a reinstall is expected to nest the
+  tree. **Not reproduced** — no PowerShell here — so not repaired blind. `D-0077`.
+- `Start-Noesar.ps1` sets `NOESAR_RELEASE_CHANNEL="development"` while every other
+  platform uses `complete`. Valid, but Windows runs a different channel.
+- `Uninstall-Noesar.ps1` removes nothing; it prints two advisory lines.
+- `Start-Noesar.ps1` references `REPORTS/BUILD_PREPARATION_V1/03_PATH_DECISIONS.tsv`,
+  which this repository does not contain.
+- `deployment/podman/run.sh` still uses the bare `rw` field in `--mount`, the form Docker
+  29 rejects. Whether Podman accepts it cannot be tested here, so it was left alone rather
+  than changed on a guess.
+
+### Disclosed: a write outside PROJECT_ROOT, by me, during the hunt
+
+A first exploratory run of `linux/install-portable.sh` passed only a destination, so
+`BIN_DIR` fell back to `$HOME/.local/bin` and the installer wrote a launcher there —
+outside `PROJECT_ROOT`, which rule 19 makes read-only. `$HOME/.local/bin` and the launcher
+did not exist beforehand and nothing was overwritten; both were removed immediately and
+`$HOME/.local` was confirmed to contain only its pre-existing `share/`. The harness now
+pins `HOME` and `XDG_BIN_HOME` into a temporary directory so the class cannot recur.
+`D-0078`.
+
+### Container use
+
+`noesar-debuglab` was started for the hunt and **stopped again in the same phase**. Two
+read-only `docker exec` calls were made into it to reach `shellcheck`, which the HTTP
+`kind=code` route does not invoke — declared here because §5 rule 16's exception is worded
+around *starting* that container. Nothing was written, and no other container was touched.
+Inventory 39 throughout, exactly two `noesar-evolution*`.
+
+**Not deployed.** `OPS-002` remains **OPEN**: four of five platforms are now exercised at
+the script level, one platform's scripts have never been run at all, and no installation
+was performed on any platform other than this one.

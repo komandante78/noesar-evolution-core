@@ -1016,3 +1016,79 @@ means the measuring instruments WP-0 imported are not integrity-protected, and t
 acceptance matrix on which the whole plan depends could be altered without the manifest
 noticing. Widening the manifest's scope changes what the artifact means, which is the
 Owner's decision and not a side effect of a security fix. Recorded as an open finding.
+
+### D-0075 — the Podman installer had never been able to install anything
+
+`OPS-002` says the delivered product supports five platforms. `deployment/podman/run.sh`
+referenced `$RELEASE_CHANNEL` in its `podman run` arguments and **never assigned it**.
+Every other variable in the file uses the `${NOESAR_X:-default}` form; this one was bare.
+The script runs under `set -eu`, so `-u` aborted it:
+
+```text
+deployment/podman/run.sh: line 19: RELEASE_CHANNEL: unbound variable
+EXIT=1
+podman calls that arrived: "network inspect noesar-local"   (and nothing else)
+```
+
+It died *after* the network probe and *before* `podman run`, which is why the script
+looks like it does something when read or run casually. Proven by execution against a
+`podman` stub — the same technique `test-installer-hardening.mjs` uses for `docker`, and
+the reason that technique exists: `bash -n` accepts this file, and could not have seen it.
+
+Fixed by defining and validating the channel exactly as `deployment/docker/run.sh` does,
+so the two engines share one channel vocabulary rather than two.
+
+### D-0076 — the Podman build file carried a defect the Docker one had already fixed
+
+`oci/Dockerfile` and `oci/Containerfile` are maintained as separate files and had drifted.
+The Dockerfile healthcheck was corrected to `/livez`, with a comment recording why:
+`/healthz` and `/readyz` report **dependency** state, so using either as a container
+healthcheck restarts a perfectly alive process whenever a dependency is briefly degraded.
+The Containerfile still probed `/healthz`. A Podman deployment therefore inherited the
+exact behaviour the Docker path had repaired.
+
+Fixed by propagating the endpoint and its reasoning. The regression now asserts the two
+build files **agree** on the healthcheck endpoint, rather than asserting each separately,
+so the next divergence fails rather than being discovered a session later.
+
+### D-0077 — what OPS-002 can and cannot be verified from this host, stated in the tool
+
+This host is Linux with `docker`. There is no macOS, no Windows, no PowerShell and no
+`podman`, and rule 45 forbids installing tooling to satisfy a rule. Rather than let that
+be discovered by whoever reads a green result, the split is encoded in
+`tools/test-cross-platform-installers.mjs` and printed by it:
+
+```text
+EXECUTED   linux/install-portable.sh     really installs, into a pinned temporary HOME
+EXECUTED   macos/install-portable.sh     POSIX sh; its default path contains a space,
+                                         which is the part most likely to break, and is
+                                         exercised
+EXECUTED   podman/run.sh                 against a podman stub
+EXECUTED   {docker,podman}/build.sh      against stubs
+NOT RUN    windows/*.ps1                 structural assertions only, reported as static
+```
+
+Running a script under a stub is not installing on the platform, and the tool says so in
+its own output. **`OPS-002` cannot be closed from this host.** What is now true is that
+four of the five platforms' scripts do what they claim when their external commands are
+observed, and that two defects which made one platform unusable are fixed.
+
+Recorded, not repaired, because it cannot be reproduced here: `Install-Noesar.ps1` has no
+equivalent of the `rm -rf "$DESTINATION/noesar"` that the Linux and macOS installers
+perform before copying. PowerShell `Copy-Item -Recurse` into an **existing** destination
+directory copies the source *into* it rather than over it, so a reinstall or upgrade is
+expected to nest the tree. Repairing a script that cannot be executed here would be
+guessing, which step 7 of the cycle names as the case for recording instead.
+
+### D-0078 — a test that installs must pin HOME
+
+Found by making the mistake. The portable installers default `BIN_DIR` to
+`$HOME/.local/bin` and their destination to a path under `$HOME`, so a probe run that
+passes only a destination still writes a launcher into the operator's real home — outside
+`PROJECT_ROOT`, which rule 19 makes read-only. It created `$HOME/.local/bin` and a
+launcher; neither existed before, nothing was overwritten, and both were removed
+immediately, leaving `$HOME/.local` exactly as found.
+
+The containment is now part of the harness rather than a caution: every installer run
+happens inside a sandbox with `HOME` and `XDG_BIN_HOME` pinned into a temporary
+directory. A test that can escape into the operator's home is a test that will.
