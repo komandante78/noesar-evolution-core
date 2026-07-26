@@ -114,15 +114,18 @@ reference provider implements all of them honestly, if plainly.
 | `hypothesize` | the Intent Frame, retrieved evidence | ranked **causal hypotheses**, each with support and contradicting evidence |
 | `plan` | the chosen hypotheses, constraints, mode | a **Plan**: ordered steps, files, commands, dependencies, blast radius |
 | `constrain` | the Plan and the active policy | the Plan narrowed, or refused with a reason |
-| `simulate` | the Plan against a shadow workspace | predicted diff, predicted test outcome, predicted failure modes |
+| `expect` | the Plan | what this plan should produce: tests that must pass, tests that should newly fail, the diff's intended reach — **mandatory for every provider**, and what makes "surprise" definable (§5a.6) |
+| `simulate` | the Plan against a shadow workspace | predicted diff, predicted test outcome, predicted failure modes — *without running it*. Optional; the engine's own shadow execution covers the rest |
 | `classify` | the Plan | a **risk class** per step, and a single class for the Plan |
 | `confidence` | the Plan and the simulation | a figure with the reasons it is not higher |
 | `evidence` | any claim the engine will show a person | the sources that support it, or an explicit "inference, unsupported" |
 | `cancel` | a running plan | a clean stop that leaves a resumable checkpoint |
 | `fixtures` | a session id | a deterministic replay bundle |
 
-`interpret`, `hypothesize`, `plan`, `simulate` and `classify` are the load-bearing five.
-The others are what make the product honest.
+`interpret`, `hypothesize`, `plan`, `expect` and `classify` are the load-bearing five —
+`expect`, not `simulate`, because a plan that cannot say what it expects is not a plan, and
+because the expectation is what the engine compares reality against. The others are what
+make the product honest.
 
 ### 2.2 The maturity ladder, and what it actually unlocks
 
@@ -134,20 +137,23 @@ the UI says so plainly rather than hiding a degraded experience.
 | Level | What the provider can do | Modes it unlocks |
 |---|---|---|
 | L0–L2 | interpret, single-hypothesis plans, static risk classing | Read-only, Plan |
-| L3–L4 | ranked competing hypotheses, dependency-aware blast radius | Guarded edit |
-| L5–L6 | simulation against a shadow workspace, predicted test outcomes | Guarded execute |
-| L7–L8 | multi-step causal search, self-critique, evolutionary evaluation of alternative plans | Sandboxed autonomous |
+| L3–L4 | ranked competing hypotheses, dependency-aware blast radius | + Guarded edit, Guarded execute, Sandboxed autonomous |
+| L5–L6 | predictive simulation — outcomes foreseen without running them | + wider unattended reach |
+| L7–L8 | multi-step causal search, self-critique, evolutionary evaluation of alternative plans | + rung 7, structurally different plans |
 
-The public reference provider sits honestly at L2–L3: it plans, it classes risk, it
-refuses to claim simulation it cannot perform. So the public build gives you a real,
-useful, safe assistant that stops at guarded edits — which is exactly what
-`55_GRANT_COMPATIBILITY` needs, a fully buildable core free of private dependencies. With
-ATOM attached the same product will attempt a two-hour refactor across forty files,
-because now something can simulate it first.
+The public reference provider sits honestly at L3–L5. It plans, it classes risk, and it
+declares what it expects — which, together with the engine's own shadow execution, is
+everything self-correction needs (§5a.6). So the public build is a real, safe assistant
+that **can work unattended**, which is exactly what `55_GRANT_COMPATIBILITY` needs from a
+fully buildable core free of private dependencies. With ATOM attached the same product
+covers far more ground before it has to come back to you: it discards bad plans without
+paying to run them, sees effects the test suite cannot reach, and chooses between
+structurally different approaches.
 
-**The ladder is visible.** The top bar carries the provider name and level. If a mode is
-unavailable, the reason given is "the attached reasoning provider does not do simulation",
-not a greyed-out button.
+**The ladder is visible, and it no longer gates safety.** The top bar carries the provider
+name and level. What a higher level buys is *reach* — how much ground the engine covers per
+round trip to you — never whether it is allowed to check its own work. If something is
+unavailable the reason is stated plainly rather than greyed out.
 
 ### 2.3 ATOM never touches the outside world
 
@@ -411,15 +417,53 @@ can be traced to what caused it.
 | Research per task | 3, allowlisted, queries logged | more than that is circling |
 | Same hypothesis after research | climb immediately | the loop signature |
 | Wall clock | 20 min per stage · 60 per task, extendable | a backstop for hangs, not a quality control |
-| Provider level | **L7–L8 for unattended work** | see below |
+| Provider level | **any — tiers 1 and 2 suffice** | §5a.6 |
 
-**The uncomfortable consequence, stated plainly:** without simulation there is no prediction
-to compare reality against, so "surprise" cannot be defined, and the ladder loses the signal
-that drives it. A provider below L5 would leave only timers and counters — blind autonomy.
-Unattended work therefore requires a provider that can simulate. This is not a commercial
-fence around ATOM; it is what makes the persistence safe. It does, however, make open
-decision 4 heavier than it first appeared: giving the reference provider simulation would
-also give the public build honest unattended work.
+### 5a.6 Simulation is mandatory — and most of it was never the provider's job
+
+*Owner decision, 2026-07-26: **simulation must be there** — otherwise how does it correct
+itself? This settles open decision 4, and corrects an error in the design above.*
+
+Self-correction needs a feedback signal, and the signal is **expected versus actual**. An
+earlier draft of this document put all of simulation behind the `ReasoningProvider`, and
+concluded that unattended work required ATOM. That was wrong, and wrong in an expensive
+direction: it would have made the safety loop a toll gate rather than a quality advantage,
+and left the public build correcting itself blind — the opposite of what `R-001` protects.
+
+Simulation is three tiers, and only the third belongs to a provider:
+
+| Tier | Who does it | What it is | Needs reasoning? |
+|---|---|---|---|
+| **1 · Shadow execution** | **the engine, always** | apply the plan to a copy-on-write workspace, run the targeted tests, capture what actually happened | **none** |
+| **2 · Declared expectation** | **any provider, mandatory** | the plan states what it expects: which tests should pass, which should newly fail, what the diff should touch | almost none |
+| **3 · Predictive simulation** | **ATOM's advantage** | say what will happen *without running it*; anticipate failure modes never yet observed; estimate effects on paths that have no tests; evaluate structurally different plans and choose before spending any time | yes, and a lot |
+
+**Tiers 1 and 2 are all that "surprise" requires**, and every configuration has them. The
+engine owns the shadow workspace and the sandbox already; a plan that cannot say what it
+expects is not a plan, it is a guess with a file list. So the reference provider
+self-corrects perfectly well: it declares an expectation, the engine runs it for real in a
+copy, and any divergence forks to the next hypothesis exactly as described above.
+
+**Tier 3 is where ATOM earns its place**, and it is a better advantage than the one it
+replaces:
+
+- **Speed and cost.** Predicting lets you discard a bad plan *before* paying for the shadow
+  run. On a large repository with a slow suite that is the difference between exploring
+  three approaches and exploring twenty.
+- **Reach beyond the tests.** Tier 1 can only observe what the test suite covers. Predicting
+  the effect on an untested path is reasoning, and there is no mechanical substitute.
+- **Choosing between plans.** Comparing structurally different approaches — rung 7 — needs a
+  model of what each would do. That is causal search, and it is exactly what `L7–L8`
+  describes.
+
+**Revised requirement for unattended work:** tiers 1 and 2, which means **any** provider.
+The reference provider therefore reaches L5 honestly, and the public build gets real
+unattended autonomy. With ATOM the same autonomy becomes faster, cheaper, and willing to
+attempt work whose blast radius the tests alone cannot see.
+
+The maturity table in §2.2 changes accordingly: Sandboxed autonomous is no longer gated at
+L7–L8. What L7–L8 unlocks is not *whether* the engine may work unattended, but **how much
+ground it can cover** before it needs you.
 
 **This will be wrong in places, and that is expected.** The Owner's position is that the
 tests will show where, and the thresholds will move. The numbers above are defaults with
@@ -838,8 +882,13 @@ Named, so the omissions are decisions rather than oversights.
    and is the reason to decide it now rather than discover it later.
 3. **Does CodeN Evolution ship inside the single container, or as a second supervised
    process?** It affects the update path, the rollback story and the OCI image.
-4. **Does the reference provider get simulation?** It would raise the public build to L5 and
-   move the whole product's honest floor upward — and it narrows ATOM's advantage. That is a
-   commercial decision, not a technical one.
+4. ~~**Does the reference provider get simulation?**~~ **Settled 2026-07-26 — see §5a.6.**
+   Yes, and the question exposed an error: most of simulation was never the provider's job.
+   Shadow execution belongs to the **engine** and every configuration has it; the plan's
+   declared expectation is mandatory for **every** provider. Those two are all that
+   self-correction requires, so the public build works unattended and reaches L5 honestly.
+   ATOM's advantage moves to *predicting without running*, reaching effects the tests cannot
+   see, and choosing between structurally different plans — a better advantage than a toll
+   gate on the safety loop would have been.
 5. **Renaming `47_CODEN_ULTRA_PRODUCT_SPEC`** in the master reference, and whether the
    master specification is amended or annotated.

@@ -735,12 +735,12 @@
       "one program, two shells (WebUI + SSH) attaching to the same live session",
       "ATOM is the mandatory reasoning path but never a requirement — reference provider keeps the product fully usable",
       "work data never reaches the internet and never enters product semantics",
-      "autonomy: persistence by design — a surprise forks to the next hypothesis, budget is on novelty not effort, 8-rung escalation ladder, research on an allowlist with engine-built queries; unattended work needs an L7-L8 provider"
+      "autonomy: persistence by design — a surprise forks to the next hypothesis, budget is on novelty not effort, 8-rung escalation ladder, research on an allowlist with engine-built queries; unattended work needs an L7-L8 provider",
+      "simulation is mandatory and mostly NOT the provider job: tier 1 shadow execution belongs to the engine (always on), tier 2 declared expectation is mandatory for every provider, tier 3 predictive simulation is ATOM advantage. Reference provider reaches L5 honestly and the public build works unattended."
     ],
     "open_decisions": [
       "whether the two shells ever diverge",
       "one container or a second supervised process",
-      "does the reference provider get simulation",
       "renaming 47_CODEN_ULTRA_PRODUCT_SPEC"
     ],
     "implemented": false
