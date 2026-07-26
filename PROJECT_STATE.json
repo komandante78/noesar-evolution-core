@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "see git log; a commit cannot contain its own hash — read it with: git -C /mnt/cachec/NOESAR_EVOLUTION rev-parse HEAD",
+  "last_commit": "e2abbc6",
   "last_updated_utc": "2026-07-26",
   "blockers": [
     {
@@ -182,7 +182,7 @@
     {
       "id": "F4W-011",
       "severity": "high",
-      "status": "OPEN - recorded, plan written, not started",
+      "status": "PARTIAL - WP-0 done (c28d8a2): the 46 files are in the repository and the product can now be reported against real acceptance IDs. The measurement itself is still outstanding, and D-0069 records that the instruments do not define how anything is measured.",
       "summary": "The product has never been measured against MASTER PROJECT V4. 46 of its 121 files, including the acceptance matrix, implementation gates, traceability matrix and Owner review checklist, were never brought into the repository. Against that matrix two blockers are open (SEC-003 never tested; OPS-002 covers one platform family of five) and several required features are absent - Workflows, the approval queue, passkeys/OIDC/SAML/SCIM, two of the seven privacy states, compliance packs, the industry module framework, ML-BOM and any WCAG 2.2 AA evidence. Separately, /api/v1/bootstrap advertises Workflows as a feature that does not exist."
     },
     {
@@ -322,7 +322,12 @@
       "summary": "a pooled keep-alive socket already closed by the upstream surfaced as a user-visible stream error with no retry. First hypothesis (idle timing) was tested and refuted; the real signature appeared only after F4-007. Fixed with a single narrowly-scoped retry. SEC-27 and SEC-30 now PASS."
     }
   ],
-  "product_test_suite": "507/507 pass (node --test): 488 before this phase, 19 added (6 role permission surface, 13 WebUI markup structure).",
+  "product_test_suite": {
+    "total": 513,
+    "passing": 513,
+    "failing": 0,
+    "note": "507 -> 513: six added by the SEC-003 regression suite"
+  },
   "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
   "phase_3": {
@@ -701,7 +706,7 @@
     "PUB-002": "PASS",
     "SEC-001": "PASS",
     "SEC-002": "PARTIAL - path traversal verified, no symlink-race suite exists",
-    "SEC-003": "OPEN - blocker - Owner bypass invariants never tested",
+    "SEC-003": "PARTIAL - the forgeable authorization record is fixed and covered by a six-test regression suite (D-0070); the matrix item stays OPEN because six of the seven declared invariants have no enforcement mechanism at all. Must not be marked PASS.",
     "SEC-004": "PARTIAL - signature and anti-rollback implemented, no channel key pinned so the rejection path is not exercisable",
     "RUN-001": "PASS",
     "RUN-002": "PARTIAL - GPU detected, not allocated, inference BLOCKED_NO_LOCAL_MODEL",
@@ -725,7 +730,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "CONTINUARE LA CONVERSAZIONE sul progetto riscritto. Leggere in ordine: /mnt/user/downloads/NOESAR_EVOLUTION/ 00_LEGGIMI -> 02_ATOM -> 13_IL_VERIFICATORE. NON iniziare a costruire. Zero decisioni aperte, ma D-11 (Prova di Sessione) e D-12 (stack) sono state prese da me su delega e vanno confermate.",
+  "next_action": "COSTRUIRE. Istruzione Owner 2026-07-26: si lavora per finire il progetto, da questo repository. Riprendere da docs/WORK_PLAN_V4_ALIGNMENT.md nell ordine WP-1 (blocker SEC-003 residuo + OPS-002) -> WP-2 (Workflows, coda approvazioni) -> WP-3 (WebUI v2, gate Owner) -> WP-4 (Fase 5). PRIMA DI TUTTO leggere D-0069: gli strumenti di misura sono 80 righe e non sono una suite. URGENTE: il fix SEC-003 e nel sorgente e NON e installato, il container vivo serve ancora l endpoint falsificabile; il deploy richiede autorizzazione esplicita dell Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -767,5 +772,33 @@
     "invenzione": "copertura di proiezione: verificare non e una proprieta si/no ma una copertura misurabile",
     "limiti": "nessun modello vero nel circuito; giudice di controllo di superficie e non un LLM; domini sintetici",
     "implementato": false
+  },
+  "wp0_measuring_instruments": {
+    "status": "DONE",
+    "commit": "c28d8a2",
+    "imported": 44,
+    "nested_archives_outside_repository": 2,
+    "tracked_now": "119 of 121",
+    "verification": "package sha256 matches sidecar; internal MANIFEST.sha256 120/120; the 75 pre-existing files confirmed byte-identical; all 119 re-compared after copy",
+    "finding": "the instruments total 80 lines and name what must be true without defining how it is measured - acceptance IDs to report against, not an executable definition of done (D-0069)",
+    "master_gate_note": "IMPLEMENTATION_GATES.yaml records current_gate GATE_0_OWNER_REVIEW: by the master own gate model the Owner has never approved the master specification, and OWNER_REVIEW_CHECKLIST.md is 14 unticked boxes"
+  },
+  "security_fix_pending_deployment": {
+    "id": "SEC-003",
+    "commit": "e2abbc6",
+    "state": "IN SOURCE, NOT DEPLOYED",
+    "live_image": "noesar-evolution:phase4-webui",
+    "consequence": "the running installation on 192.168.178.100:8100 still serves the forgeable /api/v1/coden/authorize endpoint",
+    "required": "an authorised installation phase - do not deploy on initiative"
+  },
+  "atom_blueprint": {
+    "repository": "/mnt/cachec/NOESAR-ATOM-PRIVATE",
+    "visibility": "private, git initialised, NO REMOTE",
+    "commit": "6f17439",
+    "document": "docs/ATOM_IMPLEMENTATION_BLUEPRINT_V1.md",
+    "scope": "L0-L8 with INPUT/OUTPUT/STATE/INVARIANTS/FAILURE MODES/TIMEOUTS/DETERMINISM/AUTHORITY/PERSISTENCE/AUDIT EVENTS/TEST VECTORS per level",
+    "implemented": false,
+    "blocking_dependency": "ReasoningProvider is zero files in the core; ATOM has nothing to attach to. That contract belongs to the public core and is the first line of code.",
+    "boundary": "CLAUDE10.md section 14 binds: FOSS core fully usable without ATOM; nothing from that repository ever enters a public one"
   }
 }

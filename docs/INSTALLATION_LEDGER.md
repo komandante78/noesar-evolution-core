@@ -1000,3 +1000,37 @@ GET /readyz         HTTP 200
 
 No `prune` command was used at any point; every removal named its targets explicitly. No
 container, network or volume belonging to any other project was touched.
+
+## WP-0 and SEC-003 — 2026-07-26
+
+No container was created, started, stopped or removed in this work. The installation
+`noesar-evolution` ran untouched throughout on `noesar-evolution:phase4-webui`
+(`Up 14 hours (healthy)`, uptime 52116 s at close, `/livez` alive). Docker inventory at
+close: 39 containers total, exactly two named `noesar-evolution*` — the installation and
+the single kept rollback `noesar-evolution.rollback-lan-webui-20260725T175916Z` — and the
+networks `noesar-evolution-net`, `noesar-e2e-net`, `noesar-local` (the last belongs to
+NOESAR V3 and was not touched). Nothing to clean up under §5a because nothing transient
+was created.
+
+**WP-0.** `NOESAR_EVOLUTION_MASTER_PROJECT_V4.zip` verified at
+`c8d536f5f7515c0f7e05436009fe677d3de3721f58281e6fa3b9bf959c33528a`, matching the value
+already recorded; extracted to a staging directory outside the repository; internal
+`MANIFEST.sha256` verified **120/120**. The 75 files already in `MASTER_REFERENCE/` were
+confirmed **byte-identical** rather than assumed. 44 files imported, the two nested
+`REFERENCES/*.zip` archives placed in `$ARTIFACT_ROOT/master_spec_nested_archives_<UTC>/`
+with checksums that match their tracked sidecars exactly. All 119 tracked files
+re-compared after the copy: 119 identical, 0 divergent. Backup taken first at
+`BACKUPS/wp0_master_reference_20260726T081821Z/`.
+
+**SEC-003.** Found by writing the test the matrix had always required and nobody had
+written; the requirement turned out to be false rather than merely unproven. Three of five
+attacks landed against the unfixed code. Fixed by recomputing the plan server-side.
+Evidence produced in session: unit suite 507 → **513, 0 failures**; ESLint 147 files,
+**0 errors, 0 warnings, 0 no-undef**; heuristic secret scan (declared heuristic — no
+gitleaks on this host) over the new file set, no matches beyond the test canary
+`test-only-setup-token-not-a-real-secret`; no archive, binary, database or env file
+staged. Detail in `D-0069` and `D-0070`.
+
+**Not deployed.** The fix is in the source tree only. The live installation still runs the
+image built before it and therefore still serves the vulnerable endpoint. Deployment is an
+installation phase and needs the Owner's explicit authorisation.

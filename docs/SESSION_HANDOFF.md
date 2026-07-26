@@ -17,19 +17,77 @@ file and `PROJECT_STATE.json` alone.**
 | Runtime root | `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME` |
 | Updated (UTC) | 2026-07-26 |
 
-> ## ➜ Il progetto è stato riscritto. La prossima azione è esaminarlo insieme.
+> ## ➜ SI COSTRUISCE. Riprendere da `docs/WORK_PLAN_V4_ALIGNMENT.md`.
 >
-> 2026-07-26 — l'Owner ha commissionato la riscrittura completa del progetto e ha chiesto di
-> esaminarla insieme alla riapertura. **Sta in `/mnt/user/downloads/NOESAR_EVOLUTION/`**
-> (10 documenti, in italiano su sua richiesta) con copia in `docs/progetto-italiano/`.
+> Istruzione dell'Owner, 2026-07-26, fine sessione: *«alla nuova sessione si inizia a
+> lavorare per finire il progetto, dal progetto che hai modificato in NOESAR_EVOLUTION»*.
+> Il periodo di sola progettazione è chiuso. **Questa volta si costruisce**, dentro questo
+> repository, misurando contro la specifica master ora presente.
 >
-> **Non iniziare a costruire.** Undici decisioni sono registrate; **una sola è aperta** — lo
-> stack, in `10_DECISIONI.md` sezione D-A.
+> **WP-0 è FATTO** (commit `c28d8a2`). I 46 file mancanti della specifica master sono in
+> `MASTER_REFERENCE/`; il repository ne traccia 119 su 121, i due archivi annidati stanno in
+> `$ARTIFACT_ROOT` per la regola d'igiene §9.33 con checksum che corrispondono ai sidecar.
 >
-> Da leggere per primi: `00_LEGGIMI.md`, poi `02_ATOM.md`. Il resto discende da quei due.
-> L'analisi dei difetti che ha motivato la riscrittura è in
-> `docs/GAP_ANALYSIS_AND_ORIGINALITY_V1.md`.
+> **Ma leggere `D-0069` prima di fidarsi di WP-0.** Gli strumenti di misura sono **80 righe
+> in tutto**: `DATA/acceptance-matrix.yaml` sono 11 test nominati con severità,
+> `IMPLEMENTATION_GATES.yaml` 9 gate, `TRACEABILITY_MATRIX.csv` 14 righe,
+> `OWNER_REVIEW_CHECKLIST.md` 14 caselle non spuntate. Dicono **cosa** deve essere vero, non
+> **come** si misura. WP-0 ha consegnato un vocabolario di ID su cui riportare, **non** una
+> definizione eseguibile di "fatto". Chi riprende non deve trattarli come una suite.
+>
+> **Ordine di ripresa, dal piano:** WP-1 (i due blocker `SEC-003` e `OPS-002`) → WP-2
+> (Workflows e coda di approvazione: il primo è una funzione che `/api/v1/bootstrap`
+> **dichiara già di avere** e non ha) → WP-3 (WebUI v2, gate dell'Owner) → WP-4 (Fase 5).
+>
+> ### La cosa più urgente: un fix di sicurezza è nel sorgente e NON è installato
+>
+> `SEC-003` è stato lavorato in questa sessione e **il container vivo non lo ha**.
+> L'installazione su `192.168.178.100:8100` gira ancora `:phase4-webui`, costruita prima del
+> fix, quindi **l'endpoint falsificabile è ancora servito**. Deployarlo è una fase di
+> installazione e richiede l'autorizzazione esplicita dell'Owner — non farlo di iniziativa.
 
+> ## ➜ SEC-003 — what was found, fixed, and deliberately left open
+>
+> The acceptance matrix calls `SEC-003` *"Owner bypass cannot disable invariants"*, severity
+> **blocker**. Nothing anywhere tested it. Writing the test found the requirement was not
+> merely unproven but **false**.
+>
+> `/api/v1/coden/authorize` read `request.plan` straight from the request body and never
+> recomputed it, so `blocked`, `canonicalPath`, `mode` and `nonBypassableInvariants` were
+> assertions the caller made about itself — and nothing obliged the caller to have called
+> `/api/v1/coden/path-plan` at all. Proven by execution against the unfixed code, three of
+> five attacks landed: a hand-written plan declaring `/etc/…` unblocked received a stored
+> approval; a stripped invariant list was recorded as `[]`; a rewritten `canonicalPath` was
+> recorded as `/etc/passwd`. `coden.authorize` is held by `developer` and `admin` while
+> `coden.owner-bypass` is owner-only, so the reach was two roles below Owner.
+>
+> Fixed in `e2abbc6`: the plan is recomputed from the operands the submission names and only
+> the recomputation is used thereafter; a submitted/computed disagreement is recorded as
+> `coden.plan-mismatch` rather than silently normalised. Regression suite
+> `test/coden-path-authorization.test.mjs`, six tests **including a negative control**.
+> Suite 507 → **513**, 0 failures; ESLint 147 files, 0 errors. Full detail in `D-0070`.
+>
+> **`SEC-003` is NOT closed, and must not be marked PASS.** Seven invariants are declared
+> and **six of them have no enforcement mechanism anywhere in the code** — only a name in a
+> list returned by `createPathPlan`. What is closed is that the authorization record can no
+> longer be forged. The matrix item needs the adversarial suite the plan asks for: one
+> attempt per invariant, from inside Owner Bypass.
+>
+> ## ➜ ATOM — the blueprint exists now, outside this repository
+>
+> The Owner commissioned it on 2026-07-26 with the module tree and the eleven per-level
+> fields specified. It is at **`/mnt/cachec/NOESAR-ATOM-PRIVATE/`** — private, git
+> initialised, **no remote**, commit `6f17439`:
+> `docs/ATOM_IMPLEMENTATION_BLUEPRINT_V1.md` defines L0-L8 with INPUT, OUTPUT, STATE,
+> INVARIANTS, FAILURE MODES, TIMEOUTS, DETERMINISM, AUTHORITY, PERSISTENCE, AUDIT EVENTS and
+> TEST VECTORS for each.
+>
+> **Nothing is implemented; `src/` is an empty skeleton.** And the first step is not in that
+> repository: **`ReasoningProvider` is zero files in the core**, so ATOM has nothing to
+> attach to. That contract is the first line of code and belongs to the **public core**.
+> `CLAUDE10.md` §14 still binds: the FOSS core must stay fully usable without ATOM, and
+> nothing from that repository ever enters a public one.
+>
 > ## ➜ The design conversation that preceded it
 >
 > On 2026-07-26 the Owner commissioned a **design for CodeN Evolution** and said explicitly
