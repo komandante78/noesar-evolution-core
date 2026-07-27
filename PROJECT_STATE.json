@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3cc295b",
-  "last_updated_utc": "2026-07-26",
+  "last_commit": "e615431",
+  "last_updated_utc": "2026-07-27T06:55:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -340,7 +340,7 @@
     "installer_hardening": "100/100",
     "cross_platform_installers": "73/73"
   },
-  "session_closed": "2026-07-25 - phase 4 LAN access gate: the WebUI is reachable at http://192.168.178.100:8100 from any browser on the local network, with no SSH tunnel and no port forwarding. 7 findings, 6 closed. 455/455 unit tests, 100/100 installer checks. The Owner account is still NOT created and CLIENT_BROWSER_TEST is AWAITING_OWNER. Phase 5 NOT started.",
+  "session_closed": "2026-07-27 — interfaccia v3 accettata (D-0117..D-0124). Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
   "phase_3": {
     "image": "noesar-evolution:phase3",
@@ -736,7 +736,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "WP-2: Workflows and the approval queue. /api/v1/bootstrap already advertises Workflows in its feature list while no page, route or engine exists — the same class of unhonoured claim fixed twice in WP-1.",
+  "next_action": "INIZIA IL LAVORO SULLA GRAFICA (D-0118: prima la grafica, poi si costruisce tutto). Primo passo: la struttura — 23→11 destinazioni, barra a scomparsa a tre stati, pannello agganciabile con memoria PER DESTINAZIONE (D-0117). Poi il layer di token, poi palette e temi. Progetto e criteri di accettazione in docs/WEBUI_DESIGN_V3.md; anteprima in docs/design/ANTEPRIMA_WEBUI_V3.html. NON iniziare la fase 1: della fase 0 restano aperti i punti 5 e 6 (traduzione canonica in inglese, emendamenti V4-D001/V4-D002).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1017,5 +1017,50 @@
     "product_ready": false,
     "commit": "c7b7db6"
   },
-  "scope_rule": "REGOLA ZERO (Owner, 2026-07-26): lavorando su NOESAR EVOLUTION esiste SOLO NOESAR EVOLUTION. Nessun altro sistema di questo host si nomina, si cita o si tocca. Tutto fuori da PROJECT_ROOT e in sola lettura; cancellare artefatti di altri progetti e un blocker, non un compito. CodeN Evolution e un prodotto nuovo e non eredita nulla."
+  "scope_rule": "REGOLA ZERO (Owner, 2026-07-26): lavorando su NOESAR EVOLUTION esiste SOLO NOESAR EVOLUTION. Nessun altro sistema di questo host si nomina, si cita o si tocca. Tutto fuori da PROJECT_ROOT e in sola lettura; cancellare artefatti di altri progetti e un blocker, non un compito. CodeN Evolution e un prodotto nuovo e non eredita nulla.",
+  "webui_design_v3": {
+    "status": "IMPIANTO_ACCETTATO_DALL_OWNER — nulla implementato, nulla installato",
+    "date": "2026-07-27",
+    "document": "docs/WEBUI_DESIGN_V3.md",
+    "preview": "docs/design/ANTEPRIMA_WEBUI_V3.html (autonoma, nessuna risorsa esterna)",
+    "normative_reference": "MASTER_PROJECT/07_INTERFACCIA.md",
+    "visual_reference": "docs/design/APPROVED_WEBUI_REFERENCE.png — vincolante su impianto e colore, NON sulle etichette (D-0119)",
+    "measured_gap": {
+      "destinations_today": 23,
+      "destinations_target": 11,
+      "rail_collapse_in_code": "ASSENTE — 0 occorrenze in apps/webui-static/",
+      "panel_dock_in_code": "ASSENTE — 0 occorrenze",
+      "theme_token_layer": "ASSENTE — colori letterali in ~23 KB di CSS",
+      "palette": "diversa dal riferimento vincolante (neon vs estratta dai pixel)"
+    },
+    "decisions_closed": [
+      "D-0117 pannello per destinazione",
+      "D-0118 prima la grafica poi si costruisce",
+      "D-0119 il riferimento vincola impianto e colore non le etichette",
+      "D-0120 undici destinazioni, una sola Impostazioni",
+      "D-0121 sessioni UI-001..UI-012",
+      "D-0122 colore libero con leggibilita garantita UI-020..UI-026",
+      "D-0123 la voce non puo allargare l autorita",
+      "D-0124 le quattro differenze discendono dal motore"
+    ],
+    "acceptance_ids": "UI-001…UI-012 (sessioni) · UI-020…UI-026 (colore) in docs/WEBUI_DESIGN_V3.md",
+    "build_order": "struttura (23→11, barra, pannello) → layer di token → palette e nove temi + selettore libero",
+    "measurement_correction": "indaco #3958c3 come TESTO su #0c1824 = 2,9:1 (sotto soglia). La v2 dichiarava solo 6,2:1 col bianco sopra. Accento pieno e accento testuale sono due token diversi; derivazione automatica in UI-024",
+    "contrast_values": "CALCOLATI in sessione, NON misurati da tools/accessibility-audit.mjs — da rimisurare",
+    "browser_verification": "NON ESEGUITA — nessun browser installato su questo host e la regola 45 vieta di installarlo. Verificate: sintassi (node --check), bilanciamento dei tag, matematica del colore su sei coppie",
+    "open": [
+      "voce: idea disegnata, non pianificata ne stimata (D-0123)",
+      "installazione: nessun deploy, richiede autorizzazione esplicita"
+    ],
+    "implemented": false,
+    "installed": false,
+    "verifications": {
+      "unit": "631/631, 44 suite, 0 falliti",
+      "eslint": "158 file, 0 errori, 0 warning, 0 no-undef",
+      "manifest": "5721/5721, 0 falliti — invariato",
+      "migration_manifest": "CURRENT, 16 migrazioni",
+      "preview": "sintassi JS OK, tag bilanciati, matematica colore su 6 coppie"
+    },
+    "manifest_coverage_note": "MANIFEST.sha256 non copre PROJECT_STATE.json, docs/DECISION_LOG.md, docs/SESSION_HANDOFF.md ne docs/design/ — stessa classe di D-0074. I due file nuovi seguono la convenzione esistente e NON sono stati aggiunti: cambiarla e una decisione dell Owner"
+  }
 }

@@ -10,10 +10,10 @@ da `PROJECT_STATE.json` soltanto.**
 **Ordine esplicito dell'Owner, 2026-07-26.** Lavorando qui, l'unico progetto che esiste è
 **NOESAR EVOLUTION**. Nessun altro sistema di questo host si nomina, si cita, si confronta o si
 tocca — non come riferimento, non come esempio, nemmeno "solo per contesto". Scritta in
-`CLAUDE10.md` §1 e ora anche in cima alla skill, perché veniva letta e poi aggirata.
+`CLAUDE10.md` §1 e in cima alla skill, perché veniva letta e poi aggirata.
 
 **CodeN Evolution è un prodotto nuovo** e non eredita nome, codice, architettura o convenzioni da
-nessun altro. Il nome sbagliato che stava nel prodotto è stato rimosso oggi (vedi sotto).
+nessun altro.
 
 **Tutto ciò che sta fuori da `PROJECT_ROOT` è in sola lettura.** Una richiesta di cancellare
 artefatti di altri progetti è un **blocker**, non un compito.
@@ -29,141 +29,155 @@ nuova decisione dell'Owner.**
 ## ➜ Leggi in quest'ordine
 
 1. `PROJECT_STATE.json` e questo file
-2. **`MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md`** — **il progetto di CodeN Evolution**: le
-   tre malattie misurate, le sei invenzioni, gli oggetti, la memoria, la rete, la sandbox,
-   l'ordine di costruzione e la **matrice di accettazione CE-001…CE-024**
-3. `MASTER_PROJECT/09_PIANO.md` — §1 *dove siamo davvero, misurato*; §3 *quando la fase 1 è finita*
-4. `docs/WORK_PLAN_V5_REWRITE.md`
-5. `MASTER_PROJECT/00_LEGGIMI.md` → poi `01` e `02`
-6. `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md`
+2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia **accettato**, con i criteri di
+   accettazione `UI-001…UI-012` (sessioni) e `UI-020…UI-026` (colore). L'anteprima navigabile è
+   `docs/design/ANTEPRIMA_WEBUI_V3.html`, autonoma: si apre in un browser senza nulla intorno
+3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
+4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` — le tre malattie misurate, le sei invenzioni,
+   la matrice di accettazione `CE-001…CE-024`
+5. `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
+6. `docs/DECISION_LOG.md` (ultime: `D-0117…D-0124`), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE — deciso dall'Owner
 
-> **All'apertura della prossima sessione si parla della GRAFICA DELLA WEBUI, che va cambiata.**
+> **Si comincia dalla GRAFICA. Poi si costruisce tutto** (`D-0118`).
 
-È una conversazione, non un compito già scopato. Materiale utile prima di iniziare:
-`MASTER_PROJECT/07_INTERFACCIA.md` (il riferimento vincolante, la palette estratta dai pixel,
-**undici destinazioni contro le ventitré di oggi**, il banco di lavoro, la striscia di
-approvazione) e `15_…DA_ZERO.md` §12 (la metrica: il revisore deve leggere evidenza, non prosa).
+Non è più una conversazione: l'impianto è **accettato** e i criteri sono scritti. L'ordine dentro
+la grafica è vincolato e non va invertito:
+
+1. **Struttura** — 23 → 11 destinazioni, quindici voci che cambiano rango a sezione dentro
+   l'unica pagina Impostazioni; barra laterale a tre stati su `[` e `]`; pannello contestuale
+   agganciabile/flottante/via con memoria **per destinazione** (`D-0117`).
+2. **Layer di token** — oggi non esiste: i colori sono letterali sparsi in ~23 KB di CSS. Senza
+   questo passo i nove temi e il selettore libero non sono implementabili.
+3. **Palette e temi** — la palette estratta dai pixel, i nove temi, il selettore di colore libero
+   con contrasto misurato e variante testuale derivata (`UI-020…UI-026`).
+
+**Attenzione al costo, già dichiarato:** cambiare rango a quindici voci sposta i selettori di
+tutte le pagine. I controlli in browser e i criteri di accessibilità vanno **rieseguiti**, non
+riletti — e i valori di contrasto in `WEBUI_DESIGN_V3.md` §5 sono **calcolati**, mai passati per
+`tools/accessibility-audit.mjs`.
 
 **Non iniziare la fase 1.** Della fase 0 restano aperti i punti 5 e 6 — traduzione canonica in
 inglese e emendamenti a `V4-D001`/`V4-D002`.
+
+**Rimasto aperto e non pianificato:** la **voce** (`D-0123`). È disegnata nell'anteprima come
+torre di controllo, con il vincolo che non può allargare l'autorità. Serve una decisione
+dell'Owner prima che diventi lavoro.
 
 ---
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-### 1 · Il prodotto dichiarava di contenere un altro prodotto — rimosso
+### 1 · Il divario è stato misurato sul codice, non stimato
 
-Non era un'etichetta: il nome sbagliato stava nella **feature list di `/api/v1/bootstrap`**,
-quindi il prodotto lo *dichiarava di sé stesso*, con un test che certificava la dichiarazione.
-Rinominate insieme la dichiarazione, la sua prova e lo smoke test — 5 occorrenze, 4 file, zero
-residui. **Nessuna dipendenza da un altro prodotto è mai esistita**: nessuna chiamata di rete,
-nessun import, solo il nome. Seminato il nome vecchio → il test fallisce 2/19; ripristinato →
-19/19.
+Prima di disegnare qualsiasi cosa: **23 destinazioni** contro le undici del riferimento
+normativo, **zero** occorrenze di collasso della barra o di aggancio del pannello in
+`apps/webui-static/`, **nessun** layer di token, e una palette diversa da quella del riferimento
+vincolante. Da lì il progetto, non dal gusto.
 
-### 2 · Ricerca, poi il progetto di CodeN Evolution da zero
+### 2 · L'impianto accettato, e due decisioni chiuse dall'Owner
 
-Su richiesta dell'Owner: **prima cercare**, poi progettare, senza copiare nessuno. Il dato che
-decide la strategia — **lo scaffold sposta il punteggio di 10–20 punti a modello invariato** —
-significa che *il prodotto è lo scaffold*. Le tre malattie misurate e le **sei invenzioni** sono
-in `15_CODEN_EVOLUTION_DA_ZERO.md`, con le fonti. In sintesi:
+Undici destinazioni, **una sola** pagina Impostazioni con i menu dentro, e Progetti/Documenti/
+Conoscenza/Agenti come **superfici di lavoro** con le proprie azioni invece che elenchi. L'Owner
+ha chiuso i due punti che erano rimasti aperti: **pannello per destinazione** (`D-0117`) e
+**prima la grafica, poi la costruzione** (`D-0118`).
 
-| | Invenzione |
-|---|---|
-| I | il contesto è una **proiezione ricostruita da stato**, mai un accumulo → il context rot diventa impossibile, l'attribuzione esatta |
-| II | le convenzioni si **inducono dalla storia git** → **profilo di divergenza**, mai un punteggio |
-| III | **l'ombra precede l'autorizzazione**: si promuove un risultato misurato, non si approva un'intenzione |
-| IV | verifica **per ricalcolo**, con la **copertura di proiezione** dichiarata: ciò che non è misurato è detto |
-| V | **a riposo zero strumenti**; effetti dichiarati invece di denylist; installare è un passo autorizzato |
-| VI | **ATOM entra dal contratto** `ReasoningProvider`, e la copertura di proiezione ne **misura** il valore |
+### 3 · Le sessioni, con la conferma su ogni azione
 
-Più le quattro richieste dell'Owner recepite: **ATOM deve funzionare** (dal contratto, misurato,
-e il criterio di "fatto" passa comunque senza — CE-022); **la rete entra come ipotesi da
-falsificare in sandbox**, mai come risposta; **la sandbox è il luogo primario** dell'esecuzione,
-non il recinto; **la memoria è ciò da cui la proiezione attinge**, quindi qualità della memoria =
-qualità del lavoro.
+Cinque distese, riquadro a scorrimento dalla sesta col conteggio dichiarato, archivio in pagina
+propria a **dieci per pagina**, ripristino, selezione multipla con contatore. **Conferma senza
+eccezioni**, che dichiara *che cosa* e *a quante* ed elenca i titoli quando sono più d'una.
+`UI-001…UI-012`. Aggiunta proposta e **togliibile**: l'eliminazione resta recuperabile 30 giorni.
 
-E la **matrice di accettazione CE-001…CE-024** con ID e severità, che **colma il rischio 4**: la
-riscrittura non aveva matrici né tracciabilità, quindi non esisteva un modo controllabile di dire
-"fatto". `D-0107` → `D-0116`.
+### 4 · Il colore lo sceglie la persona, la leggibilità la garantisce il prodotto
 
-### 3 · Tre difetti trovati ESEGUENDO, e la regola che li produceva
+Nove temi **più** un selettore libero. Il contrasto è **misurato mentre si sceglie**; una tinta
+che non regge come testo **non viene rifiutata** — resta l'indicatore e la variante testuale è
+derivata allontanandosi dal fondo fino a 4,5:1. I sette stati semantici non cambiano mai
+significato e portano sempre **glifo + parola**.
 
-**`verify-source.mjs` falliva a ogni giro** e nessuna lettura l'avrebbe visto: il codice è
-corretto e l'intenzione è giusta. Leggeva `migrations.length !== 12` — il conteggio della release
-V0.6.0, **congelato**. Da quando `0013` è atterrata lanciava sempre.
+### 5 · Un errore di misura mio, trovato eseguendo
 
-**La conseguenza è più grave della causa:** `scripts/test.sh` gira sotto `set -eu` con questo come
-**secondo di sette passi**, quindi i **cinque successivi non sono mai stati eseguiti**. Fra questi
-`auth-http-smoke`, che era **rotto a sua volta** — usava lo stesso codice TOTP per login e
-ri-autenticazione, e la difesa contro il replay (corretta) lo rifiutava — e nessuno poteva
-accorgersene.
+Avevo dichiarato che l'indaco del riferimento non rompe il contrasto, sulla base di **un solo**
+calcolo: bianco *sopra* `#3958c3`, 6,2:1. Scrivendo la derivazione automatica ho calcolato anche
+il caso opposto — la stessa tinta usata **come testo** su `#0c1824` — e sta a **2,9:1**, sotto
+soglia esattamente come il viola. Accento *pieno* e accento *testuale* sono due token diversi, e
+la versione precedente li aveva confusi in uno. **La correzione è nel meccanismo, non nella
+tabella.**
 
-Riparata **l'intenzione** (le dodici della V0.6.0 presenti, non riordinate, non rimosse; il totale
-libero di crescere) e riparata **la regola**: `scripts/test.sh` nomina ogni passo e chiude con un
-riepilogo, e **un passo che non può girare è DICHIARATO, mai contato come passato**.
+### 6 · Perché uno dovrebbe sceglierlo — cercato, non inventato
+
+Sei misure pubblicate, con le fonti, in `WEBUI_DESIGN_V3.md` §6: adozione **84%** contro fiducia
+alta **3%**; **66%** «quasi giusto, ma non del tutto»; **38%** dice che rivedere codice generato
+costa *più* che rivedere quello di un collega; **65%** dei fallimenti viene dal contesto che si
+degrada, non dal modello; e il rispetto dei vincoli che scende dal **73% al 33%** fra il turno 5 e
+il turno 16.
+
+La lettura: il collo di bottiglia non è più scrivere, è **fidarsi**. Le quattro differenze del
+prodotto discendono dal motore e l'interfaccia le rende visibili — promuovere un risultato invece
+di autorizzare un'intenzione, la copertura di verifica sempre a schermo, **riavvolgere e
+ramificare** senza riesecuzione (possibile solo perché il contesto è una proiezione da stato), e
+la voce come torre di controllo.
+
+**Limite dichiarato:** quei numeri vengono da terzi e **non sono stati riprodotti qui**.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                    631/631   0 falliti
-scripts/test.sh         3 PASS · 0 FAIL · 4 UNAVAILABLE dichiarati (prima moriva al 2º passo)
+unit                    631/631   0 falliti · 44 suite
 eslint                  158 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST              5721/5721   0 falliti · 0 duplicati
-difetti seminati        5 — ognuno catturato, ogni file ripristinato byte-identico
+MANIFEST              5721/5721   0 falliti (invariato: nessun file coperto è stato toccato)
+migration manifest      CURRENT · 16 migrazioni
+anteprima               sintassi JS OK (node --check) · tag bilanciati (164 div, 161 span)
+matematica colore       6 coppie tinta/fondo eseguite isolate — ha trovato il difetto §5
 ```
 
-**Non eseguibile su questo host, dichiarato e non contato come passato:** i quattro passi Python
-di `scripts/test.sh` (`pg-migrations`, `pg-contract`, `rust-source`, `rust-provenance`).
-`python3` non è installato e la **regola 45 vieta di installarlo**.
+**Nota sul MANIFEST, non un difetto ma va saputo:** non copre `PROJECT_STATE.json`,
+`docs/DECISION_LOG.md`, `docs/SESSION_HANDOFF.md` né `docs/design/` — la stessa classe di
+`D-0074`. I due file nuovi di questa fase seguono la convenzione esistente e **non** sono stati
+aggiunti: cambiarla è una decisione dell'Owner, non una scelta da fare di passaggio.
+
+**Non eseguibile su questo host, dichiarato e non contato come passato:** l'apertura
+dell'anteprima **in un browser reale**. Non ce n'è uno installato, la regola 45 vieta di
+installarlo, e un browser richiederebbe un container fuori da una fase di installazione. Restano
+non eseguiti anche i quattro passi Python di `scripts/test.sh` (`python3` assente, regola 45).
 
 ## ➜ L'installazione — intoccata
 
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
-endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
-schema      state/ai-workspace.json ancora "schemaVersion": 1 — vedi rollback
+container   running · healthy · noesar-evolution:phase4-wp2
+igiene      nessun container creato, avviato o fermato · nessuna rete, nessun volume toccato
+            sopravvivono i due ammessi da §5a: l'installazione e UN solo rollback
 ```
 
-**Nessun container di prodotto è stato creato, avviato o fermato.** Le due riparazioni al
-prodotto (`§1` sopra) sono **nel sorgente e NON installate**: il box vivo dichiara ancora il nome
-sbagliato in `/api/v1/bootstrap`. Il deploy è una fase di installazione e **richiede
-autorizzazione esplicita dell'Owner**.
-
-## ➜ Igiene
-
-Questa fase **non ha creato container transitori**: nessun tag stampato, nessuna rete per-run,
-nessuna rimozione necessaria. Sopravvivono esattamente i due ammessi da §5a — l'installazione e
-**un solo** rollback. Container totali **39 all'apertura e 39 in chiusura**. Reti: solo le due
-stabili (`noesar-evolution-net`, `noesar-e2e-net`); `noesar-local` non è di questo progetto e non
-è stata toccata. Nessun `prune`, in nessuna forma. Inventario in
-`EVIDENCE/docker_inventory_pre_cleanup_20260726T191041Z.txt`.
+**Nessuna riga di prodotto è stata modificata in questa sessione**: il lavoro è tutto in `docs/`.
+Restano nel sorgente e **non installate** le riparazioni delle sessioni precedenti — il box vivo
+dichiara ancora il nome sbagliato in `/api/v1/bootstrap`. Il deploy è una fase di installazione e
+**richiede autorizzazione esplicita dell'Owner**; prima va letta la nota sul costo di rollback
+dello schema (`D-0082`).
 
 ## ➜ Blocker aperti
 
 `B-001` nessun remote GitHub (nessun commit è mai stato pushato) · `B-002` secret scan euristico
 (`detect-secrets` restituisce 0 finding su una chiave AWS letterale) · `B-008` due store di
-identità. **`B-009` chiuso** (PostgreSQL autoritativo per la memoria; la migrazione tocca dati
-vivi e non è ancora eseguita).
+identità.
 
-**Non un blocker ma va detto:** l'Owner ha chiesto di cancellare i file di memoria di altri
-progetti e di conservare credenziali VPS/git in un file. Entrambe **non eseguite**, con la
-ragione data: `/mnt/cachec/NOESAR` non è un repository git, quindi quella cancellazione sarebbe
-**irreversibile**; e la regola 25 vieta qualunque segreto in un artefatto tracciato. Alternativa
-proposta e non ancora autorizzata: archiviare invece di cancellare, e un `.env.example` che
-**nomina** le variabili senza valori.
+**Non un blocker ma va ripetuto:** restano non eseguite, con la ragione data, la cancellazione dei
+file di memoria di altri progetti (irreversibile: quel percorso non è un repository git) e la
+conservazione di credenziali in un file tracciato (regola 25). Alternativa proposta e non ancora
+autorizzata: archiviare invece di cancellare, e un `.env.example` che **nomina** le variabili
+senza valori.
 
 ## ➜ Rollback
 
 ```text
 container    noesar-evolution.rollback-webui-20260726T155330Z     immagine :phase4-webui
 runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB
-sorgente     BACKUPS/coden_rename_20260726T181132Z/               i 4 file del rename
-             BACKUPS/verify_source_fix_20260726T190515Z/          verify-source, auth-smoke,
-                                                                  test.sh, MANIFEST
+questa fase  BACKUPS/webui_design_v3_20260727T065119Z/            stato, handoff, decisioni,
+                                                                  MANIFEST — prima di toccarli
 progetto V4  git c28d8a2 · archivi sigillati ·
              EVIDENCE/v4_removal_recovery_20260726T163433Z.txt
 ```
@@ -173,7 +187,3 @@ parte, poi `docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se
 build attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora
 `"schemaVersion": 1` — va ripristinato anche quello dal backup, o `:phase4-webui` rifiuterà di
 caricare il workspace AI.
-
-## ➜ Commit
-
-`254ed06` il nome · `3cc295b` il progetto da zero e i tre difetti. **Nessuno pushato** (`B-001`).
