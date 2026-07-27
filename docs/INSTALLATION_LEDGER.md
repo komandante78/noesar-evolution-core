@@ -2269,3 +2269,57 @@ non del progetto 37 prima, 37 dopo · reti IDENTICHE · volumi IDENTICI · nessu
 container-sonda del confronto immagine: creato e rimosso nello stesso passo
 noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase (Exited 0)
 ```
+
+## 2026-07-27 · `:phase4-reasoning` — il seam di ragionamento sull'installazione viva
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+Il provider di riferimento gira ora nel prodotto: `GET /api/v1/reasoning` riporta il seam e
+`POST /api/v1/reasoning/plan` lo esercita. È questo che rende `FOSS_CORE_DEPENDS_ON_ATOM = false`
+una proprietà dell'installazione, non di un crate nel repository. Il crate Rust resta il
+**candidato canonico non compilato nell'immagine** — la stessa posizione del daemon di autorità —
+e i due lati rispondono allo **stesso** file di vettori.
+
+### Contenuto dell'immagine confrontato con l'albero PRIMA di toccare l'installazione
+
+`server.mjs`, `reasoning.mjs`, `auth.mjs`, `http-security.mjs` **byte-identici** al repository.
+`apps/webui-static` non ricopiata — questa fase non la tocca — e verificata **ereditata** identica
+(`app.js` stesso digest).
+
+### Sostituzione
+
+```text
+build       docker build --network=none --pull=false   FROM :phase4-healthz
+stop        docker stop -t 60   → "postgres.stopped clean:true" LETTO NEL LOG, non assunto
+backup      BACKUPS/runtime_pre_reasoning_deploy_20260727T163719Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-healthz-20260727T163719Z       preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_reasoning_deploy_*.json):
+            192.168.178.100:8100→8088 · uid 10001 · rootfs read-only · cap-drop ALL
+            · no-new-privileges · tmpfs noexec · 8 GiB · 512 pid · noesar-evolution-net
+            · NOESAR_BIND_SCOPE=lan · healthcheck su /livez
+§5a         rimosso il rollback più vecchio (:phase4-home) CONSERVANDONE l'immagine:
+            due container di progetto, che è quanto la regola ammette
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-reasoning
+endpoint    livez 200 · readyz 200 · metrics 401 · home 401
+            reasoning 401 · reasoning/plan 401 · rotta inesistente 404
+            → i 401 sono cancelli veri, non un catch-all
+B-010       NON regredito: /healthz 200 senza sessione e ZERO dei sette marcatori
+            (reference-node · postgresql · pgvector · releaseChannel · components · 18.4)
+byte serviti server.mjs e reasoning.mjs identici al repository
+```
+
+**Costo di rollback.** Nessuno nuovo: nessuna migrazione, nessun record cambia forma,
+`AI_STATE_VERSION` invariato. Riavviare `noesar-evolution.rollback-healthz-20260727T163719Z`
+riporta l'installazione a prima, perdendo **solo** le due rotte del seam.
+
+**Cosa NON è verificato dal vivo, e va detto.** Le due rotte sono esercitate **con una sessione**
+solo dall'harness (`AUTH_HTTP_SMOKE`), contro un server effimero: §3a `11e` vieta di far girare
+contro questa installazione suite che creano un Owner e mutano dati. Dal vivo è provato che
+esistono, che rispondono e che sono **chiuse** a chi non ha sessione.

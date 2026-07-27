@@ -5748,4 +5748,5 @@ bdc14829381a1d8822358d2e63bc793e4cf5d3687e710ca01a242463f92c18ce  ./services/ref
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
 d872dce4515f2e31dd7cb56f433cda9b50d99ae94b7bab4f1c1f7f284c4d3e37  ./oci/Dockerfile.phase4-home
 0c340c3f882d25514fc3885aab8db4961ad0e17372948855c00291d67ff477b2  ./oci/Dockerfile.phase4-healthz
+bd10553858f12a39f614a30e78010c1b7022a96c409fcf143094ac81c4668eba  oci/Dockerfile.phase4-reasoning
 926e18bb68f741e7681fe12dfb7a43db0c6535aed094514d9a5375118ae0e4c7  rust/crates/noesar-reasoning-reference/tests/conformance.rs
