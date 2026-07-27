@@ -688,3 +688,58 @@ Chromium · i comandi TUI di `UI-050` non esistono.
 - **Nove campi su dodici** della riga di stato non hanno una fonte, e non l'avranno finché non
   esiste il motore. La riga lo dichiara a ogni giro.
 - **Voce** (`D-0123`) e **pannelli staccabili** (`07` §5).
+
+---
+
+# La schermata iniziale — costruita
+
+**Data:** 2026-07-27. Scelta dall'Owner fra le tre cose aperte. Decisioni `D-0161…D-0168`.
+
+## 34. Che cosa esiste ora nel codice
+
+| Criterio | Stato | Dove |
+|---|---|---|
+| `UI-060` sei azioni d'ingresso | **costruito** — tre agiscono, tre dichiarano cosa aspettano | `entryActions()` in `home-overview.mjs`, rese da `renderEntryActions` |
+| `UI-061` dieci azioni rapide come obiettivi | **costruito** — riempiono il campo di scrittura, non spediscono | `QUICK_ACTIONS`, `renderQuickActions` |
+| `UI-062` attivi e programmati insieme, con regola e fuso | **costruito** — un pannello, due gruppi che partizionano | `splitTasks()` in `schedule.js`, `renderTasks` |
+| `UI-063` salute · strumenti · modelli con provenienza | **costruito** — al rango che il ruolo consente | `summariseServices`/`describeTools`/`describeModels` |
+
+**Una rotta nuova, `GET /api/v1/home`.** Assembla la schermata **lato server**, perché ogni blocco
+dipende da cosa quel chiamante può vedere e un browser non può essere incaricato di nascondere
+qualcosa a sé stesso. Un blocco negato torna negato **con il permesso che servirebbe**.
+
+**Un modulo nuovo, `apps/webui-static/schedule.js`.** Aritmetica del tempo, pura e provata senza
+browser: quadrante+fuso → istante, riconoscimento di un valore senza fuso, e il raggruppamento di
+`UI-062`. Sta fuori da `app.js` per la stessa ragione per cui ci sta l'aritmetica del colore.
+
+## 35. Verifiche prodotte, tutte eseguite in sessione
+
+```text
+unit                       734/734   0 falliti · 50 suite        (erano 677)
+guardia di struttura        35/35    0 falliti                   (erano 28)
+accettazione in browser    312/312   0 falliti · browser reale    (erano 291)
+accessibilita WCAG 2.2      27/27    0 falliti · 729 controlli    (erano 725 — vedi D-0167)
+eslint                     170 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                  5737/5737  0 falliti · 0 duplicati
+difetti seminati            19/19    ognuno catturato da esattamente una guardia
+```
+
+**Caccia con gli strumenti reali** (`noesar-debuglab`, avviato e rifermato nella stessa fase):
+`services/…/src` **0 finding**, `test/` **0 finding**, `apps/webui-static` **due** — un
+`Object.assign` su un `Error` appena costruito, preesistente e scartato con la riga alla mano, e un
+`unsafe-formatstring` **mio**, vero e riparato: il valore digitato dall'utente stava in posizione di
+stringa di formato in un `console.warn`, e un input contenente `%s` avrebbe consumato l'argomento
+successivo. `tools/` riporta gli stessi 12 finding di prima in due strumenti Python non toccati da
+questa fase e non eseguibili su questo host.
+
+## 36. Cosa resta aperto dopo la schermata iniziale
+
+- **La superficie della Ricerca** (`UI-080…UI-089`), che richiede **prima** il suo gate
+  (`UI-090…UI-096`). Non toccata.
+- **`UI-050` lato shell** — il TUI non è costruito, `CE-020` resta non soddisfatto.
+- **Tre delle sei azioni d'ingresso** non possono agire finché non esiste l'esecutore. La schermata
+  lo dichiara a ogni giro, e il numero è nel payload.
+- **Nove campi su dodici** della riga di stato del banco restano senza fonte.
+- La **provenienza di chi ha registrato uno strumento** non è sul record: sta nel registro di audit.
+  Portarla sul record sarebbe un cambio di schema, quindi un costo di rollback, per un campo che
+  esiste già altrove.
