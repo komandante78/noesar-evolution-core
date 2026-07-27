@@ -38,6 +38,56 @@ nuova decisione dell'Owner** — e se mai lo si facesse, va reintrodotta **già 
 
 ---
 
+## ➜ APRI LA SESSIONE PONENDO QUESTE DOMANDE — richiesta esplicita dell'Owner (2026-07-27)
+
+> *"nella nuova sessione fammi le domande"*. **Non iniziare a costruire prima delle risposte.**
+> Il punto 4 della fase 0 — «domande dell'Owner» — era da sempre un segnaposto che nessuno aveva
+> mai trasformato in domande vere. Questa è la lista, ricavata dagli item realmente aperti.
+
+**1 · Cosa si costruisce adesso?** Le tre cose aperte, in ordine di dipendenza: **(a)** fase 0
+punto 5, la traduzione canonica in inglese di `MASTER_PROJECT/` — che dipende dalle tue risposte,
+quindi tradurre prima significa tradurre due volte; **(b)** la **Ricerca**, che richiede prima il
+suo gate (vedi domanda 2); **(c)** la **fase 1, la spina dorsale** — `ReasoningProvider`,
+capability token, esecuzione in ombra, esecutore che accetta solo token. È **il lavoro grande**, ed
+è quello che riempirebbe metà delle caselle vuote dell'interfaccia.
+
+**2 · Il gate della Ricerca — la domanda che non è implementativa.** `UI-090` (Critico) dice che il
+gate classifica **intento ed effetto richiesto**, e che **non può essere una denylist testuale**.
+Ma classificare intento ed effetto significa appoggiarsi a `ReasoningProvider`, che è **zero file**.
+Le uscite che vedo sono tre, e la scelta è tua: **(i)** rimandare tutta la Ricerca a dopo la fase 1,
+così il gate nasce sopra qualcosa che esiste; **(ii)** costruire ora un classificatore
+**deterministico e ristretto**, che dichiara apertamente cosa **non** sa classificare invece di
+fingere copertura; **(iii)** emendare `UI-090`. Non procedo per conto mio: una denylist mascherata
+da classificatore sarebbe una falsa garanzia, che è peggio di una lacuna dichiarata.
+
+**3 · `apps/webui-react` — la rimuovo?** `03_ARCHITETTURA` §6 lo chiede (tre file, dodici righe,
+nessun componente), ma la regola 12 vieta la cancellazione e l'unico precedente — `MASTER_REFERENCE/`
+— passò da **un tuo emendamento esplicito a `CLAUDE10.md`**. Serve la stessa cosa, o resta dov'è.
+Per ora il suo `README` dichiara di essere superato (`D-0169`).
+
+**4 · `B-008`, due store d'identità — quale è quello di destinazione?** L'account con cui si entra
+vive in `state/auth.json`, mentre `noesar_identity.users` in PostgreSQL è **vuota**. È una
+migrazione su **dati vivi** e merita una fase propria; non la faccio senza che tu abbia scelto il
+modello di arrivo.
+
+**5 · `B-001` — vuoi che questo repository abbia un remote?** Nessun commit è **mai** stato pushato.
+`gh` non è installato e non posso installarlo (regola 45). O lo installi tu, o crei il repository
+privato a mano e mi dai l'URL, o si continua in locale — che finora ha funzionato.
+
+**6 · Cinque destinazioni dell'interfaccia sono ancora «da decidere»** (`WEBUI_DESIGN_V3` §214-218):
+**tasks** (i compiti *programmati* non hanno posto), **tools**, **security**, **about**,
+**conformità**. Sono scelte di collocazione, non di codice.
+
+**7 · Conformità della conservazione dei dati delle richieste rifiutate.** Hai autorizzato il
+**disegno** (`D-0136`). La verifica rispetto agli obblighi applicabili non è accertabile su questo
+host: va fatta fuori, o accettata esplicitamente come rischio dichiarato.
+
+**8 · TLS.** Il browser **scarta** l'intestazione `Cross-Origin-Opener-Policy` che il server invia,
+perché si è serviti in HTTP semplice su un nome che non è `localhost` — vale anche per
+l'installazione viva in LAN. È una decisione di host e di fase d'installazione, non di codice.
+
+---
+
 ## ➜ LA PROSSIMA AZIONE
 
 > **Il debito aperto è stato ripagato. Non resta lavoro arretrato da recuperare.**

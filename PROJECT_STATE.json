@@ -3,7 +3,7 @@
   "total_phases": 6,
   "current_phase": 4,
   "phase_status": "PHASE_0_OPEN_DEFECTS_REPAIRED_B010_CLOSED_INSTALLED_AND_VERIFIED",
-  "next_phase": "CONVERSAZIONE con l Owner. Il debito aperto e stato ripagato: B-010 chiuso e installato, punto 6 della fase 0 fatto (D-0169), tre controlli orfani riparati e cablati. Restano (a) fase 0 punto 5 - traduzione canonica in inglese, che dipende dal punto 4 ancora in attesa; (b) la Ricerca, che richiede PRIMA il suo gate UI-090..096 e ha una domanda non implementativa: classificare intento ed effetto senza ReasoningProvider; (c) la fase 1, la spina dorsale. Nessuna e iniziata.",
+  "next_phase": "APRIRE LA SESSIONE PONENDO LE OTTO DOMANDE in docs/SESSION_HANDOFF.md (richiesta esplicita dell Owner, 2026-07-27: \"nella nuova sessione fammi le domande\"). NON iniziare a costruire prima delle risposte. Il punto 4 della fase 0 era un segnaposto mai trasformato in domande vere; ora la lista esiste. In sintesi: (1) quale delle tre cose aperte si costruisce; (2) il gate della Ricerca UI-090 chiede di classificare intento ed effetto senza ReasoningProvider - tre uscite possibili, la scelta e dell Owner; (3) si rimuove apps/webui-react (serve un emendamento a CLAUDE10.md); (4) B-008 quale store di identita e quello di destinazione; (5) B-001 si vuole un remote; (6) cinque destinazioni ancora da decidere; (7) conformita della conservazione dati delle richieste rifiutate; (8) TLS.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
