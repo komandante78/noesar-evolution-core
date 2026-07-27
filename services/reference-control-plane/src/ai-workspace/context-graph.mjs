@@ -54,6 +54,7 @@ export class ContextGraph {
       const conversation = {
         id:randomUUID(), projectId, title:String(title).slice(0, 300), mode:normalizedMode,
         providerId, model, createdAt:now(), updatedAt:now(), activeBranchId:null, archived:false,
+        deletedAt:null, purgeAfter:null,
       };
       const branch = { id:randomUUID(), conversationId:conversation.id, name:'main', headId:null, forkedFromMessageId:null, createdAt:now(), updatedAt:now() };
       conversation.activeBranchId = branch.id;
@@ -62,14 +63,172 @@ export class ContextGraph {
     });
   }
 
+  // A session in the bin is gone as far as the rest of the product is concerned: it must
+  // not appear in the chat picker, the workspace bootstrap or anywhere else that offers
+  // somewhere to continue working. Only the Sessions surface knows the bin exists.
   listConversations({ projectId=null } = {}) {
-    return this.store.read().conversations.filter((item) => !item.archived && (!projectId || item.projectId === projectId));
+    return this.store.read().conversations.filter((item) => !item.archived && !item.deletedAt && (!projectId || item.projectId === projectId));
   }
 
   getConversation(conversationId) {
     const state = this.store.read();
     const conversation = findById(state.conversations, conversationId, 'Conversation');
     return { conversation, branches:state.branches.filter((item) => item.conversationId === conversationId) };
+  }
+
+  // --- session lifecycle · UI-001…UI-012 -----------------------------------
+  //
+  // A session is a conversation seen from the operator's side. Three places exist and
+  // they are not the same place: the working list, the archive, and the bin.
+  //
+  // `archive` MOVES (UI-011): the session stays whole and comes back intact. `delete`
+  // sends to a bin that keeps it for thirty days (UI-012) — a workspace's most common
+  // accident is "deleted by mistake", and the protection costs one field. Only the sweep
+  // destroys anything, and only after the declared period has passed.
+
+  /** Days a deleted session survives in the bin before the sweep may destroy it. */
+  static get BIN_RETENTION_DAYS() { return 30; }
+
+  /** The shape the interface lists. Counting messages here keeps the caller from
+   *  needing the message table to render a row. */
+  #sessionSummary(state, conversation) {
+    const messages = state.messages.filter((item) => item.conversationId === conversation.id);
+    const lastActivityAt = messages.reduce(
+      (latest, item) => (item.createdAt > latest ? item.createdAt : latest),
+      conversation.updatedAt ?? conversation.createdAt,
+    );
+    return {
+      id:conversation.id, title:conversation.title, projectId:conversation.projectId,
+      mode:conversation.mode, createdAt:conversation.createdAt, updatedAt:conversation.updatedAt,
+      messageCount:messages.length, lastActivityAt,
+      archived:Boolean(conversation.archived),
+      deletedAt:conversation.deletedAt ?? null,
+      purgeAfter:conversation.purgeAfter ?? null,
+    };
+  }
+
+  /** True while the bin still owes this session its thirty days. An entry past its date
+   *  is treated as gone by every read, so nothing can be listed or restored after the
+   *  period the confirmation promised — whether or not the sweep has run yet. */
+  #inBin(conversation, at) {
+    if (!conversation.deletedAt) return false;
+    const until = Date.parse(conversation.purgeAfter ?? 0);
+    return Number.isFinite(until) && until > at;
+  }
+
+  /**
+   * One page of sessions in one of the three places.
+   *
+   * The range is returned rather than left to the caller to compute: `UI-005` requires
+   * the page to state "11–20 of 31", and a range computed twice is a range that can
+   * disagree with itself.
+   */
+  listSessions({ projectId=null, place='active', page=1, pageSize=10, at=Date.now() } = {}) {
+    if (!['active','archived','bin'].includes(place)) {
+      throw Object.assign(new Error('place must be "active", "archived" or "bin".'), { status:400 });
+    }
+    const state = this.store.read();
+    const belongs = (item) => !projectId || item.projectId === projectId;
+    const matches = (item) => {
+      if (place === 'bin') return this.#inBin(item, at);
+      if (item.deletedAt) return false;
+      return place === 'archived' ? Boolean(item.archived) : !item.archived;
+    };
+    const all = state.conversations.filter((item) => belongs(item) && matches(item))
+      .map((item) => this.#sessionSummary(state, item))
+      .sort((left, right) => (left.lastActivityAt < right.lastActivityAt ? 1 : -1));
+    const size = Math.min(Math.max(Number(pageSize) || 10, 1), 100);
+    const pageCount = Math.max(Math.ceil(all.length / size), 1);
+    const current = Math.min(Math.max(Number(page) || 1, 1), pageCount);
+    const offset = (current - 1) * size;
+    const items = all.slice(offset, offset + size);
+    return {
+      place, items, total:all.length, page:current, pageSize:size, pageCount,
+      from:all.length ? offset + 1 : 0, to:offset + items.length,
+      binRetentionDays:ContextGraph.BIN_RETENTION_DAYS,
+    };
+  }
+
+  /** Archive moves a session out of the working list and back again. Nothing is lost:
+   *  the messages, branches and artifacts are untouched. */
+  archiveSession(conversationId, { archived=true, at=Date.now() } = {}) {
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      if (this.#inBin(conversation, at) || conversation.deletedAt) {
+        throw Object.assign(new Error('A deleted session must be restored before it can be archived.'), { status:409 });
+      }
+      conversation.archived = Boolean(archived);
+      conversation.updatedAt = new Date(at).toISOString();
+      return this.#sessionSummary(state, conversation);
+    });
+  }
+
+  /** Delete sends to the bin and states when it expires. It does not destroy. */
+  binSession(conversationId, { at=Date.now() } = {}) {
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      if (conversation.deletedAt) return this.#sessionSummary(state, conversation);
+      conversation.deletedAt = new Date(at).toISOString();
+      conversation.purgeAfter = new Date(at + ContextGraph.BIN_RETENTION_DAYS * 86_400_000).toISOString();
+      conversation.updatedAt = conversation.deletedAt;
+      return this.#sessionSummary(state, conversation);
+    });
+  }
+
+  /** Out of the bin, or out of the archive — both are the same verb to the operator and
+   *  both put the session back where work happens. */
+  restoreSession(conversationId, { at=Date.now() } = {}) {
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      if (conversation.deletedAt && !this.#inBin(conversation, at)) {
+        throw Object.assign(new Error('This session passed its bin retention period and can no longer be restored.'), { status:410 });
+      }
+      conversation.deletedAt = null; conversation.purgeAfter = null; conversation.archived = false;
+      conversation.updatedAt = new Date(at).toISOString();
+      return this.#sessionSummary(state, conversation);
+    });
+  }
+
+  /**
+   * Destroys a session for good, with its branches and messages.
+   *
+   * Memories and artifacts are not destroyed with it unless they were scoped to this
+   * session alone: they belong to the project. What is destroyed is the *reference* —
+   * a `conversationId` pointing at a session that no longer exists is a dangling claim
+   * of provenance, which is the same class of defect as a schema nobody reads.
+   */
+  purgeSession(conversationId) {
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      const counts = { conversations:1, branches:0, messages:0, memories:0 };
+      const before = { branches:state.branches.length, messages:state.messages.length, memories:state.memories.length };
+      state.branches = state.branches.filter((item) => item.conversationId !== conversationId);
+      state.messages = state.messages.filter((item) => item.conversationId !== conversationId);
+      state.memories = state.memories.filter((item) => !(item.scope === 'conversation' && item.conversationId === conversationId));
+      counts.branches = before.branches - state.branches.length;
+      counts.messages = before.messages - state.messages.length;
+      counts.memories = before.memories - state.memories.length;
+      for (const collection of ['memories','artifacts']) {
+        for (const item of state[collection]) if (item.conversationId === conversationId) item.conversationId = null;
+      }
+      state.conversations = state.conversations.filter((item) => item.id !== conversationId);
+      return { purged:true, id:conversation.id, counts };
+    });
+  }
+
+  /** The sweep. Only this destroys binned sessions, and only those whose declared date
+   *  has passed. It is called from the retention path, never from a read. */
+  purgeExpiredSessions({ at=Date.now() } = {}) {
+    const state = this.store.read();
+    const expired = state.conversations
+      .filter((item) => item.deletedAt && !this.#inBin(item, at))
+      .map((item) => item.id);
+    const counts = { conversations:0, branches:0, messages:0, memories:0 };
+    for (const id of expired) {
+      const result = this.purgeSession(id);
+      for (const key of Object.keys(counts)) counts[key] += result.counts[key] ?? 0;
+    }
+    return { purged:expired.length, ids:expired, counts };
   }
 
   addMessage({ conversationId, branchId, role, content, parentIds=null, metadata={}, citations=[], status='complete' }) {

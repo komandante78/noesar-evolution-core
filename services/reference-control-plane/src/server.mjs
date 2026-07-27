@@ -31,6 +31,7 @@ import { WorkspaceService } from './ai-workspace/workspace-service.mjs';
 import { AgentService } from './ai-workspace/agent-service.mjs';
 import { WorkflowService } from './ai-workspace/workflow-service.mjs';
 import { ApprovalQueue } from './approval-queue.mjs';
+import { ClosureRegister, ProductMetric } from './product-metric.mjs';
 import { ChatOrchestrator } from './ai-workspace/chat-orchestrator.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
 import { ToolExecutor } from './ai-workspace/tool-executor.mjs';
@@ -224,6 +225,11 @@ const updateManager = new UpdateManager({
 // The approval queue reads the three subsystems that own approvals and owns none itself,
 // so it is constructed last — after the update manager it reads from.
 const approvalQueue = new ApprovalQueue({ workflowService, agentService, aiStore, updateManager, ledger });
+// The product's own metric and the closure register. Both read and write the AI store, so
+// they are constructed with it and with nothing else: the metric has no opinion about who
+// decided, and the closure register has no opinion about what a run is.
+const productMetric = new ProductMetric({ store:aiStore });
+const closureRegister = new ClosureRegister({ store:aiStore, ledger });
 registerWatchdogSubjects(watchdog, {
   workspace, webRoot, dataStore:aiStore, auditLedger:ledger, logger,
   providerGateway, updateManager, agentService, toolExecutor, hardware,
@@ -594,6 +600,24 @@ const server = createServer(async (req, res) => {
       ledger.append({ actor:authenticated.user.id, action:'coden.path-plan', result:plan.blocked ? 'blocked':'planned', details:{ canonicalPath:plan.canonicalPath, risk:plan.risk, mode:plan.mode } });
       return json(res, plan.blocked ? 403 : 200, plan);
     }
+    // Live authority — UI-035 names "live authority tokens" as a field of the workbench's
+    // own status line. The authorisations were written and never read back, so the field
+    // had no source and the operator had no way to see what was still granted. Expiry is
+    // computed here rather than stored as a flag: a flag would have to be swept, and an
+    // unswept flag is a grant that looks live after it has lapsed.
+    if (req.method === 'GET' && url.pathname === '/api/v1/coden/authorisations') {
+      const authenticated = requireSession(req, res, 'coden.plan'); if (!authenticated) return;
+      const at = Date.now();
+      const live = store.read().approvals
+        .filter((item) => Date.parse(item.expiresAt ?? 0) > at)
+        .map((item) => ({
+          id:item.id, canonicalPath:item.canonicalPath, operation:item.operation,
+          mode:item.mode, consentScope:item.consentScope, createdAt:item.createdAt,
+          expiresAt:item.expiresAt, secondsRemaining:Math.round((Date.parse(item.expiresAt) - at) / 1000),
+        }))
+        .sort((left, right) => (left.expiresAt < right.expiresAt ? -1 : 1));
+      return json(res, 200, { live, count:live.length });
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/coden/authorize') {
       const authenticated = requireSession(req, res, 'coden.authorize');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
@@ -687,6 +711,48 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/v1/conversations') {
       const authenticated=requireSession(req,res,'workspace.write'); if(!authenticated||!requireCsrf(req,res,authenticated))return;
       return json(res,201,contextGraph.createConversation(await body(req)));
+    }
+    // --- sessions · UI-001…UI-012 -------------------------------------------
+    // The same conversations, seen from the operator's side: a working list, an archive,
+    // and a bin that keeps a deleted session for its declared retention. Paging is done
+    // here rather than in the browser because the range shown on the page ("11–20 of 31")
+    // must come from the same count that decided the slice.
+    if (req.method === 'GET' && url.pathname === '/api/v1/sessions') {
+      const authenticated=requireSession(req,res,'workspace.read'); if(!authenticated)return;
+      return json(res,200,contextGraph.listSessions({
+        projectId:url.searchParams.get('projectId'),
+        place:url.searchParams.get('place')??'active',
+        page:Number(url.searchParams.get('page')??1),
+        pageSize:Number(url.searchParams.get('pageSize')??10),
+      }));
+    }
+    // One verb, any number of sessions. The interface offers a single delete button for a
+    // multiple selection (UI-007), and a per-id loop in the browser would leave a partly
+    // applied selection behind on the first failure with nothing saying which half moved.
+    if (req.method === 'POST' && url.pathname === '/api/v1/sessions/actions') {
+      const authenticated=requireSession(req,res,'workspace.write'); if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const request=await body(req);
+      const action=String(request.action??'');
+      if(!['archive','unarchive','bin','restore','purge'].includes(action)){
+        return json(res,400,{error:'action must be archive, unarchive, bin, restore or purge.',requestId});
+      }
+      const ids=[...new Set((Array.isArray(request.ids)?request.ids:[]).map(String))];
+      if(!ids.length) return json(res,400,{error:'At least one session id is required.',requestId});
+      if(ids.length>200) return json(res,413,{error:'At most 200 sessions may be moved at once.',requestId});
+      const applied=[];const refused=[];
+      for(const id of ids){
+        try{
+          if(action==='archive')applied.push(contextGraph.archiveSession(id,{archived:true}));
+          else if(action==='unarchive')applied.push(contextGraph.archiveSession(id,{archived:false}));
+          else if(action==='bin')applied.push(contextGraph.binSession(id));
+          else if(action==='restore')applied.push(contextGraph.restoreSession(id));
+          else applied.push(contextGraph.purgeSession(id));
+        }catch(error){refused.push({id,status:Number(error.status??500),reason:error.message});}
+      }
+      ledger.append({actor:authenticated.user.id,action:`session.${action}`,result:refused.length?'partial':'success',details:{requested:ids.length,applied:applied.length,refused:refused.length}});
+      // A partly applied batch answers 207: reporting 200 would hide the refusals behind a
+      // success, and reporting 500 would hide the sessions that did move.
+      return json(res,refused.length?(applied.length?207:400):200,{action,applied,refused});
     }
     match=url.pathname.match(/^\/api\/v1\/conversations\/([^/]+)$/);
     if(match&&req.method==='GET'){
@@ -961,14 +1027,48 @@ const server = createServer(async (req, res) => {
     if(match&&req.method==='POST'){
       const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;
       const request=await body(req);
-      return json(res,200,await approvalQueue.decide(decodeURIComponent(match[1]),{
+      const itemId=decodeURIComponent(match[1]);
+      // Read the item BEFORE deciding: once decided it leaves the queue, and with it the
+      // instant it became ready. UI-070 measures from that instant, so it is captured
+      // here rather than reconstructed afterwards from something that looks like it.
+      const pending=approvalQueue.list().find((item)=>item.id===itemId)??null;
+      const outcome=await approvalQueue.decide(itemId,{
         decision:request.decision,
         reason:request.reason??null,
         actorId:authenticated.user.id,
         // A staged update is Owner-only. The queue refuses it without this, and the check
         // is made here from the session rather than taken from the request body.
         isOwner:authenticated.user.role==='owner',
+      });
+      // Recorded for approve AND reject (UI-072). Only a decision that actually succeeded
+      // is recorded: the call above throws otherwise, so a refused decision never becomes
+      // review time somebody supposedly spent.
+      let review=null;
+      if(pending?.requestedAt){
+        review=productMetric.record({
+          itemId,kind:pending.kind,projectId:pending.projectId??null,
+          readyAt:pending.requestedAt,decision:request.decision,actorId:authenticated.user.id,
+        });
+      }
+      return json(res,200,{...outcome,review});
+    }
+    // The product's metric: human review time per decided change, rejections included.
+    if(req.method==='GET'&&url.pathname==='/api/v1/metrics/review-time'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,productMetric.summary({
+        projectId:url.searchParams.get('projectId'),
+        windowDays:Number(url.searchParams.get('windowDays')??30),
       }));
+    }
+    // Closures — stage 16, and the NOT DONE box that cannot be silently empty (UI-036).
+    if(req.method==='GET'&&url.pathname==='/api/v1/closures'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      return json(res,200,{closures:closureRegister.list({projectId:url.searchParams.get('projectId')})});
+    }
+    if(req.method==='POST'&&url.pathname==='/api/v1/closures'){
+      const authenticated=requireSession(req,res,'workspace.write');if(!authenticated||!requireCsrf(req,res,authenticated))return;
+      const request=await body(req);
+      return json(res,201,closureRegister.record({...request,actorId:authenticated.user.id}));
     }
 
     if(req.method==='GET'&&url.pathname==='/api/v1/data/export'){

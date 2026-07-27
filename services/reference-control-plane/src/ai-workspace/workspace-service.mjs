@@ -192,7 +192,12 @@ export class WorkspaceService {
   }
   applyRetention({at=Date.now()}={}) {
     const state=this.store.read();const cutoff=new Date(at-state.settings.retentionDays*86400000).toISOString();
-    return this.purge({before:cutoff});
+    // The bin sweep rides on the retention path rather than on a read: a session past its
+    // declared bin date is already invisible and already unrestorable, so destroying it is
+    // bookkeeping, and bookkeeping does not belong in a GET.
+    const bin=this.graph?.purgeExpiredSessions?.({at})??{purged:0,counts:{}};
+    const purged=this.purge({before:cutoff});
+    return {...purged,expiredSessions:bin.purged,expiredSessionCounts:bin.counts};
   }
   importUserData(bundle,{ replace=false }={}) {
     if (!bundle?.data || bundle.data.schemaVersion!==1) throw error('Invalid export bundle.');

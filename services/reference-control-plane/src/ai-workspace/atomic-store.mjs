@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const AI_STATE_VERSION = 2;
+export const AI_STATE_VERSION = 3;
 
 // Every collection the current version requires. Adding a name here is a schema change
 // and needs a migration below — a state file written before the name existed does not
@@ -10,7 +10,7 @@ export const AI_STATE_VERSION = 2;
 const REQUIRED_COLLECTIONS = Object.freeze([
   'projects','conversations','messages','branches','memories','artifacts','sources',
   'knowledgeChunks','providerProfiles','tools','agents','agentRuns','tasks',
-  'workflows','workflowRuns',
+  'workflows','workflowRuns','reviewSamples','closures',
 ]);
 
 export function defaultAiState() {
@@ -31,6 +31,8 @@ export function defaultAiState() {
     tasks: [],
     workflows: [],
     workflowRuns: [],
+    reviewSamples: [],
+    closures: [],
     settings: {
       defaultProviderId: null,
       externalEgressDefault: 'deny',
@@ -60,6 +62,25 @@ function validateState(state) {
 const MIGRATIONS = Object.freeze({
   // 1 -> 2: workflows and their runs (WP-2). Purely additive: two empty collections.
   1: (state) => ({ ...state, schemaVersion: 2, workflows: state.workflows ?? [], workflowRuns: state.workflowRuns ?? [] }),
+  // 2 -> 3: the review-time samples behind the product metric (UI-070…UI-072), the
+  // closures that carry the NOT DONE box (UI-036), and the two fields a session needs to
+  // be archivable and binnable (UI-011, UI-012).
+  //
+  // The collection is additive; the conversation fields are not, quite: a record written
+  // before this version has neither, and `conversation.deletedAt` reading `undefined`
+  // would make a session look alive to one check and dead to another depending on which
+  // operator was used. Filling them in here means every record answers the same way.
+  2: (state) => ({
+    ...state,
+    schemaVersion: 3,
+    reviewSamples: state.reviewSamples ?? [],
+    closures: state.closures ?? [],
+    conversations: (state.conversations ?? []).map((item) => ({
+      ...item,
+      deletedAt: item.deletedAt ?? null,
+      purgeAfter: item.purgeAfter ?? null,
+    })),
+  }),
 });
 
 export function migrateAiState(input) {

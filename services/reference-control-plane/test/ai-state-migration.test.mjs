@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // The AI workspace state migration — WP-2 raised `AI_STATE_VERSION` from 1 to 2 to add
-// `workflows` and `workflowRuns`.
+// `workflows` and `workflowRuns`; the missing interface parts raised it from 2 to 3 to add
+// `reviewSamples` (UI-070…UI-072) and to backfill the two fields a session needs to be
+// archivable and binnable (UI-011, UI-012).
 //
 // This test exists because of a defect this project has already found and paid for: PostgreSQL
 // migration 0012 could never be applied to any cluster, which was itself the proof that the
@@ -38,16 +40,40 @@ function versionOneState() {
 }
 
 describe('the AI workspace state migrates forward', () => {
-  test('the current version is 2 and the default state carries the new collections', () => {
-    assert.equal(AI_STATE_VERSION, 2);
+  test('the current version is 3 and the default state carries the new collections', () => {
+    assert.equal(AI_STATE_VERSION, 3);
     const fresh = defaultAiState();
     assert.deepEqual(fresh.workflows, []);
     assert.deepEqual(fresh.workflowRuns, []);
+    assert.deepEqual(fresh.reviewSamples, []);
+  });
+
+  test('a version-2 state gains the review samples and the session fields', () => {
+    const version2 = { ...versionOneState(), schemaVersion:2, workflows:[], workflowRuns:[] };
+    version2.conversations.push({ id:'c-1', title:'Written before the bin existed', archived:false });
+    const migrated = migrateAiState(version2);
+
+    assert.equal(migrated.schemaVersion, 3);
+    assert.deepEqual(migrated.reviewSamples, []);
+    // The backfill is the point: a record written before these fields existed must answer
+    // the same way as one written after, or `deletedAt` reads `undefined` and a session
+    // looks alive to one operator and dead to another.
+    assert.equal(migrated.conversations[0].deletedAt, null);
+    assert.equal(migrated.conversations[0].purgeAfter, null);
+    assert.equal(migrated.conversations[0].title, 'Written before the bin existed');
+  });
+
+  test('the chain runs 1 to 3 in one read, because the installed file is still version 1', () => {
+    const migrated = migrateAiState(versionOneState());
+    assert.equal(migrated.schemaVersion, 3);
+    assert.deepEqual(migrated.workflows, []);
+    assert.deepEqual(migrated.reviewSamples, []);
+    assert.equal(migrated.projects[0].id, 'project-1');
   });
 
   test('a version-1 state is upgraded rather than refused', () => {
     const migrated = migrateAiState(versionOneState());
-    assert.equal(migrated.schemaVersion, 2);
+    assert.equal(migrated.schemaVersion, 3);
     assert.deepEqual(migrated.workflows, []);
     assert.deepEqual(migrated.workflowRuns, []);
   });
@@ -64,7 +90,7 @@ describe('the AI workspace state migrates forward', () => {
   test('an already-current state is returned unchanged', () => {
     const current = defaultAiState();
     const migrated = migrateAiState(current);
-    assert.equal(migrated.schemaVersion, 2);
+    assert.equal(migrated.schemaVersion, 3);
     assert.deepEqual(migrated, current);
   });
 
@@ -92,7 +118,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     writeFileSync(path, original, { encoding: 'utf8', mode: 0o600 });
 
     const read = store.read();
-    assert.equal(read.schemaVersion, 2, 'the installed file must load, not throw');
+    assert.equal(read.schemaVersion, 3, 'the installed file must load, not throw');
     assert.equal(read.projects.length, 1);
 
     // Reading is not writing: the file on disk is still exactly what the running product
@@ -100,7 +126,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     assert.equal(readFileSync(path, 'utf8'), original);
   });
 
-  test('the first write after a migration persists version 2 and keeps the data', () => {
+  test('the first write after a migration persists version 3 and keeps the data', () => {
     const directory = mkdtempSync(join(tmpdir(), 'noesar-ai-migration-write-'));
     const path = join(directory, 'state/ai-workspace.json');
     const store = new AtomicJsonStore(path);
@@ -109,7 +135,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     store.transact((state) => { state.workflows.push({ id: 'workflow-1', name: 'First workflow' }); });
 
     const persisted = JSON.parse(readFileSync(path, 'utf8'));
-    assert.equal(persisted.schemaVersion, 2);
+    assert.equal(persisted.schemaVersion, 3);
     assert.equal(persisted.workflows.length, 1);
     assert.equal(persisted.projects.length, 1, 'the pre-existing project must still be there');
     assert.equal(persisted.tasks[0].title, 'Existing task');
