@@ -568,6 +568,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "noesar-capability"
+version = "0.6.0"
+dependencies = [
+ "hex",
+ "hmac",
+ "noesar-reasoning",
+ "serde",
+ "sha2",
+ "subtle",
+]
+
+[[package]]
 name = "noesar-contracts"
 version = "0.6.0"
 dependencies = [

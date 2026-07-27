@@ -2565,3 +2565,25 @@ MANIFEST 5751, 0 mismatch. The vector count guard caught my own miscount (16 vs 
 and the rest do not — harmless to `sha256sum -c`, and rewriting them is a whole-file diff for
 no behavioural gain. `tools/accessibility-audit.mjs` needs puppeteer and is a **separate
 driver** of the browser harness (`NOESAR_E2E_DRIVER`), not part of its default run.
+
+## D-0180 · Capability tokens — a manifest is a request, the engine issues — 2026-07-27
+**Decision.** `rust/crates/noesar-capability`: `CapabilityRequest` is inert, `CapabilityToken`
+comes only out of `TokenMinter::mint`, and `mint` accepts only an `AuthorizedPlan` — a type
+with no constructor other than an approval. Step 3 of phase 1.
+**Why.** `03_ARCHITETTURA.md` §4 forbids an adapter granting itself a permission. Enforced by
+types rather than convention: a token is bound to one step and **cannot name a path that step
+does not**; a step not declared destructive cannot mint delete or execute; a step reaching
+outside the workspace mints nothing; a capability may not outlive the approval it descends
+from, or revoking the approval would leave live grants behind it.
+**Rejected.** Reading the clock inside the crate: an expiry that depends on ambient time
+cannot be tested at the instant it lapses. Time is a parameter, and the boundary itself is
+tested, not a second past it.
+**Evidence.** 14/14 offline; workspace 17 binaries, **52 passed**, 0 failed. Three seeded
+defects — path-widening check, MAC check, destructive check — each took down exactly one test
+and nothing else. A token edited after issue stops verifying; a token from another engine is
+unknown, not merely invalid; comparison is constant-time.
+**Reversal cost.** None — nothing depends on this crate yet.
+**Status.** Applied, **not wired and not installed**: no product code calls it. The executor
+that accepts nothing but a token is step 5 and does not exist, so today the rule "the engine
+changes nothing except by executing an authorised Plan" is enforced *by this crate* and not
+yet *by the product*.

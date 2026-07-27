@@ -351,7 +351,7 @@
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
-    "rust_workspace": "16 binari, 38 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
+    "rust_workspace": "17 binari, 52 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
     "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)",
     "provenance": "11/11 (misurato 2026-07-27, erano 6 — 5 nuovi sulla firma)",
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
@@ -756,7 +756,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "FASE 1: passi 1, 2 e il cablaggio FATTI e INSTALLATI (:phase4-reasoning, D-0175 D-0178 D-0179). Il contratto, il provider di riferimento e le due rotte girano sullinstallazione viva; i due lati rispondono allo STESSO file conformance/reasoning-vectors.json. PROSSIMO PASSO: 09_PIANO passo 3 — i CAPABILITY TOKEN e il motore che li conia da un Piano autorizzato; poi esecuzione in ombra (4), esecutore che accetta solo token (5), registro eventi (6), comprensione minima del repository (7). Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173).",
+  "next_action": "FASE 1: passi 1, 2, 3 fatti. Contratto (D-0175), provider di riferimento (D-0178), seam installato (D-0179, :phase4-reasoning), capability token (D-0180). I token NON sono ancora cablati nel prodotto: lesecutore che accetta solo token e il passo 5. PROSSIMO: 09_PIANO passo 4 — esecuzione in ombra (copia copy-on-write del workspace, test mirati, confronto atteso/reale); poi passo 5 esecutore a soli token, passo 6 registro eventi, passo 7 comprensione minima del repository. Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
