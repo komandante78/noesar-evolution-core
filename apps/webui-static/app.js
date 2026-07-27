@@ -94,31 +94,65 @@ function authError(message=''){$('#authError').textContent=message;}
 // no view could be linked to. The hash is now the source of truth.
 // Only routes that have a real, wired page. Adding a name here before its page loads
 // data turns a 404 into something worse: a blank panel that looks like a broken app.
-const ROUTES=new Set(['home','chat','projects','tasks','documents','agents','workflows','approvals','tools','knowledge','memory','providers','models','coden','hardware','settings','security','users','health','updates','logs','backups','about']);
-// What a route needs before it is worth offering at all. `role` mirrors the routes the
+// TWELVE destinations, down from twenty-three. A destination is a place you decide to go
+// to; everything else is a section you arrive at. The fifteen entries that used to sit in
+// the sidebar did not disappear — they changed rank and live inside the single Settings
+// destination, or inside the working surface that actually uses them.
+const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','knowledge','agents','workflows','models','research','settings']);
+// The Settings destination's own menu: menu inside the menu, in three groups. The order
+// here is the order rendered, and it is the source of truth for which section a hash may
+// name — the markup is checked against it at boot rather than being trusted.
+const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','models-hardware','storage','audit','health','updates'];
+// Which section a bare "#/settings" lands on. Deliberately NOT the first entry in the
+// menu: that entry is Sessions, which is ranked and not built, and a destination whose
+// landing surface says "not built" reads as a broken product rather than an honest one.
+// The landing is the first section that actually does something; the menu order is the
+// design's and is unchanged. One line to reverse if the Owner prefers menu order.
+const DEFAULT_SECTION='language';
+// Where a demoted page went. Every address that used to work still works: a deep link, a
+// bookmark or an old note lands on the section that now owns it instead of on a 404.
+// Removing a page from the sidebar is a change of rank, not a change of address.
+const LEGACY_ROUTES={
+  tasks:'home',tools:'coden',memory:'knowledge',
+  approvals:'settings/audit',providers:'settings/privacy',hardware:'settings/models-hardware',
+  users:'settings/people',security:'settings/security',health:'settings/health',
+  logs:'settings/health',updates:'settings/updates',backups:'settings/storage',
+  about:'settings/about',
+};
+// What a page needs before it is worth offering at all. `role` mirrors the routes the
 // server guards with requireOwner — a literal role check, not a permission — and
 // `permission` is tested against the set the server itself reports for this account,
-// so the two cannot drift apart. A route absent from this table is open to any signed-in
+// so the two cannot drift apart. An entry absent from this table is open to any signed-in
 // session. None of this is enforcement: every request is still checked by the server.
-const ROUTE_ACCESS={
-  users:{permission:'user.manage'},
-  backups:{permission:'data.manage'},
+// The gates moved with the pages they guard: they are now section gates, and losing one
+// in the move would have turned a restructure into a privilege escalation.
+const ROUTE_ACCESS={};
+const SECTION_ACCESS={
+  people:{permission:'user.manage'},
+  storage:{permission:'data.manage'},
   health:{role:'owner'},
   updates:{role:'owner'},
-  logs:{role:'owner'},
 };
-function may(view){
-  const rule=ROUTE_ACCESS[view];
+function allows(rule){
   if(!rule)return true;
   if(rule.role&&currentUser?.role!==rule.role)return false;
   if(rule.permission&&!currentPermissions.includes(rule.permission))return false;
   return true;
 }
-function viewFromHash(){
+function may(view){return allows(ROUTE_ACCESS[view]);}
+function maySection(section){return allows(SECTION_ACCESS[section]);}
+// The hash carries two segments now: the destination, and — for Settings only — the
+// section inside it. Anything else is normalised away before it is used.
+function routeFromHash(){
   const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
-  return raw||'home';
+  const [first='',second='']=raw.split('/').filter(Boolean);
+  if(!first)return{view:'home',section:''};
+  const legacy=LEGACY_ROUTES[first];
+  if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv,section:ls,redirected:true};}
+  return{view:first,section:second};
 }
-function activate(view,{updateHash=true}={}){
+function viewFromHash(){return routeFromHash().view;}
+function activate(view,{updateHash=true,section=''}={}){
   const known=ROUTES.has(view)&&document.querySelector(`#view-${view}`);
   // A page the account may not reach is shown as access-denied, not as a panel that
   // sits on "Loading…" while every one of its fetches answers 403.
@@ -128,14 +162,50 @@ function activate(view,{updateHash=true}={}){
   else if(!permitted)renderAccessDenied(view);
   $$('.nav').forEach((node)=>node.classList.toggle('active',node.dataset.view===view));
   $$('.view').forEach((node)=>node.classList.toggle('active',node.id===`view-${target}`));
+  let activeSection='';
+  if(target==='settings')activeSection=activateSection(section);
+  // Sections belong to Settings alone. Leaving the destination clears them, otherwise a
+  // section would still be marked active behind a page that no longer contains it.
+  else $$('.settings-section').forEach((node)=>node.classList.remove('active'));
   // The address keeps naming what was asked for. Rewriting it to #/access-denied would
   // make a reload land on a route that does not exist, turning a 403 into a 404.
-  if(updateHash&&viewFromHash()!==(known?view:target))location.hash=`#/${known?view:target}`;
-  const heading=document.querySelector(`#view-${target} h1`);
+  const want=known?(target==='settings'&&activeSection?`${view}/${activeSection}`:view):target;
+  const currentHash=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
+  if(updateHash&&currentHash!==want)location.hash=`#/${want}`;
+  const scope=activeSection?document.querySelector(`.settings-section[data-section="${activeSection}"]`):document.querySelector(`#view-${target}`);
+  const heading=(scope&&scope.querySelector('h1,h2.page-title'))||document.querySelector(`#view-${target} h1`);
   document.title=heading?`${heading.textContent.trim()} · NOESAR Evolution`:'NOESAR Evolution';
   // Announce the change for assistive technology, which does not observe a class flip.
   const live=$('#routeAnnouncer');if(live)live.textContent=`${heading?heading.textContent.trim():target} view`;
+  applyPanelRank(view);
   if(permitted&&typeof VIEW_LOADERS[view]==='function')VIEW_LOADERS[view]();
+  // A section this account may not open must not fetch. Running the loader anyway fired
+  // four requests that all answered 403 for a page the person was being refused — the
+  // gate would have been enforced on screen and abandoned on the wire.
+  if(activeSection&&maySection(activeSection)&&typeof SECTION_LOADERS[activeSection]==='function')SECTION_LOADERS[activeSection]();
+}
+// Returns the section actually shown, which is not always the one asked for: an unknown
+// name falls back to the first, and one this account may not open renders as denied
+// rather than as a section whose every fetch answers 403.
+function activateSection(requested){
+  const wanted=SETTINGS_SECTIONS.includes(requested)?requested:DEFAULT_SECTION;
+  const permitted=maySection(wanted);
+  const shown=permitted?wanted:'';
+  $$('.settings-section').forEach((node)=>node.classList.toggle('active',node.dataset.section===shown));
+  $$('.settings-nav').forEach((node)=>{
+    node.classList.toggle('active',node.dataset.section===wanted);
+    node.setAttribute('aria-current',node.dataset.section===wanted?'page':'false');
+  });
+  const denial=$('#settingsDenied');
+  if(denial){
+    denial.classList.toggle('hidden',permitted);
+    if(!permitted){
+      const rule=SECTION_ACCESS[wanted]??{};
+      const requirement=rule.role?`the ${rule.role} role`:rule.permission?`the "${rule.permission}" permission`:'a permission you do not hold';
+      denial.textContent=`"${wanted}" requires ${requirement}. You are signed in as ${currentUser?.role??'an unknown role'}.`;
+    }
+  }
+  return wanted;
 }
 function renderNotFound(view){
   const panel=$('#view-not-found');if(!panel)return;
@@ -149,19 +219,127 @@ function renderAccessDenied(view){
   slot.textContent=`"${view}" requires ${requirement}. You are signed in as ${currentUser?.role??'an unknown role'}.`;
 }
 // Nav entries for pages this account cannot open are removed rather than shown and
-// rejected. Recomputed on sign-in, because the role is not known before then.
+// rejected. Recomputed on sign-in, because the role is not known before then. The same
+// now applies one level down: a Settings section the account cannot open is removed from
+// the Settings menu, so demoting a page did not turn its gate into decoration.
 function applyNavAccess(){
   $$('.nav').forEach((button)=>{
     const view=button.dataset.view;
     button.hidden=Boolean(view)&&!may(view);
   });
+  $$('.settings-nav').forEach((button)=>{
+    const section=button.dataset.section;
+    button.hidden=Boolean(section)&&!maySection(section);
+  });
 }
 // Populated further down, once each section's loader is defined. A view with no
 // loader is static markup and needs no fetch.
 const VIEW_LOADERS={};
+// Sections carry the loaders their pages carried before the demotion. A page that used to
+// fetch on activation must still fetch on activation, or a demoted page becomes a panel
+// that is permanently on "Loading…".
+const SECTION_LOADERS={};
+function goToHash(){
+  const {view,section,redirected}=routeFromHash();
+  // A legacy address is rewritten so the bar shows where you actually are — otherwise a
+  // reload would keep resolving the old name and the redirect would be invisible.
+  activate(view,{updateHash:Boolean(redirected),section});
+}
 function initRouter(){
-  window.addEventListener('hashchange',()=>activate(viewFromHash(),{updateHash:false}));
-  activate(viewFromHash(),{updateHash:false});
+  window.addEventListener('hashchange',goToHash);
+  goToHash();
+  initSidebarRank();
+  initContextPanelRank();
+  initSettingsMenu();
+}
+// --- rank of the sidebar: full · icons · away -------------------------------
+// `[` collapses one step and `]` expands one step. The choice is remembered, and a visible
+// control in the top bar cycles the same three states: a keyboard shortcut is the fast
+// path, never the only path — a sidebar that can only be brought back by knowing a key is
+// a sidebar a mouse user has lost.
+const SIDEBAR_RANKS=['hidden','icons','full'];
+const SIDEBAR_KEY='noesar.sidebar.rank';
+function readSidebarRank(){
+  try{const stored=localStorage.getItem(SIDEBAR_KEY);return SIDEBAR_RANKS.includes(stored)?stored:'full';}catch{return 'full';}
+}
+function applySidebarRank(rank){
+  const shell=$('#appShell');if(!shell)return;
+  shell.dataset.sidebar=rank;
+  const control=$('#sidebarRank');
+  if(control){
+    control.setAttribute('aria-expanded',String(rank==='full'));
+    const label=$('#sidebarRankLabel');if(label)label.textContent=`Sidebar: ${rank}`;
+  }
+  // In icon rank the label is hidden visually but stays in the accessible name, so a
+  // screen reader still hears "Projects" rather than a glyph with no name.
+  try{localStorage.setItem(SIDEBAR_KEY,rank);}catch{}
+}
+function stepSidebarRank(direction){
+  const current=$('#appShell')?.dataset.sidebar??'full';
+  const index=Math.max(0,SIDEBAR_RANKS.indexOf(current));
+  applySidebarRank(SIDEBAR_RANKS[Math.min(SIDEBAR_RANKS.length-1,Math.max(0,index+direction))]);
+}
+// A shortcut that fires while someone is typing a "[" into a message is a defect, not a
+// shortcut. Anything that takes text keeps its keystroke.
+function isTyping(target){
+  if(!target)return false;
+  if(target.isContentEditable)return true;
+  return ['INPUT','TEXTAREA','SELECT'].includes(target.tagName);
+}
+function initSidebarRank(){
+  applySidebarRank(readSidebarRank());
+  $('#sidebarRank')?.addEventListener('click',()=>{
+    const current=$('#appShell')?.dataset.sidebar??'full';
+    applySidebarRank(SIDEBAR_RANKS[(SIDEBAR_RANKS.indexOf(current)+1)%SIDEBAR_RANKS.length]);
+  });
+  window.addEventListener('keydown',(event)=>{
+    if(event.ctrlKey||event.metaKey||event.altKey||isTyping(event.target))return;
+    if(event.key==='[')stepSidebarRank(-1);
+    else if(event.key===']')stepSidebarRank(1);
+  });
+}
+// --- rank of the context panel: docked · floating · away ---------------------
+// Remembered PER DESTINATION. The panel is not equally wanted everywhere, and one global
+// setting means every destination is wrong for someone: docking it for the workbench used
+// to mean docking it on Home too.
+const PANEL_RANKS=['docked','floating','hidden'];
+const PANEL_KEY='noesar.panel.rank';
+let panelRanks={};
+let currentPanelView='home';
+function readPanelRanks(){
+  try{const parsed=JSON.parse(localStorage.getItem(PANEL_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
+}
+function applyPanelRank(view){
+  currentPanelView=view;
+  const shell=$('#appShell');if(!shell)return;
+  const rank=PANEL_RANKS.includes(panelRanks[view])?panelRanks[view]:'docked';
+  shell.dataset.panel=rank;
+  const control=$('#panelRank');
+  if(control){
+    control.setAttribute('aria-expanded',String(rank!=='hidden'));
+    const label=$('#panelRankLabel');if(label)label.textContent=`Panel: ${rank}`;
+  }
+  $$('[data-panel-rank]').forEach((button)=>button.setAttribute('aria-pressed',String(button.dataset.panelRank===rank)));
+  const title=$('#contextPanelTitle');
+  if(title){const nav=$$('.nav').find((node)=>node.dataset.view===view);title.textContent=nav?`Context · ${nav.textContent.replace('not built','').trim()}`:'Context';}
+}
+function setPanelRank(rank){
+  if(!PANEL_RANKS.includes(rank))return;
+  panelRanks={...panelRanks,[currentPanelView]:rank};
+  try{localStorage.setItem(PANEL_KEY,JSON.stringify(panelRanks));}catch{}
+  applyPanelRank(currentPanelView);
+}
+function initContextPanelRank(){
+  panelRanks=readPanelRanks();
+  $$('[data-panel-rank]').forEach((button)=>button.addEventListener('click',()=>setPanelRank(button.dataset.panelRank)));
+  $('#panelRank')?.addEventListener('click',()=>{
+    const current=$('#appShell')?.dataset.panel??'docked';
+    setPanelRank(PANEL_RANKS[(PANEL_RANKS.indexOf(current)+1)%PANEL_RANKS.length]);
+  });
+  applyPanelRank(viewFromHash());
+}
+function initSettingsMenu(){
+  $$('.settings-nav').forEach((button)=>button.addEventListener('click',()=>activate('settings',{section:button.dataset.section})));
 }
 function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>item.id,selected=null}={}){return `<option value="">${escapeHtml(empty)}</option>${items.map((item)=>`<option value="${escapeHtml(value(item))}" ${value(item)===selected?'selected':''}>${escapeHtml(label(item))}</option>`).join('')}`;}
 async function initializeAuth(){const status=await api('/api/v1/auth/status');if(!status.initialized){$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';showOnly('#setupForm');return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
@@ -170,7 +348,7 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and
   // re-activate the requested route now that we know who is signed in.
   applyNavAccess();
-  activate(viewFromHash(),{updateHash:false});
+  goToHash();
   // The approval strip is permanent, so it is filled on sign-in rather than only when the
   // Approvals page is opened — a strip that says nothing until you visit the page it links
   // to cannot do the one job it exists for.
@@ -180,7 +358,18 @@ $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
 $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login/mfa',{method:'POST',body:JSON.stringify({challenge:loginChallenge,totpCode:$('#loginTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 $('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
-$$('.nav').forEach((button)=>button.addEventListener('click',()=>activate(button.dataset.view)));$$('[data-view-link]').forEach((button)=>button.addEventListener('click',()=>activate(button.dataset.viewLink)));$$('[data-start-mode]').forEach((button)=>button.addEventListener('click',()=>{setMode(button.dataset.startMode);activate('chat');}));
+// One entry point for every in-app link, so a link written as "settings/audit" and a link
+// written with a name that has since been demoted both land in the same place. In-page
+// links were the easiest thing to leave pointing at a page that no longer exists.
+function navigate(spec){
+  if(!spec)return;
+  const raw=String(spec).trim().toLowerCase();
+  const [first,second='']=raw.split('/').filter(Boolean);
+  const legacy=LEGACY_ROUTES[first];
+  if(legacy){const [lv,ls='']=legacy.split('/');activate(lv,{section:ls});return;}
+  activate(first,{section:second});
+}
+$$('.nav').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.view)));$$('[data-view-link]').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.viewLink)));$$('[data-start-mode]').forEach((button)=>button.addEventListener('click',()=>{setMode(button.dataset.startMode);activate('chat');}));
 function setMode(mode){currentMode=mode;$$('[data-chat-mode]').forEach((button)=>button.classList.toggle('selected',button.dataset.chatMode===mode));}
 $$('[data-chat-mode]').forEach((button)=>button.addEventListener('click',()=>setMode(button.dataset.chatMode)));
 // The banner asserts a privacy guarantee, so it must never assert one it has not just
@@ -696,7 +885,7 @@ $('#mfaConfirmForm').addEventListener('submit',(event)=>{
       mfaReplacement=null;
       badge($('#mfaReplaceState'),'Replaced','on');
       showRecoveryCodes($('#recoveryCodesBox'),result.recoveryCodes??[],'Recovery codes for your new authenticator');
-      activate('security');
+      navigate('security');
       toast(`Authenticator replaced. ${result.revokedSessions??0} other session(s) signed out.`,{kind:'success'});
       await loadSecurity();
     }catch(error){reportError(error,'Confirm authenticator replacement');}
@@ -1230,16 +1419,20 @@ if(refreshApprovalsButton)refreshApprovalsButton.addEventListener('click',()=>{r
 // entry mean something: `activate()` calls the loader for the view being opened.
 Object.assign(VIEW_LOADERS,{
   workflows:loadWorkflows,
-  approvals:refreshApprovals,
   coden:loadCoden,
-  settings:loadSettings,
+});
+// The loaders of the demoted pages, keyed by the section that now owns them. "Health and
+// logs" is one section holding two former pages, so it runs both: merging two entries in
+// the menu must not silently drop one of their fetches.
+Object.assign(SECTION_LOADERS,{
+  language:loadSettings,
   security:loadSecurity,
-  users:loadUsers,
-  health:loadHealth,
+  people:loadUsers,
+  health:()=>{loadHealth();loadLogs();},
   updates:loadUpdates,
-  logs:loadLogs,
-  backups:loadBackups,
+  storage:loadBackups,
   about:loadAbout,
+  audit:refreshApprovals,
 });
 
 initI18n();

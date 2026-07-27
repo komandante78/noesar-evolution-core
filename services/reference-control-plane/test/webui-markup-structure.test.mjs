@@ -27,6 +27,29 @@ const html = readFileSync(INDEX, 'utf8');
 /** Elements that must nest. Void elements are excluded by construction. */
 const PAIRED = ['section', 'form', 'main', 'aside', 'nav', 'article', 'header', 'footer'];
 
+/** The twelve destinations, in sidebar order. A destination is a place you decide to go
+ *  to; everything else is a section you arrive at. */
+const DESTINATIONS = [
+  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+  'agents', 'workflows', 'models', 'research', 'settings',
+];
+/** The single Settings destination's own menu — menu inside the menu, in three groups. */
+const SETTINGS_SECTIONS = [
+  'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
+  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
+];
+/** Pages that changed rank. Their markup must still exist somewhere in the document. */
+const DEMOTED = [
+  'view-tasks', 'view-tools', 'view-memory', 'view-approvals', 'view-providers',
+  'view-hardware', 'view-users', 'view-security', 'view-health', 'view-logs',
+  'view-updates', 'view-backups', 'view-about',
+];
+/** Names that used to route and no longer do. Each must have a forwarding address. */
+const RETIRED_ROUTES = [
+  'tasks', 'tools', 'memory', 'approvals', 'providers', 'hardware', 'users',
+  'security', 'health', 'logs', 'updates', 'backups', 'about',
+];
+
 describe('webui markup structure', () => {
   for (const tag of PAIRED) {
     test(`<${tag}> tags are balanced`, () => {
@@ -51,7 +74,11 @@ describe('webui markup structure', () => {
       if (isView) viewDepths.push({ id, depth });
       depth += 1;
     }
-    assert.ok(viewDepths.length >= 20, `expected the full set of views, found ${viewDepths.length}`);
+    // Twelve destinations plus the two error pages. The number is asserted exactly rather
+    // than as a floor: the point of the restructure is that the count came DOWN, and a
+    // floor cannot notice a destination quietly reappearing.
+    assert.equal(viewDepths.length, DESTINATIONS.length + 2,
+      `expected ${DESTINATIONS.length} destinations + not-found + access-denied, found ${viewDepths.length}`);
     const baseline = viewDepths[0].depth;
     const nested = viewDepths.filter((entry) => entry.depth !== baseline);
     assert.deepEqual(nested, [], `views nested below the others: ${nested.map((e) => `${e.id}@${e.depth}`).join(', ')}`);
@@ -84,9 +111,83 @@ describe('webui markup structure', () => {
 
   test('every nav target has a matching view section', () => {
     const targets = [...html.matchAll(/data-view="([^"]+)"/g)].map((match) => match[1]);
-    assert.ok(targets.length >= 20, `expected the full nav, found ${targets.length}`);
+    assert.deepEqual(targets, DESTINATIONS, 'the sidebar is not the twelve declared destinations');
     for (const target of targets) {
       assert.ok(html.includes(`id="view-${target}"`), `nav entry "${target}" has no #view-${target}`);
+    }
+  });
+
+  // --- the demotion, checked in both directions ------------------------------
+  //
+  // Changing rank is not the same as deleting. Fifteen entries left the sidebar; every one
+  // of them still has to exist somewhere and still has to be reachable by the address it
+  // answered on before. Nothing here would notice a page that merely LOOKS present, which
+  // is why the browser suite walks the same list on a running installation — but a page
+  // deleted outright, or an address left pointing at nothing, is caught here for free.
+  test('every Settings section sits inside the Settings destination', () => {
+    const sections = [...html.matchAll(/class="settings-section"[^>]*data-section="([^"]+)"/g)].map((m) => m[1]);
+    assert.equal(sections.length, SETTINGS_SECTIONS.length, `expected ${SETTINGS_SECTIONS.length} sections, found ${sections.length}`);
+    assert.deepEqual([...sections].sort(), [...SETTINGS_SECTIONS].sort(), 'the sections are not the declared set');
+
+    // Containment is checked by NESTING, not by position in the file.
+    //
+    // The first version of this check sliced the document between #view-settings and
+    // #view-not-found and asked whether each section appeared in that text. A section
+    // moved OUT of #view-settings but left sitting between the two still passed — it was
+    // testing document order, which is not the property that matters. A section outside
+    // its destination is display:none-controlled by a class no page clears, so it would
+    // render on top of an unrelated page. Found by seeding exactly that defect and
+    // watching the check stay green.
+    const tokens = [...html.matchAll(/<section\b([^>]*)>|<\/section>/g)];
+    let depth = 0;
+    let settingsDepth = null;
+    const escaped = [];
+    for (const token of tokens) {
+      if (token[0] === '</section>') {
+        depth -= 1;
+        if (settingsDepth !== null && depth === settingsDepth) settingsDepth = null;
+        continue;
+      }
+      const attributes = token[1] ?? '';
+      if (/id="view-settings"/.test(attributes)) settingsDepth = depth;
+      else if (/class="settings-section"/.test(attributes)) {
+        const key = attributes.match(/data-section="([^"]+)"/)?.[1] ?? '(unnamed)';
+        if (settingsDepth === null || depth <= settingsDepth) escaped.push(key);
+      }
+      depth += 1;
+    }
+    assert.deepEqual(escaped, [],
+      `sections outside #view-settings, which would render on a page that does not contain them: ${escaped.join(', ')}`);
+  });
+
+  test('every Settings section has a menu entry and every entry a section', () => {
+    const menu = [...html.matchAll(/class="settings-nav[^"]*"[^>]*data-section="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual([...menu].sort(), [...SETTINGS_SECTIONS].sort(), 'menu and sections disagree');
+    const groups = [...html.matchAll(/class="settings-group">([^<]+)</g)].map((m) => m[1].trim());
+    assert.equal(groups.length, 3, `expected three groups, found ${groups.length}: ${groups.join(' | ')}`);
+  });
+
+  test('no demoted page was deleted rather than demoted', () => {
+    for (const id of DEMOTED) {
+      assert.ok(html.includes(`id="${id}"`), `${id} is gone: a change of rank must not delete a page`);
+    }
+  });
+
+  test('every address a demoted page answered on still resolves', () => {
+    const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
+    const legacy = app.match(/const LEGACY_ROUTES=\{([\s\S]*?)\};/)?.[1] ?? '';
+    assert.ok(legacy.length > 0, 'app.js declares no legacy route map');
+    const routes = app.match(/const ROUTES=new Set\(\[([^\]]+)\]\)/)?.[1] ?? '';
+    const sections = app.match(/const SETTINGS_SECTIONS=\[([^\]]+)\]/)?.[1] ?? '';
+    for (const name of RETIRED_ROUTES) {
+      assert.ok(new RegExp(`\\b${name}:'`).test(legacy),
+        `"${name}" left the sidebar with no forwarding address: an old link or bookmark now 404s`);
+    }
+    // And the forwarding addresses must themselves be real.
+    for (const [, target] of legacy.matchAll(/:'([^']+)'/g)) {
+      const [view, section] = target.split('/');
+      assert.ok(routes.includes(`'${view}'`), `legacy target "${target}" points at a destination that is not a route`);
+      if (section) assert.ok(sections.includes(`'${section}'`), `legacy target "${target}" points at a section that does not exist`);
     }
   });
 
