@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e615431",
-  "last_updated_utc": "2026-07-27T07:45:00Z",
+  "last_updated_utc": "2026-07-27T08:00:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -340,7 +340,7 @@
     "installer_hardening": "100/100",
     "cross_platform_installers": "73/73"
   },
-  "session_closed": "2026-07-27 — interfaccia v3 accettata (D-0117..D-0124). Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
+  "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
   "phase_3": {
     "image": "noesar-evolution:phase3",
@@ -1113,5 +1113,11 @@
     "safety_gate": "tre esiti (procedi/chiedi/rifiuta), due porte (prima dell uscita e sul contenuto che rientra), nessuna denylist testuale (coerente con D-0111), si rifiuta l effetto non l argomento, la categoria e nominata",
     "non_bypassable": "sfruttamento di minori — nessun ruolo puo modificarla, Owner compreso",
     "declared_as_proposal": "la conservazione del testo delle richieste rifiutate NON e una conformita accertata: va confermata con l Owner e verificata rispetto agli obblighi applicabili"
-  }
+  },
+  "webui_design_owner_authorised": {
+    "date": "2026-07-27",
+    "scope": "il DISEGNO, non la conformita",
+    "note": "D-0136 — la verifica rispetto agli obblighi applicabili sulla conservazione dei dati delle richieste rifiutate NON e stata fatta e non e accertabile su questo host. Resta aperta prima che quella parte diventi codice in produzione."
+  },
+  "destinations": 12
 }

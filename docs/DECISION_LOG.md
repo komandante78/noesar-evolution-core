@@ -1787,3 +1787,26 @@ undici era il numero che veniva dal riferimento normativo, e ogni aggiunta futur
 stesso attrito — altrimenti si torna alle ventitré una voce alla volta.
 
 **Nulla implementato, nulla installato.**
+
+---
+
+## D-0136 · L'Owner autorizza il disegno — e cosa resta comunque non accertato — 2026-07-27
+
+**Contesto.** Chiusura della fase di progettazione dell'interfaccia. L'Owner ha dato
+l'autorizzazione esplicita sull'ultimo punto che era stato sollevato come proposta, e ha
+dichiarato il disegno completo.
+
+| ID | Decisione |
+|---|---|
+| `D-0136` | **La conservazione del testo delle richieste rifiutate è autorizzata dall'Owner così com'è disegnata** (`docs/WEBUI_DESIGN_V3.md` §20): evento, categoria e impronta nel ledger per tutte le categorie; testo in chiaro **solo** per la categoria più grave, con accesso ristretto |
+
+**Ciò che l'autorizzazione NON copre, e va detto.** L'Owner ha autorizzato il **disegno**, non la
+**conformità**. La verifica rispetto agli obblighi applicabili — conservazione, minimizzazione,
+base giuridica, segnalazione — **non è stata fatta** e non è accertabile qui. Resta un item aperto
+prima che quella parte diventi codice in produzione, e trattare l'autorizzazione dell'Owner come
+un accertamento di conformità sarebbe esattamente la falsa dichiarazione che questo progetto
+elimina altrove.
+
+**Stato del disegno alla chiusura.** Completo e coerente: `docs/WEBUI_DESIGN_V3.md` §1-21, criteri
+`UI-001…UI-096`, decisioni `D-0117…D-0136`, anteprima `docs/design/ANTEPRIMA_WEBUI_V5.html`.
+**Nulla implementato, nulla installato.**
