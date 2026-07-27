@@ -2248,3 +2248,124 @@ verificavo il fuso del container. Non ha letto né scritto nulla e non ha toccat
 violazione della regola così come è scritta, e viene registrata invece di essere lasciata passare.
 Il dato che cercavo è stato poi ottenuto dalla copia di backup dello stato, che è dentro
 `PROJECT_ROOT` e non richiede alcun accesso al container.
+
+### D-0169 · `V4-D001` e `V4-D002` sono emendati — l'atto di governo, non il codice
+
+`GAP-F`, punto 6 della fase 0. Il registro delle decisioni diceva **Approvato** su due voci che il
+prodotto non rispetta, e **nulla registrava quale dei due dovesse muoversi**. Non era la scelta a
+essere sbagliata: era il silenzio. Un progetto che lascia registro e codice in contraddizione
+smette di sapere cosa ha deciso, e ogni sessione successiva è libera di "correggere" nella
+direzione che preferisce.
+
+`D-12` di `MASTER_PROJECT/10_DECISIONI.md` ha scelto l'**opzione B** su autorizzazione dell'Owner —
+la decisione si muove verso il codice. Questa voce **la esegue**, che è la parte mai fatta:
+
+- **`V4-D001`** (*Rust è il linguaggio primario di autorità per i servizi core privilegiati*) è
+  **emendato**, non ignorato. Rust resta obbligatorio per **ciò che decide e ciò che confina** —
+  supervisore, kernel di sicurezza, capability token, applicazione dei percorsi, sandbox, verifica
+  di firme e aggiornamenti, indicizzazione pesante. JavaScript regge **ciò che propone e presenta**.
+  Il confine è la tabella di `MASTER_PROJECT/03_ARCHITETTURA.md` §6, che è normativa.
+- **`V4-D002`** (*TypeScript/React è lo stack canonico della WebUI*) è **emendato**: la WebUI resta
+  **JavaScript semplice**. È costruita, è testata, funziona; React non aggiunge nulla che questa
+  interfaccia richieda (`11_REVISIONE_E_CORREZIONI.md` §223).
+
+**Perché l'emendamento non è una resa.** La parte che deve reggere quando tutto il resto è
+compromesso deve essere piccola, tipizzata e separata. Oggi non è nessuna delle tre — ma non serve
+riscrivere le 24.563 righe che funzionano per ottenerlo: serve scrivere **il poco che decide**, che
+è anche il poco che **oggi non esiste**. Nasce in Rust dalla prima riga invece di dover essere
+portato. L'emendamento non allenta `V4-D001`: lo **restringe a dove è vero**, e lo rende esigibile.
+
+**Dove vivono gli originali.** Le due voci `Approvato` stavano in `MASTER_REFERENCE/`, rimossa
+dall'albero con `D-0097` / `CLAUDE10.md` §1a. Restano negli archivi sigillati in
+`/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`, i cui SHA-256 sono registrati. Questa voce è quindi
+il **record superstite** dell'emendamento: se il V4 venisse mai reintrodotto come metro, va
+reintrodotto **già emendato**, non nella sua forma congelata.
+
+**`apps/webui-react` NON è stata rimossa, ed è deliberato.** `03_ARCHITETTURA.md` §6 ne chiede la
+rimozione — tre file, dodici righe, nessun componente: schema morto applicato al codice, che sembra
+una scelta tecnologica in corso e non lo è. Ma `CLAUDE10.md` regola 12 vieta la cancellazione, e
+l'unico precedente di rimozione in questo progetto (`MASTER_REFERENCE/`) è passato da un
+**emendamento esplicito dell'Owner a questo file**, non da una decisione mia. Si aggira la regola o
+la si applica; non la si applica a metà. Il `README.md` della cartella è stato invece **corretto**:
+dichiarava un lavoro futuro che non si farà più, e una directory che mente è peggio di una
+directory vuota. La rimozione resta aperta e richiede **una parola dell'Owner**.
+
+### D-0170 · `B-010` riparato: `/healthz` diceva tutto a tutta la sottorete
+
+Registrato e non riparato dalla fase precedente con una ragione che **non reggeva a un secondo
+sguardo**: «tocca gli installer di tre piattaforme e il polling dell'update manager». Vero che li
+tocca. Falso che li rompa — e nessuno era andato a leggere *cosa* quei consumatori leggono davvero.
+Sono tre campi: `status`, `local`, e il codice HTTP. Nessuno legge la versione, i componenti, il
+piano dati o il canale di aggiornamento.
+
+Quindi la riparazione non è «autenticare `/healthz`», che avrebbe davvero rotto tre installer, il
+controllo di salute del container e le procedure documentate — un `401` lì si legge come **servizio
+morto**. È **spaccarlo**: l'aggregato resta aperto a chiunque, il dettaglio passa dietro il cancello.
+
+- **Aperto sempre**, a chiunque, senza sessione: `status`, `local`, `checkedAt`, e il codice HTTP.
+  Il codice è calcolato dalla salute **piena** anche per chi non può vederla — un'installazione
+  malata risponde `503` a una sonda a cui non si dirà perché.
+- **Dietro il cancello**: versione (che nomina la build esatta da cercare in un elenco di
+  vulnerabilità), postura di autorità, versioni di PostgreSQL e pgvector, inventario dei componenti,
+  canale di aggiornamento, scope di debug attivi. Su un bind LAN era una **relazione di
+  ricognizione gratuita** per ogni host della sottorete.
+- Un corpo ridotto **dichiara di esserlo**, con il ruolo e il permesso che servirebbero. Vuoto e
+  vietato si somigliano, e solo uno dei due significa «qui non c'è altro» (stessa regola di `UI-036`
+  e `D-0165`).
+
+**Il dettaglio che decide la correttezza del fix.** Il cancello non è `audit.read`: è **ruolo Owner
+*e* `audit.read`**. `admin` porta `audit.read`, quindi un test sul solo permesso avrebbe consegnato
+agli admin esattamente ciò che la schermata iniziale e la sezione Salute negano loro — costruendo la
+scorciatoia attorno al cancello mentre si crede di chiuderne una. La condizione ora è **una sola**,
+`auth.mjs::mayReadHealthDetail`, pura ed esportata perché sia verificabile senza avviare un
+listener; `/api/v1/home` è stato riscritto per usarla invece della propria copia. Due copie di una
+regola sono il modo in cui le due smettono di essere d'accordo.
+
+Stessa forma per la scoperta: la regola di esposizione è **una**
+(`allowsUnauthenticatedInternals`), con due viste nominate sopra — `/metrics` e `/healthz`. Il
+secondo endpoint che ne aveva bisogno è rimasto scoperto per quattro fasi **perché non la aveva
+affatto**; un terzo che decidesse per conto proprio è il modo in cui divergono. Un test lo verifica
+confrontando le due viste su tutte le combinazioni di scope e peer.
+
+**Nessuna migrazione, nessun costo di rollback**: `AI_STATE_VERSION` non si muove, nessun record
+cambia forma. La riparazione è interamente nel modo in cui una risposta viene composta.
+
+### D-0171 · Tre controlli esistevano, funzionavano, e non li eseguiva nessuno
+
+Trovati cercando la causa di un fallimento, non da uno scanner — nessuno dei tre è visibile a
+semgrep.
+
+1. **`tools/http-smoke.mjs` era rotto da fasi e nessuno se ne era accorto.** Affermava che
+   `/api/v1/privacy` e `/api/v1/bootstrap` rispondono a un chiamante anonimo. Entrambi sono stati
+   **correttamente** messi dietro autenticazione più tardi, quindi lo strumento andava in crash su
+   `privacy.banner.detail` di un corpo `401`. Non era in nessuno script npm e in nessuno step di
+   `scripts/test.sh`: **non lo eseguiva nulla**. Il suo gemello `auth-http-smoke.mjs` fu rotto dalla
+   stessa classe di cambiamento e riparato quando accadde; questo fu **mancato da quella stessa
+   passata**. Ora asserisce il **confine** invece di presumerne il lato lontano: cosa un anonimo può
+   leggere, cosa non può, e che «non può» torni `401` e non contenuto.
+2. **`tools/test-packaging-filters.mjs` — il test di regressione che `.gitignore` cita per nome** per
+   le regole ancoraggio che una volta cancellarono sorgente vendorizzata vera — non era eseguito da
+   nessun runner. Un controllo che nessuno invoca è un controllo che marcisce.
+3. **La directory `.workspace/` non era ignorata da git.** `server.mjs` ricade su
+   `<repoRoot>/.workspace` quando `NOESAR_WORKSPACE` non è impostata, quindi avviare il servizio o
+   un qualsiasi strumento dalla radice del repository vi materializza un workspace di runtime
+   completo. Le chiavi e il log erano già coperti da `*.key` e `*.log` — **lo stato no**, ed era a un
+   `git add -A` dall'essere committato. Verificato che la storia git non ne è mai stata contaminata.
+   Ignorata **ancorata alla radice**, perché un pattern sciolto inghiottirebbe una directory
+   sorgente che qualcuno chiamasse `.workspace` più in basso: è l'errore esatto per cui le regole
+   `target/` accanto sono ancorate. `http-smoke` ora forza anche un workspace usa-e-getta **prima**
+   di importare il server, così non è più lo strumento a sporcare il repository.
+
+**Corretta la regola, non solo l'istanza.** I due strumenti sono ora step di `scripts/test.sh`. E
+`test.sh` ha imparato lo **stato che gli mancava**: `test-packaging-filters` esce `0`/`1`/`2` dove
+`2` significa «una mia metà non può girare qui» (manca `python3`), e il runner conosceva solo
+PASS/FAIL — quindi lo riportava **FAIL**. Un rosso atteso è un rosso che si impara a saltare, e
+nasconderebbe un rosso vero comparso accanto. Ora esiste `PARTIAL`, contato a parte e **mai**
+contato come passato, applicato **solo** agli strumenti che dichiarano quella convenzione:
+presumerla ovunque declasserebbe in silenzio un fallimento vero che uscisse `2`.
+
+**Un difetto anche in `test.sh` stesso**, trovato da shellcheck (`SC2164`): `cd "$ROOT"` non era
+guardato. Il file **non usa `set -e`** — deliberatamente, perché il fallimento di uno step non
+nasconda l'esistenza degli altri — quindi un `cd` fallito non era fatale e **ogni step successivo
+sarebbe girato contro la directory sbagliata**, riportando risultati per un albero che non è questo.
+Togliere `set -e` ha chiuso un fallimento silenzioso e ne ha aperto un altro.

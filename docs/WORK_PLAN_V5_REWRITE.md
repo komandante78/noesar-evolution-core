@@ -117,7 +117,11 @@ L'ordine è **per dipendenza, non per importanza**. Da `MASTER_PROJECT/09_PIANO.
 3. V4 rimosso dall'albero, recuperabile da git e dagli ZIP sigillati ✅ *fatto*
 4. **Domande dell'Owner** — verifica che il progetto coincida col suo pensiero ⏸ *in attesa*
 5. Traduzione canonica in inglese, **dopo** l'approvazione dei contenuti ⏸
-6. Emendamenti registrati a `V4-D001` / `V4-D002` ⏸
+6. Emendamenti registrati a `V4-D001` / `V4-D002` ✅ *fatto — `D-0169`*. Rust è ora richiesto
+   **dove decide e confina**, non ovunque; la WebUI resta JavaScript semplice. `apps/webui-react`
+   **non** è stata rimossa: la regola 12 vieta la cancellazione e l'unico precedente passò da un
+   emendamento esplicito dell'Owner a `CLAUDE10.md`. Il suo `README` dichiara ora di essere
+   superato invece di annunciare un lavoro che non si farà più.
 
 ### Fase 0-bis — ATOM separato (fatto 2026-07-26)
 
