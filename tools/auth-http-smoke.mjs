@@ -177,6 +177,14 @@ try {
   if (executor.data.spendsBeforeEffect !== true) throw new Error('the token must be spent before the effect');
   if (executor.data.executionSurface !== false) throw new Error('the status must not claim an execution surface');
 
+  const events = await request('/api/v1/events');
+  if (events.status !== 200) throw new Error(JSON.stringify(events));
+  if (events.data.chainValid !== true) throw new Error('the engine event chain must verify');
+  if (events.data.persistsAcrossRestart !== false) throw new Error('the status must not claim persistence it does not have');
+  if (events.data.replacesAuditLedger !== false) throw new Error('the engine ledger does not replace the audit trail');
+  const verified = await request('/api/v1/events/verify');
+  if (verified.status !== 200 || verified.data.valid !== true) throw new Error(JSON.stringify(verified));
+
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');
   if (authFile.includes(cookie.split('=')[1]?.split(';')[0] ?? 'impossible')) throw new Error('plaintext session token detected');

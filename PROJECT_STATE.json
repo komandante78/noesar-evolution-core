@@ -2,14 +2,14 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_1_STEP_5_EXECUTOR_INSTALLED",
+  "phase_status": "PHASE_1_STEP_6_EVENT_LEDGER_INSTALLED",
   "next_phase": "FASE 1 — la spina dorsale (ReasoningProvider, capability token, esecuzione in ombra, esecutore che accetta solo token)",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "26fe317 (shadow installed)",
+  "last_commit": "0e7d176 (executor installed)",
   "last_updated_utc": "2026-07-27T15:40:00Z",
   "blockers": [
     {
@@ -345,13 +345,13 @@
     }
   ],
   "product_test_suite": {
-    "unit": "819/819 (misurato 2026-07-27)",
-    "eslint": "179 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-27)",
+    "unit": "836/836 (misurato 2026-07-27)",
+    "eslint": "181 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-27)",
     "browser_acceptance": "315/315 (misurato 2026-07-27)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
-    "rust_workspace": "21 binari, 76 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
+    "rust_workspace": "23 binari, 91 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
     "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)",
     "provenance": "11/11 (misurato 2026-07-27, erano 6 — 5 nuovi sulla firma)",
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
@@ -360,7 +360,8 @@
     "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-27)",
     "seeded_defects": "19/19 catturati (misurato 2026-07-27)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
-    "shadow_vectors": "10 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)"
+    "shadow_vectors": "10 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
+    "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -758,7 +759,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "FASE 1: passi 1-5 fatti e INSTALLATI (:phase4-executor). Il cerchio e chiuso nei componenti: piano approvato -> token -> ombra -> esecutore -> osservazione -> confronto. MA executorWiredToProductActions=false: nessuna superficie del prodotto instrada le proprie modifiche attraverso lesecutore. PROSSIMO: 09_PIANO passo 6 — registro eventi con correlazione, causazione e digest; poi passo 7 comprensione minima del repository (rilevamento linguaggi, punti dingresso, indice dei simboli, ricerca letterale, mappa delle dipendenze). Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173).",
+  "next_action": "FASE 1: passi 1-6 fatti e INSTALLATI (:phase4-events). PROSSIMO E ULTIMO DELLA FASE 1: 09_PIANO passo 7 — comprensione minima del repository: rilevamento linguaggi, punti dingresso, indice dei simboli, ricerca letterale, mappa delle dipendenze. Poi la fase 1 e completa e va misurata contro il proprio criterio di fatto: il motore non cambia nulla se non eseguendo un Piano autorizzato — che oggi e applicata dai componenti ma NON dal prodotto (executorWiredToProductActions=false, nessun sottosistema scrive nel registro causale). Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

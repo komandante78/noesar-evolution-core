@@ -2644,3 +2644,22 @@ arriva dal corpo della richiesta — un passo che nomina `../etc/passwd` dichiar
 coniava un token. Riparato su entrambi i lati, due vettori nuovi. **NON vero e dichiarato**:
 `executorWiredToProductActions=false` — nessuna superficie del prodotto instrada le proprie
 modifiche attraverso l'esecutore.
+
+## D-0184 · Registro causale: correlazione, causazione, catena di digest — 2026-07-27
+**Decision.** `rust/crates/noesar-events` e `services/reference-control-plane/src/events.mjs`,
+oracolo condiviso `conformance/event-vectors.json`, due rotte, installato `:phase4-events`.
+**Why.** `AuditLedger` registra *chi ha fatto cosa* come catena piatta. Serviva *cosa ha causato
+cosa*: senza causazione, «perché è successo» si risponde indovinando quali righe di log stiano
+insieme. Le tre proprietà sono **rifiuti**, non correzioni.
+**Rejected.** Estendere `AuditLedger`: ha una domanda e una durata diverse, e fonderle avrebbe
+reso l'audit del prodotto dipendente da un registro di motore che non persiste.
+**Evidence.** Rust 14/14 + 14 vettori; Node **17/17** sugli stessi vettori; unit 819 → **836**;
+ESLint **181 file, 0 errori**; workspace Rust **23 binari, 91 passati**; `AUTH_HTTP_SMOKE=PASS`;
+MANIFEST **5779**, 0 mismatch; dal vivo healthy, cancelli 401 contro 404. La manomissione è
+verificata **attraverso `restore()`**, che ricalcola ogni digest: un helper che avesse solo
+ricollegato i digest precedenti avrebbe **lasciato passare un payload alterato**, che è il caso
+che conta di più — corretto mentre lo scrivevo.
+**Reversal cost.** Nessuno nuovo.
+**Status.** Installato. **NON vero e dichiarato**: `persistsAcrossRestart=false`, e **nessun
+sottosistema del prodotto vi scrive ancora** — `chainValid` su una catena vuota significa
+«niente da contraddire», non «tutto verificato».

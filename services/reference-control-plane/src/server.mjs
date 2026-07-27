@@ -27,6 +27,7 @@ import {
 } from './capability.mjs';
 import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mjs';
 import { executorStatus } from './executor.mjs';
+import { EventLedger, eventsStatus } from './events.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -93,6 +94,10 @@ const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
 // consequence -- a restart invalidates every outstanding token -- is reported by
 // capabilityStatus rather than left to be discovered.
 const capabilityMinter = new TokenMinter(randomBytes(32));
+// The engine causal record. In memory, like the capability registry, and eventsStatus()
+// says so; it does not replace the product audit trail, which is a different question
+// (who did what) with a different lifetime.
+const engineEvents = new EventLedger();
 const store = new JsonStore(join(workspace, 'state/state.json'));
 const aiStore = new AtomicJsonStore(join(workspace, 'state/ai-workspace.json'));
 const contextGraph = new ContextGraph(aiStore);
@@ -768,6 +773,23 @@ const server = createServer(async (req, res) => {
         }
         throw error;
       }
+    }
+
+    // --- the event ledger · phase 1 step 6 ---------------------------------------
+    // Correlation and causation over a digest chain. Walking the causal chain of one
+    // event is how the question of why something happened gets an answer instead of a
+    // guess. Verification recomputes the whole chain rather than trusting the digest each
+    // record carries: a record that vouches for itself vouches for nothing.
+    if (req.method === 'GET' && url.pathname === '/api/v1/events') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, eventsStatus(engineEvents));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/events/verify') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'audit.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'audit.read' });
+      }
+      return json(res, 200, engineEvents.verify());
     }
 
     // --- the executor · phase 1 step 5 ------------------------------------------

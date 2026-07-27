@@ -2456,3 +2456,50 @@ lui**. I due fatti sono dichiarati separatamente perché unirli sovrastimerebbe 
 si arrotondi. L'esecutore è **riportato, non offerto come superficie**: una corsa richiede piano
 approvato, token e ombra, e consegnare l'intera catena a un chiamante HTTP metterebbe la sandbox
 dal lato sbagliato del muro per cui esiste.
+
+## 2026-07-27 · `:phase4-events` — il registro causale sull'installazione viva
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+Il registro eventi (passo 6): **correlazione, causazione, catena di digest**. `GET /api/v1/events`
+e `GET /api/v1/events/verify` (quest'ultima chiede `audit.read`). Distinto da `AuditLedger`, che
+registra *chi ha fatto cosa*: questo registra *cosa ha causato cosa*, così «perché è successo»
+si risponde camminando all'indietro invece di leggere un log e indovinare quali righe stiano
+insieme.
+
+Tre proprietà, ognuna **rifiutata** invece che riparata: una corsa ha **esattamente un inizio**;
+una causa deve **esistere e appartenere alla stessa corsa**; ogni digest copre **quello
+precedente**, quindi togliere o riordinare un evento in mezzo rompe tutti i digest successivi.
+La verifica **ricalcola l'intera catena** invece di confrontare ogni evento col digest che porta:
+un record che garantisce per sé stesso non garantisce nulla.
+
+### Sostituzione
+
+```text
+build       docker build --network=none --pull=false   FROM :phase4-executor
+stop        docker stop -t 60   → "postgres.stopped clean:true" LETTO NEL LOG
+backup      BACKUPS/runtime_pre_events_deploy_20260727T172815Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-executor-20260727T172815Z   preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_events_deploy_20260727T172815Z.json)
+§5a         rimosso il rollback più vecchio (:phase4-shadow), immagine CONSERVATA
+byte        server.mjs · events.mjs · executor.mjs identici al repository
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-events
+endpoint    livez 200 · readyz 200 · events 401 · events/verify 401 · executor 401
+            rotta inesistente 404 → cancelli veri
+B-010       NON regredito: /healthz 200 e ZERO marcatori
+```
+
+**Costo di rollback.** Nessuno nuovo.
+
+**Cosa NON è vero, e va detto.** `persistsAcrossRestart=false`: il registro vive **in memoria**,
+un riavvio lo azzera. E **nessun sottosistema del prodotto vi scrive ancora**: le rotte lo
+riportano e lo verificano, ma la catena viva è vuota finché qualcosa non comincia a registrare —
+il che è vero, ed è per questo che `chainValid` su una catena vuota va letto come «niente da
+contraddire», non come «tutto verificato».

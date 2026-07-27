@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# B-010: /healthz stops telling the whole subnet what this installation is.
+#
+# The previous image delivered the initial screen and recorded this exposure WITHOUT
+# repairing it, on the grounds that the repair touches three platform installers and the
+# update manager's health poll. It does touch them. It does not break them — and that was
+# never checked before the item was deferred.
+#
+# What /healthz disclosed, to any host on this LAN bind, with no session at all: the exact
+# product version (which names the build to look up in a vulnerability list), the authority
+# posture, the PostgreSQL and pgvector server versions, the full component inventory, the
+# update channel and the enabled debug scopes. It is the same class /metrics closed four
+# phases ago on the neighbouring route, which is the point — the rule existed and this
+# endpoint simply never asked it.
+#
+# What this image changes:
+#
+#   1. the route is SPLIT, not authenticated. Every consumer — the container healthcheck,
+#      the three platform installers, Test-Noesar.ps1, verify-runtime.sh, the update
+#      manager's post-start poll — reads exactly three things: `status`, `local`, and the
+#      HTTP status code. All three stay open to everyone, because a 401 there reads as a
+#      dead service. The status code is still computed from the FULL health, so an unhealthy
+#      installation still answers 503 to a probe it will not explain itself to;
+#   2. the detail moves behind the gate, and a redacted body DECLARES that it is redacted,
+#      naming the role and the permission it would take. Empty-and-silent and forbidden look
+#      identical on a screen, and only one of them means "there is nothing here" — the same
+#      rule as UI-036 and D-0165;
+#   3. the gate is owner AND audit.read, not audit.read alone. `admin` carries audit.read,
+#      so a permission-only test would have handed admins exactly what the initial screen
+#      and the Health section withhold from them — building the shortcut around the gate
+#      while believing it was closing one. The condition now exists ONCE, in
+#      auth.mjs::mayReadHealthDetail, pure and exported so it is testable without starting a
+#      listener, and /api/v1/home was rewritten to use it instead of its own copy;
+#   4. the exposure rule is likewise one predicate with two named views over it. The second
+#      endpoint that needed it went uncovered for four phases because it did not have it at
+#      all; a third one deciding for itself is how they drift.
+#
+# Measured, not asserted: 745 unit tests (734 + 11 new), 315 browser checks in a real
+# browser (312 + 3 — the owner's Health panel is now rendered and read, because the suite
+# previously only proved a RESTRICTED role is denied it, which passes just as well when the
+# panel is broken for the owner too), 27/27 WCAG 2.2 AA across 729 controls, ESLint over 170
+# files with no errors and no no-undef, MANIFEST 5738/5738. Both halves of the fix were seen
+# to FAIL first: seeding unconditional disclosure back in fails the LAN behaviour test, and
+# seeding the permission-only gate fails the admin test and only that one.
+#
+# ROLLBACK COST — none new (CLAUDE10.md 11d).
+#
+# `AI_STATE_VERSION` does NOT move: it stays at 3. Nothing here adds a collection or a field
+# to a record, and no stored record changes shape — the repair is entirely in how a response
+# is composed. Rolling back to :phase4-home is therefore only starting the preserved
+# container, and it reinstates the disclosure. The cost declared by :phase4-parts still
+# stands on its own terms — an image older than that one refuses a workspace written at
+# version 3 — and that condition is unchanged by this build.
+#
+# Lineage, stated rather than hidden — now thirteen deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#     -> :phase4-themes -> :phase4-parts -> :phase4-home -> :phase4-healthz -> :phase4-reasoning -> :phase4-capability -> :phase4-shadow -> :phase4-executor -> :phase4-events
+#
+# Only the control plane changes. apps/webui-static is untouched by this phase and is
+# deliberately NOT re-copied: copying an unchanged tree would make the image differ from its
+# parent for no reason and cost a layer that proves nothing.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-executor
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

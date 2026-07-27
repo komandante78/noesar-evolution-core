@@ -614,6 +614,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "noesar-events"
+version = "0.6.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "noesar-executor"
 version = "0.6.0"
 dependencies = [

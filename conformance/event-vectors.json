@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.0",
+  "note": "Shared oracle for correlation, causation and the digest chain. Both rust/crates/noesar-events and services/reference-control-plane/src/events.mjs must satisfy every case. Times are fixed: an ordering rule checked against the ambient clock cannot be tested at the boundary.",
+  "append": [
+    {
+      "id": "EV-001",
+      "why": "a run begins",
+      "drafts": [{ "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 }],
+      "expected": { "accepted": 1, "chainValid": true }
+    },
+    {
+      "id": "EV-002",
+      "why": "a cause that does not exist",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": "ghost", "action": "token.minted", "recordedAtUnix": 1800000001 }
+      ],
+      "expected": { "accepted": 1, "kind": "DANGLING_CAUSATION" }
+    },
+    {
+      "id": "EV-003",
+      "why": "a cause from another run is not a cause",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "f1", "correlationId": "run-2", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "f2", "correlationId": "run-2", "causationId": "e1", "action": "token.minted", "recordedAtUnix": 1800000002 }
+      ],
+      "expected": { "accepted": 2, "kind": "CROSS_CORRELATION" }
+    },
+    {
+      "id": "EV-004",
+      "why": "a run has exactly one beginning",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000001 }
+      ],
+      "expected": { "accepted": 1, "kind": "SECOND_ROOT" }
+    },
+    {
+      "id": "EV-005",
+      "why": "an effect recorded before its cause",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": "e1", "action": "token.minted", "recordedAtUnix": 1799999999 }
+      ],
+      "expected": { "accepted": 1, "kind": "CAUSE_IN_THE_FUTURE" }
+    },
+    {
+      "id": "EV-006",
+      "why": "the same instant is fine: two things can be recorded in one second",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": "e1", "action": "token.minted", "recordedAtUnix": 1800000000 }
+      ],
+      "expected": { "accepted": 2, "chainValid": true }
+    },
+    {
+      "id": "EV-007",
+      "why": "a duplicate id",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "again", "recordedAtUnix": 1800000001 }
+      ],
+      "expected": { "accepted": 1, "kind": "DUPLICATE_ID" }
+    },
+    {
+      "id": "EV-008",
+      "why": "an event that does not say what happened",
+      "drafts": [{ "id": "e1", "correlationId": "run-1", "causationId": null, "action": "  ", "recordedAtUnix": 1800000000 }],
+      "expected": { "accepted": 0, "kind": "INVALID" }
+    },
+    {
+      "id": "EV-009",
+      "why": "a causal chain of four, walked backwards to the root",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": "e1", "action": "token.minted", "recordedAtUnix": 1800000001 },
+        { "id": "e3", "correlationId": "run-1", "causationId": "e2", "action": "shadow.created", "recordedAtUnix": 1800000002 },
+        { "id": "e4", "correlationId": "run-1", "causationId": "e3", "action": "action.performed", "recordedAtUnix": 1800000003 }
+      ],
+      "expected": { "accepted": 4, "chainValid": true, "causalChainOf": "e4", "causalChain": ["e1", "e2", "e3", "e4"] }
+    },
+    {
+      "id": "EV-010",
+      "why": "two runs interleaved stay separate",
+      "drafts": [
+        { "id": "e1", "correlationId": "run-1", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "f1", "correlationId": "run-2", "causationId": null, "action": "plan.approved", "recordedAtUnix": 1800000000 },
+        { "id": "e2", "correlationId": "run-1", "causationId": "e1", "action": "token.minted", "recordedAtUnix": 1800000001 },
+        { "id": "f2", "correlationId": "run-2", "causationId": "f1", "action": "token.minted", "recordedAtUnix": 1800000001 }
+      ],
+      "expected": { "accepted": 4, "chainValid": true, "correlationSizes": { "run-1": 2, "run-2": 2 } }
+    }
+  ],
+  "tamper": [
+    { "id": "TAMPER-001", "why": "altering a payload breaks the chain at that position", "events": 4, "alter": { "position": 2, "field": "payload", "value": "tampered" }, "expected": { "valid": false, "position": 2 } },
+    { "id": "TAMPER-002", "why": "removing a middle event breaks the chain", "events": 4, "remove": 1, "expected": { "valid": false } },
+    { "id": "TAMPER-003", "why": "reordering two events breaks the chain", "events": 4, "swap": [1, 2], "expected": { "valid": false } },
+    { "id": "TAMPER-004", "why": "an untouched chain verifies", "events": 4, "expected": { "valid": true } }
+  ]
+}
