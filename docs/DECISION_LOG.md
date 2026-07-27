@@ -2369,3 +2369,22 @@ guardato. Il file **non usa `set -e`** — deliberatamente, perché il falliment
 nasconda l'esistenza degli altri — quindi un `cd` fallito non era fatale e **ogni step successivo
 sarebbe girato contro la directory sbagliata**, riportando risultati per un albero che non è questo.
 Togliere `set -e` ha chiuso un fallimento silenzioso e ne ha aperto un altro.
+
+## D-0172 · Working economy — three standing skills, and a scoped hunt — 2026-07-27
+**Decision.** Three always-on skills govern how a phase spends: `noesar-evolution-context`
+(digest-first reading, capped files, append-only state), `noesar-evolution-verify` (four
+tiers, change-to-tier map, single-pass, output discipline), `noesar-evolution-budget`
+(declared phase contract, stop at 150% of budget, length caps with templates). Bound into
+`CLAUDE10.md` as §2a (7a-7d) and 40d, and referenced at its foot.
+**Why.** Measured, not assumed: executing rule 5 literally costs ~400 KB (~100k tokens)
+before any work — `PROJECT_STATE.json` 80 KB/~120 keys, `DECISION_LOG.md` 160 KB,
+`INSTALLATION_LEDGER.md` 116 KB. `state-digest.sh` returns the operative facts in 6.3 KB.
+**Rejected.** Leaving the rules as prose in the handoff: prose that nothing enforces is
+what let the files grow to this size in the first place.
+**Evidence.** Digest run on this repository: 6,255 bytes, exit 0 — and on its first run it
+surfaced two stale state fields (`product_test_suite` recording 524/178 against 745/315
+produced since; `last_commit` one commit behind HEAD).
+**Reversal cost.** None. The skills add no product code; removing the §2a/40d amendments
+and the three files restores the prior behaviour exactly.
+**Status.** Applied. Owner-authorised, 2026-07-27. Rule 38 untouched: no tier skipped
+silently, no PASS without evidence produced in the session.

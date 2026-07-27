@@ -47,6 +47,29 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 7. If state files are missing, inconsistent, or contradict observable reality,
    stop and declare a blocker. Do not "repair" state by guessing.
 
+## 2a. Working economy — read the state, do not load it
+
+**Owner instruction, 2026-07-27:** *"skill che ti aiutano a risparmiare, controllare e
+lavorare meglio senza spendere sessioni di 1 ora e passa di token"*. Amends rule 5.
+
+7a. **The read order of rule 5 is satisfied by a digest, not by loading the files.**
+    Executing it literally costs ~400 KB (~100k tokens) before any work begins:
+    `PROJECT_STATE.json` is 80 KB across ~120 keys, `docs/DECISION_LOG.md` 160 KB,
+    `docs/INSTALLATION_LEDGER.md` 116 KB. `.claude/skills/noesar-evolution-context/
+    state-digest.sh` returns the same operative facts in 6.3 KB, measured. Those three
+    files, `MANIFEST.sha256` and the `MASTER_PROJECT/` bundle are **never read whole**;
+    they are reached by `jq`, by line range, or by `grep`.
+7b. **This narrows nothing about what must be known.** Rule 6 stands: state comes from the
+    files on disk, never from memory or a summary. A fact the digest does not carry is
+    read from its file, by range, and the read is declared.
+7c. **The state files are append-only, and `PROJECT_STATE.json` does not grow a key per
+    phase.** They reached this size because every phase added and none pruned. A phase's
+    narrative belongs in the handoff and the decision log.
+7d. Governing detail: `.claude/skills/noesar-evolution-context/SKILL.md`,
+    `…/noesar-evolution-verify/SKILL.md`, `…/noesar-evolution-budget/SKILL.md`. They are
+    subordinate to this file and impose the phase contract, the verification tiers and the
+    length caps for every record this project writes.
+
 ## 3. One phase at a time
 
 8. The project has **6 phases (0–5)**, defined in `docs/PHASE_PLAN.md`.
@@ -220,6 +243,17 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
 40c. **Fix the rule, not only the instance.** When a filter, ignore rule, or check
     caused the defect, correct it and add a regression test. A clean scan proves the
     scanner found nothing — never that the code is correct.
+40d. **The hunt is scoped to what the phase changed, by default** (Owner authorisation,
+    2026-07-27). The duty to hunt and to repair is unchanged; the default target is the
+    phase diff and the surfaces it reaches, not the entire first-party tree every time.
+    A **full sweep** remains required when a new surface is introduced, when the phase
+    touches security, authority, installers or packaging, when the last full sweep is more
+    than five phases old, or when the Owner asks. **Which of the two ran is always
+    declared** — "scoped to the diff (N files)" and "full sweep" are different claims and
+    are never reported as the same thing. Verification is tiered by the same principle:
+    `.claude/skills/noesar-evolution-verify/SKILL.md`. What is removed is re-verification
+    of what the change could not have touched — never verification itself, and never
+    rule 38.
 
 ## 11. Documentation duty
 
@@ -275,3 +309,6 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
 ---
 
 @.claude/skills/noesar-evolution/SKILL.md
+@.claude/skills/noesar-evolution-context/SKILL.md
+@.claude/skills/noesar-evolution-verify/SKILL.md
+@.claude/skills/noesar-evolution-budget/SKILL.md
