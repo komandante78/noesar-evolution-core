@@ -227,9 +227,27 @@ window.__a11y = (() => {
       }
       return { failing, unresolved, measured };
     },
+    // A DISABLED control is not interactive: it is not in the tab order, cannot receive
+    // focus and cannot be activated, so 2.4.7 and 2.5.8 do not apply to it. Counting it
+    // produced a failure that no keyboard user could ever encounter — the pager and the
+    // delete button of an empty session list, which are disabled precisely because there
+    // is nothing to page through or delete.
+    //
+    // This is an exclusion, so it is declared rather than silent: disabledSkipped()
+    // reports how many were skipped, and the browser suite separately proves that the
+    // same buttons DO show a focus indicator once they are enabled. An exclusion nobody
+    // counts is how a green audit starts meaning less than it says.
     interactiveElements(rootSelector) {
       const root = document.querySelector(rootSelector) ?? document.body;
-      return [...root.querySelectorAll(INTERACTIVE)].filter(visible);
+      return [...root.querySelectorAll(INTERACTIVE)]
+        .filter(visible)
+        .filter((element) => !element.disabled && element.getAttribute('aria-disabled') !== 'true');
+    },
+    disabledSkipped(rootSelector) {
+      const root = document.querySelector(rootSelector) ?? document.body;
+      return [...root.querySelectorAll(INTERACTIVE)]
+        .filter(visible)
+        .filter((element) => element.disabled || element.getAttribute('aria-disabled') === 'true').length;
     },
     // Target size 2.5.8 (new in WCAG 2.2): 24x24 CSS px minimum, with the standard
     // exception for links inline in a sentence.
@@ -433,6 +451,16 @@ const SURFACES = [
     selector: `.settings-section[data-section="${name}"]`,
     ready: `.settings-section[data-section="${name}"].active`,
   })),
+  // The Archive and the Bin are addresses of their own and render different controls from
+  // the working list — different buttons, a return control, an expiry line. Auditing only
+  // the working list would leave two surfaces unmeasured while the count still looked
+  // complete: the same way a restructure shrinks an audit without turning it red.
+  ...['archived', 'bin'].map((place) => ({
+    name: `settings/sessions/${place}`,
+    hash: `#/settings/sessions/${place}`,
+    selector: '.settings-section[data-section="sessions"]',
+    ready: '.settings-section[data-section="sessions"].active',
+  })),
 ];
 async function openSurface(surface) {
   await page.goto(`${BASE}/${surface.hash}`, { waitUntil: 'networkidle2' });
@@ -512,6 +540,7 @@ try {
   at('focus');
   let focusFailures = [];
   let focusChecked = 0;
+  let focusSkipped = 0;
   for (const surface of SURFACES) {
     await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -519,7 +548,9 @@ try {
       const scope = ['body > .app-shell > .topbar', selector, '.sidebar'];
       const failing = [];
       let checked = 0;
+      let skipped = 0;
       for (const selector of scope) {
+        skipped += window.__a11y.disabledSkipped(selector);
         for (const element of window.__a11y.interactiveElements(selector)) {
           const before = window.__a11y.focusSignature(element);
           element.focus();
@@ -536,14 +567,15 @@ try {
           }
         }
       }
-      return { failing, checked };
+      return { failing, checked, skipped };
     }, surface);
     focusChecked += outcome.checked;
+    focusSkipped += outcome.skipped;
     focusFailures.push(...outcome.failing);
   }
   check('every interactive control shows a visible focus indicator (2.4.7)',
     focusFailures.length === 0,
-    `${focusFailures.length} of ${focusChecked} controls change nothing when focused: ${JSON.stringify(focusFailures.slice(0, 5))}`);
+    `${focusFailures.length} of ${focusChecked} controls change nothing when focused (${focusSkipped} disabled controls skipped — not focusable, proven separately in the browser suite): ${JSON.stringify(focusFailures.slice(0, 5))}`);
 
   // --- target size, per route ----------------------------------------------
   at('target-size');

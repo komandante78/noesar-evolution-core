@@ -242,3 +242,106 @@ describe('webui markup structure', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// The parts the design asked for and the graphics did not cover.
+//
+// Each of these guards a criterion that a reasonable-looking change can silently
+// undo. Two of them make a Critical criterion MECHANICALLY checkable for the first
+// time — UI-036 (the NOT DONE box) and UI-046 (no physical direction properties) —
+// which matters because both had been asserted rather than measured.
+// ---------------------------------------------------------------------------
+describe('the missing interface parts', () => {
+  const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
+  const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
+
+  test('UI-040 · every font size is a multiple of the text scale', () => {
+    // A bare pixel size is a size the text-size setting cannot move, and it would be
+    // invisible: the interface would grow around one label that stayed behind.
+    const bare = [...css.matchAll(/font-size:\s*[0-9.]+px/g)].map((match) => match[0]);
+    assert.deepEqual(bare, [], `these sizes ignore --text-scale: ${bare.join(', ')}`);
+    assert.match(css, /--text-scale:\s*1/, 'the scale itself must be defined');
+    assert.match(css, /zoom:var\(--ui-zoom\)/, 'UI-041: zoom is a second, independent multiplier');
+  });
+
+  test('UI-046 · no physical left/right declaration survives in the stylesheet', () => {
+    // Written as a property-position match so that `--text-bright` and a comment
+    // mentioning `left:-9999px` are not counted. The defect this prevents is real: an
+    // off-screen skip link once stretched the RTL scroll area to 11439px.
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const physical = [...withoutComments.matchAll(/[;{]\s*(?:margin|padding|border|inset)?-?(?:left|right)\s*:/g)].map((match) => match[0].trim());
+    assert.deepEqual(physical, [], `physical direction properties: ${physical.join(' ')}`);
+  });
+
+  test('UI-036 · the closure carries a NOT DONE box and a way to declare it empty', () => {
+    assert.match(html, /id="closureNotDone"/, 'the NOT DONE box must exist');
+    assert.match(html, /id="closureNothing"/, 'declaring the box empty must be an explicit act');
+    assert.match(html, /id="closureRisk"/, 'the closure carries the residual risk');
+    assert.match(html, /id="closureReviewTime"/, 'and the human review time');
+    // And the refusal must be reachable: a client that submits an empty box without
+    // saying so would leave the rule to the server alone and tell the person nothing.
+    assert.match(app, /The NOT DONE box is empty/, 'the empty box is refused with a reason');
+  });
+
+  test('UI-030…UI-033 · the bench has three regions, eleven tabs, and a terminal outside them', () => {
+    for (const region of ['bench-navigator', 'bench-main', 'bench-agent']) {
+      assert.ok(html.includes(`class="${region}`), `the ${region} region is missing`);
+    }
+    const tabs = [...html.matchAll(/data-bench-tab="([^"]+)"/g)].map((match) => match[1]);
+    const panels = [...html.matchAll(/data-bench-panel="([^"]+)"/g)].map((match) => match[1]);
+    assert.equal(tabs.length, 11, `UI-032 names eleven tabs, found ${tabs.length}`);
+    assert.deepEqual(tabs, panels, 'every tab must have exactly one panel, in the same order');
+    // UI-033: the terminal is a region, not a tab that disappears. If its markup ever
+    // moves inside the panels it becomes exactly what the criterion forbids.
+    // Written as positions rather than as a slice between two literal strings: a slice
+    // whose end marker moves silently becomes an assertion about an empty string, which
+    // passes for the wrong reason.
+    const panelsStart = html.indexOf('<div class="bench-panels">');
+    const lastPanel = html.lastIndexOf('data-bench-panel=');
+    const terminal = html.indexOf('id="benchTerminal"');
+    assert.ok(panelsStart > 0 && lastPanel > panelsStart, 'the tab panels block must exist');
+    assert.ok(terminal > lastPanel, 'the terminal must live outside the tab panels, after them');
+    assert.match(html, /class="bench-terminal"[^>]*id="benchTerminal"/, 'the terminal region must exist');
+  });
+
+  test('UI-035 · the status line has its twelve fields and declares how many have a source', () => {
+    const fields = [...html.matchAll(/data-status-field="([^"]+)"/g)].map((match) => match[1]);
+    assert.equal(fields.length, 12, `UI-035 names twelve fields, found ${fields.length}`);
+    assert.match(html, /id="statusSourced"/, 'the line must state how many of them are real');
+    assert.match(app, /of 12 fields have a source/, 'and the count must be computed, not written down');
+  });
+
+  test('UI-037 · the top bar keeps its reference elements and ADDS coverage', () => {
+    for (const id of ['globalSearch', 'projectChip', 'modelChip', 'languageSelect', 'timezoneChip', 'userAvatar', 'coverageChip']) {
+      assert.match(html, new RegExp(`id="${id}"`), `the top bar lost "${id}"`);
+    }
+  });
+
+  test('UI-001…UI-012 · Sessions is built, and no longer declares itself unbuilt', () => {
+    const section = html.slice(html.indexOf('id="section-sessions"'), html.indexOf('id="section-appearance"'));
+    assert.equal(/DECLARED · NOT BUILT/.test(section), false, 'the section still calls itself unbuilt');
+    for (const id of ['sessionsRecent', 'sessionsOverflowCount', 'sessionsRange', 'sessionsSelectedCount', 'sessionsDeleteSelected', 'sessionsReturn']) {
+      assert.ok(section.includes(`id="${id}"`), `Sessions is missing "${id}"`);
+    }
+    assert.equal((section.match(/data-place="/g) ?? []).length, 3, 'three places: working list, archive, bin');
+  });
+
+  test('UI-008…UI-010 · one confirmation exists and nothing preselects the dangerous button', () => {
+    assert.match(html, /id="confirmScrim"/);
+    assert.match(html, /role="alertdialog"[^>]*aria-modal="true"/, 'the confirmation must be a modal dialog');
+    // The dangerous button carries no autofocus, and the code focuses the card instead.
+    const card = html.slice(html.indexOf('id="confirmScrim"'), html.indexOf('</div>', html.indexOf('confirm-actions')));
+    assert.equal(/autofocus/.test(card), false, 'nothing in the confirmation is preselected');
+    assert.match(app, /card\.tabIndex=-1;card\.focus\(\)/, 'focus lands on the dialog, not on a button');
+    assert.match(app, /event\.key==='Escape'/, 'Esc cancels');
+  });
+
+  test('UI-043 · the event region is announced from events, never from a stream', () => {
+    assert.match(html, /id="eventAnnouncer"[^>]*aria-live="polite"/);
+    // The delta branch must not announce. It is the one place where a live region turns
+    // from an aid into an obstacle, by reading the same answer twice.
+    const deltaBranch = app.slice(app.indexOf("else if(event==='delta')"), app.indexOf("else if(event==='error')"));
+    assert.equal(/announceEvent/.test(deltaBranch), false, 'the streaming branch must not announce');
+    assert.match(app, /announceEvent\(`Reply complete/, 'the completed event announces one summary');
+  });
+});

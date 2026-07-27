@@ -781,6 +781,321 @@ try {
   const persisted = await page.$eval('#settingsTimezoneSummary', (node) => node.textContent);
   check('a settings change survives a reload', /Asia\/Tokyo/.test(persisted));
 
+  at('sessions');
+  // --- sessions: three places, a confirmation, and a keyboard --------------
+  //
+  // UI-001…UI-012 and UI-050…UI-053. Driven rather than read: every criterion here is
+  // about what happens when you press something, and the two Critical ones (a
+  // confirmation on EVERY destructive action, and Delete opening the dialog rather than
+  // deleting) are exactly the kind that a refactor removes without any test noticing.
+  resetObservations();
+  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#chatConversation', { timeout: 15000 });
+  // Seven sessions, so that the fifth/sixth boundary of UI-002 is real rather than
+  // theoretical, and the archive has enough to page.
+  const created = await page.evaluate(async () => {
+    const csrf = document.cookie.split('; ').find((part) => part.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
+    const ids = [];
+    for (let index = 0; index < 7; index += 1) {
+      const response = await fetch('/api/v1/conversations', {
+        method: 'POST', credentials: 'same-origin',
+        // The header the product actually reads. Writing 'x-csrf-token' here — the
+        // conventional name — answered 403 seven times and the surface simply had nothing
+        // to show, which is how a harness defect imitates a product defect.
+        headers: { 'content-type': 'application/json', 'x-noesar-csrf': decodeURIComponent(csrf) },
+        body: JSON.stringify({ title: `E2E session ${index + 1}` }),
+      });
+      const body = await response.json();
+      ids.push(body.conversation?.id);
+    }
+    return ids.filter(Boolean).length;
+  });
+  check('seven work sessions exist to exercise the surface', created === 7, `created=${created}`);
+
+  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
+  const layout = await page.evaluate(() => ({
+    laidOut: document.querySelectorAll('#sessionsRecent .session-row').length,
+    inScroller: document.querySelectorAll('#sessionsOverflow .session-row').length,
+    countDeclared: document.querySelector('#sessionsOverflowCount')?.textContent ?? '',
+    scrollerVisible: (document.querySelector('#sessionsOverflowBox')?.getBoundingClientRect().height ?? 0) > 0,
+    range: document.querySelector('#sessionsRange')?.textContent ?? '',
+  }));
+  check('UI-001/UI-002 five are laid out and the rest scroll with the count above them',
+    layout.laidOut === 5 && layout.inScroller >= 2 && layout.scrollerVisible && /more on this page/.test(layout.countDeclared),
+    JSON.stringify(layout));
+
+  // UI-008/UI-009/UI-010: archiving asks first, names the session, and preselects nothing.
+  await clickOrExplain(page, '#sessionsRecent .session-row [data-session-archive]');
+  await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
+  const dialog = await page.evaluate(() => ({
+    title: document.querySelector('#confirmTitle')?.textContent ?? '',
+    body: document.querySelector('#confirmBody')?.textContent ?? '',
+    consequence: document.querySelector('#confirmConsequence')?.textContent ?? '',
+    focusIsButton: document.activeElement?.tagName === 'BUTTON',
+    modal: document.querySelector('.confirm-card')?.getAttribute('aria-modal') === 'true',
+  }));
+  check('UI-008/UI-009 the confirmation names what happens and to which session',
+    /Archive 1 session/.test(dialog.title) && /E2E session/.test(dialog.body) && /moves the session/i.test(dialog.consequence),
+    JSON.stringify(dialog));
+  check('UI-010 the dangerous button is not preselected and the dialog is modal',
+    dialog.focusIsButton === false && dialog.modal);
+
+  // Esc cancels, and cancelling changes nothing.
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#confirmScrim.hidden', { timeout: 15000 });
+  const afterEscape = await page.evaluate(() => document.querySelectorAll('#sessionsRecent .session-row').length);
+  check('UI-010 Esc cancels and the list is untouched', afterEscape === 5, `rows=${afterEscape}`);
+
+  // Now accept, and watch the session move rather than disappear.
+  await clickOrExplain(page, '#sessionsRecent .session-row [data-session-archive]');
+  await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
+  await clickOrExplain(page, '#confirmAccept');
+  await page.waitForFunction(
+    () => /of 6/.test(document.querySelector('#sessionsRange')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  await page.goto(`${BASE}/#/settings/sessions/archived`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
+  const archive = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.session-row').length,
+    range: document.querySelector('#sessionsRange')?.textContent ?? '',
+    returnVisible: document.querySelector('#sessionsReturn')?.classList.contains('hidden') === false,
+    title: document.querySelector('#sessionsPlaceTitle')?.textContent ?? '',
+  }));
+  check('UI-011/UI-004 archive moves the session to a place of its own, with a return',
+    archive.rows === 1 && /1–1 of 1/.test(archive.range) && archive.returnVisible && archive.title === 'Archive',
+    JSON.stringify(archive));
+
+  // UI-051, Critical: Delete from the keyboard OPENS the dialog. It never deletes.
+  await page.evaluate(() => document.querySelector('.session-row')?.focus());
+  await page.keyboard.press('Delete');
+  await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
+  const deleteDialog = await page.evaluate(() => ({
+    title: document.querySelector('#confirmTitle')?.textContent ?? '',
+    consequence: document.querySelector('#confirmConsequence')?.textContent ?? '',
+    stillThere: document.querySelectorAll('.session-row').length,
+  }));
+  check('UI-051 Delete opens the confirmation and deletes nothing on its own',
+    /Delete 1 session/.test(deleteDialog.title) && /30 days/.test(deleteDialog.consequence) && deleteDialog.stillThere === 1,
+    JSON.stringify(deleteDialog));
+  // UI-052: Enter confirms from the dialog itself.
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => (document.querySelector('#sessionsEmpty')?.classList.contains('hidden') === false)
+      || document.querySelectorAll('.session-row').length === 0,
+    { timeout: 15000 },
+  );
+  await page.goto(`${BASE}/#/settings/sessions/bin`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
+  const bin = await page.evaluate(() => ({
+    rows: document.querySelectorAll('.session-row').length,
+    expiry: document.querySelector('.session-row small')?.textContent ?? '',
+    zoned: /·/.test(document.querySelector('.session-row time')?.textContent ?? ''),
+  }));
+  check('UI-012 a deleted session waits in the bin with its removal date stated',
+    bin.rows === 1 && /removed after/.test(bin.expiry), JSON.stringify(bin));
+  // UI-045 rides along: the instant carries a named zone, not a bare clock time.
+  check('UI-045 instants are rendered with their IANA zone', bin.zoned, bin.expiry.slice(0, 120));
+
+  // Restore it, and prove the working list gets it back.
+  await clickOrExplain(page, '[data-session-restore]');
+  await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
+  await clickOrExplain(page, '#confirmAccept');
+  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
+  const restoredRange = await page.evaluate(() => document.querySelector('#sessionsRange')?.textContent ?? '');
+  check('a restored session returns to the working list', /of 7/.test(restoredRange), restoredRange);
+
+  // UI-007: select the page, and the counter and the single delete button follow.
+  await clickOrExplain(page, '#sessionsSelectPage');
+  const selection = await page.evaluate(() => ({
+    counter: document.querySelector('#sessionsSelectedCount')?.textContent ?? '',
+    enabled: document.querySelector('#sessionsDeleteSelected')?.disabled === false,
+  }));
+  check('UI-007 selecting the page counts what is selected and enables one delete button',
+    /7 selected/.test(selection.counter) && selection.enabled, JSON.stringify(selection));
+  await clickOrExplain(page, '#sessionsDeleteSelected');
+  await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
+  const many = await page.evaluate(() => ({
+    title: document.querySelector('#confirmTitle')?.textContent ?? '',
+    named: document.querySelectorAll('#confirmNames li').length,
+    truncation: document.querySelector('#confirmNames li:last-child')?.textContent ?? '',
+  }));
+  check('UI-009 a multiple deletion names the sessions and truncates with "and N more"',
+    /Delete 7 sessions/.test(many.title) && many.named === 6 && /and 2 more/.test(many.truncation),
+    JSON.stringify(many));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#confirmScrim.hidden', { timeout: 15000 });
+
+  at('reading-controls');
+  // --- text size, zoom and motion, measured rather than asserted -----------
+  //
+  // UI-040 and UI-041 are only met if the pixels actually move. A setting that stores a
+  // preference and changes nothing on screen is the most convincing kind of nothing.
+  resetObservations();
+  await page.goto(`${BASE}/#/settings/appearance`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-text-step="3"]', { timeout: 15000 });
+  // Scoped to the ACTIVE section. A bare '.page-title' resolves to the first one in the
+  // document, which belongs to a hidden section: getComputedStyle still answers for it, so
+  // the size check would have passed while measuring something nobody can see, and the
+  // geometry check measured a box of zero and failed for the wrong reason.
+  const VISIBLE_TITLE = '.settings-section.active .page-title';
+  const typeBefore = await page.evaluate((sel) => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize), VISIBLE_TITLE);
+  await clickOrExplain(page, '[data-text-step="3"]');
+  const typeAfter = await page.evaluate((sel) => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize), VISIBLE_TITLE);
+  check('UI-040 a text-size step actually enlarges the type', typeAfter > typeBefore * 1.2,
+    `${typeBefore}px -> ${typeAfter}px`);
+  const scaledElsewhere = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.settings-section.active .eyebrow')).fontSize));
+  check('UI-040 and it scales the whole interface, not one heading', scaledElsewhere > 11,
+    `eyebrow=${scaledElsewhere}px`);
+  await clickOrExplain(page, '[data-text-step="1"]');
+
+  const zoomBefore = await page.evaluate((sel) => document.querySelector(sel).getBoundingClientRect().height, VISIBLE_TITLE);
+  await page.evaluate(() => {
+    const range = document.querySelector('#zoomRange');
+    range.value = '130';
+    range.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const zoomAfter = await page.evaluate((sel) => document.querySelector(sel).getBoundingClientRect().height, VISIBLE_TITLE);
+  check('UI-041 zoom moves the rendered layout, independently of text size',
+    zoomAfter > zoomBefore * 1.15, `${zoomBefore} -> ${zoomAfter}`);
+  await clickOrExplain(page, '#zoomReset');
+
+  await clickOrExplain(page, '#reduceMotion');
+  const motion = await page.evaluate(() => ({
+    flag: document.documentElement.dataset.motion,
+    duration: getComputedStyle(document.querySelector('.panel')).transitionDuration,
+  }));
+  check('UI-042 the motion setting applies without waiting for the system preference',
+    motion.flag === 'reduced' && /^0s?/.test(motion.duration), JSON.stringify(motion));
+  await clickOrExplain(page, '#reduceMotion');
+
+  // The preferences survive a reload: a display setting that resets is not a setting.
+  await clickOrExplain(page, '[data-text-step="2"]');
+  await page.reload({ waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const persistedScale = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text-scale').trim());
+  check('the reading preferences survive a reload', persistedScale === '1.15', `--text-scale=${persistedScale}`);
+  await page.evaluate(() => { localStorage.removeItem('noesar.textScale'); });
+  await page.reload({ waitUntil: 'networkidle2' });
+
+  at('workbench');
+  // --- the bench: three regions, eleven tabs, a terminal that stays --------
+  resetObservations();
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#bench', { timeout: 15000 });
+  const bench = await page.evaluate(() => {
+    const box = (selector) => document.querySelector(selector)?.getBoundingClientRect() ?? { width: 0, height: 0 };
+    return {
+      navigator: box('#benchNavigator').width,
+      main: box('.bench-main').width,
+      agent: box('#benchAgent').width,
+      tabs: document.querySelectorAll('[data-bench-tab]').length,
+      statusFields: document.querySelectorAll('[data-status-field]').length,
+      sourced: document.querySelector('#statusSourced')?.textContent ?? '',
+      terminal: box('#benchTerminal').height,
+    };
+  });
+  check('UI-030 the three regions are all on screen with a width of their own',
+    bench.navigator > 100 && bench.main > 200 && bench.agent > 100, JSON.stringify(bench));
+  check('UI-032/UI-035 eleven tabs and a twelve-field status line that declares its sources',
+    bench.tabs === 11 && bench.statusFields === 12 && /of 12 fields have a source/.test(bench.sourced),
+    `tabs=${bench.tabs} fields=${bench.statusFields} "${bench.sourced}"`);
+
+  await clickOrExplain(page, '[data-bench-tab="diff"]');
+  const persistentTerminal = await page.evaluate(() => ({
+    activePanel: document.querySelector('.bench-panel.active')?.dataset.benchPanel ?? '',
+    terminalHeight: document.querySelector('#benchTerminal')?.getBoundingClientRect().height ?? 0,
+  }));
+  check('UI-033 the terminal is still on screen while another tab is in front',
+    persistentTerminal.activePanel === 'diff' && persistentTerminal.terminalHeight > 40,
+    JSON.stringify(persistentTerminal));
+  await clickOrExplain(page, '#terminalAdd');
+  const terminals = await page.evaluate(() => document.querySelectorAll('[data-terminal]').length);
+  check('UI-033 terminals are multiple', terminals === 2, `terminals=${terminals}`);
+
+  // 2.4.7, for a control the audit cannot reach. The accessibility audit skips DISABLED
+  // controls — correctly, since they are not focusable — which means the pager and the
+  // bulk delete button of an empty list are never measured there. They are measured here,
+  // where sessions exist and the buttons are live, so the exclusion is covered rather than
+  // merely justified.
+  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
+  await clickOrExplain(page, '#sessionsSelectPage');
+  // Reached with a REAL Tab, not with element.focus(). Chromium grants :focus-visible by
+  // input modality: after a click the modality is 'pointer', so a programmatic focus on a
+  // button shows no ring and the check failed while the product was correct. This is the
+  // same lesson a synthetic key event taught this project once already — press the key.
+  const beforeRing = await page.evaluate(() => {
+    const style = getComputedStyle(document.querySelector('#sessionsDeleteSelected'));
+    return [style.outlineStyle, style.outlineWidth, style.outlineColor, style.boxShadow].join('|');
+  });
+  let reached = false;
+  for (let press = 0; press < 200 && !reached; press += 1) {
+    await page.keyboard.press('Tab');
+    reached = await page.evaluate(() => document.activeElement?.id === 'sessionsDeleteSelected');
+  }
+  const focusRing = await page.evaluate((before) => {
+    const button = document.querySelector('#sessionsDeleteSelected');
+    const style = getComputedStyle(button);
+    const after = [style.outlineStyle, style.outlineWidth, style.outlineColor, style.boxShadow].join('|');
+    return { enabled: !button.disabled, focused: document.activeElement === button, changed: before !== after, after };
+  }, beforeRing);
+  check('the keyboard reaches the bulk-delete button at all', reached && focusRing.focused);
+  check('an enabled bulk-delete button does show a focus indicator (2.4.7)',
+    focusRing.enabled && focusRing.changed, JSON.stringify(focusRing));
+  await clickOrExplain(page, '#sessionsSelectPage');
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#bench', { timeout: 15000 });
+
+  at('closure');
+  // --- the NOT DONE box · UI-036, Critical --------------------------------
+  //
+  // The rule is that the box cannot be empty WITHOUT SAYING SO. Both halves are
+  // exercised: an empty box is refused, and an empty box that is declared is accepted.
+  await clickOrExplain(page, '[data-bench-tab="closure"]');
+  await page.waitForSelector('#closureForm', { timeout: 15000 });
+  await page.type('#closureRisk', 'none');
+  await clickOrExplain(page, '#closureForm button.primary');
+  const refused = await page.evaluate(() => ({
+    shown: document.querySelector('#closureRefusal')?.classList.contains('hidden') === false,
+    text: document.querySelector('#closureRefusal')?.textContent ?? '',
+    closures: document.querySelectorAll('#closureList .entity-card').length,
+  }));
+  check('UI-036 a closure with a silently empty NOT DONE box is refused',
+    refused.shown && /NOT DONE box is empty/.test(refused.text) && refused.closures === 0,
+    JSON.stringify(refused));
+
+  await page.type('#closureNotDone', 'the RTL pass on this change\nthe screen-reader pass');
+  await clickOrExplain(page, '#closureForm button.primary');
+  await page.waitForFunction(
+    () => document.querySelectorAll('#closureList .entity-card').length >= 1,
+    { timeout: 15000 },
+  );
+  const closed = await page.evaluate(() => ({
+    cards: document.querySelectorAll('#closureList .entity-card').length,
+    notDone: document.querySelectorAll('#closureList .entity-card li').length,
+    text: document.querySelector('#closureList .entity-card')?.textContent ?? '',
+  }));
+  check('UI-036 a closure that names what was not done is kept and shown',
+    closed.cards === 1 && closed.notDone === 2 && /NOT DONE/.test(closed.text),
+    JSON.stringify(closed));
+
+  at('metric');
+  // --- the product's metric · UI-070…UI-072 -------------------------------
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#metricDefinition', { timeout: 15000 });
+  const metric = await page.evaluate(() => ({
+    definition: document.querySelector('#metricDefinition')?.textContent ?? '',
+    median: document.querySelector('#metricMedian')?.textContent ?? '',
+    rejectedLabel: document.querySelector('#metricRejected')?.parentElement?.textContent ?? '',
+  }));
+  check('UI-071/UI-072 the metric is shown as a time and states that rejections count',
+    /seconds of human review/.test(metric.definition) && /Rejected changes are counted, not excluded/.test(metric.definition)
+      && /counted, not excluded/.test(metric.rejectedLabel),
+    JSON.stringify(metric).slice(0, 260));
+
   at('invitation');
   // --- an invitation can be issued -----------------------------------------
   resetObservations();
