@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "PENDING — registrato nel commit successivo, mai con un emendamento",
-  "last_updated_utc": "2026-07-27T11:09:01Z",
+  "last_commit": "ec86a82 (the missing interface parts, built and installed)",
+  "last_updated_utc": "2026-07-27T11:09:38Z",
   "blockers": [
     {
       "id": "B-001",
