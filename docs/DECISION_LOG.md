@@ -1992,3 +1992,128 @@ cambiate** rispetto al passo 2, entrambe volute: marchio e avatar che ora nomina
 colore.
 
 **Installato nella stessa fase** (`D-0143`): `:phase4-themes`.
+
+---
+
+## D-0152…D-0160 · Le parti dell'interfaccia che il disegno chiedeva e la grafica non copriva — 2026-07-27
+
+Fase: le sessioni (`UI-001…UI-012`), le otto voci di accessibilità non strutturali
+(`UI-040…UI-047`), la metrica del prodotto (`UI-070…UI-072`) e il banco di lavoro
+(`UI-030…UI-037`) con la casella `NON FATTO` (`UI-036`, **Critica**).
+
+### D-0152 · Archiviare *sposta*, eliminare va in un cestino che dichiara la propria scadenza
+
+`UI-011` e `UI-012`. Tre posti, e non sono lo stesso posto: la lista di lavoro, l'archivio, il
+cestino. L'archivio non distrugge nulla — la sessione torna intera, coi suoi messaggi. Il cestino
+tiene **trenta giorni** e la conferma lo dice.
+
+**La scadenza è calcolata, non è un contrassegno.** Un contrassegno "scaduto" andrebbe spazzato, e
+un contrassegno non spazzato è una sessione che *sembra* viva dopo che il periodo è finito. Qui
+ogni lettura confronta la data: passata quella, la sessione non è elencata **e non è
+ripristinabile**, che la spazzata sia già girata o no. La spazzata vera sta sul percorso della
+ritenzione, mai su una lettura: distruggere è contabilità e la contabilità non appartiene a una GET.
+
+**E la sparizione è totale.** Una sessione nel cestino esce **da ogni altra superficie** — dal
+selettore della chat, dal bootstrap del workspace, da tutto. Una sessione "eliminata" ancora
+offerta altrove non è eliminata: è nascosta alla pagina che l'ha eliminata. È un test a sé.
+
+### D-0153 · La distruzione definitiva cancella la sessione e **il riferimento**, non ciò che le sopravvive
+
+Memorie e artefatti appartengono al progetto, non alla sessione: restano. Ciò che viene distrutto è
+il **puntatore** — un `conversationId` che indica una sessione inesistente è una dichiarazione di
+provenienza falsa, la stessa classe di difetto dello schema che nessuno legge. Le memorie il cui
+*ambito* era la sessione se ne vanno con lei.
+
+### D-0154 · La conferma è un componente, non un'abitudine
+
+`UI-008`, `UI-009` e `UI-010`. Un solo dialogo per ogni azione distruttiva o di spostamento, così
+che «ogni» sia una proprietà del codice. Dichiara cosa succede e **a quante**; per più di una le
+**nomina** e tronca con «e altre N».
+
+**Il fuoco non parte da nessun bottone**, e la ragione è una contraddizione reale fra due criteri:
+`UI-010` vieta di preselezionare il pulsante pericoloso, `UI-052` vuole che `Invio` confermi.
+Mettere il fuoco su *Annulla* avrebbe fatto annullare `Invio`. Il fuoco va sul **dialogo**: nessun
+bottone è preselezionato e `Invio` conferma comunque. `Esc` annulla e il fuoco non esce dal modale.
+
+### D-0155 · Dimensione del testo e zoom sono **due** moltiplicatori, non uno
+
+`UI-040` e `UI-041`. `--text-scale` moltiplica **ogni** dimensione del foglio di stile: le 45
+dichiarazioni `font-size` in pixel nudi sono diventate `calc(var(--text-scale)*Npx)` e una guardia
+fallisce se una torna. Un solo pixel nudo sarebbe **invisibile** come difetto — l'interfaccia
+crescerebbe attorno a un'etichetta rimasta indietro.
+
+`--ui-zoom` muove **tutto**, spaziature comprese, come lo zoom del browser, ed è applicato al
+`body` perché porti con sé anche il gate di autenticazione, i toast e la conferma: uno zoom che si
+ferma alla shell lascerebbe alla sua dimensione originale l'unico dialogo che chiede della
+distruzione.
+
+**Chi vuole caratteri più grandi non vuole necessariamente meno cose sullo schermo.** Per questo un
+controllo solo non può servire entrambi. Entrambi sono **misurati in browser vero**: 38px → 49,4px
+per il testo, e 44px → 58px di altezza resa per lo zoom. Una preferenza che memorizza e non muove
+nulla è il tipo di niente più convincente che esista.
+
+### D-0156 · L'RTL si ripara **alla fonte**, e il criterio diventa meccanico
+
+`UI-046` è Critica e diceva *«nessuna proprietà fisica left/right nel foglio di stile»*. Era vera
+del provino, **non** del foglio spedito: quattordici dichiarazioni fisiche erano rimaste, ciascuna
+*corretta dopo* da una regola d'override direzionale. Funzionava, ed era un modo di ricordarsi
+dell'RTL invece di renderlo impossibile da scrivere male.
+
+Ora le dichiarazioni fisiche **non esistono**: sono logiche nel punto in cui sono scritte, e il
+blocco di override è **cancellato con loro** — un override per una proprietà che non c'è più è una
+regola su cui nessuno può ragionare. Il criterio è ora verificato meccanicamente da una guardia.
+`box-shadow` conserva una regola per direzione perché quella scorciatoia non ha forma logica.
+
+### D-0157 · La regione live annuncia **eventi**, e il flusso non è un evento
+
+`UI-043`. Una regione alimentata delta per delta legge la stessa risposta due volte, mentre arriva
+e quando si posa: è il modo in cui una funzione pensata per aiutare rende inutilizzabile una
+tecnologia assistiva. Il ramo dello streaming **non annuncia**, ed è una guardia — non un
+commento. Il completamento annuncia una sintesi sola.
+
+### D-0158 · La metrica è un **tempo**, e un cambiamento rifiutato conta come tempo speso
+
+`UI-070…UI-072`. Non è un voto: un voto invita a stare bene con un numero, un tempo dice quanto del
+giorno di una persona costa il prodotto.
+
+`UI-072` è Critica e vive nel codice, non in una nota: `record()` prende la decisione e **non filtra
+mai** su di essa. Escludere i rifiuti sarebbe scegliere il denominatore che conviene — la revisione
+è avvenuta, i minuti sono stati spesi, e il fatto che la risposta sia stata «no» è esattamente
+l'esito che un utensile degno di fiducia deve saper riportare. La finestra limita **la tendenza**,
+mai il conteggio.
+
+**Il bordo sinistro dell'intervallo è dichiarato col numero.** Nel disegno finito è «il giro in
+ombra ha prodotto un risultato»; l'esecuzione in ombra non esiste in questo build, quindi è
+**l'istante in cui l'approvazione è stata sollevata** — lo stesso istante, misurato nell'unico posto
+che oggi lo conosce. La sostituzione viaggia **dentro la risposta dell'API** (`readyDefinition`),
+non in una nota a piè di pagina: un numero il cui bordo è spiegato altrove è un numero che verrà
+citato senza.
+
+### D-0159 · La casella `NON FATTO` non può essere vuota **senza dirlo**, e lo impone il server
+
+`UI-036`, Critica. Tre stati, e quello di mezzo non è ammesso: elementi elencati · nulla elencato
+**e dichiarato** · nulla elencato **e silenzio → RIFIUTATO**. Un rapporto che elenca solo i successi
+insegna una fiducia uniforme, che è l'opposto di utile; e una casella semplicemente vuota è
+indistinguibile da una che nessuno ha guardato. Anche il **rischio residuo** è obbligatorio: «nessuno»
+è una risposta, il silenzio no.
+
+La regola sta nel server, non nella gentilezza di chi compila. Il browser la ripete solo per dirlo
+prima che parta una richiesta. E un contrassegno «nulla è rimasto indietro» **non può contraddire il
+proprio contenuto**: se elenca due cose, il record segue le cose.
+
+### D-0160 · Una riga di stato che riempie i propri buchi è peggio di una che li ammette
+
+`UI-035`. Dodici campi, e la riga **dichiara quanti hanno una fonte in questo build** — oggi tre su
+dodici. Il lettore non può altrimenti sapere quale metà credere. Per lo stesso motivo `UI-037` porta
+una pastiglia **Coverage: —**: una copertura di verifica inventata sarebbe il numero più dannoso del
+prodotto, visto che il suo scopo è dire quanto ci si può fidare.
+
+Nella stessa direzione: le schede del banco che richiedono il motore dichiarano **cosa mostrerebbero
+e perché sono vuote**, il terminale è una regione che non emula nulla, e la destinazione TUI resta
+dichiarata-e-non-costruita. Il vuoto con una ragione è uno stato; il vuoto con una cornice
+plausibile attorno è una bugia su cosa fa il build.
+
+**Una rotta nuova, `GET /api/v1/coden/authorisations`.** Le autorizzazioni di percorso venivano
+**scritte e mai rilette**, quindi «token di autorità vivi» era un campo senza sorgente e l'operatore
+non aveva modo di vedere cosa fosse ancora concesso. La scadenza è calcolata, per la stessa ragione
+di `D-0152`.

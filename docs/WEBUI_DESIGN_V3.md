@@ -621,3 +621,70 @@ invece di nominarlo.
 **Resta aperto:** i valori di §5 non sono più solo calcolati — la ruota delle tinte è ora
 esercitata dai test e ogni tema è misurato dall'audit. Restano non testati gli **screen reader
 reali** e il rendering `forced-colors`, dichiarati a ogni giro.
+
+---
+
+# Costruito — le parti che la grafica non copriva
+
+**Data:** 2026-07-27. Decisioni `D-0152…D-0160`. **Installato nella stessa fase** (`D-0143`).
+La grafica era struttura, token e temi. Questo è ciò che il disegno chiedeva **oltre** ad essa.
+
+## 31. Che cosa esiste ora nel codice
+
+| Criterio | Stato | Dove |
+|---|---|---|
+| `UI-001…UI-012` **gestione delle sessioni** | costruita | tre posti indirizzabili (`#/settings/sessions/{archived,bin}`), cinque distese + scorrevole col conteggio sopra, archivio a dieci con l'intervallo dichiarato, selezione multipla con contatore, un solo pulsante di eliminazione |
+| `UI-008…UI-010` **conferma su ogni azione** | costruita | un componente unico: dice cosa e a quante, **nomina** e tronca con «e altre N», nessun bottone preselezionato, `Esc` annulla |
+| `UI-050…UI-053` **forma da tastiera** | costruita **sulla tastiera** | `↑↓` `Invio` `a` `r` `Spazio` `Ctrl+A` `←→` e `Canc` che **apre il dialogo**; la paginazione segue la lingua in RTL |
+| `UI-050` **comando TUI** | **aperto** | il TUI è dichiarato-e-non-costruito: i comandi sono mostrati, non raggiungibili |
+| `UI-040` **dimensione del testo** | costruita | quattro passi; **45** `font-size` in pixel nudi diventano `calc(var(--text-scale)*Npx)`, guardia inclusa |
+| `UI-041` **zoom dell'interfaccia** | costruita | moltiplicatore indipendente sul `body`, così porta con sé gate, toast e conferma |
+| `UI-042` **riduzione animazioni come impostazione** | costruita | oltre alla preferenza di sistema, e più forte di essa in entrambe le direzioni |
+| `UI-043` **regione live** | costruita | una sintesi per evento; il ramo dello streaming **non annuncia**, ed è una guardia |
+| `UI-044` **lingua e fuso rilevati e sovrascrivibili** | già presente, ora **verificato** | rilevamento del browser + preferenza per utente + default del server |
+| `UI-045` **istanti UTC con identificatore IANA** | costruita | ogni istante passa da un formattatore solo, che nomina la zona e conserva l'ISO in `title` |
+| `UI-046` **RTL senza proprietà fisiche** | **ora vera del foglio spedito** | 14 dichiarazioni convertite alla fonte, blocco di override cancellato, guardia meccanica |
+| `UI-047` **alto contrasto** | già costruito (passo 3) | fra i nove temi |
+| `UI-030…UI-034` **banco a tre regioni** | costruito | navigatore (9 gruppi) · banco a **undici** schede · colonna agente (9 blocchi, l'autorizzazione dei percorsi è lì perché è una richiesta d'autorità) |
+| `UI-033` **terminale persistente e multiplo** | costruito | regione propria, fuori dai pannelli; una guardia fallisce se ci rientra |
+| `UI-035` **riga di stato del banco** | costruita | dodici campi, e la riga **dichiara quanti hanno una fonte**: oggi tre |
+| `UI-036` **casella `NON FATTO`** | costruita, **imposta dal server** | vuota-e-silenziosa è **rifiutata**; rischio residuo obbligatorio |
+| `UI-037` **barra superiore** | completata | fuso e copertura aggiunti; la copertura legge `—` perché nulla ricalcola |
+| `UI-070…UI-072` **metrica del prodotto** | costruita | tempo di revisione per cambiamento deciso, **rifiuti inclusi**, tendenza in Home e cifra nella chiusura |
+
+## 32. Verifiche prodotte, tutte eseguite in sessione
+
+```text
+unit                       677/677   0 falliti · 48 suite        (erano 648)
+guardia di struttura        28/28    0 falliti                   (erano 19)
+accettazione in browser    291/291   0 falliti · browser reale    (erano 265)
+accessibilita WCAG 2.2      27/27    0 falliti · 27 superfici     (erano 26 su 25)
+eslint                     165 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                  5732/5732  0 falliti
+difetti seminati            11/11    ognuno catturato da esattamente una guardia
+```
+
+**La copertura è cresciuta di nuovo:** l'audit misura ora **27** superfici, perché l'archivio e il
+cestino rendono controlli diversi dalla lista di lavoro — auditare la sola lista avrebbe lasciato
+due superfici non misurate con il numero ancora all'aria di completo.
+
+**Un'esclusione nuova nell'audit, dichiarata:** i controlli **disabilitati** non sono più contati
+dai criteri di fuoco e dimensione. Non sono nell'ordine di tabulazione e non possono ricevere il
+fuoco, quindi 2.4.7 non si applica a loro; l'audit stampa **quanti** ne ha saltati, e la suite in
+browser prova separatamente che gli stessi bottoni, **abilitati**, mostrano l'anello di fuoco.
+Un'esclusione che nessuno conta è il modo in cui un audit verde inizia a valere meno di quel che dice.
+
+**Non eseguito, dichiarato:** nessuno screen reader reale · `forced-colors` non emulabile su questo
+Chromium · i comandi TUI di `UI-050` non esistono.
+
+## 33. Cosa resta aperto
+
+- **`UI-050` lato shell** — ogni azione delle sessioni ha una forma da tastiera; il comando nel
+  terminale no, perché il TUI non è costruito. `CE-020` resta **non soddisfatto**.
+- **La schermata iniziale** (`UI-060…UI-063`): sei azioni d'ingresso, dieci azioni rapide, compiti
+  programmati, salute dei servizi e provenienza degli strumenti. Non toccata da questa fase.
+- **La superficie della Ricerca** (`UI-080…UI-089`), che richiede **prima** il suo gate
+  (`UI-090…UI-096`).
+- **Nove campi su dodici** della riga di stato non hanno una fonte, e non l'avranno finché non
+  esiste il motore. La riga lo dichiara a ogni giro.
+- **Voce** (`D-0123`) e **pannelli staccabili** (`07` §5).
