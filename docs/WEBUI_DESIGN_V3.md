@@ -720,7 +720,7 @@ guardia di struttura        35/35    0 falliti                   (erano 28)
 accettazione in browser    312/312   0 falliti · browser reale    (erano 291)
 accessibilita WCAG 2.2      27/27    0 falliti · 729 controlli    (erano 725 — vedi D-0167)
 eslint                     170 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST                  5737/5737  0 falliti · 0 duplicati
+MANIFEST                  5738/5738  0 falliti · 0 duplicati
 difetti seminati            19/19    ognuno catturato da esattamente una guardia
 ```
 

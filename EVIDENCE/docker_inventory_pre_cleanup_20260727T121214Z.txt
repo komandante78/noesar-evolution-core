@@ -1,0 +1,185 @@
+=== docker ps -a ===
+noesar-evolution	Up 48 seconds (healthy)	noesar-evolution:phase4-home
+noesar-evolution.rollback-parts-20260727T121125Z	Exited (0) About a minute ago	noesar-evolution:phase4-parts
+noesar-evolution.rollback-themes-20260727T110341Z	Exited (0) About an hour ago	noesar-evolution:phase4-themes
+coden-ultra-full-product	Exited (0) 37 hours ago	coden-ultra-full-product:untagged-filename-fix-s254
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	Exited (0) 3 days ago	coden-ultra-full-product:skill-context-secret-gate-s250
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	Exited (0) 3 days ago	coden-ultra-full-product:triple-cue-secret-gate-s250
+noesar-coden-ultra-nllb	Exited (0) 2 days ago	noesar-coden-ultra-nllb:v1
+ai-lab	Exited (0) 2 days ago	ai-lab:auth-hardening-s247
+noesar-debuglab	Exited (0) 7 minutes ago	noesar-debuglab:project-scanner-v7
+binhex-prowlarr	Up 37 hours (healthy)	binhex/arch-prowlarr
+sonarr	Up 37 hours	lscr.io/linuxserver/sonarr:latest
+radarr	Up 37 hours	lscr.io/linuxserver/radarr:latest
+qbittorrent	Up 37 hours	ghcr.io/hotio/qbittorrent:latest
+Plex-Media-Server	Up 37 hours (healthy)	plexinc/pms-docker
+ai-lab-prev-s214b	Exited (0) 9 days ago	ai-lab:phaseE-s214
+stats-hub	Exited (0) 2 days ago	stats-hub:v3
+schema-service	Exited (0) 12 days ago	nous-trainer:v3-s134
+coden-ultra-brainlab	Exited (0) 2 days ago	0b8d6776ec19
+nous-simulator-engine	Exited (0) 13 days ago	nous-simulator-engine:v5
+noesar-webui	Exited (0) 2 days ago	noesar-webui:coden-ultra-bench-s190
+coden-ultra-brainlab-phase4-bak	Exited (0) 12 days ago	coden-ultra-brainlab:phase4
+coden-ultra-trainer	Exited (0) 13 days ago	coden-ultra-trainer:phase2
+coden-nous-train	Exited (0) 2 weeks ago	nous-trainer:v3-s134
+nous-phase0-training	Exited (0) 12 days ago	nous-trainer:v3-s134
+nova-ai	Exited (137) 4 weeks ago	nova-ai:V.0.0.6
+coden-benchmark-lab	Exited (0) 2 days ago	coden-benchmark-lab:2.4.2
+fridayn-model-factory	Exited (143) 5 weeks ago	fridayn-model-factory:v1
+noesar-fridayn-tei-embedder-v2	Exited (0) 2 days ago	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9
+Nginx-Proxy-Manager-Official	Up 37 hours	jc21/nginx-proxy-manager
+noesar-fridayn-tei-reranker-v1	Exited (0) 3 weeks ago	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9
+binhex-flaresolverr	Up 37 hours (healthy)	ghcr.io/binhex/arch-flaresolverr
+EmbyServer	Up 37 hours	emby/embyserver:latest
+noesar-core	Exited (2) 2 days ago	noesar-core:data-factory-curated-api-20260525T153414Z
+noesar-dataset-factory	Exited (137) 3 weeks ago	noesar-dataset-factory:worker-job-ui-20260525T133055Z
+noesar-gateway	Exited (2) 3 weeks ago	noesar-gateway:stage2a
+noesar-qdrant	Exited (143) 3 weeks ago	qdrant/qdrant:v1.12.6
+noesar-db	Exited (0) 2 days ago	postgres:16-alpine
+Krusader	Exited (143) 2 weeks ago	ich777/krusader
+Unraid-Cloudflared-Tunnel	Up 37 hours	figro/unraid-cloudflared-tunnel
+Cloudflare-DDNS	Up 37 hours	oznu/cloudflare-ddns
+
+=== docker images ===
+noesar-evolution:phase4-home	377f34255ee8
+noesar-evolution:phase4-parts	bb1cc113c0e3
+noesar-evolution:phase4-themes	483b0fb5340b
+noesar-evolution:phase4-tokens	f42baf588b06
+noesar-evolution:phase4-structure	181918482959
+noesar-evolution:phase4-wp2	54ca3e7a2751
+noesar-evolution:phase4-webui	9d666c6d0bfb
+noesar-evolution:phase4-complete-lan	4e26c950a3d1
+noesar-evolution:phase4-complete	52987fbbb7b5
+noesar-evolution:phase4	1cf0ada84d2b
+noesar-evolution:phase3	24dfc4923536
+coden-ultra-full-product:untagged-filename-fix-s254	eec4f8a2823e
+coden-ultra-full-product:skill-context-secret-gate-s250	498c9066e41c
+coden-ultra-full-product:triple-cue-secret-gate-s250	6727c99d93ae
+coden-ultra-full-product:safety-translation-order-fix-s249	97158ffbd0df
+coden-ultra-full-product:phase3-webui-parity-s248	d796abe3d631
+coden-ultra-full-product:phase2-multilang-s247	9047fa77dcbb
+noesar-coden-ultra-nllb:v1	d037aed26fa5
+coden-ultra-full-product:english-i18n-phase1-s247	fdf0ffdb4b9b
+coden-ultra-full-product:gate6-stream-fix-s247	4c7b8c26d004
+ai-lab:auth-hardening-s247	7ef53b0e4446
+coden-ultra-full-product:gate6-sweep-8fix-audited-s247	429a38fab8d0
+coden-ultra-full-product:secret-gate-triple-fix-s244	70df7568ab37
+coden-ultra-full-product:secret-gate-full-thread-s244	8951a43ec0ee
+coden-ultra-full-product:assimilate-prompt-gate-s244	9230c273fcc3
+coden-ultra-full-product:reflex-cache-secret-gate-v2-4-s243	98831ece300c
+coden-ultra-full-product:canary-secret-sse-hardening-v2-2-cues-fix-s235	597d7dc3a807
+coden-ultra-full-product:canary-secret-sse-hardening-v2-1-build-s235	2d4b5215280d
+binhex/arch-prowlarr:latest	9c6c528fc554
+coden-ultra-full-product:episodic-schema-remediation-v1-1-build-s234	f6078aefb76c
+coden-ultra-full-product:skills-sse-remediation-v1-build-s233	da62e64ed22d
+anchore/syft:latest	428d6ddda903
+coden-ultra-full-product:pre-shadow-baseline-remediation-v1-1-build-s232	5c3615fcccb4
+coden-ultra-full-product:atom-shadow-prepare-phase2a-build-s231	2a845a3c449b
+coden-ultra-full-product:atom-sandbox-overlay-phase1-s223	91b11e32cef6
+lscr.io/linuxserver/radarr:latest	c7ba8b2b6c4c
+coden-ultra-full-product:stream-sse-fix-s222	2fafa9def6de
+coden-ultra-full-product:stream-bridge-s222	dbb6e4965cd6
+coden-ultra-full-product:sandbox-isolate-s222	ea59f92e6b73
+coden-ultra-full-product:fence-normalize-s222	97892e573d5c
+coden-ultra-full-product:chat-bridge-s222b	31804b4726ac
+coden-ultra-full-product:chat-bridge-s222	e8da77e3e058
+ghcr.io/hotio/qbittorrent:latest	2b55c77a6a16
+coden-ultra-full-product:atom-seam-s221c	9bcf6b52ba29
+coden-ultra-full-product:atom-seam-s221b	c322d44de5e4
+coden-ultra-full-product:atom-seam-s221	957cca451209
+ai-lab:phaseE-s214b	c60396cf27af
+ai-lab:phaseE-s214	7edc0e5b5632
+lscr.io/linuxserver/sonarr:latest	4874781c27d8
+atom-serve:v1	46dffef84b0e
+atom-train:v1	8d49bab38828
+ai-lab:phaseC-s211	db752464659b
+ai-lab:phaseA-s211	f068dcb6ccec
+stats-hub:v3	b73cd81db0f1
+stats-hub:v2	7666bde9ef79
+stats-hub:v1	bbd7c08f02c6
+rust:1-bookworm	a0635962c16d
+coden-ultra-neural-cg:v1-with-model	9ce14338cb36
+coden-ultra-brainlab:phase7	0b8d6776ec19
+plexinc/pms-docker:latest	96f1f4f7569d
+coden-ultra-neural-cg:v1	6cb5da555935
+node:22-bookworm-slim	bd16adabad76
+nous-simulator-engine:v5	46508d3c7736
+nous-simulator-engine:v4	406a40f01504
+coden-ultra-full-product:node-synapses-s195b	8e56fadc5c1a
+coden-ultra-full-product:node-synapses-s195	8c4de2b431f0
+debian:bookworm-slim	cae69e86e0b0
+noesar-webui:coden-ultra-bench-s190	d53416dd22cf
+noesar-webui:cg-pipeline-s190	47f7dec4d3c4
+coden-ultra-brainlab:phase4	925161248f9a
+coden-ultra-brainlab:phase3	c7d99a979958
+coden-ultra-trainer:phase2	d5d5b4896e0e
+coden-ultra-trainer:phase1	db1e06cb252f
+noesar-debuglab:project-scanner-v7	33879e69ccf9
+noesar-debuglab:project-scanner-v6	c110bf331344
+lscr.io/linuxserver/openssh-server:latest	731b55010b42
+noesar/noesar:cpu	98f34c793eab
+searxng/searxng:latest	844a75e8a3a6
+noesar/noesar:1.7.2	a2d76593e989
+noesar/noesar:latest	a2d76593e989
+noesar/noesar:1.7.1	aa3060f8a78c
+nous-trainer:v3-s134	e6a1ce47ee2f
+rete-neurale-test:torch-env	e6a1ce47ee2f
+coden-nous:0.2	92d1e40f3e64
+coden-nous:0.1	ae3a6a6eff75
+nous-trainer:v3-s125	b1c1a9d47f67
+ghcr.io/puppeteer/puppeteer:latest	c8006c38888d
+nous-farm:1.1	2955345e4133
+nous-farm:1.0	7eb37f36cca2
+python:3.11-slim	b7486dbe03b3
+python:3.12-slim	9cbfea842643
+python:3-slim	7da13cf8e04e
+nova-ai:V.0.0.6	a1a4e615ea6b
+coden-benchmark-lab:2.4.2	f56b2670997d
+fridayn-model-factory:v1	ea1047f12918
+alpine:latest	d529dd0c6e55
+pihole/pihole:latest	637b4ff0203b
+jc21/nginx-proxy-manager:latest	f44e23f5e4d7
+emby/embyserver:latest	fa0dadda51e7
+ghcr.io/binhex/arch-flaresolverr:latest	b5e4cd083547
+noesar-core:data-factory-curated-api-20260525T153414Z	f84a40249fda
+noesar-dataset-factory:worker-job-ui-20260525T133055Z	904dab2edd8e
+noesar-gateway:stage2a	32c43ae7c480
+node:20	33ed5ef90e83
+node:20-slim	9da6b4e352d0
+postgres:16-alpine	667495ca2ac3
+figro/unraid-cloudflared-tunnel:latest	11d4f2a7a970
+ghcr.io/huggingface/text-embeddings-inference:cuda-1.9	d9bb2dec9ada
+ich777/krusader:latest	cbb3830d5f3c
+qdrant/qdrant:v1.12.6	4ece0d2bfe68
+oznu/cloudflare-ddns:latest	a2e30a1da73e
+dperson/samba:latest	aac8a52c5b16
+
+=== docker network ls ===
+NETWORK ID     NAME                   DRIVER    SCOPE
+c06d787e975c   br0                    macvlan   local
+b77b4fe2593a   bridge                 bridge    local
+f6241d9ccde6   coden-bridge           bridge    local
+7175c4af2fec   coden-local            bridge    local
+40f4ceaab3ec   deploy_default         bridge    local
+112b7d278067   host                   host      local
+a3383158800a   noesar-e2e-net         bridge    local
+f55f74343e47   noesar-evolution-net   bridge    local
+f4b140b767f9   noesar-local           bridge    local
+8528d96f624f   none                   null      local
+
+=== docker volume ls ===
+DRIVER    VOLUME NAME
+local     2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+local     5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+local     7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+local     07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+local     9f455c76aba73bcd018b1cae897ee2f18580ad62f0a707cdf5b8171b80967f13
+local     15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+local     017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+local     928b5c104fd9f8b6eb1be48c23ddb63944fedcf74f7eba9fdac336b2984ad927
+local     ai_lab_data
+local     brainlab_data
+local     c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+local     d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+local     db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+local     stats_hub_data

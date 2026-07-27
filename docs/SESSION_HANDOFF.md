@@ -30,19 +30,20 @@ nuova decisione dell'Owner.**
 
 1. `PROJECT_STATE.json` e questo file
 2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, completo e autorizzato, **più
-   `§22-33`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
+   `§22-36`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
    (destinazione Ricerca e il suo gate) · §22-24 la struttura · §25-27 i token · §28-30 i nove
-   temi · **§31-33 le parti che la grafica non copriva**. Criteri `UI-001…UI-096`
+   temi · §31-33 le parti oltre la grafica · **§34-36 la schermata iniziale**. Criteri
+   `UI-001…UI-096`
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` (matrice `CE-001…CE-024`) ·
    `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-5. `docs/DECISION_LOG.md` (ultime: **`D-0152…D-0160`**), `docs/INSTALLATION_LEDGER.md`
+5. `docs/DECISION_LOG.md` (ultime: **`D-0161…D-0168`**), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-> **L'interfaccia è ora la parte più completa del progetto. Il motore non esiste ancora.**
+> **L'interfaccia è ora quasi tutta costruita. Il motore non esiste ancora.**
 
 Restano aperte tre cose, in ordine di dipendenza. **Nessuna è iniziata.**
 
@@ -52,155 +53,141 @@ dicono cose diverse e nulla registra quale dei due debba muoversi). Il punto 5 d
 **4** — le domande dell'Owner sui contenuti — che risulta ancora *in attesa*: tradurre prima
 significa tradurre due volte. **Il punto 6 è un atto di governo, fattibile subito.**
 
-**(b) Ciò che dell'interfaccia resta scoperto**, ora molto meno di prima:
+**(b) Ciò che dell'interfaccia resta scoperto**, ora poco:
 
-- la **schermata iniziale** (`UI-060…UI-063`) — sei azioni d'ingresso, dieci azioni rapide
-  formulate come obiettivi, compiti programmati con la loro regola e il loro fuso, salute dei
-  servizi e provenienza di strumenti e modelli
 - la **superficie della Ricerca** (`UI-080…UI-089`), che richiede **prima** il suo gate
-  (`UI-090…UI-096`): costruire la superficie per prima significherebbe consegnare una via d'uscita
-  verso la rete senza nulla che la classifichi
+  (`UI-090…UI-096`, cinque criteri Critici): costruire la superficie per prima significherebbe
+  consegnare una via d'uscita verso la rete senza nulla che la classifichi. **Da decidere prima di
+  cominciarla:** il gate classifica *intento ed effetto richiesto* e non può essere una denylist
+  testuale (`UI-090`), ma classificare senza `ReasoningProvider` significa costruirlo su qualcosa
+  che il progetto non ha — è una domanda per l'Owner, non un dettaglio implementativo
 - `UI-050` **lato shell** — ogni azione delle sessioni ha una forma da tastiera, il comando nel
   terminale no, perché il TUI è dichiarato-e-non-costruito. **`CE-020` resta non soddisfatto**
-- **nove campi su dodici** della riga di stato del banco non hanno una fonte, e non l'avranno finché
-  non esiste il motore. La riga lo dichiara a ogni giro
+- **tre delle sei azioni d'ingresso** non possono agire finché non esiste l'esecutore, e **nove
+  campi su dodici** della riga di stato del banco non hanno una fonte. Entrambe le superfici lo
+  dichiarano a ogni giro invece di lasciarlo dedurre
 
 **(c) La fase 1, la spina dorsale** — `ReasoningProvider`, capability token, esecuzione in ombra,
 esecutore che accetta solo token, registro eventi, comprensione del repository. Rust dalla prima
-riga, su un host senza toolchain Rust. **È il lavoro grande**, ed è quello che trasformerebbe metà
-delle caselle vuote di questa interfaccia in caselle piene.
+riga, su un host senza toolchain Rust (esiste però l'immagine `rust:1-bookworm` in locale, quindi
+la prima cosa da provare è che una build **offline** contro i crate già vendorizzati funzioni
+davvero, prima di scrivere il contratto). **È il lavoro grande**, ed è quello che riempirebbe metà
+delle caselle vuote di questa interfaccia.
 
 **Regola in vigore** (`D-0143`, `CLAUDE10.md` §3a): **si costruisce, si installa e si verifica nella
-stessa fase.** Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-parts`.
+stessa fase.** Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-home`.
 
 ---
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**Le parti dell'interfaccia che il disegno chiedeva e la grafica non copriva** — sessioni,
-accessibilità non strutturale, metrica del prodotto, banco di lavoro — costruite, **installate e
-verificate sull'installazione viva**.
+**La schermata iniziale** (`UI-060…UI-063`), costruita, **installata e verificata
+sull'installazione viva**. La Home offriva tre card di modalità e due liste; ora è la schermata
+che il riferimento normativo descrive.
 
-### 1 · Le sessioni, e un cestino che mantiene la promessa che fa
+### 1 · Sei azioni d'ingresso, e tre dicono di non poter agire
 
-Tre posti e non sono lo stesso posto: lista di lavoro, archivio, cestino — ognuno con un indirizzo
-proprio (`#/settings/sessions/archived`), perché una «pagina» che non si può collegare, ricaricare o
-raggiungere col tasto indietro è un pannello che indossa la parola. Archiviare **sposta**; eliminare
-va in un cestino che tiene **trenta giorni**.
+Tre agiscono: riprendi l'ultima sessione, apri un progetto, comincia un progetto nuovo. Tre no —
+clonare, importare un archivio, connettere un remoto **scrivono un albero di lavoro**, e nulla in
+questo layer può scrivere su disco. Sono comunque **elencate**, ognuna dichiara cosa aspetta, e la
+schermata dice **quante delle sei possono agire** invece di lasciarlo contare (`D-0161`).
 
-**La scadenza è calcolata, non è un contrassegno** (`D-0152`): un contrassegno andrebbe spazzato, e
-un contrassegno non spazzato è una sessione che *sembra* viva dopo la fine del periodo. Passata la
-data non è elencata **né ripristinabile**, che la spazzata sia girata o no. E la sparizione è
-totale: una sessione nel cestino esce **da ogni altra superficie**, non solo dalla pagina che l'ha
-eliminata — è un test a sé, perché è la scorciatoia che un'implementazione frettolosa prende.
+Sono **`aria-disabled`, non `disabled`**: un pulsante disabilitato esce dall'ordine di tabulazione,
+e questi esistono *per portare la frase che spiega cosa manca* — disabilitarli l'avrebbe nascosta
+proprio a chi non vede lo stile attenuato.
 
-**La conferma è un componente** (`D-0154`), non un'abitudine: dice cosa succede e **a quante**, per
-più di una le **nomina** e tronca con «e altre N». Il fuoco non parte da nessun bottone, e la
-ragione è una contraddizione vera fra due criteri — `UI-010` vieta di preselezionare il pulsante
-pericoloso, `UI-052` vuole che `Invio` confermi. Il fuoco sul **dialogo** soddisfa entrambi.
+### 2 · Dieci obiettivi che non spediscono niente
 
-### 2 · Dimensione del testo e zoom sono due cose diverse, e si vedono muovere
+Formulati **come obiettivi** perché l'Intent Frame parte da un obiettivo: la formulazione *è* il
+criterio. Vivono nel codice e non nel markup, così «dieci» è verificabile — una lista scritta a mano
+nell'HTML è una lista di cui nessuno si accorge che è diventata nove. L'obiettivo finisce **nel
+campo di scrittura**, con il fuoco, e **non parte niente**: una schermata che spedisce al primo
+click decide al posto della persona cosa intendeva (`D-0162`).
 
-`--text-scale` moltiplica **ogni** dimensione del foglio: le **45** `font-size` in pixel nudi sono
-diventate `calc(var(--text-scale)*Npx)`. Un solo pixel nudo sarebbe un difetto **invisibile** —
-l'interfaccia cresce attorno a un'etichetta rimasta indietro. `--ui-zoom` muove tutto, ed è sul
-`body` perché porti con sé gate, toast e **la conferma**: uno zoom che si ferma alla shell lascia
-alla dimensione originale l'unico dialogo che chiede della distruzione.
+### 3 · Il difetto vero della fase: un quadrante senza fuso
 
-**Misurati in browser vero**, non asseriti: 38px → 49,4px per il testo, 44px → 58px di altezza resa
-per lo zoom. Una preferenza che memorizza e non muove nulla è il niente più convincente che esista.
+`<input type="datetime-local">` restituisce **un quadrante senza fuso**. L'interfaccia lo spediva
+così com'era e il control plane lo risolveva con `new Date(value)`, che per una forma senza
+scostamento significa «ora locale del processo che interpreta» — il container, che gira in UTC.
+Una persona in `Europe/Rome` che chiedeva le 09:30 memorizzava le 09:30Z e si vedeva rimostrare le
+11:30: **l'interfaccia contraddiceva la persona sull'ora che la persona aveva appena scritto**
+(`D-0163`).
 
-### 3 · L'RTL riparato alla fonte, e un criterio Critico che diventa meccanico
+Ora il quadrante si risolve **nel browser**, contro il fuso efficace, e viaggia un **istante**. Il
+modulo nuovo `apps/webui-static/schedule.js` è puro e provato senza browser, contro **otto vettori
+calcolati a mano** dalle regole dei fusi — due dei quali a mezz'ora e a tre quarti d'ora
+(`Australia/Lord_Howe`, `Pacific/Chatham`), perché un errore che vede solo ore intere passa ogni
+test scritto in Europa. I due confini della doppia ora sono **misurati e scritti**, non assunti: la
+prima stesura del commento affermava il **contrario** di quel che il caso di sovrapposizione fa
+davvero.
 
-`UI-046` diceva *«nessuna proprietà fisica nel foglio di stile»* ed era vera **del provino**, non
-del foglio spedito: quattordici dichiarazioni fisiche erano rimaste, ognuna *corretta dopo* da un
-override direzionale. Funzionava — ed era ricordarsi dell'RTL invece di renderlo impossibile da
-scrivere male. Ora le dichiarazioni fisiche **non esistono** e il blocco di override è **cancellato
-con loro**: un override per una proprietà che non c'è più è una regola su cui nessuno può ragionare.
-Il criterio è ora **verificato da una guardia**.
+**Il campo dichiara il fuso in cui viene letto**, perché altrimenti l'accordo resta invisibile alla
+persona. **Nessun record è stato riscritto**: l'installazione non ha compiti (`tasks: 0`, letto
+dalla copia di backup dello stato), e un valore memorizzato senza fuso non si recupera indovinando —
+se ne comparisse uno, l'interfaccia lo **marca**.
 
-### 4 · La metrica che il prodotto accetta di farsi misurare — rifiuti inclusi
+### 4 · Attivi e programmati partizionano, e la regola è stampata sul pannello
 
-`UI-072` è Critica e vive nel codice: `record()` prende la decisione e **non filtra mai** su di
-essa. Escludere i rifiuti sarebbe scegliere il denominatore che conviene — la revisione è avvenuta,
-i minuti sono stati spesi, e «no» è esattamente l'esito che un utensile degno di fiducia deve saper
-riportare.
+Un compito elencato due volte è un compito contato due volte. La regola — finito in nessuno dei
+due, una ricorrenza o un inizio futuro è programmato, `running` batte una regola — sta **sul
+pannello**, perché un raggruppamento il cui criterio vive in un file sorgente non è controllabile da
+chi lo guarda. La regola di ricorrenza è mostrata **alla lettera**: renderla come «ogni lunedì»
+sarebbe inventare la lettura di una stringa che il prodotto non ha mai analizzato (`D-0164`).
 
-**Il bordo sinistro dell'intervallo viaggia dentro la risposta dell'API** (`readyDefinition`). Nel
-disegno finito è «il giro in ombra ha prodotto un risultato»; l'ombra non esiste in questo build,
-quindi è l'istante in cui l'approvazione è stata sollevata. Un numero la cui definizione sta altrove
-è un numero che verrà citato senza.
+### 5 · Salute, strumenti e modelli — al rango che il ruolo consente
 
-### 5 · La casella `NON FATTO`, imposta dal server
+La sezione che mostra la salute per esteso è **solo dell'Owner**, quindi mettere quei numeri su una
+pagina che ogni ruolo raggiunge sarebbe stato costruire la scorciatoia attorno a quel cancello.
+**Il server assembla la schermata** (`GET /api/v1/home`), e ogni blocco è costruito contro i permessi
+di chi chiama: un Owner vede i componenti, chiunque altro la parola aggregata, il **numero** dei
+componenti e la dichiarazione che il dettaglio esiste e a chi spetta. La modalità sicura raggiunge
+**ogni** ruolo. Un blocco negato torna **negato con il permesso che servirebbe**, mai vuoto
+(`D-0165`).
 
-`UI-036`, Critica. Tre stati e quello di mezzo non è ammesso: elencati · nulla **e dichiarato** ·
-nulla **e silenzio → RIFIUTATO**. Un rapporto che elenca solo i successi insegna una fiducia
-uniforme, che è l'opposto di utile; una casella semplicemente vuota è indistinguibile da una che
-nessuno ha guardato. Anche il rischio residuo è obbligatorio: «nessuno» è una risposta, il silenzio
-no. E un contrassegno «nulla rimasto indietro» **non può contraddire il proprio contenuto**.
+**Provenienza è da dove viene, non chi l'ha aggiunto** (`D-0166`): trasporto, endpoint, se quell'host
+è su questa macchina — e tre valori, non due, perché «ignoto» è ciò che un record senza endpoint
+onestamente è. Il registrante **non è sul record**: sta nel registro di audit, e la superficie lo
+dice invece di inventarlo. **Lo stato di fiducia dei modelli NON si mostra**: `trust_state` esiste
+nello schema e nessun codice lo scrive, quindi ogni riga leggerebbe la stessa costante.
 
-### 6 · Un banco che ammette quello che non sa
+### 6 · Difetti trovati — e i due più istruttivi sono nella misura
 
-Tre regioni, undici schede, un terminale che è una **regione** e non una scheda che sparisce. La riga
-di stato ha dodici campi e **dichiara quanti hanno una fonte in questo build: tre** (`D-0160`). Il
-lettore non può altrimenti sapere quale metà credere. Per la stessa ragione la pastiglia **Coverage**
-legge `—`: una copertura di verifica inventata sarebbe il numero più dannoso del prodotto, visto che
-il suo scopo è dire quanto ci si può fidare.
-
-**Una rotta nuova**, `GET /api/v1/coden/authorisations`: le autorizzazioni di percorso venivano
-**scritte e mai rilette**, quindi «token di autorità vivi» era un campo senza sorgente.
-
-### 7 · Difetti trovati — e la maggior parte erano miei
-
-1. **Collisione di nomi reale.** «Sessione» significa due cose in questo prodotto: l'accesso e il
-   lavoro. Il mio `renderSessions` collideva con quello che elenca le **sessioni di accesso**, e il
-   suo parametro avrebbe **oscurato** il mio stato globale. Rinominato il mio, non il suo, con la
-   nota sul perché.
-2. **`ESLint no-undef` ha pagato di nuovo**, contestando `HTMLButtonElement`.
-3. **Mio, trovato dall'audit:** un bottone del terminale a **22px**, due sotto il minimo di 24 — il
-   tipo di miss che leggere il CSS non trova.
-4. **Mio, nella suite in browser:** la creazione delle sessioni mandava l'header CSRF
-   *convenzionale* invece di quello che il prodotto legge, quindi **sette scritture rispondevano
-   403** e la superficie non aveva niente da mostrare: un difetto dell'harness che imita
-   perfettamente un difetto del prodotto.
-5. **Mio, di nuovo nella misura:** `.page-title` risolveva a una sezione **nascosta**. Un controllo
-   falliva per la ragione sbagliata, e l'altro sarebbe passato misurando qualcosa che nessuno vede.
-6. **Mio, e il più istruttivo:** il controllo dell'anello di fuoco falliva mentre il prodotto era
-   corretto. Chromium concede `:focus-visible` per **modalità d'ingresso**: dopo un click un
-   `focus()` programmatico non mostra nulla. Ora il bottone si raggiunge con un **Tab vero** — la
-   stessa lezione che un evento di tastiera sintetico aveva già insegnato a questo progetto.
-7. **Limite dello strumento, non del prodotto:** l'audit contava i controlli **disabilitati**, che
-   non sono nell'ordine di tabulazione e non possono ricevere il fuoco. Esclusi — ma l'esclusione è
-   **dichiarata** (l'audit stampa quanti ne salta) e **coperta** (la suite prova che gli stessi
-   bottoni, abilitati, mostrano l'anello). Un'esclusione che nessuno conta è il modo in cui un audit
-   verde inizia a valere meno di quel che dice.
-8. **Incoerenza di stato trovata verificando gli input:** `PROJECT_STATE.last_commit` nominava un
-   commit **non raggiungibile** — la fase precedente aveva scritto lo stato e poi emendato il
-   commit. Riparata l'istanza, e **la regola**: il commit di testa si registra in un commit
-   successivo, mai con un emendamento.
+1. **Lo strumento di misura escludeva controlli raggiungibili** (`D-0167`). L'audit trattava
+   `aria-disabled` come `disabled` e saltava entrambi, motivando che un controllo disabilitato «non
+   è nell'ordine di tabulazione». Per `aria-disabled` **è falso**. Trovato perché il conteggio
+   **non si è mosso** quando quattro pulsanti sono passati da una forma all'altra — possibile solo
+   se lo strumento non sapeva distinguerli. Copertura **725 → 729** controlli, saltati **18 → 14**.
+2. **Il mio oracolo era sbagliato, non il prodotto.** Il controllo del fuso confrontava con il fuso
+   *del browser* della sonda (UTC) mentre l'interfaccia risolve contro il **fuso efficace** (lì
+   UTC+9): un `09:30` correttamente risolto tornava `00:30Z` e il controllo lo chiamava difetto.
+3. **Un `console.warn` con testo dell'utente in posizione di stringa di formato** — trovato da
+   semgrep (`unsafe-formatstring`), vero, e riparato: un input contenente `%s` avrebbe consumato
+   l'argomento successivo.
+4. **Backtick dentro un commento che vive in un template literal**: il mio commento nell'audit ha
+   troncato la stringa iniettata nella pagina. `node --check` l'ha preso subito.
+5. **Un mio test verificava l'unicità *attraverso* il conteggio**, quindi un elemento rimosso
+   produceva **due** obiezioni e nessuno dei due test parlava più di una cosa sola. Corretto il
+   test, non il difetto seminato.
+6. **Una riga vuota lasciata in mezzo al MANIFEST** dal mio script di aggiornamento, che toglieva le
+   righe vuote in coda *dopo* aver aggiunto le nuove voci.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                       677/677   0 falliti · 48 suite        (erano 648)
-guardia di struttura        28/28    0 falliti                   (erano 19)
-accettazione in browser    291/291   0 falliti · browser reale    (erano 265)
-accessibilita WCAG 2.2      27/27    0 falliti · 27 superfici     (erano 26 su 25)
-eslint                     166 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST                  5733/5733  0 falliti
-difetti seminati            11/11    ognuno catturato da esattamente una guardia
+unit                       734/734   0 falliti · 50 suite        (erano 677)
+guardia di struttura        35/35    0 falliti                   (erano 28)
+accettazione in browser    312/312   0 falliti · browser reale    (erano 291)
+accessibilita WCAG 2.2      27/27    0 falliti · 729 controlli    (erano 725 — D-0167)
+eslint                     170 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                  5738/5738  0 falliti · 0 duplicati
+difetti seminati            19/19    ognuno catturato da esattamente una guardia
 ```
 
-**La copertura è cresciuta di nuovo**: l'audit misura **27** superfici, perché archivio e cestino
-rendono controlli diversi dalla lista di lavoro.
-
 **Caccia con gli strumenti reali** (`noesar-debuglab`, avviato e **rifermato nella stessa fase**):
-`services/…/src` **0 finding**, `test/` **0 finding**, `apps/webui-static` **1 MEDIUM** — un
-`Object.assign` su un `Error` appena costruito, per attaccargli stato e correlation id: falso
-positivo, codice preesistente, scartato con la riga alla mano. `tools/` riporta **12 finding**,
-tutti in due strumenti Python **non toccati da questa fase** e non eseguibili su questo host
-(nessun `python3`): invocazioni `subprocess` con argomenti fissi e un `import` inutilizzato.
-**Registrati, non riparati** — una riparazione che non posso provare non è una riparazione.
+`services/…/src` **0 finding**, `test/` **0 finding**, `apps/webui-static` **due** — uno preesistente
+(`Object.assign` su un `Error` appena costruito, scartato con la riga alla mano) e uno **mio**,
+vero e riparato. `tools/` riporta gli stessi 12 finding di prima in due strumenti Python non toccati
+da questa fase e non eseguibili su questo host (nessun `python3`).
 
 **Non eseguito, dichiarato:** nessuno screen reader reale (l'audit stampa il proprio blocco
 `NOT_TESTED` a ogni giro) · `forced-colors` non emulabile su questo Chromium · i quattro passi
@@ -210,14 +197,12 @@ esistono.
 ## ➜ L'installazione — SOSTITUITA E VERIFICATA
 
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-parts
+container   running · healthy · restarts=0 · noesar-evolution:phase4-home
 bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
-endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
-dati        postgres 18.4 · pgvector 0.8.5 · 16 migrazioni · 15 tabelle RLS
-            identity projected=1
-interfaccia app.js · index.html · styles.css byte IDENTICI al repository
-rotte nuove /sessions · /metrics/review-time · /closures · /coden/authorisations
-            tutte 401 senza sessione, contro 404 su una rotta inesistente
+endpoint    livez 200 · readyz 200
+rotta nuova /api/v1/home → 401 senza sessione, contro 404 di una rotta inesistente
+modulo nuovo /schedule.js → 200
+interfaccia app.js · index.html · styles.css · schedule.js byte IDENTICI al repository
 igiene      due soli container noesar-evolution* · reti e volumi invariati
             37 container non del progetto prima e dopo · nessun prune
 ```
@@ -227,37 +212,43 @@ salute contro il loopback restituisce `000` e sembra un servizio morto mentre il
 Usare l'indirizzo di bind reale, che si ricava con `docker port noesar-evolution`.
 
 **Cosa NON è stato verificato dal vivo, e va detto.** Il *comportamento* dell'interfaccia non è
-esercitato su questa installazione (§3a, `11e`): le suite creano un Owner, creano sessioni e ne
-eliminano, quindi girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono
-**identici** all'albero che quelle suite hanno esercitato, che il servizio è sano e che le rotte
-nuove esistono e sono protette.
+esercitato su questa installazione (§3a, `11e`): le suite creano un Owner, compiti e sessioni, quindi
+girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono **identici**
+all'albero che quelle suite hanno esercitato, che il servizio è sano e che la rotta nuova esiste ed
+è protetta.
 
-## ➜ ⚠ Rollback — questa volta ha un costo, ed è dichiarato
+## ➜ Rollback — questa volta NESSUN costo nuovo
 
-`AI_STATE_VERSION` passa da **2 a 3** (`reviewSamples`, `closures`, e i due campi delle sessioni).
-La migrazione c'è, è testata, e la catena gira **1 → 3 in una lettura sola**.
+`AI_STATE_VERSION` **non si muove**: resta 3. Nulla in questa fase aggiunge una collezione o un
+campo a un record — la provenienza mostrata è **derivata** da ciò che i record già portano.
 
 ```text
 docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
-docker start noesar-evolution.rollback-themes-20260727T110341Z
+docker start noesar-evolution.rollback-parts-20260727T121125Z
 ```
 
-**Controllare prima `state/ai-workspace.json`.** Finché legge `"schemaVersion": 1` — come al momento
-di scrivere questa riga, verificato tre volte — tornare indietro è **solo** riavviare il vecchio
-container. Se legge `3`, va ripristinato anche `state/` da
-`BACKUPS/runtime_pre_parts_deploy_20260727T110330Z/` (75 MB, preso a servizio fermo), o
-`:phase4-themes` **rifiuterà di caricare il workspace AI**: il suo validatore pretende
-corrispondenza esatta e un file dal futuro viene rifiutato invece che indovinato.
+Il costo dichiarato da `:phase4-parts` resta valido per conto suo — un'immagine **più vecchia** di
+quella rifiuta un workspace scritto a versione 3 — e questa build non lo cambia. Finché
+`state/ai-workspace.json` legge `1` (verificato in chiusura) anche quel percorso resta aperto,
+altrimenti va ripristinato `state/` da `BACKUPS/runtime_pre_home_deploy_20260727T121114Z/` (75 MB,
+preso a servizio fermo).
 
-Per tornare indietro sul **sorgente** basta ricopiare da
-`BACKUPS/webui_missing_parts_20260727T101551Z/`, che contiene i file dell'interfaccia, del control
-plane, le suite e il MANIFEST come erano prima di questa fase.
+Per tornare indietro sul **sorgente**: `BACKUPS/home_screen_20260727T113422Z/`.
 
 ## ➜ Blocker aperti
 
 `B-001` nessun remote GitHub (nessun commit è mai stato pushato) · `B-002` secret scan euristico
 (`detect-secrets` restituisce 0 finding su una chiave AWS letterale) · `B-008` due store di
 identità.
+
+**Registrato e non riparato, con la ragione** (regola 40a): **`/healthz` risponde 200 senza
+autenticazione** e su questo bind LAN è leggibile da tutta la sottorete — espone versione del
+prodotto, postura di autorità, elenco dei componenti, canale di aggiornamento e scope di debug. È la
+stessa classe che `/metrics` ha già chiuso con `allowsUnauthenticatedMetrics`, ma la riparazione
+esce dallo scope di questa fase: `/healthz` è consumato dagli installer, dal polling di salute
+dell'update manager e da procedure documentate su tre piattaforme, e i `.ps1` non sono eseguibili su
+questo host (regola 45). **La schermata iniziale non lo usa**: legge la rotta autenticata
+`/api/v1/home`, così la superficie nuova non allarga nulla.
 
 **Aperto e non risolvibile qui:** la **conformità** della conservazione dei dati delle richieste
 rifiutate. L'Owner ha autorizzato il **disegno** (`D-0136`); la verifica rispetto agli obblighi
@@ -270,3 +261,8 @@ applicabili non è stata fatta e non è accertabile su questo host.
 `Cross-Origin-Opener-Policy` che il server invia, perché si è serviti in HTTP semplice su un nome
 che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
 e di fase d'installazione.
+
+**Deviazione mia, registrata (`D-0168`):** ho eseguito `docker exec noesar-evolution sh -c 'echo skip'`
+mentre verificavo il fuso del container. Non ha letto né scritto nulla, ma §5 regola 16 non prevede
+eccezioni di sola lettura per il container di prodotto. Il dato è stato poi ottenuto dalla copia di
+backup dello stato, che sta dentro `PROJECT_ROOT`.

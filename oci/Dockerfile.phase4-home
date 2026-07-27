@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The initial screen: UI-060…UI-063.
+#
+# The previous image delivered the parts of the interface the graphics did not cover. This
+# delivers the screen a person lands on, which until now offered three mode cards and two
+# lists. Built and installed in the same phase (D-0143).
+#
+# What this image adds:
+#
+#   1. six entry actions (UI-060). Three act — resume the last session, open a project,
+#      start a new one. Three cannot: cloning a repository, importing an archive and
+#      connecting a remote all write a working tree, and nothing on this layer may write to
+#      disk. They are listed anyway, each stating what it waits for, and the screen declares
+#      how many of the six can act instead of leaving that to be counted. They carry
+#      `aria-disabled`, not `disabled`, so the sentence explaining what is missing stays
+#      reachable by keyboard;
+#   2. ten quick actions phrased as goals (UI-061), held in code so that "ten" is a
+#      checkable property. A goal fills the composer and sends nothing;
+#   3. active and scheduled work in one panel, partitioned so that no task appears twice,
+#      with each recurrence rule shown verbatim and the zone named on the panel AND next to
+#      the field (UI-062);
+#   4. service health, installed tools and models, each with provenance and each at the rank
+#      the caller's role allows (UI-063). Model trust state is deliberately NOT rendered:
+#      `model_descriptors.trust_state` is written by no code, so every row would read one
+#      constant, and a column nobody sets displayed as if it meant something is fabricated
+#      evidence.
+#
+# One new route, `GET /api/v1/home`, assembles the screen server-side: each block is built
+# against the caller's own permissions, and a block they may not read comes back withheld
+# WITH the permission it needs — because empty-and-silent and forbidden look identical on a
+# screen and only one of them is a fact about the product.
+#
+# One repaired defect, and it is the reason this image matters beyond the new panels:
+# `<input type="datetime-local">` yields a wall clock with no zone, and the interface sent it
+# raw. The control plane resolved it with `new Date(value)`, which for a date-time form
+# without an offset means the local time of whichever process parses it — the container,
+# running UTC. A person in Europe/Rome asking for 09:30 stored 09:30Z and was shown 11:30.
+# The wall clock is now resolved in the browser against the effective zone and sent as an
+# instant.
+#
+# Measured, not asserted: 734 unit tests, 312 browser checks in a real browser, 27/27 WCAG
+# 2.2 AA across 27 surfaces and now 729 controls, ESLint over 170 files with no errors and
+# no no-undef, and nineteen deliberately seeded defects each caught by exactly one guard.
+#
+# ROLLBACK COST — none new (CLAUDE10.md 11d).
+#
+# `AI_STATE_VERSION` does NOT move: it stays at 3. Nothing here adds a collection or a field
+# to a record, because the provenance this screen shows is derived from what the records
+# already carry. Rolling back to :phase4-parts is therefore only starting the preserved
+# container. The cost declared by :phase4-parts still stands on its own terms — an image
+# older than that one still refuses a workspace written at version 3 — and that condition is
+# unchanged by this build.
+#
+# Lineage, stated rather than hidden — now twelve deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#     -> :phase4-themes -> :phase4-parts -> :phase4-home
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-parts
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

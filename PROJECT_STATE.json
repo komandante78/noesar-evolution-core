@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_0_MISSING_INTERFACE_PARTS_BUILT_INSTALLED_AND_VERIFIED",
-  "next_phase": "CONVERSAZIONE con l Owner: restano (a) fase 0 punti 5-6, (b) schermata iniziale UI-060..063 e la Ricerca che richiede prima il suo gate, (c) la fase 1 — la spina dorsale. Nessuna e iniziata.",
+  "phase_status": "PHASE_0_INITIAL_SCREEN_BUILT_INSTALLED_AND_VERIFIED",
+  "next_phase": "CONVERSAZIONE con l Owner: restano (a) fase 0 punti 5-6, (b) la Ricerca — che richiede PRIMA il suo gate UI-090..096, e il gate ha una domanda aperta: classificare intento ed effetto senza ReasoningProvider, (c) la fase 1 — la spina dorsale. Nessuna e iniziata.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "ec86a82 (the missing interface parts, built and installed)",
-  "last_updated_utc": "2026-07-27T11:09:38Z",
+  "last_updated_utc": "2026-07-27T12:14:56Z",
   "blockers": [
     {
       "id": "B-001",
@@ -52,6 +52,18 @@
       "blocks_next_phase": false,
       "resolution_options": [
         "Eseguire la migrazione quando la fase 1 arriva ai cubi"
+      ]
+    },
+    {
+      "id": "B-010",
+      "severity": "medium",
+      "code": "HEALTHZ_UNAUTHENTICATED_ON_LAN_BIND",
+      "summary": "GET /healthz answers 200 with no session and, on this LAN bind, is readable by the whole subnet: it discloses the product version, the authority posture, the component list, the update channel and the debug scopes. Same class as the /metrics exposure already closed by allowsUnauthenticatedMetrics. NOT repaired in this phase, with the reason named: /healthz is consumed by the installers, by the update manager health polling and by documented procedures on three platforms, and the PowerShell installers cannot be executed on this host (rule 45), so the repair exceeds this phase scope. The initial screen deliberately does not use it — it reads the authenticated /api/v1/home instead, so the new surface widens nothing.",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "Apply the /metrics treatment (allowsUnauthenticatedMetrics) to /healthz and update the installers, the update manager poll and UNRAID_INSTALLATION.md together",
+        "Split it: keep an unauthenticated aggregate for probes, move the component detail behind audit.read",
+        "Accept it explicitly as a documented trade-off and record that decision"
       ]
     }
   ],
@@ -1222,5 +1234,27 @@
     "installed": true,
     "live_image": "noesar-evolution:phase4-themes",
     "rollback": "noesar-evolution.rollback-tokens-20260727T100234Z (:phase4-tokens) + BACKUPS/runtime_pre_themes_deploy_20260727T100234Z"
+  },
+  "webui_initial_screen": {
+    "criteria": "UI-060…UI-063",
+    "status": "BUILT_INSTALLED_VERIFIED",
+    "decisions": "D-0161…D-0168",
+    "new_route": "GET /api/v1/home — assembled server-side against the caller permissions; a withheld block names the permission it needs",
+    "new_module": "apps/webui-static/schedule.js — wall clock + zone -> instant, pure and unit-tested without a browser",
+    "entry_actions": "6 declared, 3 wired on this build; the three that cannot act are aria-disabled (still keyboard reachable) and each states what it waits for",
+    "quick_actions": "10 goals; they fill the composer and send nothing",
+    "defect_repaired": "datetime-local wall clock was sent without a zone and resolved against the container UTC clock — a Europe/Rome 09:30 stored 09:30Z and displayed 11:30",
+    "trust_state_not_shown": "model_descriptors.trust_state is written by no code; rendering it would be fabricated evidence",
+    "image": "noesar-evolution:phase4-home",
+    "ai_state_version": "unchanged at 3 — no new rollback cost"
+  },
+  "verification_initial_screen": {
+    "unit": "734/734",
+    "structure_guards": "35/35",
+    "browser_acceptance": "312/312",
+    "wcag_2_2_aa": "27/27 across 27 surfaces, 729 controls",
+    "eslint": "170 files, 0 errors, 0 warnings, 0 no-undef",
+    "manifest": "5737/5737, 0 duplicates",
+    "seeded_defects": "19/19, each caught by exactly one guard"
   }
 }

@@ -2103,3 +2103,79 @@ docker start noesar-evolution.rollback-themes-20260727T110341Z
 **Controllare prima `state/ai-workspace.json`.** Se legge ancora `1`, non serve altro. Se legge `3`,
 ripristinare anche `state/` da `BACKUPS/runtime_pre_parts_deploy_20260727T110330Z/`, o
 `:phase4-themes` rifiuterà di caricare il workspace AI.
+
+---
+
+## 2026-07-27 · `:phase4-home` — la schermata iniziale, installata e verificata
+
+Fase scelta dall'Owner fra le tre aperte. Regola `D-0143`: si costruisce, si installa e si
+verifica nella stessa fase.
+
+### Costruzione
+
+```text
+immagine    noesar-evolution:phase4-home   (sha256:377f34255ee8…)
+dockerfile  oci/Dockerfile.phase4-home     (overlay su :phase4-parts)
+build       docker build --network=none --pull=false      → offline, nessuna risoluzione
+lignaggio   dodici livelli, dichiarato nel Dockerfile stesso
+```
+
+**Contenuto dell'immagine confrontato con l'albero PRIMA di toccare l'installazione**: i sei
+file di prima parte estratti dall'immagine sono **byte-identici** al repository
+(`app.js`, `index.html`, `styles.css`, `schedule.js`, `home-overview.mjs`, `server.mjs`).
+
+### Sostituzione
+
+```text
+stop        docker stop -t 60           → "postgres.stopped clean:true" LETTO NEL LOG, non assunto
+backup      BACKUPS/runtime_pre_home_deploy_20260727T121114Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-parts-20260727T121125Z    preservato, Exited (0)
+config      RILETTA dal container sostituito, non dalla memoria
+            (bind 192.168.178.100:8100→8088 · uid 10001 · rootfs read-only · cap-drop ALL
+             · no-new-privileges · tmpfs noexec · 8 GiB · 512 pid · noesar-evolution-net)
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-home
+endpoint    livez 200 · readyz 200
+rotta nuova /api/v1/home → 401 senza sessione, contro 404 di una rotta inesistente
+modulo nuovo /schedule.js → 200
+byte serviti app.js · index.html · styles.css · schedule.js IDENTICI al repository
+stato AI    state/ai-workspace.json legge ancora "schemaVersion": 1
+```
+
+**Cosa NON è verificato dal vivo, e va detto.** Il *comportamento* dell'interfaccia non è
+esercitato su questa installazione (§3a, `11e`): le suite creano un Owner, creano compiti e
+sessioni, quindi girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono
+identici all'albero che quelle suite hanno esercitato, che il servizio è sano, e che la rotta
+nuova esiste ed è protetta.
+
+### ⚠ Rollback — nessun costo nuovo
+
+`AI_STATE_VERSION` **non si muove**: resta 3. Nulla in questa fase aggiunge una collezione o un
+campo a un record, perché la provenienza mostrata dalla schermata è **derivata** da ciò che i
+record già portano. Tornare a `:phase4-parts` è quindi solo riavviare il container preservato:
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-parts-20260727T121125Z
+```
+
+Il costo dichiarato da `:phase4-parts` resta valido per conto suo — un'immagine **più vecchia**
+di quella rifiuta un workspace scritto a versione 3 — e questa build non lo cambia. Finché
+`state/ai-workspace.json` legge `1` (verificato in chiusura) anche quel percorso è aperto.
+
+Per tornare indietro sul **sorgente**: `BACKUPS/home_screen_20260727T113422Z/`.
+
+### Igiene (§5a)
+
+```text
+inventario  EVIDENCE/docker_inventory_pre_cleanup_20260727T121214Z.txt
+rimosso     noesar-evolution.rollback-themes-20260727T110341Z  (rollback più vecchio)
+conservato  l'immagine :phase4-themes resta su disco → il suo percorso di rollback vive
+sopravvivono esattamente DUE container noesar-evolution*: il vivo e un solo rollback
+non del progetto 37 prima, 37 dopo · reti invariate · volumi invariati · nessun prune
+noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase (Exited 0)
+```
