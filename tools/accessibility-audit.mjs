@@ -237,17 +237,26 @@ window.__a11y = (() => {
     // reports how many were skipped, and the browser suite separately proves that the
     // same buttons DO show a focus indicator once they are enabled. An exclusion nobody
     // counts is how a green audit starts meaning less than it says.
+    //
+    // aria-disabled is NOT the same case, and treating the two as one was a defect in
+    // this file. A control marked aria-disabled keeps its place in the tab order and can
+    // still be focused — that is the whole reason to prefer it when the control carries
+    // the sentence explaining why it is unavailable. So 2.4.7 and 2.5.8 DO apply to it,
+    // and excluding it hid precisely the controls whose text a keyboard user most needs
+    // to reach. Only the real disabled attribute is skipped now. Found by measurement:
+    // the skipped count did not move when three buttons changed from one to the other,
+    // which is only possible if the audit could not tell them apart.
     interactiveElements(rootSelector) {
       const root = document.querySelector(rootSelector) ?? document.body;
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter(visible)
-        .filter((element) => !element.disabled && element.getAttribute('aria-disabled') !== 'true');
+        .filter((element) => !element.disabled);
     },
     disabledSkipped(rootSelector) {
       const root = document.querySelector(rootSelector) ?? document.body;
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter(visible)
-        .filter((element) => element.disabled || element.getAttribute('aria-disabled') === 'true').length;
+        .filter((element) => element.disabled).length;
     },
     // Target size 2.5.8 (new in WCAG 2.2): 24x24 CSS px minimum, with the standard
     // exception for links inline in a sentence.

@@ -345,3 +345,77 @@ describe('the missing interface parts', () => {
     assert.match(app, /announceEvent\(`Reply complete/, 'the completed event announces one summary');
   });
 });
+
+describe('the initial screen · UI-060…UI-063', () => {
+  const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
+  const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
+  const home = html.slice(html.indexOf('id="view-home"'), html.indexOf('id="view-chat"'));
+
+  test('UI-060 · the six entry actions have a container, and the count is declared', () => {
+    // The buttons are rendered from the payload, so the markup carries the place they go
+    // and the badge that states how many of the six can act. The count itself is held to
+    // six in the payload's own suite — asserting it twice, in two languages, is how two
+    // statements of one rule drift apart.
+    assert.match(home, /id="homeEntryActions"/);
+    assert.match(home, /id="homeEntryWired"/);
+    assert.match(app, /renderEntryActions/);
+  });
+
+  test('UI-061 · the ten goals are rendered from the list, not written into the markup', () => {
+    assert.match(home, /id="homeGoalActions"/);
+    // A goal must not fire a request on one click: the composer is filled and focused, and
+    // the person presses send. A screen that submits for you has decided what you meant.
+    const renderer = app.slice(app.indexOf('function renderQuickActions'), app.indexOf('function renderServices'));
+    assert.match(renderer, /composer\.value=action\.goal/);
+    assert.equal(/sendChat\(\)/.test(renderer), false, 'a quick action must not send anything by itself');
+  });
+
+  test('UI-062 · active and scheduled work sit in one panel, and every task lands in one group', () => {
+    assert.match(home, /id="taskList"/);
+    assert.match(home, /id="taskScheduledList"/);
+    assert.match(home, /id="taskZoneChip"/);
+    // The grouping is imported from the tested module rather than reimplemented here: two
+    // implementations of one rule is how a task comes to appear in both groups.
+    assert.match(app, /import \{[^}]*splitTasks[^}]*\} from '\.\/schedule\.js'/);
+    assert.match(app, /const \{active,scheduled\}=splitTasks/);
+  });
+
+  test('UI-062 · a wall clock is resolved against a zone before it is sent', () => {
+    // The defect this holds shut: `datetime-local` yields a wall clock with no zone, and
+    // sending it raw let the control plane resolve it against the container's UTC clock.
+    assert.match(app, /function scheduledInstantFromField/);
+    assert.match(app, /scheduledAt:scheduledInstantFromField/);
+    assert.match(app, /dueAt:scheduledInstantFromField/);
+    assert.equal(/scheduledAt:\$\('#taskScheduledAt'\)\.value/.test(app), false,
+      'the raw field value must never be sent again');
+  });
+
+  test('UI-063 · health, tools and models each have a panel', () => {
+    for (const id of ['homeServices', 'homeTools', 'homeModels']) {
+      assert.ok(home.includes(`id="${id}"`), `${id} is missing from the initial screen`);
+    }
+    assert.match(app, /renderServices/);
+    assert.match(app, /renderTools/);
+    assert.match(app, /renderModels/);
+  });
+
+  test('UI-063 · a withheld block is rendered as withheld, never as empty', () => {
+    // The two are indistinguishable on screen unless the interface says which it is, and
+    // only one of them is a fact about the product rather than about the reader.
+    assert.match(app, /function withheldHtml/);
+    assert.match(app, /are not shown to this account/);
+    assert.match(app, /block\.requires/);
+  });
+
+  test('the new surface obeys the two rules that are easiest to break', () => {
+    // Both have already been broken once on this project, which is why they are asserted
+    // on the new selectors specifically rather than trusted to the global checks.
+    const block = css.slice(css.indexOf('.entry-panel'), css.indexOf('@media(forced-colors:active)', css.indexOf('.entry-panel')));
+    assert.ok(block.length > 500, 'the new block must actually be found before it is checked');
+    assert.deepEqual([...block.matchAll(/font-size:\s*[0-9.]+px/g)].map((m) => m[0]), [],
+      'a bare pixel size on the new surface would not move with the text-size setting');
+    assert.deepEqual([...block.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/[;{]\s*(?:margin|padding|border|inset)?-?(?:left|right)\s*:/g)].map((m) => m[0].trim()), [],
+      'the new surface must be written in logical properties');
+    assert.match(block, /\.goal-action\{[^}]*min-height:3[4-9]px/, 'WCAG 2.5.8: a pill must clear the 24px floor');
+  });
+});

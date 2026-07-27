@@ -1096,6 +1096,157 @@ try {
       && /counted, not excluded/.test(metric.rejectedLabel),
     JSON.stringify(metric).slice(0, 260));
 
+  at('initial-screen');
+  // --- the initial screen · UI-060…UI-063 ----------------------------------
+  // Driven rather than read, because every one of these is a claim about what a person
+  // sees: six buttons that exist, three of them refusing to act and SAYING why, ten goals
+  // that fill the composer without sending anything, and three inventory panels that must
+  // never come back as a bare "Loading…".
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#homeEntryActions .entry-action', { timeout: 15000 });
+  const entry = await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('#homeEntryActions .entry-action')];
+    return {
+      count: buttons.length,
+      wiredBadge: document.querySelector('#homeEntryWired')?.textContent ?? '',
+      // aria-disabled, not disabled: these must stay in the tab order, because the whole
+      // point of them is the sentence explaining what is missing.
+      disabled: buttons.filter((button) => button.getAttribute('aria-disabled') === 'true').map((button) => ({
+        id: button.dataset.entryAction,
+        // The reason has to be ON SCREEN. A disabled button with its explanation in a
+        // tooltip is a button that looks broken to everyone who does not hover it.
+        reason: (button.querySelector('span')?.textContent ?? '').trim().length,
+        removedFromTabOrder: button.disabled || button.tabIndex < 0,
+      })),
+      labels: buttons.map((button) => button.dataset.entryAction),
+    };
+  });
+  check('UI-060 the initial screen offers exactly six entry actions',
+    entry.count === 6, `${entry.count}: ${entry.labels.join(', ')}`);
+  check('UI-060 the actions that cannot act are marked unavailable and each says why on screen',
+    entry.disabled.length >= 3 && entry.disabled.every((item) => item.reason > 20),
+    JSON.stringify(entry.disabled));
+  check('UI-060 and they stay reachable by keyboard, so the reason is not sight-only',
+    entry.disabled.length >= 3 && entry.disabled.every((item) => item.removedFromTabOrder === false),
+    JSON.stringify(entry.disabled));
+  check('UI-060 the screen declares how many of the six can act',
+    /\d+ of 6 can act/.test(entry.wiredBadge), entry.wiredBadge);
+
+  const goals = await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('#homeGoalActions .goal-action')];
+    return {
+      count: buttons.length,
+      texts: buttons.map((button) => (button.textContent ?? '').trim()),
+      // 2.5.8 target size, measured rather than assumed — the last phase found a 22px
+      // button that reading the stylesheet had not.
+      shortest: Math.min(...buttons.map((button) => button.getBoundingClientRect().height)),
+    };
+  });
+  check('UI-061 there are ten quick actions', goals.count === 10, goals.texts.slice(0, 3).join(' | '));
+  check('UI-061 each is phrased as a goal, not as a function name',
+    goals.texts.every((text) => text.includes(' ') && !/[(){}]/.test(text)), goals.texts.join(' | ').slice(0, 200));
+  check('UI-061 every goal clears the 24px target floor', goals.shortest >= 24, `shortest ${goals.shortest}px`);
+
+  // Pressing one fills the composer and sends nothing. Both halves matter: a goal that
+  // fires a request has decided for the person what they meant by it.
+  const beforeGoal = await page.evaluate(() => document.querySelectorAll('.message').length);
+  await clickOrExplain(page, '#homeGoalActions .goal-action');
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const afterGoal = await page.evaluate(() => ({
+    view: document.querySelector('#view-chat')?.classList.contains('active') ?? false,
+    composer: document.querySelector('#chatInput')?.value ?? '',
+    messages: document.querySelectorAll('.message').length,
+  }));
+  check('UI-061 a goal opens the conversation with the goal in the composer',
+    afterGoal.view && afterGoal.composer.length > 10, JSON.stringify(afterGoal).slice(0, 200));
+  check('UI-061 and sends nothing by itself',
+    afterGoal.messages === beforeGoal, `${beforeGoal} -> ${afterGoal.messages}`);
+
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#homeServices', { timeout: 15000 });
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  const inventory = await page.evaluate(() => {
+    const read = (id) => (document.querySelector(id)?.textContent ?? '').trim();
+    return {
+      services: read('#homeServices'),
+      status: read('#homeServicesStatus'),
+      tools: read('#homeTools'),
+      models: read('#homeModels'),
+      zone: read('#taskZoneChip'),
+      groups: [...document.querySelectorAll('.schedule-board .schedule-group h3')].map((node) => node.textContent.trim()),
+    };
+  });
+  for (const [name, text] of [['service health', inventory.services], ['tools', inventory.tools], ['models', inventory.models]]) {
+    check(`UI-063 the ${name} panel resolved to real content`,
+      text.length > 30 && !/^Loading…/.test(text), text.slice(0, 140));
+  }
+  check('UI-063 the owner sees named components, not just an aggregate',
+    /data-plane|log-volume|workspace/.test(inventory.services), inventory.services.slice(0, 160));
+  check('UI-063 a tool panel with nothing in it says WHY it is empty',
+    /No tool is registered|Reaches/.test(inventory.tools), inventory.tools.slice(0, 160));
+  check('UI-063 models declare that trust state is not rendered, and why',
+    /trust_state/.test(inventory.models), inventory.models.slice(0, 200));
+  check('UI-062 the work queue shows both groups and names the zone the times are in',
+    inventory.groups.length === 2 && /Times in \w+/.test(inventory.zone),
+    `${inventory.groups.join(' / ')} — ${inventory.zone}`);
+
+  // A scheduled task, created through the interface, must come back carrying the instant
+  // the person meant. This is the check that would have failed before this phase: the
+  // field holds a wall clock, and the value that reached the store used to be resolved
+  // against the container's clock instead of the reader's zone.
+  const scheduled = await page.evaluate(async () => {
+    const csrf = document.cookie.split('; ').find((part) => part.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
+    // The EFFECTIVE zone, not this browser's. The first version of this check used
+    // `Intl…resolvedOptions().timeZone` and failed while the product was right: the probe
+    // browser runs in UTC and the installation's effective zone was nine hours away, so a
+    // correctly resolved 09:30 came back as 00:30Z and the oracle called it a defect. The
+    // invariant that matters is that the field is READ in the same zone the panel DISPLAYS
+    // — which is the effective one, resolved by the five-tier service.
+    const zone = (await (await fetch('/api/v1/settings/timezone')).json()).effective;
+    document.querySelector('#taskTitle').value = 'e2e scheduled probe';
+    document.querySelector('#taskScheduledAt').value = '2027-01-15T09:30';
+    document.querySelector('#taskRecurrence').value = 'FREQ=WEEKLY;BYDAY=MO';
+    document.querySelector('#taskForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const response = await fetch('/api/v1/tasks', { headers: { 'x-noesar-csrf': csrf } });
+    const { tasks } = await response.json();
+    const task = tasks.find((item) => item.title === 'e2e scheduled probe');
+    return { zone, stored: task?.scheduledAt ?? null, rule: task?.recurrence ?? null };
+  });
+  check('UI-062 a scheduled task is stored as an instant, not as a bare wall clock',
+    typeof scheduled.stored === 'string' && /Z$/.test(scheduled.stored),
+    JSON.stringify(scheduled));
+  check('UI-062 and that instant reads back as the wall clock that was typed, in the effective zone',
+    scheduled.stored !== null && new Intl.DateTimeFormat('en-CA', {
+      timeZone: scheduled.zone, hourCycle: 'h23', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit',
+    }).format(new Date(scheduled.stored)).replace(', ', 'T') === '2027-01-15T09:30',
+    JSON.stringify(scheduled));
+  // And the form says which zone it is reading, next to the field. Without it the
+  // agreement above is invisible to the person: they type a number into a box that never
+  // names the zone it will be understood in, and only find out afterwards.
+  const fieldZone = await page.evaluate(() => ({
+    formNote: (document.querySelector('#taskFormZone')?.textContent ?? '').trim(),
+    panelChip: (document.querySelector('#taskZoneChip')?.textContent ?? '').trim(),
+  }));
+  check('UI-062 the schedule field names the zone it is read in, and it is the panel\'s zone',
+    fieldZone.formNote.includes(scheduled.zone) && fieldZone.panelChip.includes(scheduled.zone),
+    JSON.stringify(fieldZone));
+
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const board = await page.evaluate(() => ({
+    active: document.querySelector('#taskActiveCount')?.textContent ?? '',
+    scheduled: document.querySelector('#taskScheduledCount')?.textContent ?? '',
+    scheduledText: (document.querySelector('#taskScheduledList')?.textContent ?? '').trim(),
+    activeText: (document.querySelector('#taskList')?.textContent ?? '').trim(),
+  }));
+  check('UI-062 the scheduled task appears under Scheduled, with its rule shown verbatim',
+    /e2e scheduled probe/.test(board.scheduledText) && /FREQ=WEEKLY;BYDAY=MO/.test(board.scheduledText),
+    board.scheduledText.slice(0, 200));
+  check('UI-062 and it appears in exactly one group',
+    !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
+
   at('invitation');
   // --- an invitation can be issued -----------------------------------------
   resetObservations();

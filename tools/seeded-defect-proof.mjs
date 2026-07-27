@@ -24,6 +24,8 @@ const TEST = join(ROOT, 'services/reference-control-plane/test');
 const STRUCTURE = [join(TEST, 'webui-markup-structure.test.mjs')];
 const SESSIONS = [join(TEST, 'session-lifecycle.test.mjs')];
 const METRIC = [join(TEST, 'product-metric.test.mjs')];
+const HOME = [join(TEST, 'home-overview.test.mjs')];
+const SCHEDULE = [join(TEST, 'webui-schedule.test.mjs')];
 
 const SEEDS = [
   {
@@ -103,6 +105,64 @@ const SEEDS = [
     to: '    const inWindow = all.filter((item) => Date.parse(item.decidedAt) >= since && item.decision === \'approve\');',
     suites: METRIC,
   },
+  {
+    // The exact defect this phase repaired. If the guard ever stops objecting to it, the
+    // repair is one careless edit away from being undone in silence.
+    name: 'a wall clock is sent to the store without a zone again (UI-062)',
+    file: join(WEBUI, 'app.js'),
+    from: 'scheduledAt:scheduledInstantFromField($(\'#taskScheduledAt\').value)',
+    to: 'scheduledAt:$(\'#taskScheduledAt\').value||null',
+    suites: STRUCTURE,
+  },
+  {
+    name: 'the scheduled group disappears from the work queue (UI-062)',
+    file: join(WEBUI, 'index.html'),
+    from: 'id="taskScheduledList"',
+    to: 'id="taskScheduledListing"',
+    suites: STRUCTURE,
+  },
+  {
+    name: 'a quick action starts sending the goal by itself (UI-061)',
+    file: join(WEBUI, 'app.js'),
+    from: 'if(composer){composer.value=action.goal;composer.focus();}',
+    to: 'if(composer){composer.value=action.goal;composer.focus();sendChat();}',
+    suites: STRUCTURE,
+  },
+  {
+    name: 'a withheld block stops naming the permission it needs (UI-063)',
+    file: join(WEBUI, 'app.js'),
+    from: 'are not shown to this account. It would need',
+    to: 'are unavailable. They would need',
+    suites: STRUCTURE,
+  },
+  {
+    name: 'a goal pill drops below the 24px target floor (2.5.8)',
+    file: join(WEBUI, 'styles.css'),
+    from: '.goal-action{min-height:34px',
+    to: '.goal-action{min-height:22px',
+    suites: STRUCTURE,
+  },
+  {
+    name: 'a running task is filed as scheduled because it carries a rule (UI-062)',
+    file: join(WEBUI, 'schedule.js'),
+    from: "  if (status === 'running') return 'active';",
+    to: '',
+    suites: SCHEDULE,
+  },
+  {
+    name: 'the quick actions quietly become nine (UI-061)',
+    file: join(SRC, 'home-overview.mjs'),
+    from: "  { id:'review-my-changes',  goal:'Review my changes' },\n",
+    to: '',
+    suites: HOME,
+  },
+  {
+    name: 'service health detail reaches an account that may not read it (UI-063)',
+    file: join(SRC, 'home-overview.mjs'),
+    from: '  if (!mayReadDetail) {',
+    to: '  if (false) {',
+    suites: HOME,
+  },
 ];
 
 function digest(path) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
@@ -116,7 +176,7 @@ function failingTests(suites) {
       .map((match) => match[1].trim())
       // A failing subtest also fails its enclosing describe(); counting both would report
       // two objections for one defect.
-      .filter((name) => !/^(the missing interface parts|webui markup structure|session lifecycle|the product metric|the closure and its NOT DONE box|the AI workspace state migrates forward)$/.test(name));
+      .filter((name) => !/^(the missing interface parts|webui markup structure|session lifecycle|the product metric|the closure and its NOT DONE box|the AI workspace state migrates forward|the initial screen · UI-060…UI-063|active and scheduled partition the queue · UI-062|the ten quick actions · UI-061|service health is shown at the rank the role allows · UI-063)$/.test(name));
   }
 }
 
