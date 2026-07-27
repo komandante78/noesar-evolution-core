@@ -184,3 +184,98 @@ token: nessuna occorrenza di collasso della barra o di aggancio del pannello in
 - **L'anteprima non è mai stata aperta in un browser su questo host**: non ce n'è uno installato e
   la regola 45 vieta di installarlo. È stata verificata per sintassi (`node --check`), per
   bilanciamento dei tag e sulla matematica del colore, eseguita isolata.
+
+---
+
+## 9. Rilettura contro il riferimento normativo — cosa manca ancora
+
+Fatta il 2026-07-27 **dopo** l'accettazione dell'impianto, confrontando riga per riga
+`MASTER_PROJECT/07_INTERFACCIA.md`, `06_CODEN_EVOLUTION.md` §2, la matrice `CE-*` e il PNG
+approvato. **L'impianto regge; il dettaglio no.** Niente di quanto segue è stato deciso: sono
+buchi, e vanno chiusi prima o durante la costruzione.
+
+### 9.1 · Cinque delle ventitré destinazioni di oggi non hanno una casa dichiarata
+
+La mappa 23 → 11 va **completata per intero**, o qualcosa si perde in silenzio.
+
+| Oggi | Dove va nel disegno v3 |
+|---|---|
+| home · chat · projects · documents · agents · workflows · models · settings | destinazione omonima ✓ |
+| coden | CodeN Evolution + il TUI, nuova ✓ |
+| knowledge + memory | **Conoscenza** (i quattro cubi) ✓ |
+| providers + hardware | Impostazioni → Modelli e hardware ✓ |
+| users | Impostazioni → Persone e accessi ✓ |
+| health + logs | Impostazioni → Salute e log ✓ |
+| updates | Impostazioni → Aggiornamenti ✓ |
+| backups | Impostazioni → Storage e backup ✓ |
+| approvals | striscia permanente + storico in Audit ed evidenza ✓ |
+| **tasks** | **da decidere** — i compiti *attivi* stanno in Home, ma i **compiti programmati** che `07` §9 mette nella schermata iniziale non hanno posto |
+| **tools** | **da decidere** — «strumenti» e «plugin» compaiono nel navigatore del banco (`07` §4), non fra le quindici sezioni |
+| **security** | **da decidere** — «sicurezza» è fra le quindici sezioni di `07` §2 ma non ha etichetta nel menu di §3 |
+| **about** | **da decidere** — presumibilmente Impostazioni → NOESAR Evolution |
+| **conformità** | **da decidere** — nominata fra le quindici, assente da ogni menu |
+
+### 9.2 · Il banco di lavoro è disegnato a metà
+
+`07` §4 lo specifica in dettaglio. Mancano:
+
+- **La riga di stato in fondo al banco** — stadio *n*/16, file toccati, test, warning, processi,
+  scostamento dal remoto, token consumati, costo, tempo trascorso, rete, sandbox, **token di
+  autorità vivi**. È distinta dalla striscia di approvazione e nell'anteprima **non c'è**.
+- **La colonna NAVIGATORE** (progetti, recenti, sessioni, compiti, agenti, strumenti, plugin,
+  cronologia, preferiti): assente. Il banco v3 è a due colonne, la specifica ne vuole tre.
+- **Schede mancanti** nel banco: anteprima, documentazione, problemi.
+- **Il terminale multiplo e persistente** come regione propria: v3 ne mostra uno solo, in linea.
+- **Nella colonna AGENTE** mancano: ipotesi ed evidenza, attività degli strumenti, file letti e
+  scritti, comandi eseguiti, sotto-agenti.
+- **La casella `NON FATTO` dello stadio 16** — obbligatoria per `06` §2, e citata da `15` §12 fra
+  le cose che riducono il costo di revisione. **Non è disegnata da nessuna parte.** È una delle
+  differenze del prodotto e nel disegno non compare.
+
+### 9.3 · La barra superiore ha perso pezzi rispetto al riferimento approvato
+
+Il PNG porta: ricerca · **progetto** · modello · privacy · **lingua** · **fuso orario** · profilo.
+La v3 ha sostituito progetto, lingua e fuso con l'indicatore di copertura. **Regressione**: quei
+tre vanno rimessi, la copertura si aggiunge, non li rimpiazza.
+
+### 9.4 · L'accessibilità è dichiarata «requisito di costruzione» e il disegno ne copre due voci su otto
+
+`07` §8. Presenti: tema ad alto contrasto, navigazione da tastiera parziale (`[` `]`).
+**Assenti dal disegno:** dimensione del testo regolabile · zoom dell'interfaccia · regioni live che
+annunciano l'output in streaming senza inondarlo · riduzione delle animazioni come impostazione ·
+localizzazione completa con rilevamento automatico di lingua e fuso e sovrascrittura manuale ·
+**layout pronto per lingue da destra a sinistra** · timestamp in UTC resi con identificatori IANA.
+
+Due note che pesano: l'RTL ha già prodotto un difetto reale in una sessione precedente, e i 26
+criteri di accessibilità oggi verdi sono stati ottenuti **sull'interfaccia attuale** — la
+ristrutturazione li sposta e vanno rieseguiti.
+
+### 9.5 · `CE-020` non è soddisfatto dal disegno
+
+> *Ogni capacità ha una forma da tastiera completa — ogni capacità esercitata dal TUI, senza
+> mouse.* Severità **A**.
+
+La gestione delle sessioni (§4) è disegnata **solo a mouse**: archivio, impaginazione, selezione
+multipla ed eliminazione non hanno né forma da tastiera né comando nel TUI. O si progettano, o
+`CE-020` fallisce sul primo criterio che abbiamo scritto.
+
+### 9.6 · La schermata iniziale è incompleta
+
+`07` §9 chiede sei azioni d'ingresso (apri progetto · clona repository · nuovo progetto · importa
+archivio · connetti repository remoto · **riprendi ultima sessione**): nella v3 stanno in Progetti,
+non in Home. Mancano inoltre **compiti programmati**, **salute dei servizi** e **strumenti
+installati**. Le azioni rapide formulate come obiettivi sono **sei delle dieci** elencate.
+
+### 9.7 · La metrica del prodotto non è raccolta da nessuna parte
+
+`CE-024` e `15` §12: la metrica è il **tempo di revisione umana per cambiamento accettato**. È
+l'interfaccia il posto dove quel tempo si misura, e nel disegno **non è misurato**. Un prodotto che
+dichiara una metrica e non la raccoglie ha lo stesso difetto di una protezione dichiarata che
+nessuno applica.
+
+### 9.8 · Due cose che non sono buchi ma vanno ricordate
+
+- I **pannelli staccabili in finestre proprie** per il secondo monitor (`07` §5) e le **viste a
+  schermo intero** del TUI dietro un tasto guida: rimandabili, ma sono nella specifica.
+- Il **MANIFEST** non copre questi documenti né `docs/design/` — vedi la nota in
+  `docs/SESSION_HANDOFF.md`.
