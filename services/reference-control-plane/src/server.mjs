@@ -21,6 +21,7 @@ import {
   resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
 } from './http-security.mjs';
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
+import { ReferenceReasoningProvider, ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -712,6 +713,53 @@ const server = createServer(async (req, res) => {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
       return json(res, 200, { modes:['ASK','CREATE','ACT'], providerCatalog:providerGateway.catalog(), ...aiWorkspace.snapshot() });
     }
+    // --- the reasoning seam · phase 1 -----------------------------------------
+    // The provider is the only road to a plan. It is reported and exercised here so that
+    // FOSS_CORE_DEPENDS_ON_ATOM = false is a property of the installation someone runs,
+    // not of a crate in the repository. The Rust reference provider is the canonical
+    // candidate and is not compiled into this image — the same position the Rust authority
+    // daemon already holds — and both sides answer to conformance/reasoning-vectors.json.
+    if (req.method === 'GET' && url.pathname === '/api/v1/reasoning') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, reasoningStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/reasoning/plan') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const request = await body(req);
+      try {
+        const provider = new ReferenceReasoningProvider(PRODUCT.workspaceRoot ?? '/workspace');
+        const intent = provider.interpret(String(request?.request ?? ''), request?.projectRules ?? []);
+        const hypotheses = provider.hypothesize(intent, []);
+        const plan = provider.plan(hypotheses, request?.constraints ?? [], request?.mode ?? 'safe');
+        const constrained = provider.constrain(plan, request?.policy ?? 'restrictive');
+        const risk = provider.classify(plan);
+        const confidence = provider.confidence(plan, []);
+        // `expect` refuses a plan that could not turn out to be false. That refusal is a
+        // real answer about this plan, not an error, so it is reported in place instead of
+        // failing the whole request.
+        let expectation = null;
+        let expectationRefused = null;
+        try {
+          expectation = provider.expect(constrained.refused ? plan : constrained.plan);
+        } catch (error) {
+          if (!(error instanceof ReasoningRefused)) throw error;
+          expectationRefused = error.reason;
+        }
+        return json(res, 200, {
+          provider:provider.identity(), intent, hypotheses, plan,
+          constrained, risk, confidence, expectation, expectationRefused,
+        });
+      } catch (error) {
+        if (error instanceof ReasoningRefused) {
+          return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        }
+        throw error;
+      }
+    }
+
     // --- the initial screen · UI-060…UI-063 ----------------------------------
     // One request, assembled server-side, because each block depends on what this caller
     // may see and a browser cannot be trusted to withhold anything from itself. A block

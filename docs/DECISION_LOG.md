@@ -2540,3 +2540,28 @@ it fails with `got 1`. The other two seeds each took down exactly one test.
 outside prose is a test named for its absence. No import, no dependency. Not done: the
 provider is never called by the control plane — it exists and is tested, and wiring it into
 the product is a phase of its own.
+
+## D-0179 · The reasoning seam runs in the product, with one oracle for two implementations — 2026-07-27
+**Decision.** `services/reference-control-plane/src/reasoning.mjs` is the Node reference
+provider; `GET /api/v1/reasoning` reports the seam and `POST /api/v1/reasoning/plan`
+exercises it. `conformance/reasoning-vectors.json` is the shared oracle and **both** the Node
+and the Rust reference providers run it.
+**Why.** The Rust crate is the canonical candidate and is not compiled into the image —
+exactly where `authority.mjs` already puts the Rust authority daemon, `reference-node`
+running and `rust-external` available but unconfigured. Mirroring that arrangement is what
+makes `FOSS_CORE_DEPENDS_ON_ATOM = false` true of the installation a person runs instead of
+only of a crate. Two implementations of one contract drift the moment only one has a test,
+so neither is the oracle for the other: the vector file is.
+**Rejected.** Shipping a Rust binary in the image: the release path exists but
+`RUST_BINARY_INCLUDED=false` is a deliberate property of this package, and reversing it is a
+packaging decision, not a side effect of wiring a seam.
+**Evidence.** Node 22/22 on the vectors, Rust 18/18 on the same file, workspace 16 binaries
+38 passed. Unit suite 745 → **767**, ESLint 173 files 0 errors, `AUTH_HTTP_SMOKE=PASS`
+against a real running server asserting the goal is quoted, `NOT_SOUGHT` is reported,
+confidence stays ≤ 0.6 and an empty request returns 422. Seeded defects **19/19** caught.
+MANIFEST 5751, 0 mismatch. The vector count guard caught my own miscount (16 vs 18).
+**Reversal cost.** None beyond the two routes; no schema, no stored state.
+**Status.** Applied. Recorded and NOT changed: 56 of 5751 MANIFEST paths carry a `./` prefix
+and the rest do not — harmless to `sha256sum -c`, and rewriting them is a whole-file diff for
+no behavioural gain. `tools/accessibility-audit.mjs` needs puppeteer and is a **separate
+driver** of the browser harness (`NOESAR_E2E_DRIVER`), not part of its default run.

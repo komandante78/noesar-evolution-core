@@ -38,6 +38,8 @@ const required = [
   'rust/crates/noesar-reasoning-reference/src/lib.rs',
   'schemas/owner-entitlement.schema.json',
   'private-boundary/atom-provider.schema.json',
+  'conformance/reasoning-vectors.json',
+  'services/reference-control-plane/src/reasoning.mjs',
 ];
 for (const rel of required) {
   if (!existsSync(resolve(root, rel))) {

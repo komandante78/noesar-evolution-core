@@ -621,6 +621,7 @@ version = "0.6.0"
 dependencies = [
  "hex",
  "noesar-reasoning",
+ "serde_json",
  "sha2",
  "tokio",
 ]

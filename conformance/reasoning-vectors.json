@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "1.0",
+  "contractVersion": "1.0.0",
+  "note": "Shared oracle for the ReasoningProvider contract. Both the Rust reference provider (rust/crates/noesar-reasoning-reference) and the Node reference provider (services/reference-control-plane/src/reasoning.mjs) must satisfy every case. Two implementations of one contract drift the moment only one of them has a test; this file is what stops that. Every expectation here is derivable without a reasoning model -- a vector that needed one would be a vector the reference provider is allowed to fail.",
+  "workspaceRoot": "/workspace",
+  "interpret": [
+    {
+      "id": "INTERPRET-001",
+      "request": "Repair the parser. It drops trailing commas.",
+      "expected": {
+        "goal": "Repair the parser",
+        "ambiguityCount": 0,
+        "successCriteriaCount": 2
+      }
+    },
+    {
+      "id": "INTERPRET-002",
+      "request": "Tidy the config files, handlers etc, as needed.",
+      "expected": {
+        "goal": "Tidy the config files, handlers etc, as needed",
+        "ambiguityCount": 2,
+        "successCriteriaCount": 2
+      }
+    },
+    {
+      "id": "INTERPRET-003",
+      "request": "   ",
+      "expected": { "refused": true }
+    }
+  ],
+  "hypothesize": [
+    {
+      "id": "HYPOTHESIZE-001",
+      "goal": "Repair the parser",
+      "expected": {
+        "count": 1,
+        "contrary": "NOT_SOUGHT",
+        "supportingCount": 0
+      }
+    }
+  ],
+  "classify": [
+    {
+      "id": "CLASSIFY-001",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": [], "destructive": false },
+        { "id": "b", "files": ["src/b.rs"], "commands": [], "destructive": true }
+      ],
+      "expected": { "overall": "HIGH", "perStep": ["LOW", "HIGH"] }
+    },
+    {
+      "id": "CLASSIFY-002",
+      "steps": [
+        { "id": "a", "files": ["../etc/passwd"], "commands": [], "destructive": false }
+      ],
+      "expected": { "overall": "CRITICAL", "perStep": ["CRITICAL"] }
+    },
+    {
+      "id": "CLASSIFY-003",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": ["cargo test"], "destructive": false }
+      ],
+      "expected": { "overall": "MODERATE", "perStep": ["MODERATE"] }
+    }
+  ],
+  "constrain": [
+    {
+      "id": "CONSTRAIN-001",
+      "policy": "restrictive",
+      "steps": [
+        { "id": "a", "files": ["../etc/passwd"], "commands": [], "destructive": false }
+      ],
+      "expected": { "refused": true }
+    },
+    {
+      "id": "CONSTRAIN-002",
+      "policy": "permissive",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": [], "destructive": true }
+      ],
+      "expected": { "refused": false, "keptIds": ["a"], "removedIds": [] }
+    },
+    {
+      "id": "CONSTRAIN-003",
+      "policy": "restrictive",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": [], "destructive": true },
+        { "id": "b", "files": ["src/b.rs"], "commands": [], "destructive": false, "dependsOn": ["a"] }
+      ],
+      "expected": { "refused": true }
+    }
+  ],
+  "decompose": [
+    {
+      "id": "DECOMPOSE-001",
+      "step": { "id": "a", "files": ["1", "2", "3", "4", "5", "6", "7"], "commands": ["cargo test", "cargo build"], "destructive": false },
+      "expected": { "split": true, "parts": 3 }
+    },
+    {
+      "id": "DECOMPOSE-002",
+      "step": { "id": "b", "files": ["one"], "commands": ["cargo test"], "destructive": false },
+      "expected": { "split": false }
+    }
+  ],
+  "expect": [
+    {
+      "id": "EXPECT-001",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": ["cargo test"], "destructive": false }
+      ],
+      "expected": { "refused": false, "paths": ["src/a.rs"], "testsExpectedToPass": ["cargo test"] }
+    },
+    {
+      "id": "EXPECT-002",
+      "steps": [
+        { "id": "a", "files": [], "commands": [], "destructive": false }
+      ],
+      "expected": { "refused": true }
+    }
+  ],
+  "confidence": [
+    {
+      "id": "CONFIDENCE-001",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": ["cargo test"], "destructive": false }
+      ],
+      "results": ["observed"],
+      "expected": { "reasonCount": 1, "maximum": 0.6 }
+    },
+    {
+      "id": "CONFIDENCE-002",
+      "steps": [
+        { "id": "a", "files": ["src/a.rs"], "commands": [], "destructive": false }
+      ],
+      "results": [],
+      "expected": { "reasonCount": 3, "maximum": 0.6 }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EVIDENCE-001",
+      "claim": "the cache is cold",
+      "expected": { "kind": "UNSUPPORTED_INFERENCE" }
+    },
+    {
+      "id": "EVIDENCE-002",
+      "claim": "  ",
+      "expected": { "refused": true }
+    }
+  ]
+}

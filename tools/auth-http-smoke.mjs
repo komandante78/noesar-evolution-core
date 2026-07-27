@@ -80,6 +80,29 @@ try {
   const audit = await request('/api/v1/audit');
   if (audit.status !== 200 || audit.data.valid !== true) throw new Error('audit verification failed');
 
+  // The reasoning seam, against a real running server. A unit test proves the provider
+  // computes; only this proves the product answers.
+  const reasoning = await request('/api/v1/reasoning');
+  if (reasoning.status !== 200) throw new Error(JSON.stringify(reasoning));
+  if (reasoning.data.mode !== 'reference-node') throw new Error('reasoning mode is not the reference');
+  if (reasoning.data.atomRequired !== false) throw new Error('the core must not require ATOM');
+  if (reasoning.data.mandatorySurfaces?.length !== 11) throw new Error('eleven surfaces are mandatory');
+
+  const reasoned = await request('/api/v1/reasoning/plan', {
+    method:'POST',
+    value:{ request:'Repair the parser. It drops trailing commas.', policy:'restrictive' },
+  });
+  if (reasoned.status !== 200) throw new Error(JSON.stringify(reasoned));
+  if (reasoned.data.intent?.goal !== 'Repair the parser') throw new Error('the goal must be quoted, not paraphrased');
+  if (reasoned.data.hypotheses?.[0]?.contrary !== 'NOT_SOUGHT') throw new Error('nothing looked for a counter-example and it must say so');
+  if (!(reasoned.data.confidence?.value <= 0.6)) throw new Error('a provider with no model must not approach certainty');
+  // This plan names no file and no test, so nothing about it could turn out to be false.
+  // The refusal is the correct answer and must be reported, not swallowed into a null.
+  if (!reasoned.data.expectationRefused) throw new Error('an unfalsifiable plan must say so');
+
+  const refused = await request('/api/v1/reasoning/plan', { method:'POST', value:{ request:'   ' } });
+  if (refused.status !== 422) throw new Error('an empty request must be refused, not answered');
+
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');
   if (authFile.includes(cookie.split('=')[1]?.split(';')[0] ?? 'impossible')) throw new Error('plaintext session token detected');
