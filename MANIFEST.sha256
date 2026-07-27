@@ -5668,7 +5668,7 @@ b91f9b505334a52b235ab5194c19b7d00c46b770acb92e2c7ee1bda0f2445d59  tests/runtime/
 1557911dbcf16a6132c9e62b01ac5b5554b3467c1c250277b8bb9040a96b5660  tools/acceptance/post-install-checks.mjs
 f3f8b39bd7503a52251dd666ea1dac52fa97a850e121708f3f4ba9c53dd4a1d2  tools/acceptance/postgres-integration.mjs
 928041511acbde9e9ca908d517aac46df26da5bd8872b6a00eddfee8b50f28b2  tools/auth-http-smoke.mjs
-af9a0a282e18f13e5d3af89fb1caefff3200491f21017fc34708fe1d79602ee4  ./tools/browser-e2e.mjs
+0d9ffb494421f54e8114ea412d0fca46c39f2af687ac7c60f55e7f653a865755  ./tools/browser-e2e.mjs
 9d82726bdafb638454fb4270c23bde11490ac92e1a864778577f68cbe9ad728f  ./tools/generate-themes.mjs
 1bc3d27401e393eb0632e558475a297678779650ffc9597c1d90860bff7531e4  ./tools/computed-style-snapshot.mjs
 e530f2cf19df6a9f833d6a28561d50e4153f7f1e6af7b971aa18a659a9947532  tools/create-rust-build-provenance.py
@@ -5736,3 +5736,4 @@ b990dc1c05d6adf3f2233f8b7a25ade0b2610c7f5999e248ef9baedffddece78  tools/seeded-d
 bdc14829381a1d8822358d2e63bc793e4cf5d3687e710ca01a242463f92c18ce  ./services/reference-control-plane/test/home-overview.test.mjs
 e89cd97a4da52b6cdd80c9ba2eb3877e0197853c18795346745e3ef89319e76a  ./services/reference-control-plane/test/webui-schedule.test.mjs
 d872dce4515f2e31dd7cb56f433cda9b50d99ae94b7bab4f1c1f7f284c4d3e37  ./oci/Dockerfile.phase4-home
+0c340c3f882d25514fc3885aab8db4961ad0e17372948855c00291d67ff477b2  ./oci/Dockerfile.phase4-healthz

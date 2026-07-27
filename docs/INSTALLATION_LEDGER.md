@@ -2179,3 +2179,93 @@ sopravvivono esattamente DUE container noesar-evolution*: il vivo e un solo roll
 non del progetto 37 prima, 37 dopo · reti invariate · volumi invariati · nessun prune
 noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase (Exited 0)
 ```
+
+---
+
+## 2026-07-27 · `:phase4-healthz` — `B-010` chiuso sull'installazione viva
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+`/healthz` rispondeva **200 senza sessione** e su questo bind LAN era leggibile da **tutta la
+sottorete**: versione esatta del prodotto, postura di autorità, versioni di PostgreSQL e pgvector,
+inventario dei componenti, canale di aggiornamento e scope di debug attivi.
+
+La fase precedente lo aveva **registrato e lasciato**, motivando che la riparazione tocca tre
+installer e il polling dell'update manager. Li tocca — ma **non li rompe**, e questo non era stato
+verificato prima di rinviare. Ogni consumatore legge **tre cose**: `status`, `local`, il codice HTTP.
+
+Quindi la rotta è **spaccata**, non autenticata: un `401` lì si legge come servizio morto. Il codice
+HTTP resta calcolato dalla salute **piena** anche per chi non può vederla.
+
+### Contenuto dell'immagine confrontato con l'albero PRIMA di toccare l'installazione
+
+I quattro file di prima parte estratti dall'immagine sono **byte-identici** al repository
+(`auth.mjs`, `http-security.mjs`, `observability.mjs`, `server.mjs`). `apps/webui-static` **non è
+stata ricopiata** — questa fase non la tocca — ed è stato verificato che l'immagine la **eredita**
+identica (`app.js` stesso digest del repository).
+
+### Sostituzione
+
+```text
+stop        docker stop -t 60           → "postgres.stopped clean:true" LETTO NEL LOG, non assunto
+backup      BACKUPS/runtime_pre_healthz_deploy_20260727T130604Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-home-20260727T130604Z        preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_healthz_deploy_*.json),
+            non dalla memoria — bind 192.168.178.100:8100→8088 · uid 10001 · rootfs read-only
+            · cap-drop ALL · no-new-privileges · tmpfs noexec · 8 GiB · 512 pid
+            · noesar-evolution-net · NOESAR_BIND_SCOPE=lan
+```
+
+**Nota emersa rileggendo la configurazione:** il healthcheck del container interroga **`/livez`**,
+non `/healthz`. La riparazione non poteva quindi toccarlo — cosa che la fase precedente aveva
+elencato fra le ragioni per rinviare.
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-healthz
+endpoint    livez 200 · readyz 200 · metrics 401 · home 401 · diagnostics 401
+            rotta inesistente 404 → i 401 sono cancelli veri, non un catch-all
+/healthz    200 SENZA sessione, e il corpo NON contiene più nessuno dei sette marcatori:
+            versione · reference-node · postgresql · pgvector · releaseChannel · components · 18.4
+            il corpo ridotto DICHIARA di esserlo, con ruolo e permesso che servirebbero
+contratto   status=healthy AND local=true → Test-Noesar.ps1 e verify-runtime.sh passano ancora
+byte serviti app.js · index.html · styles.css · schedule.js IDENTICI al repository
+stato AI    state/ai-workspace.json legge ancora "schemaVersion": 1
+```
+
+**Cosa NON è verificato dal vivo, e va detto.** Il comportamento dell'interfaccia non è esercitato
+su questa installazione (§3a `11e`): le suite creano un Owner e mutano dati, quindi girano contro
+una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono identici all'albero che quelle
+suite hanno esercitato, che il servizio è sano, che la ridazione è **realmente attiva** su questo
+bind, e che il contratto dei consumatori regge.
+
+### ⚠ Rollback — nessun costo nuovo
+
+`AI_STATE_VERSION` **non si muove**: resta 3. Nessun record cambia forma — la riparazione è
+interamente nel modo in cui una risposta viene composta. Tornare indietro **reintroduce la
+divulgazione**.
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-home-20260727T130604Z
+```
+
+Finché `state/ai-workspace.json` legge `1` — verificato in chiusura — restano aperti anche i
+percorsi più vecchi. Per tornare indietro sul **sorgente**:
+`BACKUPS/healthz_disclosure_20260727T123850Z/` e `BACKUPS/governance_amendment_20260727T125353Z/`.
+
+### Igiene (§5a)
+
+```text
+inventario  EVIDENCE/docker_inventory_pre_cleanup_20260727T130708Z.txt
+rimosso     noesar-evolution.rollback-parts-20260727T121125Z  (rollback più vecchio, Exited)
+conservato  l'immagine :phase4-parts resta su disco → il suo percorso di rollback vive
+            dodici tag della genealogia tutti presenti
+sopravvivono esattamente DUE container noesar-evolution*: il vivo e un solo rollback
+non del progetto 37 prima, 37 dopo · reti IDENTICHE · volumi IDENTICI · nessun prune
+container-sonda del confronto immagine: creato e rimosso nello stesso passo
+noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase (Exited 0)
+```
