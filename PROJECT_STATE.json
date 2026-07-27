@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_0_INITIAL_SCREEN_BUILT_INSTALLED_AND_VERIFIED",
-  "next_phase": "CONVERSAZIONE con l Owner: restano (a) fase 0 punti 5-6, (b) la Ricerca — che richiede PRIMA il suo gate UI-090..096, e il gate ha una domanda aperta: classificare intento ed effetto senza ReasoningProvider, (c) la fase 1 — la spina dorsale. Nessuna e iniziata.",
+  "phase_status": "PHASE_0_OPEN_DEFECTS_REPAIRED_B010_CLOSED_INSTALLED_AND_VERIFIED",
+  "next_phase": "CONVERSAZIONE con l Owner. Il debito aperto e stato ripagato: B-010 chiuso e installato, punto 6 della fase 0 fatto (D-0169), tre controlli orfani riparati e cablati. Restano (a) fase 0 punto 5 - traduzione canonica in inglese, che dipende dal punto 4 ancora in attesa; (b) la Ricerca, che richiede PRIMA il suo gate UI-090..096 e ha una domanda non implementativa: classificare intento ed effetto senza ReasoningProvider; (c) la fase 1, la spina dorsale. Nessuna e iniziata.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "bf9a669 (the initial screen, built and installed)",
-  "last_updated_utc": "2026-07-27T12:14:56Z",
+  "last_commit": "33ef65b (B-010 closed, built and installed as :phase4-healthz)",
+  "last_updated_utc": "2026-07-27T13:08:33Z",
   "blockers": [
     {
       "id": "B-001",
@@ -56,14 +56,12 @@
     },
     {
       "id": "B-010",
-      "severity": "medium",
-      "code": "HEALTHZ_UNAUTHENTICATED_ON_LAN_BIND",
-      "summary": "GET /healthz answers 200 with no session and, on this LAN bind, is readable by the whole subnet: it discloses the product version, the authority posture, the component list, the update channel and the debug scopes. Same class as the /metrics exposure already closed by allowsUnauthenticatedMetrics. NOT repaired in this phase, with the reason named: /healthz is consumed by the installers, by the update manager health polling and by documented procedures on three platforms, and the PowerShell installers cannot be executed on this host (rule 45), so the repair exceeds this phase scope. The initial screen deliberately does not use it — it reads the authenticated /api/v1/home instead, so the new surface widens nothing.",
+      "severity": "resolved",
+      "code": "HEALTHZ_UNAUTHENTICATED_ON_LAN_BIND=RESOLVED_SPLIT_AGGREGATE_FROM_DETAIL",
+      "summary": "CHIUSO 2026-07-27, riparato e INSTALLATO (:phase4-healthz, D-0170). Risolto con l'opzione 2: la rotta e' spaccata invece che autenticata. L'aggregato che ogni sonda legge davvero - status, local, e il codice HTTP - resta aperto a chiunque, e il codice e' ancora calcolato dalla salute PIENA, quindi un'installazione malata risponde 503 a una sonda a cui non si dira' perche'. Il dettaglio (versione, postura di autorita', versioni PostgreSQL/pgvector, inventario componenti, canale di aggiornamento, scope di debug) passa dietro ruolo Owner E audit.read, e un corpo ridotto DICHIARA di esserlo col permesso che servirebbe. La ragione del rinvio precedente non reggeva: nessun consumatore legge il dettaglio, e il healthcheck del container interroga /livez, non /healthz. Verificato sul vivo: 200 senza sessione, e nessuno dei sette marcatori di ricognizione presente nel corpo. Il cancello e' Owner AND audit.read perche' admin porta audit.read: un test sul solo permesso avrebbe costruito la scorciatoia attorno al cancello che la schermata iniziale applica.",
       "blocks_next_phase": false,
       "resolution_options": [
-        "Apply the /metrics treatment (allowsUnauthenticatedMetrics) to /healthz and update the installers, the update manager poll and UNRAID_INSTALLATION.md together",
-        "Split it: keep an unauthenticated aggregate for probes, move the component detail behind audit.read",
-        "Accept it explicitly as a documented trade-off and record that decision"
+        "Nessuna azione residua. Tornare a :phase4-home reintrodurrebbe la divulgazione."
       ]
     }
   ],

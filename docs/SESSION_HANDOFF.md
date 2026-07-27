@@ -24,34 +24,34 @@ Deciso dall'Owner il 2026-07-26. Il metro non è il master V4: è la **riscrittu
 `MASTER_REFERENCE/` è stata rimossa dall'albero — eccezione nominata, registrata in
 `CLAUDE10.md` §1a e `D-0097`, recuperabile su tre percorsi con le prove in
 `EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`. **Non reintrodurla come metro senza una
-nuova decisione dell'Owner.**
+nuova decisione dell'Owner** — e se mai lo si facesse, va reintrodotta **già emendata** (`D-0169`).
 
 ## ➜ Leggi in quest'ordine
 
 1. `PROJECT_STATE.json` e questo file
 2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, completo e autorizzato, **più
-   `§22-36`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
-   (destinazione Ricerca e il suo gate) · §22-24 la struttura · §25-27 i token · §28-30 i nove
-   temi · §31-33 le parti oltre la grafica · **§34-36 la schermata iniziale**. Criteri
-   `UI-001…UI-096`
+   `§22-36`, che dicono cosa di esso è ora costruito.** Criteri `UI-001…UI-096`
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` (matrice `CE-001…CE-024`) ·
    `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-5. `docs/DECISION_LOG.md` (ultime: **`D-0161…D-0168`**), `docs/INSTALLATION_LEDGER.md`
+5. `docs/DECISION_LOG.md` (ultime: **`D-0169…D-0171`**), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-> **L'interfaccia è ora quasi tutta costruita. Il motore non esiste ancora.**
+> **Il debito aperto è stato ripagato. Non resta lavoro arretrato da recuperare.**
+
+Questa fase non ha costruito una superficie nuova: ha **chiuso ciò che era stato lasciato
+indietro**, su istruzione esplicita dell'Owner (*"prima ripara i problemi, non lasciare nulla
+indietro"*). `B-010` è riparato **e installato**; il punto 6 della fase 0 è **fatto**; tre
+controlli che nessuno eseguiva sono riparati e cablati.
 
 Restano aperte tre cose, in ordine di dipendenza. **Nessuna è iniziata.**
 
-**(a) Fase 0, punti 5 e 6** — traduzione canonica in inglese di `MASTER_PROJECT/` (regola 49) ed
-emendamenti registrati a `V4-D001` / `V4-D002` (`GAP-F`: il prodotto e i documenti che lo governano
-dicono cose diverse e nulla registra quale dei due debba muoversi). Il punto 5 dipende dal punto
-**4** — le domande dell'Owner sui contenuti — che risulta ancora *in attesa*: tradurre prima
-significa tradurre due volte. **Il punto 6 è un atto di governo, fattibile subito.**
+**(a) Fase 0, punto 5** — traduzione canonica in inglese di `MASTER_PROJECT/` (regola 49).
+Dipende dal punto **4**, le domande dell'Owner sui contenuti, che risulta ancora *in attesa*:
+tradurre prima significa tradurre due volte. **Il punto 6 non è più aperto** — vedi `D-0169`.
 
 **(b) Ciò che dell'interfaccia resta scoperto**, ora poco:
 
@@ -71,139 +71,124 @@ significa tradurre due volte. **Il punto 6 è un atto di governo, fattibile subi
 esecutore che accetta solo token, registro eventi, comprensione del repository. Rust dalla prima
 riga, su un host senza toolchain Rust (esiste però l'immagine `rust:1-bookworm` in locale, quindi
 la prima cosa da provare è che una build **offline** contro i crate già vendorizzati funzioni
-davvero, prima di scrivere il contratto). **È il lavoro grande**, ed è quello che riempirebbe metà
-delle caselle vuote di questa interfaccia.
+davvero, prima di scrivere il contratto). **È il lavoro grande.** `D-0169` ne ha appena reso
+esigibile il confine: Rust **dove decide e confina**, non ovunque.
 
 **Regola in vigore** (`D-0143`, `CLAUDE10.md` §3a): **si costruisce, si installa e si verifica nella
-stessa fase.** Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-home`.
+stessa fase.** Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-healthz`.
 
 ---
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**La schermata iniziale** (`UI-060…UI-063`), costruita, **installata e verificata
-sull'installazione viva**. La Home offriva tre card di modalità e due liste; ora è la schermata
-che il riferimento normativo descrive.
+### 1 · `B-010` — `/healthz` diceva tutto a tutta la sottorete (`D-0170`)
 
-### 1 · Sei azioni d'ingresso, e tre dicono di non poter agire
+Rispondeva **200 senza sessione** e su questo bind LAN era leggibile da ogni host della rete:
+versione esatta del prodotto, postura di autorità, versioni di PostgreSQL e pgvector, inventario
+dei componenti, canale di aggiornamento, scope di debug attivi.
 
-Tre agiscono: riprendi l'ultima sessione, apri un progetto, comincia un progetto nuovo. Tre no —
-clonare, importare un archivio, connettere un remoto **scrivono un albero di lavoro**, e nulla in
-questo layer può scrivere su disco. Sono comunque **elencate**, ognuna dichiara cosa aspetta, e la
-schermata dice **quante delle sei possono agire** invece di lasciarlo contare (`D-0161`).
+La fase precedente lo aveva **registrato e lasciato**, motivando che la riparazione tocca tre
+installer e il polling dell'update manager. **Li tocca; non li rompe** — e nessuno era andato a
+leggere *cosa* quei consumatori leggono davvero. Sono **tre cose**: `status`, `local`, il codice
+HTTP. Nessuno legge il dettaglio. Di più: il **healthcheck del container interroga `/livez`**, non
+`/healthz`, cosa emersa **rileggendo la configurazione del container** durante il deploy.
 
-Sono **`aria-disabled`, non `disabled`**: un pulsante disabilitato esce dall'ordine di tabulazione,
-e questi esistono *per portare la frase che spiega cosa manca* — disabilitarli l'avrebbe nascosta
-proprio a chi non vede lo stile attenuato.
+Quindi la rotta è **spaccata**, non autenticata — un `401` lì si legge come servizio morto:
 
-### 2 · Dieci obiettivi che non spediscono niente
+- **aperto a chiunque**: `status`, `local`, `checkedAt`, e il codice HTTP, che resta calcolato
+  dalla salute **piena**, così un'installazione malata risponde `503` a una sonda a cui non si
+  dirà perché
+- **dietro il cancello**: tutto il resto, e un corpo ridotto **dichiara di esserlo** col ruolo e il
+  permesso che servirebbero — vuoto e vietato si somigliano, e solo uno dei due è un fatto
 
-Formulati **come obiettivi** perché l'Intent Frame parte da un obiettivo: la formulazione *è* il
-criterio. Vivono nel codice e non nel markup, così «dieci» è verificabile — una lista scritta a mano
-nell'HTML è una lista di cui nessuno si accorge che è diventata nove. L'obiettivo finisce **nel
-campo di scrittura**, con il fuoco, e **non parte niente**: una schermata che spedisce al primo
-click decide al posto della persona cosa intendeva (`D-0162`).
+**Il dettaglio che decide la correttezza del fix:** il cancello è **ruolo Owner *e* `audit.read`**,
+non `audit.read` da solo. `admin` porta `audit.read`, quindi un test sul solo permesso avrebbe
+consegnato agli admin esattamente ciò che la schermata iniziale nega loro — costruendo la
+scorciatoia attorno al cancello **mentre si crede di chiuderne una**. La condizione ora è **una
+sola**, `auth.mjs::mayReadHealthDetail`, pura ed esportata per essere verificabile senza avviare un
+listener; `/api/v1/home` usa quella invece della propria copia.
 
-### 3 · Il difetto vero della fase: un quadrante senza fuso
+Stessa forma per la scoperta: **una** regola di esposizione con due viste nominate. Il secondo
+endpoint che ne aveva bisogno è rimasto scoperto per quattro fasi **perché non la aveva affatto**.
 
-`<input type="datetime-local">` restituisce **un quadrante senza fuso**. L'interfaccia lo spediva
-così com'era e il control plane lo risolveva con `new Date(value)`, che per una forma senza
-scostamento significa «ora locale del processo che interpreta» — il container, che gira in UTC.
-Una persona in `Europe/Rome` che chiedeva le 09:30 memorizzava le 09:30Z e si vedeva rimostrare le
-11:30: **l'interfaccia contraddiceva la persona sull'ora che la persona aveva appena scritto**
-(`D-0163`).
+### 2 · Punto 6 della fase 0 — l'atto di governo (`D-0169`)
 
-Ora il quadrante si risolve **nel browser**, contro il fuso efficace, e viaggia un **istante**. Il
-modulo nuovo `apps/webui-static/schedule.js` è puro e provato senza browser, contro **otto vettori
-calcolati a mano** dalle regole dei fusi — due dei quali a mezz'ora e a tre quarti d'ora
-(`Australia/Lord_Howe`, `Pacific/Chatham`), perché un errore che vede solo ore intere passa ogni
-test scritto in Europa. I due confini della doppia ora sono **misurati e scritti**, non assunti: la
-prima stesura del commento affermava il **contrario** di quel che il caso di sovrapposizione fa
-davvero.
+`GAP-F`: il registro diceva **Approvato** su due voci che il prodotto non rispetta, e **nulla
+registrava quale dei due dovesse muoversi**. Non era la scelta a essere sbagliata: era il silenzio.
+`V4-D001` e `V4-D002` sono ora **emendati** — Rust obbligatorio **dove decide e confina**, WebUI in
+JavaScript semplice. L'emendamento **non allenta** `V4-D001`: lo **restringe a dove è vero**, e lo
+rende esigibile.
 
-**Il campo dichiara il fuso in cui viene letto**, perché altrimenti l'accordo resta invisibile alla
-persona. **Nessun record è stato riscritto**: l'installazione non ha compiti (`tasks: 0`, letto
-dalla copia di backup dello stato), e un valore memorizzato senza fuso non si recupera indovinando —
-se ne comparisse uno, l'interfaccia lo **marca**.
+`apps/webui-react` **non è stata rimossa**: `03_ARCHITETTURA` §6 lo chiede, ma la regola 12 vieta la
+cancellazione e l'unico precedente passò da un **emendamento esplicito dell'Owner**. Il suo `README`
+è stato invece corretto — annunciava un lavoro che non si farà, e una directory che mente è peggio
+di una vuota. **La rimozione resta aperta e richiede una parola dell'Owner.**
 
-### 4 · Attivi e programmati partizionano, e la regola è stampata sul pannello
+### 3 · Tre controlli esistevano, funzionavano, e non li eseguiva nessuno (`D-0171`)
 
-Un compito elencato due volte è un compito contato due volte. La regola — finito in nessuno dei
-due, una ricorrenza o un inizio futuro è programmato, `running` batte una regola — sta **sul
-pannello**, perché un raggruppamento il cui criterio vive in un file sorgente non è controllabile da
-chi lo guarda. La regola di ricorrenza è mostrata **alla lettera**: renderla come «ogni lunedì»
-sarebbe inventare la lettura di una stringa che il prodotto non ha mai analizzato (`D-0164`).
+Trovati **inseguendo un fallimento**, non da uno scanner — nessuno dei tre è visibile a semgrep.
 
-### 5 · Salute, strumenti e modelli — al rango che il ruolo consente
+1. **`tools/http-smoke.mjs` era in crash da fasi.** Affermava che `/api/v1/privacy` e
+   `/api/v1/bootstrap` rispondono a un anonimo; entrambi sono stati **correttamente** messi dietro
+   autenticazione più tardi. **Non lo eseguiva nulla.** Il suo gemello fu rotto dalla stessa classe
+   di cambiamento e riparato quando accadde; questo fu **mancato da quella stessa passata**.
+2. **`tools/test-packaging-filters.mjs`** — il test di regressione che `.gitignore` **cita per
+   nome** — non era invocato da nessun runner.
+3. **`.workspace/` non era ignorata da git.** È il workspace di default: avviare il servizio dalla
+   radice del repository vi materializza stato, ledger, log e due chiavi. Chiavi e log erano già
+   coperti da `*.key`/`*.log`; **lo stato no**, ed era a un `git add -A` dall'essere committato.
+   **Storia git verificata pulita.** Ignorata **ancorata alla radice**, con controllo negativo.
 
-La sezione che mostra la salute per esteso è **solo dell'Owner**, quindi mettere quei numeri su una
-pagina che ogni ruolo raggiunge sarebbe stato costruire la scorciatoia attorno a quel cancello.
-**Il server assembla la schermata** (`GET /api/v1/home`), e ogni blocco è costruito contro i permessi
-di chi chiama: un Owner vede i componenti, chiunque altro la parola aggregata, il **numero** dei
-componenti e la dichiarazione che il dettaglio esiste e a chi spetta. La modalità sicura raggiunge
-**ogni** ruolo. Un blocco negato torna **negato con il permesso che servirebbe**, mai vuoto
-(`D-0165`).
-
-**Provenienza è da dove viene, non chi l'ha aggiunto** (`D-0166`): trasporto, endpoint, se quell'host
-è su questa macchina — e tre valori, non due, perché «ignoto» è ciò che un record senza endpoint
-onestamente è. Il registrante **non è sul record**: sta nel registro di audit, e la superficie lo
-dice invece di inventarlo. **Lo stato di fiducia dei modelli NON si mostra**: `trust_state` esiste
-nello schema e nessun codice lo scrive, quindi ogni riga leggerebbe la stessa costante.
-
-### 6 · Difetti trovati — e i due più istruttivi sono nella misura
-
-1. **Lo strumento di misura escludeva controlli raggiungibili** (`D-0167`). L'audit trattava
-   `aria-disabled` come `disabled` e saltava entrambi, motivando che un controllo disabilitato «non
-   è nell'ordine di tabulazione». Per `aria-disabled` **è falso**. Trovato perché il conteggio
-   **non si è mosso** quando quattro pulsanti sono passati da una forma all'altra — possibile solo
-   se lo strumento non sapeva distinguerli. Copertura **725 → 729** controlli, saltati **18 → 14**.
-2. **Il mio oracolo era sbagliato, non il prodotto.** Il controllo del fuso confrontava con il fuso
-   *del browser* della sonda (UTC) mentre l'interfaccia risolve contro il **fuso efficace** (lì
-   UTC+9): un `09:30` correttamente risolto tornava `00:30Z` e il controllo lo chiamava difetto.
-3. **Un `console.warn` con testo dell'utente in posizione di stringa di formato** — trovato da
-   semgrep (`unsafe-formatstring`), vero, e riparato: un input contenente `%s` avrebbe consumato
-   l'argomento successivo.
-4. **Backtick dentro un commento che vive in un template literal**: il mio commento nell'audit ha
-   troncato la stringa iniettata nella pagina. `node --check` l'ha preso subito.
-5. **Un mio test verificava l'unicità *attraverso* il conteggio**, quindi un elemento rimosso
-   produceva **due** obiezioni e nessuno dei due test parlava più di una cosa sola. Corretto il
-   test, non il difetto seminato.
-6. **Una riga vuota lasciata in mezzo al MANIFEST** dal mio script di aggiornamento, che toglieva le
-   righe vuote in coda *dopo* aver aggiunto le nuove voci.
+**Corretta la regola, non l'istanza:** entrambi gli strumenti sono ora step di `scripts/test.sh`, e
+`test.sh` ha imparato lo stato che gli mancava — `PARTIAL`, contato a parte e **mai** come passato,
+perché un rosso atteso è un rosso che si impara a saltare. Applicato **solo** agli strumenti che
+dichiarano quella convenzione. Più un difetto in `test.sh` stesso (`SC2164`): `cd "$ROOT"` non era
+guardato, e il file **non usa `set -e`** di proposito — quindi ogni step sarebbe girato contro la
+directory sbagliata. Togliere `set -e` chiuse un fallimento silenzioso e ne aprì un altro.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                       734/734   0 falliti · 50 suite        (erano 677)
-guardia di struttura        35/35    0 falliti                   (erano 28)
-accettazione in browser    312/312   0 falliti · browser reale    (erano 291)
-accessibilita WCAG 2.2      27/27    0 falliti · 729 controlli    (erano 725 — D-0167)
+unit                       745/745   0 falliti · 64 suite        (erano 734)
+accettazione in browser    315/315   0 falliti · browser reale    (erano 312)
+accessibilita WCAG 2.2      27/27    0 falliti · 729 controlli    (invariata: nessun markup toccato)
 eslint                     170 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST                  5738/5738  0 falliti · 0 duplicati
-difetti seminati            19/19    ognuno catturato da esattamente una guardia
+MANIFEST                  5738/5738  0 falliti · 0 duplicati · 0 righe vuote
+scripts/test.sh            pass=4 fail=0 partial=1 unavailable=4   (tutti dichiarati)
+packaging filters          17/17 casi (filtro python NON verificato: manca python3)
 ```
 
-**Caccia con gli strumenti reali** (`noesar-debuglab`, avviato e **rifermato nella stessa fase**):
-`services/…/src` **0 finding**, `test/` **0 finding**, `apps/webui-static` **due** — uno preesistente
-(`Object.assign` su un `Error` appena costruito, scartato con la riga alla mano) e uno **mio**,
-vero e riparato. `tools/` riporta gli stessi 12 finding di prima in due strumenti Python non toccati
-da questa fase e non eseguibili su questo host (nessun `python3`).
+**Entrambe le metà del fix viste FALLIRE prima di essere credute**: reintrodurre la divulgazione
+incondizionata fa fallire il test di comportamento LAN; reintrodurre il cancello sul solo permesso
+fa fallire il test sull'admin **e solo quello**.
 
-**Non eseguito, dichiarato:** nessuno screen reader reale (l'audit stampa il proprio blocco
-`NOT_TESTED` a ogni giro) · `forced-colors` non emulabile su questo Chromium · i quattro passi
-Python di `scripts/test.sh` (`python3` assente, regola 45) · i comandi TUI di `UI-050`, che non
-esistono.
+**Caccia con gli strumenti reali** (`noesar-debuglab`, avviato e **rifermato nella stessa fase**):
+`services/…/src` **0** · `test/` **0** · `scripts/` **0** · `oci/` **0** · `ai-workspace/` **0** ·
+`apps/webui-static` **1** (l'`Object.assign` su un `Error` appena costruito, riletto sulla riga e
+scartato: nessun oggetto di risposta, nessun redirect) · `tools/` **12** e `capabilities/` **45**,
+tutti in file **Python non toccati da questa fase** e non eseguibili qui, nelle classi già
+triagiate (`B603`/`B607`/`S603`/`S607` subprocess con argv letterale, `F401` deferral registrato in
+`D-0039`, e un `B105` su una canary di test **letteralmente chiamata `must-not-leak`**).
+Shellcheck: `SC2164` **riparato**; restano 2 `SC1007` sull'idioma corretto `CDPATH= cd`.
+
+**Non eseguito, dichiarato:** nessuno screen reader reale · `forced-colors` non emulabile su questo
+Chromium · i quattro passi Python di `scripts/test.sh` e il filtro python del packaging test
+(`python3` assente, regola 45) · i comandi TUI di `UI-050`, che non esistono · i `.ps1` degli
+installer, non eseguibili qui.
 
 ## ➜ L'installazione — SOSTITUITA E VERIFICATA
 
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-home
+container   running · healthy · restarts=0 · noesar-evolution:phase4-healthz
 bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
-endpoint    livez 200 · readyz 200
-rotta nuova /api/v1/home → 401 senza sessione, contro 404 di una rotta inesistente
-modulo nuovo /schedule.js → 200
+endpoint    livez 200 · readyz 200 · metrics 401 · home 401 · diagnostics 401
+            rotta inesistente 404 → i 401 sono cancelli veri, non un catch-all
+/healthz    200 SENZA sessione, e il corpo non contiene piu nessuno dei sette marcatori
+            (versione · reference-node · postgresql · pgvector · releaseChannel · components · 18.4)
+contratto   status=healthy AND local=true → Test-Noesar.ps1 e verify-runtime.sh passano ancora
+sorgente    i quattro file del control plane nell'immagine byte IDENTICI al repository
 interfaccia app.js · index.html · styles.css · schedule.js byte IDENTICI al repository
-igiene      due soli container noesar-evolution* · reti e volumi invariati
+igiene      due soli container noesar-evolution* · reti e volumi IDENTICI all'inventario
             37 container non del progetto prima e dopo · nessun prune
 ```
 
@@ -212,57 +197,47 @@ salute contro il loopback restituisce `000` e sembra un servizio morto mentre il
 Usare l'indirizzo di bind reale, che si ricava con `docker port noesar-evolution`.
 
 **Cosa NON è stato verificato dal vivo, e va detto.** Il *comportamento* dell'interfaccia non è
-esercitato su questa installazione (§3a, `11e`): le suite creano un Owner, compiti e sessioni, quindi
-girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono **identici**
-all'albero che quelle suite hanno esercitato, che il servizio è sano e che la rotta nuova esiste ed
-è protetta.
+esercitato su questa installazione (§3a `11e`): le suite creano un Owner e mutano dati, quindi
+girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono identici all'albero
+che quelle suite hanno esercitato, che il servizio è sano, che la ridazione è **realmente attiva su
+questo bind**, e che il contratto dei consumatori regge.
 
-## ➜ Rollback — questa volta NESSUN costo nuovo
+## ➜ Rollback — nessun costo nuovo, ma reintroduce la divulgazione
 
-`AI_STATE_VERSION` **non si muove**: resta 3. Nulla in questa fase aggiunge una collezione o un
-campo a un record — la provenienza mostrata è **derivata** da ciò che i record già portano.
+`AI_STATE_VERSION` **non si muove**: resta 3. Nessun record cambia forma — la riparazione è
+interamente nel modo in cui una risposta viene composta. **Tornare indietro riapre `B-010`.**
 
 ```text
 docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
-docker start noesar-evolution.rollback-parts-20260727T121125Z
+docker start noesar-evolution.rollback-home-20260727T130604Z
 ```
 
-Il costo dichiarato da `:phase4-parts` resta valido per conto suo — un'immagine **più vecchia** di
-quella rifiuta un workspace scritto a versione 3 — e questa build non lo cambia. Finché
-`state/ai-workspace.json` legge `1` (verificato in chiusura) anche quel percorso resta aperto,
-altrimenti va ripristinato `state/` da `BACKUPS/runtime_pre_home_deploy_20260727T121114Z/` (75 MB,
-preso a servizio fermo).
-
-Per tornare indietro sul **sorgente**: `BACKUPS/home_screen_20260727T113422Z/`.
+Finché `state/ai-workspace.json` legge `1` — verificato in chiusura — restano aperti anche i
+percorsi più vecchi. Per tornare indietro sul **sorgente**:
+`BACKUPS/healthz_disclosure_20260727T123850Z/` e `BACKUPS/governance_amendment_20260727T125353Z/`.
+Backup runtime a servizio fermo: `BACKUPS/runtime_pre_healthz_deploy_20260727T130604Z/` (75 MB).
 
 ## ➜ Blocker aperti
 
 `B-001` nessun remote GitHub (nessun commit è mai stato pushato) · `B-002` secret scan euristico
 (`detect-secrets` restituisce 0 finding su una chiave AWS letterale) · `B-008` due store di
-identità.
-
-**Registrato e non riparato, con la ragione** (regola 40a): **`/healthz` risponde 200 senza
-autenticazione** e su questo bind LAN è leggibile da tutta la sottorete — espone versione del
-prodotto, postura di autorità, elenco dei componenti, canale di aggiornamento e scope di debug. È la
-stessa classe che `/metrics` ha già chiuso con `allowsUnauthenticatedMetrics`, ma la riparazione
-esce dallo scope di questa fase: `/healthz` è consumato dagli installer, dal polling di salute
-dell'update manager e da procedure documentate su tre piattaforme, e i `.ps1` non sono eseguibili su
-questo host (regola 45). **La schermata iniziale non lo usa**: legge la rotta autenticata
-`/api/v1/home`, così la superficie nuova non allarga nulla.
+identità. **`B-010` è CHIUSO.** Nessuno dei tre restanti è riparabile su questo host: i primi due
+richiederebbero di installare strumenti (regola 45), il terzo è una migrazione su dati vivi che
+merita una fase propria e una decisione dell'Owner sul modello d'identità di destinazione.
 
 **Aperto e non risolvibile qui:** la **conformità** della conservazione dei dati delle richieste
 rifiutate. L'Owner ha autorizzato il **disegno** (`D-0136`); la verifica rispetto agli obblighi
-applicabili non è stata fatta e non è accertabile su questo host.
+applicabili non è accertabile su questo host.
 
 **Aperto e non pianificato:** la **voce** (`D-0123`) e i **pannelli staccabili** su secondo monitor
-(`07` §5).
+(`07` §5). **Aperto e in attesa dell'Owner:** la rimozione di `apps/webui-react` (`D-0169`).
 
 **Osservazione registrata e non riparata:** il browser **scarta** l'intestazione
 `Cross-Origin-Opener-Policy` che il server invia, perché si è serviti in HTTP semplice su un nome
 che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
 e di fase d'installazione.
 
-**Deviazione mia, registrata (`D-0168`):** ho eseguito `docker exec noesar-evolution sh -c 'echo skip'`
-mentre verificavo il fuso del container. Non ha letto né scritto nulla, ma §5 regola 16 non prevede
-eccezioni di sola lettura per il container di prodotto. Il dato è stato poi ottenuto dalla copia di
-backup dello stato, che sta dentro `PROJECT_ROOT`.
+**Nessuna deviazione da dichiarare in questa fase.** `docker exec` non è stato usato: la
+configurazione del container è stata riletta con `docker inspect`, che non entra nel container, e il
+confronto fra immagine e albero è stato fatto con `docker create` + `docker cp` su un
+container-sonda rimosso nello stesso passo.
