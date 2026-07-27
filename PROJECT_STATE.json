@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e615431",
-  "last_updated_utc": "2026-07-27T06:55:00Z",
+  "last_updated_utc": "2026-07-27T07:25:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -736,7 +736,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "INIZIA IL LAVORO SULLA GRAFICA (D-0118: prima la grafica, poi si costruisce tutto). Primo passo: la struttura — 23→11 destinazioni, barra a scomparsa a tre stati, pannello agganciabile con memoria PER DESTINAZIONE (D-0117). Poi il layer di token, poi palette e temi. Progetto e criteri di accettazione in docs/WEBUI_DESIGN_V3.md; anteprima in docs/design/ANTEPRIMA_WEBUI_V3.html. NON iniziare la fase 1: della fase 0 restano aperti i punti 5 e 6 (traduzione canonica in inglese, emendamenti V4-D001/V4-D002).",
+  "next_action": "INIZIA LA COSTRUZIONE DELLA GRAFICA (D-0118). Il disegno e completo: docs/WEBUI_DESIGN_V3.md sezioni 1-17, criteri UI-001..UI-072, anteprima docs/design/ANTEPRIMA_WEBUI_V4.html. Ordine vincolato: (1) struttura 23->11 + barra a tre stati + pannello con memoria per destinazione, (2) layer di token, (3) palette e nove temi + selettore libero. Rieseguire i controlli in browser e i criteri di accessibilita dopo la ristrutturazione: i 26 verdi valgono sull interfaccia attuale. NON iniziare la fase 1.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1061,6 +1061,38 @@
       "migration_manifest": "CURRENT, 16 migrazioni",
       "preview": "sintassi JS OK, tag bilanciati, matematica colore su 6 coppie"
     },
-    "manifest_coverage_note": "MANIFEST.sha256 non copre PROJECT_STATE.json, docs/DECISION_LOG.md, docs/SESSION_HANDOFF.md ne docs/design/ — stessa classe di D-0074. I due file nuovi seguono la convenzione esistente e NON sono stati aggiunti: cambiarla e una decisione dell Owner"
+    "manifest_coverage_note": "MANIFEST.sha256 non copre PROJECT_STATE.json, docs/DECISION_LOG.md, docs/SESSION_HANDOFF.md ne docs/design/ — stessa classe di D-0074. I due file nuovi seguono la convenzione esistente e NON sono stati aggiunti: cambiarla e una decisione dell Owner",
+    "superseded_by": "v4 — docs/WEBUI_DESIGN_V3.md sezioni 10-17, anteprima docs/design/ANTEPRIMA_WEBUI_V4.html"
+  },
+  "webui_design_v4": {
+    "status": "GLI OTTO BUCHI DELLA v3 CHIUSI — nulla implementato, nulla installato",
+    "date": "2026-07-27",
+    "preview": "docs/design/ANTEPRIMA_WEBUI_V4.html",
+    "document": "docs/WEBUI_DESIGN_V3.md sezioni 10-17",
+    "closed": [
+      "mappa 23->11 completa (5 destinazioni collocate, Sicurezza e conformita sezione nuova)",
+      "banco di lavoro a tre regioni + riga di stato propria",
+      "casella NON FATTO nella scheda chiusura (UI-036, Critica)",
+      "barra superiore: progetto, lingua e fuso rimessi",
+      "accessibilita 8 voci su 8, RTL compreso",
+      "CE-020: tastiera e comando TUI per ogni azione",
+      "schermata iniziale completa",
+      "CE-024: metrica raccolta e mostrata"
+    ],
+    "new_acceptance_ids": "UI-030..UI-037, UI-040..UI-047, UI-050..UI-054, UI-060..UI-063, UI-070..UI-072",
+    "decisions": [
+      "D-0125",
+      "D-0126",
+      "D-0127",
+      "D-0128",
+      "D-0129"
+    ],
+    "mechanically_verified": "UI-046 — 0 proprieta fisiche left/right nel CSS del provino",
+    "still_open": [
+      "voce (D-0123) non pianificata",
+      "pannelli staccabili su secondo monitor",
+      "rimisura contrasti con accessibility-audit",
+      "installazione"
+    ]
   }
 }

@@ -279,3 +279,123 @@ nessuno applica.
   schermo intero** del TUI dietro un tasto guida: rimandabili, ma sono nella specifica.
 - Il **MANIFEST** non copre questi documenti né `docs/design/` — vedi la nota in
   `docs/SESSION_HANDOFF.md`.
+
+---
+
+# v4 — gli otto buchi chiusi
+
+**Data:** 2026-07-27, stessa giornata. **Anteprima:** `docs/design/ANTEPRIMA_WEBUI_V4.html`
+(sostituisce la v3, che resta per confronto). Istruzione dell'Owner: *«prima riscrivere tutto ciò
+che manca»*, e la mappa delle cinque destinazioni senza casa **approvata** come proposta.
+
+## 10. Mappa 23 → 11, completa
+
+| Oggi | Dove va | Nota |
+|---|---|---|
+| home · chat · projects · documents · agents · workflows · models · settings | destinazione omonima | |
+| coden | CodeN Evolution **+ TUI** | due destinazioni, tre superfici di conversazione con Chat |
+| knowledge + memory | **Conoscenza** | i quattro cubi; la memoria non è una destinazione a parte |
+| providers + hardware | Impostazioni → Modelli e hardware | |
+| users | Impostazioni → Persone e accessi | |
+| health + logs | Impostazioni → Salute e log | |
+| updates | Impostazioni → Aggiornamenti | |
+| backups | Impostazioni → Storage e backup | |
+| approvals | striscia permanente + storico in Audit ed evidenza | |
+| **tasks** | **Home** (attivi *e* programmati) + navigatore del banco | `07` §9 chiede i programmati nella schermata iniziale |
+| **tools** | **navigatore del banco** (strumenti · plugin) | è lì che si usano, non in una pagina a sé |
+| **security** + **conformità** | Impostazioni → **Sicurezza e conformità** (sezione nuova) | erano fra le quindici e non avevano etichetta |
+| **about** | Impostazioni → NOESAR Evolution | |
+
+**Nessuna delle ventitré resta senza casa.**
+
+## 11. Il banco di lavoro — criteri
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-030` | Tre regioni: **navigatore** (dentro il banco), **banco a schede**, **agente** (è il pannello contestuale) | Alta |
+| `UI-031` | Navigatore: progetti · recenti · sessioni · compiti · agenti · strumenti · plugin · cronologia · preferiti | Alta |
+| `UI-032` | Schede: ombra · editor · diff · test · log · terminale · anteprima · mappa · documentazione · problemi · **chiusura** | Alta |
+| `UI-033` | Terminale **multiplo e persistente** come regione propria, non una scheda che sparisce | Alta |
+| `UI-034` | Colonna agente: conversazione · piano · **ipotesi ed evidenza** · attività degli strumenti · file letti/scritti · comandi eseguiti · richieste di autorità · sotto-agenti · rischio residuo | Alta |
+| `UI-035` | **Riga di stato** propria del banco, distinta dalla striscia di approvazione: stadio · file · test · warning · processi · scostamento dal remoto · token · costo · tempo · rete · sandbox · **token di autorità vivi** | Alta |
+| `UI-036` | **Casella `NON FATTO`** nella chiusura: non può essere vuota senza dirlo, porta il rischio residuo e il tempo di revisione | **Critica** |
+| `UI-037` | La barra superiore porta ricerca · **progetto** · modello · copertura · privacy · **lingua** · **fuso** · profilo. La copertura si **aggiunge**, non rimpiazza | Alta |
+
+`UI-036` è la più importante e nella v3 non esisteva: un rapporto che elenca solo i successi
+insegna a fidarsi in modo uniforme, che è l'opposto di utile.
+
+## 12. Accessibilità — otto su otto
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-040` | Dimensione del testo regolabile su quattro passi, che scala **tutta** l'interfaccia | Alta |
+| `UI-041` | Zoom dell'interfaccia, indipendente dal testo | Alta |
+| `UI-042` | Riduzione delle animazioni come **impostazione**, oltre alla preferenza di sistema | Alta |
+| `UI-043` | Regione live che annuncia **una sintesi per evento**, non un token per volta | Alta |
+| `UI-044` | Lingua e fuso rilevati, **sempre** sovrascrivibili | Alta |
+| `UI-045` | Istanti in **UTC**, resi con identificatore **IANA**; pianificazioni espresse con la regola e non con lo scostamento, quindi sicure rispetto all'ora legale | Alta |
+| `UI-046` | **RTL**: nessuna proprietà fisica `left`/`right` nel foglio di stile — solo `inline-start` / `inline-end` | **Critica** |
+| `UI-047` | Tema ad alto contrasto vero fra i nove | Alta |
+
+**`UI-046` è verificabile meccanicamente, ed è stato verificato**: 0 occorrenze di
+`left`/`right`/`margin-left`/`padding-right`/`text-align:left|right` nel CSS del provino. Il rimedio
+non è ricordarsi dell'RTL — è rendere impossibile scriverlo male. Un difetto reale di una sessione
+precedente nasceva esattamente da un `left:-9999px`.
+
+## 13. Tastiera e TUI — `CE-020`
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-050` | **Ogni** azione delle sessioni ha una forma da tastiera *e* un comando TUI | **Critica** |
+| `UI-051` | La conferma non si salta mai da tastiera: `Canc` **apre il modale**, non elimina | **Critica** |
+| `UI-052` | Nel modale `Esc` annulla, `Invio` conferma, e il pulsante pericoloso non è preselezionato | Alta |
+| `UI-053` | In RTL la direzione della paginazione **segue la lingua**: «avanti» è `←` | Media |
+| `UI-054` | I pannelli dell'agente sono raggiungibili a schermo intero dal TUI (`F1…F9`, `/pannello <nome>`) e la shell porta la **stessa** riga di stato | Alta |
+
+| Azione | Tastiera | TUI |
+|---|---|---|
+| scorrere · aprire | `↑` `↓` · `Invio` | `/sessioni` · `/sessione <n>` |
+| archiviare · eliminare | `a` · `Canc` | `/archivia <n>` · `/elimina <n>` |
+| selezionare · tutta la pagina | `Spazio` · `Ctrl+A` | `/seleziona <n…>` · `/seleziona --pagina` |
+| archivio · pagina | `→` `←` | `/archivio --pagina <n>` |
+| ripristinare | `r` | `/ripristina <n>` |
+| confermare · annullare | `Invio` · `Esc` | `[s/N]` |
+| cosa non è stato fatto | — | `/non-fatto` |
+
+## 14. La schermata iniziale — completa
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-060` | Sei azioni d'ingresso: riprendi l'ultima sessione · apri · nuovo · clona · importa archivio · connetti remoto | Alta |
+| `UI-061` | **Dieci** azioni rapide formulate come obiettivi, non come funzioni | Media |
+| `UI-062` | Compiti **attivi e programmati** insieme, i programmati con la loro regola e il loro fuso | Alta |
+| `UI-063` | Salute dei servizi · strumenti installati con provenienza · modelli con provenienza | Alta |
+
+## 15. La metrica del prodotto — `CE-024`
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-070` | Si misura il tempo fra «risultato pronto in ombra» e «l'umano ha deciso», per ogni cambiamento | **Critica** |
+| `UI-071` | Mostrata in Home come tendenza e nella chiusura del singolo cambiamento — mai come voto, sempre come **tempo** | Alta |
+| `UI-072` | Un cambiamento **rifiutato** conta come tempo speso: escluderlo sarebbe scegliere il denominatore che conviene | **Critica** |
+
+## 16. Cosa resta aperto dopo la v4
+
+- **Voce** (`D-0123`) — disegnata, non pianificata né stimata.
+- **Pannelli staccabili in finestre proprie** per il secondo monitor (`07` §5) — nella specifica,
+  rimandabili.
+- **Rimisura** — tutti i contrasti restano **calcolati**; i 26 criteri di accessibilità oggi verdi
+  valgono sull'interfaccia attuale e vanno rieseguiti dopo la ristrutturazione.
+- **Installazione** — nulla di tutto questo è deployato.
+
+## 17. Verifiche della v4
+
+```text
+sintassi JS            node --check   OK
+tag bilanciati         div 202/202 · span 215/215 · button 57/57 · table 5/5
+UI-046 (RTL)           0 proprieta fisiche left/right nel CSS del provino — verificato, non asserito
+matematica colore      invariata dalla v3, gia eseguita isolata
+```
+
+**Non eseguito:** l'apertura in un browser reale su questo host — non ce n'è uno installato e la
+regola 45 vieta di installarlo.

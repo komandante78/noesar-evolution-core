@@ -1727,3 +1727,32 @@ tinta/fondo. Tutti i rapporti di contrasto registrati sono **calcolati**, non mi
 
 **Nulla è stato implementato e nulla è stato installato.** Il container vivo serve ancora la build
 precedente.
+
+---
+
+## D-0125 … D-0129 · L'interfaccia v4 — gli otto buchi chiusi — 2026-07-27
+
+**Contesto.** L'Owner ha approvato la mappa proposta per le cinque destinazioni senza casa e ha
+dato l'istruzione: *«prima riscrivere tutto ciò che manca»*. La v4 chiude gli **otto** buchi
+registrati in `docs/WEBUI_DESIGN_V3.md` §9 poche ore prima. Criteri nuovi: `UI-030…UI-037`
+(banco), `UI-040…UI-047` (accessibilità), `UI-050…UI-054` (tastiera e TUI), `UI-060…UI-063`
+(schermata iniziale), `UI-070…UI-072` (metrica).
+
+| ID | Decisione |
+|---|---|
+| `D-0125` | **La mappa 23 → 11 è completa e nessuna destinazione resta senza casa.** I compiti *programmati* stanno in Home come chiede la specifica; strumenti e plugin nel navigatore del banco, perché è lì che si usano; **Sicurezza e conformità** è una sezione nuova di Impostazioni — erano fra le quindici e non avevano etichetta; «informazioni» dentro NOESAR Evolution |
+| `D-0126` | **Il banco di lavoro ha tre regioni e una riga di stato propria**, distinta dalla striscia di approvazione. Il ricongiungimento con la shell è dichiarato: il *navigatore* vive dentro il banco, la colonna *agente* **è** il pannello contestuale. Undici schede, terminale multiplo e persistente come regione propria |
+| `D-0127` | **La casella `NON FATTO` è parte dell'interfaccia, non della prosa** (`UI-036`, Critica). Sta nella scheda *chiusura*, non può essere vuota senza dirlo, e porta rischio residuo e tempo di revisione. Un rapporto che elenca solo i successi insegna a fidarsi in modo uniforme, che è l'opposto di utile |
+| `D-0128` | **L'RTL si garantisce rendendolo impossibile da sbagliare, non ricordandoselo**: nel foglio di stile non esistono proprietà fisiche `left`/`right` — solo `inline-start`/`inline-end`. **È una proprietà verificabile meccanicamente** e verificata (0 occorrenze). Un difetto reale di una sessione precedente nasceva esattamente da un `left:-9999px` |
+| `D-0129` | **`CE-024` si raccoglie o non esiste**: il tempo di revisione umana per cambiamento accettato è misurato dall'interfaccia, mostrato come tempo e mai come voto, e **un cambiamento rifiutato conta come tempo speso** — escluderlo sarebbe scegliere il denominatore che conviene. Una metrica dichiarata e non raccolta è lo stesso difetto di una protezione dichiarata che nessuno applica |
+
+**Sul difetto che `CE-020` avrebbe colto.** La v3 aveva disegnato la gestione delle sessioni
+**solo a mouse**, e `CE-020` («ogni capacità esercitata dal TUI, senza mouse», severità A) è un
+criterio che avevamo scritto noi. Ora ogni azione ha un tasto e un comando, e la conferma **non si
+salta**: `Canc` apre il modale, non elimina.
+
+**Verifiche.** Sintassi (`node --check`), tag bilanciati (202/202 div, 215/215 span, 57/57 button),
+e `UI-046` verificato meccanicamente. **Non eseguita** l'apertura in un browser reale: non ce n'è
+uno installato e la regola 45 vieta di installarlo.
+
+**Nulla implementato, nulla installato.**
