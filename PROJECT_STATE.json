@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_0_GOVERNANCE_WEBUI_STRUCTURE_BUILT_AND_INSTALLED",
+  "phase_status": "PHASE_0_GOVERNANCE_WEBUI_TOKEN_LAYER_BUILT_AND_INSTALLED",
   "next_phase": "CONVERSAZIONE: la grafica della WebUI va cambiata (deciso dall Owner). NON iniziare la fase 1. Fase 0 punti 5-6 ancora aperti.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5a262e7 (phase work) + 01da8e1 (post-cleanup docker inventory)",
-  "last_updated_utc": "2026-07-27T09:04:28Z",
+  "last_commit": "5526c87 (token layer, built and installed)",
+  "last_updated_utc": "2026-07-27T09:25:16Z",
   "blockers": [
     {
       "id": "B-001",
@@ -736,7 +736,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "GRAFICA PASSO 2: il LAYER DI TOKEN, e ora si installa nella stessa fase (D-0143). I colori sono ancora letterali sparsi in ~24 KB di apps/webui-static/styles.css; senza questo passo i nove temi (UI-020..UI-026) e il selettore libero non sono implementabili, ed e per questo che Impostazioni > Aspetto e dichiarata e non costruita. Poi passo 3: palette e nove temi, con i contrasti RIMISURATI da tools/accessibility-audit.mjs invece che calcolati. NON iniziare la fase 1: della fase 0 restano aperti i punti 5 e 6.",
+  "next_action": "GRAFICA PASSO 3: PALETTE E NOVE TEMI, e si installa nella stessa fase (D-0143). Il layer di token esiste ora (102 token in :root, 0 letterali fuori): un tema e una rimappatura di quei token. Servono nove temi fra cui uno chiaro e uno ad alto contrasto vero (UI-020, UI-021), il selettore di colore libero con contrasto MISURATO mentre si sceglie e variante testuale derivata fino a 4.5:1 (UI-022..UI-024), i sette stati semantici che non cambiano significato col tema e portano glifo+parola (UI-025, UI-026). I contrasti di WEBUI_DESIGN_V3 sezione 5 sono CALCOLATI e vanno fatti passare da tools/accessibility-audit.mjs. Usare tools/computed-style-snapshot.mjs per vedere esattamente cosa un tema muove. NON iniziare la fase 1.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1158,5 +1158,39 @@
     "live_image": "noesar-evolution:phase4-structure — the twelve-destination interface, serving bytes identical to the repository",
     "rollback": "noesar-evolution.rollback-wp2-20260727T090151Z (:phase4-wp2) + BACKUPS/runtime_pre_structure_deploy_20260727T090127Z (75 MB, taken with the service stopped). No state restore needed while state/ai-workspace.json still reads schemaVersion 1."
   },
-  "build_install_verify_rule": "D-0143 — CLAUDE10.md §3a (11a..11e): a phase that changes the product installs and verifies it in the same phase. Owner amendment, 2026-07-27."
+  "build_install_verify_rule": "D-0143 — CLAUDE10.md §3a (11a..11e): a phase that changes the product installs and verifies it in the same phase. Owner amendment, 2026-07-27.",
+  "webui_token_layer": {
+    "date": "2026-07-27",
+    "decisions": "D-0144..D-0146",
+    "literals_replaced": 130,
+    "tokens": 102,
+    "groups": [
+      "surfaces",
+      "text",
+      "accent",
+      "semantic state",
+      "lines borders focus",
+      "shadows glows"
+    ],
+    "literals_left_outside_root": 0,
+    "proof": "colour snapshot from a real browser before and after: 25 surfaces, 39320 elements, 6133 distinct class signatures, 0 colour tuples changed, 0 keys appeared or disappeared",
+    "detector_proved_sensitive": "moving one token by one unit of blue (#b8c6da -> #b8c6db) moved 29 signatures",
+    "property_aware": "the same #fff is --text-on-accent as text and --surface-inverse as background: two tokens, same value today, different in a light theme",
+    "dead_token_removed": "--violet, declared once and referenced zero times",
+    "new_guards": [
+      "no colour literal outside :root",
+      "every var() names a token that exists and every token is used — a var() typo fails SILENTLY in a browser"
+    ],
+    "installed": true,
+    "live_image": "noesar-evolution:phase4-tokens",
+    "rollback": "noesar-evolution.rollback-structure-20260727T092301Z (:phase4-structure) + BACKUPS/runtime_pre_tokens_deploy_20260727T092301Z",
+    "verification": {
+      "unit": "637/637",
+      "structure_guard": "19/19",
+      "browser": "265/265",
+      "accessibility": "26/26",
+      "eslint": "159 files 0 errors",
+      "colour_snapshot": "0 changes"
+    }
+  }
 }

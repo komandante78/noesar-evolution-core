@@ -218,7 +218,10 @@ export default [
     // cries wolf is a check people learn to skip. It gets BOTH global sets, and keeps
     // no-undef switched on — the rule still catches a genuine typo in either half.
     // The WCAG audit is the same shape of program and gets the same treatment.
-    files: ['tools/browser-e2e.mjs', 'tools/accessibility-audit.mjs'],
+    // The colour snapshot is the third program of this shape: Node on the outside, page
+    // code inside page.evaluate(). It is listed here rather than given a blanket exemption,
+    // so no-undef keeps working on both halves of it.
+    files: ['tools/browser-e2e.mjs', 'tools/accessibility-audit.mjs', 'tools/computed-style-snapshot.mjs'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',

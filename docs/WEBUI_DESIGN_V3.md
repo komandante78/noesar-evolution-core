@@ -535,3 +535,46 @@ blocco `NOT_TESTED` a ogni giro) e `forced-colors` non è emulabile su questo Ch
   non sono strutturali: nessuna di queste è toccata dal passo 1.
 - **Installazione:** nulla è deployato. Il box vivo gira `:phase4-wp2`, cioè l'interfaccia a
   ventitré destinazioni.
+
+---
+
+# Costruito — passo 2 della grafica: il layer di token
+
+**Data:** 2026-07-27. Decisioni `D-0144…D-0146`. **Installato** (`:phase4-tokens`).
+
+## 25. Il layer, in sei gruppi
+
+`apps/webui-static/styles.css` non contiene più **nessun** colore letterale fuori da `:root`:
+102 token, tutti definiti in un posto solo, raggruppati per ruolo.
+
+| Gruppo | Esempi | A che serve nel passo 3 |
+|---|---|---|
+| **superfici** | `--surface-root` · `--surface-card` · `--panel` · `--scrim` · `--surface-good-soft` | il tema chiaro le ribalta in blocco |
+| **testo** | `--text-primary` · `--text-body` · `--text-on-accent` · `--muted` | la scala di leggibilità, indipendente dall'accento |
+| **accento** | `--accent-fill-from` · `--accent-fill-to` · `--accent-link` · `--accent-wash` | è ciò che il selettore di colore libero muove |
+| **stati semantici** | `--state-warn-text` · `--state-critical-text` · `--green` · `--amber` · `--red` | `UI-025`: il significato non cambia col tema |
+| **linee, bordi e fuoco** | `--line` · `--focus-ring` · `--border-critical` | il fuoco visibile non deve mai dipendere dall'accento scelto |
+| **ombre e bagliori** | `--shadow-panel` · `--glow-brand` | l'alto contrasto le azzera |
+
+**La sostituzione è consapevole della proprietà** (`D-0145`): lo stesso `#fff` è
+`--text-on-accent` dove è testo e `--surface-inverse` dove è sfondo. Oggi hanno lo stesso valore;
+in un tema chiaro non l'avranno, ed è esattamente il motivo per cui sono due nomi.
+
+## 26. Ciò che il passo 2 NON ha cambiato — misurato
+
+```text
+superfici 25 · elementi 39.320 · firme 6.133 · tuple di colore cambiate 0
+sensibilita provata: 1 token spostato di 1 unita di blu -> 29 firme si muovono
+```
+
+I contrasti di §5 restano quelli di prima **perché nessun colore si è mosso**; restano comunque
+**calcolati e non rimisurati** per i valori che il passo 3 introdurrà.
+
+## 27. Cosa resta per il passo 3
+
+- I **nove temi** come rimappature di questi token, fra cui uno chiaro e uno ad alto contrasto.
+- Il **selettore di colore libero** con contrasto misurato mentre si sceglie e variante testuale
+  derivata (`UI-024`).
+- La **rimisura** dei contrasti con `tools/accessibility-audit.mjs`, che ora gira su 25 superfici.
+- `--violet` è stato **rimosso** perché nulla lo dipingeva (`D-0146`): se il passo 3 vuole un
+  viola semantico, lo introduce **cablato**, non dichiarato e basta.

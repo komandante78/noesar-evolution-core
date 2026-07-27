@@ -124,6 +124,39 @@ describe('webui markup structure', () => {
   // answered on before. Nothing here would notice a page that merely LOOKS present, which
   // is why the browser suite walks the same list on a running installation — but a page
   // deleted outright, or an address left pointing at nothing, is caught here for free.
+  // --- the token layer -------------------------------------------------------
+  //
+  // Nine themes and a free colour picker are remappings of tokens. That is only possible
+  // while EVERY colour lives in one place: a single literal left in a rule is a colour no
+  // theme can move, and it does not announce itself — it simply stays the same shade while
+  // everything around it changes. The layer holds only as long as this is enforced.
+  test('no colour literal survives outside the token definitions', () => {
+    const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
+    const root = /:root\{[^}]*\}/.exec(css);
+    assert.ok(root, ':root token block not found');
+    const body = css.replace(root[0], '');
+    const literals = body.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g) ?? [];
+    assert.deepEqual(literals, [],
+      `${literals.length} colour literal(s) outside :root — a colour no theme can remap: ${[...new Set(literals)].slice(0, 8).join(', ')}`);
+  });
+
+  test('every token the stylesheet references is defined', () => {
+    const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
+    // Definitions are collected from the WHOLE stylesheet, not only from :root. A token that
+    // legitimately varies by state — the two grid widths the sidebar and context-panel ranks
+    // drive — is defined on `.app-shell`, and that is a definition too. Colour tokens are
+    // still forced into :root by the check above.
+    const defined = new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+    const used = new Set([...css.matchAll(/var\(--([a-z0-9-]+)/g)].map((m) => m[1]));
+    // A var() naming a token that does not exist fails SILENTLY: the property falls back to
+    // its inherited value, so a typo shows up as a slightly wrong colour rather than as an
+    // error. That is the one failure mode of this design, and it is checked here.
+    const missing = [...used].filter((name) => !defined.has(name)).sort();
+    assert.deepEqual(missing, [], `var() references undefined tokens: ${missing.join(', ')}`);
+    const unused = [...defined].filter((name) => !used.has(name)).sort();
+    assert.deepEqual(unused, [], `tokens defined and never used: ${unused.join(', ')}`);
+  });
+
   test('every Settings section sits inside the Settings destination', () => {
     const sections = [...html.matchAll(/class="settings-section"[^>]*data-section="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(sections.length, SETTINGS_SECTIONS.length, `expected ${SETTINGS_SECTIONS.length} sections, found ${sections.length}`);

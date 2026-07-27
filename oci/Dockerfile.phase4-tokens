@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Token layer image: every colour in the interface becomes a named token.
+#
+# Second of the three graphics steps the Owner fixed in order (D-0118), after the structure
+# and before palette and themes. Nine themes and a free colour picker (UI-020…UI-026) are
+# remappings of tokens; until this image there was no layer to remap — 102 distinct colour
+# literals were spread through the stylesheet and ten custom properties covered the rest.
+#
+# What this image changes: 130 literals replaced by 102 named tokens, grouped into surfaces,
+# text, accent, semantic state, lines/borders/focus, and shadows/glows. One dead token was
+# removed (`--violet`, declared once and referenced nowhere).
+#
+# ⚠️ What this image does NOT change: anything that is painted.
+#
+# That is not a claim, it is a measurement. A colour snapshot was taken from a real browser
+# BEFORE the refactor and again from these exact bytes: every computed colour property of
+# every element across all 25 surfaces — 39,320 elements, 6,133 distinct class signatures.
+#
+#   colour tuples changed : 0
+#   keys that appeared    : 0
+#   keys that disappeared : 0
+#
+# And the snapshot was proved sensitive rather than assumed to be: moving ONE token by one
+# unit of blue (#b8c6da -> #b8c6db) moved 29 signatures. A check that cannot fail is not
+# evidence.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile — unchanged from the reasoning in
+# Dockerfile.phase4 through Dockerfile.phase4-structure:
+#
+#   * oci/Dockerfile runs `apt-get install`, which needs the Debian archives. No network
+#     operation is authorised here, and repeating the apt step would silently re-resolve the
+#     OS package set to whatever the archive serves today.
+#   * Building FROM the audited :phase4-structure image inherits every layer unchanged, so
+#     the only difference between the two images is first-party source.
+#
+# SCHEMA: no change. `AI_STATE_VERSION` is unchanged, and the installed workspace was
+# verified to still read `"schemaVersion": 1` immediately before this build. Rolling back to
+# :phase4-structure is therefore just starting the old container. A full runtime backup is
+# taken with the service stopped regardless.
+#
+# `services/reference-control-plane/src/` is untouched by this phase and is copied anyway, so
+# the deployed artifact is provably the repository tree rather than a partial overlay.
+#
+# Lineage, stated rather than hidden — now nine deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#
+# Phase 5 packaging should still rebuild from oci/Dockerfile with a recorded network step,
+# as D-0033 and D-0053 both say.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-structure
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

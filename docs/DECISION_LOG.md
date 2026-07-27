@@ -1894,3 +1894,49 @@ esercitato, che il servizio è sano e che le superfici rispondono — e si dichi
 
 **Applicata immediatamente:** `:phase4-structure` è stata costruita, installata e verificata nella
 stessa fase che l'ha scritta. Dettaglio in `docs/INSTALLATION_LEDGER.md`.
+
+---
+
+## D-0144…D-0146 · Il layer di token: 102 colori diventano nomi, e nulla cambia — 2026-07-27
+
+**Contesto.** Secondo dei tre passi della grafica (`D-0118`), dopo la struttura e prima di palette
+e temi. I nove temi e il selettore libero (`UI-020…UI-026`) sono **rimappature di token**: fino a
+qui non c'era un layer da rimappare — 102 letterali di colore sparsi nel foglio di stile e dieci
+proprietà personalizzate a coprire il resto.
+
+| ID | Decisione |
+|---|---|
+| `D-0144` | **Il layer di token è un rinominare, non un ridipingere — ed è misurato, non affermato.** 130 letterali sostituiti da 102 token; **nessun valore cambiato**. La prova è una fotografia dei colori calcolati presa da un browser vero **prima** e di nuovo dai byte esatti installati: ogni proprietà di colore di ogni elemento su tutte e 25 le superfici — **39.320 elementi, 6.133 firme distinte, 0 tuple cambiate, 0 firme apparse, 0 sparite** |
+| `D-0145` | **La sostituzione è consapevole della proprietà, perché un tema deve poter separare due ruoli.** Lo stesso `#fff` è `--text-on-accent` dove è testo e `--surface-inverse` dove è sfondo: due token, oggi lo stesso valore, domani no. Una sostituzione cieca avrebbe prodotto un layer che *sembra* rimappabile e non lo è |
+| `D-0146` | **Un token dichiarato e mai usato è la stessa classe di difetto di uno schema morto, e si rimuove.** `--violet` era dichiarato una volta e referenziato **zero** volte: un colore semantico che l'interfaccia dichiara di avere e non dipinge mai. Rimosso — invisibile per costruzione, dato che nulla lo referenziava. La regola che lo governa è già scritta in `09_PIANO` §1: *una colonna che nessuno usa va rimossa oppure cablata* |
+
+**La fotografia è stata provata sensibile, non assunta tale.** Spostando **un solo** token di una
+unità di blu (`#b8c6da` → `#b8c6db`) si sono mosse **29 firme**. Uno zero prodotto da un controllo
+che non può fallire non è evidenza — ed è la stessa regola per cui i difetti si seminano.
+
+**Perché la chiave della fotografia è la firma di classe e non l'elemento.** Un confronto per
+elemento metterebbe a confronto due esecuzioni di un'applicazione viva: gli elenchi vengono dal
+database, un giro ha un'approvazione in attesa e il successivo no, quindi il conteggio cambia e
+ogni posizione slitta. Quel diff sarebbe rumore, e il rumore è il modo in cui un controllo impara a
+essere ignorato. Chiave = tag + attributo class, valore = la tupla di colore; le righe dello stesso
+elenco collassano su una voce sola e la variabilità dei dati si annulla. La proprietà sotto esame
+resta intera: **nessuna chiave presente in entrambe le fotografie può portare una tupla diversa.**
+
+**Due guardie nuove, entrambe viste fallire su un difetto seminato.**
+
+1. **Nessun letterale di colore fuori da `:root`.** Un letterale lasciato in una regola è un colore
+   che nessun tema può muovere, e non si annuncia: resta semplicemente della stessa tinta mentre
+   tutto intorno cambia.
+2. **Ogni `var()` nomina un token che esiste, e ogni token è usato.** Un `var(--text-primry)` **non
+   dà errore**: la proprietà ricade sul valore ereditato, quindi un refuso si presenta come un
+   colore leggermente sbagliato invece che come un guasto. È l'unico modo di fallire di questo
+   disegno, ed è coperto.
+
+**Un difetto della mia stessa guardia, trovato dalla guardia.** La prima versione cercava le
+definizioni **solo** in `:root` e ha contestato `--col-side` / `--col-panel`, che sono definiti su
+`.app-shell` perché variano con il rango della barra e del pannello — definizioni legittime. Il
+controllo ora cerca in tutto il foglio; i token di colore restano comunque forzati in `:root`
+dalla guardia precedente.
+
+**Installato nella stessa fase** (`D-0143`): `:phase4-tokens`. Dettaglio in
+`docs/INSTALLATION_LEDGER.md`.

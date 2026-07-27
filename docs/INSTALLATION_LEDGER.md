@@ -1883,3 +1883,70 @@ docker start noesar-evolution.rollback-wp2-20260727T090151Z
 Nessun ripristino di stato è richiesto **finché** `state/ai-workspace.json` legge
 `"schemaVersion": 1`. Da controllare prima di procedere: se legge 2, ripristinare anche
 `state/` da `BACKUPS/runtime_pre_structure_deploy_20260727T090127Z/`.
+
+---
+
+## 2026-07-27 · Il layer di token è INSTALLATO — `:phase4-tokens`
+
+Seconda installazione sotto `CLAUDE10.md` §3a (`D-0143`): costruito, installato e verificato nella
+stessa fase.
+
+### Immagine
+
+`noesar-evolution:phase4-tokens`, overlay costruito **offline** su `:phase4-structure`, da
+`oci/Dockerfile.phase4-tokens`. Lignaggio **nove** livelli. Contenuto ricalcolato dentro
+l'immagine e confrontato con il repository: `apps/webui-static/` e
+`services/reference-control-plane/src/` **corrispondono entrambi**.
+
+### La verifica che conta: nulla di ciò che si vede è cambiato
+
+```text
+fotografia dei colori   prima del refactor  ->  byte esatti installati
+superfici                    25
+elementi misurati        39.320
+firme distinte            6.133
+tuple di colore CAMBIATE      0
+firme apparse / sparite       0 / 0
+sensibilita provata           1 token spostato di 1 unita  ->  29 firme si muovono
+```
+
+Non è un'affermazione: è una misura presa da un browser vero, due volte, e con il rilevatore
+provato **capace di fallire** prima di fidarsi del suo zero.
+
+### Sequenza — identica a quella dichiarata in §3a, `11c`
+
+1. Immagine costruita e contenuto verificato **a servizio in funzione**.
+2. `docker stop -t 60` → `runtime.stopping SIGTERM`, `postgres.stopped clean:true`, exit **0**.
+3. Backup completo **a servizio fermo**: `BACKUPS/runtime_pre_tokens_deploy_20260727T092301Z/`
+   — 75 MB, 12 directory, `"schemaVersion": 1`.
+4. Precedente preservato come `noesar-evolution.rollback-structure-20260727T092301Z`.
+5. Nuovo container avviato con la configurazione riletta dal precedente.
+
+### Verificato dopo
+
+```text
+state=running  health=healthy  restarts=0  image=noesar-evolution:phase4-tokens
+livez 200 · readyz 200 · /metrics 401
+postgres.ready    18.4, pgvector 0.8.5, migrations 16, rls_tables 15, production_ready
+identity          projected=1
+styles.css        200 · 32543 byte · IDENTICO al repository
+                  102 token definiti · 0 letterali di colore fuori da :root
+hardening         10 campi su 10 identici al container sostituito
+schema            "schemaVersion": 1 prima del build, dopo il backup e dopo l'avvio
+```
+
+### Pulizia — §5a
+
+Rimosso il container di rollback superato `noesar-evolution.rollback-wp2-20260727T090151Z`; la sua
+immagine `:phase4-wp2` resta su disco, quindi il percorso di rollback documentato ieri funziona
+ancora. Sopravvivono due container. Reti e volumi **identici**, 37 container non del progetto,
+totale 39. Nessun `prune`.
+
+### Rollback
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-structure-20260727T092301Z
+```
+
+Nessun ripristino di stato richiesto finché `state/ai-workspace.json` legge `"schemaVersion": 1`.
