@@ -2388,3 +2388,25 @@ produced since; `last_commit` one commit behind HEAD).
 and the three files restores the prior behaviour exactly.
 **Status.** Applied. Owner-authorised, 2026-07-27. Rule 38 untouched: no tier skipped
 silently, no PASS without evidence produced in the session.
+
+## D-0173 · The offline Rust build works — and `rust-toolchain.toml` is what stops it — 2026-07-27
+**Decision.** Phase 1 (the backbone) may proceed on this host: a locked, offline,
+network-isolated workspace build succeeds. It requires `RUSTUP_TOOLCHAIN` to be pinned to
+the toolchain the image already carries; without that pin no build is possible here.
+**Why.** `rust-toolchain.toml` asks for `channel = "stable"`, which rustup treats as a
+toolchain name distinct from the image's `1.97.1-x86_64-unknown-linux-gnu` and tries to
+sync from the network **before cargo runs**. Under `--network=none` it dies there.
+`build-authority-release.sh` neither pins the toolchain nor passes `--offline` (line 26),
+so the documented release path is not executable on an isolated host.
+**Rejected.** Editing `rust-toolchain.toml` to a pinned version: `stable` is correct for a
+networked developer machine, and pinning it there would trade a portable manifest for a
+host-specific one. The pin belongs in the build path, not in the manifest.
+**Evidence.** `rust:1-bookworm`, `--network=none --cap-drop=ALL`, source mounted read-only:
+first run failed at rustup channel sync (no cargo invocation); with the pin,
+`cargo build --workspace --locked --offline` finished the dev profile, exit 0, and
+`cargo test --workspace --locked --offline --all-targets` reported 13 test binaries,
+5 passed, 0 failed, exit 0. Workspace measured at 1,145 lines across 12 crates.
+**Reversal cost.** None — this phase changed no product file.
+**Status.** Applied (record only). The repair to `build-authority-release.sh` is NOT done
+and opens the next phase. `BUILD_STATUS.md`'s `LOCKED_BUILD_EXECUTED=true` of 2026-07-24 is
+reproducible only with the pin, which it does not mention.

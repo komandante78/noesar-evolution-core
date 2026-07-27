@@ -3,14 +3,14 @@
   "total_phases": 6,
   "current_phase": 4,
   "phase_status": "PHASE_0_OPEN_DEFECTS_REPAIRED_B010_CLOSED_INSTALLED_AND_VERIFIED",
-  "next_phase": "APRIRE LA SESSIONE PONENDO LE OTTO DOMANDE in docs/SESSION_HANDOFF.md (richiesta esplicita dell Owner, 2026-07-27: \"nella nuova sessione fammi le domande\"). NON iniziare a costruire prima delle risposte. Il punto 4 della fase 0 era un segnaposto mai trasformato in domande vere; ora la lista esiste. In sintesi: (1) quale delle tre cose aperte si costruisce; (2) il gate della Ricerca UI-090 chiede di classificare intento ed effetto senza ReasoningProvider - tre uscite possibili, la scelta e dell Owner; (3) si rimuove apps/webui-react (serve un emendamento a CLAUDE10.md); (4) B-008 quale store di identita e quello di destinazione; (5) B-001 si vuole un remote; (6) cinque destinazioni ancora da decidere; (7) conformita della conservazione dati delle richieste rifiutate; (8) TLS.",
+  "next_phase": "FASE 1 — la spina dorsale (ReasoningProvider, capability token, esecuzione in ombra, esecutore che accetta solo token)",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "33ef65b (B-010 closed, built and installed as :phase4-healthz)",
-  "last_updated_utc": "2026-07-27T13:08:33Z",
+  "last_commit": "2c88c78 (three working-economy skills bound into CLAUDE10.md)",
+  "last_updated_utc": "2026-07-27T15:40:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -746,7 +746,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "LA GRAFICA E COMPLETA (tre passi su tre, costruiti e INSTALLATI). La prossima azione NON e piu la grafica. Restano aperti, in ordine di dipendenza: (a) fase 0 punti 5 e 6 — traduzione canonica in inglese di MASTER_PROJECT/ e emendamenti registrati a V4-D001/V4-D002 (GAP-F); (b) le parti dell interfaccia che il disegno chiede e la grafica NON copre: il banco di lavoro UI-030..UI-037, la casella NON FATTO UI-036 (Critica), la metrica del prodotto UI-070..UI-072, la gestione delle sessioni UI-001..UI-012, le otto voci di accessibilita UI-040..UI-047 non strutturali, e la superficie della Ricerca — che richiede PRIMA il suo gate UI-090..UI-096; (c) la fase 1, la spina dorsale. Regola in vigore: si costruisce, si installa e si verifica nella stessa fase (D-0143).",
+  "next_action": "FASE 1 — LA SPINA DORSALE, scelta dall Owner il 2026-07-27. La Ricerca e rimandata a dopo la fase 1 (uscita (i)): il suo gate UI-090 nascera sopra ReasoningProvider invece che su un classificatore che finge copertura. PRIMO PASSO GIA FATTO (D-0173): la build Rust offline e provata funzionante su questo host, ma SOLO con RUSTUP_TOOLCHAIN pinnato al toolchain dell immagine — rust-toolchain.toml chiede channel=stable e rustup tenta la rete prima che cargo parta. PROSSIMA AZIONE: (1) riparare build-authority-release.sh (pin del toolchain + --offline, riga 26), vedendolo fallire prima; (2) scrivere il contratto di ReasoningProvider. Il workspace e uno scheletro: 1.145 righe su 12 crate, 5 test.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
