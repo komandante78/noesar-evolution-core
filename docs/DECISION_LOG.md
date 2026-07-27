@@ -1940,3 +1940,55 @@ dalla guardia precedente.
 
 **Installato nella stessa fase** (`D-0143`): `:phase4-tokens`. Dettaglio in
 `docs/INSTALLATION_LEDGER.md`.
+
+---
+
+## D-0147…D-0151 · Nove temi, un accento libero, e sette stati che tengono il significato — 2026-07-27
+
+**Contesto.** Terzo e ultimo passo della grafica (`D-0118`), possibile solo grazie al layer di
+token: qui un tema **è** una rimappatura di quei token, mai un secondo foglio di stile.
+
+| ID | Decisione |
+|---|---|
+| `D-0147` | **I temi sono generati, non scritti a mano** (`tools/generate-themes.mjs`). Un tema è una sessantina di valori: scriverli a mano è il modo in cui un tema finisce con una superficie rimasta scura e un'etichetta illeggibile. Il generatore **conserva il rango** del tema di default — quale superficie è più profonda di quale, quale testo è più quieto di quale — e sposta solo lo schema, così la gerarchia visiva sopravvive invece di essere reinventata otto volte |
+| `D-0148` | **La generazione è una proposta; l'audit è il verdetto.** Il generatore non decide se un tema sia leggibile: lo misura `tools/accessibility-audit.mjs`, che ora cammina **tutti e nove** i temi. Un tema offerto e illeggibile è una funzione finta, ed è il fallimento che un layer di temi invita — il default si controlla, gli altri otto si guardano |
+| `D-0149` | **Una tinta che non regge come testo non viene rifiutata, viene derivata** (`UI-024`). Rifiutare direbbe alla persona che il suo colore è vietato, quando ciò che è vero è che *quell'accoppiamento* non è leggibile. Il riempimento tiene la tinta scelta; ciò che si legge usa un **parente** della stessa tinta, ottenuto allontanando la chiarezza dal fondo finché non raggiunge 4,5:1. La matematica sta in `apps/webui-static/colour.js`, in un modulo a parte **perché sia testabile senza browser**: 11 test la ancorano alle definizioni WCAG e la esercitano su **tutta la ruota delle tinte**, non sui due colori che stavano nel documento |
+| `D-0150` | **Sette stati semantici, ognuno con glifo e parola oltre alla tinta** (`UI-025`). Il glifo è generato dal foglio di stile, non scritto in ogni punto di chiamata: un segnale che dipende dal ricordarsi di aggiungerlo è un segnale che da qualche parte mancherà. Con `UI-026`: nei temi chiaro e ad alto contrasto gli stati possono muovere **solo la chiarezza**, mai la tinta né il glifo — e la nuova chiarezza non è indovinata, è derivata finché il testo regge su quel tema |
+| `D-0151` | **Il viola torna, cablato.** `D-0146` l'aveva rimosso perché dichiarato e mai dipinto, dicendo che il passo successivo l'avrebbe introdotto **cablato o per niente**. È `--state-waiting`: lo stato «in attesa di una decisione umana» |
+
+**Tre difetti nello STRUMENTO DI MISURA, tutti invisibili finché esisteva un tema solo.** Sono il
+risultato più importante di questa fase, perché mettono in dubbio ciò che si credeva già misurato:
+
+1. **Le fermate di gradiente completamente trasparenti venivano fuse contro un colore di pagina
+   scritto a mano.** `transparent` calcola a `rgba(0,0,0,0)`, quindi il gradiente radiale della
+   pagina contribuiva un **fondo nero fantasma** dietro ogni elemento. Nel tema scuro coincideva
+   col vero; nel tema chiaro inventava un fondo che nessuno vede — testo misurato a 1,2:1 contro
+   qualcosa che non c'è.
+2. **Il colore base della pagina era la costante `#060a12`.** Era corretto solo perché quello era
+   il colore dell'unico tema esistente. **Uno strumento che si porta dentro una costante presa
+   dalla cosa che misura sbaglierà la prima volta che quella cosa cambia.** Ora è risolto dal vivo.
+3. **Un elemento con un gradiente opaco proprio non fermava la ricerca del fondo**, quindi un
+   bottone primario veniva giudicato contro la pagina *dietro* di lui invece che contro sé stesso.
+
+**Due difetti nel prodotto, trovati dagli stessi nove temi.** Le **parole-chiave di colore** erano
+sfuggite al layer di token (`color:white` in due regole): la guardia del passo 2 cercava `#hex` e
+`rgb()` e non le parole — un colore che nessun tema può rimappare, indipendentemente dalla
+notazione in cui è scritto. E il **marchio** e l'**avatar** ereditavano il colore di testo della
+pagina invece di nominarlo: invisibile finché quel colore era bianco, near-nero su un riempimento
+saturo appena il tema è diventato chiaro. La guardia ora copre anche le parole-chiave.
+
+**Un difetto mio, serio, e la CSP aveva ragione.** Le pastiglie di colore usavano **stili inline**,
+che `style-src 'self'` blocca. Il rimedio non è allentare la policy — sarebbe barattare un
+controllo reale per una decorazione — ma applicare il colore attraverso il **CSSOM**, che non
+costruisce mai markup da un valore.
+
+**E un difetto nella mia stessa fotografia dei colori:** le chiavi alternative erano numerate per
+ordine d'inserimento, quindi aggiungere una sezione ne rinumerava migliaia e il confronto
+dichiarava 473 differenze che erano solo la sua contabilità. Ora la chiave deriva dal **valore**.
+
+**Misurato:** **0 fallimenti di contrasto su 3.825 misure in nove temi**; il tema di default
+misurato in più su tutte e 25 le superfici. Nel tema di default **due sole tuple di colore
+cambiate** rispetto al passo 2, entrambe volute: marchio e avatar che ora nominano il proprio
+colore.
+
+**Installato nella stessa fase** (`D-0143`): `:phase4-themes`.

@@ -125,9 +125,15 @@ try {
       // The first value seen for a key wins, and a later disagreement is recorded rather
       // than overwritten: one class signature resolving to two different colour tuples in
       // the same run is itself worth seeing.
-      const scoped = `${key}`;
-      if (!snapshot.has(scoped)) snapshot.set(scoped, value);
-      else if (snapshot.get(scoped) !== value) snapshot.set(`${scoped}#alt${snapshot.size}`, value);
+      // The alternate key is derived from the VALUE, never from a counter. It used to be
+      // suffixed with snapshot.size, which made every alternate key depend on insertion
+      // order: adding one new section renumbered thousands of them, and the diff reported
+      // 473 changes that were entirely its own bookkeeping. A key that moves when unrelated
+      // content is added cannot be compared across runs, which is the one thing it is for.
+      let digest = 0;
+      for (let index = 0; index < value.length; index += 1) digest = (digest * 31 + value.charCodeAt(index)) | 0;
+      if (!snapshot.has(key)) snapshot.set(key, value);
+      else if (snapshot.get(key) !== value) snapshot.set(`${key}#alt${(digest >>> 0).toString(36)}`, value);
     }
   }
 

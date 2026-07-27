@@ -230,8 +230,28 @@
         <section class="panel declared"><p>This section owns twelve acceptance criteria (<code>UI-001…UI-012</code>): the five most recent sessions laid out in full, the rest in a scroller with its count declared above it, an Archive page of its own paginated ten at a time with the range stated, multi-selection with a counter, and a confirmation on <b>every</b> destructive or moving action that names what happens and to how many — with the dangerous button never preselected and <kbd>Esc</kbd> cancelling.</p><p>Each action also carries a keyboard form and a TUI command (<code>UI-050…UI-054</code>), because a capability reachable only by mouse fails <code>CE-020</code>.</p><p class="hint">Ranked here by the structure step. The behaviour is later work, and nothing on this page pretends to perform it.</p></section>
       </section>
       <section class="settings-section" id="section-appearance" data-section="appearance">
-        <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Appearance</h2><p>Themes, accent colour, text size, interface zoom and reduced motion.</p></div><span class="badge badge-off">DECLARED · NOT BUILT</span></div>
-        <section class="panel declared"><p>Nine themes as token remappings — including one light and one true high-contrast — plus a free colour picker whose contrast is measured while you choose and shown in figures (<code>UI-020…UI-026</code>). A hue that fails as text is not rejected: its text variant is derived by moving away from the background until it reaches 4.5:1.</p><p>None of it is reachable yet for a stated reason: the colours in this build are literals spread through the stylesheet and there is no token layer to remap. That layer is the next step of the graphics order, and themes cannot exist before it.</p><p class="hint">Order fixed by the Owner: structure, then the token layer, then palette and themes. Repainting surfaces that are about to be dismantled is paid for twice.</p></section>
+        <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Appearance</h2><p>Nine themes, and any accent colour you like — with the contrast measured while you choose it, not afterwards.</p></div></div>
+        <section class="panel">
+          <div class="panel-title"><h3>Theme</h3><span class="badge badge-off" id="themeCurrent">—</span></div>
+          <p class="hint">A theme is a remapping of the interface's colour tokens, not a second stylesheet. Meaning never moves with it: the seven states below keep their glyph and their word in every theme.</p>
+          <div class="theme-grid" id="themeGrid" role="group" aria-label="Theme"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h3>Accent colour</h3></div>
+          <p class="hint">Any hue. A hue that does not carry as text is <b>not refused</b> — it stays as the fill, and a readable relative of it is derived by moving away from the background until it reaches 4.5:1. Both figures are shown below.</p>
+          <div class="accent-row">
+            <label>Pick a colour<input type="color" id="accentPicker" value="#5b8cff"></label>
+            <label>Or type a hex value<input type="text" id="accentHex" value="#5b8cff" spellcheck="false" autocomplete="off" aria-describedby="accentHelp"></label>
+            <button class="secondary" id="accentReset" type="button">Use the theme's own accent</button>
+          </div>
+          <p class="hint" id="accentHelp">Stored on this device only. It is a display preference and never leaves the installation.</p>
+          <div class="contrast-readout" id="accentReadout" aria-live="polite"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h3>The seven states</h3></div>
+          <p class="hint">Each carries a glyph and a word as well as a tint, so it survives a theme change, a colour-blind reader, a monochrome print, and high-contrast mode — where the tint is discarded outright.</p>
+          <div class="state-legend" id="stateLegend"></div>
+        </section>
       </section>
       <section class="settings-section" id="section-language" data-section="language">
         <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Language and time</h2><p>Time, language and locale. The server default applies wherever you have set no preference of your own.</p></div></div>

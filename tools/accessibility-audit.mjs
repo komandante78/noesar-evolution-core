@@ -135,16 +135,40 @@ window.__a11y = (() => {
       if (image && image !== 'none') {
         if (/url\\(/.test(image)) return { unresolved: 'background-image' };
         const stops = gradientStops(image);
-        if (stops.length) layers.push(...stops);
+        // A stop with alpha 0 paints NOTHING. It was being counted as a backdrop and then
+        // blended against the page base below, which invented a candidate that never
+        // appears on screen. \`transparent\` in a gradient computes to rgba(0,0,0,0), so the
+        // page's own radial gradient was contributing a phantom black layer behind every
+        // element on it.
+        if (stops.length) layers.push(...stops.filter((stop) => stop.a > 0));
+        // An OPAQUE gradient covers what is behind it exactly as an opaque colour does, and
+        // the walk already stops at an opaque background-color. It did not stop at an opaque
+        // gradient, so every ancestor surface stayed in the candidate list and the worst of
+        // them won — reporting white text on a primary button as 1.03:1 against the page it
+        // is sitting on top of, rather than against the button. Invisible while the page was
+        // dark and the text was white; a wall of false failures the moment a light theme
+        // existed.
+        if (stops.length > 0 && stops.every((stop) => stop.a === 1)) break;
       }
       const colour = parseColor(style.backgroundColor);
       if (colour && colour.a > 0) layers.push(colour);
       if (colour && colour.a === 1 && layers.length) break;
       node = node.parentElement;
     }
-    if (!layers.length) layers.push({ r: 255, g: 255, b: 255, a: 1 });
+    // The page's own background, resolved rather than assumed. This used to be the literal
+    // #060a12, which was correct only because that happened to be the colour of the one
+    // theme that existed. The moment a light theme arrived, every partially transparent
+    // layer was being blended against a black page that was not there — text measured at
+    // 1.2:1 against a backdrop nobody could see. A measuring instrument that carries a
+    // constant from the thing it measures will be wrong the first time that thing changes.
+    const pageStyle = getComputedStyle(document.documentElement);
+    const base = parseColor(pageStyle.backgroundColor)?.a === 1
+      ? parseColor(pageStyle.backgroundColor)
+      : (gradientStops(pageStyle.backgroundImage ?? '').filter((stop) => stop.a === 1).pop()
+        ?? parseColor(getComputedStyle(document.body).backgroundColor)
+        ?? { r: 255, g: 255, b: 255, a: 1 });
+    if (!layers.length) layers.push(base);
     // Resolve partial alpha against the page base so every candidate is opaque.
-    const base = { r: 6, g: 10, b: 18, a: 1 };
     return { layers: layers.map((layer) => (layer.a < 1 ? blend(layer, base) : layer)) };
   }
 
@@ -569,6 +593,55 @@ try {
     contrastFailures.length === 0 && shellFailures.length === 0,
     `${contrastFailures.length} distinct in views + ${shellFailures.length} in chrome, over ${contrastMeasured} measured: ${JSON.stringify([...contrastFailures, ...shellFailures].slice(0, 6).map(({ key, ...rest }) => rest))}`);
   note('contrast method', `worst-case across every gradient colour stop; ${contrastUnresolved} elements unresolved (raster background-image) and NOT counted as passing`);
+
+  // --- contrast in EVERY theme ---------------------------------------------
+  // A theme that is offered and cannot be read is a false feature, and it is the failure a
+  // theme layer invites: the default is checked, the other eight are looked at. Every theme
+  // is measured here, including the light one and the high-contrast one, which are exactly
+  // the two most likely to have been generated wrong.
+  //
+  // Sampling is declared rather than hidden: five surfaces, chosen because between them
+  // they carry the component inventory — hero and cards, badges and metric grids, code
+  // panels, lists and buttons, and the appearance controls themselves. The default theme
+  // is still measured across all twenty-five above. Themes are switched in place instead of
+  // renavigating, so this costs five page loads rather than forty-five.
+  at('themes');
+  const THEME_IDS = ['midnight', 'slate', 'graphite', 'indigo', 'teal', 'amber', 'violet', 'daylight', 'contrast'];
+  const THEME_SURFACES = ['home', 'coden', 'workflows', 'settings/security', 'settings/appearance'];
+  const themeFailures = [];
+  let themeMeasured = 0;
+  for (const name of THEME_SURFACES) {
+    const surface = SURFACES.find((entry) => entry.name === name);
+    await openSurface(surface);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    for (const theme of THEME_IDS) {
+      const outcome = await page.evaluate(({ selector, id }) => {
+        document.documentElement.dataset.theme = id;
+        return window.__a11y.contrastFailures(selector);
+      }, { selector: surface.selector, id: theme });
+      const chrome = await page.evaluate(() => ({
+        top: window.__a11y.contrastFailures('.topbar'),
+        side: window.__a11y.contrastFailures('.sidebar'),
+        foot: window.__a11y.contrastFailures('footer'),
+      }));
+      themeMeasured += outcome.measured + chrome.top.measured + chrome.side.measured + chrome.foot.measured;
+      for (const failure of [...outcome.failing, ...chrome.top.failing, ...chrome.side.failing, ...chrome.foot.failing]) {
+        themeFailures.push({ theme, surface: name, selector: failure.selector, ratio: failure.ratio, color: failure.color });
+      }
+    }
+  }
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'midnight'; });
+  const themesAffected = [...new Set(themeFailures.map((entry) => entry.theme))];
+  check('every theme meets the AA contrast minimum (1.4.3, UI-020/UI-021)',
+    themeFailures.length === 0,
+    `${themeFailures.length} failures over ${themeMeasured} measurements in ${THEME_IDS.length} themes${themesAffected.length ? ` — themes affected: ${themesAffected.join(', ')}` : ''}: ${JSON.stringify(themeFailures.slice(0, 6))}`);
+  // Distinct (theme, selector) pairs rather than every instance: one wrong token shows up on
+  // hundreds of elements, and a list of hundreds hides how many DISTINCT problems there are —
+  // which is the number that says whether the fix is one change or twenty.
+  const themeDistinct = [...new Map(themeFailures.map((entry) => [`${entry.theme}|${entry.selector}`, entry])).values()];
+  note('theme failures, distinct', themeDistinct.length === 0 ? 'none'
+    : JSON.stringify(themeDistinct.slice(0, 24).map((entry) => ({ t: entry.theme, s: entry.selector, r: entry.ratio }))));
+  note('theme coverage', `${THEME_IDS.length} themes x ${THEME_SURFACES.length} sampled surfaces (${THEME_SURFACES.join(', ')}) plus the shell; the default theme is additionally measured on all ${SURFACES.length} surfaces above`);
 
   // --- reduced motion ------------------------------------------------------
   at('reduced-motion');

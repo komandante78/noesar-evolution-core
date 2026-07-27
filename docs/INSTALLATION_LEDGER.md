@@ -1950,3 +1950,76 @@ docker start noesar-evolution.rollback-structure-20260727T092301Z
 ```
 
 Nessun ripristino di stato richiesto finché `state/ai-workspace.json` legge `"schemaVersion": 1`.
+
+---
+
+## 2026-07-27 · Nove temi INSTALLATI — `:phase4-themes` · la grafica è completa
+
+Terza installazione della giornata sotto `CLAUDE10.md` §3a. Con questa, i **tre** passi della
+grafica che l'Owner aveva vincolato in ordine (`D-0118`) sono costruiti e installati.
+
+### Immagine
+
+`noesar-evolution:phase4-themes`, overlay offline su `:phase4-tokens`, lignaggio **dieci**.
+Contenuto ricalcolato dentro l'immagine: `apps/webui-static/` e
+`services/reference-control-plane/src/` **corrispondono al repository**.
+
+### La verifica che conta: ogni tema è misurato, non guardato
+
+```text
+contrasto            0 fallimenti su 3.825 misure · 9 temi · 5 superfici campionate + shell
+                     il tema di default misurato in piu su tutte e 25 le superfici
+accessibilita       27/27 (era 26/26: il controllo sui nove temi e nuovo)
+tema di default      2 sole tuple di colore cambiate, entrambe volute
+                     (marchio e avatar nominano il proprio colore invece di ereditarlo)
+matematica colore   11/11 test, ancorati alle definizioni WCAG, su tutta la ruota delle tinte
+```
+
+**Il campionamento è dichiarato, non nascosto:** cinque superfici (`home`, `coden`, `workflows`,
+`settings/security`, `settings/appearance`) scelte perché fra loro portano l'inventario dei
+componenti, più la shell. I temi si scambiano sul posto invece di rinavigare, quindi il controllo
+costa cinque caricamenti invece di quarantacinque.
+
+### Sequenza — §3a, `11c`
+
+Immagine costruita a servizio in funzione e contenuto verificato · `docker stop -t 60` con
+`postgres.stopped clean:true` e exit **0** · backup completo a servizio fermo
+(`BACKUPS/runtime_pre_themes_deploy_20260727T100234Z/`, 75 MB, 12 directory) · precedente
+preservato come `noesar-evolution.rollback-tokens-20260727T100234Z` · nuovo container avviato con
+la configurazione riletta dal precedente.
+
+### Verificato dopo
+
+```text
+state=running  health=healthy  restarts=0  image=noesar-evolution:phase4-themes
+livez 200 · readyz 200 · /metrics 401
+postgres.ready   18.4, pgvector 0.8.5, migrations 16, rls_tables 15, production_ready
+identity         projected=1
+styles.css       200 · 50291 byte · IDENTICO al repository · 8 blocchi tema + il default
+colour.js        200 · IDENTICO al repository
+hardening        10 campi su 10 identici al container sostituito
+schema           "schemaVersion": 1 prima del build e dopo l'avvio
+```
+
+### Detto chiaramente: cosa NON è verificato
+
+Il **comportamento** dell'interfaccia non è esercitato su questa installazione (§3a, `11e`): le
+suite creano un Owner e cambiano impostazioni, quindi girano su una sonda usa-e-getta. Dal vivo è
+provato che i byte serviti sono identici all'albero che quelle suite hanno esercitato.
+
+**Nessuno screen reader reale ha partecipato** e `forced-colors` non è emulabile su questo
+Chromium: entrambe le cose sono stampate dall'audit a ogni giro nel suo blocco `NOT_TESTED`.
+
+### Pulizia — §5a
+
+Rimosso il container `noesar-evolution.rollback-structure-20260727T092301Z`; la sua immagine resta.
+Sopravvivono due container. Reti e volumi **identici**, 37 container non del progetto, totale 39.
+
+### Rollback
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-tokens-20260727T100234Z
+```
+
+Nessun ripristino di stato richiesto finché `state/ai-workspace.json` legge `"schemaVersion": 1`.

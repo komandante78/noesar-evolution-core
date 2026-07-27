@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Themes image: nine themes, a free accent colour, and seven states that keep their meaning.
+#
+# Third and last of the graphics steps the Owner fixed in order (D-0118), built and
+# installed in the same phase (D-0143). It is only possible because of the step before it:
+# a theme here is a remapping of the token layer, never a second stylesheet.
+#
+# What this image adds:
+#
+#   1. nine themes (UI-020, UI-021) including a light one and a true high-contrast one,
+#      GENERATED from the default by tools/generate-themes.mjs so they cannot drift from it
+#      one edit at a time, and rank-preserving so the visual hierarchy survives the change;
+#   2. a free accent colour with the contrast measured WHILE choosing and shown in figures
+#      (UI-022, UI-023), and a text variant DERIVED — not refused — until it reaches 4.5:1
+#      (UI-024);
+#   3. the seven semantic states, each carrying a GLYPH and a WORD as well as a tint
+#      (UI-025), so meaning survives a theme change, a colour-blind reader and forced-colors
+#      mode, where the tint is discarded outright;
+#   4. `--state-waiting`, which is the violet the previous image REMOVED for being declared
+#      and never painted. It comes back wired to a meaning, which is what that decision said
+#      the next step should do.
+#
+# Every one of the nine themes is measured, not looked at: 3,825 contrast measurements
+# across nine themes and five sampled surfaces plus the shell, 0 failures. The default theme
+# is additionally measured on all 25 surfaces.
+#
+# Three defects in the MEASURING INSTRUMENT were found by doing this, all of them invisible
+# while only one theme existed:
+#
+#   * fully transparent gradient stops were being blended against a hardcoded dark page
+#     colour, inventing a black backdrop behind everything on a light theme;
+#   * the page base was that same hardcoded colour rather than the page's resolved
+#     background — a constant carried from the thing being measured;
+#   * an element with its own OPAQUE gradient did not stop the backdrop walk, so a primary
+#     button was judged against the page behind it instead of against itself.
+#
+# SCHEMA: no change. `AI_STATE_VERSION` is unchanged and the installed workspace still reads
+# `"schemaVersion": 1`. Rolling back to :phase4-tokens is just starting the old container.
+#
+# Lineage, stated rather than hidden — now ten deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#     -> :phase4-themes
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-tokens
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

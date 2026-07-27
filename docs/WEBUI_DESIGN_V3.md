@@ -578,3 +578,46 @@ I contrasti di §5 restano quelli di prima **perché nessun colore si è mosso**
 - La **rimisura** dei contrasti con `tools/accessibility-audit.mjs`, che ora gira su 25 superfici.
 - `--violet` è stato **rimosso** perché nulla lo dipingeva (`D-0146`): se il passo 3 vuole un
   viola semantico, lo introduce **cablato**, non dichiarato e basta.
+
+---
+
+# Costruito — passo 3 della grafica: palette e nove temi
+
+**Data:** 2026-07-27. Decisioni `D-0147…D-0151`. **Installato** (`:phase4-themes`).
+**Con questo, i tre passi della grafica sono completi.**
+
+## 28. I nove temi
+
+`midnight` (il default) · `slate` · `graphite` · `indigo` · `teal` · `amber` · `violet` ·
+**`daylight`** (chiaro) · **`contrast`** (alto contrasto vero). Il default **non ha un blocco**: è
+il valore dei token stessi, quindi non può divergere da loro.
+
+Sono **generati** da `tools/generate-themes.mjs`, che conserva il **rango** del default: quale
+superficie è più profonda di quale, quale testo è più quieto di quale. `--check` fallisce se i
+blocchi sono stale rispetto ai token.
+
+## 29. Il colore libero, e la derivazione
+
+| Criterio | Come è soddisfatto |
+|---|---|
+| `UI-022` | Selettore di colore **e** campo esadecimale: qualunque tinta |
+| `UI-023` | Tre cifre mostrate mentre si sceglie: bianco **sul** colore, il colore **come testo**, e la variante derivata. Il rapporto non viene mai arrotondato *verso* il superamento |
+| `UI-024` | Una tinta che non regge come testo **non è rifiutata**: resta il riempimento, e la variante testuale è derivata muovendo solo la chiarezza. Se 4,5:1 non è raggiungibile da quella tinta, **lo dice** invece di lasciarlo intendere |
+| `UI-025` | Sette stati, ognuno con **glifo + parola**. Il glifo lo genera il foglio di stile, non il punto di chiamata |
+| `UI-026` | Nei temi chiaro e alto contrasto gli stati muovono **solo la chiarezza**, derivata finché reggono |
+
+## 30. Cosa questa fase ha scoperto sullo strumento di misura
+
+**Tre difetti nell'audit**, tutti invisibili finché esisteva un tema solo: fermate di gradiente
+trasparenti fuse contro un fondo pagina **scritto a mano**; quel fondo era una **costante presa
+dalla cosa misurata**; e un gradiente opaco proprio non fermava la ricerca del fondo. È il
+risultato più importante del passo, perché rimette in discussione ciò che si credeva già misurato:
+**il `26/26` precedente era in parte fortuna** — la costante coincideva col colore dell'unico tema.
+
+E **due difetti nel prodotto** che gli stessi nove temi hanno fatto emergere: le **parole-chiave**
+di colore erano sfuggite al layer di token, e marchio e avatar **ereditavano** il colore del testo
+invece di nominarlo.
+
+**Resta aperto:** i valori di §5 non sono più solo calcolati — la ruota delle tinte è ora
+esercitata dai test e ogni tema è misurato dall'audit. Restano non testati gli **screen reader
+reali** e il rendering `forced-colors`, dichiarati a ogni giro.

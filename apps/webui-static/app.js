@@ -1,7 +1,56 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { initI18n, applyTranslations } from './i18n.js';
 import { qrSvg } from './qr.js';
+import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
+
+// --- theme, applied before anything else ------------------------------------
+// This runs at the top of the module on purpose. A theme applied later — after the first
+// paint, or inside an init function — shows the default for a frame and then swaps, which
+// is the flash every themed interface is judged by. There is nothing to fetch: the choice
+// lives on this device.
+const THEMES=[
+  {id:'midnight',label:'Midnight',hint:'the default'},
+  {id:'slate',label:'Slate',hint:'cooler neutrals'},
+  {id:'graphite',label:'Graphite',hint:'warmer neutrals'},
+  {id:'indigo',label:'Indigo',hint:'the reference accent'},
+  {id:'teal',label:'Teal',hint:'green-blue accent'},
+  {id:'amber',label:'Amber',hint:'warm accent'},
+  {id:'violet',label:'Violet',hint:'purple accent'},
+  {id:'daylight',label:'Daylight',hint:'light'},
+  {id:'contrast',label:'High contrast',hint:'maximum separation'},
+];
+const THEME_KEY='noesar.theme';
+const ACCENT_KEY='noesar.accent';
+// The accent is a FAMILY, not one value: a fill carries a gradient, a wash carries an
+// alpha, and a link has to be readable as text. Choosing one hue moves all of them
+// together, which is what lets "any colour you like" survive the contrast requirement.
+const ACCENT_TOKENS=['accent-fill-from','accent-fill-to','accent-link','accent-brand','accent-eyebrow','blue'];
+function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'midnight';}catch{return 'midnight';}}
+function readAccent(){try{const value=localStorage.getItem(ACCENT_KEY);return parseHex(value)?value:'';}catch{return '';}}
+function tokenValue(name){return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();}
+function applyTheme(id){
+  document.documentElement.dataset.theme=id;
+  try{localStorage.setItem(THEME_KEY,id);}catch{}
+}
+function applyAccent(hex){
+  const root=document.documentElement;
+  for(const token of ACCENT_TOKENS)root.style.removeProperty(`--${token}`);
+  if(!hex||!parseHex(hex))return;
+  // Measured against the ACTIVE theme's own surface, so the derivation answers the question
+  // that matters here rather than one about whichever theme happened to be default.
+  const background=tokenValue('surface-card')||'#0a121f';
+  const readable=deriveReadable(hex,background,4.5);
+  root.style.setProperty('--accent-fill-from',hex);
+  root.style.setProperty('--accent-fill-to',hex);
+  root.style.setProperty('--blue',hex);
+  // UI-024: the FILL keeps the chosen hue; everything that has to be READ uses the derived
+  // relative. Refusing the colour outright would tell someone their choice is forbidden,
+  // when what is actually true is that this one pairing is not readable.
+  for(const token of ['accent-link','accent-brand','accent-eyebrow'])root.style.setProperty(`--${token}`,readable?readable.hex:hex);
+}
+applyTheme(readTheme());
+applyAccent(readAccent());
 // The CSRF token is a double-submit value: the server sets `noesar_csrf` as a
 // deliberately NON-HttpOnly cookie so that this script can read it back and echo it in
 // the x-noesar-csrf header. It used to be captured only from the login response into a
@@ -1417,6 +1466,129 @@ if(refreshApprovalsButton)refreshApprovalsButton.addEventListener('click',()=>{r
 
 // Registered last, once every loader above exists. This object is what makes a nav
 // entry mean something: `activate()` calls the loader for the view being opened.
+// --- Appearance -------------------------------------------------------------
+// The seven semantic states, in one place. They are rendered from this list rather than
+// written into the markup so the legend cannot fall out of step with what the interface
+// actually uses — a legend that describes a vocabulary the product no longer speaks is
+// worse than no legend.
+const SEMANTIC_STATES=[
+  {key:'ok',word:'Verified',meaning:'checked and holding'},
+  {key:'active',word:'Active',meaning:'running now'},
+  {key:'waiting',word:'Waiting',meaning:'needs a human decision'},
+  {key:'info',word:'Note',meaning:'context, not a problem'},
+  {key:'warning',word:'Warning',meaning:'works, but not as intended'},
+  {key:'critical',word:'Critical',meaning:'stopped or unsafe'},
+  {key:'off',word:'Off',meaning:'not configured'},
+];
+// A theme's real values, read from the stylesheet rule that defines it. A swatch painted
+// from the CURRENT theme would show nine identical cards and tell you nothing.
+function themeTokens(id){
+  const wanted=id==='midnight'?':root':`:root[data-theme="${id}"]`;
+  const found={};
+  for(const sheet of document.styleSheets){
+    let rules;try{rules=sheet.cssRules;}catch{continue;}
+    for(const rule of rules??[]){
+      if(rule.selectorText!==wanted)continue;
+      for(const token of ['surface-root','surface-card','accent-fill-from','text-primary','green','amber','red']){
+        const value=rule.style.getPropertyValue(`--${token}`).trim();
+        if(value)found[token]=value;
+      }
+    }
+  }
+  return found;
+}
+function paintSwatches(root){
+  for(const node of (root??document).querySelectorAll('[data-swatch]')){
+    node.style.background=node.dataset.swatch;
+  }
+}
+function renderThemeGrid(){
+  const grid=$('#themeGrid');if(!grid)return;
+  const current=document.documentElement.dataset.theme??'midnight';
+  const base=themeTokens('midnight');
+  grid.innerHTML=THEMES.map((theme)=>{
+    const tokens={...base,...themeTokens(theme.id)};
+    const swatches=['surface-root','surface-card','accent-fill-from','text-primary']
+      .map((token)=>`<span data-swatch="${escapeHtml(tokens[token]??'transparent')}"></span>`).join('');
+    return `<button class="theme-card" type="button" data-theme-id="${escapeHtml(theme.id)}" aria-pressed="${theme.id===current}">
+      <b>${escapeHtml(theme.label)}${theme.id===current?' <span class="state state-ok"></span>':''}</b>
+      <div class="theme-swatches">${swatches}</div>
+      <small>${escapeHtml(theme.hint)}</small></button>`;
+  }).join('');
+  $$('[data-theme-id]').forEach((button)=>button.addEventListener('click',()=>{
+    applyTheme(button.dataset.themeId);
+    // The accent is re-derived against the new theme's background: the same hue can be
+    // readable on one theme and not on the next, and the stored choice is the HUE, not the
+    // colour it resolved to last time.
+    applyAccent(readAccent());
+    renderAppearance();
+    toast({title:'Theme changed',body:`${button.querySelector('b').textContent.trim()} is now in use on this device.`,kind:'success'});
+  }));
+  paintSwatches(grid);
+  const label=$(`#themeCurrent`);
+  if(label){label.textContent=THEMES.find((theme)=>theme.id===current)?.label??current;label.className='badge badge-on';}
+}
+function renderAccentReadout(hex){
+  const box=$('#accentReadout');if(!box)return;
+  const colour=parseHex(hex);
+  if(!colour){box.innerHTML='<div><b>—</b><small>Not a colour this field understands. Use a hex value such as <code>#5b8cff</code>.</small></div>';return;}
+  const surface=tokenValue('surface-card')||'#0a121f';
+  const onFill=contrast(colour,parseHex('#ffffff'));
+  const asText=contrast(colour,parseHex(surface));
+  const readable=deriveReadable(hex,surface,4.5);
+  const verdict=(ratio,threshold)=>ratio>=threshold
+    ? `<span class="state state-ok">passes ${threshold}:1</span>`
+    : `<span class="state state-warning">below ${threshold}:1</span>`;
+  box.innerHTML=`
+    <div><b>${escapeHtml(formatRatio(onFill))}</b><small>White text on this colour as a fill. ${verdict(onFill,4.5)}</small>
+      <span class="swatch-line"><i data-swatch="${escapeHtml(hex)}"></i><span>the colour you chose</span></span></div>
+    <div><b>${escapeHtml(formatRatio(asText))}</b><small>This colour used AS TEXT on a panel. ${verdict(asText,4.5)}</small></div>
+    <div><b>${escapeHtml(formatRatio(readable?.ratio??0))}</b><small>${readable&&readable.derived
+      ? 'Derived text variant — the hue is kept and only its lightness moved, until it reads.'
+      : 'No derivation needed: the colour you chose already reads as text.'}${readable&&readable.met===false
+      ? ' <span class="state state-warning">4.5:1 could not be reached from this hue</span>' : ''}</small>
+      <span class="swatch-line"><i data-swatch="${escapeHtml(readable?.hex??hex)}"></i><span>used for links and labels</span></span></div>`;
+  paintSwatches(box);
+}
+function renderAppearance(){
+  renderThemeGrid();
+  const stored=readAccent();
+  const active=stored||tokenValue('accent-fill-from')||'#5b8cff';
+  const picker=$('#accentPicker');const field=$('#accentHex');
+  if(picker)picker.value=/^#[0-9a-fA-F]{6}$/.test(active)?active:'#5b8cff';
+  if(field)field.value=active;
+  renderAccentReadout(active);
+  const legend=$('#stateLegend');
+  if(legend){
+    legend.innerHTML=SEMANTIC_STATES.map((state)=>
+      `<div><span class="state state-${escapeHtml(state.key)}">${escapeHtml(state.word)}</span><small>${escapeHtml(state.meaning)}</small></div>`).join('');
+  }
+}
+function initAppearance(){
+  const picker=$('#accentPicker');const field=$('#accentHex');
+  const choose=(value,{persist=true}={})=>{
+    if(!parseHex(value)){renderAccentReadout(value);return;}
+    if(persist){try{localStorage.setItem(ACCENT_KEY,value);}catch{}}
+    applyAccent(value);
+    renderAppearance();
+  };
+  picker?.addEventListener('input',()=>{if(field)field.value=picker.value;renderAccentReadout(picker.value);});
+  picker?.addEventListener('change',()=>choose(picker.value));
+  // Typed input is read as it is typed, so the figures move with the value — that is what
+  // "measured while you choose" means. It is only stored once it is a colour.
+  field?.addEventListener('input',()=>{
+    renderAccentReadout(field.value.trim());
+    if(parseHex(field.value.trim())&&picker&&/^#[0-9a-fA-F]{6}$/.test(field.value.trim()))picker.value=field.value.trim();
+  });
+  field?.addEventListener('change',()=>choose(field.value.trim()));
+  $('#accentReset')?.addEventListener('click',()=>{
+    try{localStorage.removeItem(ACCENT_KEY);}catch{}
+    applyAccent('');
+    renderAppearance();
+    toast({title:'Accent reset',body:"The theme's own accent is in use again.",kind:'success'});
+  });
+}
+
 Object.assign(VIEW_LOADERS,{
   workflows:loadWorkflows,
   coden:loadCoden,
@@ -1425,6 +1597,7 @@ Object.assign(VIEW_LOADERS,{
 // logs" is one section holding two former pages, so it runs both: merging two entries in
 // the menu must not silently drop one of their fetches.
 Object.assign(SECTION_LOADERS,{
+  appearance:renderAppearance,
   language:loadSettings,
   security:loadSecurity,
   people:loadUsers,
@@ -1436,5 +1609,6 @@ Object.assign(SECTION_LOADERS,{
 });
 
 initI18n();
+initAppearance();
 initRouter();
 initializeAuth().catch((error)=>authError(error.message));

@@ -31,40 +31,46 @@ nuova decisione dell'Owner.**
 1. `PROJECT_STATE.json` e questo file
 2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, completo e autorizzato, **più
    `§22-27`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
-   (destinazione Ricerca e il suo gate) · **§22-24 la struttura** · **§25-27 il layer di token**.
+   (destinazione Ricerca e il suo gate) · **§22-24 la struttura** · **§25-27 il layer di token** · **§28-30 i nove temi**.
    Criteri `UI-001…UI-096`
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` (matrice `CE-001…CE-024`) ·
    `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-5. `docs/DECISION_LOG.md` (ultime: **`D-0137…D-0146`**), `docs/INSTALLATION_LEDGER.md`
+5. `docs/DECISION_LOG.md` (ultime: **`D-0137…D-0151`**), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-> **Grafica, passo 3: PALETTE E NOVE TEMI** — e si installa nella stessa fase (`D-0143`).
+> **La grafica è COMPLETA — tre passi su tre, costruiti e installati.** La prossima azione non è
+> più la grafica.
 
-**I passi 1 e 2 sono fatti e installati.** La struttura (23 → 12 destinazioni) e il layer di token
-(102 token, zero letterali fuori da `:root`) girano sull'installazione. Resta l'ultimo passo:
+Restano aperte tre cose, in ordine di dipendenza. **Nessuna è iniziata.**
 
-3. **Palette e temi** — nove temi come **rimappature dei token che ora esistono**, fra cui uno
-   chiaro e uno ad **alto contrasto vero** (`UI-020`, `UI-021`); **selettore di colore libero**
-   con contrasto **misurato mentre si sceglie**, mostrato in cifre, e variante testuale **derivata**
-   allontanandosi dal fondo fino a 4,5:1 (`UI-022…UI-024`); i **sette stati semantici** che non
-   cambiano significato col tema e portano **glifo + parola** (`UI-025`, `UI-026`).
+**(a) Fase 0, punti 5 e 6** — traduzione canonica in inglese di `MASTER_PROJECT/` (regola 49) ed
+emendamenti registrati a `V4-D001` / `V4-D002` (`GAP-F`: il prodotto e i documenti che lo
+governano dicono cose diverse e nulla registra quale dei due debba muoversi). Nessuna riga di
+codice, tutto reversibile.
 
-**Quattro cose da sapere prima di cominciare.**
+**(b) Le parti dell'interfaccia che il disegno chiede e la grafica NON copre.** Da non confondere
+con «fatto»: la grafica era struttura, token e temi.
 
-- **I contrasti di `WEBUI_DESIGN_V3.md` §5 sono calcolati, mai misurati.** Il passo 3 li deve far
-  passare da `tools/accessibility-audit.mjs`, che ora gira su **venticinque** superfici.
-- **`tools/computed-style-snapshot.mjs` dice esattamente cosa un tema muove.** È il driver che ha
-  provato che il layer di token non ha cambiato un solo colore: usarlo per vedere la differenza
-  fra due temi invece di guardarla a occhio.
-- **Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-tokens`** (il
-  default dello script punta a un'immagine più vecchia). Creano e **rimuovono da soli** sonda,
-  runner e overlay.
-- **Non iniziare la fase 1.** Della fase 0 restano aperti i punti 5 e 6 — traduzione canonica in
-  inglese e emendamenti a `V4-D001` / `V4-D002`.
+- il **banco di lavoro** a tre regioni (`UI-030…UI-037`)
+- la casella **`NON FATTO`** nella chiusura (`UI-036`, **Critica**)
+- la **metrica del prodotto** — tempo di revisione umana per cambiamento accettato
+  (`UI-070…UI-072`), di cui `UI-072` è Critica: un cambiamento **rifiutato** conta come tempo speso
+- la **gestione delle sessioni** (`UI-001…UI-012`) — oggi la sezione è dichiarata e non costruita
+- le otto voci di accessibilità **non strutturali** (`UI-040…UI-047`): dimensione del testo, zoom,
+  riduzione animazioni come impostazione, regione live, lingua e fuso, istanti IANA
+- la **superficie della Ricerca**, che richiede **prima** il suo gate (`UI-090…UI-096`)
+
+**(c) La fase 1, la spina dorsale** — `ReasoningProvider`, capability token, esecuzione in ombra,
+esecutore che accetta solo token, registro eventi, comprensione del repository. Rust dalla prima
+riga, su un host senza toolchain Rust.
+
+**Regola in vigore, da qui in avanti** (`D-0143`, `CLAUDE10.md` §3a): **si costruisce, si installa
+e si verifica nella stessa fase.** Le suite vanno lanciate con
+`NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-themes`.
 
 ---
 
@@ -154,17 +160,59 @@ refuso si presenta come un colore leggermente sbagliato invece che come un guast
 contestato `--col-side`/`--col-panel`, che sono definiti su `.app-shell` perché variano col rango
 della barra. Definizioni legittime; ora cerca in tutto il foglio.
 
+### 6 · Passo 3 — nove temi, e cosa ha scoperto sullo strumento di misura
+
+Nove temi come **rimappature dei token**, generati da `tools/generate-themes.mjs` conservando il
+**rango** del default (`D-0147`) — quale superficie è più profonda di quale, quale testo è più
+quieto di quale. Il default non ha blocco: è il valore dei token stessi. Fra i nove, uno chiaro e
+uno ad **alto contrasto vero**.
+
+**La generazione è una proposta; l'audit è il verdetto** (`D-0148`). L'audit cammina ora tutti e
+nove i temi: **0 fallimenti di contrasto su 3.825 misure**. Ci sono voluti sei giri per arrivarci,
+e ogni giro ha nominato un difetto.
+
+**Il colore libero non rifiuta niente** (`D-0149`): una tinta che non regge come testo resta il
+riempimento, e ciò che si legge usa un **parente** della stessa tinta, derivato muovendo solo la
+chiarezza fino a 4,5:1. La matematica sta in `apps/webui-static/colour.js`, **in un modulo a parte
+perché sia testabile senza browser** — 11 test ancorati alle definizioni WCAG e passati su **tutta
+la ruota delle tinte**, non sui due colori che stavano nel documento.
+
+**Sette stati, glifo + parola** (`D-0150`), col glifo generato dal foglio di stile e non scritto in
+ogni punto di chiamata. E il **viola torna cablato** come `--state-waiting` (`D-0151`): è
+esattamente ciò che `D-0146` diceva che il passo successivo dovesse fare.
+
+**Tre difetti nello STRUMENTO, e sono il risultato più importante della fase.** Tutti invisibili
+finché esisteva un tema solo:
+
+1. le fermate di gradiente **completamente trasparenti** venivano fuse contro un colore di pagina
+   **scritto a mano** — un fondo nero fantasma dietro ogni elemento del tema chiaro;
+2. quel colore era una **costante presa dalla cosa misurata**. Uno strumento fatto così sbaglia la
+   prima volta che quella cosa cambia — e infatti **il `26/26` precedente era in parte fortuna**;
+3. un elemento con un **gradiente opaco proprio** non fermava la ricerca del fondo, quindi un
+   bottone primario veniva giudicato contro la pagina dietro di lui.
+
+**Due difetti nel prodotto**, trovati dagli stessi nove temi: le **parole-chiave** di colore
+(`color:white`) erano sfuggite al layer di token — la guardia del passo 2 cercava `#hex` e `rgb()`
+e non le parole — e **marchio e avatar ereditavano** il colore del testo invece di nominarlo.
+
+**E due difetti miei.** Le pastiglie di colore usavano **stili inline**, che la CSP del prodotto
+blocca: il rimedio è passare dal **CSSOM**, non allentare `style-src`. E la mia fotografia dei
+colori numerava le chiavi alternative **per ordine d'inserimento**, quindi aggiungere una sezione
+ne rinumerava migliaia e dichiarava 473 differenze che erano solo la sua contabilità.
+
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                     637/637   0 falliti · 44 suite       (erano 631)
+unit                     648/648   0 falliti · 46 suite       (erano 631)
 guardia di struttura      19/19    0 falliti                  (erano 13)
+matematica del colore     11/11    ancorata alle definizioni WCAG, su tutta la ruota delle tinte
 accettazione in browser  265/265   0 falliti · browser reale   (erano 233)
-accessibilita WCAG 2.2    26/26    0 falliti · 25 superfici    (erano 26 su 23 rotte)
-eslint                   159 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST                5724/5724  0 falliti
-fotografia dei colori    0 tuple cambiate su 6.133 firme, 39.320 elementi, 25 superfici
-difetti seminati           7/7     ognuno catturato da esattamente una guardia
+accessibilita WCAG 2.2    27/27    0 falliti                   (erano 26)
+contrasto per tema           0 fallimenti su 3.825 misure in NOVE temi
+eslint                   162 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                5728/5728  0 falliti
+fotografia dei colori    passo 2: 0 tuple cambiate su 6.133 firme · passo 3: 2, entrambe volute
+difetti seminati          11/11    ognuno catturato da esattamente una guardia
 ```
 
 **La copertura è cresciuta, non calata.** L'audit misura ora **venticinque** superfici — dodici
@@ -190,13 +238,13 @@ Preparare e non installare era esattamente il difetto che questo progetto elimin
 vivo era rimasto indietro di **quattro** riparazioni. Vale da adesso in poi.
 
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-tokens
+container   running · healthy · restarts=0 · noesar-evolution:phase4-themes
 bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
 endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
 dati        postgres 18.4 · pgvector 0.8.5 · 16 migrazioni · 15 tabelle RLS
             identity projected=1 — l'Owner ha superato lo scambio
 interfaccia 12 destinazioni e 13 sezioni servite; byte IDENTICI al repository
-stile       102 token, 0 letterali di colore fuori da :root; byte IDENTICI al repository
+stile       104 token + NOVE temi come rimappature; byte IDENTICI al repository
 hardening   dieci campi su dieci identici al container sostituito
 igiene      due soli container noesar-evolution* · reti e volumi invariati
             37 container non del progetto prima e dopo · nessun prune
@@ -216,13 +264,13 @@ esercitato, che il servizio è sano e che le rotte rispondono (401 contro un con
 
 ```text
 docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
-docker start noesar-evolution.rollback-structure-20260727T092301Z
+docker start noesar-evolution.rollback-tokens-20260727T100234Z
 ```
 
-`AI_STATE_VERSION` è invariato rispetto a `:phase4-structure` e `state/ai-workspace.json` legge **ancora
+`AI_STATE_VERSION` è invariato rispetto a `:phase4-tokens` e `state/ai-workspace.json` legge **ancora
 `"schemaVersion": 1"`** — verificato prima del build, dopo il backup e dopo l'avvio. **Finché
 legge 1, tornare indietro è solo riavviare il container vecchio.** Se legge 2, ripristinare anche
-`state/` da `BACKUPS/runtime_pre_tokens_deploy_20260727T092301Z/` (75 MB, preso a servizio
+`state/` da `BACKUPS/runtime_pre_themes_deploy_20260727T100234Z/` (75 MB, preso a servizio
 fermo). Il costo di rollback dello schema di `D-0082` **non** si applica a questo salto.
 
 ## ➜ Blocker aperti

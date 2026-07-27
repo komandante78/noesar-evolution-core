@@ -132,10 +132,19 @@ describe('webui markup structure', () => {
   // everything around it changes. The layer holds only as long as this is enforced.
   test('no colour literal survives outside the token definitions', () => {
     const css = readFileSync(join(here, '../../../apps/webui-static/styles.css'), 'utf8');
-    const root = /:root\{[^}]*\}/.exec(css);
-    assert.ok(root, ':root token block not found');
-    const body = css.replace(root[0], '');
-    const literals = body.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g) ?? [];
+    // A literal is legitimate where it DEFINES a token and nowhere else. The first version
+    // of this check stripped the :root block by position, which stopped being the whole
+    // truth the moment the nine themes arrived: a theme is a second block of token
+    // definitions, and every one of its values is a literal by necessity. Stripping custom
+    // property declarations wherever they appear states the actual rule, and it keeps
+    // working for the next block of definitions nobody has written yet.
+    const withoutTokenDefinitions = css.replace(/--[a-z0-9-]+\s*:[^;}]*[;}]/g, '');
+    // Colour KEYWORDS count. The first version of this guard looked for #hex and rgb() only,
+    // and two `color:white` declarations walked straight through it — on the primary button
+    // and the active nav entry, which then stayed white text when the light theme turned the
+    // surface underneath them white. A keyword is a colour no theme can remap, which is the
+    // whole property being defended; the notation it is written in is irrelevant.
+    const literals = withoutTokenDefinitions.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|\b(?:white|black|red|blue|green|yellow|orange|purple|grey|gray|silver|navy|teal|olive|maroon|aqua|fuchsia|lime)\b(?=\s*[;}!])/g) ?? [];
     assert.deepEqual(literals, [],
       `${literals.length} colour literal(s) outside :root — a colour no theme can remap: ${[...new Set(literals)].slice(0, 8).join(', ')}`);
   });
