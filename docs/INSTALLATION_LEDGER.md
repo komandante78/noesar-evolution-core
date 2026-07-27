@@ -1742,3 +1742,37 @@ MANIFEST              5721/5721   0 falliti · 0 duplicati
 difetti seminati        5, ognuno catturato, ogni file ripristinato byte-identico
 installazione           intoccata · healthy · RestartCount=0 · livez/readyz 200 · metrics 401
 ```
+
+---
+
+## 2026-07-27 · Grafica, passo 1: la struttura — NESSUNA INSTALLAZIONE
+
+Fase di sola sorgente. **Nessun container di prodotto è stato creato, avviato o fermato**;
+l'installazione viva non è stata toccata e continua a servire `:phase4-wp2`, cioè l'interfaccia a
+**ventitré** destinazioni. La struttura a dodici esiste **solo nel sorgente**.
+
+```text
+installazione   noesar-evolution · running · healthy · RestartCount=0 · :phase4-wp2
+bind            192.168.178.100:8100 -> 8088   (NON loopback: un controllo contro 127.0.0.1
+                restituisce 000 e sembra un servizio morto mentre il servizio e sano)
+endpoint        livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
+igiene          due soli container noesar-evolution* a fine fase, come impone §5a
+                noesar-debuglab avviato per la caccia ai difetti e RIFERMATO nella stessa fase
+                sonde e runner e2e rimossi dai loro stessi script, tre giri, nessun residuo
+                reti e volumi invariati · 172 righe di inventario in EVIDENCE/
+```
+
+### Contenitori usa-e-getta creati e rimossi in questa fase
+
+Tre giri della suite in browser (`tools/run-browser-e2e.sh`), ognuno con la propria sonda, il
+proprio runner e la propria immagine overlay, più un giro dell'audit di accessibilità. Tutti
+rimossi dal loro stesso script, passati o falliti. Il primo e il secondo giro **hanno fallito** —
+è il motivo per cui esistono: 4 fallimenti al primo giro, 7 al secondo (di cui uno era un difetto
+reale che avevo introdotto io), 0 al terzo.
+
+### Il deploy resta da autorizzare
+
+Portare questa struttura sull'installazione è una **fase di installazione** e richiede
+l'autorizzazione esplicita dell'Owner. Prima va letta la nota sul **costo di rollback dello
+schema** (`D-0082`): l'immagine precedente non rilegge un `state/ai-workspace.json` già riscritto
+dalla build nuova.

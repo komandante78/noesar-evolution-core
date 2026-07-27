@@ -1810,3 +1810,57 @@ elimina altrove.
 **Stato del disegno alla chiusura.** Completo e coerente: `docs/WEBUI_DESIGN_V3.md` §1-21, criteri
 `UI-001…UI-096`, decisioni `D-0117…D-0136`, anteprima `docs/design/ANTEPRIMA_WEBUI_V5.html`.
 **Nulla implementato, nulla installato.**
+
+---
+
+## D-0137…D-0142 · La struttura costruita: 23 destinazioni diventano 12 — 2026-07-27
+
+**Contesto.** Primo passo dell'ordine vincolato dall'Owner (`D-0118`: *prima la grafica, poi tutto
+il resto*), eseguito sul codice: **struttura**, prima del layer di token e prima della palette.
+Nessuna riga di prodotto era stata toccata dalla progettazione; questa fase ne tocca tre file
+(`index.html`, `app.js`, `styles.css`) più due suite di verifica e una guardia di struttura.
+
+| ID | Decisione |
+|---|---|
+| `D-0137` | **Cambiare rango non cancella.** I tredici blocchi di pagina demossi sono **spostati verbatim**, mai riscritti: `#view-users`, `#view-logs` e gli altri esistono ancora con i loro id, e la trasformazione è stata eseguita da uno script che estrae e riassembla, così nessun contenuto passa da una trascrizione a mano |
+| `D-0138` | **Ogni indirizzo che rispondeva risponde ancora.** `LEGACY_ROUTES` inoltra le tredici rotte ritirate alla sezione che ora le possiede (`#/logs` → `#/settings/health`). Un segnalibro che diventa 404 è il modo in cui un cambio di rango si trasforma in una perdita di funzione — e la barra dell'indirizzo viene riscritta, perché un inoltro invisibile non è verificabile |
+| `D-0139` | **I gate scendono di livello insieme alle pagine che proteggono.** `users`/`backups`/`health`/`updates` erano rotte protette; ora sono **sezioni** protette (`SECTION_ACCESS`), le voci di menu non consentite sono rimosse e il rifiuto è reso **dentro** Impostazioni invece che come pagina intera. Un gate che sopravvive alla demozione solo nel nome è un gate che ha smesso di proteggere |
+| `D-0140` | **`#/settings` atterra su «Lingua e ora», non sulla prima voce del menu.** La prima voce è *Sessioni*, che è **dichiarata e non costruita**: una destinazione la cui superficie d'ingresso dice «non costruito» si legge come un prodotto rotto, non come un prodotto onesto. L'ordine del menu resta quello del disegno; è una riga sola da invertire se l'Owner preferisce l'ordine di menu |
+| `D-0141` | **Le due destinazioni senza superficie sono dichiarate, non nascoste.** *CodeN Evolution TUI* e *Ricerca* compaiono nella barra con l'etichetta «not built» e una pagina che dice cosa manca e perché. Nasconderle per far tornare il conto sarebbe stato mentire sul numero; costruirne la superficie sarebbe stato annunciare una funzione inesistente — il difetto esatto rimosso da questo prodotto in una fase precedente |
+| `D-0142` | **La superficie della Ricerca non si costruisce prima del suo gate.** In questa pagina **non esiste alcun campo che possa emettere una query**. `UI-090…UI-096` sono un requisito che precede la superficie, non una rifinitura: costruire prima la superficie significherebbe consegnare una via d'uscita verso la rete senza nulla che la classifichi |
+
+**Il pannello contestuale ricorda per destinazione** (`D-0117`, ora implementato): la scelta è
+salvata per ogni destinazione separatamente, perché un'unica impostazione globale è sbagliata per
+qualcuno su ogni pagina. **La barra laterale ha tre ranghi** su `[` e `]`, con un controllo
+visibile nella barra superiore: la scorciatoia è la via veloce, mai l'unica — una barra che si
+può riportare indietro solo conoscendo un tasto è una barra che chi usa il mouse ha perso.
+
+**Difetti trovati e riparati in questa fase**, tutti prodotti dall'esecuzione e non dalla lettura:
+
+1. **Mio, serio — una sezione non consentita faceva partire il suo loader.** Quattro richieste
+   `403` (`/logs`, `/debug/status`, `/watchdog`, `/database/status`) venivano emesse per una
+   pagina che l'account si stava vedendo rifiutare: il gate era applicato sullo schermo e
+   abbandonato sul filo. Trovato dalla suite in browser, riparato alla causa.
+2. **Mio — una guardia debole che avevo appena scritto.** Il controllo «ogni sezione sta dentro
+   Impostazioni» confrontava la **posizione nel file**, non l'annidamento: una sezione spostata
+   fuori ma lasciata fra `#view-settings` e `#view-not-found` passava. Scoperto **seminando
+   quel difetto** e vedendo la guardia restare verde; ora cammina la profondità dei tag.
+3. **Preesistente — il nome accessibile della navigazione spariva sotto gli 850px.** La regola
+   `.nav span{display:none}` toglie l'etichetta anche dall'**albero di accessibilità**, quindi su
+   schermo stretto ogni voce era annunciata come un glifo nudo. Sostituita con il ritaglio.
+4. **Mia misura sbagliata.** Il giro delle rotte misurava il testo dell'intera destinazione
+   Impostazioni, comprese le dodici sezioni nascoste: il «Loading…» di una sezione che nessuno
+   sta guardando faceva fallire una pagina che aveva finito di caricare.
+
+**Scartato con evidenza.** `semgrep` `insecure-object-assign` su `app.js:85`: il bersaglio è un
+`new Error` locale appena creato a cui si attaccano campi diagnostici — nessun assegnamento di
+massa, nessun redirect, e codice non toccato da questa fase. I dodici finding di `bandit`/`ruff`
+sono tutti in due script Python **non toccati qui** (`verify-package.py`,
+`create-rust-build-provenance.py`) che eseguono comandi fissi: fuori dallo scopo, registrati.
+
+**Osservazione registrata, non riparata.** Il browser scarta l'intestazione
+`Cross-Origin-Opener-Policy` che il server invia, perché la sonda è servita in HTTP semplice su un
+nome che non è `localhost`. Vale anche per l'installazione viva in LAN: quell'intestazione oggi non
+ha effetto. Richiede TLS, che è una decisione di host e di fase d'installazione.
+
+**Nulla è stato installato.** L'installazione viva gira ancora `:phase4-wp2` e non è stata toccata.

@@ -1,6 +1,8 @@
 # Progetto dell'interfaccia — v3, accettata dall'Owner
 
-**Data:** 2026-07-27 · **Stato:** impianto **APPROVATO**, nulla implementato, nulla installato.
+**Data:** 2026-07-27 · **Stato:** impianto **APPROVATO**. Alla data in cui questa riga fu scritta
+nulla era implementato; **il primo dei tre passi della grafica — la struttura — è ora costruito**:
+vedi **§22**. Nulla è installato.
 **Anteprima navigabile:** `docs/design/ANTEPRIMA_WEBUI_V3.html` (autonoma, si apre in un browser).
 **Riferimento visivo:** `docs/design/APPROVED_WEBUI_REFERENCE.png`.
 **Riferimento normativo:** `MASTER_PROJECT/07_INTERFACCIA.md`.
@@ -477,3 +479,59 @@ UI-046 (RTL)      0 proprieta fisiche left/right — invariato dopo l'aggiunta
 ```
 
 **Non eseguito:** apertura in un browser reale (nessuno installato, regola 45).
+
+---
+
+# Costruito — passo 1 della grafica: la struttura
+
+**Data:** 2026-07-27. **Ordine vincolato** (`D-0118`): **struttura → layer di token → palette e
+temi**. Questo è il primo passo, e solo il primo. Decisioni `D-0137…D-0142`.
+
+## 22. Che cosa esiste ora nel codice
+
+| Cosa | Stato | Dove |
+|---|---|---|
+| **Dodici destinazioni** nella barra laterale, contro ventitré | costruito | `index.html`, `app.js::ROUTES` |
+| **Una sola pagina Impostazioni** con menu dentro il menu, tre gruppi, **tredici sezioni** | costruito | `app.js::SETTINGS_SECTIONS`, `#/settings/<sezione>` |
+| Le tredici pagine demosse, **spostate verbatim** e non riscritte | costruito | id originali conservati (`#view-users`, `#view-logs`, …) |
+| **Inoltro di ogni vecchio indirizzo** alla sezione che ora lo possiede | costruito | `app.js::LEGACY_ROUTES` |
+| I **gate di ruolo** scesi da rotta a sezione, con rifiuto reso dentro Impostazioni | costruito | `app.js::SECTION_ACCESS`, `#settingsDenied` |
+| **Barra laterale a tre ranghi** — completa · icone · via — su `[` e `]`, ricordata | costruito | `app.js::initSidebarRank` |
+| **Pannello contestuale a tre ranghi** — agganciato · flottante · via — **memoria per destinazione** (`D-0117`) | costruito | `app.js::applyPanelRank` |
+| *Compiti* dentro Home · *Strumenti* dentro CodeN Evolution · *Memoria* dentro Conoscenza | costruito | blocchi `.work-block` |
+| **CodeN Evolution TUI** e **Ricerca** come destinazioni | **dichiarate, non costruite** (`D-0141`) | pagine che dicono cosa manca |
+| Il **gate della Ricerca** (`UI-090…UI-096`) | **non costruito** — e per questo la superficie non esiste (`D-0142`) | nessun campo che possa emettere una query |
+| Nove temi, selettore di colore libero, layer di token | **non costruito** — è il passo 2 e 3 | sezione *Aspetto*, dichiarata |
+| Gestione delle sessioni `UI-001…UI-012` | **non costruita** | sezione *Sessioni*, dichiarata |
+
+## 23. Verifiche prodotte, tutte eseguite in sessione
+
+```text
+unit                     635/635   0 falliti · 44 suite      (erano 631)
+guardia di struttura      17/17    0 falliti                 (erano 13)
+accettazione in browser  265/265   0 falliti · browser reale  (erano 233)
+accessibilita WCAG 2.2    26/26    0 falliti · 25 superfici   (erano 26 su 23 rotte)
+eslint                   158 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                5721/5721  0 falliti
+difetti seminati           4/4     ognuno catturato da esattamente una guardia
+```
+
+**La copertura dell'audit è cresciuta, non calata**: 630 controlli con indicatore di focus e 944
+misure di contrasto, su **venticinque** superfici — dodici destinazioni **più le tredici sezioni**.
+Auditare le sole destinazioni avrebbe fatto sparire tredici superfici dalla misura lasciando il
+numero `26/26` identico: è il modo in cui una ristrutturazione trasforma un audit verde in un audit
+più piccolo.
+
+**Non eseguito, dichiarato:** nessuno screen reader reale ha partecipato (l'audit stampa il proprio
+blocco `NOT_TESTED` a ogni giro) e `forced-colors` non è emulabile su questo Chromium.
+
+## 24. Cosa resta aperto dopo il passo 1
+
+- **Passo 2 — il layer di token.** Senza, i nove temi e il selettore libero non sono
+  implementabili: i colori sono ancora letterali sparsi nel foglio di stile.
+- **Passo 3 — palette e temi**, e la **rimisura** dei contrasti di §5, che restano **calcolati**.
+- **Il banco di lavoro** (`UI-030…UI-037`), la **casella `NON FATTO`** (`UI-036`, Critica), la
+  **metrica del prodotto** (`UI-070…UI-072`) e le otto voci di accessibilità `UI-040…UI-047` che
+  non sono strutturali: nessuna di queste è toccata dal passo 1.
+- **Installazione:** nulla è deployato. Il box vivo gira `:phase4-wp2`, cioè l'interfaccia a
+  ventitré destinazioni.
