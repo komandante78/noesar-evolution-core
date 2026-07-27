@@ -343,7 +343,7 @@
     }
   ],
   "product_test_suite": {
-    "unit": "524/524",
+    "unit": "745/745 (misurato in sessione 2026-07-27)",
     "eslint": "149 files, 0 errors, 0 warnings, 0 no-undef",
     "browser_acceptance": "178/178",
     "adversarial_invariants": "11/11",

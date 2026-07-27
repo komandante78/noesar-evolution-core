@@ -52,7 +52,7 @@ required = {
         "non-Linux peer-credential transports remain unimplemented",
     ],
     "rust/build-authority-release.sh": [
-        "cargo test --workspace --locked --all-targets",
+        "cargo test --workspace --locked --offline --all-targets",
         "--package noesar-authority-daemon",
         "Cargo.lock is required",
         "NOESAR_RUST_TEST_REPORT",

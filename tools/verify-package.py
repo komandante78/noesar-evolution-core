@@ -128,7 +128,7 @@ def main() -> int:
             "production_attestation_ledger_immutable",
         ],
         "rust/build-authority-release.sh": [
-            "cargo test --workspace --locked --all-targets",
+            "cargo test --workspace --locked --offline --all-targets",
             "Cargo.lock is required",
             "NOESAR_RUST_TEST_REPORT",
             "NOESAR_AUTHORITY_CONFORMANCE_REPORT",

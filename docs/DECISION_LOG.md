@@ -2410,3 +2410,27 @@ first run failed at rustup channel sync (no cargo invocation); with the pin,
 **Status.** Applied (record only). The repair to `build-authority-release.sh` is NOT done
 and opens the next phase. `BUILD_STATUS.md`'s `LOCKED_BUILD_EXECUTED=true` of 2026-07-24 is
 reproducible only with the pin, which it does not mention.
+
+## D-0174 · The release path is executable offline — and it had never been executed — 2026-07-27
+**Decision.** `build-authority-release.sh` pins `RUSTUP_TOOLCHAIN` to the installed default
+when the caller has not set one, and passes `--offline` to both cargo steps. The two source
+verifiers that assert its content were updated to the new token in the same change.
+**Why.** Without the pin the script dies at rustup channel sync on an isolated host; with
+every dependency vendored, a release build that reaches the network is a release build whose
+inputs were not the ones committed. Nothing in the repository ever *ran* this script — it is
+asserted by string match in `tools/verify-source.mjs`,
+`tools/verify-rust-authority-source.py` and `tools/verify-package.py`. That is the same
+class as `D-0171`: a check nobody invokes.
+**Rejected.** Pinning inside `rust-toolchain.toml`: `stable` is correct for a networked
+developer machine; the host-specific pin belongs in the build path.
+**Evidence.** Same file, two runs, same isolated container (`--network=none --cap-drop=ALL`):
+before, dead at rustup with no cargo invocation; after, both cargo steps green and
+`noesar-authority-daemon` produced at 862,744 bytes. Residual non-zero exit is the
+provenance step demanding a tests report the caller must supply — not a script defect.
+`verify-rust-authority-source.py` in-container: `RUST_LOCKED_BUILD_SCRIPT=PASS`, exit 0.
+Unit suite measured this session: 745/745. MANIFEST 5739 entries, 0 mismatch.
+**Reversal cost.** None — reverting the four lines restores the previous behaviour, which
+was "not executable here".
+**Status.** Applied, not installed (no product code changed). Recorded for a later phase and
+NOT repaired: `capabilities/tools/verify-package.py` and `tools/verify-package.py` were
+already divergent before this change, and the former does not carry the token at all.
