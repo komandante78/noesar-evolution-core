@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f287037 (release chain producers)",
+  "last_commit": "6ddc6be (provenance signing, Windows transport, secret scan)",
   "last_updated_utc": "2026-07-27T15:40:00Z",
   "blockers": [
     {
@@ -351,7 +351,7 @@
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
-    "rust_workspace": "14 binari, 23 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
+    "rust_workspace": "15 binari, 37 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
     "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)",
     "provenance": "11/11 (misurato 2026-07-27, erano 6 — 5 nuovi sulla firma)",
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
@@ -753,7 +753,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "FASE 1 IN CORSO. Passo 1 FATTO (D-0175): il contratto ReasoningProvider esiste come crate rust/crates/noesar-reasoning, congelato a 1.0.0, 11 superfici obbligatorie + simulate opzionale, 14 test verdi offline, difetto seminato verificato. PROSSIMO PASSO: il provider di RIFERIMENTO (09_PIANO passo 2) — le undici superfici implementate senza ATOM, perche FOSS_CORE_DEPENDS_ON_ATOM=false oggi e dichiarato dal contratto ma NON ancora dimostrato da nulla che gira. Poi: capability token (3), esecuzione in ombra (4), esecutore a soli token (5), registro eventi (6), comprensione minima del repository (7). Build offline: serve RUSTUP_TOOLCHAIN pinnato (D-0173).",
+  "next_action": "FASE 1: passi 1 e 2 FATTI. Il contratto ReasoningProvider (D-0175) e il provider di RIFERIMENTO (D-0178) esistono, 37 test verdi offline. IL PROVIDER NON E ANCORA CHIAMATO DA NULLA: services/reference-control-plane non lo conosce, quindi FOSS_CORE_DEPENDS_ON_ATOM=false e dimostrato a livello di crate ma NON ancora sul prodotto vivo. PROSSIMO PASSO, a scelta: (i) cablare il provider nel control plane e mostrarlo in una superficie (chiude il cerchio, e rende la fase installabile); oppure (ii) proseguire il piano — capability token (passo 3), esecuzione in ombra (4), esecutore a soli token (5), registro eventi (6), comprensione minima del repository (7). Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -35,6 +35,7 @@ const required = [
   'tools/test-powershell-installers.ps1',
   '.gitleaks.toml',
   'rust/crates/noesar-reasoning/src/lib.rs',
+  'rust/crates/noesar-reasoning-reference/src/lib.rs',
   'schemas/owner-entitlement.schema.json',
   'private-boundary/atom-provider.schema.json',
 ];

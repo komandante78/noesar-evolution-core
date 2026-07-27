@@ -13,7 +13,8 @@ members = [
   "crates/noesar-canonical-json",
   "crates/noesar-authority-transport",
   "crates/noesar-authority-daemon",
-  "crates/noesar-reasoning"
+  "crates/noesar-reasoning",
+  "crates/noesar-reasoning-reference"
 ]
 
 [workspace.package]

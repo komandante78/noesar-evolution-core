@@ -2515,3 +2515,28 @@ using `CapabilityManager`), not copies; and my first secret-scan control test pl
 `AKIAIOSFODNN7EXAMPLE`, AWS's documented example key, which gitleaks ignores by design — the
 scanner was fine, the proof was not. Still open: `B-001` needs a credential only the Owner
 holds; PowerShell scripts are parsed, **never executed**; the signature is symmetric.
+
+## D-0178 · The reference provider — FOSS_CORE_DEPENDS_ON_ATOM stops being a sentence — 2026-07-27
+**Decision.** `rust/crates/noesar-reasoning-reference` implements all eleven mandatory
+surfaces deterministically, with no model and no ATOM. Step 2 of phase 1 (`09_PIANO.md`).
+**Why.** Without a model the tempting failure is confident-looking output — a paraphrased
+goal, a hypothesis with no evidence, a plausible confidence — which is indistinguishable
+from a real answer until it is acted on. Every surface here derives from its input and, where
+it cannot, says so through the contract's own types: the goal is **quoted, never paraphrased**;
+ambiguities are **named and never resolved**; `Contrary::NotSought` because nothing looked;
+`evidence` always returns `UnsupportedInference` because this provider reads no corpus; and
+confidence is capped at **0.6** and can never reach certainty.
+**Rejected.** Averaging per-step risk into the plan's risk: one critical step would hide
+behind nine harmless ones. The plan is as risky as its worst step.
+**Evidence.** 14/14 offline; workspace 15 binaries, **37 passed**, 0 failed. Three seeded
+defects — and the first one, `ceiling = 0.6 -> 1.0`, **broke nothing**: the accumulated
+reasons subtract from the ceiling, so `value < 1.0` held even at certainty, while the
+one-reason path (every step has a command, a result observed) returned exactly `1`. The
+oracle was wrong, not the code. A test now drives that path and pins the ceiling; reseeded,
+it fails with `got 1`. The other two seeds each took down exactly one test.
+**Reversal cost.** None — nothing depends on this crate yet.
+**Status.** Applied, not installed. Correction to an earlier claim of mine: the contract does
+**name** ATOM, in 13 doc-comment lines explaining that it is not ATOM; the only occurrence
+outside prose is a test named for its absence. No import, no dependency. Not done: the
+provider is never called by the control plane — it exists and is tested, and wiring it into
+the product is a phase of its own.

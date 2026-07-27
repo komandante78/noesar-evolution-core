@@ -616,6 +616,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "noesar-reasoning-reference"
+version = "0.6.0"
+dependencies = [
+ "hex",
+ "noesar-reasoning",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
 name = "noesar-security-kernel"
 version = "0.6.0"
 dependencies = [
