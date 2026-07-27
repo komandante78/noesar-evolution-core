@@ -2434,3 +2434,27 @@ was "not executable here".
 **Status.** Applied, not installed (no product code changed). Recorded for a later phase and
 NOT repaired: `capabilities/tools/verify-package.py` and `tools/verify-package.py` were
 already divergent before this change, and the former does not carry the token at all.
+
+## D-0175 · `ReasoningProvider` exists — and the dishonest answers are unrepresentable — 2026-07-27
+**Decision.** The contract is a Rust crate, `rust/crates/noesar-reasoning`, frozen at
+`REASONING_CONTRACT_VERSION = "1.0.0"`: eleven mandatory surfaces as trait methods,
+`simulate` optional with a default that returns `Unsupported`. It is the first line of code
+of phase 1 (`09_PIANO.md` §1) and names ATOM nowhere.
+**Why.** Prose the compiler does not read is what let the rest of this project drift. Each
+type refuses the answer that would be dishonest: `Evidence::Supported` cannot hold an empty
+source list; `Confidence` below 1.0 cannot exist without the reasons it is not higher;
+`Expectation` cannot expect nothing, which is what makes "surprise" definable at all;
+`Contrary` separates *none found* from *not sought*; `Plan` accepts dependencies only on
+**earlier** steps, so a cycle is unrepresentable rather than merely detected.
+**Rejected.** Native `async fn` in the trait: it is not dyn-compatible, and the engine must
+hold `Box<dyn ReasoningProvider>` to select reference-or-ATOM at runtime. Boxed futures
+(`Answer<'a, T>`) keep both, and a test asserts the dyn-compatibility rather than assuming it.
+**Evidence.** Offline, network-isolated, locked: crate 14/14 green; whole workspace
+14 binaries, 19 passed, 0 failed. Seeded defect (the `Confidence` reasons check disabled)
+took down exactly one test, the right one, and nothing else. MANIFEST 5741 entries,
+0 mismatch. `SOURCE_VERIFY=PASS`.
+**Reversal cost.** None yet — no caller exists. Once a provider or the engine depends on it,
+changing it is an event, not a modification (`03_ARCHITETTURA.md` §4).
+**Status.** Applied, not installed: this is the contract only. The reference provider
+(step 2 of phase 1) is NOT written, so `FOSS_CORE_DEPENDS_ON_ATOM = false` is stated by the
+contract and **not yet demonstrated by a running implementation**.
