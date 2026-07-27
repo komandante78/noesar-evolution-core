@@ -385,13 +385,35 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.evaluateOnNewDocument(TOOLKIT);
 
-// Routes are audited individually: this is a single-page application, so a check that only
-// looked at the landing view would exempt twenty-two others.
-const ROUTES = [
-  'home', 'chat', 'projects', 'tasks', 'documents', 'agents', 'workflows', 'approvals',
-  'tools', 'knowledge', 'memory', 'providers', 'models', 'coden', 'hardware', 'settings',
-  'security', 'users', 'health', 'updates', 'logs', 'backups', 'about',
+// Surfaces are audited individually: this is a single-page application, so a check that
+// only looked at the landing view would exempt every other one.
+//
+// A surface is no longer the same thing as a destination. The sidebar carries twelve
+// destinations, and thirteen former pages now live as sections inside Settings — reachable
+// only at #/settings/<section>. Auditing destinations alone would silently drop those
+// thirteen surfaces from focus, target-size and contrast coverage, which is how a
+// restructure turns a green audit into a smaller one.
+const DESTINATIONS = [
+  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+  'agents', 'workflows', 'models', 'research', 'settings',
 ];
+const SETTINGS_SECTIONS = [
+  'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
+  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
+];
+const SURFACES = [
+  ...DESTINATIONS.map((name) => ({ name, hash: `#/${name}`, selector: `#view-${name}`, ready: `#view-${name}.active` })),
+  ...SETTINGS_SECTIONS.map((name) => ({
+    name: `settings/${name}`,
+    hash: `#/settings/${name}`,
+    selector: `.settings-section[data-section="${name}"]`,
+    ready: `.settings-section[data-section="${name}"].active`,
+  })),
+];
+async function openSurface(surface) {
+  await page.goto(`${BASE}/${surface.hash}`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector(surface.ready, { timeout: 15000 });
+}
 
 try {
   at('sign-in');
@@ -434,7 +456,7 @@ try {
   check('there is exactly one main landmark (1.3.1)', landmarks.main === 1, `main=${landmarks.main}`);
   check('navigation is a landmark (1.3.1)', landmarks.nav >= 1, `nav=${landmarks.nav}`);
   check('a skip link precedes the navigation (2.4.1 Bypass Blocks)',
-    landmarks.skipLink, 'a keyboard user must be able to jump past 23 nav entries to reach the content');
+    landmarks.skipLink, 'a keyboard user must be able to jump past the sidebar and the rank control to reach the content');
 
   // --- accessible names (the necessary condition for a screen reader) ------
   at('names');
@@ -466,12 +488,11 @@ try {
   at('focus');
   let focusFailures = [];
   let focusChecked = 0;
-  for (const route of ROUTES) {
-    await page.goto(`${BASE}/#/${route}`, { waitUntil: 'networkidle2' });
-    await page.waitForSelector(`#view-${route}.active`, { timeout: 15000 });
+  for (const surface of SURFACES) {
+    await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 400));
-    const outcome = await page.evaluate((name) => {
-      const scope = ['body > .app-shell > .topbar', `#view-${name}`, '.sidebar'];
+    const outcome = await page.evaluate(({ name, selector }) => {
+      const scope = ['body > .app-shell > .topbar', selector, '.sidebar'];
       const failing = [];
       let checked = 0;
       for (const selector of scope) {
@@ -492,7 +513,7 @@ try {
         }
       }
       return { failing, checked };
-    }, route);
+    }, surface);
     focusChecked += outcome.checked;
     focusFailures.push(...outcome.failing);
   }
@@ -503,13 +524,14 @@ try {
   // --- target size, per route ----------------------------------------------
   at('target-size');
   const smallTargets = [];
-  for (const route of ROUTES) {
-    await page.goto(`${BASE}/#/${route}`, { waitUntil: 'networkidle2' });
-    await page.waitForSelector(`#view-${route}.active`, { timeout: 15000 });
+  for (const surface of SURFACES) {
+    await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 300));
-    const found = await page.evaluate((name) => window.__a11y.smallTargets(`#view-${name}`).map((entry) => ({ ...entry, route: name })), route);
+    const found = await page.evaluate(({ name, selector }) => window.__a11y.smallTargets(selector).map((entry) => ({ ...entry, route: name })), surface);
     smallTargets.push(...found);
   }
+  // The Settings menu needs no loop of its own: it sits inside #view-settings, so the
+  // "settings" surface above already measures all thirteen of its controls.
   const chromeTargets = await page.evaluate(() => [
     ...window.__a11y.smallTargets('.topbar'),
     ...window.__a11y.smallTargets('.sidebar'),
@@ -524,14 +546,13 @@ try {
   const contrastFailures = [];
   let contrastMeasured = 0;
   let contrastUnresolved = 0;
-  for (const route of ROUTES) {
-    await page.goto(`${BASE}/#/${route}`, { waitUntil: 'networkidle2' });
-    await page.waitForSelector(`#view-${route}.active`, { timeout: 15000 });
+  for (const surface of SURFACES) {
+    await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 600));
-    const outcome = await page.evaluate((name) => {
-      const view = window.__a11y.contrastFailures(`#view-${name}`);
+    const outcome = await page.evaluate(({ name, selector }) => {
+      const view = window.__a11y.contrastFailures(selector);
       return { ...view, failing: view.failing.map((entry) => ({ ...entry, route: name })) };
-    }, route);
+    }, surface);
     contrastMeasured += outcome.measured;
     contrastUnresolved += outcome.unresolved;
     // One representative per distinct selector+colour, or the list is unreadable.
@@ -685,7 +706,9 @@ try {
 
   // --- graphics ------------------------------------------------------------
   at('graphics');
-  await page.goto(`${BASE}/#/security`, { waitUntil: 'networkidle2' });
+  // Security is a Settings section now, not a destination. Its address changed with its
+  // rank, and the audit follows the surface rather than a name that no longer routes.
+  await page.goto(`${BASE}/#/settings/security`, { waitUntil: 'networkidle2' });
   await new Promise((resolve) => setTimeout(resolve, 900));
   const graphics = await page.evaluate(() => window.__a11y.graphics());
   const undescribed = graphics.filter((item) => !item.described);
@@ -733,7 +756,7 @@ try {
   // an activation — so the check would have passed on a button that the keyboard cannot
   // actually operate. ESLint objecting to the undeclared global is what surfaced it.
   const focusedNav = await page.evaluate(() => {
-    const target = [...document.querySelectorAll('.nav')].find((node) => node.dataset.view === 'approvals' && !node.hidden);
+    const target = [...document.querySelectorAll('.nav')].find((node) => node.dataset.view === 'projects' && !node.hidden);
     if (!target) return { found: false };
     target.focus();
     return { found: true, focused: document.activeElement === target };
@@ -741,8 +764,8 @@ try {
   await page.keyboard.press('Enter');
   await new Promise((resolve) => setTimeout(resolve, 500));
   const keyboardNav = await page.evaluate(() => ({
-    activated: document.querySelector('#view-approvals')?.classList.contains('active') === true,
-    rendered: (document.querySelector('#view-approvals')?.getBoundingClientRect().height ?? 0) > 0,
+    activated: document.querySelector('#view-projects')?.classList.contains('active') === true,
+    rendered: (document.querySelector('#view-projects')?.getBoundingClientRect().height ?? 0) > 0,
     hash: location.hash,
   }));
   check('a nav destination can be reached and activated by a real key press (2.1.1)',

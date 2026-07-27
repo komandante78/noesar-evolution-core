@@ -179,21 +179,45 @@ try {
   // The bar is deliberately not "the page appeared". It is that nothing is still
   // saying "Loading…" and nothing reported an error, because a nav entry whose panel
   // never resolves is the exact defect being removed.
-  const ROUTES = [
-    'home', 'chat', 'projects', 'tasks', 'documents', 'agents', 'workflows', 'approvals',
-    'tools', 'knowledge', 'memory', 'providers', 'models', 'coden', 'hardware', 'settings',
-    'security', 'users', 'health', 'updates', 'logs', 'backups', 'about',
+  // Twelve destinations, and the thirteen former pages that became sections inside the
+  // single Settings destination. Both are walked: a section is a surface a user reaches,
+  // so dropping it from this loop would shrink the suite while the count still looked
+  // healthy. Every one of these addresses must render real content, not a shell.
+  const DESTINATIONS = [
+    'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+    'agents', 'workflows', 'models', 'research', 'settings',
   ];
-  for (const route of ROUTES) {
+  const SETTINGS_SECTIONS = [
+    'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
+    'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
+  ];
+  const SURFACES = [
+    ...DESTINATIONS.map((name) => ({ route: name, selector: `#view-${name}`, ready: `#view-${name}.active` })),
+    ...SETTINGS_SECTIONS.map((name) => ({
+      route: `settings/${name}`,
+      selector: `.settings-section[data-section="${name}"]`,
+      ready: `.settings-section[data-section="${name}"].active`,
+    })),
+  ];
+  for (const surface of SURFACES) {
+    const route = surface.route;
     resetObservations();
     await page.goto(`${BASE}/#/${route}`, { waitUntil: 'networkidle2' });
-    await page.waitForSelector(`#view-${route}.active`, { timeout: 15000 });
+    await page.waitForSelector(surface.ready, { timeout: 15000 });
     // Give the loader a chance to replace its placeholders.
     await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const state = await page.evaluate((name) => {
-      const view = document.querySelector(`#view-${name}`);
-      const text = view ? view.textContent : '';
+    const state = await page.evaluate((selector) => {
+      const view = document.querySelector(selector);
+      // Text of the surface actually on screen. A Settings section that is not active is
+      // display:none but still carries its markup, so its "Loading…" would be counted
+      // against a destination that has finished rendering.
+      let text = view ? view.textContent : '';
+      if (view) {
+        for (const hidden of view.querySelectorAll('.settings-section:not(.active)')) {
+          text = text.replace(hidden.textContent, '');
+        }
+      }
       // Measured, not inferred. An earlier version of this check tested
       // `classList.contains('active')` and the length of `innerText`, and passed on
       // pages that were never on screen: an unclosed <section> had nested nine views
@@ -211,7 +235,7 @@ try {
         length: text.trim().length,
         title: document.title,
       };
-    }, route);
+    }, surface.selector);
 
     check(`route ${route}: panel is active and populated`,
       state.active && state.length > 40, `active=${state.active} length=${state.length}`);
@@ -224,6 +248,154 @@ try {
     check(`route ${route}: document title reflects the page`,
       state.title !== '' && state.title.includes('NOESAR'), state.title);
   }
+
+  at('structure');
+  // --- 23 destinations became 12, and nothing was lost on the way ----------
+  // The risk of a restructure is not that it looks wrong: it is that a page quietly stops
+  // being reachable, or that a gate travels with a page and arrives as decoration. Both
+  // are checked here against the running interface rather than against the markup.
+  resetObservations();
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  const shell = await page.evaluate(() => ({
+    destinations: [...document.querySelectorAll('.nav')].map((node) => node.dataset.view),
+    menu: [...document.querySelectorAll('.settings-nav')].map((node) => node.dataset.section),
+    groups: [...document.querySelectorAll('.settings-group')].map((node) => node.textContent.trim()),
+    sections: [...document.querySelectorAll('.settings-section')].map((node) => node.dataset.section),
+  }));
+  check('the sidebar carries twelve destinations, not twenty-three',
+    shell.destinations.length === 12, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
+  check('Settings is one destination holding thirteen sections',
+    shell.sections.length === 13 && shell.menu.length === 13,
+    `menu=${shell.menu.length} sections=${shell.sections.length}`);
+  check('every Settings menu entry has a section behind it and every section an entry',
+    shell.menu.every((key) => shell.sections.includes(key)) && shell.sections.every((key) => shell.menu.includes(key)),
+    `menu=${shell.menu.join(' ')} | sections=${shell.sections.join(' ')}`);
+  check('the sections are grouped, not one flat list', shell.groups.length === 3, shell.groups.join(' | '));
+
+  // Every address a demoted page used to answer on still resolves to the section that owns
+  // it now. A bookmark that 404s is how a change of rank turns into a loss of function.
+  const LEGACY = {
+    tasks: 'home', tools: 'coden', memory: 'knowledge', approvals: 'settings/audit',
+    providers: 'settings/privacy', hardware: 'settings/models-hardware',
+    users: 'settings/people', security: 'settings/security', health: 'settings/health',
+    logs: 'settings/health', updates: 'settings/updates', backups: 'settings/storage',
+    about: 'settings/about',
+  };
+  const redirects = [];
+  for (const [from, to] of Object.entries(LEGACY)) {
+    await page.goto(`${BASE}/#/${from}`, { waitUntil: 'networkidle2' });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const landed = await page.evaluate((expected) => {
+      const [view, section = ''] = expected.split('/');
+      const host = document.querySelector(`#view-${view}`);
+      const target = section ? document.querySelector(`.settings-section[data-section="${section}"]`) : host;
+      return {
+        hash: location.hash,
+        onScreen: Boolean(host?.classList.contains('active')) && Boolean(target?.classList.contains('active'))
+          && (target?.getBoundingClientRect().height ?? 0) > 0,
+        notFound: document.querySelector('#view-not-found')?.classList.contains('active') === true,
+      };
+    }, to);
+    if (!landed.onScreen || landed.notFound || landed.hash !== `#/${to}`) {
+      redirects.push({ from, to, ...landed });
+    }
+  }
+  check('every address of a demoted page still lands on the section that owns it',
+    redirects.length === 0, `${redirects.length} failed: ${JSON.stringify(redirects.slice(0, 4))}`);
+
+  // --- the sidebar has three ranks, and they are reachable both ways --------
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  const ranks = [];
+  const rankOf = () => page.evaluate(() => ({
+    rank: document.querySelector('#appShell')?.dataset.sidebar,
+    // The label must stay in the accessible name even when it is out of sight: a nav
+    // button announced as a bare glyph tells a screen-reader user nothing.
+    named: [...document.querySelectorAll('.nav')].every((node) => node.textContent.replace(/\s+/g, ' ').trim().length > 2),
+    labelDisplayed: getComputedStyle(document.querySelector('.nav span')).display !== 'none',
+    sidebarWidth: Math.round(document.querySelector('#sidebar')?.getBoundingClientRect().width ?? -1),
+  }));
+  ranks.push(await rankOf());
+  await page.keyboard.press('BracketLeft');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  ranks.push(await rankOf());
+  await page.keyboard.press('BracketLeft');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  ranks.push(await rankOf());
+  await page.keyboard.press('BracketRight');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  ranks.push(await rankOf());
+  check('the sidebar collapses through three ranks with [ and expands with ]',
+    ranks[0].rank === 'full' && ranks[1].rank === 'icons' && ranks[2].rank === 'hidden' && ranks[3].rank === 'icons',
+    ranks.map((entry) => entry.rank).join(' → '));
+  check('collapsing the sidebar actually narrows it on screen',
+    ranks[0].sidebarWidth > ranks[1].sidebarWidth && ranks[2].sidebarWidth === 0,
+    ranks.map((entry) => entry.sidebarWidth).join(' → '));
+  check('a nav entry keeps its accessible name in icon rank',
+    ranks[1].named && ranks[1].labelDisplayed,
+    `named=${ranks[1].named} displayed=${ranks[1].labelDisplayed}`);
+  await page.reload({ waitUntil: 'networkidle2' });
+  const afterReload = await rankOf();
+  check('the chosen sidebar rank survives a reload', afterReload.rank === 'icons', afterReload.rank);
+
+  // A shortcut that fires while someone is typing a bracket into a field is a defect.
+  await page.evaluate(() => { document.querySelector('#globalSearch').focus(); });
+  await page.keyboard.press('BracketLeft');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const whileTyping = await page.evaluate(() => ({
+    rank: document.querySelector('#appShell')?.dataset.sidebar,
+    typed: document.querySelector('#globalSearch').value,
+  }));
+  check('the bracket shortcut does not fire while text is being typed',
+    whileTyping.rank === 'icons' && whileTyping.typed.includes('['),
+    JSON.stringify(whileTyping));
+  await page.evaluate(() => { document.querySelector('#globalSearch').value = ''; document.querySelector('#globalSearch').blur(); });
+  await page.evaluate(() => { document.querySelector('#sidebarRank').click(); });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  // The control cycles hidden → icons → full → hidden. Standing at "icons" after the
+  // reload, one press must arrive at "full": the keyboard is the fast path, never the only
+  // one, or a mouse user who hid the sidebar has no way to bring it back.
+  const cycled = await rankOf();
+  check('the sidebar rank is also reachable without the keyboard', cycled.rank === 'full', cycled.rank);
+
+  // --- the context panel remembers its placement PER DESTINATION -----------
+  const panelOf = () => page.evaluate(() => ({
+    rank: document.querySelector('#appShell')?.dataset.panel,
+    onScreen: (document.querySelector('#contextPanel')?.getBoundingClientRect().width ?? 0) > 0,
+    floating: getComputedStyle(document.querySelector('#contextPanel')).position === 'fixed',
+  }));
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.evaluate(() => document.querySelector('[data-panel-rank="floating"]').click());
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const homeFloating = await panelOf();
+  await page.goto(`${BASE}/#/projects`, { waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const projectsDefault = await panelOf();
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const homeAgain = await panelOf();
+  check('the context panel can be docked, floated or sent away',
+    homeFloating.rank === 'floating' && homeFloating.floating, JSON.stringify(homeFloating));
+  check('a placement chosen on one destination does not follow you to another',
+    projectsDefault.rank === 'docked', JSON.stringify(projectsDefault));
+  check('the placement is remembered for the destination it was chosen on',
+    homeAgain.rank === 'floating', JSON.stringify(homeAgain));
+  await page.evaluate(() => document.querySelector('[data-panel-rank="hidden"]').click());
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const hiddenPanel = await panelOf();
+  check('a hidden context panel is really off the screen', !hiddenPanel.onScreen, JSON.stringify(hiddenPanel));
+  await page.evaluate(() => document.querySelector('#panelRank').click());
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const restored = await panelOf();
+  check('a hidden context panel can be brought back from the top bar',
+    restored.onScreen, JSON.stringify(restored));
+  await page.evaluate(() => document.querySelector('[data-panel-rank="docked"]').click());
+  // The probe is served over plain HTTP on a container hostname, so Chromium discards the
+  // Cross-Origin-Opener-Policy header the server sets and says so once per navigation. That
+  // is a property of the harness's transport, not of this change: it is excluded by name,
+  // and recorded as an observation about the header over plain HTTP rather than hidden.
+  const shellErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
+  check('the restructured shell produced no console errors', shellErrors.length === 0, shellErrors.join(' | '));
+  check('the restructured shell produced no failed requests', failedRequests.length === 0, failedRequests.join(' | '));
 
   at('invariants');
   // --- SEC-003: the invariant panel states what the code enforces ----------
@@ -500,22 +672,27 @@ try {
   // to resolve to access-denied even for the Owner, because `may()` was evaluated
   // while currentUser was still null.
   resetObservations();
+  // "#/logs" is an owner-only page that became an owner-only SECTION. The deep link must
+  // still resolve for the Owner, and the former page must be on screen inside it — a gate
+  // that survives a demotion in name only is a gate that stopped guarding anything.
   await page.goto(`${BASE}/#/logs`, { waitUntil: 'networkidle2' });
   await new Promise((resolve) => setTimeout(resolve, 1500));
   const deepLink = await page.evaluate(() => ({
-    logs: document.querySelector('#view-logs')?.classList.contains('active') ?? false,
+    section: document.querySelector('.settings-section[data-section="health"]')?.classList.contains('active') ?? false,
+    logs: (document.querySelector('#view-logs')?.getBoundingClientRect().height ?? 0) > 0,
     denied: document.querySelector('#view-access-denied')?.classList.contains('active') ?? false,
+    refused: document.querySelector('#settingsDenied')?.classList.contains('hidden') === false,
     hash: location.hash,
   }));
   check('a cold deep link to an owner-only route resolves for the owner',
-    deepLink.logs && !deepLink.denied, JSON.stringify(deepLink));
+    deepLink.section && deepLink.logs && !deepLink.denied && !deepLink.refused, JSON.stringify(deepLink));
 
   at('mfa-replacement');
   // --- the MFA replacement flow, end to end --------------------------------
   // This is the flow the Owner needs in order to retire the enrolment secret that was
   // shown once at bootstrap. It is driven here rather than asserted.
   resetObservations();
-  await page.goto(`${BASE}/#/security`, { waitUntil: 'networkidle2' });
+  await page.goto(`${BASE}/#/settings/security`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#securityOverview .metric', { timeout: 15000 });
   check('security overview renders account metrics', true);
 
@@ -591,7 +768,7 @@ try {
   at('settings');
   // --- settings actually persists ------------------------------------------
   resetObservations();
-  await page.goto(`${BASE}/#/settings`, { waitUntil: 'networkidle2' });
+  await page.goto(`${BASE}/#/settings/language`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#settingsTimezone option', { timeout: 15000 });
   await page.select('#settingsTimezone', 'Asia/Tokyo');
   await clickOrExplain(page, '#settingsTimezoneSave');
@@ -708,18 +885,22 @@ try {
   await page.waitForSelector('#authGate.hidden', { timeout: 25000 });
   check('the invited account can sign in', true);
 
+  // The gates moved down a level with the pages they guard: what used to be a hidden nav
+  // entry is now a hidden entry in the Settings menu. The property under test is unchanged
+  // — an account is not offered what it cannot open — and it is read where it now lives.
+  // A gate that survives a demotion in name only is the failure mode this catches.
   const offered = await page.evaluate(() => {
-    const entry = (view) => document.querySelector(`.nav[data-view="${view}"]`);
-    const hidden = (view) => { const node = entry(view); return node ? node.hidden : null; };
+    const section = (key) => { const node = document.querySelector(`.settings-nav[data-section="${key}"]`); return node ? node.hidden : null; };
+    const destination = (view) => { const node = document.querySelector(`.nav[data-view="${view}"]`); return node ? node.hidden : null; };
     return {
-      users: hidden('users'), backups: hidden('backups'), health: hidden('health'),
-      updates: hidden('updates'), logs: hidden('logs'),
-      settings: hidden('settings'), security: hidden('security'), about: hidden('about'),
+      users: section('people'), backups: section('storage'), health: section('health'),
+      updates: section('updates'),
+      settings: destination('settings'), security: section('security'), about: section('about'),
     };
   });
   check('nav hides every section this role cannot open',
     offered.users === true && offered.backups === true && offered.health === true
-    && offered.updates === true && offered.logs === true, JSON.stringify(offered));
+    && offered.updates === true, JSON.stringify(offered));
   check('nav still offers the sections this role can open',
     offered.settings === false && offered.security === false && offered.about === false,
     JSON.stringify(offered));
@@ -727,25 +908,31 @@ try {
   resetObservations();
   await page.goto(`${BASE}/#/logs`, { waitUntil: 'networkidle2' });
   await new Promise((resolve) => setTimeout(resolve, 1200));
+  // The refusal moved with the page. It is rendered inside Settings rather than as a
+  // full page, so the person keeps the menu they arrived through — but every property the
+  // full page had is still required: a real box on screen, the requirement named, the
+  // section itself NOT shown, and an address that still names where the request went.
   const denied = await page.evaluate(() => ({
-    deniedShown: document.querySelector('#view-access-denied')?.classList.contains('active') ?? false,
-    logsShown: document.querySelector('#view-logs')?.classList.contains('active') ?? false,
-    rendered: (document.querySelector('#view-access-denied')?.getBoundingClientRect().height ?? 0) > 0,
-    detail: document.querySelector('#accessDeniedDetail')?.textContent ?? '',
+    deniedShown: document.querySelector('#settingsDenied')?.classList.contains('hidden') === false,
+    logsShown: (document.querySelector('#view-logs')?.getBoundingClientRect().height ?? 0) > 0,
+    sectionShown: document.querySelector('.settings-section[data-section="health"]')?.classList.contains('active') ?? false,
+    rendered: (document.querySelector('#settingsDenied')?.getBoundingClientRect().height ?? 0) > 0,
+    detail: document.querySelector('#settingsDenied')?.textContent ?? '',
     hash: location.hash,
   }));
   check('a forbidden route shows access-denied instead of an empty panel',
-    denied.deniedShown && !denied.logsShown, JSON.stringify(denied));
+    denied.deniedShown && !denied.logsShown && !denied.sectionShown, JSON.stringify(denied));
   check('the access-denied page is actually on screen', denied.rendered);
   check('access-denied explains what is required', /owner/.test(denied.detail), denied.detail);
   // The address must keep naming what was asked for: rewriting it to #/access-denied
-  // would make a reload turn the 403 into a 404.
-  check('the address still names the requested route', denied.hash === '#/logs', denied.hash);
+  // would make a reload turn the 403 into a 404. "#/logs" now forwards to the section that
+  // owns it, so the address that must survive is the forwarding one.
+  check('the address still names the requested route', denied.hash === '#/settings/health', denied.hash);
   check('no request was even attempted for the forbidden page', failedRequests.length === 0,
     failedRequests.join(' | '));
 
   // A page it IS allowed to open must still work for this role.
-  await page.goto(`${BASE}/#/security`, { waitUntil: 'networkidle2' });
+  await page.goto(`${BASE}/#/settings/security`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#securityOverview .metric', { timeout: 15000 });
   const restrictedSecurity = await page.evaluate(() => ({
     rendered: (document.querySelector('#view-security')?.getBoundingClientRect().height ?? 0) > 0,
