@@ -303,6 +303,35 @@ try {
   check('every address of a demoted page still lands on the section that owns it',
     redirects.length === 0, `${redirects.length} failed: ${JSON.stringify(redirects.slice(0, 4))}`);
 
+  // --- the owner's Health panel actually renders its detail ------------------
+  // /healthz withholds its component detail from anyone who is not an owner holding
+  // audit.read (B-010, D-0170). The suite already proves a restricted role is DENIED
+  // this section — which passes just as well if the panel is broken for the owner too.
+  // Without this the redaction could have emptied the one surface that consumes it and
+  // nothing here would have noticed.
+  await page.goto(`${BASE}/#/settings/health`, { waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  const healthPanel = await page.evaluate(() => {
+    const node = document.querySelector('#healthComponents');
+    const read = (label) => {
+      for (const metric of node?.querySelectorAll('.metric') ?? []) {
+        if (metric.querySelector('span')?.textContent?.trim() === label) {
+          return metric.querySelector('b')?.textContent?.trim() ?? null;
+        }
+      }
+      return null;
+    };
+    return { overall: read('Overall'), components: read('Components'), version: read('Version') };
+  });
+  check('the owner sees the aggregate health status', healthPanel.overall === 'healthy',
+    JSON.stringify(healthPanel));
+  // The count is the disclosure: a redacted body carries no components array at all, so
+  // this reads 0 — or the placeholder — the moment the owner stops being let through.
+  check('the owner sees the component inventory the detail carries',
+    Number(healthPanel.components) > 0, JSON.stringify(healthPanel));
+  check('the owner sees the product version', Boolean(healthPanel.version)
+    && healthPanel.version !== '—', JSON.stringify(healthPanel));
+
   // --- the sidebar has three ranks, and they are reachable both ways --------
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
   const ranks = [];

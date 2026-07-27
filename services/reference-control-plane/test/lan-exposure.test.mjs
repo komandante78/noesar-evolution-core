@@ -21,9 +21,11 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { request as httpRequest } from 'node:http';
 import {
-  BindScope, resolveBindScope, allowsUnauthenticatedMetrics,
+  BindScope, resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
   isLoopbackAddress, isWildcardAddress, isInternalAddress, validHostHeader,
 } from '../src/http-security.mjs';
+import { mayReadHealthDetail } from '../src/auth.mjs';
+import { publicHealth } from '../src/observability.mjs';
 
 const serverPath = resolve(dirname(fileURLToPath(import.meta.url)), '../src/server.mjs');
 
@@ -81,6 +83,116 @@ describe('unauthenticated /metrics is scoped, not blanket', () => {
     assert.equal(allowsUnauthenticatedMetrics(BindScope.LAN, '192.168.178.42'), false);
     assert.equal(allowsUnauthenticatedMetrics(BindScope.CUSTOM, '172.22.0.1'), false);
     assert.equal(allowsUnauthenticatedMetrics('anything-unrecognised', '127.0.0.1'), false);
+  });
+});
+
+// --- B-010 · /healthz disclosed its detail to the whole subnet ---------------
+//
+// /metrics was scoped four phases ago and /healthz was not, so the same class of
+// exposure survived on a neighbouring route: version, authority posture, data plane
+// server and extension versions, component inventory, update channel and debug
+// scopes, to any host on the subnet with no session at all.
+//
+// The repair cannot be "authenticate it": the container healthcheck, three platform
+// installers and the update manager's post-start poll all read this route anonymously,
+// and a 401 there reads as a dead service. So the aggregate stays open and the detail
+// moves behind the gate — which makes the redaction itself the thing to test.
+
+describe('unauthenticated /healthz detail is scoped the same way /metrics is', () => {
+  test('allowed only on a loopback publish, and only from a private peer', () => {
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LOOPBACK, '127.0.0.1'), true);
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LOOPBACK, '172.22.0.1'), true);
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LOOPBACK, '8.8.8.8'), false);
+  });
+
+  test('never allowed once the port is published beyond loopback', () => {
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LAN, '172.22.0.1'), false);
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LAN, '127.0.0.1'), false);
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.LAN, '192.168.178.42'), false);
+    assert.equal(allowsUnauthenticatedHealthDetail(BindScope.CUSTOM, '172.22.0.1'), false);
+    assert.equal(allowsUnauthenticatedHealthDetail('anything-unrecognised', '127.0.0.1'), false);
+  });
+
+  test('it is the same rule as /metrics, not a second one that can drift', () => {
+    for (const scope of [BindScope.LOOPBACK, BindScope.LAN, BindScope.CUSTOM, 'nonsense']) {
+      for (const peer of ['127.0.0.1', '172.22.0.1', '192.168.178.42', '8.8.8.8']) {
+        assert.equal(
+          allowsUnauthenticatedHealthDetail(scope, peer),
+          allowsUnauthenticatedMetrics(scope, peer),
+          `${scope}/${peer} must resolve identically for both endpoints`,
+        );
+      }
+    }
+  });
+});
+
+describe('who may read health detail · one rule, not one per endpoint', () => {
+  test('the owner may', () => {
+    assert.equal(mayReadHealthDetail({ role:'owner' }), true);
+  });
+
+  // The reason this rule exists. `admin` carries audit.read, so a permission-only
+  // test would have disclosed to admins exactly what the owner-only Health section
+  // and the initial screen withhold from them.
+  test('an admin may not, despite carrying audit.read', () => {
+    assert.equal(mayReadHealthDetail({ role:'admin' }), false);
+  });
+
+  test('no other role may, and neither does an absent user', () => {
+    for (const role of ['developer', 'user', 'client_restricted', 'service_account', 'nonsense']) {
+      assert.equal(mayReadHealthDetail({ role }), false, `${role} must not read health detail`);
+    }
+    assert.equal(mayReadHealthDetail(null), false);
+    assert.equal(mayReadHealthDetail(undefined), false);
+    assert.equal(mayReadHealthDetail({}), false);
+  });
+});
+
+describe('the redacted health body', () => {
+  const FULL = Object.freeze({
+    status:'degraded', local:true, checkedAt:'2026-07-27T12:00:00.000Z',
+    product:'NOESAR Evolution', version:'1.0.0-complete-ai-workspace',
+    authority:{ mode:'reference-node', productionReady:false },
+    dataPlane:{ mode:'postgresql', serverVersion:'18.4', pgvectorVersion:'0.8.5' },
+    components:[{ name:'data-plane', healthy:true }],
+    degraded:['log-volume'], logging:{ bytes:1234 },
+    updates:{ channel:'complete', installedVersion:'1.0.0' },
+    debug:{ enabled:true, scopes:['http'] },
+    safeMode:{ active:false }, crashLoop:false,
+    timezone:{ effective:'Europe/Rome' },
+  });
+
+  // The three fields three consumers assert: Test-Noesar.ps1 checks status and local,
+  // verify-runtime.sh checks status and local, and every probe reads the status code.
+  test('keeps exactly what a prober is entitled to', () => {
+    const body = publicHealth(FULL);
+    assert.equal(body.status, 'degraded');
+    assert.equal(body.local, true);
+    assert.equal(body.checkedAt, '2026-07-27T12:00:00.000Z');
+  });
+
+  test('drops every reconnaissance field', () => {
+    const body = publicHealth(FULL);
+    for (const field of [
+      'version', 'product', 'authority', 'dataPlane', 'components', 'degraded',
+      'logging', 'updates', 'debug', 'timezone', 'safeMode', 'crashLoop',
+    ]) {
+      assert.equal(Object.hasOwn(body, field), false, `${field} must not survive redaction`);
+    }
+    // Asserted on the serialised body too: a nested value that survived by reference
+    // would pass a key check and still ship the version to the subnet.
+    const wire = JSON.stringify(body);
+    for (const leak of ['1.0.0-complete-ai-workspace', 'reference-node', '18.4', '0.8.5', 'data-plane']) {
+      assert.equal(wire.includes(leak), false, `redacted body leaked ${leak}`);
+    }
+  });
+
+  test('says that detail exists and what it would take to read it', () => {
+    const body = publicHealth(FULL);
+    assert.equal(body.detail.disclosed, false);
+    assert.equal(body.detail.requiredRole, 'owner');
+    assert.equal(body.detail.requiredPermission, 'audit.read');
+    assert.ok(body.detail.reason.length > 20);
   });
 });
 
@@ -159,6 +271,47 @@ test('a LAN-published installation refuses /metrics without a session', async ()
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
     // ...and /diagnostics stays owner-only regardless of scope.
     assert.equal((await fetch(`${base}/diagnostics`)).status, 401);
+  });
+});
+
+test('a LAN-published installation answers /healthz without disclosing its detail', async () => {
+  await withServer({ NOESAR_BIND_ADDRESS: '192.168.178.100' }, 18135, async (base) => {
+    const response = await fetch(`${base}/healthz`);
+    // The status code is the contract the probes depend on and it must not move.
+    assert.equal(response.status, 200, 'a probe must still be told the service is up');
+    const body = await response.json();
+    assert.equal(body.status, 'healthy');
+    assert.equal(body.local, true);
+    assert.equal(body.detail.disclosed, false);
+    assert.equal(body.detail.requiredRole, 'owner');
+
+    // The actual exposure, asserted against the wire rather than the parsed keys.
+    const wire = JSON.stringify(body);
+    for (const field of ['version', 'authority', 'dataPlane', 'components', 'updates', 'debug']) {
+      assert.equal(Object.hasOwn(body, field), false, `${field} must not reach an anonymous LAN caller`);
+    }
+    for (const leak of ['reference-node', 'postgresql', 'pgvector', 'releaseChannel']) {
+      assert.equal(wire.includes(leak), false, `/healthz leaked ${leak} to the subnet`);
+    }
+  });
+});
+
+// The negative control. Without this the test above passes just as well against a
+// /healthz that returns nothing useful to anybody, and the loopback consumers — the
+// runtime smokes, verify-runtime.sh, Test-Noesar.ps1 — would be broken silently.
+test('a loopback installation still serves the full /healthz detail', async () => {
+  await withServer({}, 18136, async (base) => {
+    const response = await fetch(`${base}/healthz`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.status, 'healthy');
+    assert.equal(body.local, true);
+    assert.equal(body.product, 'NOESAR Evolution');
+    assert.ok(body.version, 'the loopback behaviour must not regress');
+    assert.ok(Array.isArray(body.components) && body.components.length > 0);
+    assert.ok(body.authority && body.dataPlane);
+    assert.equal(Object.hasOwn(body, 'detail'), false,
+      'a disclosed body carries the detail itself, not a note about it');
   });
 });
 
