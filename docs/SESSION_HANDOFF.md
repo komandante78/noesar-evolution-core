@@ -29,20 +29,26 @@ nuova decisione dell'Owner.**
 ## ➜ Leggi in quest'ordine
 
 1. `PROJECT_STATE.json` e questo file
-2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia **accettato**, con i criteri di
-   accettazione `UI-001…UI-012` (sessioni) e `UI-020…UI-026` (colore). L'anteprima navigabile è
-   `docs/design/ANTEPRIMA_WEBUI_V3.html`, autonoma: si apre in un browser senza nulla intorno
+2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia **accettato e completo**: le
+   sezioni 1-9 sono la v3 e la rilettura che ne ha trovato gli otto buchi; le sezioni **10-17
+   sono la v4, che li chiude tutti**. Criteri `UI-001…UI-072`. L'anteprima navigabile è
+   **`docs/design/ANTEPRIMA_WEBUI_V4.html`**, autonoma: si apre in un browser senza nulla
+   intorno (la v3 resta accanto solo per confronto)
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` — le tre malattie misurate, le sei invenzioni,
    la matrice di accettazione `CE-001…CE-024`
 5. `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-6. `docs/DECISION_LOG.md` (ultime: `D-0117…D-0124`), `docs/INSTALLATION_LEDGER.md`
+6. `docs/DECISION_LOG.md` (ultime: `D-0117…D-0129`), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE — deciso dall'Owner
 
-> **Si comincia dalla GRAFICA. Poi si costruisce tutto** (`D-0118`).
+> **Si costruisce la GRAFICA. Poi tutto il resto** (`D-0118`).
+
+**Il disegno è finito**: gli otto buchi trovati rileggendo la specifica sono chiusi nella v4
+(`D-0125…D-0129`), e la mappa 23→11 non lascia nessuna destinazione senza casa. Non resta
+progettazione da fare prima di scrivere codice.
 
 Non è più una conversazione: l'impianto è **accettato** e i criteri sono scritti. L'ordine dentro
 la grafica è vincolato e non va invertito:
