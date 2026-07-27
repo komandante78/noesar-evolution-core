@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "ec86a82 (the missing interface parts, built and installed)",
+  "last_commit": "bf9a669 (the initial screen, built and installed)",
   "last_updated_utc": "2026-07-27T12:14:56Z",
   "blockers": [
     {
