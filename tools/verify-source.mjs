@@ -42,6 +42,9 @@ const required = [
   'conformance/reasoning-vectors.json',
   'services/reference-control-plane/src/reasoning.mjs',
   'services/reference-control-plane/src/capability.mjs',
+  'services/reference-control-plane/src/shadow.mjs',
+  'conformance/shadow-vectors.json',
+  'rust/crates/noesar-shadow/src/lib.rs',
   'conformance/capability-vectors.json',
   'rust/crates/noesar-capability/src/lib.rs',
 ];

@@ -144,6 +144,32 @@ try {
   } });
   if (widened.status !== 422 || widened.data.kind !== 'OUT_OF_SCOPE') throw new Error(JSON.stringify(widened));
 
+  // Shadow execution, against the running server.
+  const shadow = await request('/api/v1/shadow');
+  if (shadow.status !== 200) throw new Error(JSON.stringify(shadow));
+  if (shadow.data.copyOnWrite !== false) throw new Error('the status must not claim copy-on-write');
+  if (shadow.data.executesPlans !== false) throw new Error('the status must not claim an executor that does not exist');
+
+  const clean = await request('/api/v1/shadow/compare', { method:'POST', value:{
+    expectation:{ pathsTheDiffMustTouch:['src/a.rs'], testsExpectedToPass:['cargo test'], testsExpectedToFail:[] },
+    observation:{ changed:{ 'src/a.rs':'MODIFIED' }, tests:[{ name:'cargo test', passed:true }] },
+  } });
+  if (clean.status !== 200 || clean.data.clean !== true) throw new Error(JSON.stringify(clean));
+
+  // The dangerous direction: something happened that nobody declared.
+  const surprised = await request('/api/v1/shadow/compare', { method:'POST', value:{
+    expectation:{ pathsTheDiffMustTouch:['src/a.rs'], testsExpectedToPass:[], testsExpectedToFail:[] },
+    observation:{ changed:{ 'src/a.rs':'MODIFIED', 'src/secret.rs':'MODIFIED' }, tests:[] },
+  } });
+  if (surprised.status !== 200 || surprised.data.clean !== false) throw new Error(JSON.stringify(surprised));
+  if (surprised.data.unexpected?.[0] !== 'src/secret.rs') throw new Error('an undeclared change must be named');
+
+  const nothing = await request('/api/v1/shadow/compare', { method:'POST', value:{
+    expectation:{ pathsTheDiffMustTouch:['src/a.rs'], testsExpectedToPass:[], testsExpectedToFail:[] },
+    observation:{ changed:{}, tests:[] },
+  } });
+  if (nothing.status !== 422) throw new Error('an observation of nothing must be refused, not called clean');
+
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');
   if (authFile.includes(cookie.split('=')[1]?.split(';')[0] ?? 'impossible')) throw new Error('plaintext session token detected');

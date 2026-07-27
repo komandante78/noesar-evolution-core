@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "note": "Shared oracle for the expected-versus-observed comparison. Both rust/crates/noesar-shadow and services/reference-control-plane/src/shadow.mjs must satisfy every case. The filesystem half is tested on each side natively; only the comparison is expressible as data, and it is the half where the two could silently disagree.",
+  "cases": [
+    {
+      "id": "SHADOW-001",
+      "why": "what was declared is what happened",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": ["cargo test"], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "cargo test", "passed": true }] },
+      "expected": { "clean": true }
+    },
+    {
+      "id": "SHADOW-002",
+      "why": "a file touched that nobody declared",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": ["cargo test"], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED", "src/secret.rs": "MODIFIED" }, "tests": [{ "name": "cargo test", "passed": true }] },
+      "expected": { "clean": false, "unexpected": ["src/secret.rs"] }
+    },
+    {
+      "id": "SHADOW-003",
+      "why": "a declared file that never moved",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs", "src/b.rs"], "testsExpectedToPass": ["cargo test"], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "cargo test", "passed": true }] },
+      "expected": { "clean": false, "expectedAndAbsent": ["src/b.rs"] }
+    },
+    {
+      "id": "SHADOW-004",
+      "why": "a test named and never run is not a pass",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": ["cargo test", "cargo clippy"], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "cargo test", "passed": true }] },
+      "expected": { "clean": false, "testsNeverRun": ["cargo clippy"] }
+    },
+    {
+      "id": "SHADOW-005",
+      "why": "a test expected to pass that failed",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": ["cargo test"], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "cargo test", "passed": false }] },
+      "expected": { "clean": false, "testsExpectedToPassThatFailed": ["cargo test"] }
+    },
+    {
+      "id": "SHADOW-006",
+      "why": "the fail-first evidence that did not hold: a test meant to fail that passed",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": [], "testsExpectedToFail": ["the failing case"] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "the failing case", "passed": true }] },
+      "expected": { "clean": false, "testsExpectedToFailThatPassed": ["the failing case"] }
+    },
+    {
+      "id": "SHADOW-007",
+      "why": "a test meant to fail that did fail is correct, not a surprise",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": [], "testsExpectedToFail": ["the failing case"] },
+      "observation": { "changed": { "src/a.rs": "MODIFIED" }, "tests": [{ "name": "the failing case", "passed": false }] },
+      "expected": { "clean": true }
+    },
+    {
+      "id": "SHADOW-008",
+      "why": "an observation of nothing is refused, never reported clean",
+      "expectation": { "pathsTheDiffMustTouch": ["src/a.rs"], "testsExpectedToPass": ["cargo test"], "testsExpectedToFail": [] },
+      "observation": { "changed": {}, "tests": [] },
+      "expected": { "refused": true }
+    },
+    {
+      "id": "SHADOW-009",
+      "why": "a created file counts as touched",
+      "expectation": { "pathsTheDiffMustTouch": ["src/new.rs"], "testsExpectedToPass": [], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/new.rs": "CREATED" }, "tests": [] },
+      "expected": { "clean": true }
+    },
+    {
+      "id": "SHADOW-010",
+      "why": "a deleted file counts as touched",
+      "expectation": { "pathsTheDiffMustTouch": ["src/gone.rs"], "testsExpectedToPass": [], "testsExpectedToFail": [] },
+      "observation": { "changed": { "src/gone.rs": "DELETED" }, "tests": [] },
+      "expected": { "clean": true }
+    }
+  ]
+}

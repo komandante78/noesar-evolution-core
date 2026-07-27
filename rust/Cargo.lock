@@ -648,6 +648,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "noesar-shadow"
+version = "0.6.0"
+dependencies = [
+ "hex",
+ "noesar-reasoning",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"

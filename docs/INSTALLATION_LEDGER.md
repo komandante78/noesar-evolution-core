@@ -2366,3 +2366,43 @@ ogni token in circolazione — è la direzione sicura, ed è **dichiarata da `ca
 invece di essere scoperta. E **nessun esecutore applica i token**: `executorEnforcesTokens` è
 `false` sull'installazione viva, perché l'esecutore è il passo 5 e non esiste. Oggi i token si
 coniano e si spendono, ma **nulla viene eseguito attraverso di essi**.
+
+## 2026-07-27 · `:phase4-shadow` — l'esecuzione in ombra sull'installazione viva
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+`GET /api/v1/shadow` e `POST /api/v1/shadow/compare`. Il confronto è **a due lati**, e il
+secondo è quello pericoloso: *è successo qualcosa che nessuno aveva dichiarato*. Un'osservazione
+vuota è **rifiutata**, non riportata pulita — «nessuna differenza trovata» e «non è stato
+guardato niente» producono lo stesso insieme vuoto.
+
+### Sostituzione
+
+```text
+build       docker build --network=none --pull=false   FROM :phase4-capability
+stop        docker stop -t 60   → "postgres.stopped clean:true" LETTO NEL LOG
+backup      BACKUPS/runtime_pre_shadow_deploy_20260727T170916Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-capability-20260727T170916Z  preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_shadow_deploy_20260727T170916Z.json)
+§5a         rimosso il rollback più vecchio (:phase4-reasoning), immagine CONSERVATA
+byte        server.mjs · shadow.mjs · capability.mjs identici al repository
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-shadow
+endpoint    livez 200 · readyz 200 · metrics 401 · shadow 401 · capability 401
+            shadow/compare senza sessione 401 · rotta inesistente 404
+B-010       NON regredito: /healthz 200 e ZERO marcatori
+```
+
+**Costo di rollback.** Nessuno nuovo.
+
+**Cosa NON è vero, e va detto.** `executesPlans=false`: **nulla esegue un piano dentro l'ombra**.
+Oggi l'ombra si costruisce, si osserva e si confronta; chi produce l'osservazione è ancora il
+chiamante, e l'esecutore che accetta **solo** un capability token è il passo 5. E non è
+copy-on-write: overlayfs e i reflink richiedono privilegi o un filesystem che li supporti, quindi
+si copiano **solo i percorsi che il piano nomina** — dichiarato da `shadowStatus`.

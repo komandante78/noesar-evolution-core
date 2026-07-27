@@ -25,6 +25,7 @@ import { ReferenceReasoningProvider, ReasoningRefused, reasoningStatus } from '.
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
+import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -763,6 +764,35 @@ const server = createServer(async (req, res) => {
       } catch (error) {
         if (error instanceof ReasoningRefused) {
           return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        }
+        throw error;
+      }
+    }
+
+    // --- shadow execution · phase 1 step 4 --------------------------------------
+    // The contract already forces a plan to declare what must become true; this is the half
+    // that makes the declaration worth having. The comparison is two-sided, and the second
+    // side -- something happened that nobody declared -- is the dangerous one.
+    if (req.method === 'GET' && url.pathname === '/api/v1/shadow') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, shadowStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/shadow/compare') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const surprise = compareShadow(payload?.expectation ?? {}, payload?.observation ?? {});
+        // A surprise is recorded whether or not it is clean: the run that turned out to be
+        // clean is the one someone will want to point at later.
+        ledger.append({ actor:authenticated.user.id, action:'shadow.compared',
+          result:surprise.clean ? 'clean' : 'surprised', details:surprise });
+        return json(res, 200, surprise);
+      } catch (error) {
+        if (error instanceof ShadowError) {
+          return json(res, 422, { error:'shadow_refused', kind:error.kind, reason:error.reason });
         }
         throw error;
       }

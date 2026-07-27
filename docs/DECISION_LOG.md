@@ -2604,3 +2604,23 @@ token allargato a mano **rifiutato** (422) e una seconda spesa **rifiutata**; da
 **Status.** Installato. **NON vero e dichiarato**: `executorEnforcesTokens=false` — nessun
 esecutore applica i token, perché è il passo 5. Si coniano e si spendono; nulla viene eseguito
 attraverso di essi.
+
+## D-0182 · Esecuzione in ombra: il confronto ha due lati — 2026-07-27
+**Decision.** `rust/crates/noesar-shadow` e `services/reference-control-plane/src/shadow.mjs`,
+oracolo condiviso `conformance/shadow-vectors.json`, due rotte, installato `:phase4-shadow`.
+**Why.** Il contratto obbliga già un piano a dichiarare cosa deve diventare vero; questa è la
+metà che rende utile la dichiarazione. *Atteso e non accaduto* è un fallimento; *accaduto e non
+atteso* è la forma esatta dell'incidente che questa fase esiste per impedire, e va riportato con
+lo stesso peso. Un test **nominato e mai eseguito** non è un successo e ha una casella sua.
+**Rejected.** Copy-on-write: overlayfs e reflink richiedono privilegi o un filesystem che li
+supporti, e nessuno dei due è garantito dove il prodotto si installa. Si copiano solo i percorsi
+nominati, e lo stato **lo dichiara** invece di lasciare assumere un meccanismo più economico.
+**Evidence.** Rust 11/11 e 10 vettori; Node **17/17** sugli stessi vettori; unit 790 → **807**;
+ESLint **177 file, 0 errori**; workspace Rust **20 binari, 65 passati**; tre difetti seminati
+(lato inatteso, rifiuto dell'osservazione vuota, contenimento) ognuno abbatte i test giusti;
+`AUTH_HTTP_SMOKE=PASS` con il caso pulito, quello sorpreso e l'osservazione vuota rifiutata;
+MANIFEST **5766**, 0 mismatch. Dal vivo: healthy, cancelli 401 contro 404.
+**Reversal cost.** Nessuno nuovo.
+**Status.** Installato. **NON vero e dichiarato**: `executesPlans=false` — nulla esegue un piano
+dentro l'ombra, l'osservazione la fornisce ancora il chiamante, e l'esecutore che accetta solo
+token è il passo 5.
