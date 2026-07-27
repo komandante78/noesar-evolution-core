@@ -1,0 +1,172 @@
+=== docker ps -a ===
+noesar-evolution	noesar-evolution:phase4-wp2	Up 17 hours (healthy)
+noesar-evolution.rollback-webui-20260726T155330Z	noesar-evolution:phase4-webui	Exited (0) 17 hours ago
+coden-ultra-full-product	coden-ultra-full-product:untagged-filename-fix-s254	Exited (0) 33 hours ago
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	coden-ultra-full-product:skill-context-secret-gate-s250	Exited (0) 2 days ago
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	coden-ultra-full-product:triple-cue-secret-gate-s250	Exited (0) 3 days ago
+noesar-coden-ultra-nllb	noesar-coden-ultra-nllb:v1	Exited (0) 2 days ago
+ai-lab	ai-lab:auth-hardening-s247	Exited (0) 2 days ago
+noesar-debuglab	noesar-debuglab:project-scanner-v7	Exited (0) 6 minutes ago
+binhex-prowlarr	binhex/arch-prowlarr	Up 34 hours (healthy)
+sonarr	lscr.io/linuxserver/sonarr:latest	Up 34 hours
+radarr	lscr.io/linuxserver/radarr:latest	Up 34 hours
+qbittorrent	ghcr.io/hotio/qbittorrent:latest	Up 34 hours
+Plex-Media-Server	plexinc/pms-docker	Up 34 hours (healthy)
+ai-lab-prev-s214b	ai-lab:phaseE-s214	Exited (0) 9 days ago
+stats-hub	stats-hub:v3	Exited (0) 2 days ago
+schema-service	nous-trainer:v3-s134	Exited (0) 11 days ago
+coden-ultra-brainlab	0b8d6776ec19	Exited (0) 2 days ago
+nous-simulator-engine	nous-simulator-engine:v5	Exited (0) 13 days ago
+noesar-webui	noesar-webui:coden-ultra-bench-s190	Exited (0) 2 days ago
+coden-ultra-brainlab-phase4-bak	coden-ultra-brainlab:phase4	Exited (0) 12 days ago
+coden-ultra-trainer	coden-ultra-trainer:phase2	Exited (0) 13 days ago
+coden-nous-train	nous-trainer:v3-s134	Exited (0) 2 weeks ago
+nous-phase0-training	nous-trainer:v3-s134	Exited (0) 12 days ago
+nova-ai	nova-ai:V.0.0.6	Exited (137) 4 weeks ago
+coden-benchmark-lab	coden-benchmark-lab:2.4.2	Exited (0) 2 days ago
+fridayn-model-factory	fridayn-model-factory:v1	Exited (143) 5 weeks ago
+noesar-fridayn-tei-embedder-v2	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9	Exited (0) 2 days ago
+Nginx-Proxy-Manager-Official	jc21/nginx-proxy-manager	Up 34 hours
+noesar-fridayn-tei-reranker-v1	ghcr.io/huggingface/text-embeddings-inference:cuda-1.9	Exited (0) 3 weeks ago
+binhex-flaresolverr	ghcr.io/binhex/arch-flaresolverr	Up 34 hours (healthy)
+EmbyServer	emby/embyserver:latest	Up 34 hours
+noesar-core	noesar-core:data-factory-curated-api-20260525T153414Z	Exited (2) 2 days ago
+noesar-dataset-factory	noesar-dataset-factory:worker-job-ui-20260525T133055Z	Exited (137) 3 weeks ago
+noesar-gateway	noesar-gateway:stage2a	Exited (2) 3 weeks ago
+noesar-qdrant	qdrant/qdrant:v1.12.6	Exited (143) 3 weeks ago
+noesar-db	postgres:16-alpine	Exited (0) 2 days ago
+Krusader	ich777/krusader	Exited (143) 2 weeks ago
+Unraid-Cloudflared-Tunnel	figro/unraid-cloudflared-tunnel	Up 34 hours
+Cloudflare-DDNS	oznu/cloudflare-ddns	Up 33 hours
+=== images ===
+noesar-evolution:phase4-wp2
+noesar-evolution:phase4-webui
+noesar-evolution:phase4-complete-lan
+noesar-evolution:phase4-complete
+noesar-evolution:phase4
+noesar-evolution:phase3
+coden-ultra-full-product:untagged-filename-fix-s254
+coden-ultra-full-product:skill-context-secret-gate-s250
+coden-ultra-full-product:triple-cue-secret-gate-s250
+coden-ultra-full-product:safety-translation-order-fix-s249
+coden-ultra-full-product:phase3-webui-parity-s248
+coden-ultra-full-product:phase2-multilang-s247
+noesar-coden-ultra-nllb:v1
+coden-ultra-full-product:english-i18n-phase1-s247
+coden-ultra-full-product:gate6-stream-fix-s247
+ai-lab:auth-hardening-s247
+coden-ultra-full-product:gate6-sweep-8fix-audited-s247
+coden-ultra-full-product:secret-gate-triple-fix-s244
+coden-ultra-full-product:secret-gate-full-thread-s244
+coden-ultra-full-product:assimilate-prompt-gate-s244
+coden-ultra-full-product:reflex-cache-secret-gate-v2-4-s243
+coden-ultra-full-product:canary-secret-sse-hardening-v2-2-cues-fix-s235
+coden-ultra-full-product:canary-secret-sse-hardening-v2-1-build-s235
+binhex/arch-prowlarr:latest
+coden-ultra-full-product:episodic-schema-remediation-v1-1-build-s234
+coden-ultra-full-product:skills-sse-remediation-v1-build-s233
+anchore/syft:latest
+coden-ultra-full-product:pre-shadow-baseline-remediation-v1-1-build-s232
+coden-ultra-full-product:atom-shadow-prepare-phase2a-build-s231
+coden-ultra-full-product:atom-sandbox-overlay-phase1-s223
+lscr.io/linuxserver/radarr:latest
+coden-ultra-full-product:stream-sse-fix-s222
+coden-ultra-full-product:stream-bridge-s222
+coden-ultra-full-product:sandbox-isolate-s222
+coden-ultra-full-product:fence-normalize-s222
+coden-ultra-full-product:chat-bridge-s222b
+coden-ultra-full-product:chat-bridge-s222
+ghcr.io/hotio/qbittorrent:latest
+coden-ultra-full-product:atom-seam-s221c
+coden-ultra-full-product:atom-seam-s221b
+coden-ultra-full-product:atom-seam-s221
+ai-lab:phaseE-s214b
+ai-lab:phaseE-s214
+lscr.io/linuxserver/sonarr:latest
+atom-serve:v1
+atom-train:v1
+ai-lab:phaseC-s211
+ai-lab:phaseA-s211
+stats-hub:v3
+stats-hub:v2
+stats-hub:v1
+rust:1-bookworm
+coden-ultra-neural-cg:v1-with-model
+coden-ultra-brainlab:phase7
+plexinc/pms-docker:latest
+coden-ultra-neural-cg:v1
+node:22-bookworm-slim
+nous-simulator-engine:v5
+nous-simulator-engine:v4
+coden-ultra-full-product:node-synapses-s195b
+coden-ultra-full-product:node-synapses-s195
+debian:bookworm-slim
+noesar-webui:coden-ultra-bench-s190
+noesar-webui:cg-pipeline-s190
+coden-ultra-brainlab:phase4
+coden-ultra-brainlab:phase3
+coden-ultra-trainer:phase2
+coden-ultra-trainer:phase1
+noesar-debuglab:project-scanner-v7
+noesar-debuglab:project-scanner-v6
+lscr.io/linuxserver/openssh-server:latest
+noesar/noesar:cpu
+searxng/searxng:latest
+noesar/noesar:1.7.2
+noesar/noesar:latest
+noesar/noesar:1.7.1
+nous-trainer:v3-s134
+rete-neurale-test:torch-env
+coden-nous:0.2
+coden-nous:0.1
+nous-trainer:v3-s125
+ghcr.io/puppeteer/puppeteer:latest
+nous-farm:1.1
+nous-farm:1.0
+python:3.11-slim
+python:3.12-slim
+python:3-slim
+nova-ai:V.0.0.6
+coden-benchmark-lab:2.4.2
+fridayn-model-factory:v1
+alpine:latest
+pihole/pihole:latest
+jc21/nginx-proxy-manager:latest
+emby/embyserver:latest
+ghcr.io/binhex/arch-flaresolverr:latest
+noesar-core:data-factory-curated-api-20260525T153414Z
+noesar-dataset-factory:worker-job-ui-20260525T133055Z
+noesar-gateway:stage2a
+node:20
+node:20-slim
+postgres:16-alpine
+figro/unraid-cloudflared-tunnel:latest
+ghcr.io/huggingface/text-embeddings-inference:cuda-1.9
+ich777/krusader:latest
+qdrant/qdrant:v1.12.6
+oznu/cloudflare-ddns:latest
+dperson/samba:latest
+=== networks ===
+br0	macvlan
+bridge	bridge
+coden-bridge	bridge
+coden-local	bridge
+deploy_default	bridge
+host	host
+noesar-e2e-net	bridge
+noesar-evolution-net	bridge
+noesar-local	bridge
+none	null
+=== volumes ===
+2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+ai_lab_data
+brainlab_data
+c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+stats_hub_data

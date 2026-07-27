@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "31f5030",
+  "last_commit": "5a262e7 (phase work) + 01da8e1 (post-cleanup docker inventory)",
   "last_updated_utc": "2026-07-27T08:51:16Z",
   "blockers": [
     {
