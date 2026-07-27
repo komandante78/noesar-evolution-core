@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_0_GOVERNANCE_CODEN_EVOLUTION_DESIGNED_FROM_ZERO_AWAITING_WEBUI_CONVERSATION",
+  "phase_status": "PHASE_0_GOVERNANCE_WEBUI_STRUCTURE_BUILT_SOURCE_ONLY_NOT_INSTALLED",
   "next_phase": "CONVERSAZIONE: la grafica della WebUI va cambiata (deciso dall Owner). NON iniziare la fase 1. Fase 0 punti 5-6 ancora aperti.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "e615431",
-  "last_updated_utc": "2026-07-27T08:00:00Z",
+  "last_commit": "pending",
+  "last_updated_utc": "2026-07-27T08:51:16Z",
   "blockers": [
     {
       "id": "B-001",
@@ -736,7 +736,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "INIZIA LA COSTRUZIONE DELLA GRAFICA (D-0118). Disegno completo: docs/WEBUI_DESIGN_V3.md sezioni 1-21, criteri UI-001..UI-096, anteprima docs/design/ANTEPRIMA_WEBUI_V5.html. DODICI destinazioni (D-0130). Ordine vincolato: (1) struttura 23->12 + barra a tre stati + pannello con memoria per destinazione, (2) layer di token, (3) palette e nove temi + selettore libero. La destinazione Ricerca e la superficie piu grande fra le nuove e il suo gate di sicurezza va costruito prima della superficie, non dopo. Rieseguire browser e accessibilita dopo la ristrutturazione. NON iniziare la fase 1.",
+  "next_action": "GRAFICA PASSO 2: il LAYER DI TOKEN. I colori sono ancora letterali sparsi in ~24 KB di apps/webui-static/styles.css; senza questo passo i nove temi (UI-020..UI-026) e il selettore libero non sono implementabili, ed e per questo che la sezione Impostazioni > Aspetto e dichiarata e non costruita. Poi passo 3: palette e nove temi, con i contrasti RIMISURATI da tools/accessibility-audit.mjs invece che calcolati. NON iniziare la fase 1: della fase 0 restano aperti i punti 5 e 6 (traduzione canonica in inglese, emendamenti a V4-D001/V4-D002).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1119,5 +1119,42 @@
     "scope": "il DISEGNO, non la conformita",
     "note": "D-0136 — la verifica rispetto agli obblighi applicabili sulla conservazione dei dati delle richieste rifiutate NON e stata fatta e non e accertabile su questo host. Resta aperta prima che quella parte diventi codice in produzione."
   },
-  "destinations": 12
+  "destinations": 12,
+  "webui_structure_built": {
+    "date": "2026-07-27",
+    "decisions": "D-0137..D-0142",
+    "destinations": 12,
+    "settings_sections": 13,
+    "demoted_pages": 13,
+    "moved_verbatim": true,
+    "legacy_addresses_forwarded": 13,
+    "role_gates": "moved from route level to section level (SECTION_ACCESS)",
+    "sidebar_ranks": "full/icons/hidden on [ and ] plus a visible top-bar control, remembered",
+    "context_panel_ranks": "docked/floating/hidden, remembered PER DESTINATION (D-0117)",
+    "declared_not_built": [
+      "coden-tui",
+      "research",
+      "settings/sessions",
+      "settings/appearance",
+      "settings/licence"
+    ],
+    "research_gate": "NOT BUILT — and therefore the Research surface carries no field that could emit a query (D-0142)",
+    "verification": {
+      "unit": "635/635 (was 631)",
+      "structure_guard": "17/17 (was 13)",
+      "browser_acceptance": "265/265 in a real browser (was 233)",
+      "accessibility": "26/26 over 25 surfaces — 630 focus controls, 944 contrast measurements",
+      "eslint": "158 files, 0 errors, 0 warnings, 0 no-undef",
+      "manifest": "5721/5721",
+      "seeded_defects": "4/4, each caught by exactly one guard, every file restored byte-identical"
+    },
+    "defects_found_and_fixed": [
+      "MINE, SERIOUS: a section the account may not open still ran its loader — four 403 requests for a page the person was being refused. Found by the browser suite, fixed at the cause.",
+      "MINE: the containment guard I had just written compared position in the file rather than nesting, so a section moved out of Settings still passed. Found by seeding that exact defect.",
+      "PRE-EXISTING: .nav span{display:none} below 850px removed the label from the ACCESSIBILITY TREE, so every nav entry was announced as a bare glyph. Replaced with clipping.",
+      "MINE: the route loop measured the whole Settings destination including twelve hidden sections, so a hidden placeholder failed a page that had finished loading."
+    ],
+    "installed": false,
+    "live_image": "noesar-evolution:phase4-wp2 — still the twenty-three-destination interface"
+  }
 }

@@ -29,160 +29,142 @@ nuova decisione dell'Owner.**
 ## ➜ Leggi in quest'ordine
 
 1. `PROJECT_STATE.json` e questo file
-2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, **completo e autorizzato**. Il
-   nome del file dice v3 ma il contenuto è cresciuto in tre passaggi nella stessa giornata:
-   **§1-9** la v3 e la rilettura che ne ha trovato gli otto buchi · **§10-17** la v4, che li
-   chiude · **§18-21** la v5, che aggiunge la destinazione **Ricerca** e il suo gate di sicurezza.
-   Criteri **`UI-001…UI-096`**
-3. **`docs/design/ANTEPRIMA_WEBUI_V5.html`** — l'anteprima navigabile, autonoma: si apre in un
-   browser senza nulla intorno. Le v3 e v4 restano accanto solo per confronto
-4. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
-5. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` — le tre malattie misurate, le sei invenzioni,
-   la matrice `CE-001…CE-024` · `MASTER_PROJECT/09_PIANO.md` §1 e §3 ·
-   `docs/WORK_PLAN_V5_REWRITE.md`
-6. `docs/DECISION_LOG.md` (ultime: **`D-0117…D-0136`**), `docs/INSTALLATION_LEDGER.md`
+2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, completo e autorizzato, **più
+   `§22-24`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
+   (destinazione Ricerca e il suo gate) · **§22-24 la struttura costruita**. Criteri
+   `UI-001…UI-096`
+3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
+4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` (matrice `CE-001…CE-024`) ·
+   `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
+5. `docs/DECISION_LOG.md` (ultime: **`D-0137…D-0142`**), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
-## ➜ LA PROSSIMA AZIONE — deciso dall'Owner
+## ➜ LA PROSSIMA AZIONE
 
-> **Si costruisce la GRAFICA. Poi tutto il resto** (`D-0118`).
+> **Grafica, passo 2: il LAYER DI TOKEN.**
 
-**La progettazione è finita e autorizzata.** Non resta disegno da fare prima di scrivere codice.
-L'ordine dentro la grafica è vincolato e non va invertito:
+L'ordine dentro la grafica è vincolato (`D-0118`) e **il passo 1 è fatto**: struttura, 23 → 12
+destinazioni. Restano il passo 2 e il passo 3, in quest'ordine:
 
-1. **Struttura** — 23 → **12** destinazioni (`D-0130`: la Ricerca è la dodicesima ed è
-   dichiarata); quindici voci che cambiano rango a sezione dentro l'unica pagina Impostazioni;
-   barra laterale a tre stati su `[` e `]`; pannello contestuale agganciabile/flottante/via con
-   memoria **per destinazione** (`D-0117`).
-2. **Layer di token** — oggi non esiste: i colori sono letterali sparsi in ~23 KB di CSS. Senza
-   questo passo i nove temi e il selettore libero non sono implementabili.
-3. **Palette e temi** — palette estratta dai pixel, nove temi, selettore di colore libero con
-   contrasto misurato e variante testuale derivata (`UI-020…UI-026`).
+2. **Layer di token** — oggi non esiste: i colori sono letterali sparsi in ~24 KB di
+   `apps/webui-static/styles.css`. **Senza questo passo i nove temi e il selettore libero non sono
+   implementabili**, ed è esattamente il motivo per cui la sezione *Impostazioni → Aspetto* è
+   dichiarata e non costruita.
+3. **Palette e temi** — nove temi come rimappature di token, tema chiaro e alto contrasto,
+   selettore di colore libero con contrasto **misurato mentre si sceglie** e variante testuale
+   derivata (`UI-020…UI-026`).
 
-**Tre avvertenze per chi costruisce.**
+**Tre cose da sapere prima di cominciare.**
 
-- **Il gate della Ricerca si costruisce PRIMA della superficie, non dopo.** È un requisito
-  (`UI-090…UI-096`), non una rifinitura, e una delle sue categorie non è aggirabile da nessun
-  ruolo, Owner compreso.
-- **Cambiare rango a quindici voci sposta i selettori di tutte le pagine.** I controlli in browser
-  e i criteri di accessibilità vanno **rieseguiti**, non riletti: i 26 oggi verdi valgono
-  sull'interfaccia attuale.
-- **Tutti i valori di contrasto in `WEBUI_DESIGN_V3.md` sono calcolati**, mai passati per
-  `tools/accessibility-audit.mjs`.
-
-**Non iniziare la fase 1.** Della fase 0 restano aperti i punti 5 e 6 — traduzione canonica in
-inglese e emendamenti a `V4-D001`/`V4-D002`.
+- **I contrasti di `WEBUI_DESIGN_V3.md` §5 sono ancora calcolati, mai misurati.** Il passo 3 li
+  deve far passare da `tools/accessibility-audit.mjs`, che ora gira su **venticinque** superfici.
+- **`npm run test:accessibility` e `tools/run-browser-e2e.sh` vanno lanciati con
+  `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-wp2`.** Il default dello script punta a
+  un'immagine più vecchia; entrambi creano e **rimuovono da soli** sonda, runner e overlay.
+- **Non iniziare la fase 1.** Della fase 0 restano aperti i punti 5 e 6 — traduzione canonica in
+  inglese e emendamenti a `V4-D001` / `V4-D002`.
 
 ---
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-La sessione era una **conversazione sulla grafica** e si è chiusa con un progetto completo e
-autorizzato, in tre passaggi. Ognuno è partito da una verifica, non da un'idea.
+**Il passo 1 della grafica, sul codice.** Prima riga di prodotto toccata dopo la progettazione:
+tre file dell'interfaccia, due suite di verifica, una guardia di struttura.
 
-### 1 · Il divario è stato misurato sul codice
+### 1 · Ventitré destinazioni diventano dodici, e niente si perde
 
-23 destinazioni contro le undici del riferimento normativo; **zero** occorrenze di collasso della
-barra o di aggancio del pannello in `apps/webui-static/`; **nessun** layer di token; palette
-diversa da quella del riferimento vincolante. Da lì il progetto, non dal gusto.
+I tredici blocchi di pagina demossi sono stati **spostati verbatim** da uno script che estrae e
+riassembla (`D-0137`): `#view-users`, `#view-logs`, `#view-providers` e gli altri esistono ancora
+con i loro id, dentro l'unica pagina Impostazioni, che ora ha **menu dentro il menu** — tre gruppi,
+tredici sezioni, indirizzabili come `#/settings/<sezione>`. *Compiti* è entrato in Home,
+*Strumenti* in CodeN Evolution, *Memoria* in Conoscenza.
 
-### 2 · v3 — l'impianto, accettato
+**Ogni indirizzo che rispondeva risponde ancora** (`D-0138`): `#/logs` inoltra a
+`#/settings/health`, e la barra dell'indirizzo viene riscritta, perché un inoltro invisibile non è
+verificabile. **I gate di ruolo sono scesi di livello con le pagine che proteggono** (`D-0139`):
+erano rotte protette, ora sono sezioni protette, e le voci di menu non consentite sono rimosse.
 
-Undici destinazioni, **una sola** pagina Impostazioni con i menu dentro, Progetti/Documenti/
-Conoscenza/Agenti come **superfici di lavoro**. L'Owner ha chiuso i due punti aperti: **pannello
-per destinazione** (`D-0117`) e **prima la grafica, poi la costruzione** (`D-0118`). Gestione
-completa delle **sessioni** (`UI-001…UI-012`) e **colore libero con leggibilità garantita**
-(`UI-020…UI-026`).
+### 2 · Due destinazioni sono dichiarate e non costruite, e lo dicono
 
-### 3 · Un errore di misura mio, trovato eseguendo
+*CodeN Evolution TUI* e *Ricerca* stanno nella barra con l'etichetta **not built** e una pagina che
+dice cosa manca (`D-0141`). Nasconderle per far tornare il conto sarebbe stato mentire sul numero.
 
-Avevo dichiarato che l'indaco del riferimento non rompe il contrasto sulla base di **un solo**
-calcolo — bianco *sopra* `#3958c3`, 6,2:1. Scrivendo la derivazione automatica ho calcolato il
-caso opposto: la stessa tinta **come testo** su `#0c1824` sta a **2,9:1**, sotto soglia
-esattamente come il viola. Accento *pieno* e accento *testuale* sono due token diversi e li avevo
-confusi in uno. **La correzione è nel meccanismo, non nella tabella.**
+**La Ricerca non ha alcun campo che possa emettere una query** (`D-0142`), ed è deliberato: il gate
+`UI-090…UI-096` viene **prima** della superficie. Costruire prima la superficie significherebbe
+consegnare una via d'uscita verso la rete senza nulla che la classifichi.
 
-### 4 · La rilettura contro la specifica — otto buchi
+### 3 · Quattro difetti trovati, tutti eseguendo — e due erano miei
 
-Fatta **dopo** l'accettazione, riga per riga contro `07_INTERFACCIA`, `06_CODEN_EVOLUTION` §2, la
-matrice `CE-*` e il PNG approvato. L'impianto reggeva, il dettaglio no: cinque destinazioni senza
-casa, banco di lavoro a metà, casella `NON FATTO` assente, barra superiore mutilata, accessibilità
-a due voci su otto, `CE-020` non soddisfatto, schermata iniziale incompleta, `CE-024` non
-raccolta.
+1. **Mio, serio.** Una sezione che l'account non può aprire **faceva comunque partire il suo
+   loader**: quattro richieste `403` (`/logs`, `/debug/status`, `/watchdog`, `/database/status`)
+   emesse per una pagina che la persona si stava vedendo rifiutare. Il gate era applicato sullo
+   schermo e abbandonato sul filo. L'ha trovato la suite in browser; riparato alla causa.
+2. **Mio.** La guardia «ogni sezione sta dentro Impostazioni» che avevo **appena scritto**
+   confrontava la **posizione nel file**, non l'annidamento: una sezione spostata fuori ma lasciata
+   fra `#view-settings` e `#view-not-found` passava. Scoperto **seminando quel difetto** e vedendo
+   la guardia restare verde. Ora cammina la profondità dei tag.
+3. **Preesistente.** `.nav span{display:none}` sotto gli 850px toglieva l'etichetta anche
+   dall'**albero di accessibilità**: su schermo stretto ogni voce era annunciata come un glifo
+   nudo. Sostituita con il ritaglio, che nasconde senza togliere il nome.
+4. **Mia misura sbagliata.** Il giro delle rotte misurava il testo dell'intera pagina Impostazioni,
+   comprese le dodici sezioni nascoste: il «Loading…» di una sezione che nessuno guarda faceva
+   fallire una pagina che aveva finito.
 
-### 5 · v4 — gli otto buchi chiusi
+### 4 · Le guardie sono state provate, non date per buone
 
-Banco a tre regioni con **riga di stato propria** (distinta dalla striscia di approvazione),
-undici schede, terminale multiplo persistente, colonna agente completa, **casella `NON FATTO`**
-(`UI-036`, Critica), barra superiore rimessa, accessibilità **8 su 8**, tastiera e comando TUI per
-ogni azione, schermata iniziale completa, `CE-024` misurata — con i **cambiamenti rifiutati che
-contano come tempo speso**, perché escluderli sarebbe scegliere il denominatore che conviene.
-
-**`UI-046` è verificato meccanicamente, non asserito:** zero proprietà fisiche `left`/`right` nel
-foglio di stile del provino, solo `inline-start`/`inline-end`. Un difetto reale di una sessione
-precedente nasceva da un `left:-9999px`, e il rimedio non è ricordarselo — è renderlo impossibile
-da scrivere male.
-
-### 6 · v5 — la destinazione Ricerca, e un gate che non è una lista di parole
-
-Obiettivo + criteri, rapporto con **link provvisorio** che scade e si revoca, **non pubblico di
-suo**. La **qualità dell'evidenza** dichiarata invece del voto medio: nell'esempio disegnato il
-candidato col voto più alto è quello con l'evidenza più debole, e il rapporto lo dice. **Nessun
-link di affiliazione, mai.**
-
-Il gate **non è una denylist testuale** — `D-0111` l'aveva già rifiutata perché battuta da
-qualunque indirezione. Classifica **intento ed effetto**, gira su **due porte** (prima dell'uscita
-e sul contenuto che rientra), ha **tre esiti** (procedi · chiedi · rifiuta) e **nomina la
-categoria**. Si rifiuta l'**effetto**, non l'argomento: un prodotto che rifiuta «quali sono le
-leggi sugli esplosivi» è rotto, non sicuro. **Lo sfruttamento di minori è l'unica categoria non
-aggirabile da alcun ruolo, Owner compreso.**
-
-Le destinazioni passano da undici a **dodici** (`D-0130`) — dichiarato, non nascosto: ogni
-aggiunta futura deve costare lo stesso attrito, o si torna alle ventitré una voce alla volta.
+Quattro difetti **seminati** — una destinazione tolta dalla barra, una pagina demossa cancellata
+invece che spostata, un vecchio indirizzo lasciato senza inoltro, una sezione fatta uscire da
+Impostazioni. **Al primo giro due non furono catturati**: uno perché il seme non aveva mutato
+nulla, l'altro perché la guardia era debole. Dopo la correzione **4 su 4**, ognuno catturato da
+esattamente una guardia, e ogni file ripristinato **byte-identico**.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                    631/631   0 falliti · 44 suite
-eslint                  158 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST              5721/5721   0 falliti
-migration manifest      CURRENT · 16 migrazioni
-anteprima v5            sintassi JS OK · tag bilanciati (254 div · 238 span · 66 button · 52 tr)
-UI-046 (RTL)            0 proprieta fisiche left/right nel CSS — verificato, non asserito
-matematica colore       6 coppie eseguite isolate — ha trovato il difetto del §3 sopra
+unit                     635/635   0 falliti · 44 suite       (erano 631)
+guardia di struttura      17/17    0 falliti                  (erano 13)
+accettazione in browser  265/265   0 falliti · browser reale   (erano 233)
+accessibilita WCAG 2.2    26/26    0 falliti · 25 superfici    (erano 26 su 23 rotte)
+eslint                   158 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                5721/5721  0 falliti
+difetti seminati           4/4     ognuno catturato da esattamente una guardia
 ```
 
-**Non eseguibile su questo host, dichiarato e non contato come passato:** l'apertura
-dell'anteprima **in un browser reale**. Non ce n'è uno installato, la regola 45 vieta di
-installarlo, e un browser richiederebbe un container fuori da una fase di installazione. Restano
-non eseguiti anche i quattro passi Python di `scripts/test.sh` (`python3` assente, regola 45).
+**La copertura è cresciuta, non calata.** L'audit misura ora **venticinque** superfici — dodici
+destinazioni più le tredici sezioni — con 630 controlli di focus e 944 misure di contrasto.
+Auditare le sole destinazioni avrebbe fatto sparire tredici superfici dalla misura lasciando il
+numero `26/26` identico: è così che una ristrutturazione trasforma un audit verde in un audit più
+piccolo.
 
-**Nota sul MANIFEST:** non copre `PROJECT_STATE.json`, `docs/DECISION_LOG.md`, questo file né
-`docs/design/` — stessa classe di `D-0074`. I file nuovi di questa sessione seguono la convenzione
-esistente e **non** sono stati aggiunti: cambiarla è una decisione dell'Owner.
+**Non eseguito, dichiarato:** nessuno screen reader reale (l'audit stampa il proprio blocco
+`NOT_TESTED` a ogni giro) · `forced-colors` non emulabile su questo Chromium · i quattro passi
+Python di `scripts/test.sh` (`python3` assente, regola 45).
+
+**Osservazione registrata e non riparata:** il browser **scarta** l'intestazione
+`Cross-Origin-Opener-Policy` che il server invia, perché si è serviti in HTTP semplice su un nome
+che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
+e di fase d'installazione.
 
 ## ➜ L'installazione — intoccata
 
 ```text
 container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
-bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota sotto)
+bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
 endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
-igiene      nessun container creato, avviato o fermato · reti e volumi invariati
-            39 container all'apertura e 39 in chiusura
-            sopravvivono i due ammessi da §5a: l'installazione e UN solo rollback
+igiene      nessun container di prodotto creato, avviato o fermato
+            reti e volumi invariati · inventario in EVIDENCE/
+            due soli container noesar-evolution* a fine fase, come impone §5a
+            noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase
 ```
 
-**Nota per la prossima sessione, verificata qui:** l'installazione **non** ascolta su
-`127.0.0.1`. Un controllo di salute contro il loopback restituisce `000` e sembra un servizio
-morto mentre il servizio è sano. Usare l'indirizzo di bind reale, che si ricava con
-`docker port noesar-evolution`.
+**Nota verificata di nuovo qui:** l'installazione **non** ascolta su `127.0.0.1`. Un controllo di
+salute contro il loopback restituisce `000` e sembra un servizio morto mentre il servizio è sano.
+Usare l'indirizzo di bind reale, che si ricava con `docker port noesar-evolution`.
 
-**Nessuna riga di prodotto è stata modificata in questa sessione**: tutto il lavoro è in `docs/`.
-Restano nel sorgente e **non installate** le riparazioni delle sessioni precedenti — il box vivo
-dichiara ancora il nome sbagliato in `/api/v1/bootstrap`. Il deploy è una fase di installazione e
-**richiede autorizzazione esplicita dell'Owner**; prima va letta la nota sul costo di rollback
-dello schema (`D-0082`).
+**La struttura a dodici destinazioni esiste SOLO nel sorgente.** Il box vivo serve ancora
+l'interfaccia a ventitré. Il deploy è una fase di installazione e **richiede autorizzazione
+esplicita dell'Owner**; prima va letta la nota sul costo di rollback dello schema (`D-0082`).
 
 ## ➜ Blocker aperti
 
@@ -192,33 +174,29 @@ identità.
 
 **Aperto e non risolvibile qui:** la **conformità** della conservazione dei dati delle richieste
 rifiutate. L'Owner ha autorizzato il **disegno** (`D-0136`); la verifica rispetto agli obblighi
-applicabili non è stata fatta e non è accertabile su questo host. Trattare l'autorizzazione
-dell'Owner come un accertamento di conformità sarebbe la falsa dichiarazione che questo progetto
-elimina altrove.
+applicabili non è stata fatta e non è accertabile su questo host.
 
-**Aperto e non pianificato:** la **voce** (`D-0123`) — disegnata come torre di controllo, con il
-vincolo che non può allargare l'autorità; e i **pannelli staccabili** su secondo monitor
+**Aperto e non pianificato:** la **voce** (`D-0123`) e i **pannelli staccabili** su secondo monitor
 (`07` §5).
 
-**Non un blocker ma va ripetuto:** restano non eseguite, con la ragione data, la cancellazione dei
-file di memoria di altri progetti (irreversibile: quel percorso non è un repository git) e la
-conservazione di credenziali in un file tracciato (regola 25).
+**Non toccato dal passo 1, e da non confondere con «fatto»:** il **banco di lavoro**
+(`UI-030…UI-037`), la **casella `NON FATTO`** (`UI-036`, Critica), la **metrica del prodotto**
+(`UI-070…UI-072`), la **gestione delle sessioni** (`UI-001…UI-012`) e le otto voci di accessibilità
+`UI-040…UI-047` che non sono strutturali.
 
 ## ➜ Rollback
 
 ```text
 container    noesar-evolution.rollback-webui-20260726T155330Z     immagine :phase4-webui
 runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB
-questa       BACKUPS/webui_design_v3_20260727T065119Z/            prima della v3
-sessione     BACKUPS/webui_design_v4_20260727T071954Z/            prima della v4
-             BACKUPS/webui_ricerca_v5_*/                          prima della v5
-             BACKUPS/chiusura_20260727T075419Z/                   prima della chiusura
-progetto V4  git c28d8a2 · archivi sigillati ·
-             EVIDENCE/v4_removal_recovery_20260726T163433Z.txt
+questa       BACKUPS/webui_struttura_20260727T082357Z/            i 5 file dell'interfaccia,
+sessione                                                          le 2 suite e il MANIFEST,
+                                                                  copiati prima di ogni modifica
 ```
 
-Per tornare indietro sull'installazione: `docker stop -t 60 noesar-evolution`, rinominarlo da
-parte, poi `docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo la
-build attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora
-`"schemaVersion": 1` — va ripristinato anche quello dal backup, o `:phase4-webui` rifiuterà di
-caricare il workspace AI.
+Per tornare indietro sul **sorgente** di questa fase basta ricopiare da quella cartella: nessuna
+migrazione, nessuno schema, nulla di installato. Per tornare indietro sull'**installazione**:
+`docker stop -t 60 noesar-evolution`, rinominarlo da parte, poi
+`docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo la build
+attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora `"schemaVersion": 1` —
+va ripristinato anche quello dal backup, o `:phase4-webui` rifiuterà di caricare il workspace AI.
