@@ -1864,3 +1864,33 @@ nome che non è `localhost`. Vale anche per l'installazione viva in LAN: quell'i
 ha effetto. Richiede TLS, che è una decisione di host e di fase d'installazione.
 
 **Nulla è stato installato.** L'installazione viva gira ancora `:phase4-wp2` e non è stata toccata.
+
+---
+
+## D-0143 · Si costruisce, si installa e si verifica nella stessa fase — 2026-07-27
+
+**Contesto.** Alla domanda *«quindi perché nulla è installato?»* è seguita l'istruzione: *«è
+inutile che prepari e non installi… preferisco che installi e verifichi subito»*.
+
+| ID | Decisione |
+|---|---|
+| `D-0143` | **Una fase che cambia il prodotto lo installa e lo verifica nella stessa fase.** Emendamento dell'Owner a `CLAUDE10.md`, nuovo **§3a** (`11a…11e`). Non è un'abitudine mia: è la regola scritta, perché la regola precedente stava producendo esattamente il difetto che questo progetto elimina altrove — un'installazione che continua a servire un difetto già riparato nel sorgente. Al momento in cui è stata scritta, il box vivo era rimasto indietro di **quattro** riparazioni |
+
+**Cosa l'autorizzazione NON allarga.** Solo il passo di deploy del **prodotto**. `§5` regole 17-21
+restano intatte: nessun altro container, nessuna rete, nessun volume, nessun database fuori da
+questo progetto, nessuna modifica all'host. `§5a` continua a decidere che cosa sopravvive.
+
+**La sequenza è parte della regola, e il suo ordine è la protezione** (`11c`): immagine costruita
+offline → contenuto provato uguale al repository → arresto con periodo di grazia e **conferma
+dell'arresto pulito nel log** → backup completo **a servizio fermo** → container precedente
+preservato con nome datato → nuovo container avviato con la configurazione **riletta da quello che
+sostituisce** → verifica dal vivo → pulizia. Chi deve fare rollback e scopre che serve un backup
+che nessuno ha preso non ha un rollback (`11d`).
+
+**Un limite scritto nella regola stessa** (`11e`): la verifica dal vivo **non** usa una suite che
+muta dati. Le suite in browser creano un Owner e cambiano impostazioni; girano contro una sonda
+usa-e-getta. Dal vivo si prova che i byte serviti sono **identici** all'albero che le suite hanno
+esercitato, che il servizio è sano e che le superfici rispondono — e si dichiara il resto.
+
+**Applicata immediatamente:** `:phase4-structure` è stata costruita, installata e verificata nella
+stessa fase che l'ha scritta. Dettaglio in `docs/INSTALLATION_LEDGER.md`.

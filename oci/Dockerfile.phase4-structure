@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Structure image: the interface goes from twenty-three destinations to twelve.
+#
+# The running box served the twenty-three-destination sidebar. This image carries the first
+# of the three graphics steps the Owner fixed in order (D-0118): structure, before the token
+# layer and before the palette. Decisions D-0137…D-0142.
+#
+# What changes, and nothing else:
+#
+#   1. twelve destinations in the sidebar; the thirteen demoted pages moved VERBATIM into
+#      the single Settings destination, which now carries a menu inside the menu — three
+#      groups, thirteen sections at #/settings/<section> (D-0137);
+#   2. every address a demoted page answered on still resolves, forwarded to the section
+#      that owns it now (D-0138);
+#   3. the role gates moved down a level with the pages they guard, and a section this
+#      account may not open no longer fires its loader — that defect emitted four 403
+#      requests for a page the person was being refused (D-0139);
+#   4. sidebar ranks on [ and ] with a visible control, and a context panel whose placement
+#      is remembered PER DESTINATION (D-0117);
+#   5. CodeN Evolution TUI and Research declared and NOT built, flagged as such in the
+#      sidebar; Research carries no field that could emit a query, because its gate
+#      (UI-090…UI-096) comes before its surface (D-0141, D-0142).
+#
+# Also repaired here: `.nav span{display:none}` below 850px removed the nav label from the
+# ACCESSIBILITY TREE, so every entry was announced as a bare glyph. Replaced with clipping.
+#
+# Why an overlay rather than a rebuild from oci/Dockerfile — unchanged from the reasoning in
+# Dockerfile.phase4 through Dockerfile.phase4-wp2:
+#
+#   * oci/Dockerfile runs `apt-get install`, which needs the Debian archives. No network
+#     operation is authorised here, and repeating the apt step would silently re-resolve the
+#     OS package set to whatever the archive serves today.
+#   * Building FROM the audited :phase4-wp2 image inherits every layer unchanged —
+#     PostgreSQL 18.4, pgvector 0.8.5, the whole apt set — so the only difference between
+#     the two images is first-party source.
+#
+# SCHEMA: no change. `AI_STATE_VERSION` is unchanged from :phase4-wp2, and the installed
+# workspace was verified to still read `"schemaVersion": 1` immediately before this build —
+# the base image has not yet performed its first write. Rolling back to :phase4-wp2 is
+# therefore just starting the old container. A full runtime backup is taken with the service
+# stopped regardless, before this image is ever started.
+#
+# `services/reference-control-plane/src/` is unchanged by this phase and is copied anyway, so
+# the deployed artifact is provably the repository tree rather than a partial overlay.
+#
+# Lineage, stated rather than hidden — now eight deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure
+#
+# Phase 5 packaging should still rebuild from oci/Dockerfile with a recorded network step,
+# as D-0033 and D-0053 both say.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-wp2
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

@@ -56,6 +56,37 @@ It supersedes habit, prior sessions, and any convention inherited from other pro
 11. Scope creep is a violation. Work outside the current phase's stated objective
     is not performed — it is recorded in `docs/DECISION_LOG.md` for a later phase.
 
+## 3a. Build, install, verify — one phase, not three
+
+**Owner instruction, 2026-07-27:** *"è inutile che prepari e non installi… preferisco che
+installi e verifichi subito"*. Amends §3 and §5, and supersedes the habit of leaving
+verified work in the source tree for a deployment that never comes.
+
+11a. **A phase that changes the product installs what it changed and verifies it on the
+     running installation, in the same phase.** Building, deploying and verifying are one
+     unit of work, not three phases. Leaving a repaired defect in the source while the
+     installation keeps serving the defect is the outcome this rule removes: at the moment
+     this was written the live box had been running behind four such fixes.
+11b. **This is a standing authorisation for the deployment step only**, and it does not
+     widen anything else. §5 rules 17-21 stand untouched: no other container, no network,
+     no volume, no database outside this project, no host-level change. The containers this
+     authorisation permits are the product's own, and §5a still governs what survives.
+11c. **The sequence is not optional, and its order is the safeguard.** Build the image
+     offline; prove the image's contents equal the repository tree; stop the service with a
+     grace period and confirm a clean shutdown in the log rather than assuming it; take a
+     full runtime backup **with the service stopped**, so the database copy is consistent;
+     preserve the previous container under a timestamped name; start the replacement with
+     the configuration **read back from the container it replaces**, not from memory;
+     verify on the live installation; then clean up under §5a.
+11d. **A deployment whose rollback has a cost states that cost before it runs**, in the
+     image's own build file and in `docs/INSTALLATION_LEDGER.md` — see `D-0082`. A rollback
+     that turns out to need a backup nobody took is not a rollback.
+11e. **Verification on the live installation never uses a suite that mutates data.** The
+     browser suites bootstrap an owner and change settings; they run against a disposable
+     probe, never against the installation. What is proven live is that the deployed bytes
+     equal the tree the suites exercised, that the service is healthy, and that the
+     surfaces answer.
+
 ## 4. Non-destructive operation
 
 12. **No deletion.** Do not delete files, directories, containers, images, volumes,

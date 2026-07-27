@@ -1776,3 +1776,110 @@ Portare questa struttura sull'installazione è una **fase di installazione** e r
 l'autorizzazione esplicita dell'Owner. Prima va letta la nota sul **costo di rollback dello
 schema** (`D-0082`): l'immagine precedente non rilegge un `state/ai-workspace.json` già riscritto
 dalla build nuova.
+
+---
+
+## 2026-07-27 · La struttura è INSTALLATA — `:phase4-structure`
+
+**Autorizzazione dell'Owner, esplicita e con un emendamento della regola**: *"è inutile che
+prepari e non installi… preferisco che installi e verifichi subito"*. Registrata in
+`CLAUDE10.md` **§3a** (`11a…11e`): una fase che cambia il prodotto **installa e verifica nella
+stessa fase**. La sezione precedente di questo registro — *«NESSUNA INSTALLAZIONE»* — descriveva
+lo stato di poche ore prima ed è **superata da questa**.
+
+### Immagine
+
+`noesar-evolution:phase4-structure`, overlay costruito **offline** (`--network=none
+--pull=false`) su `:phase4-wp2`, da `oci/Dockerfile.phase4-structure`. Lignaggio **otto** livelli.
+
+**Contenuto provato, non assunto** — i due alberi copiati sono stati ricalcolati dentro
+l'immagine e confrontati con il repository:
+
+```text
+apps/webui-static/                       0eb713eb…  = repository
+services/reference-control-plane/src/    d25d3657…  = repository
+```
+
+È ciò che lega l'artefatto installato alle prove: **questo** è l'albero che ha passato 635 unit,
+265 controlli in browser reale e 26/26 di accessibilità in questa sessione.
+
+### Schema — nessun costo di rollback questa volta, e il perché
+
+`AI_STATE_VERSION` è **invariato** rispetto a `:phase4-wp2`. `state/ai-workspace.json` è stato
+verificato prima del build, dopo il backup e dopo l'avvio: legge **ancora `"schemaVersion": 1`**,
+perché la base non ha mai eseguito la sua prima scrittura. **Finché resta 1, tornare indietro è
+solo riavviare il container vecchio.** Il backup completo è stato preso comunque.
+
+### Sequenza
+
+1. Immagine costruita e verificata **a servizio ancora in funzione** — nessun fermo, ancora.
+2. `docker stop -t 60`. Arresto pulito **confermato nel log, non assunto**:
+   `runtime.stopping signal=SIGTERM`, `postgres.stopped clean:true`, exit code **0**.
+3. **Backup completo del runtime a servizio fermo**, così la copia di PostgreSQL è coerente:
+   `BACKUPS/runtime_pre_structure_deploy_20260727T090127Z/` — 75 MB, tutte e 12 le directory,
+   `state/ai-workspace.json` byte-identico al file vivo e ancora `"schemaVersion": 1`.
+4. Container precedente rinominato da parte: `noesar-evolution.rollback-wp2-20260727T090151Z`.
+5. Nuovo container avviato con la configurazione **riletta dal container che sostituisce**, non
+   dalla memoria. Le tre variabili non incorporate nell'immagine sono state identificate
+   diffando l'ambiente dell'immagine contro quello del container, invece di fidarsi di un elenco.
+
+### Verificato dopo
+
+```text
+state=running  health=healthy  restarts=0  image=noesar-evolution:phase4-structure
+livez 200 · readyz 200 · /metrics 401          hardening LAN preservato
+postgres.ready    18.4, pgvector 0.8.5, migrations 16, rls_tables 15, production_ready
+identity          projected=1 — l'identità Owner ha superato lo scambio
+WebUI             / e /app.js 200, e i byte serviti sono IDENTICI al repository
+destinazioni      12 servite: home chat coden coden-tui projects documents knowledge
+                  agents workflows models research settings
+sezioni           13 nella pagina Impostazioni
+```
+
+Parità di hardening confrontata campo per campo contro il container sostituito — rootfs in sola
+lettura, `cap-drop ALL`, `no-new-privileges`, pids 512, memoria 8 GiB, uid 10001, rete, bind
+`192.168.178.100:8100->8088`, entrambi i tmpfs `noexec`: **dieci campi su dieci identici**.
+
+Esistenza delle rotte, provata senza credenziali con la distinzione 401-contro-404 — una rotta che
+esiste pretende una sessione, una che non esiste risponde 404:
+
+```text
+GET  /api/v1/workflows            401
+GET  /api/v1/approvals            401
+GET  /api/v1/privacy              401
+POST /api/v1/coden/authorize      401
+POST /api/v1/no-such-post-route   404   (il controllo: rende significativi i 401 sopra)
+```
+
+### Detto chiaramente: cosa NON è stato verificato sull'installazione viva
+
+**Il comportamento dell'interfaccia non è stato esercitato su questa installazione.** Le suite in
+browser creano un Owner e cambiano impostazioni: girano contro una **sonda usa-e-getta**, mai
+contro l'installazione (`CLAUDE10.md` §3a, `11e`). Ciò che è provato qui è che i byte serviti sono
+**identici** all'albero il cui comportamento le suite hanno esercitato, che il servizio è sano e
+che le superfici rispondono. Aprire l'interfaccia con una sessione reale è un'azione dell'Owner.
+
+Restano inoltre **non costruite e dichiarate tali** dentro la build appena installata: la
+destinazione *Ricerca* (nessun campo che possa emettere una query, il gate viene prima), il *TUI*,
+e le sezioni *Sessioni*, *Aspetto*, *Licenza*.
+
+### Pulizia — §5a
+
+Il nuovo deploy avrebbe prodotto un terzo container, quindi il rollback più vecchio
+`noesar-evolution.rollback-webui-20260726T155330Z` è stato rimosso: **il container soltanto**, la
+sua immagine `:phase4-webui` resta su disco, quindi ogni percorso di rollback documentato qui
+funziona ancora. Sopravvivono esattamente due container: l'installazione e
+`noesar-evolution.rollback-wp2-20260727T090151Z`. Reti e volumi diffati contro
+`EVIDENCE/docker_inventory_pre_cleanup_20260727T084713Z.txt`: **invariati**. Container non del
+progetto: **37 prima, 37 dopo**. Totale invariato a 39. Nessun `prune` di alcun tipo.
+
+### Rollback
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-wp2-20260727T090151Z
+```
+
+Nessun ripristino di stato è richiesto **finché** `state/ai-workspace.json` legge
+`"schemaVersion": 1`. Da controllare prima di procedere: se legge 2, ripristinare anche
+`state/` da `BACKUPS/runtime_pre_structure_deploy_20260727T090127Z/`.

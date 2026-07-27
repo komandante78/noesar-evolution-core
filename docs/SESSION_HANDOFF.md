@@ -146,25 +146,47 @@ Python di `scripts/test.sh` (`python3` assente, regola 45).
 che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
 e di fase d'installazione.
 
-## ➜ L'installazione — intoccata
+## ➜ L'installazione — SOSTITUITA E VERIFICATA
+
+**La regola è cambiata a metà sessione** (`D-0143`, `CLAUDE10.md` **§3a**): su istruzione
+dell'Owner, *una fase che cambia il prodotto lo installa e lo verifica nella stessa fase*.
+Preparare e non installare era esattamente il difetto che questo progetto elimina altrove — il box
+vivo era rimasto indietro di **quattro** riparazioni. Vale da adesso in poi.
 
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-wp2
+container   running · healthy · restarts=0 · noesar-evolution:phase4-structure
 bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
 endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
-igiene      nessun container di prodotto creato, avviato o fermato
-            reti e volumi invariati · inventario in EVIDENCE/
-            due soli container noesar-evolution* a fine fase, come impone §5a
-            noesar-debuglab avviato per la caccia e RIFERMATO nella stessa fase
+dati        postgres 18.4 · pgvector 0.8.5 · 16 migrazioni · 15 tabelle RLS
+            identity projected=1 — l'Owner ha superato lo scambio
+interfaccia 12 destinazioni e 13 sezioni servite; byte IDENTICI al repository
+hardening   dieci campi su dieci identici al container sostituito
+igiene      due soli container noesar-evolution* · reti e volumi invariati
+            37 container non del progetto prima e dopo · nessun prune
 ```
 
 **Nota verificata di nuovo qui:** l'installazione **non** ascolta su `127.0.0.1`. Un controllo di
 salute contro il loopback restituisce `000` e sembra un servizio morto mentre il servizio è sano.
 Usare l'indirizzo di bind reale, che si ricava con `docker port noesar-evolution`.
 
-**La struttura a dodici destinazioni esiste SOLO nel sorgente.** Il box vivo serve ancora
-l'interfaccia a ventitré. Il deploy è una fase di installazione e **richiede autorizzazione
-esplicita dell'Owner**; prima va letta la nota sul costo di rollback dello schema (`D-0082`).
+**Cosa NON è stato verificato dal vivo, e va detto.** Il *comportamento* dell'interfaccia non è
+stato esercitato su questa installazione: le suite in browser creano un Owner e cambiano
+impostazioni, quindi girano contro una sonda usa-e-getta e mai contro l'installazione (§3a,
+`11e`). Dal vivo è provato che i byte serviti sono **identici** all'albero che quelle suite hanno
+esercitato, che il servizio è sano e che le rotte rispondono (401 contro un controllo 404).
+
+**Rollback — nessun ripristino di stato richiesto, per ora.**
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-wp2-20260727T090151Z
+```
+
+`AI_STATE_VERSION` è invariato rispetto a `:phase4-wp2` e `state/ai-workspace.json` legge **ancora
+`"schemaVersion": 1"`** — verificato prima del build, dopo il backup e dopo l'avvio. **Finché
+legge 1, tornare indietro è solo riavviare il container vecchio.** Se legge 2, ripristinare anche
+`state/` da `BACKUPS/runtime_pre_structure_deploy_20260727T090127Z/` (75 MB, preso a servizio
+fermo). Il costo di rollback dello schema di `D-0082` **non** si applica a questo salto.
 
 ## ➜ Blocker aperti
 
