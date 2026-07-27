@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "e615431",
-  "last_updated_utc": "2026-07-27T07:25:00Z",
+  "last_updated_utc": "2026-07-27T07:45:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -736,7 +736,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "INIZIA LA COSTRUZIONE DELLA GRAFICA (D-0118). Il disegno e completo: docs/WEBUI_DESIGN_V3.md sezioni 1-17, criteri UI-001..UI-072, anteprima docs/design/ANTEPRIMA_WEBUI_V4.html. Ordine vincolato: (1) struttura 23->11 + barra a tre stati + pannello con memoria per destinazione, (2) layer di token, (3) palette e nove temi + selettore libero. Rieseguire i controlli in browser e i criteri di accessibilita dopo la ristrutturazione: i 26 verdi valgono sull interfaccia attuale. NON iniziare la fase 1.",
+  "next_action": "INIZIA LA COSTRUZIONE DELLA GRAFICA (D-0118). Disegno completo: docs/WEBUI_DESIGN_V3.md sezioni 1-21, criteri UI-001..UI-096, anteprima docs/design/ANTEPRIMA_WEBUI_V5.html. DODICI destinazioni (D-0130). Ordine vincolato: (1) struttura 23->12 + barra a tre stati + pannello con memoria per destinazione, (2) layer di token, (3) palette e nove temi + selettore libero. La destinazione Ricerca e la superficie piu grande fra le nuove e il suo gate di sicurezza va costruito prima della superficie, non dopo. Rieseguire browser e accessibilita dopo la ristrutturazione. NON iniziare la fase 1.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1094,5 +1094,24 @@
       "rimisura contrasti con accessibility-audit",
       "installazione"
     ]
+  },
+  "webui_design_v5": {
+    "status": "DESTINAZIONE RICERCA PROGETTATA — nulla implementato, nulla installato",
+    "date": "2026-07-27",
+    "preview": "docs/design/ANTEPRIMA_WEBUI_V5.html",
+    "document": "docs/WEBUI_DESIGN_V3.md sezioni 18-21",
+    "destinations": "DODICI — D-0130 emenda D-0120 (erano undici)",
+    "new_acceptance_ids": "UI-080..UI-089 (ricerca), UI-090..UI-096 (gate di sicurezza)",
+    "decisions": [
+      "D-0130",
+      "D-0131",
+      "D-0132",
+      "D-0133",
+      "D-0134",
+      "D-0135"
+    ],
+    "safety_gate": "tre esiti (procedi/chiedi/rifiuta), due porte (prima dell uscita e sul contenuto che rientra), nessuna denylist testuale (coerente con D-0111), si rifiuta l effetto non l argomento, la categoria e nominata",
+    "non_bypassable": "sfruttamento di minori — nessun ruolo puo modificarla, Owner compreso",
+    "declared_as_proposal": "la conservazione del testo delle richieste rifiutate NON e una conformita accertata: va confermata con l Owner e verificata rispetto agli obblighi applicabili"
   }
 }

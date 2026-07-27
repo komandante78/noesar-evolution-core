@@ -1756,3 +1756,34 @@ e `UI-046` verificato meccanicamente. **Non eseguita** l'apertura in un browser 
 uno installato e la regola 45 vieta di installarlo.
 
 **Nulla implementato, nulla installato.**
+
+---
+
+## D-0130 … D-0135 · La destinazione Ricerca, e un gate che non è una lista di parole — 2026-07-27
+
+**Contesto.** L'Owner ha chiesto una destinazione per la ricerca sul web: obiettivo più criteri di
+confronto, un rapporto raggiungibile da un **link provvisorio**, le ragioni della scelta basate
+sulle valutazioni d'acquisto — e la sicurezza su pornografia, sfruttamento di minori e istruzioni
+che producono danno a persone, animali o cose. Criteri `UI-080…UI-089` (ricerca) e `UI-090…UI-096`
+(gate), categorie in `docs/WEBUI_DESIGN_V3.md` §20.
+
+| ID | Decisione |
+|---|---|
+| `D-0130` | **Le destinazioni passano da undici a dodici**, e la cosa è dichiarata invece che nascosta. La ricerca è un posto dove si *decide* di andare, quindi non è una sezione di nient'altro. Emenda `D-0120` |
+| `D-0131` | **Il link provvisorio non è pubblico di suo**: serve una sessione su questa installazione, e condividerlo fuori è un atto separato con la propria scadenza. Un indirizzo difficile da indovinare **non** è una protezione, e il rapporto può contenere fatti dell'utente |
+| `D-0132` | **La qualità dell'evidenza è dichiarata, e un voto medio non è evidenza.** Numero di recensioni, arco temporale, quota da acquisto verificato, distribuzione anomala segnalata. Le recensioni si comprano: senza questo, la superficie premierebbe chi le compra. Nell'esempio disegnato il voto più alto è quello con l'evidenza più debole, e il rapporto lo dice |
+| `D-0133` | **Nessun link di affiliazione, mai**, e un risultato sponsorizzato è dichiarato sulla sua riga. Un consigliere pagato dal venditore non è un consigliere |
+| `D-0134` | **Il gate di ricerca non è una denylist testuale** — coerente con `D-0111`, che l'ha già rifiutata perché battuta da qualunque indirezione. Classifica **intento ed effetto**, gira su **due porte** (prima dell'uscita e sul contenuto che rientra), e ha **tre esiti**: procedi, **chiedi**, rifiuta. Con solo sì/no ogni ambiguità diventa un errore in una delle due direzioni |
+| `D-0135` | **Si rifiuta l'effetto, non l'argomento**, e il rifiuto **nomina la categoria**. Normativa, storia, prevenzione, sicurezza sul lavoro e bonifica restano accessibili: un prodotto che rifiuta «quali sono le leggi sugli esplosivi» è rotto, non sicuro. **Lo sfruttamento di minori è l'unica categoria non aggirabile da alcun ruolo, Owner compreso**, senza riformulazioni suggerite e con l'evento registrato |
+
+### Due cose dichiarate come proposte, non come fatti
+
+**La conservazione del testo delle richieste rifiutate** (nessuna, tranne la categoria più grave,
+con accesso ristretto) è una proposta e **non una conformità accertata**: va confermata con l'Owner
+e verificata rispetto agli obblighi applicabili.
+
+**Il conteggio delle destinazioni.** `D-0120` diceva undici. Ora sono dodici. Non è un dettaglio:
+undici era il numero che veniva dal riferimento normativo, e ogni aggiunta futura va fatta con lo
+stesso attrito — altrimenti si torna alle ventitré una voce alla volta.
+
+**Nulla implementato, nulla installato.**

@@ -1,0 +1,1948 @@
+<title>NOESAR Evolution — Anteprima grafica v4</title>
+
+<style>
+/* ═══ FOGLIO ═══════════════════════════════════════════════════════════ */
+:root{
+  --sheet:#eceef3; --sheet-2:#e3e6ee; --ink:#151a24; --ink-2:#4c5666;
+  --hair:#c6cbd8; --hair-strong:#a8b0c2; --mark:#3958c3;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --sheet:#0d1017; --sheet-2:#12161f; --ink:#dde3ee; --ink-2:#8b96a9;
+         --hair:#242b38; --hair-strong:#38414f; --mark:#7d9df0; }
+}
+:root[data-theme="dark"]{ --sheet:#0d1017; --sheet-2:#12161f; --ink:#dde3ee; --ink-2:#8b96a9;
+  --hair:#242b38; --hair-strong:#38414f; --mark:#7d9df0; }
+:root[data-theme="light"]{ --sheet:#eceef3; --sheet-2:#e3e6ee; --ink:#151a24; --ink-2:#4c5666;
+  --hair:#c6cbd8; --hair-strong:#a8b0c2; --mark:#3958c3; }
+
+body{ margin:0; background:var(--sheet); color:var(--ink); font-family:var(--sans);
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+.sheet{ max-width:1180px; margin:0 auto; padding:0 24px 96px; }
+h1,h2,h3{ font-family:var(--mono); font-weight:600; text-wrap:balance; margin:0; }
+p{ margin:0 0 1em; max-width:68ch; }
+a{ color:var(--mark); }
+code,kbd{ font-family:var(--mono); font-size:.9em; }
+kbd{ border:1px solid var(--hair-strong); border-radius:4px; padding:1px 5px; }
+::selection{ background:var(--mark); color:#fff; }
+:focus-visible{ outline:2px solid var(--mark); outline-offset:2px; }
+
+.titleblock{ border-bottom:2px solid var(--ink); padding:40px 0 18px; }
+.titleblock h1{ font-size:clamp(26px,4.4vw,44px); letter-spacing:-.02em; line-height:1.1; }
+.titleblock h1 b{ font-weight:600; color:var(--mark); }
+.meta{ display:flex; flex-wrap:wrap; gap:0 28px; margin-top:18px;
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-2); }
+.meta b{ color:var(--ink); font-weight:600; letter-spacing:.04em; }
+
+section{ padding-top:60px; }
+.eyebrow{ font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-2); display:flex; align-items:center; gap:12px;
+  margin-bottom:14px; }
+.eyebrow::after{ content:""; flex:1; height:1px; background:var(--hair); }
+h2{ font-size:clamp(19px,2.4vw,26px); letter-spacing:-.01em; margin-bottom:14px; }
+h3{ font-size:15px; letter-spacing:.01em; margin:30px 0 8px; }
+.lede p{ font-size:17.5px; }
+
+.figures{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:1px; background:var(--hair); border:1px solid var(--hair); margin:26px 0; }
+.fig{ background:var(--sheet-2); padding:16px 18px; }
+.fig b{ display:block; font-family:var(--mono); font-size:clamp(24px,3.4vw,34px);
+  font-weight:600; line-height:1; letter-spacing:-.03em; color:var(--mark);
+  font-variant-numeric:tabular-nums; }
+.fig span{ display:block; margin-top:9px; font-size:13.5px; color:var(--ink-2); line-height:1.45; }
+.fig i{ display:block; margin-top:8px; font-family:var(--mono); font-size:10px;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); font-style:normal;
+  opacity:.75; }
+
+.controls{ display:flex; flex-wrap:wrap; gap:18px 22px; align-items:flex-end;
+  padding:16px 0 18px; border-bottom:1px solid var(--hair); }
+.ctl{ display:flex; flex-direction:column; gap:7px; }
+.ctl > span{ font-family:var(--mono); font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-2); }
+.seg{ display:flex; border:1px solid var(--hair-strong); border-radius:3px; overflow:hidden; }
+.seg button{ font:inherit; font-family:var(--mono); font-size:12px; padding:6px 11px;
+  border:0; border-right:1px solid var(--hair-strong); background:transparent;
+  color:var(--ink-2); cursor:pointer; }
+.seg button:last-child{ border-right:0; }
+.seg button[aria-pressed="true"]{ background:var(--ink); color:var(--sheet); }
+.swatches{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.sw{ width:26px; height:26px; border-radius:50%; border:1px solid var(--hair-strong);
+  cursor:pointer; padding:0; }
+.sw[aria-pressed="true"]{ box-shadow:0 0 0 2px var(--sheet),0 0 0 4px var(--ink); }
+
+/* ═══ PROVINO ══════════════════════════════════════════════════════════ */
+.stagewrap{ overflow-x:auto; padding:22px 0 6px; }
+.device{
+  --bg:#081018; --panel:#0c1824; --panel-2:#0f1e2e; --line:#1c3047;
+  --txt:#dbe4f0; --dim:#7d8ba0;
+  --accent:#3958c3; --accent-txt:#8fabf2;
+  --ok:#44a259; --ok-txt:#5fbd74; --warn:#c5882c; --bad:#c0424e; --bad-txt:#d9636e;
+  --run:#3d7fd6; --run-txt:#6f9ae8; --sbx:#7c56b7; --sbx-txt:#9a78d0;
+  --fs:12.5px;
+  min-width:1000px; border:1px solid var(--line); border-radius:6px; overflow:hidden;
+  background:var(--bg); color:var(--txt); font-size:var(--fs); line-height:1.5;
+  box-shadow:0 24px 60px rgba(8,16,24,.28);
+  display:grid; grid-template-rows:44px minmax(0,1fr) 32px;
+  height:700px; position:relative;
+}
+.device *{ box-sizing:border-box; }
+.device button{ font:inherit; color:inherit; cursor:pointer; }
+.device[data-motion="ridotte"] *{ transition:none!important; animation:none!important; }
+
+.d-top{ display:flex; align-items:center; gap:11px; padding:0 12px;
+  border-block-end:1px solid var(--line); background:var(--panel); }
+.d-brand{ font-family:var(--mono); font-size:1em; white-space:nowrap; }
+.d-brand b{ color:var(--accent-txt); font-weight:600; }
+.d-search{ flex:1; max-width:240px; display:flex; align-items:center; gap:8px;
+  padding:5px 10px; border:1px solid var(--line); border-radius:4px;
+  background:var(--bg); color:var(--dim); font-size:.92em; }
+.d-search kbd{ margin-inline-start:auto; border:1px solid var(--line); border-radius:3px;
+  padding:0 4px; font-size:.8em; }
+.d-facts{ margin-inline-start:auto; display:flex; align-items:center; gap:8px;
+  font-family:var(--mono); font-size:.88em; color:var(--dim); white-space:nowrap; }
+.d-facts b{ color:var(--txt); font-weight:400; }
+.d-chip{ display:flex; align-items:center; gap:5px; padding:3px 8px; border-radius:4px;
+  border:1px solid var(--line); background:var(--bg); }
+.d-priv{ color:var(--ok-txt); }
+.d-avatar{ width:24px; height:24px; border-radius:50%; background:var(--accent);
+  display:grid; place-items:center; font-size:.8em; color:#fff; flex:none; }
+.cover{ display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:20px;
+  border:1px solid var(--line); background:var(--bg); }
+.cover .arc{ width:14px; height:14px; border-radius:50%; flex:none; }
+.cover b{ font-family:var(--mono); font-size:.88em; font-weight:600; }
+
+.d-body{ display:grid; min-height:0; position:relative; }
+.device[data-rail="full"]  .d-body{ grid-template-columns:186px minmax(0,1fr); }
+.device[data-rail="icons"] .d-body{ grid-template-columns:46px minmax(0,1fr); }
+.device[data-rail="off"]   .d-body{ grid-template-columns:0 minmax(0,1fr); }
+.device[data-panel="docked"][data-rail="full"]  .d-body{ grid-template-columns:186px minmax(0,1fr) 264px; }
+.device[data-panel="docked"][data-rail="icons"] .d-body{ grid-template-columns:46px minmax(0,1fr) 264px; }
+.device[data-panel="docked"][data-rail="off"]   .d-body{ grid-template-columns:0 minmax(0,1fr) 264px; }
+
+.d-rail{ border-inline-end:1px solid var(--line); background:var(--panel); overflow:hidden;
+  padding:8px 6px; display:flex; flex-direction:column; gap:1px; }
+.device[data-rail="off"] .d-rail{ border-inline-end:0; padding:0; }
+.d-nav{ display:flex; align-items:center; gap:10px; width:100%; padding:6px 9px;
+  border:0; border-radius:4px; background:transparent; color:var(--dim); text-align:start;
+  white-space:nowrap; overflow:hidden; }
+.d-nav i{ font-style:normal; width:15px; text-align:center; flex:none; font-size:1.05em; }
+.d-nav:hover{ background:var(--panel-2); color:var(--txt); }
+.d-nav[aria-current="page"]{ background:var(--accent); color:#fff; }
+.device[data-rail="icons"] .d-nav span{ display:none; }
+.d-railfoot{ margin-block-start:auto; padding:6px 9px; font-family:var(--mono); font-size:.8em;
+  color:var(--dim); white-space:nowrap; }
+
+.d-main{ display:grid; grid-template-rows:minmax(0,1fr) auto; min-width:0; }
+.d-canvas{ overflow:auto; padding:16px 18px; min-width:0; }
+.d-canvas h4{ margin:0 0 3px; font-size:1.35em; font-weight:600; letter-spacing:-.01em; }
+.d-canvas .sub{ color:var(--dim); margin:0 0 14px; font-size:.95em; max-width:74ch; }
+
+/* riga di stato del banco — distinta dalla striscia di approvazione */
+.statusline{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:5px 12px;
+  border-block-start:1px solid var(--line); background:var(--panel);
+  font-family:var(--mono); font-size:.82em; color:var(--dim); }
+.statusline b{ color:var(--txt); font-weight:500; }
+.statusline .sep{ opacity:.35; }
+.statusline .live{ color:var(--sbx-txt); }
+
+.d-panel{ border-inline-start:1px solid var(--line); background:var(--panel); overflow:auto;
+  padding:12px; }
+.device[data-panel="off"] .d-panel{ display:none; }
+.device[data-panel="floating"] .d-panel{ position:absolute; inset-inline-end:16px; top:12px;
+  width:264px; max-height:calc(100% - 26px); border:1px solid var(--line); border-radius:6px;
+  box-shadow:0 18px 44px rgba(0,0,0,.55); z-index:5; }
+.d-panel h5{ margin:0 0 7px; font-family:var(--mono); font-size:.8em; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim); font-weight:500; }
+.d-panel h5:not(:first-child){ margin-block-start:14px; }
+.d-drag{ display:flex; gap:6px; margin:-2px -2px 9px; padding:3px;
+  font-family:var(--mono); font-size:.8em; color:var(--dim); }
+.device[data-panel="docked"] .d-drag{ display:none; }
+
+.d-strip{ display:flex; align-items:center; gap:11px; padding:0 12px;
+  border-block-start:1px solid var(--line); background:var(--panel-2);
+  font-family:var(--mono); font-size:.88em; color:var(--dim); }
+.d-strip .flag{ color:var(--warn); } .d-strip .zero{ color:var(--ok-txt); }
+.d-strip .push{ margin-inline-start:auto; display:flex; gap:6px; }
+.d-strip button{ border:1px solid var(--line); background:transparent; border-radius:3px;
+  padding:2px 8px; font-family:var(--mono); font-size:.84em; color:var(--txt); }
+.d-strip button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* banco di lavoro a tre colonne */
+.wb{ display:grid; grid-template-columns:150px minmax(0,1fr); gap:0; height:100%; }
+.wb-nav{ border-inline-end:1px solid var(--line); padding-inline-end:10px; overflow:auto; }
+.wb-nav h6{ margin:0 0 4px; font-family:var(--mono); font-size:.78em; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); font-weight:500; }
+.wb-nav h6:not(:first-child){ margin-block-start:12px; }
+.wb-nav a{ display:block; color:var(--dim); text-decoration:none; padding:2px 0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.95em; }
+.wb-nav a.on{ color:var(--txt); }
+.wb-main{ padding-inline-start:12px; min-width:0; display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto; }
+
+.cards{ display:grid; gap:9px; }
+.g2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+.g3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+.g4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+.card{ border:1px solid var(--line); border-radius:5px; background:var(--panel);
+  padding:11px 12px; }
+.card h6{ margin:0 0 6px; font-size:1em; font-weight:600; display:flex; align-items:center;
+  gap:7px; }
+.card h6 .all{ margin-inline-start:auto; font-family:var(--mono); font-size:.8em;
+  color:var(--accent-txt); font-weight:400; }
+.row{ display:flex; align-items:center; gap:8px; padding:5px 0;
+  border-block-end:1px solid var(--line); }
+.row:last-child{ border-block-end:0; }
+.row .t{ min-width:0; }
+.row .t b{ display:block; font-weight:500; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+.row .t small{ color:var(--dim); font-size:.85em; }
+.row .r{ margin-inline-start:auto; font-family:var(--mono); font-size:.84em; color:var(--dim);
+  white-space:nowrap; display:flex; gap:6px; align-items:center; }
+.glyph{ width:19px; height:19px; border-radius:4px; display:grid; place-items:center;
+  font-size:.85em; flex:none; background:var(--panel-2); color:var(--dim); }
+.bar{ height:3px; border-radius:2px; background:var(--panel-2); overflow:hidden; width:66px; }
+.bar i{ display:block; height:100%; background:var(--run); }
+.pill{ display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:3px;
+  border:1px solid var(--line); font-family:var(--mono); font-size:.8em; white-space:nowrap; }
+.pill.ok{ color:var(--ok-txt); border-color:color-mix(in srgb,var(--ok) 45%,transparent); }
+.pill.warn{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 45%,transparent); }
+.pill.bad{ color:var(--bad-txt); border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
+.pill.run{ color:var(--run-txt); border-color:color-mix(in srgb,var(--run) 45%,transparent); }
+.pill.sbx{ color:var(--sbx-txt); border-color:color-mix(in srgb,var(--sbx) 45%,transparent); }
+.pill.dim{ color:var(--dim); }
+.btn{ border:1px solid var(--line); background:transparent; border-radius:3px;
+  padding:3px 9px; font-family:var(--mono); font-size:.84em; color:var(--txt); }
+.btn:hover{ background:var(--panel-2); }
+.btn.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.dgr{ color:var(--bad-txt); border-color:color-mix(in srgb,var(--bad) 45%,transparent); }
+.toolbar{ display:flex; gap:6px; align-items:center; margin-block-end:11px; flex-wrap:wrap; }
+.toolbar .sp{ margin-inline-start:auto; }
+.kbd{ font-family:var(--mono); font-size:.78em; color:var(--dim); }
+.kbd b{ border:1px solid var(--line); border-radius:3px; padding:0 4px; color:var(--txt);
+  font-weight:400; }
+
+.composer{ border:1px solid var(--accent); border-radius:6px; background:var(--panel);
+  padding:12px 13px; margin-block-end:12px; }
+.composer .ph{ color:var(--dim); font-size:1.05em; }
+.composer .tools{ display:flex; align-items:center; gap:10px; margin-block-start:12px;
+  color:var(--dim); }
+.composer .send{ margin-inline-start:auto; background:var(--accent); border:0;
+  border-radius:4px; color:#fff; padding:4px 12px; font-size:.9em; }
+.quick{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px;
+  margin-block-end:12px; }
+.quick button{ border:1px solid var(--line); border-radius:5px; background:var(--panel);
+  padding:7px 9px; text-align:start; font-size:.9em; }
+.entry{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px;
+  margin-block-end:12px; }
+.entry button{ border:1px solid var(--line); border-radius:5px; background:var(--panel-2);
+  padding:9px; text-align:center; font-size:.88em; }
+.entry button.pri{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.stages{ display:flex; flex-direction:column; font-family:var(--mono); font-size:.82em; }
+.stage{ display:flex; align-items:center; gap:7px; padding:2px 0 2px 15px; color:var(--dim);
+  position:relative; }
+.stage::before{ content:""; position:absolute; inset-inline-start:4px; top:0; bottom:0;
+  width:1px; background:var(--line); }
+.stage::after{ content:""; position:absolute; inset-inline-start:1.5px; top:calc(50% - 3px);
+  width:6px; height:6px; border-radius:50%; background:var(--panel-2);
+  border:1px solid var(--line); }
+.stage:first-child::before{ top:50%; } .stage:last-child::before{ bottom:50%; }
+.stage.done::after{ background:var(--ok); border-color:var(--ok); }
+.stage.now{ color:var(--txt); }
+.stage.now::after{ background:var(--run); border-color:var(--run);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--run) 25%,transparent); }
+.stage.gate{ color:var(--warn); }
+.stage.gate::after{ background:var(--warn); border-color:var(--warn); }
+.stage .n{ width:14px; text-align:end; opacity:.55; }
+.stage .atom{ margin-inline-start:auto; opacity:.5; }
+
+.term{ font-family:var(--mono); font-size:.92em; line-height:1.6; background:var(--bg);
+  border:1px solid var(--line); border-radius:5px; padding:10px 12px; overflow:auto; }
+.term .p{ color:var(--ok-txt); } .term .c{ color:var(--txt); } .term .o{ color:var(--dim); }
+.term .w{ color:var(--warn); }
+.term .cur{ display:inline-block; width:7px; height:12px; background:var(--txt);
+  vertical-align:-2px; }
+.termtabs{ display:flex; gap:3px; margin-block-end:5px; font-family:var(--mono);
+  font-size:.8em; color:var(--dim); }
+.termtabs span{ padding:1px 7px; border:1px solid var(--line); border-radius:3px; }
+.termtabs span.on{ color:var(--txt); background:var(--panel-2); }
+
+.tabs{ display:flex; gap:2px; border-block-end:1px solid var(--line); margin-block-end:10px;
+  flex-wrap:wrap; }
+.tabs span{ padding:4px 9px; font-family:var(--mono); font-size:.86em; color:var(--dim);
+  border:1px solid transparent; border-block-end:0; }
+.tabs span.on{ color:var(--txt); background:var(--panel); border-color:var(--line);
+  border-radius:4px 4px 0 0; }
+.diff{ font-family:var(--mono); font-size:.86em; line-height:1.55; }
+.diff .a{ color:var(--ok-txt); background:color-mix(in srgb,var(--ok) 12%,transparent);
+  display:block; padding:0 6px; }
+.diff .d{ color:var(--bad-txt); background:color-mix(in srgb,var(--bad) 12%,transparent);
+  display:block; padding:0 6px; }
+.diff .x{ color:var(--dim); display:block; padding:0 6px; }
+
+.msg{ margin-block-end:12px; }
+.msg .who{ font-family:var(--mono); font-size:.8em; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); margin-block-end:4px; }
+.msg .txt{ max-width:62ch; }
+.cite{ border-inline-start:2px solid var(--accent); padding:2px 0 2px 10px; margin:8px 0;
+  color:var(--dim); }
+.cite b{ color:var(--txt); font-weight:500; }
+.prov{ display:flex; gap:6px; margin-block-start:7px; flex-wrap:wrap; }
+
+.notdone{ border:1px solid var(--warn); border-radius:5px; background:var(--panel);
+  padding:11px 12px; }
+.notdone h6{ margin:0 0 7px; font-size:1em; font-weight:600; color:var(--warn); }
+.notdone ul{ margin:0; padding-inline-start:16px; }
+.notdone li{ padding:2px 0; }
+.notdone .req{ font-family:var(--mono); font-size:.8em; color:var(--dim);
+  margin-block-start:8px; padding-block-start:7px; border-block-start:1px solid var(--line); }
+
+.rewind{ display:flex; margin:8px 0 4px; }
+.rw{ flex:1; border:1px solid var(--line); border-inline-end:0; background:var(--panel);
+  padding:6px 8px; }
+.rw:last-child{ border-inline-end:1px solid var(--line); }
+.rw b{ display:block; font-family:var(--mono); font-size:.8em; color:var(--dim); }
+.rw span{ display:block; font-size:.9em; margin-block-start:2px; }
+.rw.here{ background:var(--panel-2); box-shadow:inset 0 2px 0 var(--run); }
+.rw.branch{ box-shadow:inset 0 2px 0 var(--sbx); }
+
+/* impostazioni */
+.settings{ display:grid; grid-template-columns:184px minmax(0,1fr);
+  border:1px solid var(--line); border-radius:6px; overflow:hidden; min-height:440px; }
+.set-menu{ background:var(--panel); border-inline-end:1px solid var(--line); padding:8px 6px;
+  display:flex; flex-direction:column; gap:1px; }
+.set-menu button{ display:flex; align-items:center; gap:9px; padding:6px 9px; border:0;
+  border-radius:4px; background:transparent; color:var(--dim); text-align:start; width:100%; }
+.set-menu button:hover{ background:var(--panel-2); color:var(--txt); }
+.set-menu button.on{ background:var(--accent); color:#fff; }
+.set-menu i{ font-style:normal; width:14px; text-align:center; }
+.set-menu .grp{ font-family:var(--mono); font-size:.76em; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim); padding:10px 9px 3px; opacity:.7; }
+.set-body{ padding:15px 17px; overflow:auto; }
+.set-body h5{ margin:0 0 3px; font-size:1.15em; font-weight:600; }
+.set-body .hint{ color:var(--dim); font-size:.92em; margin:0 0 12px; max-width:68ch; }
+.opt{ display:flex; align-items:center; gap:12px; padding:8px 0;
+  border-block-end:1px solid var(--line); flex-wrap:wrap; }
+.opt .lab{ min-width:150px; }
+.opt .lab b{ display:block; font-weight:500; }
+.opt .lab small{ color:var(--dim); font-size:.85em; }
+.optseg{ display:flex; border:1px solid var(--line); border-radius:3px; overflow:hidden; }
+.optseg button{ border:0; border-inline-end:1px solid var(--line); background:transparent;
+  color:var(--dim); padding:3px 9px; font-family:var(--mono); font-size:.82em; }
+.optseg button:last-child{ border-inline-end:0; }
+.optseg button.on{ background:var(--accent); color:#fff; }
+
+.sess{ display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--line);
+  border-radius:4px; background:var(--panel); margin-block-end:5px; }
+.sess.focus{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.sess .t{ min-width:0; flex:1; }
+.sess .t b{ display:block; font-weight:500; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+.sess .t small{ color:var(--dim); font-size:.85em; font-family:var(--mono); }
+.sess .acts{ display:flex; gap:5px; flex:none; }
+.sess input[type=checkbox]{ accent-color:var(--accent); }
+.scrollbox{ max-height:150px; overflow-y:auto; padding-inline-end:4px;
+  border-block-start:1px dashed var(--line); margin-block-start:9px; padding-block-start:9px; }
+.scrollbox-lab{ font-family:var(--mono); font-size:.8em; color:var(--dim);
+  display:flex; align-items:center; gap:8px; }
+.pager{ display:flex; align-items:center; gap:8px; margin-block-start:10px;
+  font-family:var(--mono); font-size:.84em; color:var(--dim); }
+.pager .sp{ margin-inline-start:auto; }
+
+.d-modal{ position:absolute; inset:0; background:rgba(4,8,14,.72); display:grid;
+  place-items:center; z-index:40; }
+.d-modal .box{ width:390px; max-width:88%; border:1px solid var(--line); border-radius:6px;
+  background:var(--panel); padding:16px 18px; box-shadow:0 30px 70px rgba(0,0,0,.6); }
+.d-modal h6{ margin:0 0 7px; font-size:1.1em; font-weight:600; display:flex; gap:8px;
+  align-items:center; }
+.d-modal p{ margin:0 0 6px; font-size:.95em; color:var(--dim); max-width:none; }
+.d-modal .what{ font-family:var(--mono); font-size:.86em; color:var(--txt);
+  border-inline-start:2px solid var(--warn); padding-inline-start:9px; margin:9px 0 12px; }
+.d-modal .acts{ display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+.d-modal .acts .kbd{ margin-inline-end:auto; }
+
+.pickrow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:10px 0 6px; }
+.pickrow input[type=color]{ width:46px; height:30px; border:1px solid var(--line);
+  border-radius:4px; background:var(--panel); padding:2px; cursor:pointer; }
+.readout{ font-family:var(--mono); font-size:.86em; line-height:1.7; }
+.readout .good{ color:var(--ok-txt); } .readout .no{ color:var(--bad-txt); }
+.themechips{ display:flex; flex-wrap:wrap; gap:6px; margin-block-start:9px; }
+.themechip{ display:flex; align-items:center; gap:7px; padding:4px 9px; border-radius:4px;
+  border:1px solid var(--line); background:var(--panel); font-size:.9em; color:var(--dim); }
+.themechip .dot{ width:11px; height:11px; border-radius:50%; }
+.themechip.on{ border-color:var(--accent); color:var(--txt); }
+
+.voice{ position:absolute; inset-inline-start:50%; transform:translateX(-50%); bottom:44px;
+  z-index:30; width:min(560px,86%); border:1px solid var(--line); border-radius:8px;
+  background:var(--panel); box-shadow:0 22px 54px rgba(0,0,0,.55); padding:11px 13px; }
+.voice .hd{ display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:.8em;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-block-end:8px; }
+.voice .lvl{ display:flex; gap:2px; align-items:flex-end; height:13px; }
+.voice .lvl i{ width:2px; background:var(--accent); border-radius:1px; display:block; }
+.voice .line{ display:flex; gap:9px; padding:2px 0; }
+.voice .line span:first-child{ font-family:var(--mono); font-size:.8em; color:var(--dim);
+  min-width:52px; padding-block-start:2px; }
+.voice .rule{ margin-block-start:9px; padding-block-start:8px; border-block-start:1px solid var(--line);
+  font-size:.9em; color:var(--dim); }
+.voice .rule b{ color:var(--warn); }
+
+.sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%);
+  white-space:nowrap; }
+
+/* ricerca sul web */
+.linkbox{ display:flex; align-items:center; gap:9px; padding:8px 9px; border:1px solid var(--line);
+  border-radius:4px; background:var(--panel-2); }
+.linkbox .t{ min-width:0; flex:1; }
+.linkbox .t b{ display:block; font-family:var(--mono); font-weight:500; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.linkbox .t small{ color:var(--dim); font-size:.85em; }
+.repwrap{ overflow-x:auto; border:1px solid var(--line); border-radius:5px; }
+table.rep{ border-collapse:collapse; width:100%; font-size:.94em; }
+table.rep th{ text-align:start; padding:7px 10px; font-family:var(--mono); font-size:.8em;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--dim); font-weight:500;
+  background:var(--panel-2); border-block-end:1px solid var(--line); }
+table.rep td{ padding:8px 10px; border-block-end:1px solid var(--line); vertical-align:top; }
+table.rep tr:last-child td{ border-block-end:0; }
+table.rep small{ display:block; color:var(--dim); font-size:.82em; margin-block-start:2px; }
+table.rep tr.win{ background:color-mix(in srgb,var(--ok) 9%,transparent); }
+table.rep tr.win td:first-child b{ color:var(--ok-txt); }
+table.rep tr.out{ opacity:.62; }
+.why{ padding:7px 0; border-block-end:1px solid var(--line); font-size:.95em; }
+.why:last-child{ border-block-end:0; }
+.why b{ color:var(--ok-txt); }
+.why .src{ font-family:var(--mono); font-size:.82em; color:var(--dim); }
+.why.agg b{ color:var(--run-txt); }
+.why.inf b{ color:var(--sbx-txt); }
+.why.non b{ color:var(--warn); }
+.why.noaff{ color:var(--dim); font-size:.88em; }
+.egress{ font-family:var(--mono); font-size:.86em; padding:7px 9px; border:1px solid var(--line);
+  border-radius:4px; background:var(--bg); word-break:break-word; }
+.refuse,.restrict{ border:1px solid var(--bad); border-radius:5px; background:var(--panel);
+  padding:12px 13px; }
+.restrict{ border-color:var(--warn); }
+.refuse h6,.restrict h6{ margin:0 0 8px; font-size:1.05em; font-weight:600; color:var(--bad-txt); }
+.restrict h6{ color:var(--warn); }
+.refuse p,.restrict p{ margin:0 0 8px; font-size:.95em; }
+.refuse-what{ font-size:.92em; line-height:1.7; padding:8px 10px; border-radius:4px;
+  background:var(--panel-2); margin-block-end:8px; }
+.refuse-note{ color:var(--dim); font-size:.9em; margin:0!important; }
+.choice{ padding:8px 10px; border-radius:4px; background:var(--panel-2); margin-block-end:8px; }
+.choice .opts{ display:flex; flex-wrap:wrap; gap:6px; margin-block-start:7px; }
+
+/* ═══ TABELLE ═════════════════════════════════════════════════════════ */
+.tablewrap{ overflow-x:auto; }
+table{ border-collapse:collapse; width:100%; font-size:14.5px; }
+th,td{ text-align:left; padding:9px 14px 9px 0; border-bottom:1px solid var(--hair);
+  vertical-align:top; }
+th{ font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-2); font-weight:500; border-bottom-color:var(--hair-strong); }
+td.num{ font-family:var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.done{ color:#1c6b38; font-weight:600; }
+@media (prefers-color-scheme:dark){ .done{ color:#63c187 } }
+:root[data-theme="dark"] .done{ color:#63c187 }
+
+.pal{ display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:1px;
+  background:var(--hair); border:1px solid var(--hair); }
+.pal figure{ margin:0; background:var(--sheet-2); }
+.pal .chip{ height:62px; display:block; }
+.pal figcaption{ padding:9px 11px; font-family:var(--mono); font-size:11px; line-height:1.5; }
+.pal figcaption b{ display:block; font-size:12px; font-weight:600; }
+.pal figcaption span{ color:var(--ink-2); }
+.ratio{ display:inline-block; margin-top:4px; padding:1px 6px; border-radius:3px;
+  font-size:10.5px; border:1px solid var(--hair-strong); }
+.ratio.pass{ color:#1c6b38; border-color:#1c6b38; }
+.ratio.fail{ color:#a3252f; border-color:#a3252f; }
+@media (prefers-color-scheme:dark){ .ratio.pass{ color:#63c187; border-color:#2e6b46 }
+  .ratio.fail{ color:#e8828c; border-color:#8a3a42 } }
+:root[data-theme="dark"] .ratio.pass{ color:#63c187; border-color:#2e6b46 }
+:root[data-theme="dark"] .ratio.fail{ color:#e8828c; border-color:#8a3a42 }
+
+.note{ border-left:2px solid var(--mark); padding:2px 0 2px 16px; margin:22px 0;
+  color:var(--ink-2); }
+.note b{ color:var(--ink); }
+ul.plain{ list-style:none; padding:0; margin:0; }
+ul.plain li{ padding:11px 0; border-bottom:1px solid var(--hair); display:flex; gap:16px;
+  align-items:baseline; }
+ul.plain li span:first-child{ font-family:var(--mono); font-size:11px; color:var(--ink-2);
+  min-width:104px; letter-spacing:.06em; text-transform:uppercase; flex:none; }
+.inv{ border-top:1px solid var(--hair); padding:20px 0; display:grid;
+  grid-template-columns:34px minmax(0,1fr); gap:0 18px; }
+.inv .k{ font-family:var(--mono); font-size:22px; color:var(--mark); line-height:1;
+  font-weight:600; }
+.inv h3{ margin:0 0 6px; font-size:17px; }
+.inv .claim{ font-size:15px; color:var(--ink-2); margin:0 0 10px; }
+footer{ margin-top:64px; padding-top:20px; border-top:2px solid var(--ink);
+  font-family:var(--mono); font-size:11px; color:var(--ink-2); }
+footer a{ color:var(--mark); }
+
+@media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important } }
+@media (max-width:760px){ .inv{ grid-template-columns:1fr } }
+</style>
+
+<div class="sheet">
+
+<header class="titleblock">
+  <h1>Anteprima grafica <b>v4</b><br>NOESAR Evolution</h1>
+  <div class="meta">
+    <span>Buchi della v3 <b>8 su 8 chiusi</b></span>
+    <span>Destinazioni <b>11</b> · mappa 23→11 completa</span>
+    <span>Criteri <b>UI-001…UI-072</b></span>
+    <span>Stato <b>bozza — nulla installato</b></span>
+  </div>
+</header>
+
+<section class="lede">
+  <p>La v3 aveva l'impianto giusto e il dettaglio a metà. Rileggendola contro la specifica erano
+  saltati fuori <b>otto buchi</b>. Questa versione <b>li chiude tutti</b>: il banco di lavoro a tre
+  colonne con la sua riga di stato, la casella <b>NON FATTO</b>, la barra superiore rimessa a
+  posto, l'accessibilità intera — <b>compreso il layout da destra a sinistra, che qui funziona
+  davvero</b> — la forma da tastiera per ogni capacità, la schermata iniziale completa e la
+  metrica del prodotto finalmente raccolta.</p>
+</section>
+
+<section id="chiusi">
+  <div class="eyebrow">Rilettura contro la specifica</div>
+  <h2>Gli otto buchi, uno per uno</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Mancava</th><th>Adesso</th><th>Dove si prova</th></tr></thead>
+    <tbody>
+      <tr><td>Cinque destinazioni senza casa</td>
+          <td class="done">mappa 23→11 completa</td>
+          <td>compiti programmati in Home · strumenti e plugin nel navigatore del banco ·
+              <b>Sicurezza e conformità</b> come sezione nuova · «informazioni» dentro NOESAR
+              Evolution</td></tr>
+      <tr><td>Banco di lavoro a due colonne</td>
+          <td class="done">tre colonne + riga di stato</td>
+          <td>navigatore · banco a nove schede · terminale multiplo persistente · colonna agente
+              completa</td></tr>
+      <tr><td>Casella <code>NON FATTO</code> assente</td>
+          <td class="done">scheda <b>chiusura</b></td>
+          <td>non può essere vuota senza dirlo, ed elenca anche il rischio residuo</td></tr>
+      <tr><td>Barra superiore senza progetto, lingua, fuso</td>
+          <td class="done">rimessi</td>
+          <td>la copertura di verifica si <b>aggiunge</b>, non li rimpiazza</td></tr>
+      <tr><td>Accessibilità: 2 voci su 8</td>
+          <td class="done">8 su 8</td>
+          <td>testo · zoom · animazioni · regione live · lingua e fuso automatici · IANA ·
+              <b>RTL provalo col selettore</b></td></tr>
+      <tr><td><code>CE-020</code> non soddisfatto</td>
+          <td class="done">tastiera e TUI su tutto</td>
+          <td>ogni azione delle sessioni ha un tasto e un comando; il modale si conferma da
+              tastiera</td></tr>
+      <tr><td>Schermata iniziale incompleta</td>
+          <td class="done">completa</td>
+          <td>sei azioni d'ingresso · dieci obiettivi · programmati · salute · strumenti</td></tr>
+      <tr><td><code>CE-024</code> non raccolta</td>
+          <td class="done">misurata e mostrata</td>
+          <td>tempo di revisione per cambiamento accettato, in Home e nella chiusura</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="provino">
+  <div class="eyebrow">Provino interattivo</div>
+  <h2>Tutto vivo, anche l'accessibilità</h2>
+
+  <div class="controls">
+    <label class="ctl"><span>Barra</span>
+      <div class="seg" id="segRail">
+        <button data-v="full" aria-pressed="true">completa</button>
+        <button data-v="icons" aria-pressed="false">icone</button>
+        <button data-v="off" aria-pressed="false">via</button>
+      </div></label>
+    <label class="ctl"><span>Pannello</span>
+      <div class="seg" id="segPanel">
+        <button data-v="docked" aria-pressed="true">agganciato</button>
+        <button data-v="floating" aria-pressed="false">flottante</button>
+        <button data-v="off" aria-pressed="false">via</button>
+      </div></label>
+    <label class="ctl"><span>Direzione</span>
+      <div class="seg" id="segDir">
+        <button data-v="ltr" aria-pressed="true">sinistra→destra</button>
+        <button data-v="rtl" aria-pressed="false">destra→sinistra</button>
+      </div></label>
+    <label class="ctl"><span>Testo</span>
+      <div class="seg" id="segText">
+        <button data-v="0.9" aria-pressed="false">S</button>
+        <button data-v="1" aria-pressed="true">M</button>
+        <button data-v="1.15" aria-pressed="false">L</button>
+        <button data-v="1.3" aria-pressed="false">XL</button>
+      </div></label>
+    <label class="ctl"><span>Esempio di ricerca</span>
+      <div class="seg" id="segRic">
+        <button data-v="scarpe" aria-pressed="true">normale</button>
+        <button data-v="bomba" aria-pressed="false">rifiutata</button>
+        <button data-v="armi" aria-pressed="false">ristretta</button>
+      </div></label>
+    <label class="ctl"><span>Approvazioni</span>
+      <div class="seg" id="segAppr">
+        <button data-v="0" aria-pressed="true">zero</button>
+        <button data-v="1" aria-pressed="false">una</button>
+      </div></label>
+    <label class="ctl"><span>Voce</span>
+      <div class="seg" id="segVoice">
+        <button data-v="0" aria-pressed="true">spenta</button>
+        <button data-v="1" aria-pressed="false">accesa</button>
+      </div></label>
+    <label class="ctl"><span>Tema — nove + il tuo</span>
+      <div class="swatches" id="swThemes"></div>
+    </label>
+  </div>
+
+  <div class="stagewrap">
+    <div class="device" id="device" data-rail="full" data-panel="docked" data-motion="normali"
+         dir="ltr" tabindex="0">
+      <div class="d-top">
+        <div class="d-brand">NOESAR <b>Evolution</b></div>
+        <div class="d-search"><span>◍</span><span>Cerca o scrivi un comando…</span><kbd>⌘K</kbd></div>
+        <div class="d-facts">
+          <span class="d-chip">progetto <b>Quantum Bridge</b> ⌄</span>
+          <span class="d-chip">modello <b>Nebula 3.1 · locale</b> ⌄</span>
+          <span class="cover" id="cover" title="Copertura di verifica"></span>
+          <span class="d-chip d-priv">✓ Solo locale</span>
+          <span class="d-chip" id="chipLang">🌐 Italiano ⌄</span>
+          <span class="d-chip">🕐 Europe/Rome</span>
+        </div>
+        <div class="d-avatar">A</div>
+      </div>
+
+      <div class="d-body">
+        <nav class="d-rail" id="rail" aria-label="Destinazioni"></nav>
+        <div class="d-main">
+          <main class="d-canvas" id="canvas"></main>
+          <div id="status"></div>
+        </div>
+        <aside class="d-panel" id="panel" aria-label="Pannello contestuale"></aside>
+      </div>
+
+      <div class="d-strip" id="strip"></div>
+      <div class="sr" role="status" aria-live="polite" id="live"></div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px;font-size:14px;color:var(--ink-2)">
+    <b>Da provare:</b> <kbd>[</kbd> <kbd>]</kbd> chiudono la barra · in
+    <b>Impostazioni → Sessioni</b> le frecce scorrono, <kbd>a</kbd> archivia, <kbd>Canc</kbd>
+    elimina, <kbd>Spazio</kbd> seleziona, e <kbd>Invio</kbd> conferma il modale ·
+    <b>Direzione destra→sinistra</b> ribalta davvero il layout, non lo simula ·
+    <b>Testo</b> scala tutta l'interfaccia perché non c'è un solo px fisso nel contenuto.
+  </p>
+</section>
+
+<section id="ricerca">
+  <div class="eyebrow">Destinazione nuova — la dodicesima</div>
+  <h2>Ricerca: un compito, non una casella</h2>
+  <p>Ti do subito la cosa che non ti piacerà: <b>eravamo a undici e questa fa dodici</b>. Non l'ho
+  nascosta dentro un'altra pagina per far tornare il conto — la ricerca è un posto dove <i>decidi</i>
+  di andare, quindi è una destinazione. Ma il numero che avevamo difeso cambia, e la decisione è
+  tua.</p>
+
+  <h3>Come si comporta</h3>
+  <p>Non è una barra di ricerca: è la stessa idea del resto del prodotto — <b>obiettivo più
+  criteri</b>. «Scarpe sportive estive» è l'obiettivo; «prezzo», «comodità», «nero e rosso» sono
+  criteri, e restano visibili come etichette che puoi togliere. Il risultato è un <b>rapporto</b>
+  con un <b>link provvisorio</b>, che scade e si revoca.</p>
+
+  <div class="note">
+    <p><b>Il link provvisorio è la parte che va progettata bene, non quella facile.</b> Un indirizzo
+    difficile da indovinare <i>non</i> è una protezione: il rapporto può contenere fatti tuoi.
+    Quindi il link, di suo, <b>non è pubblico</b> — serve una sessione su questa installazione.
+    Condividerlo fuori è un atto separato, con la sua scadenza e il suo avviso.</p>
+  </div>
+
+  <h3>Perché queste e non le altre — con l'evidenza, non con un voto</h3>
+  <p>La parte che chiedevi («perché sceglierle in base alle valutazioni») è anche la più facile da
+  fare male, perché <b>le recensioni si comprano</b>. Il rapporto quindi non dice «4,6 stelle»: dice
+  <b>quante recensioni, su quanto tempo, quante da acquisto verificato</b>, e segnala quando la
+  distribuzione è sospetta. Nell'esempio il candidato col voto <i>più alto</i> è quello con
+  l'evidenza <i>più debole</i> — 31 recensioni su 38 nelle stesse due settimane — e il rapporto lo
+  dice invece di premiarlo.</p>
+  <p>Ogni riga del «perché» è etichettata per <b>tipo</b>: fatto dalla fonte, aggregato misurato,
+  inferenza mia, e <b>cosa non ho verificato</b>. E due impegni che valgono più di una funzione:
+  <b>i prezzi portano l'ora</b> in cui sono stati letti, perché invecchiano; e <b>nessun link è di
+  affiliazione</b> — se un risultato fosse mai pagato, il rapporto lo direbbe su quella riga.</p>
+
+  <h3>La sicurezza — e perché non è una lista di parole vietate</h3>
+  <p>Qui devo essere netto su una cosa, perché il progetto ha già deciso il contrario di quello che
+  verrebbe naturale: <b>una denylist testuale non funziona</b>, ed è battuta da un sinonimo,
+  un'altra lingua o una perifrasi. Il gate classifica <b>l'intento e l'effetto richiesto</b>, e
+  quando scatta <b>nomina la categoria</b>: un rifiuto senza nome è indistinguibile da un guasto.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Categoria</th><th>Esito</th><th>Chi può cambiarla</th></tr></thead>
+    <tbody>
+      <tr><td><b>Sfruttamento di minori</b></td>
+          <td>rifiuto assoluto · nessun risultato · nessuna riformulazione suggerita · registrato</td>
+          <td><b>nessuno</b> — non aggirabile da nessun ruolo, nemmeno dall'Owner</td></tr>
+      <tr><td>Istruzioni per un danno fisico<br><small>armi, esplosivi, veleni, incendi</small></td>
+          <td>rifiuto delle <b>istruzioni operative</b>; l'argomento resta accessibile</td>
+          <td>solo con motivazione registrata</td></tr>
+      <tr><td>Danno ad animali</td><td>rifiuto delle istruzioni per ferire o uccidere</td>
+          <td>solo con motivazione registrata</td></tr>
+      <tr><td>Acquisto regolamentato<br><small>armi, farmaci, sostanze</small></td>
+          <td><b>ristretta</b>: il prodotto chiede cosa ti serve invece di indovinare</td>
+          <td>impostabile</td></tr>
+      <tr><td>Autolesionismo</td><td>risposta di sostegno con contatti, mai istruzioni</td>
+          <td>impostabile solo verso il più restrittivo</td></tr>
+      <tr><td>Contenuti per adulti</td><td>filtrati — <b>legale ma restringibile</b>, spento di
+          default</td><td>impostabile per installazione e per account</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p style="margin-top:14px"><b>Tre esiti e non due.</b> Con solo «sì» e «no» ogni ambiguità
+  diventa un errore: o rifiuti una domanda legittima, o rispondi a quella sbagliata. Il terzo esito
+  — <b>chiedi</b> — è lo stesso stadio 3 del ciclo di lavoro. «Dove comprare armi» non è una
+  domanda vietata: diventa <i>requisiti per la licenza</i>, <i>armerie autorizzate</i>,
+  <i>normativa su trasporto e custodia</i> — oppure viene rifiutata, se ciò che vuoi è aggirare i
+  controlli. Non è l'argomento a essere vietato: è l'<b>effetto</b>.</p>
+
+  <p><b>Due porte, non una.</b> Il controllo gira <b>prima</b> che qualcosa esca (così nessuna
+  query parte col tuo nome sopra) <b>e</b> sul contenuto che torna, prima di mostrarlo — perché ciò
+  che torna non è ciò che hai chiesto. Un gate solo sull'ingresso lo aggira chiunque sappia cosa
+  cercare.</p>
+
+  <p>E una cosa che il prodotto ha già come regola e che qui vale identica: <b>la query è costruita
+  dal motore</b>, e nessun tuo documento, file o fatto compare in ciò che esce. Nel provino il
+  pannello mostra <b>alla lettera</b> la stringa uscita, così non devi crederci sulla parola.</p>
+</section>
+
+<section id="banco">
+  <div class="eyebrow">Il buco più grande</div>
+  <h2>Il banco di lavoro, adesso intero</h2>
+  <p>La specifica lo descrive a tre colonne con una riga di stato propria. La v3 ne aveva due e
+  nessuna riga di stato. Il ricongiungimento è questo: il <b>navigatore</b> vive dentro il banco,
+  la colonna <b>agente</b> è il pannello contestuale, e la <b>riga di stato</b> sta sopra la
+  striscia di approvazione — sono due cose diverse e adesso si vedono entrambe.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Regione</th><th>Contenuto</th></tr></thead>
+    <tbody>
+      <tr><td>Navigatore</td><td>progetti · recenti · sessioni · compiti · agenti · strumenti ·
+        plugin · cronologia · preferiti</td></tr>
+      <tr><td>Banco (schede)</td><td>ombra · editor · diff · test · log · terminale · anteprima ·
+        mappa · documentazione · problemi · <b>chiusura</b></td></tr>
+      <tr><td>Terminale</td><td>multiplo e persistente — build, test, server, log — regione
+        propria, non una scheda che sparisce</td></tr>
+      <tr><td>Agente</td><td>conversazione · piano a 16 stadi · ipotesi ed evidenza · attività
+        degli strumenti · file letti e scritti · comandi eseguiti · richieste di autorità ·
+        sotto-agenti · rischio residuo</td></tr>
+      <tr><td>Riga di stato</td><td>stadio · file · test · warning · processi · scostamento dal
+        remoto · token · costo · tempo · rete · sandbox · <b>token di autorità vivi</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="accessibilita">
+  <div class="eyebrow">Requisito di costruzione, non impostazione</div>
+  <h2>Accessibilità: otto voci su otto</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>ID</th><th>Criterio</th><th>Dove</th></tr></thead>
+    <tbody>
+      <tr><td class="num">UI-040</td><td>Dimensione del testo regolabile su quattro passi</td>
+        <td>selettore <b>Testo</b> qui sopra e Impostazioni → Aspetto</td></tr>
+      <tr><td class="num">UI-041</td><td>Zoom dell'interfaccia indipendente dal testo</td>
+        <td>Impostazioni → Aspetto</td></tr>
+      <tr><td class="num">UI-042</td><td>Riduzione delle animazioni come <b>impostazione</b>, non
+        solo come preferenza di sistema</td><td>Impostazioni → Aspetto</td></tr>
+      <tr><td class="num">UI-043</td><td>Regione live che annuncia l'output in streaming
+        <b>senza inondarlo</b>: una sintesi per evento, non un token per volta</td>
+        <td>attiva nel provino — annuncia i cambi di destinazione e l'esito delle conferme</td></tr>
+      <tr><td class="num">UI-044</td><td>Rilevamento automatico di lingua e fuso, con
+        sovrascrittura manuale sempre disponibile</td><td>barra superiore + Impostazioni →
+        Lingua</td></tr>
+      <tr><td class="num">UI-045</td><td>Timestamp memorizzati in UTC e resi con identificatori
+        <b>IANA</b>; pianificazioni sicure rispetto all'ora legale</td><td>Impostazioni →
+        Lingua</td></tr>
+      <tr><td class="num">UI-046</td><td><b>Layout da destra a sinistra</b> — proprietà logiche,
+        nessuno specchio simulato</td><td>selettore <b>Direzione</b> qui sopra</td></tr>
+      <tr><td class="num">UI-047</td><td>Tema ad alto contrasto vero fra i nove</td>
+        <td>selettore <b>Tema</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note">
+    <p><b>Perché l'RTL è disegnato adesso e non «dopo».</b> In una sessione precedente ha già
+    prodotto un difetto reale: un elemento nascosto spostandolo fuori schermo a sinistra, che in
+    RTL allarga l'area scrollabile e rompe proprio il criterio che doveva servire. Il rimedio non è
+    ricordarselo — è <b>non usare mai `left`/`right` nel foglio di stile</b>: qui tutto è
+    `inline-start` e `inline-end`, e il selettore Direzione lo dimostra su ogni schermata.</p>
+  </div>
+</section>
+
+<section id="tastiera">
+  <div class="eyebrow">CE-020, severità A</div>
+  <h2>Ogni capacità ha una forma da tastiera — e un comando</h2>
+  <p>Il criterio dice: <i>ogni capacità esercitata dal TUI, senza mouse</i>. La v3 aveva disegnato
+  la gestione delle sessioni <b>solo a mouse</b>, quindi avrebbe fallito sul primo criterio che
+  avevamo scritto noi.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Azione</th><th>Tastiera</th><th>Comando TUI</th></tr></thead>
+    <tbody>
+      <tr><td>Scorrere le sessioni</td><td class="num">↑ ↓</td><td class="num">/sessioni</td></tr>
+      <tr><td>Aprire</td><td class="num">Invio</td><td class="num">/sessione &lt;n&gt;</td></tr>
+      <tr><td>Archiviare</td><td class="num">a</td><td class="num">/archivia &lt;n&gt;</td></tr>
+      <tr><td>Eliminare</td><td class="num">Canc</td><td class="num">/elimina &lt;n&gt;</td></tr>
+      <tr><td>Selezionare</td><td class="num">Spazio</td><td class="num">/seleziona &lt;n…&gt;</td></tr>
+      <tr><td>Selezionare la pagina</td><td class="num">Ctrl+A</td><td class="num">/seleziona --pagina</td></tr>
+      <tr><td>Archivio · pagina avanti/indietro</td><td class="num">→ ←</td><td class="num">/archivio --pagina &lt;n&gt;</td></tr>
+      <tr><td>Ripristinare</td><td class="num">r</td><td class="num">/ripristina &lt;n&gt;</td></tr>
+      <tr><td>Confermare / annullare</td><td class="num">Invio / Esc</td><td class="num">[s/N]</td></tr>
+      <tr><td>Barra laterale</td><td class="num">[ ]</td><td class="num">— (il TUI è già a piena larghezza)</td></tr>
+      <tr><td>Pannelli a schermo intero</td><td class="num">F1 … F9</td><td class="num">/pannello &lt;nome&gt;</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin-top:12px"><b>La conferma non salta mai</b>, nemmeno da tastiera: <kbd>Canc</kbd>
+  apre il modale, non elimina. E il pulsante pericoloso non è quello preselezionato — <kbd>Invio</kbd>
+  conferma solo dopo che l'hai raggiunto.</p>
+</section>
+
+<section id="metrica">
+  <div class="eyebrow">CE-024</div>
+  <h2>La metrica del prodotto, finalmente raccolta</h2>
+  <p>La metrica dichiarata è il <b>tempo di revisione umana per cambiamento accettato</b>. Nella v3
+  non la misurava nessuno — cioè avevamo lo stesso difetto di una protezione dichiarata che nessuno
+  applica.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>ID</th><th>Criterio</th></tr></thead>
+    <tbody>
+      <tr><td class="num">UI-070</td><td>L'interfaccia misura il tempo fra «il risultato è pronto in
+        ombra» e «l'umano ha deciso», per ogni cambiamento</td></tr>
+      <tr><td class="num">UI-071</td><td>La misura è mostrata in Home come tendenza e nella chiusura
+        del singolo cambiamento — mai come voto, sempre come <b>tempo</b></td></tr>
+      <tr><td class="num">UI-072</td><td>Un cambiamento <b>rifiutato</b> conta come tempo speso e
+        non viene escluso dalla media: escluderlo sarebbe scegliere il denominatore che conviene</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="palette">
+  <div class="eyebrow">Colore</div>
+  <h2>Nove temi, il colore libero, e la misura</h2>
+  <div class="pal">
+    <figure><span class="chip" style="background:#3958c3"></span>
+      <figcaption><b>#3958c3</b><span>indaco · accento pieno</span>
+        <span class="ratio pass">6,2:1 col bianco sopra</span>
+        <span class="ratio fail">2,9:1 come testo</span></figcaption></figure>
+    <figure><span class="chip" style="background:#6b82d2"></span>
+      <figcaption><b>#6b82d2</b><span>indaco testuale — derivato</span>
+        <span class="ratio pass">4,9:1</span></figcaption></figure>
+    <figure><span class="chip" style="background:#44a259"></span>
+      <figcaption><b>#44a259</b><span>verde · sicuro</span>
+        <span class="ratio pass">5,6:1</span></figcaption></figure>
+    <figure><span class="chip" style="background:#c5882c"></span>
+      <figcaption><b>#c5882c</b><span>ambra · autorità</span>
+        <span class="ratio pass">5,9:1</span></figcaption></figure>
+    <figure><span class="chip" style="background:#34aace"></span>
+      <figcaption><b>#34aace</b><span>ciano · informazione</span>
+        <span class="ratio pass">6,7:1</span></figcaption></figure>
+    <figure><span class="chip" style="background:#7c56b7"></span>
+      <figcaption><b>#7c56b7</b><span>viola · sandbox</span>
+        <span class="ratio fail">3,3:1 come testo</span></figcaption></figure>
+    <figure><span class="chip" style="background:#9a78d0"></span>
+      <figcaption><b>#9a78d0</b><span>viola testuale — derivato</span>
+        <span class="ratio pass">5,1:1</span></figcaption></figure>
+    <figure><span class="chip" style="background:#081018"></span>
+      <figcaption><b>#081018</b><span>fondo</span>
+        <span class="ratio pass">15,0:1 col testo</span></figcaption></figure>
+  </div>
+  <p style="margin-top:14px">Il colore lo sceglie la persona in <b>Impostazioni → Aspetto</b>; il
+  contrasto è misurato mentre si sceglie e la variante testuale è derivata fino a 4,5:1. I sette
+  stati semantici non cambiano mai significato e portano sempre <b>glifo + parola</b>.</p>
+</section>
+
+<section id="perche">
+  <div class="eyebrow">Perché uno dovrebbe sceglierlo</div>
+  <h2>Il collo di bottiglia non è più scrivere. È fidarsi.</h2>
+  <div class="figures">
+    <div class="fig"><b>84%</b><span>lo usa tutti i giorni</span><i>adozione</i></div>
+    <div class="fig"><b>3%</b><span>si fida molto di quello che riceve</span><i>fiducia</i></div>
+    <div class="fig"><b>66%</b><span>«quasi giusto, ma non del tutto» — la frustrazione numero
+      uno</span><i>qualità</i></div>
+    <div class="fig"><b>38%</b><span>rivedere codice generato costa <b>più</b> che rivedere quello
+      di un collega</span><i>il costo nascosto</i></div>
+    <div class="fig"><b>65%</b><span>dei fallimenti viene dal contesto che si degrada, <b>non</b>
+      dal modello</span><i>la causa vera</i></div>
+    <div class="fig"><b>73→33%</b><span>rispetto dei vincoli fra il turno 5 e il turno 16</span>
+      <i>context rot, misurato</i></div>
+  </div>
+
+  <div class="inv"><div class="k">I</div><div>
+    <h3>Non ti chiedo il permesso. Ti mostro cosa è già successo.</h3>
+    <p class="claim">Il lavoro è già girato in ombra: diff vero, test eseguiti, tempo, rischio. Il
+    pulsante dice <b>Promuovi</b>, non <i>Consenti</i>.</p></div></div>
+
+  <div class="inv"><div class="k">II</div><div>
+    <h3>Un numero che dichiara la propria ignoranza</h3>
+    <p class="claim">La <b>copertura di verifica</b> in alto, sempre: quanto è stato ricalcolato,
+    quanto resta inferenza, e <b>quali</b> affermazioni sono rimaste fuori.</p></div></div>
+
+  <div class="inv"><div class="k">III</div><div>
+    <h3>Riavvolgi — e riparti da lì con una decisione diversa</h3>
+    <p class="claim">Il contesto è uno stato, non una trascrizione: si torna a un punto e si
+    <b>rama</b>, senza riesecuzione. È la risposta diretta al 73→33%.</p></div></div>
+
+  <div class="inv"><div class="k">IV</div><div>
+    <h3>La voce come torre di controllo, mai come chiacchiera</h3>
+    <p class="claim">Dice lo stato senza che tu guardi e fa autorizzare a mani libere. <b>Non può
+    allargare l'autorità</b>: concede solo dentro i limiti già calcolati, la revoca è sempre
+    accettata, e se non ha capito ripete.</p></div></div>
+</section>
+
+<section id="aperto">
+  <div class="eyebrow">Dove siamo</div>
+  <h2>Deciso, e cosa resta</h2>
+  <ul class="plain">
+    <li><span>Chiuso</span><span>Nome · undici destinazioni · una sola pagina Impostazioni ·
+      pannello <b>per destinazione</b> · colore libero · sessioni · <b>gli otto buchi della
+      v3</b>.</span></li>
+    <li><span>Ordine</span><span><b>Prima la grafica, poi la costruzione</b>; e dentro la grafica
+      <b>struttura → token → palette e temi</b>. Il layer di token oggi non esiste: senza, i nove
+      temi e il selettore libero non sono implementabili.</span></li>
+    <li><span>Aperto</span><span>La <b>voce</b>: disegnata, non pianificata né stimata. Serve una
+      tua decisione prima che diventi lavoro.</span></li>
+    <li><span>Aperto</span><span>I <b>pannelli staccabili</b> in finestre proprie per il secondo
+      monitor: nella specifica, rimandabili.</span></li>
+    <li><span>Da rifare</span><span>Tutti i contrasti sono <b>calcolati</b>, non misurati
+      dall'audit del progetto; i 26 criteri oggi verdi valgono sull'interfaccia attuale e la
+      ristrutturazione li sposta.</span></li>
+    <li><span>Deploy</span><span>Nulla è installato. Richiede la tua autorizzazione
+      esplicita.</span></li>
+  </ul>
+</section>
+
+<footer>
+  Bozza di lavoro · palette estratta dal riferimento approvato · contrasti calcolati, da rimisurare
+  con l'audit del progetto · questa pagina non è stata aperta in un browser su quell'host: non ce
+  n'è uno installato.<br><br>
+  Fonti dei numeri:
+  <a href="https://byteiota.com/developer-ai-trust-crisis-84-use-29-trust-in-2026/">Developer AI Trust Crisis 2026</a> ·
+  <a href="https://futurumgroup.com/insights/ai-code-review-hits-a-wall-why-speed-without-trust-risks-engineering-chaos/">AI Code Review Trust Gap</a> ·
+  <a href="https://www.morphllm.com/context-rot">Context Rot</a> ·
+  <a href="https://redis.io/blog/context-rot/">Context rot explained</a> ·
+  <a href="https://agentmarketcap.ai/blog/2026/04/11/agent-context-engineering-sliding-windows-memory-2026">Agent Context Engineering 2026</a> ·
+  <a href="https://www.assemblyai.com/blog/orchestration-tools-ai-voice-agents">Voice agent orchestration 2026</a>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ── misura del colore (WCAG) ────────────────────────────────────────── */
+  function lum(hex){
+    var c = hex.replace("#",""); if(c.length === 3) c = c.replace(/./g,"$&$&");
+    var v = [0,2,4].map(function(i){
+      var x = parseInt(c.substr(i,2),16)/255;
+      return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4);
+    });
+    return 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+  }
+  function ratio(a,b){
+    var l1 = lum(a), l2 = lum(b);
+    return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+  }
+  function mix(hex, amt, verso){
+    var c = hex.replace("#",""); if(c.length === 3) c = c.replace(/./g,"$&$&");
+    var p = [0,2,4].map(function(i){ return parseInt(c.substr(i,2),16); })
+                   .map(function(x){ return Math.round(x + (verso - x)*amt); });
+    return "#" + p.map(function(x){ return ("0"+x.toString(16)).slice(-2); }).join("");
+  }
+  function readable(hex, bg){
+    var verso = lum(bg) > 0.35 ? 0 : 255, out = hex, step = 0;
+    while(ratio(out,bg) < 4.5 && step < 20){ step++; out = mix(hex, step*0.05, verso); }
+    return out;
+  }
+
+  var THEMES = [
+    { id:"indaco", nome:"Indaco (predefinito)", accent:"#3958c3", bg:"#081018", panel:"#0c1824", panel2:"#0f1e2e", line:"#1c3047", txt:"#dbe4f0", dim:"#7d8ba0" },
+    { id:"ardesia", nome:"Ardesia", accent:"#2b7f9c", bg:"#07121a", panel:"#0b1a24", panel2:"#0e2130", line:"#1b3444", txt:"#d9e6ee", dim:"#7b8e9c" },
+    { id:"alga", nome:"Alga", accent:"#1f7a6d", bg:"#061312", panel:"#0a1c1b", panel2:"#0d2422", line:"#183833", txt:"#d8e8e4", dim:"#7a918c" },
+    { id:"rame", nome:"Rame", accent:"#a35c31", bg:"#100c09", panel:"#1a1410", panel2:"#221a14", line:"#3a2b21", txt:"#ece2d8", dim:"#9b8a7c" },
+    { id:"magenta", nome:"Magenta", accent:"#9c3f72", bg:"#100a0e", panel:"#1b1017", panel2:"#23151e", line:"#3b2331", txt:"#efdfe8", dim:"#9c8290" },
+    { id:"acciaio", nome:"Acciaio", accent:"#55698a", bg:"#0b0d11", panel:"#12161d", panel2:"#171d26", line:"#28313e", txt:"#dfe4ec", dim:"#8792a3" },
+    { id:"notte", nome:"Notte", accent:"#2b3f8f", bg:"#04060c", panel:"#080c16", panel2:"#0b1120", line:"#17203a", txt:"#d6dced", dim:"#767f96" },
+    { id:"chiaro", nome:"Chiaro", accent:"#2c4bb0", bg:"#eef1f7", panel:"#ffffff", panel2:"#e7ebf4", line:"#ccd4e4", txt:"#141a26", dim:"#5b6577",
+      sem:{ "--ok-txt":"#1c6b38", "--warn":"#8a5b12", "--bad-txt":"#a3252f", "--run-txt":"#1d4f9c", "--sbx-txt":"#5b3b91" } },
+    { id:"contrasto", nome:"Alto contrasto", accent:"#1a4dff", bg:"#000000", panel:"#000000", panel2:"#101010", line:"#ffffff", txt:"#ffffff", dim:"#e0e0e0",
+      sem:{ "--ok-txt":"#57e08a", "--warn":"#ffc233", "--bad-txt":"#ff8b96", "--run-txt":"#8ab4ff", "--sbx-txt":"#c9a6ff" } }
+  ];
+  var SEM_BASE = { "--ok-txt":"#5fbd74", "--warn":"#c5882c", "--bad-txt":"#d9636e",
+                   "--run-txt":"#6f9ae8", "--sbx-txt":"#9a78d0" };
+
+  var DEST = [
+    { id:"home", g:"⌂", label:"Home" },
+    { id:"chat", g:"◗", label:"Chat" },
+    { id:"ricerca", g:"◎", label:"Ricerca" },
+    { id:"coden", g:"⌁", label:"CodeN Evolution" },
+    { id:"tui", g:"▤", label:"CodeN Evolution TUI" },
+    { id:"progetti", g:"▢", label:"Progetti" },
+    { id:"documenti", g:"▥", label:"Documenti" },
+    { id:"conoscenza", g:"◈", label:"Conoscenza" },
+    { id:"agenti", g:"◍", label:"Agenti" },
+    { id:"flussi", g:"⇉", label:"Flussi di lavoro" },
+    { id:"modelli", g:"▦", label:"Modelli" },
+    { id:"impostazioni", g:"⚙", label:"Impostazioni" }
+  ];
+
+  var STAGES = [["Ricezione",""],["Interpretazione","ATOM"],["Chiarimento",""],["Ricognizione",""],
+    ["Recupero",""],["Ipotesi","ATOM"],["Piano","ATOM"],["Decomposizione","ATOM"],
+    ["Raggio d'azione",""],["Attesa","ATOM"],["Simulazione","ATOM"],["Classificazione","ATOM"],
+    ["Autorizzazione",""],["Esecuzione",""],["Verifica",""],["Chiusura",""]];
+
+  var TITOLI = ["Correzione del parser frontmatter","Revisione del modulo di autenticazione",
+    "Migrazione dello schema 0013","Test mancanti sul lettore","Audit delle dipendenze",
+    "Rifacimento della pagina Documenti","Indagine sul rallentamento in avvio",
+    "Esportazione dell'evidenza","Pulizia dei log applicativi","Controllo di accessibilità",
+    "Riscrittura del comando di ripristino","Analisi del rapporto trimestrale",
+    "Aggiornamento firmato del prodotto","Profilo di divergenza sul repository",
+    "Verifica dei permessi per ruolo","Riordino delle traduzioni","Prova di ripristino da backup",
+    "Compensazione del flusso notturno","Controllo dei segreti nel repository",
+    "Riduzione della memoria in inattività","Ricalcolo della copertura","Riprova della migrazione",
+    "Regressione sul gate di autorità","Sondaggio sui tempi di risposta",
+    "Riscrittura della guida introduttiva","Confronto fra due modelli locali",
+    "Riparazione del contatore di sessione","Indagine su un test intermittente",
+    "Ripulitura dei documenti duplicati","Verifica del contenimento in sandbox",
+    "Prova del percorso di ritorno indietro"];
+  var PROG = ["Quantum Bridge","Atlas Reader","Ledger Export","Sito pubblico"];
+  var QUANDO = ["12 minuti fa","1 ora fa","3 ore fa","ieri, 18:40","ieri, 09:12","2 giorni fa",
+    "3 giorni fa","4 giorni fa","6 giorni fa","1 settimana fa","2 settimane fa","3 settimane fa"];
+  var SESS = TITOLI.map(function(t,i){
+    return { id:"s"+(1000+i), titolo:t, prog:PROG[i%4], quando:QUANDO[Math.min(i,11)],
+             stato: i < 20 ? "attiva" : "archiviata", sel:false };
+  });
+  function attive(){ return SESS.filter(function(s){ return s.stato === "attiva"; }); }
+  function archiviate(){ return SESS.filter(function(s){ return s.stato === "archiviata"; }); }
+
+  var S = { dest:"home", rail:"full", panel:"docked", appr:0, voice:0, theme:"indaco",
+            custom:null, setSec:"sessioni", archPage:0, modal:null, dir:"ltr", text:1, ric:"scarpe",
+            zoom:100, motion:"normali", cursor:0 };
+
+  var device = document.getElementById("device"),
+      rail   = document.getElementById("rail"),
+      canvas = document.getElementById("canvas"),
+      panel  = document.getElementById("panel"),
+      strip  = document.getElementById("strip"),
+      status = document.getElementById("status"),
+      cover  = document.getElementById("cover"),
+      live   = document.getElementById("live");
+
+  function annuncia(t){ live.textContent = t; }   /* UI-043 — una sintesi, non un fiume */
+
+  /* ── frammenti ───────────────────────────────────────────────────────── */
+  function row(g,t,s,r){
+    return '<div class="row"><span class="glyph">'+g+'</span><span class="t"><b>'+t+'</b>'+
+      (s?'<small>'+s+'</small>':'')+'</span><span class="r">'+(r||"")+'</span></div>';
+  }
+  function taskRow(t,s,pct,tone){
+    var right = tone==="ok" ? '<span class="pill ok">✓ fatto</span>'
+      : tone==="dim" ? '<span class="pill dim">○ in coda</span>'
+      : '<span class="bar"><i style="width:'+pct+'%"></i></span>';
+    return '<div class="row"><span class="glyph">◐</span><span class="t"><b>'+t+'</b><small>'+s+
+      '</small></span><span class="r">'+right+'</span></div>';
+  }
+  function card(n,sub,val,tone,pill){
+    return '<div class="card"><h6>'+n+'</h6><div style="font-size:.9em;color:var(--dim)">'+sub+
+      '</div>'+(val?'<div style="font-family:var(--mono);font-size:1.2em;margin:7px 0 8px">'+val+
+      '</div>':'<div style="height:8px"></div>')+'<span class="pill '+tone+'">'+pill+'</span></div>';
+  }
+  function stagesHtml(now){
+    return '<div class="stages">' + STAGES.map(function(s,i){
+      var n = i+1, cls = n < now ? "done" : (n === now ? "now" : (n === 13 ? "gate" : ""));
+      return '<div class="stage '+cls+'"><span class="n">'+n+'</span><span>'+s[0]+'</span>'+
+        (s[1] ? '<span class="atom">'+s[1]+'</span>' : '') + '</div>';
+    }).join("") + '</div>';
+  }
+  function toolbar(items){
+    return '<div class="toolbar">' + items.map(function(i){
+      return i === "|" ? '<span class="sp"></span>'
+        : '<button class="btn'+(i[1]?" "+i[1]:"")+'">'+i[0]+'</button>';
+    }).join("") + '</div>';
+  }
+
+  /* ── destinazioni ────────────────────────────────────────────────────── */
+  var VIEWS = {};
+
+  VIEWS.home = { panel:"docked", canvas:
+    '<h4>Bentornato, Alessandro</h4><p class="sub">Cosa vuoi ottenere oggi?</p>'+
+    '<div class="entry">'+
+      '<button class="pri">Riprendi<br>l\'ultima sessione</button>'+
+      '<button>Apri<br>progetto</button>'+
+      '<button>Nuovo<br>progetto</button>'+
+      '<button>Clona<br>repository</button>'+
+      '<button>Importa<br>archivio</button>'+
+      '<button>Connetti<br>remoto</button>'+
+    '</div>'+
+    '<div class="composer"><div class="ph">Descrivi l\'obiettivo, non i passi…</div>'+
+      '<div class="tools"><span>◎</span><span>◍</span><span>⌁</span>'+
+      '<button class="send">Invia ▸</button></div></div>'+
+    '<div class="quick">'+
+      '<button>Analizza questo repository</button><button>Trova e correggi un difetto</button>'+
+      '<button>Implementa una funzione</button><button>Genera i test mancanti</button>'+
+      '<button>Controlla la sicurezza</button><button>Aggiorna le dipendenze</button>'+
+      '<button>Spiega l\'architettura</button><button>Migliora le prestazioni</button>'+
+      '<button>Prepara una release</button><button>Revisiona le mie modifiche</button>'+
+    '</div>'+
+    '<div class="cards g2">'+
+      '<div class="card"><h6>Lavoro recente<span class="all">tutto</span></h6>'+
+        row("▢","Quantum Bridge","progetto · 2 h fa","riprendi")+
+        row("▥","Rapporto Q1.pdf","documento · 4 h fa","apri")+
+        row("⇉","Onboarding v2","flusso · 6 h fa","esegui")+
+      '</div>'+
+      '<div class="card"><h6>Compiti — attivi e programmati<span class="all">tutto</span></h6>'+
+        taskRow("Analisi rapporto Q1","in corso · documento",65,"run")+
+        taskRow("Segmentazione clienti","in corso · ricerca",42,"run")+
+        '<div class="row"><span class="glyph">◷</span><span class="t"><b>Audit dipendenze</b>'+
+        '<small>programmato · ogni lunedì 06:00 · Europe/Rome</small></span>'+
+        '<span class="r"><span class="pill dim">fra 2 g</span></span></div>'+
+        '<div class="row"><span class="glyph">◷</span><span class="t"><b>Backup verificato</b>'+
+        '<small>programmato · ogni notte 02:30 · sicuro rispetto all\'ora legale</small></span>'+
+        '<span class="r"><span class="pill dim">fra 14 h</span></span></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="cards g4" style="margin-top:9px">'+
+      card("Revisione","<b>CE-024</b> — tempo umano per cambiamento accettato","4m 12s","ok","▼ 38% in 30 g")+
+      card("Salute dei servizi","modello · database · sandbox · pianificatore","4/4","ok","✓ tutti attivi")+
+      card("Strumenti installati","con provenienza verificata","24","warn","⚑ 3 aggiornamenti")+
+      card("Modelli","Nebula 3.1 · pesi sul tuo disco","0,00 €","ok","✓ nessun invio")+
+    '</div>',
+    panelHtml:
+      '<h5>Copertura di verifica</h5>'+
+      '<div style="font-family:var(--mono);font-size:.86em;line-height:1.8;color:var(--dim)">'+
+      '<div><span style="color:var(--ok-txt)">✓ 14</span> affermazioni ricalcolate</div>'+
+      '<div><span style="color:var(--sbx-txt)">◈ 3</span> inferenze dichiarate</div>'+
+      '<div><span style="color:var(--warn)">⚑ 1</span> non misurabile — e quale</div></div>'+
+      '<h5>Fonti</h5>'+ row("▥","Documenti","","124") + row("◈","Conoscenza","","2.341")+
+      row("◍","Ricerca web","","spenta")+
+      '<h5>Permessi</h5>'+ row("◉","Tu","","Owner") + row("◆","Progetti","","limitato")+
+      row("○","Visibilità","","privata") };
+
+  VIEWS.chat = { panel:"off", canvas:
+    '<h4>Chat</h4><p class="sub">Conversazione e basta: nessun piano, nessun gate di autorità, '+
+    'nessun accesso ai file. Il pannello qui parte chiuso.</p>'+
+    '<div class="msg"><div class="who">Tu</div><div class="txt">Cosa dice la nostra politica di '+
+    'ritenzione per i log di audit, e da quando vale?</div></div>'+
+    '<div class="msg"><div class="who">Nebula 3.1 · locale</div><div class="txt">'+
+    'La ritenzione è di 24 mesi per il registro di audit e 90 giorni per i log applicativi.'+
+    '<div class="cite"><b>Contenuto della fonte</b> — «Audit ledger entries are retained for 24 '+
+    'months; application logs for 90 days.»<br><span style="font-family:var(--mono);font-size:.8em">'+
+    'POLITICA_RITENZIONE.md · riga 41</span></div>'+
+    'La data di entrata in vigore non è scritta nel documento.'+
+    '<div class="cite" style="border-color:var(--sbx)"><b>Inferenza del modello</b> — il file è '+
+    'stato creato il 12 maggio, quindi <i>probabilmente</i> vale da allora. Non è un fatto '+
+    'documentato, e non l\'ho contato nella copertura.</div>'+
+    '<div class="prov"><span class="pill ok">✓ 1 citazione ricalcolata</span>'+
+    '<span class="pill sbx">◈ 1 inferenza dichiarata</span>'+
+    '<span class="pill dim">○ 0 fatti tuoi usati</span></div></div></div>'+
+    '<div class="composer" style="margin-top:16px"><div class="ph">Scrivi un messaggio…</div>'+
+    '<div class="tools"><span>◎</span><span>▥</span><button class="send">Invia ▸</button></div></div>',
+    panelHtml:'<h5>Fonti citate</h5>'+row("▥","POLITICA_RITENZIONE.md","riga 41","ricalcolata") };
+
+  /* ── Ricerca sul web ─────────────────────────────────────────────────── */
+  function crit(t){ return '<span class="pill dim">'+t+' ✕</span>'; }
+
+  var RIC = {};
+
+  RIC.scarpe = {
+    canvas:
+      '<h4>Ricerca</h4><p class="sub">Descrivi l\'<b>obiettivo</b> e i <b>criteri</b>: la ricerca '+
+      'esce dal prodotto, quindi te lo dice prima e ti mostra esattamente cosa è uscito.</p>'+
+      '<div class="composer"><div class="ph">Scarpe sportive estive</div>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:9px">'+
+      crit("confronta: prezzo")+crit("confronta: comodità")+crit("colore: nero")+
+      crit("colore: rosso")+'<span class="pill dim" style="border-style:dashed">＋ criterio</span>'+
+      '</div>'+
+      '<div class="tools"><span class="pill sbx">◈ eseguita in sandbox</span>'+
+      '<span class="pill warn">⚑ esce dal prodotto</span>'+
+      '<button class="send">Cerca ▸</button></div></div>'+
+      '<div class="card"><h6>Rapporto pronto<span class="all">7 candidati · 3 scartati</span></h6>'+
+      '<div class="linkbox"><span class="glyph">🔗</span>'+
+      '<span class="t"><b>https://questa-installazione/rapporti/7f3a91</b>'+
+      '<small>link provvisorio · scade fra <b>7 giorni</b> · revocabile · <b>non pubblico</b>: '+
+      'serve una sessione su questa installazione</small></span>'+
+      '<button class="btn pri">Apri</button><button class="btn">Condividi…</button>'+
+      '<button class="btn dgr">Revoca</button></div>'+
+      '<div style="font-size:.86em;color:var(--dim);margin-top:8px">Condividere fuori è un atto '+
+      'separato, con la sua scadenza e il suo avviso: il rapporto può contenere <b>fatti tuoi</b>, '+
+      'e un indirizzo indovinabile non è una protezione.</div></div>'+
+      '<h6 style="margin:14px 0 7px;font-size:1.05em">Il rapporto</h6>'+
+      '<div class="repwrap"><table class="rep"><thead><tr>'+
+      '<th>Candidato</th><th>Prezzo</th><th>Comodità</th><th>Nero/Rosso</th>'+
+      '<th>Qualità dell\'evidenza</th></tr></thead><tbody>'+
+      '<tr class="win"><td><b>Modello A</b><small>consigliata</small></td>'+
+      '<td>119 €<small>verificato 09:14</small></td>'+
+      '<td>4,4 / 5<small>412 recensioni</small></td><td>✓ entrambi</td>'+
+      '<td><span class="pill ok">✓ solida</span><small>412 recensioni su 26 mesi · 71% acquisti '+
+      'verificati · nessun picco anomalo</small></td></tr>'+
+      '<tr><td><b>Modello B</b></td><td>94 €<small>verificato 09:14</small></td>'+
+      '<td>4,6 / 5<small>38 recensioni</small></td><td>✓ solo nero</td>'+
+      '<td><span class="pill warn">⚑ campione insufficiente</span><small>38 recensioni, 31 nelle '+
+      'stesse due settimane — il voto più alto è anche il meno affidabile</small></td></tr>'+
+      '<tr><td><b>Modello C</b></td><td>149 €<small>verificato 09:14</small></td>'+
+      '<td>4,2 / 5<small>1.980 recensioni</small></td><td>✓ entrambi</td>'+
+      '<td><span class="pill ok">✓ solida</span><small>1.980 su 4 anni · 64% verificati</small></td></tr>'+
+      '<tr class="out"><td><b>Modello D</b><small>scartato</small></td><td>—</td><td>—</td>'+
+      '<td>✕ nessuno dei due</td><td><span class="pill dim">○ fuori criterio</span>'+
+      '<small>scartato per il tuo vincolo sul colore, non per giudizio</small></td></tr>'+
+      '</tbody></table></div>'+
+      '<div class="card" style="margin-top:11px"><h6>Perché il Modello A e non gli altri</h6>'+
+      '<div class="why"><b>Fatto dalla fonte</b> — 119 €, disponibile in nero e rosso, reso 60 '+
+      'giorni. <span class="src">tre negozi concordi, letti alle 09:14</span></div>'+
+      '<div class="why agg"><b>Aggregato misurato</b> — 4,4/5 su 412 recensioni distribuite su 26 '+
+      'mesi, 71% da acquisto verificato. Il Modello B ha un voto più alto <i>ma</i> 31 delle sue 38 '+
+      'recensioni cadono in due settimane: è il segnale che rende quel voto non confrontabile.</div>'+
+      '<div class="why inf"><b>Inferenza mia</b> — con «comodità» pesata più del prezzo, A vince su '+
+      'C perché costa 30 € meno a parità di criterio soddisfatto. Se pesi il prezzo, vince B — ma '+
+      'solo in nero, e con l\'evidenza debole di cui sopra.</div>'+
+      '<div class="why non"><b>Cosa NON ho verificato</b> — la comodità reale ai tuoi piedi, la '+
+      'disponibilità della tua taglia, e se i prezzi reggono domani. I prezzi hanno l\'ora accanto '+
+      'proprio perché invecchiano.</div>'+
+      '<div class="why noaff">Nessun link è di affiliazione e nessun risultato è stato pagato per '+
+      'stare qui. Se un giorno lo fosse, il rapporto lo direbbe su quella riga.</div></div>',
+    panelHtml:
+      '<h5>Copertura di verifica</h5>'+
+      '<div style="font-family:var(--mono);font-size:.86em;line-height:1.8;color:var(--dim)">'+
+      '<div><span style="color:var(--ok-txt)">✓ 9</span> fatti ricalcolati sulle fonti</div>'+
+      '<div><span style="color:var(--sbx-txt)">◈ 2</span> inferenze dichiarate</div>'+
+      '<div><span style="color:var(--warn)">⚑ 3</span> non verificabili — e quali</div></div>'+
+      '<h5>Cosa è uscito, alla lettera</h5>'+
+      '<div class="egress">scarpe sportive estive nero rosso recensioni prezzo</div>'+
+      '<div style="font-size:.82em;color:var(--dim);margin-top:6px">La query è costruita dal '+
+      'motore. <b>Nessun tuo documento, file o fatto</b> compare in ciò che esce — è verificato '+
+      'con un canary, non promesso.</div>'+
+      '<h5>Fonti lette</h5>'+ row("◎","Tre negozi","prezzo e disponibilità","09:14")+
+      row("◎","Due aggregatori","recensioni","09:14")+
+      row("○","Nessun forum privato","","escluso")+
+      '<h5>Privacy</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div><span style="color:var(--warn)">⚑</span> RETE_USATA — dichiarato</div>'+
+      '<div>rapporto conservato <b>solo qui</b></div>'+
+      '<div>link revocabile in ogni momento</div></div>' };
+
+  RIC.bomba = {
+    canvas:
+      '<h4>Ricerca</h4><p class="sub">La stessa superficie. Il gate è prima della rete, non dopo il '+
+      'risultato.</p>'+
+      '<div class="composer" style="border-color:var(--bad)">'+
+      '<div class="ph">come costruire una bomba artigianale</div>'+
+      '<div class="tools"><span class="pill bad">✕ richiesta rifiutata</span>'+
+      '<button class="send" style="background:var(--panel-2);color:var(--dim)">Cerca ▸</button>'+
+      '</div></div>'+
+      '<div class="refuse"><h6>✕ Rifiutata — categoria: <b>istruzioni operative per un danno '+
+      'fisico</b></h6>'+
+      '<p><b>Nessuna query è stata emessa.</b> Il controllo gira <i>prima</i> che qualcosa esca dal '+
+      'prodotto, quindi non c\'è nessuna richiesta in giro con il tuo nome sopra.</p>'+
+      '<div class="refuse-what"><b>Cosa è stato rifiutato:</b> la produzione di istruzioni '+
+      'operative — procedimento, quantità, innesco, reperimento. Non l\'argomento.<br>'+
+      '<b>Cosa resta disponibile:</b> normativa e sanzioni, storia, chimica accademica generale, '+
+      'sicurezza sul lavoro, bonifica e disinnesco professionale, e come segnalare un ritrovamento '+
+      'alle autorità.</div>'+
+      '<p class="refuse-note">La distinzione è deliberata: un prodotto che rifiuta «quali sono le '+
+      'leggi sugli esplosivi» è rotto, non sicuro.</p></div>'+
+      '<div class="cards g3" style="margin-top:11px">'+
+      card("Registrato","evento, categoria e impronta della richiesta — nel ledger di audit","1","warn","⚑ tracciato")+
+      card("Non registrato in chiaro","il testo non viene conservato per questa categoria","—","dim","○ per progetto")+
+      card("Contestabile","il rifiuto si può contestare, e la contestazione è registrata","","ok","✓ previsto")+
+      '</div>',
+    panelHtml:
+      '<h5>Perché non è una lista di parole</h5>'+
+      '<div style="font-size:.9em;color:var(--dim);line-height:1.6">Una denylist testuale è battuta '+
+      'da qualunque indirezione — un sinonimo, un\'altra lingua, una perifrasi. Il gate classifica '+
+      '<b>l\'intento e l\'effetto richiesto</b>, e la categoria che scatta viene <b>nominata</b>. '+
+      'Un rifiuto senza nome è indistinguibile da un guasto.</div>'+
+      '<h5>Le due porte</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div><b style="color:var(--txt)">1</b> sull\'intento — prima della rete</div>'+
+      '<div><b style="color:var(--txt)">2</b> sul contenuto tornato — prima di mostrarlo</div>'+
+      '<div style="margin-top:6px">La seconda serve perché ciò che torna non è ciò che hai '+
+      'chiesto.</div></div>' };
+
+  RIC.armi = {
+    canvas:
+      '<h4>Ricerca</h4><p class="sub">Non tutto ciò che tocca un argomento sensibile è un danno. '+
+      'Qui il gate <b>ristringe</b> invece di rifiutare.</p>'+
+      '<div class="composer" style="border-color:var(--warn)">'+
+      '<div class="ph">dove comprare armi</div>'+
+      '<div class="tools"><span class="pill warn">⚑ ristretta — serve il contesto</span>'+
+      '<button class="send">Continua ▸</button></div></div>'+
+      '<div class="restrict"><h6>⚑ Ristretta — categoria: <b>acquisto regolamentato</b></h6>'+
+      '<p>La richiesta è ambigua e le risposte possibili non sono equivalenti. Il prodotto '+
+      '<b>non indovina</b>: chiede.</p>'+
+      '<div class="choice"><b>Cosa ti serve davvero?</b>'+
+      '<div class="opts"><span class="pill ok">✓ i requisiti di legge per una licenza</span>'+
+      '<span class="pill ok">✓ armerie autorizzate nella mia zona</span>'+
+      '<span class="pill ok">✓ normativa su trasporto e custodia</span>'+
+      '<span class="pill bad">✕ acquisto senza controlli o canali non tracciati</span></div></div>'+
+      '<p class="refuse-note">Le prime tre proseguono e portano fonti ufficiali. L\'ultima è '+
+      'rifiutata e nominata: non è un argomento vietato, è un <b>effetto</b> vietato.</p></div>'+
+      '<div class="card" style="margin-top:11px"><h6>Le categorie, dichiarate</h6>'+
+      row("✕","Sfruttamento di minori","rifiuto assoluto · nessuna riformulazione · registrato","non aggirabile")+
+      row("✕","Istruzioni per un danno fisico","armi, esplosivi, veleni, incendi","rifiuto")+
+      row("✕","Danno ad animali","istruzioni per ferire o uccidere","rifiuto")+
+      row("⚑","Acquisto regolamentato","armi, farmaci, sostanze controllate","ristretta")+
+      row("⚑","Autolesionismo","risposta di sostegno, mai istruzioni","ristretta")+
+      row("○","Contenuti per adulti","legale ma filtrata — impostazione, spenta di default","impostabile")+
+      '</div>',
+    panelHtml:
+      '<h5>Perché tre esiti e non due</h5>'+
+      '<div style="font-size:.9em;color:var(--dim);line-height:1.6">Con solo «sì» e «no» ogni '+
+      'ambiguità diventa un errore: o si rifiuta una domanda legittima, o si risponde a quella '+
+      'sbagliata. Il terzo esito — <b>chiedi</b> — è lo stesso stadio 3 del ciclo di lavoro: '+
+      'l\'ambiguità si risolve con te, non a indovinare.</div>'+
+      '<h5>Chi può cambiare cosa</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div>contenuti per adulti · <b style="color:var(--txt)">impostabile</b></div>'+
+      '<div>acquisto regolamentato · <b style="color:var(--txt)">impostabile</b></div>'+
+      '<div>danno fisico e animali · <b style="color:var(--warn)">solo con motivazione '+
+      'registrata</b></div>'+
+      '<div>sfruttamento di minori · <b style="color:var(--bad-txt)">non aggirabile da '+
+      'nessun ruolo</b></div></div>' };
+
+  VIEWS.ricerca = { panel:"docked",
+    get canvas(){ return RIC[S.ric].canvas; },
+    get panelHtml(){ return RIC[S.ric].panelHtml; } };
+
+  /* il banco di lavoro — tre colonne + riga di stato */
+  VIEWS.coden = { panel:"docked", wb:true, status:true, canvas:
+    '<div class="wb">'+
+    '<div class="wb-nav">'+
+      '<h6>Progetti</h6><a class="on">Quantum Bridge</a><a>Atlas Reader</a>'+
+      '<h6>Recenti</h6><a>frontmatter.rs</a><a>reader.rs</a><a>0013_schema.sql</a>'+
+      '<h6>Sessioni</h6><a class="on">7f21 · in corso</a><a>7f20 · chiusa</a>'+
+      '<h6>Compiti</h6><a>parser · stadio 13</a>'+
+      '<h6>Agenti</h6><a>Correttore ◈</a><a>Revisore ○</a>'+
+      '<h6>Strumenti</h6><a>cargo</a><a>git</a><a>sqlite</a>'+
+      '<h6>Plugin</h6><a>nessuno attivo</a>'+
+      '<h6>Cronologia</h6><a>07:41 ombra pronta</a><a>07:19 ipotesi B</a>'+
+      '<h6>Preferiti</h6><a>suite parser</a>'+
+    '</div>'+
+    '<div class="wb-main">'+
+      '<div><div class="tabs"><span class="on">ombra</span><span>editor</span><span>diff</span>'+
+      '<span>test</span><span>log</span><span>anteprima</span><span>mappa</span>'+
+      '<span>documentazione</span><span>problemi</span><span>chiusura</span></div>'+
+      '<div style="font-family:var(--mono);font-size:.86em;color:var(--dim);margin-bottom:5px">'+
+      'src/parser/frontmatter.rs · <b style="color:var(--sbx-txt)">◈ già eseguito in ombra</b> · '+
+      'non promosso</div></div>'+
+      '<div style="overflow:auto;min-height:0">'+
+      '<div class="diff">'+
+      '<span class="x">@@ -118,7 +118,11 @@ fn parse_header(</span>'+
+      '<span class="d">-    if line.starts_with("---") {</span>'+
+      '<span class="a">+    if line.trim_end().starts_with("---") &amp;&amp; depth == 0 {</span>'+
+      '<span class="a">+        // una riga di soli trattini dentro un blocco annidato</span>'+
+      '<span class="a">+        // non chiude il frontmatter</span>'+
+      '<span class="x">         return Ok(Header::End);</span>'+
+      '<span class="x">     }</span></div>'+
+      '<div class="notdone" style="margin-top:11px"><h6>⚑ Cosa NON è stato fatto</h6>'+
+      '<ul><li>il caso <code>legacy_trailing</code> resta rotto: è un cambio di comportamento e '+
+      'serve una tua decisione</li>'+
+      '<li>nessun test aggiunto per file con BOM — non riproducibile qui</li>'+
+      '<li>la documentazione del formato non è stata aggiornata</li></ul>'+
+      '<div class="req">La casella non può restare vuota senza dirlo · rischio residuo: '+
+      '<b style="color:var(--warn)">medio</b> · revisione finora: <b>3m 41s</b></div></div>'+
+      '<div class="rewind">'+
+        '<div class="rw"><b>07:12</b><span>ipotesi A</span></div>'+
+        '<div class="rw branch"><b>07:19</b><span>ipotesi B — riparti</span></div>'+
+        '<div class="rw here"><b>07:41</b><span>ombra pronta</span></div></div>'+
+      '</div>'+
+      '<div style="margin-top:8px">'+
+      '<div class="termtabs"><span class="on">build</span><span>test</span><span>server</span>'+
+      '<span>log</span><span>+</span></div>'+
+      '<div class="term">'+
+      '<div><span class="p">ombra ▸</span> <span class="c">cargo test parser:: --quiet</span></div>'+
+      '<div class="o">12 passed · <span class="w">1 failed (atteso)</span></div>'+
+      '<div><span class="p">ombra ▸</span> <span class="cur"></span></div></div></div>'+
+    '</div></div>',
+    panelHtml:
+      '<h5>Piano — stadio 13 di 16</h5>'+ stagesHtml(13) +
+      '<h5>Ipotesi ed evidenza</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div><span style="color:var(--ok-txt)">A</span> trattini annidati — 3 prove a favore, 0 contro</div>'+
+      '<div><span style="color:var(--dim)">B</span> encoding — <b>falsificata</b> in ombra</div></div>'+
+      '<h5>Attività degli strumenti</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div>cargo · 3 invocazioni</div><div>git · 2 letture</div><div>rete · <b>bloccata</b></div></div>'+
+      '<h5>File letti / scritti</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div>letti 9 · scritti 1 (in ombra)</div><div>frontmatter.rs +4 −1</div></div>'+
+      '<h5>Comandi eseguiti</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div>cargo test parser::</div><div>git log --follow</div></div>'+
+      '<h5>Sotto-agenti</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div>Revisore · sola lettura · concluso</div></div>'+
+      '<h5>Richiesta di autorità</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;line-height:1.7;color:var(--dim)">'+
+      '<div><span style="color:var(--warn)">⚑</span> scrittura · 1 file · scade 09:41</div>'+
+      '<div>rischio residuo: <span style="color:var(--warn)">medio</span></div></div>'+
+      '<div style="display:flex;gap:6px;margin-top:9px">'+
+      '<button class="btn pri" style="flex:1">Promuovi</button>'+
+      '<button class="btn" style="flex:1">Scarta</button></div>'+
+      '<div style="font-size:.8em;color:var(--dim);margin-top:7px">Non stai dando un permesso: '+
+      'stai accettando un risultato che esiste già.</div>' };
+
+  VIEWS.tui = { panel:"off", rail:"off", status:true, canvas:
+    '<div class="term" style="height:100%;min-height:430px">'+
+    '<div class="o">NOESAR Evolution · sessione 7f21 — la stessa del banco di lavoro</div>'+
+    '<div class="o">F1 piano · F2 evidenza · F3 strumenti · F4 file · F5 comandi · F9 guida</div>'+
+    '<div class="o">──────────────────────────────────────────────────────────────</div>'+
+    '<div><span class="p">▸</span> <span class="c">/piano</span></div>'+
+    '<div class="o"> 1 Ricezione        ✓   9 Raggio d\'azione   ✓</div>'+
+    '<div class="o"> 5 Recupero         ✓  <span class="w">13 Autorizzazione    ⚑ in attesa</span></div>'+
+    '<div class="o"> 8 Decomposizione   ✓  16 Chiusura          ·</div>'+
+    '<div class="o">──────────────────────────────────────────────────────────────</div>'+
+    '<div><span class="p">▸</span> <span class="c">/sessioni</span></div>'+
+    '<div class="o"> 1 Correzione del parser frontmatter   12 minuti fa</div>'+
+    '<div class="o"> 2 Revisione del modulo di autenticazione   1 ora fa</div>'+
+    '<div class="o"> … /archivia &lt;n&gt; · /elimina &lt;n&gt; · /archivio · /ripristina &lt;n&gt;</div>'+
+    '<div><span class="p">▸</span> <span class="c">/non-fatto</span></div>'+
+    '<div class="w"> legacy_trailing resta rotto · nessun test per BOM · doc non aggiornata</div>'+
+    '<div><span class="p">▸</span> <span class="c">/promuovi --scadenza 10m</span></div>'+
+    '<div class="w">⚑ 12/13 test passati · scrittura su 1 file · promuovi? [s/N]</div>'+
+    '<div><span class="p">▸</span> <span class="cur"></span></div></div>',
+    panelHtml:"" };
+
+  VIEWS.progetti = { panel:"off", canvas:
+    '<h4>Progetti</h4><p class="sub">Si lavora da qui: apri, clona, importa, collega un remoto, '+
+    'riprendi.</p>'+
+    toolbar([["＋ Nuovo","pri"],["Apri"],["Clona repository"],["Importa archivio"],
+             ["Connetti remoto"],"|",["Ordina: recenti"]])+
+    '<div class="cards g2">'+
+      card("Quantum Bridge","Rust · 41 k righe · stadio 13","in attesa di te","warn","⚑ autorità")+
+      card("Atlas Reader","TypeScript · 12 k righe","suite intera verde","ok","✓ pulito")+
+      card("Ledger Export","Python · 3 k righe","nessuna sessione aperta","dim","○ fermo")+
+      card("Sito pubblico","statico · 41 pagine","4 avvisi di accessibilità","warn","⚑ 4 avvisi")+
+    '</div>', panelHtml:"" };
+
+  VIEWS.documenti = { panel:"docked", canvas:
+    '<h4>Documenti</h4><p class="sub">124 nel progetto · indicizzati sul tuo disco.</p>'+
+    toolbar([["⇧ Carica","pri"],["Estrai"],["Confronta"],["Annota"],["Esporta"],"|",["Filtro: tutti"]])+
+    '<div class="card">'+
+    row("▥","Rapporto Q1.pdf","41 pagine · analizzato","4 h fa")+
+    row("▥","POLITICA_RITENZIONE.md","2 pagine","ieri")+
+    row("▥","Contratto fornitore.docx","9 pagine · <b style=\"color:var(--warn)\">dati personali</b>","3 g fa")+
+    row("▥","Note architettura.md","18 pagine","1 sett fa")+
+    '</div>',
+    panelHtml:'<h5>Documento selezionato</h5>'+
+      row("◈","Cubo","contenuto di fonte","citabile")+
+      row("○","Fuori dal prodotto","mai inviato","✓")+
+      row("⚑","Dati personali","2 campi","da decidere") };
+
+  VIEWS.conoscenza = { panel:"off", canvas:
+    '<h4>Conoscenza</h4><p class="sub">Quattro cubi divisi per <b>stato epistemico</b>. Qui dentro '+
+    'vive anche la memoria: non è una destinazione a parte.</p>'+
+    toolbar([["Promuovi a fatto","pri"],["Correggi"],["Fai scadere"],["Unisci duplicati"],"|",
+             ["Cerca nei cubi"]])+
+    '<div class="cards g2">'+
+      card("Fatti tuoi","dichiarati o approvati da te","2.341","ok","autoritativo")+
+      card("Contenuto di fonte","citabile alla riga","8.907","ok","citabile")+
+      card("Inferenza del modello","mai promossa da sola","1.204","sbx","da verificare")+
+      card("Scaduto","superato, tenuto per la storia","417","dim","sola lettura")+
+    '</div>', panelHtml:"" };
+
+  VIEWS.agenti = { panel:"docked", canvas:
+    '<h4>Agenti</h4><p class="sub">A riposo <b>zero strumenti</b>: ogni capacità è concessa per il '+
+    'compito e scade con lui.</p>'+
+    toolbar([["＋ Nuovo agente","pri"],["Concedi capacità"],["Revoca","dgr"],["Prova in ombra"]])+
+    '<div class="card">'+
+    row("◍","Revisore","legge · non scrive","○ 0 strumenti")+
+    row("◍","Correttore","scrittura in sandbox","◈ 3 strumenti")+
+    row("◍","Ricercatore","rete, solo in sandbox","⚑ in attesa")+
+    '</div>',
+    panelHtml:'<h5>Concessioni vive</h5>'+
+      row("◈","Correttore","scrittura src/parser","scade 09:41")+
+      row("◈","Correttore","esecuzione test","scade 09:41")+
+      row("○","Tutti gli altri","nessuna","—") };
+
+  VIEWS.flussi = { panel:"docked", canvas:
+    '<h4>Flussi di lavoro</h4><p class="sub">Step tipizzati, ripetizione, compensazione, '+
+    'idempotenza, scadenza, annullamento, approvazione umana, evidenza, riesecuzione.</p>'+
+    toolbar([["＋ Nuovo flusso","pri"],["Esegui"],["Riesegui"],["Annulla","dgr"]])+
+    '<div class="card"><h6>Rilascio notturno · esecuzione 4471</h6>'+
+    row("✓","raccogli evidenza","registro chiuso di operazioni","0,4 s")+
+    row("✓","esegui la suite","sandbox","2 m 11 s")+
+    row("⚑","approvazione umana","in attesa di te","—")+
+    row("✕","muta l\'host","<b style=\"color:var(--bad-txt)\">tipo rifiutato</b>","—")+
+    '</div>',
+    panelHtml:'<h5>L\'esecuzione conserva la definizione</h5>'+
+      '<div style="font-family:var(--mono);font-size:.82em;color:var(--dim);line-height:1.7">'+
+      'Ogni esecuzione fotografa il flusso all\'avvio. Senza, modificare un flusso riscriverebbe '+
+      'la storia di ciò che è già girato.</div>' };
+
+  VIEWS.modelli = { panel:"off", canvas:
+    '<h4>Modelli</h4><p class="sub">Provenienza dichiarata per ognuno. Se il modello non è locale '+
+    'il corpus resta trattenuto, e te lo dice prima.</p>'+
+    toolbar([["⇧ Importa","pri"],["Prova"],["Confronta due"],["Profilo hardware"]])+
+    '<div class="card">'+
+    row("▦","Nebula 3.1 Ultra","locale · pesi sul disco","✓ in uso")+
+    row("▦","Nebula 3.1 Mini","locale · pesi sul disco","○ pronto")+
+    row("▦","Provider remoto","<b style=\"color:var(--warn)\">esce dal prodotto</b>","⚑ spento")+
+    '</div>', panelHtml:"" };
+
+  /* ── impostazioni ────────────────────────────────────────────────────── */
+  var SET_MENU = [
+    { grp:"Il tuo lavoro" },
+    { id:"sessioni", g:"◷", n:"Sessioni" },
+    { id:"aspetto",  g:"◐", n:"Aspetto" },
+    { id:"lingua",   g:"🌐", n:"Lingua e fuso" },
+    { grp:"Il prodotto" },
+    { id:"prodotto", g:"⚙", n:"NOESAR Evolution" },
+    { id:"licenza",  g:"◆", n:"Licenza" },
+    { id:"privacy",  g:"○", n:"Privacy e connettori" },
+    { id:"persone",  g:"◍", n:"Persone e accessi" },
+    { id:"sicurezza",g:"◆", n:"Sicurezza e conformità" },
+    { grp:"Il sistema" },
+    { id:"hardware", g:"▦", n:"Modelli e hardware" },
+    { id:"storage",  g:"▤", n:"Storage e backup" },
+    { id:"audit",    g:"◈", n:"Audit ed evidenza" },
+    { id:"salute",   g:"◉", n:"Salute e log" },
+    { id:"aggiorna", g:"⇧", n:"Aggiornamenti" }
+  ];
+
+  function sessRow(s, mode, i, focus){
+    var acts = mode === "archivio"
+      ? '<button class="btn" data-act="ripristina" data-id="'+s.id+'">Ripristina <span class="kbd"><b>r</b></span></button>'+
+        '<button class="btn dgr" data-act="elimina" data-id="'+s.id+'">Elimina</button>'
+      : '<button class="btn" data-act="archivia" data-id="'+s.id+'">Archivia <span class="kbd"><b>a</b></span></button>'+
+        '<button class="btn dgr" data-act="elimina" data-id="'+s.id+'">Elimina</button>';
+    var chk = mode === "archivio"
+      ? '<input type="checkbox" data-act="sel" data-id="'+s.id+'"'+(s.sel?" checked":"")+
+        ' aria-label="Seleziona '+s.titolo+'">' : '';
+    return '<div class="sess'+(focus?" focus":"")+'">'+chk+'<span class="t"><b>'+s.titolo+
+      '</b><small>'+s.prog+' · '+s.quando+'</small></span><span class="acts">'+acts+'</span></div>';
+  }
+
+  function setBody(){
+    if(S.setSec === "sessioni")  return sezioneSessioni();
+    if(S.setSec === "archivio")  return sezioneArchivio();
+    if(S.setSec === "aspetto")   return sezioneAspetto();
+    if(S.setSec === "lingua")    return sezioneLingua();
+    var lab = (SET_MENU.filter(function(m){ return m.id === S.setSec; })[0] || {}).n || "";
+    return '<h5>'+lab+'</h5><p class="hint">Sezione dentro Impostazioni, non una destinazione '+
+      'nella barra: semplice prima che tecnico.</p><div class="card">'+
+      '<div style="color:var(--dim);font-size:.92em">Contenuto non disegnato in questa bozza — '+
+      'la struttura sì.</div></div>';
+  }
+
+  function sezioneSessioni(){
+    var a = attive(), primi = a.slice(0,5), resto = a.slice(5);
+    return '<h5>Sessioni</h5><p class="hint">Le ultime cinque distese; dalla sesta il riquadro che '+
+      'scorre. Ogni azione chiede conferma — anche da tastiera.</p>'+
+      '<div class="toolbar"><button class="btn pri" data-act="apri-archivio">▤ Archivio — tutte ('+
+      archiviate().length+')</button><span class="sp"></span>'+
+      '<span class="kbd"><b>↑↓</b> scorri · <b>a</b> archivia · <b>Canc</b> elimina · '+
+      '<b>/sessioni</b> nel TUI</span></div>'+
+      primi.map(function(s,i){ return sessRow(s,"attive",i,i===S.cursor); }).join("")+
+      (resto.length
+        ? '<div class="scrollbox-lab" style="margin-top:10px">altre '+resto.length+
+          ' attive <span style="flex:1;height:1px;background:var(--line)"></span></div>'+
+          '<div class="scrollbox">'+resto.map(function(s,i){
+            return sessRow(s,"attive",i+5,(i+5)===S.cursor); }).join("")+'</div>'
+        : '');
+  }
+
+  function sezioneArchivio(){
+    var arr = archiviate(), per = 10, pagine = Math.max(1, Math.ceil(arr.length/per));
+    if(S.archPage >= pagine) S.archPage = pagine-1;
+    var da = S.archPage*per, pag = arr.slice(da, da+per);
+    var selN = arr.filter(function(s){ return s.sel; }).length;
+    var tuttiSel = pag.length > 0 && pag.every(function(s){ return s.sel; });
+    return '<div class="toolbar"><button class="btn" data-act="torna">‹ Sessioni</button>'+
+      '<span class="sp"></span><span class="kbd"><b>←→</b> pagina · <b>Spazio</b> seleziona · '+
+      '<b>Ctrl+A</b> tutta la pagina · <b>r</b> ripristina</span></div>'+
+      '<h5>Archivio</h5><p class="hint">Dieci per pagina. Ripristina riporta fra le attive; '+
+      'elimina manda nel cestino, recuperabile 30 giorni.</p>'+
+      '<div class="toolbar" style="border:1px solid var(--line);border-radius:4px;padding:6px 8px">'+
+      '<label style="display:flex;gap:7px;align-items:center">'+
+      '<input type="checkbox" data-act="sel-tutti"'+(tuttiSel?" checked":"")+
+      ' aria-label="Seleziona tutte in questa pagina"> Seleziona tutte in questa pagina</label>'+
+      '<span class="sp"></span><span class="kbd">'+selN+' selezionate</span>'+
+      '<button class="btn dgr" data-act="elimina-sel"'+(selN?"":" disabled")+
+      '>Elimina le selezionate</button></div>'+
+      (pag.length ? pag.map(function(s,i){ return sessRow(s,"archivio",i,i===S.cursor); }).join("")
+                  : '<div class="card"><div style="color:var(--dim)">L\'archivio è vuoto.</div></div>')+
+      '<div class="pager"><button class="btn" data-act="pag-prec"'+(S.archPage?"":" disabled")+'>‹</button>'+
+      '<span>'+(arr.length ? (da+1)+"–"+Math.min(da+per,arr.length)+" di "+arr.length : "0")+
+      '</span><button class="btn" data-act="pag-succ"'+(S.archPage>=pagine-1?" disabled":"")+'>›</button>'+
+      '<span class="sp"></span><span>pagina '+(S.archPage+1)+' di '+pagine+'</span></div>';
+  }
+
+  function sezioneAspetto(){
+    var t = tema(), bg = t.panel, acc = S.custom || t.accent;
+    var r = ratio(acc, bg), rw = ratio("#ffffff", acc), der = readable(acc, bg), ok = r >= 4.5;
+    return '<h5>Aspetto</h5><p class="hint">Nove temi pronti, il colore che vuoi tu, e le tre '+
+      'regolazioni che rendono l\'interfaccia usabile a chi ne ha bisogno.</p>'+
+      '<div class="themechips" id="themeChips"></div>'+
+      '<div class="opt" style="margin-top:16px"><span class="lab"><b>Dimensione del testo</b>'+
+      '<small>UI-040 · scala tutto, non solo i titoli</small></span>'+
+      seg2("text",[["0.9","S"],["1","M"],["1.15","L"],["1.3","XL"]])+'</div>'+
+      '<div class="opt"><span class="lab"><b>Zoom dell\'interfaccia</b>'+
+      '<small>UI-041 · indipendente dal testo</small></span>'+
+      seg2("zoom",[["90","90%"],["100","100%"],["110","110%"],["125","125%"]])+'</div>'+
+      '<div class="opt"><span class="lab"><b>Animazioni</b>'+
+      '<small>UI-042 · impostazione, non solo preferenza di sistema</small></span>'+
+      seg2("motion",[["normali","normali"],["ridotte","ridotte"]])+'</div>'+
+      '<h5 style="margin-top:18px;font-size:1em">Il tuo colore</h5>'+
+      '<div class="pickrow">'+
+      '<input type="color" id="pick" value="'+acc+'" aria-label="Colore dell\'accento">'+
+      '<div class="readout"><div>accento <b>'+acc.toUpperCase()+'</b></div>'+
+      '<div>come testo: <b class="'+(ok?"good":"no")+'">'+r.toFixed(2)+':1</b>'+
+        (ok?" — leggibile":" — sotto 4,5:1")+'</div>'+
+      '<div>bianco sopra: <b class="'+(rw>=4.5?"good":"no")+'">'+rw.toFixed(2)+':1</b></div>'+
+      (ok ? '' : '<div style="margin-top:5px">variante derivata: <b style="color:'+der+'">'+
+        der.toUpperCase()+'</b> — <span class="good">'+ratio(der,bg).toFixed(2)+':1</span></div>')+
+      '</div></div>'+
+      '<div style="font-size:.92em;color:var(--dim);max-width:62ch;margin-top:7px">'+
+      'Il colore non viene mai rifiutato: se non regge come testo resta la tinta dell\'indicatore '+
+      'e per le scritte il prodotto si allontana dal fondo fino alla soglia. <b>I sette stati '+
+      'semantici non cambiano</b> qualunque colore tu scelga.</div>';
+  }
+
+  function sezioneLingua(){
+    return '<h5>Lingua e fuso</h5><p class="hint">Rilevati automaticamente, sovrascrivibili sempre. '+
+      'UI-044 e UI-045.</p>'+
+      '<div class="opt"><span class="lab"><b>Lingua</b><small>rilevata dal browser</small></span>'+
+      '<span class="pill ok">✓ Italiano — rilevata</span>'+
+      '<button class="btn">Cambia</button></div>'+
+      '<div class="opt"><span class="lab"><b>Direzione</b>'+
+      '<small>UI-046 · segue la lingua, sovrascrivibile</small></span>'+
+      seg2("dir",[["ltr","sinistra→destra"],["rtl","destra→sinistra"]])+'</div>'+
+      '<div class="opt"><span class="lab"><b>Fuso orario</b>'+
+      '<small>identificatore IANA, non uno scostamento fisso</small></span>'+
+      '<span class="pill ok">✓ Europe/Rome — rilevato</span>'+
+      '<button class="btn">Cambia</button></div>'+
+      '<div class="opt"><span class="lab"><b>Come sono conservati</b>'+
+      '<small>e perché la differenza conta</small></span>'+
+      '<span style="font-size:.92em;color:var(--dim);max-width:46ch">Tutti gli istanti sono '+
+      'memorizzati in <b>UTC</b> e resi con l\'identificatore IANA. Le pianificazioni sono '+
+      'espresse in ora locale con la regola, non con lo scostamento: «ogni notte alle 02:30» '+
+      'resta alle 02:30 anche quando cambia l\'ora legale.</span></div>';
+  }
+
+  function seg2(chiave, opzioni){
+    return '<span class="optseg">'+opzioni.map(function(o){
+      return '<button data-opt="'+chiave+'" data-v="'+o[0]+'" class="'+
+        (String(S[chiave]) === o[0] ? "on" : "")+'">'+o[1]+'</button>';
+    }).join("")+'</span>';
+  }
+
+  function impostazioniHtml(){
+    return '<h4>Impostazioni</h4><p class="sub">Una sola destinazione, con i menu dentro. Le '+
+      'quindici voci che oggi occupano la barra vivono qui.</p>'+
+      '<div class="settings"><div class="set-menu">'+
+      SET_MENU.map(function(m){
+        if(m.grp) return '<div class="grp">'+m.grp+'</div>';
+        var on = (S.setSec === m.id) || (S.setSec === "archivio" && m.id === "sessioni");
+        return '<button data-sec="'+m.id+'" class="'+(on?"on":"")+'"><i>'+m.g+'</i>'+m.n+'</button>';
+      }).join("")+
+      '</div><div class="set-body">'+setBody()+'</div></div>';
+  }
+
+  /* ── conferme ────────────────────────────────────────────────────────── */
+  function chiedi(titolo, testo, cosa, etichetta, pericolo, azione){
+    S.modal = { titolo:titolo, testo:testo, cosa:cosa, etichetta:etichetta,
+                pericolo:pericolo, azione:azione };
+    annuncia("Conferma richiesta: " + titolo);
+    disegna();
+  }
+  function modalHtml(){
+    if(!S.modal) return "";
+    var m = S.modal;
+    return '<div class="d-modal"><div class="box" role="dialog" aria-modal="true">'+
+      '<h6><span style="color:var(--warn)">⚑</span> '+m.titolo+'</h6>'+
+      '<p>'+m.testo+'</p><div class="what">'+m.cosa+'</div>'+
+      '<div class="acts"><span class="kbd"><b>Esc</b> annulla · <b>Invio</b> conferma</span>'+
+      '<button class="btn" data-act="annulla">Annulla</button>'+
+      '<button class="btn '+(m.pericolo?"dgr":"pri")+'" data-act="conferma">'+m.etichetta+
+      '</button></div></div></div>';
+  }
+
+  function voiceHtml(){
+    if(!S.voice) return "";
+    var barre = [4,9,13,7,11,5,10,6].map(function(h){
+      return '<i style="height:'+h+'px"></i>'; }).join("");
+    return '<div class="voice"><div class="hd"><span class="lvl">'+barre+'</span>'+
+      '<span>voce · in ascolto</span>'+
+      '<span style="margin-inline-start:auto">formato fisso · non chiacchiera</span></div>'+
+      '<div class="line"><span>tu</span><span>«A che punto sei?»</span></div>'+
+      '<div class="line"><span>prodotto</span><span>«Stadio tredici di sedici. Dodici test su '+
+      'tredici passati. Aspetto un\'autorizzazione di scrittura su un file.»</span></div>'+
+      '<div class="line"><span>tu</span><span>«Promuovi per dieci minuti.»</span></div>'+
+      '<div class="line"><span>prodotto</span><span>«Ripeto: promuovo la scrittura su '+
+      '<b>src/parser/frontmatter.rs</b>, dieci minuti, revocabile. Confermi?»</span></div>'+
+      '<div class="rule"><b>La voce non può allargare l\'autorità.</b> Concede solo dentro i '+
+      'limiti già calcolati, la revoca è sempre accettata, e se non ha capito ripete — non '+
+      'indovina mai.</div></div>';
+  }
+
+  /* ── disegno ─────────────────────────────────────────────────────────── */
+  function tema(){ return THEMES.filter(function(x){ return x.id === S.theme; })[0] || THEMES[0]; }
+
+  function applicaTema(){
+    var t = tema(), acc = S.custom || t.accent;
+    device.style.setProperty("--bg", t.bg);
+    device.style.setProperty("--panel", t.panel);
+    device.style.setProperty("--panel-2", t.panel2);
+    device.style.setProperty("--line", t.line);
+    device.style.setProperty("--txt", t.txt);
+    device.style.setProperty("--dim", t.dim);
+    device.style.setProperty("--accent", acc);
+    device.style.setProperty("--accent-txt", readable(acc, t.panel));
+    Object.keys(SEM_BASE).forEach(function(k){
+      device.style.setProperty(k, (t.sem && t.sem[k]) || SEM_BASE[k]);
+    });
+    device.style.setProperty("--fs", (12.5*S.text).toFixed(2)+"px");
+    device.style.zoom = (S.zoom/100);
+    device.setAttribute("data-motion", S.motion);
+    device.setAttribute("dir", S.dir);
+    Array.prototype.forEach.call(document.querySelectorAll("#swThemes .sw"), function(b){
+      b.setAttribute("aria-pressed", String(!S.custom && b.dataset.v === S.theme));
+    });
+  }
+
+  function disegnaCopertura(){
+    var pct = 82;
+    cover.innerHTML = '<span class="arc" style="background:conic-gradient(var(--ok) 0 '+pct+
+      '%,var(--panel-2) '+pct+'% 100%)"></span><b>'+pct+'%</b><span>verificato</span>';
+  }
+
+  function disegnaRail(){
+    rail.innerHTML = DEST.map(function(d){
+      return '<button class="d-nav" data-d="'+d.id+'"'+
+        (d.id === S.dest ? ' aria-current="page"' : '')+
+        '><i>'+d.g+'</i><span>'+d.label+'</span></button>';
+    }).join("") + '<div class="d-railfoot">[ ] chiude la barra</div>';
+  }
+
+  function disegnaStrip(){
+    strip.innerHTML = S.appr === 0
+      ? '<span class="zero">✓</span><b>Approvazioni in attesa: 0</b><span>· la striscia resta '+
+        'anche a zero, così «niente in attesa» non si confonde con «ha smesso di funzionare»</span>'
+      : '<span class="flag">⚑</span><b>1 approvazione in attesa</b><span>· promozione di un '+
+        'risultato già misurato su <b>src/parser/frontmatter.rs</b> — scade fra 09:41</span>'+
+        '<span class="push"><button>Vedi</button><button class="pri">Esamina</button></span>';
+  }
+
+  function disegnaStatus(){
+    var v = VIEWS[S.dest] || {};
+    if(!v.status){ status.innerHTML = ""; return; }
+    status.innerHTML = '<div class="statusline">'+
+      '<span>stadio <b>13/16</b></span><span class="sep">·</span>'+
+      '<span><b>1</b> file</span><span class="sep">·</span>'+
+      '<span>test <b>12/13</b></span><span class="sep">·</span>'+
+      '<span><b>2</b> warning</span><span class="sep">·</span>'+
+      '<span><b>3</b> processi</span><span class="sep">·</span>'+
+      '<span>remoto <b>↑2</b></span><span class="sep">·</span>'+
+      '<span><b>41k</b> token</span><span class="sep">·</span>'+
+      '<span><b>0,00 €</b> locale</span><span class="sep">·</span>'+
+      '<span><b>04:12</b> trascorsi</span><span class="sep">·</span>'+
+      '<span>rete <b>bloccata</b></span><span class="sep">·</span>'+
+      '<span class="live">◈ sandbox attiva</span><span class="sep">·</span>'+
+      '<span class="live"><b>2</b> token di autorità vivi</span></div>';
+  }
+
+  function disegna(){
+    var v = VIEWS[S.dest] || { canvas:"", panelHtml:"", panel:"off" };
+    canvas.innerHTML = (S.dest === "impostazioni" ? impostazioniHtml() : v.canvas);
+    canvas.style.padding = v.wb ? "12px 14px" : "";
+    var ph = v.panelHtml || "";
+    panel.innerHTML = (S.panel === "floating"
+      ? '<div class="d-drag">⠿ trascina · aggancia · chiudi</div>' : "") + ph;
+    device.setAttribute("data-panel", ph ? S.panel : "off");
+    device.setAttribute("data-rail", S.rail);
+
+    var m = device.querySelector(".d-modal"); if(m) m.remove();
+    var vv = device.querySelector(".voice"); if(vv) vv.remove();
+    device.insertAdjacentHTML("beforeend", voiceHtml() + modalHtml());
+
+    disegnaRail(); disegnaStrip(); disegnaStatus(); disegnaCopertura(); applicaTema();
+    if(S.dest === "impostazioni" && S.setSec === "aspetto") disegnaChip();
+  }
+
+  function disegnaChip(){
+    var host = document.getElementById("themeChips"); if(!host) return;
+    host.innerHTML = THEMES.map(function(t){
+      return '<button class="themechip'+(!S.custom && t.id===S.theme?" on":"")+'" data-tema="'+
+        t.id+'"><span class="dot" style="background:'+t.accent+'"></span>'+t.nome+'</button>';
+    }).join("");
+  }
+
+  /* ── eventi ──────────────────────────────────────────────────────────── */
+  rail.addEventListener("click", function(e){
+    var b = e.target.closest("[data-d]"); if(!b) return;
+    S.dest = b.dataset.d; S.cursor = 0;
+    var v = VIEWS[S.dest];
+    if(v){
+      S.panel = v.panel || "off";
+      if(v.rail) S.rail = v.rail; else if(S.rail === "off") S.rail = "full";
+    }
+    sincronizza(); disegna();
+    annuncia("Destinazione " + (DEST.filter(function(d){ return d.id===S.dest; })[0]||{}).label);
+  });
+
+  canvas.addEventListener("click", function(e){
+    var sec = e.target.closest("[data-sec]");
+    if(sec){ S.setSec = sec.dataset.sec; S.cursor = 0; disegna(); return; }
+    var tm = e.target.closest("[data-tema]");
+    if(tm){ S.theme = tm.dataset.tema; S.custom = null; disegna(); return; }
+    var op = e.target.closest("[data-opt]");
+    if(op){
+      var k = op.dataset.opt, val = op.dataset.v;
+      S[k] = (k === "text") ? parseFloat(val) : (k === "zoom" ? parseInt(val,10) : val);
+      sincronizza(); disegna(); return;
+    }
+    var b = e.target.closest("[data-act]"); if(!b) return;
+    azione(b.dataset.act, b.dataset.id);
+  });
+
+  function azione(act, id){
+    var s = SESS.filter(function(x){ return x.id === id; })[0];
+    if(act === "apri-archivio"){ S.setSec = "archivio"; S.archPage = 0; S.cursor = 0; disegna(); }
+    else if(act === "torna"){ S.setSec = "sessioni"; S.cursor = 0; disegna(); }
+    else if(act === "pag-prec"){ if(S.archPage > 0) S.archPage--; S.cursor = 0; disegna(); }
+    else if(act === "pag-succ"){ S.archPage++; S.cursor = 0; disegna(); }
+    else if(act === "sel"){ if(s){ s.sel = !s.sel; disegna(); } }
+    else if(act === "sel-tutti"){
+      var arr = archiviate(), da = S.archPage*10, pag = arr.slice(da, da+10);
+      var tutti = pag.every(function(x){ return x.sel; });
+      pag.forEach(function(x){ x.sel = !tutti; });
+      annuncia(tutti ? "Selezione azzerata" : pag.length + " sessioni selezionate");
+      disegna();
+    }
+    else if(act === "archivia" && s){
+      chiedi("Archiviare questa sessione?",
+        "Esce dall'elenco attivo e resta intera nell'archivio. Si può riportare indietro in "+
+        "qualsiasi momento.",
+        "▤ " + s.titolo + "<br>" + s.prog + " · " + s.quando, "Archivia", false,
+        function(){ s.stato = "archiviata"; annuncia("Sessione archiviata"); });
+    }
+    else if(act === "ripristina" && s){
+      chiedi("Riportare la sessione fra le attive?",
+        "Torna in cima all'elenco delle attive, con tutto il suo contenuto.",
+        "▤ " + s.titolo + "<br>" + s.prog + " · " + s.quando, "Ripristina", false,
+        function(){ s.stato = "attiva"; s.sel = false; annuncia("Sessione ripristinata"); });
+    }
+    else if(act === "elimina" && s){
+      chiedi("Eliminare questa sessione?",
+        "Va nel cestino e resta recuperabile per 30 giorni. Dopo, sparisce davvero.",
+        "🗑 " + s.titolo + "<br>" + s.prog + " · " + s.quando, "Elimina", true,
+        function(){ SESS = SESS.filter(function(x){ return x.id !== s.id; });
+                    annuncia("Sessione eliminata, recuperabile 30 giorni"); });
+    }
+    else if(act === "elimina-sel"){
+      var sel = archiviate().filter(function(x){ return x.sel; });
+      if(!sel.length) return;
+      var elenco = sel.slice(0,4).map(function(x){ return "· "+x.titolo; }).join("<br>") +
+        (sel.length > 4 ? "<br>· e altre " + (sel.length-4) : "");
+      chiedi("Eliminare " + sel.length + " sessioni?",
+        "Vanno tutte nel cestino e restano recuperabili per 30 giorni. Questa azione riguarda "+
+        "più di una sessione: controlla l'elenco.", elenco, "Elimina " + sel.length, true,
+        function(){
+          var ids = sel.map(function(x){ return x.id; });
+          SESS = SESS.filter(function(x){ return ids.indexOf(x.id) === -1; });
+          annuncia(sel.length + " sessioni eliminate, recuperabili 30 giorni");
+        });
+    }
+  }
+
+  canvas.addEventListener("input", function(e){
+    if(e.target.id === "pick"){ S.custom = e.target.value; disegna(); }
+  });
+
+  device.addEventListener("click", function(e){
+    var b = e.target.closest(".d-modal [data-act]"); if(!b) return;
+    if(b.dataset.act === "conferma" && S.modal && S.modal.azione) S.modal.azione();
+    S.modal = null; disegna();
+  });
+
+  /* tastiera — CE-020: nessuna capacità solo a mouse */
+  function elencoCorrente(){
+    if(S.dest !== "impostazioni") return [];
+    if(S.setSec === "sessioni") return attive();
+    if(S.setSec === "archivio") return archiviate().slice(S.archPage*10, S.archPage*10+10);
+    return [];
+  }
+
+  device.addEventListener("keydown", function(e){
+    if(S.modal){
+      if(e.key === "Escape"){ S.modal = null; disegna(); e.preventDefault(); }
+      if(e.key === "Enter"){
+        if(S.modal.azione) S.modal.azione();
+        S.modal = null; disegna(); e.preventDefault();
+      }
+      return;
+    }
+    if(e.key === "["){ S.rail = S.rail === "full" ? "icons" : "off"; sincronizza(); disegna(); return; }
+    if(e.key === "]"){ S.rail = S.rail === "off" ? "icons" : "full"; sincronizza(); disegna(); return; }
+
+    var lista = elencoCorrente(); if(!lista.length) return;
+    var s = lista[Math.min(S.cursor, lista.length-1)];
+    /* in RTL «avanti» è a sinistra: la direzione della pagina segue la direzione della lingua */
+    var avanti = (S.dir === "rtl") ? "ArrowLeft" : "ArrowRight";
+    var indietro = (S.dir === "rtl") ? "ArrowRight" : "ArrowLeft";
+    if(e.key === "a" && (e.ctrlKey || e.metaKey) && S.setSec === "archivio"){
+      azione("sel-tutti"); e.preventDefault(); }
+    else if(e.key === "ArrowDown"){ S.cursor = Math.min(S.cursor+1, lista.length-1); disegna(); e.preventDefault(); }
+    else if(e.key === "ArrowUp"){ S.cursor = Math.max(S.cursor-1, 0); disegna(); e.preventDefault(); }
+    else if(e.key === "a" && S.setSec === "sessioni"){ azione("archivia", s.id); e.preventDefault(); }
+    else if(e.key === "r" && S.setSec === "archivio"){ azione("ripristina", s.id); e.preventDefault(); }
+    else if(e.key === "Delete" || e.key === "Backspace"){ azione("elimina", s.id); e.preventDefault(); }
+    else if(e.key === " " && S.setSec === "archivio"){ azione("sel", s.id); e.preventDefault(); }
+    else if(e.key === avanti && S.setSec === "archivio"){ azione("pag-succ"); e.preventDefault(); }
+    else if(e.key === indietro && S.setSec === "archivio"){ azione("pag-prec"); e.preventDefault(); }
+  });
+
+  function seg(id, chiave, num){
+    document.getElementById(id).addEventListener("click", function(e){
+      var b = e.target.closest("button"); if(!b) return;
+      S[chiave] = num ? Number(b.dataset.v) : b.dataset.v;
+      sincronizza(); disegna();
+    });
+  }
+  function sincronizza(){
+    imposta("segRail", S.rail); imposta("segPanel", S.panel);
+    imposta("segAppr", String(S.appr)); imposta("segVoice", String(S.voice));
+    imposta("segDir", S.dir); imposta("segText", String(S.text)); imposta("segRic", S.ric);
+  }
+  function imposta(id, val){
+    var el = document.getElementById(id); if(!el) return;
+    Array.prototype.forEach.call(el.children, function(b){
+      b.setAttribute("aria-pressed", String(b.dataset.v === val));
+    });
+  }
+  seg("segRail","rail"); seg("segPanel","panel"); seg("segAppr","appr",true);
+  seg("segVoice","voice",true); seg("segDir","dir"); seg("segText","text",true);
+
+  /* cambiare esempio porta anche alla destinazione Ricerca: altrimenti il comando non fa nulla */
+  document.getElementById("segRic").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    S.ric = b.dataset.v; S.dest = "ricerca"; S.panel = "docked";
+    sincronizza(); disegna();
+    annuncia("Ricerca — esempio " + S.ric);
+  });
+
+  document.getElementById("swThemes").innerHTML = THEMES.map(function(t){
+    return '<button class="sw" data-v="'+t.id+'" title="'+t.nome+'" aria-label="Tema '+t.nome+
+      '" aria-pressed="'+(t.id==="indaco")+'" style="background:'+t.accent+'"></button>';
+  }).join("") + '<span style="font-family:var(--mono);font-size:10.5px;color:var(--ink-2)">'+
+    '+ libero in Impostazioni → Aspetto</span>';
+  document.getElementById("swThemes").addEventListener("click", function(e){
+    var b = e.target.closest(".sw"); if(!b) return;
+    S.theme = b.dataset.v; S.custom = null; disegna();
+  });
+
+  disegna();
+})();
+</script>

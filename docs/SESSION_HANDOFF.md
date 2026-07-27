@@ -31,14 +31,15 @@ nuova decisione dell'Owner.**
 1. `PROJECT_STATE.json` e questo file
 2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia **accettato e completo**: le
    sezioni 1-9 sono la v3 e la rilettura che ne ha trovato gli otto buchi; le sezioni **10-17
-   sono la v4, che li chiude tutti**. Criteri `UI-001…UI-072`. L'anteprima navigabile è
-   **`docs/design/ANTEPRIMA_WEBUI_V4.html`**, autonoma: si apre in un browser senza nulla
+   sono la v4, che li chiude tutti; le sezioni **18-21 sono la v5**, che aggiunge la
+   destinazione **Ricerca** e il suo gate di sicurezza. Criteri `UI-001…UI-096`.
+   L'anteprima navigabile è **`docs/design/ANTEPRIMA_WEBUI_V5.html`**, autonoma: si apre in un browser senza nulla
    intorno (la v3 resta accanto solo per confronto)
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` — le tre malattie misurate, le sei invenzioni,
    la matrice di accettazione `CE-001…CE-024`
 5. `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-6. `docs/DECISION_LOG.md` (ultime: `D-0117…D-0129`), `docs/INSTALLATION_LEDGER.md`
+6. `docs/DECISION_LOG.md` (ultime: `D-0117…D-0135`), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
@@ -47,13 +48,17 @@ nuova decisione dell'Owner.**
 > **Si costruisce la GRAFICA. Poi tutto il resto** (`D-0118`).
 
 **Il disegno è finito**: gli otto buchi trovati rileggendo la specifica sono chiusi nella v4
-(`D-0125…D-0129`), e la mappa 23→11 non lascia nessuna destinazione senza casa. Non resta
+(`D-0125…D-0129`), la mappa non lascia nessuna destinazione senza casa, e la v5 aggiunge la
+dodicesima destinazione — **Ricerca** — con il suo gate di sicurezza (`D-0130…D-0135`). Non resta
 progettazione da fare prima di scrivere codice.
+
+**Nota per chi costruisce la Ricerca:** il gate va costruito **prima** della superficie, non dopo.
+È un requisito, non una rifinitura, e una delle sue categorie non è aggirabile da nessun ruolo.
 
 Non è più una conversazione: l'impianto è **accettato** e i criteri sono scritti. L'ordine dentro
 la grafica è vincolato e non va invertito:
 
-1. **Struttura** — 23 → 11 destinazioni, quindici voci che cambiano rango a sezione dentro
+1. **Struttura** — 23 → **12** destinazioni (`D-0130`: la Ricerca è la dodicesima, ed è dichiarata), quindici voci che cambiano rango a sezione dentro
    l'unica pagina Impostazioni; barra laterale a tre stati su `[` e `]`; pannello contestuale
    agganciabile/flottante/via con memoria **per destinazione** (`D-0117`).
 2. **Layer di token** — oggi non esiste: i colori sono letterali sparsi in ~23 KB di CSS. Senza

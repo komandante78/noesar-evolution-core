@@ -399,3 +399,81 @@ matematica colore      invariata dalla v3, gia eseguita isolata
 
 **Non eseguito:** l'apertura in un browser reale su questo host — non ce n'è uno installato e la
 regola 45 vieta di installarlo.
+
+---
+
+# v5 — la destinazione Ricerca
+
+**Data:** 2026-07-27. **Anteprima:** `docs/design/ANTEPRIMA_WEBUI_V5.html`. Richiesta dell'Owner:
+una destinazione per la **ricerca sul web** che produca un rapporto raggiungibile da un **link
+provvisorio**, con il confronto fra candidati e le ragioni della scelta — e un gate di sicurezza.
+
+## 18. Undici diventa dodici, dichiarato
+
+La ricerca **è** un posto dove si decide di andare, quindi è una destinazione e non una sezione.
+Non è stata nascosta dentro un'altra pagina per far tornare il conto: **il numero difeso in
+`D-0120` cambia da undici a dodici**, e la decisione è dell'Owner che l'ha chiesta.
+
+## 19. Come si comporta — criteri
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-080` | La ricerca prende **obiettivo + criteri**, non una stringa: i criteri restano visibili come etichette rimovibili e compaiono come colonne nel rapporto | Alta |
+| `UI-081` | Il risultato è un **rapporto**, raggiungibile da un **link provvisorio** con scadenza dichiarata e revoca immediata | Alta |
+| `UI-082` | **Il link non è pubblico di suo**: serve una sessione su questa installazione. Condividere fuori è un atto separato, con la propria scadenza e il proprio avviso | **Critica** |
+| `UI-083` | Ogni prezzo o dato volatile porta **l'ora in cui è stato letto** | Alta |
+| `UI-084` | Le righe del «perché» sono etichettate per tipo: **fatto dalla fonte · aggregato misurato · inferenza · cosa NON è stato verificato** | **Critica** |
+| `UI-085` | La **qualità dell'evidenza** è dichiarata per candidato: numero di recensioni, arco temporale, quota da acquisto verificato, e segnalazione della distribuzione anomala | **Critica** |
+| `UI-086` | Un candidato scartato dice **perché** — «fuori dal tuo criterio» non è un giudizio di merito | Media |
+| `UI-087` | **Nessun link di affiliazione, mai.** Un risultato sponsorizzato è dichiarato sulla sua riga | **Critica** |
+| `UI-088` | Il pannello mostra **alla lettera** la stringa uscita; la query è costruita dal motore e nessun contenuto dell'utente vi compare (eredita `CE-014`) | **Critica** |
+| `UI-089` | La ricerca è un **egress dichiarato**: lo stato di privacy passa a «rete usata» e il rapporto resta conservato solo qui | Alta |
+
+`UI-085` è la ragione per cui questa superficie vale qualcosa. **Le recensioni si comprano**, quindi
+un voto medio non è evidenza. Nell'esempio disegnato il candidato con il voto *più alto* è quello
+con l'evidenza *più debole* — 31 recensioni su 38 nella stessa quindicina — e il rapporto lo dice
+invece di premiarlo.
+
+## 20. Il gate di sicurezza — criteri
+
+| ID | Criterio | Severità |
+|---|---|---|
+| `UI-090` | **Nessuna denylist testuale.** Il gate classifica intento ed effetto richiesto — coerente con `D-0111`: una lista di parole è battuta da un sinonimo, un'altra lingua o una perifrasi | **Critica** |
+| `UI-091` | **Due porte**: sull'intento **prima** che qualcosa esca, e sul contenuto tornato **prima** di mostrarlo. Un gate solo sull'ingresso è aggirabile da ciò che rientra | **Critica** |
+| `UI-092` | **Tre esiti**, non due: procedi · **chiedi** · rifiuta. Con solo sì/no ogni ambiguità diventa un errore in una delle due direzioni. «Chiedi» è lo stesso stadio 3 del ciclo di lavoro | **Critica** |
+| `UI-093` | Il rifiuto **nomina la categoria** e dice cosa resta disponibile. Un rifiuto senza nome è indistinguibile da un guasto | Alta |
+| `UI-094` | Si rifiutano le **istruzioni operative**, non gli argomenti: normativa, storia, prevenzione, sicurezza sul lavoro e bonifica restano accessibili | **Critica** |
+| `UI-095` | Quando il gate rifiuta sull'intento, **nessuna query è emessa** | **Critica** |
+| `UI-096` | Il rifiuto è **contestabile**, e la contestazione è registrata | Media |
+
+### Le categorie e chi può cambiarle
+
+| Categoria | Esito | Modificabile da |
+|---|---|---|
+| **Sfruttamento di minori** | rifiuto assoluto · nessun risultato · nessuna riformulazione suggerita · evento registrato | **nessuno** — non aggirabile da alcun ruolo, Owner compreso |
+| Istruzioni per un danno fisico (armi, esplosivi, veleni, incendi) | rifiuto delle istruzioni operative; l'argomento resta | solo con motivazione registrata |
+| Danno ad animali | rifiuto delle istruzioni per ferire o uccidere | solo con motivazione registrata |
+| Acquisto regolamentato (armi, farmaci, sostanze) | **ristretta**: il prodotto chiede invece di indovinare | impostabile |
+| Autolesionismo | risposta di sostegno con contatti, mai istruzioni | impostabile solo verso il più restrittivo |
+| Contenuti per adulti | filtrati — **legale ma restringibile**, spento di default | impostabile per installazione e per account |
+
+**La distinzione che regge tutto:** non è l'argomento a essere vietato, è l'**effetto**. Un prodotto
+che rifiuta «quali sono le leggi sugli esplosivi» è rotto, non sicuro. «Dove comprare armi» diventa
+*requisiti per la licenza*, *armerie autorizzate*, *normativa su trasporto e custodia* — oppure è
+rifiutata, se ciò che si cerca è aggirare i controlli.
+
+**Registrazione.** L'evento, la categoria e l'impronta della richiesta vanno nel ledger di audit.
+Il testo in chiaro **non** viene conservato, con l'eccezione della categoria più grave, dove la
+conservazione è ristretta e dichiarata. Questa è una scelta da confermare con l'Owner e da
+verificare rispetto agli obblighi applicabili: **è registrata qui come proposta, non come
+conformità accertata.**
+
+## 21. Verifiche della v5
+
+```text
+sintassi JS       node --check OK
+tag bilanciati    div 254/254 · span 238/238 · button 66/66 · table 7/7 · tr 52/52
+UI-046 (RTL)      0 proprieta fisiche left/right — invariato dopo l'aggiunta
+```
+
+**Non eseguito:** apertura in un browser reale (nessuno installato, regola 45).
