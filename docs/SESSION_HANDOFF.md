@@ -37,14 +37,35 @@ Chiudere quel divario è una decisione di progetto, non un dettaglio: significa 
 token. Va posta all'Owner prima di costruirla.
 
 **Build offline Rust**: serve `RUSTUP_TOOLCHAIN` pinnato al toolchain dell'immagine
-(`D-0173`) — `rust-toolchain.toml` chiede `stable` e rustup tenta la rete prima di cargo.
+(`D-0173`) — `rust-toolchain.toml` chiede `stable` e rustup tenta la rete prima di cargo —
+**e `conformance/` montata a `/conformance`**, altrimenti i test di conformance Rust non
+trovano gli oracoli e falliscono per un motivo che non è il codice.
+
+**Il passo 4 è stato rifatto il 2026-07-27** (`D-0185`, installato `:phase4-cow`): l'ombra è
+ora copy-on-write sull'intero workspace, e la metà pericolosa del confronto — *è successo
+qualcosa che nessuno aveva dichiarato* — **era strutturalmente vuota** fino a quel momento,
+perché `observe()` guardava solo il baseline e il baseline lo forniva il chiamante.
+
+**Due reperti aperti da quella fase, entrambi nominati e non riparati:**
+
+- **`F4-014`** — l'esecutore è **l'unico dei sei passi con due implementazioni e nessun
+  oracolo condiviso**: `conformance/executor-vectors.json` non esiste e non è mai esistito,
+  benché `executor.mjs` lo affermasse e il MANIFEST portasse una voce a digest **vuoto** per
+  un runner Rust mai scritto. I due lati sono retti da test nativi *equivalenti*, che è più
+  debole. Costruire l'oracolo è lavoro di una fase propria.
+- **`F4-015`** — `shadowStatus()` **scrive** su una **GET**: crea `shadows/` e un file sonda
+  a ogni richiesta autenticata di `/api/v1/shadow`. La riparazione è sondare l'antenato
+  esistente senza creare nulla, e richiede una ricostruzione.
 
 ## ➜ Stato dell'installazione
 
-`noesar-evolution:phase4-events` · `Up (healthy)` · `restarts=0` ·
+`noesar-evolution:phase4-cow` · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-executor-20260727T172815Z` (`:phase4-events` precedente).
+`noesar-evolution.rollback-events-20260727T183606Z` (`:phase4-events`, il predecessore).
 Due container di progetto, che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
+Dal vivo: `MECHANISM=REFLINK_CLONE · copyOnWrite=true · measured=true ·
+coverage=WHOLE_WORKSPACE`. ⚠️ Il rollback **reintroduce l'`unexpected` strutturalmente
+vuoto**: una run dell'esecutore che tocca un file non dichiarato tornerebbe pulita.
 
 ## ➜ Cosa è stato fatto in questa sessione
 
