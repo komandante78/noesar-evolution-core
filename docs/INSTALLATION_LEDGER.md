@@ -2323,3 +2323,46 @@ riporta l'installazione a prima, perdendo **solo** le due rotte del seam.
 solo dall'harness (`AUTH_HTTP_SMOKE`), contro un server effimero: §3a `11e` vieta di far girare
 contro questa installazione suite che creano un Owner e mutano dati. Dal vivo è provato che
 esistono, che rispondono e che sono **chiuse** a chi non ha sessione.
+
+## 2026-07-27 · `:phase4-capability` — i capability token sull'installazione viva
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+`GET /api/v1/capability`, `POST /api/v1/capability/mint`, `POST /api/v1/capability/spend`.
+Un token si conia **solo** da un Piano che qualcuno ha approvato, è legato a **un** passo e non
+può nominare un percorso che quel passo non nomina. Coniazioni, spese e **rifiuti** vanno tutti
+nel registro di audit: «negato» senza ragione è ciò che rende inutile un audit.
+
+### Contenuto dell'immagine confrontato con l'albero PRIMA di toccare l'installazione
+
+`server.mjs`, `capability.mjs`, `reasoning.mjs` **byte-identici** al repository.
+
+### Sostituzione
+
+```text
+build       docker build --network=none --pull=false   FROM :phase4-reasoning
+stop        docker stop -t 60   → "postgres.stopped clean:true" LETTO NEL LOG
+backup      BACKUPS/runtime_pre_capability_deploy_20260727T165731Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-reasoning-20260727T165731Z      preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_capability_deploy_20260727T165731Z.json)
+§5a         rimosso il rollback più vecchio (:phase4-healthz), immagine CONSERVATA
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-capability
+endpoint    livez 200 · readyz 200 · metrics 401 · capability 401 · reasoning 401
+            mint senza sessione 401 · rotta inesistente 404 → cancelli veri
+B-010       NON regredito: /healthz 200 e ZERO marcatori
+```
+
+**Costo di rollback.** Nessuno nuovo: nessuna migrazione, nessun record cambia forma.
+
+**Cosa NON è vero, e va detto.** Il registro dei token vive **in memoria**: un riavvio invalida
+ogni token in circolazione — è la direzione sicura, ed è **dichiarata da `capabilityStatus`**
+invece di essere scoperta. E **nessun esecutore applica i token**: `executorEnforcesTokens` è
+`false` sull'installazione viva, perché l'esecutore è il passo 5 e non esiste. Oggi i token si
+coniano e si spendono, ma **nulla viene eseguito attraverso di essi**.

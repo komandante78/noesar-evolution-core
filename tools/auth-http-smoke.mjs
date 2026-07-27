@@ -103,6 +103,47 @@ try {
   const refused = await request('/api/v1/reasoning/plan', { method:'POST', value:{ request:'   ' } });
   if (refused.status !== 422) throw new Error('an empty request must be refused, not answered');
 
+  // Capability tokens, against the running server.
+  const capability = await request('/api/v1/capability');
+  if (capability.status !== 200) throw new Error(JSON.stringify(capability));
+  if (capability.data.adaptersMaySelfGrant !== false) throw new Error('an adapter must not be able to self-grant');
+  if (capability.data.executorEnforcesTokens !== false) throw new Error('the status must not claim an executor that does not exist');
+
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const capPlan = {
+    mode:'safe', constraints:[],
+    steps:[{ id:'a', description:'repair', files:['src/a.rs'], commands:[], dependsOn:[],
+      blastRadius:{ paths:['src/a.rs'], reachesOutsideWorkspace:false, destructive:false } }],
+  };
+  const capApproval = { approverId:'owner-001', grantedAtUnix:nowUnix, expiresAtUnix:nowUnix + 3600, scopeNote:'smoke' };
+
+  const minted = await request('/api/v1/capability/mint', { method:'POST', value:{
+    plan:capPlan, approval:capApproval,
+    request:{ stepId:'a', paths:['src/a.rs'], operations:['WRITE'], uses:1, expiresAtUnix:nowUnix + 600 },
+  } });
+  if (minted.status !== 201) throw new Error(JSON.stringify(minted));
+  if (!minted.data.token?.mac) throw new Error('a token must carry its MAC');
+
+  // Widening the token by hand is the obvious attack; the MAC is what answers it.
+  const forged = { ...minted.data.token, paths:[...minted.data.token.paths, 'src/secret.rs'] };
+  const forgedSpend = await request('/api/v1/capability/spend', { method:'POST', value:{
+    token:forged, attempt:{ path:'src/secret.rs', operation:'WRITE' } } });
+  if (forgedSpend.status !== 422) throw new Error('a token edited after issue must not verify');
+
+  const spend = await request('/api/v1/capability/spend', { method:'POST', value:{
+    token:minted.data.token, attempt:{ path:'src/a.rs', operation:'WRITE' } } });
+  if (spend.status !== 200 || spend.data.spent !== true) throw new Error(JSON.stringify(spend));
+  const again = await request('/api/v1/capability/spend', { method:'POST', value:{
+    token:minted.data.token, attempt:{ path:'src/a.rs', operation:'WRITE' } } });
+  if (again.status !== 422) throw new Error('a single-use token must not spend twice');
+
+  // A path the step never named must not be mintable, whatever the caller asks for.
+  const widened = await request('/api/v1/capability/mint', { method:'POST', value:{
+    plan:capPlan, approval:capApproval,
+    request:{ stepId:'a', paths:['src/secret.rs'], operations:['READ'], uses:1, expiresAtUnix:nowUnix + 600 },
+  } });
+  if (widened.status !== 422 || widened.data.kind !== 'OUT_OF_SCOPE') throw new Error(JSON.stringify(widened));
+
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');
   if (authFile.includes(cookie.split('=')[1]?.split(';')[0] ?? 'impossible')) throw new Error('plaintext session token detected');

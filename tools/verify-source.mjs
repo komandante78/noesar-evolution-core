@@ -41,6 +41,9 @@ const required = [
   'private-boundary/atom-provider.schema.json',
   'conformance/reasoning-vectors.json',
   'services/reference-control-plane/src/reasoning.mjs',
+  'services/reference-control-plane/src/capability.mjs',
+  'conformance/capability-vectors.json',
+  'rust/crates/noesar-capability/src/lib.rs',
 ];
 for (const rel of required) {
   if (!existsSync(resolve(root, rel))) {

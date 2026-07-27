@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [dependencies]
 noesar-reasoning = { path = "../noesar-reasoning" }
 serde.workspace = true

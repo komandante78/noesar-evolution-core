@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
 import { authorityStatus, assertReferenceRuntimeAllowed } from './authority.mjs';
 import {
@@ -22,6 +22,9 @@ import {
 } from './http-security.mjs';
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
 import { ReferenceReasoningProvider, ReasoningRefused, reasoningStatus } from './reasoning.mjs';
+import {
+  TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
+} from './capability.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -83,6 +86,11 @@ const exposureScope = resolveBindScope({ bindAddress, bindScope:process.env.NOES
 if (bindAddress && !isWildcardAddress(bindAddress)) allowedHosts.add(bindAddress.toLowerCase());
 
 const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
+// The capability secret is generated per process and never written down: a token that
+// outlived the engine that issued it would be a grant with no ledger behind it. The
+// consequence -- a restart invalidates every outstanding token -- is reported by
+// capabilityStatus rather than left to be discovered.
+const capabilityMinter = new TokenMinter(randomBytes(32));
 const store = new JsonStore(join(workspace, 'state/state.json'));
 const aiStore = new AtomicJsonStore(join(workspace, 'state/ai-workspace.json'));
 const contextGraph = new ContextGraph(aiStore);
@@ -755,6 +763,46 @@ const server = createServer(async (req, res) => {
       } catch (error) {
         if (error instanceof ReasoningRefused) {
           return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        }
+        throw error;
+      }
+    }
+
+    // --- capability tokens · phase 1 step 3 ------------------------------------
+    // A manifest is a request; the engine issues the tokens. Minting requires a plan an
+    // approver signed, and the token can never name a path its step does not.
+    if (req.method === 'GET' && url.pathname === '/api/v1/capability') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, capabilityStatus(capabilityMinter));
+    }
+    if (req.method === 'POST' && (url.pathname === '/api/v1/capability/mint'
+      || url.pathname === '/api/v1/capability/spend')) {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      // Holding a session is not holding the right to mint: the permission is the same one
+      // that governs changing the workspace, because that is what a token licenses.
+      if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
+      }
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        if (url.pathname === '/api/v1/capability/mint') {
+          const authorized = authorizePlan(payload?.plan, payload?.approval, nowUnix);
+          const token = capabilityMinter.mint(authorized, payload?.request ?? {}, nowUnix);
+          ledger.append({ actor:authenticated.user.id, action:'capability.minted', result:'issued', details:{ tokenId:token.id, stepId:token.stepId, planDigest:token.planDigest, paths:token.paths, operations:token.operations } });
+          return json(res, 201, { token, planDigest:authorized.digest });
+        }
+        const spent = capabilityMinter.spend(payload?.token ?? {}, payload?.attempt ?? {}, nowUnix);
+        ledger.append({ actor:authenticated.user.id, action:'capability.spent', result:'spent', details:{ tokenId:payload?.token?.id ?? null, attempt:payload?.attempt ?? null } });
+        return json(res, 200, spent);
+      } catch (error) {
+        if (error instanceof CapabilityError) {
+          // Every refusal carries its reason: "denied" with no reason is what makes an
+          // audit trail useless. The refusal is recorded too — a refused attempt is the
+          // one most worth being able to find later.
+          ledger.append({ actor:authenticated.user.id, action:'capability.refused', result:'denied', details:{ kind:error.kind, reason:error.reason } });
+          return json(res, error.kind === 'NOT_AUTHORIZED' ? 403 : 422,
+            { error:'capability_refused', kind:error.kind, reason:error.reason });
         }
         throw error;
       }

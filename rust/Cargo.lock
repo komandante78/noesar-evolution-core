@@ -575,6 +575,7 @@ dependencies = [
  "hmac",
  "noesar-reasoning",
  "serde",
+ "serde_json",
  "sha2",
  "subtle",
 ]

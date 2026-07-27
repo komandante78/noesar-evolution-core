@@ -2587,3 +2587,20 @@ unknown, not merely invalid; comparison is constant-time.
 that accepts nothing but a token is step 5 and does not exist, so today the rule "the engine
 changes nothing except by executing an authorised Plan" is enforced *by this crate* and not
 yet *by the product*.
+
+## D-0181 · I capability token nel prodotto, e ciò che ancora non applicano — 2026-07-27
+**Decision.** `capability.mjs` rispecchia il crate Rust; tre rotte lo espongono;
+`conformance/capability-vectors.json` è l'oracolo condiviso e lo eseguono **entrambi** i lati.
+Installato come `:phase4-capability`.
+**Why.** Il crate da solo lasciava la regola applicata nel repository e non nel prodotto.
+**Rejected.** Persistere il registro dei token su disco: un token che sopravvive al motore che
+l'ha emesso è una concessione di cui nessuno tiene il libro mastro. Il riavvio li invalida, e
+lo stato lo **dichiara**.
+**Evidence.** Node 23/23 e Rust 15 vettori sullo **stesso** file; unit 767 → **790**; ESLint
+**175 file, 0 errori**; workspace Rust **18 binari, 53 passati**; `AUTH_HTTP_SMOKE=PASS` con un
+token allargato a mano **rifiutato** (422) e una seconda spesa **rifiutata**; dal vivo
+`capability` 401, `mint` senza sessione 401, rotta inesistente 404; MANIFEST **5759**, 0 mismatch.
+**Reversal cost.** Nessuno nuovo.
+**Status.** Installato. **NON vero e dichiarato**: `executorEnforcesTokens=false` — nessun
+esecutore applica i token, perché è il passo 5. Si coniano e si spendono; nulla viene eseguito
+attraverso di essi.
