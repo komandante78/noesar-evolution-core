@@ -3,8 +3,40 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 from pathlib import Path
+
+
+def read_signing_key(path: Path) -> bytes:
+    raw = path.read_bytes().strip()
+    try:
+        return bytes.fromhex(raw.decode("ascii"))
+    except (ValueError, UnicodeDecodeError):
+        return raw
+
+
+def verify_signature(value: dict, key: bytes) -> None:
+    """Recompute the signature from the document's own fields.
+
+    The payload is rebuilt here from what the document actually contains, never read from a
+    field the document supplies: a verdict handed over by the thing being judged is not a
+    verdict. `compare_digest` because a byte-at-a-time comparison leaks where it stopped.
+    """
+    signature = value.get("signature")
+    if not isinstance(signature, str) or not signature:
+        raise ValueError("provenance is not signed")
+    if value.get("signatureAlgorithm") != "HMAC-SHA256":
+        raise ValueError("unsupported provenance signature algorithm")
+    unsigned = {
+        k: v
+        for k, v in value.items()
+        if k not in {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable"}
+    }
+    payload = json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise ValueError("provenance signature mismatch")
 
 
 def digest(path: Path) -> str:
@@ -73,9 +105,13 @@ def verify(path: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--provenance", required=True, type=Path)
+    parser.add_argument("--signing-key-file", required=True, type=Path)
     args = parser.parse_args()
     value = verify(args.provenance)
+    verify_signature(value, read_signing_key(args.signing_key_file))
     print("VERDICT=PASS")
+    print("PROVENANCE_SIGNED=true")
+    print(f"SIGNING_KEY_ID={value.get('signingKeyId')}")
     print(f"BINARY_SHA256={value['binarySha256']}")
     print(f"SOURCE_TREE_SHA256={value['sourceTreeSha256']}")
     return 0

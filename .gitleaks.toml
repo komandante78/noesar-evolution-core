@@ -1,0 +1,21 @@
+# NOESAR EVOLUTION — secret scanning configuration
+#
+# B-002 recorded that neither gitleaks nor trufflehog was available and that a heuristic
+# pattern scan stood in for one. A real scan was run on 2026-07-27 over all 118 commits
+# (~77.9 MB): 29 findings, every one of them inside `rust/vendor/`, and none in first-party
+# code.
+#
+# The vendored findings are upstream Win32 binding constants -- `pub const
+# XCN_NCRYPT_UI_PROTECT_KEY_FLAG: u32 = 1i32;` and its siblings -- whose high-entropy
+# identifiers trip `generic-api-key`. They are not secrets and they are not ours.
+#
+# The allowlist is scoped to `rust/vendor/` and nothing else. Suppressing by rule instead
+# of by path would have silenced `generic-api-key` across the whole tree, which is how a
+# scanner becomes a check people learn to skip.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vendored upstream crates: third-party source, reviewed as noise on 2026-07-27"
+paths = ['''^rust/vendor/''']

@@ -41,6 +41,11 @@ if [ -z "${RUSTUP_TOOLCHAIN:-}" ] && command -v rustup >/dev/null 2>&1; then
   fi
 fi
 
+SIGNING_KEY=${NOESAR_PROVENANCE_SIGNING_KEY_FILE:?NOESAR_PROVENANCE_SIGNING_KEY_FILE is required}
+test -f "$SIGNING_KEY" || {
+  echo "provenance signing key not found at $SIGNING_KEY" >&2
+  exit 1
+}
 test -f "$NOESAR_AUTHORITY_CONFORMANCE_REPORT" || {
   echo "conformance report not found at $NOESAR_AUTHORITY_CONFORMANCE_REPORT" >&2
   echo "produce it first: node tools/emit-conformance-report.mjs <path>" >&2
@@ -80,6 +85,7 @@ python3 "$ROOT/../tools/create-rust-build-provenance.py" \
   --workspace "$ROOT" \
   --tests-report "$NOESAR_RUST_TEST_REPORT" \
   --conformance-report "$NOESAR_AUTHORITY_CONFORMANCE_REPORT" \
-  --report "$REPORT"
+  --report "$REPORT" \
+  --signing-key-file "$SIGNING_KEY"
 
 echo "RUST_AUTHORITY_RELEASE_BUILD=RECORDED"

@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3c8f9b5 (ReasoningProvider contract, frozen at 1.0.0)",
+  "last_commit": "f287037 (release chain producers)",
   "last_updated_utc": "2026-07-27T15:40:00Z",
   "blockers": [
     {
@@ -32,7 +32,9 @@
       "blocks_next_phase": false,
       "resolution_options": [
         "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
-      ]
+      ],
+      "status": "resolved",
+      "note": "CHIUSO 2026-07-27 (D-0177): gitleaks eseguito da immagine pubblicata su 118 commit / 77,9 MB — 29 reperti, TUTTI in rust/vendor (costanti Win32 upstream), ZERO di prima parte. .gitleaks.toml limita lallowlist a rust/vendor e non alla regola. tools/run-secret-scan.sh e ripetibile e DICHIARA i propri limiti: non vede chiavi di esempio documentate ne PEM malformati."
     },
     {
       "id": "B-008",
@@ -349,8 +351,11 @@
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
-    "rust_workspace": "14 binari, 19 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
-    "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)"
+    "rust_workspace": "14 binari, 23 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
+    "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)",
+    "provenance": "11/11 (misurato 2026-07-27, erano 6 — 5 nuovi sulla firma)",
+    "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
+    "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",

@@ -2483,3 +2483,35 @@ executed**), Rust workspace 19 passed. MANIFEST 5742, 0 mismatch.
 **Reversal cost.** None — no product code changed; the installation was not touched.
 **Status.** Applied, not installed. Still open and NOT repaired: `PROVENANCE_SIGNED=false`,
 Windows peer credentials unimplemented, and the two divergent copies of `verify-package.py`.
+
+## D-0177 · Everything deferred was repaired, and two of the four were not what I called them — 2026-07-27
+**Decision.** On the Owner's instruction the four items left open earlier in this session
+were closed. Provenance is signed (HMAC-SHA256, `--signing-key-file` required, no unsigned
+path). `verify_peer` refuses `WindowsNamedPipe` **by name**. `B-002` is answered by a real
+scanner. The PowerShell installers are parsed by real PowerShell, and the reinstall-nesting
+defect recorded in `D-0074` is fixed.
+**Why.** An optional signature is produced by nobody, which is how `PROVENANCE_SIGNED=false`
+survived the life of the package. And the Windows peer was rejected only for lacking a Unix
+uid: `DaemonPolicy` has `allowed_uids` and no Windows equivalent, so whoever first mapped a
+uid onto a Windows peer would have authorised that SID against nothing.
+**Rejected.** Ed25519: no vetted implementation is reachable from these tools and
+hand-rolling the primitive is the risk this project has already paid for. The document
+therefore records `publiclyVerifiable: false` rather than implying a property it lacks.
+Also rejected: installing anything on the host — gitleaks and PowerShell ran from published
+images, reversible with `docker rmi`.
+**Evidence.** Signature: valid verifies, tampered field / wrong key / removed signature each
+refused, exit 1 — provenance suite 6 → **11/11**. Daemon: **4/4**, including a Windows peer
+given a valid SID *and* a uid so every incidental reason to reject it was removed. Release
+chain end to end **exit 0**, `PROVENANCE_SIGNED=true`. gitleaks over **118 commits, 77.9 MB**:
+29 findings, all in `rust/vendor/`, **0 first-party**; with the scoped allowlist, 0. Nesting
+defect **reproduced** with real PowerShell (`reference-control-plane/reference-control-plane`
+on run 2), then 3 runs clean, guard refuses an outside target, stale file removed.
+PowerShell parse **6/6**. Workspace 23 passed. MANIFEST 5745, 0 mismatch.
+**Reversal cost.** The signing key lives at `state/provenance-signing.key` (0600, gitignored
+by `*.key`). Lose it and existing provenance cannot be verified — it must be re-minted.
+**Status.** Applied, not installed. Two corrections of my own claims: the "divergent copies"
+of `verify-package.py` are **two different programs sharing a name** (225 lines vs 41, one
+using `CapabilityManager`), not copies; and my first secret-scan control test planted
+`AKIAIOSFODNN7EXAMPLE`, AWS's documented example key, which gitleaks ignores by design — the
+scanner was fine, the proof was not. Still open: `B-001` needs a credential only the Owner
+holds; PowerShell scripts are parsed, **never executed**; the signature is symmetric.

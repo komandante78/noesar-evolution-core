@@ -3,10 +3,52 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+SIGNATURE_ALGORITHM = "HMAC-SHA256"
+
+
+def sign_document(document: dict, key: bytes) -> dict:
+    """Attach a signature over the canonical form of the unsigned document.
+
+    Deliberately symmetric, and the document says so: `publiclyVerifiable` is false and
+    `signatureAlgorithm` is recorded, because anyone able to verify this signature is also
+    able to forge it. It proves the document was minted by a holder of the build key -- not
+    by a publicly identifiable signer. Ed25519 would give the stronger property and is the
+    upgrade path; it is not taken here because no vetted implementation is available to
+    these tools and hand-rolling the primitive is exactly the risk this project has already
+    been bitten by.
+
+    The signature covers the document with the signature fields absent, serialised the same
+    way the report is written (sorted keys), so a verifier reproduces the bytes exactly
+    rather than trusting a separately supplied payload.
+    """
+    if len(key) < 32:
+        raise ValueError("provenance signing key must be at least 32 bytes")
+    unsigned = {
+        k: v
+        for k, v in document.items()
+        if k not in {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable"}
+    }
+    payload = json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    signed = dict(unsigned)
+    signed["signatureAlgorithm"] = SIGNATURE_ALGORITHM
+    signed["signingKeyId"] = hashlib.sha256(key).hexdigest()[:16]
+    signed["publiclyVerifiable"] = False
+    signed["signature"] = hmac.new(key, payload, hashlib.sha256).hexdigest()
+    return signed
+
+
+def read_signing_key(path: Path) -> bytes:
+    raw = path.read_bytes().strip()
+    try:
+        return bytes.fromhex(raw.decode("ascii"))
+    except (ValueError, UnicodeDecodeError):
+        return raw
 
 
 def digest(path: Path) -> str:
@@ -165,6 +207,9 @@ def main() -> int:
     parser.add_argument("--rustc-version")
     parser.add_argument("--cargo-version")
     parser.add_argument("--target-triple")
+    # Required, with no unsigned escape hatch: an optional signature is one nobody produces,
+    # which is how PROVENANCE_SIGNED stayed false for the life of this package.
+    parser.add_argument("--signing-key-file", required=True, type=Path)
     args = parser.parse_args()
 
     rustc_version = args.rustc_version or command_version(
@@ -191,6 +236,7 @@ def main() -> int:
         cargo_version=cargo_version,
         target_triple=target_triple,
     )
+    value = sign_document(value, read_signing_key(args.signing_key_file))
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(
         json.dumps(value, indent=2, sort_keys=True) + "\n",

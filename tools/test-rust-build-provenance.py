@@ -121,6 +121,35 @@ class RustBuildProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cargoLockSha256 mismatch"):
             verify.verify(path)
 
+    KEY = bytes(range(32))
+
+    def test_07_a_signed_document_verifies(self):
+        signed = create.sign_document(self.create_value(), self.KEY)
+        self.assertEqual(signed["signatureAlgorithm"], "HMAC-SHA256")
+        # Stated, not implied: this signature is symmetric, so a verifier can forge it.
+        self.assertFalse(signed["publiclyVerifiable"])
+        verify.verify_signature(signed, self.KEY)
+
+    def test_08_a_tampered_field_breaks_the_signature(self):
+        signed = create.sign_document(self.create_value(), self.KEY)
+        signed["sourceTreeSha256"] = "f" + signed["sourceTreeSha256"][1:]
+        with self.assertRaisesRegex(ValueError, "signature mismatch"):
+            verify.verify_signature(signed, self.KEY)
+
+    def test_09_the_wrong_key_is_rejected(self):
+        signed = create.sign_document(self.create_value(), self.KEY)
+        with self.assertRaisesRegex(ValueError, "signature mismatch"):
+            verify.verify_signature(signed, bytes(32))
+
+    def test_10_an_unsigned_document_is_rejected(self):
+        value = self.create_value()
+        with self.assertRaisesRegex(ValueError, "not signed"):
+            verify.verify_signature(value, self.KEY)
+
+    def test_11_a_short_key_is_refused_at_signing_time(self):
+        with self.assertRaisesRegex(ValueError, "at least 32 bytes"):
+            create.sign_document(self.create_value(), b"short")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

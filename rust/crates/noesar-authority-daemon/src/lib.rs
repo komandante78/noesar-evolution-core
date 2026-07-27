@@ -5,6 +5,7 @@ use noesar_authority_protocol::{
     ExpectedBindings,
 };
 use noesar_authority_transport::{
+    AuthenticatedTransport,
     encode_frame,
     FrameDecoder,
     PeerIdentity,
@@ -96,6 +97,15 @@ pub fn verify_peer(
 ) -> Result<(), &'static str> {
     policy.validate()?;
     peer.validate()?;
+    // Refused by name, not by accident. A WindowsNamedPipe peer passes PeerIdentity::validate
+    // on its SID alone and used to fall through to the uid check below, so it was rejected
+    // for lacking a uid rather than for being an unsupported transport. The moment anyone
+    // mapped a uid onto a Windows peer, that SID would have been authorised against nothing:
+    // DaemonPolicy has allowed_uids and no Windows equivalent. This is the fail-closed
+    // property the package's WINDOWS_NAMED_PIPE_PEER_CREDENTIALS=NOT_IMPLEMENTED depends on.
+    if peer.transport == AuthenticatedTransport::WindowsNamedPipe {
+        return Err("Windows named-pipe peer credentials are not implemented");
+    }
     let uid = peer.uid.ok_or("Unix peer uid is required")?;
     if !policy.allowed_uids.contains(&uid) {
         return Err("Unix peer uid is not authorized");
@@ -255,4 +265,66 @@ pub fn daemon_status() -> Value {
         "buildExecuted":false,
         "testsExecuted":false
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn policy() -> DaemonPolicy {
+        DaemonPolicy {
+            allowed_uids: BTreeSet::from([1000]),
+            expected_client_name: "noesar-reference-control-plane".to_string(),
+            expected_client_version: "0.6.0".to_string(),
+            max_connections: 8,
+        }
+    }
+
+    fn unix_peer(uid: u32) -> PeerIdentity {
+        PeerIdentity {
+            authenticated: true,
+            transport: AuthenticatedTransport::UnixDomainSocket,
+            uid: Some(uid),
+            pid: Some(42),
+            sid: None,
+        }
+    }
+
+    #[test]
+    fn an_allowed_unix_peer_is_accepted() {
+        assert!(verify_peer(&unix_peer(1000), &policy()).is_ok());
+    }
+
+    #[test]
+    fn an_unlisted_uid_is_refused() {
+        assert_eq!(
+            verify_peer(&unix_peer(1001), &policy()),
+            Err("Unix peer uid is not authorized")
+        );
+    }
+
+    #[test]
+    fn an_unauthenticated_peer_is_refused() {
+        let mut peer = unix_peer(1000);
+        peer.authenticated = false;
+        assert!(verify_peer(&peer, &policy()).is_err());
+    }
+
+    #[test]
+    fn a_windows_named_pipe_peer_is_refused_by_name_not_by_missing_uid() {
+        // The SID is long enough to satisfy PeerIdentity::validate, and a uid is present,
+        // so every incidental reason to reject it has been removed. What must refuse it is
+        // the unimplemented transport itself.
+        let peer = PeerIdentity {
+            authenticated: true,
+            transport: AuthenticatedTransport::WindowsNamedPipe,
+            uid: Some(1000),
+            pid: Some(42),
+            sid: Some("S-1-5-21-1".to_string()),
+        };
+        assert_eq!(
+            verify_peer(&peer, &policy()),
+            Err("Windows named-pipe peer credentials are not implemented")
+        );
+    }
 }
