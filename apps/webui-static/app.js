@@ -2,6 +2,7 @@
 import { initI18n, applyTranslations } from './i18n.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
+import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
 // --- theme, applied before anything else ------------------------------------
@@ -620,8 +621,67 @@ async function sendChat(){
   }
 }
 $('#sendMessage').addEventListener('click',sendChat);$('#chatInput').addEventListener('keydown',(event)=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendChat();}});$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
-function renderTasks(){$('#taskList').innerHTML=state.tasks.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.status)} · ${escapeHtml(item.priority)}${item.scheduledAt?` · ${instantHtml(item.scheduledAt)}`:''}</small><button data-task-status="${item.id}:running">Start</button><button data-task-status="${item.id}:completed">Complete</button><button data-task-status="${item.id}:blocked">Block</button></article>`).join('')||'No tasks.';$$('[data-task-status]').forEach((button)=>button.addEventListener('click',async()=>{const[id,status]=button.dataset.taskStatus.split(':');await api(`/api/v1/tasks/${id}`,{method:'PATCH',body:JSON.stringify({status})});await refreshWorkspace();}));}
-$('#taskForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({projectId:$('#taskProject').value||null,title:$('#taskTitle').value,description:$('#taskDescription').value,priority:$('#taskPriority').value,status:$('#taskScheduledAt').value?'scheduled':'planned',scheduledAt:$('#taskScheduledAt').value||null,dueAt:$('#taskDueAt').value||null,recurrence:$('#taskRecurrence').value||null})});event.target.reset();await refreshWorkspace();});
+// Active and scheduled work, in one place and each task in exactly one group · UI-062.
+// The grouping itself lives in schedule.js so that it is unit-tested rather than asserted
+// by looking at the screen.
+function taskCard(item,{showRule=false}={}){
+  const rule=String(item.recurrence??'').trim();
+  return `<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.status)} · ${escapeHtml(item.priority)}${item.scheduledAt?` · starts ${scheduleInstantHtml(item.scheduledAt)}`:''}${item.dueAt?` · due ${scheduleInstantHtml(item.dueAt)}`:''}</small>${showRule&&rule
+    // The rule is shown verbatim. It is free text or an RRULE, and rendering "every
+    // Monday" for a string this product has never parsed would be inventing a reading
+    // of it — the one thing a schedule must not do.
+    ?`<p class="schedule-rule"><span class="rule-label">Rule</span> <code>${escapeHtml(rule)}</code></p>`
+    :''}<button data-task-status="${item.id}:running">Start</button><button data-task-status="${item.id}:completed">Complete</button><button data-task-status="${item.id}:blocked">Block</button></article>`;
+}
+function renderTasks(){
+  const {active,scheduled}=splitTasks(state.tasks,Date.now());
+  $('#taskList').innerHTML=active.map((item)=>taskCard(item,{showRule:false})).join('')||'No active tasks.';
+  $('#taskList').classList.toggle('empty-state',active.length===0);
+  const scheduledList=$('#taskScheduledList');
+  if(scheduledList){
+    scheduledList.innerHTML=scheduled.map((item)=>taskCard(item,{showRule:true})).join('')||'Nothing scheduled.';
+    scheduledList.classList.toggle('empty-state',scheduled.length===0);
+  }
+  const activeCount=$('#taskActiveCount');if(activeCount)activeCount.textContent=String(active.length);
+  const scheduledCount=$('#taskScheduledCount');if(scheduledCount)scheduledCount.textContent=String(scheduled.length);
+  // The zone is named once, on the panel, because every instant below it is rendered in
+  // that zone: repeating it on each row is noise, omitting it entirely is the defect.
+  const chip=$('#taskZoneChip');if(chip)chip.textContent=`Times in ${zoneName()}`;
+  // The same zone, said again where the times are TYPED. A field that never names the zone
+  // it will be understood in asks a person to guess, and they find out afterwards — which
+  // is exactly the disagreement this phase repaired underneath.
+  const formZone=$('#taskFormZone');
+  if(formZone)formZone.textContent=`Schedule and Due are read in ${zoneName()}, and stored as an instant.`;
+  $$('[data-task-status]').forEach((button)=>button.addEventListener('click',async()=>{const[id,status]=button.dataset.taskStatus.split(':');await api(`/api/v1/tasks/${id}`,{method:'PATCH',body:JSON.stringify({status})});await refreshWorkspace();}));
+}
+// A stored value with no zone cannot be rendered as if it were precise. It is shown and
+// marked, rather than silently resolved against whichever clock happens to be reading it.
+function scheduleInstantHtml(value){
+  if(isZonelessInstant(value)){
+    return `<span class="zoneless" title="Recorded before the interface resolved wall clocks against a zone. Its true instant cannot be recovered.">${escapeHtml(value)} · recorded without a zone</span>`;
+  }
+  return instantHtml(value);
+}
+// A `datetime-local` field yields a wall clock with no zone. Sending it as-is let the
+// control plane resolve it against ITS OWN clock — the container's, which runs UTC — so a
+// person scheduling 09:30 in Europe/Rome stored 09:30Z and the panel then showed them
+// 11:30. The wall clock is resolved here, against the effective zone, and an instant is
+// sent. If the zone is somehow not one Intl knows, the browser's own zone is used and the
+// fallback is visible in the console rather than silent.
+function scheduledInstantFromField(value){
+  if(!value)return null;
+  try{return zonedWallClockToUtcIso(value,zoneName());}
+  catch(error){
+    // The typed value travels as an ARGUMENT, never inside the message. A console format
+    // string built from user input consumes the arguments after it when the input happens
+    // to contain %s or %d, and the line that was meant to explain a failure becomes a
+    // second failure to explain. (semgrep unsafe-formatstring, and it was right.)
+    console.warn('Could not resolve a scheduled wall clock in the effective zone; using this device zone instead.',{value,zone:zoneName(),error});
+    try{return zonedWallClockToUtcIso(value,Intl.DateTimeFormat().resolvedOptions().timeZone);}
+    catch{return null;}
+  }
+}
+$('#taskForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({projectId:$('#taskProject').value||null,title:$('#taskTitle').value,description:$('#taskDescription').value,priority:$('#taskPriority').value,status:$('#taskScheduledAt').value?'scheduled':'planned',scheduledAt:scheduledInstantFromField($('#taskScheduledAt').value),dueAt:scheduledInstantFromField($('#taskDueAt').value),recurrence:$('#taskRecurrence').value||null})});event.target.reset();await refreshWorkspace();});
 function renderMemories(){$('#memoryList').innerHTML=state.memories.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content)}</p><small>${escapeHtml(item.scope)} · ${escapeHtml(item.tags.join(', '))}</small><button data-edit-memory="${item.id}">Edit</button><button class="danger" data-delete-memory="${item.id}">Delete</button></article>`).join('')||'No memory.';$$('[data-edit-memory]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.memories.find((m)=>m.id===button.dataset.editMemory);const content=prompt('Edit memory',item.content);if(content!==null){await api(`/api/v1/memories/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));$$('[data-delete-memory]').forEach((button)=>button.addEventListener('click',async()=>{if(confirm('Delete this memory?')){await api(`/api/v1/memories/${button.dataset.deleteMemory}`,{method:'DELETE',body:'{}'});await refreshWorkspace();}}));}
 $('#memoryForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/memories',{method:'POST',body:JSON.stringify({projectId:$('#memoryProject').value||null,conversationId:$('#memoryScope').value==='conversation'?($('#memoryConversation').value||state.activeConversationId):null,scope:$('#memoryScope').value,title:$('#memoryTitle').value,content:$('#memoryContent').value,tags:$('#memoryTags').value.split(',').map((v)=>v.trim()).filter(Boolean)})});event.target.reset();await refreshWorkspace();});
 function renderArtifacts(){$('#artifactList').innerHTML=state.artifacts.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><small>${escapeHtml(item.type)} · version ${item.versions.length}</small><pre>${escapeHtml(item.versions.at(-1)?.content??'')}</pre><button data-edit-artifact="${item.id}">New version</button></article>`).join('')||'No artifacts.';$$('[data-edit-artifact]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.artifacts.find((a)=>a.id===button.dataset.editArtifact);const content=prompt('New artifact version',item.versions.at(-1)?.content??'');if(content!==null){await api(`/api/v1/artifacts/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));}
@@ -1983,6 +2043,129 @@ async function loadReviewMetric(){
 }
 
 // ---------------------------------------------------------------------------
+// The initial screen · UI-060…UI-063
+// ---------------------------------------------------------------------------
+
+// A block the server withheld. It states the permission, because a panel that goes quiet
+// when you are not allowed to see it is indistinguishable from a panel with nothing in it,
+// and one of those two is a fact about you rather than about the product.
+function withheldHtml(block,what){
+  return `<p class="declared-empty withheld">${escapeHtml(what)} are not shown to this account. It would need <code>${escapeHtml(block.requires)}</code>. ${escapeHtml(block.detail??'')}</p>`;
+}
+function renderEntryActions(payload){
+  const host=$('#homeEntryActions');if(!host)return;
+  const actions=payload.entryActions??[];
+  // `aria-disabled`, NOT the `disabled` attribute. A disabled button is removed from the
+  // tab order, and these three exist entirely to explain what is missing — so disabling
+  // them would hide that explanation from exactly the people who cannot see the dimmed
+  // styling. They stay reachable and announced as unavailable; nothing is bound to them,
+  // so pressing one does nothing. The audit's own exclusion note is what surfaced this:
+  // it reported skipping disabled controls, and three of them were mine.
+  host.innerHTML=actions.map((action)=>`<button class="entry-action${action.wired?'':' entry-waiting'}" data-entry-action="${escapeHtml(action.id)}"${action.wired?'':' aria-disabled="true"'}><b>${escapeHtml(action.label)}</b><span>${escapeHtml(action.detail)}</span></button>`).join('');
+  // Declared rather than left to be counted, the same way the bench states how many of its
+  // status fields have a source: two of six acting is the honest headline of this screen.
+  const chip=$('#homeEntryWired');
+  if(chip)chip.textContent=`${payload.entryActionsWired} of ${actions.length} can act on this build`;
+  for(const button of host.querySelectorAll('[data-entry-action]')){
+    const action=actions.find((item)=>item.id===button.dataset.entryAction);
+    if(!action?.wired||!action.target)continue;
+    button.addEventListener('click',async()=>{
+      if(action.target.sessionId){activate('chat');await selectConversation(action.target.sessionId);return;}
+      activate(action.target.view);
+      if(action.target.focus){const field=$(`#${action.target.focus}`);if(field)field.focus();}
+    });
+  }
+}
+function renderQuickActions(payload){
+  const host=$('#homeGoalActions');if(!host)return;
+  const actions=payload.quickActions??[];
+  host.innerHTML=actions.map((action)=>`<button class="goal-action" data-goal-action="${escapeHtml(action.id)}">${escapeHtml(action.goal)}</button>`).join('');
+  const count=$('#homeGoalCount');if(count)count.textContent=`${actions.length} goals`;
+  for(const button of host.querySelectorAll('[data-goal-action]')){
+    const action=actions.find((item)=>item.id===button.dataset.goalAction);
+    button.addEventListener('click',()=>{
+      // ACT, because every one of these ten asks for something to be done rather than
+      // explained. The goal lands in the composer and is NOT sent: a screen that fires a
+      // request off the back of one click decides for the person what they meant.
+      setMode('ACT');
+      activate('chat');
+      const composer=$('#chatInput');
+      if(composer){composer.value=action.goal;composer.focus();}
+    });
+  }
+}
+function renderServices(payload){
+  const host=$('#homeServices');if(!host)return;
+  const block=payload.services??{};
+  const chip=$('#homeServicesStatus');
+  if(chip){chip.textContent=block.status??'—';chip.className=`badge ${block.status==='healthy'?'badge-on':'badge-off'}`;}
+  const safe=block.safeMode?.active
+    ?`<p class="notice">Safe mode is active${block.safeMode.since?` since ${instantHtml(block.safeMode.since)}`:''}. Mutations are refused; reads still answer.</p>`
+    :'';
+  const detail=block.detailVisible
+    ?`<ul class="service-list">${(block.components??[]).map((component)=>`<li><span class="dot ${component.healthy?'ok':'bad'}" aria-hidden="true"></span><b>${escapeHtml(component.name)}</b>${component.essential?' <span class="tag">essential</span>':''}<small>${escapeHtml(component.detail??'')}</small></li>`).join('')}</ul>`
+    // The count without the names. Enough to know the installation is well, not enough to
+    // enumerate it — the detail belongs to the owner-only Health section and this screen
+    // must not become the way around that gate.
+    :`<p class="declared-empty">${block.componentCount} components checked, ${block.degradedCount} degraded. The component detail is owner-only and lives in Settings → Health.</p>`;
+  host.classList.remove('empty-state');
+  host.innerHTML=`${safe}${detail}<p class="hint">Checked ${instantHtml(block.checkedAt)}.</p>`;
+}
+function renderTools(payload){
+  const host=$('#homeTools');if(!host)return;
+  const block=payload.tools??{};
+  host.classList.remove('empty-state');
+  if(block.visible===false){host.innerHTML=withheldHtml(block,'Installed tools');return;}
+  if(!block.count){
+    host.innerHTML='<p class="declared-empty">No tool is registered. This is empty because nothing has been installed, not because something is hidden — a tool is registered disabled by policy and enabled deliberately.</p>';
+    return;
+  }
+  host.innerHTML=`<ul class="provenance-list">${block.items.map((tool)=>`<li><b>${escapeHtml(tool.name)}</b> <span class="tag">${escapeHtml(tool.transport)}</span>${tool.mutative?' <span class="tag tag-warn">mutative</span>':''}
+    <small>Reaches ${escapeHtml(tool.origin.reach.replace('-',' '))}${tool.origin.host?` · ${escapeHtml(tool.origin.host)}`:''}${tool.origin.declaredExternal?' · declares itself external':''}</small>
+    <small>${tool.consentGranted?'consent granted':'no consent'} · ${tool.credentialConfigured?'credential configured':'no credential'} · registered ${tool.registeredAt?instantHtml(tool.registeredAt):'—'}</small></li>`).join('')}</ul>
+    <p class="hint">Provenance here is where a tool points, not who added it: the record carries no registrar. That name is in the audit log under <code>tool.registered</code>.</p>`;
+}
+function renderModels(payload){
+  const host=$('#homeModels');if(!host)return;
+  const block=payload.models??{};
+  host.classList.remove('empty-state');
+  const providers=block.providers?.visible===false
+    ?withheldHtml(block.providers,'Providers')
+    :block.providers.count
+      ?`<ul class="provenance-list">${block.providers.items.map((profile)=>`<li><b>${escapeHtml(profile.name)}</b> <span class="tag">${escapeHtml(profile.type)}</span>
+        <small>${escapeHtml(profile.reach.replace('-',' '))}${profile.baseUrl?` · ${escapeHtml(profile.baseUrl)}`:''}</small>
+        <small>${profile.consentGranted?'consent granted':'no consent'} · ${profile.credentialConfigured?'credential configured':'no credential'}</small></li>`).join('')}</ul>`
+      :'<p class="declared-empty">No provider is configured.</p>';
+  const runtime=block.localRuntime?.visible===false
+    ?withheldHtml(block.localRuntime,'The local runtime')
+    :`<p class="runtime-line"><b>Local runtime</b> <small>${escapeHtml(block.localRuntime.mode??'not configured')}${block.localRuntime.model?` · ${escapeHtml(block.localRuntime.model)}`:''}${block.localRuntime.endpoint?` · ${escapeHtml(block.localRuntime.endpoint)}`:''}</small>
+      <small>${block.localRuntime.launchedHere?'launched by this installation':'attached, not launched here'}${block.localRuntime.overriddenByEnvironment?' · overridden by the environment':''}</small></p>`;
+  host.innerHTML=`${providers}${runtime}<p class="hint">${escapeHtml(block.trustState?.reason??'')}</p>`;
+}
+async function loadHome(){
+  // The metric has its own route and its own failure mode; keeping it separate means a
+  // metric that cannot be read does not blank the rest of the screen.
+  loadReviewMetric();
+  let payload;
+  try{payload=await api('/api/v1/home');}
+  catch(error){
+    for(const id of ['#homeEntryActions','#homeGoalActions','#homeServices','#homeTools','#homeModels']){
+      const host=$(id);
+      // Named, not left on "Loading…". A panel that never resolves is the defect this
+      // product has already shipped once and does not intend to ship again.
+      if(host)host.innerHTML=`<p class="declared-empty">This panel could not load: ${escapeHtml(error.message)}</p>`;
+    }
+    return;
+  }
+  renderEntryActions(payload);
+  renderQuickActions(payload);
+  renderServices(payload);
+  renderTools(payload);
+  renderModels(payload);
+  return payload;
+}
+
+// ---------------------------------------------------------------------------
 // The workbench · UI-030…UI-037, and the closure · UI-036
 // ---------------------------------------------------------------------------
 
@@ -2126,7 +2309,7 @@ async function submitClosure(event){
 Object.assign(VIEW_LOADERS,{
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
-  home:loadReviewMetric,
+  home:loadHome,
 });
 // The loaders of the demoted pages, keyed by the section that now owns them. "Health and
 // logs" is one section holding two former pages, so it runs both: merging two entries in

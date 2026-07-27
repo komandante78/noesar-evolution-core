@@ -42,6 +42,7 @@ import { Watchdog, watchdogStatePath } from './watchdog.mjs';
 import { UpdateManager } from './update-manager.mjs';
 import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, registerWatchdogSubjects } from './observability.mjs';
+import { buildHomeOverview } from './home-overview.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -690,6 +691,41 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/v1/ai/bootstrap') {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
       return json(res, 200, { modes:['ASK','CREATE','ACT'], providerCatalog:providerGateway.catalog(), ...aiWorkspace.snapshot() });
+    }
+    // --- the initial screen · UI-060…UI-063 ----------------------------------
+    // One request, assembled server-side, because each block depends on what this caller
+    // may see and a browser cannot be trusted to withhold anything from itself. A block
+    // the caller may not read comes back withheld WITH the permission it would need: a
+    // silently empty panel and a forbidden one look identical, and only one of them means
+    // "there is nothing here".
+    if (req.method === 'GET' && url.pathname === '/api/v1/home') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      const may = (permission) => auth.hasPermission(authenticated.user, permission);
+      const workspace = may('workspace.read');
+      const hardware = may('hardware.read');
+      // The detail behind service health is what the owner-only Health section shows.
+      // Putting it on a page every role can reach would make the initial screen a way
+      // around that gate, so the same two conditions are required here.
+      const healthDetail = authenticated.user.role === 'owner' && may('audit.read');
+      return json(res, 200, buildHomeOverview({
+        health:buildHealth({
+          product:PRODUCT, watchdog, auth, authority, dataPlane, logger, updateManager,
+          timezone:timezoneService.serverDefault(), debug:debugMode.status(),
+        }),
+        mayReadHealthDetail:healthDetail,
+        tools:workspace ? aiWorkspace.snapshot().tools : [],
+        toolsPermitted:workspace,
+        providers:workspace ? providerGateway.list() : [],
+        providersPermitted:workspace,
+        localModel:hardware ? localModels.status() : null,
+        runtimePermitted:hardware,
+        tasks:workspace ? aiWorkspace.listTasks({}) : [],
+        tasksPermitted:workspace,
+        lastSession:workspace
+          ? (contextGraph.listSessions({ place:'active', page:1, pageSize:1 }).items[0] ?? null)
+          : null,
+        generatedAt:toUtcIso(),
+      }));
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/projects') {
       const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;

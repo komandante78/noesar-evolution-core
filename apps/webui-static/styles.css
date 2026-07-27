@@ -928,8 +928,44 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .metric-trend{display:flex;align-items:flex-end;gap:3px;height:64px;padding:6px;border:1px solid var(--line);border-radius:10px}
 .metric-trend i{display:block;flex:1;min-width:3px;background:linear-gradient(180deg,var(--accent-fill-from),var(--accent-fill-to));border-radius:2px 2px 0 0}
 
+/* The initial screen · UI-060…UI-063.
+   Every size here is a multiple of --text-scale. One bare pixel would be an invisible
+   defect: the interface grows around the label that stayed behind. */
+.entry-panel,.goal-panel{margin-bottom:16px}
+.entry-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.entry-action{display:block;min-height:78px;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--surface-card);color:var(--text-tile);text-align:start;cursor:pointer}
+.entry-action b{display:block;margin-bottom:5px;font-size:calc(var(--text-scale)*14px)}
+.entry-action span{display:block;color:var(--muted);line-height:1.5;font-size:calc(var(--text-scale)*12px)}
+/* An action waiting on the backbone is dimmed but stays legible: it is part of the design,
+   and a reader has to be able to see WHAT is missing, not merely that something is. */
+.entry-action.entry-waiting{cursor:not-allowed;border-style:dashed;background:var(--surface-sunken)}
+.entry-action.entry-waiting b{color:var(--muted)}
+.goal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.goal-action{min-height:34px;padding:8px 12px;border-radius:999px;background:var(--surface-secondary);font-size:calc(var(--text-scale)*13px)}
+.schedule-board .schedule-group{margin-top:14px}
+.schedule-board h3{margin:0 0 8px;font-size:calc(var(--text-scale)*13px);letter-spacing:.04em;color:var(--text-label)}
+.group-count{display:inline-block;min-width:22px;padding:1px 7px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.schedule-rule{margin:8px 0 10px;color:var(--text-card);font-size:calc(var(--text-scale)*12px)}
+.rule-label{color:var(--muted);letter-spacing:.08em;font-size:calc(var(--text-scale)*10px)}
+.zoneless{color:var(--amber)}
+.home-inventory{margin-top:16px}
+.service-list,.provenance-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+.service-list li,.provenance-list li{padding-bottom:9px;border-bottom:1px solid var(--line);font-size:calc(var(--text-scale)*13px)}
+.service-list small,.provenance-list small,.runtime-line small{display:block;margin-top:3px;color:var(--muted);font-size:calc(var(--text-scale)*11px);line-height:1.5}
+.dot{display:inline-block;width:8px;height:8px;margin-inline-end:7px;border-radius:50%}
+.dot.ok{background:var(--green)}
+.dot.bad{background:var(--red)}
+.tag{display:inline-block;margin-inline-start:6px;padding:1px 7px;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:calc(var(--text-scale)*10px);letter-spacing:.04em}
+.tag-warn{color:var(--amber);border-color:var(--border-warn)}
+.runtime-line{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*13px)}
+.withheld{border-inline-start:3px solid var(--amber);padding-inline-start:10px}
+
+@media(max-width:850px){.entry-actions{grid-template-columns:1fr}.home-inventory{grid-template-columns:1fr}}
+
 @media(forced-colors:active){
   .sessions-places .place.active,.bench-tab.active,.step-group button[aria-pressed=true]{outline:2px solid Highlight}
   .session-row,.confirm-card,.bench-navigator,.bench-panels,.bench-terminal,.bench-status,.control-row{border:1px solid CanvasText;background:Canvas}
   .metric-trend i{background:CanvasText}
+  .entry-action,.goal-action,.service-list li,.provenance-list li{border:1px solid CanvasText;background:Canvas}
+  .dot.ok,.dot.bad{background:CanvasText}
 }

@@ -95,6 +95,21 @@
           <button data-start-mode="CREATE"><b>Create</b><span>Documents, code, tables and versioned artifacts.</span></button>
           <button data-start-mode="ACT"><b>Act</b><span>Agent plans, tool steps and approval-gated mutations.</span></button>
         </div>
+        <!-- The six entry actions · UI-060. Three of them act; three say what they are
+             waiting for. Rendering them from the payload rather than writing six buttons
+             here is deliberate: the count is then a property of the code, and a structural
+             test can hold it to six. -->
+        <section class="panel entry-panel" aria-labelledby="homeEntryTitle">
+          <div class="panel-title"><h2 id="homeEntryTitle">Start here</h2><span class="badge badge-off" id="homeEntryWired">—</span></div>
+          <div class="entry-actions" id="homeEntryActions">Loading…</div>
+        </section>
+        <!-- The ten quick actions · UI-061. Goals, not functions — the wording is the
+             criterion. What a goal does today is stated under them rather than implied. -->
+        <section class="panel goal-panel" aria-labelledby="homeGoalsTitle">
+          <div class="panel-title"><h2 id="homeGoalsTitle">Or start from what you want done</h2><span id="homeGoalCount"></span></div>
+          <div class="goal-actions" id="homeGoalActions">Loading…</div>
+          <p class="hint">A goal opens a conversation with itself as the opening text. Turning a goal into a Plan is the Intent Frame, which is backbone work and does not exist in this build — so nothing here has been understood yet, only asked.</p>
+        </section>
         <div class="dashboard-grid">
           <section class="panel"><div class="panel-title"><h2>Projects</h2><button class="text-button" data-view-link="projects">Manage</button></div><div id="homeProjects" class="list empty-state">No projects yet.</div></section>
           <section class="panel"><div class="panel-title"><h2>Recent conversations</h2><button class="text-button" data-view-link="chat">Open chat</button></div><div id="homeConversations" class="list empty-state">No conversations yet.</div></section>
@@ -115,8 +130,26 @@
       
         <section class="work-block" id="view-tasks">
         <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h2 class="page-title">Tasks</h2><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option>low</option><option selected>normal</option><option>high</option><option>critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><button class="primary">Create task</button></form><section class="panel"><div class="panel-title"><h2>Work queue</h2><span>Visible status</span></div><div id="taskList" class="card-list empty-state">No tasks.</div></section></div>
+        <div class="two-col"><form class="panel form-stack" id="taskForm"><h2>New task</h2><label>Project<select id="taskProject"></select></label><label>Title<input id="taskTitle" required></label><label>Description<textarea id="taskDescription"></textarea></label><label>Priority<select id="taskPriority"><option>low</option><option selected>normal</option><option>high</option><option>critical</option></select></label><label>Schedule<input id="taskScheduledAt" type="datetime-local"></label><label>Due<input id="taskDueAt" type="datetime-local"></label><label>Recurrence rule<input id="taskRecurrence" placeholder="Optional RRULE or human-readable policy"></label><p class="hint" id="taskFormZone">—</p><button class="primary">Create task</button></form><section class="panel schedule-board" aria-labelledby="workQueueTitle">
+          <div class="panel-title"><h2 id="workQueueTitle">Work queue</h2><span class="badge badge-off" id="taskZoneChip">—</span></div>
+          <!-- UI-062 asks for active and scheduled work in ONE place, so the two must
+               partition rather than overlap: a task listed twice is a task counted twice.
+               The rule is printed where it is applied, because a reader cannot check a
+               grouping whose criterion lives in a source file. -->
+          <p class="hint">Scheduled means a recurrence rule, or a start still in the future. Everything else that has not finished is active, and running outranks a rule. Every task appears exactly once.</p>
+          <div class="schedule-group"><h3>Active <span class="group-count" id="taskActiveCount"></span></h3><div id="taskList" class="card-list empty-state">No tasks.</div></div>
+          <div class="schedule-group"><h3>Scheduled <span class="group-count" id="taskScheduledCount"></span></h3><div id="taskScheduledList" class="card-list empty-state">Nothing scheduled.</div></div>
+        </section></div>
       </section>
+        <!-- Service health · installed tools · models — each with its provenance · UI-063.
+             Every one of these three blocks can come back withheld instead of empty, and
+             the difference is rendered: "you may not see this" and "there is nothing here"
+             are different facts and only one of them is about the product. -->
+        <div class="three-col home-inventory">
+          <section class="panel" aria-labelledby="homeServicesTitle"><div class="panel-title"><h2 id="homeServicesTitle">Service health</h2><span class="badge badge-off" id="homeServicesStatus">—</span></div><div id="homeServices" class="empty-state">Loading…</div></section>
+          <section class="panel" aria-labelledby="homeToolsTitle"><div class="panel-title"><h2 id="homeToolsTitle">Installed tools</h2><button class="text-button" data-view-link="coden">Manage</button></div><div id="homeTools" class="empty-state">Loading…</div></section>
+          <section class="panel" aria-labelledby="homeModelsTitle"><div class="panel-title"><h2 id="homeModelsTitle">Models</h2><button class="text-button" data-view-link="models">Manage</button></div><div id="homeModels" class="empty-state">Loading…</div></section>
+        </div>
       </section>
 
       <section class="view" id="view-chat">
