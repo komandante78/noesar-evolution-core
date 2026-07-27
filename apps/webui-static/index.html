@@ -47,7 +47,12 @@
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
       <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span></button>
       <div class="command"><span>⌕</span><input id="globalSearch" aria-label="Global search" placeholder="Search chats, files, memory, tools and tasks…"><kbd>Ctrl K</kbd><div id="globalSearchResults" class="search-popover hidden"></div></div>
-      <div class="top-actions"><label class="language-picker">Language<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option></select></label><span class="chip" id="projectChip">Project: none</span><span class="chip" id="modelChip">Model: none</span><span class="status-good" id="runtimeState">● Local-first</span><button class="chip rank-control" id="panelRank" type="button" aria-controls="contextPanel" aria-expanded="true" title="Context panel: docked · floating · hidden — remembered for each destination">◫ <span id="panelRankLabel">Panel: docked</span></button><button class="chip" id="logoutButton">Sign out</button><span class="avatar" id="userAvatar">O</span></div>
+      <!-- UI-037. The reference bar carries search · project · model · privacy · language ·
+           time zone · profile; verification coverage is ADDED to them, never in place of
+           them. The coverage chip reads "—" because nothing recalculates yet: a coverage
+           figure with no verifier behind it would be the most damaging invented number in
+           the product, since its whole purpose is to say how much you may trust. -->
+      <div class="top-actions"><label class="language-picker">Language<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option></select></label><span class="chip" id="timezoneChip" title="Instants are stored in UTC and shown in this IANA zone">Zone: —</span><span class="chip" id="projectChip">Project: none</span><span class="chip" id="modelChip">Model: none</span><span class="chip" id="coverageChip" title="Verification coverage: how much of an answer was recalculated rather than inferred. Nothing recalculates in this build, so there is no figure to show.">Coverage: —</span><span class="status-good" id="runtimeState">● Local-first</span><button class="chip rank-control" id="panelRank" type="button" aria-controls="contextPanel" aria-expanded="true" title="Context panel: docked · floating · hidden — remembered for each destination">◫ <span id="panelRankLabel">Panel: docked</span></button><button class="chip" id="logoutButton">Sign out</button><span class="avatar" id="userAvatar">O</span></div>
     </header>
 
     <aside class="sidebar" id="sidebar">
@@ -94,6 +99,19 @@
           <section class="panel"><div class="panel-title"><h2>Projects</h2><button class="text-button" data-view-link="projects">Manage</button></div><div id="homeProjects" class="list empty-state">No projects yet.</div></section>
           <section class="panel"><div class="panel-title"><h2>Recent conversations</h2><button class="text-button" data-view-link="chat">Open chat</button></div><div id="homeConversations" class="list empty-state">No conversations yet.</div></section>
         </div>
+        <!-- The product's metric · UI-070…UI-072. A time, never a score, and a rejected
+             change counts as time spent: excluding it would be choosing the denominator
+             that flatters the product. -->
+        <section class="panel metric-panel">
+          <div class="panel-title"><h2>Human review time per decided change</h2><span class="badge badge-off" id="metricWindow">last 30 days</span></div>
+          <div class="metric-figures">
+            <div class="metric-figure"><b id="metricMedian">—</b><small>median review time</small></div>
+            <div class="metric-figure"><b id="metricDecided">—</b><small>changes decided</small></div>
+            <div class="metric-figure"><b id="metricRejected">—</b><small>of them rejected — counted, not excluded</small></div>
+          </div>
+          <div class="metric-trend" id="metricTrend" role="img" aria-label="Daily median review time"></div>
+          <p class="hint" id="metricDefinition">—</p>
+        </section>
       
         <section class="work-block" id="view-tasks">
         <div class="section-header"><div><p class="eyebrow">SCHEDULED WORK</p><h2 class="page-title">Tasks</h2><p>Plan, schedule, assign and track work without hiding agent progress.</p></div></div>
@@ -127,7 +145,132 @@
 
       <section class="view" id="view-coden">
         <div class="section-header"><div><p class="eyebrow">NATIVE CODING WORKSPACE</p><h1>CodeN Evolution</h1><p>Plan first. Authorize exact paths. Verify every mutation.</p></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
-        <div class="coden-layout"><section class="panel code-panel"><div class="panel-title"><h2>Path authorization</h2><span id="modeLabel">NORMAL MODE</span></div><label>Server or workspace path<input id="pathInput" value="projects/example"></label><div class="form-grid"><label>Operation<select id="operation"><option>write</option><option>delete</option><option>execute</option><option>install</option><option>read</option></select></label><label>Duration<select id="duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label></div><label class="check"><input type="checkbox" id="recursive"> Recursive scope</label><button class="primary" id="analyzePath">Analyze path and permissions</button><div class="owner-reauth hidden" id="ownerReauth"><h3>Owner strong reauthentication</h3><label>Owner passphrase<input id="reauthPassword" type="password" autocomplete="current-password"></label><label>Authenticator code<input id="reauthTotp" inputmode="numeric" maxlength="6"></label><button class="primary" id="reauthButton" type="button">Unlock Owner scope</button></div><div class="approval-controls hidden" id="approvalControls"><label>Consent scope<select id="consentScope"><option>ONE_OPERATION</option><option>LISTED_FILES</option><option>FOLDER_FOR_SESSION</option></select></label><button class="primary" id="authorizePlan" type="button">Authorize plan</button></div><div id="pathResult" class="result empty">No authorization plan generated.</div></section><section class="panel"><h2>Non-bypassable invariants</h2><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section></div>
+        <!-- The workbench · UI-030…UI-037. Three regions, not two: a navigator that lives
+             INSIDE the bench (the sidebar is the product's destinations, this is the
+             work's), the bench itself as tabs, and the agent column.
+
+             What has no engine behind it says so on its own panel. Emptiness with a
+             reason is a state; emptiness with a plausible frame around it is a lie about
+             what the build does — the same rule that keeps a declared destination
+             visible rather than hidden to make a count come out. -->
+        <div class="bench" id="bench">
+          <aside class="bench-navigator" id="benchNavigator" aria-label="Work navigator">
+            <div class="bench-nav-group"><h3>Projects</h3><div id="navProjects" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Recent</h3><div id="navRecent" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Sessions</h3><div id="navSessions" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Tasks</h3><div id="navTasks" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Agents</h3><div id="navAgents" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Tools</h3><div id="navTools" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Plugins</h3><div id="navPlugins" class="bench-nav-list empty-state">None installed. A plugin is a tool with a surface of its own; none is registered.</div></div>
+            <div class="bench-nav-group"><h3>History</h3><div id="navHistory" class="bench-nav-list empty-state">—</div></div>
+            <div class="bench-nav-group"><h3>Favourites</h3><div id="navFavourites" class="bench-nav-list empty-state">Nothing pinned yet.</div></div>
+          </aside>
+
+          <section class="bench-main">
+            <div class="bench-tabs" role="tablist" aria-label="Bench">
+              <button class="bench-tab active" type="button" role="tab" aria-selected="true" data-bench-tab="shadow">Shadow</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="editor">Editor</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="diff">Diff</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="tests">Tests</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="logs">Logs</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="terminal">Terminal</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="preview">Preview</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="map">Map</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="documentation">Documentation</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="problems">Problems</button>
+              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="closure">Closure</button>
+            </div>
+            <div class="bench-panels">
+              <section class="bench-panel active" data-bench-panel="shadow"><h3>Shadow run</h3><p class="declared-empty">No shadow run exists on this installation. A result is promoted here after it has already run on a copy-on-write copy of the workspace — the diff, the tests and the time are facts before anyone is asked to approve them, which is what makes the button say <b>Promote</b> rather than <b>Allow</b>. Shadow execution is backbone work and this layer has no execution surface.</p></section>
+              <section class="bench-panel" data-bench-panel="editor"><h3>Editor</h3><p class="declared-empty">Nothing is open. The editor edits a workspace the executor holds; without the executor there is no file to open and an editor over an imaginary tree would be a text box.</p></section>
+              <section class="bench-panel" data-bench-panel="diff"><h3>Diff</h3><p class="declared-empty">No change to compare. A diff here is computed against the shadow copy, never against the text of a reply — a reply describing a change is not the change.</p></section>
+              <section class="bench-panel" data-bench-panel="tests"><h3>Tests</h3><p class="declared-empty">No run. Tests are executed by the executor inside the sandbox and reported here with their output; nothing on this page runs anything.</p></section>
+              <section class="bench-panel" data-bench-panel="logs"><h3>Logs</h3><p class="declared-empty">The product's own logs live in Settings → Health and logs. This panel is for the logs of <b>this</b> piece of work, which needs a run to have logs.</p><button class="text-button" data-view-link="settings/health">Open the product's logs</button></section>
+              <section class="bench-panel" data-bench-panel="terminal"><h3>Terminal</h3><p class="declared-empty">The terminal is a region of its own below the bench, not a tab that disappears when you look at something else (<code>UI-033</code>). This tab moves focus to it.</p></section>
+              <section class="bench-panel" data-bench-panel="preview"><h3>Preview</h3><p class="declared-empty">Nothing to preview. A preview renders an artefact the work produced.</p></section>
+              <section class="bench-panel" data-bench-panel="map"><h3>Map</h3><p class="declared-empty">No repository is understood yet. The map is languages, entry points, the symbol index and the dependency graph — repository understanding is backbone work.</p></section>
+              <section class="bench-panel" data-bench-panel="documentation"><h3>Documentation</h3><p class="declared-empty">No documentation is attached to this piece of work.</p></section>
+              <section class="bench-panel" data-bench-panel="problems"><h3>Problems</h3><p class="declared-empty">No problems reported for this piece of work. This is not "no problems exist": nothing has run.</p></section>
+              <!-- The closure · UI-036, Critical. This one is not declared-empty: it is
+                   built, and the rule it carries is enforced by the server, not by the
+                   politeness of the person filling it in. -->
+              <section class="bench-panel" data-bench-panel="closure">
+                <h3>Closure — stage 16</h3>
+                <p class="hint">A report that lists only what went well teaches uniform trust, which is the opposite of useful. So the box below is <b>not optional</b>: either it names what was left undone, or you state that nothing was — and that statement is recorded as yours.</p>
+                <form class="form-stack" id="closureForm">
+                  <label>Piece of work<select id="closureRun"></select></label>
+                  <label>What was done<textarea id="closureSummary" placeholder="One paragraph. What changed, and why it was accepted."></textarea></label>
+                  <label class="not-done-label">NOT DONE — one per line<textarea id="closureNotDone" placeholder="What you did not do, could not do, or chose not to do."></textarea></label>
+                  <label class="check"><input type="checkbox" id="closureNothing"> <span>Nothing was left undone, and I am stating that</span></label>
+                  <p class="closure-refusal hidden" id="closureRefusal" role="alert"></p>
+                  <label>Residual risk<textarea id="closureRisk" placeholder="What could still go wrong. &quot;None&quot; is an answer; silence is not."></textarea></label>
+                  <div class="metric"><span>Human review time carried on this closure</span><b id="closureReviewTime">—</b></div>
+                  <button class="primary" type="submit">Close this piece of work</button>
+                </form>
+                <div class="panel-title"><h3>Closed</h3><span class="badge badge-off" id="closureCount">0</span></div>
+                <div id="closureList" class="card-list empty-state">Nothing closed yet.</div>
+              </section>
+            </div>
+
+            <!-- UI-033. Persistent and multiple: it keeps its place whichever tab is in
+                 front, because a terminal that vanishes when you look at a diff is a
+                 terminal you cannot watch while you work. -->
+            <section class="bench-terminal" id="benchTerminal" aria-label="Terminals">
+              <div class="bench-terminal-bar">
+                <div class="bench-terminal-tabs" id="terminalTabs" role="tablist" aria-label="Terminals"></div>
+                <button class="text-button" type="button" id="terminalAdd">+ Terminal</button>
+                <button class="text-button" type="button" id="terminalToggle" aria-expanded="true">Collapse</button>
+              </div>
+              <div class="bench-terminal-body" id="terminalBody"></div>
+            </section>
+
+            <!-- UI-035. The bench's own status line, distinct from the approval strip at
+                 the bottom of the window. A field with no source in this build reads "—"
+                 and the line declares how many of the twelve have one: a status line that
+                 invents its numbers is worse than no status line. -->
+            <div class="bench-status" id="benchStatus" role="status" aria-label="Bench status">
+              <span data-status-field="stage">Stage <b id="statusStage">—</b>/16</span>
+              <span data-status-field="files">Files <b id="statusFiles">—</b></span>
+              <span data-status-field="tests">Tests <b id="statusTests">—</b></span>
+              <span data-status-field="warnings">Warnings <b id="statusWarnings">—</b></span>
+              <span data-status-field="processes">Processes <b id="statusProcesses">—</b></span>
+              <span data-status-field="remote">Remote <b id="statusRemote">—</b></span>
+              <span data-status-field="tokens">Tokens <b id="statusTokens">—</b></span>
+              <span data-status-field="cost">Cost <b id="statusCost">—</b></span>
+              <span data-status-field="elapsed">Elapsed <b id="statusElapsed">—</b></span>
+              <span data-status-field="network">Network <b id="statusNetwork">—</b></span>
+              <span data-status-field="sandbox">Sandbox <b id="statusSandbox">—</b></span>
+              <span data-status-field="authority">Live authority <b id="statusAuthority">—</b></span>
+              <span class="bench-status-honesty" id="statusSourced">—</span>
+            </div>
+          </section>
+
+          <!-- UI-034. The agent column IS the context panel for this destination. Path
+               authorisation lives here because that is what an authority request is. -->
+          <aside class="bench-agent" id="benchAgent" aria-label="Agent">
+            <section class="mini-panel"><h3>Conversation</h3><p class="declared-empty">The bench conversation shares the session with Chat and with the terminal shell. It is not a second chat with its own state.</p><button class="text-button" data-view-link="chat">Open Chat</button></section>
+            <section class="mini-panel"><h3>Plan</h3><p class="declared-empty">No plan object exists yet. The Plan is the backbone's first object: nothing changes except by executing an authorised one.</p></section>
+            <section class="mini-panel"><h3>Hypothesis and evidence</h3><p class="declared-empty">No hypothesis. Evidence is what was recalculated, not what was asserted.</p></section>
+            <section class="mini-panel"><h3>Tool activity</h3><div id="agentToolActivity" class="empty-state">No tool has run in this session.</div></section>
+            <section class="mini-panel"><h3>Files read and written</h3><p class="declared-empty">None. This layer has no execution surface, so it reads and writes nothing.</p></section>
+            <section class="mini-panel"><h3>Commands run</h3><p class="declared-empty">None, for the same reason.</p></section>
+            <section class="mini-panel code-panel">
+              <div class="panel-title"><h3>Authority requests</h3><span id="modeLabel">NORMAL MODE</span></div>
+              <label>Server or workspace path<input id="pathInput" value="projects/example"></label>
+              <div class="form-grid"><label>Operation<select id="operation"><option>write</option><option>delete</option><option>execute</option><option>install</option><option>read</option></select></label><label>Duration<select id="duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label></div>
+              <label class="check"><input type="checkbox" id="recursive"> <span>Recursive scope</span></label>
+              <button class="primary" id="analyzePath">Analyze path and permissions</button>
+              <div class="owner-reauth hidden" id="ownerReauth"><h3>Owner strong reauthentication</h3><label>Owner passphrase<input id="reauthPassword" type="password" autocomplete="current-password"></label><label>Authenticator code<input id="reauthTotp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label><button class="primary" id="reauthButton" type="button">Unlock Owner scope</button></div>
+              <div class="approval-controls hidden" id="approvalControls"><label>Consent scope<select id="consentScope"><option>ONE_OPERATION</option><option>LISTED_FILES</option><option>FOLDER_FOR_SESSION</option></select></label><button class="primary" id="authorizePlan" type="button">Authorize plan</button></div>
+              <div id="pathResult" class="result empty">No authorization plan generated.</div>
+              <div class="panel-title"><h3>Live authority</h3><span class="badge badge-off" id="liveAuthorityCount">0</span></div>
+              <div id="liveAuthorityList" class="empty-state">Nothing is granted right now.</div>
+            </section>
+            <section class="mini-panel"><h3>Sub-agents</h3><p class="declared-empty">None. A sub-agent needs its own authority and an independent reviewer; neither exists in this build.</p></section>
+            <section class="mini-panel"><h3>Non-bypassable invariants</h3><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section>
+            <section class="mini-panel"><h3>Residual risk</h3><p class="declared-empty">Stated at closure, not guessed at during the work.</p></section>
+          </aside>
+        </div>
       
         <section class="work-block" id="view-tools">
         <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h2 class="page-title">Tools</h2><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
@@ -225,9 +368,64 @@
                  rank; rendering the denial is what keeps the gate visible instead of
                  showing a section whose every request answers 403. -->
             <p class="settings-denied hidden" id="settingsDenied" role="alert"></p>
+      <!-- Sessions · UI-001…UI-012. Three places, and they are not the same place: the
+           working list, the archive, and the bin. Each is addressable on its own
+           (#/settings/sessions/archive), so a deep link, a test and the browser's back
+           button all agree about where you are. -->
       <section class="settings-section" id="section-sessions" data-section="sessions">
-        <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Sessions</h2><p>Listing, archiving, restoring and deleting your own sessions.</p></div><span class="badge badge-off">DECLARED · NOT BUILT</span></div>
-        <section class="panel declared"><p>This section owns twelve acceptance criteria (<code>UI-001…UI-012</code>): the five most recent sessions laid out in full, the rest in a scroller with its count declared above it, an Archive page of its own paginated ten at a time with the range stated, multi-selection with a counter, and a confirmation on <b>every</b> destructive or moving action that names what happens and to how many — with the dangerous button never preselected and <kbd>Esc</kbd> cancelling.</p><p>Each action also carries a keyboard form and a TUI command (<code>UI-050…UI-054</code>), because a capability reachable only by mouse fails <code>CE-020</code>.</p><p class="hint">Ranked here by the structure step. The behaviour is later work, and nothing on this page pretends to perform it.</p></section>
+        <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Sessions</h2><p>Listing, archiving, restoring and deleting your own sessions. Archiving moves; deleting goes to a bin that keeps a session for thirty days.</p></div></div>
+        <div class="sessions-places" role="tablist" aria-label="Where to look">
+          <button class="place active" type="button" role="tab" aria-selected="true" data-place="active">Working list</button>
+          <button class="place" type="button" role="tab" aria-selected="false" data-place="archived">Archive</button>
+          <button class="place" type="button" role="tab" aria-selected="false" data-place="bin">Bin</button>
+          <!-- UI-004: the return is always visible while you are away from the working
+               list, not hidden behind the browser's back button. -->
+          <button class="secondary hidden" type="button" id="sessionsReturn">← Back to the working list</button>
+        </div>
+        <p class="sessions-empty hidden" id="sessionsEmpty"></p>
+        <section class="panel" id="sessionsPanel">
+          <div class="panel-title"><h3 id="sessionsPlaceTitle">Working list</h3><span class="badge badge-off" id="sessionsTotal">—</span></div>
+          <!-- UI-001: the five most recent, laid out. -->
+          <div class="session-list" id="sessionsRecent"></div>
+          <!-- UI-002: from the sixth on, a scroller — with its count declared ABOVE it,
+               because a scroller whose count is only inside it hides how much is there. -->
+          <div class="session-overflow hidden" id="sessionsOverflowBox">
+            <p class="hint" id="sessionsOverflowCount"></p>
+            <div class="session-scroller session-list" id="sessionsOverflow" tabindex="0"></div>
+          </div>
+          <!-- UI-007: one selection, one counter, one delete button. -->
+          <div class="sessions-selection">
+            <label class="check"><input type="checkbox" id="sessionsSelectPage"> <span>Select all on this page</span></label>
+            <span id="sessionsSelectedCount" aria-live="polite">0 selected</span>
+            <button class="danger" type="button" id="sessionsDeleteSelected" disabled>Delete selected…</button>
+            <button class="secondary hidden" type="button" id="sessionsRestoreSelected" disabled>Restore selected…</button>
+          </div>
+          <!-- UI-005: ten to a page, with the range stated in words the page computed
+               from the same count that decided the slice. -->
+          <div class="sessions-pager">
+            <button type="button" id="sessionsPrev" aria-label="Previous page">←</button>
+            <span id="sessionsRange">—</span>
+            <button type="button" id="sessionsNext" aria-label="Next page">→</button>
+          </div>
+        </section>
+        <!-- UI-050…UI-053. The keyboard forms are listed where they are used, because a
+             shortcut nobody can discover is a shortcut nobody has. -->
+        <section class="panel">
+          <div class="panel-title"><h3>From the keyboard</h3></div>
+          <table class="keyboard-map">
+            <thead><tr><th scope="col">Action</th><th scope="col">Keyboard</th><th scope="col">Terminal shell</th></tr></thead>
+            <tbody>
+              <tr><td>Move through the list · open</td><td><kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Enter</kbd></td><td><code>/sessions</code> · <code>/session &lt;n&gt;</code></td></tr>
+              <tr><td>Archive · delete</td><td><kbd>a</kbd> · <kbd>Del</kbd></td><td><code>/archive &lt;n&gt;</code> · <code>/delete &lt;n&gt;</code></td></tr>
+              <tr><td>Select · select the page</td><td><kbd>Space</kbd> · <kbd>Ctrl</kbd>+<kbd>A</kbd></td><td><code>/select &lt;n…&gt;</code> · <code>/select --page</code></td></tr>
+              <tr><td>Move between pages</td><td><kbd>→</kbd> <kbd>←</kbd></td><td><code>/archive --page &lt;n&gt;</code></td></tr>
+              <tr><td>Restore</td><td><kbd>r</kbd></td><td><code>/restore &lt;n&gt;</code></td></tr>
+              <tr><td>Confirm · cancel</td><td><kbd>Enter</kbd> · <kbd>Esc</kbd></td><td><code>[y/N]</code></td></tr>
+            </tbody>
+          </table>
+          <p class="hint"><b><kbd>Del</kbd> opens the confirmation; it never deletes on its own</b> (<code>UI-051</code>). In a right-to-left language the pager keys follow the language: <kbd>←</kbd> is forward.</p>
+          <p class="hint" id="sessionsTuiGap">The terminal column above states the intended command surface. <b>It is not reachable yet</b>: the CodeN Evolution TUI is ranked as a destination and declared not built, so <code>UI-050</code> is met on the keyboard and open in the shell.</p>
+        </section>
       </section>
       <section class="settings-section" id="section-appearance" data-section="appearance">
         <div class="section-header"><div><p class="eyebrow">YOUR WORK</p><h2 class="page-title">Appearance</h2><p>Nine themes, and any accent colour you like — with the contrast measured while you choose it, not afterwards.</p></div></div>
@@ -246,6 +444,40 @@
           </div>
           <p class="hint" id="accentHelp">Stored on this device only. It is a display preference and never leaves the installation.</p>
           <div class="contrast-readout" id="accentReadout" aria-live="polite"></div>
+        </section>
+        <!-- UI-040, UI-041, UI-042. Three separate controls on purpose: text size moves
+             type alone, zoom moves the whole layout with it, and motion is a setting of
+             its own rather than only an inherited system preference. Somebody who wants
+             larger type does not necessarily want fewer things on screen. -->
+        <section class="panel">
+          <div class="panel-title"><h3>Reading and motion</h3></div>
+          <fieldset class="control-row">
+            <legend>Text size</legend>
+            <div class="step-group" id="textSizeGroup" role="group" aria-label="Text size">
+              <button type="button" data-text-step="1" aria-pressed="false">Standard</button>
+              <button type="button" data-text-step="2" aria-pressed="false">Large</button>
+              <button type="button" data-text-step="3" aria-pressed="false">Larger</button>
+              <button type="button" data-text-step="4" aria-pressed="false">Largest</button>
+            </div>
+            <p class="hint">Four steps, and they scale <b>the whole interface</b> — every size in the stylesheet is a multiple of this one, so nothing is left behind at its original size.</p>
+          </fieldset>
+          <fieldset class="control-row">
+            <legend>Interface zoom</legend>
+            <div class="zoom-row">
+              <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+              <input type="range" id="zoomRange" min="80" max="150" step="5" value="100" aria-label="Interface zoom percentage">
+              <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+              <output id="zoomValue">100%</output>
+              <button class="secondary" type="button" id="zoomReset">Reset</button>
+            </div>
+            <p class="hint">Independent of text size: this moves spacing, controls and type together, the way the browser's own zoom does — without leaving the page.</p>
+          </fieldset>
+          <fieldset class="control-row">
+            <legend>Motion</legend>
+            <label class="check"><input type="checkbox" id="reduceMotion"> <span>Reduce animation and movement</span></label>
+            <p class="hint" id="motionSystemHint">Your system preference is honoured on its own. This setting is stronger: it applies even where the system says nothing.</p>
+          </fieldset>
+          <p class="hint">All three are stored on this device only. They are display preferences and never leave the installation.</p>
         </section>
         <section class="panel">
           <div class="panel-title"><h3>The seven states</h3></div>
@@ -431,6 +663,29 @@
       <section class="mini-panel"><div class="panel-title"><h3>System trust</h3></div><div class="metric"><span>Local runtime</span><b class="green">Available</b></div><div class="metric"><span>External egress</span><b id="egressMetric">Blocked</b></div><div class="metric"><span>Secrets</span><b>Encrypted</b></div></section><section class="mini-panel"><h3>Context control</h3><p>Model, project, messages, memory, sources, tools and estimated tokens are visible before each request.</p></section><section class="mini-panel"><h3>Data controls</h3><label>Retention days<input id="retentionDays" type="number" min="1" max="3650" value="365"></label><button class="wide-button" id="saveRetention">Save retention</button><button class="wide-button" id="applyRetention">Apply now</button><button class="wide-button" id="rightExportData">Export workspace</button><button class="wide-button danger" id="purgeProject">Delete active project data</button></section></aside>
     <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="false"></div>
     <div id="routeAnnouncer" class="visually-hidden" aria-live="polite"></div>
+    <!-- UI-043. One live region for what HAPPENS, separate from the one that announces
+         where you are. It carries a summary per event and never a token per token: a
+         region fed by a stream reads the whole answer out loud twice, once as it arrives
+         and once as it settles, which is how an assistive technology is made unusable by
+         a feature meant to help it. -->
+    <div id="eventAnnouncer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+    <!-- The confirmation · UI-008…UI-010, both Critical.
+         One dialog for every destructive or moving action, so that "every" is a property
+         of the code and not a habit. It states what happens and to how many; for several
+         it names them and truncates with "and N more"; the dangerous button is never the
+         preselected one; Esc cancels. -->
+    <div class="confirm-scrim hidden" id="confirmScrim">
+      <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+        <h2 id="confirmTitle">Confirm</h2>
+        <p id="confirmBody"></p>
+        <ul class="confirm-names" id="confirmNames"></ul>
+        <p class="hint" id="confirmConsequence"></p>
+        <div class="confirm-actions">
+          <button class="secondary" type="button" id="confirmCancel">Cancel</button>
+          <button class="danger" type="button" id="confirmAccept">Confirm</button>
+        </div>
+      </div>
+    </div>
     <!-- The bottom approval strip. 01_PRODUCT/11 names it as part of the binding visual
          direction; until WP-2 this footer was a static status bar that could not tell the
          operator anything was waiting. It is permanent, and it states the count even when

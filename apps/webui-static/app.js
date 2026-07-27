@@ -152,12 +152,11 @@ const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
 const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','models-hardware','storage','audit','health','updates'];
-// Which section a bare "#/settings" lands on. Deliberately NOT the first entry in the
-// menu: that entry is Sessions, which is ranked and not built, and a destination whose
-// landing surface says "not built" reads as a broken product rather than an honest one.
-// The landing is the first section that actually does something; the menu order is the
-// design's and is unchanged. One line to reverse if the Owner prefers menu order.
-const DEFAULT_SECTION='language';
+// Which section a bare "#/settings" lands on. It is the menu's first entry again: the
+// exception existed only because Sessions was ranked and not built, and a landing surface
+// saying "not built" reads as a broken product. Sessions is built, so the reason is gone
+// and the special case goes with it.
+const DEFAULT_SECTION='sessions';
 // Where a demoted page went. Every address that used to work still works: a deep link, a
 // bookmark or an old note lands on the section that now owns it instead of on a 404.
 // Removing a page from the sidebar is a change of rank, not a change of address.
@@ -190,18 +189,27 @@ function allows(rule){
 }
 function may(view){return allows(ROUTE_ACCESS[view]);}
 function maySection(section){return allows(SECTION_ACCESS[section]);}
-// The hash carries two segments now: the destination, and — for Settings only — the
-// section inside it. Anything else is normalised away before it is used.
+// The hash carries up to three segments: the destination, the section inside it (Settings
+// only), and — for Sessions — which of its three places you are looking at. The third
+// segment exists so that the Archive and the Bin are addressable: UI-004 calls the Archive
+// a page of its own, and a "page" you cannot link to, reload or come back to with the
+// browser's own button is a panel wearing the word.
 function routeFromHash(){
   const raw=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
-  const [first='',second='']=raw.split('/').filter(Boolean);
-  if(!first)return{view:'home',section:''};
+  const [first='',second='',third='']=raw.split('/').filter(Boolean);
+  if(!first)return{view:'home',section:'',place:''};
   const legacy=LEGACY_ROUTES[first];
-  if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv,section:ls,redirected:true};}
-  return{view:first,section:second};
+  if(legacy){const [lv,ls='']=legacy.split('/');return{view:lv,section:ls,place:'',redirected:true};}
+  return{view:first,section:second,place:third};
+}
+// Which of the three places the address names. An unknown third segment falls back to the
+// working list rather than to an empty page.
+function sessionPlaceFromHash(){
+  const {place}=routeFromHash();
+  return ['archived','bin'].includes(place)?place:'active';
 }
 function viewFromHash(){return routeFromHash().view;}
-function activate(view,{updateHash=true,section=''}={}){
+function activate(view,{updateHash=true,section='',place=''}={}){
   const known=ROUTES.has(view)&&document.querySelector(`#view-${view}`);
   // A page the account may not reach is shown as access-denied, not as a panel that
   // sits on "Loading…" while every one of its fetches answers 403.
@@ -218,7 +226,10 @@ function activate(view,{updateHash=true,section=''}={}){
   else $$('.settings-section').forEach((node)=>node.classList.remove('active'));
   // The address keeps naming what was asked for. Rewriting it to #/access-denied would
   // make a reload land on a route that does not exist, turning a 403 into a 404.
-  const want=known?(target==='settings'&&activeSection?`${view}/${activeSection}`:view):target;
+  // The place is part of the address, so switching to the Archive and reloading lands on
+  // the Archive. Only Sessions has one; every other section normalises it away.
+  const wantedPlace=activeSection==='sessions'&&['archived','bin'].includes(place)?`/${place}`:'';
+  const want=known?(target==='settings'&&activeSection?`${view}/${activeSection}${wantedPlace}`:view):target;
   const currentHash=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
   if(updateHash&&currentHash!==want)location.hash=`#/${want}`;
   const scope=activeSection?document.querySelector(`.settings-section[data-section="${activeSection}"]`):document.querySelector(`#view-${target}`);
@@ -289,10 +300,10 @@ const VIEW_LOADERS={};
 // that is permanently on "Loading…".
 const SECTION_LOADERS={};
 function goToHash(){
-  const {view,section,redirected}=routeFromHash();
+  const {view,section,place,redirected}=routeFromHash();
   // A legacy address is rewritten so the bar shows where you actually are — otherwise a
   // reload would keep resolving the old name and the redirect would be invisible.
-  activate(view,{updateHash:Boolean(redirected),section});
+  activate(view,{updateHash:Boolean(redirected),section,place});
 }
 function initRouter(){
   window.addEventListener('hashchange',goToHash);
@@ -413,10 +424,10 @@ $('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/aut
 function navigate(spec){
   if(!spec)return;
   const raw=String(spec).trim().toLowerCase();
-  const [first,second='']=raw.split('/').filter(Boolean);
+  const [first,second='',third='']=raw.split('/').filter(Boolean);
   const legacy=LEGACY_ROUTES[first];
   if(legacy){const [lv,ls='']=legacy.split('/');activate(lv,{section:ls});return;}
-  activate(first,{section:second});
+  activate(first,{section:second,place:third});
 }
 $$('.nav').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.view)));$$('[data-view-link]').forEach((button)=>button.addEventListener('click',()=>navigate(button.dataset.viewLink)));$$('[data-start-mode]').forEach((button)=>button.addEventListener('click',()=>{setMode(button.dataset.startMode);activate('chat');}));
 function setMode(mode){currentMode=mode;$$('[data-chat-mode]').forEach((button)=>button.classList.toggle('selected',button.dataset.chatMode===mode));}
@@ -524,7 +535,7 @@ async function selectConversation(id,rerender=true){if(!id){state.activeConversa
 $('#newConversation').addEventListener('click',async()=>{if(!state.activeProjectId)return setStatus('Create or select a project first.',true);const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);renderMessages(data.messages);await inspectContext();}
-function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${new Date(message.createdAt).toLocaleString()}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);}
+function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);}
 function bindMessageActions(messages){$$('[data-edit-message]').forEach((button)=>button.addEventListener('click',async()=>{const message=messages.find((item)=>item.id===button.dataset.editMessage);const content=prompt('Edit message',message.content);if(content===null)return;await api(`/api/v1/messages/${message.id}`,{method:'PATCH',body:JSON.stringify({branchId:state.activeBranchId,content})});await refreshMessages();}));$$('[data-fork-message]').forEach((button)=>button.addEventListener('click',()=>forkAt(button.dataset.forkMessage)));$$('[data-exclude-message]').forEach((button)=>button.addEventListener('click',async()=>{await api(`/api/v1/messages/${button.dataset.excludeMessage}/exclude`,{method:'POST',body:JSON.stringify({branchId:state.activeBranchId,excluded:true})});await refreshMessages();}));$$('[data-retry-message]').forEach((button)=>button.addEventListener('click',async()=>{const index=messages.findIndex((item)=>item.id===button.dataset.retryMessage);const previous=[...messages.slice(0,index)].reverse().find((item)=>item.role==='user');if(previous){$('#chatInput').value=previous.content;await sendChat();}}));}
 async function forkAt(messageId){const name=prompt('Branch name','alternative');if(!name)return;const branch=await api(`/api/v1/conversations/${state.activeConversationId}/fork`,{method:'POST',body:JSON.stringify({fromMessageId:messageId,name})});state.activeBranchId=branch.id;await selectConversation(state.activeConversationId);}
 $('#forkBranch').addEventListener('click',async()=>{const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const head=data.messages.at(-1);if(head)await forkAt(head.id);});
@@ -585,16 +596,21 @@ async function sendChat(){
           $('#messageList').append(article);
         }else if(event==='delta'){
           assistantText+=data.text;
+          // UI-043: deliberately NOT announced. A live region fed per delta reads the
+          // whole answer aloud as it arrives and again when it settles.
           if(article)article.querySelector('.message-body').textContent=assistantText;
         }else if(event==='error'){
           throw new Error(data.error);
         }else if(event==='stopped'){
           setStatus('Generation stopped.');
+          announceEvent('Generation stopped');
         }
       }
     }
     await refreshWorkspace();
     setStatus('Response completed.');
+    // One summary, once, when the event is over.
+    announceEvent(`Reply complete, ${assistantText.length} characters`);
   }catch(error){
     setStatus(error.message,true);
   }finally{
@@ -604,7 +620,7 @@ async function sendChat(){
   }
 }
 $('#sendMessage').addEventListener('click',sendChat);$('#chatInput').addEventListener('keydown',(event)=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendChat();}});$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
-function renderTasks(){$('#taskList').innerHTML=state.tasks.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.status)} · ${escapeHtml(item.priority)}${item.scheduledAt?` · ${new Date(item.scheduledAt).toLocaleString()}`:''}</small><button data-task-status="${item.id}:running">Start</button><button data-task-status="${item.id}:completed">Complete</button><button data-task-status="${item.id}:blocked">Block</button></article>`).join('')||'No tasks.';$$('[data-task-status]').forEach((button)=>button.addEventListener('click',async()=>{const[id,status]=button.dataset.taskStatus.split(':');await api(`/api/v1/tasks/${id}`,{method:'PATCH',body:JSON.stringify({status})});await refreshWorkspace();}));}
+function renderTasks(){$('#taskList').innerHTML=state.tasks.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.status)} · ${escapeHtml(item.priority)}${item.scheduledAt?` · ${instantHtml(item.scheduledAt)}`:''}</small><button data-task-status="${item.id}:running">Start</button><button data-task-status="${item.id}:completed">Complete</button><button data-task-status="${item.id}:blocked">Block</button></article>`).join('')||'No tasks.';$$('[data-task-status]').forEach((button)=>button.addEventListener('click',async()=>{const[id,status]=button.dataset.taskStatus.split(':');await api(`/api/v1/tasks/${id}`,{method:'PATCH',body:JSON.stringify({status})});await refreshWorkspace();}));}
 $('#taskForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({projectId:$('#taskProject').value||null,title:$('#taskTitle').value,description:$('#taskDescription').value,priority:$('#taskPriority').value,status:$('#taskScheduledAt').value?'scheduled':'planned',scheduledAt:$('#taskScheduledAt').value||null,dueAt:$('#taskDueAt').value||null,recurrence:$('#taskRecurrence').value||null})});event.target.reset();await refreshWorkspace();});
 function renderMemories(){$('#memoryList').innerHTML=state.memories.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content)}</p><small>${escapeHtml(item.scope)} · ${escapeHtml(item.tags.join(', '))}</small><button data-edit-memory="${item.id}">Edit</button><button class="danger" data-delete-memory="${item.id}">Delete</button></article>`).join('')||'No memory.';$$('[data-edit-memory]').forEach((button)=>button.addEventListener('click',async()=>{const item=state.memories.find((m)=>m.id===button.dataset.editMemory);const content=prompt('Edit memory',item.content);if(content!==null){await api(`/api/v1/memories/${item.id}`,{method:'PATCH',body:JSON.stringify({content})});await refreshWorkspace();}}));$$('[data-delete-memory]').forEach((button)=>button.addEventListener('click',async()=>{if(confirm('Delete this memory?')){await api(`/api/v1/memories/${button.dataset.deleteMemory}`,{method:'DELETE',body:'{}'});await refreshWorkspace();}}));}
 $('#memoryForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/memories',{method:'POST',body:JSON.stringify({projectId:$('#memoryProject').value||null,conversationId:$('#memoryScope').value==='conversation'?($('#memoryConversation').value||state.activeConversationId):null,scope:$('#memoryScope').value,title:$('#memoryTitle').value,content:$('#memoryContent').value,tags:$('#memoryTags').value.split(',').map((v)=>v.trim()).filter(Boolean)})});event.target.reset();await refreshWorkspace();});
@@ -711,7 +727,7 @@ function shown(value,fallback=UNSET){
 function isoToLocal(value){
   if(!value)return UNSET;
   const parsed=Date.parse(value);
-  return Number.isNaN(parsed)?String(value):new Date(parsed).toLocaleString();
+  return Number.isNaN(parsed)?String(value):formatInstant(new Date(parsed));
 }
 function metrics(node,entries){
   node.innerHTML=entries
@@ -1589,14 +1605,534 @@ function initAppearance(){
   });
 }
 
+// ---------------------------------------------------------------------------
+// Reading, motion and instants · UI-040…UI-045
+// ---------------------------------------------------------------------------
+
+const TEXT_STEPS=[1,1.15,1.3,1.5];
+const TEXT_KEY='noesar.textScale';const ZOOM_KEY='noesar.uiZoom';const MOTION_KEY='noesar.reduceMotion';
+function readStep(){const value=Number(localStorage.getItem(TEXT_KEY));return TEXT_STEPS.includes(value)?TEXT_STEPS.indexOf(value)+1:1;}
+function applyTextStep(step){
+  const index=Math.min(Math.max(Number(step)||1,1),TEXT_STEPS.length);
+  document.documentElement.style.setProperty('--text-scale',String(TEXT_STEPS[index-1]));
+  $$('[data-text-step]').forEach((button)=>button.setAttribute('aria-pressed',String(Number(button.dataset.textStep)===index)));
+  try{localStorage.setItem(TEXT_KEY,String(TEXT_STEPS[index-1]));}catch{}
+  return index;
+}
+function applyZoom(percent){
+  const value=Math.min(Math.max(Number(percent)||100,80),150);
+  document.documentElement.style.setProperty('--ui-zoom',String(value/100));
+  const range=$('#zoomRange');if(range)range.value=String(value);
+  const output=$('#zoomValue');if(output)output.textContent=`${value}%`;
+  try{localStorage.setItem(ZOOM_KEY,String(value));}catch{}
+  return value;
+}
+function applyMotion(reduced){
+  document.documentElement.dataset.motion=reduced?'reduced':'full';
+  const box=$('#reduceMotion');if(box)box.checked=Boolean(reduced);
+  try{localStorage.setItem(MOTION_KEY,reduced?'1':'0');}catch{}
+}
+function initReadingControls(){
+  applyTextStep(readStep());
+  applyZoom(Number(localStorage.getItem(ZOOM_KEY))||100);
+  // The system preference is the default, and the setting overrides it in both
+  // directions: "my OS says nothing" is not "I do not mind movement".
+  const stored=localStorage.getItem(MOTION_KEY);
+  const system=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches??false;
+  applyMotion(stored===null?system:stored==='1');
+  const hint=$('#motionSystemHint');
+  if(hint)hint.textContent=system
+    ?'Your system asks for reduced motion, and that is already honoured. This setting can override it.'
+    :'Your system does not ask for reduced motion. This setting applies anyway.';
+  $$('[data-text-step]').forEach((button)=>button.addEventListener('click',()=>{
+    applyTextStep(button.dataset.textStep);
+    announceEvent(`Text size ${button.textContent.trim()}`);
+  }));
+  $('#zoomRange')?.addEventListener('input',()=>applyZoom($('#zoomRange').value));
+  $('#zoomIn')?.addEventListener('click',()=>applyZoom(Number($('#zoomRange').value)+5));
+  $('#zoomOut')?.addEventListener('click',()=>applyZoom(Number($('#zoomRange').value)-5));
+  $('#zoomReset')?.addEventListener('click',()=>{applyZoom(100);announceEvent('Interface zoom reset to 100 per cent');});
+  $('#reduceMotion')?.addEventListener('change',()=>{
+    applyMotion($('#reduceMotion').checked);
+    announceEvent($('#reduceMotion').checked?'Motion reduced':'Motion restored');
+  });
+}
+
+// UI-043. One summary per event. Never called from a stream: a region fed token by token
+// reads the same answer twice and makes the assistive technology unusable.
+function announceEvent(summary){
+  const region=$('#eventAnnouncer');
+  if(!region||!summary)return;
+  region.textContent='';
+  // A region whose text is replaced with a similar string may not be re-announced; the
+  // empty write in between is what makes two consecutive identical events audible.
+  setTimeout(()=>{region.textContent=String(summary);},30);
+}
+
+// UI-045. Instants are UTC underneath and are shown in a named IANA zone, because
+// "12:15" without a zone is not a time — it is a time in someone's head.
+let effectiveZone='';
+function zoneName(){
+  return effectiveZone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+}
+function formatInstant(value,{withZone=true}={}){
+  const date=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(date.getTime()))return '—';
+  const zone=zoneName();
+  const text=new Intl.DateTimeFormat(document.documentElement.lang||undefined,
+    {dateStyle:'medium',timeStyle:'short',timeZone:zone}).format(date);
+  return withZone?`${text} · ${zone}`:text;
+}
+function instantHtml(value){
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return '—';
+  return `<time datetime="${escapeHtml(date.toISOString())}" title="${escapeHtml(date.toISOString())} (UTC)">${escapeHtml(formatInstant(date))}</time>`;
+}
+async function loadEffectiveZone(){
+  try{
+    const browserTimezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const settings=await api(`/api/v1/settings/timezone?browserTimezone=${encodeURIComponent(browserTimezone??'')}`);
+    effectiveZone=settings.effective||browserTimezone||'UTC';
+  }catch{effectiveZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
+  const chip=$('#timezoneChip');
+  if(chip)chip.textContent=`Zone: ${effectiveZone}`;
+  return effectiveZone;
+}
+
+// ---------------------------------------------------------------------------
+// The confirmation · UI-008, UI-009, UI-010, UI-052 — three of them Critical
+// ---------------------------------------------------------------------------
+
+let confirmResolve=null;
+function closeConfirm(result){
+  const scrim=$('#confirmScrim');if(!scrim)return;
+  scrim.classList.add('hidden');
+  const resolve=confirmResolve;confirmResolve=null;
+  if(resolve)resolve(result);
+}
+/**
+ * Asks before every destructive or moving action. It states what happens and to how
+ * many; for several it names them and truncates with "and N more"; nothing is
+ * preselected, so a stray Enter cannot destroy anything by inheriting focus.
+ */
+function confirmAction({title,body,names=[],consequence='',confirmLabel='Confirm',dangerous=true}){
+  const scrim=$('#confirmScrim');
+  if(!scrim)return Promise.resolve(false);
+  $('#confirmTitle').textContent=title;
+  $('#confirmBody').textContent=body;
+  const shown=names.slice(0,5);
+  $('#confirmNames').innerHTML=names.length
+    ?`${shown.map((name)=>`<li>${escapeHtml(name)}</li>`).join('')}${names.length>shown.length?`<li>and ${names.length-shown.length} more</li>`:''}`
+    :'';
+  $('#confirmConsequence').textContent=consequence;
+  const accept=$('#confirmAccept');
+  accept.textContent=confirmLabel;
+  accept.classList.toggle('danger',dangerous);
+  accept.classList.toggle('primary',!dangerous);
+  scrim.classList.remove('hidden');
+  // Focus lands on the dialog itself, not on a button. UI-010 forbids preselecting the
+  // dangerous one, and focusing Cancel instead would make Enter cancel — contradicting
+  // UI-052, which says Enter confirms. Focusing neither satisfies both.
+  const card=scrim.querySelector('.confirm-card');
+  card.tabIndex=-1;card.focus();
+  return new Promise((resolve)=>{confirmResolve=resolve;});
+}
+function initConfirm(){
+  $('#confirmCancel')?.addEventListener('click',()=>closeConfirm(false));
+  $('#confirmAccept')?.addEventListener('click',()=>closeConfirm(true));
+  $('#confirmScrim')?.addEventListener('mousedown',(event)=>{if(event.target===$('#confirmScrim'))closeConfirm(false);});
+  document.addEventListener('keydown',(event)=>{
+    if($('#confirmScrim')?.classList.contains('hidden'))return;
+    if(event.key==='Escape'){event.preventDefault();closeConfirm(false);}
+    // Enter confirms (UI-052) — unless a button already holds focus, where Enter must
+    // mean 'press this button' and pressing Cancel must cancel.
+    else if(event.key==='Enter'&&event.target?.tagName!=='BUTTON'){event.preventDefault();closeConfirm(true);}
+    else if(event.key==='Tab'){
+      // The dialog is modal: focus must not walk out of it and start operating the page
+      // behind a question that has not been answered.
+      const focusable=[...$('#confirmScrim').querySelectorAll('button')];
+      const first=focusable[0];const last=focusable.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+      else if(document.activeElement===$('#confirmScrim').querySelector('.confirm-card')){event.preventDefault();first.focus();}
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Work sessions · UI-001…UI-012, UI-050…UI-053
+//
+// NOTE ON THE WORD. "Session" is overloaded in this product: Settings → Security lists
+// SIGN-IN sessions, and this lists sessions of WORK — conversations, seen from the
+// operator side. They are different objects with different lifetimes, so the identifiers
+// here say workSessions and nothing shadows the other renderer.
+// ---------------------------------------------------------------------------
+
+const PLACE_TITLES={active:'Working list',archived:'Archive',bin:'Bin'};
+const workSessions={place:'active',page:1,data:null,selected:new Set(),focus:0};
+function sessionPageSize(){return workSessions.place==='active'?50:10;}
+function sessionRows(){return [...document.querySelectorAll('#section-sessions .session-row')];}
+function sessionRowHtml(item,index){
+  const when=instantHtml(item.lastActivityAt);
+  const expiry=item.purgeAfter?` · removed after ${escapeHtml(formatInstant(item.purgeAfter,{withZone:false}))}`:'';
+  const actions=workSessions.place==='bin'
+    ?`<button data-session-restore="${item.id}">Restore</button><button class="danger" data-session-purge="${item.id}">Delete for good…</button>`
+    :workSessions.place==='archived'
+      ?`<button data-session-restore="${item.id}">Restore</button><button class="danger" data-session-bin="${item.id}">Delete…</button>`
+      :`<button data-session-archive="${item.id}">Archive…</button><button class="danger" data-session-bin="${item.id}">Delete…</button>`;
+  return `<div class="session-row" data-session-id="${item.id}" data-index="${index}" tabindex="-1">
+    <input type="checkbox" data-session-select="${item.id}" aria-label="Select ${escapeHtml(item.title)}" ${workSessions.selected.has(item.id)?'checked':''}>
+    <div><span class="session-title">${escapeHtml(item.title)}</span><small>${item.messageCount} message${item.messageCount===1?'':'s'} · ${when}${expiry}</small></div>
+    <div class="session-actions">${actions}</div>
+  </div>`;
+}
+function renderWorkSessions(){
+  const data=workSessions.data;
+  if(!data)return;
+  $('#sessionsPlaceTitle').textContent=PLACE_TITLES[workSessions.place];
+  $('#sessionsTotal').textContent=`${data.total} session${data.total===1?'':'s'}`;
+  $$('#section-sessions .place').forEach((button)=>{
+    const active=button.dataset.place===workSessions.place;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-selected',String(active));
+  });
+  $('#sessionsReturn').classList.toggle('hidden',workSessions.place==='active');
+  const empty=$('#sessionsEmpty');
+  empty.classList.toggle('hidden',data.items.length>0);
+  if(!data.items.length){
+    empty.textContent=workSessions.place==='bin'
+      ?`Nothing in the bin. A deleted session stays here for ${data.binRetentionDays} days.`
+      :workSessions.place==='archived'?'Nothing archived.':'No sessions yet.';
+  }
+  // UI-001 and UI-002: five laid out, and from the sixth a scroller whose count is stated
+  // ABOVE it rather than left to be discovered by scrolling.
+  const first=data.items.slice(0,5);const rest=data.items.slice(5);
+  $('#sessionsRecent').innerHTML=first.map((item,index)=>sessionRowHtml(item,index)).join('');
+  $('#sessionsOverflowBox').classList.toggle('hidden',rest.length===0);
+  $('#sessionsOverflowCount').textContent=rest.length?`${rest.length} more on this page, ${data.total} in total`:'';
+  $('#sessionsOverflow').innerHTML=rest.map((item,index)=>sessionRowHtml(item,index+5)).join('');
+  // UI-005: the range in words, from the same numbers that produced the slice.
+  $('#sessionsRange').textContent=data.total?`${data.from}–${data.to} of ${data.total}`:'0 of 0';
+  $('#sessionsPrev').disabled=data.page<=1;
+  $('#sessionsNext').disabled=data.page>=data.pageCount;
+  const onPage=data.items.filter((item)=>workSessions.selected.has(item.id)).length;
+  $('#sessionsSelectedCount').textContent=`${workSessions.selected.size} selected`;
+  $('#sessionsSelectPage').checked=Boolean(data.items.length)&&onPage===data.items.length;
+  $('#sessionsDeleteSelected').disabled=workSessions.selected.size===0;
+  const restoreSelected=$('#sessionsRestoreSelected');
+  restoreSelected.classList.toggle('hidden',workSessions.place==='active');
+  restoreSelected.disabled=workSessions.selected.size===0;
+  $('#sessionsDeleteSelected').textContent=workSessions.place==='bin'?'Delete selected for good…':'Delete selected…';
+  bindSessionRows();
+}
+function bindSessionRows(){
+  $$('[data-session-select]').forEach((box)=>box.addEventListener('change',()=>{
+    const id=box.dataset.sessionSelect;
+    if(box.checked)workSessions.selected.add(id);else workSessions.selected.delete(id);
+    renderWorkSessions();
+  }));
+  $$('[data-session-archive]').forEach((button)=>button.addEventListener('click',()=>sessionAction('archive',[button.dataset.sessionArchive])));
+  $$('[data-session-bin]').forEach((button)=>button.addEventListener('click',()=>sessionAction('bin',[button.dataset.sessionBin])));
+  $$('[data-session-restore]').forEach((button)=>button.addEventListener('click',()=>sessionAction('restore',[button.dataset.sessionRestore])));
+  $$('[data-session-purge]').forEach((button)=>button.addEventListener('click',()=>sessionAction('purge',[button.dataset.sessionPurge])));
+}
+function sessionTitles(ids){
+  const known=new Map((workSessions.data?.items??[]).map((item)=>[item.id,item.title]));
+  return ids.map((id)=>known.get(id)??id);
+}
+const SESSION_WORDS={
+  archive:{verb:'Archive',consequence:'Archiving moves the session. Nothing is deleted and it comes back whole.'},
+  unarchive:{verb:'Restore',consequence:'The session returns to the working list.'},
+  restore:{verb:'Restore',consequence:'The session returns to the working list.'},
+  bin:{verb:'Delete',consequence:'It goes to the bin and stays recoverable for 30 days.'},
+  purge:{verb:'Delete for good',consequence:'This cannot be undone. The session, its branches and its messages are destroyed.'},
+};
+async function sessionAction(action,ids){
+  if(!ids.length)return;
+  const words=SESSION_WORDS[action];
+  const titles=sessionTitles(ids);
+  // UI-008: every destructive or moving action asks. No exception, including archive,
+  // which moves rather than destroys — the criterion says every.
+  const accepted=await confirmAction({
+    title:`${words.verb} ${ids.length} session${ids.length===1?'':'s'}?`,
+    body:ids.length===1
+      ?`${words.verb} “${titles[0]}”.`
+      :`${words.verb} ${ids.length} sessions:`,
+    names:ids.length===1?[]:titles,
+    consequence:words.consequence,
+    confirmLabel:words.verb,
+    dangerous:action==='bin'||action==='purge',
+  });
+  if(!accepted)return;
+  const result=await api('/api/v1/sessions/actions',{method:'POST',body:JSON.stringify({action,ids})});
+  for(const id of ids)workSessions.selected.delete(id);
+  const refused=result.refused?.length??0;
+  announceEvent(`${words.verb}: ${result.applied?.length??0} session${(result.applied?.length??0)===1?'':'s'}${refused?`, ${refused} refused`:''}`);
+  if(refused)toast({title:'Some sessions were not moved',body:result.refused.map((item)=>item.reason).join(' · '),kind:'warning'});
+  await loadWorkSessions();
+  await refreshWorkspace();
+}
+async function loadWorkSessions(place=workSessions.place,page=workSessions.page){
+  workSessions.place=place;workSessions.page=page;
+  const query=new URLSearchParams({place,page:String(page),pageSize:String(sessionPageSize())});
+  workSessions.data=await api(`/api/v1/sessions?${query}`);
+  workSessions.page=workSessions.data.page;
+  renderWorkSessions();
+}
+function focusSessionRow(index){
+  const rows=sessionRows();
+  if(!rows.length)return;
+  workSessions.focus=Math.min(Math.max(index,0),rows.length-1);
+  rows.forEach((row,position)=>row.classList.toggle('focused',position===workSessions.focus));
+  rows[workSessions.focus].focus();
+}
+function initSessions(){
+  $$('#section-sessions .place').forEach((button)=>button.addEventListener('click',()=>{
+    workSessions.selected.clear();
+    navigate(`settings/sessions/${button.dataset.place==='active'?'':button.dataset.place}`);
+    loadWorkSessions(button.dataset.place,1);
+  }));
+  $('#sessionsReturn')?.addEventListener('click',()=>{
+    workSessions.selected.clear();
+    navigate('settings/sessions');
+    loadWorkSessions('active',1);
+  });
+  $('#sessionsPrev')?.addEventListener('click',()=>loadWorkSessions(workSessions.place,workSessions.page-1));
+  $('#sessionsNext')?.addEventListener('click',()=>loadWorkSessions(workSessions.place,workSessions.page+1));
+  $('#sessionsSelectPage')?.addEventListener('change',()=>{
+    const items=workSessions.data?.items??[];
+    if($('#sessionsSelectPage').checked)for(const item of items)workSessions.selected.add(item.id);
+    else for(const item of items)workSessions.selected.delete(item.id);
+    renderWorkSessions();
+  });
+  $('#sessionsDeleteSelected')?.addEventListener('click',()=>sessionAction(workSessions.place==='bin'?'purge':'bin',[...workSessions.selected]));
+  $('#sessionsRestoreSelected')?.addEventListener('click',()=>sessionAction('restore',[...workSessions.selected]));
+  document.addEventListener('keydown',(event)=>{
+    if(!$('#section-sessions')?.classList.contains('active'))return;
+    if(!$('#confirmScrim').classList.contains('hidden'))return;
+    if(isTyping(event.target))return;
+    const rows=sessionRows();
+    const current=rows[workSessions.focus];
+    const id=current?.dataset.sessionId;
+    // UI-053: in a right-to-left language "forward" is the left arrow. The pager follows
+    // the language rather than the physical key.
+    const rtl=getComputedStyle(document.documentElement).direction==='rtl';
+    const forward=rtl?'ArrowLeft':'ArrowRight';
+    const back=rtl?'ArrowRight':'ArrowLeft';
+    if(event.key==='ArrowDown'){event.preventDefault();focusSessionRow(workSessions.focus+1);}
+    else if(event.key==='ArrowUp'){event.preventDefault();focusSessionRow(workSessions.focus-1);}
+    else if(event.key===forward&&!$('#sessionsNext').disabled){event.preventDefault();loadWorkSessions(workSessions.place,workSessions.page+1);}
+    else if(event.key===back&&!$('#sessionsPrev').disabled){event.preventDefault();loadWorkSessions(workSessions.place,workSessions.page-1);}
+    else if(event.key===' '&&id){
+      event.preventDefault();
+      if(workSessions.selected.has(id))workSessions.selected.delete(id);else workSessions.selected.add(id);
+      const index=workSessions.focus;renderWorkSessions();focusSessionRow(index);
+    }
+    else if(event.key==='a'&&id&&workSessions.place==='active'){event.preventDefault();sessionAction('archive',[id]);}
+    else if(event.key==='r'&&id&&workSessions.place!=='active'){event.preventDefault();sessionAction('restore',[id]);}
+    // UI-051, Critical: Delete OPENS the confirmation. It never deletes on its own, so a
+    // keyboard cannot destroy anything in one keystroke.
+    else if(event.key==='Delete'&&id){event.preventDefault();sessionAction(workSessions.place==='bin'?'purge':'bin',[id]);}
+    else if(event.key==='Enter'&&id){event.preventDefault();openSession(id);}
+    else if(event.key==='a'&&(event.ctrlKey||event.metaKey)){
+      event.preventDefault();
+      for(const item of workSessions.data?.items??[])workSessions.selected.add(item.id);
+      renderWorkSessions();
+    }
+  });
+}
+async function openSession(id){
+  if(workSessions.place!=='active'){
+    toast({title:'Restore it first',body:'A session outside the working list is opened by restoring it.',kind:'info'});
+    return;
+  }
+  state.activeConversationId=id;
+  activate('chat');
+  await selectConversation(id);
+}
+
+// ---------------------------------------------------------------------------
+// The product's metric · UI-070…UI-072
+// ---------------------------------------------------------------------------
+
+function humanDuration(totalSeconds){
+  if(totalSeconds===null||totalSeconds===undefined)return '—';
+  const value=Number(totalSeconds);
+  if(value<60)return `${value}s`;
+  if(value<3600)return `${Math.floor(value/60)}m ${value%60}s`;
+  return `${Math.floor(value/3600)}h ${Math.floor((value%3600)/60)}m`;
+}
+async function loadReviewMetric(){
+  let summary;
+  try{summary=await api('/api/v1/metrics/review-time');}catch{return;}
+  $('#metricWindow').textContent=`last ${summary.windowDays} days`;
+  $('#metricMedian').textContent=humanDuration(summary.medianSeconds);
+  $('#metricDecided').textContent=String(summary.decided);
+  $('#metricRejected').textContent=String(summary.rejected.count);
+  const peak=Math.max(...summary.trend.map((point)=>point.medianSeconds??0),1);
+  $('#metricTrend').innerHTML=summary.trend.length
+    ?summary.trend.map((point)=>`<i style="height:${Math.max(Math.round((point.medianSeconds/peak)*100),4)}%" title="${escapeHtml(point.day)}: ${escapeHtml(humanDuration(point.medianSeconds))} across ${point.decided} decision${point.decided===1?'':'s'}"></i>`).join('')
+    :'';
+  $('#metricTrend').setAttribute('aria-label',summary.trend.length
+    ?`Daily median review time across ${summary.trend.length} days`
+    :'No decisions in this window');
+  // The definition travels with the figure. A number whose left edge is explained
+  // somewhere else is a number that will be quoted without it.
+  $('#metricDefinition').textContent=`Measured in ${summary.unit}. Rejected changes are counted, not excluded (UI-072). Interval starts at: ${summary.readyDefinition}.`;
+  return summary;
+}
+
+// ---------------------------------------------------------------------------
+// The workbench · UI-030…UI-037, and the closure · UI-036
+// ---------------------------------------------------------------------------
+
+const terminals={items:[{id:1,name:'Terminal 1'}],active:1,next:2};
+function renderTerminals(){
+  $('#terminalTabs').innerHTML=terminals.items.map((item)=>
+    `<button type="button" role="tab" aria-selected="${item.id===terminals.active}" class="${item.id===terminals.active?'active':''}" data-terminal="${item.id}">${escapeHtml(item.name)}</button>`).join('');
+  $$('[data-terminal]').forEach((button)=>button.addEventListener('click',()=>{
+    terminals.active=Number(button.dataset.terminal);renderTerminals();
+  }));
+  // Persistent and multiple by construction — and empty for a stated reason rather than
+  // emulated. A picture of a shell that accepts input and does nothing would be worse
+  // than an empty region: it would claim an execution surface this layer does not have.
+  $('#terminalBody').innerHTML=`<p class="declared-empty">${escapeHtml(terminals.items.find((item)=>item.id===terminals.active)?.name??'')} is attached to no session. The terminal is a region of its own and keeps its place whichever tab is in front; what it needs is the session protocol over a unix socket, which is backbone work. Nothing here emulates a shell.</p>`;
+}
+function initBench(){
+  $$('[data-bench-tab]').forEach((tab)=>tab.addEventListener('click',()=>{
+    const name=tab.dataset.benchTab;
+    $$('[data-bench-tab]').forEach((node)=>{
+      const active=node===tab;
+      node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
+    });
+    $$('[data-bench-panel]').forEach((panel)=>panel.classList.toggle('active',panel.dataset.benchPanel===name));
+    if(name==='terminal')$('#benchTerminal').scrollIntoView({block:'nearest'});
+    if(name==='closure')loadClosures();
+  }));
+  $('#terminalAdd')?.addEventListener('click',()=>{
+    terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`});
+    terminals.active=terminals.next;terminals.next+=1;renderTerminals();
+  });
+  $('#terminalToggle')?.addEventListener('click',()=>{
+    const collapsed=$('#benchTerminal').classList.toggle('collapsed');
+    $('#terminalToggle').textContent=collapsed?'Expand':'Collapse';
+    $('#terminalToggle').setAttribute('aria-expanded',String(!collapsed));
+  });
+  renderTerminals();
+  $('#closureForm')?.addEventListener('submit',submitClosure);
+}
+function renderBenchNavigator(){
+  const list=(items,label,empty)=>items.length
+    ?items.slice(0,6).map((item)=>`<button type="button" title="${escapeHtml(label(item))}">${escapeHtml(label(item))}</button>`).join('')
+    :`<span>${escapeHtml(empty)}</span>`;
+  $('#navProjects').innerHTML=list(state.projects,(item)=>item.name,'No project yet.');
+  $('#navRecent').innerHTML=list(state.artifacts??[],(item)=>item.title,'Nothing opened recently.');
+  $('#navSessions').innerHTML=list(state.conversations,(item)=>item.title,'No session yet.');
+  $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.');
+  $('#navAgents').innerHTML=list(state.agents??[],(item)=>item.name,'No agent.');
+  $('#navTools').innerHTML=list(state.tools??[],(item)=>item.name,'No tool registered.');
+  $('#navHistory').innerHTML=list(state.agentRuns??[],(item)=>`${item.goal??'run'} · ${item.status??''}`,'No run has happened.');
+  for(const id of ['#navProjects','#navRecent','#navSessions','#navTasks','#navAgents','#navTools','#navHistory']){
+    const node=$(id);if(node)node.classList.toggle('empty-state',node.querySelector('span')!==null);
+  }
+}
+// UI-035. Twelve fields, and the line states how many of them have a source in this
+// build. A status line that fills its gaps with plausible numbers is worse than one that
+// admits them: the reader cannot tell which half to believe.
+async function renderBenchStatus(){
+  const sourced=new Set();
+  const set=(id,value,has)=>{const node=$(id);if(!node)return;node.textContent=value;if(has)sourced.add(id);};
+  set('#statusStage','—',false);
+  set('#statusFiles','—',false);
+  set('#statusTests','—',false);
+  set('#statusWarnings','—',false);
+  set('#statusProcesses','—',false);
+  set('#statusRemote','—',false);
+  set('#statusTokens','—',false);
+  set('#statusCost','—',false);
+  set('#statusElapsed',humanDuration(Math.round((Date.now()-benchOpenedAt)/1000)),true);
+  set('#statusNetwork',$('#footerPrivacy')?.textContent?.includes('Local-only')?'local only':'see privacy state',true);
+  set('#statusSandbox',codenMode==='OWNER_BYPASS'?'owner bypass':'normal',true);
+  let live=null;
+  try{live=await api('/api/v1/coden/authorisations');}catch{live=null;}
+  set('#statusAuthority',live?String(live.count):'—',Boolean(live));
+  if(live){
+    $('#liveAuthorityCount').textContent=String(live.count);
+    $('#liveAuthorityList').classList.toggle('empty-state',live.count===0);
+    $('#liveAuthorityList').innerHTML=live.count
+      ?live.live.map((item)=>`<div class="metric"><span>${escapeHtml(item.operation)} · ${escapeHtml(item.canonicalPath)}</span><b>${escapeHtml(humanDuration(item.secondsRemaining))} left</b></div>`).join('')
+      :'Nothing is granted right now.';
+  }
+  $('#statusSourced').textContent=`${sourced.size} of 12 fields have a source in this build`;
+}
+let benchOpenedAt=Date.now();
+async function loadClosures(){
+  const runs=[...(state.agentRuns??[]).map((run)=>({id:run.id,label:`Agent run · ${run.goal??run.id}`})),
+    ...(state.workflowRuns??[]).map((run)=>({id:run.id,label:`Workflow run · ${run.id}`}))];
+  const select=$('#closureRun');
+  if(select){
+    select.innerHTML=runs.length
+      ?runs.map((run)=>`<option value="${escapeHtml(run.id)}">${escapeHtml(run.label)}</option>`).join('')
+      :'<option value="">No piece of work has run yet</option>';
+    select.disabled=runs.length===0;
+  }
+  const metric=await loadReviewMetric();
+  $('#closureReviewTime').textContent=metric?humanDuration(metric.medianSeconds):'—';
+  try{
+    const {closures}=await api('/api/v1/closures');
+    $('#closureCount').textContent=String(closures.length);
+    $('#closureList').classList.toggle('empty-state',closures.length===0);
+    $('#closureList').innerHTML=closures.length?closures.map((item)=>`
+      <article class="entity-card">
+        <h3>${escapeHtml(item.runId)}</h3>
+        <p>${escapeHtml(item.summary||'No summary given.')}</p>
+        <div class="metric"><span>NOT DONE</span><b>${item.nothingLeftUndone?'declared: nothing left undone':`${item.notDone.length} item${item.notDone.length===1?'':'s'}`}</b></div>
+        ${item.notDone.length?`<ul>${item.notDone.map((entry)=>`<li>${escapeHtml(entry)}</li>`).join('')}</ul>`:''}
+        <div class="metric"><span>Residual risk</span><b>${escapeHtml(item.residualRisk)}</b></div>
+        <small>${instantHtml(item.closedAt)}</small>
+      </article>`).join(''):'Nothing closed yet.';
+  }catch{/* the list is a view of the register; a failure to read it is reported by api() */}
+}
+async function submitClosure(event){
+  event.preventDefault();
+  const refusal=$('#closureRefusal');
+  const notDone=$('#closureNotDone').value.split('\n').map((line)=>line.trim()).filter(Boolean);
+  const nothing=$('#closureNothing').checked;
+  // The rule is enforced by the server; refusing here as well means the person is told
+  // why before a request goes out, not that the browser is trusted to hold the line.
+  if(!notDone.length&&!nothing){
+    refusal.classList.remove('hidden');
+    refusal.textContent='The NOT DONE box is empty. Either name what was left undone, or state that nothing was — an empty box that says nothing is the one thing a closure may not do.';
+    $('#closureNotDone').focus();
+    return;
+  }
+  refusal.classList.add('hidden');
+  try{
+    await api('/api/v1/closures',{method:'POST',body:JSON.stringify({
+      runId:$('#closureRun').value||'unattached',
+      summary:$('#closureSummary').value,
+      notDone,nothingLeftUndone:nothing,
+      residualRisk:$('#closureRisk').value,
+    })});
+    announceEvent('Piece of work closed');
+    $('#closureNotDone').value='';$('#closureSummary').value='';$('#closureRisk').value='';$('#closureNothing').checked=false;
+    await loadClosures();
+  }catch(error){
+    refusal.classList.remove('hidden');
+    refusal.textContent=error.message;
+  }
+}
+
 Object.assign(VIEW_LOADERS,{
   workflows:loadWorkflows,
-  coden:loadCoden,
+  coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
+  home:loadReviewMetric,
 });
 // The loaders of the demoted pages, keyed by the section that now owns them. "Health and
 // logs" is one section holding two former pages, so it runs both: merging two entries in
 // the menu must not silently drop one of their fetches.
 Object.assign(SECTION_LOADERS,{
+  sessions:()=>loadWorkSessions(sessionPlaceFromHash(),1),
   appearance:renderAppearance,
   language:loadSettings,
   security:loadSecurity,
@@ -1610,5 +2146,14 @@ Object.assign(SECTION_LOADERS,{
 
 initI18n();
 initAppearance();
+// Reading preferences are applied BEFORE the router paints anything: applying them after
+// would show the interface at one size and then move it, which is exactly the flash a
+// person who needs larger type does not need to see twice.
+initReadingControls();
+initConfirm();
+initSessions();
+initBench();
 initRouter();
-initializeAuth().catch((error)=>authError(error.message));
+initializeAuth()
+  .then(()=>loadEffectiveZone())
+  .catch((error)=>authError(error.message));
