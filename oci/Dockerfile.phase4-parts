@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The parts image: the interface the design asked for beyond the graphics.
+#
+# The graphics steps delivered structure, tokens and themes. This delivers what the design
+# required *around* them and what the acceptance criteria are actually about — sessions you
+# can archive and delete safely, an interface that scales for the person reading it, a
+# metric the product is willing to be measured by, and a workbench that admits what it does
+# not know. Built and installed in the same phase (D-0143).
+#
+# What this image adds:
+#
+#   1. session management (UI-001…UI-012): three places — working list, archive, and a bin
+#      that keeps a deleted session for thirty days — each addressable on its own, with a
+#      confirmation on EVERY destructive or moving action that names what happens and to how
+#      many, and a keyboard form for each action (UI-050…UI-053);
+#   2. reading and motion (UI-040…UI-042): text size on four steps and interface zoom as two
+#      independent multipliers, plus reduced motion as a setting rather than only as an
+#      inherited system preference;
+#   3. RTL repaired at the source (UI-046, Critical): fourteen physical left/right
+#      declarations converted to logical ones and the override block that used to correct
+#      them afterwards deleted with them, which makes the criterion mechanically checkable;
+#   4. instants that name their IANA zone (UI-045) and a live region that announces one
+#      summary per event, never one per streamed token (UI-043);
+#   5. the product's metric (UI-070…UI-072): human review time per decided change, with
+#      REJECTED changes counted rather than excluded;
+#   6. the workbench (UI-030…UI-037): three regions, eleven tabs, a persistent multiple
+#      terminal as a region of its own, and a status line that declares how many of its
+#      twelve fields have a source in this build — three;
+#   7. the closure and its NOT DONE box (UI-036, Critical), enforced by the server: a
+#      closure that lists nothing and declares nothing is refused.
+#
+# Measured, not asserted: 677 unit tests, 291 browser checks in a real browser, 27/27 WCAG
+# 2.2 AA across 27 surfaces, and eleven deliberately seeded defects each caught by exactly
+# one guard.
+#
+# ⚠ SCHEMA AND ROLLBACK COST — read before rolling back (D-0082, CLAUDE10.md 11d).
+#
+# `AI_STATE_VERSION` moves 2 -> 3: this build adds `reviewSamples` and `closures`, and
+# backfills `deletedAt`/`purgeAfter` on every conversation. The migration is present and
+# tested, and the chain runs 1 -> 3 in one read, which matters because the installed
+# workspace still reads `"schemaVersion": 1`.
+#
+# The cost is one-directional and it is real: **once this build has WRITTEN
+# state/ai-workspace.json, every earlier image refuses to load it**, because their validator
+# demands an exact version match and a file from the future is refused rather than guessed
+# at. Rolling back therefore means starting the previous container AND restoring `state/`
+# from the backup taken at deployment. A read alone does not rewrite the file, so as long as
+# the file still reads 1, going back is only starting the old container.
+#
+# Lineage, stated rather than hidden — now eleven deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#     -> :phase4-themes -> :phase4-parts
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-themes
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

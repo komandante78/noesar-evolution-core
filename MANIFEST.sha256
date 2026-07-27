@@ -5730,3 +5730,4 @@ e84b47e878e45e5d1c4d20117a68fe3bfaa5a97203ef1d96478f18937601d58a  services/refer
 8391d8a63897302d706e95b269723485f782c8a85c370c03b725bcfac2069a8c  services/reference-control-plane/test/product-metric.test.mjs
 e46cef2a310f9e9a5ee681f01b3481f4bd5233f2ec35e4b17b29c5f083961724  services/reference-control-plane/test/session-lifecycle.test.mjs
 a5851980ddeed06453583e9946802b0f26c2e58f7556edfda111134daa0e8704  tools/seeded-defect-proof.mjs
+14e486c92c538d6d6fb31e8f9c615e6fdbfcfaf42605606646630fe92aafb253  ./oci/Dockerfile.phase4-parts

@@ -2023,3 +2023,83 @@ docker start noesar-evolution.rollback-tokens-20260727T100234Z
 ```
 
 Nessun ripristino di stato richiesto finché `state/ai-workspace.json` legge `"schemaVersion": 1`.
+
+---
+
+## 2026-07-27 · `:phase4-parts` — le parti che la grafica non copriva
+
+Sessioni con archivio e cestino, dimensione del testo e zoom, RTL riparato alla fonte, istanti con
+la zona IANA, la metrica del prodotto, il banco di lavoro e la casella `NON FATTO`.
+Decisioni `D-0152…D-0160`. Costruita, installata e verificata **nella stessa fase** (`D-0143`).
+
+### ⚠ Costo di rollback — dichiarato PRIMA, non scoperto dopo (`11d`, `D-0082`)
+
+`AI_STATE_VERSION` passa da **2 a 3**: questa build aggiunge `reviewSamples` e `closures` e
+riempie `deletedAt`/`purgeAfter` su ogni conversazione. La migrazione c'è, è testata, e la catena
+gira **1 → 3 in una sola lettura** — cosa che conta, perché il workspace installato legge ancora
+`"schemaVersion": 1`.
+
+Il costo è a senso unico ed è reale: **appena questa build SCRIVE `state/ai-workspace.json`, ogni
+immagine precedente rifiuta di caricarlo**, perché il loro validatore pretende corrispondenza
+esatta e un file dal futuro viene rifiutato invece che indovinato. Tornare indietro significa
+quindi avviare il container precedente **e ripristinare `state/` dal backup**. Una lettura da sola
+non riscrive il file: finché legge `1`, tornare indietro è solo riavviare il vecchio container.
+
+**Verificato prima del build, dopo il backup e dopo l'avvio: legge ancora `1`.**
+
+### Sequenza — §3a, `11c`
+
+Immagine costruita **offline** (`--network=none --pull=false`) e contenuto verificato: sette file
+confrontati per SHA-256 fra immagine e repository, **tutti identici** · `docker stop -t 60` con
+`postgres.stopped clean:true` ed exit **0** · backup completo **a servizio fermo**
+(`BACKUPS/runtime_pre_parts_deploy_20260727T110330Z/`, 75 MB, 12 directory) · precedente preservato
+come `noesar-evolution.rollback-themes-20260727T110341Z` · nuovo container avviato con la
+configurazione **riletta dal container sostituito**, non dalla memoria.
+
+### Verificato dopo
+
+```text
+state=running  health=healthy  restarts=0  image=noesar-evolution:phase4-parts
+livez 200 · readyz 200 · /metrics 401 (hardening LAN intatto)
+postgres.ready   18.4, pgvector 0.8.5, migrations 16, rls_tables 15, production_ready
+identity         projected=1
+app.js           IDENTICO al repository
+index.html       IDENTICO al repository
+styles.css       IDENTICO al repository
+rotte nuove      /api/v1/sessions 401 · /metrics/review-time 401 · /closures 401
+                 /coden/authorisations 401   (contro 404 su una rotta inesistente)
+schema           "schemaVersion": 1 prima del build, dopo il backup e dopo l'avvio
+```
+
+Il **401 contro il 404** è la parte che conta: prova che le rotte esistono e sono protette, invece
+di provare soltanto che il server risponde.
+
+### Detto chiaramente: cosa NON è verificato
+
+Il **comportamento** dell'interfaccia non è esercitato su questa installazione (§3a, `11e`): le
+suite creano un Owner, creano sessioni e ne eliminano, quindi girano contro una sonda usa-e-getta.
+Dal vivo è provato che i byte serviti sono **identici** all'albero che quelle suite hanno
+esercitato, che il servizio è sano e che le superfici rispondono.
+
+**Nessuno screen reader reale** ha partecipato e `forced-colors` non è emulabile su questo
+Chromium — l'audit lo stampa nel proprio blocco `NOT_TESTED` a ogni giro.
+
+### Pulizia — §5a
+
+Rimosso `noesar-evolution.rollback-tokens-20260727T100234Z`; **la sua immagine resta**, quindi il
+percorso di rollback documentato in questo registro continua a funzionare. Sopravvivono **due**
+container. Reti e volumi **identici** all'inventario preso prima
+(`EVIDENCE/docker_inventory_pre_cleanup_20260727T110433Z.txt`), **37** container non del progetto
+prima e dopo, **39** in totale. Nessun `prune`. Il container di analisi `noesar-debuglab` è stato
+avviato per il passo di caccia e **rifermato nella stessa fase**.
+
+### Rollback
+
+```text
+docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
+docker start noesar-evolution.rollback-themes-20260727T110341Z
+```
+
+**Controllare prima `state/ai-workspace.json`.** Se legge ancora `1`, non serve altro. Se legge `3`,
+ripristinare anche `state/` da `BACKUPS/runtime_pre_parts_deploy_20260727T110330Z/`, o
+`:phase4-themes` rifiuterà di caricare il workspace AI.
