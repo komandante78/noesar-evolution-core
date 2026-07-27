@@ -4,12 +4,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, unlinkSync } from 'node:fs';
+import {
+  readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync, unlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import {
   ShadowWorkspace, ShadowError, compare, shadowStatus, contained, SHADOW_STRATEGY,
+  probeCopyOnWrite,
 } from '../src/shadow.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -137,9 +140,120 @@ test('a shadow of nothing is refused', () => {
   }
 });
 
-test('the status states what it does not do instead of implying it', () => {
-  const status = shadowStatus();
-  assert.equal(status.copyOnWrite, false);
-  assert.equal(status.executesPlans, false);
-  assert.equal(status.comparesBothDirections, true);
+// The dangerous side of the comparison is "something happened that nobody declared". A
+// shadow that only holds the declared paths cannot ever observe that, so `unexpected` is
+// structurally empty and the guarantee is decided by whoever built the shadow -- which is
+// the caller. These are the tests that hold the whole-workspace shadow to its purpose.
+test('a write nobody declared is observed — the dangerous side is not structurally empty', () => {
+  const source = mkdtempSync(join(tmpdir(), 'noesar-shadow-src6-'));
+  const shadowRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-dst6-'));
+  try {
+    writeFileSync(join(source, 'declared.txt'), 'a');
+    writeFileSync(join(source, 'nobody-named-me.txt'), 'b');
+    const shadow = ShadowWorkspace.ofWorkspace(source, shadowRoot);
+    assert.equal(shadow.coverage, 'WHOLE_WORKSPACE');
+    // Both exist in the shadow: the plan named one of them, the workspace holds both.
+    assert.ok(existsSync(join(shadow.root, 'nobody-named-me.txt')));
+
+    writeFileSync(join(shadow.root, 'declared.txt'), 'changed');
+    writeFileSync(join(shadow.root, 'nobody-named-me.txt'), 'touched by accident');
+    const observed = shadow.observe([]);
+    assert.equal(observed.changed['declared.txt'], 'MODIFIED');
+    assert.equal(observed.changed['nobody-named-me.txt'], 'MODIFIED');
+
+    const surprise = compare({ pathsTheDiffMustTouch:['declared.txt'] }, observed);
+    assert.equal(surprise.clean, false);
+    assert.deepEqual(surprise.unexpected, ['nobody-named-me.txt']);
+
+    // The source is untouched — copy-on-write shares blocks, it does not share writes.
+    assert.equal(readFileSync(join(source, 'nobody-named-me.txt'), 'utf8'), 'b');
+    shadow.discard();
+  } finally {
+    rmSync(source, { recursive:true, force:true });
+    rmSync(shadowRoot, { recursive:true, force:true });
+  }
+});
+
+test('a file created anywhere in the shadow is observed, not only where a plan looked', () => {
+  const source = mkdtempSync(join(tmpdir(), 'noesar-shadow-src7-'));
+  const shadowRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-dst7-'));
+  try {
+    mkdirSync(join(source, 'src'), { recursive:true });
+    writeFileSync(join(source, 'src/a.txt'), 'a');
+    const shadow = ShadowWorkspace.ofWorkspace(source, shadowRoot);
+    mkdirSync(join(shadow.root, 'src/deep'), { recursive:true });
+    writeFileSync(join(shadow.root, 'src/deep/appeared.txt'), 'new');
+    unlinkSync(join(shadow.root, 'src/a.txt'));
+    const observed = shadow.observe([]);
+    assert.equal(observed.changed['src/deep/appeared.txt'], 'CREATED');
+    assert.equal(observed.changed['src/a.txt'], 'DELETED');
+    shadow.discard();
+  } finally {
+    rmSync(source, { recursive:true, force:true });
+    rmSync(shadowRoot, { recursive:true, force:true });
+  }
+});
+
+test('the mechanism is probed on the real directory, never assumed', () => {
+  const probeRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-probe-'));
+  try {
+    const probe = probeCopyOnWrite(probeRoot);
+    assert.ok(typeof probe.supported === 'boolean');
+    assert.ok(['REFLINK_CLONE', 'FULL_COPY'].includes(probe.mechanism));
+    // Whatever the answer is, it came from an attempt on this directory.
+    assert.equal(probe.measured, true);
+    assert.equal(probe.supported, probe.mechanism === 'REFLINK_CLONE');
+  } finally {
+    rmSync(probeRoot, { recursive:true, force:true });
+  }
+});
+
+test('the status reports the probed mechanism and still states what it does not do', () => {
+  const probeRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-status-'));
+  try {
+    const status = shadowStatus(probeRoot);
+    assert.equal(status.measured, true);
+    assert.equal(status.copyOnWrite, status.mechanism === 'REFLINK_CLONE');
+    assert.equal(status.coverage, 'WHOLE_WORKSPACE');
+    assert.equal(status.executesPlans, false);
+    assert.equal(status.comparesBothDirections, true);
+  } finally {
+    rmSync(probeRoot, { recursive:true, force:true });
+  }
+});
+
+test('a shadow that cannot see outside the declared paths says so', () => {
+  const source = mkdtempSync(join(tmpdir(), 'noesar-shadow-src8-'));
+  const shadowRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-dst8-'));
+  try {
+    writeFileSync(join(source, 'a.txt'), 'a');
+    const targeted = new ShadowWorkspace(source, shadowRoot, ['a.txt']);
+    // Kept, and honest about the guarantee it cannot give.
+    assert.equal(targeted.coverage, 'DECLARED_PATHS_ONLY');
+    assert.equal(targeted.strategy, SHADOW_STRATEGY);
+    targeted.discard();
+  } finally {
+    rmSync(source, { recursive:true, force:true });
+    rmSync(shadowRoot, { recursive:true, force:true });
+  }
+});
+
+test('a workspace larger than the declared limits is refused, never silently truncated', () => {
+  const source = mkdtempSync(join(tmpdir(), 'noesar-shadow-src9-'));
+  const shadowRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-dst9-'));
+  try {
+    for (let i = 0; i < 5; i += 1) writeFileSync(join(source, `f${i}.txt`), 'x');
+    // A partial shadow would be compared as if it were the whole workspace.
+    assert.equal(
+      caught(() => ShadowWorkspace.ofWorkspace(source, shadowRoot, { maxFiles:3 })),
+      'LIMIT',
+    );
+    assert.equal(
+      caught(() => ShadowWorkspace.ofWorkspace(source, shadowRoot, { maxBytes:2 })),
+      'LIMIT',
+    );
+  } finally {
+    rmSync(source, { recursive:true, force:true });
+    rmSync(shadowRoot, { recursive:true, force:true });
+  }
 });

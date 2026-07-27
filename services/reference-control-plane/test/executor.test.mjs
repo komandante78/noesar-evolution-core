@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TokenMinter, authorizePlan } from '../src/capability.mjs';
-import { ShadowWorkspace } from '../src/shadow.mjs';
+import { ShadowWorkspace, compare } from '../src/shadow.mjs';
 import { execute, executorStatus, NO_EXECUTION_SURFACE } from '../src/executor.mjs';
 
 const NOW = 1800000000;
@@ -29,7 +29,9 @@ function bench(files, destructive = false) {
   return {
     source, shadowRoot, authorized,
     minter: new TokenMinter(SECRET),
-    shadow: new ShadowWorkspace(source, shadowRoot, [...files]),
+    // The whole workspace, not the declared paths: a shadow built from exactly what the plan
+    // named could never report an undeclared write, and the executor refuses one.
+    shadow: ShadowWorkspace.ofWorkspace(source, shadowRoot),
     cleanup() {
       rmSync(source, { recursive:true, force:true });
       rmSync(shadowRoot, { recursive:true, force:true });
@@ -209,10 +211,60 @@ test('a change nobody declared makes the run not ok even though every action was
   } finally { b.cleanup(); }
 });
 
+// The case above catches an undeclared write only because the caller happened to put
+// `secret.txt` in the plan's files, so the shadow held it. This one is the real shape of the
+// accident: a file the plan never mentioned at all. With a shadow built from the declared
+// paths it is not in the shadow, so writing it is invisible and the run reports clean.
+test('a file the plan never named at all is still observed when it is written', () => {
+  const b = bench(['a.txt']);
+  try {
+    writeFileSync(join(b.source, 'never-mentioned.txt'), 'before');
+    const fresh = ShadowWorkspace.ofWorkspace(b.source,
+      mkdtempSync(join(tmpdir(), 'noesar-exec-dst2-')));
+    const token = b.minter.mint(b.authorized, ask(['a.txt'], ['WRITE']), NOW);
+    execute({
+      authorized:b.authorized, minter:b.minter, tokens:[token], shadow:fresh,
+      actions:[{ kind:'WRITE', path:'a.txt', contents:'after' }],
+      expectation:expectation(['a.txt']), nowUnix:NOW,
+    });
+    // Something outside the executor touches the shadow — a test runner, a build, a script.
+    writeFileSync(join(fresh.root, 'never-mentioned.txt'), 'touched');
+    const surprise = compare(expectation(['a.txt']), fresh.observe([]));
+    assert.equal(surprise.clean, false);
+    assert.deepEqual(surprise.unexpected, ['never-mentioned.txt']);
+    assert.equal(readFileSync(join(b.source, 'never-mentioned.txt'), 'utf8'), 'before');
+    fresh.discard();
+  } finally { b.cleanup(); }
+});
+
+test('the executor refuses a shadow that cannot observe an undeclared write', () => {
+  const b = bench(['a.txt']);
+  try {
+    const targeted = new ShadowWorkspace(b.source,
+      mkdtempSync(join(tmpdir(), 'noesar-exec-dst3-')), ['a.txt']);
+    const token = b.minter.mint(b.authorized, ask(['a.txt'], ['WRITE']), NOW);
+    let kind = null;
+    try {
+      execute({
+        authorized:b.authorized, minter:b.minter, tokens:[token], shadow:targeted,
+        actions:[{ kind:'WRITE', path:'a.txt', contents:'after' }],
+        expectation:expectation(['a.txt']), nowUnix:NOW,
+      });
+    } catch (error) {
+      kind = error.kind;
+    }
+    assert.equal(kind, 'COVERAGE');
+    // Refused before anything was spent or written.
+    assert.equal(readFileSync(join(targeted.root, 'a.txt'), 'utf8'), 'before');
+    targeted.discard();
+  } finally { b.cleanup(); }
+});
+
 test('the status states the execution surface it does not have', () => {
   const status = executorStatus();
   assert.equal(status.acceptsOnlyCapabilityTokens, true);
   assert.equal(status.spendsBeforeEffect, true);
   assert.equal(status.executionSurface, false);
+  assert.equal(status.requiresWholeWorkspaceShadow, true);
   assert.deepEqual(status.refusedOperations, ['EXECUTE']);
 });

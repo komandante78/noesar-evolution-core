@@ -148,7 +148,16 @@ try {
   // Shadow execution, against the running server.
   const shadow = await request('/api/v1/shadow');
   if (shadow.status !== 200) throw new Error(JSON.stringify(shadow));
-  if (shadow.data.copyOnWrite !== false) throw new Error('the status must not claim copy-on-write');
+  // The claim must come from an attempt on this installation's own filesystem, and must
+  // agree with the mechanism it names. Either answer is legitimate; an unmeasured one is not.
+  if (shadow.data.measured !== true) throw new Error('the status must not claim an unmeasured mechanism');
+  if (!['REFLINK_CLONE', 'FULL_COPY'].includes(shadow.data.mechanism)) {
+    throw new Error(`unknown shadow mechanism ${shadow.data.mechanism}`);
+  }
+  if (shadow.data.copyOnWrite !== (shadow.data.mechanism === 'REFLINK_CLONE')) {
+    throw new Error('the copy-on-write claim contradicts the mechanism it names');
+  }
+  if (shadow.data.coverage !== 'WHOLE_WORKSPACE') throw new Error('the shadow must cover the whole workspace');
   if (shadow.data.executesPlans !== false) throw new Error('the status must not claim an executor that does not exist');
 
   const clean = await request('/api/v1/shadow/compare', { method:'POST', value:{

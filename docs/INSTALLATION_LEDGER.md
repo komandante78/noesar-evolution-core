@@ -2503,3 +2503,39 @@ un riavvio lo azzera. E **nessun sottosistema del prodotto vi scrive ancora**: l
 riportano e lo verificano, ma la catena viva è vuota finché qualcosa non comincia a registrare —
 il che è vero, ed è per questo che `chainValid` su una catena vuota va letto come «niente da
 contraddire», non come «tutto verificato».
+
+## 2026-07-27 · `:phase4-cow` — l'ombra copy-on-write sull'installazione viva
+
+**Immagine** `noesar-evolution:phase4-cow`, costruita `--network=none --pull=false` da
+`oci/Dockerfile.phase4-cow`, `FROM noesar-evolution:phase4-events` (lignaggio quattordici
+livelli). Solo il control plane cambia; `apps/webui-static` deliberatamente non ricopiata.
+
+**Byte provati identici all'albero prima di toccare l'installazione**: `shadow.mjs`,
+`executor.mjs`, `server.mjs` — `sha256sum` nell'immagine contro `sha256sum` nel repository,
+tre su tre IDENTICAL.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo (`BACKUPS/runtime_pre_cow_deploy_20260727T183606Z`, 75 MB)
+→ configurazione riletta dal container sostituito
+(`EVIDENCE/live_config_pre_cow_deploy_20260727T183606Z.json`) → predecessore preservato come
+`noesar-evolution.rollback-events-20260727T183606Z` → avvio.
+
+**Un errore mio nel mezzo, dichiarato** (`D-0187`): il primo avvio ha passato
+`--health-cmd` attraverso un `eval` che ne ha spogliato le virgolette. Il container risultava
+`Up (unhealthy)` **mentre il servizio era sano** (`/livez` 200, PostgreSQL pronto, control
+plane avviato). L'immagine porta già l'healthcheck corretto: fermato pulito
+(`postgres.stopped clean:true` di nuovo), rimosso, ricreato **senza override**.
+
+**Verifica dal vivo.** `Up (healthy)`, `RestartCount=0`, `ReadonlyRootfs=true`,
+`CapDrop=["ALL"]`, `no-new-privileges`. `/api/v1/shadow` **401** contro **404** di una rotta
+inesistente. `/healthz` **200** e `detail.disclosed=false` con ruolo e permesso nominati —
+`B-010` non regredito. `AUTH_HTTP_SMOKE=PASS`. Dal vivo:
+`MECHANISM=REFLINK_CLONE · copyOnWrite=true · measured=true · coverage=WHOLE_WORKSPACE`.
+
+**§5a**: rimosso il rollback superato `noesar-evolution.rollback-executor-20260727T172815Z`.
+Due soli container di progetto. Host invariato: **39 totali, 11 in esecuzione**.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta **3**: tornare a
+`:phase4-events` è avviare il container preservato. ⚠️ **Ma reintroduce l'`unexpected`
+strutturalmente vuoto**: una run dell'esecutore che tocca un file che nessuno ha dichiarato
+tornerebbe a riportarsi pulita.

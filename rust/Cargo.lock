@@ -673,6 +673,7 @@ name = "noesar-shadow"
 version = "0.6.0"
 dependencies = [
  "hex",
+ "libc",
  "noesar-reasoning",
  "serde",
  "serde_json",

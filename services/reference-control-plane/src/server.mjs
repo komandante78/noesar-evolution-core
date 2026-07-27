@@ -808,7 +808,9 @@ const server = createServer(async (req, res) => {
     // side -- something happened that nobody declared -- is the dangerous one.
     if (req.method === 'GET' && url.pathname === '/api/v1/shadow') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      return json(res, 200, shadowStatus());
+      // Probed against the directory shadows are actually made in: reflink support is a
+      // property of the mount, so asking anywhere else answers a different question.
+      return json(res, 200, shadowStatus(join(workspace, 'shadows')));
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/shadow/compare') {
       const authenticated = requireSession(req, res); if (!authenticated) return;

@@ -2663,3 +2663,70 @@ che conta di più — corretto mentre lo scrivevo.
 **Status.** Installato. **NON vero e dichiarato**: `persistsAcrossRestart=false`, e **nessun
 sottosistema del prodotto vi scrive ancora** — `chainValid` su una catena vuota significa
 «niente da contraddire», non «tutto verificato».
+
+## D-0185 · L'ombra è copy-on-write, e la metà pericolosa del confronto era strutturalmente vuota — 2026-07-27
+**Decision.** `ShadowWorkspace.ofWorkspace()` / `materialise()` materializzano l'**intero**
+workspace, clonato via `FICLONE` dove il mount lo consente e copiato per intero dove no;
+`observe()` cammina l'albero; l'esecutore **rifiuta** un'ombra non whole-workspace; il
+meccanismo è **sondato** sulla directory reale e `/api/v1/shadow` lo dichiara. Installato
+`:phase4-cow`.
+**Why.** `unexpected = touched \ declared` con `touched ⊆ baseline`: un chiamante che
+costruiva l'ombra dai soli percorsi dichiarati rendeva `unexpected` **strutturalmente
+vuoto** — e `executor.test.mjs` e il bench Rust facevano esattamente questo. Il lato che
+`D-0182` chiama «la forma esatta dell'incidente che questa fase esiste per impedire» non
+poteva accendersi nel percorso dell'esecutore.
+**Rejected.** Il rifiuto di `D-0182` («overlayfs e reflink richiedono privilegi o un
+filesystem che li supporti, e nessuno dei due è garantito»): vero come frase, ma è passato
+da «non garantito» a «mai» invece che a «si sonda e si dichiara». Misurato: `/mnt/cachec` è
+XFS `reflink=1`, `/workspace` ne è un bind, `COPYFILE_FICLONE_FORCE` riesce dal Node del
+container. Nessun privilegio, nessun mount nostro.
+**Evidence.** unit 836 → **843**; Rust **23 binari, 100 passati** (91) offline
+`--network=none --cap-drop=ALL`; ESLint **181 file, 0 errori**; MANIFEST **5778/5778, zero
+righe non verificabili**; `AUTH_HTTP_SMOKE=PASS`; dal vivo `MECHANISM=REFLINK_CLONE
+copyOnWrite=true measured=true coverage=WHOLE_WORKSPACE`, healthy, `restarts=0`, cancelli
+401 contro 404, `/healthz` non regredito. Il percorso reflink Rust provato **in positivo**
+(`PROBE ReflinkClone supported=true` stampato): una costante `FICLONE` sbagliata avrebbe
+fatto passare ogni asserzione mentre il clone non avveniva mai. Test scritto prima e **visto
+fallire**.
+**Reversal cost.** Nessuno nuovo — `AI_STATE_VERSION` resta **3**. Ma il rollback a
+`:phase4-events` **reintroduce l'`unexpected` strutturalmente vuoto**.
+**Status.** Installato. **NON vero e dichiarato**: `executesPlans=false`;
+`executorWiredToProductActions=false`; l'ombra non è montata, quindi un processo che
+aggirasse la risoluzione dei percorsi non è fermato dal kernel; la camminata è O(file) a
+ogni osservazione.
+
+## D-0186 · Il MANIFEST conteneva una riga che nessuno poteva verificare — 2026-07-27
+**Decision.** Rimossa la voce `rust/crates/noesar-executor/tests/conformance.rs` (digest
+**vuoto**, file **mai esistito**) e corretta l'intestazione di `executor.mjs` che affermava
+che entrambe le implementazioni rispondono a `conformance/executor-vectors.json`. Quel file
+non esiste. Aperto **F4-014**.
+**Why.** `sha256sum -c` salta una riga malformata con un avviso e **esce 0**: il «5779, 0
+mismatch» registrato era vero solo perché quella riga non veniva mai controllata. E
+l'esecutore è **l'unico dei sei passi con due implementazioni e nessun oracolo condiviso** —
+la condizione che `D-0184` esiste per evitare.
+**Rejected.** Costruire l'oracolo mancante adesso: a fine fase e fuori budget sarebbe un
+oracolo sottile spacciato per copertura. Una lacuna **nominata** vale più.
+**Evidence.** MANIFEST da 5779 voci con 1 non verificabile a **5778 con 0**; il file assente
+confermato da `sha256sum: No such file or directory`; `conformance/` contiene cinque oracoli
+e **nessuno** per l'esecutore.
+**Reversal cost.** Nessuno.
+**Status.** Applicato. **F4-014 aperto**: l'esecutore non ha oracolo condiviso.
+
+## D-0187 · Due difetti miei, dichiarati invece che nascosti — 2026-07-27
+**Decision.** Registrati: **(1)** il primo `docker run` ha passato `--health-cmd` attraverso
+un `eval` che ne ha spogliato le virgolette, producendo JS non valido — il container era
+`Up (unhealthy)` **mentre il servizio funzionava** (`/livez` 200, PostgreSQL pronto).
+L'immagine porta già l'healthcheck corretto: ricreato senza override, `healthy`,
+`restarts=0`, con arresto pulito (`postgres.stopped clean:true`) prima di rimuovere quello
+sbagliato. **(2)** `docker exec` usato per leggere il meccanismo dal vivo — §5 regola 16 non
+lo ammette (stessa deviazione di `D-0168`).
+**Why.** Un healthcheck rotto è indistinguibile da un servizio morto per chiunque guardi
+`docker ps`, ed è **peggio** di non averlo: mente in entrambe le direzioni.
+**Rejected.** Lasciare l'override «tanto risponde»: `--restart unless-stopped` non riavvia
+un unhealthy, quindi sarebbe rimasta una menzogna permanente sul cruscotto.
+**Evidence.** Output dell'healthcheck fallito conservato; container finale `Up (healthy)`.
+**Reversal cost.** Nessuno.
+**Status.** Applicato. Aperto **F4-015**: `shadowStatus()` **scrive** (crea `shadows/` e un
+file sonda) su una **GET**, quindi una rotta di sola lettura muta il filesystem a ogni
+richiesta autenticata. Non riparato in questa fase: la riparazione (sondare l'antenato
+esistente senza creare nulla) richiede una ricostruzione e va oltre il budget dichiarato.

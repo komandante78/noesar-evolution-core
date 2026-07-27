@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // The executor that accepts nothing but a capability token. Mirrors
-// rust/crates/noesar-executor; both sides answer to conformance/executor-vectors.json.
+// rust/crates/noesar-executor.
+//
+// Unlike reasoning, capability, shadow and events, this step has NO shared oracle:
+// `conformance/executor-vectors.json` does not exist and never did, though this header
+// claimed it and MANIFEST.sha256 carried an entry for a Rust conformance runner that was
+// never written. Both sides are held by equivalent native tests instead, which is weaker —
+// two implementations of one contract start to disagree the moment only one of them has the
+// test. Recorded as F4-014 rather than left as a claim.
 //
 // This is the step that closes the circle: an approved plan mints tokens, the executor may
 // only act by spending one, everything it does lands in a shadow, and the shadow is compared
@@ -16,7 +23,7 @@
 
 import { readFileSync, writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { compare, contained, ShadowError } from './shadow.mjs';
+import { compare, contained, COVERAGE_WHOLE, ShadowError } from './shadow.mjs';
 
 export const ACTIONS = Object.freeze(['READ', 'WRITE', 'DELETE', 'EXECUTE']);
 
@@ -34,6 +41,14 @@ function tokenFor(tokens, action, planDigest) {
 }
 
 export function execute({ authorized, minter, tokens, shadow, actions, expectation, tests = [], nowUnix }) {
+  // A shadow holding only the paths the plan named cannot ever report that a file nobody
+  // declared was touched: `unexpected` would be empty because there was nothing else there
+  // to observe, not because nothing else happened. Refused here rather than run to a result
+  // that would claim a guarantee decided by whoever built the shadow.
+  if (shadow?.coverage !== COVERAGE_WHOLE) {
+    throw new ShadowError('COVERAGE',
+      'the executor requires a whole-workspace shadow: one holding only the declared paths cannot observe an undeclared write, and a clean comparison from it would be an artefact of its own construction');
+  }
   const outcomes = [];
 
   for (const action of actions ?? []) {
@@ -126,6 +141,7 @@ export function executorStatus() {
     executionSurface: false,
     refusedOperations: ['EXECUTE'],
     writesOutsideShadow: false,
-    reason: 'Every action must present a token of the approved plan that names its path and operation; the token is spent before the effect, so a refusal means nothing happened. EXECUTE is declared and always refused: there is no sandbox here that could contain a running process.',
+    requiresWholeWorkspaceShadow: true,
+    reason: 'Every action must present a token of the approved plan that names its path and operation; the token is spent before the effect, so a refusal means nothing happened. EXECUTE is declared and always refused: there is no sandbox here that could contain a running process. A shadow that holds only the declared paths is refused: it cannot observe an undeclared write, so a clean comparison from it would be an artefact of how it was built.',
   };
 }

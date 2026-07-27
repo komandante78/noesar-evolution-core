@@ -8,11 +8,16 @@
 //!
 //! # What "shadow" means here, precisely
 //!
-//! Not a copy-on-write filesystem. Overlayfs and reflinks need privileges or a filesystem
-//! that supports them, and neither is guaranteed where this product installs. This copies
-//! **only the paths the plan names** — targeted, not a tree clone — and says so through
-//! [`ShadowWorkspace::strategy`] rather than letting a reader assume a cheaper mechanism
-//! than the one in use.
+//! Copy-on-write **where the filesystem provides it**, decided by an attempt on the real
+//! directory rather than by an assumption. A reflink clone (`FICLONE`) needs no privileges
+//! and no mount of our own; it needs a filesystem that supports it, so the answer is
+//! measured per installation and reported through [`ShadowWorkspace::mechanism`]. Where it
+//! is absent the same tree is copied in full: slower, identical in behaviour.
+//!
+//! [`ShadowWorkspace::materialise`] holds the **whole workspace**;
+//! [`ShadowWorkspace::create`] holds only the paths a plan names. The difference is not
+//! cost, it is what can be observed — see below — and each says which it is through
+//! [`ShadowWorkspace::coverage`].
 //!
 //! # The comparison is two-sided, and the second side is the dangerous one
 //!
@@ -20,6 +25,11 @@
 //! surprise, and it is the one worth catching: a plan that also touched a file nobody
 //! authorised is the exact shape of the accident this whole phase exists to prevent. Both
 //! are reported, and [`Surprise::is_clean`] is false if either is non-empty.
+//!
+//! That second side can only be observed in a shadow that **contains files nobody
+//! declared**. A shadow built from exactly the declared paths makes `unexpected`
+//! structurally empty — not because nothing else happened, but because there was nothing
+//! else there to see — which hands the guarantee to whoever built the shadow.
 //!
 //! **A run that observed nothing is not a clean run.** An observation with no paths and no
 //! test results is refused rather than compared, because "no differences found" and
@@ -38,6 +48,9 @@ pub enum ShadowError {
     Containment { path: String, reason: String },
     Io { path: String, reason: String },
     Invalid { field: String, reason: String },
+    /// The workspace is larger than the declared limits. Refused, never truncated: a partial
+    /// shadow would be compared as if it were the whole workspace.
+    Limit { path: String, reason: String },
 }
 
 impl std::fmt::Display for ShadowError {
@@ -46,6 +59,7 @@ impl std::fmt::Display for ShadowError {
             Self::Containment { path, reason } => write!(f, "containment `{path}`: {reason}"),
             Self::Io { path, reason } => write!(f, "io `{path}`: {reason}"),
             Self::Invalid { field, reason } => write!(f, "invalid `{field}`: {reason}"),
+            Self::Limit { path, reason } => write!(f, "limit `{path}`: {reason}"),
         }
     }
 }
@@ -60,6 +74,123 @@ pub type Outcome<T> = Result<T, ShadowError>;
 pub enum ShadowStrategy {
     /// Only the paths the plan names are copied. Not copy-on-write.
     TargetedCopy,
+    /// The whole tree, cloned through `FICLONE`: copy-on-write, blocks shared until written.
+    ReflinkClone,
+    /// The whole tree, copied byte for byte because the filesystem refused to clone it.
+    FullCopy,
+}
+
+/// What the shadow is able to observe — not how much it cost to make.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ShadowCoverage {
+    /// Everything in the workspace, so a write nobody declared is visible.
+    WholeWorkspace,
+    /// Only what a plan named: `unexpected` cannot be populated from this shadow.
+    DeclaredPathsOnly,
+}
+
+/// The answer to "does this mount support reflinks", together with the fact that it was
+/// obtained by trying rather than by assuming.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CopyOnWriteProbe {
+    pub measured: bool,
+    pub supported: bool,
+    pub mechanism: ShadowStrategy,
+}
+
+/// Refused rather than truncated: see [`ShadowWorkspace::materialise`].
+pub const DEFAULT_MAX_FILES: usize = 20_000;
+pub const DEFAULT_MAX_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
+#[derive(Debug, Clone, Copy)]
+pub struct ShadowLimits {
+    pub max_files: usize,
+    pub max_bytes: u64,
+}
+
+impl Default for ShadowLimits {
+    fn default() -> Self {
+        Self { max_files: DEFAULT_MAX_FILES, max_bytes: DEFAULT_MAX_BYTES }
+    }
+}
+
+/// `_IOW(0x94, 9, int)` — the asm-generic encoding, which is what every architecture this
+/// product targets uses. Architectures with a different ioctl encoding are excluded by the
+/// `cfg` below rather than sent an ioctl number that means something else there.
+#[cfg(all(
+    unix,
+    any(
+        target_arch = "x86",
+        target_arch = "x86_64",
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64",
+        target_arch = "s390x",
+    )
+))]
+const FICLONE: libc::c_ulong = 0x4004_9409;
+
+/// Clones `from` onto `to` sharing blocks. `Ok(false)` means the filesystem said no and the
+/// caller should copy; an error is a real failure to create the destination.
+#[cfg(all(
+    unix,
+    any(
+        target_arch = "x86",
+        target_arch = "x86_64",
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64",
+        target_arch = "s390x",
+    )
+))]
+fn try_reflink(from: &Path, to: &Path) -> std::io::Result<bool> {
+    use std::os::unix::io::AsRawFd;
+    let source = fs::File::open(from)?;
+    let destination = fs::File::create(to)?;
+    // SAFETY: both descriptors are open and owned for the duration of the call, and FICLONE
+    // reads only the descriptor number passed as the argument.
+    let result = unsafe { libc::ioctl(destination.as_raw_fd(), FICLONE, source.as_raw_fd()) };
+    Ok(result == 0)
+}
+
+#[cfg(not(all(
+    unix,
+    any(
+        target_arch = "x86",
+        target_arch = "x86_64",
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64",
+        target_arch = "s390x",
+    )
+)))]
+fn try_reflink(_from: &Path, _to: &Path) -> std::io::Result<bool> {
+    Ok(false)
+}
+
+/// Does this directory support reflinks? Answered by trying one **in that directory**:
+/// support is a property of the mount, so asking anywhere else answers a different question.
+pub fn probe_copy_on_write(directory: &Path) -> CopyOnWriteProbe {
+    let stamp = std::process::id();
+    let from = directory.join(format!(".noesar-cow-probe-{stamp}"));
+    let to = directory.join(format!(".noesar-cow-probe-{stamp}.clone"));
+    let mut supported = false;
+    if fs::create_dir_all(directory).is_ok()
+        && fs::write(&from, b"noesar copy-on-write probe").is_ok()
+    {
+        supported = matches!(try_reflink(&from, &to), Ok(true));
+    }
+    let _ = fs::remove_file(&from);
+    let _ = fs::remove_file(&to);
+    CopyOnWriteProbe {
+        measured: true,
+        supported,
+        mechanism: if supported { ShadowStrategy::ReflinkClone } else { ShadowStrategy::FullCopy },
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -222,6 +353,96 @@ pub struct ShadowWorkspace {
     root: PathBuf,
     baseline: BTreeMap<String, Option<String>>,
     strategy: ShadowStrategy,
+    coverage: ShadowCoverage,
+    excluded: Vec<String>,
+    degraded_clones: usize,
+}
+
+/// A symlink is digested by where it points, not by what it points at: retargeting a link is
+/// a change to the workspace, and following it would read outside the shadow.
+fn digest_of_link(path: &Path) -> Outcome<String> {
+    let target = fs::read_link(path).map_err(|error| ShadowError::Io {
+        path: path.display().to_string(),
+        reason: error.to_string(),
+    })?;
+    let mut hasher = Sha256::new();
+    hasher.update(format!("symlink:{}", target.display()).as_bytes());
+    Ok(hex::encode(hasher.finalize()))
+}
+
+#[derive(Debug, Default)]
+struct SourceWalk {
+    files: Vec<String>,
+    directories: Vec<String>,
+    links: Vec<String>,
+    excluded: Vec<String>,
+}
+
+/// Walks the source tree once. Anything that is neither file, directory nor symlink — a
+/// socket, a fifo, a device — cannot be cloned and is EXCLUDED AND COUNTED rather than
+/// silently passed over: the live workspace holds PostgreSQL sockets, so refusing outright
+/// would make the mechanism unusable on the real installation, and skipping in silence would
+/// overstate what the shadow covers.
+fn walk_source(source_root: &Path, limits: ShadowLimits) -> Outcome<SourceWalk> {
+    let mut walk = SourceWalk::default();
+    let mut bytes: u64 = 0;
+    let mut stack = vec![source_root.to_path_buf()];
+    while let Some(current) = stack.pop() {
+        let entries = fs::read_dir(&current).map_err(|error| ShadowError::Io {
+            path: current.display().to_string(),
+            reason: error.to_string(),
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|error| ShadowError::Io {
+                path: current.display().to_string(),
+                reason: error.to_string(),
+            })?;
+            let absolute = entry.path();
+            let relative = absolute
+                .strip_prefix(source_root)
+                .map_err(|_| ShadowError::Containment {
+                    path: absolute.display().to_string(),
+                    reason: "the walk left the workspace it started in".into(),
+                })?
+                .to_string_lossy()
+                .to_string();
+            // `symlink_metadata` never follows: a link to a directory must stay a link.
+            let meta = fs::symlink_metadata(&absolute).map_err(|error| ShadowError::Io {
+                path: absolute.display().to_string(),
+                reason: error.to_string(),
+            })?;
+            if meta.is_symlink() {
+                walk.links.push(relative);
+            } else if meta.is_dir() {
+                walk.directories.push(relative);
+                stack.push(absolute);
+            } else if meta.is_file() {
+                bytes = bytes.saturating_add(meta.len());
+                walk.files.push(relative.clone());
+                if walk.files.len() > limits.max_files {
+                    return Err(ShadowError::Limit {
+                        path: relative,
+                        reason: format!(
+                            "the workspace holds more than {} files; a partial shadow would be compared as if it were complete",
+                            limits.max_files
+                        ),
+                    });
+                }
+                if bytes > limits.max_bytes {
+                    return Err(ShadowError::Limit {
+                        path: relative,
+                        reason: format!(
+                            "the workspace exceeds {} bytes; a partial shadow would be compared as if it were complete",
+                            limits.max_bytes
+                        ),
+                    });
+                }
+            } else {
+                walk.excluded.push(relative);
+            }
+        }
+    }
+    Ok(walk)
 }
 
 impl ShadowWorkspace {
@@ -266,6 +487,116 @@ impl ShadowWorkspace {
             root: shadow_root.to_path_buf(),
             baseline,
             strategy: ShadowStrategy::TargetedCopy,
+            coverage: ShadowCoverage::DeclaredPathsOnly,
+            excluded: Vec::new(),
+            degraded_clones: 0,
+        })
+    }
+
+    /// The whole workspace, copy-on-write where the mount allows it. This is the shadow the
+    /// plan asks for: it can hold a file nobody declared, which is the only way the
+    /// comparison can ever report that one was touched.
+    pub fn materialise(
+        source_root: &Path,
+        shadow_root: &Path,
+        limits: ShadowLimits,
+    ) -> Outcome<Self> {
+        if shadow_root == source_root
+            || shadow_root.starts_with(source_root)
+            || source_root.starts_with(shadow_root)
+        {
+            return Err(ShadowError::Containment {
+                path: shadow_root.display().to_string(),
+                reason: "the shadow and the workspace must not contain one another".into(),
+            });
+        }
+        if !source_root.is_dir() {
+            return Err(ShadowError::Invalid {
+                field: "source_root".into(),
+                reason: "the workspace to shadow must be an existing directory".into(),
+            });
+        }
+        // The walk happens first and returns before anything is written: a Limit refusal must
+        // not leave half a tree behind that a later reader could mistake for a shadow.
+        let walk = walk_source(source_root, limits)?;
+
+        fs::create_dir_all(shadow_root).map_err(|error| ShadowError::Io {
+            path: shadow_root.display().to_string(),
+            reason: error.to_string(),
+        })?;
+        let probe = probe_copy_on_write(shadow_root);
+
+        let mut baseline = BTreeMap::new();
+        let mut degraded_clones = 0usize;
+        for relative in &walk.directories {
+            let to = contained(shadow_root, relative)?;
+            fs::create_dir_all(&to).map_err(|error| ShadowError::Io {
+                path: to.display().to_string(),
+                reason: error.to_string(),
+            })?;
+        }
+        for relative in &walk.files {
+            let from = source_root.join(relative);
+            let to = contained(shadow_root, relative)?;
+            if let Some(parent) = to.parent() {
+                fs::create_dir_all(parent).map_err(|error| ShadowError::Io {
+                    path: parent.display().to_string(),
+                    reason: error.to_string(),
+                })?;
+            }
+            let cloned = if probe.supported {
+                // The probe passed and this file may still refuse: a hard link, a different
+                // mount underneath, an inode the filesystem will not share. Fall back for
+                // this file and count it, rather than leave the mechanism overstated.
+                matches!(try_reflink(&from, &to), Ok(true))
+            } else {
+                false
+            };
+            if !cloned {
+                if probe.supported {
+                    degraded_clones += 1;
+                }
+                fs::copy(&from, &to).map_err(|error| ShadowError::Io {
+                    path: from.display().to_string(),
+                    reason: error.to_string(),
+                })?;
+            }
+            baseline.insert(relative.clone(), Some(digest_of(&to)?));
+        }
+        for relative in &walk.links {
+            let from = source_root.join(relative);
+            let to = contained(shadow_root, relative)?;
+            if let Some(parent) = to.parent() {
+                fs::create_dir_all(parent).map_err(|error| ShadowError::Io {
+                    path: parent.display().to_string(),
+                    reason: error.to_string(),
+                })?;
+            }
+            let target = fs::read_link(&from).map_err(|error| ShadowError::Io {
+                path: from.display().to_string(),
+                reason: error.to_string(),
+            })?;
+            // Recreated as a link, not as its contents: following it would read outside.
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(&target, &to).map_err(|error| ShadowError::Io {
+                path: to.display().to_string(),
+                reason: error.to_string(),
+            })?;
+            baseline.insert(relative.clone(), Some(digest_of_link(&to)?));
+        }
+        if baseline.is_empty() {
+            return Err(ShadowError::Invalid {
+                field: "source_root".into(),
+                reason: "a shadow of nothing can neither be executed nor observed".into(),
+            });
+        }
+        Ok(Self {
+            root: shadow_root.to_path_buf(),
+            baseline,
+            strategy: probe.mechanism,
+            coverage: ShadowCoverage::WholeWorkspace,
+            excluded: walk.excluded,
+            degraded_clones,
         })
     }
 
@@ -277,15 +608,43 @@ impl ShadowWorkspace {
         self.strategy
     }
 
-    /// Recomputes every tracked path and reports what moved. Only paths present in the
-    /// baseline are looked at: this is a targeted shadow, and claiming to have observed a
-    /// path it never copied would be a lie about coverage.
+    pub fn mechanism(&self) -> ShadowStrategy {
+        self.strategy
+    }
+
+    /// What this shadow is able to observe.
+    pub fn coverage(&self) -> ShadowCoverage {
+        self.coverage
+    }
+
+    /// Entries the shadow could not clone, listed rather than silently absent.
+    pub fn excluded(&self) -> &[String] {
+        &self.excluded
+    }
+
+    /// Files for which the reflink was refused after the probe passed.
+    pub fn degraded_clones(&self) -> usize {
+        self.degraded_clones
+    }
+
+    pub fn baseline_size(&self) -> usize {
+        self.baseline.len()
+    }
+
+    /// Recomputes what the shadow holds now and reports what moved.
+    ///
+    /// A whole-workspace shadow walks the tree, so a path nobody named is still seen. A
+    /// targeted shadow can only look at what it copied, and says so through
+    /// [`ShadowWorkspace::coverage`] rather than presenting the narrower answer as the same.
     pub fn observe(&self, tests: Vec<TestResult>) -> Outcome<Observation> {
         let mut changed = BTreeMap::new();
+        let now = match self.coverage {
+            ShadowCoverage::WholeWorkspace => self.current_tree()?,
+            ShadowCoverage::DeclaredPathsOnly => self.current_baseline_paths()?,
+        };
         for (relative, before) in &self.baseline {
-            let path = contained(&self.root, relative)?;
-            let after = if path.is_file() { Some(digest_of(&path)?) } else { None };
-            match (before, &after) {
+            let after = now.get(relative);
+            match (before, after) {
                 (None, Some(_)) => {
                     changed.insert(relative.clone(), Change::Created);
                 }
@@ -298,7 +657,55 @@ impl ShadowWorkspace {
                 _ => {}
             }
         }
+        if self.coverage == ShadowCoverage::WholeWorkspace {
+            for relative in now.keys() {
+                if !self.baseline.contains_key(relative) {
+                    changed.insert(relative.clone(), Change::Created);
+                }
+            }
+        }
         Ok(Observation { changed, tests })
+    }
+
+    fn current_baseline_paths(&self) -> Outcome<BTreeMap<String, String>> {
+        let mut now = BTreeMap::new();
+        for relative in self.baseline.keys() {
+            let path = contained(&self.root, relative)?;
+            if path.is_file() {
+                now.insert(relative.clone(), digest_of(&path)?);
+            }
+        }
+        Ok(now)
+    }
+
+    fn current_tree(&self) -> Outcome<BTreeMap<String, String>> {
+        let mut now = BTreeMap::new();
+        let mut stack = vec![self.root.clone()];
+        while let Some(current) = stack.pop() {
+            let entries = match fs::read_dir(&current) {
+                Ok(entries) => entries,
+                Err(_) => continue,
+            };
+            for entry in entries.flatten() {
+                let absolute = entry.path();
+                let relative = match absolute.strip_prefix(&self.root) {
+                    Ok(rest) => rest.to_string_lossy().to_string(),
+                    Err(_) => continue,
+                };
+                let meta = match fs::symlink_metadata(&absolute) {
+                    Ok(meta) => meta,
+                    Err(_) => continue,
+                };
+                if meta.is_symlink() {
+                    now.insert(relative, digest_of_link(&absolute)?);
+                } else if meta.is_dir() {
+                    stack.push(absolute);
+                } else if meta.is_file() {
+                    now.insert(relative, digest_of(&absolute)?);
+                }
+            }
+        }
+        Ok(now)
     }
 
     /// Removes the shadow. Refuses to remove anything that is not the root it was given,
@@ -497,6 +904,151 @@ mod tests {
         let source = scratch("src5");
         let shadow_root = scratch("shadow5");
         assert!(ShadowWorkspace::create(&source, &shadow_root, &[]).is_err());
+    }
+
+    // The dangerous side of the comparison is "something happened that nobody declared". A
+    // shadow holding only the declared paths cannot ever observe that, so `unexpected` is
+    // empty because there was nothing else to see — not because nothing else happened.
+    #[test]
+    fn a_write_nobody_declared_is_observed() {
+        let source = scratch("src6");
+        fs::write(source.join("declared.txt"), b"a").unwrap();
+        fs::write(source.join("nobody-named-me.txt"), b"b").unwrap();
+        let shadow_root = scratch("shadow6");
+        let shadow =
+            ShadowWorkspace::materialise(&source, &shadow_root, ShadowLimits::default()).unwrap();
+        assert_eq!(shadow.coverage(), ShadowCoverage::WholeWorkspace);
+        assert!(shadow.root().join("nobody-named-me.txt").exists());
+
+        fs::write(shadow.root().join("declared.txt"), b"changed").unwrap();
+        fs::write(shadow.root().join("nobody-named-me.txt"), b"touched by accident").unwrap();
+
+        let observed = shadow.observe(vec![]).unwrap();
+        assert_eq!(observed.changed.get("declared.txt"), Some(&Change::Modified));
+        assert_eq!(
+            observed.changed.get("nobody-named-me.txt"),
+            Some(&Change::Modified)
+        );
+
+        let surprise = compare(&expectation(&["declared.txt"], &[], &[]), &observed).unwrap();
+        assert!(!surprise.is_clean());
+        assert_eq!(surprise.unexpected, vec!["nobody-named-me.txt".to_string()]);
+
+        // Copy-on-write shares blocks, it does not share writes.
+        assert_eq!(fs::read(source.join("nobody-named-me.txt")).unwrap(), b"b");
+        shadow.discard().unwrap();
+    }
+
+    #[test]
+    fn a_file_created_anywhere_in_the_shadow_is_observed() {
+        let source = scratch("src7");
+        fs::create_dir_all(source.join("src")).unwrap();
+        fs::write(source.join("src/a.txt"), b"a").unwrap();
+        let shadow_root = scratch("shadow7");
+        let shadow =
+            ShadowWorkspace::materialise(&source, &shadow_root, ShadowLimits::default()).unwrap();
+        fs::create_dir_all(shadow.root().join("src/deep")).unwrap();
+        fs::write(shadow.root().join("src/deep/appeared.txt"), b"new").unwrap();
+        fs::remove_file(shadow.root().join("src/a.txt")).unwrap();
+        let observed = shadow.observe(vec![]).unwrap();
+        assert_eq!(
+            observed.changed.get("src/deep/appeared.txt"),
+            Some(&Change::Created)
+        );
+        assert_eq!(observed.changed.get("src/a.txt"), Some(&Change::Deleted));
+        shadow.discard().unwrap();
+    }
+
+    #[test]
+    fn the_mechanism_is_probed_on_the_real_directory_never_assumed() {
+        let where_it_lives = scratch("probe");
+        let probe = probe_copy_on_write(&where_it_lives);
+        // Printed, because a wrong FICLONE number would make every assertion here pass while
+        // the clone silently never happened: the mechanism a run actually got must be
+        // readable, not inferred from a green test.
+        println!(
+            "PROBE {:?} supported={} at {}",
+            probe.mechanism,
+            probe.supported,
+            where_it_lives.display()
+        );
+        assert!(probe.measured);
+        assert_eq!(
+            probe.supported,
+            probe.mechanism == ShadowStrategy::ReflinkClone
+        );
+        assert!(matches!(
+            probe.mechanism,
+            ShadowStrategy::ReflinkClone | ShadowStrategy::FullCopy
+        ));
+        // The probe leaves nothing behind, whichever answer it gave.
+        assert_eq!(fs::read_dir(&where_it_lives).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn a_targeted_shadow_says_what_it_cannot_observe() {
+        let source = scratch("src8");
+        fs::write(source.join("a.txt"), b"a").unwrap();
+        let shadow_root = scratch("shadow8");
+        let shadow = ShadowWorkspace::create(&source, &shadow_root, &["a.txt".into()]).unwrap();
+        assert_eq!(shadow.coverage(), ShadowCoverage::DeclaredPathsOnly);
+        assert_eq!(shadow.strategy(), ShadowStrategy::TargetedCopy);
+        shadow.discard().unwrap();
+    }
+
+    #[test]
+    fn a_workspace_larger_than_the_limits_is_refused_not_truncated() {
+        let source = scratch("src9");
+        for n in 0..5 {
+            fs::write(source.join(format!("f{n}.txt")), b"x").unwrap();
+        }
+        let shadow_root = scratch("shadow9");
+        let by_count = ShadowWorkspace::materialise(
+            &source,
+            &shadow_root,
+            ShadowLimits { max_files: 3, max_bytes: DEFAULT_MAX_BYTES },
+        );
+        assert!(matches!(by_count, Err(ShadowError::Limit { .. })));
+        let by_size = ShadowWorkspace::materialise(
+            &source,
+            &shadow_root,
+            ShadowLimits { max_files: DEFAULT_MAX_FILES, max_bytes: 2 },
+        );
+        assert!(matches!(by_size, Err(ShadowError::Limit { .. })));
+        // Refused before anything was written: no half-tree that a reader could mistake
+        // for a complete shadow.
+        assert_eq!(fs::read_dir(&shadow_root).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn a_symlink_is_recreated_as_a_link_and_retargeting_it_is_observed() {
+        let source = scratch("src10");
+        fs::write(source.join("real.txt"), b"content").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("real.txt", source.join("link.txt")).unwrap();
+        let shadow_root = scratch("shadow10");
+        let shadow =
+            ShadowWorkspace::materialise(&source, &shadow_root, ShadowLimits::default()).unwrap();
+        let link = shadow.root().join("link.txt");
+        assert!(fs::symlink_metadata(&link).unwrap().is_symlink());
+        fs::remove_file(&link).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("/etc/passwd", &link).unwrap();
+        let observed = shadow.observe(vec![]).unwrap();
+        // Following the link would have read outside the shadow; digesting where it points
+        // catches the retarget without ever reading the target.
+        assert_eq!(observed.changed.get("link.txt"), Some(&Change::Modified));
+        shadow.discard().unwrap();
+    }
+
+    #[test]
+    fn a_shadow_inside_the_workspace_it_shadows_is_refused() {
+        let source = scratch("src11");
+        fs::write(source.join("a.txt"), b"a").unwrap();
+        let inside = source.join("shadow-here");
+        let error =
+            ShadowWorkspace::materialise(&source, &inside, ShadowLimits::default()).unwrap_err();
+        assert!(matches!(error, ShadowError::Containment { .. }));
     }
 }
 

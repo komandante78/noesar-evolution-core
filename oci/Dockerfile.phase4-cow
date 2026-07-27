@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The shadow becomes copy-on-write — and the dangerous half of the comparison starts
+# working.
+#
+# WHY THE PREVIOUS ANSWER WAS WRONG. `D-0182` rejected copy-on-write because "overlayfs and
+# reflinks need privileges or a filesystem that supports them, and neither is guaranteed
+# where this product installs". True as a sentence, wrong as a conclusion: it went from
+# "not guaranteed" to "never", instead of "probe and declare". Measured on this
+# installation: /mnt/cachec is XFS with reflink=1, /workspace is a bind of it, and
+# `COPYFILE_FICLONE_FORCE` from the container's own Node succeeds. The mechanism needed no
+# privileges and no mount of ours. `COPYFILE_FICLONE_FORCE` is both the mechanism and the
+# probe — it fails rather than silently falling back, which is exactly what the missing
+# fallback policy required.
+#
+# WHAT THIS ACTUALLY REPAIRS, WHICH IS NOT SPEED. `observe()` walked only the baseline, and
+# the baseline was whatever the caller passed in. `compare()` computes
+# `unexpected = touched \ declared` with `touched` a subset of the baseline — so a caller
+# that built the shadow from exactly the declared paths made `unexpected` STRUCTURALLY
+# EMPTY. `executor.test.mjs` did precisely that (`new ShadowWorkspace(source, root, files)`),
+# and the Rust bench did the same. The side `D-0182` itself calls "the exact shape of the
+# accident this phase exists to prevent" could not fire in the executor path at all. It
+# survived ten shared vectors because they exercise `compare()` on hand-written
+# observations while the filesystem half is tested separately — the hole was in the joint.
+#
+# WHAT THIS IMAGE CHANGES:
+#
+#   1. `ShadowWorkspace.ofWorkspace()` materialises the WHOLE workspace, reflink-cloned
+#      where the mount allows it, copied in full where it does not. `observe()` then walks
+#      the tree it holds, so a write to a file nobody named is CREATED or MODIFIED instead
+#      of invisible;
+#   2. the mechanism is PROBED against the directory shadows are actually made in, at the
+#      moment of asking, and `/api/v1/shadow` reports `mechanism`, `measured` and
+#      `coverage`. `copyOnWrite` is no longer a constant `false` — it is an answer, and the
+#      smoke test now asserts that the claim AGREES with the mechanism it names rather than
+#      asserting either value;
+#   3. the executor REFUSES a shadow that is not whole-workspace. A clean comparison from a
+#      shadow built out of the declared paths would be an artefact of its own construction,
+#      and the guarantee would belong to whoever built it rather than to the engine;
+#   4. limits are refused, never truncated: a workspace past `maxFiles`/`maxBytes` aborts
+#      before a single byte is written, because a partial shadow gets compared as if it were
+#      the whole one. Sockets, fifos and devices — the live workspace holds PostgreSQL
+#      sockets — are EXCLUDED AND COUNTED, not skipped in silence;
+#   5. symlinks are recreated as links and digested by WHERE THEY POINT. Following one would
+#      read outside the shadow; digesting the target string still catches a retarget.
+#
+# FOUND ON THE WAY, AND NOT MINE. `MANIFEST.sha256` carried an entry for
+# `rust/crates/noesar-executor/tests/conformance.rs` with an EMPTY digest, for a file that
+# never existed. `sha256sum -c` skips such a line with a warning and still exits 0, so the
+# recorded "5779, 0 mismatch" was true only because that line was never checked. There is no
+# `conformance/executor-vectors.json` either, though `executor.mjs` claimed both sides
+# answered to it: the executor is the one step of six with two implementations and no shared
+# oracle. The phantom entry and the false claim are removed here; the missing oracle is
+# recorded as F4-014 rather than half-built at the end of a phase.
+#
+# Measured, not asserted: 843 unit tests (836 + 7), Rust workspace 23 binaries 100 passed
+# (91 + 9) offline under --network=none --cap-drop=ALL, ESLint 181 files 0 errors 0 warnings
+# 0 no-undef, MANIFEST 5778/5778 with zero unverifiable lines, SOURCE_VERIFY=PASS. The Rust
+# reflink path was proved POSITIVELY — `PROBE ReflinkClone supported=true` printed from the
+# test — because a wrong FICLONE constant would have made every assertion pass while the
+# clone silently never happened. The failing test was written first and seen to fail.
+#
+# NOT TRUE, AND SAID HERE RATHER THAN LEFT TO BE ASSUMED: `executesPlans` is still false —
+# nothing runs a plan into the shadow; `executorWiredToProductActions` is still false — no
+# product surface routes its changes through the executor; the shadow is not mounted, so a
+# process that escapes the path resolution is not stopped by the kernel; and the whole-tree
+# walk is O(files) on every observation, which is fine for a workspace and would not be for
+# a repository with a large history.
+#
+# ROLLBACK COST — none new. `AI_STATE_VERSION` stays at 3: no stored record changes shape.
+# Rolling back to :phase4-events is starting the preserved container, and it REINSTATES the
+# structurally-empty `unexpected` — an executor run that touched a file nobody declared
+# would report clean.
+#
+# Lineage, stated rather than hidden — now fourteen deep:
+#
+#   node:22-bookworm-slim@sha256:6c74791e…
+#     -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan
+#     -> :phase4-webui -> :phase4-wp2 -> :phase4-structure -> :phase4-tokens
+#     -> :phase4-themes -> :phase4-parts -> :phase4-home -> :phase4-healthz
+#     -> :phase4-reasoning -> :phase4-capability -> :phase4-shadow -> :phase4-executor
+#     -> :phase4-events -> :phase4-cow
+#
+# Only the control plane changes. apps/webui-static is untouched by this phase and is
+# deliberately NOT re-copied: copying an unchanged tree would make the image differ from its
+# parent for no reason and cost a layer that proves nothing.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-events
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001
