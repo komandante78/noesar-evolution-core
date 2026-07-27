@@ -1668,3 +1668,62 @@ iniziata e il suo primo passo è invariato — il contratto `ReasoningProvider`,
 stati riprodotti qui**. Valgono come direzione e come motivazione delle decisioni, non come
 misure di questo prodotto — la stessa regola che `D-0110` impone al prodotto vale per il
 documento che la introduce.
+
+---
+
+## D-0117 … D-0124 · L'interfaccia v3, accettata — e un errore di misura mio corretto — 2026-07-27
+
+**Contesto.** L'handoff indicava come prossima azione una **conversazione** sulla grafica, non un
+compito già scopato. La conversazione è avvenuta, l'Owner ha accettato l'impianto e ha chiuso due
+punti che erano rimasti aperti. Il progetto sta in `docs/WEBUI_DESIGN_V3.md`; l'anteprima
+navigabile — autonoma, nessuna risorsa esterna — in `docs/design/ANTEPRIMA_WEBUI_V3.html`.
+
+Il divario di partenza è stato **misurato sul codice**, non stimato: 23 destinazioni contro 11,
+nessuna occorrenza di collasso della barra o di aggancio del pannello in `apps/webui-static/`,
+nessun layer di token, palette diversa da quella del riferimento vincolante.
+
+| ID | Decisione |
+|---|---|
+| `D-0117` | **Lo stato del pannello contestuale si ricorda per destinazione**, non una volta per tutto il prodotto — la Chat parte senza, il banco di lavoro parte con. Deciso dall'Owner. Motivo: sono modelli mentali diversi, e ricordarlo per destinazione è **una decisione in meno** per chi lavora |
+| `D-0118` | **Ordine dei lavori: prima la grafica, poi si costruisce.** Deciso dall'Owner. All'interno della grafica l'ordine è **struttura → layer di token → palette e temi**: cambiare rango a quindici voci sposta i selettori di tutte le pagine, quindi ridipingere prima significa pagare due volte |
+| `D-0119` | **Il riferimento visivo approvato vincola impianto e colore, non le etichette.** La sua sesta voce porta un nome che il prodotto ha già rimosso: trattarlo come vincolante alla lettera reintrodurrebbe ciò che è stato tolto |
+| `D-0120` | **Undici destinazioni e una sola pagina Impostazioni, con i menu dentro.** Quindici voci cambiano rango a sezione. Progetti, Documenti, Conoscenza e Agenti sono **superfici di lavoro** con le proprie azioni, non elenchi |
+| `D-0121` | **Gestione delle sessioni** — cinque distese, riquadro a scorrimento dalla sesta col conteggio dichiarato, archivio in pagina propria a dieci per pagina, ripristino, selezione multipla con contatore. **Conferma su ogni azione, senza eccezioni**, che dichiara *che cosa* e *a quante* ed elenca i titoli quando sono più di una. Criteri `UI-001`…`UI-012` |
+| `D-0122` | **Il colore lo sceglie la persona, e la leggibilità la garantisce il prodotto.** Nove temi più un selettore libero; il contrasto è **misurato mentre si sceglie**; una tinta che non regge come testo **non viene rifiutata** — resta l'indicatore e la variante testuale è **derivata** allontanandosi dal fondo fino a 4,5:1. I sette stati semantici non cambiano mai significato e portano sempre **glifo + parola**. Criteri `UI-020`…`UI-026` |
+| `D-0123` | **La voce, se mai si farà, è una torre di controllo e non un assistente**, e porta un vincolo che nessun clone avrebbe: **non può allargare l'autorità** — concede solo dentro i limiti già calcolati dal piano, la revoca è sempre accettata, e in caso di dubbio ripete invece di indovinare. **Idea disegnata, non una riga di piano**: non stimata, non pianificata |
+| `D-0124` | Le quattro cose che distinguono il prodotto **discendono dal motore, non dalla grafica**: promuovere un risultato invece di autorizzare un'intenzione (`D-0109`), la copertura di verifica sempre visibile (`D-0110`), **riavvolgere e ramificare** una sessione senza riesecuzione — possibile solo perché il contesto è una proiezione da stato (`D-0107`) — e la voce di `D-0123`. L'interfaccia le **rende visibili**; non le crea |
+
+### L'errore di misura, dichiarato
+
+Nella versione precedente dell'anteprima avevo scritto che l'indaco del riferimento **non rompe il
+contrasto**, sulla base di un solo calcolo: bianco *sopra* `#3958c3`, 6,2:1. Scrivendo la
+derivazione automatica di `D-0122` ho calcolato anche il caso opposto — quella tinta usata **come
+testo** sul fondo dei pannelli `#0c1824` — e sta a **2,9:1**, sotto soglia esattamente come il
+viola (3,3:1).
+
+Non è un difetto del riferimento: è un uso sbagliato del riferimento. Un accento *pieno* e un
+accento *testuale* sono due token diversi, e la v2 li aveva confusi in uno. La correzione è nel
+meccanismo, non nella tabella — la derivazione di `UI-024` copre la classe intera, in tutti e nove
+i temi e in qualunque colore l'utente scelga.
+
+**Il difetto è stato trovato eseguendo la matematica del colore, non rileggendo la tabella.**
+
+### Numeri di terzi, non riprodotti qui
+
+`docs/WEBUI_DESIGN_V3.md` §6 riporta sei misure pubblicate (adozione 84%, fiducia alta 3%,
+«quasi giusto» 66%, revisione più cara del 38%, 65% dei fallimenti da contesto degradato,
+conformità ai vincoli 73%→33% fra turno 5 e turno 16) con le fonti. **Non sono state riprodotte su
+questo host** e non sono misure di questo prodotto: valgono come direzione e come motivazione,
+esattamente il limite che `D-0110` impone al prodotto stesso.
+
+### Limiti di verifica di questa fase
+
+L'anteprima **non è mai stata aperta in un browser su questo host**: non ce n'è uno installato e la
+regola 45 vieta di installarlo — un browser richiederebbe un container, e questa non è una fase di
+installazione. È stata verificata per **sintassi** (`node --check` sullo script estratto), per
+**bilanciamento dei tag** e sulla **matematica del colore**, eseguita isolata su sei coppie
+tinta/fondo. Tutti i rapporti di contrasto registrati sono **calcolati**, non misurati da
+`tools/accessibility-audit.mjs`.
+
+**Nulla è stato implementato e nulla è stato installato.** Il container vivo serve ancora la build
+precedente.
