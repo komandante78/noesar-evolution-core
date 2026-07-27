@@ -13,6 +13,7 @@
 // the engine that issued it would be a grant nobody is holding the ledger for.
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { isAbsolute, normalize } from 'node:path';
 
 export const OPERATIONS = Object.freeze(['READ', 'WRITE', 'DELETE', 'EXECUTE']);
 const DESTRUCTIVE = Object.freeze(['DELETE', 'EXECUTE']);
@@ -115,6 +116,15 @@ export class TokenMinter {
     if (step.blastRadius.reachesOutsideWorkspace) {
       outOfScope(`step \`${step.id}\` reaches outside the workspace`);
     }
+    // The flag above is a *declaration* made by whoever built the plan, and this engine is
+    // handed plans over the wire. A step naming `../etc/passwd` while declaring
+    // reachesOutsideWorkspace false would otherwise mint a token for it -- a verdict supplied
+    // by the caller is not a verdict. The paths are inspected here too, whatever the flag says.
+    for (const path of request.paths) {
+      if (isAbsolute(path) || normalize(path).split(/[\\/]/).includes('..') || path.includes(':\\')) {
+        outOfScope(`path \`${path}\` leaves the workspace, whatever the step declares`);
+      }
+    }
     if (request.expiresAtUnix <= nowUnix) {
       invalid('a token already expired at issue is a token nobody can use or audit');
     }
@@ -187,7 +197,13 @@ export function capabilityStatus(minter) {
     outstandingTokens: minter.outstanding(),
     // Said, not left to be discovered.
     registryPersistsAcrossRestart: false,
-    executorEnforcesTokens: false,
+    // The executor exists and refuses every action without a token (step 5). What is still
+    // not true is that the product routes its own changes through it: no product surface
+    // mutates anything by spending a token yet, and the two facts are stated separately
+    // because collapsing them into one would overstate whichever way it was rounded.
+    executorImplemented: true,
+    executorEnforcesTokens: true,
+    executorWiredToProductActions: false,
     reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. The executor that accepts nothing but a token is not built yet, so nothing is executed through them.',
   };
 }

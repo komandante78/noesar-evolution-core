@@ -107,7 +107,8 @@ try {
   const capability = await request('/api/v1/capability');
   if (capability.status !== 200) throw new Error(JSON.stringify(capability));
   if (capability.data.adaptersMaySelfGrant !== false) throw new Error('an adapter must not be able to self-grant');
-  if (capability.data.executorEnforcesTokens !== false) throw new Error('the status must not claim an executor that does not exist');
+  if (capability.data.executorEnforcesTokens !== true) throw new Error('the executor exists and enforces tokens');
+  if (capability.data.executorWiredToProductActions !== false) throw new Error('the status must not claim the product routes changes through the executor');
 
   const nowUnix = Math.floor(Date.now() / 1000);
   const capPlan = {
@@ -169,6 +170,12 @@ try {
     observation:{ changed:{}, tests:[] },
   } });
   if (nothing.status !== 422) throw new Error('an observation of nothing must be refused, not called clean');
+
+  const executor = await request('/api/v1/executor');
+  if (executor.status !== 200) throw new Error(JSON.stringify(executor));
+  if (executor.data.acceptsOnlyCapabilityTokens !== true) throw new Error('the executor must accept only tokens');
+  if (executor.data.spendsBeforeEffect !== true) throw new Error('the token must be spent before the effect');
+  if (executor.data.executionSurface !== false) throw new Error('the status must not claim an execution surface');
 
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');

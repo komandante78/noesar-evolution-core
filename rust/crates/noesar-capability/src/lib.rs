@@ -23,6 +23,7 @@ use noesar_reasoning::Plan;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::path::{Component, Path};
 use subtle::ConstantTimeEq;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -295,6 +296,25 @@ impl TokenMinter {
             return Err(CapabilityError::OutOfScope {
                 reason: format!("step `{}` reaches outside the workspace", step.id),
             });
+        }
+        // The flag above is a *declaration* made by whoever built the plan, and this engine
+        // is handed plans over the wire. A step that names `../etc/passwd` while declaring
+        // `reaches_outside_workspace: false` would otherwise mint a token for it — a verdict
+        // supplied by the caller is not a verdict. So the paths are inspected here too,
+        // whatever the flag says.
+        for path in &request.paths {
+            let escapes = Path::new(path)
+                .components()
+                .any(|component| matches!(component, Component::ParentDir))
+                || Path::new(path).is_absolute()
+                || path.contains(":\\");
+            if escapes {
+                return Err(CapabilityError::OutOfScope {
+                    reason: format!(
+                        "path `{path}` leaves the workspace, whatever the step declares"
+                    ),
+                });
+            }
         }
         if request.expires_at_unix <= now_unix {
             return Err(CapabilityError::Invalid {
@@ -614,6 +634,23 @@ mod tests {
         let mut unusable = request("a", &["src/a.rs"], &[Operation::Read]);
         unusable.uses = 0;
         assert!(engine.mint(&plan, &unusable, NOW).is_err());
+    }
+
+    #[test]
+    fn a_declared_flag_does_not_override_what_the_path_actually_is() {
+        // The step lies: it names a path that leaves the workspace and declares that it does
+        // not. Plans arrive over the wire, so the declaration cannot be the check.
+        let lying = step("a", &["../etc/passwd"], false, false);
+        let plan = authorized(vec![lying]);
+        let mut engine = minter();
+        let refusal = engine
+            .mint(&plan, &request("a", &["../etc/passwd"], &[Operation::Read]), NOW)
+            .unwrap_err();
+        assert!(matches!(refusal, CapabilityError::OutOfScope { .. }), "{refusal}");
+        for escape in ["/etc/passwd", "a/../../etc/passwd"] {
+            let plan = authorized(vec![step("a", &[escape], false, false)]);
+            assert!(engine.mint(&plan, &request("a", &[escape], &[Operation::Read]), NOW).is_err(), "{escape}");
+        }
     }
 
     #[test]

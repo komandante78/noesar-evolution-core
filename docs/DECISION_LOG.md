@@ -2624,3 +2624,23 @@ MANIFEST **5766**, 0 mismatch. Dal vivo: healthy, cancelli 401 contro 404.
 **Status.** Installato. **NON vero e dichiarato**: `executesPlans=false` — nulla esegue un piano
 dentro l'ombra, l'osservazione la fornisce ancora il chiamante, e l'esecutore che accetta solo
 token è il passo 5.
+
+## D-0183 · L'esecutore accetta solo token — e un difetto trovato costruendolo — 2026-07-27
+**Decision.** `rust/crates/noesar-executor` e `services/reference-control-plane/src/executor.mjs`:
+ogni azione presenta un token del piano approvato, **speso prima dell'effetto**; tutto atterra
+nell'ombra; `EXECUTE` è dichiarata e sempre rifiutata. Installato `:phase4-executor`.
+**Why.** L'ordine è la proprietà di sicurezza: se l'effetto avvenisse prima, un rifiuto sarebbe un
+resoconto su un danno già fatto.
+**Rejected.** Offrire l'esecutore come rotta che esegue: consegnare piano, token e ombra a un
+chiamante HTTP metterebbe la sandbox dal lato sbagliato del muro per cui esiste. È **riportato**.
+**Evidence.** Rust executor 10/10 e capability 15/15 (+1); Node executor **10/10** e capability
+**25/25** (12 vettori); unit 807 → **819**; ESLint **179 file, 0 errori**; workspace Rust
+**21 binari, 76 passati**; `AUTH_HTTP_SMOKE=PASS`; MANIFEST **5771**, 0 mismatch; dal vivo healthy,
+cancelli 401 contro 404.
+**Reversal cost.** Nessuno nuovo, **ma il rollback reintroduce il difetto del flag** qui sotto.
+**Status.** Installato. **Difetto trovato scrivendo il test e riparato**: il livello capability si
+fidava di `reaches_outside_workspace` **dichiarato** invece di ispezionare i percorsi, e il piano
+arriva dal corpo della richiesta — un passo che nomina `../etc/passwd` dichiarandosi contenuto
+coniava un token. Riparato su entrambi i lati, due vettori nuovi. **NON vero e dichiarato**:
+`executorWiredToProductActions=false` — nessuna superficie del prodotto instrada le proprie
+modifiche attraverso l'esecutore.

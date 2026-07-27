@@ -1,0 +1,15 @@
+[package]
+name = "noesar-executor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[dependencies]
+noesar-reasoning = { path = "../noesar-reasoning" }
+noesar-capability = { path = "../noesar-capability" }
+noesar-shadow = { path = "../noesar-shadow" }
+serde.workspace = true

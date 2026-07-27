@@ -43,6 +43,8 @@ const required = [
   'services/reference-control-plane/src/reasoning.mjs',
   'services/reference-control-plane/src/capability.mjs',
   'services/reference-control-plane/src/shadow.mjs',
+  'services/reference-control-plane/src/executor.mjs',
+  'rust/crates/noesar-executor/src/lib.rs',
   'conformance/shadow-vectors.json',
   'rust/crates/noesar-shadow/src/lib.rs',
   'conformance/capability-vectors.json',

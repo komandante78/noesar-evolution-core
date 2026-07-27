@@ -26,6 +26,7 @@ import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
 import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mjs';
+import { executorStatus } from './executor.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -767,6 +768,16 @@ const server = createServer(async (req, res) => {
         }
         throw error;
       }
+    }
+
+    // --- the executor · phase 1 step 5 ------------------------------------------
+    // Reported, not offered as a surface: a run needs an approved plan, its tokens and a
+    // shadow, and handing that whole chain to an HTTP caller would put the sandbox on the
+    // far side of the wall it exists to be. The properties are stated here so the
+    // installation can be asked what it enforces.
+    if (req.method === 'GET' && url.pathname === '/api/v1/executor') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, executorStatus());
     }
 
     // --- shadow execution · phase 1 step 4 --------------------------------------

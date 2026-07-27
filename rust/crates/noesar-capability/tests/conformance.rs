@@ -160,5 +160,5 @@ fn every_capability_vector_passes() {
 
     // A vector file that silently emptied would make every loop above pass by running zero
     // times, and the suite would report green for having checked nothing.
-    assert_eq!(checked, 15, "the vector file must not shrink unnoticed");
+    assert_eq!(checked, 17, "the vector file must not shrink unnoticed");
 }

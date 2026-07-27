@@ -16,7 +16,8 @@ members = [
   "crates/noesar-reasoning",
   "crates/noesar-reasoning-reference",
   "crates/noesar-capability",
-  "crates/noesar-shadow"
+  "crates/noesar-shadow",
+  "crates/noesar-executor"
 ]
 
 [workspace.package]

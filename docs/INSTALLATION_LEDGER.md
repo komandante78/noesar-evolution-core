@@ -2406,3 +2406,53 @@ Oggi l'ombra si costruisce, si osserva e si confronta; chi produce l'osservazion
 chiamante, e l'esecutore che accetta **solo** un capability token è il passo 5. E non è
 copy-on-write: overlayfs e i reflink richiedono privilegi o un filesystem che li supporti, quindi
 si copiano **solo i percorsi che il piano nomina** — dichiarato da `shadowStatus`.
+
+## 2026-07-27 · `:phase4-executor` — l'esecutore che accetta solo token
+
+**Regola `D-0143` / §3a:** costruita, installata e verificata nella stessa fase.
+
+### Cosa cambia
+
+L'esecutore (passo 5) e `GET /api/v1/executor`. Ogni azione deve presentare un token del piano
+approvato che nomini **il suo percorso e la sua operazione**; il token si spende **prima**
+dell'effetto, quindi un rifiuto significa che non è successo nulla. `EXECUTE` è dichiarata e
+**sempre rifiutata**: qui non esiste una superficie d'esecuzione, e fingere di eseguire sarebbe
+peggio che rifiutare.
+
+**Difetto trovato e riparato mentre si costruiva questo passo.** Il livello capability si fidava
+della **dichiarazione** `reachesOutsideWorkspace` invece di guardare i percorsi. Il piano arriva
+**dal corpo della richiesta**: un passo che nomina `../etc/passwd` dichiarando il flag a `false`
+coniava un token. Ora i percorsi sono ispezionati comunque, **qualunque cosa dichiari il passo**,
+su entrambi i lati, con due vettori nuovi (`CAP-011`, `CAP-012`).
+
+### Sostituzione
+
+```text
+build       docker build --network=none --pull=false   FROM :phase4-shadow
+stop        docker stop -t 60   → "postgres.stopped clean:true" LETTO NEL LOG
+backup      BACKUPS/runtime_pre_executor_deploy_20260727T171845Z/   75 MB, a servizio FERMO
+precedente  noesar-evolution.rollback-shadow-20260727T171845Z       preservato, Exited (0)
+config      RILETTA dal container sostituito (EVIDENCE/live_config_pre_executor_deploy_20260727T171845Z.json)
+§5a         rimosso il rollback più vecchio (:phase4-capability), immagine CONSERVATA
+byte        server.mjs · executor.mjs · capability.mjs · shadow.mjs identici al repository
+```
+
+### Verifica sull'installazione viva
+
+```text
+container   running · healthy · restarts=0 · noesar-evolution:phase4-executor
+endpoint    livez 200 · readyz 200 · metrics 401 · executor 401 · shadow 401 · capability 401
+            rotta inesistente 404 → cancelli veri
+B-010       NON regredito: /healthz 200 e ZERO marcatori
+```
+
+**Costo di rollback.** Nessuno nuovo. ⚠️ Ma il rollback **reintroduce il difetto del flag**:
+`:phase4-shadow` conia ancora un token per un percorso fuori dal workspace se il passo lo dichiara
+contenuto. Detto qui invece di lasciarlo scoprire.
+
+**Cosa NON è vero, e va detto.** `executorWiredToProductActions=false`: l'esecutore **esiste e
+applica i token**, ma **nessuna superficie del prodotto instrada le proprie modifiche attraverso di
+lui**. I due fatti sono dichiarati separatamente perché unirli sovrastimerebbe da qualunque parte
+si arrotondi. L'esecutore è **riportato, non offerto come superficie**: una corsa richiede piano
+approvato, token e ombra, e consegnare l'intera catena a un chiamante HTTP metterebbe la sandbox
+dal lato sbagliato del muro per cui esiste.

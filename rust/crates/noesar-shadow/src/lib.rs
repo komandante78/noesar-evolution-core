@@ -499,3 +499,10 @@ mod tests {
         assert!(ShadowWorkspace::create(&source, &shadow_root, &[]).is_err());
     }
 }
+
+/// Resolves a path inside a shadow, with the same containment rule the shadow used when it
+/// was built. Exposed so the executor enforces containment through **one** implementation
+/// of the rule instead of writing a second one that could disagree with this.
+pub fn contained_in(shadow: &ShadowWorkspace, relative: &str) -> Outcome<PathBuf> {
+    contained(shadow.root(), relative)
+}

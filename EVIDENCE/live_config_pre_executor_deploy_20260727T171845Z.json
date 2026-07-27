@@ -1,0 +1,314 @@
+[
+    {
+        "Id": "3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182",
+        "Created": "2026-07-27T17:09:16.83400089Z",
+        "Path": "node",
+        "Args": [
+            "services/reference-control-plane/src/server.mjs"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 811386,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-07-27T17:09:16.924322305Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "Health": {
+                "Status": "healthy",
+                "FailingStreak": 0,
+                "Log": [
+                    {
+                        "Start": "2026-07-27T19:16:23.042776776+02:00",
+                        "End": "2026-07-27T19:16:23.096827145+02:00",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-07-27T19:16:53.09737657+02:00",
+                        "End": "2026-07-27T19:16:53.159344519+02:00",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-07-27T19:17:23.160580089+02:00",
+                        "End": "2026-07-27T19:17:23.221033459+02:00",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-07-27T19:17:53.221540457+02:00",
+                        "End": "2026-07-27T19:17:53.281232314+02:00",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-07-27T19:18:23.282552197+02:00",
+                        "End": "2026-07-27T19:18:23.406618192+02:00",
+                        "ExitCode": 0,
+                        "Output": ""
+                    }
+                ]
+            }
+        },
+        "Image": "sha256:3ba388563c2fc8f342cb175f1c27f6de3cdb87ff9a188e9bb0e8d9e697c88257",
+        "ResolvConfPath": "/var/lib/docker/containers/3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182/hostname",
+        "HostsPath": "/var/lib/docker/containers/3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182/hosts",
+        "LogPath": "/var/lib/docker/containers/3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182/3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182-json.log",
+        "Name": "/noesar-evolution",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME:/workspace"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "1",
+                    "max-size": "50m"
+                }
+            },
+            "NetworkMode": "noesar-evolution-net",
+            "PortBindings": {
+                "8088/tcp": [
+                    {
+                        "HostIp": "192.168.178.100",
+                        "HostPort": "8100"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges:true"
+            ],
+            "Tmpfs": {
+                "/run": "rw,noexec,nosuid,nodev,size=16m",
+                "/tmp": "rw,noexec,nosuid,nodev,size=128m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 8589934592,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": -1,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 512,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "3191f4ccf23b7edbcf70ff867a5d197d750eb41b377806c257cf21966a5c4182",
+                "LowerDir": "/var/lib/docker/overlay2/28b6913a739131a1bc3c784709aca5edfb820f0c6710b99c62920407fba8594c-init/diff:/var/lib/docker/overlay2/l6sf5cdozveclq96uc92nf5j4/diff:/var/lib/docker/overlay2/pszak7r4k6gdn202bo88gv4em/diff:/var/lib/docker/overlay2/zkxt3qyjqxf62vweecgm1b6qg/diff:/var/lib/docker/overlay2/t65s5b2456yorbpfcolt5cbew/diff:/var/lib/docker/overlay2/ut6ocddz1gjqz3pv8leggsl4w/diff:/var/lib/docker/overlay2/z332rneh3b70xmuv1a29u8d18/diff:/var/lib/docker/overlay2/gmzfp3mpcfbhj6glhgqxbp01v/diff:/var/lib/docker/overlay2/zyxzwhea1wpno3uuncxlgcxdl/diff:/var/lib/docker/overlay2/trje142gcisfy27sd7i21nkia/diff:/var/lib/docker/overlay2/h42h5s8l6xqrd8krj7en1lb4h/diff:/var/lib/docker/overlay2/w667n02tg6gmvka1dn0o5qc1x/diff:/var/lib/docker/overlay2/r1lv4sj0djrblcksjq7dnltp9/diff:/var/lib/docker/overlay2/llp92qqx2cfidf9m1k8l3jvqc/diff:/var/lib/docker/overlay2/fbij2tx3rh952j3og2epz4p2c/diff:/var/lib/docker/overlay2/ofcma6lp2bmh0fmx8zxcs0bcf/diff:/var/lib/docker/overlay2/c82ozwciop1nn2bp6sukmjs2s/diff:/var/lib/docker/overlay2/mtlyg70ib4zhvk1ltd5jjetfe/diff:/var/lib/docker/overlay2/v4y4kroafm3c1ai19hxsrdhu4/diff:/var/lib/docker/overlay2/lmeqyeo1n6zhau82okxgb6gxt/diff:/var/lib/docker/overlay2/2e50tfuuizmdu0r1m6gcrbezj/diff:/var/lib/docker/overlay2/jslxdde2s7qlym6wexs4mivkt/diff:/var/lib/docker/overlay2/u7p7i8lgr3j7gp3sjcuh77qjn/diff:/var/lib/docker/overlay2/ktbfxfjw6jw5g5bytc7h4osvn/diff:/var/lib/docker/overlay2/n2txidsxwmqt5q0oqddflagpp/diff:/var/lib/docker/overlay2/k9tgsj2jsa59je829y8netf0m/diff:/var/lib/docker/overlay2/qali00f7pa15nf2szym1w6pjk/diff:/var/lib/docker/overlay2/lefu37b6ojatbkhu5mpdh4m36/diff:/var/lib/docker/overlay2/xhnwzhxvqa0ol4lhwfuaiwz3f/diff:/var/lib/docker/overlay2/jv8xmu92jps1a8x09bz7f0keb/diff:/var/lib/docker/overlay2/r98j0uwa66jc9xyhyahux2zqn/diff:/var/lib/docker/overlay2/40aco0yek39ggn1cdv6u0820h/diff:/var/lib/docker/overlay2/lcoyjjqd5du9kp6t2ol373bmj/diff:/var/lib/docker/overlay2/sibo0h45wr85bssapq2t07cvi/diff:/var/lib/docker/overlay2/a0mr3s5ieqvzjqow7jl9asajs/diff:/var/lib/docker/overlay2/tswpf7wx5x3czbyg99jyjpyw6/diff:/var/lib/docker/overlay2/d72af66ece9fb0fcd452eccb8f12f95b9695ac7efb6b8ad8a0eb9099057967d2/diff:/var/lib/docker/overlay2/c251f6c13da26b78cc0347ea0cecea5a5776c96d3f33e02a92c94d4a548a1b91/diff:/var/lib/docker/overlay2/38b552e6c8a47ef25a4a7e54c1bc26d0cc9da03fde747f2d91db34b648319b0e/diff:/var/lib/docker/overlay2/4d424ad36c484e251bff39a1f2c62a42ff6650c46176a9a5298758bc40410d85/diff:/var/lib/docker/overlay2/95a5be9dc4610f56e607a2aa4a458b169025095b192e130d89fa42d9f97d9c3f/diff",
+                "MergedDir": "/var/lib/docker/overlay2/28b6913a739131a1bc3c784709aca5edfb820f0c6710b99c62920407fba8594c/merged",
+                "UpperDir": "/var/lib/docker/overlay2/28b6913a739131a1bc3c784709aca5edfb820f0c6710b99c62920407fba8594c/diff",
+                "WorkDir": "/var/lib/docker/overlay2/28b6913a739131a1bc3c784709aca5edfb820f0c6710b99c62920407fba8594c/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
+                "Destination": "/workspace",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "3191f4ccf23b",
+            "Domainname": "",
+            "User": "10001:10001",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "8088/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "NOESAR_MIGRATIONS_DIR=/opt/noesar/database/postgres",
+                "NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token",
+                "NOESAR_HOST=0.0.0.0",
+                "NOESAR_BIND_SCOPE=lan",
+                "NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1,192.168.178.100",
+                "NOESAR_RELEASE_CHANNEL=complete",
+                "NOESAR_LOCAL_MODEL_RUNTIME=disabled",
+                "NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin",
+                "NOESAR_WORKSPACE=/workspace",
+                "NOESAR_SECURE_COOKIES=false",
+                "NODE_ENV=production",
+                "NOESAR_RUNTIME_ROOT=/opt/noesar",
+                "NOESAR_PORT=8088",
+                "NOESAR_BIND_ADDRESS=192.168.178.100",
+                "NOESAR_DATA_PLANE=postgresql",
+                "NOESAR_AUTHORITY_MODE=reference-node",
+                "NOESAR_POSTGRES_ROOT=/workspace/postgresql",
+                "PATH=/usr/lib/postgresql/18/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=22.23.1",
+                "YARN_VERSION=1.22.22"
+            ],
+            "Cmd": null,
+            "Healthcheck": {
+                "Test": [
+                    "CMD-SHELL",
+                    "node -e \"require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""
+                ],
+                "Interval": 30000000000,
+                "Timeout": 5000000000,
+                "StartPeriod": 20000000000,
+                "Retries": 3
+            },
+            "Image": "noesar-evolution:phase4-shadow",
+            "Volumes": {
+                "/workspace": {}
+            },
+            "WorkingDir": "/opt/noesar",
+            "Entrypoint": [
+                "node",
+                "services/reference-control-plane/src/server.mjs"
+            ],
+            "Labels": {
+                "org.noesar.authority": "reference-node",
+                "org.noesar.authority-protocol": "reference-hmac-v1.1",
+                "org.noesar.base-image": "noesar-evolution:phase4-complete",
+                "org.noesar.data-plane": "postgresql",
+                "org.noesar.exposure.default": "loopback",
+                "org.noesar.pgvector.version": "0.8.5-1.pgdg12+1",
+                "org.noesar.phase": "4-complete-lan",
+                "org.noesar.phase4.lan-remediations": "F4L-001",
+                "org.noesar.phase4.remediations": "F4-002 F4-004 F4-005 F4-006 F4-007 F4-008",
+                "org.noesar.postgres-baseline": "0.5.0",
+                "org.noesar.postgresql.version": "18.4-1.pgdg12+1",
+                "org.noesar.production-ready": "pending-target-validation",
+                "org.noesar.release.channel": "complete",
+                "org.opencontainers.image.description": "V4 complete self-hosted implementation runtime",
+                "org.opencontainers.image.licenses": "AGPL-3.0-or-later",
+                "org.opencontainers.image.title": "NOESAR Evolution",
+                "org.opencontainers.image.version": "1.0.0-ai-workspace-phase4-complete-lan"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "849eaaf323c882173d325b214aba60e05ca783ea55b895ecab239044f4c60240",
+            "SandboxKey": "/var/run/docker/netns/849eaaf323c8",
+            "Ports": {
+                "8088/tcp": [
+                    {
+                        "HostIp": "192.168.178.100",
+                        "HostPort": "8100"
+                    }
+                ]
+            },
+            "Networks": {
+                "noesar-evolution-net": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "f55f74343e471638659807132d57cf997a61f20a41f0b16af621b1ea3a47483f",
+                    "EndpointID": "94b4183b0413a3a570f304acd6572f2742cfa66ea747ac12840246283587a52d",
+                    "Gateway": "172.22.0.1",
+                    "IPAddress": "172.22.0.2",
+                    "MacAddress": "06:b1:ae:b1:e0:80",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "noesar-evolution",
+                        "3191f4ccf23b"
+                    ]
+                }
+            }
+        }
+    }
+]

@@ -12,110 +12,413 @@
     {
       "id": "CAP-001",
       "why": "the ordinary grant",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["WRITE"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": true }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "WRITE"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": true
+      }
     },
     {
       "id": "CAP-002",
       "why": "a path the step never named cannot be granted",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/secret.rs"], "operations": ["READ"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "OUT_OF_SCOPE" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/secret.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     },
     {
       "id": "CAP-003",
       "why": "a step not declared destructive cannot grant delete",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["DELETE"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "OUT_OF_SCOPE" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "DELETE"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     },
     {
       "id": "CAP-004",
       "why": "a step declared destructive may",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": true, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["DELETE"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": true }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": true,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "DELETE"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": true
+      }
     },
     {
       "id": "CAP-005",
       "why": "a step reaching outside the workspace mints nothing",
-      "steps": [{ "id": "a", "files": ["../etc/passwd"], "destructive": false, "outside": true }],
-      "request": { "stepId": "a", "paths": ["../etc/passwd"], "operations": ["READ"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "OUT_OF_SCOPE" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "../etc/passwd"
+          ],
+          "destructive": false,
+          "outside": true
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "../etc/passwd"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     },
     {
       "id": "CAP-006",
       "why": "a capability may not outlive the approval it descends from",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["READ"], "uses": 1, "expiresAtUnix": 1800003601 },
-      "expected": { "minted": false, "kind": "OUT_OF_SCOPE" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800003601
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     },
     {
       "id": "CAP-007",
       "why": "a step that is not in the approved plan",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "ghost", "paths": ["src/a.rs"], "operations": ["READ"], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "OUT_OF_SCOPE" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "ghost",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     },
     {
       "id": "CAP-008",
       "why": "a token that can never be spent is not issued",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["READ"], "uses": 0, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "INVALID" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 0,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "INVALID"
+      }
     },
     {
       "id": "CAP-009",
       "why": "a token already expired at issue",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": ["READ"], "uses": 1, "expiresAtUnix": 1800000000 },
-      "expected": { "minted": false, "kind": "INVALID" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000000
+      },
+      "expected": {
+        "minted": false,
+        "kind": "INVALID"
+      }
     },
     {
       "id": "CAP-010",
       "why": "granting no operation at all",
-      "steps": [{ "id": "a", "files": ["src/a.rs"], "destructive": false, "outside": false }],
-      "request": { "stepId": "a", "paths": ["src/a.rs"], "operations": [], "uses": 1, "expiresAtUnix": 1800000600 },
-      "expected": { "minted": false, "kind": "INVALID" }
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "src/a.rs"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "src/a.rs"
+        ],
+        "operations": [],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "INVALID"
+      }
+    },
+    {
+      "id": "CAP-011",
+      "why": "a step that names a path outside while declaring it does not — the declaration is not the check",
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "../etc/passwd"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "../etc/passwd"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
+    },
+    {
+      "id": "CAP-012",
+      "why": "an absolute path, same rule",
+      "steps": [
+        {
+          "id": "a",
+          "files": [
+            "/etc/passwd"
+          ],
+          "destructive": false,
+          "outside": false
+        }
+      ],
+      "request": {
+        "stepId": "a",
+        "paths": [
+          "/etc/passwd"
+        ],
+        "operations": [
+          "READ"
+        ],
+        "uses": 1,
+        "expiresAtUnix": 1800000600
+      },
+      "expected": {
+        "minted": false,
+        "kind": "OUT_OF_SCOPE"
+      }
     }
   ],
   "spend": [
     {
       "id": "SPEND-001",
       "why": "the granted path and operation, once",
-      "attempt": { "path": "src/a.rs", "operation": "WRITE" },
+      "attempt": {
+        "path": "src/a.rs",
+        "operation": "WRITE"
+      },
       "at": 1800000100,
-      "expected": { "allowed": true }
+      "expected": {
+        "allowed": true
+      }
     },
     {
       "id": "SPEND-002",
       "why": "a second spend of a single-use token",
-      "attempt": { "path": "src/a.rs", "operation": "WRITE" },
+      "attempt": {
+        "path": "src/a.rs",
+        "operation": "WRITE"
+      },
       "at": 1800000100,
       "twice": true,
-      "expected": { "allowed": false, "kind": "REFUSED" }
+      "expected": {
+        "allowed": false,
+        "kind": "REFUSED"
+      }
     },
     {
       "id": "SPEND-003",
       "why": "a path the token does not grant",
-      "attempt": { "path": "src/other.rs", "operation": "WRITE" },
+      "attempt": {
+        "path": "src/other.rs",
+        "operation": "WRITE"
+      },
       "at": 1800000100,
-      "expected": { "allowed": false, "kind": "REFUSED" }
+      "expected": {
+        "allowed": false,
+        "kind": "REFUSED"
+      }
     },
     {
       "id": "SPEND-004",
       "why": "an operation the token does not grant",
-      "attempt": { "path": "src/a.rs", "operation": "DELETE" },
+      "attempt": {
+        "path": "src/a.rs",
+        "operation": "DELETE"
+      },
       "at": 1800000100,
-      "expected": { "allowed": false, "kind": "REFUSED" }
+      "expected": {
+        "allowed": false,
+        "kind": "REFUSED"
+      }
     },
     {
       "id": "SPEND-005",
       "why": "the expiry instant itself, not a second past it",
-      "attempt": { "path": "src/a.rs", "operation": "WRITE" },
+      "attempt": {
+        "path": "src/a.rs",
+        "operation": "WRITE"
+      },
       "at": 1800000600,
-      "expected": { "allowed": false, "kind": "REFUSED" }
+      "expected": {
+        "allowed": false,
+        "kind": "REFUSED"
+      }
     }
   ]
 }

@@ -130,11 +130,14 @@ test('the status states what is not enforced instead of implying it', () => {
   const status = capabilityStatus(new TokenMinter(SECRET));
   assert.equal(status.adaptersMaySelfGrant, false);
   assert.equal(status.registryPersistsAcrossRestart, false);
-  assert.equal(status.executorEnforcesTokens, false);
+  assert.equal(status.executorImplemented, true);
+  assert.equal(status.executorEnforcesTokens, true);
+  // Implemented and enforcing is not the same as the product routing its changes through it.
+  assert.equal(status.executorWiredToProductActions, false);
   assert.equal(status.outstandingTokens, 0);
 });
 
 test('the vector file has not shrunk unnoticed', () => {
-  assert.equal(vectors.cases.length, 10);
+  assert.equal(vectors.cases.length, 12);
   assert.equal(vectors.spend.length, 5);
 });
