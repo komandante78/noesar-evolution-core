@@ -88,15 +88,46 @@ export function resolveBindScope({ bindAddress = null, bindScope = null } = {}) 
 }
 
 /**
- * May /metrics be served without a session?
+ * The one rule behind every unauthenticated disclosure of operational internals.
  *
  * Only when the port is published on loopback AND the peer is a private address. On
  * a loopback publish, "private peer" really does mean "a process on this host",
  * because nothing else can reach the port at all. As soon as the port is published
- * on a LAN address or a wildcard, that equivalence is false and the exporter — which
- * carries request paths, status codes, safe-mode state and log volume — must be
- * behind authentication like every other non-health endpoint.
+ * on a LAN address or a wildcard, that equivalence is false.
+ *
+ * Kept as a single predicate with named views over it rather than copied per
+ * endpoint: the second endpoint to need this rule got it wrong for four phases by
+ * not having it at all, and a third one deciding for itself is how they drift.
+ */
+function allowsUnauthenticatedInternals(bindScope, peerAddress) {
+  return bindScope === BindScope.LOOPBACK && isInternalAddress(peerAddress);
+}
+
+/**
+ * May /metrics be served without a session?
+ *
+ * The exporter carries request paths, status codes, safe-mode state and log volume,
+ * so off a loopback publish it must sit behind authentication like every other
+ * non-health endpoint.
  */
 export function allowsUnauthenticatedMetrics(bindScope, peerAddress) {
-  return bindScope === BindScope.LOOPBACK && isInternalAddress(peerAddress);
+  return allowsUnauthenticatedInternals(bindScope, peerAddress);
+}
+
+/**
+ * May /healthz disclose its *detail* without a session?
+ *
+ * The aggregate — status, locality, timestamp, and the HTTP status code — is never
+ * withheld from anyone: the container healthcheck, the three platform installers,
+ * the update manager's post-start poll and the documented verification procedures
+ * all depend on it, and it discloses nothing the status code does not already give.
+ *
+ * The detail is a different thing entirely. It names the exact build (so an attacker
+ * can look up what that build is vulnerable to), the authority posture, the data
+ * plane's server and extension versions, the full component inventory, the update
+ * channel and the enabled debug scopes. On a LAN publish that is a free
+ * reconnaissance report for every host on the subnet, which is what it was.
+ */
+export function allowsUnauthenticatedHealthDetail(bindScope, peerAddress) {
+  return allowsUnauthenticatedInternals(bindScope, peerAddress);
 }

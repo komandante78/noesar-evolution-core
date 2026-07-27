@@ -12,13 +12,13 @@ import {
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime } from './local-model-runtime.mjs';
-import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES } from './auth.mjs';
+import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
 import { discoverHardware, recommendRuntime } from './hardware.mjs';
 import {
   securityHeaders, validHostHeader, isWildcardAddress,
-  resolveBindScope, allowsUnauthenticatedMetrics,
+  resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
 } from './http-security.mjs';
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
@@ -41,7 +41,7 @@ import { DebugMode } from './debug-mode.mjs';
 import { Watchdog, watchdogStatePath } from './watchdog.mjs';
 import { UpdateManager } from './update-manager.mjs';
 import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
-import { buildHealth, buildReadiness, registerWatchdogSubjects } from './observability.mjs';
+import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -313,6 +313,19 @@ function requireSession(req, res, permission = null) {
   return authenticated;
 }
 
+/**
+ * The session, if there is a valid one — and no response written either way.
+ *
+ * Distinct from requireSession on purpose: a route that must answer 200 to an
+ * anonymous prober cannot use a helper whose failure mode is to send 401. It also
+ * records nothing in the ledger, because /healthz is polled continuously and a probe
+ * arriving without a cookie is the normal case, not a denial worth an audit entry.
+ */
+function optionalSession(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  return auth.authenticate(cookies.noesar_session) ?? null;
+}
+
 function requireCsrf(req, res, authenticated) {
   if (!auth.verifyCsrf(authenticated.session, req.headers['x-noesar-csrf'])) {
     ledger.append({ actor:authenticated.user.id, action:'csrf.denied', result:'denied' });
@@ -388,11 +401,18 @@ const server = createServer(async (req, res) => {
       return json(res, readiness.ready ? 200 : 503, readiness);
     }
     if (req.method === 'GET' && url.pathname === '/healthz') {
+      // Never 401, never 403: the container healthcheck, three platform installers and
+      // the update manager's post-start poll all read this route without a session, and
+      // an authentication error there reads as a dead service. The status code is
+      // therefore computed from the full health for everyone — what varies is only how
+      // much of the body the caller is entitled to see.
       const health = buildHealth({
         product:PRODUCT, watchdog, auth, authority, dataPlane, logger, updateManager,
         timezone:timezoneService.serverDefault(), debug:debugMode.status(),
       });
-      return json(res, health.status === 'unhealthy' ? 503 : 200, health);
+      const disclose = allowsUnauthenticatedHealthDetail(exposureScope, clientIp(req))
+        || mayReadHealthDetail(optionalSession(req)?.user);
+      return json(res, health.status === 'unhealthy' ? 503 : 200, disclose ? health : publicHealth(health));
     }
     if (req.method === 'GET' && url.pathname === '/metrics') {
       // Authenticated, unless this container is published on loopback AND the peer is
@@ -705,8 +725,10 @@ const server = createServer(async (req, res) => {
       const hardware = may('hardware.read');
       // The detail behind service health is what the owner-only Health section shows.
       // Putting it on a page every role can reach would make the initial screen a way
-      // around that gate, so the same two conditions are required here.
-      const healthDetail = authenticated.user.role === 'owner' && may('audit.read');
+      // around that gate, so the same two conditions are required here — and they are
+      // now stated once, in mayReadHealthDetail, because /healthz needs the identical
+      // test and two copies of a rule is how the two stop agreeing.
+      const healthDetail = mayReadHealthDetail(authenticated.user);
       return json(res, 200, buildHomeOverview({
         health:buildHealth({
           product:PRODUCT, watchdog, auth, authority, dataPlane, logger, updateManager,

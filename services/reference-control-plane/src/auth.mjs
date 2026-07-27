@@ -49,6 +49,23 @@ const ROLE_PERMISSIONS = Object.freeze({
 
 export const RolePermissions = ROLE_PERMISSIONS;
 
+/**
+ * Who may read service-health *detail* — one definition, for every surface that
+ * decides it.
+ *
+ * Owner role AND audit.read, not either alone. `admin` also carries audit.read, so a
+ * permission-only test would disclose to admins what the owner-only Health section
+ * withholds from them; and a role-only test would ignore the permission model
+ * entirely. Both conditions, stated once, because an endpoint that disagrees with the
+ * others becomes the way around the gate the others are enforcing — which is exactly
+ * what /healthz was until it started asking this question.
+ *
+ * Pure, and exported, so the rule can be tested without starting a listener.
+ */
+export function mayReadHealthDetail(user) {
+  return user?.role === 'owner' && Boolean(ROLE_PERMISSIONS[user.role]?.has('audit.read'));
+}
+
 export function normalizeUsername(value) {
   const username = String(value ?? '').trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username)) throw new Error('Username must contain 3-64 lowercase-safe characters.');

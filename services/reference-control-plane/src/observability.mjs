@@ -228,3 +228,34 @@ export function buildHealth({ product, watchdog, auth, authority, dataPlane, log
     debug: { enabled: debug.enabled, scopes: debug.scopes },
   };
 }
+
+/**
+ * The aggregate a prober is entitled to, and nothing else.
+ *
+ * Three fields survive because three consumers assert them and no more: `status` and
+ * `local` are checked by the Windows verifier and by verify-runtime.sh, and
+ * `checkedAt` says whether the answer is fresh. Everything else buildHealth produces
+ * is reconnaissance and is dropped.
+ *
+ * What is NOT dropped is the fact that more exists. A block the caller may not read
+ * comes back withheld WITH the permission it would need — the same rule the initial
+ * screen follows — because a silently trimmed object and a complete one look
+ * identical, and only one of them means "this is all there is".
+ *
+ * The caller decides the HTTP status code from the *full* health, never from this:
+ * an unhealthy installation must still answer 503 to a probe that may not be told why.
+ */
+export function publicHealth(health) {
+  return {
+    status: health.status,
+    local: health.local,
+    checkedAt: health.checkedAt,
+    detail: {
+      disclosed: false,
+      requiredRole: 'owner',
+      requiredPermission: 'audit.read',
+      reason: 'Version, authority, data plane, component, update and debug detail is '
+        + 'disclosed to an owner holding audit.read, or on a loopback publish.',
+    },
+  };
+}
