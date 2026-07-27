@@ -2458,3 +2458,28 @@ changing it is an event, not a modification (`03_ARCHITETTURA.md` §4).
 **Status.** Applied, not installed: this is the contract only. The reference provider
 (step 2 of phase 1) is NOT written, so `FOSS_CORE_DEPENDS_ON_ATOM = false` is stated by the
 contract and **not yet demonstrated by a running implementation**.
+
+## D-0176 · The release chain had a verifier, a minter and no producer — 2026-07-27
+**Decision.** `NOESAR_RUST_TEST_REPORT` becomes an **output** of
+`build-authority-release.sh`, written from the exit status of the cargo run it performs.
+`tools/emit-conformance-report.mjs` is new and produces the authority conformance report by
+**executing** `conformance/authority-vectors.json` through the reference control plane's
+three vector suites. The script refuses to start without that report.
+**Why.** The report was an input, so the verdict on the tests came from whoever wanted the
+build to pass — the anti-pattern this project already holds as a permanent lesson. And
+nothing anywhere produced the conformance report: a tool verified provenance, a tool minted
+it, and a test fabricated both inputs as fixtures, so the chain was verifiable and
+unreachable at once. Same class as `D-0171` and `D-0174`.
+**Rejected.** Writing a second Rust conformance runner: the vectors are already executed by
+the Node suites inside the 745 unit tests. A parallel runner would be a second oracle to
+keep in step, not more coverage.
+**Evidence.** Report missing → exit 1 with the producer named. Report present → exit 0,
+`RUST_TESTS=PASS` written by the script itself, provenance issued with
+`authorityConformancePassed: true`, binary and source-tree digests recorded. Conformance
+52 checks 0 failures. Whole suite set re-measured this session and written into
+`PROJECT_STATE.json`: unit 745/745, browser 315/315, ESLint 170 files 0 errors, adversarial
+invariants 11/11, installer hardening 100/100, cross-platform 73/73 (**windows not
+executed**), Rust workspace 19 passed. MANIFEST 5742, 0 mismatch.
+**Reversal cost.** None — no product code changed; the installation was not touched.
+**Status.** Applied, not installed. Still open and NOT repaired: `PROVENANCE_SIGNED=false`,
+Windows peer credentials unimplemented, and the two divergent copies of `verify-package.py`.

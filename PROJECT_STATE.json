@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "2c88c78 (three working-economy skills bound into CLAUDE10.md)",
+  "last_commit": "3c8f9b5 (ReasoningProvider contract, frozen at 1.0.0)",
   "last_updated_utc": "2026-07-27T15:40:00Z",
   "blockers": [
     {
@@ -343,12 +343,14 @@
     }
   ],
   "product_test_suite": {
-    "unit": "745/745 (misurato in sessione 2026-07-27)",
-    "eslint": "149 files, 0 errors, 0 warnings, 0 no-undef",
-    "browser_acceptance": "178/178",
-    "adversarial_invariants": "11/11",
-    "installer_hardening": "100/100",
-    "cross_platform_installers": "73/73"
+    "unit": "745/745 (misurato 2026-07-27)",
+    "eslint": "170 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-27)",
+    "browser_acceptance": "315/315 (misurato 2026-07-27)",
+    "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
+    "installer_hardening": "100/100 (misurato 2026-07-27)",
+    "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
+    "rust_workspace": "14 binari, 19 passati, 0 falliti — offline, isolato (misurato 2026-07-27)",
+    "authority_conformance": "52 check, 0 fallimenti (misurato 2026-07-27)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",

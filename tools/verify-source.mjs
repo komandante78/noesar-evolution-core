@@ -30,6 +30,8 @@ const required = [
   'rust/build-authority-release.sh',
   'tools/create-rust-build-provenance.py',
   'tools/verify-rust-build-provenance.py',
+  'tools/emit-conformance-report.mjs',
+  'rust/crates/noesar-reasoning/src/lib.rs',
   'schemas/owner-entitlement.schema.json',
   'private-boundary/atom-provider.schema.json',
 ];

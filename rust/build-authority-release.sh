@@ -3,7 +3,15 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 OUT=${NOESAR_RUST_BUILD_OUTPUT:?NOESAR_RUST_BUILD_OUTPUT is required}
 REPORT=${NOESAR_RUST_BUILD_REPORT:?NOESAR_RUST_BUILD_REPORT is required}
+# NOESAR_RUST_TEST_REPORT is an OUTPUT of this script, not an input. It used to be supplied
+# by the caller, which meant the verdict on the tests came from whoever wanted the build to
+# pass rather than from running them. This script is the thing that runs them, so it is the
+# thing that records the result.
 : "${NOESAR_RUST_TEST_REPORT:?NOESAR_RUST_TEST_REPORT is required}"
+# The conformance report stays an input: the authority vectors are executed by the
+# reference control plane's Node test suite, not by cargo. `tools/emit-conformance-report.mjs`
+# is what produces it -- it did not exist before 2026-07-27, so nothing ever produced this
+# file and the release path could not complete.
 : "${NOESAR_AUTHORITY_CONFORMANCE_REPORT:?NOESAR_AUTHORITY_CONFORMANCE_REPORT is required}"
 
 command -v rustc >/dev/null 2>&1 || {
@@ -33,14 +41,29 @@ if [ -z "${RUSTUP_TOOLCHAIN:-}" ] && command -v rustup >/dev/null 2>&1; then
   fi
 fi
 
+test -f "$NOESAR_AUTHORITY_CONFORMANCE_REPORT" || {
+  echo "conformance report not found at $NOESAR_AUTHORITY_CONFORMANCE_REPORT" >&2
+  echo "produce it first: node tools/emit-conformance-report.mjs <path>" >&2
+  exit 1
+}
+
 umask 077
-mkdir -p "$OUT" "$(dirname "$REPORT")"
+mkdir -p "$OUT" "$(dirname "$REPORT")" "$(dirname "$NOESAR_RUST_TEST_REPORT")"
 
 cd "$ROOT"
 # --offline is not a concession to an isolated host: every dependency is vendored under
 # rust/vendor and replaced through .cargo/config.toml, so a release build that reaches the
 # network is a release build whose inputs were not the ones committed.
-cargo test --workspace --locked --offline --all-targets
+# The report records what happened, so it is written from the exit status and never before
+# it is known. A failing suite writes RUST_TESTS=FAIL and stops the release.
+if cargo test --workspace --locked --offline --all-targets; then
+  printf 'RUST_TESTS=PASS\n' > "$NOESAR_RUST_TEST_REPORT"
+else
+  printf 'RUST_TESTS=FAIL\n' > "$NOESAR_RUST_TEST_REPORT"
+  echo "rust tests failed; release refused" >&2
+  exit 1
+fi
+
 cargo build \
   --release \
   --locked \
