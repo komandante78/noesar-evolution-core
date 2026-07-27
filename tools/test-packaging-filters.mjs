@@ -42,6 +42,18 @@ const CASES = [
   ['rust/vendor/rustversion-1.0.23/build/build.rs', 'PRESERVED'],
   ['rust/vendor/wasm-bindgen-0.2.126/src/cache/intern.rs', 'PRESERVED'],
   ['rust/.cargo/config.toml', 'PRESERVED'],
+  // --- the default runtime workspace ---
+  // server.mjs falls back to <repoRoot>/.workspace when NOESAR_WORKSPACE is unset, so
+  // running the service or any tool from the repository root materialises a runtime
+  // workspace in it. The keys and the log were already caught by *.key and *.log; the
+  // state was not, and was one `git add -A` away from being committed.
+  ['.workspace/state/ai-workspace.json', 'EXCLUDED'],
+  ['.workspace/state/watchdog.json', 'EXCLUDED'],
+  ['.workspace/audit/events.jsonl', 'EXCLUDED'],
+  ['.workspace/config/auth-master.key', 'EXCLUDED'],
+  // Anchored, so a real source directory somebody later names .workspace deeper in the
+  // tree is NOT swallowed — the exact mistake the target/ rules above were written for.
+  ['services/example/.workspace/src/real-source.mjs', 'PRESERVED'],
 ];
 
 function run() {

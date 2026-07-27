@@ -109,6 +109,18 @@ SOURCE_ARCHIVES/
 tmp/
 scratch/
 
+# The DEFAULT runtime workspace. server.mjs falls back to <repoRoot>/.workspace when
+# NOESAR_WORKSPACE is unset, so starting the service or any tool from the repository
+# root materialises a full runtime workspace here — state, audit ledger, logs and two
+# generated 32-byte keys.
+#
+# The keys and the log were already covered (*.key, *.log); the STATE was not, so
+# state/*.json was one `git add -A` away from being committed. Anchored to the root
+# because that is the only place the fallback can put it, and a loose pattern would
+# swallow a real directory somebody later names .workspace.
+# Regression test: tools/test-packaging-filters.mjs
+/.workspace/
+
 # Logs
 *.log
 logs/
