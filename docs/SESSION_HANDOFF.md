@@ -30,222 +30,194 @@ nuova decisione dell'Owner.**
 
 1. `PROJECT_STATE.json` e questo file
 2. **`docs/WEBUI_DESIGN_V3.md`** — il progetto dell'interfaccia, completo e autorizzato, **più
-   `§22-27`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
-   (destinazione Ricerca e il suo gate) · **§22-24 la struttura** · **§25-27 il layer di token** · **§28-30 i nove temi**.
-   Criteri `UI-001…UI-096`
+   `§22-33`, che dicono cosa di esso è ora costruito.** §1-9 la v3 · §10-17 la v4 · §18-21 la v5
+   (destinazione Ricerca e il suo gate) · §22-24 la struttura · §25-27 i token · §28-30 i nove
+   temi · **§31-33 le parti che la grafica non copriva**. Criteri `UI-001…UI-096`
 3. `MASTER_PROJECT/07_INTERFACCIA.md` — il riferimento normativo dell'interfaccia
 4. `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` (matrice `CE-001…CE-024`) ·
    `MASTER_PROJECT/09_PIANO.md` §1 e §3 · `docs/WORK_PLAN_V5_REWRITE.md`
-5. `docs/DECISION_LOG.md` (ultime: **`D-0137…D-0151`**), `docs/INSTALLATION_LEDGER.md`
+5. `docs/DECISION_LOG.md` (ultime: **`D-0152…D-0160`**), `docs/INSTALLATION_LEDGER.md`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-> **La grafica è COMPLETA — tre passi su tre, costruiti e installati.** La prossima azione non è
-> più la grafica.
+> **L'interfaccia è ora la parte più completa del progetto. Il motore non esiste ancora.**
 
 Restano aperte tre cose, in ordine di dipendenza. **Nessuna è iniziata.**
 
 **(a) Fase 0, punti 5 e 6** — traduzione canonica in inglese di `MASTER_PROJECT/` (regola 49) ed
-emendamenti registrati a `V4-D001` / `V4-D002` (`GAP-F`: il prodotto e i documenti che lo
-governano dicono cose diverse e nulla registra quale dei due debba muoversi). Nessuna riga di
-codice, tutto reversibile.
+emendamenti registrati a `V4-D001` / `V4-D002` (`GAP-F`: il prodotto e i documenti che lo governano
+dicono cose diverse e nulla registra quale dei due debba muoversi). Il punto 5 dipende dal punto
+**4** — le domande dell'Owner sui contenuti — che risulta ancora *in attesa*: tradurre prima
+significa tradurre due volte. **Il punto 6 è un atto di governo, fattibile subito.**
 
-**(b) Le parti dell'interfaccia che il disegno chiede e la grafica NON copre.** Da non confondere
-con «fatto»: la grafica era struttura, token e temi.
+**(b) Ciò che dell'interfaccia resta scoperto**, ora molto meno di prima:
 
-- il **banco di lavoro** a tre regioni (`UI-030…UI-037`)
-- la casella **`NON FATTO`** nella chiusura (`UI-036`, **Critica**)
-- la **metrica del prodotto** — tempo di revisione umana per cambiamento accettato
-  (`UI-070…UI-072`), di cui `UI-072` è Critica: un cambiamento **rifiutato** conta come tempo speso
-- la **gestione delle sessioni** (`UI-001…UI-012`) — oggi la sezione è dichiarata e non costruita
-- le otto voci di accessibilità **non strutturali** (`UI-040…UI-047`): dimensione del testo, zoom,
-  riduzione animazioni come impostazione, regione live, lingua e fuso, istanti IANA
-- la **superficie della Ricerca**, che richiede **prima** il suo gate (`UI-090…UI-096`)
+- la **schermata iniziale** (`UI-060…UI-063`) — sei azioni d'ingresso, dieci azioni rapide
+  formulate come obiettivi, compiti programmati con la loro regola e il loro fuso, salute dei
+  servizi e provenienza di strumenti e modelli
+- la **superficie della Ricerca** (`UI-080…UI-089`), che richiede **prima** il suo gate
+  (`UI-090…UI-096`): costruire la superficie per prima significherebbe consegnare una via d'uscita
+  verso la rete senza nulla che la classifichi
+- `UI-050` **lato shell** — ogni azione delle sessioni ha una forma da tastiera, il comando nel
+  terminale no, perché il TUI è dichiarato-e-non-costruito. **`CE-020` resta non soddisfatto**
+- **nove campi su dodici** della riga di stato del banco non hanno una fonte, e non l'avranno finché
+  non esiste il motore. La riga lo dichiara a ogni giro
 
 **(c) La fase 1, la spina dorsale** — `ReasoningProvider`, capability token, esecuzione in ombra,
 esecutore che accetta solo token, registro eventi, comprensione del repository. Rust dalla prima
-riga, su un host senza toolchain Rust.
+riga, su un host senza toolchain Rust. **È il lavoro grande**, ed è quello che trasformerebbe metà
+delle caselle vuote di questa interfaccia in caselle piene.
 
-**Regola in vigore, da qui in avanti** (`D-0143`, `CLAUDE10.md` §3a): **si costruisce, si installa
-e si verifica nella stessa fase.** Le suite vanno lanciate con
-`NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-themes`.
+**Regola in vigore** (`D-0143`, `CLAUDE10.md` §3a): **si costruisce, si installa e si verifica nella
+stessa fase.** Le suite vanno lanciate con `NOESAR_E2E_BASE_IMAGE=noesar-evolution:phase4-parts`.
 
 ---
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**I passi 1 e 2 della grafica, costruiti e installati.** Ed è cambiata una regola: a metà sessione
-l'Owner ha stabilito che **una fase che cambia il prodotto lo installa e lo verifica nella stessa
-fase** (`D-0143`, `CLAUDE10.md` §3a). Le due installazioni sono `:phase4-structure` e
-`:phase4-tokens`.
+**Le parti dell'interfaccia che il disegno chiedeva e la grafica non copriva** — sessioni,
+accessibilità non strutturale, metrica del prodotto, banco di lavoro — costruite, **installate e
+verificate sull'installazione viva**.
 
-### 1 · Ventitré destinazioni diventano dodici, e niente si perde
+### 1 · Le sessioni, e un cestino che mantiene la promessa che fa
 
-I tredici blocchi di pagina demossi sono stati **spostati verbatim** da uno script che estrae e
-riassembla (`D-0137`): `#view-users`, `#view-logs`, `#view-providers` e gli altri esistono ancora
-con i loro id, dentro l'unica pagina Impostazioni, che ora ha **menu dentro il menu** — tre gruppi,
-tredici sezioni, indirizzabili come `#/settings/<sezione>`. *Compiti* è entrato in Home,
-*Strumenti* in CodeN Evolution, *Memoria* in Conoscenza.
+Tre posti e non sono lo stesso posto: lista di lavoro, archivio, cestino — ognuno con un indirizzo
+proprio (`#/settings/sessions/archived`), perché una «pagina» che non si può collegare, ricaricare o
+raggiungere col tasto indietro è un pannello che indossa la parola. Archiviare **sposta**; eliminare
+va in un cestino che tiene **trenta giorni**.
 
-**Ogni indirizzo che rispondeva risponde ancora** (`D-0138`): `#/logs` inoltra a
-`#/settings/health`, e la barra dell'indirizzo viene riscritta, perché un inoltro invisibile non è
-verificabile. **I gate di ruolo sono scesi di livello con le pagine che proteggono** (`D-0139`):
-erano rotte protette, ora sono sezioni protette, e le voci di menu non consentite sono rimosse.
+**La scadenza è calcolata, non è un contrassegno** (`D-0152`): un contrassegno andrebbe spazzato, e
+un contrassegno non spazzato è una sessione che *sembra* viva dopo la fine del periodo. Passata la
+data non è elencata **né ripristinabile**, che la spazzata sia girata o no. E la sparizione è
+totale: una sessione nel cestino esce **da ogni altra superficie**, non solo dalla pagina che l'ha
+eliminata — è un test a sé, perché è la scorciatoia che un'implementazione frettolosa prende.
 
-### 2 · Due destinazioni sono dichiarate e non costruite, e lo dicono
+**La conferma è un componente** (`D-0154`), non un'abitudine: dice cosa succede e **a quante**, per
+più di una le **nomina** e tronca con «e altre N». Il fuoco non parte da nessun bottone, e la
+ragione è una contraddizione vera fra due criteri — `UI-010` vieta di preselezionare il pulsante
+pericoloso, `UI-052` vuole che `Invio` confermi. Il fuoco sul **dialogo** soddisfa entrambi.
 
-*CodeN Evolution TUI* e *Ricerca* stanno nella barra con l'etichetta **not built** e una pagina che
-dice cosa manca (`D-0141`). Nasconderle per far tornare il conto sarebbe stato mentire sul numero.
+### 2 · Dimensione del testo e zoom sono due cose diverse, e si vedono muovere
 
-**La Ricerca non ha alcun campo che possa emettere una query** (`D-0142`), ed è deliberato: il gate
-`UI-090…UI-096` viene **prima** della superficie. Costruire prima la superficie significherebbe
-consegnare una via d'uscita verso la rete senza nulla che la classifichi.
+`--text-scale` moltiplica **ogni** dimensione del foglio: le **45** `font-size` in pixel nudi sono
+diventate `calc(var(--text-scale)*Npx)`. Un solo pixel nudo sarebbe un difetto **invisibile** —
+l'interfaccia cresce attorno a un'etichetta rimasta indietro. `--ui-zoom` muove tutto, ed è sul
+`body` perché porti con sé gate, toast e **la conferma**: uno zoom che si ferma alla shell lascia
+alla dimensione originale l'unico dialogo che chiede della distruzione.
 
-### 3 · Quattro difetti trovati, tutti eseguendo — e due erano miei
+**Misurati in browser vero**, non asseriti: 38px → 49,4px per il testo, 44px → 58px di altezza resa
+per lo zoom. Una preferenza che memorizza e non muove nulla è il niente più convincente che esista.
 
-1. **Mio, serio.** Una sezione che l'account non può aprire **faceva comunque partire il suo
-   loader**: quattro richieste `403` (`/logs`, `/debug/status`, `/watchdog`, `/database/status`)
-   emesse per una pagina che la persona si stava vedendo rifiutare. Il gate era applicato sullo
-   schermo e abbandonato sul filo. L'ha trovato la suite in browser; riparato alla causa.
-2. **Mio.** La guardia «ogni sezione sta dentro Impostazioni» che avevo **appena scritto**
-   confrontava la **posizione nel file**, non l'annidamento: una sezione spostata fuori ma lasciata
-   fra `#view-settings` e `#view-not-found` passava. Scoperto **seminando quel difetto** e vedendo
-   la guardia restare verde. Ora cammina la profondità dei tag.
-3. **Preesistente.** `.nav span{display:none}` sotto gli 850px toglieva l'etichetta anche
-   dall'**albero di accessibilità**: su schermo stretto ogni voce era annunciata come un glifo
-   nudo. Sostituita con il ritaglio, che nasconde senza togliere il nome.
-4. **Mia misura sbagliata.** Il giro delle rotte misurava il testo dell'intera pagina Impostazioni,
-   comprese le dodici sezioni nascoste: il «Loading…» di una sezione che nessuno guarda faceva
-   fallire una pagina che aveva finito.
+### 3 · L'RTL riparato alla fonte, e un criterio Critico che diventa meccanico
 
-### 4 · Le guardie sono state provate, non date per buone
+`UI-046` diceva *«nessuna proprietà fisica nel foglio di stile»* ed era vera **del provino**, non
+del foglio spedito: quattordici dichiarazioni fisiche erano rimaste, ognuna *corretta dopo* da un
+override direzionale. Funzionava — ed era ricordarsi dell'RTL invece di renderlo impossibile da
+scrivere male. Ora le dichiarazioni fisiche **non esistono** e il blocco di override è **cancellato
+con loro**: un override per una proprietà che non c'è più è una regola su cui nessuno può ragionare.
+Il criterio è ora **verificato da una guardia**.
 
-Quattro difetti **seminati** — una destinazione tolta dalla barra, una pagina demossa cancellata
-invece che spostata, un vecchio indirizzo lasciato senza inoltro, una sezione fatta uscire da
-Impostazioni. **Al primo giro due non furono catturati**: uno perché il seme non aveva mutato
-nulla, l'altro perché la guardia era debole. Dopo la correzione **4 su 4**, ognuno catturato da
-esattamente una guardia, e ogni file ripristinato **byte-identico**.
+### 4 · La metrica che il prodotto accetta di farsi misurare — rifiuti inclusi
 
-### 5 · Passo 2 — il layer di token, e la prova che non ha cambiato nulla
+`UI-072` è Critica e vive nel codice: `record()` prende la decisione e **non filtra mai** su di
+essa. Escludere i rifiuti sarebbe scegliere il denominatore che conviene — la revisione è avvenuta,
+i minuti sono stati spesi, e «no» è esattamente l'esito che un utensile degno di fiducia deve saper
+riportare.
 
-102 token in `:root`, **zero letterali di colore fuori** (`D-0144`). La sostituzione è
-**consapevole della proprietà** (`D-0145`): lo stesso `#fff` è `--text-on-accent` dove è testo e
-`--surface-inverse` dove è sfondo — due nomi, oggi lo stesso valore, in un tema chiaro no. Una
-sostituzione cieca avrebbe prodotto un layer che *sembra* rimappabile e non lo è.
+**Il bordo sinistro dell'intervallo viaggia dentro la risposta dell'API** (`readyDefinition`). Nel
+disegno finito è «il giro in ombra ha prodotto un risultato»; l'ombra non esiste in questo build,
+quindi è l'istante in cui l'approvazione è stata sollevata. Un numero la cui definizione sta altrove
+è un numero che verrà citato senza.
 
-**Il rischio del passo era uno solo: cambiare un colore senza accorgersene.** Perciò la prova è
-stata costruita prima del refactor, non dopo — `tools/computed-style-snapshot.mjs`, che fotografa
-da un browser vero ogni proprietà di colore di ogni elemento su tutte e 25 le superfici.
+### 5 · La casella `NON FATTO`, imposta dal server
 
-```text
-39.320 elementi · 6.133 firme distinte · 0 tuple di colore cambiate · 0 apparse · 0 sparite
-sensibilita provata: 1 token spostato di 1 unita di blu  ->  29 firme si muovono
-```
+`UI-036`, Critica. Tre stati e quello di mezzo non è ammesso: elencati · nulla **e dichiarato** ·
+nulla **e silenzio → RIFIUTATO**. Un rapporto che elenca solo i successi insegna una fiducia
+uniforme, che è l'opposto di utile; una casella semplicemente vuota è indistinguibile da una che
+nessuno ha guardato. Anche il rischio residuo è obbligatorio: «nessuno» è una risposta, il silenzio
+no. E un contrassegno «nulla rimasto indietro» **non può contraddire il proprio contenuto**.
 
-La riga della sensibilità è la più importante: **uno zero prodotto da un controllo che non può
-fallire non è evidenza.**
+### 6 · Un banco che ammette quello che non sa
 
-**Un token morto rimosso** (`D-0146`): `--violet` era dichiarato una volta e referenziato zero
-volte — un colore semantico che l'interfaccia dichiarava di avere e non dipingeva mai. È la stessa
-classe di difetto dello schema morto, e la regola che la governa era già scritta.
+Tre regioni, undici schede, un terminale che è una **regione** e non una scheda che sparisce. La riga
+di stato ha dodici campi e **dichiara quanti hanno una fonte in questo build: tre** (`D-0160`). Il
+lettore non può altrimenti sapere quale metà credere. Per la stessa ragione la pastiglia **Coverage**
+legge `—`: una copertura di verifica inventata sarebbe il numero più dannoso del prodotto, visto che
+il suo scopo è dire quanto ci si può fidare.
 
-**Due guardie nuove**, entrambe viste fallire su un difetto seminato: nessun letterale fuori da
-`:root`, e ogni `var()` nomina un token che esiste. La seconda copre l'unico modo di fallire di
-questo disegno — **un `var(--text-primry)` non dà errore**: ricade sul valore ereditato, quindi un
-refuso si presenta come un colore leggermente sbagliato invece che come un guasto.
+**Una rotta nuova**, `GET /api/v1/coden/authorisations`: le autorizzazioni di percorso venivano
+**scritte e mai rilette**, quindi «token di autorità vivi» era un campo senza sorgente.
 
-**E la guardia ha trovato un difetto di sé stessa:** cercava le definizioni solo in `:root` e ha
-contestato `--col-side`/`--col-panel`, che sono definiti su `.app-shell` perché variano col rango
-della barra. Definizioni legittime; ora cerca in tutto il foglio.
+### 7 · Difetti trovati — e la maggior parte erano miei
 
-### 6 · Passo 3 — nove temi, e cosa ha scoperto sullo strumento di misura
-
-Nove temi come **rimappature dei token**, generati da `tools/generate-themes.mjs` conservando il
-**rango** del default (`D-0147`) — quale superficie è più profonda di quale, quale testo è più
-quieto di quale. Il default non ha blocco: è il valore dei token stessi. Fra i nove, uno chiaro e
-uno ad **alto contrasto vero**.
-
-**La generazione è una proposta; l'audit è il verdetto** (`D-0148`). L'audit cammina ora tutti e
-nove i temi: **0 fallimenti di contrasto su 3.825 misure**. Ci sono voluti sei giri per arrivarci,
-e ogni giro ha nominato un difetto.
-
-**Il colore libero non rifiuta niente** (`D-0149`): una tinta che non regge come testo resta il
-riempimento, e ciò che si legge usa un **parente** della stessa tinta, derivato muovendo solo la
-chiarezza fino a 4,5:1. La matematica sta in `apps/webui-static/colour.js`, **in un modulo a parte
-perché sia testabile senza browser** — 11 test ancorati alle definizioni WCAG e passati su **tutta
-la ruota delle tinte**, non sui due colori che stavano nel documento.
-
-**Sette stati, glifo + parola** (`D-0150`), col glifo generato dal foglio di stile e non scritto in
-ogni punto di chiamata. E il **viola torna cablato** come `--state-waiting` (`D-0151`): è
-esattamente ciò che `D-0146` diceva che il passo successivo dovesse fare.
-
-**Tre difetti nello STRUMENTO, e sono il risultato più importante della fase.** Tutti invisibili
-finché esisteva un tema solo:
-
-1. le fermate di gradiente **completamente trasparenti** venivano fuse contro un colore di pagina
-   **scritto a mano** — un fondo nero fantasma dietro ogni elemento del tema chiaro;
-2. quel colore era una **costante presa dalla cosa misurata**. Uno strumento fatto così sbaglia la
-   prima volta che quella cosa cambia — e infatti **il `26/26` precedente era in parte fortuna**;
-3. un elemento con un **gradiente opaco proprio** non fermava la ricerca del fondo, quindi un
-   bottone primario veniva giudicato contro la pagina dietro di lui.
-
-**Due difetti nel prodotto**, trovati dagli stessi nove temi: le **parole-chiave** di colore
-(`color:white`) erano sfuggite al layer di token — la guardia del passo 2 cercava `#hex` e `rgb()`
-e non le parole — e **marchio e avatar ereditavano** il colore del testo invece di nominarlo.
-
-**E due difetti miei.** Le pastiglie di colore usavano **stili inline**, che la CSP del prodotto
-blocca: il rimedio è passare dal **CSSOM**, non allentare `style-src`. E la mia fotografia dei
-colori numerava le chiavi alternative **per ordine d'inserimento**, quindi aggiungere una sezione
-ne rinumerava migliaia e dichiarava 473 differenze che erano solo la sua contabilità.
+1. **Collisione di nomi reale.** «Sessione» significa due cose in questo prodotto: l'accesso e il
+   lavoro. Il mio `renderSessions` collideva con quello che elenca le **sessioni di accesso**, e il
+   suo parametro avrebbe **oscurato** il mio stato globale. Rinominato il mio, non il suo, con la
+   nota sul perché.
+2. **`ESLint no-undef` ha pagato di nuovo**, contestando `HTMLButtonElement`.
+3. **Mio, trovato dall'audit:** un bottone del terminale a **22px**, due sotto il minimo di 24 — il
+   tipo di miss che leggere il CSS non trova.
+4. **Mio, nella suite in browser:** la creazione delle sessioni mandava l'header CSRF
+   *convenzionale* invece di quello che il prodotto legge, quindi **sette scritture rispondevano
+   403** e la superficie non aveva niente da mostrare: un difetto dell'harness che imita
+   perfettamente un difetto del prodotto.
+5. **Mio, di nuovo nella misura:** `.page-title` risolveva a una sezione **nascosta**. Un controllo
+   falliva per la ragione sbagliata, e l'altro sarebbe passato misurando qualcosa che nessuno vede.
+6. **Mio, e il più istruttivo:** il controllo dell'anello di fuoco falliva mentre il prodotto era
+   corretto. Chromium concede `:focus-visible` per **modalità d'ingresso**: dopo un click un
+   `focus()` programmatico non mostra nulla. Ora il bottone si raggiunge con un **Tab vero** — la
+   stessa lezione che un evento di tastiera sintetico aveva già insegnato a questo progetto.
+7. **Limite dello strumento, non del prodotto:** l'audit contava i controlli **disabilitati**, che
+   non sono nell'ordine di tabulazione e non possono ricevere il fuoco. Esclusi — ma l'esclusione è
+   **dichiarata** (l'audit stampa quanti ne salta) e **coperta** (la suite prova che gli stessi
+   bottoni, abilitati, mostrano l'anello). Un'esclusione che nessuno conta è il modo in cui un audit
+   verde inizia a valere meno di quel che dice.
+8. **Incoerenza di stato trovata verificando gli input:** `PROJECT_STATE.last_commit` nominava un
+   commit **non raggiungibile** — la fase precedente aveva scritto lo stato e poi emendato il
+   commit. Riparata l'istanza, e **la regola**: il commit di testa si registra in un commit
+   successivo, mai con un emendamento.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                     648/648   0 falliti · 46 suite       (erano 631)
-guardia di struttura      19/19    0 falliti                  (erano 13)
-matematica del colore     11/11    ancorata alle definizioni WCAG, su tutta la ruota delle tinte
-accettazione in browser  265/265   0 falliti · browser reale   (erano 233)
-accessibilita WCAG 2.2    27/27    0 falliti                   (erano 26)
-contrasto per tema           0 fallimenti su 3.825 misure in NOVE temi
-eslint                   162 file · 0 errori · 0 warning · 0 no-undef
-MANIFEST                5728/5728  0 falliti
-fotografia dei colori    passo 2: 0 tuple cambiate su 6.133 firme · passo 3: 2, entrambe volute
-difetti seminati          11/11    ognuno catturato da esattamente una guardia
+unit                       677/677   0 falliti · 48 suite        (erano 648)
+guardia di struttura        28/28    0 falliti                   (erano 19)
+accettazione in browser    291/291   0 falliti · browser reale    (erano 265)
+accessibilita WCAG 2.2      27/27    0 falliti · 27 superfici     (erano 26 su 25)
+eslint                     166 file · 0 errori · 0 warning · 0 no-undef
+MANIFEST                  5733/5733  0 falliti
+difetti seminati            11/11    ognuno catturato da esattamente una guardia
 ```
 
-**La copertura è cresciuta, non calata.** L'audit misura ora **venticinque** superfici — dodici
-destinazioni più le tredici sezioni — con 630 controlli di focus e 944 misure di contrasto.
-Auditare le sole destinazioni avrebbe fatto sparire tredici superfici dalla misura lasciando il
-numero `26/26` identico: è così che una ristrutturazione trasforma un audit verde in un audit più
-piccolo.
+**La copertura è cresciuta di nuovo**: l'audit misura **27** superfici, perché archivio e cestino
+rendono controlli diversi dalla lista di lavoro.
+
+**Caccia con gli strumenti reali** (`noesar-debuglab`, avviato e **rifermato nella stessa fase**):
+`services/…/src` **0 finding**, `test/` **0 finding**, `apps/webui-static` **1 MEDIUM** — un
+`Object.assign` su un `Error` appena costruito, per attaccargli stato e correlation id: falso
+positivo, codice preesistente, scartato con la riga alla mano. `tools/` riporta **12 finding**,
+tutti in due strumenti Python **non toccati da questa fase** e non eseguibili su questo host
+(nessun `python3`): invocazioni `subprocess` con argomenti fissi e un `import` inutilizzato.
+**Registrati, non riparati** — una riparazione che non posso provare non è una riparazione.
 
 **Non eseguito, dichiarato:** nessuno screen reader reale (l'audit stampa il proprio blocco
 `NOT_TESTED` a ogni giro) · `forced-colors` non emulabile su questo Chromium · i quattro passi
-Python di `scripts/test.sh` (`python3` assente, regola 45).
-
-**Osservazione registrata e non riparata:** il browser **scarta** l'intestazione
-`Cross-Origin-Opener-Policy` che il server invia, perché si è serviti in HTTP semplice su un nome
-che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
-e di fase d'installazione.
+Python di `scripts/test.sh` (`python3` assente, regola 45) · i comandi TUI di `UI-050`, che non
+esistono.
 
 ## ➜ L'installazione — SOSTITUITA E VERIFICATA
 
-**La regola è cambiata a metà sessione** (`D-0143`, `CLAUDE10.md` **§3a**): su istruzione
-dell'Owner, *una fase che cambia il prodotto lo installa e lo verifica nella stessa fase*.
-Preparare e non installare era esattamente il difetto che questo progetto elimina altrove — il box
-vivo era rimasto indietro di **quattro** riparazioni. Vale da adesso in poi.
-
 ```text
-container   running · healthy · restarts=0 · noesar-evolution:phase4-themes
+container   running · healthy · restarts=0 · noesar-evolution:phase4-parts
 bind        192.168.178.100:8100 -> 8088   (LAN, NON loopback — vedi nota)
 endpoint    livez 200 · readyz 200 · metrics 401 (hardening LAN intatto)
 dati        postgres 18.4 · pgvector 0.8.5 · 16 migrazioni · 15 tabelle RLS
-            identity projected=1 — l'Owner ha superato lo scambio
-interfaccia 12 destinazioni e 13 sezioni servite; byte IDENTICI al repository
-stile       104 token + NOVE temi come rimappature; byte IDENTICI al repository
-hardening   dieci campi su dieci identici al container sostituito
+            identity projected=1
+interfaccia app.js · index.html · styles.css byte IDENTICI al repository
+rotte nuove /sessions · /metrics/review-time · /closures · /coden/authorisations
+            tutte 401 senza sessione, contro 404 su una rotta inesistente
 igiene      due soli container noesar-evolution* · reti e volumi invariati
             37 container non del progetto prima e dopo · nessun prune
 ```
@@ -255,23 +227,31 @@ salute contro il loopback restituisce `000` e sembra un servizio morto mentre il
 Usare l'indirizzo di bind reale, che si ricava con `docker port noesar-evolution`.
 
 **Cosa NON è stato verificato dal vivo, e va detto.** Il *comportamento* dell'interfaccia non è
-stato esercitato su questa installazione: le suite in browser creano un Owner e cambiano
-impostazioni, quindi girano contro una sonda usa-e-getta e mai contro l'installazione (§3a,
-`11e`). Dal vivo è provato che i byte serviti sono **identici** all'albero che quelle suite hanno
-esercitato, che il servizio è sano e che le rotte rispondono (401 contro un controllo 404).
+esercitato su questa installazione (§3a, `11e`): le suite creano un Owner, creano sessioni e ne
+eliminano, quindi girano contro una sonda usa-e-getta. Dal vivo è provato che i byte serviti sono
+**identici** all'albero che quelle suite hanno esercitato, che il servizio è sano e che le rotte
+nuove esistono e sono protette.
 
-**Rollback — nessun ripristino di stato richiesto, per ora.**
+## ➜ ⚠ Rollback — questa volta ha un costo, ed è dichiarato
+
+`AI_STATE_VERSION` passa da **2 a 3** (`reviewSamples`, `closures`, e i due campi delle sessioni).
+La migrazione c'è, è testata, e la catena gira **1 → 3 in una lettura sola**.
 
 ```text
 docker stop -t 60 noesar-evolution && docker rename noesar-evolution <da-parte>
-docker start noesar-evolution.rollback-tokens-20260727T100234Z
+docker start noesar-evolution.rollback-themes-20260727T110341Z
 ```
 
-`AI_STATE_VERSION` è invariato rispetto a `:phase4-tokens` e `state/ai-workspace.json` legge **ancora
-`"schemaVersion": 1"`** — verificato prima del build, dopo il backup e dopo l'avvio. **Finché
-legge 1, tornare indietro è solo riavviare il container vecchio.** Se legge 2, ripristinare anche
-`state/` da `BACKUPS/runtime_pre_themes_deploy_20260727T100234Z/` (75 MB, preso a servizio
-fermo). Il costo di rollback dello schema di `D-0082` **non** si applica a questo salto.
+**Controllare prima `state/ai-workspace.json`.** Finché legge `"schemaVersion": 1` — come al momento
+di scrivere questa riga, verificato tre volte — tornare indietro è **solo** riavviare il vecchio
+container. Se legge `3`, va ripristinato anche `state/` da
+`BACKUPS/runtime_pre_parts_deploy_20260727T110330Z/` (75 MB, preso a servizio fermo), o
+`:phase4-themes` **rifiuterà di caricare il workspace AI**: il suo validatore pretende
+corrispondenza esatta e un file dal futuro viene rifiutato invece che indovinato.
+
+Per tornare indietro sul **sorgente** basta ricopiare da
+`BACKUPS/webui_missing_parts_20260727T101551Z/`, che contiene i file dell'interfaccia, del control
+plane, le suite e il MANIFEST come erano prima di questa fase.
 
 ## ➜ Blocker aperti
 
@@ -286,24 +266,7 @@ applicabili non è stata fatta e non è accertabile su questo host.
 **Aperto e non pianificato:** la **voce** (`D-0123`) e i **pannelli staccabili** su secondo monitor
 (`07` §5).
 
-**Non toccato dal passo 1, e da non confondere con «fatto»:** il **banco di lavoro**
-(`UI-030…UI-037`), la **casella `NON FATTO`** (`UI-036`, Critica), la **metrica del prodotto**
-(`UI-070…UI-072`), la **gestione delle sessioni** (`UI-001…UI-012`) e le otto voci di accessibilità
-`UI-040…UI-047` che non sono strutturali.
-
-## ➜ Rollback
-
-```text
-container    noesar-evolution.rollback-webui-20260726T155330Z     immagine :phase4-webui
-runtime      BACKUPS/runtime_pre_wp2_deploy_20260726T155330Z/     copia completa 75 MB
-questa       BACKUPS/webui_struttura_20260727T082357Z/            i 5 file dell'interfaccia,
-sessione                                                          le 2 suite e il MANIFEST,
-                                                                  copiati prima di ogni modifica
-```
-
-Per tornare indietro sul **sorgente** di questa fase basta ricopiare da quella cartella: nessuna
-migrazione, nessuno schema, nulla di installato. Per tornare indietro sull'**installazione**:
-`docker stop -t 60 noesar-evolution`, rinominarlo da parte, poi
-`docker start noesar-evolution.rollback-webui-20260726T155330Z`. **Se nel frattempo la build
-attuale ha scritto** `state/ai-workspace.json` — controlla se legge ancora `"schemaVersion": 1` —
-va ripristinato anche quello dal backup, o `:phase4-webui` rifiuterà di caricare il workspace AI.
+**Osservazione registrata e non riparata:** il browser **scarta** l'intestazione
+`Cross-Origin-Opener-Policy` che il server invia, perché si è serviti in HTTP semplice su un nome
+che non è `localhost`. Vale anche per l'installazione viva in LAN. Richiede TLS — decisione di host
+e di fase d'installazione.
