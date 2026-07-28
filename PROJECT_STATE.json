@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f43e594 (D-0194: close F4-017 - capability mint/spend had the same missing CSRF check)",
-  "last_updated_utc": "2026-07-28T08:06:54Z",
+  "last_commit": "802b54b (D-0195/D-0196: remove apps/webui-react, record 3 Owner decisions)",
+  "last_updated_utc": "2026-07-28T08:32:15Z",
   "blockers": [
     {
       "id": "B-001",
@@ -38,12 +38,12 @@
     },
     {
       "id": "B-008",
-      "severity": "medium",
-      "code": "TWO_IDENTITY_STORES",
-      "summary": "The signing-in account lives in state/auth.json while noesar_identity.users in PostgreSQL is empty. The multi-user acceptance recorded by the Phase 4 completion gate does not cover the login path (F4W-006).",
+      "severity": "resolved",
+      "code": "TWO_IDENTITY_STORES=RESOLVED_STALE_BLOCKER_PROJECTION_ALREADY_LIVE",
+      "summary": "CHIUSO 2026-07-28 (D-0197), non da una migrazione ma da una verifica: il premesso della voce era falso al momento di questa fase. userDirectory.projectToDataPlane() esiste dal commit 8350816 (2026-07-25, integrazione PostgreSQL/pgvector) ed e' gia' chiamata a OGNI avvio del server subito dopo che il data plane e' pronto (server.mjs:1878). Verificato dal vivo sul container corrente: log 'data-plane.identity-projected' con projected:1, subito dopo 'data-plane.ready production_ready:true'. noesar_identity.users NON e' vuoto. Il disegno resta deliberato e invariato (user-directory.mjs, commento in testa al file): le credenziali (password verifier, TOTP, replay high-water mark) restano SOLO in state/auth.json per non finire mai in un dump SQL; solo i fatti d'identita' (id/username/role/status) sono proiettati, con password_scheme='external-auth-store' e salt/hash a zero byte. Nessuna migrazione dati necessaria o eseguita: non c'era nulla da migrare, la proiezione gia' correva.",
       "blocks_next_phase": false,
       "resolution_options": [
-        "Decide the target identity model and migrate deliberately, in a phase of its own"
+        "Nessuna azione residua. Se si vuole INVECE spostare anche le credenziali dentro PostgreSQL (cambio architetturale che il codice attuale rifiuta di proposito, per la ragione del backup-dump), e' una decisione separata dell'Owner, non implicita in questa chiusura."
       ]
     },
     {
@@ -774,7 +774,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0195: apps/webui-react rimossa su emendamento esplicito dell'Owner (CLAUDE10.md regola 12, secondo named exception). Owner ha risposto anche a B-008 (PostgreSQL e' la destinazione dell'identita', migrazione in una fase propria), B-001 (vuole un remote, credenziali da fornire) e TLS (si apre una fase dedicata ora) - nessuna delle tre ancora costruita. Prossima fase: una delle tre, a scelta dell'Owner; nessuna toccata da questa sessione oltre alla decisione stessa. F4-014/F4-015/F4-016 restano aperti, non toccati.",
+  "next_action": "D-0197: l'Owner ha scelto di partire da B-008 (migrazione identita'). Prima di scrivere codice, verificato lo stato reale: userDirectory.projectToDataPlane() esiste gia' dal 2026-07-25 ed e' gia' chiamata a ogni avvio (server.mjs:1878); log del container vivo confermano 'data-plane.identity-projected projected:1'. B-008 era una voce stale, chiuso senza migrare nulla - non c'era nulla da migrare. TLS e B-001 restano le due fasi non ancora costruite; B-001 bloccato in attesa delle credenziali dell'Owner. F4-014/F4-015/F4-016 restano aperti, non toccati.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1283,5 +1283,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T08:06:54Z"
+  "last_updated": "2026-07-28T08:32:15Z"
 }

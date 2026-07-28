@@ -2931,3 +2931,39 @@ dell'Owner (non fornite in questa sessione). La quinta domanda standing (conserv
 dati delle richieste rifiutate) resta aperta ma non è una decisione dell'Owner da
 prendere: il disegno è già autorizzato da `D-0136`, manca solo una verifica di conformità
 legale esterna a questo progetto.
+
+## D-0197 · `B-008` era una voce stale: la proiezione girava già, chiuso senza migrare nulla — 2026-07-28
+**Decision.** L'Owner ha scelto di partire da `B-008` (migrazione identità). Prima di
+scrivere codice: `userDirectory.projectToDataPlane()` esiste dal commit `8350816`
+(2026-07-25, integrazione PostgreSQL/pgvector) ed è **già chiamata a ogni avvio del
+server**, subito dopo che il data plane risponde pronto (`server.mjs:1878`). Log del
+container vivo (`noesar-evolution`, lettura sola, nessuna mutazione): `data-plane.ready
+production_ready:true` seguito immediatamente da `data-plane.identity-projected
+projected:1`. `noesar_identity.users` **non è vuoto**. La premessa registrata in `B-008`
+("noesar_identity.users in PostgreSQL is empty") era vera quando scritta e **falsa ora**,
+mai riverificata nelle sessioni successive.
+**Why.** Il disegno che il codice porta già (commento in testa a `user-directory.mjs`) è
+deliberato e va lasciato intatto: le credenziali (password verifier, TOTP, replay
+high-water mark) restano **solo** in `state/auth.json` così che un dump SQL non possa mai
+contenerle — collegato esplicitamente a `F4-013` (backup non cifrato). Solo i fatti
+d'identità (id/username/role/status) sono proiettati, con `password_scheme =
+'external-auth-store'` e salt/hash a un singolo byte zero: `noesar_identity.users` esiste
+per dare a Row Level Security un soggetto contro cui verificare, non per autenticare.
+Costruire una migrazione ora avrebbe significato duplicare un meccanismo già corretto, o
+peggio, spostare per davvero le credenziali dentro PostgreSQL — l'esatto contrario di una
+scelta di design già presa e motivata.
+**Rejected.** Costruire comunque una fase di migrazione per rispettare alla lettera la
+risposta dell'Owner a `D-0196`: la risposta rispondeva alla domanda posta ("quale store è
+la destinazione"), non alla realtà del codice, che la domanda stessa descriveva in modo
+impreciso. Un'esecuzione letterale di una domanda mal posta non è ciò che l'Owner ha
+chiesto.
+**Evidence.** `git log -S"projectToDataPlane" -- services/reference-control-plane/src/server.mjs`
+→ `8350816`, 2026-07-25; `docker logs noesar-evolution | grep identity-projected` →
+`projected:1` sull'avvio più recente; codice letto riga per riga
+(`user-directory.mjs:625-664`); test esistente `user-directory.test.mjs` (proiezione già
+coperta, invariato in questa fase).
+**Reversal cost.** Nessuno. Nessun codice cambiato, nessuna migrazione eseguita, nessun
+container toccato — solo lettura di log e correzione dello stato registrato.
+**Status.** `B-008` chiuso come stale. Nessuna azione residua **a meno che** l'Owner non
+voglia davvero spostare anche le credenziali in PostgreSQL — cambio architetturale che il
+codice attuale rifiuta di proposito, da riconfermare esplicitamente se voluto.
