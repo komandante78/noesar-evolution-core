@@ -44,7 +44,12 @@ VOLUME ["/workspace"]
 # Liveness, not readiness. The container must be restarted only when the process is
 # genuinely dead; /healthz and /readyz report dependency state, so using either here
 # would restart a perfectly alive process whenever a dependency is briefly degraded.
+# Tries plain HTTP first (the default this product has always shipped); if that
+# errors, retries over HTTPS with certificate verification off, because the
+# healthcheck runs against its own process on loopback and is not a third party to
+# authenticate. Runtime-configured (NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE), so
+# which branch actually answers is unknown at build time; both are tried every check.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["node", "-e", "require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+  CMD ["node", "-e", "const h=require('node:http'),s=require('node:https');function t(m,o){return new Promise((res,rej)=>{const r=m.get(o,(x)=>{x.resume();res(x.statusCode)});r.on('error',rej);r.setTimeout(4000,()=>r.destroy(new Error('timeout')))})}(async()=>{try{process.exit((await t(h,'http://127.0.0.1:8088/livez'))===200?0:1)}catch(e){try{process.exit((await t(s,{hostname:'127.0.0.1',port:8088,path:'/livez',rejectUnauthorized:false}))===200?0:1)}catch(e2){process.exit(1)}}})()"]
 
 ENTRYPOINT ["node", "services/reference-control-plane/src/server.mjs"]

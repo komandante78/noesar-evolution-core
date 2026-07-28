@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "802b54b (D-0195/D-0196: remove apps/webui-react, record 3 Owner decisions)",
-  "last_updated_utc": "2026-07-28T08:32:15Z",
+  "last_commit": "3a29c3f (D-0197: B-008 was a stale blocker, closed without migrating)",
+  "last_updated_utc": "2026-07-28T09:06:15Z",
   "blockers": [
     {
       "id": "B-001",
@@ -417,7 +417,7 @@
     "update signing side and portal not implemented - only the offline channel is usable, and no channel key is pinned, so nothing can be applied",
     "audit ledger append is O(n) per write: the whole file is re-read to find the last hash",
     "passkey / WebAuthn absent (matrix: MISSING)",
-    "no TLS: the installation is loopback-only and NOESAR_SECURE_COOKIES=false follows from that",
+    "TLS is off by default; enabling it (reverse proxy, or in-process via NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE, D-0198) is an operator action either way - the product does not generate a certificate itself, deliberately",
     "independent penetration test not performed - required by PRODUCTION_READINESS_V050.md before promotion",
     "phase 5 packaging should rebuild from oci/Dockerfile with a recorded network step rather than inheriting the phase 3 apt layer (D-0033)"
   ],
@@ -774,7 +774,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0197: l'Owner ha scelto di partire da B-008 (migrazione identita'). Prima di scrivere codice, verificato lo stato reale: userDirectory.projectToDataPlane() esiste gia' dal 2026-07-25 ed e' gia' chiamata a ogni avvio (server.mjs:1878); log del container vivo confermano 'data-plane.identity-projected projected:1'. B-008 era una voce stale, chiuso senza migrare nulla - non c'era nulla da migrare. TLS e B-001 restano le due fasi non ancora costruite; B-001 bloccato in attesa delle credenziali dell'Owner. F4-014/F4-015/F4-016 restano aperti, non toccati.",
+  "next_action": "D-0198: TLS in-process costruita, installata e verificata (:phase4-tls) - nuovo modulo tls.mjs, server.mjs sceglie https quando NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE sono entrambi validi, secureCookies implicito true, HEALTHCHECK bi-modale. TLS resta OFF sull'installazione viva - nessun certificato fornito dall'Owner, la capacita' e' installata non accesa. Resta solo B-001 (remote git) bloccato in attesa delle credenziali dell'Owner. F4-014/F4-015/F4-016 restano aperti, non toccati.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1283,5 +1283,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T08:32:15Z"
+  "last_updated": "2026-07-28T09:06:15Z"
 }

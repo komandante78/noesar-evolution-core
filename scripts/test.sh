@@ -70,6 +70,7 @@ step auth-smoke      node tools/auth-http-smoke.mjs
 # rules that once deleted real vendored source. A check no runner invokes is a check
 # that rots, and neither failure was visible until it was looked for on purpose.
 step http-smoke      node tools/http-smoke.mjs
+step_tristate tls-smoke node tools/tls-smoke.mjs
 step_tristate packaging node tools/test-packaging-filters.mjs
 step pg-migrations   "$PYTHON" tools/verify-postgres-migrations.py
 step pg-contract     "$PYTHON" tools/verify-postgres-contract.py

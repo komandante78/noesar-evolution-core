@@ -138,10 +138,12 @@ plus the decisions on the role model, what to federate, whether `MANIFEST.sha256
 cover `MASTER_REFERENCE/` (today **0 of 119 files**: the matrix everything is measured
 against is not integrity-protected), and licensing.
 
-Declared debt: no TLS · no image SBOM beyond the declared inventory · **no independent
-penetration test** · WCAG measured, **not certified** · `F4W-005` QR encoder proven only for
-versions 1–6 · `F4-013` the workspace backup is unencrypted and contains the auth master key
-· rejecting a staged update answers 501.
+Declared debt: TLS is off by default and requires operator configuration either way
+(reverse proxy or `NOESAR_TLS_CERT_FILE`/`NOESAR_TLS_KEY_FILE` — see
+`docs/LAN_ACCESS_CONFIGURATION.md` § TLS) · no image SBOM beyond the declared inventory ·
+**no independent penetration test** · WCAG measured, **not certified** · `F4W-005` QR
+encoder proven only for versions 1–6 · `F4-013` the workspace backup is unencrypted and
+contains the auth master key · rejecting a staged update answers 501.
 
 ## 7. The formal position
 

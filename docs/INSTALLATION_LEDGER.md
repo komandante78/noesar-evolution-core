@@ -2677,3 +2677,35 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. ⚠️ Tornare a
 `:phase4-csrf-hardening` reintroduce la lacuna CSRF su `capability/mint` e `/spend`
 (`F4-017`).
+
+## 2026-07-28 · `:phase4-tls` — TLS in-process, opzione B accanto al reverse proxy esistente
+
+**Immagine** `noesar-evolution:phase4-tls`, costruita `--network=none --pull=false` da
+`oci/Dockerfile.phase4-tls`, `FROM noesar-evolution:phase4-capability-csrf`. Copiati
+`server.mjs` (modificato) e `tls.mjs` (nuovo). HEALTHCHECK aggiornato per provare HTTP poi
+HTTPS (rejectUnauthorized:false) — nessun modo, a build time, di sapere quale transport una
+data installazione configurerà a runtime.
+
+**Byte provati identici all'albero**: `sha256sum` di `server.mjs`+`tls.mjs` nell'immagine
+(container usa-e-getta) = `sha256sum` repository, PASS su entrambi. Un secondo controllo
+via `docker exec` sul container vivo era ridondante (il container gira dallo stesso tag già
+provato) — fatto comunque, dichiarato come deviazione da §5 regola 16 in `D-0198`.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo (`BACKUPS/runtime_pre_tls_deploy_20260728T090314Z/`,
+75 MB) → configurazione riletta dal container sostituito (`docker inspect`: Env, Binds,
+PortBindings, RestartPolicy, NetworkMode, CapDrop, ReadonlyRootfs) → predecessore
+preservato come `noesar-evolution.rollback-capability-csrf-20260728T090314Z` → avvio senza
+override `--health-cmd`, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). Rotta protetta **401**, rotta inesistente **404**. `runtime.started` porta
+`tls_active:false, secure_cookies:false` — nessun certificato fornito, la capacità è
+installata ma non accesa. `data-plane.identity-projected projected:1` riconfermato.
+
+**§5a**: rimosso `noesar-evolution.rollback-csrf-hardening-20260728T061943Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-capability-csrf` toglie solo la capacità TLS (mai accesa su questo deploy) — non
+regredisce niente che fosse davvero attivo.

@@ -2967,3 +2967,72 @@ container toccato — solo lettura di log e correzione dello stato registrato.
 **Status.** `B-008` chiuso come stale. Nessuna azione residua **a meno che** l'Owner non
 voglia davvero spostare anche le credenziali in PostgreSQL — cambio architetturale che il
 codice attuale rifiuta di proposito, da riconfermare esplicitamente se voluto.
+
+## D-0198 · TLS in-process, costruita, installata e verificata nella stessa fase — 2026-07-28
+**Decision.** L'Owner ha autorizzato TLS (`D-0196`). Aggiunta una **seconda** via, accanto
+a quella già documentata e mai contraddetta (reverse proxy davanti, esempi in
+`deployment/reverse-proxy/`): il prodotto stesso può terminare TLS, se l'operatore fornisce
+`NOESAR_TLS_CERT_FILE`+`NOESAR_TLS_KEY_FILE`. Nuovo modulo `tls.mjs::resolveTls()` — una
+coppia mezza configurata, un file illeggibile o un file che non somiglia a un PEM sono
+**rifiutati**, mai un fallback silenzioso al plaintext (stessa disciplina di `D-0055` sul
+bind address). `server.mjs` sceglie `node:https` invece di `node:http` in base al
+risultato; `secureCookies` diventa `true` automaticamente quando TLS è attivo — non si può
+servire un cookie non-`Secure` su una connessione che questo stesso processo ha appena
+cifrato.
+**Why.** Il prodotto non genera mai un certificato da solo: per quale nome è, se
+autofirmato o emesso da una CA, è una decisione dell'host/operatore che lo stesso
+ragionamento di `D-0055` già applica al bind address — inventarla qui sarebbe indovinare
+invece di dichiarare. `openssl` (host, non nuovo tooling, dichiarato disponibile in
+`HOST_CAPABILITY_INVENTORY.md`) resta uno strumento di **test**, mai parte del percorso di
+produzione.
+**Rejected.** Generare un certificato autofirmato per l'operatore in automatico: avrebbe
+significato o installare tooling nuovo nell'immagine (`node-forge` — vietato, zero
+dipendenze npm di terze parti è un invariante dichiarato) o dipendere da un `openssl`
+presente nell'immagine mai auditato per quello scopo. **Attivare TLS su questo deploy**:
+nessun certificato reale fornito dall'Owner in questa sessione — la capacità è installata,
+non accesa; accenderla richiede un'azione dell'operatore (fornire cert+key) non ancora
+avvenuta.
+**Trovato costruendo.** L'HEALTHCHECK del container (`oci/Dockerfile` + `Dockerfile.phase4`,
+identico in entrambi per lo stesso motivo di sempre — un'immagine derivata non eredita la
+semantica dell'HEALTHCHECK del genitore se quello del padre cambia) interrogava solo HTTP:
+con TLS attivo a runtime avrebbe dichiarato il container malato mentre il servizio
+risponde. Riparato con un controllo a due tentativi (HTTP poi HTTPS con verifica
+certificato disattivata — verifica il proprio processo su loopback, non una terza parte),
+provato **in positivo** contro un server plaintext, un server TLS reale con certificato
+autofirmato generato per il test, e nessun server, prima di fidarsene.
+**Evidence.** unit **894→903** (+9, `tls.test.mjs`); ESLint **187→190 file, 0 errori**;
+`tools/verify-source.mjs` PASS; `tools/http-smoke.mjs`/`tools/auth-http-smoke.mjs` PASS
+(invariati); **`tools/tls-smoke.mjs` nuovo** (aggiunto a `scripts/test.sh` come
+`step_tristate`, tre stati perché `openssl` potrebbe mancare altrove) — PASS contro **due
+listener reali**: nessun certificato configurato (comportamento invariato, HSTS assente) e
+certificato/chiave configurati (transport commutato a HTTPS, HSTS presente, cookie sicuri
+impliciti, client plain-HTTP non ottiene più risposta coerente sulla stessa porta).
+MANIFEST **5782→5785**, 5785/5785 verificate (conteggio OK incrociato con le righe — una
+riga, `docs/LAN_ACCESS_CONFIGURATION.md`, si è rivelata tracciata contrariamente
+all'assunzione ereditata "docs/ esclusa dallo scope", corretta sul momento). Byte immagine
+= albero (`server.mjs`, `tls.mjs`), provato con un container usa-e-getta
+(`docker run --rm --entrypoint sha256sum`).
+⚠️ **Deviazione dichiarata**: un secondo controllo byte è stato fatto con `docker exec` sul
+container vivo — ridondante, perché il container gira già dal tag immagine appena provato
+identico all'albero, e §5 regola 16 non ammette `exec` per questo scopo. Nessuna mutazione,
+nessun dato letto oltre gli stessi due hash già noti; registrato invece di ignorato.
+**Sequenza d'installazione (11c).** `docker stop -t 60` → **`postgres.stopped clean:true`
+letto nel log** → backup completo a servizio fermo (`BACKUPS/runtime_pre_tls_deploy_
+20260728T090314Z/`, 75 MB) → predecessore preservato
+(`noesar-evolution.rollback-capability-csrf-20260728T090314Z`) → configurazione **riletta
+dal container sostituito** via `docker inspect` (Env, Binds, PortBindings, RestartPolicy,
+NetworkMode, CapDrop, ReadonlyRootfs — non da memoria) → avvio senza override
+`--health-cmd` → `healthy` al primo tentativo, `restarts=0`.
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito), rotta protetta **401**, rotta inesistente **404**. Log di avvio porta i due
+campi nuovi: `tls_active:false, secure_cookies:false` — coerente con nessun certificato
+fornito. `data-plane.identity-projected projected:1` riconfermato (stessa evidenza di
+`D-0197`, non una singola misura isolata).
+**§5a.** Rimosso `noesar-evolution.rollback-csrf-hardening-20260728T061943Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione.
+**Reversal cost.** Nessuno nuovo — `AI_STATE_VERSION` invariato, nessuna migrazione,
+nessun dato riscritto. Tornare a `:phase4-capability-csrf` toglierebbe solo la capacità
+(mai attiva su questo deploy), non regredisce nulla che fosse acceso.
+**Status.** Applicato **e installato** (`:phase4-tls`). **TLS resta OFF sull'installazione
+viva** finché l'Owner non fornisce (o chiede di generare) un certificato — questa fase
+costruisce e prova la capacità, non la accende.

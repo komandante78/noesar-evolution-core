@@ -154,9 +154,11 @@ paths, status codes, safe-mode state, log volume — would be readable by the wh
   session on every mutating route.
 * **Cookies** are unchanged: `noesar_session` is `HttpOnly; SameSite=Strict`.
   `SameSite=Strict` is correct precisely because all access is same-origin.
-* **`Secure` is not set** while `NOESAR_SECURE_COOKIES=false`, which follows from there
-  being no TLS. Setting it over plain HTTP would make the browser discard the session
-  cookie and the Owner could not log in at all.
+* **`Secure` is not set** while `NOESAR_SECURE_COOKIES=false` and no in-process TLS is
+  configured. Setting it over plain HTTP would make the browser discard the session
+  cookie and the Owner could not log in at all. It is implied `true` automatically once
+  `NOESAR_TLS_CERT_FILE`/`NOESAR_TLS_KEY_FILE` are set (see `## TLS` below) — the product
+  will not serve a non-`Secure` cookie over a connection it just encrypted itself.
 * **CSP, XSS and framing protections** are untouched: `default-src 'self'`,
   `object-src 'none'`, `frame-ancestors 'none'`, `X-Frame-Options: DENY`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
@@ -172,18 +174,51 @@ paths, status codes, safe-mode state, log volume — would be readable by the wh
 
 ## TLS
 
-**There is no TLS, and LAN access does not add any.** Traffic between a browser on the
-LAN and this host is plaintext: session cookie, CSRF token, password on first login, and
-the TOTP code all cross the local network in the clear.
+**TLS is off by default.** Traffic between a browser on the LAN and this host is
+plaintext unless one of the two paths below is configured: session cookie, CSRF token,
+password on first login, and the TOTP code all cross the network in the clear otherwise.
+That is acceptable only on a network the Owner controls and trusts, and TLS is required
+before this installation is published beyond one.
 
-That is acceptable only on a network the Owner controls and trusts. **TLS is required
-before this installation is published beyond a trusted LAN**, and before that happens:
+There are **two ways to add it, and they are not combined**:
 
-1. terminate TLS at a reverse proxy (examples in `deployment/reverse-proxy/`);
-2. set `NOESAR_SECURE_COOKIES=true`;
-3. add the external hostname to `NOESAR_ALLOWED_HOSTS`;
-4. remember that passkey/WebAuthn is still **missing** — TOTP is what exists today;
-5. note that no independent penetration test has been performed.
+### Option A — a reverse proxy in front (recommended when one is already part of the deployment)
+
+The product speaks plain HTTP on `127.0.0.1:8088` and something else terminates TLS —
+examples in `deployment/reverse-proxy/` (`nginx.conf.example`, `Caddyfile.example`).
+1. terminate TLS at the reverse proxy;
+2. set `NOESAR_SECURE_COOKIES=true` on the NOESAR container (the proxy's TLS is invisible
+   to it — nothing in-process tells it the connection upstream is encrypted);
+3. add the external hostname to `NOESAR_ALLOWED_HOSTS`.
+
+### Option B — the product terminates TLS itself (no separate proxy to run)
+
+Set both `NOESAR_TLS_CERT_FILE` and `NOESAR_TLS_KEY_FILE` to PEM files mounted read-only
+into the container (a self-signed pair for LAN use, or a real certificate — the product
+does not generate one itself: which name it is for and whether it is CA-issued is an
+operator decision, the same reasoning `NOESAR_BIND_ADDRESS` already applies). Both
+variables must be set together — one without the other fails startup loudly rather than
+falling back to plaintext silently. `NOESAR_SECURE_COOKIES` is then implied `true`
+automatically. The container's own healthcheck adapts to either transport at runtime.
+Example, a throwaway self-signed pair for LAN-only use:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout /path/on/host/key.pem -out /path/on/host/cert.pem \
+  -days 365 -subj "/CN=<the LAN hostname or IP you will browse to>"
+# then mount both read-only and set:
+#   NOESAR_TLS_CERT_FILE=/run/secrets/tls/cert.pem
+#   NOESAR_TLS_KEY_FILE=/run/secrets/tls/key.pem
+```
+
+A browser will show a certificate warning for a self-signed pair — expected, and no
+different in substance from `Caddyfile.example`'s `tls internal`. It is still real
+encryption of the traffic; it is not a real identity assertion to a stranger.
+
+### Either way
+
+1. remember that passkey/WebAuthn is still **missing** — TOTP is what exists today;
+2. note that no independent penetration test has been performed.
 
 ---
 
@@ -215,5 +250,7 @@ answers both.
 |---|---|
 | loopback is the default; explicit LAN honoured; address not on host refused; `0.0.0.0` refused without override; choice persists across reinstall; URL printed; readiness probes the published address | `tools/test-installer-hardening.mjs` (100 checks) |
 | scope derivation, `/metrics` gating matrix, Host allowlist, no CORS header on any route | `services/reference-control-plane/test/lan-exposure.test.mjs` (11 checks) |
+| a half-configured cert/key pair is refused; an unreadable or non-PEM file is refused; both files well-formed activates TLS | `services/reference-control-plane/test/tls.test.mjs` (9 checks) |
+| the server actually switches transport against a real listener; HSTS only appears once TLS genuinely terminates the connection; secure cookies are implied automatically; the healthcheck answers in both modes | `tools/tls-smoke.mjs` |
 
 Both were verified to fail against the pre-fix behaviour before being trusted.

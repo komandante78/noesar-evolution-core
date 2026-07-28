@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -53,6 +54,7 @@ import { UpdateManager } from './update-manager.mjs';
 import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
+import { resolveTls } from './tls.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -60,7 +62,16 @@ const webRoot = resolve(repoRoot, 'apps/webui-static');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
-const secureCookies = process.env.NOESAR_SECURE_COOKIES === 'true';
+// A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
+// load, and crashes startup the same way an invalid authority declaration does two lines
+// below — fail closed and loudly, not a fallback to plaintext nobody asked for.
+const tls = resolveTls({});
+// TLS active implies secure cookies: serving a non-Secure cookie over a connection this
+// process itself just encrypted would be the misconfiguration this default exists to
+// prevent. The environment variable can still force it true when TLS terminates in front
+// of this process instead (a reverse proxy this product does not ship, D-0055) — it can
+// never force it back to false while this process holds the private key.
+const secureCookies = process.env.NOESAR_SECURE_COOKIES === 'true' || tls.active;
 const authority = assertReferenceRuntimeAllowed(authorityStatus(process.env));
 
 // The PostgreSQL data plane comes up asynchronously, so this starts as the declared
@@ -416,7 +427,7 @@ function sessionResponse(res, value, status = 200) {
   }, { 'set-cookie':auth.cookieHeaders(value) });
 }
 
-const server = createServer(async (req, res) => {
+const requestListener = async (req, res) => {
   // One correlation id per inbound request, propagated to the client through a
   // response header so a user-visible failure can be found in the logs.
   const requestId = randomUUID();
@@ -1800,7 +1811,11 @@ const server = createServer(async (req, res) => {
     });
     return json(res, status, { error:status >= 500 ? 'Internal request failure.' : error.message, requestId });
   }
-});
+};
+
+const server = tls.active
+  ? createHttpsServer({ cert: tls.cert, key: tls.key }, requestListener)
+  : createServer(requestListener);
 
 // Last resort, not a substitute for handling errors where they happen.
 //
@@ -1846,6 +1861,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       timezone:timezoneService.serverDefault().effective,
       timezone_source_tier:timezoneService.serverDefault().sourceTier,
       safe_mode:watchdog.safeMode.active,
+      tls_active:tls.active,
+      secure_cookies:secureCookies,
     });
     if (setupTokenState.source === 'file') {
       // Path and fingerprint only. The token itself is never written to a log.
@@ -1918,4 +1935,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   });
 }
-export { server, logger, watchdog, debugMode, updateManager, timezoneService, metrics };
+export { server, logger, watchdog, debugMode, updateManager, timezoneService, metrics, tls, secureCookies };
