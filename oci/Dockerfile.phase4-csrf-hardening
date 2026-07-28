@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0193 — the Owner asked for `workspace-actions.mjs` to be attacked with the same rigor as
+# `coden-invariant-adversarial.test.mjs`: one dedicated HTTP-level test per invariant this
+# surface relies on, from a genuinely authenticated session, not the orchestrator's own
+# methods called directly. That hunt found a real gap rather than only exercising claimed ones.
+#
+# THE FINDING. Every other mutating route in server.mjs calls `requireCsrf()` after
+# `requireSession()`. The `workspace-actions` `plan`/`approve`/`reject`/`restore` routes — the
+# surface that spends a capability token and writes a real file, wired in the previous phase —
+# did not call it at all. `SameSite=Strict` on the session cookie already blocks a classic
+# cross-site POST, so this was a missing second layer, not an open door by itself — but it is a
+# layer the rest of the codebase treats as mandatory, silently absent from the newest and most
+# consequential surface. `requireCsrf()` added to both route blocks; nothing else in either
+# block changed. The `test/workspace-actions-http-adversarial.test.mjs` suite proved the gap
+# RED against the unfixed route (a cookie with no CSRF header could plan and approve) before
+# this image was built, and is GREEN against it now.
+#
+# The capability `mint`/`spend` routes share the identical missing call — found while reading
+# server.mjs for this fix, not attacked by this phase's declared file scope. Named, not fixed:
+# docs/DECISION_LOG.md D-0193, for a phase that declares it.
+#
+# Only `services/reference-control-plane/src/server.mjs` changed (two `requireCsrf()` calls
+# added). Nothing else in the image is rebuilt or re-copied.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-workspace-actions
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001

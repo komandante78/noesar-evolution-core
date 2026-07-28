@@ -2622,3 +2622,30 @@ quelle due righe di stato, non un difetto funzionale, e §5a è meccanica (il pi
 sempre). Due soli container di progetto.
 
 **Costo di rollback** — nessuno nuovo.
+
+## 2026-07-28 · `:phase4-csrf-hardening` — CSRF assente su plan/approve/reject/restore, trovato dal rigore adversarial e riparato
+
+**Immagine** `noesar-evolution:phase4-csrf-hardening`, costruita `--network=none --pull=false`
+da `oci/Dockerfile.phase4-csrf-hardening`, `FROM noesar-evolution:phase4-workspace-actions`.
+Solo `server.mjs` ricopiato (2 chiamate a `requireCsrf()` aggiunte, nessun altro cambio).
+
+**Byte provati identici all'albero**, immagine e container vivo dopo l'avvio: `sha256sum` di
+`server.mjs` = `sha256sum` repository (`0b31dcec...`), PASS su entrambi.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** → backup
+completo a servizio fermo (`BACKUPS/runtime_pre_csrf_hardening_deploy_20260728T060127Z/`,
+75 MB) → configurazione riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-workspace-actions-20260728T060127Z` → avvio senza override
+`--health-cmd`, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). `/api/v1/workspace-actions/plan` **401** non autenticato, rotta mai registrata
+**404**. Il fix CSRF stesso è provato dalla suite HTTP contro un server locale byte-identico
+(vedi `D-0193`), non ripetuto sull'installazione per rispettare 11e (nessuna suite che muta
+dati contro l'installazione viva).
+
+**§5a**: rimosso `noesar-evolution.rollback-workspace-actions-unfixed-20260728T020232Z`. Due
+soli container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. ⚠️ Tornare a
+`:phase4-workspace-actions` reintroduce la lacuna CSRF su `plan`/`approve`/`reject`/`restore`.

@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "ca860ee (workspace-actions: first surface to spend a token, installed)",
-  "last_updated_utc": "2026-07-28T02:10:00Z",
+  "last_updated_utc": "2026-07-28T06:10:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -218,6 +218,12 @@
       "severity": "low",
       "status": "OPEN - recorded",
       "summary": "reasoning.mjs plans always against the literal /workspace, never against NOESAR_WORKSPACE — PRODUCT.workspaceRoot is never defined. Harmless in production (the container always sets NOESAR_WORKSPACE=/workspace) but would silently plan against the wrong tree wherever they differ. repo-map.mjs uses the real workspace constant instead. Not fixed — out of this phase scope."
+    },
+    {
+      "id": "F4-017",
+      "severity": "medium",
+      "status": "OPEN - recorded",
+      "summary": "capability/mint and capability/spend routes in server.mjs share the exact CSRF gap workspace-actions plan/approve/reject/restore had (D-0193, fixed there): requireSession + permission check, no requireCsrf call, unlike every other mutating route. Same file, out of that phase declared scope. Not fixed."
     }
   ],
   "resolved_findings": [
@@ -351,8 +357,8 @@
     }
   ],
   "product_test_suite": {
-    "unit": "881/881 (misurato 2026-07-28)",
-    "eslint": "185 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28)",
+    "unit": "890/890 (misurato 2026-07-28)",
+    "eslint": "186 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28)",
     "browser_acceptance": "315/315 (misurato 2026-07-28)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
@@ -369,7 +375,8 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "NESSUN ORACOLO CONDIVISO — F4-014. Node 12/12 e Rust 12/12 su test nativi EQUIVALENTI, non sullo stesso file",
-    "manifest": "5783/5783, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28)"
+    "manifest": "5784/5784, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28)",
+    "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",

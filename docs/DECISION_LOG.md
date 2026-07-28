@@ -2831,3 +2831,27 @@ construction if shadowsRoot is nested"), verificato **visto fallire prima del fi
 passare dopo.
 **Reversal cost.** Nessuno.
 **Status.** Applicato e installato nella stessa immagine di `D-0191`.
+
+## D-0193 · workspace-actions attaccato al rigore di coden-invariant-adversarial: CSRF assente trovato e riparato — 2026-07-28
+**Decision.** Owner: estendere l'adversarial suite di `workspace-actions.mjs` al rigore di
+`coden-invariant-adversarial.test.mjs` prima di dichiarare la clausola sull'autorità
+soddisfatta. Nuovo file HTTP-level (`workspace-actions-http-adversarial.test.mjs`, 9 test:
+sessione, CSRF ×3, identità-non-client-supplied, WRITE-only strutturale, scope-server-side,
+onestà dello stato in rete, controllo negativo) ha trovato che `plan`/`approve`/`reject`/
+`restore` — a differenza di OGNI altra rotta mutante di `server.mjs` — non chiamavano mai
+`requireCsrf()`. Visto FALLIRE prima del fix (cookie valido, nessun header CSRF → 201/200
+invece di 403); `requireCsrf()` aggiunto a entrambi i blocchi; visto passare dopo.
+**Why.** `SameSite=Strict` sul cookie di sessione mitiga il CSRF classico, ma è una seconda
+riga di difesa che il resto del codice tratta come obbligatoria — silenziosamente assente
+proprio sulla superficie più nuova e più sensibile (spende un token, scrive un file vero).
+**Rejected.** Estendere lo stesso fix a `capability/mint`+`/spend` (stessa lacuna identica,
+stesso file) — fuori dallo scope di file dichiarato per questa fase. Nominato, non riparato:
+`F4-017` in `PROJECT_STATE.json`.
+**Evidence.** unit 881→890 (+9), ESLint 186 file 0 errori, browser e2e 315/315, accessibilità
+27/27, difetti seminati 19/19, MANIFEST 5784/5784 0 mismatch. Full sweep DebugLab (rule 40d,
+route/auth-gate change): 74 hit su tutto l'host, 0 dentro `services/reference-control-plane/`,
+71 rumore bandit/ruff pre-esistente su script di build (subprocess/password heuristics), 3
+semgrep MEDIUM triagiati falsi (0o700 è PIÙ restrittivo del "fix" 0o644 suggerito;
+`Object.assign` su un `Error` non è mass-assignment).
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuna migrazione.
+**Status.** Applicato e installato (`:phase4-csrf-hardening`).
