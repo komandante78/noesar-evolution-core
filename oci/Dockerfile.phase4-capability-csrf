@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# F4-017, closed. `D-0193` fixed the missing `requireCsrf()` call on the workspace-actions
+# `plan`/`approve`/`reject`/`restore` routes and named the identical gap one block down —
+# `/api/v1/capability/mint` and `/api/v1/capability/spend`, the routes that mint and spend the
+# very token workspace-actions.mjs spends — as out of that phase's declared file scope. This
+# is the phase that closes it, same file, same fix, same proof discipline.
+#
+# `test/capability-http-adversarial.test.mjs` obtained a real, server-built plan through
+# `/api/v1/workspace-actions/plan` and used it to attack mint and spend directly: a valid
+# session cookie with no CSRF header could mint a token and spend it — the forged spend in
+# the test actually consumed the token's one use before the fix. Seen failing red on all
+# three CSRF cases; `requireCsrf()` added after the existing `workspace.write` permission
+# check, seen green after, including that a forged spend attempt no longer consumes a use.
+#
+# Only `services/reference-control-plane/src/server.mjs` changed (one `requireCsrf()` call
+# added to the shared mint/spend route block). Nothing else in the image is rebuilt or
+# re-copied.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-csrf-hardening
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001

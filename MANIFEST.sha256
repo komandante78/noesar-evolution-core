@@ -5631,7 +5631,7 @@ e5276f2d21ceb79fd74c4446f55b53918fe13351a97bc9bd92883c01534d79b6  services/refer
 67ee1a0b1b7b55cb039e9928bc1c2ef2522f14f473c3780880207d0841fad310  services/reference-control-plane/src/postgres-supervisor.mjs
 82a4aaedf68894465bf8f4dcf1959676715203642530ae2bd484d5608b83fdb5  ./services/reference-control-plane/src/privacy.mjs
 8c3ceb675e464cafc10d367665f3cc1b70db28f5a6da19378a44c7ee0f6d55b0  services/reference-control-plane/src/production-readiness.mjs
-0b31dcec3f2e07b3ced1929157565d1c2d6e1972b8c704baba4e59d05094ee4e  ./services/reference-control-plane/src/server.mjs
+c2e468972daef22bc805c48d1a9459e5ea4bb5baa269c57a7df519789c3fa88e  ./services/reference-control-plane/src/server.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  services/reference-control-plane/src/setup-token.mjs
 afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  services/reference-control-plane/src/shadow.mjs
 67421f901896eaed6ea035c9ff7f1e7282bb5aa51f5f45b41dae18d25ff91f45  services/reference-control-plane/src/executor.mjs
@@ -5782,3 +5782,4 @@ e3d18ff5ef3850498e1f9a0ea4b10b8a03842e523388fc7629bed85d3259efb1  oci/Dockerfile
 926e18bb68f741e7681fe12dfb7a43db0c6535aed094514d9a5375118ae0e4c7  rust/crates/noesar-reasoning-reference/tests/conformance.rs
 4baeac56dd3a6e5b769c340c80ea631f0ad38d2366b700a803c4f85d57540fcd  oci/Dockerfile.phase4-cow
 61288e3ea598a30371e3072939d1e848bc0bee74c8628eba312b695fa8972793  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
+c80df91dfea1ec9e8b6db678cb599ee96623b2f25916d1fc4cf9d094bf82e1e2  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs

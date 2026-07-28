@@ -2855,3 +2855,25 @@ semgrep MEDIUM triagiati falsi (0o700 è PIÙ restrittivo del "fix" 0o644 sugger
 `Object.assign` su un `Error` non è mass-assignment).
 **Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuna migrazione.
 **Status.** Applicato e installato (`:phase4-csrf-hardening`).
+
+## D-0194 · F4-017 chiuso: stessa lacuna CSRF su capability/mint e /spend, stessa disciplina — 2026-07-28
+**Decision.** Owner: «procedi» dopo la scelta fra riparare `F4-017` subito o nominarlo e
+basta. Nuovo file `capability-http-adversarial.test.mjs` (4 test: CSRF assente su mint,
+CSRF sbagliato su mint, CSRF assente su spend con un token reale, controllo negativo) usa un
+piano vero ottenuto da `/api/v1/workspace-actions/plan` per attaccare `mint`/`spend` con la
+stessa richiesta che una chiamata legittima costruirebbe. Visto FALLIRE prima del fix: un
+cookie valido senza header CSRF poteva mintare **e spendere** un token — lo spend forgiato ha
+davvero consumato l'unico uso del token prima della riparazione. `requireCsrf()` aggiunto
+dopo il controllo `workspace.write` già esistente; visto passare dopo, incluso che uno spend
+forgiato non consuma più un uso.
+**Why.** Stessa ragione di `D-0193`: `SameSite=Strict` mitiga il CSRF classico, ma è la
+seconda riga di difesa che ogni altra rotta mutante tratta come obbligatoria — qui mancava
+sulla coppia di rotte che minta e spende il token stesso che `workspace-actions.mjs` usa.
+**Rejected.** Nessuna — stesso file già toccato da `D-0193`, nessuna ragione per rimandare.
+**Evidence.** unit 890→894 (+4), ESLint 187 file 0 errori, browser e2e 315/315, accessibilità
+27/27, difetti seminati 19/19, MANIFEST 5785/5785 0 mismatch. Full sweep DebugLab ripetuto
+(rule 40d, secondo cambio di auth-gate nella sessione): 0 hit dentro
+`services/reference-control-plane/`, stesso rumore pre-esistente delle 74 voci di `D-0193`
+altrove sull'host, nessuna nuova.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuna migrazione.
+**Status.** Applicato e installato (`:phase4-capability-csrf`). `F4-017` chiuso.

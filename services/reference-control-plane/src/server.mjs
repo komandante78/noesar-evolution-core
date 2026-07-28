@@ -991,6 +991,7 @@ const server = createServer(async (req, res) => {
       if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
         return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
       }
+      if (!requireCsrf(req, res, authenticated)) return;
       const payload = await body(req);
       const nowUnix = Math.floor(Date.now() / 1000);
       try {

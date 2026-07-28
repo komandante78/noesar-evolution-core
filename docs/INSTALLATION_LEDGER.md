@@ -2649,3 +2649,31 @@ soli container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti in
 
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. ⚠️ Tornare a
 `:phase4-workspace-actions` reintroduce la lacuna CSRF su `plan`/`approve`/`reject`/`restore`.
+
+## 2026-07-28 · `:phase4-capability-csrf` — F4-017 chiuso, stessa lacuna su capability/mint e /spend
+
+**Immagine** `noesar-evolution:phase4-capability-csrf`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-capability-csrf`, `FROM
+noesar-evolution:phase4-csrf-hardening`. Solo `server.mjs` ricopiato (1 chiamata a
+`requireCsrf()` aggiunta sul blocco condiviso mint/spend).
+
+**Byte provati identici all'albero**, immagine e container vivo dopo l'avvio: `sha256sum` di
+`server.mjs` = `sha256sum` repository (`c2e46897...`), PASS su entrambi.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** → backup
+completo a servizio fermo (`BACKUPS/runtime_pre_capability_csrf_deploy_20260728T061943Z/`,
+75 MB) → configurazione riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-csrf-hardening-20260728T061943Z` → avvio senza override
+`--health-cmd`, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato. `/api/v1/capability`
+e `/api/v1/capability/mint` **401** non autenticati, rotta mai registrata **404**. Il fix CSRF
+stesso è provato dalla suite HTTP contro un server locale byte-identico (`D-0194`), non
+ripetuto sull'installazione viva (11e).
+
+**§5a**: rimosso `noesar-evolution.rollback-workspace-actions-20260728T060127Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. ⚠️ Tornare a
+`:phase4-csrf-hardening` reintroduce la lacuna CSRF su `capability/mint` e `/spend`
+(`F4-017`).
