@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f721d62 (D-0198: in-process TLS termination, built/installed/verified live)",
-  "last_updated_utc": "2026-07-28T09:16:48Z",
+  "last_commit": "be305e8 (D-0199/D-0200: private repo created and pushed; fix a self-inflicted secret-scan false positive)",
+  "last_updated_utc": "2026-07-28T09:56:32Z",
   "blockers": [
     {
       "id": "B-001",
@@ -211,12 +211,6 @@
       "severity": "medium",
       "status": "OPEN - prototype published for review",
       "summary": "The deployed WebUI diverges from DESIGN/APPROVED_WEBUI_REFERENCE.png, which 01_PRODUCT/11 calls binding: no central composer, no quick actions, no active-tasks panel and no bottom approval strip on Home, and 21 flat nav entries against the spec rule of simple-before-technical progressive disclosure. The specification also requires visual regression and Owner review before the UI is final; neither has happened. A reorganised prototype (26 destinations in 5 categories, 9 selectable themes) is published for the Owner decision."
-    },
-    {
-      "id": "F4-016",
-      "severity": "low",
-      "status": "OPEN - recorded",
-      "summary": "reasoning.mjs plans always against the literal /workspace, never against NOESAR_WORKSPACE — PRODUCT.workspaceRoot is never defined. Harmless in production (the container always sets NOESAR_WORKSPACE=/workspace) but would silently plan against the wrong tree wherever they differ. repo-map.mjs uses the real workspace constant instead. Not fixed — out of this phase scope."
     }
   ],
   "resolved_findings": [
@@ -353,6 +347,24 @@
       "severity": "medium",
       "status": "RESOLVED - D-0194, installed :phase4-capability-csrf, 2026-07-28",
       "summary": "capability/mint and capability/spend routes in server.mjs share the exact CSRF gap workspace-actions plan/approve/reject/restore had (D-0193, fixed there): requireSession + permission check, no requireCsrf call, unlike every other mutating route. Same file, out of that phase declared scope. Not fixed."
+    },
+    {
+      "id": "F4-014",
+      "severity": "low",
+      "status": "RESOLVED - D-0201, installed :phase4-findings, 2026-07-28",
+      "summary": "the executor was the only one of the six phase-1 steps with two implementations (Node/Rust) and no shared oracle — conformance/executor-vectors.json did not exist. Now exists (10 cases) and both services/reference-control-plane/test/executor-vectors.test.mjs and rust/crates/noesar-executor/tests/conformance.rs run it. Building it found a real divergence: executor.mjs threw a Node-only 'COVERAGE' ShadowError kind noesar-shadow's Rust enum has no variant for; Rust already reported the same refusal as 'INVALID'. Fixed by matching Rust's existing behaviour in executor.mjs (smaller change than adding a Rust enum variant). Node 23/23 (12 native + 11 vector), Rust 13/13 (12 native + 1 vector), full workspace cargo test 0 failed."
+    },
+    {
+      "id": "F4-015",
+      "severity": "low",
+      "status": "RESOLVED - D-0201, installed :phase4-findings, 2026-07-28",
+      "summary": "shadowStatus() wrote to the filesystem (mkdir/writeFile/copyFile/unlink, probing reflink support) as a side effect of GET /api/v1/shadow — a GET must not mutate. Fixed: the probe now runs once at server startup and the snapshot is cached in shadowSnapshot; GET serves the cache. A new POST /api/v1/shadow/reprobe is the only route left that probes live. Verified live: GET no longer writes, POST /reprobe works and agrees with the startup probe, GET on the reprobe path correctly 404s."
+    },
+    {
+      "id": "F4-016",
+      "severity": "low",
+      "status": "RESOLVED - D-0201, installed :phase4-findings, 2026-07-28",
+      "summary": "reasoning.mjs plans always against the literal /workspace, never against NOESAR_WORKSPACE — PRODUCT.workspaceRoot is never defined. Harmless in production (the container always sets NOESAR_WORKSPACE=/workspace) but would silently plan against the wrong tree wherever they differ. Fixed: uses the same module-level workspace constant shadow.mjs and repo-map.mjs already do."
     }
   ],
   "product_test_suite": {
@@ -373,7 +385,7 @@
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
-    "executor_vectors": "NESSUN ORACOLO CONDIVISO — F4-014. Node 12/12 e Rust 12/12 su test nativi EQUIVALENTI, non sullo stesso file",
+    "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
     "manifest": "5785/5785, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)"
@@ -773,7 +785,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0199: B-001 chiuso. Repository privato komandante78/NOESAR-EVOLUTION creato e HEAD pushato (f721d62). Il token fornito dall'Owner in chat e' dichiarato compromesso (va revocato/sostituito) e non e' stato persistito da nessuna parte - ogni push futuro richiede di nuovo un token, per design. D-0200: il secret scan rieseguito DOPO il commit (non solo prima) ha trovato 1 fixture di test a forma di chiave PEM in tls.test.mjs - contenuto fasullo, riscritto, allowlist scoped al singolo commit storico gia' pushato (non riscritto, regola 14). Nessun blocker aperto resta tranne i reperti tecnici gia' noti (F4-014/F4-015/F4-016, mai toccati) e le due domande standing minori. Prossima azione: a scelta dell'Owner - riverificare col digest cosa resta davvero aperto nella fase 1 prima di assumere quale sia il prossimo passo tecnico.",
+  "next_action": "D-0201: F4-014/F4-015/F4-016 chiusi, costruiti installati e verificati nella stessa fase (:phase4-findings). L'Owner ha scelto esplicitamente questi tre invece di riaprire EXECUTE (confine di sicurezza deliberato, D-0191, lasciato intatto). F4-014: conformance/executor-vectors.json nuovo, 10 vettori, stesso file su Node e Rust - trovata una vera divergenza (Node 'COVERAGE' vs Rust nessuna variante equivalente), riparata allineando Node a 'INVALID'. F4-015: GET /api/v1/shadow non scrive piu' sul filesystem, probe cache all'avvio, nuovo POST /api/v1/shadow/reprobe. F4-016: reasoning.mjs usa il workspace reale invece del letterale '/workspace'. Nessun finding aperto resta di severita' bassa non dichiarata. Prossima azione: a scelta dell'Owner - nessun blocker, nessun reperto minore aperto. F4W-011/F4W-012 (misura contro MASTER V4, disegno WebUI) restano le uniche voci open_findings non toccate.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1282,5 +1294,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T09:16:48Z"
+  "last_updated": "2026-07-28T09:56:32Z"
 }

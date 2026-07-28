@@ -3,12 +3,14 @@
 // The executor that accepts nothing but a capability token. Mirrors
 // rust/crates/noesar-executor.
 //
-// Unlike reasoning, capability, shadow and events, this step has NO shared oracle:
-// `conformance/executor-vectors.json` does not exist and never did, though this header
-// claimed it and MANIFEST.sha256 carried an entry for a Rust conformance runner that was
-// never written. Both sides are held by equivalent native tests instead, which is weaker —
-// two implementations of one contract start to disagree the moment only one of them has the
-// test. Recorded as F4-014 rather than left as a claim.
+// F4-014, closed: like reasoning, capability, shadow and events, this step now has a shared
+// oracle — `conformance/executor-vectors.json`, run natively by both this file (test/
+// executor-vectors.test.mjs) and rust/crates/noesar-executor (tests/conformance.rs). Unlike
+// the other four, `execute()` has real side effects (a signed token minter, real files, a
+// real shadow), so a vector describes a scenario each side builds natively rather than pure
+// input/output data. Building it surfaced one real divergence: this file used to throw a
+// Node-only `'COVERAGE'` error kind that `noesar-shadow`'s Rust `ShadowError` enum has no
+// equivalent for; both sides now report `'INVALID'` for the same refusal.
 //
 // This is the step that closes the circle: an approved plan mints tokens, the executor may
 // only act by spending one, everything it does lands in a shadow, and the shadow is compared
@@ -45,8 +47,14 @@ export function execute({ authorized, minter, tokens, shadow, actions, expectati
   // declared was touched: `unexpected` would be empty because there was nothing else there
   // to observe, not because nothing else happened. Refused here rather than run to a result
   // that would claim a guarantee decided by whoever built the shadow.
+  //
+  // F4-014: this used to throw kind 'COVERAGE', a discriminant that exists only on this
+  // side — noesar-shadow's Rust ShadowError enum has no Coverage variant and the Rust
+  // executor reports the identical refusal as Invalid. Building the shared oracle surfaced
+  // the mismatch; matching Rust's existing behaviour here is the smaller, safer fix (one
+  // string, no new Rust enum variant to thread through every match arm and Display impl).
   if (shadow?.coverage !== COVERAGE_WHOLE) {
-    throw new ShadowError('COVERAGE',
+    throw new ShadowError('INVALID',
       'the executor requires a whole-workspace shadow: one holding only the declared paths cannot observe an undeclared write, and a clean comparison from it would be an artefact of its own construction');
   }
   const outcomes = [];

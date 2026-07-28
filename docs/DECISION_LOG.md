@@ -3111,3 +3111,89 @@ test e configurazione di scansione). ⚠️ **Lezione registrata**: la scansione
 va fatta **anche dopo** il commit che introduce contenuto nuovo, non solo prima — su
 questo repository lo strumento scansiona la storia, non l'albero non committato, quindi
 "pulito prima di committare" non prova nulla sul commit appena fatto.
+
+## D-0201 · F4-014/F4-015/F4-016 chiusi — costruiti, installati e verificati nella stessa fase — 2026-07-28
+**Decision.** L'Owner ha scelto esplicitamente questi tre reperti minori invece di riaprire
+EXECUTE (confine di sicurezza deliberato, `D-0191`, lasciato del tutto intatto).
+
+**`F4-014` — l'esecutore era l'unico dei sei passi senza oracolo condiviso.**
+`conformance/executor-vectors.json` non esisteva mai, benché l'header di `executor.mjs`
+lo affermasse da tempo e `MANIFEST.sha256` portasse una voce per un runner Rust mai
+scritto (`D-0186`). A differenza degli altri quattro oracoli, `execute()` ha effetti
+collaterali reali (un `TokenMinter` firmato, file veri, una shadow reale) — non è una
+funzione pura come `compare()` di shadow, quindi un vettore descrive uno **scenario** che
+ciascun lato costruisce nativamente (files iniziali, mint di token, azioni), non solo
+input/output. Scritti 10 casi che coprono le proprietà di sicurezza documentate: token
+legato a percorso+operazione+piano, spesa-prima-dell'effetto, EXECUTE sempre rifiutato
+anche con un token che lo concede, il requisito di copertura whole-workspace.
+**Trovato costruendo, non nominato dalla domanda originale**: Node lanciava un kind di
+errore `'COVERAGE'` per il rifiuto "shadow non abbastanza ampia" — ma `noesar-shadow`
+(Rust) **non ha affatto quella variante** nel proprio `enum ShadowError`
+(`Containment`/`Io`/`Invalid`/`Limit`), e l'esecutore Rust riporta lo stesso rifiuto come
+`Invalid`. Una vera divergenza fra le due implementazioni, esattamente la classe di
+difetto che l'oracolo esiste per catturare. Riparato allineando Node a `'INVALID'`
+(cambio più piccolo e sicuro di aggiungere una nuova variante Rust da far transitare in
+ogni match arm e nell'impl `Display`).
+
+**`F4-015` — `shadowStatus()` scriveva sul filesystem come effetto collaterale di una
+GET.** `probeCopyOnWrite()` fa `mkdir`/`writeFile`/`copyFile`/`unlink` reali per misurare
+il supporto reflink — corretto misurare piuttosto che assumere, sbagliato farlo come
+effetto di una `GET /api/v1/shadow`. Riparato: il probe gira **una volta all'avvio**, il
+risultato è cache in `shadowSnapshot`, `GET` serve la cache; nuovo
+`POST /api/v1/shadow/reprobe` è l'unica rotta rimasta che scrive, perché ora è l'unica che
+lo dichiara nel verbo.
+
+**`F4-016` — `reasoning.mjs` pianificava sempre contro la stringa letterale
+`/workspace`.** `PRODUCT.workspaceRoot` non è mai stato definito, quindi
+`PRODUCT.workspaceRoot ?? '/workspace'` valutava sempre al secondo termine — innocuo in
+produzione (il container imposta sempre `NOESAR_WORKSPACE=/workspace`, quindi i due
+valori coincidono), silenziosamente sbagliato ovunque differiscano. Riparato usando la
+stessa costante di modulo `workspace` che `shadow.mjs` e `repo-map.mjs` già usano per
+questa esatta ragione.
+
+**Why.** Ogni reperto era basso rischio e ben scoperto — nessuno richiedeva di riaprire
+una decisione architetturale presa apposta. Costruire l'oracolo dell'esecutore ora, come
+fase propria e non come rattoppo di fine sessione, è esattamente il contrario di quanto
+`D-0186` aveva rifiutato ("un oracolo sottile spacciato per copertura, a fine fase e
+fuori budget").
+
+**Rejected.** Aggiungere una variante `Coverage` all'enum Rust invece di allineare Node a
+`Invalid`: avrebbe richiesto toccare ogni match arm e l'impl `Display` di
+`noesar-shadow` per un discriminante che nessun consumatore attuale distingue
+diversamente da `Invalid`.
+
+**Evidence.** Node: `node --test` **914/914** (era 903, +11 dai vettori esecutore); ESLint
+**191 file 0 errori**; `tools/verify-source.mjs` PASS; `tools/http-smoke.mjs`,
+`tools/auth-http-smoke.mjs` (esteso con 2 controlli nuovi sulla reprobe route),
+`tools/tls-smoke.mjs` tutti PASS. Rust: container effimero `rust:1-bookworm`,
+`--network=none --cap-drop=ALL`, `RUSTUP_TOOLCHAIN` pinnato (lezione `D-0173`), sorgente
+montato in sola lettura: `cargo test --workspace --locked --offline --all-targets` →
+**exit 0**, `noesar-executor` 12 test nativi + **1 nuovo `every_executor_vector_passes`**
+tutti PASS, **zero FAILED in tutto il workspace**. MANIFEST **5785→5788**, 5788/5788
+verificate (conteggio OK incrociato con le righe). Byte immagine = albero
+(`server.mjs`, `executor.mjs`), provato con container usa-e-getta.
+
+**Sequenza d'installazione (11c).** `docker stop -t 60` → **`postgres.stopped clean:true`
+letto nel log** → backup completo a servizio fermo
+(`BACKUPS/runtime_pre_findings_deploy_20260728T095332Z/`, 75 MB) → configurazione
+**riletta dal container sostituito** → predecessore preservato
+(`noesar-evolution.rollback-tls-20260728T095332Z`) → avvio senza override
+`--health-cmd` → `healthy` al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). `GET /api/v1/shadow` **401** senza sessione, `POST /api/v1/shadow/reprobe`
+**401** senza sessione, `GET /api/v1/shadow/reprobe` **404** (verbo sbagliato — prova dal
+vivo che F4-015 è davvero applicato), rotta inesistente **404**. Log di avvio invariato
+(`tls_active:false`), `data-plane.identity-projected projected:1` riconfermato ancora una
+volta.
+
+**§5a.** Rimosso `noesar-evolution.rollback-capability-csrf-20260728T090314Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione.
+
+**Reversal cost.** Nessuno nuovo — `AI_STATE_VERSION` invariato, nessuna migrazione.
+Tornare a `:phase4-tls` reintrodurrebbe tutti e tre i reperti.
+
+**Status.** Applicato **e installato**. `F4-014`, `F4-015`, `F4-016` chiusi in
+`PROJECT_STATE.json`. Nessun finding di severità bassa resta aperto e non dichiarato;
+`F4W-011`/`F4W-012` (misura contro MASTER V4, disegno WebUI) sono le uniche voci
+`open_findings` rimaste, non toccate da questa fase.

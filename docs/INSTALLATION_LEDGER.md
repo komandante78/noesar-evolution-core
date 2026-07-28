@@ -2709,3 +2709,32 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
 `:phase4-capability-csrf` toglie solo la capacità TLS (mai accesa su questo deploy) — non
 regredisce niente che fosse davvero attivo.
+
+## 2026-07-28 · `:phase4-findings` — F4-014/F4-015/F4-016 chiusi, EXECUTE lasciato intatto
+
+**Immagine** `noesar-evolution:phase4-findings`, costruita `--network=none --pull=false` da
+`oci/Dockerfile.phase4-findings`, `FROM noesar-evolution:phase4-tls`. Copiati `server.mjs`
+(F4-015 cache+reprobe, F4-016 workspace reale) ed `executor.mjs` (F4-014, `'COVERAGE'` →
+`'INVALID'` per allinearsi a Rust).
+
+**Byte provati identici all'albero**: `sha256sum` di `server.mjs`+`executor.mjs`
+nell'immagine (container usa-e-getta) = `sha256sum` repository, PASS su entrambi.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo (`BACKUPS/runtime_pre_findings_deploy_20260728T095332Z/`,
+75 MB) → configurazione riletta dal container sostituito (`docker inspect`) →
+predecessore preservato come `noesar-evolution.rollback-tls-20260728T095332Z` → avvio
+senza override `--health-cmd`, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). `GET /api/v1/shadow` 401, `POST /api/v1/shadow/reprobe` 401, `GET` sulla
+stessa rotta reprobe **404** (F4-015 applicato dal vivo — la GET non risponde più su
+quella rotta, solo POST). Rotta inesistente 404. `data-plane.identity-projected
+projected:1` riconfermato.
+
+**§5a**: rimosso `noesar-evolution.rollback-capability-csrf-20260728T090314Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-tls` reintroduce tutti e tre i reperti (probe su GET, letterale `/workspace`,
+mancanza di oracolo condiviso per l'esecutore).

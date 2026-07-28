@@ -162,6 +162,17 @@ try {
   // D-0190/D-0191: workspace-actions executes an approved plan into a shadow like this one.
   if (shadow.data.executesPlans !== true) throw new Error('the status must claim a plan is executed into the shadow — it is, via workspace-actions');
 
+  // F4-015: GET now serves a snapshot taken at startup rather than probing the filesystem
+  // on every request. The explicit reprobe route is the only one left that writes.
+  const reprobed = await request('/api/v1/shadow/reprobe', { method:'POST' });
+  if (reprobed.status !== 200) throw new Error(JSON.stringify(reprobed));
+  if (reprobed.data.measured !== true) throw new Error('a reprobe must not claim an unmeasured mechanism');
+  if (reprobed.data.mechanism !== shadow.data.mechanism) {
+    throw new Error('a reprobe of the same mount must agree with the startup probe');
+  }
+  const staleMethodRefused = await request('/api/v1/shadow/reprobe');
+  if (staleMethodRefused.status !== 404) throw new Error('reprobe must not answer GET — that is exactly the shape this fix removes');
+
   const clean = await request('/api/v1/shadow/compare', { method:'POST', value:{
     expectation:{ pathsTheDiffMustTouch:['src/a.rs'], testsExpectedToPass:['cargo test'], testsExpectedToFail:[] },
     observation:{ changed:{ 'src/a.rs':'MODIFIED' }, tests:[{ name:'cargo test', passed:true }] },

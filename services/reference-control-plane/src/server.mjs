@@ -131,6 +131,12 @@ const workspaceActions = new WorkspaceActionOrchestrator({
   workspaceRoot: workspace, shadowsRoot: join(tmpdir(), 'noesar-workspace-action-shadows'),
   minter: capabilityMinter, events: engineEvents,
 });
+// F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
+// (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,
+// wrong to run as a side effect of a GET. Probed once here, at startup, not per request;
+// `GET /api/v1/shadow` serves this snapshot, and `POST /api/v1/shadow/reprobe` is the only
+// path left that writes, because now it is the only path that says so in its verb.
+let shadowSnapshot = shadowStatus(join(workspace, 'shadows'));
 const store = new JsonStore(join(workspace, 'state/state.json'));
 const aiStore = new AtomicJsonStore(join(workspace, 'state/ai-workspace.json'));
 const contextGraph = new ContextGraph(aiStore);
@@ -789,7 +795,12 @@ const requestListener = async (req, res) => {
       }
       const request = await body(req);
       try {
-        const provider = new ReferenceReasoningProvider(PRODUCT.workspaceRoot ?? '/workspace');
+        // F4-016: PRODUCT.workspaceRoot was never defined, so this always evaluated to the
+        // literal string '/workspace' regardless of NOESAR_WORKSPACE — harmless while the
+        // two happen to coincide (every deployment so far), silently wrong the moment they
+        // don't. `workspace` is the same module-level constant shadow.mjs and repo-map.mjs
+        // already use for exactly this reason.
+        const provider = new ReferenceReasoningProvider(workspace);
         const intent = provider.interpret(String(request?.request ?? ''), request?.projectRules ?? []);
         const hypotheses = provider.hypothesize(intent, []);
         const plan = provider.plan(hypotheses, request?.constraints ?? [], request?.mode ?? 'safe');
@@ -962,9 +973,18 @@ const requestListener = async (req, res) => {
     // side -- something happened that nobody declared -- is the dangerous one.
     if (req.method === 'GET' && url.pathname === '/api/v1/shadow') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      // Probed against the directory shadows are actually made in: reflink support is a
-      // property of the mount, so asking anywhere else answers a different question.
-      return json(res, 200, shadowStatus(join(workspace, 'shadows')));
+      // F4-015: serves the snapshot taken at startup (or by the last reprobe). A GET must
+      // not itself write to the filesystem, which probing does.
+      return json(res, 200, shadowSnapshot);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/shadow/reprobe') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      // The only route left that probes the mount live — a write belongs behind a verb
+      // that says so. Probed against the directory shadows are actually made in: reflink
+      // support is a property of the mount, so asking anywhere else answers a different
+      // question.
+      shadowSnapshot = shadowStatus(join(workspace, 'shadows'));
+      return json(res, 200, shadowSnapshot);
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/shadow/compare') {
       const authenticated = requireSession(req, res); if (!authenticated) return;

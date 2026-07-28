@@ -253,7 +253,9 @@ test('the executor refuses a shadow that cannot observe an undeclared write', ()
     } catch (error) {
       kind = error.kind;
     }
-    assert.equal(kind, 'COVERAGE');
+    // F4-014: 'INVALID', not a Node-only 'COVERAGE' kind Rust's ShadowError has no equivalent
+    // for — see the comment above the throw site in executor.mjs.
+    assert.equal(kind, 'INVALID');
     // Refused before anything was spent or written.
     assert.equal(readFileSync(join(targeted.root, 'a.txt'), 'utf8'), 'before');
     targeted.discard();

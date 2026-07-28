@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Closes three low-severity findings named in the phase 1 handoff, none of them security
+# boundaries — the Owner explicitly chose these over reopening EXECUTE.
+#
+# F4-014: the executor had no shared oracle between its Node and Rust implementations.
+# conformance/executor-vectors.json now exists and both sides run it. Building it surfaced
+# a real divergence: Node threw a 'COVERAGE' error kind noesar-shadow's Rust ShadowError
+# enum has no equivalent for; both sides now report 'INVALID' for the same refusal
+# (executor.mjs changed, the Rust crate did not — matching Rust's existing behaviour was
+# the smaller, safer fix).
+#
+# F4-015: GET /api/v1/shadow used to probe the filesystem (write, reflink-clone, delete a
+# real file) on every request — a GET must not have side effects. It now serves a snapshot
+# taken once at startup; a new POST /api/v1/shadow/reprobe is the only route left that
+# writes, because now it is the only one that says so in its verb.
+#
+# F4-016: reasoning.mjs planned against the literal string '/workspace' regardless of
+# NOESAR_WORKSPACE, because PRODUCT.workspaceRoot was never defined. Harmless while the two
+# happen to coincide (every deployment so far); silently wrong the moment they do not. Now
+# uses the same module-level `workspace` constant shadow.mjs and repo-map.mjs already do.
+#
+# Only server.mjs and executor.mjs changed. Nothing else in the image is rebuilt or re-copied.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-tls
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/executor.mjs /opt/noesar/services/reference-control-plane/src/executor.mjs
+USER 10001:10001

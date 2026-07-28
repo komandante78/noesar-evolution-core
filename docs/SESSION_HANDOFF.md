@@ -16,121 +16,89 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0198`: TLS in-process — costruita, installata e verificata nella stessa fase
-(`:phase4-tls`).** Accanto alla via già documentata (reverse proxy davanti, esempi in
-`deployment/reverse-proxy/`), il prodotto può ora terminare TLS da solo: nuovo modulo
-`tls.mjs::resolveTls()`, `server.mjs` sceglie `node:https` quando
-`NOESAR_TLS_CERT_FILE`+`NOESAR_TLS_KEY_FILE` sono entrambi presenti e validi, rifiuta una
-coppia mezza configurata o un file non-PEM invece di ripiegare in plaintext in silenzio.
-`secureCookies` diventa `true` automaticamente quando TLS è attivo. Il prodotto **non
-genera mai un certificato da solo** — stessa ragione di `D-0055` sul bind address: quale
-nome, autofirmato o CA, è una decisione dell'operatore.
+**`D-0201`: `F4-014`/`F4-015`/`F4-016` chiusi — costruiti, installati e verificati nella
+stessa fase (`:phase4-findings`).** L'Owner ha scelto esplicitamente questi tre invece di
+riaprire EXECUTE (confine di sicurezza deliberato, `D-0191`, lasciato intatto).
 
-**TLS resta OFF sull'installazione viva.** Nessun certificato fornito dall'Owner in questa
-sessione: la capacità è installata, non accesa. Per accenderla serve fornire (o chiedere di
-generare) un `NOESAR_TLS_CERT_FILE`+`NOESAR_TLS_KEY_FILE` e ridistribuire con quelle due
-variabili impostate — nessun rebuild necessario, il codice è già lì.
+- **`F4-014`**: l'esecutore era l'unico dei sei passi senza oracolo condiviso.
+  `conformance/executor-vectors.json` (10 casi) ora esiste, e sia
+  `executor-vectors.test.mjs` (Node) sia `rust/crates/noesar-executor/tests/conformance.rs`
+  (Rust, mai scritto prima nonostante l'header lo affermasse) girano sullo stesso file.
+  **Trovata una vera divergenza costruendo**: Node lanciava un kind `'COVERAGE'` che
+  l'enum Rust `ShadowError` non ha affatto — Rust riporta lo stesso rifiuto come
+  `Invalid`. Allineato Node a `'INVALID'`.
+- **`F4-015`**: `GET /api/v1/shadow` scriveva sul filesystem (probe reflink reale) a ogni
+  richiesta — una GET non deve avere effetti collaterali. Ora il probe gira una volta
+  all'avvio e la GET serve la cache; nuovo `POST /api/v1/shadow/reprobe` è l'unica rotta
+  che scrive.
+- **`F4-016`**: `reasoning.mjs` pianificava sempre contro la stringa letterale
+  `/workspace` (`PRODUCT.workspaceRoot` non era mai definito). Ora usa la costante
+  `workspace` reale, come già fanno `shadow.mjs` e `repo-map.mjs`.
 
-**Trovato costruendo**: l'HEALTHCHECK del container (identico in `oci/Dockerfile` e
-`Dockerfile.phase4`) interrogava solo HTTP — con TLS attivo avrebbe dichiarato il
-container malato mentre il servizio risponde. Riparato con un controllo a due tentativi
-(HTTP poi HTTPS, verifica certificato disattivata — controlla il proprio processo su
-loopback, non una terza parte), provato in positivo contro un server plaintext, uno TLS
-reale con certificato autofirmato di test, e nessun server.
-
-**`D-0199`: `B-001` chiuso — repository privato creato e HEAD pushato.** L'Owner ha
-fornito un token GitHub direttamente in chat (dichiarato esposto, va revocato — vedi sotto).
-`komandante78/NOESAR-EVOLUTION` esiste, **privato**, porta l'intera storia (139 commit,
-già passata dal secret scan prima del push). Nessun token è stato salvato in nessun file:
-`origin` punta a `https://github.com/komandante78/NOESAR-EVOLUTION.git` senza credenziali
-incorporate. **Ogni push futuro richiede di nuovo un token dall'Owner** — non persistito
-per design (regola 25/26), non un limite dimenticato.
-
-⚠️ **Azione residua per l'Owner, non per una prossima sessione**: revocare il token
-fornito in questa sessione su GitHub e, se vuole, generarne uno fine-grained scoped al
-solo repo per il prossimo push.
-
-Nessuna azione pendente su TLS o `B-008` (chiuso in `D-0197`). **Nessun blocker aperto
-resta**, solo i reperti tecnici noti (`F4-014`/`F4-015`/`F4-016`) e le domande standing
-minori elencate sotto.
+**Nessun blocker aperto, nessun reperto di severità bassa non dichiarato resta.**
+`F4W-011` (misura contro MASTER V4) e `F4W-012` (disegno WebUI) restano le uniche voci
+`open_findings`, non toccate da questa fase — sono di natura diversa (misura/design, non
+bug).
 
 ## ➜ Stato dell'installazione
 
-`noesar-evolution:phase4-tls` · `Up (healthy)` · `restarts=0` ·
+`noesar-evolution:phase4-findings` · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-capability-csrf-20260728T090314Z`. Due container di progetto,
-che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
+`noesar-evolution.rollback-tls-20260728T095332Z`. Due container di progetto, che è quanto
+§5a ammette. Host: 39 totali, 11 in esecuzione.
 
 ## ➜ Cosa è stato fatto in questa sessione
 
 **`D-0195`+`D-0196`** (commit `802b54b`): `apps/webui-react` rimossa, tre decisioni
-dell'Owner registrate (`B-008`, `B-001`, TLS).
+dell'Owner registrate.
 
-**`D-0197`** (commit `3a29c3f`): `B-008` verificato stale e chiuso senza migrare nulla —
-la proiezione identità girava già da sola dal 2026-07-25.
+**`D-0197`** (commit `3a29c3f`): `B-008` verificato stale e chiuso senza migrare nulla.
 
-**`D-0198`** (commit `f721d62`): TLS in-process. File nuovi:
-`services/reference-control-plane/src/tls.mjs`,
-`services/reference-control-plane/test/tls.test.mjs` (9 test), `tools/tls-smoke.mjs`,
-`oci/Dockerfile.phase4-tls`. Modificati: `server.mjs`, `oci/Dockerfile`,
-`oci/Dockerfile.phase4` (HEALTHCHECK bi-modale in entrambi), `scripts/test.sh` (nuovo step
-tristate), `docs/LAN_ACCESS_CONFIGURATION.md` (sezione TLS riscritta, due opzioni A/B),
-`docs/REMAINING_WORK.md`, `PROJECT_STATE.json`, `MANIFEST.sha256`.
+**`D-0198`** (commit `f721d62`): TLS in-process costruita e installata, non attivata.
 
-**`D-0199`** (commit successivo a questo file): repository GitHub privato creato via API,
-remote configurato, push del `main` locale (`f721d62`, verificato identico al remoto).
-Nessun file di prodotto toccato.
+**`D-0199`+`D-0200`** (commit `be305e8`): repository GitHub privato creato e pushato;
+secret scan rieseguito dopo il commit ha trovato e corretto un fixture di test a forma di
+chiave PEM.
 
-**`D-0200`** (stesso commit di `D-0199`): rieseguito il secret scan **dopo** il commit
-`f721d62` (prima era stato eseguito solo prima — `gitleaks` scansiona la storia, non
-l'albero non committato, quindi non aveva mai visto quel contenuto) — trovato **1 reperto
-reale**, un fixture di test in `tls.test.mjs` a forma di chiave PEM (contenuto fasullo, ma
-struttura riconosciuta dalla regola generica). Fixture riscritto per non riprodurre la
-forma; allowlist in `.gitleaks.toml` scoped al **singolo commit storico** (già pushato,
-non riscritto — regola 14), non al file intero. ⚠️ **Lezione permanente**: la scansione
-segreti va ripetuta dopo ogni commit che introduce contenuto nuovo, non solo prima.
+**`D-0201`** (non ancora committato al momento in cui questo file è scritto):
+`F4-014`/`F4-015`/`F4-016` chiusi. File nuovi: `conformance/executor-vectors.json`,
+`services/reference-control-plane/test/executor-vectors.test.mjs`,
+`rust/crates/noesar-executor/tests/conformance.rs`,
+`oci/Dockerfile.phase4-findings`. Modificati: `server.mjs`, `executor.mjs`,
+`executor.test.mjs`, `tools/auth-http-smoke.mjs`, `PROJECT_STATE.json`, `MANIFEST.sha256`.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-D-0195/D-0196/D-0197: vedi le rispettive voci del decision log, invariate qui.
-D-0198: unit 894→903 (+9), ESLint 187→190 file 0 errori, tools/verify-source.mjs PASS,
-  tools/http-smoke.mjs PASS, tools/auth-http-smoke.mjs PASS, tools/tls-smoke.mjs nuovo
-  PASS (due listener reali: plaintext invariato, TLS con certificato di test — transport
-  commutato, HSTS presente solo quando dovuto, cookie sicuri impliciti)
-  MANIFEST 5782→5785, 5785/5785 verificate (conteggio OK incrociato con le righe — trovato
-  che docs/LAN_ACCESS_CONFIGURATION.md ERA tracciato, contro l'assunzione ereditata)
-  byte immagine = albero (server.mjs, tls.mjs) via container usa-e-getta
-  dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, rotta protetta 401, rotta
-  inesistente 404, tls_active:false secure_cookies:false nel log di avvio (nessun
-  certificato fornito), data-plane.identity-projected projected:1 riconfermato
-D-0199: GET /user 200 (login komandante78, scope repo+workflow), POST /user/repos 201
-  (private:true), push verificato (nuovo branch main -> main), .git/config letto dopo il
-  push senza credenziali, HEAD remoto = HEAD locale via GET /repos/.../commits/main
+D-0195..D-0200: vedi le rispettive voci del decision log, invariate qui.
+D-0201: unit 903→914 (+11), ESLint 190→191 file 0 errori, verify-source/http-smoke/
+  auth-http-smoke/tls-smoke tutti PASS, MANIFEST 5785→5788 (5788/5788 verificate)
+  Rust: container rust:1-bookworm --network=none --cap-drop=ALL, RUSTUP_TOOLCHAIN
+  pinnato, cargo test --workspace --locked --offline --all-targets → exit 0, zero
+  FAILED in tutto il workspace, noesar-executor 12 nativi + 1 nuovo vettore PASS
+  byte immagine = albero (server.mjs, executor.mjs) via container usa-e-getta
+  dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, GET/POST shadow 401,
+  GET su /shadow/reprobe 404 (verbo sbagliato, prova F4-015 applicato), rotta
+  inesistente 404, data-plane.identity-projected projected:1 riconfermato
 ```
-
-⚠️ **Deviazione dichiarata in `D-0198`**: un controllo byte ridondante fatto con
-`docker exec` sul container vivo (§5 regola 16 non lo ammette) — non necessario, il
-controllo sull'immagine con un container usa-e-getta era già sufficiente. Nessuna
-mutazione, nessun dato nuovo letto.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
 - Tutto ciò che era falso a fine fase precedente e non toccato da questa sessione resta
   falso: `operationsSupported: ['WRITE']` (DELETE/EXECUTE dichiarati non costruiti),
   `testExecution: false`, `runsPersistAcrossRestart: false`, registri in memoria, firma
-  provenance simmetrica, `.ps1` mai eseguiti, `F4-014` (esecutore senza oracolo condiviso),
-  `F4-015` (`shadowStatus()` scrive su una GET), `F4-016` (reasoning.mjs pianifica contro
-  `/workspace` letterale).
-- **TLS è costruita e installata ma NON attiva**: `tls_active:false` sul vivo. Non
-  assumere che le connessioni siano cifrate finché un certificato non è configurato.
-- **Il repository su GitHub esiste ma nessuna credenziale è salvata per pushare di
-  nuovo**: un `git push` da una sessione futura fallirà finché l'Owner non fornisce un
-  token, per design.
+  provenance simmetrica, `.ps1` mai eseguiti.
+- **EXECUTE resta permanentemente rifiutato** — non toccato, per scelta esplicita
+  dell'Owner in questa sessione (ha scelto i tre reperti minori invece di riaprirlo).
+- TLS costruita ma **non attiva**: `tls_active:false` sul vivo.
+- Il repository su GitHub esiste ma nessuna credenziale è salvata per pushare di nuovo.
+- Un warning di compilazione Rust pre-esistente (`unused import: ShadowLimits` in
+  `noesar-executor/src/lib.rs:26`) **non è stato toccato** — fuori dallo scope dichiarato
+  di questa fase (non è un difetto di comportamento, solo un warning del compilatore).
 
 ## ➜ Blocker aperti
 
-Nessuno. `B-001`, `B-002`, `B-008`, `B-009`, `B-010` — tutti chiusi.
+Nessuno.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
@@ -138,10 +106,10 @@ Restano solo:
 
 - **La conformità della conservazione dei dati delle richieste rifiutate** — non è una
   decisione dell'Owner da prendere: il disegno è già autorizzato (`D-0136`), manca una
-  verifica di conformità legale/normativa esterna a questo progetto, prima che diventi
-  codice in produzione.
+  verifica di conformità legale/normativa esterna a questo progetto.
 - **Da `D-0197`, invariata**: si vuole davvero spostare anche le credenziali dentro
-  PostgreSQL, contro la ragione di design documentata (`F4-013`, dump non cifrato)? Solo
-  se sì è una fase reale da fare; altrimenti `B-008` resta chiuso così com'è.
-- **Nuova, da `D-0198`**: si vuole attivare TLS ora fornendo un certificato (o chiedendo
-  di generarne uno autofirmato per uso LAN), oppure la capacità resta lì finché non serve?
+  PostgreSQL, contro la ragione di design documentata (`F4-013`)?
+- **Da `D-0198`, invariata**: si vuole attivare TLS ora fornendo un certificato?
+- **Nuova**: si vuole eventualmente riaprire EXECUTE (esecuzione sandboxata di test/codice)
+  come fase propria, ora che i tre reperti minori sono chiusi? Rifiutato esplicitamente per
+  questa sessione, non deciso per sempre.
