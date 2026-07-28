@@ -3350,3 +3350,48 @@ pass=5 fail=0 (invariato). MANIFEST 5794→5797, 5797/5797 verificate. Sweep Deb
 all'albero su 4 file, `/livez`+`/readyz` 200, `/healthz` invariato, le cinque rotte nuove
 401 non autenticato, rotta inesistente 404, rotte dei passi 27/28 ancora 401 — non
 regredite, `RestartCount=0`).
+
+## D-0207 · Fase 7 passo 30: "OIDC, SAML, SCIM" — SCIM davvero CABLATO (primo dei sei passi), OIDC verifica reale, SAML dichiarato non costruito — 2026-07-28
+**Decision.** Passo 30 (09_PIANO.md §2). **SCIM** (`scim.mjs`, RFC 7643/7644): a
+differenza dei passi 27-29, **cablato per davvero** — `/scim/v2/Users` chiama
+`UserDirectory.createServiceAccount/disableUser/reinstateUser/revokeUser` con l'`actorId`
+dello sponsor (owner/admin che ha coniato il token bearer), quindi l'autorizzazione
+esistente di `user-directory.mjs` (`GRANTABLE`/`#requireActor`) decide, non aggirata.
+Nuovo store `state/scim-tokens.json`, fuori dall'ai-workspace atomico apposta — nessun
+bump `AI_STATE_VERSION`, nessuna migrazione. Gate di gestione token su `user.manage`
+(stesso permesso di `/api/v1/admin/users`, non un elenco di ruoli duplicato). **OIDC**
+(`oidc.mjs`): verifica reale di ID token RS256 contro una JWKS (`node:crypto`, import JWK
+nativo) — `alg` controllato **prima** di ogni lookup di chiave, rifiuta esplicitamente
+`"none"` e qualunque cosa diversa da RS256 (chiude sia il token-non-firmato sia la
+confusione d'algoritmo). Nessun flusso di redirect, nessun exchange, nessuna sessione da
+un token verificato — dichiarato, non nessun IdP esterno reale è raggiungibile da questo
+ambiente per collaudarlo. **SAML: NON costruito.** Node non ha un parser XML e
+scriverne uno per un formato firmato e sensibile alla sicurezza è la stessa classe di
+"strumento inaffidabile da rifiutare" già praticata su questo progetto (XML signature
+wrapping è una classe di vulnerabilità reale e ripetuta nei validatori SAML fatti in
+casa) — nominato, non finto con un validatore che nessuno dovrebbe fidarsi.
+**Why.** SCIM è cablabile per davvero perché NOESAR è già il server che provisiona
+(`UserDirectory` esiste, testato, con la sua propria autorizzazione) — a differenza dei
+moduli di settore o dei pacchetti di conformità, qui non c'è nulla da inventare. OIDC è
+verificabile per davvero con crypto locale (RSA autofirmato) — a differenza del flusso
+completo, che richiederebbe un IdP vero. SAML richiederebbe una dipendenza nuova per fare
+sicurezza bene, decisione esplicitamente fuori scope di questa sessione.
+**Rejected.** Un parser XML fatto in casa per SAML — rifiutato per lo stesso principio
+già applicato ad ajv/gitleaks/trufflehog: uno strumento inaffidabile va rifiutato, non
+spedito. Un flusso OIDC redirect/token-exchange simulato — sarebbe un claim non
+collaudato contro un IdP vero.
+**Evidence.** unit 972→1018 (+46: 15 OIDC, 18 SCIM puro, 13 SCIM HTTP end-to-end contro
+un server reale — crea/lista/legge/PATCH disabilita/riabilita/DELETE deprovisiona/token
+revocato invalida l'accesso, tutto provato dal vivo, non solo per funzione pura). ESLint
+199→204 file 0 errori, verify-source/http-smoke/auth-http-smoke PASS, browser e2e
+315/315, accessibilità 27/27, difetti seminati 19/19, `scripts/test.sh` pass=5 fail=0
+(invariato). MANIFEST 5797→5802, 5802/5802 verificate. Sweep DebugLab (nuova superficie
++ tocca autenticazione): `services/` 0 finding.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3 (store SCIM fuori
+dall'ai-workspace). Tornare a `:phase4-technology-radar` toglie le rotte OIDC/SCIM;
+nessun account SCIM-provisionato sparisce dal disco (i dati restano in `UserDirectory`,
+solo l'API per gestirli via SCIM sparisce).
+**Status.** Applicato **e installato** (`:phase4-oidc-saml-scim`, byte identici
+all'albero su 3 file, `/livez`+`/readyz` 200, `/healthz` invariato, tutte le rotte nuove
+401 non autenticato/SCIM 401 in forma RFC 7644, rotta inesistente 404, rotte dei passi
+27-29 ancora 401 — non regredite, `RestartCount=0`).

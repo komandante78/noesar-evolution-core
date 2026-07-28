@@ -42,6 +42,14 @@ import {
   TechnologyRadarError, loadRadarSchema, loadRadarSeed, validateRadarEntry,
   checkRingTransition, loadTechnologyRadar, technologyRadarStatus,
 } from './technology-radar.mjs';
+import {
+  ScimError, ScimTokenStore, mintScimToken, listScimTokens, revokeScimToken,
+  authenticateScimToken, toScimUser, scimListResponse, scimServiceProviderConfig,
+  scimError, applyScimPatch, scimStatus,
+} from './scim.mjs';
+import {
+  OidcError, verifyIdToken, validateDiscoveryDocument, oidcStatus,
+} from './oidc.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -187,6 +195,7 @@ const postgres = postgresEnabled
 // A function, not the supervisor itself: the directory is constructed now and the
 // database becomes available later, so capturing the value here would capture `null`.
 const userDirectory = new UserDirectory({ auth, ledger, dataPlane: () => postgres });
+const scimTokenStore = new ScimTokenStore(join(workspace, 'state/scim-tokens.json'));
 const localModels = new LocalModelRuntime({ workspace });
 
 // The privacy indicator is DERIVED, never stored — 01_PRODUCT/12.
@@ -404,6 +413,23 @@ function requireSession(req, res, permission = null) {
 function optionalSession(req) {
   const cookies = parseCookies(req.headers.cookie);
   return auth.authenticate(cookies.noesar_session) ?? null;
+}
+
+/**
+ * SCIM's own auth model (RFC 7644 §2): a bearer token, never a cookie. No CSRF check
+ * applies here for the same reason none is added — CSRF defends an ambient credential a
+ * browser sends automatically, and a bearer token in an Authorization header is never
+ * ambient. Writes the RFC 7644 error shape, not the cookie-session one, on failure.
+ */
+function requireScimAuth(req, res) {
+  const header = req.headers.authorization ?? '';
+  const match = /^Bearer\s+(\S+)$/.exec(header);
+  const resolved = match ? authenticateScimToken(scimTokenStore, match[1]) : null;
+  if (!resolved) {
+    json(res, 401, scimError(401, 'a valid SCIM bearer token is required'), { 'content-type':'application/scim+json; charset=utf-8' });
+    return null;
+  }
+  return resolved;
 }
 
 function requireCsrf(req, res, authenticated) {
@@ -1034,6 +1060,144 @@ const requestListener = async (req, res) => {
       const payload = await body(req);
       const result = checkRingTransition(payload?.from, payload?.to);
       return json(res, 200, result);
+    }
+
+    // --- OIDC · phase 7 step 30, "OIDC, SAML, SCIM" first third -------------------------
+    // Verifies a supplied ID token or discovery document. No redirect flow, no token
+    // endpoint, no session issued from a verified token — see the module comment in
+    // oidc.mjs for why. No CSRF (no product state mutated). No Rust twin.
+    if (req.method === 'GET' && url.pathname === '/api/v1/oidc') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, oidcStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/oidc/verify-id-token') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const claims = verifyIdToken(payload?.idToken, payload?.jwks, { issuer:payload?.issuer, audience:payload?.audience });
+        ledger.append({ actor:authenticated.user.id, action:'oidc.id_token_verified', result:'success', details:{ iss:claims.iss, sub:claims.sub } });
+        return json(res, 200, { valid:true, claims });
+      } catch (error) {
+        if (error instanceof OidcError) {
+          ledger.append({ actor:authenticated.user.id, action:'oidc.id_token_verified', result:'refused', details:{ kind:error.kind } });
+          return json(res, 200, { valid:false, kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/oidc/validate-discovery') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      return json(res, 200, validateDiscoveryDocument(payload));
+    }
+
+    // --- SCIM management · phase 7 step 30, "OIDC, SAML, SCIM" third third --------------
+    // Session-authenticated (owner/admin only): mint/list/revoke the bearer tokens the
+    // actual /scim/v2/* protocol surface (below) accepts. Mutating routes carry CSRF —
+    // this is the ordinary cookie-session part of the feature, unlike /scim/v2/* itself.
+    if (req.method === 'GET' && url.pathname === '/api/v1/scim') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, scimStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/scim/tokens') {
+      // Gated on `user.manage` — the same permission /api/v1/admin/users already requires
+      // for provisioning, not a second hand-written role list that could drift from it.
+      const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
+      if (!requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const minted = mintScimToken(scimTokenStore, { sponsorActorId:authenticated.user.id, name:payload?.name, ttlDays:payload?.ttlDays ?? null });
+      ledger.append({ actor:authenticated.user.id, action:'scim.token_minted', result:'success', details:{ tokenId:minted.tokenId, name:payload?.name ?? null } });
+      return json(res, 201, minted);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/scim/tokens') {
+      const authenticated = requireSession(req, res, 'user.manage'); if (!authenticated) return;
+      return json(res, 200, { tokens: listScimTokens(scimTokenStore, { sponsorActorId:authenticated.user.id }) });
+    }
+    let scimTokenRevokeMatch = url.pathname.match(/^\/api\/v1\/scim\/tokens\/([^/]+)\/revoke$/);
+    if (scimTokenRevokeMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!requireCsrf(req, res, authenticated)) return;
+      try {
+        const revoked = revokeScimToken(scimTokenStore, { actorId:authenticated.user.id, tokenId:scimTokenRevokeMatch[1] });
+        ledger.append({ actor:authenticated.user.id, action:'scim.token_revoked', result:'success', details:{ tokenId:scimTokenRevokeMatch[1] } });
+        return json(res, 200, revoked);
+      } catch (error) {
+        if (error instanceof ScimError) return json(res, error.status, { error:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+
+    // --- SCIM protocol · RFC 7643/7644 --------------------------------------------------
+    // Bearer-authenticated (requireScimAuth), never a cookie session — the sponsor's
+    // actorId is what every UserDirectory call below uses, so UserDirectory's own
+    // GRANTABLE/#requireActor authorization decides what a given integration may do,
+    // exactly as it would for the sponsor acting directly. WIRED: unlike steps 27-29,
+    // these calls really create/disable/reinstate/deprovision an account.
+    if (req.method === 'GET' && url.pathname === '/scim/v2/ServiceProviderConfig') {
+      if (!requireScimAuth(req, res)) return;
+      return json(res, 200, scimServiceProviderConfig(`${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`), { 'content-type':'application/scim+json; charset=utf-8' });
+    }
+    if (req.method === 'GET' && url.pathname === '/scim/v2/Users') {
+      const scim = requireScimAuth(req, res); if (!scim) return;
+      const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+      const list = scimListResponse(userDirectory.list(), {
+        startIndex: url.searchParams.get('startIndex'), count: url.searchParams.get('count'),
+      }, baseUrl);
+      return json(res, 200, list, { 'content-type':'application/scim+json; charset=utf-8' });
+    }
+    if (req.method === 'POST' && url.pathname === '/scim/v2/Users') {
+      const scim = requireScimAuth(req, res); if (!scim) return;
+      const payload = await body(req);
+      try {
+        const created = userDirectory.createServiceAccount({
+          actorId: scim.sponsorActorId, username: payload?.userName, displayName: payload?.displayName ?? payload?.userName,
+        });
+        const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+        return json(res, 201, toScimUser(created.user, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
+      } catch (error) {
+        return json(res, error.status ?? 400, scimError(error.status ?? 400, error.message), { 'content-type':'application/scim+json; charset=utf-8' });
+      }
+    }
+    let scimUserMatch = url.pathname.match(/^\/scim\/v2\/Users\/([^/]+)$/);
+    if (scimUserMatch && req.method === 'GET') {
+      const scim = requireScimAuth(req, res); if (!scim) return;
+      const account = userDirectory.find(scimUserMatch[1]);
+      if (!account) return json(res, 404, scimError(404, 'no such user'), { 'content-type':'application/scim+json; charset=utf-8' });
+      const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+      return json(res, 200, toScimUser(account, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
+    }
+    if (scimUserMatch && req.method === 'PATCH') {
+      const scim = requireScimAuth(req, res); if (!scim) return;
+      const payload = await body(req);
+      try {
+        const { active } = applyScimPatch(payload);
+        if (active === false) userDirectory.disableUser({ actorId:scim.sponsorActorId, userId:scimUserMatch[1], reason:'SCIM PATCH active=false' });
+        if (active === true) userDirectory.reinstateUser({ actorId:scim.sponsorActorId, userId:scimUserMatch[1] });
+        const account = userDirectory.find(scimUserMatch[1]);
+        if (!account) return json(res, 404, scimError(404, 'no such user'), { 'content-type':'application/scim+json; charset=utf-8' });
+        const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+        return json(res, 200, toScimUser(account, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
+      } catch (error) {
+        if (error instanceof ScimError) return json(res, error.status, scimError(error.status, error.reason), { 'content-type':'application/scim+json; charset=utf-8' });
+        return json(res, error.status ?? 400, scimError(error.status ?? 400, error.message), { 'content-type':'application/scim+json; charset=utf-8' });
+      }
+    }
+    if (scimUserMatch && req.method === 'DELETE') {
+      const scim = requireScimAuth(req, res); if (!scim) return;
+      try {
+        userDirectory.revokeUser({ actorId:scim.sponsorActorId, userId:scimUserMatch[1], reason:'SCIM deprovisioning' });
+        // 200 with an empty object, not 204: json() always writes a body, and a 204 that
+        // carries one violates RFC 7231 §6.3.5 rather than merely being unusual.
+        return json(res, 200, {});
+      } catch (error) {
+        return json(res, error.status ?? 400, scimError(error.status ?? 400, error.message), { 'content-type':'application/scim+json; charset=utf-8' });
+      }
     }
 
     // --- workspace actions · D-0190, the first surface that spends a token for real --------

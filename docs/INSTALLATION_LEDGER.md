@@ -2823,3 +2823,33 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
 `:phase4-compliance-packs` toglie solo le cinque rotte nuove.
+
+## 2026-07-28 · `:phase4-oidc-saml-scim` — Fase 7 passo 30, "OIDC, SAML, SCIM" (SCIM cablato, OIDC verifica, SAML dichiarato non costruito)
+
+**Immagine** `noesar-evolution:phase4-oidc-saml-scim`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-oidc-saml-scim`, `FROM
+noesar-evolution:phase4-technology-radar`. Copiati `server.mjs` (rotte SCIM+OIDC nuove),
+`scim.mjs` nuovo, `oidc.mjs` nuovo.
+
+**Byte provati identici all'albero**: sha256 dei 3 file nell'immagine (container
+usa-e-getta, `--entrypoint node`) = sha256 repository, 3/3 PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo
+(`BACKUPS/runtime_pre_oidc_saml_scim_deploy_20260728T113911Z/`, 75 MB) → configurazione
+riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-technology-radar-20260728T113911Z` → avvio senza override,
+healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200. `GET /api/v1/oidc` e `/api/v1/scim`
+`401`. `GET /scim/v2/Users` senza token → `401` in **forma RFC 7644**
+(`schemas:["urn:ietf:params:scim:api:messages:2.0:Error"]`), confermato dal vivo, non
+solo nei test. Rotta inesistente 404. Rotte dei passi 27-29 ancora `401` — non regredite.
+
+**§5a**: rimosso `noesar-evolution.rollback-compliance-packs-20260728T111825Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3 (lo store dei token
+SCIM vive fuori dall'ai-workspace). Tornare a `:phase4-technology-radar` toglie le rotte
+OIDC/SCIM; nessun account SCIM-provisionato sparisce — resta in `UserDirectory`, solo
+l'API SCIM per gestirlo sparisce.

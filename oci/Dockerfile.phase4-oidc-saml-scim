@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 7 step 30 ("Il mondo esterno", 09_PIANO.md §2): "OIDC, SAML, SCIM".
+#
+# SCIM (scim.mjs): WIRED, unlike steps 27-29 — a SCIM request through /scim/v2/Users
+# really creates/disables/reinstates/deprovisions an account via UserDirectory's own
+# existing GRANTABLE/#requireActor authorization, attributed to the owner/admin who
+# sponsored the bearer token. New state/scim-tokens.json store, outside the ai-workspace
+# atomic store on purpose — no AI_STATE_VERSION bump, no migration, no rollback cost.
+#
+# OIDC (oidc.mjs): verifies RS256 ID tokens against a JWKS (node:crypto native JWK
+# import) and OIDC discovery documents. Explicitly refuses `alg:"none"` and any algorithm
+# but RS256 before any key lookup — closes both the unsigned-token and the
+# algorithm-confusion classes of JWT vulnerability. Does not perform the redirect/
+# token-exchange flow and issues no session from a verified token: no real external IdP
+# is reachable from this environment to test that flow against.
+#
+# SAML: NOT built. Node ships no XML parser, and hand-rolling one for a security-
+# sensitive, signed-XML format (SAML assertions) is exactly the "reject unsound tooling
+# rather than ship noise" class this project already lives by — named here rather than
+# faked with an untrustworthy validator.
+#
+# server.mjs changed to wire: GET /api/v1/oidc, POST .../verify-id-token, POST
+# .../validate-discovery; GET /api/v1/scim, POST/GET /api/v1/scim/tokens, POST
+# .../tokens/{id}/revoke (session + user.manage, CSRF on mutations); GET
+# /scim/v2/ServiceProviderConfig, GET/POST /scim/v2/Users, GET/PATCH/DELETE
+# /scim/v2/Users/{id} (bearer token, RFC 7644, no CSRF — no ambient credential to defend).
+# No Rust twin for any of the three modules.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-technology-radar
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/scim.mjs /opt/noesar/services/reference-control-plane/src/scim.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/oidc.mjs /opt/noesar/services/reference-control-plane/src/oidc.mjs
+USER 10001:10001
