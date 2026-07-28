@@ -2942,3 +2942,11 @@ l'API SCIM per gestirlo sparisce.
 - ⚠️ **Limite dichiarato**: il daemon installato **non ha mount** sulla radice delle ombre, quindi un `simulate` instradato **rifiuta**. `NOESAR_SHADOWS_ROOT` esiste perché chiuderlo sia un mount, non un cambio di codice.
 - **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessun dato coinvolto. Si perdono instradamento sul percorso che agisce e superficie `simulate`.
 - **Pulizia**: 3 container di prodotto effimeri + 1 `atomd` effimero + 1 rete effimera rimossi; rollback precedente (`:phase4-atom-routing` selected) rimosso. Restano **3** container di progetto: installazione, un rollback, e `atomd` (componente dichiarato in `D-0214`). Non di progetto: **37**, invariati. Volumi **25/25** invariati. Inventario in `EVIDENCE/docker_inventory_pre_cleanup_20260728T175002Z.txt`.
+
+## 2026-07-28 · `atomd` reinstallato — regola di attribuzione dei comandi (`A-0019`)
+- **Ricostruita** `atom-evolution:atomd` con `tools/build-atomd.sh`; l immagine porta **esattamente** il binario costruito (verifica dello script: `OK ... 35ced410...`).
+- **Arresto** `docker stop -t 30`; **predecessore preservato** come `atomd.rollback-pre-attribution-20260728*`.
+- **Configurazione riletta dal container sostituito**: stessa rete `noesar-evolution-net`, stesso token, stesso bind `0.0.0.0:8410`, `ReadonlyRootfs`, `CapDrop=ALL`, `no-new-privileges`, uid **10002**. Nessun mount, come prima.
+- **Verifica dal vivo**: `running/healthy`, e la **misura rifatta** contro il daemon installato: `EXTERNAL_SETTLED` **42/52 → 52/52**, `better=51 worse=0 equal=1`, riferimento **1/52**.
+- ⚠️ **Quarto container di progetto dichiarato**: `atomd.rollback-pre-attribution-*`. Il tag `atom-evolution:atomd` è stato **riusato**, quindi l immagine precedente non ha più un nome: quel container fermo **è** il percorso di rollback. Lo rimuoverà la fase che dichiarerà la regola di attribuzione stabile.
+- **Costo di rollback**: tornare indietro reintroduce le parti a due comandi (71 su 60 compiti reali). Nessuna migrazione, nessun dato.

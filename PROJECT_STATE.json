@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_11_ATOM_ON_THE_ACTING_PATH_AND_SIMULATE_IS_A_REAL_SURFACE",
-  "next_phase": "Il limite rimasto e un MOUNT, non un cambio di codice: il daemon installato non vede la radice delle ombre, quindi un simulate instradato rifiuta. Poi la metrica sulla FORMA della decomposizione, o compiti tratti da un repository vero (CE-023 dice NO_DIFFERENCE sulla copertura).",
+  "phase_status": "STEP_11_ATOM_ON_THE_ACTING_PATH_AND_ITS_VALUE_MEASURED_ON_REAL_TASKS",
+  "next_phase": "Ordinamento e integrita delle dipendenze non sono misurati da nulla: le parti di sola osservazione nominano la parte da cui dipendono, e nessuna legge verifica che ogni dependsOn si risolva. Piu il MOUNT che manca a simulate.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "f6606a6 (D-0216: route the acting path + simulate surface, built/installed/verified live) - pushed to origin/main",
-  "last_updated_utc": "2026-07-28T17:59:15Z",
+  "last_updated_utc": "2026-07-28T18:20:04Z",
   "blockers": [
     {
       "id": "B-001",
@@ -374,8 +374,8 @@
     }
   ],
   "product_test_suite": {
-    "unit": "1082/1082 (misurato 2026-07-28, D-0216)",
-    "eslint": "217 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0216)",
+    "unit": "1092/1092 (misurato 2026-07-28, D-0217)",
+    "eslint": "221 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0217)",
     "browser_acceptance": "315/315 (misurato 2026-07-28, D-0211 - riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
@@ -392,7 +392,7 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5819/5819, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0216)",
+    "manifest": "5823/5823, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0217)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -404,7 +404,8 @@
     "tool_catalog": "21/21 — services/reference-control-plane/test/tool-catalog.test.mjs, incluso scopeRequestToTool intersection reale, dentro la unit suite (misurato 2026-07-28, D-0211)",
     "reasoning_routing": "10/10 router + 5 nuovi su simulate; e 7 nuovi su workspace-actions (provenienza, 503 invece di rifiuto, simulate) - dentro la unit suite (misurato 2026-07-28, D-0216)",
     "live_reasoning_with_external_provider": "INSTALLATO e SELEZIONATO, e ora anche sul percorso che agisce (D-0216): expect risposto da atom dentro plan(); simulate 200 supported:true con predizione reale su coppia effimera a ombra condivisa; daemon fermo -> plan 503 senza run creata; nessun provider esterno -> tutto reference, simulate supported:false.",
-    "projection_coverage_ce023": "MISURATO 2026-07-28 (D-0215): PER_TASK better=0 worse=0 equal=9 of 9 -> VERDICT=NO_DIFFERENCE. Il totale 0.8000 vs 0.8182 e un artefatto del denominatore (ATOM spezza un compito in piu parti), NON un miglioramento. La copertura non distingue i due provider su questo insieme di compiti."
+    "projection_coverage_ce023": "NO_DIFFERENCE (D-0215) e resta vero: la copertura non distingue i due provider. Non e un difetto della misura da cancellare, e un fatto sulla copertura - la differenza vive nella FORMA, vedi decomposition_shape_ce023.",
+    "decomposition_shape_ce023": "MISURATO 2026-07-28 (D-0217) su 60 compiti derivati da 60 commit reali: DECISIVE=52 (8 esclusi perche gia verificabili, esclusione dichiarata), REFERENCE_SETTLED=1/52, EXTERNAL_SETTLED=52/52, PER_TASK better=51 worse=0 equal=1 -> VERDICT=EXTERNAL_STRICTLY_BETTER. Criteri nel nucleo aperto (verifiability.mjs), oracolo provato per mutazione. Prima della riparazione A-0019 in ATOM: 42/52."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -801,7 +802,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0216: plan() e async e passa dal ReasoningRouter, ogni run porta la provenienza, e POST /api/v1/workspace-actions/{runId}/simulate materializza un ombra, chiede al provider selezionato cosa farebbe il piano, e la scarta - nessun token coniato, nulla eseguito. Installato :phase4-atom-acting-path. Provato dal vivo su coppia effimera: simulate 200 supported:true con predizione reale dal daemon reale; con daemon fermo plan 503 e nessuna run; senza provider esterno tutto reference e simulate supported:false (CE-022 regge).",
+  "next_action": "D-0217: la copertura non distingueva perche misurava una proprieta che entrambi i provider soddisfano per costruzione. La FORMA della decomposizione, giudicata da criteri nel nucleo aperto (verifiability.mjs) su 60 compiti dalla storia vera del repository, distingue: riferimento 1/52, ATOM 52/52, better=51 worse=0. La misura ha trovato e fatto riparare un difetto reale in ATOM (A-0019: 71 parti con due comandi).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
