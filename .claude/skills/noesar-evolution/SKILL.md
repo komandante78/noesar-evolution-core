@@ -28,6 +28,39 @@ list di `/api/v1/bootstrap`, quindi il prodotto dichiarava di contenere un altro
 - Si leggono solo `PROJECT_STATE.json`, `docs/SESSION_HANDOFF.md`,
   `docs/WORK_PLAN_V5_REWRITE.md`, `MASTER_PROJECT/`, `docs/DECISION_LOG.md`,
   `docs/INSTALLATION_LEDGER.md`. **Non** si apre il file di memoria di un altro progetto.
+
+## 🛑 ATOM EVOLUTION — progetto nuovo, in un repository separato, MAI copiare dal vecchio
+
+**Ordine esplicito dell'Owner, 2026-07-28** (dato con forza, dopo che una sessione ha
+sbagliato mettendoci dentro roba vecchia): *"NON DEVI METTERE NULLA DEL VECCHIO"*.
+
+Il "seam" ATOM per NOESAR EVOLUTION (passo 11 dell'ordine di costruzione,
+`MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §10) vive in un repository **suo**,
+**separato**, creato il 2026-07-28: **`/mnt/cachec/ATOM_EVOLUTION`** — nato **vuoto**,
+zero commit alla creazione, deliberatamente.
+
+**Non copiare, non importare, non "riprendere" dentro `ATOM_EVOLUTION` nulla da:**
+
+- `/mnt/cachec/NOESAR-ATOM-PRIVATE` — il vecchio blueprint privato per NOESAR EVOLUTION
+  (`MASTER_PROJECT/02_ATOM.md` lo definiva "l'unica fonte di verità", ma l'Owner ha deciso
+  di ripartire da zero: quella decisione **sostituisce** quella precedente).
+- `/mnt/cachec/ATOM`, `/mnt/cachec/ATOM_MODEL`, `/mnt/cachec/ATOM_INTERNAL` — il progetto
+  ATOM **originale e separato** (modelli addestrati, esperimenti Gradino, governato dalla
+  skill `atom-model-lab`). Un progetto diverso, con la sua storia, il suo repository
+  pubblico (`github.com/komandante78/ATOM`). Non c'entra con `ATOM_EVOLUTION`.
+
+**Perché la regola esiste, per non doverla riscoprire**: `02_ATOM.md` racconta già un
+episodio quasi identico — due documenti diversi usavano lo stesso vocabolario (`L0-L8`)
+per due cose diverse, e nessuno dei due citava l'altro, producendo confusione reale su
+cosa "il provider di riferimento sta a L3-L5" volesse dire. Mescolare progetti ATOM
+diversi con lo stesso nome è **esattamente** la classe di errore che ha già causato un
+incidente in questo progetto una volta.
+
+**Come applicarla**: prima di scrivere qualunque file dentro `ATOM_EVOLUTION`, controllare
+che non sia una copia — anche parziale, anche "solo per riferimento" — di un file che
+esiste in uno dei quattro percorsi sopra. Il nuovo progetto si scrive da zero, seguendo
+solo il contratto `ReasoningProvider` già pubblico in `MASTER_PROJECT/02_ATOM.md` e ciò
+che l'Owner chiede in sessione.
 - Tutto fuori da `PROJECT_ROOT` è **sola lettura** e fuori discussione: non si cancella, non si
   sposta, non si modifica. Una richiesta di cancellare artefatti di altri progetti è un
   **blocker**, non un compito — si dichiara e ci si ferma.

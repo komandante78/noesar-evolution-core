@@ -3,7 +3,7 @@
   "total_phases": 6,
   "current_phase": 4,
   "phase_status": "CODEN_EVOLUTION_CONSTRUCTION_ORDER_STEP_10_ZERO_LOAD_TOOL_CATALOG_BUILT",
-  "next_phase": "CodeN Evolution, ordine di costruzione (15_CODEN_EVOLUTION_DA_ZERO.md paragrafo10), passo 11: ATOM come secondo provider (richiede 1, 3, 9 - gia soddisfatti). Passo 10 (catalogo strumenti a carico zero) chiuso: scopeRequestToTool() rende meccanico un effetto non dichiarato impossibile, non ancora cablato su un mint reale (enforced:false, dichiarato).",
+  "next_phase": "CodeN Evolution, passo 11: ATOM come secondo ReasoningProvider. Ha ora un repository proprio, /mnt/cachec/ATOM_EVOLUTION (fuori da questo repository, creato 2026-07-28, D-0212), nato deliberatamente vuoto su istruzione esplicita dell Owner - nessun contenuto migrato da NOESAR-ATOM-PRIVATE ne dal progetto ATOM originale separato. La sessione si chiude qui su richiesta dell Owner; il lavoro su ATOM_EVOLUTION riprende nella prossima sessione.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -489,7 +489,7 @@
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
   "gpu_runtime": "NOT_IMPLEMENTED",
-  "next_phase_label": "CODEN_EVOLUTION_STEP_11_ATOM_SECOND_PROVIDER",
+  "next_phase_label": "ATOM_EVOLUTION_REPO_CREATED_EMPTY_SESSION_CLOSED",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
     "gate": {
@@ -798,7 +798,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0211: passo 10 costruito e installato (:phase4-tool-catalog). Prossima azione: passo 11 (ATOM come secondo ReasoningProvider) o a scelta dell Owner - nota: ATOM vive in un repository privato separato per decisione, quindi il passo 11 e principalmente il seam di integrazione, non ATOM stesso.",
+  "next_action": "D-0212: repository /mnt/cachec/ATOM_EVOLUTION creato vuoto per il passo 11 (ATOM come secondo provider). Regola permanente scritta in .claude/skills/noesar-evolution/SKILL.md e in memoria: mai copiare da NOESAR-ATOM-PRIVATE o dal vecchio progetto ATOM/ATOM_MODEL/ATOM_INTERNAL. Sessione chiusa su istruzione dell Owner - prossima azione: iniziare a scrivere ATOM_EVOLUTION da zero, seguendo il contratto ReasoningProvider gia pubblico in MASTER_PROJECT/02_ATOM.md.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1307,5 +1307,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T14:28:32.076Z"
+  "last_updated": "2026-07-28T14:50:37.191Z"
 }

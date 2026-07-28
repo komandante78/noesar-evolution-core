@@ -3559,3 +3559,33 @@ attivi vive in memoria, quindi non c'è nulla su disco da disfare.
 **Status.** Applicato **e installato** (`:phase4-tool-catalog`, byte identici all'albero
 su 3 file, `/livez`+`/readyz` 200, tutte le rotte nuove 401 non autenticato, rotta
 inesistente 404, `RestartCount=0`).
+
+## D-0212 · Il passo 11 (ATOM) prende un repository proprio — `ATOM_EVOLUTION`, nato vuoto, un quasi-errore corretto dall'Owner — 2026-07-28
+**Decision.** Il passo 11 dell'ordine di costruzione (ATOM come secondo
+`ReasoningProvider`) non vive più solo come puntatore in `MASTER_PROJECT/02_ATOM.md`:
+l'Owner ha chiesto un repository proprio, **`/mnt/cachec/ATOM_EVOLUTION`**, creato oggi
+(`git init`, zero commit). **Deliberatamente vuoto**: nessun file copiato da
+`NOESAR-ATOM-PRIVATE` (il vecchio blueprint privato, 45 file Rust, kernel L0 con 27 test —
+che `02_ATOM.md` dichiarava "unica fonte di verità" il 26 luglio, decisione ora
+sostituita) né dal progetto ATOM originale e separato
+(`/mnt/cachec/ATOM`/`ATOM_MODEL`/`ATOM_INTERNAL`, governato dalla skill `atom-model-lab`,
+mai lo stesso progetto).
+**Why.** `02_ATOM.md` racconta già l'episodio che questa decisione evita di ripetere: due
+documenti diversi usavano lo stesso vocabolario (`L0-L8`) per due cose diverse, senza che
+nessuno dei due citasse l'altro — confusione reale su cosa "il provider di riferimento
+sta a L3-L5" volesse dire. Un repository nuovo e vuoto rimuove la possibilità in modo
+strutturale, non affidandosi a "ricordarsi di non mescolare".
+**Rejected — e nominato perché il primo tentativo lo ha fatto davvero**: spostare dentro
+`ATOM_EVOLUTION` il contenuto di `NOESAR-ATOM-PRIVATE` (blueprint + crate + kernel L0
+testato), proposto come opzione "che preserva lavoro reale" prima che l'Owner
+correggesse esplicitamente — *"NON DEVI METTERE NULLA DEL VECCHIO"*. Registrato come
+correzione, non solo come decisione: la stessa regola è ora scritta anche in
+`.claude/skills/noesar-evolution/SKILL.md` (nuova sezione dedicata) e in memoria
+permanente, così che non serva riscoprirla in una sessione futura.
+**Evidence.** `/mnt/cachec/ATOM_EVOLUTION/.git` esiste, `git status` conferma zero
+commit, zero file tracciati. Nessun `cp`/`rsync` eseguito da nessuno dei tre percorsi
+sorgente verso la destinazione — verificato prima e dopo la creazione.
+**Reversal cost.** Nessuno — nessun codice servito cambiato, nessun file esistente
+toccato.
+**Status.** Applicato. `ATOM_EVOLUTION` resta vuoto fino alla prossima sessione, su
+istruzione dell'Owner di chiudere qui.
