@@ -117,5 +117,40 @@ question each answers.
 tools/generate-sbom.sh noesar-evolution:phase4-complete
 ```
 
+## Re-run 2026-07-28, and a correction
+
+D-0208 (this same day, an earlier phase) built `tools/cbom.mjs` / `tools/generate-mlbom.mjs`
+and stated that no SBOM tooling was available on this host beyond the declared-PARTIAL
+`tools/generate-inventory.mjs`. **That was wrong** — `tools/generate-sbom.sh` and this
+document already existed, `anchore/syft@sha256:13b53eb…` was already cached locally, and
+running it needs no network and installs nothing on the host (the exact constraint D-0208
+believed it could not satisfy). Found only because the Owner asked, mid-session, to always
+check the latest documents in this project before building — this file predates D-0208 by
+three days and was not read before it.
+
+Re-run against the then-current production image:
+
+| Field | Value |
+|---|---|
+| Target image | `noesar-evolution:phase4-recompute-verifier` |
+| Target image id | `sha256:acf2e7382f14430f333261be6cb633dc5fe9c2956691020e1e4b71d0c9f3f9f0` |
+| syft version | `1.49.0` (unchanged) |
+| Generated (UTC) | `2026-07-28T13:31:10Z` |
+| Image CycloneDX components | 8 476 (532 libraries, 1 application, 1 OS, 7 942 files) — unchanged from the 07-25 run: no third-party dependency was added by any phase-7 or CodeN-Evolution step |
+| `apps/webui-react` | absent from the source scan, as expected — removed entirely in `D-0195`/`D-0196` (2026-07-28), not merely unbuilt as this document previously described |
+
+**A gap this document itself named is now closeable, demonstrated not just stated**: "No
+signature over any SBOM" — `tools/sign-release-artifact.mjs` (D-0208, generic Ed25519
+signer already reused three times) signs a real ~3.2 MB CycloneDX document in 165 ms,
+verified PASS, tamper-rejected. Not run against all four documents in this pass (the
+artefacts live in `$ARTIFACT_ROOT/sbom/`, regenerated per image, not committed — signing
+them is a release-time step, not something this correction needed to complete to prove
+the capability is real).
+
+Artefacts and `SHA256SUMS.txt`/`PROVENANCE.txt` for this run: `$ARTIFACT_ROOT/sbom/`
+(default `/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/sbom/`), overwriting the 07-25 set — the
+image only, since a fresh production tag exists after every phase-7 deploy this session
+and keeping every historical SBOM was never this document's design.
+
 Re-running against the same image with the same pinned syft digest yields the same
 component set; the documents carry a generation timestamp, so their checksums differ.

@@ -3490,3 +3490,35 @@ opzionali e nessun run precedente li dichiarava).
 **Status.** Applicato **e installato** (`:phase4-recompute-verifier`, byte identici
 all'albero su 3 file, `/livez`+`/readyz` 200, `/api/v1/workspace-actions` 401 non
 autenticato, `RestartCount=0`).
+
+## D-0210 · Correzione: D-0208 dichiarava "nessun tool SBOM su questo host" — falso, esisteva già da tre giorni — 2026-07-28
+**Decision.** Su istruzione esplicita dell'Owner ("fai sempre riferimento agli ultimi
+documenti che trovi in noesar_evolution"), controllati i documenti più recenti prima di
+proseguire con il passo 10. Trovato `docs/SBOM_REPORT.md` (2026-07-25, **precede D-0208 di
+tre giorni**): un vero SBOM CycloneDX 1.7 + SPDX 2.3 era già stato prodotto da `syft`,
+eseguito da un'immagine containerizzata **pinnata by digest** (`anchore/syft@sha256:13b53eb…`),
+**già in cache locale**, senza installare nulla sull'host — esattamente il vincolo che
+D-0208 credeva di non poter soddisfare. `tools/generate-sbom.sh` esiste ancora, funziona
+ancora. Ri-eseguito per davvero contro l'immagine di produzione corrente
+(`:phase4-recompute-verifier`): 8.476 componenti CycloneDX sull'immagine, invariati dal
+25 luglio (nessun passo di Fase 7/CodeN Evolution ha aggiunto una dipendenza terza parte).
+Un gap che lo stesso report nominava ("nessuna firma su alcun SBOM") è ora chiudibile per
+davvero: `sign-release-artifact.mjs` (D-0208) firma un documento CycloneDX reale da 3,2 MB
+in 165 ms, verificato PASS.
+**Why.** `docs/SBOM_STATUS.md` (la versione PARTIAL, che D-0208 aveva letto) è
+esplicitamente **superseduta** da `docs/SBOM_REPORT.md` fin dalla sua prima riga
+("Supersedes: SBOM_STATUS.md") — ma D-0208 non ha controllato se esistesse un documento
+più recente prima di dichiarare la lacuna, e ha ricostruito una versione peggiore
+(inventario dichiarato PARTIAL) di qualcosa che esisteva già in forma migliore.
+**Rejected.** Lasciare la dichiarazione falsa in D-0208 senza correggerla — il registro
+delle decisioni è append-only per costruzione (come il registro degli eventi): non si
+riscrive una voce passata, se ne aggiunge una che la corregge.
+**Evidence.** `docs/SBOM_REPORT.md` aggiornato con la nuova esecuzione (provenienza, hash,
+conteggi). `PROJECT_STATE.json.deferred_items[1]` ("no syft or cyclonedx on this host")
+corretto. Nessun test automatico interessato (documentazione + un tool già esistente,
+nessun file server toccato).
+**Reversal cost.** Nessuno.
+**Status.** Applicato. Nessun deploy (nessun codice servito cambiato). Promemoria
+permanente per sé stesso e per sessioni future: **controllare `find docs/
+MASTER_PROJECT/ -newer <ultimo documento letto>` prima di dichiarare un gap "mai
+risolvibile qui".**

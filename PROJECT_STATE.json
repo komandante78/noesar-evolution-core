@@ -435,7 +435,7 @@
   },
   "deferred_items": [
     "tools/verify-package.py imports sys without using it (ruff F401) - phase 3 deferred it to phase 5 and phase 4 deliberately did not override that deferral (D-0039)",
-    "no SBOM for the image: a declared-PARTIAL component inventory was produced instead (tools/generate-inventory.mjs); no syft or cyclonedx on this host",
+    "SBOM: CORRETTO in D-0210 - un vero CycloneDX 1.7 + SPDX 2.3 esiste (docs/SBOM_REPORT.md, tools/generate-sbom.sh, syft containerizzato pinnato by digest, gia in cache). D-0208 aveva dichiarato erroneamente nessun tool disponibile. Gap residuo reale: nessuna firma sui documenti SBOM stessi (dimostrato chiudibile con sign-release-artifact.mjs, non ancora eseguito su tutti e 4 i documenti).",
     "WebUI settings pane for timezone and locale not built; the server contract exists and is tested",
     "update signing side and portal not implemented - only the offline channel is usable, and no channel key is pinned, so nothing can be applied",
     "audit ledger append is O(n) per write: the whole file is re-read to find the last hash",
