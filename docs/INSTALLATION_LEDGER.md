@@ -2852,6 +2852,33 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 `:phase4-oidc-saml-scim` toglie solo il ricalcolo delle claim — nessun run già promosso
 viene invalidato.
 
+## 2026-07-28 · `:phase4-tool-catalog` — CodeN Evolution passo 10, il catalogo strumenti a carico zero
+
+**Immagine** `noesar-evolution:phase4-tool-catalog`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-tool-catalog`, `FROM
+noesar-evolution:phase4-recompute-verifier`. Copiati `server.mjs` (5 rotte nuove),
+`tool-catalog.mjs` nuovo, `schemas/tool-catalog-entry.schema.json` nuovo.
+
+**Byte provati identici all'albero**: sha256 dei 3 file nell'immagine (container
+usa-e-getta, `--entrypoint node`) = sha256 repository, 3/3 PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo
+(`BACKUPS/runtime_pre_tool_catalog_deploy_20260728T142717Z/`, 75 MB) → configurazione
+riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-recompute-verifier-20260728T142717Z` → avvio senza override,
+healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200. Le 5 rotte nuove `401` non
+autenticato. Rotta inesistente 404.
+
+**§5a**: rimosso `noesar-evolution.rollback-oidc-saml-scim-20260728T131609Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Il registro strumenti
+attivi vive in memoria: tornare a `:phase4-recompute-verifier` non lascia nulla su disco
+da disfare.
+
 ## 2026-07-28 · `:phase4-oidc-saml-scim` — Fase 7 passo 30, "OIDC, SAML, SCIM" (SCIM cablato, OIDC verifica, SAML dichiarato non costruito)
 
 **Immagine** `noesar-evolution:phase4-oidc-saml-scim`, costruita `--network=none

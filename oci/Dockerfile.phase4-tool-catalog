@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# CodeN Evolution construction order, step 10: the zero-load tool catalog
+# (15_CODEN_EVOLUTION_DA_ZERO.md §3.V) — depends on step 4 (capability tokens, D-0180),
+# the next real step after step 9 (the recompute verifier, D-0209).
+#
+# New: services/reference-control-plane/src/tool-catalog.mjs. At rest: zero tools loaded
+# — ActiveToolRegistry starts every process empty, verified by toolCatalogStatus() rather
+# than assumed. A catalog is searchable (metadata only, never a payload) via
+# searchCatalog(). scopeRequestToTool() makes "an undeclared effect is impossible, not
+# forbidden" mechanical: it intersects a requested path/operation set against a tool's
+# declared effects rather than checking-then-rejecting, so nothing outside the
+# declaration is ever placed in a narrowed request. Not yet wired to a real token mint
+# (toolCatalogStatus().enforced:false, named rather than implied) — that is the next step.
+#
+# Provenance reuses verifyCompliancePackSignature() (D-0205) as-is, the same generic-
+# document-signer pattern steps 29/31 already reused instead of duplicating. Installing a
+# tool registers a provenance-verified catalog entry as active; it does not fetch or
+# execute anything — that would be EXECUTE, permanently refused.
+#
+# server.mjs changed to wire GET /api/v1/tool-catalog, GET .../search, POST .../validate,
+# POST .../install, POST .../{id}/uninstall — install/uninstall carry CSRF (they mutate
+# the active-tool registry), search/validate do not (no state mutated). No Rust twin.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-recompute-verifier
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/tool-catalog.mjs /opt/noesar/services/reference-control-plane/src/tool-catalog.mjs
+COPY --chown=10001:10001 schemas/tool-catalog-entry.schema.json /opt/noesar/schemas/tool-catalog-entry.schema.json
+USER 10001:10001

@@ -50,6 +50,10 @@ import {
 import {
   OidcError, verifyIdToken, validateDiscoveryDocument, oidcStatus,
 } from './oidc.mjs';
+import {
+  ToolCatalogError, loadToolCatalogSchema, validateToolEntry, searchCatalog,
+  ActiveToolRegistry, toolCatalogStatus,
+} from './tool-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -82,6 +86,8 @@ const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.works
 const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(repoRoot, '.sector-modules'));
 const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(repoRoot, '.compliance-packs'));
 const technologyRadarRoot = resolve(process.env.NOESAR_TECHNOLOGY_RADAR ?? join(repoRoot, '.technology-radar'));
+const toolCatalogRoot = resolve(process.env.NOESAR_TOOL_CATALOG ?? join(repoRoot, '.tool-catalog'));
+const activeToolRegistry = new ActiveToolRegistry();
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
@@ -1198,6 +1204,73 @@ const requestListener = async (req, res) => {
       } catch (error) {
         return json(res, error.status ?? 400, scimError(error.status ?? 400, error.message), { 'content-type':'application/scim+json; charset=utf-8' });
       }
+    }
+
+    // --- tool catalog · CodeN Evolution construction order step 10 ("il catalogo strumenti
+    // a carico zero", 15_CODEN_EVOLUTION_DA_ZERO.md §3.V) --------------------------------
+    // Searchable, never a load: /search returns metadata, never a tool's payload. Install
+    // registers a provenance-verified entry as active for this process (in memory, same
+    // posture as capability.mjs's TokenMinter) — it does not fetch or run anything.
+    if (req.method === 'GET' && url.pathname === '/api/v1/tool-catalog') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, toolCatalogStatus(activeToolRegistry));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/tool-catalog/search') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      try {
+        const result = searchCatalog(repoRoot, toolCatalogRoot, {
+          name: url.searchParams.get('name') ?? undefined,
+          operation: url.searchParams.get('operation') ?? undefined,
+        });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof ToolCatalogError) return json(res, 422, { error:'tool_catalog_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/tool-catalog/validate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const schema = loadToolCatalogSchema(repoRoot);
+        return json(res, 200, validateToolEntry(payload ?? {}, schema));
+      } catch (error) {
+        if (error instanceof ToolCatalogError) return json(res, 422, { error:'tool_catalog_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/tool-catalog/install') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        const installed = activeToolRegistry.install(payload?.tool, { sessionId: authenticated.session?.id ?? authenticated.user.id, permanent: Boolean(payload?.permanent) });
+        ledger.append({ actor:authenticated.user.id, action:'tool_catalog.installed', result:'success', details:{ toolId: payload?.tool?.id ?? null, permanent: Boolean(payload?.permanent) } });
+        return json(res, 201, installed);
+      } catch (error) {
+        if (error instanceof ToolCatalogError) return json(res, 422, { error:'tool_catalog_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    let toolCatalogUninstallMatch = url.pathname.match(/^\/api\/v1\/tool-catalog\/([^/]+)\/uninstall$/);
+    if (toolCatalogUninstallMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const outcome = activeToolRegistry.uninstall(toolCatalogUninstallMatch[1]);
+      ledger.append({ actor:authenticated.user.id, action:'tool_catalog.uninstalled', result:'success', details:{ toolId: toolCatalogUninstallMatch[1] } });
+      return json(res, 200, outcome);
     }
 
     // --- workspace actions · D-0190, the first surface that spends a token for real --------

@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "CODEN_EVOLUTION_CONSTRUCTION_ORDER_STEP_9_RECOMPUTE_VERIFIER_WIRED",
-  "next_phase": "CodeN Evolution, ordine di costruzione (15_CODEN_EVOLUTION_DA_ZERO.md paragrafo10), passo 10: catalogo strumenti a carico zero (invenzione V) - a riposo zero strumenti caricati, la superficie deriva dal Piano, installazione di uno strumento e essa stessa un passo del Piano con provenienza verificata. Passo 9 (verificatore per ricalcolo) chiuso e cablato: workspace-actions.mjs::approve() rifiuta la promozione su una claim contraddetta, non solo sul confronto percorsi.",
+  "phase_status": "CODEN_EVOLUTION_CONSTRUCTION_ORDER_STEP_10_ZERO_LOAD_TOOL_CATALOG_BUILT",
+  "next_phase": "CodeN Evolution, ordine di costruzione (15_CODEN_EVOLUTION_DA_ZERO.md paragrafo10), passo 11: ATOM come secondo provider (richiede 1, 3, 9 - gia soddisfatti). Passo 10 (catalogo strumenti a carico zero) chiuso: scopeRequestToTool() rende meccanico un effetto non dichiarato impossibile, non ancora cablato su un mint reale (enforced:false, dichiarato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -374,9 +374,9 @@
     }
   ],
   "product_test_suite": {
-    "unit": "1040/1040 (misurato 2026-07-28, D-0209)",
-    "eslint": "211 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0209)",
-    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0209 - riverificato, nessuna regressione)",
+    "unit": "1061/1061 (misurato 2026-07-28, D-0211)",
+    "eslint": "213 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0211)",
+    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0211 - riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
@@ -387,12 +387,12 @@
     "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)",
     "reasoning_vectors": "18 vettori, Node 22/22 e Rust 18/18 sullo STESSO file (misurato 2026-07-27)",
     "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0209 - riverificato)",
-    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0209 - riverificato)",
+    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0211 - riverificato)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5809/5809, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0209 - una riga trovata corrotta durante l aggiornamento e riparata, vedi D-0209)",
+    "manifest": "5812/5812, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0211)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -400,7 +400,8 @@
     "technology_radar_validation": "18/18 — services/reference-control-plane/test/technology-radar.test.mjs, ogni voce del seed reale validata contro lo schema nuovo, dentro la unit suite (misurato 2026-07-28, D-0206)",
     "oidc_scim_validation": "OIDC 15/15 (RS256 + alg-none/HS256-confusion refused, provato con RSA autofirmato), SCIM 18/18 puro + 13/13 HTTP end-to-end (crea/lista/PATCH/DELETE/revoca token contro un server reale), dentro la unit suite (misurato 2026-07-28, D-0207)",
     "release_provenance_pipeline": "inventory + CBOM + ML-BOM generati contro l immagine viva, firmati Ed25519, verificati PASS x3, un documento manomesso rifiutato; build reproducibility 2/2 identiche su Dockerfile.phase4-oidc-saml-scim (misurato 2026-07-28, D-0208, verifica diretta non unit test — vedi tools/cbom.mjs, generate-mlbom.mjs, sign/verify-release-artifact.mjs, check-build-reproducibility.mjs)",
-    "recompute_verifier": "17/17 verification.mjs + 5/5 wiring reale in workspace-actions.mjs (claim CONTRADETTA blocca la promozione anche con confronto percorsi pulito), dentro la unit suite (misurato 2026-07-28, D-0209)"
+    "recompute_verifier": "17/17 verification.mjs + 5/5 wiring reale in workspace-actions.mjs (claim CONTRADETTA blocca la promozione anche con confronto percorsi pulito), dentro la unit suite (misurato 2026-07-28, D-0209)",
+    "tool_catalog": "21/21 — services/reference-control-plane/test/tool-catalog.test.mjs, incluso scopeRequestToTool intersection reale, dentro la unit suite (misurato 2026-07-28, D-0211)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -488,7 +489,7 @@
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
   "gpu_runtime": "NOT_IMPLEMENTED",
-  "next_phase_label": "CODEN_EVOLUTION_STEP_10_ZERO_LOAD_TOOL_CATALOG",
+  "next_phase_label": "CODEN_EVOLUTION_STEP_11_ATOM_SECOND_PROVIDER",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
     "gate": {
@@ -797,7 +798,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0209: passo 9 (verificatore per ricalcolo) costruito, cablato e installato (:phase4-recompute-verifier). Prossima azione: passo 10 (catalogo strumenti a carico zero) o a scelta dell Owner. Nota: la Fase 2 originale di 09_PIANO.md (16 stadi, editor, terminale, sotto-agenti) resta non costruita - e la visione del prodotto finito, non il prossimo passo per dipendenza.",
+  "next_action": "D-0211: passo 10 costruito e installato (:phase4-tool-catalog). Prossima azione: passo 11 (ATOM come secondo ReasoningProvider) o a scelta dell Owner - nota: ATOM vive in un repository privato separato per decisione, quindi il passo 11 e principalmente il seam di integrazione, non ATOM stesso.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1306,5 +1307,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T13:17:28.256Z"
+  "last_updated": "2026-07-28T14:28:32.076Z"
 }

@@ -3522,3 +3522,40 @@ nessun file server toccato).
 permanente per sé stesso e per sessioni future: **controllare `find docs/
 MASTER_PROJECT/ -newer <ultimo documento letto>` prima di dichiarare un gap "mai
 risolvibile qui".**
+
+## D-0211 · CodeN Evolution, passo 10 dell'ordine di costruzione: il catalogo strumenti a carico zero — 2026-07-28
+**Decision.** Passo 10 (`15_CODEN_EVOLUTION_DA_ZERO.md` §3.V, invenzione V), dopo il
+passo 9 (D-0209). Nuovo `tool-catalog.mjs`: a riposo **zero strumenti caricati**
+(`ActiveToolRegistry` parte vuota ad ogni processo, verificato non assunto), un catalogo
+**ricercabile** (`searchCatalog`, metadati soli — mai il payload di uno strumento) per
+nome o per effetto dichiarato. **"Un effetto non dichiarato non è vietato: è
+impossibile"** reso meccanico: `scopeRequestToTool()` **interseca** un insieme di
+percorsi/operazioni richiesti contro gli effetti dichiarati dallo strumento invece di
+controllare-e-poi-rifiutare — nulla fuori dalla dichiarazione entra mai nella richiesta
+ristretta restituita, quindi non c'è un controllo successivo da aggirare. **Nessuna
+denylist testuale** in nessuna riga del file, per la stessa ragione già valida ovunque in
+questo progetto. Provenienza riusa `verifyCompliancePackSignature` (D-0205) **così com'è**
+— quarta riutilizzazione dello stesso firmatario generico invece di uno nuovo.
+"Installare" uno strumento registra una voce di catalogo con provenienza verificata come
+attiva per il processo; **non** scarica né esegue nulla — sarebbe EXECUTE, rifiutato in
+modo permanente, nominato non aggirato.
+**Why.** Gli schemi degli strumenti consumano fino al 72% del contesto prima che il
+lavoro cominci (§3.V) — la cura non è "carica su richiesta", è che la superficie degli
+strumenti **deriva dal Piano**: un passo dichiara l'effetto che gli serve, da quella
+dichiarazione si cerca lo strumento, mai prima.
+**Rejected.** Wiring reale sul mint di un token per uno strumento specifico — richiede una
+decisione su come un Piano dichiara "mi serve un effetto di tipo X" prima che
+`workspace-actions.mjs` possa chiamare `scopeRequestToTool()`, fuori scope di questo passo
+e nominato in `toolCatalogStatus().enforced:false` invece di finto. Un motore di
+installazione reale (download, verifica, esecuzione) — riaprirebbe EXECUTE.
+**Evidence.** unit 1040→1061 (+21). ESLint 211→213 file 0 errori (un `existsSync` non
+usato e un import poi rimosso da `server.mjs` quando si è scoperto che nessuna rotta lo
+usava ancora — dichiarato, non taciuto). Browser e2e 315/315, difetti seminati 19/19,
+`scripts/test.sh` invariato. MANIFEST 5809→5812, 5812/5812 verificate senza avvisi. Sweep
+DebugLab (nuova superficie): `services/` 0 finding.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-recompute-verifier` toglie solo le cinque rotte nuove; il registro strumenti
+attivi vive in memoria, quindi non c'è nulla su disco da disfare.
+**Status.** Applicato **e installato** (`:phase4-tool-catalog`, byte identici all'albero
+su 3 file, `/livez`+`/readyz` 200, tutte le rotte nuove 401 non autenticato, rotta
+inesistente 404, `RestartCount=0`).
