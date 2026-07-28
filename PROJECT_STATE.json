@@ -9,19 +9,18 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3a29c3f (D-0197: B-008 was a stale blocker, closed without migrating)",
-  "last_updated_utc": "2026-07-28T09:06:15Z",
+  "last_commit": "f721d62 (D-0198: in-process TLS termination, built/installed/verified live)",
+  "last_updated_utc": "2026-07-28T09:16:48Z",
   "blockers": [
     {
       "id": "B-001",
-      "severity": "medium",
-      "code": "GITHUB_STATUS=BLOCKED_AUTHENTICATION",
-      "summary": "GitHub CLI (gh) is not installed on this host and no GH_TOKEN/GITHUB_TOKEN is set; the private repository NOESAR-EVOLUTION could not be created and no remote is configured. No token was written to any file. The local repository is complete and committed.",
+      "severity": "resolved",
+      "code": "GITHUB_STATUS=RESOLVED_PRIVATE_REPO_CREATED_AND_PUSHED",
+      "summary": "CHIUSO 2026-07-28 (D-0199). L'Owner ha fornito un Personal Access Token classico (scope repo, workflow) direttamente in chat - dichiarato esposto e da revocare, non usato come credenziale persistente. Repository privato komandante78/NOESAR-EVOLUTION creato via GitHub API (curl, gh resta non installato - non serviva), remote 'origin' configurato SENZA il token nell'URL salvata (git config verificato), push di main fatto passando il token come URL ad-hoc mai persistito. HEAD remoto = HEAD locale (f721d6253c4bbfe47060fbef7dcdfcb3790c40f5), verificato via API. Nessun token in nessun file tracciato o non tracciato del repository.",
       "blocks_next_phase": false,
       "resolution_options": [
-        "Install gh, run 'gh auth login', then 'gh repo create NOESAR-EVOLUTION --private --source . --remote origin --push' from PROJECT_ROOT",
-        "Create the private repository manually in the GitHub web UI, then 'git remote add origin <url> && git push -u origin main'",
-        "Continue with the local repository only and resolve the remote later"
+        "Nessuna azione residua per la creazione. Il token fornito in chat va considerato compromesso (visibile in questa conversazione) - revocarlo e sostituirlo, idealmente con uno fine-grained scoped al solo repo NOESAR-EVOLUTION.",
+        "Nessuna credenziale e' salvata in questa sessione per push futuri - ogni push successivo richiede di nuovo un token dall'Owner, per design (regola 25/26)."
       ]
     },
     {
@@ -774,7 +773,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0198: TLS in-process costruita, installata e verificata (:phase4-tls) - nuovo modulo tls.mjs, server.mjs sceglie https quando NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE sono entrambi validi, secureCookies implicito true, HEALTHCHECK bi-modale. TLS resta OFF sull'installazione viva - nessun certificato fornito dall'Owner, la capacita' e' installata non accesa. Resta solo B-001 (remote git) bloccato in attesa delle credenziali dell'Owner. F4-014/F4-015/F4-016 restano aperti, non toccati.",
+  "next_action": "D-0199: B-001 chiuso. Repository privato komandante78/NOESAR-EVOLUTION creato e HEAD pushato (f721d62). Il token fornito dall'Owner in chat e' dichiarato compromesso (va revocato/sostituito) e non e' stato persistito da nessuna parte - ogni push futuro richiede di nuovo un token, per design. D-0200: il secret scan rieseguito DOPO il commit (non solo prima) ha trovato 1 fixture di test a forma di chiave PEM in tls.test.mjs - contenuto fasullo, riscritto, allowlist scoped al singolo commit storico gia' pushato (non riscritto, regola 14). Nessun blocker aperto resta tranne i reperti tecnici gia' noti (F4-014/F4-015/F4-016, mai toccati) e le due domande standing minori. Prossima azione: a scelta dell'Owner - riverificare col digest cosa resta davvero aperto nella fase 1 prima di assumere quale sia il prossimo passo tecnico.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1283,5 +1282,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T09:06:15Z"
+  "last_updated": "2026-07-28T09:16:48Z"
 }

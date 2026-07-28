@@ -1,5 +1,5 @@
 8cb8e014671f00b9280aa6c974bb2c4531ab68106f585f452b4a6e0241af9279  ./oci/Dockerfile.phase4
-f078099760774c4f257ce017a1a62e7b293784527f59db30786abe3f927851b2  .gitleaks.toml
+228dc2787a2670544ec43191b28d18a04becded472be83590c731fe4b9eb2277  .gitleaks.toml
 0d61132c37fdba07ffbaf7f669d03cc9659c98727af18f20e436edf0df9ca325  ./services/reference-control-plane/test/prompt-injection-containment.test.mjs
 eae11f245707b24fc4c2cb911aa5bb769e8d262953c7e54fef2f09e737c5fcea  ./services/reference-control-plane/test/provider-gateway-success-paths.test.mjs
 7ca587ea97fa14be3c994a90586125a710e9e999c7a10e99c3c31cf382b2f9bb  ./services/reference-control-plane/test/provider-health-probe.test.mjs
@@ -5781,5 +5781,5 @@ e3d18ff5ef3850498e1f9a0ea4b10b8a03842e523388fc7629bed85d3259efb1  oci/Dockerfile
 61288e3ea598a30371e3072939d1e848bc0bee74c8628eba312b695fa8972793  ./services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs
 c80df91dfea1ec9e8b6db678cb599ee96623b2f25916d1fc4cf9d094bf82e1e2  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
 1876919bf1827c97f04af73f98dbfbec0525a5dc8d6b6153cd3065421d41f4d6  services/reference-control-plane/src/tls.mjs
-f8d9f6cef081ca59e5c482ed0e4801f80fd0cbd5880f89f47eae1cf165f3edfe  services/reference-control-plane/test/tls.test.mjs
+b47a3c43764bb90c49584e0575259ebe479446ef6cce9e4faeb4fac1dd6c0a1a  services/reference-control-plane/test/tls.test.mjs
 0a9626ec1fa51804cf8f229418a535d6807e0d0c7d8ad77d2b7f84735837d880  tools/tls-smoke.mjs

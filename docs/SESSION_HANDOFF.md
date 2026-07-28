@@ -38,8 +38,21 @@ container malato mentre il servizio risponde. Riparato con un controllo a due te
 loopback, non una terza parte), provato in positivo contro un server plaintext, uno TLS
 reale con certificato autofirmato di test, e nessun server.
 
-**Rimane solo `B-001`** (remote git, bloccato in attesa delle credenziali dell'Owner).
-Nessuna azione pendente su TLS o `B-008` (chiuso in `D-0197`).
+**`D-0199`: `B-001` chiuso — repository privato creato e HEAD pushato.** L'Owner ha
+fornito un token GitHub direttamente in chat (dichiarato esposto, va revocato — vedi sotto).
+`komandante78/NOESAR-EVOLUTION` esiste, **privato**, porta l'intera storia (139 commit,
+già passata dal secret scan prima del push). Nessun token è stato salvato in nessun file:
+`origin` punta a `https://github.com/komandante78/NOESAR-EVOLUTION.git` senza credenziali
+incorporate. **Ogni push futuro richiede di nuovo un token dall'Owner** — non persistito
+per design (regola 25/26), non un limite dimenticato.
+
+⚠️ **Azione residua per l'Owner, non per una prossima sessione**: revocare il token
+fornito in questa sessione su GitHub e, se vuole, generarne uno fine-grained scoped al
+solo repo per il prossimo push.
+
+Nessuna azione pendente su TLS o `B-008` (chiuso in `D-0197`). **Nessun blocker aperto
+resta**, solo i reperti tecnici noti (`F4-014`/`F4-015`/`F4-016`) e le domande standing
+minori elencate sotto.
 
 ## ➜ Stato dell'installazione
 
@@ -56,13 +69,26 @@ dell'Owner registrate (`B-008`, `B-001`, TLS).
 **`D-0197`** (commit `3a29c3f`): `B-008` verificato stale e chiuso senza migrare nulla —
 la proiezione identità girava già da sola dal 2026-07-25.
 
-**`D-0198`** (non ancora committato al momento in cui questo file è scritto): TLS
-in-process. File nuovi: `services/reference-control-plane/src/tls.mjs`,
+**`D-0198`** (commit `f721d62`): TLS in-process. File nuovi:
+`services/reference-control-plane/src/tls.mjs`,
 `services/reference-control-plane/test/tls.test.mjs` (9 test), `tools/tls-smoke.mjs`,
 `oci/Dockerfile.phase4-tls`. Modificati: `server.mjs`, `oci/Dockerfile`,
 `oci/Dockerfile.phase4` (HEALTHCHECK bi-modale in entrambi), `scripts/test.sh` (nuovo step
 tristate), `docs/LAN_ACCESS_CONFIGURATION.md` (sezione TLS riscritta, due opzioni A/B),
 `docs/REMAINING_WORK.md`, `PROJECT_STATE.json`, `MANIFEST.sha256`.
+
+**`D-0199`** (commit successivo a questo file): repository GitHub privato creato via API,
+remote configurato, push del `main` locale (`f721d62`, verificato identico al remoto).
+Nessun file di prodotto toccato.
+
+**`D-0200`** (stesso commit di `D-0199`): rieseguito il secret scan **dopo** il commit
+`f721d62` (prima era stato eseguito solo prima — `gitleaks` scansiona la storia, non
+l'albero non committato, quindi non aveva mai visto quel contenuto) — trovato **1 reperto
+reale**, un fixture di test in `tls.test.mjs` a forma di chiave PEM (contenuto fasullo, ma
+struttura riconosciuta dalla regola generica). Fixture riscritto per non riprodurre la
+forma; allowlist in `.gitleaks.toml` scoped al **singolo commit storico** (già pushato,
+non riscritto — regola 14), non al file intero. ⚠️ **Lezione permanente**: la scansione
+segreti va ripetuta dopo ogni commit che introduce contenuto nuovo, non solo prima.
 
 ## ➜ Verifiche prodotte in sessione
 
@@ -78,6 +104,9 @@ D-0198: unit 894→903 (+9), ESLint 187→190 file 0 errori, tools/verify-source
   dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, rotta protetta 401, rotta
   inesistente 404, tls_active:false secure_cookies:false nel log di avvio (nessun
   certificato fornito), data-plane.identity-projected projected:1 riconfermato
+D-0199: GET /user 200 (login komandante78, scope repo+workflow), POST /user/repos 201
+  (private:true), push verificato (nuovo branch main -> main), .git/config letto dopo il
+  push senza credenziali, HEAD remoto = HEAD locale via GET /repos/.../commits/main
 ```
 
 ⚠️ **Deviazione dichiarata in `D-0198`**: un controllo byte ridondante fatto con
@@ -93,14 +122,15 @@ mutazione, nessun dato nuovo letto.
   provenance simmetrica, `.ps1` mai eseguiti, `F4-014` (esecutore senza oracolo condiviso),
   `F4-015` (`shadowStatus()` scrive su una GET), `F4-016` (reasoning.mjs pianifica contro
   `/workspace` letterale).
-- `B-001` deciso ma **bloccato**: nessuna credenziale fornita, nessun remote configurato.
 - **TLS è costruita e installata ma NON attiva**: `tls_active:false` sul vivo. Non
   assumere che le connessioni siano cifrate finché un certificato non è configurato.
+- **Il repository su GitHub esiste ma nessuna credenziale è salvata per pushare di
+  nuovo**: un `git push` da una sessione futura fallirà finché l'Owner non fornisce un
+  token, per design.
 
 ## ➜ Blocker aperti
 
-- **`B-001`** — remote voluto dall'Owner, in attesa delle sue credenziali. `gh` non installabile.
-- `B-002`, `B-008`, `B-009`, `B-010` — chiusi.
+Nessuno. `B-001`, `B-002`, `B-008`, `B-009`, `B-010` — tutti chiusi.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 

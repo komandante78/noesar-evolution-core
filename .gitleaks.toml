@@ -19,3 +19,17 @@ useDefault = true
 [[allowlists]]
 description = "Vendored upstream crates: third-party source, reviewed as noise on 2026-07-27"
 paths = ['''^rust/vendor/''']
+
+# D-0198/D-0199: services/reference-control-plane/test/tls.test.mjs, commit f721d625,
+# briefly contained a placeholder shaped like a PEM private key block
+# (`-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n`) to exercise
+# resolveTls()'s "does this look like PEM" check. It never held real key material -- four
+# bytes of literal text, not a base64-encoded key of any length -- but it matched the
+# generic `private-key` rule's structural pattern regardless of content. The commit is
+# already pushed to origin (D-0199), so it is not rewritten (CLAUDE10 rule 14); the test
+# fixture itself was changed in the next commit to stop reproducing the pattern at all.
+# Scoped to that one historical commit, not to the file or the rule generally -- a real
+# key landing in this same file later must still be caught.
+[[allowlists]]
+description = "Self-inflicted false positive: test fixture shaped like a PEM key, not a real one — commit f721d625, fixed forward same phase"
+commits = ["f721d6253c4bbfe47060fbef7dcdfcb3790c40f5"]

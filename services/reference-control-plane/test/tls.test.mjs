@@ -16,7 +16,7 @@ test('neither variable set: TLS is inactive, nothing is read', () => {
 test('both variables set to readable PEM files: TLS is active', () => {
   const files = {
     '/cert.pem': '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n',
-    '/key.pem': '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n',
+    '/key.pem': 'test fixture containing the words PRIVATE KEY, deliberately not shaped like a real PEM delimiter block\n',
   };
   const result = resolveTls({
     env: { NOESAR_TLS_CERT_FILE: '/cert.pem', NOESAR_TLS_KEY_FILE: '/key.pem' },
@@ -47,7 +47,7 @@ test('cert file missing: fails loudly rather than falling back to plaintext', ()
   assert.throws(
     () => resolveTls({
       env: { NOESAR_TLS_CERT_FILE: '/missing-cert.pem', NOESAR_TLS_KEY_FILE: '/key.pem' },
-      readFile: readFileStub({ '/key.pem': '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n' }),
+      readFile: readFileStub({ '/key.pem': 'test fixture containing the words PRIVATE KEY, deliberately not shaped like a real PEM delimiter block\n' }),
     }),
     /NOESAR_TLS_CERT_FILE.*could not be read/,
   );
@@ -69,7 +69,7 @@ test('a cert file that is not PEM is rejected rather than handed to the TLS laye
       env: { NOESAR_TLS_CERT_FILE: '/cert.pem', NOESAR_TLS_KEY_FILE: '/key.pem' },
       readFile: readFileStub({
         '/cert.pem': 'this is not a certificate',
-        '/key.pem': '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n',
+        '/key.pem': 'test fixture containing the words PRIVATE KEY, deliberately not shaped like a real PEM delimiter block\n',
       }),
     }),
     /does not look like a PEM certificate/,

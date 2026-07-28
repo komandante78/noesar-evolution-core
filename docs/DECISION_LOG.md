@@ -3036,3 +3036,78 @@ nessun dato riscritto. Tornare a `:phase4-capability-csrf` toglierebbe solo la c
 **Status.** Applicato **e installato** (`:phase4-tls`). **TLS resta OFF sull'installazione
 viva** finché l'Owner non fornisce (o chiede di generare) un certificato — questa fase
 costruisce e prova la capacità, non la accende.
+
+## D-0199 · `B-001` chiuso: repository privato creato e HEAD pushato — 2026-07-28
+**Decision.** L'Owner ha fornito un Personal Access Token GitHub classico (scope `repo,
+workflow`, verificato via `GET /user`: login `komandante78`) **direttamente in chiaro nella
+conversazione**. Registrato immediatamente come esposto — chi ha accesso alla trascrizione
+ha accesso al token — e comunicato all'Owner di revocarlo dopo l'uso, prima di procedere.
+Creato `komandante78/NOESAR-EVOLUTION` **privato** via GitHub API (`POST /user/repos`,
+`curl` — già disponibile sull'host, nessun tooling nuovo; `gh` resta non installato e non
+serviva). Remote `origin` aggiunto **senza il token nell'URL salvata** (`.git/config`
+verificato: solo `https://github.com/komandante78/NOESAR-EVOLUTION.git`, nessuna
+credenziale). Push di `main` fatto passando il token come argomento URL **ad-hoc**, mai
+persistito (`git -c http.extraHeader` con header `Bearer` è stato rifiutato da GitHub con
+"invalid credentials" — i PAT classici su questo endpoint vogliono l'URL-embedded form, non
+l'header nudo; scoperto tentando, non assunto). Verificato che l'HEAD del remoto coincide
+byte per byte con l'HEAD locale (`f721d6253c4bbfe47060fbef7dcdfcb3790c40f5`, via
+`GET /repos/.../commits/main`).
+**Why.** Il repository locale era completo e committato da diciannove sessioni; l'unica
+cosa mancante era l'autenticazione verso GitHub, che questo host non può fornire da solo
+(`gh` non installabile, regola 45). L'Owner ha risolto direttamente il blocco fornendo la
+credenziale lui stesso.
+**Rejected.** Salvare il token in `.git/config`, in una variabile d'ambiente persistente,
+o in qualunque file — regola 25/26: le credenziali vivono solo nell'ambiente di runtime
+della singola operazione che le usa, mai altrove. Ogni push futuro richiederà di nuovo un
+token dall'Owner, per design — non una comodità dimenticata.
+**Evidence.** `GET /user` → `200`, `login:komandante78`; header di risposta
+`x-oauth-scopes: repo, workflow`; `POST /user/repos` → `201`,
+`full_name:komandante78/NOESAR-EVOLUTION`, `private:true`; `git push` (URL ad-hoc) →
+`* [new branch] main -> main`; `.git/config` letto dopo il push, nessun token presente;
+`GET /repos/.../commits/main` → sha remoto **identico** all'HEAD locale.
+**Reversal cost.** Nessuno per il progetto — è la prima pubblicazione, nessun contenuto da
+disfare. **Costo reale per l'Owner**: il token va revocato, perché resta leggibile in
+questa conversazione anche dopo che questa fase è chiusa.
+**Status.** `B-001` chiuso. Repository privato esiste e porta l'intera storia (139 commit,
+già passata dal secret scan **prima** di questo push — nessun reperto). ⚠️ **Azione residua
+per l'Owner, non per questa sessione**: revocare il token fornito in chat in questa
+sessione (nessun frammento riportato qui deliberatamente — è un artefatto tracciato) e, se
+vuole continuare a pushare senza fornirne uno ogni volta, decidere lui come gestire
+l'autenticazione futura (un token fine-grained scoped al solo repo, un credential helper
+suo, o continuare a fornirlo per singola sessione).
+
+## D-0200 · Il proprio secret scan trovava un falso positivo nel proprio fixture di test — 2026-07-28
+**Decision.** Rieseguito `tools/run-secret-scan.sh` dopo `D-0198` (non lo era stato dopo il
+commit, solo prima — `gitleaks detect` scansiona la storia git, non l'albero di lavoro, e
+quindi il contenuto di `f721d625` non era mai stato scansionato finché non è diventato
+storia): **1 reperto**, regola `private-key`, in
+`services/reference-control-plane/test/tls.test.mjs`. Il fixture per testare il ramo
+positivo di `resolveTls()` conteneva un blocco a forma di chiave PEM
+(`-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n`) — quattro byte di testo
+letterale, non una chiave reale in alcuna forma, ma la regola generica riconosce la
+**struttura** del delimitatore, non il contenuto. Corretto in due parti: il fixture
+riscritto per contenere la sottostringa `PRIVATE KEY` (ciò che il codice controlla
+davvero) senza il delimitatore `-----BEGIN...-----` che la regola cerca; e un
+allowlist **scoped al singolo commit storico** `f721d6253c4bbfe47060fbef7dcdfcb3790c40f5`
+in `.gitleaks.toml` (il commit era già stato pushato su `origin` in `D-0199`, quindi non
+riscritto — regola 14).
+**Why.** Il commit `f721d625` era già pubblico (repository privato, ma esterno) quando il
+reperto è stato trovato: riscrivere la storia dopo un push non autorizzato esplicitamente
+per quello scopo sarebbe stata un'azione più grande del problema che risolve, per un
+reperto che non era mai stato un segreto vero.
+**Rejected.** Un allowlist per **percorso** (l'intero file) invece che per **commit**:
+avrebbe silenziato per sempre qualunque contenuto in quel file, non solo questo fixture —
+esattamente l'errore che il commento esistente su `rust/vendor/` avverte di non fare
+("suppressing by rule instead of path... how a scanner becomes a check people learn to
+skip", qui applicato allo stesso principio sulla scelta fra commit e percorso).
+**Evidence.** Report JSON di gitleaks: `RuleID:private-key`,
+`Commit:f721d6253c4bbfe47060fbef7dcdfcb3790c40f5`,
+`File:services/reference-control-plane/test/tls.test.mjs`. Dopo il fix: unit **9/9** su
+`tls.test.mjs` (fixture riscritto, stesso comportamento testato), MANIFEST **5785/5785**,
+`bash tools/run-secret-scan.sh` → **`no leaks found`, `SECRET_SCAN=PASS`**, 140 commit.
+**Reversal cost.** Nessuno.
+**Status.** Applicato, non ancora installato (nessun codice di prodotto toccato — solo
+test e configurazione di scansione). ⚠️ **Lezione registrata**: la scansione dei segreti
+va fatta **anche dopo** il commit che introduce contenuto nuovo, non solo prima — su
+questo repository lo strumento scansiona la storia, non l'albero non committato, quindi
+"pulito prima di committare" non prova nulla sul commit appena fatto.
