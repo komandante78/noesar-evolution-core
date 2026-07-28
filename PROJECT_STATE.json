@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "d518546 (repository understanding, phase 1 step 7 installed)",
-  "last_updated_utc": "2026-07-28T01:40:00Z",
+  "last_updated_utc": "2026-07-28T01:55:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -767,7 +767,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "09_PIANO §7 FATTO E INSTALLATO (:phase4-repomap): repo-map.mjs — linguaggi, punti d ingresso, indice simboli, ricerca letterale, mappa dipendenze, sola lettura, JS-only (D-0188). PROSSIMO: non è più codice da scrivere di iniziativa propria — è una domanda per l Owner (D-0189), la stessa nominata a fine fase precedente: quale superficie del prodotto spende il primo capability token. Finché non risponde, la fase 1 resta components-complete e criterion-incomplete. F4-016 aperto (reasoning.mjs pianifica sempre contro /workspace letterale, innocuo in produzione, non riparato).",
+  "next_action": "D-0190: l Owner ha risposto a D-0189 — la prima azione reale è la scrittura file da chat: quando reasoning.plan produce un piano approvato, l esecutore spende un token per scrivere/modificare un file vero nel workspace su disco, cablando le quick action già disegnate in home-overview.mjs (oggi wired ma senza esecuzione). NON ancora costruito. La prossima fase esegue il ciclo completo (contratto, backup, scope minimo, test, hunt-and-fix, build/install/verify nella stessa fase, D-0143) per questa scelta.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

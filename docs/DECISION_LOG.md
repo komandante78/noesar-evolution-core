@@ -2767,3 +2767,21 @@ vuoto su un'installazione fresca (verificato dal vivo). Nessuna superficie del p
 
 ## F4-016 · `reasoning.mjs` pianifica sempre contro `/workspace` letterale, mai contro `NOESAR_WORKSPACE` — trovato costruendo, non riparato — 2026-07-28
 `server.mjs::/api/v1/reasoning/plan` costruisce `new ReferenceReasoningProvider(PRODUCT.workspaceRoot ?? '/workspace')` — `PRODUCT` non definisce mai `workspaceRoot`, quindi l'espressione è sempre la stringa letterale `/workspace`, mai il valore configurato. Innocuo in produzione (il container imposta sempre `NOESAR_WORKSPACE=/workspace`, quindi i due valori coincidono) ma pianificherebbe in silenzio contro l'albero sbagliato in qualunque ambiente dove differiscono — esattamente ciò che il controllo HTTP dal vivo di questa fase ha rivelato quando `NOESAR_WORKSPACE` puntava altrove. Le rotte nuove di `repo-map.mjs` usano invece la costante `workspace` reale, riprendendo il pattern già corretto di `shadow.mjs`, apposta per non ereditare questo difetto. **Non riparato qui**: `reasoning.mjs` è fuori dallo scope dichiarato di questa fase. Severità bassa/informativa.
+
+## D-0190 · La domanda di D-0189 ha risposta: scrittura file da chat è la prima azione reale — 2026-07-28
+**Decision.** L'Owner sceglie: quando `reasoning.plan` produce un piano approvato, l'esecutore
+spenderà un token per scrivere/modificare un file **vero** nel workspace su disco, richiesto in
+una conversazione. Cablerà le quick action già disegnate in `home-overview.mjs`
+("Find a bug and fix it", "Implement a feature", ecc.), che oggi aprono solo una chat col
+testo dell'obiettivo senza eseguire nulla.
+**Why.** È l'azione più vicina alla superficie già disegnata (le dieci quick action, UI-061) e
+la sola che chiude tutte le clausole rimanenti del criterio §3 nello stesso posto: cambia file,
+mostra il diff, esegue i test, corregge un errore, produce un risultato verificabile.
+**Rejected.** Auto-test interno non esposto (rimanda la decisione vera); clona/importa un
+repository (le tre entry action `wired:false` restano a "waiting on the backbone" — un passo
+successivo, non il primo).
+**Evidence.** Risposta diretta dell'Owner a `D-0189`, posta come domanda esplicita in sessione.
+**Reversal cost.** n/a — decisione, non ancora costruita.
+**Status.** Deciso. **Non costruito**: la prossima fase esegue il ciclo completo (contratto,
+backup, scope minimo, test, hunt-and-fix, build/install/verify nella stessa fase) per questa
+scelta. Nessun codice scritto in questa sessione oltre alla decisione stessa.

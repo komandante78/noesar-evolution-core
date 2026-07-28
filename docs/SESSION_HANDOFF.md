@@ -33,10 +33,13 @@ provato da una suite avversaria il cui unico lavoro è provare a farglielo fare.
 - `executesPlans = false` — nulla esegue un piano dentro l'ombra
 - il registro eventi resta vuoto su un'installazione fresca: nessun sottosistema vi scrive
 
-**`D-0189`: questo non è più lavoro da fare di iniziativa.** È una domanda per l'Owner —
-**quale superficie del prodotto diventa la prima a cambiare qualcosa spendendo un token** —
-già nominata a fine fase precedente e non ancora risposta. Costruire quella superficie senza
-la decisione sarebbe scope creep sulla cosa più importante del progetto.
+**`D-0189` ha risposta, `D-0190`: scrittura file da chat.** Quando `reasoning.plan` produce un
+piano approvato, l'esecutore spenderà un token per scrivere/modificare un file **vero** nel
+workspace su disco, cablando le quick action già disegnate in `home-overview.mjs` ("Find a bug
+and fix it", "Implement a feature", ecc. — oggi aprono solo una chat col testo dell'obiettivo,
+senza eseguire nulla). **Deciso, non costruito.** La prossima fase esegue il ciclo completo
+(contratto, backup, scope minimo, test, hunt-and-fix, build/install/verify nella stessa fase,
+`D-0143`) per questa scelta.
 
 **`F4-016` aperto, non riparato**: `reasoning.mjs` pianifica sempre contro `/workspace`
 letterale (`PRODUCT.workspaceRoot` non è mai definito), mai contro `NOESAR_WORKSPACE` — 
@@ -111,9 +114,8 @@ byte immagine = albero, byte container vivo = albero (sha256sum, entrambi)
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-**La più urgente ora è nuova nel peso, non nel testo**: quale superficie del prodotto spende
-il primo capability token (`D-0189`) — con tutti e sette i passi della spina dorsale ora
-costruiti, è l'UNICA cosa che separa la fase 1 dal proprio criterio. Le altre, invariate:
-**(3)** rimuovere `apps/webui-react`; **(4)** `B-008`, quale store è la destinazione; **(5)**
-`B-001`, si vuole un remote; **(6)** cinque destinazioni dell'interfaccia «da decidere»;
-**(7)** conformità della conservazione dei dati delle richieste rifiutate; **(8)** TLS.
+**Quella più urgente (`D-0189`) ha risposta** (`D-0190`: scrittura file da chat). Le altre,
+invariate: **(3)** rimuovere `apps/webui-react`; **(4)** `B-008`, quale store è la
+destinazione; **(5)** `B-001`, si vuole un remote; **(6)** cinque destinazioni dell'interfaccia
+«da decidere»; **(7)** conformità della conservazione dei dati delle richieste rifiutate;
+**(8)** TLS.
