@@ -2738,3 +2738,31 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
 `:phase4-tls` reintroduce tutti e tre i reperti (probe su GET, letterale `/workspace`,
 mancanza di oracolo condiviso per l'esecutore).
+
+## 2026-07-28 · `:phase4-sector-modules` — Fase 7 passo 27, framework moduli di settore + livelli di fiducia
+
+**Immagine** `noesar-evolution:phase4-sector-modules`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-sector-modules`, `FROM
+noesar-evolution:phase4-findings`. Copiati `server.mjs` (3 rotte nuove) e
+`sector-modules.mjs` nuovo, più `capabilities/security/trust-level-policy.json`,
+`capabilities/security/permission-catalog.json`, `schemas/industry-module-manifest.schema.json`
+(mai copiati in nessuna immagine prima d'ora).
+
+**Byte provati identici all'albero**: sha256 dei 5 file nell'immagine (container
+usa-e-getta, `--entrypoint node`) = sha256 repository, 5/5 PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo (`BACKUPS/runtime_pre_sector_modules_deploy_20260728T104143Z/`,
+75 MB) → configurazione riletta dal container sostituito (`docker inspect`) →
+predecessore preservato come `noesar-evolution.rollback-findings-20260728T104143Z` →
+avvio senza override, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). Le 3 rotte nuove (`GET /api/v1/sector-modules`, `GET .../list`, `POST
+.../validate`) `401` non autenticato. Rotta inesistente 404.
+
+**§5a**: rimosso `noesar-evolution.rollback-tls-20260728T095332Z`. Due soli container di
+progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-findings` toglie solo le tre rotte nuove; nessuna capacità già in uso regredisce.

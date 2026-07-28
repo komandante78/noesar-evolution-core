@@ -1,36 +1,34 @@
 {
-  "dataClasses": [
-    "research-confidential"
-  ],
-  "evidence": [],
-  "excludedUse": [
-    "clinical diagnosis",
-    "physical actuation"
-  ],
-  "humanOversight": {
-    "decisionAuthority": "qualified researcher",
-    "overrideAvailable": true,
-    "required": true
-  },
   "id": "customer.private.research-module",
-  "intendedUse": [
-    "internal research workflow support"
-  ],
-  "jurisdictions": [],
-  "permissions": [
-    "filesystem.read.project"
-  ],
+  "version": "0.1.0",
   "publisher": "customer.private",
-  "riskClass": "elevated",
-  "safetyInterlock": {
-    "emergencyStop": false,
-    "externalController": false,
-    "required": false
-  },
-  "schemaVersion": "4.0",
+  "trust_level": "customer-private",
   "sector": [
     "scientific-research"
   ],
-  "trustLevel": "customer-private",
-  "version": "0.1.0"
+  "intended_use": [
+    "internal research workflow support"
+  ],
+  "excluded_use": [
+    "clinical diagnosis",
+    "physical actuation"
+  ],
+  "jurisdictions": [],
+  "data_classes": [
+    "research-confidential"
+  ],
+  "permissions": [
+    "filesystem.read.project"
+  ],
+  "evidence": [],
+  "human_oversight": {
+    "required": true,
+    "decisionAuthority": "qualified researcher",
+    "overrideAvailable": true
+  },
+  "safety_interlock": {
+    "required": false,
+    "emergencyStop": false,
+    "externalController": false
+  }
 }

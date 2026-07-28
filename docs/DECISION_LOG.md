@@ -3226,3 +3226,54 @@ prevista "a fine progetto" resta un impegno suo, non tracciato da nessun meccani
 automatico qui.
 **Status.** Applicato. Push riusciti: `f721d62`→`f125bbf` ora anche su
 `komandante78/NOESAR-EVOLUTION`.
+
+## D-0203 · Fase 1 chiusa: il criterio §3 riconciliato con EXECUTE permanentemente rifiutato, Fasi 2-6 saltate su istruzione dell'Owner — 2026-07-28
+**Decision.** Fase 1 (`09_PIANO.md` §2) dichiarata chiusa. Il criterio §3 include
+testualmente "esegue i test, corregge un errore" — mai costruito, rifiutato tre volte
+(D-0189, D-0191, D-0201) come confine di sicurezza deliberato. L'Owner ha istruito in
+sessione di chiudere così com'è e di procedere direttamente a Fase 7, saltando le Fasi 2-6.
+**Why.** Ogni altra clausola del criterio è vera e verificata dal vivo: apre repo (D-0188),
+piano→autorizzazione→file cambiati→diff→ripristino→registro (D-0191/192), e "non esce mai
+dall'autorità" è provato da tre suite avversarie distinte allo stesso rigore (sotto).
+Tenere la fase aperta in attesa di EXECUTE bloccherebbe ogni lavoro successivo su una
+decisione già presa tre volte.
+**Rejected.** Riaprire EXECUTE per soddisfare il criterio alla lettera — respinto
+esplicitamente in questa sessione, stessa ragione di D-0201.
+**Evidence.** Clausola sull'autorità: `coden-invariant-adversarial` 11/11,
+`workspace-actions-http-adversarial` 9/9 (D-0193), `capability-http-adversarial` 4/4
+(D-0194). Nessun blocker aperto. Fasi 2-6 non costruite — dichiarato qui esplicitamente,
+non scoperto in silenzio.
+**Reversal cost.** Nessuno — dichiarazione di stato, nessun codice cambiato.
+**Status.** Chiuso su decisione dell'Owner. Prossima: Fase 7 ("Il mondo esterno"), passo 27.
+
+## D-0204 · Fase 7 aperta: framework moduli di settore + livelli di fiducia, `capabilities/security/*.json` e lo schema erano schema morto dal 2026-07-25 — costruito, installato, verificato — 2026-07-28
+**Decision.** Passo 27 (09_PIANO.md §2). Nuovo `sector-modules.mjs`: valida e lista manifest
+candidati contro `schemas/industry-module-manifest.schema.json` e i due file
+`capabilities/security/*.json` — tracciati in MANIFEST.sha256 dal 2026-07-25 (commit
+`f6140d8`, costruzione canonica del repository), MAI copiati in un'immagine né letti da
+codice fino a questo passo. Tre rotte nuove (`GET /api/v1/sector-modules`, `GET
+.../list`, `POST .../validate`) dietro sessione + `workspace.read`, nessun CSRF (nessuna
+scrive stato prodotto, stessa postura di `/repo-map/scan`, D-0188). Nessun gemello Rust,
+stessa ragione di `repo-map.mjs`: propone, non decide né confina ancora nulla.
+**Why.** Rivive invece di duplicare (09_PIANO.md §1: uno schema morto è peggio
+dell'assenza). Trovato costruendo: lo schema tracciato (snake_case,
+`additionalProperties:false`) e l'unico esempio tracciato
+(`capabilities/templates/industry-module/module.template.json`, camelCase,
+`schemaVersion:"4.0"`) sono incompatibili — l'esempio non valida contro lo schema che
+dovrebbe esemplificare. Riparato sul template (lo schema è ciò che il validatore legge),
+visto fallire prima del fix e passare dopo (test dedicato con la vecchia forma).
+**Rejected.** ajv o un motore JSON Schema generico — una dipendenza per uno schema piatto
+è esattamente il "già che ci siamo" che la skill budget vieta; validatore fatto in casa,
+dichiarato come sottoinsieme, non motore generale.
+**Evidence.** unit 914→932 (+18, tutti nuovi), ESLint 191→193 file 0 errori,
+http-smoke/auth-http-smoke PASS, browser e2e 315/315, accessibilità 27/27, difetti
+seminati 19/19, `scripts/test.sh` pass=5 fail=0 (partial/unavailable invariati, python3
+assente sull'host). MANIFEST 5788→5790, 5790/5790 verificate. Sweep DebugLab: `services/`
+0 finding (la superficie toccata); `capabilities/` 23 CRITICAL/9 HIGH pre-esistenti in
+`capabilities/reference/*.py`, mai toccato da questo passo — nominato, non riparato,
+fuori scope dichiarato (item nuovo, vedi TASK PENDENTI).
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3, nessuna migrazione. Tornare a
+`:phase4-findings` toglie solo le tre rotte nuove, nessuna capacità già in uso regredisce.
+**Status.** Applicato **e installato** (`:phase4-sector-modules`, byte identici
+all'albero, `/livez`+`/readyz` 200, `/healthz` invariato — `B-010` non regredito, le tre
+rotte nuove 401 non autenticato, rotta inesistente 404, `RestartCount=0`).

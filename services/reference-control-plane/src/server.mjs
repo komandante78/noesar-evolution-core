@@ -31,6 +31,9 @@ import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mj
 import { executorStatus } from './executor.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
+import {
+  SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
+} from './sector-modules.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -60,6 +63,7 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
 const webRoot = resolve(repoRoot, 'apps/webui-static');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
+const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(repoRoot, '.sector-modules'));
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
@@ -873,6 +877,45 @@ const requestListener = async (req, res) => {
         return json(res, 200, found);
       } catch (error) {
         if (error instanceof RepoMapError) return json(res, 422, { error:'repo_map_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+
+    // --- sector modules · phase 7 step 27 ("il mondo esterno", 09_PIANO.md §2) ---------
+    // Read-only: validates and lists candidate manifests against the schema and the two
+    // policy files under capabilities/security/ -- tracked since 2026-07-25, never wired
+    // until this step (see the module comment in sector-modules.mjs). No Rust twin, same
+    // reason as repo-map: this proposes, it does not decide or confine anything yet.
+    if (req.method === 'GET' && url.pathname === '/api/v1/sector-modules') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, sectorModulesStatus(repoRoot, sectorModulesRoot));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/sector-modules/list') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      try {
+        const scan = loadSectorModules(repoRoot, sectorModulesRoot);
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.scanned', result:'success', details:{ scanned:scan.scanned, valid:scan.valid.length, invalid:scan.invalid.length, truncated:scan.truncated } });
+        return json(res, 200, scan);
+      } catch (error) {
+        if (error instanceof SectorModuleError) return json(res, 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/sector-modules/validate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const result = validateCandidateManifest(repoRoot, payload ?? {});
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.validated', result: result.valid ? 'success' : 'refused', details:{ valid:result.valid, errorCount:result.errors.length } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) return json(res, 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
         throw error;
       }
     }

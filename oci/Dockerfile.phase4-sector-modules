@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 7 step 27 ("Il mondo esterno", 09_PIANO.md §2): the sector module framework and
+# trust levels. First step of phase 7 -- phase 1 was closed this same session (D-0203),
+# EXECUTE staying permanently refused by design (D-0189/D-0191/D-0201), and phases 2-6 of
+# the roadmap skipped on the Owner's direct instruction rather than built.
+#
+# New: services/reference-control-plane/src/sector-modules.mjs -- validates and lists
+# candidate sector-module manifests against schemas/industry-module-manifest.schema.json
+# and the two policy files under capabilities/security/. All three have been tracked in
+# MANIFEST.sha256 since 2026-07-25 (the canonical repository construction) but were never
+# copied into any image and never read by any code until this step -- the "schema morto"
+# class 09_PIANO.md §1 names. Read-only: nothing here loads, executes, or activates a
+# module, and nothing mints a capability token on the strength of one being valid.
+#
+# server.mjs changed to wire GET /api/v1/sector-modules, GET /api/v1/sector-modules/list,
+# POST /api/v1/sector-modules/validate, behind session + workspace.read, same posture as
+# the phase-1-step-7 repo-map routes (D-0188): no CSRF, because none of the three mutate
+# product state -- validate scores a request body, it does not write one.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-findings
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/sector-modules.mjs /opt/noesar/services/reference-control-plane/src/sector-modules.mjs
+COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
+COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
+COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
+USER 10001:10001

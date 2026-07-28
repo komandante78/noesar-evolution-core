@@ -16,107 +16,93 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0202`: `f721d62`→`f125bbf` pushati su `komandante78/NOESAR-EVOLUTION`.** Token
-salvato in `secrets/github_push_token` (gitignored, mai tracciato) su istruzione esplicita
-dell'Owner — vedi «Cosa NON è vero» sotto per il dettaglio e il promemoria di rotazione.
+**`D-0203`: Fase 1 (la spina dorsale, 09_PIANO.md §2) è CHIUSA.** Il criterio §3 include
+testualmente "esegue i test, corregge un errore" — EXECUTE resta rifiutato per design,
+tre volte (D-0189/D-0191/D-0201). L'Owner ha istruito in sessione di chiudere così com'è
+e procedere direttamente a **Fase 7** ("Il mondo esterno"), **saltando le Fasi 2-6**
+(workspace, le due shell, memoria/privacy, isolamento vero, ATOM) — dichiarato
+esplicitamente, non scoperto in silenzio.
 
-**`D-0201`: `F4-014`/`F4-015`/`F4-016` chiusi — costruiti, installati e verificati nella
-stessa fase (`:phase4-findings`).** L'Owner ha scelto esplicitamente questi tre invece di
-riaprire EXECUTE (confine di sicurezza deliberato, `D-0191`, lasciato intatto).
+**`D-0204`: Fase 7 aperta, passo 27 (framework moduli di settore + livelli di fiducia)
+costruito, installato, verificato nella stessa fase (`:phase4-sector-modules`).**
+`sector-modules.mjs` nuovo: valida/lista manifest candidati contro
+`schemas/industry-module-manifest.schema.json` e
+`capabilities/security/{trust-level-policy,permission-catalog}.json` — tracciati in
+MANIFEST dal 2026-07-25, mai copiati in un'immagine né letti da codice fino ad ora
+(schema morto, 09_PIANO.md §1). Trovato costruendo: l'unico esempio tracciato
+(`capabilities/templates/industry-module/module.template.json`) non validava contro lo
+schema che dovrebbe esemplificare (camelCase contro snake_case) — riparato, verificato
+fallire-prima/passare-dopo. 3 rotte nuove, sola lettura/validazione, nessuna scrive stato
+prodotto (`enforced:false`, `wiredToCapabilityMinting:false`, dichiarato).
 
-- **`F4-014`**: l'esecutore era l'unico dei sei passi senza oracolo condiviso.
-  `conformance/executor-vectors.json` (10 casi) ora esiste, e sia
-  `executor-vectors.test.mjs` (Node) sia `rust/crates/noesar-executor/tests/conformance.rs`
-  (Rust, mai scritto prima nonostante l'header lo affermasse) girano sullo stesso file.
-  **Trovata una vera divergenza costruendo**: Node lanciava un kind `'COVERAGE'` che
-  l'enum Rust `ShadowError` non ha affatto — Rust riporta lo stesso rifiuto come
-  `Invalid`. Allineato Node a `'INVALID'`.
-- **`F4-015`**: `GET /api/v1/shadow` scriveva sul filesystem (probe reflink reale) a ogni
-  richiesta — una GET non deve avere effetti collaterali. Ora il probe gira una volta
-  all'avvio e la GET serve la cache; nuovo `POST /api/v1/shadow/reprobe` è l'unica rotta
-  che scrive.
-- **`F4-016`**: `reasoning.mjs` pianificava sempre contro la stringa letterale
-  `/workspace` (`PRODUCT.workspaceRoot` non era mai definito). Ora usa la costante
-  `workspace` reale, come già fanno `shadow.mjs` e `repo-map.mjs`.
-
-**Nessun blocker aperto, nessun reperto di severità bassa non dichiarato resta.**
-`F4W-011` (misura contro MASTER V4) e `F4W-012` (disegno WebUI) restano le uniche voci
-`open_findings`, non toccate da questa fase — sono di natura diversa (misura/design, non
-bug).
+**Prossima azione**: passo 28 (pacchetti di conformità firmati e datati), o a scelta
+dell'Owner.
 
 ## ➜ Stato dell'installazione
 
-`noesar-evolution:phase4-findings` · `Up (healthy)` · `restarts=0` ·
+`noesar-evolution:phase4-sector-modules` · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-tls-20260728T095332Z`. Due container di progetto, che è quanto
-§5a ammette. Host: 39 totali, 11 in esecuzione.
+`noesar-evolution.rollback-findings-20260728T104143Z`. Due container di progetto, che è
+quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**`D-0195`+`D-0196`** (commit `802b54b`): `apps/webui-react` rimossa, tre decisioni
-dell'Owner registrate.
+**`D-0203`** (state-only, nessun codice): Fase 1 chiusa. `PROJECT_STATE.json` +
+`docs/DECISION_LOG.md` aggiornati.
 
-**`D-0197`** (commit `3a29c3f`): `B-008` verificato stale e chiuso senza migrare nulla.
-
-**`D-0198`** (commit `f721d62`): TLS in-process costruita e installata, non attivata.
-
-**`D-0199`+`D-0200`** (commit `be305e8`): repository GitHub privato creato e pushato;
-secret scan rieseguito dopo il commit ha trovato e corretto un fixture di test a forma di
-chiave PEM.
-
-**`D-0201`** (non ancora committato al momento in cui questo file è scritto):
-`F4-014`/`F4-015`/`F4-016` chiusi. File nuovi: `conformance/executor-vectors.json`,
-`services/reference-control-plane/test/executor-vectors.test.mjs`,
-`rust/crates/noesar-executor/tests/conformance.rs`,
-`oci/Dockerfile.phase4-findings`. Modificati: `server.mjs`, `executor.mjs`,
-`executor.test.mjs`, `tools/auth-http-smoke.mjs`, `PROJECT_STATE.json`, `MANIFEST.sha256`.
+**`D-0204`** (commit da fare): `sector-modules.mjs` nuovo (validatore JSON-Schema fatto in
+casa, dichiarato sottoinsieme non motore generale), 3 rotte in `server.mjs`,
+`sector-modules.test.mjs` nuovo (18 test), `capabilities/templates/industry-module/module.template.json`
+riparato (era incompatibile con lo schema tracciato), `oci/Dockerfile.phase4-sector-modules`
+nuovo. `PROJECT_STATE.json` corretto anche su due incoerenze pre-esistenti segnalate dal
+digest a inizio sessione: `product_test_suite.unit`/`.eslint`/`.manifest` erano stale di
+due fasi (894/187/5785 invece di 932/193/5790).
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-D-0195..D-0200: vedi le rispettive voci del decision log, invariate qui.
-D-0201: unit 903→914 (+11), ESLint 190→191 file 0 errori, verify-source/http-smoke/
-  auth-http-smoke/tls-smoke tutti PASS, MANIFEST 5785→5788 (5788/5788 verificate)
-  Rust: container rust:1-bookworm --network=none --cap-drop=ALL, RUSTUP_TOOLCHAIN
-  pinnato, cargo test --workspace --locked --offline --all-targets → exit 0, zero
-  FAILED in tutto il workspace, noesar-executor 12 nativi + 1 nuovo vettore PASS
-  byte immagine = albero (server.mjs, executor.mjs) via container usa-e-getta
-  dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, GET/POST shadow 401,
-  GET su /shadow/reprobe 404 (verbo sbagliato, prova F4-015 applicato), rotta
-  inesistente 404, data-plane.identity-projected projected:1 riconfermato
+D-0204: unit 914→932 (+18), ESLint 191→193 file 0 errori, verify-source/http-smoke/
+  auth-http-smoke PASS, browser e2e 315/315 (riverificato, 0 regressioni), accessibilità
+  27/27 (riverificato), difetti seminati 19/19 (riverificato), scripts/test.sh pass=5
+  fail=0 partial=1 unavailable=4 (python3 assente sull'host, invariato). MANIFEST
+  5788→5790, 5790/5790 verificate. Byte immagine = albero su 5 file (server.mjs,
+  sector-modules.mjs, trust-level-policy.json, permission-catalog.json, schema) via
+  container usa-e-getta. Dal vivo: /livez 200, /readyz 200, /healthz invariato, le 3
+  rotte nuove 401 non autenticato, rotta inesistente 404, RestartCount=0.
+  Sweep DebugLab (nuova superficie, rule 40d): services/ 0 finding; capabilities/ ha
+  trovato 23 CRITICAL/9 HIGH pre-esistenti e non correlati in capabilities/reference/*.py
+  (F7-001, aperto, basso, non toccato — fuori scope di questo passo).
 ```
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- Tutto ciò che era falso a fine fase precedente e non toccato da questa sessione resta
-  falso: `operationsSupported: ['WRITE']` (DELETE/EXECUTE dichiarati non costruiti),
-  `testExecution: false`, `runsPersistAcrossRestart: false`, registri in memoria, firma
-  provenance simmetrica, `.ps1` mai eseguiti.
-- **EXECUTE resta permanentemente rifiutato** — non toccato, per scelta esplicita
-  dell'Owner in questa sessione (ha scelto i tre reperti minori invece di riaprirlo).
-- TLS costruita ma **non attiva**: `tls_active:false` sul vivo.
-- **`D-0202`, aggiorna quanto sopra**: un token GitHub È ORA salvato in
-  `secrets/github_push_token` (0600, gitignored, mai tracciato) su istruzione esplicita
-  dell'Owner — rotazione prevista a fine progetto, non tracciata da alcun meccanismo
-  automatico. `f721d62`→`f125bbf` già pushati su `komandante78/NOESAR-EVOLUTION`.
-- Un warning di compilazione Rust pre-esistente (`unused import: ShadowLimits` in
-  `noesar-executor/src/lib.rs:26`) **non è stato toccato** — fuori dallo scope dichiarato
-  di questa fase (non è un difetto di comportamento, solo un warning del compilatore).
+- **Fasi 2-6 del roadmap (09_PIANO.md §2) non sono costruite** — saltate su istruzione
+  diretta dell'Owner in questa sessione (D-0203), non un errore.
+- Il framework moduli di settore **non è enforced**: `sectorModulesStatus().enforced ===
+  false`, `wiredToCapabilityMinting === false`. Nessun modulo reale è mai stato
+  installato — `.sector-modules/` (runtime, non nell'immagine) è vuota su ogni
+  deployment finora.
+- **F7-001 aperto**: 23 CRITICAL/9 HIGH in `capabilities/reference/*.py` (subprocess con
+  path parziale verso `openssl`, un letterale di test flaggato come possibile password).
+  Non è la superficie toccata da questo passo (`sector-modules.mjs` legge solo
+  `capabilities/security/*.json`, mai `capabilities/reference/`).
+- Tutto ciò che era falso a fine `D-0201` e non toccato da `D-0203`/`D-0204` resta falso:
+  `operationsSupported: ['WRITE']`, `testExecution: false`,
+  `runsPersistAcrossRestart: false`, registri in memoria, firma provenance simmetrica,
+  `.ps1` mai eseguiti, TLS costruita ma non attiva.
 
 ## ➜ Blocker aperti
 
-Nessuno.
+`B-002` (low, nessun gitleaks/trufflehog installabile — regola 45). Nessun altro.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Restano solo:
-
 - **La conformità della conservazione dei dati delle richieste rifiutate** — non è una
-  decisione dell'Owner da prendere: il disegno è già autorizzato (`D-0136`), manca una
-  verifica di conformità legale/normativa esterna a questo progetto.
-- **Da `D-0197`, invariata**: si vuole davvero spostare anche le credenziali dentro
-  PostgreSQL, contro la ragione di design documentata (`F4-013`)?
+  decisione dell'Owner: il disegno è già autorizzato (`D-0136`), manca una verifica di
+  conformità legale/normativa esterna a questo progetto.
+- **Da `D-0197`, invariata**: si vuole spostare anche le credenziali dentro PostgreSQL,
+  contro la ragione di design documentata (`F4-013`)?
 - **Da `D-0198`, invariata**: si vuole attivare TLS ora fornendo un certificato?
-- **Nuova**: si vuole eventualmente riaprire EXECUTE (esecuzione sandboxata di test/codice)
-  come fase propria, ora che i tre reperti minori sono chiusi? Rifiutato esplicitamente per
-  questa sessione, non deciso per sempre.
+- **Da `D-0201`, invariata**: si vuole riaprire EXECUTE come fase propria?
+- **Nuova**: `F7-001` (bandit/ruff in `capabilities/reference/*.py`) — riparare in una
+  fase dedicata, o accettare come rischio residuo dichiarato di codice dormiente?
