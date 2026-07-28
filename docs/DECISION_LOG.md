@@ -3628,3 +3628,25 @@ provenienza vuota, prodotto `/livez` `/readyz` **200**.
 variabili; `atomd` va allora rimosso dalla stessa fase.
 **Status.** Applicato e installato. ⚠️ Con la selezione attiva, `atomd` giù = **503** sulle due
 superfici instradate.
+
+## D-0215 · `CE-023` misurato — e la misura dice **nessuna differenza**, non un miglioramento — 2026-07-28
+**Decision.** `tools/measure-projection-coverage.mjs` esegue gli stessi compiti due volte, con
+e senza il provider esterno, e calcola la copertura **lui**, allo stesso modo per entrambi:
+nessun provider si dà il proprio voto. Un rifiuto vale **0 su n**, non «nessun dato».
+**Why.** `CE-023` chiede una misura, non un asserzione. E la prima esecuzione ha dato
+**1,0000 contro 1,0000**: una metrica che non distingueva nulla, perché ogni passo nominava un
+file e entrambi i provider mettono i file del passo fra i percorsi attesi. I casi che il metodo
+non poteva vedere — passi **senza file** — sono stati aggiunti e la misura è diventata capace di
+distinguere. **Non ha distinto.**
+**Rejected.** Riportare `COVERAGE_DELTA=+0,0182` come miglioramento. È un **artefatto del
+denominatore**: per-compito il delta è **0,00 su tutti e nove**, e il totale si muove solo perché
+ATOM spezza un compito in due parti. Lo strumento ora lo dice da sé
+(`VERDICT=NO_DIFFERENCE` + un avviso quando i conteggi delle parti divergono).
+**Evidence.** Dal vivo contro il daemon installato: `PER_TASK better=0 worse=0 equal=9 of 9`.
+Con nessun provider esterno selezionato lo strumento **rifiuta** ed esce 2, invece di riportare
+un delta nullo che sembrerebbe una misura.
+**Reversal cost.** Nessuno: strumento in sola lettura, nessun percorso di prodotto lo chiama.
+**Status.** Applicato. **`CE-023` è soddisfatto nella forma** (la copertura è misurata, mai
+asserita) **e il valore di ATOM su questo insieme di compiti non è dimostrato dalla copertura**:
+la differenza fra i due provider è nella **forma della decomposizione**, non nella copertura.
+Serve una metrica sulla forma, oppure compiti tratti da un repository vero.

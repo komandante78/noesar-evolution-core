@@ -3,7 +3,7 @@
   "total_phases": 6,
   "current_phase": 4,
   "phase_status": "STEP_11_ATOM_INSTALLED_AND_SELECTED_FOR_DECOMPOSE_AND_EXPECT",
-  "next_phase": "CE-023: misurare la copertura di proiezione con e senza ATOM sullo stesso compito e riportare il delta. Poi il residuo: workspace-actions.plan() e sincrono e non instradabile.",
+  "next_phase": "Il valore di ATOM non e dimostrato dalla copertura: serve una metrica sulla FORMA della decomposizione, o compiti tratti da un repository vero. Piu il residuo: workspace-actions.plan() e sincrono e non instradabile.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -403,7 +403,8 @@
     "recompute_verifier": "17/17 verification.mjs + 5/5 wiring reale in workspace-actions.mjs (claim CONTRADETTA blocca la promozione anche con confronto percorsi pulito), dentro la unit suite (misurato 2026-07-28, D-0209)",
     "tool_catalog": "21/21 — services/reference-control-plane/test/tool-catalog.test.mjs, incluso scopeRequestToTool intersection reale, dentro la unit suite (misurato 2026-07-28, D-0211)",
     "reasoning_routing": "10/10 - services/reference-control-plane/test/reasoning-router.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0213)",
-    "live_reasoning_with_external_provider": "INSTALLATO e SELEZIONATO: router installato contro daemon installato -> provenienza interpret=reference, decompose=atom, expect=atom; con atomd fermo -> UNAVAILABLE con provenienza vuota e prodotto sano (misurato 2026-07-28, D-0214)"
+    "live_reasoning_with_external_provider": "INSTALLATO e SELEZIONATO: router installato contro daemon installato -> provenienza interpret=reference, decompose=atom, expect=atom; con atomd fermo -> UNAVAILABLE con provenienza vuota e prodotto sano (misurato 2026-07-28, D-0214)",
+    "projection_coverage_ce023": "MISURATO 2026-07-28 (D-0215): PER_TASK better=0 worse=0 equal=9 of 9 -> VERDICT=NO_DIFFERENCE. Il totale 0.8000 vs 0.8182 e un artefatto del denominatore (ATOM spezza un compito in piu parti), NON un miglioramento. La copertura non distingue i due provider su questo insieme di compiti."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1309,5 +1310,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T17:14:21Z"
+  "last_updated": "2026-07-28T17:16:55Z"
 }
