@@ -3612,3 +3612,19 @@ righe non verificabili**, `scripts/test.sh` 5 PASS / 1 PARTIAL / 4 UNAVAILABLE (
 **Reversal cost.** Nessuna migrazione, `AI_STATE_VERSION` invariato. Tornare a
 `:phase4-tool-catalog` toglie l'instradamento e la provenienza; nessun dato cambia.
 **Status.** Applicato e **installato** (`:phase4-atom-routing`).
+
+## D-0214 · ATOM installato e selezionato: un terzo container di progetto, dichiarato — 2026-07-28
+**Decision.** `atomd` gira come componente dell installazione sulla rete del prodotto, e il
+prodotto lo **seleziona** per `decompose` ed `expect`. È un terzo container permanente oltre ai
+due che §5a ammette, e lo nomino qui perché un sopravvissuto non spiegato è un difetto.
+**Why.** Un integrazione che esiste solo nei test non è un integrazione. La selezione è
+l unica configurazione in cui la provenienza e il delta di copertura hanno un significato.
+**Rejected.** Lasciare la selezione spenta e chiamarla comunque «installata» — sarebbe stato
+vero solo del daemon, non del prodotto.
+**Evidence.** Router installato contro daemon installato: provenienza
+`interpret=reference, decompose=atom, expect=atom`. Con `atomd` fermo: **UNAVAILABLE**,
+provenienza vuota, prodotto `/livez` `/readyz` **200**.
+**Reversal cost.** Nessuna migrazione. Si torna indietro ricreando il prodotto **senza** le tre
+variabili; `atomd` va allora rimosso dalla stessa fase.
+**Status.** Applicato e installato. ⚠️ Con la selezione attiva, `atomd` giù = **503** sulle due
+superfici instradate.
