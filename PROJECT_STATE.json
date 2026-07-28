@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f125bbf (D-0201: close F4-014/F4-015/F4-016, built/installed/verified live) - pushed to origin/main (D-0202)",
+  "last_commit": "f6606a6 (D-0216: route the acting path + simulate surface, built/installed/verified live) - pushed to origin/main",
   "last_updated_utc": "2026-07-28T17:59:15Z",
   "blockers": [
     {
