@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "be305e8 (D-0199/D-0200: private repo created and pushed; fix a self-inflicted secret-scan false positive)",
-  "last_updated_utc": "2026-07-28T09:56:32Z",
+  "last_commit": "f125bbf (D-0201: close F4-014/F4-015/F4-016, built/installed/verified live) - pushed to origin/main (D-0202)",
+  "last_updated_utc": "2026-07-28T10:08:04Z",
   "blockers": [
     {
       "id": "B-001",
@@ -785,7 +785,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0201: F4-014/F4-015/F4-016 chiusi, costruiti installati e verificati nella stessa fase (:phase4-findings). L'Owner ha scelto esplicitamente questi tre invece di riaprire EXECUTE (confine di sicurezza deliberato, D-0191, lasciato intatto). F4-014: conformance/executor-vectors.json nuovo, 10 vettori, stesso file su Node e Rust - trovata una vera divergenza (Node 'COVERAGE' vs Rust nessuna variante equivalente), riparata allineando Node a 'INVALID'. F4-015: GET /api/v1/shadow non scrive piu' sul filesystem, probe cache all'avvio, nuovo POST /api/v1/shadow/reprobe. F4-016: reasoning.mjs usa il workspace reale invece del letterale '/workspace'. Nessun finding aperto resta di severita' bassa non dichiarata. Prossima azione: a scelta dell'Owner - nessun blocker, nessun reperto minore aperto. F4W-011/F4W-012 (misura contro MASTER V4, disegno WebUI) restano le uniche voci open_findings non toccate.",
+  "next_action": "D-0202: token GitHub salvato in secrets/github_push_token (0600, gitignored, mai tracciato) su istruzione esplicita dell'Owner - rotazione prevista a fine progetto, non tracciata da alcun meccanismo automatico qui. f721d62..f125bbf pushati su komandante78/NOESAR-EVOLUTION, HEAD remoto verificato identico al locale. D-0201 (F4-014/F4-015/F4-016) resta lo stato tecnico corrente: nessun blocker, nessun reperto minore aperto, EXECUTE intatto per scelta dell'Owner. F4W-011/F4W-012 (misura contro MASTER V4, disegno WebUI) restano le uniche voci open_findings non toccate. Prossima azione: a scelta dell'Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1294,5 +1294,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T09:56:32Z"
+  "last_updated": "2026-07-28T10:08:04Z"
 }

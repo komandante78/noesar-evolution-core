@@ -3197,3 +3197,32 @@ Tornare a `:phase4-tls` reintrodurrebbe tutti e tre i reperti.
 `PROJECT_STATE.json`. Nessun finding di severità bassa resta aperto e non dichiarato;
 `F4W-011`/`F4W-012` (misura contro MASTER V4, disegno WebUI) sono le uniche voci
 `open_findings` rimaste, non toccate da questa fase.
+
+## D-0202 · Il token GitHub è ora persistito localmente, su istruzione esplicita dell'Owner — 2026-07-28
+**Decision.** `D-0199` aveva dichiarato "nessuna credenziale salvata, ogni push richiede
+un token nuovo" come scelta di design. L'Owner ha fornito un secondo token in chiaro in
+chat e ha istruito esplicitamente di salvarlo, con rotazione prevista alla fine del
+progetto — non una dimenticanza, una decisione. Salvato in `secrets/github_push_token`
+(0600, directory già in `.gitignore` riga 87, mai tracciata — `git check-ignore` verificato),
+stesso schema già in uso in questo progetto per `owner_token.secret`/
+`first-owner-setup.token`. Push fatto passando il token come argomento URL ad-hoc, mai
+nell'URL del remote salvato in `.git/config` (verificato dopo). HEAD remoto confermato
+identico all'HEAD locale (`f125bbfc23c42b8f28db620b0e56532db3996b57`).
+**Why.** Il default precedente (mai persistere, chiedere ogni volta) era la scelta più
+sicura in assenza di indicazioni contrarie; l'Owner ha ora espresso una preferenza diversa
+e informata (accetta il rischio di un token più longevo, con un piano di rotazione
+dichiarato). Rispettarla è corretto — la regola 25/26 vieta un segreto in un artefatto
+**tracciato**, non l'uso di un file locale ignorato da git come "secret store".
+**Rejected.** Continuare a chiedere il token a ogni push nonostante l'istruzione esplicita
+in senso contrario: sarebbe stato rigido, non più sicuro — il token era comunque già
+esposto in chat una volta fornito.
+**Evidence.** `GET /user` → `200`, login `komandante78`; `git check-ignore -v
+secrets/github_push_token` → confermato ignorato; push → `be305e8..f125bbf main -> main`;
+`GET /repos/.../commits/main` → sha remoto identico all'HEAD locale; secret scan dopo
+l'operazione → `no leaks found`, `SECRET_SCAN=PASS`, 142 commit (il file non tocca mai
+git, quindi il conteggio commit non cambia da questa fase).
+**Reversal cost.** Nessuno per il progetto. **Promemoria per l'Owner**: la rotazione
+prevista "a fine progetto" resta un impegno suo, non tracciato da nessun meccanismo
+automatico qui.
+**Status.** Applicato. Push riusciti: `f721d62`→`f125bbf` ora anche su
+`komandante78/NOESAR-EVOLUTION`.

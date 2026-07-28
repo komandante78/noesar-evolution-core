@@ -16,6 +16,10 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0202`: `f721d62`→`f125bbf` pushati su `komandante78/NOESAR-EVOLUTION`.** Token
+salvato in `secrets/github_push_token` (gitignored, mai tracciato) su istruzione esplicita
+dell'Owner — vedi «Cosa NON è vero» sotto per il dettaglio e il promemoria di rotazione.
+
 **`D-0201`: `F4-014`/`F4-015`/`F4-016` chiusi — costruiti, installati e verificati nella
 stessa fase (`:phase4-findings`).** L'Owner ha scelto esplicitamente questi tre invece di
 riaprire EXECUTE (confine di sicurezza deliberato, `D-0191`, lasciato intatto).
@@ -91,7 +95,10 @@ D-0201: unit 903→914 (+11), ESLint 190→191 file 0 errori, verify-source/http
 - **EXECUTE resta permanentemente rifiutato** — non toccato, per scelta esplicita
   dell'Owner in questa sessione (ha scelto i tre reperti minori invece di riaprirlo).
 - TLS costruita ma **non attiva**: `tls_active:false` sul vivo.
-- Il repository su GitHub esiste ma nessuna credenziale è salvata per pushare di nuovo.
+- **`D-0202`, aggiorna quanto sopra**: un token GitHub È ORA salvato in
+  `secrets/github_push_token` (0600, gitignored, mai tracciato) su istruzione esplicita
+  dell'Owner — rotazione prevista a fine progetto, non tracciata da alcun meccanismo
+  automatico. `f721d62`→`f125bbf` già pushati su `komandante78/NOESAR-EVOLUTION`.
 - Un warning di compilazione Rust pre-esistente (`unused import: ShadowLimits` in
   `noesar-executor/src/lib.rs:26`) **non è stato toccato** — fuori dallo scope dichiarato
   di questa fase (non è un difetto di comportamento, solo un warning del compilatore).
