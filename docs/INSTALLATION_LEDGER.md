@@ -2929,3 +2929,16 @@ l'API SCIM per gestirlo sparisce.
 - **Verifica del modo di guasto**: con `atomd` **fermo**, `expect` → **UNAVAILABLE** con provenienza **vuota**, e il prodotto è rimasto `/livez` `/readyz` **200**. Nessun ripiego silenzioso; `atomd` riavviato e `healthy`.
 - ⚠️ **Conseguenza operativa dichiarata**: finché la selezione è attiva, se `atomd` è giù le due superfici instradate rispondono **503**. **Rollback in una riga**: ricreare il prodotto senza le tre variabili — nessuna migrazione, nessun dato coinvolto.
 - **Pulizia**: rollback precedente (`:phase4-tool-catalog`) rimosso; inventario in `EVIDENCE/docker_inventory_pre_cleanup_*.txt`.
+
+## 2026-07-28 · `:phase4-atom-acting-path` — il ragionamento raggiunge il percorso che agisce
+- **Costruita** `--network=none --pull=false` da `oci/Dockerfile.phase4-atom-acting-path`, `FROM noesar-evolution:phase4-atom-routing`.
+- **Byte provati identici all albero** prima di installare: `server.mjs`, `workspace-actions.mjs`, `reasoning-router.mjs`, `reasoning.mjs` — 4/4 `BYTES_EQUAL`.
+- **Arresto pulito**: `docker stop -t 60`, `postgres.stopped clean:true` **letto nel log**, non assunto.
+- **Backup a servizio fermo**: `BACKUPS/runtime_pre_atom_acting_path_20260728T175658Z.tar.gz` (12 MB).
+- **Predecessore preservato**: `noesar-evolution.rollback-atom-acting-path-20260728T175658Z` (`:phase4-atom-routing`).
+- **Configurazione riletta dal container sostituito**, non ricordata: **20** variabili `NOESAR_*`/`NODE_ENV`, stesso bind `/mnt/cachec/NOESAR_EVOLUTION_RUNTIME:/workspace`, stessa rete `noesar-evolution-net`, stessa porta `192.168.178.100:8100->8088`, stessa restart policy, stesso uid `10001:10001`; healthcheck **non sovrascritto** (viene dall immagine).
+- **Verifica dal vivo**: `running/healthy`, `RestartCount=0`, `/livez` `/readyz` `/healthz` **200**, `/healthz` con `disclosed:false` (`B-010` non regredito), `POST /api/v1/workspace-actions/{id}/simulate` **401** contro **404** di una rotta inesistente.
+- **Verifica prima di installare, su coppia effimera** (rete e tre container di prodotto + un `atomd`, tutti rimossi): con ombra condivisa `simulate` **200 `supported:true`** e `expect` risposto da **atom** dentro `plan()`; con `atomd` fermo `plan` **503** e nessuna run creata; senza provider esterno ogni superficie `reference` e `simulate` **`supported:false`**.
+- ⚠️ **Limite dichiarato**: il daemon installato **non ha mount** sulla radice delle ombre, quindi un `simulate` instradato **rifiuta**. `NOESAR_SHADOWS_ROOT` esiste perché chiuderlo sia un mount, non un cambio di codice.
+- **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessun dato coinvolto. Si perdono instradamento sul percorso che agisce e superficie `simulate`.
+- **Pulizia**: 3 container di prodotto effimeri + 1 `atomd` effimero + 1 rete effimera rimossi; rollback precedente (`:phase4-atom-routing` selected) rimosso. Restano **3** container di progetto: installazione, un rollback, e `atomd` (componente dichiarato in `D-0214`). Non di progetto: **37**, invariati. Volumi **25/25** invariati. Inventario in `EVIDENCE/docker_inventory_pre_cleanup_20260728T175002Z.txt`.
