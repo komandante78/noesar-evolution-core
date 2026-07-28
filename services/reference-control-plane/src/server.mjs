@@ -156,8 +156,15 @@ const engineEvents = new EventLedger();
 // never materialises a real shadow, only probes a tiny file, so the containment check had
 // never fired until this wiring tried to build one for real. `/tmp` is the container's other
 // writable location (tmpfs, cleared on restart) and is never nested inside `/workspace`.
+//
+// Configurable since the reasoning provider became routable: `simulate` hands the provider a
+// PATH, so a provider in another process predicts nothing unless it can read that directory.
+// The default is unchanged, and nothing about the product changes when it is not set — but
+// sharing the shadow root with a provider is now a mount, not an edit to this file.
+const shadowsRoot = String(process.env.NOESAR_SHADOWS_ROOT ?? '').trim()
+  || join(tmpdir(), 'noesar-workspace-action-shadows');
 const workspaceActions = new WorkspaceActionOrchestrator({
-  workspaceRoot: workspace, shadowsRoot: join(tmpdir(), 'noesar-workspace-action-shadows'),
+  workspaceRoot: workspace, shadowsRoot,
   minter: capabilityMinter, events: engineEvents,
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
@@ -1308,7 +1315,7 @@ const requestListener = async (req, res) => {
       const payload = await body(req);
       const nowUnix = Math.floor(Date.now() / 1000);
       try {
-        const planned = workspaceActions.plan({
+        const planned = await workspaceActions.plan({
           request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
           constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',
           actor: authenticated.user.id, nowUnix, claims: payload?.claims ?? [],
@@ -1316,6 +1323,14 @@ const requestListener = async (req, res) => {
         return json(res, 201, planned);
       } catch (error) {
         if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        // A selected provider that could not be reached is not this run being refused. 422
+        // would tell the caller their plan was rejected, which is a different and false fact.
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
+        }
         throw error;
       }
     }
@@ -1325,6 +1340,35 @@ const requestListener = async (req, res) => {
       const run = workspaceActions.get(workspaceActionMatch[1]);
       if (!run) return json(res, 404, { error:'not_found' });
       return json(res, 200, run);
+    }
+    // "What would this do?", asked before anyone approves it. No token is minted, nothing is
+    // executed, and the shadow it reads is discarded before the response is written.
+    // `workspace.read` rather than `workspace.write`: asking is not deciding. It is still a
+    // POST — it allocates a whole-workspace shadow — so it carries the CSRF gate every other
+    // POST here carries. D-0193 was exactly a POST on this surface that did not.
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/simulate$/);
+    if (workspaceActionMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const outcome = await workspaceActions.simulate({
+          runId: workspaceActionMatch[1], actor: authenticated.user.id, nowUnix,
+        });
+        return json(res, 200, outcome);
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
+        }
+        throw error;
+      }
     }
     workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(approve|reject|restore)$/);
     if (workspaceActionMatch && req.method === 'POST') {

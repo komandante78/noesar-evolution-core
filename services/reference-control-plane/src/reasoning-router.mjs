@@ -23,15 +23,21 @@ import { AtomClient, ReasoningUnavailable } from './atom-client.mjs';
 /**
  * The surfaces an external provider is asked for by default.
  *
- * Not a guess: these are the two the design names, and the two where the answer is derivable
- * rather than judged, so a difference between providers is a difference in the work and not
- * in the wording.
+ * Not a guess: `decompose` and `expect` are the two the design names, and the two where the
+ * answer is derivable rather than judged, so a difference between providers is a difference in
+ * the work and not in the wording.
+ *
+ * `simulate` joins them for a different reason: it is the one surface the reference provider
+ * cannot perform at all (`02_ATOM.md` marks it the only optional one, and calls it the point
+ * of having an external provider). Leaving it off the default would mean an operator who
+ * selected an external provider still got `supported: false` forever, which reads as "nothing
+ * can simulate" rather than "nobody was asked".
  */
-export const DEFAULT_EXTERNAL_SURFACES = Object.freeze(['decompose', 'expect']);
+export const DEFAULT_EXTERNAL_SURFACES = Object.freeze(['decompose', 'expect', 'simulate']);
 
 const ROUTABLE = Object.freeze([
   'interpret', 'hypothesize', 'plan', 'decompose', 'expect', 'constrain',
-  'classify', 'confidence', 'evidence', 'cancel', 'fixtures',
+  'classify', 'confidence', 'evidence', 'cancel', 'fixtures', 'simulate',
 ]);
 
 /** Reads the routing out of the environment, and reports what it read rather than assuming. */
@@ -210,6 +216,22 @@ export class ReasoningRouter {
       return this.#local('fixtures', () => this.#reference.fixtures(sessionId));
     }
     return this.#external('fixtures', { sessionId });
+  }
+
+  /**
+   * The only optional surface of the contract, and the only one where "the reference
+   * answered" is itself the interesting fact: it answers `supported: false`, always.
+   *
+   * `shadowWorkspace` is a path, and the provider reads it. That is a property of the frozen
+   * contract, not of this file: a provider in another process therefore predicts nothing
+   * unless it can see that directory. This router does not paper over that — an external
+   * provider that cannot read the path refuses, and a refusal is reported as a refusal.
+   */
+  async simulate(plan, shadowWorkspace) {
+    if (!this.#routes('simulate')) {
+      return this.#local('simulate', () => this.#reference.simulate(plan, shadowWorkspace));
+    }
+    return this.#external('simulate', { plan, shadowWorkspace });
   }
 }
 

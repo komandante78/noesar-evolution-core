@@ -48,7 +48,8 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
-import { ReferenceReasoningProvider, ReasoningRefused } from './reasoning.mjs';
+import { ReasoningRefused } from './reasoning.mjs';
+import { ReasoningRouter } from './reasoning-router.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
 import { execute } from './executor.mjs';
@@ -89,8 +90,9 @@ export class WorkspaceActionOrchestrator {
   #minter;
   #events;
   #runs = new Map();
+  #reasoningFor;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -108,6 +110,10 @@ export class WorkspaceActionOrchestrator {
     this.#shadowsRoot = shadowsRoot;
     this.#minter = minter;
     this.#events = events;
+    // A factory, not an instance: a router accumulates the provenance of the calls made
+    // through it, so one shared across runs would attribute this run's surfaces to the
+    // previous one's. One per call, discarded with the call.
+    this.#reasoningFor = reasoningFor ?? (() => new ReasoningRouter({ workspaceRoot }));
   }
 
   #record(correlationId, causationId, actor, action, details, nowUnix) {
@@ -133,7 +139,7 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  plan({ request, files, projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
+  async plan({ request, files, projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
     if (!Array.isArray(files) || files.length === 0) {
       refuse('NO_FILES', 'this reference wiring takes the files to touch as part of the request; the reference provider has no model and cannot invent a target from prose alone');
     }
@@ -144,11 +150,15 @@ export class WorkspaceActionOrchestrator {
       }
       if (typeof file.contents !== 'string') refuse('INVALID_FILE', `\`${file.path}\` needs string contents`);
     }
-    const provider = new ReferenceReasoningProvider(this.#workspaceRoot);
+    // The router, not the reference provider directly. Until this call site changed, an
+    // operator could select an external provider and this path — the only one that mints a
+    // token and touches a real file — kept asking the reference one regardless. The
+    // selection was real everywhere it did not matter.
+    const provider = this.#reasoningFor();
     let intent; let hypotheses; let plan; let constrained; let risk; let confidence; let expectation;
     try {
-      intent = provider.interpret(request, projectRules);
-      hypotheses = provider.hypothesize(intent, []);
+      intent = await provider.interpret(request, projectRules);
+      hypotheses = await provider.hypothesize(intent, []);
       const step = {
         id: 'step-1',
         description: hypotheses[0].statement,
@@ -158,26 +168,81 @@ export class WorkspaceActionOrchestrator {
         blastRadius: provider.blastRadius(files.map((file) => file.path), false),
       };
       plan = provider.buildPlan([step], constraints, mode);
-      constrained = provider.constrain(plan, policy);
+      constrained = await provider.constrain(plan, policy);
       if (constrained.refused) refuse('CONSTRAINED_AWAY', constrained.reason);
-      risk = provider.classify(constrained.plan);
-      confidence = provider.confidence(constrained.plan, []);
-      expectation = provider.expect(constrained.plan);
+      risk = await provider.classify(constrained.plan);
+      confidence = await provider.confidence(constrained.plan, []);
+      expectation = await provider.expect(constrained.plan);
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
+      // ReasoningUnavailable deliberately propagates: it is not a refusal, and dressing it
+      // as one (422 "refused") would report a provider that was never reached as a decision
+      // it made. The route maps it to 503.
       throw error;
     }
+    // Recorded on the run, not only returned: an approver deciding on this plan tomorrow
+    // needs to know which provider produced the expectation they are approving against.
+    const provenance = provider.provenance();
 
     const runId = randomUUID();
     const rootEventId = this.#record(runId, null, actor, 'workspace_action.planned', {
-      goal: intent.goal, files: files.map((file) => file.path), risk: risk.overall,
+      goal: intent.goal, files: files.map((file) => file.path), risk: risk.overall, provenance,
     }, nowUnix);
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
-      plan: constrained.plan, expectation, files, intent, risk, confidence, claims,
+      plan: constrained.plan, expectation, files, intent, risk, confidence, claims, provenance,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
     });
-    return { runId, plan: constrained.plan, intent, expectation, risk, confidence, claims };
+    return { runId, plan: constrained.plan, intent, expectation, risk, confidence, claims, provenance };
+  }
+
+  /**
+   * What would this plan do — asked before anything is approved, and answered without minting
+   * a token, without spending one, and without executing anything.
+   *
+   * `02_ATOM.md` marks `simulate` the contract's only optional surface and calls it the reason
+   * to have an external provider at all. The reference provider answers `supported: false`,
+   * which is a real answer and is reported as one: this route never invents a prediction.
+   *
+   * The shadow is materialised read-only for the question and discarded in `finally`, exactly
+   * as `approve()` does — a prediction must not leave scratch space behind, and must not be
+   * the thing that changes the workspace it is predicting about.
+   */
+  async simulate({ runId, actor, nowUnix }) {
+    const run = this.#runs.get(runId);
+    if (!run) refuse('NOT_FOUND', `no pending run \`${runId}\``);
+    if (run.status !== 'PENDING_APPROVAL') {
+      refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}; a simulation of a decided run would predict a past that already happened`);
+    }
+
+    const provider = this.#reasoningFor();
+    const shadowRoot = join(this.#shadowsRoot, `${runId}-simulate`);
+    const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, shadowRoot);
+    try {
+      let outcome;
+      try {
+        outcome = await provider.simulate(run.plan, shadow.root);
+      } catch (error) {
+        if (error instanceof ReasoningRefused) refuse('SIMULATION_REFUSED', error.reason);
+        throw error;
+      }
+      this.#record(runId, run.planEventId, actor, 'workspace_action.simulated', {
+        supported: outcome?.supported === true,
+        predictedPaths: Array.isArray(outcome?.predictedDiff) ? outcome.predictedDiff.length : 0,
+        provenance: provider.provenance(),
+      }, nowUnix);
+      return {
+        runId,
+        // Carried through unchanged rather than reshaped: `supported: false` is the reference
+        // provider's honest answer and must not be flattened into an empty prediction.
+        simulation: outcome,
+        provenance: provider.provenance(),
+        // Stated so a reader never has to infer it from an absence.
+        executed: false,
+      };
+    } finally {
+      shadow.discard();
+    }
   }
 
   /**
@@ -358,5 +423,10 @@ export function workspaceActionsStatus() {
     reason: 'This is the trivial risk path (11_REVISIONE_E_CORREZIONI.md P6): one step, WRITE only. A plan is approved by a human, mints exactly the tokens its declared files need, executes into a whole-workspace shadow, and is promoted to the real workspace only when the comparison came back clean with every action performed. Every step is recorded in the causal event ledger.',
     recomputeVerifier: true,
     recomputeVerifierReason: 'CodeN Evolution construction order step 9 (D-0209): plan() takes an optional `claims` array; approve() recomputes each against the shadow\'s post-execution content (verification.mjs) and gates promotion if any is CONTRADICTED. Coverage gaps (unrecomputed claims — most often behavioural ones, since EXECUTE stays refused) are declared, not blocking.',
+    reasoningRouted: true,
+    reasoningRoutedReason: 'plan() asks the ReasoningRouter, so a selected external provider is used on the one path that mints a token and touches a real file — not only on the read-only advisory route. Every run records which provider answered which surface (`provenance`). With no external provider configured every surface is the reference one and this path behaves exactly as before.',
+    simulationSupported: true,
+    simulationSupportedReason: '`simulate` is the contract\'s only optional surface (02_ATOM.md). POST /api/v1/workspace-actions/{runId}/simulate materialises a shadow, asks the selected provider what the plan would do, and discards the shadow — no token is minted and nothing is executed. The reference provider answers `supported: false`, which is reported as given and never flattened into an empty prediction.',
+    simulationCrossProcessLimit: 'The frozen contract passes the shadow as a PATH, so a provider in another process predicts nothing unless it can read that directory. The installed daemon has no mount onto the shadow root: routed there it refuses, and the refusal is reported as a refusal. Sharing the shadow root is a mount change, named here rather than left to be discovered.',
   };
 }

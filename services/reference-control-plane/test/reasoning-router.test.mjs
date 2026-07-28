@@ -53,10 +53,72 @@ test('with no configuration every surface is the reference provider', async () =
   assert.deepEqual(router.provenance(), [{ surface: 'interpret', provider: 'reference' }]);
 });
 
-test('the default routing is the two surfaces the design names, and nothing else', async () => {
+// The literal list is repeated on purpose: comparing the routing only against the constant it
+// is built from would pass whatever that constant became. This test exists so that changing
+// the default has to be a decision somebody took — and it did exactly that when `simulate`
+// was added to it.
+test('the default routing is the surfaces the design names, and nothing else', async () => {
   const routing = routingFrom(envFor('http://127.0.0.1:1'));
   assert.deepEqual([...routing.externalSurfaces], [...DEFAULT_EXTERNAL_SURFACES]);
-  assert.deepEqual([...routing.externalSurfaces], ['decompose', 'expect']);
+  assert.deepEqual([...routing.externalSurfaces], ['decompose', 'expect', 'simulate']);
+});
+
+test('the reference provider answers simulate with the shape a real one uses', async () => {
+  const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: {} });
+  const outcome = await router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/nowhere');
+  // `supported: false` is the answer. What matters is that a caller reads one shape either
+  // way: the earlier `{ supported, surface }` meant a consumer written against a real
+  // provider's `predictedDiff` would have read `undefined` and reported it as empty.
+  assert.equal(outcome.supported, false);
+  assert.deepEqual(outcome.predictedDiff, []);
+  assert.equal(outcome.executed, false);
+  assert.deepEqual(router.provenance(), [{ surface: 'simulate', provider: 'reference' }]);
+});
+
+test('simulate is routed to the external provider, with the shadow path it must read', async () => {
+  const stub = await stubProvider(() => ({
+    status: 200,
+    payload: { ok: true, value: { supported: true, predictedDiff: ['M src/x.rs'], predictedResult: 'one file modified', executed: false } },
+  }));
+  try {
+    const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: envFor(stub.endpoint) });
+    const outcome = await router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/shadows/run-1');
+    assert.equal(outcome.supported, true);
+    assert.deepEqual(outcome.predictedDiff, ['M src/x.rs']);
+    // A provider predicts by reading a directory, so the path is the payload's whole point:
+    // sending the plan without it would be a request nobody could answer.
+    assert.equal(stub.seen.at(-1).path, '/v1/simulate');
+    assert.equal(stub.seen.at(-1).body.shadowWorkspace, '/shadows/run-1');
+    assert.deepEqual(router.provenance(), [{ surface: 'simulate', provider: 'atom' }]);
+  } finally { stub.close(); }
+});
+
+test('a provider that cannot read the shadow refuses, and a refusal is not a prediction', async () => {
+  const stub = await stubProvider(() => ({
+    status: 200,
+    payload: { ok: false, error: { kind: 'REFUSED', reason: 'the shadow workspace could not be read' } },
+  }));
+  try {
+    const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: envFor(stub.endpoint) });
+    await assert.rejects(
+      () => router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/definitely/not/here'),
+      (error) => error instanceof ReasoningRefused,
+    );
+    // The refusal is still an answer and its author is still the one who answered, otherwise
+    // a refused simulation would read as though nobody had been asked.
+    assert.deepEqual(router.provenance(), [{ surface: 'simulate', provider: 'atom' }]);
+  } finally { stub.close(); }
+});
+
+test('an unreachable provider makes simulate unavailable, never `supported: false`', async () => {
+  const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: envFor('http://127.0.0.1:1') });
+  // The dangerous confusion: reporting the reference provider's honest "I cannot simulate"
+  // for a selected provider that was simply not there. They are indistinguishable to a reader
+  // and mean opposite things about whether simulation is possible at all.
+  await assert.rejects(
+    () => router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/shadows/run-1'),
+    (error) => error instanceof ReasoningUnavailable,
+  );
 });
 
 test('an external provider is selected only for its surfaces, and provenance says so', async () => {

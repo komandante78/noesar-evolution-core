@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The reasoning provider reaches the path that acts, and `simulate` becomes a real surface.
+#
+# WHAT THE PREDECESSOR LEFT OPEN, IN ITS OWN WORDS: "workspace-actions.mjs still constructs
+# ReferenceReasoningProvider directly. Its plan() is synchronous and sits inside the approval
+# lifecycle." The consequence was that an operator could select an external provider and the
+# one path that mints a capability token and writes a real file went on asking the reference
+# provider regardless. The selection was real on the read-only advisory route and nowhere it
+# could change an outcome. That is closed here.
+#
+# CHANGED
+#   workspace-actions.mjs  plan() is async and asks the ReasoningRouter. Every run records
+#                          `provenance` — which provider answered which surface — and returns
+#                          it, so an approver can see who produced the expectation they are
+#                          approving against. New simulate(): materialises a shadow, asks the
+#                          selected provider what the plan would do, discards the shadow. No
+#                          token is minted and nothing is executed.
+#   reasoning-router.mjs   `simulate` added to the routable set and to the default external
+#                          surfaces. It is the one surface the reference provider cannot
+#                          perform at all (02_ATOM.md marks it the contract's only optional
+#                          one), so leaving it off the default would mean an operator who
+#                          selected a provider still read `supported: false` forever.
+#   reasoning.mjs          the reference `simulate()` returns the shape a real provider
+#                          returns — `{ supported, predictedDiff, predictedResult, executed }`
+#                          — instead of `{ supported, surface }`. One shape for the caller
+#                          either way; branching on `supported`, not on which provider replied.
+#   server.mjs             awaits plan(); maps ReasoningUnavailable to 503 there (422 would
+#                          tell a caller their plan was rejected, which is a different and
+#                          false fact); adds POST /api/v1/workspace-actions/{runId}/simulate
+#                          behind `workspace.read` and the CSRF gate; reads the shadow root
+#                          from NOESAR_SHADOWS_ROOT.
+#
+# UNCHANGED WITHOUT CONFIGURATION. With no external provider selected every surface is the
+# reference provider, plan() behaves exactly as before, and simulate answers `supported:
+# false`. CE-022 — the whole suite passing with no external provider present — is not
+# weakened by anything in this image.
+#
+# THE LIMIT THIS IMAGE DOES NOT REMOVE, STATED SO IT IS NOT DISCOVERED LATER. The frozen
+# contract passes the shadow to `simulate` as a PATH, and the provider reads it. A provider
+# in another process therefore predicts nothing unless it can read that directory. The
+# installed daemon has no mount onto the shadow root: routed there, it refuses, and the
+# refusal is reported as a refusal — never as a prediction and never as `supported: false`.
+# NOESAR_SHADOWS_ROOT exists so that closing this is a mount, not another code change.
+#
+# Configuration, all optional:
+#   NOESAR_REASONING_MODE=rust-external
+#   NOESAR_RUST_REASONING_ENDPOINT=http://<host>:<port>
+#   NOESAR_RUST_REASONING_TOKEN=<shared secret>
+#   NOESAR_EXTERNAL_SURFACES=decompose,expect,simulate   (the default when unset)
+#   NOESAR_SHADOWS_ROOT=<path>                           (default: /tmp/noesar-workspace-action-shadows)
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched. Returning
+# to :phase4-atom-routing removes the routing from the acting path and the simulate surface;
+# every run is in memory and does not survive a restart in either direction.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-atom-routing
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/workspace-actions.mjs /opt/noesar/services/reference-control-plane/src/workspace-actions.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/reasoning.mjs /opt/noesar/services/reference-control-plane/src/reasoning.mjs
+USER 10001:10001

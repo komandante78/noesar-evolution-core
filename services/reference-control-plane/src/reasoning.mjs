@@ -323,7 +323,12 @@ export class ReferenceReasoningProvider {
   simulate() {
     // Declared unsupported rather than answered with an empty prediction that would read
     // like a successful one.
-    return { supported: false, surface: 'simulate' };
+    //
+    // The shape is the one a provider that *does* simulate returns, so a caller reads one
+    // shape either way and branches on `supported` rather than on which provider it got.
+    // The earlier `{ supported, surface }` forced every consumer to know two shapes, and a
+    // consumer that only ever met this provider would have been written against the wrong one.
+    return { supported: false, predictedDiff: [], predictedResult: null, executed: false };
   }
 }
 
