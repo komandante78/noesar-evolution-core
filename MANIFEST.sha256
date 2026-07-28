@@ -5628,7 +5628,7 @@ e5276f2d21ceb79fd74c4446f55b53918fe13351a97bc9bd92883c01534d79b6  services/refer
 67ee1a0b1b7b55cb039e9928bc1c2ef2522f14f473c3780880207d0841fad310  services/reference-control-plane/src/postgres-supervisor.mjs
 82a4aaedf68894465bf8f4dcf1959676715203642530ae2bd484d5608b83fdb5  ./services/reference-control-plane/src/privacy.mjs
 8c3ceb675e464cafc10d367665f3cc1b70db28f5a6da19378a44c7ee0f6d55b0  services/reference-control-plane/src/production-readiness.mjs
-997d6875e5b32fd266dd592c59d6bdea8dcd1b941ec6b92393cbf15a17e231e4  ./services/reference-control-plane/src/server.mjs
+f2026bca0836fc1da94e48e020885d3f5b1996ede566a4b2acca83075c04831d  ./services/reference-control-plane/src/server.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  services/reference-control-plane/src/setup-token.mjs
 afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  services/reference-control-plane/src/shadow.mjs
 365b523884c75ec4a94a97975bfc9acc136821e48dab7feb2db081f0fa9dc9ba  services/reference-control-plane/src/executor.mjs
@@ -5788,3 +5788,7 @@ b47a3c43764bb90c49584e0575259ebe479446ef6cce9e4faeb4fac1dd6c0a1a  services/refer
 b908028d94833adcd7071d136c5debabed5cdcc5423b70d4a43fda1d7c30cb09  rust/crates/noesar-executor/tests/conformance.rs
 d30d133070e53787b914f1c337453c49257fd0268177f17c112fc5e6eb6ffdf8  ./services/reference-control-plane/src/sector-modules.mjs
 daf2bc4f05c0ade3525a62d4b7f5dc46427a3cfab880ac06e6be0f6bdf7e727c  ./services/reference-control-plane/test/sector-modules.test.mjs
+777ede9365da243e4f18ce7479414fffc06d8ca4df129449cbf7935ad6ea2d73  ./services/reference-control-plane/src/compliance-packs.mjs
+4c444c5183051c5dcde3f92fbf861711f239157d8baad9c60fe5bba5d5f3bf8a  ./services/reference-control-plane/test/compliance-packs.test.mjs
+e3daababb9273448de1fd256b6adc35b56f6279e860d52bf7e0f1c384fe20ebd  ./tools/sign-compliance-pack.mjs
+5315f9ad357094b411bfa00211789c3b883f9e9b6fb8bc6e46ca472ec764314c  ./tools/verify-compliance-pack.mjs

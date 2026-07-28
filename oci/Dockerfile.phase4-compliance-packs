@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 7 step 28 ("Il mondo esterno", 09_PIANO.md §2): signed, dated compliance packs.
+#
+# New: services/reference-control-plane/src/compliance-packs.mjs -- validates candidate
+# compliance packs against schemas/compliance-pack.schema.json (tracked since 2026-07-25,
+# never copied into an image or read by any code until this step -- the same "schema
+# morto" class step 27 revived in capabilities/security/*.json), enforces the "dated"
+# temporal window a pack declares, and verifies an Ed25519 signature when a public key is
+# configured (NOESAR_COMPLIANCE_PACK_PUBKEY). Signing itself is a CLI operation
+# (tools/sign-compliance-pack.mjs, not shipped in this image) -- a private key never
+# reaches this server.
+#
+# Ships NO jurisdiction's actual compliance content: PROJECT_GOVERNANCE/DATA/
+# compliance-pack-matrix.csv marks every listed jurisdiction "legal review: required",
+# and none has had one. This is the framework only, same posture as step 27's sector
+# modules.
+#
+# server.mjs changed to wire GET /api/v1/compliance-packs, GET .../list, POST
+# .../validate, behind session + workspace.read, no CSRF (none of the three mutate
+# product state). No Rust twin, same reason as sector-modules/repo-map.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-sector-modules
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/compliance-packs.mjs /opt/noesar/services/reference-control-plane/src/compliance-packs.mjs
+COPY --chown=10001:10001 schemas/compliance-pack.schema.json /opt/noesar/schemas/compliance-pack.schema.json
+USER 10001:10001

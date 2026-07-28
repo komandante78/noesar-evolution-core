@@ -34,6 +34,10 @@ import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from '
 import {
   SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
 } from './sector-modules.mjs';
+import {
+  CompliancePackError, loadCompliancePacks, compliancePacksStatus,
+  validateCompliancePackDocument, checkPackDates, loadComplianceSchema,
+} from './compliance-packs.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -64,6 +68,7 @@ const repoRoot = resolve(here, '../../..');
 const webRoot = resolve(repoRoot, 'apps/webui-static');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
 const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(repoRoot, '.sector-modules'));
+const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(repoRoot, '.compliance-packs'));
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
@@ -916,6 +921,52 @@ const requestListener = async (req, res) => {
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) return json(res, 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+
+    // --- compliance packs · phase 7 step 28 ("il mondo esterno", 09_PIANO.md §2) --------
+    // Read-only: validates schema + the "dated" temporal window, lists installed packs,
+    // and (when NOESAR_COMPLIANCE_PACK_PUBKEY names a PEM file) checks the Ed25519
+    // signature. No signing here -- a private key never reaches an HTTP handler; signing
+    // is a publishing-time operation, same posture as the Python reference's
+    // build-signed-package.py for capability packages. No Rust twin, same reason as
+    // repo-map/sector-modules: this proposes and verifies, it does not decide anything yet.
+    if (req.method === 'GET' && url.pathname === '/api/v1/compliance-packs') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, compliancePacksStatus(repoRoot, compliancePacksRoot));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/compliance-packs/list') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      try {
+        const pubkeyPath = process.env.NOESAR_COMPLIANCE_PACK_PUBKEY;
+        const publicKeyPem = pubkeyPath && existsSync(pubkeyPath) ? readFileSync(pubkeyPath, 'utf8') : undefined;
+        const scan = loadCompliancePacks(repoRoot, compliancePacksRoot, { publicKeyPem });
+        ledger.append({ actor:authenticated.user.id, action:'compliance_packs.scanned', result:'success', details:{ scanned:scan.scanned, valid:scan.valid.length, invalid:scan.invalid.length, truncated:scan.truncated, signatureChecked:Boolean(publicKeyPem) } });
+        return json(res, 200, scan);
+      } catch (error) {
+        if (error instanceof CompliancePackError) return json(res, 422, { error:'compliance_pack_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/compliance-packs/validate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const schema = loadComplianceSchema(repoRoot);
+        const schemaResult = validateCompliancePackDocument(payload ?? {}, schema);
+        const dateResult = schemaResult.valid ? checkPackDates(payload) : { valid:true, errors:[] };
+        const result = { valid: schemaResult.valid && dateResult.valid, errors:[...schemaResult.errors, ...dateResult.errors] };
+        ledger.append({ actor:authenticated.user.id, action:'compliance_packs.validated', result: result.valid ? 'success' : 'refused', details:{ valid:result.valid, errorCount:result.errors.length } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof CompliancePackError) return json(res, 422, { error:'compliance_pack_refused', kind:error.kind, reason:error.reason });
         throw error;
       }
     }

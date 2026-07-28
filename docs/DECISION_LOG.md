@@ -3277,3 +3277,41 @@ fuori scope dichiarato (item nuovo, vedi TASK PENDENTI).
 **Status.** Applicato **e installato** (`:phase4-sector-modules`, byte identici
 all'albero, `/livez`+`/readyz` 200, `/healthz` invariato — `B-010` non regredito, le tre
 rotte nuove 401 non autenticato, rotta inesistente 404, `RestartCount=0`).
+
+## D-0205 · Fase 7 passo 28: pacchetti di conformità firmati e datati — `schemas/compliance-pack.schema.json` era schema morto dal 2026-07-25, firma Ed25519 reale — 2026-07-28
+**Decision.** Passo 28 (09_PIANO.md §2). Nuovo `compliance-packs.mjs`: valida contro
+`schemas/compliance-pack.schema.json` (tracciato dal 2026-07-25, mai letto da codice —
+stessa classe del passo 27), **applica** la finestra "datata" (`effective_from`≤ora≤
+`review_by`, tre motivi distinti: non-ancora-efficace/scaduto/finestra vuota) e verifica
+una firma **Ed25519 reale** (`node:crypto`, RFC 8032) quando è configurata una chiave
+pubblica. Riusa `validateManifest` del passo 27 (generico, non specifico ai moduli di
+settore) invece di duplicarlo. Firma **non** esposta via HTTP — solo CLI
+(`tools/sign-compliance-pack.mjs`/`verify-compliance-pack.mjs`, gemelli Node di
+`capabilities/tools/build-signed-package.py`), una chiave privata non raggiunge mai
+`server.mjs`. 3 rotte nuove sola lettura/validazione, nessun CSRF (nessuna scrive stato
+prodotto), nessun gemello Rust — stessa postura del passo 27.
+**Why.** `PROJECT_GOVERNANCE/06_COMPLIANCE/60_GLOBAL_COMPLIANCE_ARCHITECTURE.md` e
+`PROJECT_GOVERNANCE/DATA/compliance-pack-matrix.csv` (14 giurisdizioni, **ognuna** "legal
+review: required", nessuna fatta) dicono cosa un pacchetto porta e che **nessun
+contenuto è pronto** — framework, non contenuto, stessa disciplina del passo 27.
+`node:crypto` invece di uno shell-out a `openssl` (pattern che il proprio sweep DebugLab
+di questa sessione ha già segnalato come classe di reperto in `capabilities/reference/`,
+F7-001): stesso schema RFC 8032, **interoperabilità provata** firmando con `openssl
+pkeyutl` e verificando con `node:crypto` e viceversa, non solo asserita.
+**Rejected.** Un endpoint HTTP di firma — una chiave privata in un handler è una
+superficie che nessuna fase precedente ha mai aperto; contenuto reale per una
+giurisdizione — nessuna ha superato la revisione legale che la matrice stessa richiede.
+**Evidence.** unit 932→954 (+22), ESLint 193→197 file 0 errori, verify-source/http-smoke/
+auth-http-smoke PASS, browser e2e 315/315, accessibilità 27/27, difetti seminati 19/19,
+`scripts/test.sh` pass=5 fail=0 (invariato). MANIFEST 5790→5794, 5794/5794 verificate.
+CLI provata end-to-end fuori dai test (firma reale → verifica PASS → verifica su originale
+non firmato FAIL "no signature" → verifica su copia manomessa FAIL "signature does not
+verify"). Sweep DebugLab (nuova superficie): `services/` 0 finding; `tools/` 7
+CRITICAL/2 HIGH pre-esistenti in `create-rust-build-provenance.py`/`verify-package.py`
+(stessa classe subprocess-partial-path di F7-001, non nei 2 file nuovi) — esteso F7-001
+invece di duplicare.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-sector-modules` toglie solo le tre rotte nuove.
+**Status.** Applicato **e installato** (`:phase4-compliance-packs`, byte identici
+all'albero su 3 file, `/livez`+`/readyz` 200, `/healthz` invariato, le tre rotte nuove 401
+non autenticato, rotta inesistente 404, `RestartCount=0`).

@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_7_STEP_27_SECTOR_MODULES_BUILT_INSTALLED",
-  "next_phase": "Fase 7 (09_PIANO.md §2), passo 28: pacchetti di conformità firmati e datati. Passo 27 (framework moduli di settore + livelli di fiducia) chiuso: capabilities/security/trust-level-policy.json + permission-catalog.json + schemas/industry-module-manifest.schema.json rivivi, mai enforced ancora (enforced:false, wiredToCapabilityMinting:false, dichiarato in sectorModulesStatus()). F7-001 aperto, basso, non bloccante.",
+  "phase_status": "PHASE_7_STEP_28_COMPLIANCE_PACKS_BUILT_INSTALLED",
+  "next_phase": "Fase 7 (09_PIANO.md §2), passo 29: Technology Radar. Passo 28 (pacchetti di conformita firmati e datati) chiuso: schemas/compliance-pack.schema.json rivissuto, firma Ed25519 reale (node:crypto, interoperabilita provata con openssl), nessun contenuto di alcuna giurisdizione spedito (matrice: legal review required su tutte e 14, nessuna fatta). enforced:false.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -216,7 +216,7 @@
       "id": "F7-001",
       "severity": "low",
       "status": "OPEN - recorded, not fixed, out of scope for D-0204",
-      "summary": "DebugLab full-sweep of capabilities/ (triggered because D-0204 introduced a new surface) found 23 CRITICAL / 9 HIGH bandit+ruff findings in capabilities/reference/*.py (subprocess calls to openssl via partial PATH lookup, B607/S603; one test-fixture literal flagged as a possible hardcoded password). None of this is in a file D-0204 touched or in anything sector-modules.mjs reads — capabilities/reference/ is a separate, dormant Python reference implementation. Not fixed: fixing it is unrelated scope creep for a phase named sector modules + trust levels."
+      "summary": "DebugLab full-sweep of capabilities/ (triggered because D-0204 introduced a new surface) found 23 CRITICAL / 9 HIGH bandit+ruff findings in capabilities/reference/*.py (subprocess calls to openssl via partial PATH lookup, B607/S603; one test-fixture literal flagged as a possible hardcoded password). None of this is in a file D-0204 touched or in anything sector-modules.mjs reads — capabilities/reference/ is a separate, dormant Python reference implementation. Not fixed: fixing it is unrelated scope creep for a phase named sector modules + trust levels. Esteso in D-0205: lo stesso sweep su tools/ ha trovato 7 CRITICAL/2 HIGH nella stessa classe (subprocess con percorso parziale) in create-rust-build-provenance.py e verify-package.py — non nei file nuovi di quella fase."
     }
   ],
   "resolved_findings": [
@@ -374,9 +374,9 @@
     }
   ],
   "product_test_suite": {
-    "unit": "932/932 (misurato 2026-07-28, D-0204)",
-    "eslint": "193 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0204)",
-    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0204 — riverificato, nessuna regressione)",
+    "unit": "954/954 (misurato 2026-07-28, D-0205)",
+    "eslint": "197 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0205)",
+    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0205 — riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
@@ -386,16 +386,17 @@
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
     "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)",
     "reasoning_vectors": "18 vettori, Node 22/22 e Rust 18/18 sullo STESSO file (misurato 2026-07-27)",
-    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0204 — riverificato)",
-    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0204 — riverificato)",
+    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0205 — riverificato)",
+    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0205 — riverificato)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5790/5790, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0204)",
+    "manifest": "5794/5794, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0205)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
-    "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)"
+    "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
+    "compliance_pack_validation": "22/22 — services/reference-control-plane/test/compliance-packs.test.mjs, incluso un round-trip di interoperabilita openssl<->node:crypto reale, dentro la unit suite (misurato 2026-07-28, D-0205)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -483,7 +484,7 @@
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
   "gpu_runtime": "NOT_IMPLEMENTED",
-  "next_phase_label": "7_STEP_28_SIGNED_COMPLIANCE_PACKS",
+  "next_phase_label": "7_STEP_29_TECHNOLOGY_RADAR",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
     "gate": {
@@ -792,7 +793,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0204: passo 27 di Fase 7 costruito e installato (:phase4-sector-modules). Prossima azione: passo 28 (pacchetti di conformità firmati e datati) o a scelta dell Owner.",
+  "next_action": "D-0205: passo 28 di Fase 7 costruito e installato (:phase4-compliance-packs). Prossima azione: passo 29 (Technology Radar) o a scelta dell Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1301,5 +1302,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T10:45:10.145Z"
+  "last_updated": "2026-07-28T11:08:48.415Z"
 }

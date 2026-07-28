@@ -2766,3 +2766,32 @@ progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
 
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
 `:phase4-findings` toglie solo le tre rotte nuove; nessuna capacità già in uso regredisce.
+
+## 2026-07-28 · `:phase4-compliance-packs` — Fase 7 passo 28, pacchetti di conformità firmati e datati
+
+**Immagine** `noesar-evolution:phase4-compliance-packs`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-compliance-packs`, `FROM
+noesar-evolution:phase4-sector-modules`. Copiati `server.mjs` (3 rotte nuove),
+`compliance-packs.mjs` nuovo, `schemas/compliance-pack.schema.json` (mai copiato in
+nessuna immagine prima d'ora).
+
+**Byte provati identici all'albero**: sha256 dei 3 file nell'immagine (container
+usa-e-getta, `--entrypoint node`) = sha256 repository, 3/3 PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo
+(`BACKUPS/runtime_pre_compliance_packs_deploy_20260728T110745Z/`, 75 MB) →
+configurazione riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-sector-modules-20260728T110745Z` → avvio senza override,
+healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` 200 invariato (`B-010` non
+regredito). Le 3 rotte nuove (`GET /api/v1/compliance-packs`, `GET .../list`, `POST
+.../validate`) `401` non autenticato. Rotta inesistente 404. `GET /api/v1/sector-modules`
+(passo 27) ancora `401` — non regredito.
+
+**§5a**: rimosso `noesar-evolution.rollback-findings-20260728T104143Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-sector-modules` toglie solo le tre rotte nuove.
