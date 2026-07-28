@@ -3395,3 +3395,52 @@ solo l'API per gestirli via SCIM sparisce).
 all'albero su 3 file, `/livez`+`/readyz` 200, `/healthz` invariato, tutte le rotte nuove
 401 non autenticato/SCIM 401 in forma RFC 7644, rotta inesistente 404, rotte dei passi
 27-29 ancora 401 — non regredite, `RestartCount=0`).
+
+## D-0208 · Fase 7 passo 31 (ULTIMO del roadmap 09_PIANO.md §2): SBOM, ML-BOM, CBOM, build riproducibili, firme — nessun deploy, per una ragione dichiarata — 2026-07-28
+**Decision.** Passo 31, ultimo dei 31 dell'intero roadmap. Cinque tool nuovi in
+`tools/`, nessuna riga toccata in `server.mjs`: **CBOM** (`cbom.mjs`, regex sul sorgente
+reale — sei algoritmi trovati DAVVERO in uso: SHA-256/scrypt/HMAC-SHA256/Ed25519/
+RSA-SHA256/CSPRNG, non un elenco generico — dichiara post-quantum:false apertamente).
+**ML-BOM** (`generate-mlbom.mjs`) — cammina i due alberi che il Dockerfile copia
+cercando estensioni di file-modello reali (.gguf/.safetensors/...), **zero trovati**,
+dichiarato `DECLARED_EMPTY` con la ragione (`local-model-runtime.mjs` non collega CUDA,
+non carica tensori — si collega solo a un server esterno configurato dall'operatore).
+**Firma** (`sign-release-artifact.mjs`/`verify-release-artifact.mjs`) — riusa
+`signCompliancePack`/`verifyCompliancePackSignature` del passo 28 **as-is** (già
+generica, non specifica ai pacchetti di conformità) invece di scrivere un secondo
+firmatario, chiudendo il gap che `generate-inventory.mjs` nomina da sempre: "no
+signature over this document". **Riproducibilità build** (`check-build-reproducibility.mjs`)
+— misurata per la prima volta, non solo dichiarata: due build indipendenti
+`--network=none` dello stesso Dockerfile di fase producono **lo stesso image ID
+byte-per-byte** (verificato su `Dockerfile.phase4-oidc-saml-scim`) — la catena
+incrementale (`FROM` un tag locale fisso + `COPY`) **è riproducibile**; l'immagine base
+(`Dockerfile.phase4`, `apt-get` in rete) resta `reproducible:false` **dichiarato, non
+ri-testato** (richiederebbe rete). **SBOM**: nessun tool nuovo — `generate-inventory.mjs`
+esisteva già, onesto, `PARTIAL` dichiarato; provato di nuovo dal vivo contro l'immagine
+corrente per la pipeline end-to-end.
+**Why.** Ogni tool nasce da ciò che il codice fa DAVVERO (grep prima di scrivere il
+pattern, cammino reale dell'albero prima di dichiarare zero modelli, build vera prima di
+dichiarare riproducibile) — stessa disciplina dei passi 27-30, mai un template compilato
+a mano. La firma riusa invece di duplicare, stessa lezione del passo 29 (D-0206) con
+`canonicalBytes`.
+**Rejected.** Installare syft/cyclonedx/trufflehog per un vero SBOM/CBOM conformi —
+regola 45, `B-002` già lo nomina per i segreti. Nessun deploy: questi tool generano
+artefatti offline (inventario/CBOM/ML-BOM di un'immagine già costruita), mai copiati in
+nessuna immagine — `tools/` non lo è mai stato, per nessun tool di questo progetto —
+quindi non c'è nulla che il prodotto SERVITO cambi, e D-0143 non si applica: non è una
+fase che cambia il prodotto, è una fase che misura ciò che è già installato.
+**Evidence.** Pipeline end-to-end reale contro `noesar-evolution:phase4-oidc-saml-scim`
+(l'immagine viva): inventario (3 manifest, 0 dipendenze npm terze parti, 19 crate Rust
+first-party, 333 pacchetti OS, 66 file first-party con hash) → CBOM (59 file, 47
+occorrenze crypto totali) → ML-BOM (0 artefatti modello) → firmati Ed25519 → verificati
+PASS sui tre → un quarto documento manomesso a mano rifiutato (`FAIL signature does not
+verify`). Riproducibilità: 2/2 build identiche, tag temporanei rimossi (§5a). unit
+1018/1018 invariato (nessun file server toccato), ESLint 204→209 file 0 errori,
+verify-source PASS. MANIFEST 5802→5807, 5807/5807 verificate. Sweep DebugLab (nuova
+superficie): 0 finding nei 5 file nuovi (gli stessi reperti pre-esistenti di F7-001 in
+due file *.py* già noti, non toccati).
+**Reversal cost.** Nessuno — nessun codice servito è cambiato.
+**Status.** Applicato, **nessun deploy** (dichiarato sopra, non un'omissione). Chiude
+09_PIANO.md §2 nella sua interezza: passi 1-31 tutti costruiti o esplicitamente
+dichiarati fuori scope (EXECUTE, SAML), Fasi 2-6 saltate su istruzione dell'Owner
+(D-0203).

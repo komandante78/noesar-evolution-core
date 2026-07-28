@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_7_STEP_30_OIDC_SCIM_BUILT_INSTALLED_SAML_DECLINED",
-  "next_phase": "Fase 7 (09_PIANO.md §2), passo 31: SBOM, ML-BOM, CBOM, build riproducibili, firme. Passo 30 chiuso: SCIM davvero cablato a UserDirectory (primo passo enforced), OIDC verifica RS256 reale non wired a un login flow, SAML esplicitamente non costruito (nessun parser XML sicuro senza nuova dipendenza).",
+  "phase_status": "PHASE_7_COMPLETE_ROADMAP_09_PIANO_ALL_31_STEPS_ADDRESSED",
+  "next_phase": "Fase 7 (09_PIANO.md §2) e l intero roadmap sono chiusi: passi 1-31 tutti costruiti o esplicitamente dichiarati fuori scope (EXECUTE permanentemente rifiutato, SAML non costruito per mancanza di un parser XML sicuro senza nuova dipendenza). Fasi 2-6 saltate su istruzione dell Owner (D-0203). Nessuna prossima azione pre-decisa: a scelta dell Owner (tornare alle Fasi 2-6 saltate, aprire EXECUTE come fase propria, costruire SAML con una dipendenza autorizzata, o altro).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -375,7 +375,7 @@
   ],
   "product_test_suite": {
     "unit": "1018/1018 (misurato 2026-07-28, D-0207)",
-    "eslint": "204 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0207)",
+    "eslint": "209 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0208)",
     "browser_acceptance": "315/315 (misurato 2026-07-28, D-0207 — riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
@@ -392,13 +392,14 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5802/5802, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0207)",
+    "manifest": "5807/5807, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0208)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
     "compliance_pack_validation": "22/22 — services/reference-control-plane/test/compliance-packs.test.mjs, incluso un round-trip di interoperabilita openssl<->node:crypto reale, dentro la unit suite (misurato 2026-07-28, D-0205)",
     "technology_radar_validation": "18/18 — services/reference-control-plane/test/technology-radar.test.mjs, ogni voce del seed reale validata contro lo schema nuovo, dentro la unit suite (misurato 2026-07-28, D-0206)",
-    "oidc_scim_validation": "OIDC 15/15 (RS256 + alg-none/HS256-confusion refused, provato con RSA autofirmato), SCIM 18/18 puro + 13/13 HTTP end-to-end (crea/lista/PATCH/DELETE/revoca token contro un server reale), dentro la unit suite (misurato 2026-07-28, D-0207)"
+    "oidc_scim_validation": "OIDC 15/15 (RS256 + alg-none/HS256-confusion refused, provato con RSA autofirmato), SCIM 18/18 puro + 13/13 HTTP end-to-end (crea/lista/PATCH/DELETE/revoca token contro un server reale), dentro la unit suite (misurato 2026-07-28, D-0207)",
+    "release_provenance_pipeline": "inventory + CBOM + ML-BOM generati contro l immagine viva, firmati Ed25519, verificati PASS x3, un documento manomesso rifiutato; build reproducibility 2/2 identiche su Dockerfile.phase4-oidc-saml-scim (misurato 2026-07-28, D-0208, verifica diretta non unit test — vedi tools/cbom.mjs, generate-mlbom.mjs, sign/verify-release-artifact.mjs, check-build-reproducibility.mjs)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -486,7 +487,7 @@
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
   "gpu_runtime": "NOT_IMPLEMENTED",
-  "next_phase_label": "7_STEP_31_SBOM_REPRODUCIBLE_BUILDS",
+  "next_phase_label": "ROADMAP_09_PIANO_COMPLETE_AWAITING_OWNER_DIRECTION",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
     "gate": {
@@ -795,7 +796,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0207: passo 30 di Fase 7 costruito e installato (:phase4-oidc-saml-scim). Prossima azione: passo 31 (SBOM/ML-BOM/CBOM/build riproducibili/firme) o a scelta dell Owner.",
+  "next_action": "D-0208: passo 31 (ultimo del roadmap) applicato, nessun deploy (tool offline, nessun codice servito cambiato). Il roadmap 09_PIANO.md e completo. Prossima azione a scelta dell Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1304,5 +1305,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T11:40:30.933Z"
+  "last_updated": "2026-07-28T12:10:34.701Z"
 }

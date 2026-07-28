@@ -5800,3 +5800,8 @@ b4e528bc1c794356c2117901f71bbd9a06072a82d9a919ff41f08ecadd725d61  ./services/ref
 9ae2a57fa8b150e932e4c17938523fd67612352484c4331fbca0d04e60ca3de1  ./services/reference-control-plane/test/scim.test.mjs
 e3aa1d4c445c620892aee4d330ac2a4255593592536de0516276bc474184e855  ./services/reference-control-plane/test/oidc.test.mjs
 5d9547dd4573b94451006b5deb9b2d0a00e6ce4cc723d229d460f4c7479bf32c  ./services/reference-control-plane/test/scim-http.test.mjs
+565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
+12b6665dfb389381b2d802c7bb36161327da1e45be75704637efca57003ab6f2  ./tools/generate-mlbom.mjs
+ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-release-artifact.mjs
+a5f46af39d919b029476df467838998573e53a68db4cdc2c9c719788fa037aca  ./tools/verify-release-artifact.mjs
+a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs
