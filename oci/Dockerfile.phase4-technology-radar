@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 7 step 29 ("Il mondo esterno", 09_PIANO.md §2): the Technology Radar.
+#
+# New: services/reference-control-plane/src/technology-radar.mjs -- tracks lifecycle
+# rings (adopt/trial/assess/hold/deprecated/revoked, PROJECT_GOVERNANCE/04_AI_PLATFORM/
+# 48_TECHNOLOGY_RADAR.md) for the fifteen real entries in docs/governance/
+# technology-radar-seed.json (tracked since 2026-07-25, never read by any code until this
+# step), plus schema/signature validation for live entries added later. Unlike step 27/28,
+# the seed is real content, not a placeholder framework: it records technology choices
+# already made elsewhere in this repository (Rust security authority: adopt, Qdrant:
+# trial, MCP gateway: assess, ...), not a legal claim or an executable module.
+#
+# New schemas/technology-radar-entry.schema.json (no tracked schema existed for this)
+# whose fields are exactly the ones the governance doc names ("evidence, compatibility,
+# license, security, migration and rollback impact"). Signing reuses canonicalBytes() from
+# compliance-packs.mjs (D-0205) -- no new canonicalization code, no new interop claim to
+# prove (already proven there).
+#
+# server.mjs changed to wire GET /api/v1/technology-radar, GET .../seed, GET .../list,
+# POST .../validate, POST .../transition-check, behind session + workspace.read, no CSRF
+# (none of the five mutate product state). No Rust twin, same reason as the other three
+# phase-7 modules.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-compliance-packs
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/technology-radar.mjs /opt/noesar/services/reference-control-plane/src/technology-radar.mjs
+COPY --chown=10001:10001 schemas/technology-radar-entry.schema.json /opt/noesar/schemas/technology-radar-entry.schema.json
+COPY --chown=10001:10001 docs/governance/technology-radar-seed.json /opt/noesar/docs/governance/technology-radar-seed.json
+USER 10001:10001

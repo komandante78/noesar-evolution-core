@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Technology Radar Entry",
+  "type": "object",
+  "required": [
+    "name",
+    "ring",
+    "domain"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "ring": {
+      "enum": [
+        "adopt",
+        "trial",
+        "assess",
+        "hold",
+        "deprecated",
+        "revoked"
+      ]
+    },
+    "domain": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "compatibility": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string"
+    },
+    "security": {
+      "type": "string"
+    },
+    "migration_impact": {
+      "type": "string"
+    },
+    "rollback_impact": {
+      "type": "string"
+    },
+    "signature": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

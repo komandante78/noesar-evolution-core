@@ -2795,3 +2795,31 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
 `:phase4-sector-modules` toglie solo le tre rotte nuove.
+
+## 2026-07-28 · `:phase4-technology-radar` — Fase 7 passo 29, Technology Radar
+
+**Immagine** `noesar-evolution:phase4-technology-radar`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-technology-radar`, `FROM
+noesar-evolution:phase4-compliance-packs`. Copiati `server.mjs` (5 rotte nuove),
+`technology-radar.mjs` nuovo, `schemas/technology-radar-entry.schema.json` nuovo,
+`docs/governance/technology-radar-seed.json` (mai copiato in nessuna immagine prima
+d'ora, 15 voci reali).
+
+**Byte provati identici all'albero**: sha256 dei 4 file nell'immagine (container
+usa-e-getta, `--entrypoint node`) = sha256 repository, 4/4 PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** →
+backup completo a servizio fermo
+(`BACKUPS/runtime_pre_technology_radar_deploy_20260728T111825Z/`, 75 MB) →
+configurazione riletta dal container sostituito → predecessore preservato come
+`noesar-evolution.rollback-compliance-packs-20260728T111825Z` → avvio senza override,
+healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200. Le 5 rotte nuove `401` non
+autenticato. Rotta inesistente 404. Rotte dei passi 27 e 28 ancora `401` — non regredite.
+
+**§5a**: rimosso `noesar-evolution.rollback-sector-modules-20260728T110745Z`. Due soli
+container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-compliance-packs` toglie solo le cinque rotte nuove.

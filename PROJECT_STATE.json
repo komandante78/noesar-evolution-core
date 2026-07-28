@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_7_STEP_28_COMPLIANCE_PACKS_BUILT_INSTALLED",
-  "next_phase": "Fase 7 (09_PIANO.md §2), passo 29: Technology Radar. Passo 28 (pacchetti di conformita firmati e datati) chiuso: schemas/compliance-pack.schema.json rivissuto, firma Ed25519 reale (node:crypto, interoperabilita provata con openssl), nessun contenuto di alcuna giurisdizione spedito (matrice: legal review required su tutte e 14, nessuna fatta). enforced:false.",
+  "phase_status": "PHASE_7_STEP_29_TECHNOLOGY_RADAR_BUILT_INSTALLED",
+  "next_phase": "Fase 7 (09_PIANO.md §2), passo 30: OIDC, SAML, SCIM. Passo 29 (Technology Radar) chiuso: docs/governance/technology-radar-seed.json rivissuto (15 voci reali), schemas/technology-radar-entry.schema.json nuovo, firma Ed25519 riusa canonicalBytes del passo 28. enforced:false, nessuna esecuzione automatica di terze parti.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -374,9 +374,9 @@
     }
   ],
   "product_test_suite": {
-    "unit": "954/954 (misurato 2026-07-28, D-0205)",
-    "eslint": "197 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0205)",
-    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0205 — riverificato, nessuna regressione)",
+    "unit": "972/972 (misurato 2026-07-28, D-0206)",
+    "eslint": "199 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28, D-0206)",
+    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0206 — riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
@@ -386,17 +386,18 @@
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
     "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)",
     "reasoning_vectors": "18 vettori, Node 22/22 e Rust 18/18 sullo STESSO file (misurato 2026-07-27)",
-    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0205 — riverificato)",
-    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0205 — riverificato)",
+    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0206 — riverificato)",
+    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0206 — riverificato)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5794/5794, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0205)",
+    "manifest": "5797/5797, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28, D-0206)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
-    "compliance_pack_validation": "22/22 — services/reference-control-plane/test/compliance-packs.test.mjs, incluso un round-trip di interoperabilita openssl<->node:crypto reale, dentro la unit suite (misurato 2026-07-28, D-0205)"
+    "compliance_pack_validation": "22/22 — services/reference-control-plane/test/compliance-packs.test.mjs, incluso un round-trip di interoperabilita openssl<->node:crypto reale, dentro la unit suite (misurato 2026-07-28, D-0205)",
+    "technology_radar_validation": "18/18 — services/reference-control-plane/test/technology-radar.test.mjs, ogni voce del seed reale validata contro lo schema nuovo, dentro la unit suite (misurato 2026-07-28, D-0206)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -484,7 +485,7 @@
     "manifest": "MANIFEST.sha256 5645/5645 OK (5630 delivered + 15 phase-4 first-party files; 6 hashes refreshed). Re-sorted during regeneration, verified lossless: 0 removed, 15 added, 0 duplicates."
   },
   "gpu_runtime": "NOT_IMPLEMENTED",
-  "next_phase_label": "7_STEP_29_TECHNOLOGY_RADAR",
+  "next_phase_label": "7_STEP_30_OIDC_SAML_SCIM",
   "phase_4_completion_gate": {
     "executed_utc": "2026-07-25",
     "gate": {
@@ -793,7 +794,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0205: passo 28 di Fase 7 costruito e installato (:phase4-compliance-packs). Prossima azione: passo 29 (Technology Radar) o a scelta dell Owner.",
+  "next_action": "D-0206: passo 29 di Fase 7 costruito e installato (:phase4-technology-radar). Prossima azione: passo 30 (OIDC/SAML/SCIM) o a scelta dell Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1302,5 +1303,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T11:08:48.415Z"
+  "last_updated": "2026-07-28T11:19:26.467Z"
 }

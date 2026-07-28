@@ -3315,3 +3315,38 @@ invece di duplicare.
 **Status.** Applicato **e installato** (`:phase4-compliance-packs`, byte identici
 all'albero su 3 file, `/livez`+`/readyz` 200, `/healthz` invariato, le tre rotte nuove 401
 non autenticato, rotta inesistente 404, `RestartCount=0`).
+
+## D-0206 · Fase 7 passo 29: Technology Radar — `docs/governance/technology-radar-seed.json` era schema morto dal 2026-07-25, ma stavolta 15 voci sono contenuto REALE — 2026-07-28
+**Decision.** Passo 29 (09_PIANO.md §2). Nuovo `technology-radar.mjs`: espone il seed
+tracciato (15 voci — Rust security authority: adopt/core, Qdrant: trial/data, MCP
+gateway: assess/agents, ecc.) mai letto da codice fino ad ora, valida voci candidate
+contro `schemas/technology-radar-entry.schema.json` (**nuovo** — nessuno schema esisteva,
+campi presi alla lettera da `48_TECHNOLOGY_RADAR.md`: "evidence, compatibility, license,
+security, migration and rollback impact"), applica **una** regola di transizione fondata
+sul testo (`revoked` è terminale — l'unico ordinamento che il documento stesso dichiara
+come "lifecycle... Adopt, Trial, Assess, Hold, Deprecated and Revoked"; niente altro
+inventato), firma/verifica Ed25519 **riusando** `canonicalBytes()` del passo 28 invece di
+duplicare la canonicalizzazione. 5 rotte nuove sola lettura/validazione, nessun CSRF,
+nessun gemello Rust — stessa postura dei passi 27/28.
+**Why.** A differenza dei passi 27/28, il seed **non è** un placeholder di framework: è
+la registrazione di scelte tecnologiche già fatte altrove in questo stesso repository, non
+una dichiarazione legale né un modulo eseguibile — quindi spedisce come contenuto reale,
+dichiarato esplicitamente come eccezione alla disciplina "framework only" degli altri due
+passi. `48_TECHNOLOGY_RADAR.md` vieta l'esecuzione automatica di terze parti: rispettato
+per omissione (il modulo non chiama mai nulla che una voce descrive), non da un controllo.
+**Rejected.** Un grafo di transizione completo fra i 6 anelli — non fondato dal testo
+sorgente, sarebbe stato il modulo che scrive politica di governance invece di applicarla
+(lo stesso overreach rifiutato per il contenuto sector-module/compliance-pack nei passi
+27/28). Un terzo tool CLI di firma dedicato — le funzioni sono già esportate e testate,
+un wrapper CLI identico al secondo sarebbe stato ridondante.
+**Evidence.** unit 954→972 (+18, incluso: ogni voce del seed valida contro lo schema
+nuovo), ESLint 197→199 file 0 errori, verify-source/http-smoke/auth-http-smoke PASS,
+browser e2e 315/315, accessibilità 27/27, difetti seminati 19/19, `scripts/test.sh`
+pass=5 fail=0 (invariato). MANIFEST 5794→5797, 5797/5797 verificate. Sweep DebugLab
+(nuova superficie): `services/` 0 finding.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3. Tornare a
+`:phase4-compliance-packs` toglie solo le cinque rotte nuove.
+**Status.** Applicato **e installato** (`:phase4-technology-radar`, byte identici
+all'albero su 4 file, `/livez`+`/readyz` 200, `/healthz` invariato, le cinque rotte nuove
+401 non autenticato, rotta inesistente 404, rotte dei passi 27/28 ancora 401 — non
+regredite, `RestartCount=0`).

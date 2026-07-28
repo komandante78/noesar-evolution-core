@@ -38,6 +38,10 @@ import {
   CompliancePackError, loadCompliancePacks, compliancePacksStatus,
   validateCompliancePackDocument, checkPackDates, loadComplianceSchema,
 } from './compliance-packs.mjs';
+import {
+  TechnologyRadarError, loadRadarSchema, loadRadarSeed, validateRadarEntry,
+  checkRingTransition, loadTechnologyRadar, technologyRadarStatus,
+} from './technology-radar.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -69,6 +73,7 @@ const webRoot = resolve(repoRoot, 'apps/webui-static');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
 const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(repoRoot, '.sector-modules'));
 const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(repoRoot, '.compliance-packs'));
+const technologyRadarRoot = resolve(process.env.NOESAR_TECHNOLOGY_RADAR ?? join(repoRoot, '.technology-radar'));
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
@@ -969,6 +974,66 @@ const requestListener = async (req, res) => {
         if (error instanceof CompliancePackError) return json(res, 422, { error:'compliance_pack_refused', kind:error.kind, reason:error.reason });
         throw error;
       }
+    }
+
+    // --- technology radar · phase 7 step 29 ("il mondo esterno", 09_PIANO.md §2) -------
+    // Read-only: the fifteen-entry seed (real, already-adopted tracking, not a framework
+    // placeholder) plus schema/signature validation for live entries added later. Never
+    // executes anything an entry describes -- PROJECT_GOVERNANCE/04_AI_PLATFORM/
+    // 48_TECHNOLOGY_RADAR.md's "never automatically executes third-party code" is upheld
+    // by omission. No CSRF (none of the four mutate product state). No Rust twin, same
+    // reason as repo-map/sector-modules/compliance-packs.
+    if (req.method === 'GET' && url.pathname === '/api/v1/technology-radar') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, technologyRadarStatus(repoRoot, technologyRadarRoot));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/technology-radar/seed') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      try {
+        return json(res, 200, loadRadarSeed(repoRoot));
+      } catch (error) {
+        if (error instanceof TechnologyRadarError) return json(res, 422, { error:'technology_radar_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/technology-radar/list') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      try {
+        const scan = loadTechnologyRadar(repoRoot, technologyRadarRoot);
+        ledger.append({ actor:authenticated.user.id, action:'technology_radar.scanned', result:'success', details:{ scanned:scan.scanned, valid:scan.valid.length, invalid:scan.invalid.length, truncated:scan.truncated } });
+        return json(res, 200, scan);
+      } catch (error) {
+        if (error instanceof TechnologyRadarError) return json(res, 422, { error:'technology_radar_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/technology-radar/validate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      try {
+        const schema = loadRadarSchema(repoRoot);
+        const result = validateRadarEntry(payload ?? {}, schema);
+        ledger.append({ actor:authenticated.user.id, action:'technology_radar.validated', result: result.valid ? 'success' : 'refused', details:{ valid:result.valid, errorCount:result.errors.length } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof TechnologyRadarError) return json(res, 422, { error:'technology_radar_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/technology-radar/transition-check') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      const result = checkRingTransition(payload?.from, payload?.to);
+      return json(res, 200, result);
     }
 
     // --- workspace actions · D-0190, the first surface that spends a token for real --------
