@@ -2568,3 +2568,57 @@ volumi diffati identici.
 
 **Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta **3**: tornare a `:phase4-cow`
 è avviare il container preservato, nessuna migrazione coinvolta.
+
+## 2026-07-28 · `:phase4-workspace-actions` — la scrittura file da chat, promossa per la prima volta
+
+**Immagine** `noesar-evolution:phase4-workspace-actions`, costruita `--network=none
+--pull=false` da `oci/Dockerfile.phase4-workspace-actions`, `FROM
+noesar-evolution:phase4-repomap`. Solo `services/reference-control-plane/src/` ricopiato
+(nuovo `workspace-actions.mjs` + `server.mjs` modificato, 5 rotte).
+
+**Byte provati identici all'albero**, immagine e container vivo dopo l'avvio: `sha256sum`
+di `workspace-actions.mjs` e `server.mjs` = `sha256sum` repository, PASS su entrambi.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** → backup
+completo a servizio fermo (`BACKUPS/runtime_pre_workspace_actions_deploy_20260728T015851Z/`,
+75 MB) → configurazione riletta dal container sostituito
+(`EVIDENCE/live_config_pre_workspace_actions_deploy_20260728T015851Z.json`) → predecessore
+preservato come `noesar-evolution.rollback-repomap-20260728T015851Z` → avvio senza override
+`--health-cmd`, healthy al primo tentativo, `restarts=0`.
+
+**Verifica dal vivo.** `/livez` 200, `/readyz` 200, `/healthz` invariato (`B-010` non
+regredito). Le rotte nuove: **401** non autenticato, **404** su una rotta inesistente. Test
+manuale end-to-end sulla candidata pre-deploy (server locale, non l'installazione): piano →
+approvazione → file reali scritti/modificati → doppia approvazione rifiutata → restore →
+file reali ripristinati → registro eventi valido a 7 eventi incatenati.
+
+**§5a**: rimosso il rollback superato `noesar-evolution.rollback-cow-20260728T012632Z`. Due
+soli container di progetto. Host invariato: **39 totali, 11 in esecuzione**, reti invariate.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta **3**: tornare a
+`:phase4-repomap` è avviare il container preservato, nessuna migrazione coinvolta. ⚠️ Tornare
+indietro perde la wiring D-0190/D-0191: `executorWiredToProductActions` torna a `false`.
+
+## 2026-07-28 · `:phase4-workspace-actions` ricostruita — le dichiarazioni di stato corrette prima del commit
+
+**Trovato dopo il primo deploy, prima di chiudere la fase**: `capability.mjs::capabilityStatus()`
+dichiarava ancora `executorWiredToProductActions: false` e `shadow.mjs::shadowStatus()`
+`executesPlans: false` — vere fino a `D-0190`, **false da quando `workspace-actions.mjs` è
+stato scritto**. Corrette a `true` con motivazione aggiornata; 3 test e 2 righe di
+`tools/auth-http-smoke.mjs` che asserivano il valore vecchio, aggiornati e riverificati
+(881/881 unit, ESLint 185 file 0 errori, `AUTH_HTTP_SMOKE=PASS`, `HTTP_SMOKE=PASS`).
+
+**Immagine ricostruita sullo stesso tag** (`:phase4-workspace-actions`, nuovo image id),
+byte provati identici all'albero corretto su immagine e container vivo. **Sequenza ripetuta
+per intero**: `docker stop -t 60` → `postgres.stopped clean:true` letto nel log → backup
+(`BACKUPS/runtime_pre_workspace_actions_fix_deploy_20260728T020232Z/`, 75 MB) →
+configurazione riletta → predecessore preservato come
+`noesar-evolution.rollback-workspace-actions-unfixed-20260728T020232Z` → avvio, healthy al
+primo tentativo. `/livez` 200, `/readyz` 200.
+
+**§5a**: rimosso il rollback più vecchio (`:phase4-repomap`); tenuto il predecessore
+immediato benché porti le due dichiarazioni stale — un rollback ad esso reintrodurrebbe solo
+quelle due righe di stato, non un difetto funzionale, e §5a è meccanica (il più recente,
+sempre). Due soli container di progetto.
+
+**Costo di rollback** — nessuno nuovo.

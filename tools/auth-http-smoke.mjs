@@ -108,7 +108,8 @@ try {
   if (capability.status !== 200) throw new Error(JSON.stringify(capability));
   if (capability.data.adaptersMaySelfGrant !== false) throw new Error('an adapter must not be able to self-grant');
   if (capability.data.executorEnforcesTokens !== true) throw new Error('the executor exists and enforces tokens');
-  if (capability.data.executorWiredToProductActions !== false) throw new Error('the status must not claim the product routes changes through the executor');
+  // D-0190/D-0191: /api/v1/workspace-actions routes real writes through the executor now.
+  if (capability.data.executorWiredToProductActions !== true) throw new Error('the status must claim the product routes changes through the executor — it does, via workspace-actions');
 
   const nowUnix = Math.floor(Date.now() / 1000);
   const capPlan = {
@@ -158,7 +159,8 @@ try {
     throw new Error('the copy-on-write claim contradicts the mechanism it names');
   }
   if (shadow.data.coverage !== 'WHOLE_WORKSPACE') throw new Error('the shadow must cover the whole workspace');
-  if (shadow.data.executesPlans !== false) throw new Error('the status must not claim an executor that does not exist');
+  // D-0190/D-0191: workspace-actions executes an approved plan into a shadow like this one.
+  if (shadow.data.executesPlans !== true) throw new Error('the status must claim a plan is executed into the shadow — it is, via workspace-actions');
 
   const clean = await request('/api/v1/shadow/compare', { method:'POST', value:{
     expectation:{ pathsTheDiffMustTouch:['src/a.rs'], testsExpectedToPass:['cargo test'], testsExpectedToFail:[] },

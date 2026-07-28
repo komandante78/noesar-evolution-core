@@ -421,10 +421,13 @@ export function shadowStatus(probeRoot) {
     coverage: COVERAGE_WHOLE,
     probedAt: probeRoot,
     comparesBothDirections: true,
-    // Stated, not implied by the absence of an error.
-    executesPlans: false,
+    // Stated, not implied by the absence of an error. D-0190/D-0191: /api/v1/workspace-actions
+    // now builds a real whole-workspace shadow and executes an approved plan into it on every
+    // approval — this is a statement about the mechanism, not about the directory this
+    // particular call happened to probe (`probeRoot` is only ever a reflink probe target).
+    executesPlans: true,
     reason: probe.supported
-      ? 'The shadow is a reflink clone of the whole workspace, so a file nobody declared is present and a write to it is observed. The comparison runs in both directions. Nothing executes a plan into it yet: the executor that accepts nothing but a capability token is step 5.'
-      : 'This filesystem refused a reflink clone, so the whole workspace is copied in full instead — same coverage and same observations, more time and more space. The comparison runs in both directions. Nothing executes a plan into it yet: the executor that accepts nothing but a capability token is step 5.',
+      ? 'The shadow is a reflink clone of the whole workspace, so a file nobody declared is present and a write to it is observed. The comparison runs in both directions. /api/v1/workspace-actions executes an approved plan into a shadow like this one on every approval, and promotes to the real workspace only when the comparison came back clean.'
+      : 'This filesystem refused a reflink clone, so the whole workspace is copied in full instead — same coverage and same observations, more time and more space. The comparison runs in both directions. /api/v1/workspace-actions executes an approved plan into a shadow like this one on every approval, and promotes to the real workspace only when the comparison came back clean.',
   };
 }

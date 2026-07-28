@@ -2785,3 +2785,49 @@ successivo, non il primo).
 **Status.** Deciso. **Non costruito**: la prossima fase esegue il ciclo completo (contratto,
 backup, scope minimo, test, hunt-and-fix, build/install/verify nella stessa fase) per questa
 scelta. Nessun codice scritto in questa sessione oltre alla decisione stessa.
+
+## D-0191 · `D-0190` costruito e installato: la scrittura file da chat, wired per la prima volta — 2026-07-28
+**Decision.** `workspace-actions.mjs` — la prima superficie del prodotto che spende un
+capability token e cambia un file vero. Percorso banale (P6): un passo, solo WRITE, i file
+forniti dal chiamante (il provider di riferimento non ha modello). `plan()`→`approve()` cala
+attraverso reasoning→capability→ombra→esecutore già esistenti e aggiunge il pezzo che
+mancava: **la promozione** — copia dall'ombra al workspace reale, solo se `execute().ok` è
+vero. Diff prima/dopo per file, restore una tantum, ogni passo nel registro causale.
+**Why.** `execute()` (passo 5) scriveva già in modo reale, ma **solo nella copia ombra, mai
+promossa**: chiamarlo non avrebbe mai prodotto un file che l'utente vede. Il divario non era
+«nessuno chiama l'esecutore», era «niente promuove il suo risultato».
+**Rejected.** Esecuzione test dichiarati dal piano — `executor.mjs` rifiuta EXECUTE **in modo
+permanente e deliberato** («questo layer non ha superficie di esecuzione»); riaprirla per
+questa fase avrebbe rotto un confine di sicurezza già testato e spedito al passo 5, per una
+ragione diversa da quella per cui esiste. Restano dichiarati e non costruiti: DELETE, EXECUTE,
+esecuzione test. `workspaceActionsStatus()` lo dice, non lo lascia scoprire.
+**Evidence.** unit 881/881 (+18: 17 test + 1 di regressione), ESLint 185 file 0 errori,
+browser e2e 315/315, accessibilità 27/27, difetti seminati 19/19, MANIFEST 5783/5783 0
+mismatch 0 righe non verificabili, controllo HTTP dal vivo: piano→approva→file veri
+scritti→doppia-approvazione rifiutata→restore→file veri ripristinati→registro eventi valido
+a 7 eventi incatenati. Full sweep DebugLab (superficie di sicurezza, rule 40d):
+`services/` 0 findings, verdetto "clean".
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuno schema, nessuna migrazione.
+I run vivono in memoria: un riavvio li azzera, dichiarato non scoperto.
+**Status.** Applicato **e installato** (`:phase4-workspace-actions`).
+
+## D-0192 · Trovato costruendo: l'ombra promossa in `workspace/shadows/` non può mai esistere — 2026-07-28
+**Decision.** Un test HTTP dal vivo (non i test unitari) ha trovato che il primo cablaggio
+puntava `shadowsRoot` a `join(workspace, 'shadows')` — **dentro** l'albero che l'ombra deve
+shadoware. `shadow.mjs` rifiuta un'ombra whole-workspace che l'albero shadowato
+contiene («the shadow and the workspace must not contain one another»): la rotta
+`/api/v1/shadow` esistente usa quella stessa directory ma **solo per sondare** il reflink
+(un file minuscolo), mai per materializzare un'ombra vera, quindi il rifiuto non era mai
+scattato prima che questo cablaggio provasse a costruirne una davvero.
+**Why.** Nessun test unitario di `workspace-actions.mjs` l'ha trovato perché ogni fixture usa
+due directory sorelle indipendenti — solo il cablaggio reale in `server.mjs` annidava le due.
+**Rejected.** Nessuna — è un bug, riparato: `shadowsRoot` ora è `/tmp/noesar-workspace-action-
+shadows` (l'altra posizione scrivibile del container, tmpfs, mai annidata in `/workspace`),
+e l'orchestratore ora **rifiuta al costruttore** se le due directory si contengono, invece di
+fallire cinque livelli dentro `shadow.mjs` al primo `approve()` vero.
+**Evidence.** Test di regressione aggiunto (`workspace-actions.test.mjs`, "refuses at
+construction if shadowsRoot is nested"), verificato **visto fallire prima del fix**
+(errore 500 dal vivo, `"the shadow and the workspace must not contain one another"`) e
+passare dopo.
+**Reversal cost.** Nessuno.
+**Status.** Applicato e installato nella stessa immagine di `D-0191`.

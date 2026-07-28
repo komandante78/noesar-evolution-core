@@ -208,14 +208,14 @@ test('the mechanism is probed on the real directory, never assumed', () => {
   }
 });
 
-test('the status reports the probed mechanism and still states what it does not do', () => {
+test('the status reports the probed mechanism, and D-0190/D-0191 made executesPlans true', () => {
   const probeRoot = mkdtempSync(join(tmpdir(), 'noesar-shadow-status-'));
   try {
     const status = shadowStatus(probeRoot);
     assert.equal(status.measured, true);
     assert.equal(status.copyOnWrite, status.mechanism === 'REFLINK_CLONE');
     assert.equal(status.coverage, 'WHOLE_WORKSPACE');
-    assert.equal(status.executesPlans, false);
+    assert.equal(status.executesPlans, true);
     assert.equal(status.comparesBothDirections, true);
   } finally {
     rmSync(probeRoot, { recursive:true, force:true });

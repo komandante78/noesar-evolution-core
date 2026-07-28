@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0190/D-0191: the first product surface that spends a capability token and changes a real
+# file. Phase 1's seven backbone steps existed as separate, tested mechanisms with nothing
+# reachable from a request; this is the seam, not a new mechanism.
+#
+# What this image adds: `services/reference-control-plane/src/workspace-actions.mjs` and
+# three-plus routes (`GET/POST /api/v1/workspace-actions[...]`) gated behind `workspace.write`.
+# The trivial risk path only (11_REVISIONE_E_CORREZIONI.md P6): one step, WRITE only, files
+# supplied by the caller. A plan is proposed, a human approves or rejects it, and approval
+# either promotes cleanly to the real workspace — through the existing capability/shadow/
+# executor chain, unmodified — or changes nothing at all. Diff before/after, one-time restore,
+# every step in the causal event ledger (step 6, wired to something for the first time).
+#
+# Deliberately NOT built here, and workspaceActionsStatus() says so: DELETE, EXECUTE, and any
+# execution of an AI-declared test. executor.mjs refuses EXECUTE permanently and on purpose —
+# reopening it to run a plan-declared command would be arbitrary code execution wearing the
+# shape of this phase's wiring, not this phase's job.
+#
+# D-0192, found building: the first wiring pointed the shadow root at `workspace/shadows`,
+# nested inside the tree it shadows. shadow.mjs already refuses that for a real whole-workspace
+# shadow ("the shadow and the workspace must not contain one another") — the read-only
+# /api/v1/shadow status route uses the same directory but only ever probes a tiny file there,
+# so the refusal never fired until this wiring tried to build a real one. Fixed: the shadow
+# root is /tmp (the container's other writable location, never nested in /workspace), and the
+# orchestrator now refuses at construction if the two ever nest again, rather than failing five
+# frames deep in shadow.mjs on the first live approval.
+#
+# Only `services/reference-control-plane/src/` changed. Nothing else in the image is
+# rebuilt or re-copied — an unchanged layer proves nothing and costs one anyway.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-repomap
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

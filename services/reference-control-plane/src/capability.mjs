@@ -197,13 +197,13 @@ export function capabilityStatus(minter) {
     outstandingTokens: minter.outstanding(),
     // Said, not left to be discovered.
     registryPersistsAcrossRestart: false,
-    // The executor exists and refuses every action without a token (step 5). What is still
-    // not true is that the product routes its own changes through it: no product surface
-    // mutates anything by spending a token yet, and the two facts are stated separately
-    // because collapsing them into one would overstate whichever way it was rounded.
+    // The executor exists and refuses every action without a token (step 5). D-0190/D-0191
+    // wired the first product surface to it — see workspace-actions.mjs — so this is no
+    // longer aspirational. It is still narrow: WRITE only, one step, one risk path (the
+    // trivial path of 11_REVISIONE_E_CORREZIONI.md P6). Stated at that width, not rounded up.
     executorImplemented: true,
     executorEnforcesTokens: true,
-    executorWiredToProductActions: false,
-    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. The executor that accepts nothing but a token is not built yet, so nothing is executed through them.',
+    executorWiredToProductActions: true,
+    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. /api/v1/workspace-actions spends them through the executor to write real files in the workspace, promoted only when the shadow comparison came back clean — the trivial risk path only; DELETE and EXECUTE remain unwired.',
   };
 }

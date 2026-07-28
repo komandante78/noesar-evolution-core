@@ -132,8 +132,8 @@ test('the status states what is not enforced instead of implying it', () => {
   assert.equal(status.registryPersistsAcrossRestart, false);
   assert.equal(status.executorImplemented, true);
   assert.equal(status.executorEnforcesTokens, true);
-  // Implemented and enforcing is not the same as the product routing its changes through it.
-  assert.equal(status.executorWiredToProductActions, false);
+  // D-0190/D-0191: /api/v1/workspace-actions now routes real writes through the executor.
+  assert.equal(status.executorWiredToProductActions, true);
   assert.equal(status.outstandingTokens, 0);
 });
 

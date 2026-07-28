@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
@@ -29,6 +30,7 @@ import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mj
 import { executorStatus } from './executor.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
+import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -99,6 +101,25 @@ const capabilityMinter = new TokenMinter(randomBytes(32));
 // says so; it does not replace the product audit trail, which is a different question
 // (who did what) with a different lifetime.
 const engineEvents = new EventLedger();
+// D-0190: the first product surface that spends a capability token and changes a real file.
+// Shares the same minter and event ledger the phase-1 routes below already report — a
+// second minter here would let a token minted through one door be unaccountable to the
+// other. Pending and decided runs live in memory too, for the same reason: a restart that
+// clears outstanding tokens must clear the runs that reference them, not leave a promoted
+// run pointing at a token nobody can spend or verify any more.
+//
+// The shadow root is OUTSIDE the workspace on purpose, found by trying the wrong thing
+// first: `join(workspace, 'shadows')` — the directory the read-only /api/v1/shadow status
+// route already probes reflink support in — fails the moment a real whole-workspace shadow
+// is built there, because shadow.mjs refuses a shadow that the workspace it shadows would
+// itself contain ("the shadow and the workspace must not contain one another"). That route
+// never materialises a real shadow, only probes a tiny file, so the containment check had
+// never fired until this wiring tried to build one for real. `/tmp` is the container's other
+// writable location (tmpfs, cleared on restart) and is never nested inside `/workspace`.
+const workspaceActions = new WorkspaceActionOrchestrator({
+  workspaceRoot: workspace, shadowsRoot: join(tmpdir(), 'noesar-workspace-action-shadows'),
+  minter: capabilityMinter, events: engineEvents,
+});
 const store = new JsonStore(join(workspace, 'state/state.json'));
 const aiStore = new AtomicJsonStore(join(workspace, 'state/ai-workspace.json'));
 const contextGraph = new ContextGraph(aiStore);
@@ -830,6 +851,67 @@ const server = createServer(async (req, res) => {
         return json(res, 200, found);
       } catch (error) {
         if (error instanceof RepoMapError) return json(res, 422, { error:'repo_map_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+
+    // --- workspace actions · D-0190, the first surface that spends a token for real --------
+    // The trivial risk path only: one step, WRITE only, files supplied by the caller (the
+    // reference reasoning provider has no model — see the module comment in
+    // workspace-actions.mjs). A plan is proposed, a human approves or rejects it, and an
+    // approval either promotes cleanly to the real workspace or changes nothing at all.
+    if (req.method === 'GET' && url.pathname === '/api/v1/workspace-actions') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, workspaceActionsStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/workspace-actions/plan') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
+      }
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const planned = workspaceActions.plan({
+          request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
+          constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',
+          actor: authenticated.user.id, nowUnix,
+        });
+        return json(res, 201, planned);
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    let workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)$/);
+    if (workspaceActionMatch && req.method === 'GET') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      const run = workspaceActions.get(workspaceActionMatch[1]);
+      if (!run) return json(res, 404, { error:'not_found' });
+      return json(res, 200, run);
+    }
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(approve|reject|restore)$/);
+    if (workspaceActionMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.write' });
+      }
+      const [, runId, verb] = workspaceActionMatch;
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        if (verb === 'approve') {
+          const outcome = workspaceActions.approve({ runId, approverId: authenticated.user.id, nowUnix });
+          return json(res, 200, outcome);
+        }
+        if (verb === 'reject') {
+          const outcome = workspaceActions.reject({ runId, approverId: authenticated.user.id, reason: payload?.reason ?? null, nowUnix });
+          return json(res, 200, outcome);
+        }
+        const outcome = workspaceActions.restore({ runId, actor: authenticated.user.id, nowUnix });
+        return json(res, 200, outcome);
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
         throw error;
       }
     }

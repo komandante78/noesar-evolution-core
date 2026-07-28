@@ -16,106 +16,99 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
-**I sette passi di `09_PIANO.md` §2 sono TUTTI costruiti e installati.** Il passo 7 —
-comprensione minima del repository (rilevamento linguaggi, punti d'ingresso, indice dei
-simboli, ricerca letterale, mappa delle dipendenze) — è stato l'ultimo, in `repo-map.mjs`
-(`D-0188`, installato `:phase4-repomap`).
+**`D-0190`/`D-0191` costruiti e installati: la prima superficie del prodotto che spende un
+capability token e cambia un file vero.** `workspace-actions.mjs` — `plan()` → `approve()` →
+promozione nel workspace reale, solo se pulita. Percorso banale (P6): un passo, solo WRITE.
 
-**Ma questo NON chiude la fase 1.** Il criterio §3 non è un elenco di componenti — è un
-flusso: *apre un repository vero, ne capisce la struttura, riceve una richiesta, produce un
-piano, ottiene un'autorizzazione, cambia diversi file, mostra il diff, esegue i test,
-corregge un errore, produce un risultato verificabile, ripristina lo stato precedente su
-richiesta, registra ogni operazione — e non esce mai dall'autorità che gli è stata data,
-provato da una suite avversaria il cui unico lavoro è provare a farglielo fare.* Oggi:
+**La fase 1 è MOLTO più vicina al proprio criterio, ma non ancora completa.** Rileggendo
+09_PIANO.md §3 clausola per clausola, ora vero: apre un repository vero e ne capisce la
+struttura (repo-map), riceve una richiesta, produce un piano, ottiene un'autorizzazione,
+cambia diversi file, mostra il diff, produce un risultato verificabile (`execute().ok`),
+ripristina lo stato precedente su richiesta, registra ogni operazione (7 eventi incatenati
+per run). **Ancora falso, e nominato, non taciuto**: **«esegue i test, corregge un errore»**
+— `executor.mjs` rifiuta EXECUTE in modo **permanente e deliberato**, spedito e testato al
+passo 5; riaprirlo per eseguire un comando dichiarato dal piano sarebbe esecuzione di codice
+arbitrario travestita da wiring, non il lavoro di questa fase. `workspaceActionsStatus()` lo
+dichiara. **E la clausola sull'autorità** — «provato da una suite il cui unico lavoro è
+provare a farglielo fare» — ha ora **6 test avversariali dedicati** (percorso vuoto, fuga di
+percorso, doppia decisione, approvazione senza approvante, cross-contaminazione, no-op non
+promosso), ma non ha ancora il rigore esaustivo della suite `coden-invariant-adversarial`
+(11/11) che governa il vecchio livello `path-auth`.
 
-- `executorWiredToProductActions = false` — nessuna superficie del prodotto instrada le
-  proprie modifiche attraverso l'esecutore
-- `executesPlans = false` — nulla esegue un piano dentro l'ombra
-- il registro eventi resta vuoto su un'installazione fresca: nessun sottosistema vi scrive
+**Trovato costruendo, corretto prima del commit**: `capability.mjs`/`shadow.mjs`
+dichiaravano ancora `executorWiredToProductActions:false`/`executesPlans:false` — vere fino a
+questa fase, **false da quando `workspace-actions.mjs` esiste**. Corrette a `true`, 3 test +
+`auth-http-smoke.mjs` aggiornati, immagine ricostruita e rischierata (vedi ledger, due voci
+consecutive stesso giorno).
 
-**`D-0189` ha risposta, `D-0190`: scrittura file da chat.** Quando `reasoning.plan` produce un
-piano approvato, l'esecutore spenderà un token per scrivere/modificare un file **vero** nel
-workspace su disco, cablando le quick action già disegnate in `home-overview.mjs` ("Find a bug
-and fix it", "Implement a feature", ecc. — oggi aprono solo una chat col testo dell'obiettivo,
-senza eseguire nulla). **Deciso, non costruito.** La prossima fase esegue il ciclo completo
-(contratto, backup, scope minimo, test, hunt-and-fix, build/install/verify nella stessa fase,
-`D-0143`) per questa scelta.
-
-**`F4-016` aperto, non riparato**: `reasoning.mjs` pianifica sempre contro `/workspace`
-letterale (`PRODUCT.workspaceRoot` non è mai definito), mai contro `NOESAR_WORKSPACE` — 
-innocuo in produzione (coincidono lì), ma silenzioso altrove. `repo-map.mjs` usa invece la
-costante `workspace` reale. Fuori scope per questa fase.
-
-**Build offline Rust**: serve `RUSTUP_TOOLCHAIN` pinnato (`D-0173`) e `conformance/` montata
-a `/conformance`, altrimenti i test di conformance Rust falliscono per un motivo che non è il
-codice. Non toccato in questa fase (nessun crate Rust nuovo — vedi `D-0188`).
+**Trovato costruendo, riparato subito** (`D-0192`): il primo cablaggio puntava l'ombra dentro
+`workspace/shadows/` — annidata nell'albero che deve shadowware — e `shadow.mjs` la rifiuta
+(«the shadow and the workspace must not contain one another»). La rotta di stato esistente
+usa quella stessa directory ma **solo per sondare**, mai per materializzare, quindi il rifiuto
+non era mai scattato prima. Riparato: l'ombra ora vive in `/tmp` (mai annidata), e
+l'orchestratore **rifiuta al costruttore** se le due directory si contengono di nuovo.
 
 **Due reperti storici, ancora aperti**: `F4-014` (l'esecutore è l'unico dei sei passi con due
 implementazioni e nessun oracolo condiviso) e `F4-015` (`shadowStatus()` scrive su una GET).
+`F4-016` (`reasoning.mjs` pianifica sempre contro `/workspace` letterale, innocuo in
+produzione) resta aperto e non riparato — fuori scope, `workspace-actions.mjs` usa invece la
+costante `workspace` reale apposta per non ereditarlo.
 
 ## ➜ Stato dell'installazione
 
-`noesar-evolution:phase4-repomap` · `Up (healthy)` · `restarts=0` ·
+`noesar-evolution:phase4-workspace-actions` (ricostruita) · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-cow-20260728T012632Z` (`:phase4-cow`, il predecessore). Due
-container di progetto, che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione, reti e
-volumi diffati identici prima/dopo.
+`noesar-evolution.rollback-workspace-actions-unfixed-20260728T020232Z` (il predecessore
+immediato — porta le due dichiarazioni stale corrette sopra, non un difetto funzionale). Due
+container di progetto, che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**Passo 7 costruito, installato e verificato nella stessa fase** (`D-0143`): `repo-map.mjs`
-— sola lettura, workspace-scoped, JS-only (`D-0188`, nessun gemello Rust perché questo
-propone/presenta e non decide/confina, D-A). Tre rotte: `GET /api/v1/repo-map` (stato),
-`POST /api/v1/repo-map/scan`, `GET /api/v1/repo-map/search`, dietro `workspace.read`.
-
-**Trovato costruendo**: la stessa costante rotta (`PRODUCT.workspaceRoot ?? '/workspace'`,
-sempre il letterale) che `reasoning.mjs` già usa — copiata per errore nella prima stesura
-delle rotte nuove, poi vista fallire in un controllo HTTP dal vivo e corretta a `workspace`
-(la costante vera). Registrata come `F4-016` per la copia in `reasoning.mjs`, non riparata lì
-(fuori scope).
-
-**Full sweep DebugLab** (rule 40d, nuova superficie): `services/` — dove questa fase ha
-scritto — **0 findings**. `tools/`, `capabilities/`, `apps/`, `oci/`, `INSTALLATION/`: ~90
-findings, tutti **preesistenti** (bandit B603/B607 su `subprocess.run` ad argomenti fissi,
-S105 sul canary di test `must-not-leak` già documentato come falso positivo, F401 import
-inutilizzati) — **non riparati**: fuori scope di questa fase, nessuno introdotto da essa.
+`workspace-actions.mjs`: `plan()` (request+files → piano reale via reasoning.mjs, i file
+forniti dal chiamante perché il provider di riferimento non ha modello), `approve()` (umano
+autorizza → mint token → ombra whole-workspace → `execute()` → **promozione** al workspace
+reale solo se pulita), `reject()`, `restore()` (una tantum, ripristina bytes esatti o cancella
+un file creato). Cinque rotte HTTP dietro `workspace.write`. Ogni passo nel registro causale
+(step 6, **scritto per la prima volta da un caller reale**).
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                  863/863  (era 843, +20 repo-map.test.mjs)
-ESLint                183 file · 0 errori · 0 warning · 0 no-undef
+unit                  881/881  (era 863, +18)
+ESLint                185 file · 0 errori · 0 warning · 0 no-undef
 browser reale         315/315
 accessibilità         27/27 su 27 superfici · 0 fail
 difetti seminati      19/19 catturati
-MANIFEST              5781/5781 · 0 mismatch · 0 righe non verificabili
-AUTH_HTTP_SMOKE       PASS · HTTP_SMOKE PASS
-controllo HTTP dal vivo delle 3 rotte nuove: 401 non-auth, 400 fuga di percorso, 200 con
-  linguaggi/simboli/punti-d'ingresso/dipendenze reali su una fixture e sul sorgente vero di
-  questo repository (test unitario dedicato)
-byte immagine = albero, byte container vivo = albero (sha256sum, entrambi)
+MANIFEST              5783/5783 · 0 mismatch · 0 righe non verificabili
+AUTH_HTTP_SMOKE PASS · HTTP_SMOKE PASS
+controllo HTTP dal vivo: piano→approva→file veri scritti→doppia-approvazione rifiutata→
+  restore→file veri ripristinati→registro eventi valido a 7 eventi incatenati
+Full sweep DebugLab (superficie di sicurezza, rule 40d): services/ 0 findings, verdetto clean
+byte immagine = albero, byte container vivo = albero (sha256sum, entrambi, DOPO la correzione)
 ```
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **`repoMapStatus().incremental = false`** — ricostruito per intero a ogni chiamata, nessuna
-  cache, nessun watcher.
-- **`astParsing = false`** — indice dei simboli è regex per linguaggio, non un parser.
-- **`secondLevelSignals = false`** — proprietà, recency, copertura, criticità, fragilità
-  restano fase 2 (`09_PIANO.md` P5).
-- Tutto ciò che era falso a fine fase precedente resta falso: `executorWiredToProductActions`,
-  `executesPlans`, registri in memoria, firma provenance simmetrica, `.ps1` mai eseguiti.
+- **`operationsSupported: ['WRITE']`** — DELETE ed EXECUTE dichiarati e non costruiti.
+- **`testExecution: false`** — confine deliberato, non dimenticanza: vedi sopra.
+- **`runsPersistAcrossRestart: false`** — i run vivono in memoria, un riavvio li azzera.
+- **`filesSuppliedBy: 'caller'`** — il provider di riferimento non ha modello e non inventa un
+  target da un prompt in prosa.
+- Tutto ciò che era falso a fine fase precedente e non toccato da questa resta falso:
+  registri in memoria, firma provenance simmetrica, `.ps1` mai eseguiti.
 
 ## ➜ Blocker aperti
 
-- **`B-001`** — nessun remote. `gh` non installabile. Nessun commit mai pushato.
+- **`B-001`** — nessun remote. `gh` non installabile.
 - **`B-008`** — due store d'identità, migrazione da fare in una fase propria.
 - `B-002`, `B-009`, `B-010` — chiusi.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-**Quella più urgente (`D-0189`) ha risposta** (`D-0190`: scrittura file da chat). Le altre,
-invariate: **(3)** rimuovere `apps/webui-react`; **(4)** `B-008`, quale store è la
-destinazione; **(5)** `B-001`, si vuole un remote; **(6)** cinque destinazioni dell'interfaccia
-«da decidere»; **(7)** conformità della conservazione dei dati delle richieste rifiutate;
-**(8)** TLS.
+**`D-0189`/`D-0190` risposta e costruita.** Le altre, invariate: **(3)** rimuovere
+`apps/webui-react`; **(4)** `B-008`, quale store è la destinazione; **(5)** `B-001`, si vuole
+un remote; **(6)** cinque destinazioni dell'interfaccia «da decidere»; **(7)** conformità
+della conservazione dei dati delle richieste rifiutate; **(8)** TLS. **Nuova**: si vuole
+estendere l'adversarial suite di `workspace-actions.mjs` al rigore di
+`coden-invariant-adversarial.test.mjs` prima di dichiarare la clausola sull'autorità
+completamente soddisfatta, o i 6 test attuali bastano per ora?
