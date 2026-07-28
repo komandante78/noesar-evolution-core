@@ -58,9 +58,10 @@ for (const manifest of walk(root, (p) => p.endsWith('package.json') && !p.includ
 }
 // Distinguish what the container ships from what the repository merely carries. The
 // Dockerfile copies package.json, services/reference-control-plane/ and apps/webui-static/
-// and nothing else, so apps/webui-react/ — an unbuilt React app with its own dependencies —
-// is in the repository but not in the image. Collapsing the two would turn a true statement
-// ("the runtime has no third-party npm dependency") into a false one, in either direction.
+// and nothing else, so any other manifest the repository happens to carry (whatever a
+// future directory adds) is in the repository but not in the image. Collapsing the two
+// would turn a true statement ("the runtime has no third-party npm dependency") into a
+// false one, in either direction.
 const SHIPPED_MANIFESTS = new Set(['package.json', 'services/reference-control-plane/package.json']);
 const shippedManifests = nodePackages.filter((p) => SHIPPED_MANIFESTS.has(p.path));
 const repositoryOnly = nodePackages.filter((p) => !SHIPPED_MANIFESTS.has(p.path));
@@ -155,7 +156,9 @@ const inventory = {
     repositoryOnlyThirdPartyDependencies: [...new Set(thirdPartyRepositoryOnly)],
     packages: nodePackages,
     note: thirdPartyNode.length === 0
-      ? `The image ships zero third-party npm dependencies: the runtime uses only the Node standard library. The repository additionally carries ${repositoryOnly.length} manifest(s) that the Dockerfile does not copy, declaring ${new Set(thirdPartyRepositoryOnly).size} third-party package(s) — chiefly apps/webui-react, which is unbuilt, has no lockfile, and is not installed or served.`
+      ? (repositoryOnly.length === 0
+        ? 'The image ships zero third-party npm dependencies: the runtime uses only the Node standard library. The repository carries no other manifest.'
+        : `The image ships zero third-party npm dependencies: the runtime uses only the Node standard library. The repository additionally carries ${repositoryOnly.length} manifest(s) that the Dockerfile does not copy — ${repositoryOnly.map((p) => p.path).join(', ')} — declaring ${new Set(thirdPartyRepositoryOnly).size} third-party package(s) not installed or served.`)
       : 'The image ships third-party npm dependencies.',
   },
   rust: {

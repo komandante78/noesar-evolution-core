@@ -176,9 +176,6 @@ export default [
       'provenance/**',
       'MASTER_REFERENCE/**',
       'private-boundary/**',
-      // Third-party or generated JavaScript that this repository does not author. Named
-      // individually rather than by a broad glob so that adding one is a visible diff.
-      'apps/webui-react/dist/**',
     ],
   },
   {
@@ -226,16 +223,6 @@ export default [
       ecmaVersion: 2024,
       sourceType: 'module',
       globals: { ...NODE_GLOBALS, ...BROWSER_GLOBALS },
-    },
-    rules: CORRECTNESS_RULES,
-  },
-  {
-    files: ['apps/webui-react/**/*.{js,jsx,mjs}'],
-    languageOptions: {
-      ecmaVersion: 2024,
-      sourceType: 'module',
-      globals: { ...BROWSER_GLOBALS, ...NODE_GLOBALS },
-      parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: CORRECTNESS_RULES,
   },

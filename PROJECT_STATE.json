@@ -9,8 +9,8 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "ca860ee (workspace-actions: first surface to spend a token, installed)",
-  "last_updated_utc": "2026-07-28T06:25:00Z",
+  "last_commit": "f43e594 (D-0194: close F4-017 - capability mint/spend had the same missing CSRF check)",
+  "last_updated_utc": "2026-07-28T08:06:54Z",
   "blockers": [
     {
       "id": "B-001",
@@ -416,7 +416,6 @@
     "WebUI settings pane for timezone and locale not built; the server contract exists and is tested",
     "update signing side and portal not implemented - only the offline channel is usable, and no channel key is pinned, so nothing can be applied",
     "audit ledger append is O(n) per write: the whole file is re-read to find the last hash",
-    "apps/webui-react is unbuilt, has no lockfile and is not shipped in the image; its 6 npm dependencies are repository-only (recorded in the component inventory)",
     "passkey / WebAuthn absent (matrix: MISSING)",
     "no TLS: the installation is loopback-only and NOESAR_SECURE_COOKIES=false follows from that",
     "independent penetration test not performed - required by PRODUCTION_READINESS_V050.md before promotion",
@@ -775,7 +774,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "D-0190/D-0191 costruiti e installati (:phase4-workspace-actions, ricostruita dopo D-0192 e dopo la correzione di due dichiarazioni di stato stale in capability.mjs/shadow.mjs). Prossimo: decisione Owner se estendere la suite avversaria di workspace-actions.mjs al rigore della suite esistente prima di dichiarare la fase 1 fatta, oppure procedere oltre. F4-014/F4-015/F4-016 restano aperti, non toccati da questa fase.",
+  "next_action": "D-0195: apps/webui-react rimossa su emendamento esplicito dell'Owner (CLAUDE10.md regola 12, secondo named exception). Owner ha risposto anche a B-008 (PostgreSQL e' la destinazione dell'identita', migrazione in una fase propria), B-001 (vuole un remote, credenziali da fornire) e TLS (si apre una fase dedicata ora) - nessuna delle tre ancora costruita. Prossima fase: una delle tre, a scelta dell'Owner; nessuna toccata da questa sessione oltre alla decisione stessa. F4-014/F4-015/F4-016 restano aperti, non toccati.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1284,5 +1283,5 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-27T18:50:00Z"
+  "last_updated": "2026-07-28T08:06:54Z"
 }

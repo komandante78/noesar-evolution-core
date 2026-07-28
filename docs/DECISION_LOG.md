@@ -2877,3 +2877,57 @@ sulla coppia di rotte che minta e spende il token stesso che `workspace-actions.
 altrove sull'host, nessuna nuova.
 **Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuna migrazione.
 **Status.** Applicato e installato (`:phase4-capability-csrf`). `F4-017` chiuso.
+
+## D-0195 · `apps/webui-react` rimossa — secondo named exception alla regola 12 — 2026-07-28
+**Decision.** L'Owner autorizza la rimozione di `apps/webui-react/`, tre file dodici righe
+nessun componente reale — schema morto già segnalato da `03_ARCHITETTURA.md` §6 e dal
+`README.md` della cartella stessa (`V4-D002` amendato da `D-0169`: la WebUI canonica è
+`apps/webui-static`, plain JS/CSS). `CLAUDE10.md` regola 12 richiedeva un emendamento
+esplicito, non una decisione presa qui — concesso ora dall'Owner con lo stesso meccanismo
+di `D-0097`/§1a. Emendata la regola 12 con un secondo named exception, nominando questa
+decisione.
+**Why.** Una cartella che dichiara «lavoro futuro» che non verrà mai fatto è peggio di
+un'assenza: uno schema morto applicato al codice che sembra una scelta tecnologica in
+corso e non lo è.
+**Rejected.** Nessuna — l'Owner ha risposto direttamente alla domanda posta in sessione.
+**Trovato per strada, non nominato dalla domanda originale.** La rimozione rendeva visibile
+un difetto latente in `tools/generate-inventory.mjs`: la frase generata per l'inventario
+dei componenti nominava `apps/webui-react` come stringa letterale invece di derivarla
+dall'elenco calcolato dei manifest repository-only — con la cartella rimossa avrebbe
+prodotto «carries 0 manifest(s) … chiefly apps/webui-react», una frase che si
+autocontraddice. Corretto per essere generico e derivato dai dati, non solo per questo
+caso. Sistemati anche `eslint.config.mjs` (ignore + rules block per la cartella rimossa) e
+`services/reference-control-plane/test/static-analysis-config.test.mjs` (voce
+dell'allowlist ignores), e la voce `deferred_items` in `PROJECT_STATE.json` che descriveva
+la cartella come non spedita — non più applicabile, rimossa invece di lasciata a mentire.
+**Evidence.** `git rm -r apps/webui-react` (3 file); unit 894/894 (invariato: nessun test
+copriva quella cartella); ESLint 187 file 0 errori 0 warning 0 no-undef (invariato — i file
+`.ts`/`.json` di quella cartella non erano comunque linted, solo la config e il rules block
+morto sono stati rimossi); `tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`; MANIFEST
+5785→**5782**, 5782/5782 verificate (conteggio OK incrociato con le righe del file, non
+solo l'exit code di `sha256sum -c`, per la lezione di `D-0186`).
+**Reversal cost.** Nessuno. Non installato — la cartella non era mai spedita nell'immagine
+(`generate-inventory.mjs` lo dichiarava già). Nessuna migrazione, nessun container toccato.
+**Status.** Applicato, source-only. Nessuna installazione: nulla di questa fase era servito
+dal prodotto in esecuzione.
+
+## D-0196 · Tre decisioni dell'Owner registrate, nessuna ancora costruita — 2026-07-28
+**Decision.** Nella stessa sessione di `D-0195` l'Owner ha risposto a tre delle domande
+standing rimaste da `D-0189`/handoff: **(1)** `B-008` — PostgreSQL è la destinazione
+dell'identità, `state/auth.json` va migrato; **(2)** `B-001` — si vuole un remote git,
+l'Owner fornirà token/credenziali; **(3)** TLS — si apre una fase dedicata ora.
+**Why.** Rispondere sblocca la pianificazione anche se non si costruisce subito; tenere
+sei domande standing aperte per sessioni consecutive senza nemmeno raccoglierne le
+risposte è il costo che questa voce elimina.
+**Rejected.** Costruire una qualunque delle tre in questa fase — ognuna è un lavoro
+distinto (migrazione dati vivi, credenziali esterne, certificati/cookie sicuri) e la
+regola 9 vieta più di una fase per invocazione; combinarle violerebbe anche la regola 11
+(scope creep).
+**Evidence.** Risposta diretta dell'Owner, posta come domanda esplicita in sessione
+(stesso meccanismo di `D-0190`).
+**Reversal cost.** n/a — decisioni, nulla costruito.
+**Status.** Deciso, non costruito. `B-001` è bloccato in attesa delle credenziali
+dell'Owner (non fornite in questa sessione). La quinta domanda standing (conservazione
+dati delle richieste rifiutate) resta aperta ma non è una decisione dell'Owner da
+prendere: il disegno è già autorizzato da `D-0136`, manca solo una verifica di conformità
+legale esterna a questo progetto.

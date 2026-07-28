@@ -118,6 +118,12 @@ verified work in the source tree for a deployment that never comes.
     containers and image tags this project itself creates are not artifacts to be
     preserved — they are litter, and leaving them is the violation. They are removed
     under §5a, which states exactly what may be removed and what must survive.
+    **Second named exception**, added by the owner on 2026-07-28: `apps/webui-react/` —
+    three files, twelve lines, no component, superseded by `apps/webui-static` (`V4-D002`
+    amended by `D-0169`). Removed under `D-0195`, same mechanism as §1a: an explicit
+    Owner amendment to this file, not a decision taken elsewhere. The content survives in
+    git history and in the sealed archives (`/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`,
+    SHA-256 recorded) — nothing is destroyed, only removed from the working tree.
 13. **No destructive modification by implication.** Overwriting, truncating,
     renaming, moving, or replacing an existing artifact requires that the phase
     specification explicitly asks for it, and requires a backup first (§6).

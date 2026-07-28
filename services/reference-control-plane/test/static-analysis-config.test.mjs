@@ -53,7 +53,6 @@ test('the ignore list excludes only vendored, generated or non-source trees', ()
   const allowed = [
     'rust/vendor/**', 'node_modules/**', '**/node_modules/**', 'BACKUPS/**',
     'provenance/**', 'MASTER_REFERENCE/**', 'private-boundary/**',
-    'apps/webui-react/dist/**',
   ];
   for (const entry of ignores) {
     assert.ok(

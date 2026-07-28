@@ -16,57 +16,59 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0194` chiuso e installato: `F4-017` riparato — stessa lacuna CSRF di `D-0193`, questa
-volta su `/api/v1/capability/mint` e `/spend`.** `D-0193` aveva chiuso la lacuna su
-`workspace-actions.mjs` e **nominato** (non riparato) la stessa lacuna sulle rotte che
-mintano/spendono il token stesso, fuori dallo scope di file dichiarato in quella fase.
-L'Owner ha detto «procedi»: stesso file già toccato, nessuna ragione per rimandare.
+**`D-0195`: `apps/webui-react` rimossa su emendamento esplicito dell'Owner** — secondo named
+exception alla regola 12 di `CLAUDE10.md` (il primo era `MASTER_REFERENCE/`, `D-0097`/§1a).
+Tre file dodici righe, nessun componente reale, già segnalati come schema morto dal proprio
+`README.md`. Trovato per strada un difetto latente in `tools/generate-inventory.mjs` — la
+frase generata per l'inventario nominava `apps/webui-react` come stringa letterale invece di
+derivarla dai dati calcolati, e con la cartella rimossa si sarebbe autocontraddetta
+("0 manifest(s) … chiefly apps/webui-react"); corretto per essere derivato dai dati. Sistemati
+anche `eslint.config.mjs` (ignore + rules block morti) e il test che ne verifica la
+allowlist, più la voce `deferred_items` in `PROJECT_STATE.json` che descriveva la cartella
+come non spedita.
 
-`capability-http-adversarial.test.mjs` (4 test) ha ottenuto un piano VERO da
-`/api/v1/workspace-actions/plan` e attaccato mint/spend con la richiesta che una chiamata
-legittima costruirebbe. **Visto fallire rosso in modo concreto**: un cookie valido senza
-header CSRF poteva mintare **e spendere** un token — lo spend forgiato ha davvero consumato
-l'unico uso del token prima della riparazione (non solo "avrebbe potuto", l'ha fatto,
-verificato nel test). `requireCsrf()` aggiunto dopo il controllo `workspace.write` già
-esistente; verde dopo, incluso che uno spend forgiato non consuma più un uso.
+**`D-0196`: altre tre domande standing risposte, nessuna costruita.** Nella stessa sessione
+l'Owner ha risposto: **`B-008`** → PostgreSQL è la destinazione dell'identità, migrazione in
+una fase propria; **`B-001`** → sì a un remote, l'Owner fornirà le credenziali (non ancora
+fornite in questa sessione — bloccato); **TLS** → si apre una fase dedicata. Nessuna delle tre
+è stata costruita qui: una fase, un solo obiettivo (regola 9), e combinarle sarebbe stato
+scope creep (regola 11).
 
-**Con questo, tutte le rotte mutanti di `server.mjs` chiamano `requireCsrf()`.** Nessuna
-lacuna nota di questa classe resta aperta.
+**Prossima fase, a scelta dell'Owner**: una delle tre — migrazione identità su PostgreSQL
+(`B-008`), TLS, o il remote git (`B-001`, appena le credenziali sono disponibili). Nessuna
+delle tre è iniziata.
 
 ## ➜ Stato dell'installazione
 
+**Invariato da `D-0194`** — questa fase è source-only, `apps/webui-react` non era mai spedita
+nell'immagine (`tools/generate-inventory.mjs` lo dichiarava già), quindi nessun rebuild/deploy.
 `noesar-evolution:phase4-capability-csrf` · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-csrf-hardening-20260728T061943Z` (il predecessore immediato,
-porta la lacuna `F4-017`). Due container di progetto, che è quanto §5a ammette. Host: 39
-totali, 11 in esecuzione.
+`noesar-evolution.rollback-csrf-hardening-20260728T061943Z`. Due container di progetto, che è
+quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
 
-## ➜ Cosa è stato fatto in questa sessione (due fasi, `D-0193` + `D-0194`)
+## ➜ Cosa è stato fatto in questa sessione (`D-0195` + `D-0196`)
 
-Un solo file di prodotto cambiato in entrambe le fasi: `server.mjs`, tre chiamate a
-`requireCsrf()` aggiunte in totale (2 sul blocco workspace-actions, 1 sul blocco condiviso
-capability mint/spend). Due file di test nuovi:
-`workspace-actions-http-adversarial.test.mjs` (9 test) e
-`capability-http-adversarial.test.mjs` (4 test). MANIFEST aggiornato a ogni passo.
+`git rm -r apps/webui-react` (3 file). Modificati: `CLAUDE10.md` (emendamento regola 12),
+`eslint.config.mjs`, `services/reference-control-plane/test/static-analysis-config.test.mjs`,
+`tools/generate-inventory.mjs` (fix del difetto latente), `PROJECT_STATE.json`
+(`deferred_items`, `next_action`, `last_commit`, `last_updated`), `MANIFEST.sha256`.
+`docs/DECISION_LOG.md`: due voci nuove, `D-0195`+`D-0196`.
 
-## ➜ Verifiche prodotte in sessione (stato finale, dopo entrambe le fasi)
+## ➜ Verifiche prodotte in sessione (source-only — nessun T2/T3, niente è installato)
 
 ```text
-unit                  894/894  (era 881 a inizio sessione, +13)
-ESLint                187 file · 0 errori · 0 warning · 0 no-undef
-browser reale         315/315
-accessibilità         27/27 su 27 superfici · 0 fail
-difetti seminati      19/19 catturati
-MANIFEST              5785/5785 · 0 mismatch · 0 righe non verificabili
-AUTH_HTTP_SMOKE PASS · HTTP_SMOKE PASS · SOURCE_VERIFY PASS
-Full sweep DebugLab, RIPETUTO due volte (rule 40d, due cambi di auth-gate): 0 hit dentro
-  services/reference-control-plane/ in entrambe le corse; stesso rumore pre-esistente
-  (71 bandit/ruff su script di build, 3 semgrep MEDIUM falsi) fuori da quella cartella
-byte immagine = albero, byte container vivo = albero (sha256sum, entrambe le fasi)
-dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, rotte protette 401, rotta
-  inesistente 404 — i fix CSRF stessi sono provati dalle suite contro un server locale
-  byte-identico (11e: nessuna suite che muta dati contro l'installazione viva)
+unit                  894/894  (invariato — nessun test copriva apps/webui-react)
+ESLint                187 file · 0 errori · 0 warning · 0 no-undef (invariato)
+tools/verify-source.mjs → SOURCE_VERIFY=PASS, migrations=16, baseline=12/12 intact
+MANIFEST               5785 → 5782 (3 righe rimosse), 5782/5782 verificate — conteggio OK
+  incrociato con le righe del file, non solo l'exit code di sha256sum -c (lezione D-0186)
+node --check            eslint.config.mjs, static-analysis-config.test.mjs,
+  tools/generate-inventory.mjs — sintassi OK
 ```
+
+Non eseguiti in questa fase (non necessari — nessuna rotta, markup, CSS, DB o Rust toccati):
+browser e2e, accessibilità, difetti seminati, http-smoke, DebugLab sweep, build immagine.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
@@ -76,16 +78,24 @@ dal vivo: /livez 200, /readyz 200, /healthz 200 invariato, rotte protette 401, r
   provenance simmetrica, `.ps1` mai eseguiti, `F4-014` (esecutore senza oracolo condiviso),
   `F4-015` (`shadowStatus()` scrive su una GET), `F4-016` (reasoning.mjs pianifica contro
   `/workspace` letterale).
+- `B-008` deciso ma **non migrato**: `state/auth.json` resta la fonte viva.
+- `B-001` deciso ma **bloccato**: nessuna credenziale fornita, nessun remote configurato.
+- TLS deciso ma **non costruito**: l'installazione resta senza certificato.
 
 ## ➜ Blocker aperti
 
-- **`B-001`** — nessun remote. `gh` non installabile.
-- **`B-008`** — due store d'identità, migrazione da fare in una fase propria.
+- **`B-001`** — remote voluto dall'Owner, in attesa delle sue credenziali. `gh` non installabile.
+- **`B-008`** — due store d'identità; destinazione decisa (PostgreSQL), migrazione non fatta.
 - `B-002`, `B-009`, `B-010` — chiusi.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Invariate da `D-0189`/`D-0190`, nessuna nuova aperta da questa sessione: **(3)** rimuovere
-`apps/webui-react`; **(4)** `B-008`, quale store è la destinazione; **(5)** `B-001`, si vuole
-un remote; **(6)** cinque destinazioni dell'interfaccia «da decidere»; **(7)** conformità
-della conservazione dei dati delle richieste rifiutate; **(8)** TLS.
+Quattro delle sei precedenti sono state risposte in questa sessione (`apps/webui-react`,
+`B-008`, `B-001`, TLS — vedi `D-0195`/`D-0196`). Restano:
+
+- **La conformità della conservazione dei dati delle richieste rifiutate** — non è una
+  decisione dell'Owner da prendere: il disegno è già autorizzato (`D-0136`), manca una
+  verifica di conformità legale/normativa esterna a questo progetto, prima che diventi
+  codice in produzione.
+- **La domanda "cinque destinazioni UI da decidere" era già stata risposta da `D-0125`**
+  (mappa 23→11 completa) — era rimasta nell'elenco standing per errore, non riproporla.
