@@ -135,9 +135,81 @@ test('every step of a promoted run is recorded in the causal event ledger, chain
     const chain = fx.events.correlation(planned.runId).map((event) => event.action);
     assert.deepEqual(chain, [
       'workspace_action.planned', 'workspace_action.approved', 'capability.minted',
-      'executor.ran', 'shadow.compared', 'workspace_action.promoted',
+      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified', 'workspace_action.promoted',
     ]);
     assert.equal(fx.events.verify().valid, true);
+  } finally { cleanup(fx); }
+});
+
+// --- the recompute verifier, wired: D-0209, CodeN Evolution construction order step 9 ---
+
+test('a matching claim promotes normally and reports complete coverage', () => {
+  const fx = fixture();
+  try {
+    const planned = fx.orch.plan({
+      request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      claims: [{ type:'file_equals', path:'x.txt', value:'hi' }],
+    });
+    const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(promoted, true);
+    assert.equal(coverage.complete, true);
+    assert.equal(coverage.contradicted.length, 0);
+    assert.equal(readFileSync(join(fx.ws, 'x.txt'), 'utf8'), 'hi');
+  } finally { cleanup(fx); }
+});
+
+test('a CONTRADICTED claim refuses promotion even though the path comparison was clean', () => {
+  const fx = fixture();
+  try {
+    const planned = fx.orch.plan({
+      request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      claims: [{ type:'file_equals', path:'x.txt', value:'this is not what got written' }],
+    });
+    const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(promoted, false);
+    assert.equal(coverage.contradicted.length, 1);
+    assert.equal(existsSync(join(fx.ws, 'x.txt')), false);
+  } finally { cleanup(fx); }
+});
+
+test('an unrecomputable (behavioural) claim does not block promotion — a coverage gap, not a contradiction', () => {
+  const fx = fixture();
+  try {
+    const planned = fx.orch.plan({
+      request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      claims: [{ type:'behavioural', description:'unrecomputable on purpose' }],
+    });
+    const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(promoted, true);
+    assert.equal(coverage.complete, false);
+    assert.equal(coverage.unrecomputed.length, 1);
+    assert.equal(coverage.contradicted.length, 0);
+  } finally { cleanup(fx); }
+});
+
+test('no claims declared: coverage says so explicitly, still promotes', () => {
+  const fx = fixture();
+  try {
+    const planned = fx.orch.plan({ request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(promoted, true);
+    assert.equal(coverage.total, 0);
+    assert.match(coverage.declaration, /no claims were declared/);
+  } finally { cleanup(fx); }
+});
+
+test('the claims_verified ledger event records the declaration even on a refused run', () => {
+  const fx = fixture();
+  try {
+    const planned = fx.orch.plan({
+      request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      claims: [{ type:'file_equals', path:'x.txt', value:'wrong' }],
+    });
+    fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    const event = fx.events.correlation(planned.runId).find((e) => e.action === 'workspace_action.claims_verified');
+    assert.ok(event);
+    const details = JSON.parse(event.payload);
+    assert.equal(details.contradicted, 1);
   } finally { cleanup(fx); }
 });
 

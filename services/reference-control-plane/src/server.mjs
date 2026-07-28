@@ -1221,7 +1221,7 @@ const requestListener = async (req, res) => {
         const planned = workspaceActions.plan({
           request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
           constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',
-          actor: authenticated.user.id, nowUnix,
+          actor: authenticated.user.id, nowUnix, claims: payload?.claims ?? [],
         });
         return json(res, 201, planned);
       } catch (error) {

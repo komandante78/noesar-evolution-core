@@ -3444,3 +3444,49 @@ due file *.py* già noti, non toccati).
 09_PIANO.md §2 nella sua interezza: passi 1-31 tutti costruiti o esplicitamente
 dichiarati fuori scope (EXECUTE, SAML), Fasi 2-6 saltate su istruzione dell'Owner
 (D-0203).
+
+## D-0209 · CodeN Evolution, passo 9 dell'ordine di costruzione: il verificatore per ricalcolo — CABLATO, non framework — 2026-07-28
+**Decision.** Su istruzione dell'Owner di ricontrollare le Fasi 1-7 e finire ciò che manca
+prima di andare avanti: `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §10 dà l'ordine di
+costruzione **per dipendenza** di CodeN Evolution, distinto dalla "Fase 2" originale di
+`09_PIANO.md` (editor/terminale/16 stadi — la visione del prodotto finito). I passi 1-8 di
+quell'ordine **sono** la Fase 1 già chiusa. Il passo 9 — **verificatore per ricalcolo, con
+copertura di proiezione dichiarata** — è il prossimo reale. Nuovo `verification.mjs`:
+ricalcola affermazioni sul contenuto risultante di un file (esistenza, contenuto, hash,
+campo JSON) leggendo direttamente lo stato dell'ombra dopo l'esecuzione — mai eseguendo
+nulla. Una affermazione **comportamentale** ("questa funzione ora ritorna X") è sempre
+dichiarata **non ricalcolabile per progetto**: EXECUTE resta rifiutato in modo permanente,
+nominato qui invece di essere aggirato con un pattern-matching sul testo. **CABLATO**
+(non framework come i passi 27-30): `workspace-actions.mjs::plan()` accetta ora un array
+opzionale `claims`; `approve()` li ricalcola contro l'ombra **prima** della promozione e
+**rifiuta la promozione se un'affermazione ricalcolata è CONTRADDETTA**, anche quando il
+confronto percorsi/test era pulito — un gap di copertura (affermazione non ricalcolabile)
+non blocca, per CE-009: si dichiara il vuoto, non si esige che ogni affermazione sia
+verificabile prima che qualcosa possa essere promosso.
+**Why.** `compare()` in `shadow.mjs` sapeva solo QUALE percorso era cambiato e COME
+(creato/modificato/eliminato), mai COSA contenesse davvero il file risultante — un piano
+poteva dichiarare di scrivere "hi" e scrivere "bye" senza che nulla se ne accorgesse. La
+matrice di accettazione del documento 15 (CE-009: la copertura non è mai assente né
+arrotondata a "completa") rende questo verificabile, non solo dichiarato.
+**Rejected.** Un motore di relazioni metamorfiche (la seconda parte dell'invenzione IV) —
+richiede proprietà derivate dal codice per linguaggio, fuori scope di questo passo, nominato
+non finto. Verifica comportamentale via un sandbox limitato — riaprirebbe EXECUTE, la stessa
+decisione presa tre volte e non riaperta oggi.
+**Evidence.** unit 1018→1040 (+22: 17 verification.mjs + 5 sul cablaggio reale in
+workspace-actions.mjs — inclusi un'affermazione che combacia e promuove, una CONTRADDETTA
+che rifiuta la promozione **nonostante** il confronto percorsi fosse pulito, una
+comportamentale che non blocca, l'evento `workspace_action.claims_verified` nel registro
+causale anche su un run rifiutato). ESLint 209→211 file 0 errori (un `mkdirSync` non
+usato trovato e tolto). Browser e2e 315/315, accessibilità 27/27, difetti seminati 19/19,
+`scripts/test.sh` invariato. MANIFEST 5807→5809, **una riga trovata corrotta durante
+l'aggiornamento** (un `sed` precedente aveva svuotato l'hash di `workspace-actions.mjs`,
+lasciando `sha256sum -c` a saltarla in silenzio — la stessa classe di difetto già
+documentata in memoria permanente) — riparata e riverificata, 5809/5809 pulite. Sweep
+DebugLab (rotta mutante toccata): `services/` 0 finding.
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` resta 3. Tornare a `:phase4-oidc-saml-scim`
+riporta `compare()` alla sola verifica di percorso — nessun'affermazione di contenuto
+viene più ricalcolata, ma nessun run già promosso viene invalidato (i `claims` erano
+opzionali e nessun run precedente li dichiarava).
+**Status.** Applicato **e installato** (`:phase4-recompute-verifier`, byte identici
+all'albero su 3 file, `/livez`+`/readyz` 200, `/api/v1/workspace-actions` 401 non
+autenticato, `RestartCount=0`).

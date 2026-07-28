@@ -52,6 +52,7 @@ import { ReferenceReasoningProvider, ReasoningRefused } from './reasoning.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
 import { execute } from './executor.mjs';
+import { verifyClaims, projectionCoverage } from './verification.mjs';
 
 export const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
@@ -132,10 +133,11 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  plan({ request, files, projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix }) {
+  plan({ request, files, projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
     if (!Array.isArray(files) || files.length === 0) {
       refuse('NO_FILES', 'this reference wiring takes the files to touch as part of the request; the reference provider has no model and cannot invent a target from prose alone');
     }
+    if (!Array.isArray(claims)) refuse('INVALID_CLAIMS', 'claims must be an array if supplied');
     for (const file of files) {
       if (!file || typeof file.path !== 'string' || !file.path.trim()) {
         refuse('INVALID_FILE', 'every file needs a path');
@@ -172,10 +174,10 @@ export class WorkspaceActionOrchestrator {
     }, nowUnix);
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
-      plan: constrained.plan, expectation, files, intent, risk, confidence,
+      plan: constrained.plan, expectation, files, intent, risk, confidence, claims,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
     });
-    return { runId, plan: constrained.plan, intent, expectation, risk, confidence };
+    return { runId, plan: constrained.plan, intent, expectation, risk, confidence, claims };
   }
 
   /**
@@ -227,25 +229,42 @@ export class WorkspaceActionOrchestrator {
       this.#record(runId, executeEventId, approverId, 'shadow.compared',
         { clean: result.surprise?.clean ?? null, unexpected: result.surprise?.unexpected ?? null }, nowUnix);
 
+      // Recompute verifier (CodeN Evolution construction order, step 9): claims declared
+      // at plan() time are checked against the shadow's actual post-execution content --
+      // not the path-touched comparison above, which knows only CREATED/MODIFIED/DELETED,
+      // never what a file now contains. Run BEFORE shadow.discard() in `finally`: there is
+      // nothing left to read from once this block exits.
+      const claimResults = verifyClaims(run.claims ?? [], shadow.root);
+      const coverage = projectionCoverage(claimResults);
+      this.#record(runId, executeEventId, approverId, 'workspace_action.claims_verified',
+        { declaration: coverage.declaration, total: coverage.total, recomputed: coverage.recomputed, contradicted: coverage.contradicted.length }, nowUnix);
+
       const diff = this.#diff(shadow, result);
       let promoted = false;
       let backups = null;
-      if (result.ok) {
+      // A clean path/test comparison is not enough on its own if a declared claim was
+      // recomputed and found false: the diff touched what the plan said it would, but the
+      // resulting content contradicts what was claimed about it. Coverage gaps
+      // (unrecomputed claims) do NOT block promotion -- CE-009 asks for the gap to be
+      // declared honestly, not for every claim to be checkable before anything can ship.
+      const clean = result.ok && coverage.contradicted.length === 0;
+      if (clean) {
         backups = this.#promote(shadow, result);
         promoted = true;
         this.#record(runId, executeEventId, approverId, 'workspace_action.promoted',
           { files: result.outcomes.filter((o) => o.performed).map((o) => o.path) }, nowUnix);
       } else {
         this.#record(runId, executeEventId, approverId, 'workspace_action.refused',
-          { reason: 'the run was not clean; nothing was promoted', surprise: result.surprise }, nowUnix);
+          { reason: result.ok ? 'a declared claim was recomputed and contradicted' : 'the run was not clean; nothing was promoted', surprise: result.surprise, contradicted: coverage.contradicted }, nowUnix);
       }
 
       run.status = promoted ? 'PROMOTED' : 'REFUSED';
       run.result = result;
       run.diff = diff;
+      run.coverage = coverage;
       run.backups = backups;
       run.decidedAtUnix = nowUnix;
-      return { runId, result, diff, promoted };
+      return { runId, result, diff, promoted, coverage };
     } finally {
       shadow.discard();
     }
@@ -337,5 +356,7 @@ export function workspaceActionsStatus() {
     restoreOnce: true,
     runsPersistAcrossRestart: false,
     reason: 'This is the trivial risk path (11_REVISIONE_E_CORREZIONI.md P6): one step, WRITE only. A plan is approved by a human, mints exactly the tokens its declared files need, executes into a whole-workspace shadow, and is promoted to the real workspace only when the comparison came back clean with every action performed. Every step is recorded in the causal event ledger.',
+    recomputeVerifier: true,
+    recomputeVerifierReason: 'CodeN Evolution construction order step 9 (D-0209): plan() takes an optional `claims` array; approve() recomputes each against the shadow\'s post-execution content (verification.mjs) and gates promotion if any is CONTRADICTED. Coverage gaps (unrecomputed claims — most often behavioural ones, since EXECUTE stays refused) are declared, not blocking.',
   };
 }

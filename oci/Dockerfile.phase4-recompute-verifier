@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# CodeN Evolution construction order, step 9 (D-0209): the recompute verifier.
+# `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §10 gives the actual dependency-ordered
+# build sequence for CodeN Evolution -- steps 1-8 are Fase 1 (already built, D-0173 through
+# D-0202). This is step 9, the first real step past the backbone.
+#
+# New: services/reference-control-plane/src/verification.mjs recomputes file-shaped claims
+# (existence, content, hash, JSON field) directly against a shadow's post-execution state --
+# no test execution, no shelling out. A behavioural claim ("function f now returns X") is
+# always declared unrecomputed, by name: EXECUTE stays permanently refused.
+#
+# WIRED, not a framework: workspace-actions.mjs's plan() now takes an optional `claims`
+# array; approve() recomputes each against the shadow before promotion and REFUSES
+# promotion if any claim is recomputed and CONTRADICTED, even when the existing path/test
+# comparison came back clean. A coverage gap (an unrecomputed claim) does not block --
+# 15_CODEN_EVOLUTION_DA_ZERO.md's CE-009 asks for the gap to be declared, not for every
+# claim to be checkable before anything ships. Declared, never rounded up to "complete".
+#
+# server.mjs changed to pass `claims` through POST /api/v1/workspace-actions/plan; the
+# approve response now carries `coverage`. No new route.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-oidc-saml-scim
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/workspace-actions.mjs /opt/noesar/services/reference-control-plane/src/workspace-actions.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/verification.mjs /opt/noesar/services/reference-control-plane/src/verification.mjs
+USER 10001:10001
