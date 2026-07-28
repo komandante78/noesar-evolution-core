@@ -30,17 +30,24 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Sessione chiusa su istruzione esplicita dell'Owner.** Il lavoro di questa sessione (Fase
-7 completa, passi 9-10 dell'ordine di costruzione CodeN Evolution) è tutto committato,
-pushato e installato — vedi sotto. L'unica cosa aperta è **`ATOM_EVOLUTION`**, che resta
-**deliberatamente vuoto**: nessun codice scritto, nessun file, `git init` senza commit.
+**Il passo 11 è costruito e installato, per la parte che si poteva chiudere in una fase.**
+`ReasoningRouter` sceglie il provider **per superficie**, ogni risposta porta la provenienza, e
+un provider selezionato ma irraggiungibile dà **503**, mai una risposta del riferimento
+(`D-0213`, immagine `:phase4-atom-routing`). Senza configurazione ogni superficie è il
+riferimento e la suite intera passa: `CE-022` resta soddisfatto.
 
-**Alla ripresa**: si lavora su ATOM dentro `/mnt/cachec/ATOM_EVOLUTION` (repository
-separato da NOESAR EVOLUTION, ma il lavoro si fa nell'ambito di una sessione NOESAR
-EVOLUTION — l'Owner ha detto esplicitamente "alla ripresa della nuova sessione lavoriamo
-su atom dentro noesar evolution"). Il punto di partenza dichiarato: il contratto
-`ReasoningProvider` già pubblico in `MASTER_PROJECT/02_ATOM.md` — **non** il vecchio
-blueprint di `NOESAR-ATOM-PRIVATE`, che resta intoccato ma non è più la fonte.
+Restano due cose, in quest'ordine:
+
+1. **`workspace-actions.plan()`** costruisce ancora `ReferenceReasoningProvider` direttamente ed
+   è **sincrono**. Renderlo instradabile significa rendere asincrono un metodo che sta dentro il
+   ciclo di approvazione, con i suoi test: è una fase propria, non una riga.
+2. **`CE-023`, la misura**: la copertura di proiezione con e senza ATOM sullo stesso compito.
+   Ora è possibile, perché la provenienza esiste e dice chi ha risposto.
+
+ATOM vive in **`/mnt/cachec/ATOM_EVOLUTION`** — repository privato separato
+(`komandante78/ATOM-EVOLUTION`), mai richiesto da qui. Il confine è
+`conformance/reasoning-wire-vectors.json`, **canonico qui** perché fa parte del nucleo aperto;
+l'implementazione privata lo pinna invece di possederlo.
 
 ## ➜ Stato dell'installazione
 

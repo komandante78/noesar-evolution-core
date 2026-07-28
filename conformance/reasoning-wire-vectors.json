@@ -1,0 +1,466 @@
+{
+  "schemaVersion": "1.0",
+  "contractVersion": "1.0.0",
+  "note": "The shared oracle for the boundary between this engine and any external reasoning provider. The vocabulary is this engine's, and an implementation adapts to it. Canonical here because the boundary is part of the open core; a private implementation pins this file rather than owning it. Both halves run it: the client in services/reference-control-plane/test, the provider in its own suite. A boundary described in two places and tested in one has already diverged, it just has not been noticed.",
+  "envelope": {
+    "success": "{\"ok\":true,\"value\":<surface answer>}",
+    "failure": "{\"ok\":false,\"error\":{\"kind\":\"REFUSED|INVALID|UNSUPPORTED|INTERNAL|BAD_REQUEST\",\"reason\":\"...\"}}",
+    "statusRule": "The HTTP status describes the transport. A refusal is a legitimate contract answer and travels as 200 with ok:false. A client reading only the status is reading half the answer."
+  },
+  "cases": [
+    {
+      "id": "WIRE-001",
+      "why": "the identity a caller records provenance from",
+      "method": "GET",
+      "path": "/v1/identity",
+      "body": null,
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "name": "atom",
+          "contractVersion": "1.0.0",
+          "supportsSimulation": true
+        }
+      }
+    },
+    {
+      "id": "WIRE-002",
+      "why": "an empty request has no goal, and the refusal is an answer not an error",
+      "method": "POST",
+      "path": "/v1/interpret",
+      "body": {
+        "request": "   ",
+        "projectRules": [],
+        "mapDigest": "d"
+      },
+      "expect": {
+        "status": 200,
+        "ok": false,
+        "errorKind": "REFUSED"
+      }
+    },
+    {
+      "id": "WIRE-003",
+      "why": "the intent shape, in the engine's spelling",
+      "method": "POST",
+      "path": "/v1/interpret",
+      "body": {
+        "request": "Repair src/parser.rs. It drops trailing commas.",
+        "projectRules": [
+          "keep the public API"
+        ],
+        "mapDigest": "map-1"
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "goal": "Repair src/parser.rs"
+        },
+        "arrayLengths": {
+          "ambiguities": 0,
+          "successCriteria": 3
+        }
+      }
+    },
+    {
+      "id": "WIRE-004",
+      "why": "a missing map digest is an ambiguity, not something to assume away",
+      "method": "POST",
+      "path": "/v1/interpret",
+      "body": {
+        "request": "Repair src/parser.rs",
+        "projectRules": [],
+        "mapDigest": ""
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "arrayLengths": {
+          "ambiguities": 1
+        }
+      }
+    },
+    {
+      "id": "WIRE-005",
+      "why": "a provider that searches nothing says NOT_SOUGHT rather than NONE_FOUND",
+      "method": "POST",
+      "path": "/v1/hypothesize",
+      "body": {
+        "intent": {
+          "goal": "Repair the parser",
+          "nonGoals": [],
+          "successCriteria": [
+            "c"
+          ],
+          "ambiguities": []
+        },
+        "gathered": []
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "listLength": 1,
+        "firstItem": {
+          "contrary": "NOT_SOUGHT"
+        }
+      }
+    },
+    {
+      "id": "WIRE-006",
+      "why": "a plan with no step must not survive the door, even though JSON can express one",
+      "method": "POST",
+      "path": "/v1/expect",
+      "body": {
+        "plan": {
+          "steps": [],
+          "constraints": [],
+          "mode": "safe"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": false,
+        "errorKind": "INVALID"
+      }
+    },
+    {
+      "id": "WIRE-007",
+      "why": "decompose splits by verifiability and reports it in the engine's shape",
+      "method": "POST",
+      "path": "/v1/decompose",
+      "body": {
+        "step": {
+          "id": "a",
+          "description": "d",
+          "files": [
+            "src/x.rs",
+            "docs/y.md"
+          ],
+          "commands": [
+            "cargo test"
+          ],
+          "dependsOn": [],
+          "blastRadius": {
+            "paths": [],
+            "reachesOutsideWorkspace": false,
+            "destructive": false
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "split": true
+        },
+        "arrayLengths": {
+          "steps": 2
+        }
+      }
+    },
+    {
+      "id": "WIRE-008",
+      "why": "a step already verifiable is not split, and says so without an empty list reading as a split",
+      "method": "POST",
+      "path": "/v1/decompose",
+      "body": {
+        "step": {
+          "id": "a",
+          "description": "d",
+          "files": [
+            "src/x.rs"
+          ],
+          "commands": [
+            "cargo test"
+          ],
+          "dependsOn": [],
+          "blastRadius": {
+            "paths": [],
+            "reachesOutsideWorkspace": false,
+            "destructive": false
+          }
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "split": false
+        },
+        "arrayLengths": {
+          "steps": 0
+        }
+      }
+    },
+    {
+      "id": "WIRE-009",
+      "why": "expect refuses rather than under-covering a plan",
+      "method": "POST",
+      "path": "/v1/expect",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [],
+              "commands": [
+                "cargo build"
+              ],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": false,
+        "errorKind": "REFUSED"
+      }
+    },
+    {
+      "id": "WIRE-010",
+      "why": "the risk of a plan is the worst step, and a path outside the workspace is critical",
+      "method": "POST",
+      "path": "/v1/classify",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [
+                "../etc/passwd"
+              ],
+              "commands": [],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "overall": "CRITICAL"
+        }
+      }
+    },
+    {
+      "id": "WIRE-011",
+      "why": "an unknown policy is refused rather than treated as permissive",
+      "method": "POST",
+      "path": "/v1/constrain",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [
+                "src/x.rs"
+              ],
+              "commands": [],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        },
+        "policy": "lenient-ish"
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "refused": true
+        }
+      }
+    },
+    {
+      "id": "WIRE-012",
+      "why": "confidence is never certainty and never arrives without its reasons",
+      "method": "POST",
+      "path": "/v1/confidence",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [
+                "src/x.rs"
+              ],
+              "commands": [
+                "cargo test"
+              ],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        },
+        "results": []
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "valueBelow": {
+          "value": 1
+        },
+        "arrayAtLeast": {
+          "reasonsNotHigher": 1
+        }
+      }
+    },
+    {
+      "id": "WIRE-013",
+      "why": "a provider that read nothing never reports SUPPORTED",
+      "method": "POST",
+      "path": "/v1/evidence",
+      "body": {
+        "claim": "the cache is cold"
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "kind": "UNSUPPORTED_INFERENCE"
+        }
+      }
+    },
+    {
+      "id": "WIRE-014",
+      "why": "a shadow workspace that cannot be read is refused, never imagined",
+      "method": "POST",
+      "path": "/v1/simulate",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [
+                "src/x.rs"
+              ],
+              "commands": [],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        },
+        "shadowWorkspace": "/definitely/not/here"
+      },
+      "expect": {
+        "status": 200,
+        "ok": false,
+        "errorKind": "REFUSED"
+      }
+    },
+    {
+      "id": "WIRE-015",
+      "why": "a body that is not readable is a transport failure, not a contract answer",
+      "method": "POST",
+      "path": "/v1/evidence",
+      "rawBody": "not json",
+      "expect": {
+        "status": 400,
+        "ok": false,
+        "errorKind": "BAD_REQUEST"
+      }
+    },
+    {
+      "id": "WIRE-016",
+      "why": "a surface that does not exist is 404, so a typo is never mistaken for a refusal",
+      "method": "POST",
+      "path": "/v1/imagine",
+      "body": {},
+      "expect": {
+        "status": 404,
+        "ok": false,
+        "errorKind": "BAD_REQUEST"
+      }
+    },
+    {
+      "id": "WIRE-017",
+      "why": "a provider with no recorded session refuses instead of returning an empty pack",
+      "method": "POST",
+      "path": "/v1/fixtures",
+      "body": {
+        "sessionId": "s1"
+      },
+      "expect": {
+        "status": 200,
+        "ok": false,
+        "errorKind": "REFUSED"
+      }
+    },
+    {
+      "id": "WIRE-018",
+      "why": "a step declaring containment while naming an outside path is not believed",
+      "method": "POST",
+      "path": "/v1/classify",
+      "body": {
+        "plan": {
+          "steps": [
+            {
+              "id": "a",
+              "description": "d",
+              "files": [
+                "../outside"
+              ],
+              "commands": [],
+              "dependsOn": [],
+              "blastRadius": {
+                "paths": [],
+                "reachesOutsideWorkspace": false,
+                "destructive": false
+              }
+            }
+          ],
+          "constraints": [],
+          "mode": "safe"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "ok": true,
+        "value": {
+          "overall": "CRITICAL"
+        }
+      }
+    }
+  ]
+}

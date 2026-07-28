@@ -1,0 +1,52 @@
+atomd-e2e-20260728T165811Z	Up 50 seconds
+noesar-evolution	Up About a minute (healthy)
+noesar-evolution.rollback-atom-routing-20260728T165711Z	Exited (0) About a minute ago
+noesar-evolution.rollback-recompute-verifier-20260728T142717Z	Exited (0) 3 hours ago
+coden-ultra-full-product	Exited (0) 2 days ago
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	Exited (0) 4 days ago
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	Exited (0) 4 days ago
+noesar-coden-ultra-nllb	Exited (0) 3 days ago
+ai-lab	Exited (0) 3 days ago
+noesar-debuglab	Exited (0) 37 minutes ago
+binhex-prowlarr	Up 2 days (healthy)
+sonarr	Up 2 days
+radarr	Up 2 days
+qbittorrent	Up 2 days
+Plex-Media-Server	Up 2 days (healthy)
+ai-lab-prev-s214b	Exited (0) 10 days ago
+stats-hub	Exited (0) 3 days ago
+schema-service	Exited (0) 13 days ago
+coden-ultra-brainlab	Exited (0) 3 days ago
+nous-simulator-engine	Exited (0) 2 weeks ago
+noesar-webui	Exited (0) 3 days ago
+coden-ultra-brainlab-phase4-bak	Exited (0) 2 weeks ago
+coden-ultra-trainer	Exited (0) 2 weeks ago
+coden-nous-train	Exited (0) 2 weeks ago
+nous-phase0-training	Exited (0) 13 days ago
+nova-ai	Exited (137) 4 weeks ago
+coden-benchmark-lab	Exited (0) 3 days ago
+fridayn-model-factory	Exited (143) 6 weeks ago
+noesar-fridayn-tei-embedder-v2	Exited (0) 3 days ago
+Nginx-Proxy-Manager-Official	Up 2 days
+noesar-fridayn-tei-reranker-v1	Exited (0) 3 weeks ago
+binhex-flaresolverr	Up 2 days (healthy)
+EmbyServer	Up 2 days
+noesar-core	Exited (2) 3 days ago
+noesar-dataset-factory	Exited (137) 3 weeks ago
+noesar-gateway	Exited (2) 3 weeks ago
+noesar-qdrant	Exited (143) 3 weeks ago
+noesar-db	Exited (0) 3 days ago
+Krusader	Exited (143) 2 weeks ago
+Unraid-Cloudflared-Tunnel	Up 2 days
+Cloudflare-DDNS	Up 2 days
+br0
+bridge
+coden-bridge
+coden-local
+deploy_default
+host
+noesar-atom-e2e-20260728T165811Z
+noesar-e2e-net
+noesar-evolution-net
+noesar-local
+none

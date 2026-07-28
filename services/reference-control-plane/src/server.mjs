@@ -23,7 +23,8 @@ import {
   resolveBindScope, allowsUnauthenticatedMetrics, allowsUnauthenticatedHealthDetail,
 } from './http-security.mjs';
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
-import { ReferenceReasoningProvider, ReasoningRefused, reasoningStatus } from './reasoning.mjs';
+import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
+import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
@@ -832,7 +833,9 @@ const requestListener = async (req, res) => {
     // daemon already holds — and both sides answer to conformance/reasoning-vectors.json.
     if (req.method === 'GET' && url.pathname === '/api/v1/reasoning') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      return json(res, 200, reasoningStatus());
+      // The status describes configuration only. Probing the endpoint here would make a
+      // status read do network I/O and report a liveness it cannot promise a moment later.
+      return json(res, 200, { ...reasoningStatus(), routing: routingFrom() });
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/reasoning/plan') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
@@ -846,20 +849,22 @@ const requestListener = async (req, res) => {
         // two happen to coincide (every deployment so far), silently wrong the moment they
         // don't. `workspace` is the same module-level constant shadow.mjs and repo-map.mjs
         // already use for exactly this reason.
-        const provider = new ReferenceReasoningProvider(workspace);
-        const intent = provider.interpret(String(request?.request ?? ''), request?.projectRules ?? []);
-        const hypotheses = provider.hypothesize(intent, []);
-        const plan = provider.plan(hypotheses, request?.constraints ?? [], request?.mode ?? 'safe');
-        const constrained = provider.constrain(plan, request?.policy ?? 'restrictive');
-        const risk = provider.classify(plan);
-        const confidence = provider.confidence(plan, []);
+        // The router is the reference provider unless the environment says otherwise: with no
+        // configuration every surface below answers exactly as it did before it existed.
+        const provider = new ReasoningRouter({ workspaceRoot: workspace });
+        const intent = await provider.interpret(String(request?.request ?? ''), request?.projectRules ?? []);
+        const hypotheses = await provider.hypothesize(intent, []);
+        const plan = await provider.plan(hypotheses, request?.constraints ?? [], request?.mode ?? 'safe');
+        const constrained = await provider.constrain(plan, request?.policy ?? 'restrictive');
+        const risk = await provider.classify(plan);
+        const confidence = await provider.confidence(plan, []);
         // `expect` refuses a plan that could not turn out to be false. That refusal is a
         // real answer about this plan, not an error, so it is reported in place instead of
         // failing the whole request.
         let expectation = null;
         let expectationRefused = null;
         try {
-          expectation = provider.expect(constrained.refused ? plan : constrained.plan);
+          expectation = await provider.expect(constrained.refused ? plan : constrained.plan);
         } catch (error) {
           if (!(error instanceof ReasoningRefused)) throw error;
           expectationRefused = error.reason;
@@ -867,10 +872,22 @@ const requestListener = async (req, res) => {
         return json(res, 200, {
           provider:provider.identity(), intent, hypotheses, plan,
           constrained, risk, confidence, expectation, expectationRefused,
+          // Which provider answered which surface. Without it an answer from a selected
+          // external provider is indistinguishable from one produced here.
+          provenance: provider.provenance(),
+          routing: provider.routing,
         });
       } catch (error) {
         if (error instanceof ReasoningRefused) {
           return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        }
+        // A selected provider that cannot be reached is not a refusal, and is not answered by
+        // quietly using a different one: the caller asked for that provider.
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
         }
         throw error;
       }

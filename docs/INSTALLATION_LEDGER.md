@@ -2908,3 +2908,15 @@ container di progetto. Host invariato: 39 totali, 11 in esecuzione, reti invaria
 SCIM vive fuori dall'ai-workspace). Tornare a `:phase4-technology-radar` toglie le rotte
 OIDC/SCIM; nessun account SCIM-provisionato sparisce — resta in `UserDirectory`, solo
 l'API SCIM per gestirlo sparisce.
+
+## 2026-07-28 · `:phase4-atom-routing` — passo 11, ATOM come secondo provider selezionabile per superficie
+- **Costruita** `--network=none --pull=false` da `oci/Dockerfile.phase4-atom-routing`, `FROM noesar-evolution:phase4-tool-catalog`.
+- **Byte provati identici all'albero** prima di installare: `server.mjs`, `reasoning-router.mjs`, `atom-client.mjs`.
+- **Arresto pulito**: `docker stop -t 60`, `postgres.stopped clean:true` **letto nel log**.
+- **Backup a servizio fermo**: `BACKUPS/runtime_pre_atom_routing_20260728T165711Z.tar.gz` (12 MB).
+- **Predecessore preservato**: `noesar-evolution.rollback-atom-routing-20260728T165711Z` (`:phase4-tool-catalog`).
+- **Configurazione riletta dal container sostituito**, non ricordata: 17 variabili `NOESAR_*`/`NODE_ENV`, stessi bind, porta, rete, restart policy, utente; healthcheck **non sovrascritto** (viene dall'immagine).
+- **Verifica dal vivo, ATOM assente**: `running/healthy`, `RestartCount=0`, `/livez` `/readyz` `/healthz` **200**, `GET /api/v1/reasoning` **401** contro **404** di una rotta inesistente.
+- **Verifica dal vivo, ATOM presente** (rete e container effimeri, entrambi rimossi): provenienza `interpret=reference, decompose=atom, expect=atom, classify=reference`; endpoint morto → **UNAVAILABLE**, provenienza vuota.
+- **Costo di rollback**: nessuna migrazione, `AI_STATE_VERSION` invariato. Tornando indietro si perdono instradamento e provenienza; nessun dato cambia.
+- **Pulizia**: `atomd-e2e-*` e `noesar-atom-e2e-*` rimossi; rollback precedente (`:phase4-recompute-verifier`) rimosso — restano i **due** container che §5a ammette.

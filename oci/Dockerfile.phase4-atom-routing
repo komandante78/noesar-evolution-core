@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Per-surface reasoning provider selection (15_CODEN_EVOLUTION_DA_ZERO.md §3.VI).
+#
+# New: services/reference-control-plane/src/reasoning-router.mjs and atom-client.mjs.
+# The router is a drop-in for ReferenceReasoningProvider whose methods are asynchronous;
+# with no configuration it *is* the reference provider on every surface, so this image
+# behaves exactly as its predecessor until an operator selects otherwise. That is not a
+# convenience: 09_PIANO.md §3 is measured in that state, and CE-022 requires the whole
+# suite to pass with no external provider present.
+#
+# Three outcomes are kept apart, because collapsing the third is the failure this exists
+# to prevent: an answer, a refusal (ReasoningRefused -> 422, unchanged), and a selected
+# provider that is unreachable (ReasoningUnavailable -> 503). The router NEVER answers
+# with the reference provider when an external one was selected and could not be reached:
+# that would attach a plausible answer to a provenance that is a lie.
+#
+# server.mjs changed to use the router at POST /api/v1/reasoning/plan, to return
+# `provenance` (which provider answered which surface) and `routing`, and to report the
+# routing in GET /api/v1/reasoning/status. The status describes configuration only —
+# probing the endpoint there would make a status read do network I/O and report a
+# liveness it cannot promise a moment later.
+#
+# NOT changed: workspace-actions.mjs still constructs ReferenceReasoningProvider directly.
+# Its plan() is synchronous and sits inside the approval lifecycle; making it async ripples
+# through that lifecycle and its tests, and is a phase of its own. Named here rather than
+# discovered later.
+#
+# Configuration, all optional, all defaulting to the reference provider:
+#   NOESAR_REASONING_MODE=rust-external
+#   NOESAR_RUST_REASONING_ENDPOINT=http://<host>:<port>
+#   NOESAR_RUST_REASONING_TOKEN=<shared secret>
+#   NOESAR_EXTERNAL_SURFACES=decompose,expect        (the default when unset)
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-tool-catalog
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/atom-client.mjs /opt/noesar/services/reference-control-plane/src/atom-client.mjs
+USER 10001:10001

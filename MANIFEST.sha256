@@ -5628,7 +5628,7 @@ e5276f2d21ceb79fd74c4446f55b53918fe13351a97bc9bd92883c01534d79b6  services/refer
 67ee1a0b1b7b55cb039e9928bc1c2ef2522f14f473c3780880207d0841fad310  services/reference-control-plane/src/postgres-supervisor.mjs
 82a4aaedf68894465bf8f4dcf1959676715203642530ae2bd484d5608b83fdb5  ./services/reference-control-plane/src/privacy.mjs
 8c3ceb675e464cafc10d367665f3cc1b70db28f5a6da19378a44c7ee0f6d55b0  services/reference-control-plane/src/production-readiness.mjs
-32644cbe4ef5823460b77c36e73d8c0c3c7bb20144d6f7803ecb8432c671a3da  ./services/reference-control-plane/src/server.mjs
+916828719a0db2f9119ab2689da4448be0a8342af055a01f1a35bd88f2df6df8  ./services/reference-control-plane/src/server.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  services/reference-control-plane/src/setup-token.mjs
 afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  services/reference-control-plane/src/shadow.mjs
 365b523884c75ec4a94a97975bfc9acc136821e48dab7feb2db081f0fa9dc9ba  services/reference-control-plane/src/executor.mjs
@@ -5810,3 +5810,8 @@ ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/ref
 fd184d27ad3c4208a6a5537c11ffdebc4a0245fc699683a817d4f01e1e98401a  ./services/reference-control-plane/src/tool-catalog.mjs
 e553c4103670d8d57d9593c8cf283ffb1896307c0c2d1b19d2d692f96e9d2e05  ./services/reference-control-plane/test/tool-catalog.test.mjs
 8223aaf6fa95da40756d7e2e1c1b3388d96178202ec0ed7e1298ce93809166c6  ./schemas/tool-catalog-entry.schema.json
+5632a90b1de0c17fe608bd19b9fb4c055211783eb9855172572ad0b58a360d77  ./services/reference-control-plane/src/reasoning-router.mjs
+3a11e1f72a331ea0ec37af3567dfc062459b2c7d41c378acab1e877f9842b5c0  ./services/reference-control-plane/src/atom-client.mjs
+57105bde6dc24969dade2328457bff6c7eea376fe0ce34854476dcdd61db657e  ./services/reference-control-plane/test/reasoning-router.test.mjs
+692bdafe398db4c59d616a502c0dfff57aba181bd53ffd11f1b766393b666825  ./conformance/reasoning-wire-vectors.json
+e6a4a846133c8da033ed43e96e78dc59d216fc69d7bc4e0c995ebdff715be9e6  ./oci/Dockerfile.phase4-atom-routing

@@ -3589,3 +3589,26 @@ sorgente verso la destinazione — verificato prima e dopo la creazione.
 toccato.
 **Status.** Applicato. `ATOM_EVOLUTION` resta vuoto fino alla prossima sessione, su
 istruzione dell'Owner di chiudere qui.
+
+## D-0213 · CodeN Evolution, passo 11: ATOM entra dal contratto — instradamento per superficie, provenienza, e nessun ripiego — 2026-07-28
+**Decision.** `ReasoningRouter` sceglie il provider **per superficie** (`decompose` ed `expect`
+all'esterno per difetto, il riferimento altrove), ogni risposta porta la **provenienza**, e un
+provider selezionato ma irraggiungibile produce `ReasoningUnavailable` → **503**, mai una
+risposta del riferimento. Senza configurazione ogni superficie è il riferimento: l'immagine si
+comporta esattamente come la precedente finché un operatore non sceglie altro.
+**Why.** `15_CODEN_EVOLUTION_DA_ZERO.md` §3-VI chiede la selezione per superficie e non
+tutto-o-niente. E ripiegare in silenzio attaccherebbe una risposta plausibile a una provenienza
+che è una bugia — che è esattamente ciò che registrare la provenienza dovrebbe rendere
+affidabile. `CE-022` resta soddisfatto: la suite intera passa con nessun provider esterno.
+**Rejected.** Rendere asincrono anche `workspace-actions.plan()`: sta dentro il ciclo di
+approvazione e la sua riscrittura è una fase propria. **Dichiarato, non scoperto dopo**: quel
+punto di chiamata costruisce ancora `ReferenceReasoningProvider` direttamente.
+**Evidence.** unit **1071/1071** (+10), ESLint **216 file 0 errori**, MANIFEST **5817/5817 con 0
+righe non verificabili**, `scripts/test.sh` 5 PASS / 1 PARTIAL / 4 UNAVAILABLE (invariati,
+`python3` assente su questo host). Dal vivo, client reale contro daemon reale su rete effimera:
+`decompose` **2 parti** dove il riferimento avrebbe detto «già verificabile», provenienza
+`[interpret=reference, decompose=atom, expect=atom, classify=reference]`, e con endpoint morto
+**UNAVAILABLE con provenienza vuota**.
+**Reversal cost.** Nessuna migrazione, `AI_STATE_VERSION` invariato. Tornare a
+`:phase4-tool-catalog` toglie l'instradamento e la provenienza; nessun dato cambia.
+**Status.** Applicato e **installato** (`:phase4-atom-routing`).
