@@ -28,6 +28,7 @@ import {
 import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mjs';
 import { executorStatus } from './executor.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
+import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -264,6 +265,17 @@ const SAFE_MODE_WRITE_ALLOWLIST = new Set([
 ]);
 
 function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
+
+// Repository understanding is workspace-scoped: `subpath` may name a directory inside the
+// product workspace, never an absolute host path or a `..` escape out of it. Returns null on
+// any attempt to leave, rather than clamping — a clamp would silently redirect a caller who
+// asked for one directory to a scan of another.
+function resolveWorkspaceSubpath(root, subpath) {
+  const base = resolve(root);
+  if (!subpath) return base;
+  const candidate = resolve(base, String(subpath));
+  return candidate === base || candidate.startsWith(`${base}${sep}`) ? candidate : null;
+}
 
 function json(res, status, value, extraHeaders = {}) {
   // A response whose headers are already out cannot be given a status any more.
@@ -771,6 +783,53 @@ const server = createServer(async (req, res) => {
         if (error instanceof ReasoningRefused) {
           return json(res, 422, { error:'reasoning_refused', reason:error.reason });
         }
+        throw error;
+      }
+    }
+
+    // --- repository understanding · phase 1 step 7, the last of the backbone -----
+    // Read-only: a real tree in, five reports out (09_PIANO.md §2 step 7). No Rust twin —
+    // see the module comment in repo-map.mjs — because this proposes and presents, it does
+    // not decide or confine anything on what it finds. Workspace-scoped: an optional `path`
+    // is a subdirectory of the product workspace, never an arbitrary host path, the same
+    // boundary path-auth.mjs already draws for writes.
+    if (req.method === 'GET' && url.pathname === '/api/v1/repo-map') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, repoMapStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/repo-map/scan') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const payload = await body(req);
+      const root = workspace;
+      const target = resolveWorkspaceSubpath(root, payload?.path);
+      if (!target) return json(res, 400, { error:'invalid_path', reason:'path escapes the workspace' });
+      try {
+        const map = buildRepositoryMap(target);
+        ledger.append({ actor:authenticated.user.id, action:'repo_map.scanned', result:'success', details:{ path:payload?.path ?? '.', filesScanned:map.filesScanned, truncated:map.truncated } });
+        return json(res, 200, map);
+      } catch (error) {
+        if (error instanceof RepoMapError) return json(res, 422, { error:'repo_map_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/repo-map/search') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const root = workspace;
+      const target = resolveWorkspaceSubpath(root, url.searchParams.get('path'));
+      if (!target) return json(res, 400, { error:'invalid_path', reason:'path escapes the workspace' });
+      const q = url.searchParams.get('q') ?? '';
+      try {
+        const found = literalSearch(target, q, { caseSensitive:url.searchParams.get('caseSensitive') !== 'false' });
+        ledger.append({ actor:authenticated.user.id, action:'repo_map.searched', result:'success', details:{ path:url.searchParams.get('path') ?? '.', matches:found.matches.length, truncated:found.truncated } });
+        return json(res, 200, found);
+      } catch (error) {
+        if (error instanceof RepoMapError) return json(res, 422, { error:'repo_map_refused', kind:error.kind, reason:error.reason });
         throw error;
       }
     }

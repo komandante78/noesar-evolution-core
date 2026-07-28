@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "PHASE_1_STEP_4_SHADOW_IS_COPY_ON_WRITE_INSTALLED",
-  "next_phase": "FASE 1 — la spina dorsale (ReasoningProvider, capability token, esecuzione in ombra, esecutore che accetta solo token)",
+  "phase_status": "PHASE_1_STEP_7_REPOSITORY_UNDERSTANDING_INSTALLED",
+  "next_phase": "FASE 1 completa nei suoi 7 passi (09_PIANO.md §2). Il criterio §3 non è ancora soddisfatto dal PRODOTTO (solo dai componenti): serve la decisione dell Owner su quale superficie del prodotto diventa la prima a spendere un token e cambiare qualcosa, poi il cablaggio end-to-end.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "d559b65 (event ledger installed)",
-  "last_updated_utc": "2026-07-27T17:35:00Z",
+  "last_updated_utc": "2026-07-28T01:40:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -212,6 +212,12 @@
       "severity": "medium",
       "status": "OPEN - prototype published for review",
       "summary": "The deployed WebUI diverges from DESIGN/APPROVED_WEBUI_REFERENCE.png, which 01_PRODUCT/11 calls binding: no central composer, no quick actions, no active-tasks panel and no bottom approval strip on Home, and 21 flat nav entries against the spec rule of simple-before-technical progressive disclosure. The specification also requires visual regression and Owner review before the UI is final; neither has happened. A reorganised prototype (26 destinations in 5 categories, 9 selectable themes) is published for the Owner decision."
+    },
+    {
+      "id": "F4-016",
+      "severity": "low",
+      "status": "OPEN - recorded",
+      "summary": "reasoning.mjs plans always against the literal /workspace, never against NOESAR_WORKSPACE — PRODUCT.workspaceRoot is never defined. Harmless in production (the container always sets NOESAR_WORKSPACE=/workspace) but would silently plan against the wrong tree wherever they differ. repo-map.mjs uses the real workspace constant instead. Not fixed — out of this phase scope."
     }
   ],
   "resolved_findings": [
@@ -345,9 +351,9 @@
     }
   ],
   "product_test_suite": {
-    "unit": "843/843 (misurato 2026-07-27)",
-    "eslint": "181 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-27)",
-    "browser_acceptance": "315/315 (misurato 2026-07-27)",
+    "unit": "863/863 (misurato 2026-07-28)",
+    "eslint": "183 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28)",
+    "browser_acceptance": "315/315 (misurato 2026-07-28)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
@@ -357,13 +363,13 @@
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
     "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)",
     "reasoning_vectors": "18 vettori, Node 22/22 e Rust 18/18 sullo STESSO file (misurato 2026-07-27)",
-    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-27)",
-    "seeded_defects": "19/19 catturati (misurato 2026-07-27)",
+    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28)",
+    "seeded_defects": "19/19 catturati (misurato 2026-07-28)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "NESSUN ORACOLO CONDIVISO — F4-014. Node 12/12 e Rust 12/12 su test nativi EQUIVALENTI, non sullo stesso file",
-    "manifest": "5779/5779, 0 mismatch, 0 righe non verificabili (misurato 2026-07-27; era 5779 con 1 riga a digest vuoto mai controllata — D-0186 — poi 5778 e 5779 con Dockerfile.phase4-cow)"
+    "manifest": "5781/5781, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28)"
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -761,7 +767,7 @@
     "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
     "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
   },
-  "next_action": "FASE 1: passi 1-6 fatti e INSTALLATI, e il passo 4 ora e davvero copy-on-write (:phase4-cow). L ombra materializza l intero workspace via FICLONE dove il mount lo consente, observe() cammina l albero, e l esecutore RIFIUTA un ombra non whole-workspace. PROSSIMO E ULTIMO DELLA FASE 1: 09_PIANO passo 7 — comprensione minima del repository: rilevamento linguaggi, punti d ingresso, indice dei simboli, ricerca letterale, mappa delle dipendenze. Poi la fase 1 va misurata contro il proprio criterio, che oggi e applicato dai componenti e NON dal prodotto (executorWiredToProductActions=false). Due reperti aperti da questa fase: F4-014 (l esecutore non ha oracolo condiviso — conformance/executor-vectors.json non esiste e non e mai esistito) e F4-015 (shadowStatus scrive su una GET). Build offline: RUSTUP_TOOLCHAIN pinnato (D-0173) e conformance/ montata a /conformance, altrimenti i test di conformance Rust non trovano gli oracoli.",
+  "next_action": "09_PIANO §7 FATTO E INSTALLATO (:phase4-repomap): repo-map.mjs — linguaggi, punti d ingresso, indice simboli, ricerca letterale, mappa dipendenze, sola lettura, JS-only (D-0188). PROSSIMO: non è più codice da scrivere di iniziativa propria — è una domanda per l Owner (D-0189), la stessa nominata a fine fase precedente: quale superficie del prodotto spende il primo capability token. Finché non risponde, la fase 1 resta components-complete e criterion-incomplete. F4-016 aperto (reasoning.mjs pianifica sempre contro /workspace letterale, innocuo in produzione, non riparato).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

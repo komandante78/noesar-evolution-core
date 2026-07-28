@@ -2539,3 +2539,32 @@ Due soli container di progetto. Host invariato: **39 totali, 11 in esecuzione**.
 `:phase4-events` è avviare il container preservato. ⚠️ **Ma reintroduce l'`unexpected`
 strutturalmente vuoto**: una run dell'esecutore che tocca un file che nessuno ha dichiarato
 tornerebbe a riportarsi pulita.
+
+## 2026-07-28 · `:phase4-repomap` — comprensione minima del repository (fase 1, passo 7)
+
+**Immagine** `noesar-evolution:phase4-repomap`, costruita `--network=none --pull=false` da
+`oci/Dockerfile.phase4-repomap`, `FROM noesar-evolution:phase4-cow`. Solo
+`services/reference-control-plane/src/` ricopiato (nuovo `repo-map.mjs` + `server.mjs`
+modificato, 3 rotte).
+
+**Byte provati identici all'albero**, sia sull'immagine sia sul container vivo dopo l'avvio:
+`repo-map.mjs` e `server.mjs`, `sha256sum` immagine/container = `sha256sum` repository, PASS.
+
+**Sequenza.** `docker stop -t 60` → **`postgres.stopped clean:true` letto nel log** → backup
+completo a servizio fermo (`BACKUPS/runtime_pre_repomap_deploy_20260728T012632Z/`, 75 MB) →
+configurazione riletta dal container sostituito
+(`EVIDENCE/live_config_pre_repomap_deploy_20260728T012632Z.json`) → predecessore preservato
+come `noesar-evolution.rollback-cow-20260728T012632Z` → avvio **senza override
+`--health-cmd`** (lezione D-0187 applicata: healthcheck letto dall'immagine).
+
+**Verifica dal vivo.** `Up (healthy)` al primo avvio, `restarts=0`. `/livez` 200, `/readyz`
+200, `/healthz` invariato (`B-010` non regredito). Le 3 rotte nuove: **401** non autenticato,
+**400** su una fuga di percorso (`../../etc`), **200** con dati reali (linguaggi/simboli/
+punti-d'ingresso/dipendenze) su una fixture nel workspace.
+
+**§5a**: rimosso il rollback superato `noesar-evolution.rollback-events-20260727T183606Z`.
+Due soli container di progetto. Host invariato: **39 totali, 11 in esecuzione**, reti e
+volumi diffati identici.
+
+**Costo di rollback** — nessuno nuovo, `AI_STATE_VERSION` resta **3**: tornare a `:phase4-cow`
+è avviare il container preservato, nessuna migrazione coinvolta.

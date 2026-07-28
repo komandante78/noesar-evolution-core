@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-27. Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-28. Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -12,144 +12,108 @@ ATOM o altro dell'host. L'autorità operativa è `CLAUDE10.md` e vale **solo** q
 
 1. `CLAUDE10.md` — l'autorità. Da `D-0172` impone tre skill sempre attive.
 2. `.claude/skills/noesar-evolution-context/state-digest.sh` — **il digest, non i file interi**.
-   L'ordine di lettura alla lettera costa ~400 KB ≈ 100k token; il digest 6,3 KB.
 3. Questo file, la sezione «LA PROSSIMA AZIONE».
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Fase 1, passo 7 — l'ultimo della fase**: comprensione minima del repository
-(`09_PIANO.md` §7): rilevamento linguaggi, punti d'ingresso, indice dei simboli, ricerca
-letterale, mappa delle dipendenze. È stata spostata nella fase 1 perché **pianificare la
-richiede comunque**, e senza di essa la fase non può superare il proprio criterio di "fatto".
+**I sette passi di `09_PIANO.md` §2 sono TUTTI costruiti e installati.** Il passo 7 —
+comprensione minima del repository (rilevamento linguaggi, punti d'ingresso, indice dei
+simboli, ricerca letterale, mappa delle dipendenze) — è stato l'ultimo, in `repo-map.mjs`
+(`D-0188`, installato `:phase4-repomap`).
 
-**Poi, e conta più del passo 7**: la fase 1 va **misurata contro il suo criterio**, che è
-*«il motore non cambia nulla se non eseguendo un Piano autorizzato»*. Oggi quel criterio è
-soddisfatto **dai componenti** e **non dal prodotto**:
+**Ma questo NON chiude la fase 1.** Il criterio §3 non è un elenco di componenti — è un
+flusso: *apre un repository vero, ne capisce la struttura, riceve una richiesta, produce un
+piano, ottiene un'autorizzazione, cambia diversi file, mostra il diff, esegue i test,
+corregge un errore, produce un risultato verificabile, ripristina lo stato precedente su
+richiesta, registra ogni operazione — e non esce mai dall'autorità che gli è stata data,
+provato da una suite avversaria il cui unico lavoro è provare a farglielo fare.* Oggi:
 
 - `executorWiredToProductActions = false` — nessuna superficie del prodotto instrada le
   proprie modifiche attraverso l'esecutore
-- nessun sottosistema scrive nel registro causale, quindi `chainValid` su una catena vuota
-  significa «niente da contraddire», non «tutto verificato»
-- il registro dei token e quello degli eventi vivono **in memoria**: un riavvio li azzera
+- `executesPlans = false` — nulla esegue un piano dentro l'ombra
+- il registro eventi resta vuoto su un'installazione fresca: nessun sottosistema vi scrive
 
-Chiudere quel divario è una decisione di progetto, non un dettaglio: significa scegliere
-**quale** superficie del prodotto diventa la prima a cambiare qualcosa solo spendendo un
-token. Va posta all'Owner prima di costruirla.
+**`D-0189`: questo non è più lavoro da fare di iniziativa.** È una domanda per l'Owner —
+**quale superficie del prodotto diventa la prima a cambiare qualcosa spendendo un token** —
+già nominata a fine fase precedente e non ancora risposta. Costruire quella superficie senza
+la decisione sarebbe scope creep sulla cosa più importante del progetto.
 
-**Build offline Rust**: serve `RUSTUP_TOOLCHAIN` pinnato al toolchain dell'immagine
-(`D-0173`) — `rust-toolchain.toml` chiede `stable` e rustup tenta la rete prima di cargo —
-**e `conformance/` montata a `/conformance`**, altrimenti i test di conformance Rust non
-trovano gli oracoli e falliscono per un motivo che non è il codice.
+**`F4-016` aperto, non riparato**: `reasoning.mjs` pianifica sempre contro `/workspace`
+letterale (`PRODUCT.workspaceRoot` non è mai definito), mai contro `NOESAR_WORKSPACE` — 
+innocuo in produzione (coincidono lì), ma silenzioso altrove. `repo-map.mjs` usa invece la
+costante `workspace` reale. Fuori scope per questa fase.
 
-**Il passo 4 è stato rifatto il 2026-07-27** (`D-0185`, installato `:phase4-cow`): l'ombra è
-ora copy-on-write sull'intero workspace, e la metà pericolosa del confronto — *è successo
-qualcosa che nessuno aveva dichiarato* — **era strutturalmente vuota** fino a quel momento,
-perché `observe()` guardava solo il baseline e il baseline lo forniva il chiamante.
+**Build offline Rust**: serve `RUSTUP_TOOLCHAIN` pinnato (`D-0173`) e `conformance/` montata
+a `/conformance`, altrimenti i test di conformance Rust falliscono per un motivo che non è il
+codice. Non toccato in questa fase (nessun crate Rust nuovo — vedi `D-0188`).
 
-**Due reperti aperti da quella fase, entrambi nominati e non riparati:**
-
-- **`F4-014`** — l'esecutore è **l'unico dei sei passi con due implementazioni e nessun
-  oracolo condiviso**: `conformance/executor-vectors.json` non esiste e non è mai esistito,
-  benché `executor.mjs` lo affermasse e il MANIFEST portasse una voce a digest **vuoto** per
-  un runner Rust mai scritto. I due lati sono retti da test nativi *equivalenti*, che è più
-  debole. Costruire l'oracolo è lavoro di una fase propria.
-- **`F4-015`** — `shadowStatus()` **scrive** su una **GET**: crea `shadows/` e un file sonda
-  a ogni richiesta autenticata di `/api/v1/shadow`. La riparazione è sondare l'antenato
-  esistente senza creare nulla, e richiede una ricostruzione.
+**Due reperti storici, ancora aperti**: `F4-014` (l'esecutore è l'unico dei sei passi con due
+implementazioni e nessun oracolo condiviso) e `F4-015` (`shadowStatus()` scrive su una GET).
 
 ## ➜ Stato dell'installazione
 
-`noesar-evolution:phase4-cow` · `Up (healthy)` · `restarts=0` ·
+`noesar-evolution:phase4-repomap` · `Up (healthy)` · `restarts=0` ·
 `192.168.178.100:8100→8088` · rollback preservato
-`noesar-evolution.rollback-events-20260727T183606Z` (`:phase4-events`, il predecessore).
-Due container di progetto, che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione.
-Dal vivo: `MECHANISM=REFLINK_CLONE · copyOnWrite=true · measured=true ·
-coverage=WHOLE_WORKSPACE`. ⚠️ Il rollback **reintroduce l'`unexpected` strutturalmente
-vuoto**: una run dell'esecutore che tocca un file non dichiarato tornerebbe pulita.
+`noesar-evolution.rollback-cow-20260728T012632Z` (`:phase4-cow`, il predecessore). Due
+container di progetto, che è quanto §5a ammette. Host: 39 totali, 11 in esecuzione, reti e
+volumi diffati identici prima/dopo.
 
 ## ➜ Cosa è stato fatto in questa sessione
 
-**Fase 1, passi 1-6, tutti costruiti E installati** (`D-0175`…`D-0184`), più la riparazione
-del debito che restava aperto.
+**Passo 7 costruito, installato e verificato nella stessa fase** (`D-0143`): `repo-map.mjs`
+— sola lettura, workspace-scoped, JS-only (`D-0188`, nessun gemello Rust perché questo
+propone/presenta e non decide/confina, D-A). Tre rotte: `GET /api/v1/repo-map` (stato),
+`POST /api/v1/repo-map/scan`, `GET /api/v1/repo-map/search`, dietro `workspace.read`.
 
-| Passo | Cosa | Immagine |
-|---|---|---|
-| 1 | Contratto `ReasoningProvider`, congelato a `1.0.0` | — |
-| 2 | Provider di riferimento: undici superfici, nessun modello, nessun ATOM | — |
-| — | Il seam nel prodotto, oracolo condiviso Node/Rust | `:phase4-reasoning` |
-| 3 | Capability token: un manifest è una richiesta, il motore emette | `:phase4-capability` |
-| 4 | Esecuzione in ombra: confronto atteso/reale **a due lati** | `:phase4-shadow` |
-| 5 | Esecutore che accetta **solo** token, speso **prima** dell'effetto | `:phase4-executor` |
-| 6 | Registro causale: correlazione, causazione, catena di digest | `:phase4-events` |
+**Trovato costruendo**: la stessa costante rotta (`PRODUCT.workspaceRoot ?? '/workspace'`,
+sempre il letterale) che `reasoning.mjs` già usa — copiata per errore nella prima stesura
+delle rotte nuove, poi vista fallire in un controllo HTTP dal vivo e corretta a `workspace`
+(la costante vera). Registrata come `F4-016` per la copia in `reasoning.mjs`, non riparata lì
+(fuori scope).
 
-**Il debito precedente, ripagato prima di costruire**: percorso di release reso eseguibile
-offline (`D-0173`, `D-0174`); i report che la catena di provenance pretendeva e **che nessuno
-produceva** ora esistono; provenance **firmata** (`PROVENANCE_SIGNED` era `false` dalla
-nascita del pacchetto, perché la firma era facoltativa e quindi non la produceva nessuno);
-trasporto Windows **rifiutato per nome** invece che per caso; `B-002` chiuso con uno scanner
-vero (`D-0177`).
-
-## ➜ I difetti trovati costruendo, non leggendo
-
-1. **Il livello capability si fidava di una dichiarazione.** `reachesOutsideWorkspace` è un
-   campo che chi costruisce il piano compila — e il piano arriva **dal corpo della
-   richiesta**. Un passo che nominava `../etc/passwd` dichiarandosi contenuto **coniava un
-   token**. Ora i percorsi sono ispezionati comunque, su entrambi i lati (`D-0183`).
-2. **Il percorso di release non l'aveva mai eseguito nessuno**: tre strumenti lo affermavano
-   per corrispondenza testuale. Terza volta in due sessioni per questa classe.
-3. **Il verdetto sui test veniva dal chiamante**: `NOESAR_RUST_TEST_REPORT` era un *input*.
-   Ora è un **output**, scritto dallo script dall'esito del proprio `cargo test`.
-4. **Due difetti erano nella misura, non nel prodotto**: un tetto di confidenza alzato a
-   certezza non rompeva nessun test perché l'asserzione era `< 1.0` e le ragioni sottraggono;
-   e il primo helper anti-manomissione ricollegava solo i digest precedenti, **lasciando
-   passare un payload alterato**. Entrambi riparati con un test che percorre il caso vero.
+**Full sweep DebugLab** (rule 40d, nuova superficie): `services/` — dove questa fase ha
+scritto — **0 findings**. `tools/`, `capabilities/`, `apps/`, `oci/`, `INSTALLATION/`: ~90
+findings, tutti **preesistenti** (bandit B603/B607 su `subprocess.run` ad argomenti fissi,
+S105 sul canary di test `must-not-leak` già documentato come falso positivo, F401 import
+inutilizzati) — **non riparati**: fuori scope di questa fase, nessuno introdotto da essa.
 
 ## ➜ Verifiche prodotte in sessione
 
 ```text
-unit                  836/836
-ESLint                181 file · 0 errori · 0 warning · 0 no-undef
-workspace Rust        23 binari · 91 passati · 0 falliti   (offline, --network=none)
+unit                  863/863  (era 843, +20 repo-map.test.mjs)
+ESLint                183 file · 0 errori · 0 warning · 0 no-undef
 browser reale         315/315
 accessibilità         27/27 su 27 superfici · 0 fail
 difetti seminati      19/19 catturati
-vettori condivisi     ragionamento 18 · capability 17 · ombra 10 · eventi 14
-                      ognuno eseguito da ENTRAMBI i lati, Node e Rust
-conformance autorità  52 check · 0 fallimenti
-MANIFEST              5779 voci · 0 mismatch
-SOURCE_VERIFY         PASS · 16 migrazioni CURRENT
-AUTH_HTTP_SMOKE       PASS   (server reale, con sessione)
-secret scan           gitleaks 118 commit · 0 reperti di prima parte
+MANIFEST              5781/5781 · 0 mismatch · 0 righe non verificabili
+AUTH_HTTP_SMOKE       PASS · HTTP_SMOKE PASS
+controllo HTTP dal vivo delle 3 rotte nuove: 401 non-auth, 400 fuga di percorso, 200 con
+  linguaggi/simboli/punti-d'ingresso/dipendenze reali su una fixture e sul sorgente vero di
+  questo repository (test unitario dedicato)
+byte immagine = albero, byte container vivo = albero (sha256sum, entrambi)
 ```
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **`executorWiredToProductActions = false`** — l'esecutore esiste, applica i token, e
-  **nessuna superficie del prodotto ci passa attraverso**.
-- **`executesPlans = false`** — nulla esegue un piano dentro l'ombra: l'osservazione la
-  fornisce ancora il chiamante.
-- **Registri in memoria** — token ed eventi non sopravvivono a un riavvio. È la direzione
-  sicura, ed è **dichiarata dallo stato**, non dedotta.
-- **La firma della provenance è simmetrica** (HMAC-SHA256): chi verifica può falsificare.
-  `publiclyVerifiable: false` è nel documento. Ed25519 è la strada, non presa perché
-  richiederebbe di scrivere la primitiva a mano.
-- **Gli `.ps1` sono letti da PowerShell, mai eseguiti** — cmdlet e percorsi solo-Windows.
-- **L'ombra non è copy-on-write** — si copiano solo i percorsi che il piano nomina.
-- ⚠️ **Tornare a `:phase4-shadow` reintroduce il difetto del flag** (punto 1 sopra).
+- **`repoMapStatus().incremental = false`** — ricostruito per intero a ogni chiamata, nessuna
+  cache, nessun watcher.
+- **`astParsing = false`** — indice dei simboli è regex per linguaggio, non un parser.
+- **`secondLevelSignals = false`** — proprietà, recency, copertura, criticità, fragilità
+  restano fase 2 (`09_PIANO.md` P5).
+- Tutto ciò che era falso a fine fase precedente resta falso: `executorWiredToProductActions`,
+  `executesPlans`, registri in memoria, firma provenance simmetrica, `.ps1` mai eseguiti.
 
 ## ➜ Blocker aperti
 
-- **`B-001`** — nessun remote, nessun commit mai pushato. `gh` non installabile: serve che
-  l'Owner crei il repository privato e dia l'URL. **13 commit** in questa sessione.
-- **`B-008`** — due store d'identità (`state/auth.json` vs `noesar_identity.users` vuota).
-  Migrazione su dati vivi: merita una fase propria e la scelta del modello di arrivo.
-- **`B-002`** — **chiuso** (`D-0177`).
+- **`B-001`** — nessun remote. `gh` non installabile. Nessun commit mai pushato.
+- **`B-008`** — due store d'identità, migrazione da fare in una fase propria.
+- `B-002`, `B-009`, `B-010` — chiusi.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Poste all'apertura di questa sessione; risposte solo alle prime due (fase 1, e Ricerca
-rimandata a dopo la fase 1). Restano: **(3)** rimuovere `apps/webui-react` (serve un
-emendamento a `CLAUDE10.md`); **(4)** `B-008`, quale store è la destinazione; **(5)**
+**La più urgente ora è nuova nel peso, non nel testo**: quale superficie del prodotto spende
+il primo capability token (`D-0189`) — con tutti e sette i passi della spina dorsale ora
+costruiti, è l'UNICA cosa che separa la fase 1 dal proprio criterio. Le altre, invariate:
+**(3)** rimuovere `apps/webui-react`; **(4)** `B-008`, quale store è la destinazione; **(5)**
 `B-001`, si vuole un remote; **(6)** cinque destinazioni dell'interfaccia «da decidere»;
-**(7)** conformità della conservazione dei dati delle richieste rifiutate; **(8)** TLS —
-il browser scarta `Cross-Origin-Opener-Policy` perché si è serviti in HTTP semplice.
+**(7)** conformità della conservazione dei dati delle richieste rifiutate; **(8)** TLS.

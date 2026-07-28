@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Phase 1 step 7, the last step of the backbone: minimal repository understanding.
+#
+# What this image adds: `services/reference-control-plane/src/repo-map.mjs` — language
+# detection, entry points, a symbol index, literal search, a dependency map, all read-only —
+# and three routes (`GET /api/v1/repo-map`, `POST /api/v1/repo-map/scan`,
+# `GET /api/v1/repo-map/search`), workspace-scoped and gated behind `workspace.read`.
+#
+# No Rust twin, on purpose: this reads a tree and reports what is in it, it does not decide
+# or confine anything on the answer. Steps 1/3/4/5/6 got a Rust counterpart because they do —
+# the stack split in 11_REVISIONE_E_CORREZIONI.md D-A. There is nothing here for a shared
+# conformance oracle to hold two implementations equal to, so there is no oracle.
+#
+# The method is a heuristic and says so: `repoMapStatus()` declares `astParsing:false`,
+# `incremental:false`, `secondLevelSignals:false` — ownership, recency, per-module coverage,
+# criticality and fragility stay in phase 2 (09_PIANO.md P5). Symbol extraction is
+# per-language regex over source text, not a parser.
+#
+# Only `services/reference-control-plane/src/` changed. Nothing else in the image is
+# rebuilt or re-copied — an unchanged layer proves nothing and costs one anyway.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-cow
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

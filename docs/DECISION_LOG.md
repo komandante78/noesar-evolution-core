@@ -2730,3 +2730,40 @@ un unhealthy, quindi sarebbe rimasta una menzogna permanente sul cruscotto.
 file sonda) su una **GET**, quindi una rotta di sola lettura muta il filesystem a ogni
 richiesta autenticata. Non riparato in questa fase: la riparazione (sondare l'antenato
 esistente senza creare nulla) richiede una ricostruzione e va oltre il budget dichiarato.
+
+## D-0188 · Comprensione minima del repository (fase 1, passo 7, l'ultimo della spina dorsale) — solo JavaScript, nessun gemello Rust — 2026-07-28
+**Decision.** Costruito `repo-map.mjs`: rilevamento linguaggi, punti d'ingresso, indice dei
+simboli, ricerca letterale, mappa delle dipendenze — sola lettura, ambito workspace, tre rotte
+dietro `workspace.read`. Nessun crate Rust gemello.
+**Why.** I passi 1/3/4/5/6 hanno un gemello Rust perché decidono e confinano (D-A). Questo
+legge un albero e riferisce cosa contiene; non decide nulla — non c'è un oracolo condiviso a
+cui appoggiare una seconda implementazione.
+**Rejected.** Parsing AST per linguaggio — costo reale per un minimo di fase 1; regex è
+dichiarato come euristica (`repoMapStatus().astParsing:false`), non nascosto.
+**Evidence.** unit 863/863 (+20), ESLint 183 file 0 errori, browser e2e 315/315,
+accessibilità 27/27, difetti seminati 19/19, MANIFEST 5781/5781 0 mismatch 0 righe non
+verificabili, verifica HTTP dal vivo delle 3 rotte nuove PASS (401 non autenticato, 400 fuga
+di percorso rifiutata, 200 con simboli/punti-d'ingresso/dipendenze reali trovati su una
+fixture e sul sorgente vero di questo stesso repository).
+**Reversal cost.** Nessuno. `AI_STATE_VERSION` invariato, nessuno schema, nessuna migrazione.
+**Status.** Applicato **e installato** (`:phase4-repomap`).
+
+## D-0189 · I sette passi della fase 1 sono tutti costruiti; il criterio della fase non è ancora soddisfatto dal prodotto — 2026-07-28
+**Decision.** Registrato, non chiuso: con il passo 7 fatto, `09_PIANO.md` §2 passi 1-7 esistono
+tutti. Il criterio §3 — un flusso reale end-to-end (apre un repository → richiesta → piano →
+autorizzazione → cambia file → mostra il diff → esegue i test → corregge un errore → risultato
+verificabile → ripristina su richiesta → registra ogni operazione → non esce mai dalla propria
+autorità, provato da una suite avversaria) — resta non soddisfatto: nulla instrada ancora una
+mutazione reale attraverso la catena token/esecutore/registro eventi.
+**Why.** Il divario non è un componente mancante, è un cablaggio mancante, ed è una decisione
+di prodotto — quale superficie spende il primo token — non un dettaglio implementativo.
+**Rejected.** Costruire il cablaggio in questa fase, senza autorizzazione: l'handoff precedente
+lo aveva già nominato «da porre all'Owner prima di costruirlo»; il passo 7 non lo cambia.
+**Evidence.** `executorWiredToProductActions=false`, `executesPlans=false`, registro eventi
+vuoto su un'installazione fresca (verificato dal vivo). Nessuna superficie del prodotto chiama
+`capabilityMinter.mint`/`.spend` fuori da un test.
+**Reversal cost.** Nessuno — nulla costruito, nulla da annullare.
+**Status.** Rimandato, in attesa della decisione dell'Owner.
+
+## F4-016 · `reasoning.mjs` pianifica sempre contro `/workspace` letterale, mai contro `NOESAR_WORKSPACE` — trovato costruendo, non riparato — 2026-07-28
+`server.mjs::/api/v1/reasoning/plan` costruisce `new ReferenceReasoningProvider(PRODUCT.workspaceRoot ?? '/workspace')` — `PRODUCT` non definisce mai `workspaceRoot`, quindi l'espressione è sempre la stringa letterale `/workspace`, mai il valore configurato. Innocuo in produzione (il container imposta sempre `NOESAR_WORKSPACE=/workspace`, quindi i due valori coincidono) ma pianificherebbe in silenzio contro l'albero sbagliato in qualunque ambiente dove differiscono — esattamente ciò che il controllo HTTP dal vivo di questa fase ha rivelato quando `NOESAR_WORKSPACE` puntava altrove. Le rotte nuove di `repo-map.mjs` usano invece la costante `workspace` reale, riprendendo il pattern già corretto di `shadow.mjs`, apposta per non ereditare questo difetto. **Non riparato qui**: `reasoning.mjs` è fuori dallo scope dichiarato di questa fase. Severità bassa/informativa.
