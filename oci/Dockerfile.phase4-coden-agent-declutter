@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Owner: the CodeN Evolution agent column (right of the bench) has too many areas, and
+# the "Tools" section (LOCAL · MCP · OPENAPI) sitting below the whole bench reads as
+# disconnected from it.
+#
+# Checked before touching anything: "Tools" living inside CodeN Evolution, appended after
+# the bench, is the SAME deliberate pattern this build already uses for every demoted page
+# (Tasks inside Home, Memory inside Knowledge) — services/reference-control-plane/test/
+# webui-markup-structure.test.mjs enforces both that view-tools still exists (a rank
+# change must not delete a page) and that its legacy route ('tools' -> 'coden') still
+# resolves. Making it a 12th bench tab was considered and rejected: UI-032 (Alta priority,
+# docs/WEBUI_DESIGN_V3.md) names exactly eleven tabs and the same test hard-asserts
+# tabs.length === 11 — adding a twelfth would silently break a tested, documented,
+# High-priority criterion to fix a readability complaint that has a safer answer.
+#
+# What actually shortens the page, with no contract broken: six of the agent column's ten
+# panels were pure single-sentence declared-empty state (Hypothesis and evidence / Tool
+# activity / Files read and written / Commands run / Sub-agents / Residual risk) — each
+# its own bordered, shadowed, margined box for one line of text. Merged into one panel
+# with h4 subheadings; every id, every sentence, unchanged, no test named any of these
+# panels individually (checked first). Ten boxes -> five (Conversation, Plan, Agent
+# activity, Authority requests, Non-bypassable invariants). This alone brings "Tools"
+# roughly 1600px closer to the fold on a 1440x900 viewport, verified with a real headless
+# screenshot before and after.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-privacy-footer
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

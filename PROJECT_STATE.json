@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_PRIVACY_FOOTER_DEPLOYED",
+  "phase_status": "STEP_CODEN_AGENT_COLUMN_DECLUTTERED",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "PENDING_D-0234_COMMIT",
-  "last_updated_utc": "2026-07-29T17:23:53Z",
+  "last_updated_utc": "2026-07-29T17:44:47Z",
   "blockers": [
     {
       "id": "B-001",
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0235: bug menu Ramo resta APERTO, rimandato esplicitamente dall Owner dopo aver esaurito le ipotesi verificabili via codice - nessuna riproduzione trovata. Eseguito invece: banner privacy (01_PRODUCT/12, prima solo su Home) spostato in una riga permanente nel footer (#footerPrivacy, stesso stato verificato dal server, stessa struttura strong/small/.verified/classe external - non una copia statica), scritta NOESAR EVOLUTION is an AI and can make mistakes. sotto il composer Chat. tools/browser-e2e.mjs banco privacy (6 controlli, LOCAL ONLY VERIFIED <-> REMOTE MODEL ACTIVE) riscritto e rieseguito per davvero: 327/327. 6 token colore diventati orfani (rimozione box banner) trovati dal guardiano tokens-unused, rimossi da 5 blocchi tema. Installato :phase4-privacy-footer, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se e quando l Owner fornisce uno screenshot/accesso browser.",
+  "next_action": "D-0236: colonna agente CodeN Evolution da 10 riquadri a 5 (Owner: troppa confusione). 6 pannelli a una frase (Hypothesis and evidence/Tool activity/Files read and written/Commands run/Sub-agents/Residual risk) fusi in un solo pannello Agent activity con sottotitoli h4, ogni id/frase invariati. Tools (LOCAL.MCP.OPENAPI) lasciato dov e - verificato PRIMA che e lo stesso schema di Tasks-dentro-Home/Memory-dentro-Knowledge, farne una 12a scheda del banco avrebbe rotto UI-032 (Alta priorita, 11 schede esatte, testato). Screenshot reale prima/dopo (3883px -> 3510px). browser E2E 327/327 rieseguito, unit 1126/1126. Installato :phase4-coden-agent-declutter, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se/quando arriva uno screenshot.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

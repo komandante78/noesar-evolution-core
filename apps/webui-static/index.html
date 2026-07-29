@@ -308,10 +308,20 @@
                 <button class="text-button hidden" type="button" id="planRestoreBtn">Restore (undo promotion)</button>
               </div>
             </section>
-            <section class="mini-panel"><h3>Hypothesis and evidence</h3><p class="declared-empty">No hypothesis. Evidence is what was recalculated, not what was asserted.</p></section>
-            <section class="mini-panel"><h3>Tool activity</h3><div id="agentToolActivity" class="empty-state">No tool has run in this session.</div></section>
-            <section class="mini-panel"><h3>Files read and written</h3><p class="declared-empty">None. This layer has no execution surface, so it reads and writes nothing.</p></section>
-            <section class="mini-panel"><h3>Commands run</h3><p class="declared-empty">None, for the same reason.</p></section>
+            <!-- Six panels that were each their own bordered box (Hypothesis and evidence /
+                 Tool activity / Files read and written / Commands run / Sub-agents /
+                 Residual risk) merged into one — Owner: the agent column had too many
+                 areas. Every id, every sentence, stays; only the box-per-sentence
+                 packaging is gone. -->
+            <section class="mini-panel agent-activity">
+              <h3>Agent activity</h3>
+              <h4>Hypothesis and evidence</h4><p class="declared-empty">No hypothesis. Evidence is what was recalculated, not what was asserted.</p>
+              <h4>Tool activity</h4><div id="agentToolActivity" class="empty-state">No tool has run in this session.</div>
+              <h4>Files read and written</h4><p class="declared-empty">None. This layer has no execution surface, so it reads and writes nothing.</p>
+              <h4>Commands run</h4><p class="declared-empty">None, for the same reason.</p>
+              <h4>Sub-agents</h4><p class="declared-empty">None. A sub-agent needs its own authority and an independent reviewer; neither exists in this build.</p>
+              <h4>Residual risk</h4><p class="declared-empty">Stated at closure, not guessed at during the work.</p>
+            </section>
             <section class="mini-panel code-panel">
               <div class="panel-title"><h3>Authority requests</h3><span id="modeLabel">NORMAL MODE</span></div>
               <label>Server or workspace path<input id="pathInput" value="projects/example"></label>
@@ -324,9 +334,7 @@
               <div class="panel-title"><h3>Live authority</h3><span class="badge badge-off" id="liveAuthorityCount">0</span></div>
               <div id="liveAuthorityList" class="empty-state">Nothing is granted right now.</div>
             </section>
-            <section class="mini-panel"><h3>Sub-agents</h3><p class="declared-empty">None. A sub-agent needs its own authority and an independent reviewer; neither exists in this build.</p></section>
             <section class="mini-panel"><h3>Non-bypassable invariants</h3><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section>
-            <section class="mini-panel"><h3>Residual risk</h3><p class="declared-empty">Stated at closure, not guessed at during the work.</p></section>
           </aside>
         </div>
       

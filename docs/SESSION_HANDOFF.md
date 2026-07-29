@@ -101,6 +101,16 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Colonna agente CodeN Evolution decluttered — `D-0236`
+
+10 riquadri → 5: sei pannelli a una frase (Hypothesis and evidence/Tool activity/Files read
+and written/Commands run/Sub-agents/Residual risk) fusi in un unico "Agent activity" con
+sottotitoli. `Tools` (LOCAL·MCP·OPENAPI) **lasciato dov'era** — spostarlo in una 12ª scheda
+del banco avrebbe rotto `UI-032` (Alta priorità, 11 schede esatte, testato in
+`webui-markup-structure.test.mjs`), verificato PRIMA di scrivere codice. Screenshot reale
+prima/dopo (3883px → 3510px), browser E2E 327/327 rieseguito. Installato
+`:phase4-coden-agent-declutter`.
+
 ## ➜ Privacy banner → footer, disclaimer AI, bug Ramo rimandato — `D-0235`
 
 Bug menu "Ramo" **resta aperto**, l'Owner l'ha rimandato dopo che nessuna ipotesi verificabile

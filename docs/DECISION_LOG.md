@@ -4175,3 +4175,50 @@ stacking di D-0234 resta comunque.
 `postgres.stopped clean:true` nel log, backup runtime preso prima. Ownership dei file di
 stato verificata `10001:10001` PRIMA di ricreare il container (lezione di `D-0234`
 applicata, nessun incidente questa volta).
+
+## D-0236 · La colonna agente di CodeN Evolution: da dieci riquadri a cinque, "Tools" lasciato dov'è per un contratto testato
+**Decision.** Owner, guardando `/#/coden` dal vivo: "nella colonna destra ci sono troppe
+aree... sistema tutto, troppa confusione", e nomina esplicitamente "LOCAL · MCP · OPENAPI"
+sotto il banco. Verificato con screenshot reale (non solo lettura del markup) prima di
+toccare nulla: la colonna agente impilava **dieci** riquadri (`Conversation`, `Plan`,
+`Hypothesis and evidence`, `Tool activity`, `Files read and written`, `Commands run`,
+`Authority requests`, `Sub-agents`, `Non-bypassable invariants`, `Residual risk`), e sotto
+l'intero banco — a un'altezza di scroll notevole — la sezione `Tools` (eyebrow "LOCAL · MCP
+· OPENAPI") appariva scollegata da tutto quanto sopra. **Sei dei dieci riquadri erano una
+sola frase ciascuno** (`Hypothesis and evidence`, `Tool activity`, `Files read and written`,
+`Commands run`, `Sub-agents`, `Residual risk`) — ognuno con bordo, ombra e margine proprio
+per una riga di testo. Fusi in **un solo** pannello "Agent activity" con sottotitoli `h4`:
+ogni id, ogni frase, invariati — solo l'imballaggio "una scatola per frase" è sparito.
+Dieci riquadri → cinque (`Conversation`, `Plan`, `Agent activity`, `Authority requests`,
+`Non-bypassable invariants`).
+**Why.** Verificato PRIMA di scrivere codice che il posizionamento di `Tools` dentro CodeN
+Evolution non è un bug ma lo stesso schema deliberato già usato per ogni pagina "retrocessa"
+di questo prodotto (`Tasks` dentro `Home`, `Memory` dentro `Knowledge`) —
+`webui-markup-structure.test.mjs` impone sia che `view-tools` esista ancora sia che la sua
+rotta storica (`tools` → `coden`) risolva ancora. Muoverlo avrebbe rotto un pattern
+consapevole, non un errore.
+**Rejected.** Fare di "Tools" una dodicesima scheda del banco (l'idea più ovvia per
+integrarlo visivamente): **respinta dopo aver controllato la specifica**, non a naso.
+`UI-032` (priorità Alta, `docs/WEBUI_DESIGN_V3.md` riga 319) elenca esattamente undici
+schede per nome, e lo stesso file di test le conta:
+`assert.equal(tabs.length, 11, "UI-032 names eleven tabs...")`. Aggiungerne una dodicesima
+avrebbe risolto un reclamo di leggibilità rompendo silenziosamente un criterio Alta
+priorità testato e documentato — scambio sbagliato. Cancellare l'elemento `id="view-tools"`
+per farlo sparire del tutto: la stessa regola lo vieta esplicitamente ("a rank change must
+not delete a page").
+**Evidence.** Screenshot headless reale PRIMA (altezza pagina 3883px, dieci riquadri
+visibili e contati a mano dallo screenshot) e DOPO (3510px, cinque riquadri) — non un calcolo
+teorico, la stessa pagina caricata due volte con lo stesso account e la stessa conversazione
+di prova. Nessun test nomina questi sei pannelli individualmente (verificato con grep prima
+di fondere) — nessuna rottura attesa, e nessuna trovata: unit **1126/1126**,
+`scripts/test.sh` **10/10**, **`browser E2E 327/327`** (rieseguito per davvero, non solo
+riletto — questa pagina è la più coperta dalla suite: Plan/Shadow/Diff/Authority requests/
+Non-bypassable invariants ci passano tutti attraverso), byte immagine identici all'albero.
+Verificato dal vivo: `curl` sull'HTML servito mostra `1` occorrenza di `agent-activity` e
+`1` di `id="view-tools"` (ancora presente, come richiesto dal test).
+**Reversal cost.** Nessuno — nessuna migrazione, nessun dato toccato, solo
+`apps/webui-static/`. Tornare a `:phase4-privacy-footer` reintroduce i dieci riquadri
+separati; `Tools` resta raggiungibile in entrambi i casi.
+**Status.** Applicato e installato (`:phase4-coden-agent-declutter`), `RestartCount=0`,
+`postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
+verificata prima di ricreare (lezione `D-0234` applicata di nuovo).
