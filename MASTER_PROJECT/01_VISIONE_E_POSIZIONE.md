@@ -155,3 +155,15 @@ funzione "di domani" deve superare per entrare:
 - Non è conformità. Self-hosting riduce la divulgazione, non gli obblighi di legge.
 - Non è "a prova di hacker" e non promette egress zero in assoluto: promette di **dirti** lo
   stato reale, verificato, in ogni momento.
+
+## Matrice di accettazione — la Prova di Sessione
+
+Stessa premessa di `03 §10`. La posizione originale di questo documento (§«Il prodotto
+della posizione») è testabile per intero in tre criteri; il resto del documento è
+posizionamento, non un criterio tecnico. Severità: **C**ritica / **A**lta / **M**edia.
+
+| ID | Criterio | Sev | Verifica | Stato |
+|---|---|---|---|---|
+| `SESS-001` | Ogni sessione di lavoro autorizzata emette un pacchetto con **tutti e dieci** i campi (intento, ipotesi, piano, attesa, realtà, autorità, egress, provenienza, esito, fixture) | **C** | test che verifica la presenza e la sorgente di ognuno dei dieci campi su una sessione reale | ⏳ dipende dalla fase 1 (`09`), non ancora assemblabile |
+| `SESS-002` | Il replay riesegue il **livello delle decisioni** contro gli output di modello registrati e deve coincidere — non rigenera le risposte del modello (correzione `P1`, doc `11`) | **C** | test di replay deterministico su una sessione registrata | ⏳ dipende dalle fixture di replay (fase 1) |
+| `SESS-003` | Una vecchia sessione rieseguita contro una versione più recente del prodotto rivela se una policy nuova avrebbe rifiutato ciò che allora era permesso | **A** | replay di una sessione storica contro un binario successivo, confronto degli esiti | ⏳ dipende da `SESS-002` |

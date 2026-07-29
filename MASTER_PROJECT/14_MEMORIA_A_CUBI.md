@@ -640,3 +640,24 @@ Tre vincoli che non costano nulla adesso e che risparmiano una migrazione dopo:
 [What's new in pgvector v0.7.0](https://supabase.com/blog/pgvector-0-7-0) ·
 [Learning Fine-Grained Grounded Citations for Attributed LLMs](https://arxiv.org/pdf/2408.04568) ·
 [Citation-Grounded Code Comprehension](https://arxiv.org/html/2512.12117v1)
+
+---
+
+## 13. Matrice di accettazione
+
+Stessa premessa dei documenti `03 §10` e `08 §11`. **Nulla di questo documento è
+implementato** (dichiarato in apertura): ogni criterio qui è scritto per quando lo sarà,
+non per oggi — la tabella esiste perché altrimenti non ci sarebbe modo controllabile di
+dire "fatto" quando il lavoro comincia. Severità: **C**ritica / **A**lta / **M**edia.
+
+| ID | Criterio | Sev | Verifica | Stato |
+|---|---|---|---|---|
+| `CUBE-001` | Un record è immutabile nella segnatura; una correzione crea un nuovo record con `superseded_by`, mai un `UPDATE` distruttivo | **C** | trigger `signature_is_immutable` (§9.2), test che tenta l'`UPDATE` e verifica il rifiuto | ⏳ non costruito |
+| `CUBE-002` | Un elemento `derived=true` non è mai emesso senza le sue fonti | **C** | `CONSTRAINT derived_must_cite` (§9.2), test che tenta un `INSERT` senza `derived_from` | ⏳ non costruito |
+| `CUBE-003` | Un candidato non tracciabile a un evento di sessione non viene emesso dalla compattazione (fallire chiuso, §4.1 regola 3) | **C** | test sulla pipeline di compattazione con un evento sintetico non riconducibile | ⏳ non costruito |
+| `CUBE-004` | Le tre semantiche di `05` sono separate da tabelle/tipi diversi — un elemento del Cubo 3 (Corpus) non è restituibile come affermazione del Cubo 1 (Biblioteca) nemmeno per un errore di programmazione | **C** | test di tipo/schema che tenta la confusione e verifica il rifiuto strutturale, non applicativo | ⏳ non costruito |
+| `CUBE-005` | Un vettore senza l'identità del modello che l'ha prodotto non è confrontabile: ogni query filtra per `model_id` corrente | **C** | test di confronto fra due spazi diversi (stessa classe di `CE-012`, qui a livello di schema `memory_vectors`) | ⏳ non costruito — **ma il difetto che lo rende vero oggi (`vector_entries` senza identità di modello) esiste già ed è indipendente dai cubi**, vedi §9.1 |
+| `CUBE-006` | Il richiamo (`recall`) restituisce sempre `coverage` e `not_found`, mai silenziosamente parziale | **A** | test sul contratto `recall()` (§9.4) con un insieme di candidati noto | ⏳ non costruito |
+| `CUBE-007` | Le nove categorie sono un registro chiuso (`CHECK` nello schema), non stringa libera | **M** | tentativo di `INSERT` con una categoria fuori lista, verifica del rifiuto a livello di schema | ⏳ non costruito |
+| `CUBE-008` | Un cambio di modello di embedding non perde record — solo re-indicizza, coi vecchi vettori che continuano a servire finché il nuovo indice non è completo | **A** | procedura di cambio modello (§9.3) misurata end-to-end su un corpus di prova | ⏳ non costruito |
+| `CUBE-009` | L'utente non vede la tassonomia a quattro cubi — una sola destinazione `Memoria`, tre gesti (cerca/sfoglia/approva), parole normali mai `promotion_state`/`contamination`/`cube` | **A** | ispezione della WebUI: nessuna di quelle tre parole compare fuori da una vista di dettaglio esplicitamente richiesta | ⏳ non costruito |

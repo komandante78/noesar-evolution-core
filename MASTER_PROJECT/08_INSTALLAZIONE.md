@@ -200,3 +200,22 @@ alta disponibilità, accessibilità, build riproducibili.
 medico, certificato per il volo, rendimenti garantiti, a prova di hacker, egress zero
 assoluto. Lo stato regolatorio appartiene a un modulo specifico, con un uso previsto, una
 release e un deployment.
+
+## 11. Matrice di accettazione
+
+Stessa premessa del documento `03 §10`: rischio 4 chiuso altrove per CodeN Evolution
+(`15`) e interfaccia (`docs/WEBUI_DESIGN_V3.md`), questa tabella copre l'installazione.
+Severità: **C**ritica / **A**lta / **M**edia.
+
+| ID | Criterio | Sev | Verifica | Stato |
+|---|---|---|---|---|
+| `INST-001` | Il socket Docker **non** è montato nel container | **C** | `docker inspect` sui Mounts del container in esecuzione | ✅ vero oggi, verificato dal vivo ripetutamente |
+| `INST-002` | Nessuna installazione silenziosa — driver, runtime, modelli, pacchetti richiedono un token autorizzato, mai un'azione automatica | **C** | tentativo di installazione senza token, verifica del rifiuto | ⏳ oggi non c'è ancora un token da presentare — nessuna superficie lo richiede |
+| `INST-003` | PostgreSQL senza listener TCP (`listen_addresses=''`, solo socket unix, `scram-sha-256`, `pg_hba` senza righe `host`) | **C** | ispezione della configurazione dal container in esecuzione | ✅ già costruito e verificato |
+| `INST-004` | Container non-root (uid 10001), rootfs sola lettura, `cap-drop ALL`, `no-new-privileges`, tmpfs `noexec` | **C** | `docker inspect` sul container installato | ✅ già costruito e verificato — pattern riapplicato a ogni fase di questa sessione (`atomd`, `:phase4-research-gate`) |
+| `INST-005` | Un solo mount scrivibile, `/workspace` | **A** | `docker inspect` Mounts | ✅ vero sull'installazione corrente |
+| `INST-006` | Il backup del workspace è cifrato, **oppure** la documentazione dichiara esplicitamente che contiene la chiave master di autenticazione | **A** | ispezione del backup + della documentazione consegnata | ⚠ **aperto**: il backup non è cifrato e il dovere dell'operatore non è ancora scritto in chiaro — limite dichiarato, non risolto qui |
+| `INST-007` | Il bind su un indirizzo di rete non espone un endpoint interno (es. metriche) a tutta la LAN per il difetto "peer come gateway fidato" | **C** | `services/reference-control-plane/test/lan-exposure.test.mjs` | ✅ trovato e corretto (fase 4 LAN access gate) |
+| `INST-008` | Aggiornamento: rifiuta rollback e mix-and-match, verifica firma/digest, diff dei permessi, richiede autorizzazione esplicita | **A** | `tools/cbom.mjs`, `generate-mlbom.mjs`, `sign/verify-release-artifact.mjs` — firma Ed25519 verificata `D-0208` | ⚠ **parziale**: firma e provenienza costruite, il diff dei permessi su un aggiornamento reale non è ancora provato end-to-end |
+| `INST-009` | Igiene container: a fine fase sopravvivono esattamente due container di progetto (installazione + un rollback) | **A** | conteggio `docker ps -a` a chiusura fase | ✅ osservato e mantenuto per ogni fase di questa sessione |
+| `INST-010` | Installer multipiattaforma: hardening e filtri di packaging non regrediscono | **A** | `tools/test-installer-hardening.mjs`, `tools/test-cross-platform-installers.mjs`, `tools/test-packaging-filters.mjs` | ✅ 100/100 + 73/73 (windows non eseguito) — misurato `2026-07-27` |

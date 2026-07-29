@@ -48,10 +48,22 @@ non risolto — mai un lasciapassare pericoloso, mai un blocco di chi cerca aiut
 **Non ancora vero**: nessuna superficie WebUI chiama questo endpoint — la destinazione
 Ricerca resta gated (`D-0142`), come previsto: il gate si costruisce prima della superficie.
 
-**Prossima azione concreta, non ancora iniziata**: o la matrice di accettazione per
-`MASTER_PROJECT/` (14 documenti, rischio 4 di `WORK_PLAN_V5_REWRITE.md` — il gap misurabile
-più grande rimasto che non tocca ATOM), oppure — se ATOM riprende — la superficie WebUI
-`UI-090…096` sopra questo gate ora che esiste.
+**`D-0223`, stessa giornata: il rischio 4 era chiuso solo a metà.** `D-0116` (documento 15,
+`CE-001…024`) dichiarava il rischio 4 di `WORK_PLAN_V5_REWRITE.md` chiuso, ma copriva solo
+CodeN Evolution; `UI-001…096` (`docs/WEBUI_DESIGN_V3.md`) copre l'interfaccia. Tre aree dei
+14 documenti non avevano **un solo ID**: architettura, installazione, memoria a cubi.
+Letti tutti i 14 documenti (3568 righe) prima di scrivere un ID — non inventati, estratti
+dalle affermazioni testabili già nel testo. Scritte: `ARCH-001…008` (doc 03), `INST-001…010`
+(doc 08), `CUBE-001…009` (doc 14, tutto ⏳ per costruzione — nulla di quel documento è
+implementato), `SESS-001…003` (doc 01, il pacchetto Prova di Sessione). **Ogni riga marca lo
+stato reale** (✅ costruito/verificato, ⏳ non costruito, ⚠ parziale o aperto) — non un verde
+di default: `INST-006` (backup non cifrato) resta ⚠ aperto, dichiarato anche nel documento 05.
+**Nessun criterio è stato costruito o verificato in questa fase**: la matrice rende dicibile
+"fatto" per ID, non lo dichiara.
+
+**Prossima azione concreta, non ancora iniziata**: costruire contro i criteri marcati ⏳
+critici (es. `ARCH-001` il supervisore a tre figli, tuttora zero file), oppure — se ATOM
+riprende — la superficie WebUI `UI-090…096` sopra il gate `D-0222` ora che esiste.
 
 ## ➜ Stato dell'installazione
 

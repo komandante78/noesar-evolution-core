@@ -190,3 +190,23 @@ Un aggiornamento non è un lasciapassare.
 **Il Technology Radar è il meccanismo che rende vero tutto questo, e oggi non esiste.** Senza,
 ogni hardware nuovo è una *release*. Con, è un *pacchetto firmato*. È la distanza esatta fra
 un prodotto che invecchia e uno che si chiama Evolution.
+
+## 10. Matrice di accettazione
+
+Il rischio 4 di `docs/WORK_PLAN_V5_REWRITE.md` («la riscrittura non ha apparato di
+accettazione») è chiuso per CodeN Evolution da `CE-001…CE-024` (documento `15`, §11,
+`D-0116`) e per l'interfaccia da `UI-001…UI-096` (`docs/WEBUI_DESIGN_V3.md`). Questa
+sezione copre ciò che nessuna delle due copre: l'architettura del container stesso. Non
+duplica — dove un criterio è già coperto altrove, questa tabella lo dice invece di
+riscriverlo. Severità: **C**ritica / **A**lta / **M**edia, come in `15`.
+
+| ID | Criterio | Sev | Verifica | Stato |
+|---|---|---|---|---|
+| `ARCH-001` | Un solo container OCI, supervisore PID 1 con **tre figli pari** (postgres, api, codev) | **C** | albero dei processi in esecuzione + un health check indipendente per figlio | ⏳ supervisore da costruire (oggi supervisiona solo il DB) |
+| `ARCH-002` | Riavviare un figlio non fa cadere gli altri due | **C** | uccidere un figlio, verificare che gli altri due restano `Up` | ⏳ dipende da `ARCH-001` |
+| `ARCH-003` | Nessun nuovo listener TCP: il protocollo di sessione gira su socket unix | **C** | scansione porte del container, nessuna in ascolto oltre quelle dichiarate | ⏳ dipende da `ARCH-001` |
+| `ARCH-004` | Il piano dati non decide nulla — nessun percorso autorizza direttamente da PostgreSQL | **A** | ispezione statica: nessuna chiamata di autorizzazione nel layer dati | ✅ vero oggi per costruzione (PostgreSQL non ha logica applicativa) |
+| `ARCH-005` | Nessun adattatore (`ModelRuntimeAdapter`, `VectorStoreAdapter`, ecc.) può auto-concedersi permessi — un manifest è una richiesta, i token li emette il motore | **C** | test che un adattatore chiede un permesso non concesso e viene rifiutato | ⏳ gli adattatori del documento `03 §4` sono in gran parte da costruire |
+| `ARCH-006` | `apps/webui-react` rimossa e non reintrodotta | **M** | verifica statica: la directory non esiste nell'albero | ✅ fatto (`D-0195`) |
+| `ARCH-007` | Un aggiornamento che richiede più autorità di prima **la dichiara esplicitamente** (diff dei permessi) e va autorizzato di nuovo | **C** | pacchetto di aggiornamento che aumenta lo scope, verifica che sia bloccato senza nuova autorizzazione | ⏳ non costruito |
+| `ARCH-008` | Isolamento per capacità: ogni capacità gira coi limiti scritti nel proprio token, non con quelli del container intero | **A** | misura dei limiti effettivi (cgroup) applicati per sandbox vs per container | ⏳ oggi tutto condivide un solo raggio d'azione (rischio Alto dichiarato, mai trattato) |

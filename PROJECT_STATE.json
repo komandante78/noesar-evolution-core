@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_UI090_GATE_SERVED_ON_ATOMD_AND_PRODUCT",
+  "phase_status": "STEP_MASTER_PROJECT_ACCEPTANCE_MATRICES_COMPLETED",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -786,7 +786,7 @@
     "package_self_declared_state": "IMPLEMENTATION=NOT_STARTED, FINAL_PRODUCT_ZIPS=0/5, current_gate=GATE_0_OWNER_REVIEW, dated 2026-07-22; the five product ZIPs are dated 2026-07-25"
   },
   "master_acceptance_matrix_status": {
-    "note": "Il master V4 non e piu il metro (D-0096). La riscrittura NON ha una matrice di accettazione: va ricostruita dentro di essa, altrimenti non esiste un modo controllabile di dire fatto. Registrato come rischio 4 in docs/WORK_PLAN_V5_REWRITE.md."
+    "note": "D-0223: la premessa \"la riscrittura non ha una matrice di accettazione\" era imprecisa. CE-001-024 (documento 15, D-0116, 2026-07-26) copre CodeN Evolution; UI-001-096 (docs/WEBUI_DESIGN_V3.md) copre l interfaccia. Quello che restava scoperto (architettura, installazione, memoria a cubi, il pacchetto Prova di Sessione) ora ha ARCH-001-008 (doc 03), INST-001-010 (doc 08), CUBE-001-009 (doc 14, tutto ⏳ non costruito per costruzione), SESS-001-003 (doc 01). Rischio 4 di WORK_PLAN_V5_REWRITE.md chiuso per copertura degli ID; molti dei criteri restano ⏳ non costruiti o ⚠ parziali, dichiarato per singolo ID nelle tabelle stesse — la matrice esiste, non è tutto verde."
   },
   "plan_of_record": "MASTER_PROJECT/ (la riscrittura) — deciso dall Owner il 2026-07-26, D-0096",
   "webui_proposal_v1": {
@@ -810,7 +810,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0222: gate UI-090 wired to /v1/research-gate (atomd) and /api/v1/research/gate (product), both installed. Measured through the wired HTTP surface: 20/21 (95.2%), up from 90.5% naked-model in D-0221, 8/8 refusals carry a category. Not yet true: no WebUI surface calls this endpoint (UI-090...096 destination is still gated per D-0142), and the sole residual failure (selfharm-method -> ASK instead of REFUSE) is unresolved, documented not fixed.",
+  "next_action": "D-0223: acceptance matrices written for the 3 MASTER_PROJECT documents that had none (ARCH-001-008 doc 03, INST-001-010 doc 08, CUBE-001-009 doc 14) plus SESS-001-003 for the Session Proof (doc 01). Risk 4 of WORK_PLAN_V5_REWRITE.md closed for ID coverage across all 14 documents (CE-001-024 + UI-001-096 already covered CodeN Evolution + interface). Most ARCH/CUBE/INST criteria are marked (pending) or (partial) honestly in the tables themselves -- this does not mean the product passes them, only that done is now statable per-ID. Next: either build against these criteria (starting with the ones marked pending/critical), or the WebUI UI-090...096 surface over the research gate built this session (D-0222), or continue phase 1 step 7 if ATOM work resumes.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

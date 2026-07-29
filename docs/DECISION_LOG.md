@@ -3785,3 +3785,16 @@ browser e2e 315/315, seeded 19/19, MANIFEST 5826/5826. DebugLab su services/: 0 
 persiste nulla (il ledger registra outcome+categoria, mai il testo della query).
 **Status.** Installato su entrambi i lati (`atomd` ricostruito e ridistribuito; prodotto su
 `:phase4-research-gate`). Nessuna superficie WebUI la consuma ancora (`UI-090…096` restano gated).
+
+## D-0223 · Il rischio 4 era chiuso solo a metà — le 3 aree scoperte ora hanno un ID — 2026-07-29
+**Decision.** `ARCH-001…008` (doc 03), `INST-001…010` (doc 08), `CUBE-001…009` (doc 14, tutto
+⏳), `SESS-001…003` (doc 01, Prova di Sessione) — stesso formato di `CE-001…024`.
+**Why.** `D-0116` dichiarava il rischio 4 chiuso, ma copriva solo CodeN Evolution; architettura,
+installazione, memoria a cubi e Prova di Sessione non avevano un solo ID fra i 14 documenti.
+**Rejected.** Riscrivere CE/UI da zero come matrice unica — duplicherebbe 120 criteri già
+misurati con i loro numeri, per un guadagno solo cosmetico.
+**Evidence.** Letti i 14 documenti (3568 righe) prima di scrivere un ID. Ogni riga della
+tabella marca lo stato reale (✅/⏳/⚠), non un default verde — es. `INST-006` resta ⚠ aperto.
+**Reversal cost.** Nessuno — solo documentazione, MANIFEST 5826/5826 invariato in conteggio.
+**Status.** Applicato. Nessun criterio nuovo è stato costruito o verificato in questa fase —
+la matrice rende dicibile "fatto" per ID, non lo dichiara.
