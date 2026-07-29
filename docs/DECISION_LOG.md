@@ -3682,3 +3682,43 @@ Serve una metrica sulla forma, oppure compiti tratti da un repository vero.
 **Evidence.** Letti `docs/WEBUI_DESIGN_V3.md` §22-24 (tabella "costruito" con percorso file per ogni riga), `PROJECT_STATE.json.master_acceptance_matrix_status` (già corretto, non toccato), `docs/REMAINING_WORK.md` §"The fork" (conferma testuale della domanda aperta risolta lo stesso giorno da `D-0096`). Nessuna riga di codice cambiata, nessun impatto su MANIFEST (`docs/`, `PROJECT_STATE.json` fuori scope, verificato: nessuna voce in `MANIFEST.sha256` per nessuno dei tre file toccati).
 **Reversal cost.** Nessuno: solo testo di stato e un header di nota, nessuna installazione coinvolta.
 **Status.** Applicato. Resta genuinamente aperto, non un falso allarme come il seccomp: una matrice di accettazione IDed per `MASTER_PROJECT/` (rischio 4 di `docs/WORK_PLAN_V5_REWRITE.md`) e, dentro la v3 del disegno WebUI, il banco di lavoro `UI-030…037`, la casella `NON FATTO` `UI-036`, la metrica di prodotto `UI-070…072`, otto voci di accessibilità non strutturali, e le destinazioni TUI/Ricerca dichiarate e non costruite.
+
+## D-0220 · Modello candidato per il classificatore intento/effetto `UI-090`: scaricato, servito, testato — non ancora sul percorso servito — 2026-07-29
+**Decision.** L'Owner ha chiesto direttamente in sessione di mettere un modello reale a
+disposizione di NOESAR EVOLUTION per lavorarci ("mettere il modello... così puoi lavorare su
+dei test e continuare a lavorarci"), invece di continuare a definire il criterio
+`ATOM_PROVIDER_MODEL_BACKED` in astratto. Scaricato `Qwen2.5-1.5B-Instruct` GGUF Q4_K_M
+(Apache 2.0, ~1.12GB) da Hugging Face in `ATOM_EVOLUTION/model_store/` (mai copiato da
+`CODEN_ULTRA/model_store` — REGOLA ZERO). Servito da un container dedicato
+`atom-evolution-model` (immagine pubblica `ghcr.io/ggml-org/llama.cpp:server-cuda`, GPU
+passthrough, porta pubblicata solo su `127.0.0.1`, collegato anche a `noesar-evolution-net`
+per raggiungibilità da `atomd` per nome container).
+**Why.** `UI-090` vieta una denylist testuale per il gate intento/effetto e nessun componente
+del prodotto oggi genera output non deterministico — il criterio `model-backed` concordato
+con l'Owner (stessa sessione) richiede di misurare un componente reale contro casi held-out,
+non solo di descriverlo. Serve prima l'infrastruttura per poterlo misurare.
+**Rejected.** Riusare il Phi-4 già caricato su CodeN Ultra (porta 8210) via HTTP: avrebbe
+fatto dipendere NOESAR EVOLUTION da un altro progetto dell'host, violando la regola zero
+("si tocca solo NOESAR EVOLUTION"). Scaricare un modello più grande (es. Phi-3.5-mini 3.8B):
+GPU libera lo permetteva, ma il footprint minimo lascia margine per altri progetti che
+reclamano la stessa GPU (CodeN Ultra/NOUS) quando ripartono, e il compito bersaglio
+(classificazione binaria intento/effetto) non richiede un generalista più grande.
+**Evidence.** GPU verificata libera prima di allocare (`nvidia-smi`: 3 MiB/12288 MiB, 0
+processi). Download verificato byte-esatto contro `X-Linked-Size` dichiarato da HF
+(1117320736), sha256 calcolato e registrato in `model_store/PROVENANCE.sha256`+`.md`.
+`/health` **200** dal loopback host. Raggiungibilità da `atomd` per nome container provata
+dal vivo (`docker exec atomd bash -c '/dev/tcp/atom-evolution-model/8420'` → **200**).
+Generazione reale provata, non solo health: prompt di classificazione binaria
+(intento "scrive fuori dal workspace" → atteso `OUTSIDE`) risposto correttamente in
+**102ms**, ~137 tok/s, GPU offload confermato attivo (`-ngl 99`).
+**Reversal cost.** Nessuno sul prodotto: `atom-evolution-model` non è ancora chiamato da
+nessun percorso di `atomd` o del prodotto — è un quarto container di test, non installato.
+Rimuoverlo (`docker rm -f atom-evolution-model`) non cambia alcun comportamento servito.
+Il modello scaricato resta su disco con provenienza registrata anche se il container viene
+fermato.
+**Status.** Applicato, non installato. **Cosa NON è vero**: `atom-provider` non chiama
+ancora questo modello per nessuna decisione reale; `ATOM_PROVIDER_MODEL_BACKED` resta
+`false` finché il classificatore vero non è scritto, misurato su held-out, e wired nel
+percorso che il prodotto serve. Prossimo passo: crate `atom-provider`, client HTTP verso
+`atom-evolution-model:8420`, primo test end-to-end da Rust (non ancora il classificatore
+`UI-090` completo).
