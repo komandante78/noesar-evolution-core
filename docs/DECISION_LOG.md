@@ -3770,3 +3770,18 @@ altrimenti il container si sarebbe dichiarato `unhealthy` mentre rispondeva corr
 il candidato misurato, non ancora il classificatore wired su una superficie `ReasoningProvider`
 reale. Prossimo passo: `crates/atom-provider::model_client` (già scritto e testato dal vivo,
 `D-0220`) chiamato da una vera implementazione del gate `UI-090`, non solo da test isolati.
+
+## D-0222 · Il gate UI-090 raggiunge una superficie realmente servita — 2026-07-29
+**Decision.** `research_gate.rs` su atomd (`/v1/research-gate`, ATOM_EVOLUTION) + `research-gate.mjs`
+su NOESAR EVOLUTION (`GET/POST /api/v1/research/gate`, sessione+`workspace.read`+CSRF). Non una
+13ª superficie `ReasoningProvider` — dominio diverso, nessun leg di riferimento.
+**Why.** Handoff s282: il gate va costruito su un punto realmente servito, non solo testato isolato.
+**Rejected.** Estendere il contratto congelato 1.0.0 — classificare una query di testo non è
+recomputation di un Piano, avrebbe forzato una semantica estranea nel contratto.
+**Evidence.** 21 casi held-out sull'endpoint HTTP reale: 20/21 (95.2%, era 90.5% nudo, `D-0221`),
+8/8 rifiuti con categoria. Rust 29 unit offline; Node unit 1098→1115, ESLint 224f 0 errori,
+browser e2e 315/315, seeded 19/19, MANIFEST 5826/5826. DebugLab su services/: 0 finding nuovi.
+**Reversal cost.** Nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, la rotta non
+persiste nulla (il ledger registra outcome+categoria, mai il testo della query).
+**Status.** Installato su entrambi i lati (`atomd` ricostruito e ridistribuito; prodotto su
+`:phase4-research-gate`). Nessuna superficie WebUI la consuma ancora (`UI-090…096` restano gated).

@@ -2950,3 +2950,21 @@ l'API SCIM per gestirlo sparisce.
 - **Verifica dal vivo**: `running/healthy`, e la **misura rifatta** contro il daemon installato: `EXTERNAL_SETTLED` **42/52 → 52/52**, `better=51 worse=0 equal=1`, riferimento **1/52**.
 - ⚠️ **Quarto container di progetto dichiarato**: `atomd.rollback-pre-attribution-*`. Il tag `atom-evolution:atomd` è stato **riusato**, quindi l immagine precedente non ha più un nome: quel container fermo **è** il percorso di rollback. Lo rimuoverà la fase che dichiarerà la regola di attribuzione stabile.
 - **Costo di rollback**: tornare indietro reintroduce le parti a due comandi (71 su 60 compiti reali). Nessuna migrazione, nessun dato.
+
+## 2026-07-29 · `atomd` reinstallato + `:phase4-research-gate` — il gate UI-090 su entrambi i lati
+- **`atomd` ricostruito** con `tools/build-atomd.sh` (binario verificato uguale all immagine). Predecessore
+  preservato `atomd.rollback-pre-research-gate-20260729T054159Z`; `atomd.rollback-pre-attribution-*` rimosso
+  (un solo rollback per convenzione). Config riletta e invariata (rete, token, bind, uid 10002, nessun mount).
+- **Prodotto**: `:phase4-research-gate` da `Dockerfile.phase4-research-gate` (`FROM :phase4-atom-acting-path`,
+  `--network=none --pull=false`). Byte immagine == albero per `server.mjs`+`research-gate.mjs`, prima e dopo.
+- **Arresto pulito**: `docker stop -t 60`, `postgres.stopped clean:true` letto nel log. Backup a servizio fermo
+  `BACKUPS/runtime_pre_research_gate_20260729T055824Z.tar.gz` (12 MB). Predecessore preservato
+  `noesar-evolution.rollback-research-gate-20260729T055824Z`; `.rollback-atom-acting-path-*` rimosso.
+- **Configurazione riletta dal container sostituito**: 20 variabili invariate, stesso bind, rete, porta,
+  restart policy, uid 10001:10001.
+- **Verifica dal vivo**: `Up (healthy)`, `RestartCount=0`, `/livez` `/readyz` **200**, `/healthz` `disclosed:false`
+  (`B-010` non regredito), `GET/POST /api/v1/research/gate` **401** contro **404** di una rotta inesistente,
+  byte serviti == albero (letti dal container, non assunti).
+- **Misura sul daemon installato**: 21 casi held-out via HTTP reale → **20/21 (95.2%)**, 8/8 rifiuti con categoria.
+- **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, la rotta non persiste dati.
+- **§5a**: due soli container per progetto (installazione+1 rollback) su entrambi i lati. Host invariato.

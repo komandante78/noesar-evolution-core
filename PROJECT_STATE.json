@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_12_DEPENDENCY_INTEGRITY_LAW_ADDED_TO_THE_CORE",
+  "phase_status": "STEP_UI090_GATE_SERVED_ON_ATOMD_AND_PRODUCT",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "35444b1 (D-0218: dependency-integrity law in verifiability.mjs, core-only, no install) - pending push",
-  "last_updated_utc": "2026-07-29T00:53:45Z",
+  "last_commit": "52ab58c (D-0222: UI-090s gate reaches a served product surface) - pushed",
+  "last_updated_utc": "2026-07-29T06:05:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -374,8 +374,8 @@
     }
   ],
   "product_test_suite": {
-    "unit": "1098/1098 (misurato 2026-07-28/29, D-0218)",
-    "eslint": "221 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-28/29, D-0218)",
+    "unit": "1115/1115 (misurato 2026-07-29, D-0222)",
+    "eslint": "224 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-29, D-0222)",
     "browser_acceptance": "315/315 (misurato 2026-07-28, D-0211 - riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
@@ -392,7 +392,7 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5823/5823, 0 mismatch, 0 righe non verificabili (misurato 2026-07-28/29, D-0218)",
+    "manifest": "5826/5826, 0 mismatch, 0 righe non verificabili (misurato 2026-07-29, D-0222)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -406,7 +406,8 @@
     "live_reasoning_with_external_provider": "INSTALLATO e SELEZIONATO, e ora anche sul percorso che agisce (D-0216): expect risposto da atom dentro plan(); simulate 200 supported:true con predizione reale su coppia effimera a ombra condivisa; daemon fermo -> plan 503 senza run creata; nessun provider esterno -> tutto reference, simulate supported:false.",
     "projection_coverage_ce023": "NO_DIFFERENCE (D-0215) e resta vero: la copertura non distingue i due provider. Non e un difetto della misura da cancellare, e un fatto sulla copertura - la differenza vive nella FORMA, vedi decomposition_shape_ce023.",
     "decomposition_shape_ce023": "MISURATO 2026-07-28 (D-0217) su 60 compiti derivati da 60 commit reali: DECISIVE=52 (8 esclusi perche gia verificabili, esclusione dichiarata), REFERENCE_SETTLED=1/52, EXTERNAL_SETTLED=52/52, PER_TASK better=51 worse=0 equal=1 -> VERDICT=EXTERNAL_STRICTLY_BETTER. Criteri nel nucleo aperto (verifiability.mjs), oracolo provato per mutazione. Prima della riparazione A-0019 in ATOM: 42/52.",
-    "dependency_integrity_ce023": "NUOVO (D-0218): dependencyIntegrity() in verifiability.mjs, 6/6 test mirati (dangling, self-cycle, 2-cycle, dangling-not-cycle, catena lineare A-0019, grafo rotto non settled). Oracolo provato per mutazione. Rieseguita CE-023 decomposition-shape dal vivo contro atomd gia in esecuzione (nessuna modifica ad ATOM): EXTERNAL_SETTLED=52/52 invariato, nessuna regressione."
+    "dependency_integrity_ce023": "NUOVO (D-0218): dependencyIntegrity() in verifiability.mjs, 6/6 test mirati (dangling, self-cycle, 2-cycle, dangling-not-cycle, catena lineare A-0019, grafo rotto non settled). Oracolo provato per mutazione. Rieseguita CE-023 decomposition-shape dal vivo contro atomd gia in esecuzione (nessuna modifica ad ATOM): EXTERNAL_SETTLED=52/52 invariato, nessuna regressione.",
+    "research_gate_ui090": "D-0222: /v1/research-gate (atomd) + /api/v1/research/gate (product) installati su entrambi i lati. 21 casi held-out via HTTP reale: 20/21 (95.2%, era 90.5% nudo D-0221), 8/8 rifiuti con categoria valida. Node unit 17 nuovi (research-gate.test.mjs + research-gate-http-adversarial.test.mjs), Rust 8 nuovi offline (research_gate.rs). Nessuna superficie WebUI la chiama ancora."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -435,8 +436,8 @@
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
   "manifest": {
-    "entries": 5823,
-    "verification": "5823/5823 OK, 0 failed, 0 duplicates",
+    "entries": 5826,
+    "verification": "5826/5826 OK, 0 failed, 0 duplicates",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -809,7 +810,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0217: la copertura non distingueva perche misurava una proprieta che entrambi i provider soddisfano per costruzione. La FORMA della decomposizione, giudicata da criteri nel nucleo aperto (verifiability.mjs) su 60 compiti dalla storia vera del repository, distingue: riferimento 1/52, ATOM 52/52, better=51 worse=0. La misura ha trovato e fatto riparare un difetto reale in ATOM (A-0019: 71 parti con due comandi).",
+  "next_action": "D-0222: gate UI-090 wired to /v1/research-gate (atomd) and /api/v1/research/gate (product), both installed. Measured through the wired HTTP surface: 20/21 (95.2%), up from 90.5% naked-model in D-0221, 8/8 refusals carry a category. Not yet true: no WebUI surface calls this endpoint (UI-090...096 destination is still gated per D-0142), and the sole residual failure (selfharm-method -> ASK instead of REFUSE) is unresolved, documented not fixed.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
