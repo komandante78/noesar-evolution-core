@@ -5826,3 +5826,4 @@ e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/ref
 651898f17d27ce62d289863796c0ca2eb4f90075df3200ab0966246d54367b63  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
 40aebf2801a1a58ca83092329b9cea48c3fa73de83d21bfe5103e590c8dd4367  oci/Dockerfile.phase4-atom-all-surfaces
 163b41020ce7e8daaa988798cb59b7bd013c3b70c145493faca805eff52ee484  tools/measure-replay-fidelity.mjs
+f896911e4f82e8b71499a6007e89f6c1d0f84cf55917fa35464f342ec7e980c6  tools/measure-simulation-accuracy.mjs

@@ -3873,3 +3873,24 @@ numero** (`VERDICT=INSTRUMENT_UNPROVEN`) invece di dare un verde non guadagnato.
 non lo fa, e `11 · P1` spiega perché prometterlo si romperebbe alla prima verifica. Misura il
 livello di cui il prodotto è responsabile. E resta un confronto **col nostro provider di
 riferimento**: nessun benchmark contro un sistema terzo o un dataset pubblico esiste.
+
+## D-0228 · ATOM misurato contro la REALTÀ, e un limite strutturale trovato — 2026-07-29
+**Decision.** `tools/measure-simulation-accuracy.mjs`: `simulate` predice, poi le scritture
+vengono **eseguite davvero** e il filesystem è riletto. La verità di terreno è la directory
+dopo, non ciò che lo strumento si aspettava.
+**Why.** Primo banco che misura ATOM contro qualcosa che non siamo noi. Tutti gli altri
+confronti sono contro il nostro provider di riferimento.
+**Rejected.** Scrivere nel test l'esito atteso di ogni caso — sarebbe confrontare la
+predizione di ATOM con la predizione di *questo file*: un verdetto fornito dal chiamante non
+è un verdetto. L'attesa non è mai scritta: si osserva prima, si scrive, si osserva dopo.
+**Evidence.** **`EXACT_MATCH=6/7`, `FALSE_PREDICTIONS=1`, `MISSES=0`.** Oracolo provato prima
+di misurare. Il caso che fallisce è `rewrite-identical-content`: la scrittura produce i byte
+già presenti, quindi **non accade nulla**, ma `simulate` dice `modify`.
+**Causa strutturale, non un difetto di ATOM**: il Piano nomina **percorsi, non contenuti** —
+il contratto non dà a `simulate` il payload, quindi non *può* sapere che la scrittura sarebbe
+un no-op. Prevede con la precisione che l'informazione ricevuta consente.
+**Reversal cost.** Nessuno — strumento di misura.
+**Status.** Applicato. ⚠ Il caso avversario è tenuto **dentro** il banco, non rimosso per
+tenere pulito il punteggio. La direzione dell'errore conta: ATOM **non ha mai mancato** un
+cambiamento reale (`MISSES=0`), ne ha nominato uno che non è avvenuto — un predittore che
+avvisa in eccesso è revisionabile, uno che manca un cambiamento lo lascia passare inosservato.
