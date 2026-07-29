@@ -1078,6 +1078,62 @@ try {
   await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#bench', { timeout: 15000 });
 
+  at('workspace-actions');
+  // --- Plan -> Simulate -> Approve -> Diff, the workspace-actions backbone ---
+  // D-0190/D-0191 made this real on the server (executesPlans=true,
+  // executorWiredToProductActions=true). This drives the actual cycle through the UI —
+  // the Plan/Shadow run/Diff panels used to describe it as backbone work with no
+  // execution surface, which had stopped being true.
+  resetObservations();
+  await clickOrExplain(page, '[data-bench-tab="shadow"]');
+  await page.type('#planGoal', 'add a short note file for this e2e run');
+  await page.type('.plan-file-path', 'e2e-notes/browser-e2e-note.txt');
+  await page.type('.plan-file-contents', 'written by the browser E2E suite');
+  await clickOrExplain(page, '#planForm button.primary');
+  await page.waitForFunction(
+    () => /pending approval/.test(document.querySelector('#planRunBadge')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const planned = await page.evaluate(() => ({
+    badge: document.querySelector('#planRunBadge')?.textContent ?? '',
+    result: document.querySelector('#planResult')?.textContent ?? '',
+    actionsHidden: document.querySelector('#planActions')?.classList.contains('hidden'),
+  }));
+  check('a plan created through the Plan panel is pending approval, not a declared-empty placeholder',
+    /pending approval/.test(planned.badge) && /runId:/.test(planned.result) && planned.actionsHidden === false,
+    JSON.stringify(planned));
+
+  await clickOrExplain(page, '#planSimulateBtn');
+  await page.waitForFunction(
+    () => /Simulated/.test(document.querySelector('#shadowRunContent')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const simulated = await page.evaluate(() => document.querySelector('#shadowRunContent')?.textContent ?? '');
+  check('Simulate answers through the Shadow run panel, honestly (the reference provider declares itself unsupported rather than inventing a prediction)',
+    /Simulated/.test(simulated) && /not supported/.test(simulated), simulated);
+
+  await clickOrExplain(page, '#planApproveBtn');
+  await page.waitForFunction(
+    () => /promoted|refused/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const approved = await page.evaluate(() => ({
+    badge: document.querySelector('#planRunBadge')?.textContent ?? '',
+    diff: document.querySelector('#diffContent')?.textContent ?? '',
+    restoreHidden: document.querySelector('#planRestoreBtn')?.classList.contains('hidden'),
+  }));
+  check('UI-036 Approve executes the plan into the shadow and promotes; the Diff panel shows a real diff, not "no change to compare"',
+    /promoted/.test(approved.badge) && !/No change to compare/.test(approved.diff) && approved.restoreHidden === false,
+    JSON.stringify(approved));
+
+  await clickOrExplain(page, '#planRestoreBtn');
+  await page.waitForFunction(
+    () => /restored/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const restoredBadge = await page.evaluate(() => document.querySelector('#planRunBadge')?.textContent ?? '');
+  check('Restore reverts a promoted run', /restored/i.test(restoredBadge), restoredBadge);
+
   at('closure');
   // --- the NOT DONE box · UI-036, Critical --------------------------------
   //

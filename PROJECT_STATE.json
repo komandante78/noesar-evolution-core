@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_SIMULATION_ACCURACY_MEASURED_AGAINST_REALITY",
+  "phase_status": "STEP_WORKSPACE_ACTIONS_UI_WIRED",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "c3f218d (D-0225) - pushed, D-0226 pending",
-  "last_updated_utc": "2026-07-29T07:55:00Z",
+  "last_updated_utc": "2026-07-29T13:41:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -438,8 +438,8 @@
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
   "manifest": {
-    "entries": 5826,
-    "verification": "5826/5826 OK, 0 failed, 0 duplicates",
+    "entries": 5830,
+    "verification": "5830/5830 OK, 0 failed, 0 duplicates",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0228: ATOM measured against reality for the first time - simulate predictions vs the actual filesystem after real execution. 6/7 exact, 1 false prediction, 0 misses. The one failure is structural rather than a defect: the Plan names paths, not payloads, so simulate cannot know a write would produce bytes already on disk. Kept in the bench rather than removed. Benchmark coverage now four of twelve surfaces: decompose (shape 51/51 vs 0/51), UI-090 gate (20/21), replay fidelity (8/8), simulate accuracy (6/7). Still no third-party or public-dataset baseline anywhere - every other comparison is against our own reference provider. Next: ARCH-001 (zero-file three-child supervisor), or extend the reality-based bench to more surfaces.",
+  "next_action": "D-0229: the CodeN Evolution workbench Plan/Shadow run/Diff panels are wired to the real workspace-actions backbone (plan/simulate/approve/reject/restore) instead of declaring no execution surface. Installed as :phase4-workspace-actions-ui, verified live. Unchanged: the model-vs-bigger-benchmark decision from D-0228 is still Owner-reserved and open. Next: ARCH-001 (zero-file three-child supervisor), the reality-based simulate/decompose bench extended to more surfaces, or the Owner decision from D-0228.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

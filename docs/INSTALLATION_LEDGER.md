@@ -2992,3 +2992,11 @@ l'API SCIM per gestirlo sparisce.
   prodotto senza `NOESAR_EXTERNAL_SURFACES`.
 - **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessun dato toccato.
 - **§5a**: due container di progetto per lato (installazione + un rollback). Ombra di prova rimossa, radice condivisa vuota.
+
+## 2026-07-29 · `:phase4-workspace-actions-ui` — il workbench parla con il proprio motore
+- **Tag**: `noesar-evolution:phase4-workspace-actions-ui`, `FROM noesar-evolution:phase4-atom-all-surfaces`, solo `apps/webui-static/` copiato.
+- **Cosa cambia**: Plan/Shadow run/Diff nel workbench CodeN Evolution ora chiamano `/api/v1/workspace-actions/{plan,simulate,approve,reject,restore}` invece di mostrare testo statico "no execution surface". Nessuna route server nuova, nessun file server toccato.
+- **Sequenza §3a**: build offline (`--network=none --pull=false`) → bytes immagine provati identici all'albero (`docker cp`+`diff -rq`) → stop `-t 60` con `postgres.stopped clean:true` letto nel log → backup runtime a servizio fermo (12.4 MB, `BACKUPS/runtime.20260729T134008Z.tar.gz`) → predecessore rinominato `noesar-evolution.rollback-workspace-actions-ui-20260729T134008Z` → avviato con la configurazione riletta dal container sostituito (env/mount/porta/rete identici) → verificato dal vivo.
+- **Verifica dal vivo**: `Up (healthy)`, `RestartCount=0`, `/livez`+`/readyz` 200, `/api/v1/shadow` e `/api/v1/workspace-actions` 401 (gated) contro `/api/v1/does-not-exist` 404, markup servito contiene `id="planGoal"`/`planForm`/`shadowRunContent`/`diffContent`.
+- **§5a**: due container di progetto (installazione + un rollback, il più recente). Rollback precedente `rollback-all-surfaces-20260729T072501Z` rimosso (era `Exited`, mai `Up`); la sua immagine resta su disco. Reti (10) e volumi (28) invariati prima/dopo.
+- **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessuna route rimossa. Tornare a `:phase4-atom-all-surfaces` reintroduce solo la dicitura stale sulle tre superfici.

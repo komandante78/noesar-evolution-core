@@ -214,9 +214,9 @@
               <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="closure">Closure</button>
             </div>
             <div class="bench-panels">
-              <section class="bench-panel active" data-bench-panel="shadow"><h3>Shadow run</h3><p class="declared-empty">No shadow run exists on this installation. A result is promoted here after it has already run on a copy-on-write copy of the workspace — the diff, the tests and the time are facts before anyone is asked to approve them, which is what makes the button say <b>Promote</b> rather than <b>Allow</b>. Shadow execution is backbone work and this layer has no execution surface.</p></section>
+              <section class="bench-panel active" data-bench-panel="shadow"><h3>Shadow run</h3><div id="shadowRunContent"><p class="declared-empty">No plan exists in this session yet. Create one in the Plan panel — a result is shown here after it has already run on a copy-on-write copy of the workspace: the diff and the time are facts before anyone is asked to approve them, which is why Approve promotes rather than merely allows.</p></div></section>
               <section class="bench-panel" data-bench-panel="editor"><h3>Editor</h3><p class="declared-empty">Nothing is open. The editor edits a workspace the executor holds; without the executor there is no file to open and an editor over an imaginary tree would be a text box.</p></section>
-              <section class="bench-panel" data-bench-panel="diff"><h3>Diff</h3><p class="declared-empty">No change to compare. A diff here is computed against the shadow copy, never against the text of a reply — a reply describing a change is not the change.</p></section>
+              <section class="bench-panel" data-bench-panel="diff"><h3>Diff</h3><div id="diffContent"><p class="declared-empty">No change to compare yet. A diff here is computed against the shadow copy after Approve runs it, never against the text of a reply — a reply describing a change is not the change.</p></div></section>
               <section class="bench-panel" data-bench-panel="tests"><h3>Tests</h3><p class="declared-empty">No run. Tests are executed by the executor inside the sandbox and reported here with their output; nothing on this page runs anything.</p></section>
               <section class="bench-panel" data-bench-panel="logs"><h3>Logs</h3><p class="declared-empty">The product's own logs live in Settings → Health and logs. This panel is for the logs of <b>this</b> piece of work, which needs a run to have logs.</p><button class="text-button" data-view-link="settings/health">Open the product's logs</button></section>
               <section class="bench-panel" data-bench-panel="terminal"><h3>Terminal</h3><p class="declared-empty">The terminal is a region of its own below the bench, not a tab that disappears when you look at something else (<code>UI-033</code>). This tab moves focus to it.</p></section>
@@ -282,7 +282,28 @@
                authorisation lives here because that is what an authority request is. -->
           <aside class="bench-agent" id="benchAgent" aria-label="Agent">
             <section class="mini-panel"><h3>Conversation</h3><p class="declared-empty">The bench conversation shares the session with Chat and with the terminal shell. It is not a second chat with its own state.</p><button class="text-button" data-view-link="chat">Open Chat</button></section>
-            <section class="mini-panel"><h3>Plan</h3><p class="declared-empty">No plan object exists yet. The Plan is the backbone's first object: nothing changes except by executing an authorised one.</p></section>
+            <!-- UI-034/UI-036 continued. Plan is now wired to /api/v1/workspace-actions/plan
+                 (D-0190/D-0191 made executesPlans/executorWiredToProductActions true on the
+                 backend; this panel was the last place still claiming otherwise). The
+                 reference provider takes files verbatim — it has no model to invent a target
+                 from prose alone — so the form asks for exact paths and contents, the same
+                 shape workspace-actions.mjs::plan() requires. -->
+            <section class="mini-panel code-panel" id="planPanel">
+              <div class="panel-title"><h3>Plan</h3><span class="badge badge-off" id="planRunBadge">No plan yet</span></div>
+              <form class="form-stack" id="planForm">
+                <label>What this plan does<textarea id="planGoal" placeholder="One sentence: what should become true." required></textarea></label>
+                <div id="planFileRows"></div>
+                <button class="text-button" type="button" id="planAddFile">+ File</button>
+                <button class="primary" type="submit">Create plan</button>
+              </form>
+              <div id="planResult" class="result empty">No plan object exists yet. The Plan is the backbone's first object: nothing changes except by executing an authorised one.</div>
+              <div class="inline-form hidden" id="planActions">
+                <button class="secondary" type="button" id="planSimulateBtn">Simulate</button>
+                <button class="primary" type="button" id="planApproveBtn">Approve — promotes if clean</button>
+                <button class="danger" type="button" id="planRejectBtn">Reject</button>
+                <button class="text-button hidden" type="button" id="planRestoreBtn">Restore (undo promotion)</button>
+              </div>
+            </section>
             <section class="mini-panel"><h3>Hypothesis and evidence</h3><p class="declared-empty">No hypothesis. Evidence is what was recalculated, not what was asserted.</p></section>
             <section class="mini-panel"><h3>Tool activity</h3><div id="agentToolActivity" class="empty-state">No tool has run in this session.</div></section>
             <section class="mini-panel"><h3>Files read and written</h3><p class="declared-empty">None. This layer has no execution surface, so it reads and writes nothing.</p></section>

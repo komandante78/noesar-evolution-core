@@ -3894,3 +3894,23 @@ un no-op. Prevede con la precisione che l'informazione ricevuta consente.
 tenere pulito il punteggio. La direzione dell'errore conta: ATOM **non ha mai mancato** un
 cambiamento reale (`MISSES=0`), ne ha nominato uno che non è avvenuto — un predittore che
 avvisa in eccesso è revisionabile, uno che manca un cambiamento lo lascia passare inosservato.
+
+## D-0229 · Il workbench CodeN Evolution ottiene la superficie che il suo motore aveva già — 2026-07-29
+**Decision.** Le pagine Plan/Shadow run/Diff del workbench sono cablate a
+`/api/v1/workspace-actions/{plan,simulate,approve,reject,restore}` — il motore reale
+installato da `D-0190`/`D-0191` (`executesPlans=true`), mai consumato da nessuna
+superficie del prodotto fino ad ora.
+**Why.** s284 (DEBUG EVOLUTION, log CLAUDE.md host) ha verificato che "CodeN Evolution"
+non era costruito lato prodotto pur avendo un `ReasoningProvider` funzionante — queste tre
+pagine dichiaravano letteralmente "no execution surface"/"backbone work" mentre il backend
+eseguiva piani reali da mesi.
+**Rejected.** Wiring anche di Tests/Editor/Map/Logs — restano `declared-empty` perché
+`execute()` riceve sempre `tests:[]` su questo percorso: un'affermazione onesta, non un
+gap di questa fase.
+**Evidence.** unit 1118/1118 (invariato), ESLint 226f 0 errori, `scripts/test.sh` 10/10,
+browser E2E 319/319 (4 nuovi check guidano un ciclo reale plan→simulate→approve→diff→
+restore attraverso la UI), accessibilità 27/27, seeded-defect-proof 19/19, MANIFEST
+5830/5830.
+**Reversal cost.** Nessuno — nessuna route server aggiunta o rimossa, nessuna migrazione,
+`AI_STATE_VERSION` invariato. Il rollback reintroduce solo la dicitura stale.
+**Status.** Installato (`:phase4-workspace-actions-ui`, vedi `INSTALLATION_LEDGER.md`).

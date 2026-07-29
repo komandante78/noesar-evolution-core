@@ -71,7 +71,7 @@ let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let lo
 // server that enforces it.
 let currentPermissions=[];
 let mfaReplacement=null;
-const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
+const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],workspaceActionRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
 const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
 
@@ -1385,6 +1385,173 @@ async function loadCoden(){
   }
 }
 
+// --- workspace actions: Plan -> Simulate -> Approve/Reject -> Diff ---------
+// D-0190/D-0191 made the backend execute a real plan into a shadow and promote it on
+// success (executesPlans=true, executorWiredToProductActions=true) — this panel used to
+// be the last place still telling the reader the opposite. The reference provider takes
+// the files to touch verbatim (it has no model to invent a target from prose alone), so
+// the form asks for exact paths and contents, the same shape workspace-actions.mjs::plan()
+// requires.
+let currentWorkspaceRun=null;
+let currentSimulation=null;
+let currentApproveResult=null;
+function planFileRowHtml(){
+  return `<div class="plan-file-row"><div class="inline-form"><input class="plan-file-path" placeholder="path/to/file.txt"><button type="button" class="text-button plan-file-remove">Remove</button></div><textarea class="plan-file-contents" placeholder="New contents"></textarea></div>`;
+}
+function bindPlanFileRow(row){
+  row.querySelector('.plan-file-remove').addEventListener('click',()=>{
+    const rows=$('#planFileRows');
+    if(rows.children.length>1)row.remove();
+    else{row.querySelector('.plan-file-path').value='';row.querySelector('.plan-file-contents').value='';}
+  });
+}
+function addPlanFileRow(){
+  const rows=$('#planFileRows');if(!rows)return;
+  rows.insertAdjacentHTML('beforeend',planFileRowHtml());
+  bindPlanFileRow(rows.lastElementChild);
+}
+function planFiles(){
+  return $$('#planFileRows .plan-file-row').map((row)=>({
+    path:row.querySelector('.plan-file-path').value.trim(),
+    contents:row.querySelector('.plan-file-contents').value,
+  })).filter((file)=>file.path);
+}
+const PLAN_STATUS_LABEL={PENDING_APPROVAL:'pending approval',PROMOTED:'promoted',REFUSED:'refused',REJECTED:'rejected',RESTORED:'restored'};
+function provenanceSummary(entries){
+  return Array.isArray(entries)&&entries.length?[...new Set(entries.map((entry)=>entry.provider))].join(', '):'—';
+}
+function renderPlanActions(){
+  const box=$('#planActions');if(!box)return;
+  const has=Boolean(currentWorkspaceRun);
+  box.classList.toggle('hidden',!has);
+  if(!has)return;
+  const status=currentWorkspaceRun.status;
+  $('#planSimulateBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  $('#planApproveBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  $('#planRejectBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  $('#planRestoreBtn').classList.toggle('hidden',status!=='PROMOTED');
+}
+function renderPlanResult(){
+  const result=$('#planResult');const badge=$('#planRunBadge');
+  if(!result||!badge)return;
+  if(!currentWorkspaceRun){
+    result.textContent="No plan object exists yet. The Plan is the backbone's first object: nothing changes except by executing an authorised one.";
+    result.classList.add('empty');
+    badge.textContent='No plan yet';
+    renderPlanActions();return;
+  }
+  const run=currentWorkspaceRun;
+  result.classList.remove('empty');
+  badge.textContent=`${run.runId.slice(0,8)} · ${PLAN_STATUS_LABEL[run.status]??run.status}`;
+  const files=run.plan?.steps?.[0]?.files??[];
+  result.textContent=[
+    `runId: ${run.runId}`,
+    `status: ${run.status}`,
+    `goal: ${run.intent?.goal??'—'}`,
+    `risk: ${run.risk?.overall??'—'}`,
+    `confidence: ${typeof run.confidence?.value==='number'?run.confidence.value.toFixed(2):'—'}`,
+    `provider: ${provenanceSummary(run.provenance)}`,
+    `files: ${files.join(', ')||'—'}`,
+  ].join('\n');
+  renderPlanActions();
+}
+// Shadow run and Diff read from the same in-session state as Plan: one run, shown from
+// three angles. Both fall back to the honest declared-empty text this file shipped with
+// when nothing has been planned yet — the fix is that the fallback no longer claims the
+// backbone has no execution surface, because it does (D-0190/D-0191).
+function renderShadowContent(){
+  const box=$('#shadowRunContent');if(!box)return;
+  if(!currentWorkspaceRun){
+    box.innerHTML=`<p class="declared-empty">No plan exists in this session yet. Create one in the Plan panel — a result is shown here after it has already run on a copy-on-write copy of the workspace: the diff and the time are facts before anyone is asked to approve them, which is why Approve promotes rather than merely allows.</p>`;
+    return;
+  }
+  const parts=[`<div class="metric"><span>Run</span><b>${escapeHtml(currentWorkspaceRun.runId)}</b></div>`,
+    `<div class="metric"><span>Status</span><b>${escapeHtml(PLAN_STATUS_LABEL[currentWorkspaceRun.status]??currentWorkspaceRun.status)}</b></div>`];
+  if(currentSimulation){
+    const sim=currentSimulation.simulation??{};
+    parts.push(`<div class="metric"><span>Simulated</span><b>${sim.supported?`${(sim.predictedDiff??[]).length} predicted path(s)`:'not supported by this provider'}</b></div>`);
+    if(!sim.supported)parts.push(`<p class="declared-empty">The provider that answered (${escapeHtml(provenanceSummary(currentSimulation.provenance))}) declared \`supported: false\` rather than invent a prediction — a real answer, not an empty one dressed as a miss.</p>`);
+  }
+  if(currentApproveResult){
+    const {result,promoted,coverage}=currentApproveResult;
+    parts.push(`<div class="metric"><span>Executed</span><b>${result?.ok?'ok':'not ok'} · ${(result?.performed??[]).length} performed, ${(result?.refused??[]).length} refused</b></div>`);
+    parts.push(`<div class="metric"><span>Comparison</span><b>${result?.surprise?.clean?'clean':'surprised'}</b></div>`);
+    parts.push(`<div class="metric"><span>Promoted</span><b>${promoted?'yes':'no'}</b></div>`);
+    if(coverage)parts.push(`<div class="metric"><span>Claims recomputed</span><b>${coverage.recomputed}/${coverage.total} · ${coverage.contradicted?.length??0} contradicted</b></div>`);
+  }
+  box.innerHTML=parts.join('');
+}
+function renderDiffContent(){
+  const box=$('#diffContent');if(!box)return;
+  const entries=currentApproveResult?.diff??[];
+  if(!entries.length){
+    box.innerHTML=`<p class="declared-empty">No change to compare yet. A diff here is computed against the shadow copy after Approve runs it, never against the text of a reply — a reply describing a change is not the change.</p>`;
+    return;
+  }
+  box.innerHTML=`<div class="card-list">${entries.map((entry)=>`<article class="entity-card"><h3>${escapeHtml(entry.path)} <b>${escapeHtml(entry.status)}</b></h3>${entry.diffAvailable?`<pre>${escapeHtml(String(entry.before??'').slice(0,2000))}\n---\n${escapeHtml(String(entry.after??'').slice(0,2000))}</pre>`:'<p class="declared-empty">Content too large to show inline.</p>'}</article>`).join('')}</div>`;
+}
+function renderWorkspaceRun(){renderPlanResult();renderShadowContent();renderDiffContent();}
+function trackWorkspaceRunForClosure(run){
+  const existing=state.workspaceActionRuns.find((item)=>item.id===run.runId);
+  const label=`Workspace action · ${run.intent?.goal??run.runId}`;
+  if(existing)existing.label=label;else state.workspaceActionRuns.push({id:run.runId,label});
+}
+async function submitPlanForm(event){
+  event.preventDefault();
+  const files=planFiles();
+  if(!files.length){toast('At least one file with a path is required.',{kind:'error'});return;}
+  try{
+    const planned=await api('/api/v1/workspace-actions/plan',{method:'POST',body:JSON.stringify({
+      request:$('#planGoal').value,files,mode:'safe',policy:'restrictive',
+    })});
+    currentWorkspaceRun={...planned,status:'PENDING_APPROVAL'};
+    currentSimulation=null;currentApproveResult=null;
+    trackWorkspaceRunForClosure(currentWorkspaceRun);
+    renderWorkspaceRun();
+    toast('Plan created — pending approval.');
+  }catch(error){
+    if(error.status===503)toast(`Reasoning unavailable: ${error.value?.reason??error.message}`,{kind:'error'});
+    else toast(error.value?.reason??error.message,{kind:'error'});
+  }
+}
+async function runWorkspaceAction(kind){
+  if(!currentWorkspaceRun)return;
+  const runId=currentWorkspaceRun.runId;
+  try{
+    if(kind==='simulate'){
+      currentSimulation=await api(`/api/v1/workspace-actions/${runId}/simulate`,{method:'POST',body:JSON.stringify({})});
+      toast('Simulated.');
+    }else if(kind==='approve'){
+      currentApproveResult=await api(`/api/v1/workspace-actions/${runId}/approve`,{method:'POST',body:JSON.stringify({})});
+      currentWorkspaceRun.status=currentApproveResult.promoted?'PROMOTED':'REFUSED';
+      toast(currentApproveResult.promoted?'Approved and promoted.':'Approved, but not promoted — see Shadow run.');
+    }else if(kind==='reject'){
+      const reason=prompt('Reason for rejecting this plan (optional):')??null;
+      await api(`/api/v1/workspace-actions/${runId}/reject`,{method:'POST',body:JSON.stringify({reason})});
+      currentWorkspaceRun.status='REJECTED';
+      toast('Rejected.');
+    }else if(kind==='restore'){
+      await api(`/api/v1/workspace-actions/${runId}/restore`,{method:'POST',body:JSON.stringify({})});
+      currentWorkspaceRun.status='RESTORED';
+      toast('Restored — the promoted files were reverted.');
+    }
+    trackWorkspaceRunForClosure(currentWorkspaceRun);
+    renderWorkspaceRun();
+  }catch(error){
+    toast(error.value?.reason??error.message,{kind:'error'});
+  }
+}
+function initWorkspaceActions(){
+  addPlanFileRow();
+  $('#planAddFile')?.addEventListener('click',addPlanFileRow);
+  $('#planForm')?.addEventListener('submit',submitPlanForm);
+  $('#planSimulateBtn')?.addEventListener('click',()=>runWorkspaceAction('simulate'));
+  $('#planApproveBtn')?.addEventListener('click',()=>runWorkspaceAction('approve'));
+  $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));
+  $('#planRestoreBtn')?.addEventListener('click',()=>runWorkspaceAction('restore'));
+  renderWorkspaceRun();
+}
+
 // --- workflows -------------------------------------------------------------
 // WP-2. The step vocabulary is rendered from what the server reports, not from a copy
 // kept here. A hardcoded list in this file is exactly how the invariant panel came to
@@ -2203,6 +2370,7 @@ function initBench(){
   });
   renderTerminals();
   $('#closureForm')?.addEventListener('submit',submitClosure);
+  initWorkspaceActions();
 }
 function renderBenchNavigator(){
   const list=(items,label,empty)=>items.length
@@ -2251,7 +2419,8 @@ async function renderBenchStatus(){
 let benchOpenedAt=Date.now();
 async function loadClosures(){
   const runs=[...(state.agentRuns??[]).map((run)=>({id:run.id,label:`Agent run · ${run.goal??run.id}`})),
-    ...(state.workflowRuns??[]).map((run)=>({id:run.id,label:`Workflow run · ${run.id}`}))];
+    ...(state.workflowRuns??[]).map((run)=>({id:run.id,label:`Workflow run · ${run.id}`})),
+    ...(state.workspaceActionRuns??[])];
   const select=$('#closureRun');
   if(select){
     select.innerHTML=runs.length

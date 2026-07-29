@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The CodeN Evolution workbench gets the surface its own backbone already had.
+#
+# D-0190/D-0191 made the backend real months ago (`executesPlans=true`,
+# `executorWiredToProductActions=true`): a plan is proposed, simulated, approved into a
+# copy-on-write shadow, diffed and promoted through the same capability/executor chain
+# ATOM now also routes through. Nothing about that changed here. What was still false was
+# the workbench page itself — the Plan, Shadow run and Diff panels read "no plan object
+# exists yet" / "this layer has no execution surface" / "no change to compare" as their
+# ONLY state, regardless of what the backend could already do. A DebugLab-style sweep in
+# s284 (see docs/DECISION_LOG.md) named this precisely: the reasoning backbone existed and
+# nothing in the product routed a user to it.
+#
+# CHANGED HERE (apps/webui-static/ only — no server route changed, no new endpoint):
+#   index.html   Plan panel: a form (goal + repeatable path/contents rows) replaces the
+#                declared-empty placeholder. Shadow run and Diff panels get a content div
+#                each, still falling back to honest empty-state text when no plan exists
+#                in the session — the fix is that the fallback no longer claims the
+#                backbone has no execution surface, because it does.
+#   app.js       Wires the form to POST /api/v1/workspace-actions/plan, then the
+#                Simulate/Approve/Reject/Restore buttons to the matching endpoints
+#                already exposed by workspace-actions.mjs. Renders the real run object
+#                (risk, confidence, provenance, diff) instead of a static string. A
+#                promoted or rejected run is also added to state.workspaceActionRuns so
+#                the Closure panel's runId dropdown — which already merges agent and
+#                workflow runs the same way — can name it.
+#
+# NOT changed: services/reference-control-plane/src/* (no server-side behaviour is new),
+# the DELETE/EXECUTE refusal, the executor, the capability minter, ATOM routing.
+#
+# VERIFIED THIS PHASE: unit 1118/1118 (unchanged, no server file touched), ESLint 226
+# files 0 errors, scripts/test.sh 10/10, browser E2E 319/319 (4 new checks drive an actual
+# plan -> simulate -> approve -> diff -> restore cycle through the UI, not just markup
+# shape), accessibility 27/27, seeded-defect-proof 19/19, MANIFEST 5829/5829.
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched, no
+# server route added or removed. Returning to :phase4-atom-all-surfaces reintroduces the
+# stale "no execution surface" claim on these three panels — a labelling regression, not
+# a capability loss: the backend keeps executing plans exactly as before either way.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-atom-all-surfaces
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001
