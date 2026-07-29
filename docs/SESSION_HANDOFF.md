@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-29 (`D-0229`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-29 (`D-0230`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -26,83 +26,71 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0229`: il workbench CodeN Evolution parla ora col proprio motore.** s284 (DEBUG
-EVOLUTION, log CLAUDE.md dell'host — un progetto diverso usato per scansionare questo)
-aveva verificato che "CodeN Evolution" non era costruito lato prodotto: il `ReasoningProvider`
-era deterministico e funzionante, ma **nessuna pagina lo consumava**. Verifica diretta sul
-workbench (`apps/webui-static/index.html#view-coden`) ha trovato la causa esatta — i pannelli
-Plan/Shadow run/Diff dichiaravano ancora *"no plan object exists yet"* / *"this layer has no
-execution surface"* / *"no change to compare"*, mentre il backend (`workspace-actions.mjs`)
-esegue piani reali dentro un'ombra copy-on-write e promuove su successo da `D-0190`/`D-0191`
-(`executesPlans=true`, `executorWiredToProductActions=true`) — mesi prima, mai collegato.
+**`D-0230`, stessa giornata di `D-0229`: il resto del workbench, su istruzione esplicita
+dell'Owner — «lo voglio finito», non fermarsi dopo un solo pannello e riportare.**
+Cablati **Map** (`/api/v1/repo-map/scan`+`/search`, già costruiti da tempo, mai consumati
+da nessuna pagina — languages/manifests/entry point/symbol index/dependency map + ricerca
+letterale), **Problems/Editor/Preview** (nessuna nuova route: dati già arrivati da
+plan()/approve(), il pannello semplicemente non li mostrava mai), **Logs** (nuova
+`GET /api/v1/events/:correlationId`, stessa fiducia di `GET /api/v1/workspace-actions/:id`
+— basta una sessione, un id ignoto torna trail vuoto non 404).
 
-**Cablato**: il pannello Plan è ora un form (obiettivo + righe percorso/contenuto ripetibili)
-che chiama `POST /api/v1/workspace-actions/plan`; i pulsanti Simulate/Approve/Reject/Restore
-chiamano gli endpoint già esposti; Shadow run e Diff mostrano l'esito reale (rischio,
-confidenza, provenienza, diff prima/dopo) invece del testo statico. Un run promosso o
-rifiutato entra anche in `state.workspaceActionRuns`, cosicché il menu a tendina di Closure
-— che già unisce agent run e workflow run allo stesso modo — possa nominarlo. **Nessuna route
-server nuova, nessun file di `services/reference-control-plane/src/` toccato.**
+**Bug reale trovato COSTRUENDO, non leggendo**: `executor.mjs` restituisce
+`performed`/`refused` come **conteggi numerici**, non array. Il codice iniziale faceva
+`result?.refused??[]` e poi `for...of` su quel valore — ma `0` è un valore *definito*,
+quindi `??` non lo tocca, e `for...of 0` lancia "0 is not iterable" al primo run **pulito**
+(zero rifiuti). Il browser E2E lo ha fatto fallire (2/325 FAIL) prima della riparazione,
+poi 325/325 dopo. Riparato leggendo `result.outcomes.filter(o=>!o.performed)` per i passi
+rifiutati e i due conteggi direttamente (non più `.length` su un numero).
 
-**Deliberatamente fuori scope**: Tests/Editor/Map/Logs restano `declared-empty` — `execute()`
-riceve sempre `tests:[]` su questo percorso, quindi il pannello Tests non ha davvero nulla da
-mostrare; è un'affermazione onesta, non un gap di questa fase.
-
-**Stato dei benchmark, invariato da `D-0228`** — quattro misure su dodici superfici (decompose
-51/51 vs 0/51, gate `UI-090` 20/21, fedeltà replay 8/8, accuratezza `simulate` 6/7). Nessun
-benchmark contro un sistema terzo esiste ancora.
-
-**Decisione ancora rimandata all'Owner, invariata da `D-0228`** — "un modello vero nel
-circuito del ragionamento" (quale delle 10 superfici deterministiche sostituire con una
-chiamata LLM, decisione di design) contro "un banco `simulate`/`decompose` su cambiamenti
-reali e complessi" (più piccolo, nessun modello nuovo). **Se nessuna delle due viene scelta**:
-`ARCH-001` — il supervisore PID 1 a tre figli, tuttora zero file, il criterio critico più
-grosso rimasto — oppure estendere il banco basato sulla realtà (`D-0227`/`D-0228`) ad altre
-superfici.
+**Deliberatamente NON costruito, confini non lacune** (spiegato all'Owner nella stessa
+sessione, non un rifiuto silenzioso):
+- **Esecuzione test dichiarati dal piano** — `execute()` riceve sempre `tests:[]` su
+  questo percorso; riaprirlo sarebbe esecuzione di codice arbitrario travestita da
+  funzionalità. `workspace-actions.mjs` rifiuta EXECUTE/DELETE "permanently and on purpose".
+- **Terminal / CodeN Evolution TUI** — serve un vero protocollo di sessione su unix
+  socket e una shell reale attaccata: un sottosistema a sé, non un pannello da cablare.
+- **La decisione modello-vero-nel-ciclo** — resta quella dell'Owner da `D-0228`, non
+  toccata qui.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto**: `noesar-evolution:phase4-workspace-actions-ui` · `Up (healthy)` ·
-  `RestartCount=0` · `192.168.178.100:8100→8088` · stessa configurazione (env/mount/rete/
-  porta) del predecessore, riletta dal container sostituito, non da memoria.
-  Rollback preservato: `noesar-evolution.rollback-workspace-actions-ui-20260729T134008Z`
-  (`:phase4-atom-all-surfaces`).
+- **Prodotto**: `noesar-evolution:phase4-workspace-actions-panels` · `Up (healthy)` ·
+  `RestartCount=0` · `192.168.178.100:8100→8088` · stessa configurazione del predecessore,
+  riletta dal container sostituito. Rollback preservato:
+  `noesar-evolution.rollback-workspace-actions-panels-20260729T141027Z`
+  (`:phase4-workspace-actions-ui`).
 - **atomd**: invariato, `atom-evolution:atomd` · `Up (healthy)` · `noesar-evolution-net`.
-- **Due container per progetto** (installazione + 1 rollback, il più recente — il
-  precedente `rollback-all-surfaces-20260729T072501Z` rimosso per §5a, immagine intatta
-  su disco). Reti (10) e volumi (28) invariati prima/dopo la rimozione.
-- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato, nessuna
-  route rimossa. ⚠ Tornare a `:phase4-atom-all-surfaces` reintroduce solo la dicitura stale
-  sulle tre superfici — il backend continua a eseguire piani esattamente come prima in
-  entrambi i casi.
+- **Due container per progetto** (installazione + 1 rollback, il più recente). Reti (10)
+  e volumi (28) invariati prima/dopo entrambe le installazioni di oggi.
+- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato.
+  ⚠ Tornare a `:phase4-workspace-actions-ui` toglie solo Map/Problems/Editor/Preview/Logs
+  e la route eventi; Plan/Shadow/Diff (`D-0229`) restano invariati.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
 - **Nessuna superficie WebUI consuma ancora `/api/v1/research/gate`** — invariato da `D-0222`.
 - **`ATOM_PROVIDER_MODEL_BACKED` in `lib.rs` resta `false`** — invariato da `D-0226`.
-- **I pannelli Tests/Editor/Map/Logs del workbench restano `declared-empty`** — non toccati
-  in questa fase, per la ragione dichiarata sopra.
-- **Il fallimento residuo su `selfharm-method`** (`ASK` invece di `REFUSE`) non è stato
-  toccato — invariato da `D-0222`.
+- **Tests/Terminal/CodeN Evolution TUI restano non costruiti** — confini dichiarati sopra,
+  non lacune di questa fase.
+- **Il fallimento residuo su `selfharm-method`** (`ASK` invece di `REFUSE`) non toccato.
 
 ## ➜ Blocker aperti
 
 `B-002` (low, nessun `gitleaks`/`trufflehog` installabile — regola 45; scan manuale a
-pattern, 0 reperti su questa fase). Nessun altro.
+pattern, 0 reperti su entrambe le fasi di oggi). Nessun altro.
 
-## ➜ Verificato in questa fase
+## ➜ Verificato in questa fase (secondo giro, D-0230)
 
-Unit 1118/1118 (invariato, nessun file server toccato), ESLint 226 file 0 errori,
-`scripts/test.sh` 10/10, browser E2E 319/319 (4 nuovi check: un ciclo reale plan→simulate→
-approve→diff→restore guidato attraverso la UI, non solo la forma del DOM), accessibilità
-27/27, seeded-defect-proof 19/19, MANIFEST 5830/5830. Sequenza `§3a` completa: build offline
-→ byte immagine provati identici all'albero → stop pulito (`postgres.stopped clean:true`
-letto nel log) → backup runtime a servizio fermo → predecessore preservato → avviato con
-configurazione riletta → verificato dal vivo (`/livez`/`/readyz` 200, markup con i nuovi id
-`planGoal`/`planForm`/`shadowRunContent`/`diffContent` confermato via `curl`).
+Unit 1119/1119 (+1, il nuovo test HTTP sugli eventi), ESLint 226 file 0 errori,
+`scripts/test.sh` 10/10, `auth-http-smoke`+`http-smoke` PASS (nuova route), browser E2E
+**325/325** (6 nuovi check: scan+ricerca Map, Problems/Editor/Preview/Logs sul run reale
+— inclusa la riparazione performed/refused vista fallire e poi passare), accessibilità
+27/27, seeded-defect-proof 19/19, MANIFEST 5831/5831. Sequenza `§3a` completa per entrambe
+le installazioni della giornata (`D-0229` e `D-0230`).
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
 - **Il percorso host per l'ombra condivisa** con `atomd` — invariato da `D-0216`.
-- Le altre domande storiche (repo remoto `B-001` risposto/chiuso s277-278; le restanti
-  vivono nel corpo di `D-0223`/`D-0228` più sopra nel tempo, non ripetute qui).
+- **Modello vero nel ciclo di ragionamento vs. banco su scritture reali** — invariato da
+  `D-0228`, non deciso in nessuna delle due fasi di oggi.

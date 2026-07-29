@@ -1126,6 +1126,52 @@ try {
     /promoted/.test(approved.badge) && !/No change to compare/.test(approved.diff) && approved.restoreHidden === false,
     JSON.stringify(approved));
 
+  // --- D-0230: Editor/Preview/Problems/Logs also read from the same run -----
+  const secondaryPanels = await page.evaluate(() => ({
+    editor: document.querySelector('#editorContent')?.textContent ?? '',
+    preview: document.querySelector('#previewContent')?.textContent ?? '',
+    problems: document.querySelector('#problemsContent')?.textContent ?? '',
+  }));
+  check("Editor shows the run's own promoted content, not a declared-empty placeholder",
+    /promoted content/.test(secondaryPanels.editor) && /written by the browser E2E suite/.test(secondaryPanels.editor),
+    JSON.stringify(secondaryPanels).slice(0, 300));
+  check("Preview renders the promoted file's content for a plain-text artefact",
+    /written by the browser E2E suite/.test(secondaryPanels.preview), secondaryPanels.preview.slice(0, 200));
+  check('Problems reports a clean run rather than "nothing has run"',
+    /run was clean/.test(secondaryPanels.problems), secondaryPanels.problems);
+
+  await clickOrExplain(page, '[data-bench-tab="logs"]');
+  await page.waitForFunction(
+    () => /workspace_action\.promoted/.test(document.querySelector('#workLogsContent')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const workLogs = await page.evaluate(() => document.querySelector('#workLogsContent')?.textContent ?? '');
+  check("D-0230 Logs shows this run's own causal event trail through GET /api/v1/events/:correlationId, ending in a promotion",
+    /workspace_action\.planned/.test(workLogs) && /workspace_action\.promoted/.test(workLogs), workLogs.slice(0, 400));
+
+  // --- D-0230: Map — read-only repository understanding, workspace-scoped, not per-run ---
+  await clickOrExplain(page, '[data-bench-tab="map"]');
+  await clickOrExplain(page, '#mapScanBtn');
+  await page.waitForFunction(
+    () => /Files scanned/.test(document.querySelector('#mapContent')?.textContent ?? ''),
+    { timeout: 30000 },
+  );
+  const mapResult = await page.evaluate(() => document.querySelector('#mapContent')?.textContent ?? '');
+  check('Map scans the real workspace and reports languages/entry points instead of "repository understanding is backbone work"',
+    /Files scanned/.test(mapResult) && /Languages/.test(mapResult) && /Entry points/.test(mapResult),
+    mapResult.slice(0, 300));
+
+  await page.type('#mapSearchQuery', 'browser E2E suite');
+  await clickOrExplain(page, '#mapSearchForm button');
+  await page.waitForFunction(
+    () => (document.querySelector('#mapSearchResults')?.textContent ?? '').trim() !== '',
+    { timeout: 15000 },
+  );
+  const mapSearch = await page.evaluate(() => document.querySelector('#mapSearchResults')?.textContent ?? '');
+  check('Map search finds a literal match inside the promoted file',
+    /browser-e2e-note\.txt/.test(mapSearch) && !/No match/.test(mapSearch), mapSearch.slice(0, 200));
+
+  await clickOrExplain(page, '[data-bench-tab="shadow"]');
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(
     () => /restored/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),

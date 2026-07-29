@@ -225,4 +225,33 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     assert.equal(existsSync(join(workspace, 'legitimate-http.txt')), true);
     assert.equal(readFileSync(join(workspace, 'legitimate-http.txt'), 'utf8'), 'real content\n');
   });
+
+  // ------------------------------------------------------------ the Logs panel's endpoint
+  test('GET /api/v1/events/:correlationId · requires a session, and returns this run\'s own causal trail', async () => {
+    const anonymous = await raw('/api/v1/events/anything');
+    assert.equal(anonymous.status, 401, 'the per-run event trail must not be readable by an anonymous caller');
+
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST', payload: { request: 'events trail probe', files: [{ path: 'events-trail.txt', contents: 'x' }] },
+    });
+    assert.equal(planned.status, 201);
+    const approved = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, { method: 'POST' });
+    assert.equal(approved.status, 200);
+
+    const trail = await authed(`/api/v1/events/${planned.json.runId}`);
+    assert.equal(trail.status, 200);
+    assert.equal(trail.json.correlationId, planned.json.runId);
+    const actions = trail.json.events.map((event) => event.action);
+    assert.deepEqual(actions, [
+      'workspace_action.planned', 'workspace_action.approved', 'capability.minted',
+      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified', 'workspace_action.promoted',
+    ], `the trail must be this run's own events, in causal order: ${JSON.stringify(actions)}`);
+
+    // An id that never correlated to anything returns an empty trail, not 404: the ledger
+    // cannot tell "no such run" from "this run recorded nothing yet", and a 404 here would
+    // claim a distinction the route does not actually have.
+    const unknown = await authed('/api/v1/events/no-such-run-id');
+    assert.equal(unknown.status, 200);
+    assert.deepEqual(unknown.json.events, []);
+  });
 });

@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0230: the rest of the CodeN Evolution workbench gets the surfaces its own backbone,
+# and its own read-only repository tooling, already had.
+#
+# Owner instruction this phase: "lo voglio finito" — do not stop after wiring one pair of
+# panels and report; keep going on every gap that is safely buildable, and be explicit
+# about the two that are not (see below). This image is that continuation of
+# :phase4-workspace-actions-ui.
+#
+# CHANGED HERE:
+#   Map        wired to /api/v1/repo-map/scan + /search (phase 1 step 7, built long ago,
+#              consumed by no page until now) — languages, manifests, entry points, symbol
+#              index, dependency map, plus a literal search box. Read-only, workspace-scoped.
+#   Problems   nothing new fetched: refused steps, an unclean shadow comparison and
+#              contradicted claims already arrive on plan()/approve() -- this panel had
+#              simply never rendered them. Fixed a real bug found writing it: executor.mjs
+#              returns `performed`/`refused` as COUNTS, not arrays -- treating a `0` count
+#              as `?? []` does nothing (nullish coalescing does not touch a defined 0), and
+#              `for...of` on that bare number threw "0 is not iterable" the first time a
+#              clean run reached this panel. Caught by the browser suite before this shipped
+#              (see the two FAILs recorded in this phase's session transcript, not repeated
+#              in a decision entry since the fix landed same-session and the suite is green).
+#   Editor,    view-only renderings of the current run's files (proposed before Approve,
+#   Preview    promoted after) sourced from data the page already had. Deliberately NOT a
+#              second write path: every real change still goes only through Plan -> Approve,
+#              so a live edit box here would let a byte reach the workspace without a plan,
+#              a token or a shadow comparison -- the exact chain the rest of this page
+#              enforces. Preview renders HTML in a sandboxed ("") srcdoc iframe -- a rendered
+#              artefact, never executable content from the workspace.
+#   Logs       new read-only route GET /api/v1/events/:correlationId (server.mjs) exposes
+#              EventLedger.correlation(), which already existed and had no HTTP surface.
+#              Same trust level as GET /api/v1/workspace-actions/:id -- a session is enough,
+#              this is the causal trail of a run the caller already holds the object for, not
+#              the aggregate audit view `audit.read` gates. An unknown id returns an empty
+#              trail, not 404: the ledger cannot distinguish "no such run" from "recorded
+#              nothing yet", and inventing that distinction would claim knowledge the route
+#              does not have. New adversarial test in workspace-actions-http-adversarial.test.mjs.
+#
+# DELIBERATELY NOT BUILT, STATED RATHER THAN DISCOVERED (these are boundaries, not gaps):
+#   Tests execution     execute() is passed tests:[] on this path, always -- running a
+#                       plan-declared command would be arbitrary code execution wearing the
+#                       shape of this page. workspace-actions.mjs already refuses EXECUTE
+#                       and DELETE "permanently and on purpose"; this image does not reopen
+#                       that boundary under pressure to "finish" the workbench.
+#   Terminal / the      needs a real session protocol over a unix socket and an attached
+#   CodeN Evolution TUI shell -- a distinct subsystem the product's own design docs already
+#                       treat as separate, later work, not a panel to bolt on in one image.
+#   The model-in-the-   still the Owner's decision from D-0228 (which of the ten
+#   loop decision       deterministic surfaces to replace with a real model, if any) --
+#                       not decided here, not something this phase's scope covers.
+#
+# VERIFIED THIS PHASE: unit 1119/1119, ESLint 226 files 0 errors, scripts/test.sh 10/10,
+# auth-http-smoke + http-smoke PASS (new route), browser E2E 325/325 (6 new checks: Map
+# scan+search, Problems/Editor/Preview/Logs all read the real run, including the
+# performed/refused fix caught red then green in this same phase), accessibility 27/27,
+# seeded-defect-proof 19/19, MANIFEST 5830/5830.
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched. Returning
+# to :phase4-workspace-actions-ui removes the new GET /api/v1/events/:correlationId route
+# and the five panels' wiring; Plan/Shadow run/Diff keep working exactly as before.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-workspace-actions-ui
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

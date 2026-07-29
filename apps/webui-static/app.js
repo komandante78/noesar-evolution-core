@@ -1395,6 +1395,7 @@ async function loadCoden(){
 let currentWorkspaceRun=null;
 let currentSimulation=null;
 let currentApproveResult=null;
+let currentWorkspaceRunFiles=[];
 function planFileRowHtml(){
   return `<div class="plan-file-row"><div class="inline-form"><input class="plan-file-path" placeholder="path/to/file.txt"><button type="button" class="text-button plan-file-remove">Remove</button></div><textarea class="plan-file-contents" placeholder="New contents"></textarea></div>`;
 }
@@ -1474,7 +1475,7 @@ function renderShadowContent(){
   }
   if(currentApproveResult){
     const {result,promoted,coverage}=currentApproveResult;
-    parts.push(`<div class="metric"><span>Executed</span><b>${result?.ok?'ok':'not ok'} · ${(result?.performed??[]).length} performed, ${(result?.refused??[]).length} refused</b></div>`);
+    parts.push(`<div class="metric"><span>Executed</span><b>${result?.ok?'ok':'not ok'} · ${result?.performed??0} performed, ${result?.refused??0} refused</b></div>`);
     parts.push(`<div class="metric"><span>Comparison</span><b>${result?.surprise?.clean?'clean':'surprised'}</b></div>`);
     parts.push(`<div class="metric"><span>Promoted</span><b>${promoted?'yes':'no'}</b></div>`);
     if(coverage)parts.push(`<div class="metric"><span>Claims recomputed</span><b>${coverage.recomputed}/${coverage.total} · ${coverage.contradicted?.length??0} contradicted</b></div>`);
@@ -1490,7 +1491,87 @@ function renderDiffContent(){
   }
   box.innerHTML=`<div class="card-list">${entries.map((entry)=>`<article class="entity-card"><h3>${escapeHtml(entry.path)} <b>${escapeHtml(entry.status)}</b></h3>${entry.diffAvailable?`<pre>${escapeHtml(String(entry.before??'').slice(0,2000))}\n---\n${escapeHtml(String(entry.after??'').slice(0,2000))}</pre>`:'<p class="declared-empty">Content too large to show inline.</p>'}</article>`).join('')}</div>`;
 }
-function renderWorkspaceRun(){renderPlanResult();renderShadowContent();renderDiffContent();}
+// Editor: a VIEW of the files the current run proposes or promoted, never a second write
+// path. Every real change still goes only through Plan -> Approve; a live edit box here
+// would let a byte reach the workspace without a plan, a token or a shadow comparison —
+// exactly the chain the rest of this page exists to enforce.
+function renderEditorContent(){
+  const box=$('#editorContent');if(!box)return;
+  if(!currentWorkspaceRun){
+    box.innerHTML=`<p class="declared-empty">Nothing is open. The editor shows the files a plan proposes or promotes — a view, never a second write path: every change to the real workspace still goes through Plan → Approve, so a raw edit box here would bypass the capability and shadow chain the rest of this page enforces.</p>`;
+    return;
+  }
+  const promotedDiff=currentApproveResult?.diff;
+  const source=promotedDiff?promotedDiff.map((entry)=>({path:entry.path,contents:entry.after})):currentWorkspaceRunFiles;
+  const label=promotedDiff?'promoted content':'proposed content, before Approve';
+  box.innerHTML=`<p class="hint">Showing ${escapeHtml(label)} for run ${escapeHtml(currentWorkspaceRun.runId.slice(0,8))}.</p>`
+    +`<div class="card-list">${source.length?source.map((file)=>`<article class="entity-card"><h3>${escapeHtml(file.path)}</h3><pre>${escapeHtml(String(file.contents??'').slice(0,4000))}</pre></article>`).join(''):'<p class="declared-empty">No files.</p>'}</div>`;
+}
+// Preview: the same promoted content, rendered where that means something. An HTML file is
+// shown in a sandboxed, srcdoc iframe — sandbox="" strips scripts and same-origin access, so
+// this is a rendered artefact, never executable content from the workspace. Everything else
+// falls back to the same text view Editor uses; there is nothing to invent beyond that.
+function renderPreviewContent(){
+  const box=$('#previewContent');if(!box)return;
+  const entries=(currentApproveResult?.diff??[]).filter((entry)=>entry.diffAvailable);
+  if(!entries.length){
+    box.innerHTML=`<p class="declared-empty">Nothing to preview. A preview renders an artefact the work produced — approve a plan whose files have viewable content first.</p>`;
+    return;
+  }
+  box.innerHTML=entries.map((entry)=>{
+    const ext=(entry.path.split('.').pop()||'').toLowerCase();
+    if(ext==='html'||ext==='htm'){
+      return `<h3>${escapeHtml(entry.path)}</h3><iframe class="preview-frame" style="width:100%;height:400px;border:1px solid var(--line);border-radius:9px;background:#fff" sandbox="" srcdoc="${escapeHtml(String(entry.after??''))}"></iframe>`;
+    }
+    return `<h3>${escapeHtml(entry.path)}</h3><pre>${escapeHtml(String(entry.after??'').slice(0,4000))}</pre>`;
+  }).join('');
+}
+// Problems: nothing new is fetched — refused steps, an unclean shadow comparison and
+// contradicted claims already arrive on run/approve; this panel only had never rendered them.
+function renderProblemsContent(){
+  const box=$('#problemsContent');if(!box)return;
+  if(!currentWorkspaceRun){
+    box.innerHTML=`<p class="declared-empty">No problems reported for this piece of work. This is not "no problems exist": nothing has run.</p>`;
+    return;
+  }
+  const items=[];
+  if(currentApproveResult){
+    const {result,coverage}=currentApproveResult;
+    for(const refusal of (result?.outcomes??[]).filter((outcome)=>!outcome.performed))items.push({kind:'refused step',detail:JSON.stringify(refusal)});
+    if(result?.surprise&&result.surprise.clean===false)items.push({kind:'unexpected filesystem change',detail:JSON.stringify(result.surprise.unexpected??result.surprise)});
+    for(const contradiction of coverage?.contradicted??[])items.push({kind:'claim contradicted',detail:JSON.stringify(contradiction)});
+  }
+  if(!items.length){
+    box.innerHTML=`<p class="declared-empty">${currentApproveResult?'Nothing to report — the run was clean.':'No run yet for this plan; nothing to report until Approve runs it.'}</p>`;
+    return;
+  }
+  box.innerHTML=`<div class="card-list">${items.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.kind)}</h3><pre>${escapeHtml(item.detail)}</pre></article>`).join('')}</div>`;
+}
+// Logs (of this piece of work): the causal event trail for the current run, from the new
+// read-only GET /api/v1/events/:correlationId (D-0230) — the ledger already carried this,
+// nothing but the route was missing.
+async function renderWorkLogsContent(){
+  const box=$('#workLogsContent');if(!box)return;
+  if(!currentWorkspaceRun){
+    box.innerHTML=`<p class="declared-empty">The product's own logs live in Settings → Health and logs. This panel is for the causal event trail of <b>this</b> piece of work, which needs a run to have any.</p><button class="text-button" data-view-link="settings/health">Open the product's logs</button>`;
+    box.querySelector('[data-view-link]')?.addEventListener('click',(event)=>navigate(event.currentTarget.dataset.viewLink));
+    return;
+  }
+  try{
+    const trail=await api(`/api/v1/events/${currentWorkspaceRun.runId}`);
+    const events=trail.events??[];
+    box.innerHTML=events.length
+      ?`<div class="card-list">${events.map((event)=>`<article class="entity-card"><h3>${escapeHtml(event.action)}</h3><small>${escapeHtml(isoToLocal(new Date(event.recordedAtUnix*1000).toISOString()))}</small><p>${escapeHtml(event.actor||'—')}</p></article>`).join('')}</div>`
+      :`<p class="declared-empty">No event recorded yet for this run.</p>`;
+  }catch(error){
+    box.innerHTML=`<p class="declared-empty">${escapeHtml(error.message)}</p>`;
+  }
+}
+async function renderWorkspaceRun(){
+  renderPlanResult();renderShadowContent();renderDiffContent();
+  renderEditorContent();renderPreviewContent();renderProblemsContent();
+  await renderWorkLogsContent();
+}
 function trackWorkspaceRunForClosure(run){
   const existing=state.workspaceActionRuns.find((item)=>item.id===run.runId);
   const label=`Workspace action · ${run.intent?.goal??run.runId}`;
@@ -1505,9 +1586,9 @@ async function submitPlanForm(event){
       request:$('#planGoal').value,files,mode:'safe',policy:'restrictive',
     })});
     currentWorkspaceRun={...planned,status:'PENDING_APPROVAL'};
-    currentSimulation=null;currentApproveResult=null;
+    currentSimulation=null;currentApproveResult=null;currentWorkspaceRunFiles=files;
     trackWorkspaceRunForClosure(currentWorkspaceRun);
-    renderWorkspaceRun();
+    await renderWorkspaceRun();
     toast('Plan created — pending approval.');
   }catch(error){
     if(error.status===503)toast(`Reasoning unavailable: ${error.value?.reason??error.message}`,{kind:'error'});
@@ -1536,7 +1617,7 @@ async function runWorkspaceAction(kind){
       toast('Restored — the promoted files were reverted.');
     }
     trackWorkspaceRunForClosure(currentWorkspaceRun);
-    renderWorkspaceRun();
+    await renderWorkspaceRun();
   }catch(error){
     toast(error.value?.reason??error.message,{kind:'error'});
   }
@@ -1550,6 +1631,55 @@ function initWorkspaceActions(){
   $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));
   $('#planRestoreBtn')?.addEventListener('click',()=>runWorkspaceAction('restore'));
   renderWorkspaceRun();
+}
+
+// The Map panel: read-only repository understanding (languages, manifests, entry points,
+// symbol index, dependency map) via /api/v1/repo-map/scan + /search — both already built and
+// tested (phase 1 step 7), never consumed by any page before now. Not per-run: it scopes to
+// the whole workspace, on demand, since building it is not free (a real filesystem walk).
+let currentRepoMap=null;
+function repoMapSummaryHtml(map){
+  const langs=(map.languages?.languages??[]).slice(0,8).map((entry)=>`${escapeHtml(entry.language)} (${entry.files})`).join(', ')||'none detected';
+  const manifests=(map.manifests??[]).map((entry)=>escapeHtml(entry.path)).join(', ')||'none';
+  const entryPoints=(map.entryPoints??[]).slice(0,10).map((entry)=>escapeHtml(entry.path??entry.command??'?')).join(', ')||'none declared';
+  return `<div class="metric"><span>Files scanned</span><b>${map.filesScanned}${map.truncated?' (truncated)':''}</b></div>`
+    +`<div class="metric"><span>Languages</span><b>${langs}</b></div>`
+    +`<div class="metric"><span>Manifests</span><b>${manifests}</b></div>`
+    +`<div class="metric"><span>Entry points</span><b>${entryPoints}</b></div>`
+    +`<div class="metric"><span>Symbols indexed</span><b>${map.symbolIndex?.symbols?.length??0}${map.symbolIndex?.truncated?' (truncated)':''}</b></div>`
+    +`<div class="metric"><span>Declared dependencies</span><b>${map.dependencyMap?.declared?.length??0}</b></div>`
+    +`<div class="metric"><span>Internal imports found</span><b>${map.dependencyMap?.internalImports?.length??0}${map.dependencyMap?.truncated?' (truncated)':''}</b></div>`
+    +`<form class="inline-form" id="mapSearchForm"><input id="mapSearchQuery" placeholder="literal search, e.g. workspaceActions"><button class="secondary" type="submit">Search</button></form>`
+    +`<div id="mapSearchResults"></div>`;
+}
+async function runRepoMapScan(){
+  const box=$('#mapContent');if(!box)return;
+  box.innerHTML='<p class="declared-empty">Scanning…</p>';
+  try{
+    currentRepoMap=await api('/api/v1/repo-map/scan',{method:'POST',body:JSON.stringify({})});
+    box.innerHTML=repoMapSummaryHtml(currentRepoMap);
+    $('#mapSearchForm')?.addEventListener('submit',runRepoMapSearch);
+  }catch(error){
+    box.innerHTML=`<p class="declared-empty">${escapeHtml(error.value?.reason??error.message)}</p><button class="primary" type="button" id="mapScanBtn">Scan this workspace</button>`;
+    $('#mapScanBtn')?.addEventListener('click',runRepoMapScan);
+  }
+}
+async function runRepoMapSearch(event){
+  event.preventDefault();
+  const query=$('#mapSearchQuery').value.trim();
+  const results=$('#mapSearchResults');
+  if(!query||!results)return;
+  try{
+    const found=await api(`/api/v1/repo-map/search?q=${encodeURIComponent(query)}`);
+    results.innerHTML=found.matches.length
+      ?`<div class="card-list">${found.matches.slice(0,50).map((match)=>`<article class="entity-card"><h3>${escapeHtml(match.path)}:${match.line}</h3><pre>${escapeHtml(match.text)}</pre></article>`).join('')}</div>${found.truncated?'<p class="declared-empty">Results truncated.</p>':''}`
+      :'<p class="declared-empty">No match.</p>';
+  }catch(error){
+    results.innerHTML=`<p class="declared-empty">${escapeHtml(error.value?.reason??error.message)}</p>`;
+  }
+}
+function initMapPanel(){
+  $('#mapScanBtn')?.addEventListener('click',runRepoMapScan);
 }
 
 // --- workflows -------------------------------------------------------------
@@ -2371,6 +2501,7 @@ function initBench(){
   renderTerminals();
   $('#closureForm')?.addEventListener('submit',submitClosure);
   initWorkspaceActions();
+  initMapPanel();
 }
 function renderBenchNavigator(){
   const list=(items,label,empty)=>items.length

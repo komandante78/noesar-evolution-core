@@ -3914,3 +3914,20 @@ restore attraverso la UI), accessibilità 27/27, seeded-defect-proof 19/19, MANI
 **Reversal cost.** Nessuno — nessuna route server aggiunta o rimossa, nessuna migrazione,
 `AI_STATE_VERSION` invariato. Il rollback reintroduce solo la dicitura stale.
 **Status.** Installato (`:phase4-workspace-actions-ui`, vedi `INSTALLATION_LEDGER.md`).
+
+## D-0230 · Il resto del workbench: Map/Problems/Editor/Preview/Logs, e un bug reale trovato costruendolo — 2026-07-29
+**Decision.** Cablati Map (`/api/v1/repo-map/scan`+`/search`, già costruiti, mai consumati),
+Problems/Editor/Preview (dati già in mano dal run corrente, nessuna nuova route), Logs
+(nuova `GET /api/v1/events/:correlationId`, sessione sufficiente come per il run stesso).
+**Why.** Owner esplicito: "lo voglio finito" — non fermarsi dopo un solo pannello e
+riportare, continuare su tutto ciò che è costruibile in sicurezza nella stessa fase.
+**Rejected.** Tests/Terminal/TUI restano non costruiti — confini di sicurezza dichiarati
+dal prodotto stesso (EXECUTE/DELETE rifiutati "on purpose"), non lacune di questa fase.
+**Evidence.** Bug reale trovato dal browser E2E: `executor.mjs` restituisce
+`performed`/`refused` come **conteggi**, non array — `0 ?? []` non sostituisce `0` (non
+è null/undefined) e `for...of 0` lanciava "0 is not iterable" al primo run pulito. Visto
+FALLIRE (2 FAIL) poi riparato e visto PASSARE (325/325). Unit 1119/1119, ESLint 226f 0
+errori, `scripts/test.sh` 10/10, auth/http-smoke PASS, accessibilità 27/27,
+seeded-defect-proof 19/19, MANIFEST 5831/5831.
+**Reversal cost.** Nessuno — nessuna migrazione, nessuna route rimossa da prima.
+**Status.** Installato (`:phase4-workspace-actions-panels`).

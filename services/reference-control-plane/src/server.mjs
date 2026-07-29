@@ -1466,6 +1466,18 @@ const requestListener = async (req, res) => {
       }
       return json(res, 200, engineEvents.verify());
     }
+    // The Logs panel of a piece of work: "why did this happen" for one run, not the whole
+    // ledger. Read-only, same trust level as GET /api/v1/workspace-actions/:id (a session is
+    // enough — this is the causal trail of a run the caller already has the object for, not
+    // the aggregate audit view `audit.read` gates). An unknown correlationId returns an empty
+    // list rather than 404: EventLedger.correlation() cannot distinguish "no such run" from
+    // "this run recorded nothing yet", and inventing that distinction here would claim
+    // knowledge this route does not have.
+    const eventsCorrelationMatch = url.pathname.match(/^\/api\/v1\/events\/([^/]+)$/);
+    if (eventsCorrelationMatch && req.method === 'GET') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, { correlationId: eventsCorrelationMatch[1], events: engineEvents.correlation(eventsCorrelationMatch[1]) });
+    }
 
     // --- the executor · phase 1 step 5 ------------------------------------------
     // Reported, not offered as a surface: a run needs an approved plan, its tokens and a
