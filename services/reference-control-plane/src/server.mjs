@@ -25,6 +25,7 @@ import {
 import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path-auth.mjs';
 import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
+import { researchGateFrom } from './research-gate.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
@@ -890,6 +891,58 @@ const requestListener = async (req, res) => {
         }
         // A selected provider that cannot be reached is not a refusal, and is not answered by
         // quietly using a different one: the caller asked for that provider.
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
+        }
+        throw error;
+      }
+    }
+
+    // --- research gate · UI-090…UI-096 ------------------------------------------------
+    // Classifies a query's intent and effect BEFORE it would reach the open web
+    // (`docs/WEBUI_DESIGN_V3.md` §Ricerca, `D-0142`: the gate is built before the surface
+    // that would emit a query, on purpose — a Research destination with no gate in front of
+    // it would be a way out to the network with nothing classifying what leaves). No
+    // reference fallback: `research-gate.mjs`'s own module comment states why — the
+    // reference reasoning provider has no model, the same boundary `workspace-actions.mjs`
+    // already draws for the plan surfaces. If atomd or the model behind it is unreachable,
+    // the answer is 503, never a guessed direction.
+    if (req.method === 'GET' && url.pathname === '/api/v1/research/gate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      // Configuration only, like `/api/v1/reasoning`: probing the endpoint here would make a
+      // status read do network I/O and report a liveness it cannot promise a moment later.
+      const endpoint = String(process.env.NOESAR_RUST_REASONING_ENDPOINT ?? '').trim();
+      return json(res, 200, { configured: Boolean(endpoint) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/research/gate') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      // This route writes nothing, but D-0193/D-0194 found the same missing-CSRF gap twice
+      // on routes that DO write; it triggers a real outbound network call to atomd on the
+      // caller's behalf, which is reason enough not to make it a third.
+      if (!requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const query = typeof payload?.query === 'string' ? payload.query.trim() : '';
+      if (!query) return json(res, 400, { error:'invalid_query', reason:'query must be a non-empty string' });
+      try {
+        const client = researchGateFrom(process.env);
+        const decision = await client.classify(query);
+        // The query text itself is not recorded — `privacy.mjs`'s declared states govern
+        // what a person searched for, not this ledger; the outcome and category are the
+        // decision, and a decision is what the ledger already records elsewhere.
+        ledger.append({ actor:authenticated.user.id, action:'research.gated', result:decision.outcome.toLowerCase(), details:{ category:decision.category } });
+        // UI-095: a refusal carries no field a caller could mistake for something to search
+        // with — the query is echoed back only on the branch where it may still be used.
+        if (decision.outcome === 'REFUSE') {
+          return json(res, 200, { outcome:'REFUSE', category:decision.category });
+        }
+        return json(res, 200, { outcome:decision.outcome, query });
+      } catch (error) {
         if (error instanceof ReasoningUnavailable) {
           return json(res, 503, {
             error:'reasoning_unavailable', reason:error.reason,

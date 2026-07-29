@@ -5628,7 +5628,7 @@ e5276f2d21ceb79fd74c4446f55b53918fe13351a97bc9bd92883c01534d79b6  services/refer
 67ee1a0b1b7b55cb039e9928bc1c2ef2522f14f473c3780880207d0841fad310  services/reference-control-plane/src/postgres-supervisor.mjs
 82a4aaedf68894465bf8f4dcf1959676715203642530ae2bd484d5608b83fdb5  ./services/reference-control-plane/src/privacy.mjs
 8c3ceb675e464cafc10d367665f3cc1b70db28f5a6da19378a44c7ee0f6d55b0  services/reference-control-plane/src/production-readiness.mjs
-22ae9e59eaf42c37984d2709f31be631aa365ef85d6936d74a70fc645c4e5635  ./services/reference-control-plane/src/server.mjs
+56db613824f6b8cd09d4395638629b37dc326fb5f5aa6ee09e7e90bcb3a6b66b  ./services/reference-control-plane/src/server.mjs
 35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  services/reference-control-plane/src/setup-token.mjs
 afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  services/reference-control-plane/src/shadow.mjs
 365b523884c75ec4a94a97975bfc9acc136821e48dab7feb2db081f0fa9dc9ba  services/reference-control-plane/src/executor.mjs
@@ -5821,3 +5821,6 @@ cdcad0237b79801a1e1c94d65405e8b5a80f50bb5b55bf711da395fc0025c208  services/refer
 2ffd1356297551b6f13bedd10ddbc6605c5d50c8dbdd642d57bcabab29ff14dd  services/reference-control-plane/test/verifiability.test.mjs
 cc8572dbde0c7b9b9940b9b9bb6a82e0b6103ffa3adba986c72e1cb0d80af536  tools/derive-tasks-from-history.mjs
 d1f929dfe9784e3a0e1b9b240e273aad593dd0e75f8509952b31c0a5d0d40607  tools/measure-decomposition-shape.mjs
+2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  ./services/reference-control-plane/src/research-gate.mjs
+e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  ./services/reference-control-plane/test/research-gate.test.mjs
+651898f17d27ce62d289863796c0ca2eb4f90075df3200ab0966246d54367b63  ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs

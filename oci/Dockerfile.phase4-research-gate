@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# UI-090's gate reaches a served product surface.
+#
+# The gate itself was built and installed on atomd first (`ATOM_EVOLUTION`,
+# `research_gate.rs`, `/v1/research-gate`) and re-measured live against it: 20/21 (95.2%),
+# up from the naked-model 90.5% in `D-0221`, with every refusal naming a category. This
+# image is the other half — the product's own served endpoint, so the gate is reachable from
+# a genuinely authenticated HTTP session and not only from atomd's own transport.
+#
+# CHANGED
+#   research-gate.mjs (NEW)  the client half: `ResearchGateClient`, `researchGateFrom()`.
+#                            Same posture as `atom-client.mjs` — an answer, or
+#                            `ReasoningUnavailable`. No reference fallback: classifying a
+#                            query's intent needs a model, and the reference reasoning
+#                            provider has none, the same boundary `workspace-actions.mjs`
+#                            already draws for the plan surfaces.
+#   server.mjs               GET/POST /api/v1/research/gate — session + workspace.read +
+#                            CSRF (this route writes nothing, but D-0193/D-0194 found the
+#                            same missing-CSRF gap twice on routes that DO write, and this
+#                            route triggers a real outbound network call on the caller's
+#                            behalf). UI-095: a REFUSE response carries no `query` field.
+#
+# NOT A ROUTABLE ReasoningProvider SURFACE. Deliberately outside `reasoning-router.mjs`'s
+# ROUTABLE list and `NOESAR_REASONING_MODE`/`NOESAR_EXTERNAL_SURFACES` — see the module
+# comment in `research-gate.mjs` for why: the frozen contract reasons about action Plans,
+# this reasons about a free-text query, a different domain with no reference implementation
+# to route away from.
+#
+# UNCHANGED WITHOUT CONFIGURATION. Reads the same NOESAR_RUST_REASONING_ENDPOINT/TOKEN the
+# ReasoningRouter already reads — no new environment variable. With no external provider
+# configured, GET /api/v1/research/gate reports `configured:false` and POST answers 503
+# (`reasoning_unavailable`), never a guessed direction.
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched. Returning
+# to :phase4-atom-acting-path removes the route; nothing was ever persisted by it (the
+# ledger records outcome and category only, never the query text).
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-atom-acting-path
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/research-gate.mjs /opt/noesar/services/reference-control-plane/src/research-gate.mjs
+USER 10001:10001
