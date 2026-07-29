@@ -3798,3 +3798,15 @@ tabella marca lo stato reale (✅/⏳/⚠), non un default verde — es. `INST-0
 **Reversal cost.** Nessuno — solo documentazione, MANIFEST 5826/5826 invariato in conteggio.
 **Status.** Applicato. Nessun criterio nuovo è stato costruito o verificato in questa fase —
 la matrice rende dicibile "fatto" per ID, non lo dichiara.
+
+## D-0224 · INST-006 era già vero, e non protetto — 2026-07-29
+**Decision.** Aggiunto un test che asserisce il testo di disclosure del backup non cifrato in
+`view-backups`, non solo l'esistenza della sezione. `INST-006` passa da ⚠ a ✅.
+**Why.** Verificando `INST-006` per correggere la tabella `D-0223` ho trovato che la WebUI
+dichiara già "not encrypted... authentication master key" — ma nessun test lo proteggeva.
+**Rejected.** Lasciare `INST-006` ⚠ come nel piano originale — sarebbe stato falso: il testo
+c'è, il rischio reale era la sua cancellazione silenziosa, non la sua assenza.
+**Evidence.** `webui-markup-structure.test.mjs` +1 test. Provato in rosso rimuovendo il testo
+dal vivo, poi ripristinato (`git diff` pulito). Unit 1115→1116, MANIFEST 5826/5826.
+**Reversal cost.** Nessuno — un test in più, nessun comportamento del prodotto cambiato.
+**Status.** Applicato. Nessun deploy: `apps/webui-static/index.html` non è stato toccato.

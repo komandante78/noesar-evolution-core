@@ -26,6 +26,13 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0224`, stessa giornata: `INST-006` era già vero, e non protetto.** Verificandolo per
+`D-0223` ho trovato che la WebUI dichiara già "not encrypted... authentication master key"
+in `view-backups` — ma zero test lo proteggevano da una cancellazione silenziosa. Aggiunto
+`webui-markup-structure.test.mjs::INST-006`, provato in rosso rimuovendo il testo dal vivo
+e poi ripristinato. `INST-006` passa da ⚠ a ✅ nella tabella di `08`. Nessun deploy: la
+WebUI servita non è stata toccata, solo protetta.
+
 **`D-0222`, 2026-07-29: il gate `UI-090` raggiunge una superficie realmente servita, su
 entrambi i lati.** Non una 13ª superficie `ReasoningProvider` — dominio diverso (una query
 di testo, non un Piano), nessun leg di riferimento.

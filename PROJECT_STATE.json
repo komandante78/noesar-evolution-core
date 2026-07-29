@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_MASTER_PROJECT_ACCEPTANCE_MATRICES_COMPLETED",
+  "phase_status": "STEP_INST006_BACKUP_DISCLOSURE_PROTECTED",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "52ab58c (D-0222: UI-090s gate reaches a served product surface) - pushed",
-  "last_updated_utc": "2026-07-29T06:05:00Z",
+  "last_commit": "cf73436 (D-0223: acceptance matrices) - pushed, D-0224 pending",
+  "last_updated_utc": "2026-07-29T06:20:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -374,7 +374,7 @@
     }
   ],
   "product_test_suite": {
-    "unit": "1115/1115 (misurato 2026-07-29, D-0222)",
+    "unit": "1116/1116 (misurato 2026-07-29, D-0224)",
     "eslint": "224 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-29, D-0222)",
     "browser_acceptance": "315/315 (misurato 2026-07-28, D-0211 - riverificato, nessuna regressione)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
@@ -392,7 +392,7 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5826/5826, 0 mismatch, 0 righe non verificabili (misurato 2026-07-29, D-0222)",
+    "manifest": "5826/5826, 0 mismatch, 0 righe non verificabili (misurato 2026-07-29, D-0224)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -810,7 +810,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0223: acceptance matrices written for the 3 MASTER_PROJECT documents that had none (ARCH-001-008 doc 03, INST-001-010 doc 08, CUBE-001-009 doc 14) plus SESS-001-003 for the Session Proof (doc 01). Risk 4 of WORK_PLAN_V5_REWRITE.md closed for ID coverage across all 14 documents (CE-001-024 + UI-001-096 already covered CodeN Evolution + interface). Most ARCH/CUBE/INST criteria are marked (pending) or (partial) honestly in the tables themselves -- this does not mean the product passes them, only that done is now statable per-ID. Next: either build against these criteria (starting with the ones marked pending/critical), or the WebUI UI-090...096 surface over the research gate built this session (D-0222), or continue phase 1 step 7 if ATOM work resumes.",
+  "next_action": "D-0224: INST-006 corrected from open to done -- the unencrypted-backup disclosure already existed in the WebUI (view-backups) but had zero test protecting it; a future edit could have deleted the one sentence that makes it honest. Added webui-markup-structure.test.mjs assertion, proven red-then-green by removing and restoring the text live. doc 05 and doc 08 corrected to match. Next: build against a still-pending critical criterion (ARCH-001 the three-child supervisor is zero file), or the WebUI UI-090...096 surface over D-0222s research gate, or continue ATOM phase 1 step 7 if that work resumes.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -138,9 +138,11 @@ Riassunto dei turni vecchi **conservando gli originali indirizzabili**. E soprat
 ## 9. Backup, ritenzione, cancellazione
 
 - Backup con checksum che **rifiuta un archivio manomesso** (già costruito e verificato).
-- Un limite già dichiarato e ancora aperto: **il backup del workspace non è cifrato e contiene
-  la chiave master di autenticazione.** È un dovere dell'operatore e la documentazione lo deve
-  dire in chiaro, oppure va cifrato. Non va lasciato implicito.
+- **Il backup del workspace non è cifrato e contiene la chiave master di autenticazione.**
+  Non è più implicito: la pagina Backups della WebUI lo dichiara in chiaro, ed è protetto da
+  un test che verifica il testo stesso, non solo l'esistenza della sezione (`INST-006`,
+  doc `08 §11`, `D-0223`). Resta comunque un dovere dell'operatore trattarlo come un segreto —
+  il testo lo dice, non lo impedisce.
 - Cancellazione che si propaga agli indici derivati: gli indici vettoriali sono **viste
   derivate**, i record autoritativi stanno nell'archivio primario. Cancellare il record deve
   invalidare la vista, non lasciarla viva.

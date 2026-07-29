@@ -418,4 +418,19 @@ describe('the initial screen · UI-060…UI-063', () => {
       'the new surface must be written in logical properties');
     assert.match(block, /\.goal-action\{[^}]*min-height:3[4-9]px/, 'WCAG 2.5.8: a pill must clear the 24px floor');
   });
+
+  // INST-006 (MASTER_PROJECT/08 §11, MASTER_PROJECT/05 §9): the backup is not encrypted and
+  // contains the authentication master key. `05` says this must not be left implicit — this
+  // asserts the disclosure text itself, not just that the Backups section exists (D-0223
+  // found the text already present but unprotected: nothing stopped a future edit from
+  // quietly deleting the one sentence that makes this an honest feature instead of a trap).
+  test('INST-006 · the workspace backup discloses that it is unencrypted and carries the auth master key', () => {
+    // Bounded by the next `settings-section`, not the next `</section>`: the Backups view
+    // nests two `.panel` sections of its own, and the disclosure lives in the second one.
+    const start = html.indexOf('id="view-backups"');
+    const end = html.indexOf('class="settings-section"', start + 1);
+    const backups = html.slice(start, end);
+    assert.match(backups, /not encrypted/i);
+    assert.match(backups, /authentication master key/i);
+  });
 });
