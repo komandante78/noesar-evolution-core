@@ -97,9 +97,19 @@ che su tre. Rollback = un `docker run` senza `NOESAR_EXTERNAL_SURFACES`.
   `/v1/research-gate` + prodotto `/api/v1/research/gate`), **20/21** contro 15/21 della
   denylist. Nessuna superficie WebUI lo consuma ancora: la Ricerca resta gated (`D-0142`).
 
-**Prossima azione concreta, non ancora iniziata**: `ARCH-001` — il supervisore PID 1 a tre
-figli pari è **tuttora zero file**, ed è il criterio critico più grosso rimasto. In
-alternativa: estendere il banco contro la realtà ad altre superfici, o la superficie WebUI
+**Decisione rimandata all'Owner, da prendere ad apertura della prossima sessione** — chiesto
+esplicitamente "test su modello vero? un benchmark con scritture complesse?" a fine sessione,
+e la risposta onesta era no a entrambi: le 12 superfici sono **tutte** funzioni deterministiche
+(`MODEL_BACKED=false`), l'unico punto che chiama un modello è il gate `UI-090` (classificazione,
+non ragionamento), e i 4 casi del banco `simulate` erano file sintetici da poche righe, non
+scritture complesse reali. **Due strade diverse, non decise qui**:
+1. Un modello vero nel circuito del ragionamento — richiede scegliere QUALE delle 10 superfici
+   deterministiche sostituire con una chiamata a un LLM, una decisione di design, non tecnica.
+2. Un banco `simulate`/`decompose` su cambiamenti reali e complessi (commit veri di questo
+   repository, non file sintetici) — più piccolo, non richiede un modello nuovo.
+
+**Se nessuna delle due viene scelta**: `ARCH-001` — il supervisore PID 1 a tre figli pari è
+**tuttora zero file**, il criterio critico più grosso rimasto — o la superficie WebUI
 `UI-090…096` sopra il gate che ora esiste.
 
 ## ➜ Stato dell'installazione
