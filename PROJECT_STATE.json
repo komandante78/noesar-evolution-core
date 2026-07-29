@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_SESSION_PROTOCOL_BUILT",
-  "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
+  "phase_status": "STEP_ATOM_MODEL_SWAPPED_TO_PHI4",
+  "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "c3f218d (D-0225) - pushed, D-0226 pending",
-  "last_updated_utc": "2026-07-29T15:04:00Z",
+  "last_commit": "PENDING_D-0232_COMMIT",
+  "last_updated_utc": "2026-07-29T16:22:02Z",
   "blockers": [
     {
       "id": "B-001",
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0231: the CodeN Evolution TUI session protocol is built (docs/CODEN_EVOLUTION_DESIGN_V1.md §17) — a unix socket for a real terminal (tools/tui-client.mjs) and server.mjs own HTTP bridge (/api/v1/tui/command) for the workbench own Terminal tab, both sharing one dispatch over the same workspace-actions/repo-map/event-ledger instances. NOT a shell: no exec method exists, matching the architecture own Permission Engine boundary. Two real bugs found and fixed while building: a readline piped-stdin hang (LineReader fix), and a raw #fff colour literal that broke the token-layer guard (seeded-defect-proof 19/19 -> 6/19 -> 19/19). Installed as :phase4-session-protocol, verified live and by hand against a real server outside the test harness. Still not built: Tests execution and DELETE/EXECUTE stay refused on purpose (security boundaries, not gaps). The model-in-the-loop decision from D-0228 is still Owner-reserved and open. Next: ARCH-001 (zero-file three-child supervisor), or the Owner decision from D-0228.",
+  "next_action": "D-0232: le due domande Owner-riservate dell handoff sono risposte. (1) mount ombra condivisa: gia risolto da D-0226, la domanda era stale. (2) modello vero nel ciclo: atom-evolution-model ora serve Phi-4-14B-Instruct Q4_K_M (copiato in sola lettura dal peso gia scaricato per CodeN Ultra, non in esecuzione al momento della copia, sha256 verificato, unica eccezione documentata a mai copiare da CodeN Ultra perche Owner ha nominato il peso per nome) al posto di Qwen2.5-7B. Rimisurato 19/21=90.5% sullo stesso banco UI-090 di D-0221 (profilo di errore diverso, stesso aggregato, nessun lasciapassare pericoloso). Verificato anche sul percorso realmente servito (workspace-actions.plan reale contro atomd reale, provenance provider=atom su tutte le 6 superfici che plan() invoca), non solo sul probe isolato. Next: ARCH-001 (supervisore zero-file), o la legge di integrita delle dipendenze cablata su decompose().",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

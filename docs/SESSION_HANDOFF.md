@@ -8,6 +8,13 @@
 Lavorando qui si nomina e si tocca **solo** NOESAR EVOLUTION. Mai altro dell'host.
 L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
+**Unica eccezione documentata (`D-0232`, 2026-07-29)**: il file dei pesi
+`phi-4-Q4_K_M.gguf`, già scaricato per CodeN Ultra, è stato **letto** (copia read-only,
+`cp --reflink`, CodeN Ultra non in esecuzione al momento) su istruzione diretta dell'Owner
+che ha nominato il peso per nome — non una mia interpretazione della regola. Nessuna
+dipendenza runtime fra i due progetti: `atom-evolution-model` serve il proprio file dentro
+`ATOM_EVOLUTION/model_store/`, mai una chiamata a CodeN Ultra.
+
 ## ⚠️ DUE REGOLE PERMANENTI (Owner, verbatim)
 
 1. **"Fai sempre riferimento agli ultimi documenti che trovi in noesar_evolution."**
@@ -96,6 +103,12 @@ riparato non si riproduce più.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-- **Il percorso host per l'ombra condivisa** con `atomd` — invariato da `D-0216`.
-- **Modello vero nel ciclo di ragionamento vs. banco su scritture reali** — invariato da
-  `D-0228`, non deciso in nessuna delle tre fasi di oggi.
+Nessuna. Le due che comparivano qui sono risposte — vedi `D-0232`. (1) Il percorso host per
+l'ombra condivisa con `atomd` era già risolto da `D-0226` (il mount esiste,
+`NOESAR_EVOLUTION_SHADOWS` su entrambi i lati) — la domanda era rimasta nell'elenco per
+deriva, non perché il lavoro mancasse. (2) L'Owner ha scelto: modello vero, Phi-4.
+`atom-evolution-model` ora serve **Phi-4-14B-Instruct Q4_K_M** invece di Qwen2.5-7B —
+misurato 90.5% sullo stesso banco `UI-090` di `D-0221` (stesso aggregato di Qwen, profilo di
+errore diverso), e verificato anche sul percorso realmente servito
+(`workspace-actions.plan()` reale contro `atomd` reale, `provenance` mostra `provider:"atom"`
+su tutte le sei superfici che `plan()` invoca).
