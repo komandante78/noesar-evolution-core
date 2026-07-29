@@ -37,6 +37,10 @@ def main() -> int:
         "0010_runtime_security_acceptance.sql",
         "0011_production_attestation_ledger.sql",
         "0012_audit_chain_and_release_gate.sql",
+        "0013_multi_user_identity.sql",
+        "0014_multi_user_resources.sql",
+        "0015_multi_user_row_level_security.sql",
+        "0016_application_privileges.sql",
     ]
 
     if manifest.get("schemaVersion") != "4.0":
@@ -56,7 +60,7 @@ def main() -> int:
         item["filename"]: item
         for item in manifest.get("migrations", [])
     }
-    if len(entries) != 12:
+    if len(entries) != len(expected_names):
         failures.append("manifest-migration-count")
 
     for path in files:
@@ -151,7 +155,7 @@ def main() -> int:
         return 1
 
     print("VERDICT=PASS")
-    print("MIGRATIONS=12")
+    print(f"MIGRATIONS={len(expected_names)}")
     print("SCHEMA_QUALIFICATION=PASS")
     print("TRANSACTION_BOUNDARIES=PASS")
     print("CHECKSUMS=PASS")

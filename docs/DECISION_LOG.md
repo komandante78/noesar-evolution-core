@@ -3810,3 +3810,24 @@ c'è, il rischio reale era la sua cancellazione silenziosa, non la sua assenza.
 dal vivo, poi ripristinato (`git diff` pulito). Unit 1115→1116, MANIFEST 5826/5826.
 **Reversal cost.** Nessuno — un test in più, nessun comportamento del prodotto cambiato.
 **Status.** Applicato. Nessun deploy: `apps/webui-static/index.html` non è stato toccato.
+
+## D-0225 · Niente si installa per verificare — un container usa-e-getta, e trova due bug veri — 2026-07-29
+**Decision.** `scripts/test.sh` e `tools/test-packaging-filters.mjs` ora provano `python3`
+nativo e, se assente, ricadono su un container `python:3-slim` effimero, `--network none`,
+`-v repo:/repo:ro`, `--rm` — stesso schema già usato per Rust/ESLint. Niente installato sull'host.
+**Why.** Domanda diretta dell'Owner: si può installare per testare e poi disinstallare? No —
+regola 20 lo vieta anche "solo per questa volta" (regola 21); il container è l'alternativa
+sanzionata (regola 21a). Prima i 4 passi Python erano sempre `UNAVAILABLE`, mai eseguiti.
+**Rejected.** Lasciare `UNAVAILABLE` come prima — è come dichiarare i controlli assenti mentre
+esistono e nessuno li ha mai fatti girare per davvero, esattamente la classe di difetto che
+questo progetto ha già pagato tre volte (vedi `scripts/test.sh`'s own header, migrazioni 0013-16).
+**Evidence.** Eseguiti per la prima volta, hanno trovato **due bug reali, non della mia sessione**:
+`verify-postgres-migrations.py` aveva una lista di 12 migrazioni codificata a mano, mai
+aggiornata quando le migrazioni 0013-0016 sono atterrate (`7b6290e`); `test-packaging-filters.mjs`
+incorporava `JSON.stringify` di booleani JS dentro sorgente Python — `true`/`false` non è
+`True`/`False`, `NameError` garantito, mai visto perché mai eseguito. Entrambi corretti,
+provati per mutazione (file corrotto dal vivo → rosso → ripristinato, `git diff` pulito).
+`scripts/test.sh` passa da `pass=5 fail=0 partial=1 unavailable=4` a `pass=10 fail=0 partial=0
+unavailable=0`. Unit 1116/1116, ESLint 224f 0 errori, MANIFEST 5826/5826.
+**Reversal cost.** Nessuno — solo strumenti di verifica, nessun comportamento del prodotto cambia.
+**Status.** Applicato. Nessun deploy: nessun file servito dal prodotto è stato toccato.

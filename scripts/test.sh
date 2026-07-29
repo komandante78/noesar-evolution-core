@@ -23,11 +23,28 @@ FAILED_STEPS=''
 UNAVAILABLE_STEPS=''
 PARTIAL_STEPS=''
 
+# Runs a Python verifier even when python3 is not installed on this host: an offline,
+# throwaway `python:3-slim` container carries it instead, the same pattern already used
+# for Rust (`tools/test.sh`, `rust:1-bookworm`) and for ESLint (`tools/run-eslint.sh`,
+# `node:22-bookworm-slim`). CLAUDE10.md rule 20 forbids installing anything on the host,
+# even temporarily; this is the sanctioned alternative rule 21a names — a transient
+# container, removed by `--rm` whether the check passes or fails. The mount is read-only
+# because every verifier here only reads the tree; none of the four needs to write to it.
+pyrun() {
+  if command -v "$PYTHON" >/dev/null 2>&1; then
+    "$PYTHON" "$@"
+  elif command -v docker >/dev/null 2>&1; then
+    docker run --rm --network none -v "$ROOT:/repo:ro" -w /repo python:3-slim python3 "$@"
+  else
+    return 127
+  fi
+}
+
 step() {
   name=$1
   shift
-  if [ "$1" = "$PYTHON" ] && ! command -v "$PYTHON" >/dev/null 2>&1; then
-    printf '%s\n' "STEP $name = UNAVAILABLE (no $PYTHON on this host)"
+  if [ "$1" = "pyrun" ] && ! command -v "$PYTHON" >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+    printf '%s\n' "STEP $name = UNAVAILABLE (no $PYTHON and no docker on this host)"
     UNAVAILABLE=$((UNAVAILABLE + 1))
     UNAVAILABLE_STEPS="$UNAVAILABLE_STEPS $name"
     return 0
@@ -72,10 +89,10 @@ step auth-smoke      node tools/auth-http-smoke.mjs
 step http-smoke      node tools/http-smoke.mjs
 step_tristate tls-smoke node tools/tls-smoke.mjs
 step_tristate packaging node tools/test-packaging-filters.mjs
-step pg-migrations   "$PYTHON" tools/verify-postgres-migrations.py
-step pg-contract     "$PYTHON" tools/verify-postgres-contract.py
-step rust-source     "$PYTHON" tools/verify-rust-authority-source.py
-step rust-provenance "$PYTHON" tools/test-rust-build-provenance.py -q
+step pg-migrations   pyrun tools/verify-postgres-migrations.py
+step pg-contract     pyrun tools/verify-postgres-contract.py
+step rust-source     pyrun tools/verify-rust-authority-source.py
+step rust-provenance pyrun tools/test-rust-build-provenance.py -q
 
 printf '\n%s\n' "TEST_SUMMARY pass=$PASSED fail=$FAILED partial=$PARTIAL unavailable=$UNAVAILABLE"
 [ "$FAILED" -eq 0 ] || printf '%s\n' "FAILED:$FAILED_STEPS"

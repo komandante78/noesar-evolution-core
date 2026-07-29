@@ -100,11 +100,21 @@ function run() {
       ['rust/crates/noesar-auth/src/lib.rs', false],
     ];
     let pyFailures = 0;
-    const py = [
+    // Real bug found running this container fallback for the first time (D-0225): `cases
+    // = ${JSON.stringify(PY_CASES)}` embeds JSON `true`/`false`, which is not Python —
+    // Python spells them `True`/`False`. It has been silently broken since it was
+    // written (7b6290e), because no python3 on this host ever actually ran it. Built
+    // as a Python tuple literal directly instead of trusting JSON's booleans to double
+    // as Python's.
+    const casesLiteral = `[${PY_CASES.map(([rel, expected]) => `(${JSON.stringify(rel)}, ${expected ? 'True' : 'False'})`).join(', ')}]`;
+    // Built twice: the native run needs the real host path, the container run needs the
+    // path as it appears inside the mount. `is_build_output` itself is unaffected either
+    // way — only the location of the module being imported changes.
+    const pySource = (scriptPath) => [
       'import sys, importlib.util',
-      `spec = importlib.util.spec_from_file_location("p", ${JSON.stringify(join(repoRoot, 'tools/create-rust-build-provenance.py'))})`,
+      `spec = importlib.util.spec_from_file_location("p", ${JSON.stringify(scriptPath)})`,
       'm = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)',
-      `cases = ${JSON.stringify(PY_CASES)}`,
+      `cases = ${casesLiteral}`,
       'bad = 0',
       'for rel, expected in cases:',
       '    got = m.is_build_output(tuple(rel.split("/")))',
@@ -117,13 +127,28 @@ function run() {
     console.log('\nprovenance filter (tools/create-rust-build-provenance.py)\n');
     let pySkipped = false;
     try {
-      const out = execFileSync('python3', ['-c', py], { encoding: 'utf8', stdio: 'pipe' });
+      let out;
+      try {
+        out = execFileSync('python3', ['-c', pySource(join(repoRoot, 'tools/create-rust-build-provenance.py'))], { encoding: 'utf8', stdio: 'pipe' });
+      } catch (native) {
+        if (native.code !== 'ENOENT') throw native;
+        // No python3 on the host: the same offline, throwaway container already used for
+        // Rust (`tools/test.sh`) and ESLint (`tools/run-eslint.sh`) carries it instead.
+        // CLAUDE10.md rule 20 forbids installing anything on the host, even
+        // temporarily; rule 21a names a transient container as the sanctioned
+        // alternative. Read-only mount: this only ever reads the tree.
+        out = execFileSync('docker', [
+          'run', '--rm', '--network', 'none',
+          '-v', `${repoRoot}:/repo:ro`, '-w', '/repo',
+          'python:3-slim', 'python3', '-c', pySource('/repo/tools/create-rust-build-provenance.py'),
+        ], { encoding: 'utf8', stdio: 'pipe' });
+      }
       process.stdout.write(out);
     } catch (e) {
       if (e.stdout) process.stdout.write(e.stdout);
       if (e.code === 'ENOENT') {
         pySkipped = true;
-        console.log('  SKIPPED — python3 not available on this host');
+        console.log('  SKIPPED — neither python3 nor docker is available on this host');
       } else {
         pyFailures = 1;
       }

@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_INST006_BACKUP_DISCLOSURE_PROTECTED",
+  "phase_status": "STEP_PYTHON_VERIFICATION_CONTAINER_FALLBACK_TWO_BUGS_FOUND",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "cf73436 (D-0223: acceptance matrices) - pushed, D-0224 pending",
-  "last_updated_utc": "2026-07-29T06:20:00Z",
+  "last_commit": "efc9725 (D-0224) - pushed, D-0225 pending",
+  "last_updated_utc": "2026-07-29T06:35:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -810,7 +810,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0224: INST-006 corrected from open to done -- the unencrypted-backup disclosure already existed in the WebUI (view-backups) but had zero test protecting it; a future edit could have deleted the one sentence that makes it honest. Added webui-markup-structure.test.mjs assertion, proven red-then-green by removing and restoring the text live. doc 05 and doc 08 corrected to match. Next: build against a still-pending critical criterion (ARCH-001 the three-child supervisor is zero file), or the WebUI UI-090...096 surface over D-0222s research gate, or continue ATOM phase 1 step 7 if that work resumes.",
+  "next_action": "D-0225: scripts/test.sh and tools/test-packaging-filters.mjs now fall back to an ephemeral python:3-slim container (no host install, CLAUDE10.md rule 20/21a) when python3 is absent. Running them for the first time found two real pre-existing bugs (never caught because never executed): verify-postgres-migrations.py had a hardcoded 12-migration list stale since migrations 0013-0016 landed; test-packaging-filters.mjs embedded JSON true/false into Python source (NameError). Both fixed and mutation-tested. scripts/test.sh now pass=10 fail=0 partial=0 unavailable=0 (was pass=5 unavailable=4). Next: ARCH-001 (the zero-file three-child supervisor), or the WebUI UI-090...096 surface over D-0222s research gate, or continue ATOM phase 1 step 7 if that work resumes.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

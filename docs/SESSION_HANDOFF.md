@@ -26,6 +26,17 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0225`, stessa giornata: niente si installa per verificare — un container usa-e-getta,
+e trova due bug veri.** L'Owner ha chiesto se installare-poi-disinstallare per testare fosse
+ammesso: no (regola 20/21), l'alternativa sanzionata è un container effimero (regola 21a).
+`scripts/test.sh` e `test-packaging-filters.mjs` ora ricadono su `python:3-slim` offline se
+`python3` manca sull'host — stesso schema già usato per Rust/ESLint. **Eseguiti per la prima
+volta, hanno trovato due bug reali preesistenti**: `verify-postgres-migrations.py` aveva 12
+migrazioni codificate a mano, mai aggiornate dopo che le `0013-0016` sono atterrate;
+`test-packaging-filters.mjs` incorporava booleani JSON (`true`/`false`) dentro sorgente
+Python (`NameError` garantito). Entrambi corretti, provati per mutazione dal vivo.
+`scripts/test.sh`: `pass=5 unavailable=4` → **`pass=10 fail=0 partial=0 unavailable=0`**.
+
 **`D-0224`, stessa giornata: `INST-006` era già vero, e non protetto.** Verificandolo per
 `D-0223` ho trovato che la WebUI dichiara già "not encrypted... authentication master key"
 in `view-backups` — ma zero test lo proteggevano da una cancellazione silenziosa. Aggiunto
