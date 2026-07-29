@@ -81,20 +81,31 @@ export class ReasoningRouter {
   #reference;
   #client;
   #routing;
+  #sessionId;
   #provenance = [];
 
-  constructor({ workspaceRoot = '/workspace', env = process.env, fetchImpl } = {}) {
+  /**
+   * `sessionId` is optional and changes nothing about the answers. It lets an external
+   * provider keep one recorder across the calls of a single piece of work, which is what
+   * makes `fixtures` able to return a replay pack instead of refusing — a provider asked
+   * without a session has no session to hand back.
+   */
+  constructor({ workspaceRoot = '/workspace', env = process.env, fetchImpl, sessionId } = {}) {
     this.#reference = new ReferenceReasoningProvider(workspaceRoot);
     this.#routing = routingFrom(env);
     this.#client = null;
+    this.#sessionId = String(sessionId ?? '').trim() || null;
     if (this.#routing.externalSurfaces.length > 0) {
       this.#client = new AtomClient({
         endpoint: this.#routing.endpoint,
         token: env.NOESAR_RUST_REASONING_TOKEN,
+        ...(this.#sessionId ? { sessionId: this.#sessionId } : {}),
         ...(fetchImpl ? { fetchImpl } : {}),
       });
     }
   }
+
+  get sessionId() { return this.#sessionId; }
 
   get routing() { return this.#routing; }
 

@@ -3831,3 +3831,26 @@ provati per mutazione (file corrotto dal vivo → rosso → ripristinato, `git d
 unavailable=0`. Unit 1116/1116, ESLint 224f 0 errori, MANIFEST 5826/5826.
 **Reversal cost.** Nessuno — solo strumenti di verifica, nessun comportamento del prodotto cambia.
 **Status.** Applicato. Nessun deploy: nessun file servito dal prodotto è stato toccato.
+
+## D-0226 · ATOM risponde su tutte e dodici le superfici — 2026-07-29
+**Decision.** Radice delle ombre condivisa (`/shadows`, host `NOESAR_EVOLUTION_SHADOWS`,
+uid 10001 : gid 10002 setgid), `NOESAR_EXTERNAL_SURFACES` a tutte e 12, e registro di
+sessioni in `atomd` con header di trasporto `x-atom-session`.
+**Why.** Richiesta esplicita dell'Owner: ATOM deve funzionare ovunque. Misurato prima di
+toccare: `PROVENANCE_ATOM=12/12` già instradabile, ma 3 superfici non rispondevano.
+**Rejected.** Mettere la sessione nel corpo della richiesta — i corpi sono le forme del
+contratto congelato, provate dai wire vector su entrambi i lati; l'affinità di sessione non
+appartiene al contratto di ragionamento, quindi viaggia come header.
+**Evidence.** Tre cause distinte, ognuna diagnosticata eseguendo: `expect` rifiutava per un
+mio piano di prova degenere (non un difetto); `simulate` per il MOUNT assente; `fixtures`
+perché il daemon costruiva `AtomProvider::new()`, senza registratore — unico vero buco di
+codice. Ora **12/12 ANSWER** coi byte installati contro il daemon installato. Daemon giù →
+12/12 `UNAVAILABLE`, **zero fallback**. Rust 33 test (+4), Node 1116→1118 (+2), ESLint 224f
+0 errori, `scripts/test.sh` pass=10 fail=0 partial=0 unavailable=0, MANIFEST 5827/5827.
+Scrittura, reflink e lettura cross-uid provate in container prima del deploy.
+**Reversal cost.** Nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato. ⚠ Con 12
+superfici instradate, `atomd` giù fa rispondere 503 a tutte e 12 invece che a 3: raggio più
+ampio, per progetto (nessun fallback silenzioso). Rollback = un `docker run` senza
+`NOESAR_EXTERNAL_SURFACES`.
+**Status.** Installato su entrambi i lati (`atom-evolution:atomd`,
+`noesar-evolution:phase4-atom-all-surfaces`).

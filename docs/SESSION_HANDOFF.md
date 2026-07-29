@@ -26,6 +26,25 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0226`, stessa giornata: ATOM risponde su TUTTE E DODICI le superfici.** Misurato coi
+byte installati contro il daemon installato: `ANSWERED=12/12`, `ROUTED_TO_ATOM=12/12`.
+Tre cause distinte, ognuna diagnosticata **eseguendo**, non leggendo:
+
+| Superficie | Causa vera | Natura |
+|---|---|---|
+| `expect` | il piano del mio probe era degenere (nessun file, nessun comando) | **non un difetto** — era la garanzia di ATOM che funzionava |
+| `simulate` | `atomd` non aveva **alcun mount** sulla radice delle ombre | configurazione, non codice |
+| `fixtures` | il daemon costruiva `AtomProvider::new()`, senza registratore | **unico vero buco di codice** |
+
+Radice condivisa `/mnt/cachec/NOESAR_EVOLUTION_SHADOWS` (`10001:10002`, setgid) montata rw
+sul prodotto e **ro** su `atomd`; scrittura, reflink e lettura cross-uid provate in container
+prima del deploy. Registro di sessioni in `atomd` (header `x-atom-session`, cap 64, sfratto
+del più vecchio che **dichiara** di essere uno sfratto invece di sembrare una sessione vuota).
+`simulate` **predice davvero**: distingue `modify existing.txt` da `create brand-new.txt`
+leggendo l'ombra. Daemon giù → **12/12 `UNAVAILABLE`, zero fallback**.
+⚠ **Conseguenza**: con 12 superfici instradate, `atomd` giù fa 503 su tutte e dodici invece
+che su tre. Rollback = un `docker run` senza `NOESAR_EXTERNAL_SURFACES`.
+
 **`D-0225`, stessa giornata: niente si installa per verificare — un container usa-e-getta,
 e trova due bug veri.** L'Owner ha chiesto se installare-poi-disinstallare per testare fosse
 ammesso: no (regola 20/21), l'alternativa sanzionata è un container effimero (regola 21a).

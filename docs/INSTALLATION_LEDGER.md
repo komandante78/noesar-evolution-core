@@ -2968,3 +2968,27 @@ l'API SCIM per gestirlo sparisce.
 - **Misura sul daemon installato**: 21 casi held-out via HTTP reale → **20/21 (95.2%)**, 8/8 rifiuti con categoria.
 - **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, la rotta non persiste dati.
 - **§5a**: due soli container per progetto (installazione+1 rollback) su entrambi i lati. Host invariato.
+
+## 2026-07-29 · `:phase4-atom-all-surfaces` + `atomd` con sessioni — ATOM risponde su tutte e dodici
+- **Radice delle ombre condivisa creata**: host `/mnt/cachec/NOESAR_EVOLUTION_SHADOWS`, `10001:10002`, `2750` (setgid).
+  Scrittura uid 10001, reflink `COPYFILE_FICLONE_FORCE` e lettura uid 10002 **provate in container prima del deploy**.
+  Fuori da `/workspace` per costruzione (l'orchestratore rifiuta una radice annidata nell'albero che ombreggia); XFS, quindi il reflink è reale.
+- **`atomd` ricostruito** (`tools/build-atomd.sh`, binario verificato uguale all'immagine) con registro di sessioni:
+  `x-atom-session` come header di trasporto, cap `MAX_RECORDED_SESSIONS=64`, sfratto del più vecchio, e una sessione
+  sfrattata riceve un rifiuto che **dice di essere stata sfrattata** invece di sembrare vuota. Mount `/shadows:ro`.
+  Predecessore preservato: `atomd.rollback-pre-sessions-20260729T072209Z`.
+- **Prodotto**: `:phase4-atom-all-surfaces` da `Dockerfile.phase4-atom-all-surfaces` (`FROM :phase4-research-gate`,
+  `--network=none --pull=false`). Byte immagine == albero 2/2. Arresto pulito con `postgres.stopped clean:true` letto
+  nel log, backup a servizio fermo (12 MB), predecessore preservato `noesar-evolution.rollback-all-surfaces-20260729T072501Z`.
+  Configurazione riletta dal container sostituito + `NOESAR_SHADOWS_ROOT=/shadows`, `/shadows` rw, e le 12 superfici.
+- **Verifica dal vivo**: `Up (healthy)`, `RestartCount=0`, `/livez` `/readyz` `/healthz` **200**, `/healthz` `disclosed:false`
+  (`B-010` non regredito), `/api/v1/reasoning` **401**.
+- **Misura coi byte INSTALLATI contro il daemon INSTALLATO**: `ANSWERED=12/12`, `ROUTED_TO_ATOM=12/12`.
+  `simulate` predice davvero (`modify existing.txt` vs `create brand-new.txt`, distinti leggendo l'ombra). `fixtures`
+  restituisce un pacchetto con digest.
+- **Modo di guasto verificato**: daemon irraggiungibile → **12/12 `UNAVAILABLE`, zero fallback** al provider di riferimento.
+- ⚠ **Conseguenza operativa**: con 12 superfici instradate, `atomd` giù fa rispondere **503 a tutte e dodici** invece che a tre.
+  È la regola "nessun ripiego silenzioso" che funziona, ma il raggio è più ampio. **Rollback in una riga**: ricreare il
+  prodotto senza `NOESAR_EXTERNAL_SURFACES`.
+- **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessun dato toccato.
+- **§5a**: due container di progetto per lato (installazione + un rollback). Ombra di prova rimossa, radice condivisa vuota.

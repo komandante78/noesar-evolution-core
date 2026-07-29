@@ -44,20 +44,28 @@ export const EXTERNAL_SURFACES = Object.freeze([
 export class AtomClient {
   #endpoint;
   #token;
+  #sessionId;
   #timeoutMs;
   #fetch;
 
-  constructor({ endpoint, token, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = fetch } = {}) {
+  constructor({ endpoint, token, sessionId, timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl = fetch } = {}) {
     if (!String(endpoint ?? '').trim()) {
       throw new ReasoningUnavailable('an external provider was selected with no endpoint');
     }
     this.#endpoint = String(endpoint).replace(/\/+$/, '');
     this.#token = String(token ?? '');
+    // Optional, and absent by default. A provider that records nothing answers every surface
+    // identically — recording changes what is written down, never what comes back — so a
+    // caller with no session to name loses nothing by not naming one. What it does lose is
+    // `fixtures`, which has no session to hand back and says so.
+    this.#sessionId = String(sessionId ?? '').trim();
     this.#timeoutMs = timeoutMs;
     this.#fetch = fetchImpl;
   }
 
   get endpoint() { return this.#endpoint; }
+
+  get sessionId() { return this.#sessionId || null; }
 
   async identity() {
     return this.#request('GET', '/v1/identity', null, 'identity');
@@ -83,6 +91,10 @@ export class AtomClient {
         headers: {
           'content-type': 'application/json',
           'x-atom-token': this.#token,
+          // The session travels as transport metadata, never in the body: the request
+          // bodies are the frozen contract's shapes, checked by the wire vectors both
+          // sides run, and session affinity is not part of the reasoning contract.
+          ...(this.#sessionId ? { 'x-atom-session': this.#sessionId } : {}),
         },
         body: payload === null ? undefined : JSON.stringify(payload),
         signal: controller.signal,

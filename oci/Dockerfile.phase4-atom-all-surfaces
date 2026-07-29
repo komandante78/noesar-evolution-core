@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ATOM answers all twelve surfaces, and `fixtures` becomes reachable at all.
+#
+# WHAT WAS ACTUALLY WRONG, MEASURED BEFORE CHANGING ANYTHING. Routing was never the
+# blocker: `routingFrom()` already reads NOESAR_EXTERNAL_SURFACES and will route all
+# twelve. Probing the live daemon through the product's own ReasoningRouter with every
+# surface routed gave PROVENANCE_ATOM=12/12 and ANSWERED=9/12 — nothing fell back, and the
+# three refusals each had their own cause:
+#
+#   expect    the probe's plan named no file and no command, so there was nothing to
+#             observe. ATOM refusing an unobservable expectation is its guarantee working.
+#             With a realistic plan it answers. NOT a defect — the probe was degenerate.
+#   simulate  atomd had NO MOUNT onto the shadow root, and the contract hands `simulate` a
+#             PATH. The product wrote shadows to /tmp inside its own container, which no
+#             other process can see. Configuration, not code.
+#   fixtures  the daemon built `AtomProvider::new()` per request — a provider with no
+#             recorder — so the only reachable outcome was "built without a recorder".
+#             This one was a real code gap, and it is what this image's companion fixes.
+#
+# CHANGED HERE (the Node half; the Rust half ships in atom-evolution:atomd)
+#   atom-client.mjs      optional `sessionId`, sent as the `x-atom-session` TRANSPORT
+#                        header. Not a body field: the bodies are the frozen contract's
+#                        shapes, checked by the shared wire vectors both sides run, and
+#                        session affinity is not part of the reasoning contract.
+#   reasoning-router.mjs accepts and forwards `sessionId`, and exposes it for provenance.
+#
+# DEPLOYMENT, WHICH IS WHERE THE REST OF THE FIX LIVES
+#   NOESAR_SHADOWS_ROOT=/shadows          a path OUTSIDE /workspace (the orchestrator
+#                                         refuses a shadow root nested in the tree it
+#                                         shadows) and on XFS, where reflink actually works
+#   -v <host>:/shadows        on the product   read-write
+#   -v <host>:/shadows:ro     on atomd         read-only — it predicts by reading, never writes
+#   NOESAR_EXTERNAL_SURFACES=<all twelve>
+#
+# The host directory is owned uid 10001 (the product writes) : gid 10002 (atomd reads) with
+# the setgid bit, so every shadow the product creates is readable by the daemon and by
+# nobody else. Write, reflink-clone and cross-uid read were each proven in a throwaway
+# container before this was deployed.
+#
+# UNCHANGED WITHOUT CONFIGURATION. With no external provider selected every surface is
+# still the reference provider, no session header is sent, and `sessionId` is null.
+# CE-022 — the whole suite passing with ATOM absent — is untouched.
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched. Returning
+# to :phase4-research-gate removes the session header; ATOM keeps answering eleven surfaces
+# and `fixtures` goes back to refusing.
+#
+# ⚠ OPERATIONAL CONSEQUENCE, STATED RATHER THAN DISCOVERED: with twelve surfaces routed,
+# atomd being down makes all twelve answer 503 instead of three. That is the no-silent-
+# fallback rule working as designed — an answer attributed to a provider that never saw the
+# request would be worse — but it is a wider blast radius than before and the operator
+# should know it. Rollback is one `docker run` without NOESAR_EXTERNAL_SURFACES.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-research-gate
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/atom-client.mjs /opt/noesar/services/reference-control-plane/src/atom-client.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs
+USER 10001:10001

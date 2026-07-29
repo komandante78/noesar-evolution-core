@@ -20,7 +20,12 @@ async function stubProvider(handler) {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
-      const request = { path: req.url, token: req.headers['x-atom-token'], body: body ? JSON.parse(body) : null };
+      const request = {
+        path: req.url,
+        token: req.headers['x-atom-token'],
+        session: req.headers['x-atom-session'],
+        body: body ? JSON.parse(body) : null,
+      };
       seen.push(request);
       const { status, payload } = handler(request);
       const text = JSON.stringify(payload);
@@ -250,4 +255,34 @@ test('the boundary vectors are present and name only surfaces the client knows',
     if (surface === 'imagine') continue; // the deliberate unknown-surface case
     assert.ok(EXTERNAL_SURFACES.includes(surface), `${item.id}: unknown surface \`${surface}\``);
   }
+});
+
+// Sessions. `fixtures` is the surface that cannot work without one: an external provider
+// asked with no session has no recording to hand back, and before the session header
+// existed that was every request atomd ever saw. Measured live 2026-07-29: 11/12 surfaces
+// answered and only `fixtures` refused; with a session it is 12/12.
+test('a session id travels as a transport header, never in the body', async () => {
+  const stub = await stubProvider(() => ({ status: 200, payload: { ok: true, value: { kind: 'UNSUPPORTED_INFERENCE', rationale: 'x', sources: [] } } }));
+  try {
+    const router = new ReasoningRouter({ env: envFor(stub.endpoint, { NOESAR_EXTERNAL_SURFACES: 'evidence' }), sessionId: 'run-42' });
+    assert.equal(router.sessionId, 'run-42');
+    await router.evidence('a claim');
+    const seen = stub.seen.at(-1);
+    assert.equal(seen.session, 'run-42', 'the daemon selects the recorder by this header');
+    // The bodies are the frozen contract's shapes and are checked by the shared wire
+    // vectors; smuggling a session into one would make the oracle express something the
+    // reasoning contract does not have.
+    assert.equal('sessionId' in seen.body, false, 'the session must not appear in the body');
+  } finally { stub.close(); }
+});
+
+test('with no session named, no session header is sent at all', async () => {
+  const stub = await stubProvider(() => ({ status: 200, payload: { ok: true, value: { kind: 'UNSUPPORTED_INFERENCE', rationale: 'x', sources: [] } } }));
+  try {
+    const router = new ReasoningRouter({ env: envFor(stub.endpoint, { NOESAR_EXTERNAL_SURFACES: 'evidence' }) });
+    assert.equal(router.sessionId, null);
+    await router.evidence('a claim');
+    assert.equal(stub.seen.at(-1).session, undefined,
+      'a blank header would name a session called "", which is not the same as naming none');
+  } finally { stub.close(); }
 });
