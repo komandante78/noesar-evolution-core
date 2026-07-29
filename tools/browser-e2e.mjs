@@ -404,8 +404,10 @@ try {
   const homeAgain = await panelOf();
   check('the context panel can be docked, floated or sent away',
     homeFloating.rank === 'floating' && homeFloating.floating, JSON.stringify(homeFloating));
+  // Owner: the panel opens deactivated by default and only turns on if clicked — a
+  // destination with no remembered choice defaults to 'hidden', not 'docked'.
   check('a placement chosen on one destination does not follow you to another',
-    projectsDefault.rank === 'docked', JSON.stringify(projectsDefault));
+    projectsDefault.rank === 'hidden', JSON.stringify(projectsDefault));
   check('the placement is remembered for the destination it was chosen on',
     homeAgain.rank === 'floating', JSON.stringify(homeAgain));
   await page.evaluate(() => document.querySelector('[data-panel-rank="hidden"]').click());

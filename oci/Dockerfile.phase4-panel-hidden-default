@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Owner, pointing at the topbar's "◫ Panel: docked" chip: the context panel
+# (#contextPanel — System trust / Context control / Data controls, the same box on every
+# destination, distinct from CodeN Evolution's own agent-column menu from D-0237) should
+# open deactivated and turn on only if clicked.
+#
+# One-line change: applyPanelRank()'s fallback for a destination with no remembered
+# choice was 'docked', now 'hidden'. Per-destination memory (services/reference-control-
+# plane's own app.js, PANEL_RANKS/panelRanks, unchanged) still means a destination the
+# Owner explicitly docks or floats stays that way — only the FIRST visit to a destination
+# that has never been touched now opens with the panel off, not on.
+#
+# tools/browser-e2e.mjs's per-destination memory check asserted the old default
+# ('docked') for an untouched destination; updated to the new one ('hidden') since that
+# is now the intended behaviour, not a regression the test should catch.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-coden-agent-menu
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

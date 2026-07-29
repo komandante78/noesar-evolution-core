@@ -101,6 +101,14 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Pannello contestuale globale (◫ Panel) disattivato di default — `D-0238`
+
+`#contextPanel` (System trust/Context control/Data controls, uguale su ogni pagina,
+distinto dal menu `D-0237`) apriva sempre "attraccato" alla prima visita. Ripiego cambiato
+da `'docked'` a `'hidden'` — si attiva solo se cliccato, la memoria per-destinazione già
+esistente resta invariata. `browser-e2e.mjs` aggiornato e rieseguito: 327/327.
+Installato `:phase4-panel-hidden-default`.
+
 ## ➜ Colonna agente CodeN Evolution → menu — `D-0237`
 
 Dopo `D-0236` l'Owner segnalava ancora "un abisso" fra banco e colonna destra: causa reale,

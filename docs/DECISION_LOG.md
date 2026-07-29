@@ -4258,3 +4258,40 @@ pannelli insieme; nessun id, nessun contenuto è cambiato in nessuna delle due v
 **Status.** Applicato e installato (`:phase4-coden-agent-menu`), `RestartCount=0`,
 `postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
 verificata prima di ricreare.
+
+## D-0238 · Il pannello contestuale globale (◫ Panel) apre disattivato di default
+**Decision.** Owner, indicando il chip in alto "◫ Panel: docked": "fai in modo che quando
+si apre resta disattivato e si attiva solo se cliccato". Distinto dal menu della colonna
+agente di `D-0237` (quello è specifico di CodeN Evolution): `#contextPanel` è il pannello
+**globale**, identico su ogni destinazione (System trust / Context control / Data
+controls), che compariva sempre "attraccato" (`docked`) alla prima visita di qualunque
+pagina. Il meccanismo di stato esiste già ed è per-destinazione
+(`panelRanks[view]`/`localStorage`) — cambiato solo il **valore di ripiego** quando una
+destinazione non ha ancora una scelta memorizzata: da `'docked'` a `'hidden'`.
+**Why.** Una sola riga cambia il comportamento voluto senza toccare il meccanismo di
+memoria già corretto: una destinazione mai visitata prima ora apre col pannello spento;
+una volta che l'Owner lo attracca o lo fa fluttuare esplicitamente su una destinazione,
+quella scelta resta ricordata come già faceva (verificato, non riscritto).
+**Rejected.** Nessuna alternativa architetturale: cambiare un letterale con l'altro nella
+stessa funzione era la correzione minima e diretta. Aggiornato anche il markup statico
+iniziale (`data-panel="hidden"`, etichetta "Panel: hidden", `aria-expanded="false"`,
+`aria-pressed` sui tre pulsanti Dock/Float/Hide) per evitare un lampo "docked" prima che
+il JS calcoli lo stato reale.
+**Evidence.** `tools/browser-e2e.mjs` aveva un controllo con l'aspettativa vecchia
+codificata (`projectsDefault.rank === 'docked'` per una destinazione mai toccata) —
+aggiornato a `'hidden'`, la stessa distinzione già vista con i token colore in `D-0235`:
+un cambio deliberato del default richiede aggiornare il test che lo verifica, non
+aggirarlo. **Rieseguito per davvero**: `327/327`, incluso
+`"a placement chosen on one destination does not follow you to another" —
+{"rank":"hidden","onScreen":false,"floating":false}`. Screenshot reale: pannello globale
+assente di default su CodeN Evolution, resta solo il menu di `D-0237` (Conversation/Plan/
+Agent activity/Authority requests/Invariants) — altezza pagina **1968px → 1862px**, e la
+colonna centrale ora usa la larghezza che il pannello globale occupava. Unit **1126/1126**,
+`scripts/test.sh` **10/10**, byte immagine identici all'albero.
+**Reversal cost.** Nessuno — nessuna migrazione, nessun dato toccato, solo
+`apps/webui-static/`+`tools/browser-e2e.mjs`. Tornare a `:phase4-coden-agent-menu`
+ripristina `'docked'` come ripiego; le scelte già salvate in `localStorage` per una
+destinazione specifica non sono mai state toccate in nessuna delle due versioni.
+**Status.** Applicato e installato (`:phase4-panel-hidden-default`), `RestartCount=0`,
+`postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
+verificata prima di ricreare.

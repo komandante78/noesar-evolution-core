@@ -42,7 +42,7 @@
        link stays: a keyboard or screen-reader user must still be able to jump past all
        of them, and past the sidebar rank control, to reach the content. -->
   <a class="skip-link" href="#mainContent">Skip to main content</a>
-  <div class="app-shell" id="appShell" data-sidebar="full" data-panel="docked">
+  <div class="app-shell" id="appShell" data-sidebar="full" data-panel="hidden">
     <header class="topbar">
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
       <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span></button>
@@ -52,7 +52,7 @@
            them. The coverage chip reads "—" because nothing recalculates yet: a coverage
            figure with no verifier behind it would be the most damaging invented number in
            the product, since its whole purpose is to say how much you may trust. -->
-      <div class="top-actions"><label class="language-picker">Language<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option></select></label><span class="chip" id="timezoneChip" title="Instants are stored in UTC and shown in this IANA zone">Zone: —</span><span class="chip" id="projectChip">Project: none</span><span class="chip" id="modelChip">Model: none</span><span class="chip" id="coverageChip" title="Verification coverage: how much of an answer was recalculated rather than inferred. Nothing recalculates in this build, so there is no figure to show.">Coverage: —</span><span class="status-good" id="runtimeState">● Local-first</span><button class="chip rank-control" id="panelRank" type="button" aria-controls="contextPanel" aria-expanded="true" title="Context panel: docked · floating · hidden — remembered for each destination">◫ <span id="panelRankLabel">Panel: docked</span></button><button class="chip" id="logoutButton">Sign out</button><span class="avatar" id="userAvatar">O</span></div>
+      <div class="top-actions"><label class="language-picker">Language<select id="languageSelect"><option value="auto">Auto</option><option value="en">English</option><option value="it">Italiano</option></select></label><span class="chip" id="timezoneChip" title="Instants are stored in UTC and shown in this IANA zone">Zone: —</span><span class="chip" id="projectChip">Project: none</span><span class="chip" id="modelChip">Model: none</span><span class="chip" id="coverageChip" title="Verification coverage: how much of an answer was recalculated rather than inferred. Nothing recalculates in this build, so there is no figure to show.">Coverage: —</span><span class="status-good" id="runtimeState">● Local-first</span><button class="chip rank-control" id="panelRank" type="button" aria-controls="contextPanel" aria-expanded="false" title="Context panel: docked · floating · hidden — remembered for each destination">◫ <span id="panelRankLabel">Panel: hidden</span></button><button class="chip" id="logoutButton">Sign out</button><span class="avatar" id="userAvatar">O</span></div>
     </header>
 
     <aside class="sidebar" id="sidebar">
@@ -739,9 +739,9 @@
       <div class="panel-rank-bar">
         <span class="panel-rank-title" id="contextPanelTitle">Context</span>
         <div class="panel-rank-buttons" role="group" aria-label="Context panel placement">
-          <button type="button" data-panel-rank="docked" aria-pressed="true">Dock</button>
+          <button type="button" data-panel-rank="docked" aria-pressed="false">Dock</button>
           <button type="button" data-panel-rank="floating" aria-pressed="false">Float</button>
-          <button type="button" data-panel-rank="hidden" aria-pressed="false">Hide</button>
+          <button type="button" data-panel-rank="hidden" aria-pressed="true">Hide</button>
         </div>
       </div>
       <p class="panel-rank-hint" id="contextPanelHint">Placement is remembered for each destination.</p>

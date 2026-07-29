@@ -373,7 +373,11 @@ function readPanelRanks(){
 function applyPanelRank(view){
   currentPanelView=view;
   const shell=$('#appShell');if(!shell)return;
-  const rank=PANEL_RANKS.includes(panelRanks[view])?panelRanks[view]:'docked';
+  // Owner: the panel should open deactivated and only turn on if clicked — a destination
+  // with no remembered choice yet defaults to 'hidden', not 'docked'. Once a choice is
+  // made for that destination it is remembered (above), so this fallback only matters the
+  // first time a destination is visited.
+  const rank=PANEL_RANKS.includes(panelRanks[view])?panelRanks[view]:'hidden';
   shell.dataset.panel=rank;
   const control=$('#panelRank');
   if(control){
