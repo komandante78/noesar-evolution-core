@@ -101,6 +101,15 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Chat (progetti/conversazioni, superficie diversa da CodeN Evolution) — `D-0233`
+
+Era un guscio vuoto: tutto costruito (route/orchestratore/streaming/RAG/UI) ma **nessun
+provider acceso** — `409` a ogni messaggio. Ora il profilo `local-openai-compatible` è
+`enabled`, punta a Phi-4 (`http://172.22.0.4:8420/v1`, IP fisso di `atom-evolution-model`)
+ed è il `defaultProviderId`. Verificato con streaming reale su istanza usa-e-getta prima di
+toccare il file di stato live. Provider **esterni** (OpenAI/Anthropic/Kimi) restano spenti —
+Owner: "un'opzione", non necessaria ora.
+
 ## ➜ Le domande all'Owner ancora senza risposta
 
 Nessuna. Le due che comparivano qui sono risposte — vedi `D-0232`. (1) Il percorso host per

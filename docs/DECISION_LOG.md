@@ -4016,3 +4016,51 @@ procedura di oggi al contrario.
 invariati (il cambio è trasparente al contratto, stesso hostname:porta). `PROJECT_STATE.json`
 e `docs/SESSION_HANDOFF.md` aggiornati per togliere le due domande ora risolte dall'elenco
 aperto — non una terza copia dello stesso testo, un pointer a questa voce.
+
+## D-0233 · La tab Chat era un guscio vuoto — nessun provider acceso — ora punta a Phi-4
+**Decision.** L'Owner ha chiesto di verificare se qualcosa manca per far funzionare la Chat
+di NOESAR EVOLUTION (superficie diversa da CodeN Evolution: progetti/conversazioni/RAG/
+strumenti, non `workspace-actions`) e se tutto è collegato. Trovato: **sì, manca qualcosa**.
+Route server, `ChatOrchestrator`, `ProviderGateway`, streaming SSE, RAG, contenimento
+prompt-injection e interfaccia sono tutti costruiti e cablati — ma **nessun profilo
+provider era acceso** (`enabled:false` su tutti e 4 i profili di default, nessun consenso,
+nessuna credenziale, `settings.defaultProviderId:null`). Un messaggio in Chat rispondeva con
+`409 No enabled model provider is available for this mode` — non un crash, un guscio vuoto.
+Owner: collegare le API esterne è "un'opzione", non necessaria ora — usare il modello locale
+già in esecuzione. Il profilo `local-openai-compatible` è ora abilitato, puntato a
+`http://172.22.0.4:8420/v1` (IP fisso di `atom-evolution-model`, assegnato con `--ip` alla
+ricreazione del container proprio per questo — un hostname Docker non passa la validazione
+SSRF di `provider-gateway.mjs`, che per i provider locali accetta solo loopback o un
+letterale IP privato), `defaultModel` impostato al nome esatto che llama.cpp serve
+(`/models/phi-4-q4_k_m.gguf`), e impostato come `defaultProviderId` — un nuovo utente non
+deve scegliere nulla per parlare col modello.
+**Why.** La Chat e ATOM sono due contratti distinti (`chat.mjs`/`provider-gateway.mjs` contro
+`reasoning-router.mjs`/`atom-client.mjs`) — nessuno dei due implica l'altro. Verificare ATOM
+non diceva nulla sulla Chat, e nessuna fase precedente aveva mai controllato se un provider
+fosse acceso.
+**Rejected.** Usare l'hostname del container (`atom-evolution-model`) nel `baseUrl`:
+`validateBaseUrl` lo rifiuta per i provider locali (non è loopback né un IP letterale) — la
+stessa regola che impedisce a un operatore di puntare un provider "locale" a un host arbitrario
+della rete. Un IP dinamico avrebbe funzionato oggi e rotto al prossimo restart del container:
+fissato con `--ip` invece di lasciarlo all'assegnazione automatica.
+**Evidence.** Editato `state/ai-workspace.json` sul prodotto live con lo stesso pattern
+atomico del codice stesso (`AtomicJsonStore.write`: tmp file + `rename`, nessuna cache in
+memoria — `read()` rilegge da disco a ogni chiamata, verificato leggendo `atomic-store.mjs`
+prima di toccare nulla). Backup del file preso prima (`ai-workspace.json.bak_pre_local_
+provider_<ts>`). **Il meccanismo provato PRIMA su un'istanza usa-e-getta**, non sul prodotto
+reale: server effimero, account owner scartabile, stesso identico giro (abilita provider →
+crea progetto → crea conversazione → `POST /api/v1/chat/stream`) — risposta reale in
+streaming: `"pong\n\n[no retrieved evidence]"` a fronte di "Reply with exactly one word:
+PONG", `provenance`/`providerId` coerenti, evento `complete` con citazioni vuote (nessuna
+fonte selezionata, corretto). Solo dopo aver visto lo streaming vero funzionare sull'istanza
+scartabile, applicata la stessa modifica al file di stato reale. Riverificato il file dopo:
+invariato, nessuna scrittura concorrente del server l'ha sovrascritto. `noesar-evolution`
+`healthy`, `/livez` 200, nessun riavvio necessario (bind mount, il container legge il file
+aggiornato dal path host `NOESAR_EVOLUTION_RUNTIME/state/ai-workspace.json`).
+**Reversal cost.** Nessuno: `providerProfiles[].enabled=false` di nuovo, nessuna migrazione,
+nessun dato di conversazione toccato. Il container `atom-evolution-model` con IP fisso non
+cambia nulla per `atomd` (che lo raggiunge per hostname, non per IP).
+**Status.** Applicato sul prodotto live. **Non è un cambio di codice**: nessun file sorgente
+toccato, nessun commit nel repository per questa voce oltre al log stesso — è una
+configurazione runtime, come un `.env`. Resta vero che nessun provider **esterno** (OpenAI/
+Anthropic/Kimi) è configurato — l'Owner l'ha dichiarato non prioritario ora.
