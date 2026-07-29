@@ -2535,6 +2535,18 @@ function initBench(){
     if(name==='terminal')$('#benchTerminal').scrollIntoView({block:'nearest'});
     if(name==='closure')loadClosures();
   }));
+  // The agent column menu: one panel visible at a time instead of all five stacked, so
+  // the column's height stops being the sum of every panel and the gap below the
+  // (much shorter) bench disappears. Same pattern as the bench tabs above, a second
+  // instance rather than a shared one because the two switch different panel sets.
+  $$('[data-agent-menu]').forEach((item)=>item.addEventListener('click',()=>{
+    const name=item.dataset.agentMenu;
+    $$('[data-agent-menu]').forEach((node)=>{
+      const active=node===item;
+      node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
+    });
+    $$('[data-agent-panel]').forEach((panel)=>panel.classList.toggle('active',panel.dataset.agentPanel===name));
+  }));
   $('#terminalAdd')?.addEventListener('click',()=>{
     terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`,history:[]});
     terminals.active=terminals.next;terminals.next+=1;renderTerminals();

@@ -4222,3 +4222,39 @@ separati; `Tools` resta raggiungibile in entrambi i casi.
 **Status.** Applicato e installato (`:phase4-coden-agent-declutter`), `RestartCount=0`,
 `postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
 verificata prima di ricreare (lezione `D-0234` applicata di nuovo).
+
+## D-0237 · La colonna agente diventa un menu — l'abisso era l'altezza sommata di cinque pannelli
+**Decision.** `D-0236` aveva già ridotto la colonna agente da dieci pannelli a cinque, ma
+l'Owner segnala ancora "un abisso tra la chat e la colonna destra". Causa reale: con tutti
+e cinque i pannelli sempre espansi, l'altezza della colonna agente era la **somma** di
+tutti e cinque, mentre il banco accanto (Shadow run + Terminale) è molto più corto — la
+differenza restava vuota, visibile come un salto nel mezzo della pagina prima che iniziasse
+`Tools`. Trasformata la colonna in un **menu**: cinque pulsanti (`Conversation`/`Plan`/
+`Agent activity`/`Authority requests`/`Invariants`), **un solo pannello visibile alla
+volta**, stesso schema già usato dalle schede del banco (`initBench()`,
+`data-bench-tab`/`data-bench-panel`) ma una seconda istanza indipendente perché
+commutano insiemi di pannelli diversi. `Plan` si apre di default (l'azione primaria di
+questa pagina), come il banco stesso si apre di default sulla scheda `Shadow`.
+**Why.** Il problema non era il NUMERO di pannelli (già ridotto in `D-0236`), era che
+restassero tutti **sempre espansi contemporaneamente** — l'altezza della colonna dipende
+da quanti pannelli mostra insieme, non da quanti esistono. Un menu rende l'altezza
+proporzionale a UN pannello, non a cinque.
+**Rejected.** Nessuna nuova scelta architetturale da scartare qui: rispetta lo stesso
+confine di `D-0236` (`UI-032`, undici schede del banco, non toccato — questo menu vive
+dentro `.bench-agent`, una regione diversa da `.bench-tabs`).
+**Evidence.** Screenshot reale prima (`3510px` di altezza pagina, `D-0236`) e dopo
+(**`1968px`**, quasi dimezzata) — la stessa pagina, lo stesso account di prova. Click
+reale sul menu verificato in un test scartabile a parte: prima del click `activeMenu:
+"plan"`, `invariantsVisible:"none"`; dopo il click su `Invariants`, `activeMenu:
+"invariants"`, `invariantsVisible:"block"`, `planVisible:"none"` — il toggle scambia
+davvero, non solo esteticamente. Nessuna modifica necessaria a `tools/browser-e2e.mjs`:
+`#planGoal` resta raggiungibile perché `Plan` è il pannello di default, e
+`#invariantList li` si popola comunque (il caricamento non dipende dalla visibilità del
+pannello) — verificato **rieseguendo per davvero** la suite, non assumendolo: **327/327**.
+Unit **1126/1126**, `scripts/test.sh` **10/10**, byte immagine identici all'albero.
+**Reversal cost.** Nessuno — nessuna migrazione, nessun dato toccato, solo
+`apps/webui-static/`. Tornare a `:phase4-coden-agent-declutter` riespande tutti e cinque i
+pannelli insieme; nessun id, nessun contenuto è cambiato in nessuna delle due versioni.
+**Status.** Applicato e installato (`:phase4-coden-agent-menu`), `RestartCount=0`,
+`postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
+verificata prima di ricreare.

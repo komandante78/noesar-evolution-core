@@ -285,14 +285,27 @@
           <!-- UI-034. The agent column IS the context panel for this destination. Path
                authorisation lives here because that is what an authority request is. -->
           <aside class="bench-agent" id="benchAgent" aria-label="Agent">
-            <section class="mini-panel"><h3>Conversation</h3><p class="declared-empty">The bench conversation shares the session with Chat and with the terminal shell. It is not a second chat with its own state.</p><button class="text-button" data-view-link="chat">Open Chat</button></section>
+            <!-- Owner: an abyss of blank space opened between the bench and the agent
+                 column because five always-expanded panels made this column far taller
+                 than the bench beside it. A menu instead of a stack: one panel visible at
+                 a time, chosen by name, height driven by whichever panel is open rather
+                 than by the sum of all five. Every id, every panel's content, unchanged —
+                 Plan opens by default since it is the primary action here. -->
+            <nav class="agent-menu" id="agentMenu" role="tablist" aria-label="Agent panels">
+              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="conversation">Conversation</button>
+              <button class="agent-menu-item active" type="button" role="tab" aria-selected="true" data-agent-menu="plan">Plan</button>
+              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="activity">Agent activity</button>
+              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="authority">Authority requests</button>
+              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="invariants">Invariants</button>
+            </nav>
+            <section class="mini-panel agent-panel" data-agent-panel="conversation"><h3>Conversation</h3><p class="declared-empty">The bench conversation shares the session with Chat and with the terminal shell. It is not a second chat with its own state.</p><button class="text-button" data-view-link="chat">Open Chat</button></section>
             <!-- UI-034/UI-036 continued. Plan is now wired to /api/v1/workspace-actions/plan
                  (D-0190/D-0191 made executesPlans/executorWiredToProductActions true on the
                  backend; this panel was the last place still claiming otherwise). The
                  reference provider takes files verbatim — it has no model to invent a target
                  from prose alone — so the form asks for exact paths and contents, the same
                  shape workspace-actions.mjs::plan() requires. -->
-            <section class="mini-panel code-panel" id="planPanel">
+            <section class="mini-panel code-panel agent-panel active" id="planPanel" data-agent-panel="plan">
               <div class="panel-title"><h3>Plan</h3><span class="badge badge-off" id="planRunBadge">No plan yet</span></div>
               <form class="form-stack" id="planForm">
                 <label>What this plan does<textarea id="planGoal" placeholder="One sentence: what should become true." required></textarea></label>
@@ -313,7 +326,7 @@
                  Residual risk) merged into one — Owner: the agent column had too many
                  areas. Every id, every sentence, stays; only the box-per-sentence
                  packaging is gone. -->
-            <section class="mini-panel agent-activity">
+            <section class="mini-panel agent-activity agent-panel" data-agent-panel="activity">
               <h3>Agent activity</h3>
               <h4>Hypothesis and evidence</h4><p class="declared-empty">No hypothesis. Evidence is what was recalculated, not what was asserted.</p>
               <h4>Tool activity</h4><div id="agentToolActivity" class="empty-state">No tool has run in this session.</div>
@@ -322,7 +335,7 @@
               <h4>Sub-agents</h4><p class="declared-empty">None. A sub-agent needs its own authority and an independent reviewer; neither exists in this build.</p>
               <h4>Residual risk</h4><p class="declared-empty">Stated at closure, not guessed at during the work.</p>
             </section>
-            <section class="mini-panel code-panel">
+            <section class="mini-panel code-panel agent-panel" data-agent-panel="authority">
               <div class="panel-title"><h3>Authority requests</h3><span id="modeLabel">NORMAL MODE</span></div>
               <label>Server or workspace path<input id="pathInput" value="projects/example"></label>
               <div class="form-grid"><label>Operation<select id="operation"><option>write</option><option>delete</option><option>execute</option><option>install</option><option>read</option></select></label><label>Duration<select id="duration"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></label></div>
@@ -334,7 +347,7 @@
               <div class="panel-title"><h3>Live authority</h3><span class="badge badge-off" id="liveAuthorityCount">0</span></div>
               <div id="liveAuthorityList" class="empty-state">Nothing is granted right now.</div>
             </section>
-            <section class="mini-panel"><h3>Non-bypassable invariants</h3><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section>
+            <section class="mini-panel agent-panel" data-agent-panel="invariants"><h3>Non-bypassable invariants</h3><ul class="invariants" id="invariantList"><li>Loading…</li></ul></section>
           </aside>
         </div>
       

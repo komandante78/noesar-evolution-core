@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Owner, after D-0236 shrank the agent column from ten panels to five: still too much,
+# and an "abyss" of blank space between the bench (short) and the agent column (still
+# tall) — five always-expanded panels made the column's height the SUM of all five.
+#
+# The agent column becomes a menu: five buttons (Conversation/Plan/Agent activity/
+# Authority requests/Invariants), one panel visible at a time — its own toggle, the same
+# pattern as the bench's own tabs (services/reference-control-plane/src/../app.js
+# initBench()), a second instance rather than shared code because the two switch
+# different panel sets. Plan opens by default (the primary action here), matching how
+# the bench itself defaults to its first tab (Shadow).
+#
+# UI-032's eleven-tab count (checked in webui-markup-structure.test.mjs) is untouched:
+# this menu lives inside .bench-agent, a different region from .bench-tabs, so it adds no
+# bench tab and breaks nothing D-0236 already declined to touch for that reason.
+#
+# Every panel's id, every sentence, every form field unchanged — content moved from
+# "always shown" to "shown when its menu item is selected", nothing removed.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-coden-agent-declutter
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001
