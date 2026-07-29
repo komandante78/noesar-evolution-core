@@ -440,7 +440,11 @@ $$('[data-chat-mode]').forEach((button)=>button.addEventListener('click',()=>set
 // it could not confirm the state, and the amber `.external` styling (which existed in
 // the stylesheet but was never applied by anything) is driven from the same answer.
 async function refreshPrivacy(){
-  const box=$('#privacyBanner');if(!box)return;
+  // Was a full-width banner on the Home view only; the Owner asked for it as a permanent
+  // compact footer line instead, so this now writes #footerPrivacy in the statusbar — same
+  // three server-verified fields (headline/detail/state), same element structure
+  // (strong/small/.verified), same 'external' class toggle, just relocated.
+  const box=$('#footerPrivacy');if(!box)return;
   try{
     const {banner,state:privacyState,disclosures,telemetry}=await api('/api/v1/privacy');
     box.querySelector('strong').textContent=banner.headline;
@@ -451,28 +455,27 @@ async function refreshPrivacy(){
     // at it tested for 'LOCAL_ONLY', a value this server never emits, which would have
     // left the banner permanently amber.
     box.classList.toggle('external',Boolean(banner.external));
+    box.classList.toggle('status-good',!banner.external);
     renderPrivacyDisclosures(disclosures??[],telemetry);
-    // The footer chip and the runtime chip report the SAME derived state, because they
-    // are the same claim shown twice. They used to be written from the provider dropdown:
-    // the footer read "● Local-only verified" whenever a local model happened to be
-    // selected, whatever the server thought — a privacy guarantee asserted by a <select>.
-    setPrivacyChips(privacyState,Boolean(banner.external));
+    // The runtime chip reports the SAME derived state as the footer, because it is the
+    // same claim shown twice. It used to be written from the provider dropdown: the footer
+    // read "● Local-only verified" whenever a local model happened to be selected, whatever
+    // the server thought — a privacy guarantee asserted by a <select>.
+    setPrivacyChips(Boolean(banner.external));
   }catch(error){
     box.classList.add('external');
+    box.classList.remove('status-good');
     box.querySelector('strong').textContent='Privacy state could not be confirmed.';
-    box.querySelector('small').textContent='The server did not answer the privacy check, so this banner is not reporting a verified state.';
+    box.querySelector('small').textContent='The server did not answer the privacy check, so this notice is not reporting a verified state.';
     box.querySelector('.verified').textContent='UNVERIFIED';
     // Same rule for the chips: an unanswered check is not a local-only guarantee.
-    setPrivacyChips('STATUS_UNKNOWN',false,true);
+    setPrivacyChips(false,true);
     renderPrivacyDisclosures([],null);
     if(window.__noesarDebug)console.error(error);
   }
 }
 
-function setPrivacyChips(privacyState,external,unconfirmed=false){
-  const label=unconfirmed?'not confirmed':String(privacyState).replaceAll('_',' ').toLowerCase();
-  const footer=$('#footerPrivacy');
-  if(footer){footer.textContent=`● ${label}`;footer.className=unconfirmed?'amber':(external?'amber':'status-good');}
+function setPrivacyChips(external,unconfirmed=false){
   const runtime=$('#runtimeState');
   if(runtime)runtime.textContent=unconfirmed?'● Privacy state not confirmed':(external?'● External by consent':'● Local-first');
   const egress=$('#egressMetric');

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Two Owner requests, both in apps/webui-static/ only — no server route changed.
+#
+#   1. The local-only/external privacy notice (01_PRODUCT/12) was a full-width banner
+#      shown only on the Home view. Owner: remove it, put it in the footer instead — a
+#      permanent compact line beats a banner one view showed. Moved, not duplicated: the
+#      banner's DOM (strong/small/.verified) and the 'external' class now live on
+#      #footerPrivacy in the statusbar; app.js's refreshPrivacy() writes the SAME three
+#      server-verified fields there instead of to a separate #privacyBanner element.
+#      tools/browser-e2e.mjs's privacy-indicator lifecycle check (fresh install ->
+#      LOCAL ONLY VERIFIED -> consent+enable external -> REMOTE MODEL ACTIVE -> revoke ->
+#      back to LOCAL ONLY VERIFIED) was updated to the new selector and re-run for real —
+#      327/327, the exact same safety property, now checked at its new location.
+#   2. A line under the chat composer: "NOESAR EVOLUTION is an AI and can make mistakes."
+#
+# Six colour tokens (border-good, state-info-soft, surface-good-wash-from/to,
+# surface-warn-wash-deep/mid) lost their only consumer when the banner's box styling
+# (border/background gradient) was retired in favour of plain footer text — removed from
+# every theme block; "every token the stylesheet references is defined" (which checks
+# for tokens defined and UNUSED, not just used-and-undefined) caught this before it
+# shipped as 6 dead tokens across 5 themes.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-chat-ui-fixes
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

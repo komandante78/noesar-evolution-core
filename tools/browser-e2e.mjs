@@ -536,12 +536,18 @@ try {
   // Driven through the real provider controls rather than the API, because the defect
   // being guarded against lived in the browser: the footer used to print "● Local-only
   // verified" straight from the provider dropdown, whatever the server thought.
+  //
+  // Owner asked for the full-width Home-only banner to become a permanent compact footer
+  // line instead (#footerPrivacy in the statusbar) — same server-verified fields, same
+  // strong/small/.verified structure and 'external' class, just relocated; there is no
+  // separate banner element any more, so "footer" and "verified" below now read the SAME
+  // node rather than two that are checked against each other.
   at('privacy indicator');
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#privacyBanner', { timeout: 15000 });
+  await page.waitForSelector('#footerPrivacy', { timeout: 15000 });
   const privacyLocal = await page.evaluate(() => ({
-    verified: document.querySelector('#privacyBanner .verified')?.textContent?.trim() ?? '',
-    external: document.querySelector('#privacyBanner')?.classList.contains('external') ?? null,
+    verified: document.querySelector('#footerPrivacy .verified')?.textContent?.trim() ?? '',
+    external: document.querySelector('#footerPrivacy')?.classList.contains('external') ?? null,
     footer: document.querySelector('#footerPrivacy')?.textContent?.trim() ?? '',
     disclosuresHidden: document.querySelector('#privacyDisclosures')?.classList.contains('hidden') ?? null,
   }));
@@ -551,8 +557,9 @@ try {
   check('a fresh installation reports LOCAL ONLY VERIFIED despite the seeded external catalogue',
     privacyLocal.verified === 'LOCAL ONLY VERIFIED' && privacyLocal.external === false,
     JSON.stringify(privacyLocal));
-  check('the footer chip agrees with the banner instead of being written by the dropdown',
-    /local only verified/i.test(privacyLocal.footer), privacyLocal.footer);
+  check('the footer states the server-verified headline, not a dropdown-derived guess',
+    /NOESAR runs locally on your device/.test(privacyLocal.footer) && /local only verified/i.test(privacyLocal.footer),
+    privacyLocal.footer);
   check('nothing is disclosed while the state is local-only',
     privacyLocal.disclosuresHidden === true, JSON.stringify(privacyLocal));
 
@@ -591,7 +598,7 @@ try {
 
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
   await page.waitForFunction(
-    () => document.querySelector('#privacyBanner .verified')?.textContent?.trim() === 'REMOTE MODEL ACTIVE',
+    () => document.querySelector('#footerPrivacy .verified')?.textContent?.trim() === 'REMOTE MODEL ACTIVE',
     { timeout: 15000 });
   const privacyExternal = await page.evaluate(() => {
     const panel = document.querySelector('#privacyDisclosures');
@@ -599,7 +606,7 @@ try {
     const card = document.querySelector('#privacyDisclosureList .privacy-disclosure');
     return {
       onScreen: Boolean(panel && panel.offsetParent !== null && box.width > 0 && box.height > 0),
-      external: document.querySelector('#privacyBanner')?.classList.contains('external') ?? null,
+      external: document.querySelector('#footerPrivacy')?.classList.contains('external') ?? null,
       footer: document.querySelector('#footerPrivacy')?.textContent?.trim() ?? '',
       runtime: document.querySelector('#runtimeState')?.textContent?.trim() ?? '',
       labels: [...(card?.querySelectorAll('p strong') ?? [])].map((node) => node.textContent.replace(':', '').trim()),
@@ -634,10 +641,10 @@ try {
   // have is the defect this whole indicator exists to remove.
   await clickOrExplain(page, '#privacyRevoke');
   await page.waitForFunction(
-    () => document.querySelector('#privacyBanner .verified')?.textContent?.trim() === 'LOCAL ONLY VERIFIED',
+    () => document.querySelector('#footerPrivacy .verified')?.textContent?.trim() === 'LOCAL ONLY VERIFIED',
     { timeout: 20000 });
   const privacyRevoked = await page.evaluate(() => ({
-    verified: document.querySelector('#privacyBanner .verified')?.textContent?.trim() ?? '',
+    verified: document.querySelector('#footerPrivacy .verified')?.textContent?.trim() ?? '',
     hidden: document.querySelector('#privacyDisclosures')?.classList.contains('hidden') ?? null,
   }));
   check('the revoke control returns the installation to local-only',

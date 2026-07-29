@@ -4126,3 +4126,52 @@ conclusa — non solo `chmod`. Il bug 2 (menu nascosti) resta **non riprodotto d
 il fix applicato è quello corretto per la classe di sintomo descritta, ma se l'Owner lo vede
 ancora dopo questo deploy, serve uno screenshot o l'accesso diretto per procedere oltre le
 ipotesi.
+
+## D-0235 · Il bug Ramo resta aperto (Owner: rimandato) — banner privacy spostato nel footer, disclaimer AI aggiunto sotto la Chat
+**Decision.** Il bug del menu "Ramo" (D-0234) resta **aperto, deliberatamente rimandato**
+dall'Owner ("per ora lo mettiamo con un ?, vediamo quando ci sarà da selezionare") dopo aver
+esaurito ogni ipotesi verificabile via codice (lista corta/lunga, prima apertura/dopo
+reload, con/senza messaggi reali) senza mai riprodurlo. **Due richieste eseguite invece**:
+(1) il banner privacy a piena larghezza (01_PRODUCT/12, mostrato solo sulla Home) rimosso e
+il suo contenuto spostato in una riga permanente nel footer (`#footerPrivacy`); (2) una
+scritta sotto il composer della Chat: *"NOESAR EVOLUTION is an AI and can make mistakes."*
+**Why.** L'Owner ha chiesto esplicitamente di togliere il banner e "metterlo come footer" —
+non un secondo elemento statico, lo STESSO stato verificato dal server (headline/detail/
+stato `LOCAL ONLY VERIFIED`/`REMOTE MODEL ACTIVE`, classe `external`), solo spostato. Il
+codice esistente commenta esplicitamente la ragione per cui questo indicatore non può
+diventare testo statico: *"a privacy guarantee asserted by a `<select>`"* era il difetto che
+l'intero meccanismo esiste per prevenire.
+**Rejected.** Cancellare l'elemento `#privacyBanner` e lasciare che `refreshPrivacy()`
+uscisse presto per elemento assente: avrebbe interrotto anche `setPrivacyChips()` (chiamata
+DENTRO lo stesso try, mai raggiunta), disattivando silenziosamente pure i chip
+`#runtimeState`/`#egressMetric` altrove nell'interfaccia — un secondo difetto nascosto dentro
+la richiesta del primo. Riscritto invece `refreshPrivacy()` per scrivere direttamente su
+`#footerPrivacy` (stessa struttura interna `strong`/`small`/`.verified`, stessa classe
+`external`), e tolta dalla funzione `setPrivacyChips()` la scrittura ridondante del footer
+(che avrebbe sovrascritto il contenuto ricco appena impostato con un chip breve "● stato").
+**Evidence.** `tools/browser-e2e.mjs` porta un banco dedicato di sei controlli sul ciclo di
+vita dell'indicatore (installazione fresca → `LOCAL ONLY VERIFIED` → consenso+attivazione
+provider esterno → `REMOTE MODEL ACTIVE` → revoca → di nuovo `LOCAL ONLY VERIFIED`) — i
+selettori `#privacyBanner` sono stati spostati su `#footerPrivacy` (stesso pattern
+`.verified`/`.external`) e il banco **rieseguito per davvero** (non solo riletto):
+`327/327`, incluso il nuovo footer che recita `"NOESAR runs locally on your device. No data
+is sent to external servers. LOCAL ONLY VERIFIED"` e transita correttamente a `"External
+connection active or requested... REMOTE MODEL ACTIVE"` quando un provider esterno viene
+attivato. **Trovato dal test, non ipotizzato**: rimuovendo lo styling del box del banner
+(bordo/sfondo sfumato) sei token colore (`border-good`, `state-info-soft`,
+`surface-good-wash-from/to`, `surface-warn-wash-deep/mid`) sono rimasti senza consumatore in
+**cinque** blocchi tema su nove — il guardiano "every token the stylesheet references is
+defined" (che verifica anche i token DEFINITI E MAI USATI, non solo l'inverso) li ha
+catturati prima del deploy, non dopo. Rimossi da tutti i blocchi tema. Unit **1126/1126**,
+`scripts/test.sh` **10/10**, byte immagine identici all'albero. Verificato dal vivo sul
+prodotto: `curl` sull'HTML servito mostra `0` occorrenze di `privacyBanner`, la scritta AI
+presente sotto il composer, il footer con lo stato iniziale "Checking privacy state…" pronto
+a essere popolato dalla prima chiamata client a `/api/v1/privacy`.
+**Reversal cost.** Nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato, nessun dato
+toccato (solo `apps/webui-static/`). Tornare a `:phase4-chat-ui-fixes` reintroduce il banner
+a piena larghezza sulla Home e toglie la scritta sotto la Chat; il fix dei due bug Enter/
+stacking di D-0234 resta comunque.
+**Status.** Applicato e installato (`:phase4-privacy-footer`), `RestartCount=0`,
+`postgres.stopped clean:true` nel log, backup runtime preso prima. Ownership dei file di
+stato verificata `10001:10001` PRIMA di ricreare il container (lezione di `D-0234`
+applicata, nessun incidente questa volta).

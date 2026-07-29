@@ -101,6 +101,16 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Privacy banner → footer, disclaimer AI, bug Ramo rimandato — `D-0235`
+
+Bug menu "Ramo" **resta aperto**, l'Owner l'ha rimandato dopo che nessuna ipotesi verificabile
+via codice l'ha riprodotto. Eseguito invece: banner privacy (01_PRODUCT/12) spostato dalla
+Home in una riga permanente nel footer (`#footerPrivacy` — stesso stato verificato dal
+server, non testo statico), scritta *"NOESAR EVOLUTION is an AI and can make mistakes."*
+sotto il composer Chat. Banco E2E dedicato (6 controlli sul ciclo `LOCAL ONLY VERIFIED` ↔
+`REMOTE MODEL ACTIVE`) aggiornato al nuovo selettore e **rieseguito per davvero**: 327/327.
+Installato `:phase4-privacy-footer`.
+
 ## ➜ Chat UI fix + incidente auto-causato — `D-0234`
 
 2 bug riparati e installati (`:phase4-chat-ui-fixes`): Enter invia il messaggio (era

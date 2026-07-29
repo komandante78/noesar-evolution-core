@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_CHAT_UI_FIXES_DEPLOYED",
+  "phase_status": "STEP_PRIVACY_FOOTER_DEPLOYED",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "PENDING_D-0234_COMMIT",
-  "last_updated_utc": "2026-07-29T16:54:42Z",
+  "last_updated_utc": "2026-07-29T17:23:53Z",
   "blockers": [
     {
       "id": "B-001",
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0234: 2 bug UI Chat riparati (Enter invia/Shift+Enter va a capo; stacking context esplicito su chat-toolbar/chat-grid per il sintomo menu-nascosti-sotto, non riprodotto direttamente in headless Chrome 1440x900/100% zoom nonostante Owner conferma stessa config) - installato :phase4-chat-ui-fixes, byte immagine identici allalbero, scripts/test.sh 10/10, unit 1126/1126. INCIDENTE AUTO-CAUSATO trovato e riparato nella stessa fase: la modifica D-0233 a state/ai-workspace.json (scritta da fuori il container) aveva lasciato il file di proprieta root invece di uid 10001 - il container e entrato in crash-loop al restart (EACCES). Riparato con chown, restart, RestartCount tornato a 0, configurazione provider riverificata intatta. Lezione permanente registrata: chown esplicito ogni volta che si scrive un file di stato da fuori il container. Se lOwner vede ancora il bug 2 dopo questo deploy, serve uno screenshot per procedere oltre le ipotesi. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o conferma Owner sul bug 2.",
+  "next_action": "D-0235: bug menu Ramo resta APERTO, rimandato esplicitamente dall Owner dopo aver esaurito le ipotesi verificabili via codice - nessuna riproduzione trovata. Eseguito invece: banner privacy (01_PRODUCT/12, prima solo su Home) spostato in una riga permanente nel footer (#footerPrivacy, stesso stato verificato dal server, stessa struttura strong/small/.verified/classe external - non una copia statica), scritta NOESAR EVOLUTION is an AI and can make mistakes. sotto il composer Chat. tools/browser-e2e.mjs banco privacy (6 controlli, LOCAL ONLY VERIFIED <-> REMOTE MODEL ACTIVE) riscritto e rieseguito per davvero: 327/327. 6 token colore diventati orfani (rimozione box banner) trovati dal guardiano tokens-unused, rimossi da 5 blocchi tema. Installato :phase4-privacy-footer, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se e quando l Owner fornisce uno screenshot/accesso browser.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
