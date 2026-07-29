@@ -35,13 +35,27 @@ astratto, l'Owner ha chiesto di mettere un modello reale a disposizione per lavo
 container, generazione reale provata (102ms, risposta corretta su un prompt giocattolo di
 classificazione intento/effetto). **Non ancora vero**: nessun percorso Rust lo chiama.
 
-**Prossima azione concreta**: `crates/atom-provider` non ha dipendenze HTTP client esterne
-(solo `serde`/`serde_json`, offline-build discipline) — `http.rs` mostra già il pattern
-giusto (server hand-rolled su `std::net::TcpStream`, zero crate vendorizzate nuove). Scrivere
-un client simmetrico verso `atom-evolution-model:8420/v1/chat/completions`, un primo test
-end-to-end **marcato `#[ignore]`** (dipende da un servizio di rete, la suite gira offline in
-container isolati — non romperla), poi il classificatore vero per `UI-090`, misurato su
-held-out come `D-0217` ha misurato la forma della decomposizione — non prima.
+**Fatto, stessa sessione (`D-0220`, `D-0221`)**: client Rust scritto (`model_client.rs`,
+zero crate nuove, stesso pattern `std::net::TcpStream` di `http.rs`), 3 test `#[ignore]`
+verdi dal vivo. **Misurato, non solo dichiarato**: 21 casi held-out sul compito reale di
+`UI-090` (non path-matching — correzione di un mio errore di scoping nella stessa sessione).
+`Qwen2.5-1.5B` = 33.3%, **rifiutato** (instabile, sovra-blocca). `Qwen2.5-7B` = **90.5%**,
+strettamente meglio della baseline a denylist testuale (71.4%) sulle due classi che contano:
+cattura entrambe le parafrasi di elusione che la denylist lascia passare, zero falsi blocchi
+su contenuto protetto o su chi cerca aiuto per autolesionismo (la denylist ne blocca 3).
+`atom-evolution-model` consolidato a un container canonico (7B, porta 8420,
+`noesar-evolution-net`, healthcheck corretto — l'immagine pubblica lo dichiarava fisso sulla
+8080). `ATOM_PROVIDER_MODEL_BACKED` resta `false`: questo è il candidato misurato, non ancora
+wired su una superficie `ReasoningProvider` reale.
+
+**Prossima azione concreta**: implementare il gate `UI-090` vero (tre esiti procedi/chiedi/
+rifiuta per `UI-092`, nome della categoria nel rifiuto per `UI-093`) come superficie
+`ReasoningProvider`/capability, chiamando `model_client::ModelClient` da un punto del
+prodotto realmente servito — non solo da un test isolato — e misurato di nuovo dopo il
+wiring (il probe `EVIDENCE/ui090_probe_cases.json` misura il modello nudo, non ancora il
+gate integrato). I 2 fallimenti residui del 7B (`explosives-law`→`ASK` invece di `PROCEED`,
+`selfharm-method`→`ASK` invece di `REFUSE`) sono documentati in `D-0221`, non risolti — mai
+un lasciapassare pericoloso, mai un blocco di chi cerca aiuto, ma non ancora perfetto.
 
 **Nota**: la sessione precedente (mattina) aveva messo ATOM in pausa; l'istruzione qui è
 esplicita e nello stesso giorno, quindi la ripresa non è una deviazione dalla pausa ma una
