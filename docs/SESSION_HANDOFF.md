@@ -81,21 +81,15 @@ leggendo l'ombra. Daemon giù → **12/12 `UNAVAILABLE`, zero fallback**.
 ⚠ **Conseguenza**: con 12 superfici instradate, `atomd` giù fa 503 su tutte e dodici invece
 che su tre. Rollback = un `docker run` senza `NOESAR_EXTERNAL_SURFACES`.
 
-**Le altre decisioni di questa giornata, in una riga ciascuna** (il dettaglio vive in
-`docs/DECISION_LOG.md`, non qui):
+**Le altre decisioni di questa giornata, in una riga ciascuna** (dettaglio in `DECISION_LOG.md`):
 
-- **`D-0225`** — niente si installa per verificare: `scripts/test.sh` ricade su un container
-  `python:3-slim` effimero. Eseguendoli per la prima volta ha trovato **due bug preesistenti**
-  (lista di 12 migrazioni stale dopo le `0013-0016`; booleani JSON dentro sorgente Python).
-  `pass=5 unavailable=4` → **`pass=10 fail=0 partial=0 unavailable=0`**.
-- **`D-0224`** — `INST-006` era già vero ma **non protetto**: la disclosure sul backup non
-  cifrato esisteva nella WebUI senza alcun test. Aggiunto, provato in rosso e ripristinato.
-- **`D-0223`** — il rischio 4 era chiuso solo a metà: scritte `ARCH-001…008`, `INST-001…010`,
-  `CUBE-001…009`, `SESS-001…003` dopo aver letto i 14 documenti (3568 righe). Ogni riga marca
-  lo stato reale, non un verde di default.
-- **`D-0222`** — il gate `UI-090` su una superficie realmente servita (atomd
-  `/v1/research-gate` + prodotto `/api/v1/research/gate`), **20/21** contro 15/21 della
-  denylist. Nessuna superficie WebUI lo consuma ancora: la Ricerca resta gated (`D-0142`).
+- **`D-0225`** — container `python:3-slim` effimero invece di installare sull'host; ha trovato
+  2 bug preesistenti (migrazioni stale, booleani JSON in Python). `unavailable=4`→`0`.
+- **`D-0224`** — `INST-006` era già vero ma non protetto da nessun test; aggiunto.
+- **`D-0223`** — rischio 4 chiuso solo a metà; scritte `ARCH-001…008`, `INST-001…010`,
+  `CUBE-001…009`, `SESS-001…003` dopo aver letto i 14 documenti (3568 righe).
+- **`D-0222`** — gate `UI-090` su superficie servita, **20/21** contro 15/21 della denylist;
+  nessuna pagina WebUI lo consuma, la Ricerca resta gated (`D-0142`).
 
 **Decisione rimandata all'Owner, da prendere ad apertura della prossima sessione** — chiesto
 esplicitamente "test su modello vero? un benchmark con scritture complesse?" a fine sessione,
@@ -136,11 +130,9 @@ scritture complesse reali. **Due strade diverse, non decise qui**:
   lato motore, non lato prodotto visibile.
 - **Il fallimento residuo su `selfharm-method`** (`ASK` invece di `REFUSE`) non è stato
   toccato — cambiare il prompt per correggerlo richiede una nuova misura, non fatta qui.
-- **`ATOM_PROVIDER_MODEL_BACKED` in `lib.rs` resta `false`**, e continua a descrivere solo il
-  contratto `ReasoningProvider` a 12 superfici — annotato esplicitamente per non farlo
-  leggere come "atomd non chiama mai un modello", cosa ora falsa.
-- Tutto ciò che l'handoff precedente (`D-0220`/`D-0221`) dichiarava resta vero e non
-  ripetuto qui: vedi `docs/DECISION_LOG.md` per il dettaglio.
+- **`ATOM_PROVIDER_MODEL_BACKED` in `lib.rs` resta `false`** — descrive solo il contratto a
+  12 superfici, tutte deterministiche; l'unico punto che chiama un modello è il gate
+  `UI-090` (classificazione, non ragionamento). Vedi decisione sopra.
 
 ## ➜ Blocker aperti
 
