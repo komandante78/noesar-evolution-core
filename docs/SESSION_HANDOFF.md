@@ -27,11 +27,25 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Owner, 2026-07-29: "metti in pausa ATOM, vai avanti con NOESAR EVOLUTION... prendi tu le
-decisioni".** Da qui in poi ATOM_EVOLUTION non si tocca (nessuna modifica, nessuna
-reinstallazione) finché il progetto principale non è avanti; le domande già rivolte
-all'Owner in questo file sono state **decise da questa sessione stessa**, dove decidibili
-senza di lui, invece di restare bloccate in attesa.
+**Owner, 2026-07-29 (seconda istruzione, nella stessa giornata): ATOM riprende, con un
+bersaglio concreto.** Invece di continuare a definire `ATOM_PROVIDER_MODEL_BACKED` in
+astratto, l'Owner ha chiesto di mettere un modello reale a disposizione per lavorarci
+(`D-0220`). Fatto: `Qwen2.5-1.5B-Instruct` GGUF servito da `atom-evolution-model`
+(llama.cpp server-cuda, GPU, su `noesar-evolution-net`), raggiungibile da `atomd` per nome
+container, generazione reale provata (102ms, risposta corretta su un prompt giocattolo di
+classificazione intento/effetto). **Non ancora vero**: nessun percorso Rust lo chiama.
+
+**Prossima azione concreta**: `crates/atom-provider` non ha dipendenze HTTP client esterne
+(solo `serde`/`serde_json`, offline-build discipline) — `http.rs` mostra già il pattern
+giusto (server hand-rolled su `std::net::TcpStream`, zero crate vendorizzate nuove). Scrivere
+un client simmetrico verso `atom-evolution-model:8420/v1/chat/completions`, un primo test
+end-to-end **marcato `#[ignore]`** (dipende da un servizio di rete, la suite gira offline in
+container isolati — non romperla), poi il classificatore vero per `UI-090`, misurato su
+held-out come `D-0217` ha misurato la forma della decomposizione — non prima.
+
+**Nota**: la sessione precedente (mattina) aveva messo ATOM in pausa; l'istruzione qui è
+esplicita e nello stesso giorno, quindi la ripresa non è una deviazione dalla pausa ma una
+sua revoca diretta dall'Owner.
 
 **`D-0218` chiude il punto 1 di sotto.** `dependencyIntegrity(parts)`, nuova in
 `verifiability.mjs`: rileva `DANGLING_DEPENDENCY` e `DEPENDENCY_CYCLE` sull'insieme di una
