@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "PENDING (D-0218: dependency-integrity law in verifiability.mjs, core-only, no install)",
+  "last_commit": "35444b1 (D-0218: dependency-integrity law in verifiability.mjs, core-only, no install) - pending push",
   "last_updated_utc": "2026-07-29T00:53:45Z",
   "blockers": [
     {
