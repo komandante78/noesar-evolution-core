@@ -18,7 +18,8 @@ members = [
   "crates/noesar-capability",
   "crates/noesar-shadow",
   "crates/noesar-executor",
-  "crates/noesar-events"
+  "crates/noesar-events",
+  "crates/noesar-supervisor"
 ]
 
 [workspace.package]

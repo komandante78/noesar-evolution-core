@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-29 (`D-0231`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-29 (`D-0240`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -32,6 +32,50 @@ dipendenza runtime fra i due progetti: `atom-evolution-model` serve il proprio f
 4. Questo file, la sezione «LA PROSSIMA AZIONE».
 
 ## ➜ LA PROSSIMA AZIONE
+
+**`D-0240`: ARCH-001 costruito (parziale), ARCH-002/ARCH-003 verificati dal vivo uccidendo
+processi reali, non leggendo l'architettura.** `rust/crates/noesar-supervisor`
+(`noesar-supervisord`) è ora PID 1 del container — deployato live su
+`noesar-evolution:phase4-supervisor`. Spawna `postgres` (`bin/postgres-child.mjs`, nuovo
+wrapper sottile che possiede esattamente ciò che `PostgresSupervisor` possedeva già —
+initdb/spawn/crash-restart/migrazioni, invariati) e `api` (`server.mjs`, ora
+`NOESAR_POSTGRES_PEER_MODE=1`) come **due figli realmente pari**, non più uno annidato
+nell'altro. **`codev` resta assente come terzo figlio** — il suo motore gira ancora dentro
+`api` (`session-protocol.mjs`); separarlo richiede spostare quel dispatch dietro lo stesso
+socket unix che `tools/tui-client.mjs` già parla dall'esterno. `ARCH-001` è registrato
+**⚠ parziale**, non fatto — dichiararlo fatto con `codev` ancora dentro `api` sarebbe
+esattamente il tipo di prova fabbricata che le regole di questo progetto vietano.
+
+**ARCH-002 e ARCH-003 verificati dal vivo, non assunti**: albero processi da `/proc`
+(postgres e api entrambi `ppid=1`, il vero binario postgres figlio del wrapper non di
+api); `kill -9` su api → postgres e i suoi worker restano intatti, api rispawnato in ~1s;
+`kill -9` sul wrapper postgres → api resta `Up` senza un solo restart, il vero postgres
+sopravvive come orfano (reparented a PID 1) — **limite noto e accettato**: il wrapper
+rifiuta di rialzarsi finché l'orfano è vivo (`#clearStalePidFile`, sicurezza dati non un
+bug); `docker stop -t 60` pulito in 0.157s, `postgres.stopped clean:true`; un solo socket
+`LISTEN` (8088) in `/proc/net/tcp`.
+
+**Deployato sul vivo con la sequenza consueta**: stop pulito → backup runtime 75 MB →
+predecessore rinominato a rollback → nuovo container con configurazione **riletta** dal
+sostituito (non ritrascritta a memoria) → verificato `Up (healthy)`, dati preesistenti
+intatti (16 migrazioni non rieseguite, identità reale proiettata). Due container di
+progetto rispettati.
+
+**Reperto nuovo, NON riparato in questa fase**: `docker inspect` sul container PRIMA della
+sostituzione mostrava `ReadonlyRootfs:false`/`CapDrop:null` — ma `INST-004` è registrato
+`✅` con "rootfs read-only · cap-drop ALL · no-new-privileges · tmpfs noexec" in più voci
+precedenti di `docs/INSTALLATION_LEDGER.md`. Qualche ricreazione del container fra allora
+e oggi (probabilmente durante `s286`) le ha perse senza che nessuno se ne accorgesse. Non
+ripristinate qui — mescolare un cambio di postura di sicurezza non verificato con
+ARCH-001 avrebbe reso indistinguibili due regressioni diverse se qualcosa si fosse rotto.
+**Serve una fase dedicata**: riverificare `INST-004` e, se confermato perso, ripristinarlo
+con i valori esatti (dimensione tmpfs, sintassi pids-limit) mai riverificati qui.
+
+**Prossima scelta**: `ARCH-005` (gli adattatori non possono auto-concedersi permessi),
+oppure la separazione di `codev` come vero terzo figlio, oppure la riparazione `INST-004`
+— nessuna delle tre è bloccata dall'altra.
+
+---
 
 **`D-0231`, terza fase della stessa giornata: il "session protocol" — `docs/
 CODEN_EVOLUTION_DESIGN_V1.md` §17 — costruito, e NON è una shell.** Su istruzione esplicita

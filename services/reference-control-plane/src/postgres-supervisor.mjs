@@ -90,6 +90,11 @@ export class PostgresSupervisor {
     this.startTimeoutMs = options.startTimeoutMs ?? 60000;
     this.stopTimeoutMs = options.stopTimeoutMs ?? 30000;
     this.maxRestarts = options.maxRestarts ?? 5;
+    // ARCH-001: whether THIS instance owns the postgres OS process (initdb, spawn,
+    // restart-on-crash — the original, single-process behaviour) or is a peer client
+    // waiting for another process to own it. Default true so every existing caller that
+    // does not pass this option keeps today's exact behaviour.
+    this.managesProcess = options.managesProcess !== false;
 
     this.state = SupervisorState.STOPPED;
     this.process = null;
@@ -130,6 +135,49 @@ export class PostgresSupervisor {
 
   get appSecretFile() {
     return path.join(this.secretsDir, 'app.secret');
+  }
+
+  // ARCH-001: the file the owning process writes once postgres is fully READY (roles,
+  // database and migrations done) and a peer client waits for before it dares connect
+  // with the application role. Living in `root`, not `dataDir`: it is supervision state,
+  // not part of the PostgreSQL data directory a backup/restore should ever touch.
+  get readyMarkerFile() {
+    return path.join(this.root, 'ready.json');
+  }
+
+  async #writeReadyMarker() {
+    const payload = JSON.stringify({
+      ready: true,
+      startedAtUtc: this.startedAtUtc,
+      serverVersionNumber: this.serverVersionNum,
+      pgvectorVersion: this.pgvectorVersion,
+    });
+    await fsp.writeFile(this.readyMarkerFile, payload, { mode: 0o600 });
+  }
+
+  async #clearReadyMarker() {
+    await fsp.rm(this.readyMarkerFile, { force: true }).catch(() => {});
+  }
+
+  async #waitForReadyMarker(deadline) {
+    for (;;) {
+      if (fs.existsSync(this.readyMarkerFile)) {
+        try {
+          const payload = JSON.parse(await fsp.readFile(this.readyMarkerFile, 'utf8'));
+          if (payload?.ready) return payload;
+        } catch {
+          // Torn write caught mid-update by another process — indistinguishable from
+          // "not ready yet" here, so fall through to the retry below rather than throw.
+        }
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `the postgres peer did not become ready within ${this.startTimeoutMs} ms `
+          + `(no ready marker at ${this.readyMarkerFile})`,
+        );
+      }
+      await new Promise((r) => { setTimeout(r, 200); });
+    }
   }
 
   isInitialised() {
@@ -283,6 +331,9 @@ export class PostgresSupervisor {
       this.process = null;
       if (this.intentionalStop) return;
       this.state = SupervisorState.DEGRADED;
+      // A peer client polling the marker must not see "ready" for a cluster that just
+      // died — clear it before scheduling the restart, not after.
+      this.#clearReadyMarker().catch(() => {});
       this.#log('error', 'postgres.server.exited', { code, signal, restarts: this.restarts });
       this.#attemptRestart();
     });
@@ -359,7 +410,38 @@ export class PostgresSupervisor {
     }
   }
 
+  // ARCH-001, peer-client path: another OS process (bin/postgres-child.mjs) owns initdb,
+  // spawn, restart-on-crash and migrations. This instance only waits for that process to
+  // publish readiness, then opens its own pool — it never touches `this.process`, so the
+  // existing `stop()` below (its `!this.process` branch) already does the right thing:
+  // close the pool, leave the actual postgres OS process alone.
+  async #startAsPeer() {
+    if (this.state === SupervisorState.READY && this.pool) return this.status();
+    this.state = SupervisorState.STARTING;
+    const deadline = Date.now() + this.startTimeoutMs;
+    await this.#waitForReadyMarker(deadline);
+    await this.#waitForSocket(deadline);
+    const appPassword = await readSecret(this.appSecretFile);
+    this.pool = new PgPool({
+      socketPath: this.socketFile,
+      user: APP_ROLE,
+      database: DATABASE,
+      password: appPassword,
+      applicationName: 'noesar-control-plane',
+      max: 8,
+    });
+    const health = await this.health();
+    this.serverVersionNum = health.serverVersionNumber;
+    this.pgvectorVersion = health.pgvectorVersion;
+    this.state = SupervisorState.READY;
+    this.#log('info', 'postgres.peer.connected', {
+      serverVersion: health.serverVersion, pgvector: health.pgvectorVersion,
+    });
+    return this.status();
+  }
+
   async start({ recovering = false } = {}) {
+    if (!this.managesProcess) return this.#startAsPeer();
     if (this.state === SupervisorState.READY && this.process) return this.status();
     this.intentionalStop = false;
     await this.initialise();
@@ -402,6 +484,7 @@ export class PostgresSupervisor {
     this.serverVersionNum = health.serverVersionNumber;
     this.pgvectorVersion = health.pgvectorVersion;
     this.state = SupervisorState.READY;
+    await this.#writeReadyMarker();
     this.#log('info', recovering ? 'postgres.recovered' : 'postgres.ready', {
       serverVersion: health.serverVersion,
       pgvector: health.pgvectorVersion,
@@ -756,6 +839,7 @@ export class PostgresSupervisor {
     }
     this.intentionalStop = true;
     this.state = SupervisorState.STOPPING;
+    await this.#clearReadyMarker();
     if (this.pool) { await this.pool.end().catch(() => {}); this.pool = null; }
 
     const child = this.process;

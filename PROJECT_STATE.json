@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_CONTEXT_PANEL_DRAGGABLE",
+  "phase_status": "ARCH-001 STEP: noesar-supervisord PID1 built and deployed live (2 of 3 peers), ARCH-002/ARCH-003 verified live",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0239: modalita Float del pannello contestuale ora davvero trascinabile (Owner: float non me la fa spostare - vero, verificato prima di scrivere codice, zero listener drag esistevano). Titolo del pannello = maniglia (pointerdown/move/up + setPointerCapture), posizione ricordata per destinazione (localStorage noesar.panel.pos), clamp ai bordi schermo. DIFETTO REALE trovato costruendo: inset-block-start/top sono la stessa proprieta fisica, ordine sbagliato di scrittura nello style inline annullava la componente verticale (misurato dal vivo: top atterrava a 0 invece del valore trascinato) - riparato in 2 punti (applyPanelPosition + pointermove), rimisurato corretto, posizione sopravvive al reload. browser E2E 327/327 rieseguito, unit 1126/1126. Installato :phase4-panel-draggable, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se/quando arriva uno screenshot, o ulteriore feedback Owner.",
+  "next_action": "D-0240: ARCH-001 partial (postgres+api real peers under noesar-supervisord, codev still embedded in api), ARCH-002/ARCH-003 verified live by killing real processes. New finding: INST-004 hardening (read-only rootfs/cap-drop/no-new-privileges) appears lost on the live container vs docs/INSTALLATION_LEDGER.md historical entries — needs re-verification and a dedicated restoration phase. Next: ARCH-005 (adapters cannot self-grant permissions), or the codev third-peer split, or the INST-004 drift — Owner/session choice.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1321,5 +1321,33 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-28T17:16:55Z"
+  "last_updated": "2026-07-28T17:16:55Z",
+  "arch_001_supervisor": {
+    "status": "PARTIAL_2_OF_3_PEERS",
+    "date": "2026-07-29",
+    "decision": "D-0240",
+    "crate": "rust/crates/noesar-supervisor",
+    "binary": "noesar-supervisord",
+    "peers_built": [
+      "postgres",
+      "api"
+    ],
+    "peer_missing": "codev (still embedded in api via session-protocol.mjs)",
+    "verified_live": [
+      "process tree via /proc (ppid=1 for both peers)",
+      "kill -9 api: postgres unaffected, api respawned",
+      "kill -9 postgres wrapper: api unaffected, real postgres survives as reparented orphan",
+      "docker stop -t 60: clean shutdown 0.157s, postgres.stopped clean:true",
+      "exactly one LISTEN socket (8088) in /proc/net/tcp"
+    ],
+    "deployed_image": "noesar-evolution:phase4-supervisor",
+    "rollback": "noesar-evolution.rollback-supervisor-20260729T232340Z",
+    "known_limitation": "if the postgres wrapper process dies (not postgres itself), the orphaned real postgres is never signalled by the supervisor and the wrapper refuses to restart while it is still alive (data-safety check, not a bug) — documented, not fixed"
+  },
+  "inst_004_drift_finding": {
+    "status": "REGRESSION_FOUND_NOT_FIXED",
+    "date": "2026-07-29",
+    "decision": "D-0240",
+    "note": "docker inspect on the live container before this deploy showed ReadonlyRootfs:false and CapDrop:null, contradicting INST-004 recorded as done (read-only rootfs, cap-drop ALL, no-new-privileges, tmpfs noexec) in multiple past docs/INSTALLATION_LEDGER.md entries. Likely dropped during one of the several container recreations in session 286. Not restored in this deploy to avoid bundling two unverified risky changes at once. Needs its own dedicated, tested restoration phase."
+  }
 }

@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ARCH-001 (MASTER_PROJECT/03_ARCHITETTURA.md §1, §10): "un solo container OCI, un
+# supervisore sottile come PID 1 e tre figli pari (postgres, api, codev)".
+#
+# Before this image, `node services/reference-control-plane/src/server.mjs` WAS PID 1,
+# and it spawned postgres as ITS OWN child (postgres-supervisor.mjs) — one process nested
+# inside another, not two peers. If the api process crashed (an unhandled exception, an
+# OOM), postgres went down with it: the whole container's PID 1 dying tears down every
+# process still inside the container's namespace. That coupling is the actual defect
+# ARCH-001/ARCH-002 name, not a missing label.
+#
+# This image installs `noesar-supervisord` (rust/crates/noesar-supervisor) as PID 1
+# instead. It spawns `postgres` (bin/postgres-child.mjs, which owns the real postgres
+# process exactly as before — same initdb/spawn/crash-restart code, just no longer nested
+# inside api) and `api` (server.mjs, now NOESAR_POSTGRES_PEER_MODE=1: it waits for the
+# postgres peer's readiness marker and connects, but never spawns or signals the postgres
+# process itself) as two real, independent peers. Killing one no longer takes the other
+# down — this is ARCH-002, verified live by `docs/verification/ARCH-001-002-003.md`, not
+# assumed from the architecture alone.
+#
+# Honesty about scope: `codev` (CodeN Evolution's engine) is NOT a third peer here. It
+# still runs embedded inside the `api` process, exactly as before this phase. Splitting it
+# out needs the session-protocol dispatch it already owns in-process
+# (services/reference-control-plane/src/session-protocol.mjs) moved behind the same
+# unix-socket RPC boundary `tools/tui-client.mjs` already speaks from OUTSIDE the
+# container — real, separate work, tracked as the next step, not simulated here.
+# ARCH-001's acceptance status is therefore recorded as PARTIAL (2 of 3 peers), not done.
+#
+# No new TCP listener (ARCH-003): the supervisor speaks to no network at all — it only
+# forwards signals and reads child stdout/stderr pipes. Postgres still binds a unix socket
+# only, api still binds exactly the one TCP port (8088) it always did.
+#
+# Built with --network=none --pull=false: cargo builds entirely from
+# rust/vendor + rust/Cargo.lock (D-0173), no registry access needed.
+
+FROM rust:1-bookworm AS supervisor-builder
+ENV RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu
+WORKDIR /build
+COPY rust/ /build/rust/
+RUN cd /build/rust && cargo build --offline --locked --release -p noesar-supervisor \
+ && test -x /build/rust/target/release/noesar-supervisord
+
+FROM noesar-evolution:phase4-panel-draggable
+
+LABEL org.noesar.phase="4-supervisor"
+LABEL org.noesar.arch-001="partial-2-of-3-peers"
+
+USER root
+COPY --from=supervisor-builder /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord
+RUN chmod 0755 /opt/noesar/bin/noesar-supervisord
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001
+
+ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]

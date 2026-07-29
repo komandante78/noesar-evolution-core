@@ -4342,3 +4342,101 @@ identiche in entrambe le versioni.
 **Status.** Applicato e installato (`:phase4-panel-draggable`), `RestartCount=0`,
 `postgres.stopped clean:true` nel log, backup runtime preso prima, ownership
 `10001:10001` verificata prima di ricreare.
+
+## D-0240 · ARCH-001 built as PID 1, ARCH-002/ARCH-003 verified live by killing real processes — 2026-07-29
+**Decision.** `rust/crates/noesar-supervisor` (binary `noesar-supervisord`) is now the
+container's PID 1. It spawns `postgres` (`bin/postgres-child.mjs`, a new thin wrapper that
+owns exactly what `PostgresSupervisor` already owned — initdb, spawn, crash-restart,
+migrations, unchanged) and `api` (`server.mjs`, now started with
+`NOESAR_POSTGRES_PEER_MODE=1`: it waits for the postgres peer's readiness marker and opens
+its own pool, but never spawns or signals the postgres process) as two independent OS-level
+peers. Deployed live on `noesar-evolution:phase4-supervisor`.
+**Why.** Before this, `server.mjs` WAS PID 1 and spawned postgres as its own nested child —
+one process owning another, not two peers. If `api` crashed, the whole container's PID 1
+died and took postgres down with it (Docker tears down every process in the container's
+namespace when PID 1 exits). ARCH-001/ARCH-002 name exactly this coupling, not a missing
+label.
+**Scope, stated honestly.** `codev` is NOT a third peer. It still runs embedded inside `api`
+(`session-protocol.mjs`, the unix-socket dispatch the WebUI Terminal tab and
+`tools/tui-client.mjs` both already reach). Splitting it out means moving that dispatch
+behind the same socket boundary an EXTERNAL client already speaks to — real, separate
+work. Recording `ARCH-001` as done with `codev` still inside `api` would be exactly the
+fabricated evidence this project's rules forbid; it is recorded `⚠ partial (2 of 3 peers)`.
+**Design choice: reuse, not rewrite.** `PostgresSupervisor`'s crash-recovery logic
+(exponential backoff, stale-pidfile detection, password-via-file not argv, log-pipe
+backpressure) was already hard-won and untested-by-a-unit-suite — verified only by
+acceptance-level kill exercises originally. Rather than re-implement any of it in Rust, the
+class gained one additive constructor flag (`managesProcess`, default `true` — every
+existing caller keeps today's exact behaviour) and a peer path (`#startAsPeer()`) that
+waits for a `ready.json` marker the owning process writes once postgres is truly ready
+(roles, database, migrations done — not just "the socket exists"), then opens a pool. No
+existing method body was changed; `stop()`'s pre-existing `!this.process` branch already
+did the right thing for a peer client with zero new code.
+**Evidence — built AND executed, not just read.**
+- `cargo test --offline --locked --workspace` (rust:1-bookworm, `--network=none`,
+  `RUSTUP_TOOLCHAIN` pinned per `D-0173`): 107 tests, 0 failed (6 new in
+  `noesar-supervisor`, 101 pre-existing unaffected — includes the `conformance/` vector
+  suites, which need the repository root mounted, not just `rust/`, or they report a
+  false "unreadable" failure rather than a real one).
+- `cargo build --offline --locked --release -p noesar-supervisor`: clean, no new external
+  dependencies (tokio/libc/serde/serde_json/chrono/anyhow already vendored).
+- `node --test services/reference-control-plane/test/*.test.mjs`: **1126/1126**, 0
+  regressions from the `postgres-supervisor.mjs`/`server.mjs` changes.
+- Built `noesar-evolution:phase4-supervisor`, ran it in an isolated throwaway container
+  (own bind mounts, own port) — NOT the live one — and measured, not assumed:
+  - Cold boot: postgres peer runs initdb, 16 migrations, `postgres.ready` →
+    `ready.json` written → api peer polls it, connects, `data-plane.ready
+    production_ready:true`. Process tree read from `/proc` directly (no `ps` in the
+    slim image): PID 1 = `noesar-supervisord`; PID 20 = `node server.mjs` (ppid 1); PID
+    21 = `node postgres-child.mjs` (ppid 1); PID 38+ = the real `postgres` binary and its
+    workers, **child of 21, not of 20** — the nesting this phase exists to remove is gone.
+  - `kill -9` the api pid: `child.exited_unexpectedly` → restarted in ~1s → reconnected.
+    Postgres and every one of its background workers kept the SAME pids throughout,
+    never touched.
+  - `kill -9` the postgres wrapper pid: api served `/livez 200` continuously, zero
+    restarts logged for it. The real postgres process, now an orphan reparented to PID 1
+    (confirmed: `ppid=1` in `/proc`), kept running and serving. The supervisor's own
+    respawn of the wrapper correctly refused to start a second postmaster
+    (`#clearStalePidFile`: "a PostgreSQL process (pid N) already holds
+    /workspace/postgresql/data") — a known, accepted limitation: the wrapper stays down
+    until the orphan exits, but no data is ever put at risk, and Postgres's own
+    WAL-replay crash-safety (already the property `03 §1` calls "già verificato" for
+    brutal kills) covers the container-stop case where the orphan is eventually SIGKILLed
+    by the runtime rather than signalled by name.
+  - `docker stop -t 60`: SIGTERM to both peers concurrently, `postgres.stopped clean:true`
+    (fast shutdown, "database system is shut down"), `api` and `supervisor.stopped` both
+    clean, total wall time 0.157s — no escalation to SIGKILL needed.
+  - `/proc/net/tcp` inside the container: exactly one `LISTEN` socket, on 8088. The
+    supervisor itself opens no socket at all.
+- **Deployed to the actual live installation**, not just the throwaway: `docker stop -t 60`
+  → `postgres.stopped clean:true` read in the log, not assumed → full runtime backup
+  taken at 75 MB (`BACKUPS/runtime_pre_supervisor_deploy_20260729T232340Z/`, service
+  stopped) → previous container renamed to
+  `noesar-evolution.rollback-supervisor-20260729T232340Z` and preserved → new container
+  created with the **exact same** network/port-binding/mounts/environment (re-read from
+  the replaced container's own `docker inspect`, not retyped from memory) →
+  `Up (healthy)`, `readyz` reports `ready:true`, existing data intact (migrations already
+  applied — 0 re-run — and `data-plane.identity-projected: projected:1`, the real prior
+  identity data, not a fresh empty database). §5a respected: the older rollback
+  (`:phase4-panel-hidden-default`) removed only after the new container's health was
+  confirmed, leaving exactly two project containers.
+**A regression found while re-reading the live container's config, not fixed here.**
+`docker inspect` on the container BEFORE this change showed `ReadonlyRootfs:false` and
+`CapDrop:null` — but `INST-004` is recorded `✅` on the strength of exactly those flags
+(`docs/INSTALLATION_LEDGER.md` repeats "rootfs read-only · cap-drop ALL ·
+no-new-privileges · tmpfs noexec" across several past entries). Some container recreation
+between then and now dropped them without anyone noticing. This deploy preserved the
+container's ACTUAL current posture rather than silently restoring flags whose exact prior
+values (tmpfs size, pids-limit syntax) were not re-verified here — bundling an unverified
+security-hardening change into this deploy would have made a real ARCH-001 regression and
+a real INST-004 regression indistinguishable if something broke. Recorded as a new,
+separate finding: `INST-004` needs re-verification and, if confirmed lost, a dedicated
+restoration phase.
+**Reversal cost.** None for ARCH-001/002/003 themselves — no migration, `AI_STATE_VERSION`
+unchanged. Returning to `:phase4-panel-draggable` restores the single-process topology
+exactly as it was (nested postgres under api) — ARCH-002/003's live verification would no
+longer hold, which is disclosed rather than hidden.
+**Status.** Applied and installed. `ARCH-001` recorded `⚠ partial` (2 of 3 peers — `codev`
+split not done), `ARCH-002` and `ARCH-003` recorded `✅` (both verified live by actually
+killing processes, not by reading the architecture and assuming). `INST-004` posture drift
+recorded as a new, separate, unresolved finding.

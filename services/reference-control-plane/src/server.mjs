@@ -214,10 +214,16 @@ const sessionDispatch = createSessionDispatch({
 });
 
 // --- data plane and multi-user directory -------------------------------------
+// ARCH-001: under noesar-supervisord (rust/crates/noesar-supervisor) postgres is a real
+// peer OS process (bin/postgres-child.mjs owns it), and this process must not spawn a
+// second postmaster against the same data directory. NOESAR_POSTGRES_PEER_MODE is set by
+// that supervisor's child table, never by a human; its absence (every deployment that
+// predates this phase, and every existing test) preserves today's exact behaviour.
 const postgres = postgresEnabled
   ? new PostgresSupervisor({
     root: process.env.NOESAR_POSTGRES_ROOT ?? join(workspace, 'postgresql'),
     secretsDir: join(workspace, 'config/postgres'),
+    managesProcess: process.env.NOESAR_POSTGRES_PEER_MODE !== '1',
   })
   : null;
 // A function, not the supervisor itself: the directory is constructed now and the
