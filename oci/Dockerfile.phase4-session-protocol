@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0231: the CodeN Evolution TUI's session protocol — docs/CODEN_EVOLUTION_DESIGN_V1.md
+# §17: "Shells over a session protocol, not a Tauri desktop app." One engine, two shells.
+#
+# Owner instruction this phase: build the real terminal rather than leave "needs the
+# session protocol over a unix socket" as a permanent placeholder — and, when asked
+# directly whether that could be a raw shell: no. §17's own architecture draws the
+# Permission Engine between EVERY shell (WebUI or Terminal) and the Sandbox Runtime,
+# "tokens only" — so this is that mediated path, matching the design, not an unrestricted
+# `exec` opened because the destination had been declared-but-not-built for too long.
+#
+# WHAT THIS IS: services/reference-control-plane/src/session-protocol.mjs — one dispatch,
+# closed over the SAME workspaceActions/repo-map/event-ledger instances server.mjs already
+# constructs, reached by two transports:
+#   - a unix socket (net.createServer, framed by hand — no new dependency), for a REAL
+#     terminal: tools/tui-client.mjs, a zero-dependency readline REPL that authenticates
+#     with the product's own account+MFA (auth.beginLogin/completeLogin, the identical
+#     calls the HTTP login route makes) and drives plan/simulate/approve/reject/restore,
+#     repo-map scan/search, a run's own event trail, and status.
+#   - server.mjs's own HTTP bridge, POST /api/v1/tui/command — the SAME dispatch, gated by
+#     the SAME session cookie as everything else in the WebUI, with per-method permission
+#     enforcement (TUI_METHOD_PERMISSION) so one generic route cannot offer a weaker gate
+#     than the dedicated routes it mirrors. Wired to the workbench's own Terminal tab,
+#     which used to read "attached to no session... nothing here emulates a shell" — now a
+#     real command line reaching the exact run the Plan panel created, proven by a browser
+#     E2E check that types `get <runId>` in the Terminal tab and gets the Plan panel's own
+#     run back.
+#
+# WHAT THIS IS NOT: a shell. There is no `exec` method anywhere in this protocol.
+# workspace-actions.mjs refuses EXECUTE and DELETE permanently and on purpose; a socket
+# that could run an arbitrary command would be exactly that boundary reopened wearing a
+# terminal's clothes, and this build does not do that on either transport.
+#
+# TWO REAL BUGS FOUND BUILDING THIS, BOTH FIXED HERE:
+#   - readline's own `.question()` re-registers a fresh one-shot listener per call, which
+#     loses input on piped/non-TTY stdin when a whole script arrives in one chunk before
+#     the second `.question()` re-attaches — the client hung forever on the second prompt.
+#     Fixed with one persistent 'line' listener queuing ahead of whoever asks (LineReader).
+#   - the Preview panel's iframe used a raw `background:#fff` — a colour literal outside
+#     the token layer, which the project's own guard (`no colour literal survives outside
+#     the token definitions`) exists to catch; caught by seeded-defect-proof degrading from
+#     19/19 to 6/19 (every seeded defect suddenly had TWO objecting tests, not one). Fixed
+#     to `var(--surface-code)`, matching every other pre/code surface in this stylesheet.
+#
+# VERIFIED THIS PHASE: unit 1126/1126 (+7, session-protocol.test.mjs exercising the socket
+# transport directly, since importing server.mjs for tests never runs the entrypoint guard
+# that starts a real one), ESLint 229 files 0 errors, scripts/test.sh 10/10, auth/http-smoke
+# PASS, browser E2E 327/327 (+2: the Terminal tab reaches the real engine, and reaches the
+# SAME run as the Plan panel), accessibility 27/27, seeded-defect-proof 19/19, MANIFEST
+# 5834/5834. Manually verified end to end against a live server instance outside the test
+# harness: tools/tui-client.mjs connected over a real unix socket, signed in with a real
+# account+TOTP, and planned a real file — the exact defect this phase fixed (the hang) does
+# not reproduce.
+#
+# ROLLBACK COST: none. No migration, AI_STATE_VERSION unchanged, no data touched. Returning
+# to :phase4-workspace-actions-panels removes the socket listener, the HTTP bridge route,
+# and the Terminal tab's wiring; the CodeN Evolution TUI destination goes back to declaring
+# itself not built. Every other panel (Plan/Shadow/Diff/Editor/Preview/Problems/Logs/Map)
+# is unaffected either way.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-workspace-actions-panels
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/
+USER 10001:10001

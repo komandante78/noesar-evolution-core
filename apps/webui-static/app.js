@@ -1521,7 +1521,7 @@ function renderPreviewContent(){
   box.innerHTML=entries.map((entry)=>{
     const ext=(entry.path.split('.').pop()||'').toLowerCase();
     if(ext==='html'||ext==='htm'){
-      return `<h3>${escapeHtml(entry.path)}</h3><iframe class="preview-frame" style="width:100%;height:400px;border:1px solid var(--line);border-radius:9px;background:#fff" sandbox="" srcdoc="${escapeHtml(String(entry.after??''))}"></iframe>`;
+      return `<h3>${escapeHtml(entry.path)}</h3><iframe class="preview-frame" sandbox="" srcdoc="${escapeHtml(String(entry.after??''))}"></iframe>`;
     }
     return `<h3>${escapeHtml(entry.path)}</h3><pre>${escapeHtml(String(entry.after??'').slice(0,4000))}</pre>`;
   }).join('');
@@ -2466,17 +2466,60 @@ async function loadHome(){
 // The workbench · UI-030…UI-037, and the closure · UI-036
 // ---------------------------------------------------------------------------
 
-const terminals={items:[{id:1,name:'Terminal 1'}],active:1,next:2};
+const terminals={items:[{id:1,name:'Terminal 1',history:[]}],active:1,next:2};
+// D-0230: the session protocol's HTTP bridge (/api/v1/tui/command) reaches the exact same
+// engine instances the unix socket transport does — "the same live session as the
+// workbench", not a second client with its own state (index.html's own words, now true).
+// This is NOT a shell: every command below maps to one of the product's own already-guarded
+// operations. Plans are created in the Plan panel, not typed here — this terminal reaches
+// the same run, it does not start a second way to make one.
+const TERMINAL_HELP = 'Commands: status | get <runId> | events <runId> | map [path] | search <query> | simulate <runId> | approve <runId> | reject <runId> [reason] | restore <runId> | help\nPlans are created in the Plan panel; this terminal reaches the same live session, not a second one.';
+async function runTerminalCommand(term, line){
+  term.history.push({ kind:'command', text:line });
+  const [command,...rest]=line.trim().split(/\s+/);
+  const arg=rest.join(' ');
+  let method=null;let params={};
+  switch(command){
+    case '':return;
+    case 'help':term.history.push({kind:'info',text:TERMINAL_HELP});return;
+    case 'status':method='status';break;
+    case 'get':method='workspace.get';params={runId:arg};break;
+    case 'events':method='events.correlation';params={correlationId:arg};break;
+    case 'map':method='repoMap.scan';params={path:arg||undefined};break;
+    case 'search':method='repoMap.search';params={q:arg};break;
+    case 'simulate':method='workspace.simulate';params={runId:arg};break;
+    case 'approve':method='workspace.approve';params={runId:arg};break;
+    case 'reject':{const [runId,...reasonParts]=rest;method='workspace.reject';params={runId,reason:reasonParts.join(' ')||null};break;}
+    case 'restore':method='workspace.restore';params={runId:arg};break;
+    default:term.history.push({kind:'error',text:`Unknown command \`${command}\`. Type \`help\`.`});return;
+  }
+  try{
+    const response=await api('/api/v1/tui/command',{method:'POST',body:JSON.stringify({method,params})});
+    term.history.push({kind:'result',text:JSON.stringify(response.result,null,2)});
+  }catch(error){
+    term.history.push({kind:'error',text:error.value?.error?.reason??error.value?.error??error.message});
+  }
+}
 function renderTerminals(){
   $('#terminalTabs').innerHTML=terminals.items.map((item)=>
     `<button type="button" role="tab" aria-selected="${item.id===terminals.active}" class="${item.id===terminals.active?'active':''}" data-terminal="${item.id}">${escapeHtml(item.name)}</button>`).join('');
   $$('[data-terminal]').forEach((button)=>button.addEventListener('click',()=>{
     terminals.active=Number(button.dataset.terminal);renderTerminals();
   }));
-  // Persistent and multiple by construction — and empty for a stated reason rather than
-  // emulated. A picture of a shell that accepts input and does nothing would be worse
-  // than an empty region: it would claim an execution surface this layer does not have.
-  $('#terminalBody').innerHTML=`<p class="declared-empty">${escapeHtml(terminals.items.find((item)=>item.id===terminals.active)?.name??'')} is attached to no session. The terminal is a region of its own and keeps its place whichever tab is in front; what it needs is the session protocol over a unix socket, which is backbone work. Nothing here emulates a shell.</p>`;
+  const term=terminals.items.find((item)=>item.id===terminals.active);
+  const lines=(term?.history??[]).map((entry)=>entry.kind==='command'?`coden-evolution> ${entry.text}`:entry.text);
+  const scrollback=lines.length?escapeHtml(lines.join('\n\n')):"Attached to the same live session as the workbench (D-0230's session protocol, HTTP bridge). Type `help` below.";
+  $('#terminalBody').innerHTML=`<pre class="result terminal-scrollback" id="terminalScrollback">${scrollback}</pre><form class="inline-form" id="terminalCommandForm"><input id="terminalCommandInput" placeholder="type a command — help for the list" autocomplete="off"><button class="secondary" type="submit">Run</button></form>`;
+  const scrollbackNode=$('#terminalScrollback');if(scrollbackNode)scrollbackNode.scrollTop=scrollbackNode.scrollHeight;
+  $('#terminalCommandForm')?.addEventListener('submit',async(event)=>{
+    event.preventDefault();
+    const input=$('#terminalCommandInput');
+    const line=input.value;input.value='';
+    if(!term||!line.trim())return;
+    await runTerminalCommand(term,line);
+    renderTerminals();
+    $('#terminalCommandInput')?.focus();
+  });
 }
 function initBench(){
   $$('[data-bench-tab]').forEach((tab)=>tab.addEventListener('click',()=>{
@@ -2490,7 +2533,7 @@ function initBench(){
     if(name==='closure')loadClosures();
   }));
   $('#terminalAdd')?.addEventListener('click',()=>{
-    terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`});
+    terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`,history:[]});
     terminals.active=terminals.next;terminals.next+=1;renderTerminals();
   });
   $('#terminalToggle')?.addEventListener('click',()=>{

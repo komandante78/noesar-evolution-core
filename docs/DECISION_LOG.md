@@ -3931,3 +3931,25 @@ errori, `scripts/test.sh` 10/10, auth/http-smoke PASS, accessibilità 27/27,
 seeded-defect-proof 19/19, MANIFEST 5831/5831.
 **Reversal cost.** Nessuno — nessuna migrazione, nessuna route rimossa da prima.
 **Status.** Installato (`:phase4-workspace-actions-panels`).
+
+## D-0231 · Il protocollo di sessione — la CodeN Evolution TUI, non una shell — 2026-07-29
+**Decision.** Costruito il "session protocol" di `docs/CODEN_EVOLUTION_DESIGN_V1.md` §17: un
+unix socket (terminale reale, `tools/tui-client.mjs`) e il bridge HTTP del tab Terminal del
+WebUI condividono lo stesso dispatch e le stesse istanze di `workspace-actions`/`repo-map`/
+event ledger — nessun `exec`, ogni comando è una delle operazioni già guardiane del prodotto.
+**Why.** Owner esplicito: costruirlo comunque, ora o dopo. Ma un terminale vero non è la
+stessa cosa di "riaprire EXECUTE" — l'architettura del progetto disegna il Permission Engine
+fra OGNI shell e il Sandbox Runtime ("tokens only"): questo è quel percorso mediato.
+**Rejected.** Una shell POSIX grezza — sarebbe esecuzione di codice arbitraria travestita,
+esattamente ciò che `workspace-actions.mjs` rifiuta "permanently and on purpose".
+**Evidence.** 2 bug reali trovati e riparati: (1) `readline.question()` perde input su stdin
+in pipe con chiamate ripetute — client si bloccava al secondo prompt, riparato con un
+`LineReader` a coda; (2) `background:#fff` letterale nel CSS del Preview — violava il
+guardiano "no colour literal outside token definitions", seeded-defect-proof è passato da
+19/19 a 6/19 (ogni difetto seminato aveva due test che obiettavano invece di uno), riparato
+con `var(--surface-code)`. Unit 1126/1126, ESLint 229f 0 errori, `scripts/test.sh` 10/10,
+auth/http-smoke PASS, browser E2E 327/327 (+2: Terminal raggiunge il motore reale e LO
+STESSO run del pannello Plan), accessibilità 27/27, seeded-defect-proof 19/19, MANIFEST
+5835/5835. Verificato anche a mano contro un server reale fuori dalla suite di test.
+**Reversal cost.** Nessuno — nessuna migrazione, nessuna route rimossa da prima.
+**Status.** Installato (`:phase4-session-protocol`).

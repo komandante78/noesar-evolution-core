@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-29 (`D-0230`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-29 (`D-0231`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -26,71 +26,76 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0230`, stessa giornata di `D-0229`: il resto del workbench, su istruzione esplicita
-dell'Owner — «lo voglio finito», non fermarsi dopo un solo pannello e riportare.**
-Cablati **Map** (`/api/v1/repo-map/scan`+`/search`, già costruiti da tempo, mai consumati
-da nessuna pagina — languages/manifests/entry point/symbol index/dependency map + ricerca
-letterale), **Problems/Editor/Preview** (nessuna nuova route: dati già arrivati da
-plan()/approve(), il pannello semplicemente non li mostrava mai), **Logs** (nuova
-`GET /api/v1/events/:correlationId`, stessa fiducia di `GET /api/v1/workspace-actions/:id`
-— basta una sessione, un id ignoto torna trail vuoto non 404).
+**`D-0231`, terza fase della stessa giornata: il "session protocol" — `docs/
+CODEN_EVOLUTION_DESIGN_V1.md` §17 — costruito, e NON è una shell.** Su istruzione esplicita
+dell'Owner ("va costruito comunque, ora o dopo, è inutile fermarsi") è stato costruito **il
+resto** del workbench CodeN Evolution: un unix socket (`session-protocol.mjs`, a
+`/workspace/tui.sock`, visibile sull'host in `NOESAR_EVOLUTION_RUNTIME/tui.sock`) per un
+**terminale vero** (`tools/tui-client.mjs`, CLI Node zero-dipendenze, readline) e il bridge
+HTTP dello stesso dispatch (`POST /api/v1/tui/command`) per il tab Terminal del workbench —
+**un solo motore, due shell**, entrambe sulle stesse istanze di `workspace-actions`/
+`repo-map`/event ledger già in uso da Plan/Shadow/Diff.
 
-**Bug reale trovato COSTRUENDO, non leggendo**: `executor.mjs` restituisce
-`performed`/`refused` come **conteggi numerici**, non array. Il codice iniziale faceva
-`result?.refused??[]` e poi `for...of` su quel valore — ma `0` è un valore *definito*,
-quindi `??` non lo tocca, e `for...of 0` lancia "0 is not iterable" al primo run **pulito**
-(zero rifiuti). Il browser E2E lo ha fatto fallire (2/325 FAIL) prima della riparazione,
-poi 325/325 dopo. Riparato leggendo `result.outcomes.filter(o=>!o.performed)` per i passi
-rifiutati e i due conteggi direttamente (non più `.length` su un numero).
+**Confine rispettato, non un'esitazione**: quando l'Owner ha chiesto "e non puoi crearlo?"
+riferendosi a "un vero protocollo di sessione su unix socket", la risposta è stata **sì, ma
+non una shell POSIX grezza** — l'architettura del progetto stesso disegna il Permission
+Engine fra OGNI shell (WebUI o Terminale) e il Sandbox Runtime, "tokens only". Questo
+protocollo **non ha nessun metodo `exec`**: ogni comando (`plan`/`simulate`/`approve`/
+`reject`/`restore`/`get`/`events`/`map`/`search`/`status`) è una delle operazioni già
+guardiane del prodotto. `workspace-actions.mjs` continua a rifiutare EXECUTE e DELETE
+"permanently and on purpose" su **entrambe** le shell.
 
-**Deliberatamente NON costruito, confini non lacune** (spiegato all'Owner nella stessa
-sessione, non un rifiuto silenzioso):
-- **Esecuzione test dichiarati dal piano** — `execute()` riceve sempre `tests:[]` su
-  questo percorso; riaprirlo sarebbe esecuzione di codice arbitrario travestita da
-  funzionalità. `workspace-actions.mjs` rifiuta EXECUTE/DELETE "permanently and on purpose".
-- **Terminal / CodeN Evolution TUI** — serve un vero protocollo di sessione su unix
-  socket e una shell reale attaccata: un sottosistema a sé, non un pannello da cablare.
-- **La decisione modello-vero-nel-ciclo** — resta quella dell'Owner da `D-0228`, non
-  toccata qui.
+**2 bug reali trovati costruendo, non leggendo**: (1) `readline.question()` di Node
+ri-registra un listener a un colpo solo per ogni chiamata — su stdin in pipe, se lo script
+arriva tutto in un unico chunk, il secondo prompt si blocca per sempre perché il listener
+si attacca dopo che la riga è già passata; riparato con un `LineReader` a coda persistente.
+(2) Il pannello Preview usava `background:#fff` — un colore letterale fuori dal layer dei
+token, che il guardiano proprio del progetto ("no colour literal survives outside the token
+definitions") esiste per catturare: `seeded-defect-proof` è passato da 19/19 a **6/19**
+(ogni difetto seminato aveva improvvisamente DUE test che obiettavano invece di uno).
+Riparato con `var(--surface-code)`, tornato 19/19.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto**: `noesar-evolution:phase4-workspace-actions-panels` · `Up (healthy)` ·
-  `RestartCount=0` · `192.168.178.100:8100→8088` · stessa configurazione del predecessore,
-  riletta dal container sostituito. Rollback preservato:
-  `noesar-evolution.rollback-workspace-actions-panels-20260729T141027Z`
-  (`:phase4-workspace-actions-ui`).
+- **Prodotto**: `noesar-evolution:phase4-session-protocol` · `Up (healthy)` ·
+  `RestartCount=0` · `192.168.178.100:8100→8088` · stessa configurazione del predecessore.
+  Rollback preservato: `noesar-evolution.rollback-session-protocol-20260729T150250Z`
+  (`:phase4-workspace-actions-panels`).
 - **atomd**: invariato, `atom-evolution:atomd` · `Up (healthy)` · `noesar-evolution-net`.
 - **Due container per progetto** (installazione + 1 rollback, il più recente). Reti (10)
-  e volumi (28) invariati prima/dopo entrambe le installazioni di oggi.
-- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato.
-  ⚠ Tornare a `:phase4-workspace-actions-ui` toglie solo Map/Problems/Editor/Preview/Logs
-  e la route eventi; Plan/Shadow/Diff (`D-0229`) restano invariati.
+  e volumi (29) invariati prima/dopo la rimozione del rollback precedente.
+- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato. ⚠
+  Tornare a `:phase4-workspace-actions-panels` toglie solo socket/bridge/tab Terminal;
+  Plan/Shadow/Diff/Editor/Preview/Problems/Logs/Map (`D-0230`) restano invariati.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
+- **Nessun `exec`** in nessuna delle due shell — solo le operazioni già guardiane.
+- **La password del client TUI non è mascherata a schermo** — farlo bene richiede la
+  modalità raw del terminale, che non esiste su una pipe; rimandato, non un blocco.
 - **Nessuna superficie WebUI consuma ancora `/api/v1/research/gate`** — invariato da `D-0222`.
 - **`ATOM_PROVIDER_MODEL_BACKED` in `lib.rs` resta `false`** — invariato da `D-0226`.
-- **Tests/Terminal/CodeN Evolution TUI restano non costruiti** — confini dichiarati sopra,
-  non lacune di questa fase.
-- **Il fallimento residuo su `selfharm-method`** (`ASK` invece di `REFUSE`) non toccato.
+- **Tests execution resta rifiutata per design** — `execute()` riceve sempre `tests:[]`.
 
 ## ➜ Blocker aperti
 
 `B-002` (low, nessun `gitleaks`/`trufflehog` installabile — regola 45; scan manuale a
-pattern, 0 reperti su entrambe le fasi di oggi). Nessun altro.
+pattern su tutte e tre le fasi di oggi, 0 reperti). Nessun altro.
 
-## ➜ Verificato in questa fase (secondo giro, D-0230)
+## ➜ Verificato in questa fase (terzo giro, D-0231)
 
-Unit 1119/1119 (+1, il nuovo test HTTP sugli eventi), ESLint 226 file 0 errori,
-`scripts/test.sh` 10/10, `auth-http-smoke`+`http-smoke` PASS (nuova route), browser E2E
-**325/325** (6 nuovi check: scan+ricerca Map, Problems/Editor/Preview/Logs sul run reale
-— inclusa la riparazione performed/refused vista fallire e poi passare), accessibilità
-27/27, seeded-defect-proof 19/19, MANIFEST 5831/5831. Sequenza `§3a` completa per entrambe
-le installazioni della giornata (`D-0229` e `D-0230`).
+Unit 1126/1126 (+7, `session-protocol.test.mjs` sul trasporto socket direttamente — importare
+`server.mjs` nei test non esegue mai la guardia d'ingresso che avvierebbe un socket reale),
+ESLint 229 file 0 errori, `scripts/test.sh` 10/10, `auth-http-smoke`+`http-smoke` PASS,
+browser E2E **327/327** (+2: il tab Terminal raggiunge il motore reale, e raggiunge LO STESSO
+run creato dal pannello Plan), accessibilità 27/27, seeded-defect-proof 19/19 (dopo la
+riparazione del colore letterale), MANIFEST 5835/5835. **Verificato anche a mano** contro un
+server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un vero unix
+socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
+riparato non si riproduce più.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
 - **Il percorso host per l'ombra condivisa** con `atomd` — invariato da `D-0216`.
 - **Modello vero nel ciclo di ragionamento vs. banco su scritture reali** — invariato da
-  `D-0228`, non deciso in nessuna delle due fasi di oggi.
+  `D-0228`, non deciso in nessuna delle tre fasi di oggi.

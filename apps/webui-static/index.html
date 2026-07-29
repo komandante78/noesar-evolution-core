@@ -333,8 +333,14 @@
       </section>
 
       <section class="view" id="view-coden-tui">
-        <div class="section-header"><div><p class="eyebrow">THE SAME SESSION, FROM A TERMINAL</p><h1>CodeN Evolution TUI</h1><p>The terminal shell attached to the same live session as the workbench.</p></div><span class="badge badge-off">DECLARED · NOT BUILT</span></div>
-        <section class="panel declared"><p>One program, two shells, joined to the <b>same live session</b> — not a second client with its own state. Every capability carries a keyboard form, and the shell shows the <b>same status line</b> as the workbench (<code>UI-054</code>).</p><p>It is ranked as a destination and it is not built. It needs the session protocol over a unix socket, which is later work; emulating a terminal here would be a picture of a shell, not a shell.</p><p class="hint">Declared rather than hidden: the destination is real in the structure, the surface is honestly absent.</p></section>
+        <div class="section-header"><div><p class="eyebrow">THE SAME SESSION, FROM A TERMINAL</p><h1>CodeN Evolution TUI</h1><p>The terminal shell attached to the same live session as the workbench.</p></div><span class="badge badge-on">SESSION PROTOCOL BUILT</span></div>
+        <section class="panel declared">
+          <p>One program, two shells, joined to the <b>same live session</b> — not a second client with its own state (<code>D-0230</code>). Every command reaches the exact same running <code>workspace-actions</code>/<code>repo-map</code>/event-ledger instances the workbench's own Plan and Terminal panels use.</p>
+          <p>A browser page cannot spawn a real operating-system shell, so this destination does not simulate one — it names the real program and how to reach it:</p>
+          <pre>node tools/tui-client.mjs [socketPath]</pre>
+          <p>Run from a real terminal on this host (or over SSH into it). <code>socketPath</code> defaults to <code>$NOESAR_TUI_SOCKET_PATH</code>, then the product's own <code>tui.sock</code> inside its workspace. The client signs in with the same account and MFA as the WebUI, then accepts: <code>plan</code>, <code>simulate</code>, <code>approve</code>, <code>reject</code>, <code>restore</code>, <code>get</code>, <code>events</code>, <code>map</code>, <code>search</code>, <code>status</code>.</p>
+          <p class="hint">What this is not: a way to run an arbitrary shell command. Every one of those verbs is one of the product's own already-guarded operations — <code>workspace-actions.mjs</code> refuses EXECUTE and DELETE permanently and on purpose, on both shells alike.</p>
+        </section>
       </section>
 
       <section class="view" id="view-projects">

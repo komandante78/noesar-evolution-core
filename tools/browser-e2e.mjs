@@ -1171,6 +1171,33 @@ try {
   check('Map search finds a literal match inside the promoted file',
     /browser-e2e-note\.txt/.test(mapSearch) && !/No match/.test(mapSearch), mapSearch.slice(0, 200));
 
+  // --- D-0230: the Terminal tab's HTTP bridge (/api/v1/tui/command) ------------------
+  await clickOrExplain(page, '[data-bench-tab="terminal"]');
+  await page.waitForSelector('#terminalCommandInput', { timeout: 15000 });
+  await page.type('#terminalCommandInput', 'status');
+  await clickOrExplain(page, '#terminalCommandForm button');
+  await page.waitForFunction(
+    () => /workspaceActions/.test(document.querySelector('#terminalScrollback')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const terminalStatus = await page.evaluate(() => document.querySelector('#terminalScrollback')?.textContent ?? '');
+  check('the Terminal tab reaches the real engine over the session protocol\'s HTTP bridge, not "attached to no session"',
+    /coden-evolution> status/.test(terminalStatus) && /workspaceActions/.test(terminalStatus) && !/attached to no session/i.test(terminalStatus),
+    terminalStatus.slice(0, 300));
+
+  // `planned.result` is the Plan panel's own text ("runId: <uuid>\nstatus: ...") — the full
+  // id, unlike `planned.badge`, which the panel deliberately truncates to eight characters.
+  const planRunId = planned.result.match(/runId: (\S+)/)?.[1];
+  await page.evaluate((runId) => { document.querySelector('#terminalCommandInput').value = `get ${runId}`; }, planRunId);
+  await clickOrExplain(page, '#terminalCommandForm button');
+  await page.waitForFunction(
+    () => (document.querySelector('#terminalScrollback')?.textContent ?? '').includes('PROMOTED'),
+    { timeout: 15000 },
+  );
+  const terminalGet = await page.evaluate(() => document.querySelector('#terminalScrollback')?.textContent ?? '');
+  check('the Terminal tab\'s `get` reaches the SAME run the Plan panel created — one live session, not two',
+    terminalGet.includes(planRunId) && terminalGet.includes('PROMOTED'), terminalGet.slice(-300));
+
   await clickOrExplain(page, '[data-bench-tab="shadow"]');
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(

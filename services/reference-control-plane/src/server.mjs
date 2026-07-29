@@ -80,6 +80,7 @@ import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
+import { createSessionDispatch, startUnixSocketServer, ProtocolError } from './session-protocol.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -198,6 +199,18 @@ const auth = new AuthService({
   setupToken: setupTokenState.token,
   ledger,
   secureCookies,
+});
+
+// The session protocol (docs/CODEN_EVOLUTION_DESIGN_V1.md §17): one dispatch, closed over
+// these exact instances, reached by two transports below — the unix socket (a real
+// terminal) and the HTTP bridge (the WebUI's own Terminal tab). Neither transport
+// constructs its own WorkspaceActionOrchestrator; a second instance would give the
+// terminal a run history the workbench cannot see, which is the "second client with its
+// own state" the design explicitly rejects.
+const sessionDispatch = createSessionDispatch({
+  workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
+  workspaceRoot: workspace, engineEvents, workspaceActionsStatus,
+  getShadowSnapshot: () => shadowSnapshot, capabilityStatus, capabilityMinter,
 });
 
 // --- data plane and multi-user directory -------------------------------------
@@ -339,6 +352,19 @@ const SAFE_MODE_WRITE_ALLOWLIST = new Set([
   '/api/v1/debug/enable', '/api/v1/debug/disable',
   '/api/v1/watchdog/safe-mode/leave', '/api/v1/updates/rollback',
 ]);
+
+// The session protocol's HTTP bridge (/api/v1/tui/command) is one route for every method,
+// so the permission each method needs cannot come from the route — it has to be looked up
+// here, by name, matching exactly what the dedicated route for that same operation already
+// enforces above. `null` means session-only, same as GET /api/v1/workspace-actions/:id and
+// GET /api/v1/events/:id. A method absent from this table is refused as unknown, not run
+// with no permission check — the fallback for "not listed" must be REFUSE, never ALLOW.
+const TUI_METHOD_PERMISSION = {
+  'workspace.plan': 'workspace.write', 'workspace.approve': 'workspace.write',
+  'workspace.reject': 'workspace.write', 'workspace.restore': 'workspace.write',
+  'workspace.simulate': 'workspace.read', 'repoMap.scan': 'workspace.read', 'repoMap.search': 'workspace.read',
+  'workspace.get': null, 'events.correlation': null, status: null,
+};
 
 function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
 
@@ -1479,6 +1505,35 @@ const requestListener = async (req, res) => {
       return json(res, 200, { correlationId: eventsCorrelationMatch[1], events: engineEvents.correlation(eventsCorrelationMatch[1]) });
     }
 
+    // --- the session protocol's HTTP bridge — the WebUI's own Terminal tab -------------
+    // The unix socket in session-protocol.mjs is the real terminal's transport; this is
+    // the browser's, over the SAME dispatch and the SAME running instances (same live
+    // session, per the bench's own copy: "not a second client with its own state"). One
+    // route for every method rather than one per method, so the permission this route
+    // enforces must be looked up by method name — the same gate the dedicated
+    // workspace-actions/repo-map routes above already apply, not a weaker one a generic
+    // bridge could accidentally offer.
+    if (req.method === 'POST' && url.pathname === '/api/v1/tui/command') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const method = String(payload?.method ?? '');
+      const requiredPermission = TUI_METHOD_PERMISSION[method];
+      if (requiredPermission === undefined) return json(res, 400, { error:'unknown_method', method });
+      if (requiredPermission && !auth.hasPermission(authenticated.user, requiredPermission)) {
+        return json(res, 403, { error:'forbidden', requiredPermission });
+      }
+      try {
+        const result = await sessionDispatch(method, payload?.params, authenticated.user.id);
+        return json(res, 200, { ok:true, result });
+      } catch (error) {
+        if (error instanceof WorkspaceActionError || error instanceof RepoMapError || error instanceof ProtocolError) {
+          return json(res, 422, { ok:false, error:{ kind:error.kind, reason:error.reason ?? error.message } });
+        }
+        throw error;
+      }
+    }
+
     // --- the executor · phase 1 step 5 ------------------------------------------
     // Reported, not offered as a surface: a run needs an approved plan, its tokens and a
     // shadow, and handing that whole chain to an HTTP caller would put the sandbox on the
@@ -2383,6 +2438,14 @@ process.on('uncaughtException', (error) => {
 });
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  // The unix socket half of the session protocol — a real terminal's transport, never the
+  // browser's (that is the HTTP bridge below). Guarded to the entrypoint like the HTTP
+  // listener itself: a test importing this module gets an unstarted dispatch to call
+  // directly, not a socket file it did not ask for and would have to clean up.
+  const tuiSocketPath = process.env.NOESAR_TUI_SOCKET_PATH ?? join(workspace, 'tui.sock');
+  startUnixSocketServer({ socketPath: tuiSocketPath, dispatch: sessionDispatch, auth, ledger });
+  logger.info('tui.socket-listening', { component:'session-protocol', path: tuiSocketPath });
+
   server.listen(port, host, async () => {
     logger.info('runtime.started', {
       // The bind address is described rather than printed: the sink redacts IPv4
