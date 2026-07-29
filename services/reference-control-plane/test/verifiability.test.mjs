@@ -7,12 +7,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  firstViolation, isVerifiable, judgeDecomposition, leavesWorkspace, verificationGroup,
-  Violation, MAX_FILES_PER_PART,
+  firstViolation, isVerifiable, judgeDecomposition, dependencyIntegrity, leavesWorkspace,
+  verificationGroup, Violation, DependencyViolation, MAX_FILES_PER_PART,
 } from '../src/verifiability.mjs';
 
-const step = (files, { commands = [], destructive = false, id = 's' } = {}) => ({
-  id, description: 'd', files, commands, dependsOn: [],
+const step = (files, { commands = [], destructive = false, id = 's', dependsOn = [] } = {}) => ({
+  id, description: 'd', files, commands, dependsOn,
   blastRadius: { paths: files, reachesOutsideWorkspace: files.some(leavesWorkspace), destructive },
 });
 
@@ -95,4 +95,56 @@ test('splitting more does not by itself improve the verdict', () => {
   const manyBad = Array.from({ length: 10 }, (_, i) => step([`src/a${i}.rs`, `docs/b${i}.md`], { id: `p${i}` }));
   assert.equal(judgeDecomposition(manyBad).allPartsVerifiable, false);
   assert.equal(judgeDecomposition([manyBad[0]]).allPartsVerifiable, false);
+});
+
+// --- dependency integrity: a property of the set, not of one part (D-0217 -> found missing) --
+
+test('a dependency naming a part outside the decomposition is dangling', () => {
+  const parts = [step(['src/a.rs'], { id: 'p1', dependsOn: ['p0'] })];
+  const violations = dependencyIntegrity(parts);
+  assert.deepEqual(violations, [{ id: 'p1', violation: DependencyViolation.DANGLING_DEPENDENCY, dependsOn: 'p0' }]);
+});
+
+test('a part depending on itself is a cycle of one', () => {
+  const parts = [step(['src/a.rs'], { id: 'p1', dependsOn: ['p1'] })];
+  assert.deepEqual(dependencyIntegrity(parts), [{ id: 'p1', violation: DependencyViolation.DEPENDENCY_CYCLE }]);
+});
+
+test('two parts depending on each other are both reported, not just the one visited first', () => {
+  const parts = [
+    step(['src/a.rs'], { id: 'p1', dependsOn: ['p2'] }),
+    step(['src/b.rs'], { id: 'p2', dependsOn: ['p1'] }),
+  ];
+  const ids = dependencyIntegrity(parts).map((v) => v.id).sort();
+  assert.deepEqual(ids, ['p1', 'p2']);
+});
+
+test('a dangling edge is never misreported as a cycle', () => {
+  // p1 -> p2 (missing), p2 does not exist. Walking the dangling edge must not land back on p1.
+  const parts = [step(['src/a.rs'], { id: 'p1', dependsOn: ['p2'] })];
+  const violations = dependencyIntegrity(parts);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].violation, DependencyViolation.DANGLING_DEPENDENCY);
+});
+
+test('a linear chain of resolved dependencies has no violation — the shape A-0019 relies on', () => {
+  // p1 carries the file; p2 and p3 are observation-only parts naming p1, exactly A-0019's shape.
+  const parts = [
+    step(['src/a.rs'], { id: 'p1' }),
+    step([], { id: 'p2', commands: ['cargo test'], dependsOn: ['p1'] }),
+    step([], { id: 'p3', commands: ['cargo build'], dependsOn: ['p1'] }),
+  ];
+  assert.deepEqual(dependencyIntegrity(parts), []);
+  assert.equal(judgeDecomposition(parts).dependenciesResolve, true);
+});
+
+test('an unresolved dependency makes the decomposition unsettled even if every part is otherwise clean', () => {
+  const parts = [
+    step(['src/a.rs'], { id: 'p1' }),
+    step(['src/b.rs'], { id: 'p2', dependsOn: ['missing'] }),
+  ];
+  const verdict = judgeDecomposition(parts);
+  assert.equal(verdict.allPartsVerifiable, true, 'every part alone is verifiable by firstViolation');
+  assert.equal(verdict.dependenciesResolve, false);
+  assert.equal(verdict.settled, false, 'a broken graph is not a finished decomposition, however clean each part reads alone');
 });

@@ -24,11 +24,18 @@
 // budget. That is a provider's work and stays there. Detection is specification; splitting is
 // implementation.
 //
-// # The four reasons, each removing one way a reviewer could not say "this part passed"
+// # The five reasons, each removing one way a reviewer could not say "this part passed"
 //
-// They are not a size heuristic wearing four hats. A size-only splitter yields parts that are
+// They are not a size heuristic wearing five hats. A size-only splitter yields parts that are
 // smaller and still unverifiable: a delete and a write sharing one authorisation, or files
 // from two suites where passing one says nothing about the other.
+//
+// # A sixth kind of gap, not in `firstViolation`
+//
+// `dependencyIntegrity`, below, judges the decomposition as a set rather than one part at a
+// time: whether every `dependsOn` resolves to another part actually returned. A part cannot
+// see the rest of the decomposition, so this could never have been a sixth entry in
+// `firstViolation` — it is a property of the graph, not of a node.
 
 /** Above this, a part stops being reviewable in one sitting. Chosen, not derived. */
 export const MAX_FILES_PER_PART = 4;
@@ -93,6 +100,64 @@ export function firstViolation(step) {
 
 export const isVerifiable = (step) => firstViolation(step) === null;
 
+export const DependencyViolation = Object.freeze({
+  /** Names a part id absent from this same decomposition — not "not yet run", absent. */
+  DANGLING_DEPENDENCY: 'DANGLING_DEPENDENCY',
+  /** A dependency chain (of length one or more) that loops back on itself. */
+  DEPENDENCY_CYCLE: 'DEPENDENCY_CYCLE',
+});
+
+/**
+ * Whether every `dependsOn` in a decomposition resolves — to another part *in the same
+ * decomposition*, never to itself, never in a loop.
+ *
+ * This is a property of the SET, not of one part, which is why it is not a fifth entry in
+ * `firstViolation`: a part cannot tell whether its own dependency exists by reading itself.
+ * Found missing by `D-0217` — the observation-only parts `A-0019` added each name the part
+ * that carries the file they describe, and nothing had ever checked that name resolves.
+ *
+ * Reports every offending edge, not just the first: unlike `firstViolation`'s ordered
+ * precedence (one reason picked on purpose), a broken graph can have more than one break, and
+ * picking only one would hide the others from whoever reads the verdict.
+ */
+export function dependencyIntegrity(parts) {
+  const list = Array.isArray(parts) ? parts : [];
+  const ids = new Set(list.map((part) => part?.id).filter(Boolean));
+  const violations = [];
+
+  for (const part of list) {
+    for (const dependency of part?.dependsOn ?? []) {
+      if (!ids.has(dependency)) {
+        violations.push({ id: part.id, violation: DependencyViolation.DANGLING_DEPENDENCY, dependsOn: dependency });
+      }
+    }
+  }
+
+  // Cycle detection walks only edges that resolve — a dangling edge is already reported above;
+  // following it into `visit` would either do nothing (the id is absent from `graph`) or, worse,
+  // misreport a dangling edge as a cycle if the missing id happened to collide with one already
+  // on the stack. Keeping the two checks on disjoint edge sets keeps each report attributable
+  // to one cause.
+  const graph = new Map(list.map((part) => [part.id, (part?.dependsOn ?? []).filter((d) => ids.has(d))]));
+  const state = new Map(); // absent -> 'visiting' -> 'done'
+  const onCycle = new Set();
+  const visit = (id, stack) => {
+    if (state.get(id) === 'done') return;
+    if (state.get(id) === 'visiting') {
+      const cycleStart = stack.indexOf(id);
+      for (const node of stack.slice(cycleStart)) onCycle.add(node);
+      return;
+    }
+    state.set(id, 'visiting');
+    for (const next of graph.get(id) ?? []) visit(next, [...stack, id]);
+    state.set(id, 'done');
+  };
+  for (const id of ids) visit(id, []);
+  for (const id of onCycle) violations.push({ id, violation: DependencyViolation.DEPENDENCY_CYCLE });
+
+  return violations;
+}
+
 /**
  * Judge a decomposition: the parts a provider returned for one original step.
  *
@@ -103,20 +168,26 @@ export const isVerifiable = (step) => firstViolation(step) === null;
  *
  * `settled` is the fixed-point check, and it is the one that cannot be gamed: judge each
  * returned part *again*. A decomposition that still has a violation in it was not finished,
- * whatever it called itself.
+ * whatever it called itself — and a decomposition whose dependency graph does not resolve is
+ * exactly as unfinished as one with an offending part: a reviewer cannot check parts in an
+ * order that does not exist.
  */
 export function judgeDecomposition(parts) {
   const list = Array.isArray(parts) ? parts : [];
   const violations = list.map((part) => ({ id: part?.id ?? null, violation: firstViolation(part) }));
   const offending = violations.filter((entry) => entry.violation !== null);
+  const dependencyViolations = dependencyIntegrity(list);
+  const dependenciesResolve = dependencyViolations.length === 0;
   return {
     parts: list.length,
     verifiableParts: list.length - offending.length,
     unverifiableParts: offending.length,
     allPartsVerifiable: list.length > 0 && offending.length === 0,
+    dependencyViolations,
+    dependenciesResolve,
     // An empty decomposition is never "all verifiable": nothing was returned to verify, and
     // reporting `true` there would let a provider score perfectly by answering nothing.
-    settled: list.length > 0 && offending.length === 0,
+    settled: list.length > 0 && offending.length === 0 && dependenciesResolve,
     offending,
   };
 }

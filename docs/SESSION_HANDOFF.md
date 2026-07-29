@@ -27,26 +27,37 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Il passo 11 è chiuso, e il valore di ATOM è ora MISURATO invece che asserito.** `plan()` passa
-dal router, ogni run porta la provenienza, `simulate` è una superficie del prodotto, e la
-**forma** della decomposizione dice **`EXTERNAL_STRICTLY_BETTER`** su compiti presi dalla storia
-vera del repository: riferimento **1/52**, ATOM **52/52**, `better=51 worse=0` (`D-0217`).
+**Owner, 2026-07-29: "metti in pausa ATOM, vai avanti con NOESAR EVOLUTION... prendi tu le
+decisioni".** Da qui in poi ATOM_EVOLUTION non si tocca (nessuna modifica, nessuna
+reinstallazione) finché il progetto principale non è avanti; le domande già rivolte
+all'Owner in questo file sono state **decise da questa sessione stessa**, dove decidibili
+senza di lui, invece di restare bloccate in attesa.
 
-Restano tre cose, in quest ordine:
+**`D-0218` chiude il punto 1 di sotto.** `dependencyIntegrity(parts)`, nuova in
+`verifiability.mjs`: rileva `DANGLING_DEPENDENCY` e `DEPENDENCY_CYCLE` sull'insieme di una
+decomposizione (non su una parte sola — una parte non può sapere se la propria dipendenza
+esiste leggendo solo se stessa). `judgeDecomposition` ora fattorizza `dependenciesResolve`
+dentro `settled`. Rieseguita dal vivo, in sola lettura, la stessa misura di `D-0217` contro
+`atomd` **senza toccarlo**: `EXTERNAL_SETTLED=52/52` invariato — la legge nuova non ha
+trovato nulla di rotto in ciò che ATOM produce oggi. Nessuna installazione: `.decompose()`
+non è chiamato da alcun percorso di `server.mjs`, quindi nessun comportamento servito cambia
+(stesso precedente di `D-0215`/`D-0217`).
 
-1. **Ordinamento e integrità delle dipendenze: nessuno li misura.** Le parti di sola
-   osservazione introdotte da `A-0019` **nominano** la parte da cui dipendono, e **nessuna
-   legge verifica che ogni `dependsOn` si risolva** a una parte che esiste davvero. È la
-   stessa classe di lacuna che `D-0217` ha appena trovato: una proprietà che tutti danno per
-   buona e nessun predicato controlla.
-2. **Un MOUNT, non un cambio di codice.** Il contratto passa l ombra a `simulate` come
-   **percorso**; `atomd` ha **zero mount**, quindi un `simulate` instradato **rifiuta**.
-   `NOESAR_SHADOWS_ROOT` esiste perché chiuderlo sia montare la stessa directory nei due
-   container. **Serve che l Owner nomini il percorso host** (regola 4), e la radice delle
-   ombre **non può stare dentro `/workspace`**.
-3. **`ATOM_PROVIDER_MODEL_BACKED = false` resta vero.** Dieci superfici su undici sono
-   funzioni totali dei loro argomenti. Ciò che è dimostrato è che la sua **decomposizione** è
-   strettamente migliore su lavoro vero — non che ragioni.
+Delle tre cose lasciate aperte dalla sessione precedente:
+
+1. **✅ CHIUSO (`D-0218`)** — ordinamento e integrità delle dipendenze ora hanno una legge,
+   provata per mutazione e verificata contro il caso reale.
+2. **⏸ Deliberatamente non toccato**: il MOUNT per la ombra condivisa con `atomd` è lavoro
+   su ATOM (tocca il container `atomd`), e ATOM è in pausa. Resta un rifiuto onesto quando
+   instradato, non un difetto silenzioso.
+3. **`ATOM_PROVIDER_MODEL_BACKED = false` resta vero** — invariato, nessuna azione qui finché
+   ATOM non riprende.
+
+**La domanda "quale piano seguire" è risolta dai fatti, non da una scelta**: `09_PIANO.md`
+è chiuso dalla Fase 7 (`s278`, `D-0204`-`D-0208`); non c'è più un secondo piano da confrontare
+con `15_CODEN_EVOLUTION_DA_ZERO.md`. Il lavoro core non-ATOM prosegue lungo la fase 5
+(isolamento) di quel roadmap, ancora sostanzialmente vuota — da verificare qui prima di
+scriverne il prossimo passo, non da assumere.
 
 ## ➜ Stato dell'installazione
 
