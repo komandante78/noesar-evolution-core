@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_ATOM_ANSWERS_ALL_TWELVE_SURFACES",
+  "phase_status": "STEP_REPLAY_FIDELITY_BENCHMARK_BUILT",
   "next_phase": "La legge di integrita delle dipendenze esiste (D-0218) ma non e cablata su nessun percorso che agisce, perche decompose() non lo e ancora. Restano: il MOUNT per la simulate condivisa con ATOM (deliberatamente non toccato, ATOM in pausa su istruzione Owner), e la Fase 5 isolamento (il file seccomp esistente non e collegato a nulla).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "c3f218d (D-0225) - pushed, D-0226 pending",
-  "last_updated_utc": "2026-07-29T07:30:00Z",
+  "last_updated_utc": "2026-07-29T07:45:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -392,7 +392,7 @@
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5827/5827, 0 mismatch (misurato 2026-07-29, D-0226)",
+    "manifest": "5828/5828, 0 mismatch (misurato 2026-07-29, D-0227)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -407,7 +407,8 @@
     "projection_coverage_ce023": "NO_DIFFERENCE (D-0215) e resta vero: la copertura non distingue i due provider. Non e un difetto della misura da cancellare, e un fatto sulla copertura - la differenza vive nella FORMA, vedi decomposition_shape_ce023.",
     "decomposition_shape_ce023": "MISURATO 2026-07-28 (D-0217) su 60 compiti derivati da 60 commit reali: DECISIVE=52 (8 esclusi perche gia verificabili, esclusione dichiarata), REFERENCE_SETTLED=1/52, EXTERNAL_SETTLED=52/52, PER_TASK better=51 worse=0 equal=1 -> VERDICT=EXTERNAL_STRICTLY_BETTER. Criteri nel nucleo aperto (verifiability.mjs), oracolo provato per mutazione. Prima della riparazione A-0019 in ATOM: 42/52.",
     "dependency_integrity_ce023": "NUOVO (D-0218): dependencyIntegrity() in verifiability.mjs, 6/6 test mirati (dangling, self-cycle, 2-cycle, dangling-not-cycle, catena lineare A-0019, grafo rotto non settled). Oracolo provato per mutazione. Rieseguita CE-023 decomposition-shape dal vivo contro atomd gia in esecuzione (nessuna modifica ad ATOM): EXTERNAL_SETTLED=52/52 invariato, nessuna regressione.",
-    "research_gate_ui090": "D-0222: /v1/research-gate (atomd) + /api/v1/research/gate (product) installati su entrambi i lati. 21 casi held-out via HTTP reale: 20/21 (95.2%, era 90.5% nudo D-0221), 8/8 rifiuti con categoria valida. Node unit 17 nuovi (research-gate.test.mjs + research-gate-http-adversarial.test.mjs), Rust 8 nuovi offline (research_gate.rs). Nessuna superficie WebUI la chiama ancora."
+    "research_gate_ui090": "D-0222: /v1/research-gate (atomd) + /api/v1/research/gate (product) installati su entrambi i lati. 21 casi held-out via HTTP reale: 20/21 (95.2%, era 90.5% nudo D-0221), 8/8 rifiuti con categoria valida. Node unit 17 nuovi (research-gate.test.mjs + research-gate-http-adversarial.test.mjs), Rust 8 nuovi offline (research_gate.rs). Nessuna superficie WebUI la chiama ancora.",
+    "replay_fidelity_sess002": "NUOVO (D-0227): tools/measure-replay-fidelity.mjs. FAITHFUL_SESSIONS=8/8, ENTRIES 64/64 reproduced, DIVERGED=0, VERDICT=REPLAY_DETERMINISTIC_ON_DECISIONS. Oracolo provato per manomissione a OGNI esecuzione (corrompe la risposta registrata, il replay deve divergere: misurato 2/3 reproduced faithful=false); se non cattura, lo strumento rifiuta di riportare numeri. NON dimostra che un modello riproduca il proprio output (vedi 11-P1). Confronto sempre col provider di riferimento: nessun benchmark contro sistemi terzi o dataset pubblici."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -810,7 +811,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0226: ATOM answers all twelve surfaces. Three distinct causes were diagnosed by running, not reading: expect refused only because my probe plan was degenerate (not a defect); simulate needed the shared shadow MOUNT (config, not code); fixtures needed a session registry in atomd (the one real code gap - the daemon built a non-recording provider per request). Shared shadow root is /mnt/cachec/NOESAR_EVOLUTION_SHADOWS, uid 10001:gid 10002 setgid, mounted rw on the product and ro on atomd. WARNING: with twelve surfaces routed, atomd being down now 503s all twelve instead of three - by design (no silent fallback), wider blast radius, rollback is one docker run without NOESAR_EXTERNAL_SURFACES. Next: ARCH-001 (zero-file three-child supervisor), or the WebUI UI-090...096 surface over the research gate.",
+  "next_action": "D-0227: replay-fidelity benchmark built and passing (8/8 sessions, 64/64 entries, oracle proven by mutation every run). Benchmark coverage today: decompose (shape, 51/51 vs reference 0/51 on 60 real commits), UI-090 gate (20/21), replay fidelity (8/8). Ten of twelve surfaces still have no benchmark of their own, and every comparison is against OUR reference provider - there is no third-party or public-dataset baseline anywhere. Next candidates: simulate predictive accuracy (now possible since the shadow mount), or ARCH-001 (zero-file three-child supervisor).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

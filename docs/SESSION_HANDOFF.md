@@ -26,6 +26,20 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0227`, stessa giornata: il primo banco sulla fedeltà del replay.** `SESS-002` non era mai
+stato misurato perché non *poteva* esserlo: senza registro di sessioni `fixtures` rifiutava
+sempre. `tools/measure-replay-fidelity.mjs` → **`FAITHFUL_SESSIONS=8/8`, `64/64` voci
+riprodotte, `DIVERGED=0`**. L'oracolo è **provato per manomissione a ogni esecuzione** (si
+corrompe la risposta registrata lasciando l'input intatto: il replay deve divergere — misurato
+`2/3 reproduced, faithful=false`); se non cattura, lo strumento **rifiuta di riportare
+numeri**. ⚠ Non dimostra che un modello riproduca il proprio output — misura il livello di cui
+il prodotto è responsabile (`11 · P1`).
+
+**Stato dei benchmark, onesto**: coperti `decompose` (forma, **51/51** contro riferimento
+**0/51** su 60 commit veri), gate `UI-090` (20/21), fedeltà replay (8/8). **Dieci superfici su
+dodici non hanno un banco proprio**, e ogni confronto è contro il **nostro** provider di
+riferimento: **nessun benchmark contro un sistema terzo o un dataset pubblico esiste.**
+
 **`D-0226`, stessa giornata: ATOM risponde su TUTTE E DODICI le superfici.** Misurato coi
 byte installati contro il daemon installato: `ANSWERED=12/12`, `ROUTED_TO_ATOM=12/12`.
 Tre cause distinte, ognuna diagnosticata **eseguendo**, non leggendo:

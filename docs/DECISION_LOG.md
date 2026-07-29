@@ -3854,3 +3854,22 @@ ampio, per progetto (nessun fallback silenzioso). Rollback = un `docker run` sen
 `NOESAR_EXTERNAL_SURFACES`.
 **Status.** Installato su entrambi i lati (`atom-evolution:atomd`,
 `noesar-evolution:phase4-atom-all-surfaces`).
+
+## D-0227 · Il primo banco di misura sulla fedeltà del replay — 2026-07-29
+**Decision.** `tools/measure-replay-fidelity.mjs`: registra N sessioni reali, rispedisce ogni
+pacchetto a `/v1/replay`, e riporta quante sessioni **ricalcolano** le stesse decisioni.
+**Why.** È la tesi centrale del prodotto (`SESS-002`, `D-11`) e non era mai stata misurata —
+non poteva esserlo: senza il registro di sessioni (`A-0020`) `fixtures` rifiutava sempre.
+**Rejected.** Confrontare le voci qui invece di rispedirle al daemon — sarebbe una seconda
+implementazione della semantica del provider, e due implementazioni di una regola smettono
+di essere d'accordo.
+**Evidence.** `FAITHFUL_SESSIONS=8/8`, `ENTRIES 64/64 REPRODUCED`, `DIVERGED=0`.
+**L'oracolo è provato per manomissione a ogni esecuzione**, non una volta: si corrompe la
+risposta registrata lasciando l'input intatto, e il replay deve divergere (misurato: `2/3
+reproduced, faithful=false`). Se non cattura, lo strumento **rifiuta di riportare qualsiasi
+numero** (`VERDICT=INSTRUMENT_UNPROVEN`) invece di dare un verde non guadagnato.
+**Reversal cost.** Nessuno — strumento di misura, nessun comportamento del prodotto cambia.
+**Status.** Applicato. ⚠ **Cosa NON dimostra**: che un modello riproduca il proprio output —
+non lo fa, e `11 · P1` spiega perché prometterlo si romperebbe alla prima verifica. Misura il
+livello di cui il prodotto è responsabile. E resta un confronto **col nostro provider di
+riferimento**: nessun benchmark contro un sistema terzo o un dataset pubblico esiste.
