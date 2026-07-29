@@ -203,13 +203,13 @@
     {
       "id": "F4W-011",
       "severity": "high",
-      "status": "PARTIAL - WP-0 done (c28d8a2): the 46 files are in the repository and the product can now be reported against real acceptance IDs. The measurement itself is still outstanding, and D-0069 records that the instruments do not define how anything is measured.",
+      "status": "SUPERSEDED_RULER (D-0219) — measured against the retired V4 master (D-0096 made the rewrite the plan of record 2026-07-26, the same day this finding's source doc was written). The underlying gap survives in new form: MASTER_PROJECT/ (the rewrite) has no acceptance matrix of its own either — tracked as master_acceptance_matrix_status below, not as unfinished V4 work.",
       "summary": "The product has never been measured against MASTER PROJECT V4. 46 of its 121 files, including the acceptance matrix, implementation gates, traceability matrix and Owner review checklist, were never brought into the repository. Against that matrix two blockers are open (SEC-003 never tested; OPS-002 covers one platform family of five) and several required features are absent - Workflows, the approval queue, passkeys/OIDC/SAML/SCIM, two of the seven privacy states, compliance packs, the industry module framework, ML-BOM and any WCAG 2.2 AA evidence. Separately, /api/v1/bootstrap advertises Workflows as a feature that does not exist."
     },
     {
       "id": "F4W-012",
       "severity": "medium",
-      "status": "OPEN - prototype published for review",
+      "status": "SUPERSEDED_RULER (D-0219) — measured against APPROVED_WEBUI_REFERENCE.png, part of the retired V4 master. The WebUI named here (21 flat nav entries, no central composer) predates the v3 redesign: docs/WEBUI_DESIGN_V3.md (12 destinations, consolidated Settings, three-rank sidebar and context panel) was designed, built and installed across s267-271, superseding both the v1 proposal this finding pointed at and the V4 reference it was measured against. See webui_proposal_v1 below, corrected to point at v3.",
       "summary": "The deployed WebUI diverges from DESIGN/APPROVED_WEBUI_REFERENCE.png, which 01_PRODUCT/11 calls binding: no central composer, no quick actions, no active-tasks panel and no bottom approval strip on Home, and 21 flat nav entries against the spec rule of simple-before-technical progressive disclosure. The specification also requires visual regression and Owner review before the UI is final; neither has happened. A reorganised prototype (26 destinations in 5 categories, 9 selectable themes) is published for the Owner decision."
     },
     {
@@ -789,19 +789,25 @@
   },
   "plan_of_record": "MASTER_PROJECT/ (la riscrittura) — deciso dall Owner il 2026-07-26, D-0096",
   "webui_proposal_v1": {
-    "status": "NOT_ACCEPTED",
-    "reviewed_utc": "2026-07-26",
-    "record": "docs/WEBUI_DESIGN_REVIEW_V1.md",
-    "preview": "published artifact, interactive prototype",
-    "corrections": [
+    "status": "SUPERSEDED_BY_V3",
+    "v1_status": "NOT_ACCEPTED (2026-07-26) — kept for history, see corrections below",
+    "v1_record": "docs/WEBUI_DESIGN_REVIEW_V1.md",
+    "v1_corrections": [
       "the right context rail must be a dockable, dismissible panel, not a fixed 268px column",
       "three conversational surfaces are missing entirely: a Claude-style chat, a CodeN Ultra chat, and the CodeN Ultra TUI",
       "the sidebar must collapse",
       "one Settings destination holding language, appearance (all nine themes), licence activation and product settings, instead of eleven administrative destinations in the navigation"
     ],
-    "note": "The fourth correction is the Owner agreeing with the specification against the proposal: 01_PRODUCT/11 requires progressive disclosure and the binding reference carries a single Settings entry. v2 must re-derive the information architecture, not restyle v1.",
-    "open_question": "three separate chat destinations, or one Chat destination containing three surfaces — ask before building",
-    "next_preview": "to be produced in a NEW session, at the Owner request; not in the session that took the feedback"
+    "v3_record": "docs/WEBUI_DESIGN_V3.md",
+    "v3_status": "structure + token layer + nine themes built and installed (s267-269, D-0118, D-0137..D-0146); UI-060..063 initial screen built and installed (s271, D-0161..D-0168)",
+    "v3_still_open": [
+      "UI-030..037 the workbench",
+      "UI-036 the server-set NOT_DONE checkbox",
+      "UI-070..072 the product metric",
+      "eight non-structural accessibility items UI-040..047",
+      "CodeN Evolution TUI and Ricerca as destinations: declared, not built (D-0141) — Ricerca gated on UI-090..096, itself gated on ReasoningProvider (now under construction via ATOM, currently paused)"
+    ],
+    "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
   "next_action": "D-0217: la copertura non distingueva perche misurava una proprieta che entrambi i provider soddisfano per costruzione. La FORMA della decomposizione, giudicata da criteri nel nucleo aperto (verifiability.mjs) su 60 compiti dalla storia vera del repository, distingue: riferimento 1/52, ATOM 52/52, better=51 worse=0. La misura ha trovato e fatto riparare un difetto reale in ATOM (A-0019: 71 parti con due comandi).",
   "coden_evolution_design": {

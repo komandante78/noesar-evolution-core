@@ -1,5 +1,15 @@
 # What remains — measured 2026-07-26
 
+> ⚠️ **SUPERSEDED RULER (recorded 2026-07-28/29, `D-0219`).** This file's "fork" question at
+> the bottom — V4 master vs. the rewrite, "the choice between them is the Owner's" — was
+> answered the **same day** this file was written: `D-0096` made the rewrite (`MASTER_PROJECT/`)
+> the plan of record. §1–§7 below still measure against the retired V4 ruler
+> (`MASTER_REFERENCE/`) and are historical evidence of what that ruler once said, not a live
+> list. The two open items this file's §5/§7 fed into `PROJECT_STATE.json` as `F4W-011`/
+> `F4W-012` are reconciled there against the current ruler, not here — this file is kept
+> verbatim rather than rewritten (rule 12), and a live "what remains" now lives in
+> `docs/SESSION_HANDOFF.md`.
+
 **Purpose.** A session asked "what is left to finish the project?" and the first answer was
 wrong twice over: it measured against one instrument and presented that as the whole, and it
 reported three components as absent that are not. This file exists so no future session

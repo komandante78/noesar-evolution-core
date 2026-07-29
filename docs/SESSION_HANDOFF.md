@@ -55,9 +55,32 @@ Delle tre cose lasciate aperte dalla sessione precedente:
 
 **La domanda "quale piano seguire" è risolta dai fatti, non da una scelta**: `09_PIANO.md`
 è chiuso dalla Fase 7 (`s278`, `D-0204`-`D-0208`); non c'è più un secondo piano da confrontare
-con `15_CODEN_EVOLUTION_DA_ZERO.md`. Il lavoro core non-ATOM prosegue lungo la fase 5
-(isolamento) di quel roadmap, ancora sostanzialmente vuota — da verificare qui prima di
-scriverne il prossimo passo, non da assumere.
+con `15_CODEN_EVOLUTION_DA_ZERO.md`.
+
+**"Fase 5 isolamento: collegare il file seccomp?" verificato e chiuso come falso allarme,
+non come lavoro fatto**: `security/seccomp-noesar.json` porta la sua stessa dichiarazione
+`x-noesar-status: NOT_FOR_USE` in testa, e `D-0024` (Fase 2, mai superata) spiega perché
+collegarlo **indebolirebbe** il sandbox invece di rafforzarlo — è `defaultAction: ALLOW`
+con una denylist di 24 syscall, mentre il profilo Docker builtin è deny-by-default su
+~350 syscall e blocca già tutte quelle 24. La domanda del vecchio backlog assumeva un gap
+che non esiste; premessa riverificata prima di costruire sopra, non presa per buona.
+
+**`D-0219` — due findings e `docs/REMAINING_WORK.md` misuravano contro il master V4,
+ritirato da `D-0096` lo stesso giorno in cui furono scritti.** `F4W-011`/`F4W-012` marcati
+`SUPERSEDED_RULER` in `PROJECT_STATE.json`, non richiusi a scatola chiusa: verificato che
+`docs/WEBUI_DESIGN_V3.md` (dodici destinazioni, costruito e installato s267-271) sostituisce
+già ciò che `F4W-012` lamentava, e `webui_proposal_v1` corretto per puntare alla v3 invece
+della v1 rifiutata. `F4W-011` resta un gap **reale in forma nuova**, già tracciato altrove
+(`master_acceptance_matrix_status`), non chiuso: la riscrittura non ha una propria matrice
+di accettazione con ID e severità.
+
+**Prossima azione concreta, non ancora iniziata**: costruire quella matrice per
+`MASTER_PROJECT/` (14 documenti, rischio 4 di `docs/WORK_PLAN_V5_REWRITE.md`) — è il gap
+misurabile più grande rimasto che non tocca ATOM. In alternativa, dentro `WEBUI_DESIGN_V3.md`
+§24 restano non costruiti: il banco di lavoro `UI-030…037`, la casella `NON FATTO` `UI-036`,
+la metrica di prodotto `UI-070…072`, otto voci di accessibilità `UI-040…047`, le destinazioni
+TUI CodeN Evolution e Ricerca (quest'ultima gated su `UI-090…096`, a sua volta su
+`ReasoningProvider` — oggi in costruzione via ATOM, in pausa).
 
 ## ➜ Stato dell'installazione
 
