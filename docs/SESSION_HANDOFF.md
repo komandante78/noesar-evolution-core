@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-29 (`D-0222`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-29 (`D-0228`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -81,92 +81,43 @@ leggendo l'ombra. Daemon giù → **12/12 `UNAVAILABLE`, zero fallback**.
 ⚠ **Conseguenza**: con 12 superfici instradate, `atomd` giù fa 503 su tutte e dodici invece
 che su tre. Rollback = un `docker run` senza `NOESAR_EXTERNAL_SURFACES`.
 
-**`D-0225`, stessa giornata: niente si installa per verificare — un container usa-e-getta,
-e trova due bug veri.** L'Owner ha chiesto se installare-poi-disinstallare per testare fosse
-ammesso: no (regola 20/21), l'alternativa sanzionata è un container effimero (regola 21a).
-`scripts/test.sh` e `test-packaging-filters.mjs` ora ricadono su `python:3-slim` offline se
-`python3` manca sull'host — stesso schema già usato per Rust/ESLint. **Eseguiti per la prima
-volta, hanno trovato due bug reali preesistenti**: `verify-postgres-migrations.py` aveva 12
-migrazioni codificate a mano, mai aggiornate dopo che le `0013-0016` sono atterrate;
-`test-packaging-filters.mjs` incorporava booleani JSON (`true`/`false`) dentro sorgente
-Python (`NameError` garantito). Entrambi corretti, provati per mutazione dal vivo.
-`scripts/test.sh`: `pass=5 unavailable=4` → **`pass=10 fail=0 partial=0 unavailable=0`**.
+**Le altre decisioni di questa giornata, in una riga ciascuna** (il dettaglio vive in
+`docs/DECISION_LOG.md`, non qui):
 
-**`D-0224`, stessa giornata: `INST-006` era già vero, e non protetto.** Verificandolo per
-`D-0223` ho trovato che la WebUI dichiara già "not encrypted... authentication master key"
-in `view-backups` — ma zero test lo proteggevano da una cancellazione silenziosa. Aggiunto
-`webui-markup-structure.test.mjs::INST-006`, provato in rosso rimuovendo il testo dal vivo
-e poi ripristinato. `INST-006` passa da ⚠ a ✅ nella tabella di `08`. Nessun deploy: la
-WebUI servita non è stata toccata, solo protetta.
+- **`D-0225`** — niente si installa per verificare: `scripts/test.sh` ricade su un container
+  `python:3-slim` effimero. Eseguendoli per la prima volta ha trovato **due bug preesistenti**
+  (lista di 12 migrazioni stale dopo le `0013-0016`; booleani JSON dentro sorgente Python).
+  `pass=5 unavailable=4` → **`pass=10 fail=0 partial=0 unavailable=0`**.
+- **`D-0224`** — `INST-006` era già vero ma **non protetto**: la disclosure sul backup non
+  cifrato esisteva nella WebUI senza alcun test. Aggiunto, provato in rosso e ripristinato.
+- **`D-0223`** — il rischio 4 era chiuso solo a metà: scritte `ARCH-001…008`, `INST-001…010`,
+  `CUBE-001…009`, `SESS-001…003` dopo aver letto i 14 documenti (3568 righe). Ogni riga marca
+  lo stato reale, non un verde di default.
+- **`D-0222`** — il gate `UI-090` su una superficie realmente servita (atomd
+  `/v1/research-gate` + prodotto `/api/v1/research/gate`), **20/21** contro 15/21 della
+  denylist. Nessuna superficie WebUI lo consuma ancora: la Ricerca resta gated (`D-0142`).
 
-**`D-0222`, 2026-07-29: il gate `UI-090` raggiunge una superficie realmente servita, su
-entrambi i lati.** Non una 13ª superficie `ReasoningProvider` — dominio diverso (una query
-di testo, non un Piano), nessun leg di riferimento.
-
-- **atomd** (ATOM_EVOLUTION): nuovo `research_gate.rs`, rotta `/v1/research-gate`, unico
-  punto del daemon che chiama davvero il modello (`model_client::ModelClient`). Tre esiti
-  (`UI-092`), categoria fissa nominata su ogni rifiuto (`UI-093`), mai coerto su risposta
-  malformata/irraggiungibile (kind `UNAVAILABLE`/`INTERNAL`).
-- **Prodotto** (NOESAR EVOLUTION): nuovo `research-gate.mjs` (stessa postura no-fallback di
-  `atom-client.mjs`) + `GET/POST /api/v1/research/gate` in `server.mjs` — sessione +
-  `workspace.read` + CSRF (la rotta non scrive nulla, ma `D-0193`/`D-0194` hanno trovato
-  due volte lo stesso buco CSRF su rotte che scrivono — questa chiama la rete per conto del
-  chiamante, motivo sufficiente). `UI-095`: un rifiuto non porta mai il campo `query`.
-
-**Misurato dopo il wiring, sull'endpoint HTTP reale (non più sul modello nudo)**: 21 casi
-held-out → **20/21 (95.2%)**, era 90.5% in `D-0221`. **8/8 rifiuti con categoria valida.**
-L'unico fallimento residuo (`selfharm-method` → `ASK` invece di `REFUSE`) è documentato,
-non risolto — mai un lasciapassare pericoloso, mai un blocco di chi cerca aiuto.
-
-**Non ancora vero**: nessuna superficie WebUI chiama questo endpoint — la destinazione
-Ricerca resta gated (`D-0142`), come previsto: il gate si costruisce prima della superficie.
-
-**`D-0223`, stessa giornata: il rischio 4 era chiuso solo a metà.** `D-0116` (documento 15,
-`CE-001…024`) dichiarava il rischio 4 di `WORK_PLAN_V5_REWRITE.md` chiuso, ma copriva solo
-CodeN Evolution; `UI-001…096` (`docs/WEBUI_DESIGN_V3.md`) copre l'interfaccia. Tre aree dei
-14 documenti non avevano **un solo ID**: architettura, installazione, memoria a cubi.
-Letti tutti i 14 documenti (3568 righe) prima di scrivere un ID — non inventati, estratti
-dalle affermazioni testabili già nel testo. Scritte: `ARCH-001…008` (doc 03), `INST-001…010`
-(doc 08), `CUBE-001…009` (doc 14, tutto ⏳ per costruzione — nulla di quel documento è
-implementato), `SESS-001…003` (doc 01, il pacchetto Prova di Sessione). **Ogni riga marca lo
-stato reale** (✅ costruito/verificato, ⏳ non costruito, ⚠ parziale o aperto) — non un verde
-di default: `INST-006` (backup non cifrato) resta ⚠ aperto, dichiarato anche nel documento 05.
-**Nessun criterio è stato costruito o verificato in questa fase**: la matrice rende dicibile
-"fatto" per ID, non lo dichiara.
-
-**Prossima azione concreta, non ancora iniziata**: costruire contro i criteri marcati ⏳
-critici (es. `ARCH-001` il supervisore a tre figli, tuttora zero file), oppure — se ATOM
-riprende — la superficie WebUI `UI-090…096` sopra il gate `D-0222` ora che esiste.
+**Prossima azione concreta, non ancora iniziata**: `ARCH-001` — il supervisore PID 1 a tre
+figli pari è **tuttora zero file**, ed è il criterio critico più grosso rimasto. In
+alternativa: estendere il banco contro la realtà ad altre superfici, o la superficie WebUI
+`UI-090…096` sopra il gate che ora esiste.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto**: `noesar-evolution:phase4-research-gate` · `Up (healthy)` · `RestartCount=0` ·
-  `192.168.178.100:8100→8088`. Rollback preservato:
-  `noesar-evolution.rollback-research-gate-20260729T055824Z` (`:phase4-atom-acting-path`).
-- **atomd**: `atom-evolution:atomd` (ricostruito) · `Up (healthy)` · `noesar-evolution-net`.
-  Rollback preservato: `atomd.rollback-pre-research-gate-20260729T054159Z`.
-- **Due container per progetto su entrambi i lati** (installazione + 1 rollback ciascuno),
-  per convenzione — il rollback due generazioni indietro è stato rimosso su ognuno.
-- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato, la rotta
-  non ha mai persistito nulla.
-
-## ➜ Verifiche prodotte (`D-0222`)
-
-```text
-Rust (ATOM_EVOLUTION): 8 nuovi test offline (research_gate.rs, parsing puro) + 5 ignored
-(2 nuovi live). Suite completa 29 passed, 5 ignored, 0 failed.
-Node (NOESAR EVOLUTION): unit 1098->1115 (+17: research-gate.test.mjs 11,
-research-gate-http-adversarial.test.mjs 7 — nota: uno è il negative control condiviso col
-GET di stato). ESLint 224 file 0 errori. scripts/test.sh pass=5 fail=0 partial=1
-unavailable=4 (baseline invariata, python3 assente su questo host). Browser e2e 315/315.
-Seeded defects 19/19. MANIFEST 5826/5826, 0 mismatch.
-DebugLab: sweep scoped a services/reference-control-plane (non full 8-dir — l'ultimo sweep
-completo è di 1 fase fa, D-0216, sotto la soglia delle 5). 25 finding, 0 nel sorgente nuovo;
-l'unico hit sul nuovo file di test è lo stesso falso positivo (costante fixture PASSWORD)
-già presente identico in 12 file di test gemelli.
-Live, prima e dopo l'installazione: byte immagine == albero per server.mjs+research-gate.mjs.
-postgres.stopped clean:true letto nel log. /healthz disclosed:false (B-010 non regredito).
-```
+- **Prodotto**: `noesar-evolution:phase4-atom-all-surfaces` · `Up (healthy)` ·
+  `RestartCount=0` · `192.168.178.100:8100→8088` · mount `/shadows` **rw**,
+  `NOESAR_SHADOWS_ROOT=/shadows`, `NOESAR_EXTERNAL_SURFACES` = **tutte e dodici**.
+  Rollback preservato: `noesar-evolution.rollback-all-surfaces-20260729T072501Z`
+  (`:phase4-research-gate`).
+- **atomd**: `atom-evolution:atomd` (con registro di sessioni) · `Up (healthy)` ·
+  `noesar-evolution-net` · mount `/shadows` **ro**. Rollback preservato:
+  `atomd.rollback-pre-sessions-20260729T072209Z`.
+- **Radice ombre condivisa**: `/mnt/cachec/NOESAR_EVOLUTION_SHADOWS`, `10001:10002`, `2750`
+  (setgid). Fuori da `/workspace` per costruzione; XFS, quindi il reflink è reale.
+- **Due container per progetto su entrambi i lati** (installazione + 1 rollback ciascuno).
+- **Costo di rollback: nessuno.** Nessuna migrazione, `AI_STATE_VERSION` invariato.
+  ⚠ Tornare indietro riporta ATOM a **tre** superfici e fa rifiutare di nuovo `simulate`
+  (nessun mount) e `fixtures` (nessun registro di sessioni).
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
