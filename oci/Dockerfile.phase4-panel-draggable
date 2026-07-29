@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Owner: "float doesn't let me move it" — floating mode (D-0238's default-hidden context
+# panel, when explicitly floated) placed the panel at one fixed screen position with no
+# way to drag it anywhere else.
+#
+# Added real pointer-drag: the panel's title bar (#contextPanelTitle) is now a drag
+# handle while floating, tracked with pointerdown/pointermove/pointerup + setPointerCapture
+# (works with mouse and touch alike), clamped to stay on screen, and the dropped position
+# is remembered PER DESTINATION (noesar.panel.pos in localStorage) the same way the
+# docked/floating/hidden choice itself already was (D-0238).
+#
+# One real bug found building this and fixed before it shipped: `inset-block-start`/
+# `inset-inline-end` (the CSS logical properties the stylesheet's default floating
+# position uses) and `top`/`left` are the SAME physical properties in this shell's
+# writing mode — setting both on an inline style means whichever is assigned LAST wins.
+# The first version cleared the logical properties to 'auto' AFTER setting the pixel
+# top/left, which silently discarded the vertical position (measured live: dragging down
+# 200px landed the panel back at top:0, not the dragged position). Fixed by clearing the
+# logical properties FIRST, then setting the physical ones — verified with a real mouse
+# drag in headless Chrome: before {left:1122,top:88}, after dragging by (-300,+200)
+# {left:822,top:142} (142 is the correct viewport-edge clamp for this panel's height, not
+# a bug), and the position survives a full page reload.
+#
+# Built with --network=none --pull=false.
+FROM noesar-evolution:phase4-panel-hidden-default
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

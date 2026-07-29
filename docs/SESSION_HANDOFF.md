@@ -101,6 +101,16 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Pannello contestuale ora trascinabile — `D-0239`
+
+Owner: "float non me la fa spostare" — vero, zero logica di drag esisteva. Aggiunto
+trascinamento reale (titolo = maniglia, `pointerdown`/`move`/`up`), posizione ricordata
+per destinazione. **Difetto reale trovato costruendo**: `inset-block-start`/`top` sono la
+stessa proprietà fisica, un ordine di scrittura sbagliato nello style inline annullava la
+componente verticale (misurato dal vivo: `top` atterrava a 0) — riparato in 2 punti,
+rimisurato corretto, posizione sopravvive al reload. E2E 327/327 rieseguito. Installato
+`:phase4-panel-draggable`.
+
 ## ➜ Pannello contestuale globale (◫ Panel) disattivato di default — `D-0238`
 
 `#contextPanel` (System trust/Context control/Data controls, uguale su ogni pagina,

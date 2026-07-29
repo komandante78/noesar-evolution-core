@@ -4295,3 +4295,50 @@ destinazione specifica non sono mai state toccate in nessuna delle due versioni.
 **Status.** Applicato e installato (`:phase4-panel-hidden-default`), `RestartCount=0`,
 `postgres.stopped clean:true` nel log, backup runtime preso prima, ownership `10001:10001`
 verificata prima di ricreare.
+
+## D-0239 · "Float non me la fa spostare" — vero, e un difetto trovato costruendo il trascinamento l'ha reso vero due volte
+**Decision.** Owner: la modalità "Float" del pannello contestuale (`D-0238`) non permette
+di spostarlo. **Verificato prima di scrivere codice**: vero, `float` posizionava il
+pannello a un punto fisso (`inset-block-start:88px;inset-inline-end:18px`) senza alcuna
+logica di trascinamento — zero listener `drag`/`pointer` esistevano. Aggiunto
+trascinamento reale: il titolo del pannello (`#contextPanelTitle`) diventa una maniglia
+mentre è in modalità floating (`pointerdown`/`pointermove`/`pointerup` +
+`setPointerCapture`, funziona con mouse e touch), la posizione resta dentro lo schermo
+(clamp sui bordi), e la posizione lasciata viene **ricordata per destinazione** — stessa
+filosofia già usata per la scelta docked/floating/hidden (`D-0238`), stessa chiave
+`localStorage` con nome diverso (`noesar.panel.pos`).
+**Why.** Nessun meccanismo di posizionamento esisteva prima: "Float" era un secondo punto
+fisso, non un vero stato mobile — l'Owner si aspettava (correttamente) che "floating"
+implicasse "spostabile".
+**Rejected.** Nessuna libreria di drag-and-drop esterna: lo stesso pattern
+`pointerdown`/`pointermove`/`pointerup` a mano già usato altrove in questo progetto
+(nessuna nuova dipendenza, coerente con la politica zero-dipendenze del frontend).
+**UN DIFETTO REALE TROVATO COSTRUENDO, non ipotizzato**: `inset-block-start`/
+`inset-inline-end` (le proprietà CSS logiche usate dal foglio di stile per la posizione di
+default) e `top`/`left` sono le **stesse proprietà fisiche** nel writing-mode di questa
+shell (LTR, orizzontale) — impostarle entrambe su uno stesso `style` inline significa che
+l'**ultima assegnata vince**. La prima stesura del codice cancellava le proprietà logiche
+(`insetBlockStart='auto'`) **DOPO** aver impostato `top` in pixel — annullando
+silenziosamente la posizione verticale appena impostata. **Misurato dal vivo, non
+assunto**: trascinando il pannello di (−300,+200) px da un punto di partenza noto
+(`{left:1122,top:88}`), il risultato era `{left:822,top:0}` — la componente orizzontale
+corretta, quella verticale azzerata. Riparato invertendo l'ordine (proprietà logiche
+prima, fisiche dopo) in **entrambi** i punti che scrivevano lo style (`applyPanelPosition`
+E il gestore `pointermove` — lo stesso difetto era presente identico in due punti
+distinti). Rimisurato dopo la riparazione: `{left:822,top:142}` — la Y non arriva a 288
+perché il pannello è alto e il clamp ai bordi dello schermo lo impedisce correttamente
+(margine verticale reale disponibile, non un bug residuo). Verificato anche che la
+posizione **sopravvive a un ricaricamento completo della pagina** (stesse coordinate prima
+e dopo `page.reload()`).
+**Evidence.** Trascinamento reale con mouse in Chrome headless (non solo lettura del
+codice): prima/dopo misurati in JSON, non descritti. Browser E2E **327/327** rieseguito
+per davvero. Unit **1126/1126**, `scripts/test.sh` **10/10**, byte immagine identici
+all'albero. Nessun test esistente nominava `contextPanelTitle`/drag, quindi nessuna
+modifica ai test è stata necessaria oltre al nuovo comportamento stesso.
+**Reversal cost.** Nessuno — nessuna migrazione, nessun dato toccato, solo
+`apps/webui-static/`. Tornare a `:phase4-panel-hidden-default` toglie solo la possibilità
+di trascinare; la scelta docked/floating/hidden e la sua memoria per destinazione restano
+identiche in entrambe le versioni.
+**Status.** Applicato e installato (`:phase4-panel-draggable`), `RestartCount=0`,
+`postgres.stopped clean:true` nel log, backup runtime preso prima, ownership
+`10001:10001` verificata prima di ricreare.

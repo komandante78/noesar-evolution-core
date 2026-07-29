@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_CONTEXT_PANEL_HIDDEN_BY_DEFAULT",
+  "phase_status": "STEP_CONTEXT_PANEL_DRAGGABLE",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "PENDING_D-0234_COMMIT",
-  "last_updated_utc": "2026-07-29T18:28:03Z",
+  "last_updated_utc": "2026-07-29T18:39:22Z",
   "blockers": [
     {
       "id": "B-001",
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0238: pannello contestuale globale (System trust/Context control/Data controls, distinto dal menu D-0237 specifico di CodeN Evolution) ora apre disattivato di default (rank hidden invece di docked) su ogni destinazione mai visitata prima - Owner: si attiva solo se cliccato. Memoria per-destinazione gia esistente invariata. tools/browser-e2e.mjs aggiornato allaspettativa nuova e rieseguito per davvero: 327/327. unit 1126/1126. Installato :phase4-panel-hidden-default, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se/quando arriva uno screenshot, o ulteriore feedback Owner.",
+  "next_action": "D-0239: modalita Float del pannello contestuale ora davvero trascinabile (Owner: float non me la fa spostare - vero, verificato prima di scrivere codice, zero listener drag esistevano). Titolo del pannello = maniglia (pointerdown/move/up + setPointerCapture), posizione ricordata per destinazione (localStorage noesar.panel.pos), clamp ai bordi schermo. DIFETTO REALE trovato costruendo: inset-block-start/top sono la stessa proprieta fisica, ordine sbagliato di scrittura nello style inline annullava la componente verticale (misurato dal vivo: top atterrava a 0 invece del valore trascinato) - riparato in 2 punti (applyPanelPosition + pointermove), rimisurato corretto, posizione sopravvive al reload. browser E2E 327/327 rieseguito, unit 1126/1126. Installato :phase4-panel-draggable, RestartCount=0. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o il bug Ramo se/quando arriva uno screenshot, o ulteriore feedback Owner.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

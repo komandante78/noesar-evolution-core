@@ -292,7 +292,7 @@ button[data-busy]{opacity:.65;cursor:progress}
 .app-shell[data-panel=hidden] .rightbar{display:none}
 .app-shell[data-panel=floating] .rightbar{position:fixed;inset-block-start:88px;inset-inline-end:18px;width:min(300px,90vw);max-height:calc(100vh - 150px);overflow:auto;z-index:30;border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 80px var(--shadow-float)}
 .panel-rank-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.panel-rank-title{font-size:calc(var(--text-scale)*11px);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel-rank-title{font-size:calc(var(--text-scale)*11px);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.app-shell[data-panel=floating] .panel-rank-title{cursor:grab;touch-action:none}.app-shell[data-panel=floating] .panel-rank-title.dragging{cursor:grabbing}
 .panel-rank-buttons{display:flex;gap:4px;margin-inline-start:auto}
 .panel-rank-buttons button{padding:4px 8px;font-size:calc(var(--text-scale)*11px)}
 .panel-rank-buttons button[aria-pressed=true]{background:var(--surface-selected);color:var(--text-on-accent);border-color:var(--blue)}

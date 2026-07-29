@@ -370,6 +370,38 @@ let currentPanelView='home';
 function readPanelRanks(){
   try{const parsed=JSON.parse(localStorage.getItem(PANEL_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
 }
+// Floating position, remembered PER DESTINATION like the rank itself. Owner: "float
+// doesn't let me move it" — it did float, just to one fixed spot with no way to drag it
+// anywhere else. left/top are stored in px, clamped to the viewport at apply time in
+// case the window shrank since the position was saved.
+const PANEL_POS_KEY='noesar.panel.pos';
+let panelPositions={};
+function readPanelPositions(){
+  try{const parsed=JSON.parse(localStorage.getItem(PANEL_POS_KEY)??'{}');return parsed&&typeof parsed==='object'?parsed:{};}catch{return {};}
+}
+function clampPanelPosition(panel,left,top){
+  const maxLeft=Math.max(8,window.innerWidth-panel.offsetWidth-8);
+  const maxTop=Math.max(8,window.innerHeight-panel.offsetHeight-8);
+  return {left:Math.min(Math.max(left,8),maxLeft),top:Math.min(Math.max(top,8),maxTop)};
+}
+function applyPanelPosition(view){
+  const panel=$('#contextPanel');if(!panel)return;
+  const saved=panelPositions[view];
+  if(saved&&Number.isFinite(saved.left)&&Number.isFinite(saved.top)){
+    // `inset-block-start`/`inset-inline-end` and `top`/`left` are the same physical
+    // properties in this shell's (LTR, horizontal) writing mode — setting both on an
+    // inline style means whichever is assigned LAST wins, silently discarding the other.
+    // The logical ones must be cleared FIRST, or clearing them after overwrites the
+    // pixel position that was just set (found live: top landed at 0, not the dragged
+    // value, because the old code cleared insetBlockStart after setting top).
+    const {left,top}=clampPanelPosition(panel,saved.left,saved.top);
+    panel.style.insetInlineEnd='auto';panel.style.insetBlockStart='auto';
+    panel.style.left=`${left}px`;panel.style.top=`${top}px`;
+  }else{
+    // No saved position for this destination: fall back to the CSS default corner.
+    panel.style.left='';panel.style.top='';panel.style.insetInlineEnd='';panel.style.insetBlockStart='';
+  }
+}
 function applyPanelRank(view){
   currentPanelView=view;
   const shell=$('#appShell');if(!shell)return;
@@ -387,6 +419,7 @@ function applyPanelRank(view){
   $$('[data-panel-rank]').forEach((button)=>button.setAttribute('aria-pressed',String(button.dataset.panelRank===rank)));
   const title=$('#contextPanelTitle');
   if(title){const nav=$$('.nav').find((node)=>node.dataset.view===view);title.textContent=nav?`Context · ${nav.textContent.replace('not built','').trim()}`:'Context';}
+  if(rank==='floating')applyPanelPosition(view);
 }
 function setPanelRank(rank){
   if(!PANEL_RANKS.includes(rank))return;
@@ -394,8 +427,40 @@ function setPanelRank(rank){
   try{localStorage.setItem(PANEL_KEY,JSON.stringify(panelRanks));}catch{}
   applyPanelRank(currentPanelView);
 }
+function initPanelDrag(){
+  const handle=$('#contextPanelTitle');const panel=$('#contextPanel');
+  if(!handle||!panel)return;
+  let dragging=null;
+  handle.addEventListener('pointerdown',(event)=>{
+    if($('#appShell')?.dataset.panel!=='floating')return;
+    const rect=panel.getBoundingClientRect();
+    dragging={startX:event.clientX,startY:event.clientY,startLeft:rect.left,startTop:rect.top};
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add('dragging');
+  });
+  handle.addEventListener('pointermove',(event)=>{
+    if(!dragging)return;
+    const {left,top}=clampPanelPosition(panel,dragging.startLeft+(event.clientX-dragging.startX),dragging.startTop+(event.clientY-dragging.startY));
+    panel.style.insetInlineEnd='auto';panel.style.insetBlockStart='auto';
+    panel.style.left=`${left}px`;panel.style.top=`${top}px`;
+  });
+  const stopDrag=(event)=>{
+    if(!dragging)return;
+    handle.classList.remove('dragging');
+    try{handle.releasePointerCapture(event.pointerId);}catch{}
+    const rect=panel.getBoundingClientRect();
+    panelPositions={...panelPositions,[currentPanelView]:{left:rect.left,top:rect.top}};
+    try{localStorage.setItem(PANEL_POS_KEY,JSON.stringify(panelPositions));}catch{}
+    dragging=null;
+  };
+  handle.addEventListener('pointerup',stopDrag);
+  handle.addEventListener('pointercancel',stopDrag);
+  window.addEventListener('resize',()=>{if($('#appShell')?.dataset.panel==='floating')applyPanelPosition(currentPanelView);});
+}
 function initContextPanelRank(){
   panelRanks=readPanelRanks();
+  panelPositions=readPanelPositions();
+  initPanelDrag();
   $$('[data-panel-rank]').forEach((button)=>button.addEventListener('click',()=>setPanelRank(button.dataset.panelRank)));
   $('#panelRank')?.addEventListener('click',()=>{
     const current=$('#appShell')?.dataset.panel??'docked';
