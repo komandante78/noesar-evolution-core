@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "STEP_CHAT_LOCAL_PROVIDER_ENABLED",
+  "phase_status": "STEP_CHAT_UI_FIXES_DEPLOYED",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "PENDING_D-0232_COMMIT",
-  "last_updated_utc": "2026-07-29T16:34:27Z",
+  "last_commit": "PENDING_D-0234_COMMIT",
+  "last_updated_utc": "2026-07-29T16:54:42Z",
   "blockers": [
     {
       "id": "B-001",
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0233: la tab Chat (progetti/conversazioni/RAG, superficie diversa da CodeN Evolution/workspace-actions) era un guscio vuoto - nessun provider era acceso, un messaggio rispondeva 409. L Owner ha detto: le API esterne sono un opzione, non ora - usare il modello locale gia in esecuzione. Il profilo local-openai-compatible e ora enabled, baseUrl=http://172.22.0.4:8420/v1 (IP fisso assegnato ad atom-evolution-model apposta, un hostname Docker non passa la validazione SSRF del provider locale), defaultProviderId impostato. Meccanismo provato PRIMA su istanza usa-e-getta (risposta reale in streaming pong), poi applicato al file di stato live (state/ai-workspace.json, stesso pattern atomico del codice, nessuna cache in memoria). Nessun file sorgente toccato - e configurazione runtime, non codice. Provider esterni (OpenAI/Anthropic/Kimi) restano spenti su decisione esplicita Owner. Next: ARCH-001, o la legge di integrita delle dipendenze cablata su decompose(), o verifica manuale Owner della Chat dalla WebUI vera.",
+  "next_action": "D-0234: 2 bug UI Chat riparati (Enter invia/Shift+Enter va a capo; stacking context esplicito su chat-toolbar/chat-grid per il sintomo menu-nascosti-sotto, non riprodotto direttamente in headless Chrome 1440x900/100% zoom nonostante Owner conferma stessa config) - installato :phase4-chat-ui-fixes, byte immagine identici allalbero, scripts/test.sh 10/10, unit 1126/1126. INCIDENTE AUTO-CAUSATO trovato e riparato nella stessa fase: la modifica D-0233 a state/ai-workspace.json (scritta da fuori il container) aveva lasciato il file di proprieta root invece di uid 10001 - il container e entrato in crash-loop al restart (EACCES). Riparato con chown, restart, RestartCount tornato a 0, configurazione provider riverificata intatta. Lezione permanente registrata: chown esplicito ogni volta che si scrive un file di stato da fuori il container. Se lOwner vede ancora il bug 2 dopo questo deploy, serve uno screenshot per procedere oltre le ipotesi. Next: ARCH-001, o la legge di integrita delle dipendenze su decompose(), o conferma Owner sul bug 2.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

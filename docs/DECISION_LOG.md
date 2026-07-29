@@ -4064,3 +4064,65 @@ cambia nulla per `atomd` (che lo raggiunge per hostname, non per IP).
 toccato, nessun commit nel repository per questa voce oltre al log stesso — è una
 configurazione runtime, come un `.env`. Resta vero che nessun provider **esterno** (OpenAI/
 Anthropic/Kimi) è configurato — l'Owner l'ha dichiarato non prioritario ora.
+
+## D-0234 · Due bug UI Chat riparati — e un incidente auto-causato dalla voce precedente, corretto nella stessa fase
+**Decision.** Owner: Enter da tastiera non invia il messaggio in Chat (serviva Ctrl/Cmd+
+Enter); i quattro menu a tendina nativi del toolbar Chat (Progetto/Conversazione/Ramo/
+Provider) "rimangono nascosti sotto la chat quando si cliccano". (1) `app.js`, il listener
+`keydown` su `#chatInput`: ora **Enter invia, Shift+Enter va a capo** — la convenzione
+standard (ChatGPT/Slack), non più ristretto a Ctrl/Cmd+Enter. (2) `.chat-toolbar` riceve
+`position:relative;z-index:5`, `.chat-grid` (il pannello messaggi/composer sotto di esso)
+`position:relative;z-index:1` — stacking context esplicito invece che implicito.
+**Why (bug 2, il percorso che ci ha portato al fix).** Prima ipotesi (`--ui-zoom` sul
+`body`, un caso noto di popup `<select>` nativo mal posizionato sotto zoom non-standard):
+**confermata falsa** dall'Owner, zoom al 100%. Riprodotto l'intero flusso (login, progetto,
+conversazione, click su tutti e quattro i select) in Chrome headless reale sulla STESSA
+sorgente `apps/webui-static/`, viewport 1440×900 desktop come dichiarato dall'Owner: **il
+bug non si riproduce** — ogni popup si apre correttamente sopra tutto (screenshot +
+`document.elementFromPoint` alle coordinate del select confermano il select stesso in cima,
+prima e dopo il click, su tutti e quattro). Non potendo n riprodurlo n escluderlo con
+certezza (differenza reale non identificata: contenuto/scroll/risoluzione dell'Owner ignoti),
+applicata la correzione standard e sicura per questa classe di sintomo — un contesto di
+stacking esplicito sul toolbar sopra il pannello che lo segue — **verificata non regressiva**
+(screenshot identico prima/dopo) anche se non prova quale fosse la causa reale.
+**INCIDENTE AUTO-CAUSATO, trovato e riparato nella stessa fase.** Il deploy (rebuild da
+`noesar-evolution:phase4-session-protocol`, solo `apps/webui-static/` copiato, byte
+verificati identici all'albero) ha richiesto **ricreare** il container — e alla ricreazione
+`noesar-evolution` è entrato in **crash-loop** (`RestartCount` salito a 10 in pochi secondi):
+`EACCES: permission denied` su `/workspace/state/ai-workspace.json` dentro
+`ProviderGateway.ensureDefaults()`, chiamata a ogni avvio. Causa: **la modifica di `D-0233`**
+a quel file era stata scritta da un processo host (io, fuori dal container) e risultava di
+proprietà `root:root`, mentre il processo del prodotto gira come uid `10001` — un file
+`0600` di un altro proprietario è illeggibile, e questo non si era mai visto perché il
+container di `D-0233` non era mai stato riavviato dopo quella modifica (`ensureDefaults()`
+gira solo all'avvio, un container già in esecuzione non lo richiama). **Root cause della
+mia stessa svista**: ho eseguito `chmodSync(path, 0o600)` (dal codice, corretto) ma scritto
+il file come utente host, senza mai correggere `chown` all'uid runtime del container — un
+controllo che avrei dovuto fare prima, non un limite del meccanismo (`AtomicJsonStore` è
+corretto, il file `state.json`/`auth.json`/`watchdog.json` accanto sono tutti `10001:10001`
+per confronto diretto, la differenza era visibile con un semplice `ls -la`). **Riparato sul
+colpo**: `chown 10001:10001` sul file e sul suo backup, `docker restart` — `healthy` in 6s,
+`RestartCount` tornato a 0, riverificata la configurazione del provider (`enabled:true`,
+`baseUrl`, `defaultModel`, `defaultProviderId`) intatta dentro il container con
+`docker exec --user 10001:10001`.
+**Evidence.** Prima del deploy: `scripts/test.sh` 10/10, unit **1126/1126**, build offline
+(`--network=none --pull=false`), byte immagine provati identici all'albero (`docker cp` +
+`diff -rq`, 0 differenze). Stop `-t 60` con `postgres.stopped clean:true` letto nel log,
+backup runtime (tar, `state/`+`config/`) prima di sostituire, predecessore rinominato
+`noesar-evolution.rollback-chat-ui-fixes-20260729T165114Z`. Dopo l'incidente e la
+riparazione: `docker exec` verificato **read-only** sul file di stato (nessuna scrittura, la
+riparazione è stata `chown` sul filesystem host, non dentro il container). Verificato dal
+vivo che entrambe le sorgenti servite contengono il fix: `curl .../app.js` mostra
+`event.key==='Enter'&&!event.shiftKey`, `curl .../styles.css` mostra
+`.chat-toolbar{position:relative;z-index:5;...}` e `.chat-grid{position:relative;z-index:1;
+...}`.
+**Reversal cost.** Zero per i due fix UI (nessuna migrazione, nessun dato toccato). Per
+l'incidente: nessuno, era un errore di permessi sul filesystem host risolto sul filesystem
+host — nessuna installazione da tornare indietro.
+**Status.** Applicato e installato (`:phase4-chat-ui-fixes`). ⚠️ **Lezione permanente**: ogni
+volta che si scrive un file di stato del prodotto DA FUORI IL CONTAINER (come `D-0233`),
+verificare `ls -la` e correggere `chown` all'uid runtime PRIMA di dichiarare la modifica
+conclusa — non solo `chmod`. Il bug 2 (menu nascosti) resta **non riprodotto direttamente**:
+il fix applicato è quello corretto per la classe di sintomo descritta, ma se l'Owner lo vede
+ancora dopo questo deploy, serve uno screenshot o l'accesso diretto per procedere oltre le
+ipotesi.

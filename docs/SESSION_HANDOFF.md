@@ -101,6 +101,17 @@ server reale fuori dalla suite di test: `tools/tui-client.mjs` connesso su un ve
 socket, login con account+TOTP reali, piano reale creato — l'hang che questa fase ha
 riparato non si riproduce più.
 
+## ➜ Chat UI fix + incidente auto-causato — `D-0234`
+
+2 bug riparati e installati (`:phase4-chat-ui-fixes`): Enter invia il messaggio (era
+Ctrl/Cmd+Enter), stacking context esplicito su `.chat-toolbar`/`.chat-grid` per i menu
+segnalati "nascosti sotto la chat" (non riprodotto in headless Chrome, fix applicato
+comunque perché sicuro e corretto per la classe di sintomo). **Durante il deploy**: la
+modifica `D-0233` a `state/ai-workspace.json` era stata scritta da fuori il container e
+lasciata di proprietà `root` — al riavvio il container è entrato in crash-loop (`EACCES`).
+Riparato con `chown 10001:10001`. **Lezione permanente: `chown` esplicito ogni volta che si
+scrive un file di stato da fuori il container, non solo `chmod`.**
+
 ## ➜ Chat (progetti/conversazioni, superficie diversa da CodeN Evolution) — `D-0233`
 
 Era un guscio vuoto: tutto costruito (route/orchestratore/streaming/RAG/UI) ma **nessun
