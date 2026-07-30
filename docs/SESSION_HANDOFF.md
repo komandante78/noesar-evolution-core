@@ -101,14 +101,14 @@ adapter di `D-0252`, i vettori/test live di `D-0253`, l'assemblaggio dei dieci c
 
 ## ➜ Blocker aperti
 
-⚠️ **`B-011` (medium, NUOVO `D-0257`) — decisione dell'Owner necessaria, non risolvibile da
-qui**: `tools/run-secret-scan.sh` (gitleaks reale, non il vecchio euristico) trovato eseguendolo
-prima del push di questa fase — 2 leak reali, non di questa fase: `NOESAR_RUST_REASONING_TOKEN`
-(il secret **vivo** del reasoning-router) è in chiaro in due `EVIDENCE/*.json` **già pushati**
-(`origin/main`, repo privato). Serve: ruotare il token, e decidere se riscrivere la storia
-(distruttivo) o accettare l'esposizione dentro un repo privato. `B-002` era basato su una
-premessa falsa (uno scanner reale esiste già, `tools/run-secret-scan.sh`) — corretto, superseded
-da `B-011`.
+`B-011` (low, `D-0257`→`D-0258` **RISOLTO IN PARTE**): `tools/run-secret-scan.sh` aveva trovato
+`NOESAR_RUST_REASONING_TOKEN` in chiaro in due `EVIDENCE/*.json` già pushati. Su autorizzazione
+esplicita dell'Owner ("riscrivi git", rotazione rimandata a fine progetto): storia riscritta
+(`git filter-branch` sui 2 file, backup bundle preservato in `BACKUPS/` — gitignored, non
+pushato — `gc --prune=now`, force-push, verificato pulito su un clone fresco da `origin/main`).
+**Resta aperto solo**: la rotazione del token stesso, per scelta dell'Owner a fine progetto —
+non un'azione dimenticata. `B-002` era basato su una premessa falsa (lo scanner reale esiste
+già) — corretto, superseded da `B-011`.
 
 ## ➜ Verificato in `D-0255`/`D-0256`
 

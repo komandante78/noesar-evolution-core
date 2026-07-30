@@ -9,7 +9,7 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "54386d0",
+  "last_commit": "PENDING_COMMIT",
   "last_updated_utc": "2026-07-30T13:15:00Z",
   "blockers": [
     {
@@ -67,14 +67,13 @@
     },
     {
       "id": "B-011",
-      "severity": "medium",
+      "severity": "low-deferred",
       "code": "SECRET_LEAK_IN_HISTORY=NOESAR_RUST_REASONING_TOKEN",
-      "summary": "D-0257: tools/run-secret-scan.sh (real gitleaks) found NOESAR_RUST_REASONING_TOKEN (the live reasoning-router auth secret, still active) committed in cleartext inside two EVIDENCE/*.json raw env dumps (commits 3bcc9b0 and 1c31f66, both already pushed to origin/main, private repo komandante78/NOESAR-EVOLUTION). Not fixed — requires Owner authorisation (token rotation is a live-credential change; history rewrite is destructive).",
+      "summary": "D-0258 (2026-07-30): git history rewritten on Owner's explicit authorisation (bundle backup taken, filter-branch on the 2 affected files, gc --prune=now, force-pushed, verified clean via a fresh clone of origin/main). The cleartext token is gone from every commit. Rotation deliberately NOT done — Owner's own instruction: rotate it when the project is complete, not now.",
       "blocks_next_phase": false,
       "resolution_options": [
-        "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd, then redeploy with the new value.",
-        "Decide whether to purge the two commits from git history (rewrites hashes, force-push required) or accept the exposure as contained within a private repo.",
-        "Process fix for future phases: never write a raw docker inspect env dump into EVIDENCE/ — redact secret-shaped values before writing."
+        "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd when the project reaches completion (Owner's stated timing).",
+        "Process fix already in effect for future phases: never write a raw docker inspect env dump into EVIDENCE/ without redacting secret-shaped values first."
       ]
     }
   ],
