@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0253: ARCH-008 CLOSED on both language sides. rust/crates/noesar-executor now spawns noesar-sandbox natively (own run_sandboxed, 9th execute() param execute_sandbox), proven against the real binary (3 live tests: real echo runs, non-zero exit is performed-not-ok, 512MiB alloc under 64MiB grant fails). 2 new shared conformance vectors EXEC-011/012 (zero-process decision branches). Deployed live (:phase4-arch008-execute-rust-mirror), comment-only on the shipped side (the Rust crate ships nowhere). 2 real findings named not fixed: Rust TokenMinter has no ceiling concept (JS-only since D-0248, zero live risk), Expectation::try_new stricter in Rust than JS tolerates.",
+  "phase_status": "D-0254: acceptance-matrix cleanup — ARCH-001 row was stuck at D-0240 partial state since D-0242 closed it (codev is a real third peer). Corrected. Full INST/SESS/CUBE re-walk remains open, named not rushed. Block A (ARCH-005 D-0252, ARCH-008 D-0253, matrix cleanup D-0254) COMPLETE.",
   "next_phase": "Decisione aperta, non urgente: mirror Rust EXECUTE-enabled in noesar-executor (fase propria, nuovi vettori condivisi) oppure cablare la superficie test-in-sandbox (execute()s parametro tests, mai popolato) come primo consumatore reale della decisione del cliente.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "1c31f66",
-  "last_updated_utc": "2026-07-30T11:45:00Z",
+  "last_updated_utc": "2026-07-30T11:52:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -821,7 +821,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Both ARCH-005 and ARCH-008 are now as closed as they can honestly be. Acceptance-matrix cleanup pass (task 3 of this block) is next: review master_acceptance_matrix_status IDs for anything else closeable as a side effect. Then Block B (SESS-001..003) per the Owner multi-phase plan in SESSION_HANDOFF.md. Do not re-litigate ARCH-005/008 — both have precise, evidence-based remaining-gap statements now, not vague ones.",
+  "next_action": "Block A of the Owner multi-phase plan is done. Block B next: SESS-001..003 (Session Proof package), never built. See SESSION_HANDOFF.md for the full plan and the 4 agreed pause points.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -7,8 +7,9 @@
 > massimo 4 pause"): A (debito ARCH-005/008 + pulizia matrice) → B (SESS-001..003) →
 > C (CUBE-001..009) → pausa 1 → decisione WebUI → pausa 2 → E+F (debito+packaging) →
 > pausa 3 → G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> Blocco A: `D-0252` (ARCH-005) e `D-0253` (ARCH-008) fatti e deployati. Resta solo la
-> pulizia della matrice di accettazione (task 3 del blocco) prima del Blocco B.
+> **Blocco A COMPLETO**: `D-0252` (ARCH-005), `D-0253` (ARCH-008), `D-0254` (pulizia matrice,
+> `ARCH-001` corretto) fatti e deployati. Prossimo: **Blocco B — `SESS-001..003`**, mai
+> costruito.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -43,11 +44,12 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Blocco A del piano multi-fase, quasi chiuso.** `D-0252` (ARCH-005) e `D-0253` (ARCH-008)
-fatti e deployati — entrambi ⚠ parziali sono diventati stati precisi, non vaghi. **Prossimo
-passo dichiarato: pulizia della matrice di accettazione** — rivedere `master_acceptance_matrix_status`
-per altri ID chiudibili di riflesso (task 3 del blocco A) — poi Blocco B (`SESS-001..003`),
-poi Blocco C (`CUBE-001..009`), poi pausa 1 concordata con l'Owner.
+**Blocco A COMPLETO.** `D-0252` (ARCH-005), `D-0253` (ARCH-008): entrambi ⚠ parziali sono
+diventati stati precisi, non vaghi. `D-0254`: `ARCH-001` corretto (era rimasto allo stato
+parziale di `D-0240` nonostante `D-0242` l'avesse chiuso — un riesame completo di
+`INST`/`SESS`/`CUBE` resta aperto, nominato non fatto). **Prossimo: Blocco B —
+`SESS-001..003`** (pacchetto Prova di Sessione, mai costruito), poi Blocco C
+(`CUBE-001..009`), poi pausa 1 concordata con l'Owner.
 
 **Non rifare**: il probe di `D-0246`, le misure di `D-0248`/`D-0249`, la verifica del
 meccanismo JS di `D-0250`, l'audit dei tre adapter di `D-0252`, i 3 test live+12 vettori di
