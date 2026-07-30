@@ -5,16 +5,15 @@
 // installation's ceiling; this file is the one place that actually spawns the binary that
 // enforces them.
 //
-// WHAT THIS FILE DELIBERATELY DOES NOT DO. `executor.mjs`'s `EXECUTE` action remains
-// permanently refused — that refusal is asserted identically on both language sides
-// (`rust/crates/noesar-executor`, `services/reference-control-plane/src/executor.mjs`) and the
-// exact reason string is part of the shared conformance oracle (`conformance/
-// executor-vectors.json`, case `EXEC-007`: "even holding a token that grants it"). Wiring this
-// runner into that path would reverse a stated cross-language security contract, and that is a
-// decision to name to the Owner explicitly, not one this phase makes by proximity. What this
-// file gives instead: real, tested, standalone infrastructure — a command can be run under
-// measured per-capability limits — available for whichever future surface is authorised to use
-// it, with nothing today calling it in production.
+// UPDATE, D-0250/D-0253: the paragraph this replaced said `executor.mjs`'s EXECUTE stayed
+// permanently refused and wiring this runner into it would reverse a cross-language
+// contract — that was the Owner decision D-0249 asked for, and D-0250 made it explicitly
+// (`NOESAR_EXECUTE_SANDBOX`, per-installation, default disabled): `executor.mjs::execute()`
+// now calls `runSandboxedSync` right here when a caller passes an enabled config. D-0253
+// built the identical Rust mirror in `rust/crates/noesar-executor` (its own `run_sandboxed`,
+// same spec-file format, same three-way outcome) — EXEC-007 (default path, no config at all)
+// stays byte-identical on both sides; EXEC-011/012 (the two zero-process decision branches
+// this introduced) are now shared conformance vectors satisfied on both sides too.
 //
 // Following the one convention already established for spawning a process in this codebase
 // (local-model-runtime.mjs): `spawn(command, argv)`, never a shell string. A command built as

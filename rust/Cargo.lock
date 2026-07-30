@@ -629,6 +629,7 @@ version = "0.6.0"
 dependencies = [
  "noesar-capability",
  "noesar-reasoning",
+ "noesar-sandbox",
  "noesar-shadow",
  "serde",
  "serde_json",

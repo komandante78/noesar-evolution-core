@@ -1,134 +1,520 @@
 {
   "schemaVersion": "1.0",
-  "note": "F4-014, closed. Shared oracle for the executor's decision logic — token binding, spend-before-effect ordering, EXECUTE's permanent refusal, and the whole-workspace coverage requirement. Both rust/crates/noesar-executor and services/reference-control-plane/src/executor.mjs must satisfy every case, each building the same scenario natively (real files, a real TokenMinter with the same 32-byte secret [7,7,...], a real shadow) because execute() has real side effects and is not a pure function the way shadow's compare() is — only the setup and the expected shape of the outcome are expressible as data. 'plan: other' means the token is minted against a second authorized plan (same step id, files = bench.files plus one extra path) so its digest differs from the plan actually being executed against.",
+  "note": "F4-014, closed. Shared oracle for the executor's decision logic — token binding, spend-before-effect ordering, EXECUTE's permanent refusal, and the whole-workspace coverage requirement. Both rust/crates/noesar-executor and services/reference-control-plane/src/executor.mjs must satisfy every case, each building the same scenario natively (real files, a real TokenMinter with the same 32-byte secret [7,7,...], a real shadow) because execute() has real side effects and is not a pure function the way shadow's compare() is — only the setup and the expected shape of the outcome are expressible as data. 'plan: other' means the token is minted against a second authorized plan (same step id, files = bench.files plus one extra path) so its digest differs from the plan actually being executed against. D-0253: EXEC-011/012 extend this oracle to the two zero-process decision branches D-0250 added on the JS side and this phase mirrors on the Rust side (EXECUTE mechanically present but disabled-by-operator; enabled but the token carries no isolation envelope). Neither spawns a real process, so both remain portable vectors like the ten before them — the class of vector that DOES spawn a real noesar-sandbox process is deliberately NOT here (D-0250's own reasoning: a vector only one side could satisfy would be worse than none), and instead lives as native, binary-presence-gated tests on each side (services/reference-control-plane/test/sandbox-runner.test.mjs on the JS side; rust/crates/noesar-executor/tests/sandbox_live.rs on the Rust side, added by D-0253).",
   "cases": [
     {
       "id": "EXEC-001",
       "why": "a valid token authorises the action; only the shadow changes, never the source",
-      "bench": { "files": { "a.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt"], "operations": ["WRITE"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "WRITE", "path": "a.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 1, "refused": 0, "ok": true,
-        "shadowFiles": { "a.txt": "after" }, "sourceFiles": { "a.txt": "before" }
+        "performed": 1,
+        "refused": 0,
+        "ok": true,
+        "shadowFiles": {
+          "a.txt": "after"
+        },
+        "sourceFiles": {
+          "a.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-002",
       "why": "no token at all: the action is refused and nothing changes",
-      "bench": { "files": { "a.txt": "before" }, "destructive": false },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false
+      },
       "mints": [],
-      "actions": [{ "kind": "WRITE", "path": "a.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 0, "refused": 1, "ok": false,
-        "shadowFiles": { "a.txt": "before" }
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "shadowFiles": {
+          "a.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-003",
       "why": "a token for a different path does not authorise this one",
-      "bench": { "files": { "a.txt": "before", "b.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt"], "operations": ["WRITE"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "WRITE", "path": "b.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["b.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before",
+          "b.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "b.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "b.txt"
+        ]
+      },
       "expected": {
-        "performed": 0, "refused": 1, "ok": false,
-        "shadowFiles": { "b.txt": "before" }
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "shadowFiles": {
+          "b.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-004",
       "why": "a token for a different operation does not authorise this one",
-      "bench": { "files": { "a.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt"], "operations": ["READ"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "WRITE", "path": "a.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "READ"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 0, "refused": 1, "ok": false,
-        "shadowFiles": { "a.txt": "before" }
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "shadowFiles": {
+          "a.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-005",
       "why": "a one-use token stops authorising after the first spend; the second identical action has no effect",
-      "bench": { "files": { "a.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt"], "operations": ["WRITE"], "uses": 1, "plan": "self" }],
-      "actions": [
-        { "kind": "WRITE", "path": "a.txt", "contents": "first" },
-        { "kind": "WRITE", "path": "a.txt", "contents": "second" }
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
       ],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "first"
+        },
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "second"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 1, "refused": 1, "ok": false,
-        "shadowFiles": { "a.txt": "first" }
+        "performed": 1,
+        "refused": 1,
+        "ok": false,
+        "shadowFiles": {
+          "a.txt": "first"
+        }
       }
     },
     {
       "id": "EXEC-006",
       "why": "a token minted for a different plan is not accepted, even naming the same path and operation",
-      "bench": { "files": { "a.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt"], "operations": ["WRITE"], "uses": 1, "plan": "other" }],
-      "actions": [{ "kind": "WRITE", "path": "a.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 1,
+          "plan": "other"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 0, "refused": 1, "ok": false,
-        "shadowFiles": { "a.txt": "before" }
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "shadowFiles": {
+          "a.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-007",
       "why": "EXECUTE is declared and permanently refused, even holding a token that grants it — the reason string is part of the contract on both sides",
-      "bench": { "files": { "a.txt": "before" }, "destructive": true },
-      "mints": [{ "paths": ["a.txt"], "operations": ["EXECUTE"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "EXECUTE", "command": "rm -rf /" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": true
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "EXECUTE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "EXECUTE",
+          "command": "rm -rf /"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 0, "refused": 1, "ok": false,
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
         "outcomeReason": "this layer has no execution surface: a command cannot be contained here, and pretending to run it would be worse than refusing"
       }
     },
     {
       "id": "EXEC-008",
       "why": "a delete lands in the shadow only; the source keeps the file",
-      "bench": { "files": { "a.txt": "before" }, "destructive": true },
-      "mints": [{ "paths": ["a.txt"], "operations": ["DELETE"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "DELETE", "path": "a.txt" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": true
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "DELETE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "DELETE",
+          "path": "a.txt"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 1, "refused": 0, "ok": true,
-        "shadowFilesAbsent": ["a.txt"], "sourceFiles": { "a.txt": "before" }
+        "performed": 1,
+        "refused": 0,
+        "ok": true,
+        "shadowFilesAbsent": [
+          "a.txt"
+        ],
+        "sourceFiles": {
+          "a.txt": "before"
+        }
       }
     },
     {
       "id": "EXEC-009",
       "why": "every action was authorised and performed, but one path the expectation never named makes the run not ok",
-      "bench": { "files": { "a.txt": "before", "secret.txt": "before" }, "destructive": false },
-      "mints": [{ "paths": ["a.txt", "secret.txt"], "operations": ["WRITE"], "uses": 2, "plan": "self" }],
-      "actions": [
-        { "kind": "WRITE", "path": "a.txt", "contents": "after" },
-        { "kind": "WRITE", "path": "secret.txt", "contents": "after" }
+      "bench": {
+        "files": {
+          "a.txt": "before",
+          "secret.txt": "before"
+        },
+        "destructive": false
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt",
+            "secret.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 2,
+          "plan": "self"
+        }
       ],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        },
+        {
+          "kind": "WRITE",
+          "path": "secret.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "performed": 2, "refused": 0, "ok": false,
-        "surpriseUnexpected": ["secret.txt"]
+        "performed": 2,
+        "refused": 0,
+        "ok": false,
+        "surpriseUnexpected": [
+          "secret.txt"
+        ]
       }
     },
     {
       "id": "EXEC-010",
       "why": "a shadow built from only the declared paths cannot ever observe an undeclared write, so the executor refuses to run against one at all — before anything is spent or written",
       "bench": {
-        "files": { "a.txt": "before" }, "destructive": false,
-        "shadowCoverage": "DECLARED_PATHS_ONLY", "declaredPaths": ["a.txt"]
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": false,
+        "shadowCoverage": "DECLARED_PATHS_ONLY",
+        "declaredPaths": [
+          "a.txt"
+        ]
       },
-      "mints": [{ "paths": ["a.txt"], "operations": ["WRITE"], "uses": 1, "plan": "self" }],
-      "actions": [{ "kind": "WRITE", "path": "a.txt", "contents": "after" }],
-      "expectation": { "pathsTheDiffMustTouch": ["a.txt"] },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "WRITE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "WRITE",
+          "path": "a.txt",
+          "contents": "after"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
       "expected": {
-        "wholeCallRefused": true, "errorKind": "INVALID",
-        "shadowFiles": { "a.txt": "before" }
+        "wholeCallRefused": true,
+        "errorKind": "INVALID",
+        "shadowFiles": {
+          "a.txt": "before"
+        }
+      }
+    },
+    {
+      "id": "EXEC-011",
+      "why": "D-0253: an installation with EXECUTE mechanically available but the operator has not opted in (NOESAR_EXECUTE_SANDBOX=disabled) refuses with a distinct, more accurate reason than the no-surface-at-all case — the two must never be confused",
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": true
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "EXECUTE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "EXECUTE",
+          "command": "/bin/true",
+          "path": "a.txt"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
+      "executeSandbox": {
+        "enabled": false,
+        "binaryPath": "/opt/noesar/bin/noesar-sandbox"
+      },
+      "expected": {
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "outcomeReason": "EXECUTE capability exists on this installation but is disabled by operator configuration (NOESAR_EXECUTE_SANDBOX=disabled)"
+      }
+    },
+    {
+      "id": "EXEC-012",
+      "why": "D-0253: EXECUTE enabled on this installation, but the token carries no isolation envelope — refused rather than run with the whole container's limits, the exact per-container isolation ARCH-008 exists to replace. No process is spawned to reach this refusal.",
+      "bench": {
+        "files": {
+          "a.txt": "before"
+        },
+        "destructive": true
+      },
+      "mints": [
+        {
+          "paths": [
+            "a.txt"
+          ],
+          "operations": [
+            "EXECUTE"
+          ],
+          "uses": 1,
+          "plan": "self"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "EXECUTE",
+          "command": "/bin/true",
+          "path": "a.txt"
+        }
+      ],
+      "expectation": {
+        "pathsTheDiffMustTouch": [
+          "a.txt"
+        ]
+      },
+      "executeSandbox": {
+        "enabled": true,
+        "binaryPath": "/opt/noesar/bin/noesar-sandbox"
+      },
+      "expected": {
+        "performed": 0,
+        "refused": 1,
+        "ok": false,
+        "outcomeReason": "an EXECUTE token without an isolation envelope cannot be run: the sandbox refuses a command under no limits at all"
       }
     }
   ]

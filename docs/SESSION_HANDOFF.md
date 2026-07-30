@@ -1,13 +1,14 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0252`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0253`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
 > massimo 4 pause"): A (debito ARCH-005/008 + pulizia matrice) → B (SESS-001..003) →
 > C (CUBE-001..009) → pausa 1 → decisione WebUI → pausa 2 → E+F (debito+packaging) →
 > pausa 3 → G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> Questo blocco A, appena iniziato: `D-0252` fatto, `ARCH-008` Rust mirror ancora da fare.
+> Blocco A: `D-0252` (ARCH-005) e `D-0253` (ARCH-008) fatti e deployati. Resta solo la
+> pulizia della matrice di accettazione (task 3 del blocco) prima del Blocco B.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -42,40 +43,40 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Blocco A del piano multi-fase, in corso.** `D-0252` fatto e deployato: `ARCH-005` ridotto al
-suo gap reale (`VectorStoreAdapter` no pluggable surface, `ObjectStoreAdapter` capacità
-mancante, `HostBridgeAdapter` già coperto altrove). **Prossimo passo dichiarato: `ARCH-008`, il
-mirror Rust di `noesar-executor` per EXECUTE-abilitato** — non è stato fatto in `D-0250` per
-decisione di scope esplicita (`noesar-executor` non è nel percorso live, `services/
-reference-control-plane` serve ogni richiesta; un vettore di conformità condiviso per un
-comportamento che un solo lato implementa tradirebbe la ragione per cui l'oracolo esiste,
-`F4-014`). Poi: pulizia matrice di accettazione per gli ID chiudibili di riflesso, poi Blocco B
-(`SESS-001..003`).
+**Blocco A del piano multi-fase, quasi chiuso.** `D-0252` (ARCH-005) e `D-0253` (ARCH-008)
+fatti e deployati — entrambi ⚠ parziali sono diventati stati precisi, non vaghi. **Prossimo
+passo dichiarato: pulizia della matrice di accettazione** — rivedere `master_acceptance_matrix_status`
+per altri ID chiudibili di riflesso (task 3 del blocco A) — poi Blocco B (`SESS-001..003`),
+poi Blocco C (`CUBE-001..009`), poi pausa 1 concordata con l'Owner.
 
 **Non rifare**: il probe di `D-0246`, le misure di `D-0248`/`D-0249`, la verifica del
-meccanismo JS di `D-0250`, l'audit dei tre adapter di `D-0252` (tutte registrate e provate).
+meccanismo JS di `D-0250`, l'audit dei tre adapter di `D-0252`, i 3 test live+12 vettori di
+`D-0253` (tutte registrate e provate contro il binario reale).
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-arch005-manifest-precision` (`D-0252`) ·
+- **Prodotto vivo**: `noesar-evolution:phase4-arch008-execute-rust-mirror` (`D-0253`) ·
   `Up (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
   `migrations:16 rls_tables:15` invariate · byte immagine identici.
-  Rollback preservato: `noesar-evolution.rollback-arch005-manifest-precision-20260730T111600Z`
-  (`:phase4-execute-client-decision`).
+  Rollback preservato: `noesar-evolution.rollback-arch008-execute-rust-mirror-20260730T114253Z`
+  (`:phase4-arch005-manifest-precision`).
 - **`NOESAR_EXECUTE_SANDBOX=disabled`**, confermato dal processo reale (`docker exec`, ereditato
-  invariato da `D-0250`/`D-0251`).
+  invariato da `D-0250`/`D-0251`). **`rust/crates/noesar-executor` non è compilato in nessuna
+  immagine** — `D-0253` ha chiuso ARCH-008 sul lato Rust, ma quel crate resta un riferimento di
+  conformità mai spedito, come prima.
 - **atomd**: `atom-evolution:atomd`, `noesar-evolution-net`. Serve **Phi-4-14B Q4_K_M**.
 - **Due container per progetto** — §5a rispettato.
-- ⚠️ **Lezione operativa da `D-0252`**: ricostruire `docker run` da un sottoinsieme di campi
-  `HostConfig` letto a mano (invece del JSON completo) ha causato un crash-loop transitorio
-  (`Tmpfs` di `/run` omesso — `EROFS`). Mai più: leggere SEMPRE `docker inspect --format
-  '{{json .HostConfig}}'` per intero, non i singoli campi che sembrano rilevanti.
+- ⚠️ **Lezione operativa da `D-0252`, applicata con successo in `D-0253`**: ricostruire
+  `docker run` da un sottoinsieme di campi `HostConfig` letto a mano (invece del JSON
+  completo) causa un crash-loop transitorio (`Tmpfs` di `/run` omesso — `EROFS`). Leggere
+  SEMPRE `docker inspect --format '{{json .HostConfig}}'` per intero.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **`ARCH-008` è ⚠ parziale, per UNA sola ragione ora**: il mirror Rust di EXECUTE non esiste.
-  Tutto il resto (ladder adattivo, limiti sotto il MAC, binario spedito, decisione del
-  cliente via `NOESAR_EXECUTE_SANDBOX`, wiring reale in `executor.mjs`) è fatto e provato.
+- **`ARCH-008` è ✔ CHIUSO (`D-0253`)**: EXECUTE gira per davvero su entrambi i lati (JS+Rust)
+  attraverso `noesar-sandbox`, provato contro il binario reale. Trovato costruendo, non
+  riparato (rischio zero, crate mai spedito): `noesar-capability`'s Rust `TokenMinter` non ha
+  alcun concetto di `ceiling` (il controllo anti-widening di `D-0248` è solo lato JS).
 - **`ARCH-005` parziale, ma per un motivo preciso ora (`D-0252`)**: `launch()` gated;
   hardware-probe/sector-modules/compliance-packs hanno manifest espliciti a `operations:[]`
   (codice reale, zero operazioni privilegiate, non un buco); vector-store/object-store/
@@ -94,17 +95,16 @@ meccanismo JS di `D-0250`, l'audit dei tre adapter di `D-0252` (tutte registrate
 `B-002` (low): né `gitleaks` né `trufflehog` installabili (regola 45); scan euristico
 dichiarato tale. Nessun altro.
 
-## ➜ Verificato in `D-0252` (tabelle di `D-0248`/`D-0249`/`D-0250` in `docs/DECISION_LOG.md`, non ripetute qui)
+## ➜ Verificato in `D-0252`+`D-0253` (tabelle di `D-0248`/`D-0249`/`D-0250` in `docs/DECISION_LOG.md`, non ripetute qui)
 
 | Verifica | Risultato |
 |---|---|
-| unit Node | **1222 tests, 1221 pass, 1 skip onesto, 0 fail** (+2 su `D-0251`) |
+| unit Node | **1223 pass, 1 skip onesto, 0 fail** |
+| Rust workspace | **140/140 tests, 0 falliti** (+5 su `D-0250`: 2 lib + 3 live contro il binario reale) |
 | ESLint | **244 file**, 0 errori |
-| `MANIFEST.sha256` | **5858/5858** (2 hash file sorgente + 1 hash doc dimenticato al primo giro, poi corretto) |
-| byte-identità pre-deploy | `docker cp` + `diff` su entrambi i file cambiati, confermata prima del deploy |
-| deploy live | stop pulito (`postgres.stopped clean:true`), backup 12,5 MB, §5a rispettato, `Up (healthy)`, `/livez`/`/readyz` 200, hardening+`migrations:16 rls_tables:15` invariati |
-| `GET /api/v1/adapters` senza sessione | `401` — invariato, i nuovi manifest non allargano l'auth della route |
-| difetto auto-corretto | crash-loop transitorio da `Tmpfs` omesso nella ricostruzione — vedi nota in "Stato dell'installazione" |
+| `MANIFEST.sha256` | **5859/5859** |
+| EXECUTE reale, Rust, dal vivo (test) | `/bin/echo` gira per davvero attraverso `noesar-sandbox` da `noesar-executor`, `exitCode:0`, `stdout` catturato; `/bin/false` → `performed:true ok:false`; 512MiB sotto grant 64MiB → rifiutato (limite kernel reale) |
+| deploy live ×2 (`D-0252`+`D-0253`) | entrambi stop puliti, backup, §5a rispettato, `Up (healthy)`, hardening+`migrations:16 rls_tables:15` invariati — il secondo deploy pulito al primo tentativo applicando la lezione del primo |
 
 ## ➜ Le domande all'Owner ancora senza risposta
 

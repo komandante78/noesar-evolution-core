@@ -9,7 +9,7 @@
 //! vector describes a scenario to build natively on each side, not input/output data alone.
 
 use noesar_capability::{Approval, CapabilityRequest, CapabilityToken, Operation, TokenMinter};
-use noesar_executor::{execute, Action};
+use noesar_executor::{execute, Action, ExecuteSandboxConfig};
 use noesar_reasoning::{BlastRadius, Expectation, Plan, PlanStep};
 use noesar_shadow::{ShadowError, ShadowLimits, ShadowWorkspace};
 use serde_json::Value;
@@ -153,7 +153,11 @@ fn every_executor_vector_passes() {
                     contents: action["contents"].as_str().unwrap().to_string(),
                 },
                 "DELETE" => Action::Delete { path: action["path"].as_str().unwrap().to_string() },
-                "EXECUTE" => Action::Execute { command: action["command"].as_str().unwrap().to_string() },
+                "EXECUTE" => Action::Execute {
+                    path: action["path"].as_str().unwrap_or("").to_string(),
+                    command: action["command"].as_str().unwrap().to_string(),
+                    args: strings(&action["args"]),
+                },
                 other => panic!("{id}: unknown action kind `{other}`"),
             })
             .collect();
@@ -165,7 +169,17 @@ fn every_executor_vector_passes() {
         )
         .unwrap_or_else(|error| panic!("{id}: expectation setup failed: {error}"));
 
-        let outcome = execute(&plan, &mut minter, &tokens, &shadow, &actions, &expectation, Vec::new(), NOW);
+        // D-0253: absent in the ten pre-existing vectors (None, byte-identical default path);
+        // EXEC-011/012 are the two that set it.
+        let execute_sandbox = (!vector["executeSandbox"].is_null()).then(|| ExecuteSandboxConfig {
+            enabled: vector["executeSandbox"]["enabled"].as_bool().unwrap_or(false),
+            binary_path: vector["executeSandbox"]["binaryPath"].as_str().map(PathBuf::from),
+        });
+
+        let outcome = execute(
+            &plan, &mut minter, &tokens, &shadow, &actions, &expectation, Vec::new(), NOW,
+            execute_sandbox.as_ref(),
+        );
 
         let expected = &vector["expected"];
         if expected["wholeCallRefused"].as_bool().unwrap_or(false) {
@@ -228,5 +242,5 @@ fn every_executor_vector_passes() {
 
     // A vector file that silently emptied would make the loop above pass by running zero
     // times, and the suite would report green for having checked nothing.
-    assert_eq!(checked, 10, "the vector file must not shrink unnoticed");
+    assert_eq!(checked, 12, "the vector file must not shrink unnoticed");
 }

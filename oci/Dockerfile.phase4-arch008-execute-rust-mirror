@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0253: ARCH-008's Rust mirror of EXECUTE built for real (rust/crates/noesar-executor spawns
+# noesar-sandbox natively — see DECISION_LOG.md). The Rust crate itself ships nowhere; this
+# image only carries the two comment-only fixes this phase made in the shipped JS files
+# (executor.mjs, sandbox-runner.mjs — removing the "EXECUTE is permanently refused on both
+# language sides" claim D-0250 had already made half-wrong). No runtime behaviour changes.
+
+FROM noesar-evolution:phase4-arch005-manifest-precision
+
+LABEL org.noesar.phase="4-arch008-execute-rust-mirror"
+LABEL org.noesar.arch-008="closed-both-language-sides"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

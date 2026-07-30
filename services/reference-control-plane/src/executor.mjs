@@ -20,8 +20,14 @@
 // spending is refused the effect never happens; if the effect happened first, a refusal would
 // be a report about damage already done.
 //
-// EXECUTE is a declared, permanently refused operation. This layer has no execution surface,
-// and offering the operation while quietly doing nothing would be worse than not offering it.
+// EXECUTE is not a blanket refusal any more (D-0250) — the caller decides, per installation.
+// With no `executeSandbox` argument at all the default is byte-identical to before D-0250:
+// this layer has no execution surface, and offering the operation while quietly doing
+// nothing would be worse than not offering it. A config that says `enabled:false` is a
+// DIFFERENT, more accurate fact (`EXECUTE_DISABLED_BY_OPERATOR`, below). Enabled, the same
+// token discipline every other action kind uses applies, and the effect is a real, measured,
+// per-capability-limited process (ARCH-008). D-0253 built the identical mirror in
+// `rust/crates/noesar-executor` — this is no longer JS-only.
 
 import { readFileSync, writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';

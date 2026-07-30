@@ -12,4 +12,5 @@ serde_json.workspace = true
 noesar-reasoning = { path = "../noesar-reasoning" }
 noesar-capability = { path = "../noesar-capability" }
 noesar-shadow = { path = "../noesar-shadow" }
+noesar-sandbox = { path = "../noesar-sandbox" }
 serde.workspace = true

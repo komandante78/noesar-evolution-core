@@ -3139,3 +3139,35 @@ non-project container count unchanged (40).
 Predecessor: `noesar-evolution.rollback-arch005-manifest-precision-20260730T111600Z`
 (`:phase4-execute-client-decision`). Rollback cost: none — no runtime authorization behaviour
 changed for any existing gated path.
+
+## 2026-07-30 · `:phase4-arch008-execute-rust-mirror` — D-0253 deployed: comment-only, the real work ships nowhere
+Tag `noesar-evolution:phase4-arch008-execute-rust-mirror`, `FROM :phase4-arch005-manifest-precision`.
+The substance of `D-0253` (`rust/crates/noesar-executor` spawning `noesar-sandbox` natively) is
+never compiled into any image — confirmed no other crate depends on it, same as before this
+phase. Only `services/reference-control-plane/` re-copied, and only two files in it actually
+changed: `executor.mjs`/`sandbox-runner.mjs`, comment-only (removing the "EXECUTE is permanently
+refused on both language sides" claim that was already half-wrong since `D-0250`). Zero runtime
+behaviour change — deployed anyway, for the same reason every source change is: keeping the live
+container's tree byte-identical to the repository is the property `§3a` protects, not just the
+behaviours that happen to differ.
+
+**Verification (pre-deploy)**: byte identity of image contents vs. repository tree confirmed for
+all 3 touched files (`executor.mjs`, `sandbox-runner.mjs`, `executor-vectors.test.mjs`) via
+`docker cp` + `diff`. Full Rust workspace **140/140 tests** (up from 135), Node **1223 pass, 1
+honest skip, 0 fail**, ESLint **244 files, 0 errors**, `MANIFEST.sha256` **5859/5859**.
+
+**Deploy, lesson from the same session applied**: stop `-t 60` → `postgres.stopped clean:true`
+confirmed in the log → backup `BACKUPS/runtime_pre_arch008_execute_rust_mirror_deploy_
+20260730T114253Z.tar.gz` (12.5 MB, service stopped) → §5a (older rollback
+`arch005-manifest-precision-...T111600Z` removed, predecessor renamed to
+`.rollback-arch008-execute-rust-mirror-20260730T114253Z`) → new container built from the **full**
+`docker inspect --format '{{json .HostConfig}}'` JSON this time, not a hand-picked field subset
+(the earlier deploy this same session crash-looped for exactly that reason — `Tmpfs` omitted).
+**Clean on the first attempt**: `Up (healthy)` at 15s, `postgres.ready migrations:16 rls_tables:15
+production_ready:true`, `/livez`/`/readyz` 200, hardening intact
+(`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers, `noesar-evolution-net` the only project
+network, non-project container count unchanged.
+
+Predecessor: `noesar-evolution.rollback-arch008-execute-rust-mirror-20260730T114253Z`
+(`:phase4-arch005-manifest-precision`). Rollback cost: none.

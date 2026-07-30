@@ -56,7 +56,7 @@ for (const vector of vectors.cases) {
       ));
 
       const actions = vector.actions.map((action) => (action.kind === 'EXECUTE'
-        ? { kind: 'EXECUTE', command: action.command }
+        ? { kind: 'EXECUTE', path: action.path, command: action.command, args: action.args ?? [] }
         : { kind: action.kind, path: action.path, contents: action.contents }));
 
       let report = null;
@@ -65,6 +65,7 @@ for (const vector of vectors.cases) {
         report = execute({
           authorized: plan, minter, tokens, shadow, actions,
           expectation: vector.expectation, nowUnix: NOW,
+          executeSandbox: vector.executeSandbox ?? null,
         });
       } catch (error) {
         refusalKind = error.kind ?? error.constructor.name;
@@ -107,5 +108,5 @@ for (const vector of vectors.cases) {
 }
 
 test('the executor vector file has not shrunk unnoticed', () => {
-  assert.equal(vectors.cases.length, 10);
+  assert.equal(vectors.cases.length, 12);
 });
