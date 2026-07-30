@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ARCH-005 (03_ARCHITETTURA.md §4): "no adapter may grant itself a permission — a manifest
+# is a request, the engine issues the tokens." New module adapter-capability.mjs mints
+# through the SAME TokenMinter workspace-actions.mjs already spends through (no second
+# engine); local-model-runtime.mjs's launch() — the one method that spawns a real OS
+# process and hands it GPU access — now refuses to run without a spent token.
+#
+# No Rust change in this phase (no supervisor rebuild needed): built directly FROM
+# phase4-codev-peer, re-copying only services/reference-control-plane/.
+
+FROM noesar-evolution:phase4-codev-peer
+
+LABEL org.noesar.phase="4-arch005-adapter-gate"
+LABEL org.noesar.arch-005="local-model-runtime-launch-gated"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

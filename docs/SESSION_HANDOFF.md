@@ -33,6 +33,57 @@ dipendenza runtime fra i due progetti: `atom-evolution-model` serve il proprio f
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0244`: ARCH-005 — `local-model-runtime.mjs` non può più autorizzarsi da solo.**
+Chiude l'ultimo dei tre item lasciati aperti da `D-0240` (INST-004 → `D-0241`, split `codev`
+→ `D-0242`, ARCH-005 → questa fase). Nuovo `adapter-capability.mjs`: `ADAPTER_MANIFESTS`
+(oggi solo `{'local-model-runtime': {operations: ['EXECUTE']}}`) + `AdapterGrantOrchestrator`,
+che ricalca `plan()`/`approve()` di `workspace-actions.mjs` e conia attraverso lo STESSO
+`TokenMinter` — nessun secondo motore, nessuna nuova operazione (EXECUTE esiste già ed è già
+"esecuzione di codice arbitrario"). `local-model-runtime.mjs::launch()` — l'unico metodo
+dell'adattatore che genera un processo OS reale e gli affida la GPU — ora esige e spende un
+token prima di fare qualunque cosa; senza un `minter` agganciato, rifiuta a prescindere
+(guasto chiuso, non aperto). Nuove route (`server.mjs`, stessa permission `model.manage` +
+CSRF delle route local-model esistenti): `GET /api/v1/adapters`, `POST /api/v1/adapters/
+:resource/grants`, `POST /api/v1/adapters/grants/:runId/approve|reject`; `/launch` ora
+inoltra `capabilityToken` dal body.
+
+**26 test nuovi, verificati non assunti**: 7 in `local-model-runtime.test.mjs` (rifiuta
+senza motore, senza token, con token forgiato — un byte di MAC capovolto —, con token di un
+altro minter, non rigioca un token dopo l'uso, rifiuta un'operazione fuori manifest, rifiuta
+un adattatore sconosciuto), 12 in `adapter-capability.test.mjs`, 7 in
+`adapter-capability-http-adversarial.test.mjs` (route HTTP reali + sessione reale, controllo
+negativo che prova che il flusso legittimo request→approve→launch→release funziona ancora e
+il token speso non si può rigiocare). Unit **1155/1155** (+26), ESLint 235 file 0 errori,
+`scripts/test.sh` 10/10, `auth-http-smoke` PASS. `MANIFEST.sha256` **5841/5841**.
+
+**Deployato in produzione** (`:phase4-arch005-adapter-gate`, `FROM :phase4-codev-peer` —
+nessun Rust toccato, nessuna ricompilazione del supervisore, solo `services/
+reference-control-plane/` ricopiato): byte immagine provati identici all'albero, stop pulito
+(`postgres.stopped clean:true` nel log), backup 12.5 MB, predecessore a rollback,
+configurazione riletta dal container sostituito. **Verificato dal vivo**: `Up (healthy)`,
+hardening `INST-004` intatto, `/livez`+`/readyz` 200, `GET /api/v1/adapters` 401 contro
+`/api/v1/does-not-exist` 404, albero processi conferma ancora i tre peer di `D-0242`,
+`migrations":16` (0 rieseguite), `identity-projected: projected:1`.
+
+**Dichiarato, non nascosto**: il container vivo gira con `NOESAR_LOCAL_MODEL_RUNTIME=disabled`
+— `launch()` rifiuta al controllo `disabled` prima ancora di arrivare al gate nuovo. Il gate
+è reale ed è provato dalla suite di test sopra; su QUESTA installazione non ha ancora nulla
+da proteggere perché la funzionalità che protegge è essa stessa spenta. `attach()`/
+`complete()`/`configure()` sullo stesso adattatore restano scoperti (dichiarato, non un
+secondo motore improvvisato per coprirli); nessuna superficie WebUI chiama ancora le nuove
+route (stessa postura di `D-0222` per `/api/v1/research/gate`); gli altri sei adattatori di
+`03 §4` non esistono ancora, quindi i loro manifest non sono scritti.
+
+**Prossima azione scelta (istruzione ricevuta in `D-0242`: "vai avanti col resto, obiettivo
+finire NOESAR EVOLUTION")**: dei rimanenti criteri della matrice `03 §10` in
+`03_ARCHITETTURA.md`, restano `⏳ ARCH-007` (diff dei permessi su un aggiornamento che chiede
+più autorità — non costruito) e `⏳ ARCH-008` (isolamento per-capacità: Landlock/seccomp/
+cgroups scritti nel token, rischio Alto dichiarato e mai trattato dalla Fase 4). Nessuna
+nuova domanda posta all'Owner in questa chiusura — procedere con uno dei due salvo
+redirezione.
+
+---
+
 **`D-0242`: ARCH-001 COMPLETO — `codev` è un vero terzo peer OS, deployato in produzione.**
 Design: relay byte-transparent (`bin/codev-child.mjs`), zero logica di business — `api`
 resta l'unico proprietario del dispatch/auth/orchestrator, si è spostato solo il socket su

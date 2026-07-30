@@ -4604,3 +4604,90 @@ set — no scope decision revisited here — then appended the 3 new files this 
 **Not done**: auditing WHY 7 sessions in a row skipped this, or adding an automated check
 that would have caught it sooner — out of scope for a regeneration fix, named as a gap
 rather than quietly closed.
+
+## D-0244 · ARCH-005 — local-model-runtime's `launch()` can no longer authorise itself — 2026-07-30
+**Decision.** `D-0242` left `ARCH-005` as the one remaining open item from `D-0240`'s
+three-way question (the other two, `INST-004` and the `codev` split, closed as `D-0241`/
+`D-0242`). `03_ARCHITETTURA.md` §4: "no adapter may grant itself a permission — a manifest
+is a request, the engine issues the tokens." `capability.mjs`'s own `capabilityStatus()`
+already asserted `adaptersMaySelfGrant: false` — a claim with no adapter behind it, because
+until this phase no adapter existed that was wired to the engine at all.
+`local-model-runtime.mjs` is the one adapter that exists (`03 §6`: the other six —
+`VectorStoreAdapter`, `ObjectStoreAdapter`, `IndustryModuleProvider`,
+`CompliancePackProvider`, `HostBridgeAdapter`, and a second `ModelRuntimeAdapter` for a
+different accelerator — are not built), and its `launch()` method — the one call that
+spawns a real OS process and hands it GPU access — ran on nothing stronger than the
+`model.manage` RBAC permission already gating the HTTP route. That is a session-level
+"can this user press the button", not the plan-approved, auditable, single-use token the
+architecture means by "the engine issues the tokens" — and `launch()` itself had no way to
+refuse a call that reached it by any other path than the one HTTP route.
+
+**Built, not improvised.** New `services/reference-control-plane/src/adapter-capability.mjs`:
+`ADAPTER_MANIFESTS` (today: `{'local-model-runtime': {operations: ['EXECUTE']}}` — the
+manifest 03 §4 means, a fixed list of what a resource may ever ask for) and
+`AdapterGrantOrchestrator`, which mirrors `workspace-actions.mjs`'s `plan()`/`approve()`
+shape (`request()` builds a one-step plan naming the resource, `approve()` calls the SAME
+`authorizePlan()`/`TokenMinter.mint()` workspace-actions spends through — no second engine,
+no new operation type; `EXECUTE` already exists in `capability.mjs` and already means
+"arbitrary code execution"). `local-model-runtime.mjs`'s `launch()` now takes a
+`{capabilityToken}` and spends it against the same minter before doing anything else;
+with no minter wired in at all it refuses outright rather than falling open (`config`
+absent is treated as "no possible token", not "no gate").
+
+**Routes** (`server.mjs`, same `model.manage` permission + CSRF as the existing
+local-model routes): `GET /api/v1/adapters` (manifest + status), `POST /api/v1/adapters/
+:resource/grants` (request), `POST /api/v1/adapters/grants/:runId/approve|reject`. `POST
+/api/v1/runtime/local-model/launch` now forwards `capabilityToken` from the request body
+instead of calling `launch()` with nothing.
+
+**Verified, not assumed**: 26 new tests (7 in `local-model-runtime.test.mjs` — refuses
+with no engine wired, refuses with no token, refuses a forged token [one flipped MAC
+byte], refuses a different minter's token, a granted token is spent and cannot be
+replayed, an out-of-manifest ask is refused, an unknown adapter is refused; 12 in the new
+`adapter-capability.test.mjs`; 7 in the new `adapter-capability-http-adversarial.test.mjs`
+— real HTTP routes, real session+CSRF, negative control proves the legitimate
+request→approve→launch→release flow still works and the spent token cannot relaunch).
+Unit **1155/1155** (+26), ESLint 235 files 0 errors, `scripts/test.sh` 10/10,
+`auth-http-smoke` PASS. `MANIFEST.sha256` **5841/5841** (3 files re-hashed, 3 new files
+added: `adapter-capability.mjs` + its 2 test files).
+
+**Deployed live** (`noesar-evolution:phase4-arch005-adapter-gate`, `FROM
+phase4-codev-peer` — no Rust changed this phase, so no rebuild of the supervisor stage,
+only `services/reference-control-plane/` re-copied): image bytes proved identical to the
+tree before touching production; `docker stop -t 60` with `postgres.stopped clean:true`
+read in the log; runtime backup 12.5 MB
+(`BACKUPS/runtime_pre_arch005_deploy_20260730T074008Z.tar.gz`); predecessor renamed to
+rollback; new container started with every env/mount/network/port/hardening flag
+re-read from the replaced container's own `docker inspect`. **Verified live**: `Up
+(healthy)`, `RestartCount=0`, all `INST-004` hardening fields intact
+(`ReadonlyRootfs:true`, `CapDrop:[ALL]`, `PidsLimit:512`), `/livez`+`/readyz` 200,
+`GET /api/v1/adapters` 401 vs `/api/v1/does-not-exist` 404, process tree from `/proc`
+still shows the three `D-0242` peers (`postgres`/`codev`/`api`, all `ppid=1`),
+`migrations":16` (0 re-run), `data-plane.identity-projected: projected:1`.
+
+**Reachability, stated rather than left implicit**: the live container runs with
+`NOESAR_LOCAL_MODEL_RUNTIME=disabled` (administrative override — GPU runtime is off at
+this deployment regardless of stored config), so `launch()` refuses at the `disabled`
+check before it ever reaches the capability gate added here. The gate is real and is
+exercised by the test suite above; on THIS deployment it has nothing to guard yet because
+the feature it guards is itself switched off. Not a discrepancy — `config()`'s own
+environment-override rule (`local-model-runtime.mjs`, documented since it was built)
+already made `disabled` win over any stored mode.
+
+**Not done, named rather than implied**: `attach()`, `complete()` and `configure()` on
+this same adapter remain ungated — this phase's manifest covers `launch()` only, the one
+method that spawns a process; a Network Egress Broker (the architecture's own separate
+concept, `03 §3`) does not exist yet, so gating `attach()`/`complete()` today would either
+reuse `EXECUTE` for something that is not process execution or invent a second operation
+type — both named here as the wrong shortcut rather than taken. No WebUI surface calls the
+new routes yet (same posture `D-0222`'s research-gate declared: built and tested at the
+API layer, no button wired). `ARCH-005`'s acceptance criterion in `03_ARCHITETTURA.md`
+("test that an adapter requests a permission not granted and is refused") is met for the
+one adapter that exists; the other six adapters named in `03 §4` still do not exist, so
+their manifests are not written and `ADAPTER_MANIFESTS` is not claimed to cover them.
+**§5a**: two project containers (installation + one rollback, the most recent). Older
+rollback `rollback-codev-peer-20260730T040708Z` removed after health confirmed, image
+intact on disk. Networks (10) unchanged.
+**Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato.
+Returning to `:phase4-codev-peer` removes the capability gate on `launch()` — the adapter
+would answer to `model.manage` RBAC alone again, nothing else.

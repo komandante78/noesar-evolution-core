@@ -57,6 +57,7 @@ import {
   ActiveToolRegistry, toolCatalogStatus,
 } from './tool-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
+import { AdapterGrantOrchestrator, AdapterCapabilityError, adapterCapabilityStatus } from './adapter-capability.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
 import { AtomicJsonStore } from './ai-workspace/atomic-store.mjs';
@@ -230,7 +231,10 @@ const postgres = postgresEnabled
 // database becomes available later, so capturing the value here would capture `null`.
 const userDirectory = new UserDirectory({ auth, ledger, dataPlane: () => postgres });
 const scimTokenStore = new ScimTokenStore(join(workspace, 'state/scim-tokens.json'));
-const localModels = new LocalModelRuntime({ workspace });
+// ARCH-005: the same minter and event ledger workspace-actions shares above — a second
+// engine here would let a token minted through one door be unaccountable to the other.
+const adapterGrants = new AdapterGrantOrchestrator({ minter: capabilityMinter, events: engineEvents });
+const localModels = new LocalModelRuntime({ workspace, minter: capabilityMinter });
 
 // The privacy indicator is DERIVED, never stored — 01_PRODUCT/12.
 //
@@ -2376,7 +2380,14 @@ const requestListener = async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/launch') {
       const authenticated = requireSession(req, res, 'model.manage');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
-      return json(res, 202, await localModels.launch());
+      const nowUnix = Math.floor(Date.now() / 1000);
+      const payload = await body(req);
+      try {
+        return json(res, 202, await localModels.launch({ capabilityToken: payload?.capabilityToken ?? null, nowUnix }));
+      } catch (error) {
+        if (error?.status) return json(res, error.status, { error: 'launch_refused', reason: error.message });
+        throw error;
+      }
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/runtime/local-model/release') {
       const authenticated = requireSession(req, res, 'model.manage');
@@ -2387,6 +2398,56 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res, 'provider.use');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       return json(res, 200, await localModels.complete(await body(req)));
+    }
+
+    // --- adapter capability grants (ARCH-005) ----------------------------------
+    // A manifest is a request: this is the only route that mints a token an adapter's
+    // privileged method (today, only LocalModelRuntime.launch()) will accept. Same
+    // permission ('model.manage') as the local-model routes above, because asking to
+    // launch the local model runtime is exactly the action being gated.
+    if (req.method === 'GET' && url.pathname === '/api/v1/adapters') {
+      const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;
+      return json(res, 200, adapterCapabilityStatus());
+    }
+    if (req.method === 'POST' && url.pathname.match(/^\/api\/v1\/adapters\/[^/]+\/grants$/)) {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const resource = decodeURIComponent(url.pathname.split('/')[4]);
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const granted = adapterGrants.request({
+          resource, operation: payload?.operation, actor: authenticated.user.id, nowUnix,
+        });
+        return json(res, 201, granted);
+      } catch (error) {
+        if (error instanceof AdapterCapabilityError) {
+          return json(res, error.kind === 'UNKNOWN_ADAPTER' ? 404 : 422,
+            { error: 'adapter_grant_refused', kind: error.kind, reason: error.message });
+        }
+        throw error;
+      }
+    }
+    const adapterGrantMatch = url.pathname.match(/^\/api\/v1\/adapters\/grants\/([^/]+)\/(approve|reject)$/);
+    if (adapterGrantMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const [, runId, verb] = adapterGrantMatch;
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        if (verb === 'approve') {
+          return json(res, 200, adapterGrants.approve({ runId, approverId: authenticated.user.id, nowUnix }));
+        }
+        return json(res, 200, adapterGrants.reject({
+          runId, approverId: authenticated.user.id, reason: payload?.reason ?? null, nowUnix,
+        }));
+      } catch (error) {
+        if (error instanceof AdapterCapabilityError) {
+          return json(res, 422, { error: 'adapter_grant_refused', kind: error.kind, reason: error.message });
+        }
+        throw error;
+      }
     }
 
     // --- database -------------------------------------------------------------

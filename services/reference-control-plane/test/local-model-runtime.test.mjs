@@ -14,10 +14,23 @@ import http from 'node:http';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LocalModelRuntime, RuntimeMode, Backend } from '../src/local-model-runtime.mjs';
+import { TokenMinter } from '../src/capability.mjs';
+import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 
 function fresh(env = {}) {
   const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-localmodel-'));
-  return { workspace, runtime: new LocalModelRuntime({ workspace, env }) };
+  const minter = new TokenMinter(Buffer.alloc(32, 7));
+  const grants = new AdapterGrantOrchestrator({ minter });
+  return { workspace, minter, grants, runtime: new LocalModelRuntime({ workspace, env, minter }) };
+}
+
+/** ARCH-005: the same request()->approve() flow a real operator session would drive. */
+function grantLaunch(grants, nowUnix = Math.floor(Date.now() / 1000)) {
+  const { runId } = grants.request({
+    resource: 'local-model-runtime', operation: 'EXECUTE', actor: 'test-operator', nowUnix,
+  });
+  const { token } = grants.approve({ runId, approverId: 'test-owner', nowUnix });
+  return token;
 }
 
 async function withStubServer(handler, run) {
@@ -255,13 +268,13 @@ test('launching without a configured command is refused', async () => {
 });
 
 test('a launched process is tracked and released, and releasing twice is harmless', async () => {
-  const { runtime } = fresh();
+  const { runtime, grants } = fresh();
   // `sleep` stands in for an inference server: the point is process lifecycle, not
   // inference. No endpoint is configured, so launch() does not wait for readiness.
   await runtime.configure({
     mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'],
   });
-  const launched = await runtime.launch();
+  const launched = await runtime.launch({ capabilityToken: grantLaunch(grants) });
   assert.equal(launched.launched, true);
   assert.ok(Number.isInteger(launched.pid));
   assert.equal(runtime.status().launched.exited, false);
@@ -276,14 +289,81 @@ test('a launched process is tracked and released, and releasing twice is harmles
 });
 
 test('a runtime that exits immediately is reported, not waited on', async () => {
-  const { runtime } = fresh();
+  const { runtime, grants } = fresh();
   await withStubServer((req, res) => { res.writeHead(404).end(); }, async (endpoint) => {
     await runtime.configure({
       mode: RuntimeMode.MANUAL, profileId: 'cpu',
       launchCommand: ['/bin/false'], endpoint, launchReadyTimeoutMs: 5000,
     });
-    await assert.rejects(() => runtime.launch(), /exited with code|did not become ready/);
+    await assert.rejects(
+      () => runtime.launch({ capabilityToken: grantLaunch(grants) }),
+      /exited with code|did not become ready/,
+    );
   });
+});
+
+// ARCH-005 (03_ARCHITETTURA.md §4): "no adapter may grant itself a permission." These
+// cover the refusal side of that sentence for the one adapter that exists.
+test('launch refuses outright when no capability engine is wired to the runtime', async () => {
+  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-localmodel-'));
+  const runtime = new LocalModelRuntime({ workspace }); // no `minter` — the default
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  await assert.rejects(() => runtime.launch(), /no capability engine is wired/);
+});
+
+test('launch refuses with no capability token supplied, even though a minter is wired', async () => {
+  const { runtime } = fresh();
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  await assert.rejects(() => runtime.launch(), /launch refused/);
+  assert.equal(runtime.status().launched, null, 'a refused launch must not have spawned anything');
+});
+
+test('launch refuses a forged token — flipping one signature byte is enough', async () => {
+  const { runtime, grants } = fresh();
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  const token = grantLaunch(grants);
+  const forged = { ...token, mac: token.mac.startsWith('0') ? `1${token.mac.slice(1)}` : `0${token.mac.slice(1)}` };
+  await assert.rejects(() => runtime.launch({ capabilityToken: forged }), /launch refused/);
+  assert.equal(runtime.status().launched, null);
+});
+
+test('launch refuses a token this engine never issued (a different minter\'s token)', async () => {
+  const { runtime } = fresh();
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  const otherMinter = new TokenMinter(Buffer.alloc(32, 9));
+  const otherGrants = new AdapterGrantOrchestrator({ minter: otherMinter });
+  const strangerToken = grantLaunch(otherGrants);
+  await assert.rejects(() => runtime.launch({ capabilityToken: strangerToken }), /launch refused/);
+});
+
+test('a granted token is spent by launch and cannot be replayed for a second launch', async () => {
+  const { runtime, grants } = fresh();
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  const token = grantLaunch(grants);
+  const first = await runtime.launch({ capabilityToken: token });
+  assert.equal(first.launched, true);
+  await runtime.release();
+  await assert.rejects(
+    () => runtime.launch({ capabilityToken: token }),
+    /launch refused/,
+    'a single-use grant must not authorise a second launch',
+  );
+});
+
+test('an adapter cannot mint its own token: asking outside its manifest is refused before any approval', () => {
+  const { grants } = fresh();
+  assert.throws(
+    () => grants.request({ resource: 'local-model-runtime', operation: 'READ', actor: 'test', nowUnix: Math.floor(Date.now() / 1000) }),
+    /never asks for `READ`/,
+  );
+});
+
+test('an unknown adapter resource is refused, not silently granted', () => {
+  const { grants } = fresh();
+  assert.throws(
+    () => grants.request({ resource: 'no-such-adapter', operation: 'EXECUTE', actor: 'test', nowUnix: Math.floor(Date.now() / 1000) }),
+    /no adapter named/,
+  );
 });
 
 test('the CPU profile is always present and always available', async () => {

@@ -13,11 +13,18 @@
 // The default is `disabled`, and disabled means disabled: in that mode nothing here
 // executes nvidia-smi, opens a device, spawns a process or reaches an endpoint. A GPU is
 // touched only after an operator has written a configuration saying so.
+//
+// ARCH-005: `launch()` is this adapter's ModelRuntimeAdapter surface in the sense
+// 03_ARCHITETTURA.md §4 means it — the one method here that spawns a real OS process and
+// hands it GPU access. It refuses to run without a capability token spent through the
+// SAME TokenMinter workspace-actions.mjs spends (see adapter-capability.mjs), because a
+// manifest is a request and this adapter has no way to grant one to itself.
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { CapabilityError } from './capability.mjs';
 
 export const RuntimeMode = Object.freeze({
   DISABLED: 'disabled',
@@ -72,10 +79,16 @@ function runCommand(command, args, timeoutMs = 5000) {
 }
 
 export class LocalModelRuntime {
-  constructor({ workspace, env = process.env, logger = null } = {}) {
+  // ARCH-005: `minter` is the same TokenMinter instance workspace-actions.mjs spends
+  // through, not a copy — a second engine would let a token minted through one door be
+  // unaccountable to the other. `resourceId` matches the key this adapter is registered
+  // under in adapter-capability.mjs's ADAPTER_MANIFESTS.
+  constructor({ workspace, env = process.env, logger = null, minter = null, resourceId = 'local-model-runtime' } = {}) {
     this.workspace = workspace;
     this.env = env;
     this.logger = logger;
+    this.minter = minter;
+    this.resourceId = resourceId;
     this.configPath = path.join(workspace, 'config', 'local-model.json');
     this.launched = null;
     this.lastError = null;
@@ -374,10 +387,27 @@ export class LocalModelRuntime {
    * configured, so the default installation starts no inference process at all; and the
    * child is tracked so that release() can actually reclaim the device.
    */
-  async launch() {
+  async launch({ capabilityToken = null, nowUnix = Math.floor(Date.now() / 1000) } = {}) {
     const config = this.config();
     if (config.mode === RuntimeMode.DISABLED) throw fail('the local model runtime is disabled', 409);
     if (!config.launchCommand) throw fail('no launchCommand is configured', 409);
+    // ARCH-005 (03_ARCHITETTURA.md §4): "no adapter may grant itself a permission — a
+    // manifest is a request, the engine issues the tokens." `launch()` is the one method
+    // on this adapter that spawns a real OS process and hands it GPU access, so it is the
+    // one gated here. Without a minter wired in, this refuses rather than falling open —
+    // a runtime nobody connected to the capability engine is not "trusted by default", it
+    // is a runtime that cannot possibly hold a real token.
+    if (!this.minter) {
+      throw fail('no capability engine is wired to this runtime; refusing to self-authorize a launch', 500);
+    }
+    try {
+      this.minter.spend(capabilityToken, {
+        path: `adapter://${this.resourceId}/launch`, operation: 'EXECUTE',
+      }, nowUnix);
+    } catch (error) {
+      if (error instanceof CapabilityError) throw fail(`launch refused: ${error.reason}`, 403);
+      throw fail(`launch refused: no valid capability token was supplied (${error.message})`, 403);
+    }
     if (this.launched && !this.launched.exited) {
       return { launched: true, pid: this.launched.pid, alreadyRunning: true };
     }
