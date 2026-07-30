@@ -49,12 +49,14 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
-import { ReasoningRouter } from './reasoning-router.mjs';
+import { ReasoningRouter, routingFrom } from './reasoning-router.mjs';
+import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
 import { execute } from './executor.mjs';
 import { verifyClaims, projectionCoverage } from './verification.mjs';
 import { assembleSessionProof } from './session-proof.mjs';
+import { compareDecisions, comparePolicyOutcome, callAtomReplay as defaultCallAtomReplay, DECISION_SURFACES } from './session-replay.mjs';
 
 export const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
@@ -94,8 +96,9 @@ export class WorkspaceActionOrchestrator {
   #reasoningFor;
   #executeSandbox;
   #privacyStateFor;
+  #env;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -123,10 +126,48 @@ export class WorkspaceActionOrchestrator {
     // show both, not overwrite the first with the second. `null` is honest: sessionProof()
     // reports no samples rather than inventing a state nobody asked derivePrivacy() for.
     this.#privacyStateFor = privacyStateFor;
+    // SESS-002: stored (not just read once) so replay()'s EXTERNAL_PACK path resolves the
+    // SAME endpoint/token a default `reasoningFor` would have used — reading `process.env`
+    // directly there would ignore whatever `env` a test (or a future caller) supplied here,
+    // and silently disagree with the provider that actually answered this run.
+    this.#env = env;
     // A factory, not an instance: a router accumulates the provenance of the calls made
     // through it, so one shared across runs would attribute this run's surfaces to the
     // previous one's. One per call, discarded with the call.
-    this.#reasoningFor = reasoningFor ?? (() => new ReasoningRouter({ workspaceRoot }));
+    //
+    // SESS-002: `sessionId` threads through to `ReasoningRouter` -> `AtomClient`, which is
+    // what lets an external provider keep one recorder across a run's calls (reasoning-
+    // router.mjs's own comment: "what makes `fixtures` able to return a replay pack instead
+    // of refusing"). Before this, every call here used no session at all, so `fixtures()`
+    // had nothing to hand back for ANY run — the capture SESS-001 declared missing.
+    this.#reasoningFor = reasoningFor ?? ((sessionId) => new ReasoningRouter({ workspaceRoot, sessionId, env: this.#env }));
+  }
+
+  /**
+   * The decision layer, shared by `plan()` and `replay()` so there is exactly one
+   * implementation of "what a request becomes" — replay recomputing it a second time is the
+   * whole point; a SECOND piece of code that re-derives the same semantics differently is the
+   * "two implementations of one rule stop agreeing" failure this project keeps finding
+   * (D-0227's own comment about not re-implementing comparison logic applies here too).
+   */
+  async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy }) {
+    const intent = await provider.interpret(request, projectRules);
+    const hypotheses = await provider.hypothesize(intent, []);
+    const step = {
+      id: 'step-1',
+      description: hypotheses[0].statement,
+      files: files.map((file) => file.path),
+      commands: [],
+      dependsOn: [],
+      blastRadius: provider.blastRadius(files.map((file) => file.path), false),
+    };
+    const plan = provider.buildPlan([step], constraints, mode);
+    const constrained = await provider.constrain(plan, policy);
+    if (constrained.refused) refuse('CONSTRAINED_AWAY', constrained.reason);
+    const risk = await provider.classify(constrained.plan);
+    const confidence = await provider.confidence(constrained.plan, []);
+    const expectation = await provider.expect(constrained.plan);
+    return { intent, hypotheses, plan: constrained.plan, risk, confidence, expectation, provenance: provider.provenance() };
   }
 
   #record(correlationId, causationId, actor, action, details, nowUnix) {
@@ -167,6 +208,112 @@ export class WorkspaceActionOrchestrator {
   }
 
   /**
+   * SESS-002: does replaying this run reproduce the same decisions? Two paths, chosen by
+   * what actually happened at `plan()` time — never guessed, never mixed:
+   *
+   *   - every surface answered locally  -> recompute directly with a fresh provider (the
+   *     reference provider is a pure function of its inputs, so this is byte-for-byte or it
+   *     is a real divergence) and structurally compare against what the run recorded.
+   *   - any surface answered by the external provider -> the model's own answers cannot be
+   *     regenerated (11_REVISIONE_E_CORREZIONI.md P1); the captured `fixturePack` is replayed
+   *     through that SAME provider's own `/v1/replay` (an ATOM extension, proven faithful by
+   *     `tools/measure-replay-fidelity.mjs`, D-0227) and its verdict is reported as-is.
+   *
+   * Never mints a token, never touches the workspace, never re-executes anything: replay
+   * answers "would this decide the same way again", not "do it again".
+   */
+  async replay({ runId, actor, nowUnix, callAtomReplay }) {
+    const run = this.#runs.get(runId);
+    if (!run) refuse('NOT_FOUND', `no run \`${runId}\``);
+
+    const usedExternal = run.provenance.some((entry) => entry.provider === 'atom' && DECISION_SURFACES.includes(entry.surface));
+    if (!usedExternal) {
+      const provider = this.#reasoningFor(`replay-${runId}`);
+      let recomputed;
+      try {
+        recomputed = await this.#runDecisionLayer({
+          provider, request: run.request, files: run.files, projectRules: run.projectRules,
+          constraints: run.constraints, mode: run.mode, policy: run.policy,
+        });
+      } catch (error) {
+        if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
+        if (error instanceof WorkspaceActionError) {
+          // CONSTRAINED_AWAY on replay means the current code would now refuse a plan the
+          // original run was approved under — real divergence, reported not thrown.
+          this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
+            { method: 'LOCAL_RECOMPUTE', faithful: false, refusedOnReplay: error.reason }, nowUnix);
+          return { runId, method: 'LOCAL_RECOMPUTE', faithful: false, diffs: [{ field: 'plan', was: run.plan, now: null, reason: `CONSTRAINED_AWAY on replay: ${error.reason}` }] };
+        }
+        throw error;
+      }
+      const comparison = compareDecisions(run, recomputed);
+      this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
+        { method: 'LOCAL_RECOMPUTE', faithful: comparison.faithful, diffFields: comparison.diffs.map((d) => d.field) }, nowUnix);
+      return { runId, method: 'LOCAL_RECOMPUTE', ...comparison };
+    }
+
+    if (!run.fixturePack) {
+      return { runId, method: 'EXTERNAL_PACK', replayable: false,
+        reason: 'this run routed at least one surface externally, and no fixture pack was captured for it at plan() time' };
+    }
+    const routing = routingFrom(this.#env);
+    if (!routing.endpoint) {
+      return { runId, method: 'EXTERNAL_PACK', replayable: false,
+        reason: 'no external reasoning endpoint is configured on this installation right now' };
+    }
+    const caller = callAtomReplay ?? defaultCallAtomReplay;
+    let report;
+    try {
+      report = await caller({ endpoint: routing.endpoint, token: this.#env.NOESAR_RUST_REASONING_TOKEN, pack: run.fixturePack });
+    } catch (error) {
+      if (error instanceof ReasoningUnavailable) {
+        return { runId, method: 'EXTERNAL_PACK', replayable: false, reason: error.reason };
+      }
+      throw error;
+    }
+    this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
+      { method: 'EXTERNAL_PACK', faithful: report.faithful }, nowUnix);
+    return { runId, method: 'EXTERNAL_PACK', replayable: true, faithful: report.faithful, atomReport: report };
+  }
+
+  /**
+   * SESS-003: does the product's OWN decision code, as it exists right now, still reach the
+   * same verdict a historical, externally-supplied fixture recorded? Deliberately independent
+   * of any in-memory run (a historical session may predate this process entirely) and of
+   * which provider answered at record time — SESS-003 asks about the CODE changing across
+   * versions, which SESS-002 already covers honestly for a model's own answers changing.
+   */
+  async replayHistoricalFixture({ fixture, historicalOutcome }) {
+    if (!fixture || !Array.isArray(fixture.files) || fixture.files.length === 0) {
+      refuse('NO_FILES', 'a historical fixture needs the files it declared');
+    }
+    const provider = this.#reasoningFor(`sess003-${randomUUID()}`);
+    const was = { refused: Boolean(historicalOutcome?.refused), riskOverall: historicalOutcome?.riskOverall ?? null };
+    let recomputed;
+    try {
+      recomputed = await this.#runDecisionLayer({
+        provider, request: fixture.request, files: fixture.files,
+        projectRules: fixture.projectRules ?? [], constraints: fixture.constraints ?? [],
+        mode: fixture.mode ?? 'safe', policy: fixture.policy ?? 'restrictive',
+      });
+    } catch (error) {
+      if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
+      if (error instanceof WorkspaceActionError) {
+        // A refusal now, where the historical record claims it was permitted, IS the drift
+        // SESS-003 exists to reveal — reported as a finding, never thrown away as an error.
+        // Not recorded to the event ledger: this fixture is not the workspace_action of any
+        // in-memory run, and inventing a correlationId for it would misuse events.mjs's own
+        // meaning of "the run this event belongs to".
+        const drift = comparePolicyOutcome(was, { refused: true, riskOverall: null });
+        return { method: 'POLICY_REPLAY', policyDrift: drift, recomputedRefusalReason: error.reason };
+      }
+      throw error;
+    }
+    const drift = comparePolicyOutcome(was, { refused: false, riskOverall: recomputed.risk?.overall ?? null });
+    return { method: 'POLICY_REPLAY', policyDrift: drift, recomputed: { risk: recomputed.risk, expectation: recomputed.expectation } };
+  }
+
+  /**
    * request → plan, through the real reasoning pipeline. `files` is the one thing the
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
@@ -182,54 +329,53 @@ export class WorkspaceActionOrchestrator {
       }
       if (typeof file.contents !== 'string') refuse('INVALID_FILE', `\`${file.path}\` needs string contents`);
     }
+    // SESS-002: the run's own id becomes the router's sessionId, generated before the
+    // provider is even created — the only way an external provider has anything to hand
+    // `fixtures()` back for is if every call of this run already carried the same session.
+    const runId = randomUUID();
     // The router, not the reference provider directly. Until this call site changed, an
     // operator could select an external provider and this path — the only one that mints a
     // token and touches a real file — kept asking the reference one regardless. The
     // selection was real everywhere it did not matter.
-    const provider = this.#reasoningFor();
-    let intent; let hypotheses; let plan; let constrained; let risk; let confidence; let expectation;
+    const provider = this.#reasoningFor(runId);
+    let decision;
     try {
-      intent = await provider.interpret(request, projectRules);
-      hypotheses = await provider.hypothesize(intent, []);
-      const step = {
-        id: 'step-1',
-        description: hypotheses[0].statement,
-        files: files.map((file) => file.path),
-        commands: [],
-        dependsOn: [],
-        blastRadius: provider.blastRadius(files.map((file) => file.path), false),
-      };
-      plan = provider.buildPlan([step], constraints, mode);
-      constrained = await provider.constrain(plan, policy);
-      if (constrained.refused) refuse('CONSTRAINED_AWAY', constrained.reason);
-      risk = await provider.classify(constrained.plan);
-      confidence = await provider.confidence(constrained.plan, []);
-      expectation = await provider.expect(constrained.plan);
+      decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy });
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
-      // ReasoningUnavailable deliberately propagates: it is not a refusal, and dressing it
-      // as one (422 "refused") would report a provider that was never reached as a decision
-      // it made. The route maps it to 503.
+      // ReasoningUnavailable and WorkspaceActionError (CONSTRAINED_AWAY, thrown inside
+      // #runDecisionLayer) both propagate as-is: neither is a refusal this catch invents.
       throw error;
     }
-    // Recorded on the run, not only returned: an approver deciding on this plan tomorrow
-    // needs to know which provider produced the expectation they are approving against.
-    const provenance = provider.provenance();
+    const { intent, hypotheses, plan, risk, confidence, expectation, provenance } = decision;
 
-    const runId = randomUUID();
+    // SESS-002 capture, best-effort: a plan that succeeded on every real surface must not be
+    // failed by a fixture-recording hiccup on the last one. `fixturePack` stays `null` and
+    // session-proof.mjs's `fixture` field reports the gap honestly rather than this method
+    // throwing over something that changes no product behaviour.
+    let fixturePack = null;
+    try {
+      fixturePack = await provider.fixtures(runId);
+    } catch {
+      fixturePack = null;
+    }
+
     const rootEventId = this.#record(runId, null, actor, 'workspace_action.planned', {
       goal: intent.goal, files: files.map((file) => file.path), risk: risk.overall, provenance,
     }, nowUnix);
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
-      plan: constrained.plan, expectation, files, intent, risk, confidence, claims, provenance,
+      plan, expectation, files, intent, hypotheses, risk, confidence, claims, provenance,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
-      request, hypotheses, projectRules, constraints, mode, policy,
+      request, projectRules, constraints, mode, policy,
       egressSamples: [this.#sampleEgress('planned', nowUnix)].filter(Boolean),
+      // SESS-002: the captured replay pack, `null` when capture failed or nothing routed
+      // externally for `fixtures` itself — session-proof.mjs and replay() both read this.
+      fixturePack,
     });
-    return { runId, plan: constrained.plan, intent, expectation, risk, confidence, claims, provenance };
+    return { runId, plan, intent, expectation, risk, confidence, claims, provenance };
   }
 
   /**

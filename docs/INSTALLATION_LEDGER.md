@@ -3211,3 +3211,33 @@ inspect --format '{{json .HostConfig}}'` JSON, env re-read correctly the second 
 
 Predecessor: `noesar-evolution.rollback-sess001-session-proof-20260730T130533Z`
 (`:phase4-arch008-execute-rust-mirror`). Rollback cost: none.
+
+## 2026-07-30 · `:phase4-sess002-003-replay` — D-0259 deployed: the replay engine, both halves
+Tag `noesar-evolution:phase4-sess002-003-replay`, `FROM :phase4-sess001-session-proof`.
+New: `session-replay.mjs` (`compareDecisions`, `comparePolicyOutcome`, `callAtomReplay`,
+`DECISION_SURFACES`), `WorkspaceActionOrchestrator#replay()`+`#replayHistoricalFixture()`,
+`POST /api/v1/workspace-actions/:id/replay`, `POST /api/v1/session-proof/replay`. `plan()`
+now threads `runId` as the router's `sessionId` and captures a fixture pack best-effort.
+
+**Verification (pre-deploy)**: byte identity of image contents vs. repository tree confirmed
+for all 4 touched/new `services/reference-control-plane/src/` files via `docker cp` + `diff`.
+Node **1246 pass, 1 honest skip, 0 fail** (+18 over `D-0255`), ESLint **248 files, 0 errors**,
+`scripts/test.sh` **10/10**, browser E2E **327/327**, accessibility **27/27**, seeded-defect
+**19/19**, `MANIFEST.sha256` **5863/5863**.
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_sess002_003_replay_deploy_20260730T142926Z.tar.gz` (12.5 MB, service
+stopped) → §5a (older rollback `sess001-session-proof-...T130533Z` removed, predecessor
+renamed to `.rollback-sess002-003-replay-20260730T142926Z`) → new container from the **full**
+`docker inspect --format '{{json .HostConfig}}'` JSON, `NOESAR_ALLOWED_HOSTS`/
+`NOESAR_EXTERNAL_SURFACES` re-verified comma-separated with `cat -A` before use (the `D-0257`
+incident's exact lesson, applied and clean this time). **Clean on the first attempt**:
+`Up (healthy)` at 11s, `database system was shut down` cleanly (no WAL recovery, unlike the
+`D-0255` deploy), `postgres.ready migrations:16 rls_tables:15 production_ready:true`,
+`/livez`/`/readyz` 200/200, hardening intact (`ReadonlyRootfs:true CapDrop:[ALL]
+Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Both new routes answer **401** unauthenticated
+(reach the auth gate, not a 404). Post-cleanup inventory: exactly 2 `noesar-evolution*`
+containers, `noesar-evolution-net` the only project network.
+
+Predecessor: `noesar-evolution.rollback-sess002-003-replay-20260730T142926Z`
+(`:phase4-sess001-session-proof`). Rollback cost: none.

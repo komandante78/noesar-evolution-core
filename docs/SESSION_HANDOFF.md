@@ -1,14 +1,14 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0255`/`D-0256`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0259`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
 > massimo 4 pause"): A (debito ARCH-005/008 + pulizia matrice) → B (SESS-001..003) →
 > C (CUBE-001..009) → pausa 1 → decisione WebUI → pausa 2 → E+F (debito+packaging) →
 > pausa 3 → G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A COMPLETO** (`D-0252`/`D-0253`/`D-0254`). **Blocco B, 1/3 fatto**: `D-0255`
-> (SESS-001, costruito e deployato). Prossimo: **SESS-002** (motore di replay).
+> **Blocco A COMPLETO. Blocco B COMPLETO** (`D-0255` SESS-001, `D-0259` SESS-002+003).
+> Prossimo: **Blocco C — `CUBE-001..009`**, sottosistema intero mai iniziato.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -39,89 +39,76 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**SESS-001 costruito e deployato (`D-0255`)**: `session-proof.mjs` assembla i dieci campi
-(`01_VISIONE_E_POSIZIONE.md`) da un run reale `plan()`→`approve()` — nessun campo inventato.
-`GET /api/v1/workspace-actions/:id/session-proof`, stesso livello di fiducia di `GET :id`.
+**Blocco B COMPLETO (`D-0259`)**: `replay(runId)` (SESS-002) e `replayHistoricalFixture()`
+(SESS-003) costruiti, testati (17 nuovi test, inclusa una divergenza **provocata** per provare
+che il rilevatore scatta davvero), deployati live. Nuove route:
+`POST /api/v1/workspace-actions/:id/replay`, `POST /api/v1/session-proof/replay`.
 
-**Prossimo: `SESS-002`** — il motore di replay. `run.request`/`run.hypotheses`/
-`run.projectRules`/`run.constraints`/`run.mode`/`run.policy`/`run.files` sono già salvati sul
-run (aggiunti da `D-0255` per il campo `fixture`) — quello che manca è la funzione che
-riesegue `plan()` con questi stessi input e confronta il risultato con quello registrato,
-byte per byte, sul **livello delle decisioni** (correzione `P1`, doc `11`: mai rigenerare
-l'output di un provider esterno, solo quello del provider di riferimento è deterministico).
-Poi `SESS-003` (replay di una sessione storica contro un binario più recente).
+**Prossimo: Blocco C — `CUBE-001..009`** (`MASTER_PROJECT/14_MEMORIA_A_CUBI.md`), 0/9, un
+sottosistema intero mai iniziato — memoria a quattro cubi, con le tre semantiche del doc `05`,
+il contratto `recall()` (§9.4), nove categorie chiuse, immutabilità delle firme, compattazione
+fail-closed. **Prima azione: leggere lo spec per intero** e proporre una scomposizione in fasi
+prima di scrivere codice — è il pezzo più grande rimasto nel piano dell'Owner.
 
 **Non rifare**: il probe di `D-0246`, le misure di `D-0248`/`D-0249`/`D-0250`, l'audit dei tre
 adapter di `D-0252`, i vettori/test live di `D-0253`, l'assemblaggio dei dieci campi di
-`D-0255` (già provato su un run reale in `test/session-proof.test.mjs`).
+`D-0255`, il motore di replay di `D-0259` (tutti già provati con test reali).
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-sess001-session-proof` (`D-0255`) ·
+- **Prodotto vivo**: `noesar-evolution:phase4-sess002-003-replay` (`D-0259`) ·
   `Up (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
-  `migrations:16 rls_tables:15` invariate · byte immagine identici.
-  Rollback preservato: `noesar-evolution.rollback-sess001-session-proof-20260730T130533Z`
-  (`:phase4-arch008-execute-rust-mirror`).
-- **`NOESAR_EXECUTE_SANDBOX=disabled`**, `NOESAR_LOCAL_MODEL_RUNTIME=disabled`, entrambi
-  invariati — nessuna superficie ancora li attraversa in produzione.
+  `migrations:16 rls_tables:15` invariate · byte immagine identici · stop pulito, **nessun
+  crash recovery** al riavvio (a differenza del deploy precedente).
+  Rollback preservato: `noesar-evolution.rollback-sess002-003-replay-20260730T142926Z`
+  (`:phase4-sess001-session-proof`).
+- **`NOESAR_EXECUTE_SANDBOX=disabled`**, `NOESAR_LOCAL_MODEL_RUNTIME=disabled`, invariati.
 - **atomd**: `atom-evolution:atomd`, `noesar-evolution-net`. Live in produzione
-  `NOESAR_REASONING_MODE=rust-external` — il provider esterno risponde a
-  interpret/hypothesize/plan/... e session-proof lo dichiara onestamente (`fixture` è
-  `DECISION_LAYER_ONLY`: gli output di **questo** provider non sono fissati come fixture,
-  solo quelli del provider di riferimento lo sono).
+  `NOESAR_REASONING_MODE=rust-external` — `plan()` ora passa `runId` come `sessionId` del
+  router, quindi ogni run futuro ha un pack di fixture reale da rigiocare (prima di `D-0259`
+  `fixtures()` non aveva mai nulla da restituire per nessun run).
 - **Due container per progetto** — §5a rispettato.
-- ⚠️ **Due errori auto-causati in questo deploy, disclosurati per intero in
-  `docs/INSTALLATION_LEDGER.md`, non da ripetere**: (1) un `docker inspect | tr ',' '\n'`
-  fatto per leggibilità è stato incollato per sbaglio in un `-e` al posto del valore reale
-  separato da virgole (`NOESAR_ALLOWED_HOSTS`/`NOESAR_EXTERNAL_SURFACES`) — 421 su ogni
-  richiesta, preso subito perché l'health non diventava mai verde; (2) per rimediare è stato
-  usato `docker rm -f` invece di un secondo `docker stop -t 60` pulito — PostgreSQL ha fatto
-  da solo un WAL crash recovery pulito (nessun dato perso, verificato), ma la sequenza
-  corretta era un secondo stop pulito, non una rimozione forzata di un container vivo.
+- ⚠️ **Lezione `D-0257` applicata con successo**: `NOESAR_ALLOWED_HOSTS`/
+  `NOESAR_EXTERNAL_SURFACES` riletti dal container vivo e verificati con `cat -A`
+  (separati da virgola, non newline) PRIMA di scriverli nel nuovo `-e` — deploy pulito al
+  primo tentativo, zero incidenti questa volta.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **`SESS-001` è ✔ COSTRUITO (`D-0255`)**: non solo assemblato — deployato live e verificato
-  (`/livez`/`/readyz`/`/healthz` 200, route risponde 401 non autenticata, non 404).
-- **`provenienza`** dichiara ogni fonte `UNTRACKED`: `CUBE-001..009` non esiste, quindi non
-  c'è nessuno stato di contaminazione da riportare — dichiarato, non inventato.
-- **`fixture`** dichiara `replayable:'DECISION_LAYER_ONLY'`: sul provider di riferimento
-  rieseguire gli stessi input riproduce le stesse decisioni (funzione pura); su un provider
-  esterno (quello live oggi) non c'è ancora nessuna fixture di output di modello registrata —
-  quello è esattamente `SESS-002`, non ancora costruito.
-- **`autorità`** include ora `capability.denied` (aggiunto da `D-0255`): prima un mint
-  rifiutato non lasciava traccia nella correlazione eventi del run.
-- **`egress`** è campionato solo se `privacyStateFor` è passato all'orchestratore — lo è, in
-  produzione (`server.mjs` passa `currentPrivacy`), quindi non è mai vuoto sul prodotto vivo.
+- **`SESS-002`/`SESS-003` sono ✔ COSTRUITI (`D-0259`)**: non solo assemblati — deployati live,
+  route verificate (401 non autenticate, non 404).
+- **Bug reale trovato costruendo**: `usedExternal` (LOCAL vs EXTERNAL_PACK) contava QUALSIASI
+  risposta `atom`, `fixtures` incluso — un run che instrada solo `fixtures` esternamente
+  (decisione interamente locale) avrebbe preso il percorso sbagliato. Fissato con
+  `DECISION_SURFACES` (esclude `fixtures`), condiviso da `session-proof.mjs` che aveva lo
+  stesso difetto.
+- **`fixture.replayable`** in `session-proof.mjs` ora ha tre valori reali:
+  `DECISION_LAYER_ONLY` (solo riferimento), `MODEL_FIXTURE_CAPTURED` (pack catturato),
+  `NOT_REPLAYABLE` (routing esterno ma cattura fallita) — mai più un valore fisso.
+- **`provenienza`** dichiara ogni fonte `UNTRACKED`: `CUBE-001..009` non esiste ancora.
 - **`INST-002`**: nessun token di installazione — nessuna superficie lo richiede.
-- **`SESS-002..003` e `CUBE-001..009`**: sottosistemi ancora mai costruiti.
-- **`MANIFEST.sha256` non copre `.claude/` né `CLAUDE10.md`**, nessun tool lo verifica —
-  proposta di miglioramento registrata in `D-0247`, non riparata.
+- **`CUBE-001..009`**: sottosistema intero mai costruito, prossimo blocco.
+- **`MANIFEST.sha256` non copre `.claude/` né `CLAUDE10.md`** — proposta registrata in
+  `D-0247`, non riparata.
 - **Bug menu "Ramo"** (`D-0235`): mai riprodotto, resta aperto.
 
 ## ➜ Blocker aperti
 
-`B-011` (low, `D-0257`→`D-0258` **RISOLTO IN PARTE**): `tools/run-secret-scan.sh` aveva trovato
-`NOESAR_RUST_REASONING_TOKEN` in chiaro in due `EVIDENCE/*.json` già pushati. Su autorizzazione
-esplicita dell'Owner ("riscrivi git", rotazione rimandata a fine progetto): storia riscritta
-(`git filter-branch` sui 2 file, backup bundle preservato in `BACKUPS/` — gitignored, non
-pushato — `gc --prune=now`, force-push, verificato pulito su un clone fresco da `origin/main`).
-**Resta aperto solo**: la rotazione del token stesso, per scelta dell'Owner a fine progetto —
-non un'azione dimenticata. `B-002` era basato su una premessa falsa (lo scanner reale esiste
-già) — corretto, superseded da `B-011`.
+`B-002` (stale, superseded da `B-011`). `B-011` (low-deferred, `D-0258`): storia git ripulita,
+rotazione del token rimandata a fine progetto per scelta esplicita dell'Owner. Nessun altro.
 
-## ➜ Verificato in `D-0255`/`D-0256`
+## ➜ Verificato in `D-0259`
 
 | Verifica | Risultato |
 |---|---|
-| unit Node | **1229 pass, 1 skip onesto, 0 fail** (+6 su `D-0255`) |
-| ESLint | **246 file**, 0 errori |
+| unit Node | **1246 pass, 1 skip onesto, 0 fail** (+18 su `D-0255`) |
+| ESLint | **248 file**, 0 errori |
 | `scripts/test.sh` | **10/10** |
-| Browser E2E | **327/327** (probe riparato da `D-0256`, crash-loop dal `D-0242`) |
+| Browser E2E | **327/327** |
 | Accessibilità | **27/27** |
 | Seeded-defect | **19/19** |
-| `MANIFEST.sha256` | **5861/5861** |
-| deploy live (`D-0255`) | stop pulito, backup, §5a rispettato, `Up (healthy)`, hardening+`migrations:16 rls_tables:15` invariati, route risponde 401 non autenticata |
+| `MANIFEST.sha256` | **5863/5863** |
+| deploy live | stop pulito, backup, §5a rispettato, `Up (healthy)`, hardening+`migrations:16 rls_tables:15` invariati, entrambe le nuove route rispondono 401 |
 
 ## ➜ Le domande all'Owner ancora senza risposta
 

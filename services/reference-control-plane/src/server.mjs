@@ -1488,6 +1488,59 @@ const requestListener = async (req, res) => {
         throw error;
       }
     }
+    // SESS-002: does replaying this run reproduce the same decisions? Same trust level as
+    // simulate — `workspace.read`, CSRF gated because it is a POST — because replay mints no
+    // token, executes nothing, and changes no workspace file; it only asks a question.
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/replay$/);
+    if (workspaceActionMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const outcome = await workspaceActions.replay({
+          runId: workspaceActionMatch[1], actor: authenticated.user.id, nowUnix,
+        });
+        return json(res, 200, outcome);
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
+        }
+        throw error;
+      }
+    }
+    // SESS-003: replay a historical, externally-supplied fixture against the CURRENT code's
+    // own policy — not tied to any in-memory run, so a historical session may predate this
+    // process entirely. Same trust level as replay/simulate: read-only, CSRF-gated POST.
+    if (req.method === 'POST' && url.pathname === '/api/v1/session-proof/replay') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        const outcome = await workspaceActions.replayHistoricalFixture({
+          fixture: payload?.fixture, historicalOutcome: payload?.historicalOutcome,
+        });
+        return json(res, 200, outcome);
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, {
+            error:'reasoning_unavailable', reason:error.reason,
+            surface:error.surface, endpoint:error.endpoint,
+          });
+        }
+        throw error;
+      }
+    }
     workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(approve|reject|restore)$/);
     if (workspaceActionMatch && req.method === 'POST') {
       const authenticated = requireSession(req, res); if (!authenticated) return;

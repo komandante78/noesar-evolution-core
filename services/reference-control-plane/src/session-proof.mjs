@@ -15,6 +15,8 @@
 // than one with none, for the same reason a privacy banner that claims LOCAL_ONLY_VERIFIED
 // without checking would be worse than STATUS_UNKNOWN.
 
+import { DECISION_SURFACES } from './session-replay.mjs';
+
 export const SESSION_PROOF_VERSION = '1.0.0';
 export const SESSION_PROOF_FIELDS = Object.freeze([
   'intento', 'ipotesi', 'piano', 'attesa', 'realta',
@@ -59,14 +61,33 @@ function provenanceOf(run) {
 }
 
 function fixtureOf(run) {
-  return {
+  const usedExternal = (run.provenance ?? []).some((entry) => entry.provider === 'atom' && DECISION_SURFACES.includes(entry.surface));
+  const base = {
     request: run.request,
     files: run.files.map((file) => ({ path: file.path, contents: file.contents })),
     projectRules: run.projectRules, constraints: run.constraints,
     mode: run.mode, policy: run.policy, claims: run.claims,
     plannedAtUnix: run.createdAtUnix, decidedAtUnix: run.decidedAtUnix ?? null,
-    replayable: 'DECISION_LAYER_ONLY',
-    replayableReason: '11_REVISIONE_E_CORREZIONI.md P1: re-running these inputs through the same reference provider reproduces the same decisions, because the reference provider is a pure function of them (no model call to be non-deterministic about). Model output fixtures for an EXTERNAL provider are not captured by this reference orchestrator — SESS-002 (the replay engine) is where that capture belongs, and it has not been built.',
+  };
+  if (!usedExternal) {
+    return {
+      ...base,
+      replayable: 'DECISION_LAYER_ONLY',
+      replayableReason: '11_REVISIONE_E_CORREZIONI.md P1: re-running these inputs through the same reference provider reproduces the same decisions, because the reference provider is a pure function of them (no model call to be non-deterministic about).',
+    };
+  }
+  if (run.fixturePack) {
+    return {
+      ...base,
+      replayable: 'MODEL_FIXTURE_CAPTURED',
+      replayableReason: 'D-0259 (SESS-002): at least one surface answered externally, and a fixture pack was captured at plan() time via ReasoningRouter#fixtures(runId). Replay does not regenerate the model\'s answers (11_REVISIONE_E_CORREZIONI.md P1) — it resubmits this exact pack to the same provider\'s own `/v1/replay`, proven faithful by tools/measure-replay-fidelity.mjs (D-0227).',
+      fixturePackDigest: run.fixturePack.digest ?? null,
+    };
+  }
+  return {
+    ...base,
+    replayable: 'NOT_REPLAYABLE',
+    replayableReason: 'at least one surface answered externally, but capturing a fixture pack for this run failed or was refused at plan() time — declared, not silently treated as DECISION_LAYER_ONLY (recomputing locally would replay a DIFFERENT decision than the one this run actually made).',
   };
 }
 
