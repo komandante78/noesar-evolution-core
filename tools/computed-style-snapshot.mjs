@@ -41,7 +41,7 @@ if (!BASE || !SETUP_TOKEN) {
 const PASSWORD = 'snapshot-owner-passphrase-not-a-real-secret-42';
 
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
 const SETTINGS_SECTIONS = [

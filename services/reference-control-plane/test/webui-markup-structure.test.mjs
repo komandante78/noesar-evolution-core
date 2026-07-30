@@ -27,10 +27,11 @@ const html = readFileSync(INDEX, 'utf8');
 /** Elements that must nest. Void elements are excluded by construction. */
 const PAIRED = ['section', 'form', 'main', 'aside', 'nav', 'article', 'header', 'footer'];
 
-/** The twelve destinations, in sidebar order. A destination is a place you decide to go
+/** The thirteen destinations, in sidebar order (Memory joined since D-0265,
+ *  14_MEMORIA_A_CUBI.md CUBE-009). A destination is a place you decide to go
  *  to; everything else is a section you arrive at. */
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
 /** The single Settings destination's own menu — menu inside the menu, in three groups. */
@@ -38,15 +39,18 @@ const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
   'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
 ];
-/** Pages that changed rank. Their markup must still exist somewhere in the document. */
+/** Pages that changed rank. Their markup must still exist somewhere in the document.
+ *  'memory' left this list at D-0265: it is a real destination again (CUBE-009), not a
+ *  demoted page — #view-memory is now Memory itself, and the manual notes panel that
+ *  used to own that id was renamed to #memory-notes-block, not deleted. */
 const DEMOTED = [
-  'view-tasks', 'view-tools', 'view-memory', 'view-approvals', 'view-providers',
+  'view-tasks', 'view-tools', 'view-approvals', 'view-providers',
   'view-hardware', 'view-users', 'view-security', 'view-health', 'view-logs',
   'view-updates', 'view-backups', 'view-about',
 ];
 /** Names that used to route and no longer do. Each must have a forwarding address. */
 const RETIRED_ROUTES = [
-  'tasks', 'tools', 'memory', 'approvals', 'providers', 'hardware', 'users',
+  'tasks', 'tools', 'approvals', 'providers', 'hardware', 'users',
   'security', 'health', 'logs', 'updates', 'backups', 'about',
 ];
 

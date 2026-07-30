@@ -64,6 +64,7 @@
         <button class="nav" data-view="projects">▢ <span>Projects</span></button>
         <button class="nav" data-view="documents">▥ <span>Documents</span></button>
         <button class="nav" data-view="knowledge">◈ <span>Knowledge</span></button>
+        <button class="nav" data-view="memory">✦ <span>Memory</span></button>
         <button class="nav" data-view="agents">◍ <span>Agents</span></button>
         <button class="nav" data-view="workflows">⇉ <span>Workflows</span></button>
         <button class="nav" data-view="models">▦ <span>Models</span></button>
@@ -382,10 +383,24 @@
         <div class="section-header"><div><p class="eyebrow">HYBRID RETRIEVAL</p><h1>Knowledge</h1><p>Ingest extracted content, retain source passages and search lexically and semantically.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="sourceForm"><h2>Add source</h2><label>Project<select id="sourceProject"></select></label><label>Upload PDF, Office, image, audio, video, ZIP, dataset or code<input id="sourceBinary" type="file"></label><div class="inline-form"><button type="button" id="captureCamera">Camera</button><button type="button" id="captureScreen">Screen</button><button type="button" id="recordAudio">Record voice</button></div><label>Source name<input id="sourceName" required></label><label>MIME type<input id="sourceMime" value="text/plain"></label><label>Text or extracted content<textarea id="sourceText" class="large-text" placeholder="Paste text directly, or select a binary file for secure local extraction"></textarea></label><button class="primary">Ingest and index</button><small id="extractorStatus">Extraction capabilities loading…</small></form><section class="panel"><div class="search-row"><input id="knowledgeQuery" placeholder="Search knowledge…"><button id="knowledgeSearch">Search</button></div><div id="knowledgeResults" class="card-list empty-state">No search performed.</div><hr><div id="sourceList" class="card-list empty-state">No sources.</div></section></div>
       
-        <section class="work-block" id="view-memory">
-        <div class="section-header"><div><p class="eyebrow">VISIBLE AND REVOCABLE</p><h2 class="page-title">Memory</h2><p>Every memory entry can be inspected, edited, hidden, exported or deleted.</p></div></div>
+        <section class="work-block" id="memory-notes-block">
+        <div class="section-header"><div><p class="eyebrow">VISIBLE AND REVOCABLE</p><h2 class="page-title">Notes</h2><p>Notes you write by hand and pin to a project or conversation — separate from the Memory destination, which the product writes for you.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="memoryForm"><h2>Add memory</h2><label>Project<select id="memoryProject"></select></label><label>Scope<select id="memoryScope"><option value="project">Project</option><option value="conversation">Conversation</option><option value="global">Global</option></select></label><label>Conversation<select id="memoryConversation"></select></label><label>Title<input id="memoryTitle" required></label><label>Content<textarea id="memoryContent" required></textarea></label><label>Tags<input id="memoryTags"></label><button class="primary">Save memory</button></form><section class="panel"><div class="panel-title"><h2>Visible memory</h2><button id="exportData" class="text-button">Export all</button></div><div id="memoryList" class="card-list empty-state">No memory.</div></section></div>
       </section>
+      </section>
+
+      <section class="view" id="view-memory">
+        <div class="section-header"><div><p class="eyebrow">WRITTEN FOR YOU, AT THE END OF EACH SESSION</p><h1>Memory</h1><p>What the product has learned about your work — search it, browse it, or decide what stays.</p></div></div>
+        <section class="panel">
+          <div class="search-row"><input id="memorySearchQuery" placeholder="What do you want to know?"><select id="memoryTopicFilter"><option value="">Any topic</option></select><button id="memorySearchButton">Search</button></div>
+          <p class="hint" id="memoryNotFoundHint"></p>
+          <div id="memoryResultsList" class="card-list empty-state">Nothing found yet.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h2>Recently learned</h2><span id="memoryPendingCount">0 waiting</span></div>
+          <p class="hint">New things the product picked up are listed here first. Keep the ones that are right, discard the ones that aren't — nothing becomes permanent without you.</p>
+          <div id="memoryPendingList" class="card-list empty-state">Nothing waiting.</div>
+        </section>
       </section>
 
       <section class="view" id="view-agents">

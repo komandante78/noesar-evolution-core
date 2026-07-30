@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block C6: CUBE-009, the Memory WebUI destination (D-0265). See DECISION_LOG.md.
+
+FROM noesar-evolution:phase4-memory-model-swap
+
+LABEL org.noesar.phase="4-memory-webui"
+LABEL org.noesar.block-c="c6-final"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

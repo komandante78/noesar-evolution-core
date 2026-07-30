@@ -3375,3 +3375,41 @@ containers, `noesar-evolution-net` the only project network.
 Predecessor: `noesar-evolution.rollback-memory-model-swap-20260730T170329Z`
 (`:phase4-memory-application-layer`). Rollback cost: none on live data — `embedding_models` is
 empty in production; this phase only proves the swap mechanism against a disposable instance.
+
+## 2026-07-30 · `:phase4-memory-webui` — D-0265 deployed: the Memory WebUI destination — Block C complete (CUBE-009)
+Tag `noesar-evolution:phase4-memory-webui`, `FROM :phase4-memory-model-swap`. New: a thirteenth
+sidebar destination "Memory" (`apps/webui-static/index.html`+`app.js`) backed by
+`GET /api/v1/memory/recall` and the existing 4-source `ApprovalQueue` — no new backend route.
+The pre-existing `id="view-memory"` manual notes panel (nested inside Knowledge) renamed to
+`#memory-notes-block` to free the id, functionally unchanged. Full detail:
+`docs/DECISION_LOG.md` `D-0265`.
+
+**Verification (pre-deploy)**: `npm test` 1284/1285 (1 pre-existing unrelated skip — 3 previously
+stale structural tests fixed for the new destination), `npm run lint` 255 files / 0 errors,
+`scripts/test.sh` 10/10 STEP. **Live, in a real Chromium via Puppeteer**: full browser E2E suite
+**334/334 PASS** and the accessibility audit **27/27 PASS**, both walking Memory as one of the
+now-thirteen destinations. Two real, reproducible bugs found and fixed during this
+verification — neither in the Memory destination itself — see `D-0265` for the full root-cause
+analysis: (1) `clickOrExplain()`'s Puppeteer `page.click()` threw "Node is detached from
+document" (traced to `scrollIntoViewIfNeeded`), fixed with an in-page synthetic click; (2) a
+test race reading the approval strip before its own async refresh completed, fixed with an
+explicit wait. Both previously masked by the approvals endpoint being synchronous-fast; exposed
+once `D-0263` made one of its sources a genuine PostgreSQL round trip.
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_memory_webui_deploy_20260730T173434Z.tar.gz` (12.9 MB, service stopped) →
+§5a (older rollback `memory-model-swap-...T170329Z` removed, predecessor renamed to
+`.rollback-memory-webui-20260730T173434Z`) → new container from the full `docker inspect`
+HostConfig JSON. **Clean on the first attempt**: `Up (healthy)` at 12s, `data-plane.ready
+migrations:19 rls_tables:18`, `data-plane.workspace-projected ensured:true`, `/livez`/`/readyz`
+200/200, hardening intact (`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`,
+`RestartCount:0`). Byte identity of both changed files confirmed via `docker cp` + `diff`.
+Post-cleanup inventory: exactly 2 `noesar-evolution*` containers, `noesar-evolution-net` the
+only project network.
+
+Predecessor: `noesar-evolution.rollback-memory-webui-20260730T173434Z`
+(`:phase4-memory-model-swap`). Rollback cost: none on live data — frontend-only change plus one
+renamed markup id, no schema change.
+
+**This closes MASTER_PROJECT/14_MEMORIA_A_CUBI.md's entire acceptance matrix. Block C is
+complete: CUBE-001 through CUBE-009 all built and verified live.**

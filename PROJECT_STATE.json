@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0264: Block C5 built and verified live. memory-model-swap.mjs (ModelSwapService) implements 14 section 9.3s four steps: registerModel (is_current:false), backfillBatch (incremental, one record at a time), activate (refuses below 100% coverage, atomic BEGIN/COMMIT cutover), purgeSuperseded (refuses the current models index). CUBE-008 closed, verified live 35/35 in memory-integration.mjs against a real 7-row corpus: coverage 0-100%, atomic cutover confirmed (never zero or two is_current models), recall() flips honestly from vectorIndexComplete:false to true, a second model supersedes the first, old index purged with memory_records provably untouched. Real bug found+fixed: purgeSuperseded() always reported deleted:0 because this projects hand-rolled pg client computes rowCount from the returned row set not CommandComplete -- fixed by adding RETURNING (same convention postgres-integration.mjs already uses). Deployed live (:phase4-memory-model-swap), migrations:19 rls_tables:18. Remaining in Block C: CUBE-009 (WebUI Memoria destination) -- the last item.",
-  "next_phase": "Block C, final item: CUBE-009 -- a single Memoria WebUI destination, three gestures (cerca/sfoglia/approva), plain words only, no cube/promotion_state/contamination jargon outside an explicit detail view. No Owner decision pending. Once built, Block C is complete and the multi-phase plan moves to pausa 1 (decisione WebUI).",
+  "phase_status": "D-0265: Block C6 built and verified live. A thirteenth WebUI destination, Memory, backed entirely by D-0263s recall()/promote() -- no new backend route. Plain-English category labels, cube/promotion_state/contamination never shown outside an explicit detail expand. CUBE-009 closed -- THIS CLOSES THE ENTIRE ACCEPTANCE MATRIX OF 14_MEMORIA_A_CUBI.md: CUBE-001 through CUBE-009 all built and verified live. Two real bugs found and fixed verifying this in a real browser (Puppeteer page.click() Node-is-detached, and a test race reading the approval strip before its own refresh completed) -- both previously masked by the approvals endpoint being synchronous-fast, exposed once D-0263 made one source a real Postgres round trip. Full browser E2E 334/334, accessibility audit 27/27. Deployed live (:phase4-memory-webui), migrations:19 rls_tables:18. Block C is complete.",
+  "next_phase": "Block C is complete. Per the multi-phase plan (docs/SESSION_HANDOFF.md header), next is pausa 1, then decisione WebUI, then pausa 2, then Blocco E+F (debito+packaging), then pausa 3, then Blocco G (Owner Bootstrap+pentest), then pausa 4 (obbligatoria).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "6331547",
-  "last_updated_utc": "2026-07-30T17:06:00Z",
+  "last_updated_utc": "2026-07-30T17:36:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -435,7 +435,8 @@
     "cube_c1_schema_d0261": "D-0261: database/postgres/0017_memory_cubes.sql -- embedding_models/memory_records/memory_vectors, RLS, signature_is_immutable trigger, derived_must_cite/counters_only_for_experience/nine-category CHECKs. Verified against a REAL disposable PostgreSQL (not static token-matching): 8 direct psql tests, all matched intended behaviour. scripts/test.sh pg-migrations+pg-contract PASS (17 migrations). Deployed live (:phase4-cube-c1-schema), migrations:17 rls_tables:18. CUBE-004 tension found and flagged, not resolved -- schema is one table with an ENUM cube column, contradicting the criteria own demand for table/type-level separation.",
     "cube04_typed_views_d0262": "D-0262: database/postgres/0018_memory_cube_typed_views.sql -- four typed views (WITH CHECK OPTION) over memory_records, noesar_app direct access revoked, memory_vectors policy rewritten via 2 new SECURITY DEFINER functions. Also fixes an independent 0017 defect: memory_records/memory_vectors/embedding_models each had only a RESTRICTIVE policy (no PERMISSIVE counterpart), which unconditionally denied every noesar_app write since deploy -- reproduced live on the unmodified 0017 schema, fixed by dropping the RESTRICTIVE marker on all three. Verified live: tools/acceptance/postgres-integration.mjs extended with CUBE04-01..08, 57/57 PASS (zero regressions on pre-existing DB-* checks). Deployed live (:phase4-cube-typed-views), migrations:18 rls_tables:18, hardening intact.",
     "c2_c4_memory_application_layer_d0263": "D-0263: memory-service.mjs+memory-compaction.mjs+approval-queue.mjs 4th source. CUBE-003 (fail-closed compaction, closed ACTION_RULES table over EventLedger) and CUBE-006 (recall() items/coverage/notFound contract) both closed. Contamination canary (derived records cannot understate contamination relative to cited sources) and promotion approval (project-candidate/global-candidate through the existing 4-source ApprovalQueue) built. Real bug found+fixed: admin-mediated listCandidates()/promote() querying through views returned 0 rows (view RLS follows owner identity not connecting role) -- fixed to query memory_records directly. Verified live: new permanent tools/acceptance/memory-integration.mjs harness, 24/24 PASS. npm test 1271/1272 (1 pre-existing unrelated skip). Deployed live (:phase4-memory-application-layer), migrations:19 rls_tables:18, canonical workspace projected at boot.",
-    "c5_model_swap_d0264": "D-0264: memory-model-swap.mjs, ModelSwapService, the four steps of 14 section 9.3 as four methods. CUBE-008 closed. Real bug found+fixed: purgeSuperseded() rowCount always 0 without RETURNING (hand-rolled pg client quirk). Verified live: tools/acceptance/memory-integration.mjs MEM-25..36, 35/35 PASS against a real 7-row corpus, atomic cutover confirmed, memory_records untouched by index purge. Deployed live (:phase4-memory-model-swap), migrations:19 rls_tables:18."
+    "c5_model_swap_d0264": "D-0264: memory-model-swap.mjs, ModelSwapService, the four steps of 14 section 9.3 as four methods. CUBE-008 closed. Real bug found+fixed: purgeSuperseded() rowCount always 0 without RETURNING (hand-rolled pg client quirk). Verified live: tools/acceptance/memory-integration.mjs MEM-25..36, 35/35 PASS against a real 7-row corpus, atomic cutover confirmed, memory_records untouched by index purge. Deployed live (:phase4-memory-model-swap), migrations:19 rls_tables:18.",
+    "c6_memory_webui_d0265": "D-0265: Memory WebUI destination (13th sidebar entry), backed by GET /api/v1/memory/recall + the existing 4-source ApprovalQueue, no new backend route. CUBE-009 closed -- closes the entire 14_MEMORIA_A_CUBI.md acceptance matrix (CUBE-001..009 all built/verified live). id=view-memory naming collision resolved (old manual notes panel renamed to memory-notes-block). Two real bugs found+fixed live in a real browser: Puppeteer page.click() Node-is-detached (fixed with in-page synthetic click) and a test race reading the approval strip before refreshApprovals() resolved (fixed with explicit wait) -- both exposed by D-0263 making one approvals source a real Postgres round trip. Verified live: browser E2E 334/334 PASS, accessibility audit 27/27 PASS. Deployed live (:phase4-memory-webui), migrations:19 rls_tables:18."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -464,8 +465,8 @@
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address) | LIVE CONTAINER DRIFT FOUND AND FIXED 2026-07-30 (D-0241): the installer test suite above only tests the installer scripts themselves, not the manually-recreated live container — that container had drifted to ReadonlyRootfs:false/CapDrop:null/SecurityOpt:null/PidsLimit:null/Memory:0/Tmpfs:null sometime before :phase4-supervisor was built (found by D-0240). Restored and re-verified live by D-0241; root cause of the drift itself was not investigated (out of scope).",
   "manifest": {
-    "entries": 5875,
-    "verification": "5875/5875 OK, 0 failed (regenerated 2026-07-30, D-0264 -- surgical patch: 2 changed-file hashes refreshed, 3 new files appended for the model swap procedure)",
+    "entries": 5876,
+    "verification": "5876/5876 OK, 0 failed (regenerated 2026-07-30, D-0265 -- surgical patch: 7 changed-file hashes refreshed, 1 new file appended for the Memory WebUI destination)",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -838,7 +839,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Build CUBE-009: a Memoria destination in the WebUI (apps/webui-static) backed by GET /api/v1/memory/recall (search/browse) and the existing approval-strip pattern (approve/discard) for memory-candidate items. Verify with real screenshots, not just DOM, per the projects own standing rule.",
+  "next_action": "Report Block C complete to the Owner and await direction on the next block or the first scheduled pause.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1347,7 +1348,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-30T17:06:00Z",
+  "last_updated": "2026-07-30T17:36:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",

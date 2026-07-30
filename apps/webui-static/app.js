@@ -148,7 +148,7 @@ function authError(message=''){$('#authError').textContent=message;}
 // to; everything else is a section you arrive at. The fifteen entries that used to sit in
 // the sidebar did not disappear — they changed rank and live inside the single Settings
 // destination, or inside the working surface that actually uses them.
-const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','knowledge','agents','workflows','models','research','settings']);
+const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','knowledge','memory','agents','workflows','models','research','settings']);
 // The Settings destination's own menu: menu inside the menu, in three groups. The order
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
@@ -162,7 +162,7 @@ const DEFAULT_SECTION='sessions';
 // bookmark or an old note lands on the section that now owns it instead of on a 404.
 // Removing a page from the sidebar is a change of rank, not a change of address.
 const LEGACY_ROUTES={
-  tasks:'home',tools:'coden',memory:'knowledge',
+  tasks:'home',tools:'coden',
   approvals:'settings/audit',providers:'settings/privacy',hardware:'settings/models-hardware',
   users:'settings/people',security:'settings/security',health:'settings/health',
   logs:'settings/health',updates:'settings/updates',backups:'settings/storage',
@@ -1857,12 +1857,25 @@ function approvalCard(item){
     +`<div class="inline-form"><button class="primary" data-approve="${escapeHtml(item.id)}" type="button">Approve</button>`
     +`<button class="danger" data-reject="${escapeHtml(item.id)}" type="button">Reject</button></div></article>`;
 }
+// The queue is read from more than one place that can run at the same time — the boot
+// sequence's refreshWorkspace() and the Approvals section's own loader, for instance —
+// and since D-0265 one of its four sources (memory candidates) is a real network round
+// trip rather than an instant in-memory read, two overlapping calls can now resolve out
+// of order. Without a guard, an OLDER response landing after a NEWER one replaces
+// #approvalList with stale content and rebinds fresh click handlers onto nodes a test
+// (or a person) may already be mid-click on — found live as a real, reproducible
+// "Node is detached from document" failure in the browser E2E suite. Each call is
+// stamped with an incrementing token; only the most recently STARTED call is allowed to
+// touch the DOM, so a slow, stale response is discarded instead of undoing a fresher one.
+let approvalsRefreshToken=0;
 async function refreshApprovals(){
+  const token=++approvalsRefreshToken;
   const strip=$('#approvalStripState');
   const detail=$('#approvalStripDetail');
   const navCount=$('#navApprovalCount');
   try{
     const payload=await api('/api/v1/approvals');
+    if(token!==approvalsRefreshToken)return payload.approvals??[];
     const items=payload.approvals??[];
     const total=payload.counts?.total??items.length;
     if(strip){
@@ -1885,6 +1898,7 @@ async function refreshApprovals(){
     if(count)badge(count,String(total),total>0?'warn':'on');
     return items;
   }catch(error){
+    if(token!==approvalsRefreshToken)throw error;
     // A queue that cannot be read says so. Showing "0 waiting" on a failed fetch would
     // be a false all-clear on the one surface whose job is to raise the alarm.
     if(strip){strip.textContent='Approvals: unavailable';strip.className='approval-strip-state status-bad';}
@@ -2733,7 +2747,113 @@ async function submitClosure(event){
   }
 }
 
+// --- Memory (14_MEMORIA_A_CUBI.md, CUBE-009) --------------------------------
+//
+// The one destination for the memory the product writes for you at the end of a session
+// (D-0263). Three gestures, per §11: search (the query box), browse (the same box left
+// empty, or a topic filter), approve (Keep/Discard on anything new). The words a person
+// reads here are plain — "Decision", "Fact", "New", "Kept" — never the schema's own
+// vocabulary (`cube`, `promotion_state`, `contamination`), which stays inside the
+// <details> a person has to open on purpose. Not to be confused with the "Notes" panel
+// inside Knowledge (`memory-notes-block`) — that is hand-written and pinned by a person;
+// this destination is written automatically and is never edited by hand (§11: "Non si
+// scrive mai una memoria a mano").
+const MEMORY_CATEGORY_LABELS={
+  decisione:'Decision',procedura:'How-to',convenzione:'Convention',vincolo:'Constraint',
+  fatto:'Fact',difetto:'Issue',preferenza:'Preference',riferimento:'Reference',lezione:'Lesson',
+};
+function memoryCategoryLabel(category){return MEMORY_CATEGORY_LABELS[category]??category;}
+function memoryStatusBadge(promotionState){
+  if(promotionState==='project-candidate'||promotionState==='global-candidate')return '<span class="badge badge-warn">New</span>';
+  if(promotionState==='project'||promotionState==='global')return '<span class="badge badge-on">Kept</span>';
+  return '';
+}
+function memoryResultCard(item){
+  const isCandidate=item.promotionState==='project-candidate'||item.promotionState==='global-candidate';
+  const idPart=`${item.cube}:${item.signature}`;
+  const actions=isCandidate
+    ?`<div class="inline-form"><button class="primary" data-memory-keep="${escapeHtml(idPart)}" type="button">Keep</button><button class="danger" data-memory-discard="${escapeHtml(idPart)}" type="button">Discard</button></div>`
+    :'';
+  return `<article class="entity-card"><h3>${escapeHtml(memoryCategoryLabel(item.category))} ${memoryStatusBadge(item.promotionState)}</h3>`
+    +`<p>${escapeHtml(item.content)}</p>`
+    +`<small>${escapeHtml(isoToLocal(item.observedAt))}</small>`
+    // Progressive disclosure (§11): provenance/contamination/promotion state are one
+    // click away, never in front by default.
+    +`<details><summary class="text-button">Show details</summary><p class="hint">Signature: ${escapeHtml(item.signature)}<br>Contamination: ${escapeHtml(item.contamination)}<br>Status: ${escapeHtml(item.promotionState)}</p></details>`
+    +actions+`</article>`;
+}
+async function memoryDecide(idPart,decision){
+  try{
+    await api(`/api/v1/approvals/${encodeURIComponent(`memory-candidate:${idPart}`)}/decision`,{method:'POST',body:JSON.stringify({decision,reason:null})});
+    toast(decision==='approve'?'Kept.':'Discarded.');
+    await loadMemoryDestination();
+    await refreshApprovals();
+  }catch(error){toast(error.message,{kind:'error'});}
+}
+function bindMemoryActions(){
+  $$('[data-memory-keep]').forEach((button)=>button.addEventListener('click',()=>memoryDecide(button.dataset.memoryKeep,'approve')));
+  $$('[data-memory-discard]').forEach((button)=>button.addEventListener('click',()=>memoryDecide(button.dataset.memoryDiscard,'reject')));
+}
+async function runMemorySearch(){
+  const query=$('#memorySearchQuery').value.trim();
+  const category=$('#memoryTopicFilter').value;
+  const params=new URLSearchParams({limit:'30'});
+  if(query)params.set('query',query);
+  if(category)params.set('category',category);
+  const list=$('#memoryResultsList');
+  const hint=$('#memoryNotFoundHint');
+  try{
+    const result=await api(`/api/v1/memory/recall?${params.toString()}`);
+    const items=result.items??[];
+    list.classList.toggle('empty-state',items.length===0);
+    list.innerHTML=items.length?items.map(memoryResultCard).join(''):'Nothing found yet.';
+    hint.textContent=(result.notFound?.length)?`Nothing matched: ${result.notFound.join(', ')}.`:'';
+    bindMemoryActions();
+  }catch(error){
+    list.classList.remove('empty-state');
+    list.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;
+    hint.textContent='';
+  }
+}
+async function loadMemoryPending(){
+  const list=$('#memoryPendingList');
+  const count=$('#memoryPendingCount');
+  try{
+    const payload=await api('/api/v1/approvals');
+    const items=(payload.approvals??[]).filter((item)=>item.kind==='memory-candidate');
+    count.textContent=`${items.length} waiting`;
+    list.classList.toggle('empty-state',items.length===0);
+    list.innerHTML=items.length?items.map((item)=>{
+      const match=/^memory-candidate:([^:]+):(.+)$/.exec(item.id)||[];
+      return memoryResultCard({
+        category:item.title,content:item.summary,observedAt:item.requestedAt,
+        promotionState:item.promotionState,contamination:item.contamination,
+        cube:match[1],signature:match[2],
+      });
+    }).join(''):'Nothing waiting.';
+    bindMemoryActions();
+  }catch(error){
+    list.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;
+  }
+}
+function populateMemoryTopicFilter(){
+  const select=$('#memoryTopicFilter');
+  if(select.dataset.populated)return;
+  select.dataset.populated='1';
+  for(const [value,label] of Object.entries(MEMORY_CATEGORY_LABELS)){
+    select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`);
+  }
+}
+async function loadMemoryDestination(){
+  populateMemoryTopicFilter();
+  await Promise.all([runMemorySearch(),loadMemoryPending()]);
+}
+$('#memorySearchButton').addEventListener('click',runMemorySearch);
+$('#memorySearchQuery').addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();runMemorySearch();}});
+$('#memoryTopicFilter').addEventListener('change',runMemorySearch);
+
 Object.assign(VIEW_LOADERS,{
+  memory:loadMemoryDestination,
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
   home:loadHome,

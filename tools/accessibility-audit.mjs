@@ -445,7 +445,7 @@ await page.evaluateOnNewDocument(TOOLKIT);
 // thirteen surfaces from focus, target-size and contrast coverage, which is how a
 // restructure turns a green audit into a smaller one.
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
 const SETTINGS_SECTIONS = [

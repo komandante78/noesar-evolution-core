@@ -63,7 +63,24 @@ async function clickOrExplain(page, selector) {
     throw new Error(`${selector}: collapsed to ${geometry.width}x${geometry.height} (display=${geometry.display}, visibility=${geometry.visibility})`);
   }
   if (geometry.disabled) throw new Error(`${selector}: element is disabled`);
-  await page.click(selector);
+  // An in-page click, not page.click(selector). page.click() resolves a remote
+  // ElementHandle, THEN scrolls it into view (isIntersectingViewport ->
+  // assertConnectedElement) before dispatching — a real round trip with real elapsed
+  // time between "found" and "clicked". Found live (D-0265): a re-render landing in that
+  // gap detaches the handle's node and page.click() throws "Node is detached from
+  // document", even though a fresh querySelector at click time would have found the
+  // element's live replacement without issue. document.querySelector(sel).click() is a
+  // single synchronous in-page operation with no such gap — it re-resolves the selector
+  // and clicks in the same tick, immune to this class of race regardless of what causes
+  // the re-render. It does not scroll the element into view, which the geometry check
+  // above already establishes is unnecessary here (getBoundingClientRect needs no scroll).
+  const clicked = await page.evaluate((sel) => {
+    const node = document.querySelector(sel);
+    if (!node) return false;
+    node.click();
+    return true;
+  }, selector);
+  if (!clicked) throw new Error(`${selector}: element disappeared before it could be clicked`);
   return geometry;
 }
 
@@ -184,7 +201,7 @@ try {
   // so dropping it from this loop would shrink the suite while the count still looked
   // healthy. Every one of these addresses must render real content, not a shell.
   const DESTINATIONS = [
-    'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge',
+    'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
     'agents', 'workflows', 'models', 'research', 'settings',
   ];
   const SETTINGS_SECTIONS = [
@@ -262,8 +279,11 @@ try {
     groups: [...document.querySelectorAll('.settings-group')].map((node) => node.textContent.trim()),
     sections: [...document.querySelectorAll('.settings-section')].map((node) => node.dataset.section),
   }));
-  check('the sidebar carries twelve destinations, not twenty-three',
-    shell.destinations.length === 12, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
+  // Thirteen since D-0265 (14_MEMORIA_A_CUBI.md, CUBE-009): Memory joined the sidebar as
+  // its own destination, the first addition to the count since the twelve-destination
+  // restructure this check's name still remembers.
+  check('the sidebar carries thirteen destinations, not twenty-three',
+    shell.destinations.length === 13, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
   check('Settings is one destination holding thirteen sections',
     shell.sections.length === 13 && shell.menu.length === 13,
     `menu=${shell.menu.length} sections=${shell.sections.length}`);
@@ -275,7 +295,7 @@ try {
   // Every address a demoted page used to answer on still resolves to the section that owns
   // it now. A bookmark that 404s is how a change of rank turns into a loss of function.
   const LEGACY = {
-    tasks: 'home', tools: 'coden', memory: 'knowledge', approvals: 'settings/audit',
+    tasks: 'home', tools: 'coden', approvals: 'settings/audit',
     providers: 'settings/privacy', hardware: 'settings/models-hardware',
     users: 'settings/people', security: 'settings/security', health: 'settings/health',
     logs: 'settings/health', updates: 'settings/updates', backups: 'settings/storage',
@@ -508,6 +528,20 @@ try {
   check('a started run suspends at its approval gate and says so',
     /awaiting_approval/.test(suspended.runText), suspended.runText);
   check('a suspended run offers cancellation', suspended.hasCancel);
+
+  // The run-started click handler calls loadWorkflows() THEN refreshApprovals(), in that
+  // order — the waitForFunction above only watches the run list, which loadWorkflows()
+  // finishes rendering before refreshApprovals() even starts its own fetch. Reading the
+  // strip immediately raced that second, independent async update: it read whatever the
+  // strip already showed, not necessarily what this run just caused. Harmless while
+  // /api/v1/approvals resolved fast enough in practice to always win the race; a real
+  // failure once one of its four sources (memory candidates, D-0265) became a genuine
+  // network round trip instead of an instant in-memory read. Waiting for the strip's own
+  // text is the fix, not a longer fixed delay — it is exact regardless of how long the
+  // fetch actually takes.
+  await page.waitForFunction(
+    () => /Approvals: 1/.test(document.querySelector('#approvalStripState')?.textContent ?? ''),
+    { timeout: 15000 });
 
   // The bottom approval strip. 01_PRODUCT/11 names it as binding; this is the check that
   // it is a real, visible box carrying a real count, not markup that exists in the DOM.
@@ -1587,7 +1621,7 @@ try {
       timezoneSummary: (document.querySelector('#settingsTimezoneSummary')?.textContent ?? '').slice(0, 160),
     })));
   } catch { context = '(page state unavailable)'; }
-  check(`harness completed without throwing [step: ${step}]`, false, `${error.message} :: ${context}`);
+  check(`harness completed without throwing [step: ${step}]`, false, `${error.message} :: ${(error.stack ?? '').split('\n').slice(0, 6).join(' | ')} :: ${context}`);
 } finally {
   await browser.close();
 }
