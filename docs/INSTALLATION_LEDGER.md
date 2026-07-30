@@ -3241,3 +3241,34 @@ containers, `noesar-evolution-net` the only project network.
 
 Predecessor: `noesar-evolution.rollback-sess002-003-replay-20260730T142926Z`
 (`:phase4-sess001-session-proof`). Rollback cost: none.
+
+## 2026-07-30 · `:phase4-cube-c1-schema` — D-0261 deployed: the memory-cubes schema (migration 0017)
+Tag `noesar-evolution:phase4-cube-c1-schema`, `FROM :phase4-sess002-003-replay`. New:
+`database/postgres/0017_memory_cubes.sql` (`embedding_models`, `memory_records`, `memory_vectors`,
+RLS, the immutable-signature trigger). Schema only — no application code reads or writes these
+tables yet. This is the first image in the session where `database/postgres/` was added to the
+`COPY` list; prior `Dockerfile.phase4-*` in this lineage only copied
+`services/reference-control-plane/` (correct for those phases, none touched the schema).
+
+**Verification (pre-deploy)**: byte identity of image contents vs. repository tree confirmed for
+both changed/new `database/postgres/` files via `docker cp` + `diff`. Static: `scripts/test.sh`
+pg-migrations + pg-contract **PASS** (17/17 migration manifest entries, checksums, transaction
+boundaries). **Live, against a real disposable PostgreSQL** (not the live data — a scratch
+container, `--network none`, throwaway workspace, removed after): confirmed `migrations:17` on
+boot, then 8 direct `psql` tests against the trigger and every new constraint — all matched the
+intended behaviour (full list in `docs/DECISION_LOG.md` `D-0261`).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_cube_c1_schema_deploy_20260730T144721Z.tar.gz` (12.5 MB, service stopped) →
+§5a (older rollback `sess002-003-replay-...T142926Z` removed, predecessor renamed to
+`.rollback-cube-c1-schema-20260730T144721Z`) → new container from the full `docker inspect`
+HostConfig JSON, env re-verified comma-separated with `cat -A` before use. **Clean on the first
+attempt**: `Up (healthy)` at 16s, only migration `0017` applied this boot (the other 16 were
+already on the real data volume from prior deploys), `data-plane.ready migrations:17
+rls_tables:18` (+3, the three new tables), `/livez`/`/readyz` 200/200, hardening intact
+(`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers, `noesar-evolution-net` the only project
+network.
+
+Predecessor: `noesar-evolution.rollback-cube-c1-schema-20260730T144721Z`
+(`:phase4-sess002-003-replay`). Rollback cost: none — three new, unreferenced tables removed.

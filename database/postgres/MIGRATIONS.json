@@ -99,6 +99,12 @@
       "filename": "0016_application_privileges.sql",
       "sha256": "defc2b5930f02ac37a3e64f9350f4812c68e7925ae9792c17132e066344530f8",
       "version": "0016"
+    },
+    {
+      "bytes": 10443,
+      "filename": "0017_memory_cubes.sql",
+      "sha256": "ebd5255ce4bd21aae6e0e40fd6b82b1d6e29f8e273aab99757499041fa2ca820",
+      "version": "0017"
     }
   ],
   "release": "0.6.0",

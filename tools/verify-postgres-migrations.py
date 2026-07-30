@@ -41,6 +41,7 @@ def main() -> int:
         "0014_multi_user_resources.sql",
         "0015_multi_user_row_level_security.sql",
         "0016_application_privileges.sql",
+        "0017_memory_cubes.sql",
     ]
 
     if manifest.get("schemaVersion") != "4.0":

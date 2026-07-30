@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block C, phase C1: the memory-cubes schema (migration 0017). See DECISION_LOG.md.
+# Schema only -- no application code reads or writes these tables yet.
+
+FROM noesar-evolution:phase4-sess002-003-replay
+
+LABEL org.noesar.phase="4-cube-c1-schema"
+LABEL org.noesar.cube-c1="schema-only"
+
+USER root
+COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/
+USER 10001:10001

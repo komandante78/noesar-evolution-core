@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0259: SESS-002+SESS-003 (replay engine) built and deployed live. Block B (SESS-001..003) COMPLETE. Next: Block C, CUBE-001..009 (memoria a cubi), 0/9, not yet scoped into phases.",
-  "next_phase": "Block C: CUBE-001..009 (MASTER_PROJECT/14_MEMORIA_A_CUBI.md) — an entire subsystem never started. First step: read the full spec (schema, trigger, the three semantics of doc 05, recall() contract §9.4, the nine categories, the embedding-model-change procedure §9.3) to scope it into phases before writing any code.",
+  "phase_status": "D-0261: CUBE phase C1 (schema: embedding_models, memory_records, memory_vectors, migration 0017) built, verified live against a real disposable Postgres (8 direct SQL tests, all passed), deployed live. CUBE-001/002/005(schema)/007 closed. ARCHITECTURAL TENSION FOUND, not resolved: CUBE-004 (Critical) demands per-cube table/type separation but the schema (per 14 §9.2 literal text) puts all four cubes in one table with an ENUM column -- Owner decision needed before C2 builds application code on this foundation.",
+  "next_phase": "Block C, phase C2 onward: BLOCKED pending Owner decision on CUBE-004 (typed views with revoked base-table access, vs genuinely separate tables, vs accept the gap). Once decided: catalogue indices (done in C1), recall() contract (CUBE-006), extractive compaction (CUBE-003, the most delicate part), contamination canary + promotion, WebUI surface (CUBE-009), consolidation layers (CUBE-008, last).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3346c21",
-  "last_updated_utc": "2026-07-30T14:35:00Z",
+  "last_commit": "PENDING_COMMIT",
+  "last_updated_utc": "2026-07-30T14:50:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -431,7 +431,8 @@
     "arch005_manifest_precision_d0252": "D-0252: hardware-probe/sector-modules/compliance-packs get explicit ADAPTER_MANIFESTS entries with operations:[] (real code, verified read/validate-only by reading every route + export). vector-store/object-store/host-bridge get no entry, each reason named in adapter-capability.mjs. Node 1222 tests (1221 pass + 1 honest skip), ESLint 244 files 0 errors. Deployed live :phase4-arch005-manifest-precision, byte identity proven pre-deploy, hardening/migrations verified post-deploy.",
     "arch008_execute_rust_mirror_d0253": "D-0253: rust/crates/noesar-executor::execute() gains execute_sandbox param, run_sandboxed() spawns noesar-sandbox via std::process::Command (spec file, thread-drained stdout/stderr, EX_CONFIG=78 3-way outcome split) — exact mirror of runSandboxedSync. 3 new live tests against the real binary (tests/sandbox_live.rs, HAVE_BINARY-gated like sandbox-runner.test.mjs): real echo (exitCode 0, stdout captured), real /bin/false (performed:true ok:false), real 64MiB-vs-512MiB kernel-enforced limit (values proven in sandbox-runner.test.mjs, not reinvented). EXEC-011/012 added to conformance/executor-vectors.json (12 total, was 10) — zero-process decision branches (disabled-by-operator, token-without-limits) satisfied on both sides. Full Rust workspace 140/140 (was 135), Node 1223 pass/1 skip/0 fail, ESLint 244f 0 errors, MANIFEST 5859/5859. Deployed live, comment-only on shipped side (Rust crate ships nowhere).",
     "sess001_session_proof_d0255": "D-0255: session-proof.mjs (new) assembles the ten SESS-001 fields from a real WorkspaceActionOrchestrator run + its EventLedger correlation. Fixed 3 small gaps found building it: hypotheses/raw request now stored on the run, capability.denied now recorded as an event, egress now sampled at plan()/approve() via injected privacyStateFor(). provenienza declared UNTRACKED (no CUBE yet), fixture declared DECISION_LAYER_ONLY (no SESS-002 replay engine yet). Node 1229/1230 (+6), ESLint 246 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess001-session-proof), MANIFEST 5861/5861.",
-    "sess002_003_replay_d0259": "D-0259: session-replay.mjs (new) — compareDecisions/comparePolicyOutcome/callAtomReplay/DECISION_SURFACES. WorkspaceActionOrchestrator#replay() (LOCAL_RECOMPUTE vs EXTERNAL_PACK via atomd /v1/replay, D-0227-proven protocol) + #replayHistoricalFixture() (SESS-003 policy drift). Real bug found+fixed: usedExternal counted fixtures itself as external routing, would have sent fully-local decisions down the wrong path — fixed with DECISION_SURFACES (excludes fixtures), shared by session-proof.mjs which had the same bug. 17 new tests incl. a provoked divergence (proves the detector fires, not just passes) and a real /v1/fixtures->/v1/replay HTTP round trip. Node 1246/1247 (+18), ESLint 248 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess002-003-replay), MANIFEST 5863/5863."
+    "sess002_003_replay_d0259": "D-0259: session-replay.mjs (new) — compareDecisions/comparePolicyOutcome/callAtomReplay/DECISION_SURFACES. WorkspaceActionOrchestrator#replay() (LOCAL_RECOMPUTE vs EXTERNAL_PACK via atomd /v1/replay, D-0227-proven protocol) + #replayHistoricalFixture() (SESS-003 policy drift). Real bug found+fixed: usedExternal counted fixtures itself as external routing, would have sent fully-local decisions down the wrong path — fixed with DECISION_SURFACES (excludes fixtures), shared by session-proof.mjs which had the same bug. 17 new tests incl. a provoked divergence (proves the detector fires, not just passes) and a real /v1/fixtures->/v1/replay HTTP round trip. Node 1246/1247 (+18), ESLint 248 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess002-003-replay), MANIFEST 5863/5863.",
+    "cube_c1_schema_d0261": "D-0261: database/postgres/0017_memory_cubes.sql -- embedding_models/memory_records/memory_vectors, RLS, signature_is_immutable trigger, derived_must_cite/counters_only_for_experience/nine-category CHECKs. Verified against a REAL disposable PostgreSQL (not static token-matching): 8 direct psql tests, all matched intended behaviour. scripts/test.sh pg-migrations+pg-contract PASS (17 migrations). Deployed live (:phase4-cube-c1-schema), migrations:17 rls_tables:18. CUBE-004 tension found and flagged, not resolved -- schema is one table with an ENUM cube column, contradicting the criteria own demand for table/type-level separation."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -834,7 +835,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Block B done. Read MASTER_PROJECT/14_MEMORIA_A_CUBI.md in full, then propose a phase breakdown for CUBE-001..009 before starting to build.",
+  "next_action": "Owner decision needed on CUBE-004 before continuing Block C. See docs/DECISION_LOG.md D-0261 for the two concrete fixes proposed.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
