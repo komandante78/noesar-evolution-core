@@ -3346,3 +3346,32 @@ network.
 Predecessor: `noesar-evolution.rollback-memory-application-layer-20260730T165253Z`
 (`:phase4-cube-typed-views`). Rollback cost: none on live data — no application code wrote
 through the new memory service before this phase.
+
+## 2026-07-30 · `:phase4-memory-model-swap` — D-0264 deployed: the embedding model swap procedure (CUBE-008)
+Tag `noesar-evolution:phase4-memory-model-swap`, `FROM :phase4-memory-application-layer`. New:
+`services/reference-control-plane/src/memory-model-swap.mjs` — `ModelSwapService` implementing
+`14 §9.3`'s four steps (register not-current, incremental backfill, atomic cutover at 100%
+coverage, purge the superseded model's index). Full detail: `docs/DECISION_LOG.md` `D-0264`.
+
+**Verification (pre-deploy)**: `npm test` 1284/1285 (1 pre-existing unrelated skip), `npm run
+lint` 255 files / 0 errors, `scripts/test.sh` 10/10 STEP. **Live, against a real disposable
+PostgreSQL**: `tools/acceptance/memory-integration.mjs` extended with `MEM-25..36` —
+**35/35 PASS**, including a real bug caught and fixed before shipping (`purgeSuperseded()`
+reported `deleted:0` against a real 7-row deletion because this project's hand-rolled pg client
+computes `rowCount` from the returned row set, not PostgreSQL's `CommandComplete` tag — fixed
+by adding `RETURNING`, the same convention `postgres-integration.mjs`'s `DB-17` already uses).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_memory_model_swap_deploy_20260730T170329Z.tar.gz` (12.9 MB, service
+stopped) → §5a (older rollback `memory-application-layer-...T165253Z` removed, predecessor
+renamed to `.rollback-memory-model-swap-20260730T170329Z`) → new container from the full
+`docker inspect` HostConfig JSON. **Clean on the first attempt**: `Up (healthy)` at 12s,
+`data-plane.ready migrations:19 rls_tables:18`, `data-plane.workspace-projected ensured:true`,
+`/livez`/`/readyz` 200/200, hardening intact (`ReadonlyRootfs:true CapDrop:[ALL]
+Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Byte identity of the two changed/new files
+confirmed via `docker cp` + `diff`. Post-cleanup inventory: exactly 2 `noesar-evolution*`
+containers, `noesar-evolution-net` the only project network.
+
+Predecessor: `noesar-evolution.rollback-memory-model-swap-20260730T170329Z`
+(`:phase4-memory-application-layer`). Rollback cost: none on live data — `embedding_models` is
+empty in production; this phase only proves the swap mechanism against a disposable instance.

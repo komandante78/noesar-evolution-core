@@ -16,6 +16,7 @@ import { PgConnection } from '../../services/reference-control-plane/src/pg-clie
 import { MemoryService } from '../../services/reference-control-plane/src/memory-service.mjs';
 import { compactRun } from '../../services/reference-control-plane/src/memory-compaction.mjs';
 import { EventLedger } from '../../services/reference-control-plane/src/events.mjs';
+import { ModelSwapService } from '../../services/reference-control-plane/src/memory-model-swap.mjs';
 
 const results = [];
 let failures = 0;
@@ -166,9 +167,60 @@ async function main() {
   check('MEM-22', 'the compacted rows landed in workshop, project-candidate, with the run id in provenance', compactedRows.rows.length === 2 && compactedRows.rows.every((r) => r.cube === 'workshop' && r.promotion_state === 'project-candidate'), JSON.stringify(compactedRows.rows));
   check('MEM-23', 'the two compacted categories match the event mapping (decisione for planned, decisione for approved)', compactedRows.rows.every((r) => r.category === 'decisione'), JSON.stringify(compactedRows.rows));
 
+  // ---- MEM-25..35 : ModelSwapService, CUBE-008's four steps, measured end-to-end -----
+  const modelSwap = new ModelSwapService({ dataPlane: () => supervisor });
+  const seededTotal = await admin.query('SELECT count(*)::int AS n FROM noesar_knowledge.memory_records');
+  const totalRecords = seededTotal.rows[0].n;
+  const deterministicEmbed = async (record) => Array.from(
+    { length: 384 },
+    (_, i) => ((record.id.charCodeAt(i % record.id.length) + i) % 97) / 97,
+  );
+
+  const modelA = 'a1000000-0000-4000-8000-000000000001';
+  const registered = await modelSwap.registerModel({ id: modelA, name: 'test-model-a', dimensions: 384 });
+  check('MEM-25', 'registerModel() (step 1) inserts a model with is_current:false', registered.is_current === false, JSON.stringify(registered));
+
+  const coverageBefore = await modelSwap.coverage(modelA);
+  check('MEM-26', 'coverage() before any backfill is 0 indexed, complete:false, real total from the corpus written above', coverageBefore.indexed === 0 && coverageBefore.complete === false && coverageBefore.total === totalRecords, JSON.stringify({ coverageBefore, totalRecords }));
+
+  const backfillA = await modelSwap.backfillBatch({ modelId: modelA, embed: deterministicEmbed, batchSize: 1000 });
+  check('MEM-27', 'backfillBatch() (step 2) indexes every pending record in one pass and reports 100% coverage', backfillA.processed === totalRecords && backfillA.coverage.complete === true, JSON.stringify(backfillA));
+
+  await expectRejects('MEM-28', 'activate() refuses a model registered but never backfilled (0% coverage) — no partial cutover', () => {
+    const modelUnbackfilled = 'a2000000-0000-4000-8000-000000000002';
+    return modelSwap.registerModel({ id: modelUnbackfilled, name: 'test-model-unbackfilled', dimensions: 384 })
+      .then(() => modelSwap.activate(modelUnbackfilled));
+  });
+
+  const activatedA = await modelSwap.activate(modelA);
+  check('MEM-29', 'activate() (step 3) flips is_current to the newly-complete model', activatedA.is_current === true, JSON.stringify(activatedA));
+
+  const onlyOneCurrent = await admin.query('SELECT count(*)::int AS n FROM noesar_knowledge.embedding_models WHERE is_current');
+  check('MEM-30', 'exactly one model is is_current after activation, never zero or two', onlyOneCurrent.rows[0].n === 1, JSON.stringify(onlyOneCurrent.rows[0]));
+
+  const recallAfterActivation = await memoryService.recall({}, { actorId: ownerId });
+  check('MEM-31', 'recall() coverage.vectorIndexComplete becomes true once a real model is current and fully indexed — no longer the honest false from MEM-12', recallAfterActivation.coverage.vectorIndexComplete === true && recallAfterActivation.coverage.model === 'test-model-a', JSON.stringify(recallAfterActivation.coverage));
+
+  await expectRejects('MEM-32', 'purgeSuperseded() refuses to delete the CURRENT model\'s index', () => modelSwap.purgeSuperseded(modelA));
+
+  // A second model supersedes the first — the full swap lifecycle, not just one cutover.
+  const modelB = 'b1000000-0000-4000-8000-000000000001';
+  await modelSwap.registerModel({ id: modelB, name: 'test-model-b', dimensions: 384 });
+  await modelSwap.backfillBatch({ modelId: modelB, embed: deterministicEmbed, batchSize: 1000 });
+  await modelSwap.activate(modelB);
+  const modelAVectorsBefore = await admin.query('SELECT count(*)::int AS n FROM noesar_knowledge.memory_vectors WHERE model_id = $1', [modelA]);
+  const purged = await modelSwap.purgeSuperseded(modelA);
+  check('MEM-33', 'purgeSuperseded() (step 4) deletes exactly the superseded model\'s index rows', purged.deleted === modelAVectorsBefore.rows[0].n && purged.deleted === totalRecords, JSON.stringify({ purged, before: modelAVectorsBefore.rows[0].n }));
+
+  const recordsAfterPurge = await admin.query('SELECT count(*)::int AS n FROM noesar_knowledge.memory_records');
+  check('MEM-34', 'purging an old index never touches memory_records — the records are the memory, the vector was only ever an index', recordsAfterPurge.rows[0].n === totalRecords, JSON.stringify(recordsAfterPurge.rows[0]));
+
+  const recallAfterPurge = await memoryService.recall({}, { actorId: ownerId });
+  check('MEM-35', 'recall() still reports a complete index after the old model is purged — served by the NEW current model throughout, never a gap', recallAfterPurge.coverage.vectorIndexComplete === true && recallAfterPurge.coverage.model === 'test-model-b', JSON.stringify(recallAfterPurge.coverage));
+
   await admin.end();
   const stopped = await supervisor.stop();
-  check('MEM-24', 'clean shutdown after the full memory-service exercise', stopped.clean === true, JSON.stringify(stopped));
+  check('MEM-36', 'clean shutdown after the full memory-service exercise', stopped.clean === true, JSON.stringify(stopped));
 }
 
 main()
