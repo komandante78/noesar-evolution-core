@@ -270,3 +270,152 @@ test('the status states the execution surface it does not have', () => {
   assert.equal(status.requiresWholeWorkspaceShadow, true);
   assert.deepEqual(status.refusedOperations, ['EXECUTE']);
 });
+
+// --- ARCH-008 / D-0250: EXECUTE as a per-installation client decision -------------------------
+
+import { existsSync as fsExistsSync } from 'node:fs';
+import { EXECUTE_DISABLED_BY_OPERATOR, EXECUTE_TOKEN_WITHOUT_LIMITS } from '../src/executor.mjs';
+
+const SANDBOX_BINARY = join(import.meta.dirname, '../../../rust/target/release/noesar-sandbox');
+const HAVE_SANDBOX_BINARY = fsExistsSync(SANDBOX_BINARY);
+
+test('with no executeSandbox argument at all, EXECUTE is refused EXACTLY as before D-0250 — zero regression', () => {
+  const b = bench(['a.txt'], true);
+  try {
+    const token = b.minter.mint(b.authorized, ask(['a.txt'], ['EXECUTE']), NOW);
+    const report = execute({
+      authorized:b.authorized, minter:b.minter, tokens:[token], shadow:b.shadow,
+      actions:[{ kind:'EXECUTE', command:'rm -rf /' }],
+      expectation:expectation(['a.txt']), nowUnix:NOW,
+    });
+    assert.equal(report.performed, 0);
+    assert.equal(report.outcomes[0].reason, NO_EXECUTION_SURFACE, 'byte-identical to EXEC-007, unchanged');
+  } finally { b.cleanup(); }
+});
+
+test('with a config present but disabled, the reason names the operator decision, distinct from "no surface"', () => {
+  const b = bench(['a.txt'], true);
+  try {
+    const token = b.minter.mint(b.authorized, ask(['a.txt'], ['EXECUTE']), NOW);
+    const report = execute({
+      authorized:b.authorized, minter:b.minter, tokens:[token], shadow:b.shadow,
+      actions:[{ kind:'EXECUTE', path:'a.txt', command:'/bin/true' }],
+      expectation:expectation(['a.txt']), nowUnix:NOW,
+      executeSandbox: { enabled:false, requested:false, binaryPath:SANDBOX_BINARY },
+    });
+    assert.equal(report.performed, 0);
+    assert.equal(report.outcomes[0].reason, EXECUTE_DISABLED_BY_OPERATOR);
+    assert.notEqual(report.outcomes[0].reason, NO_EXECUTION_SURFACE, 'must not claim there is no surface when there is one, just disabled');
+  } finally { b.cleanup(); }
+});
+
+test('enabled, but the token was minted with no limits — refused defensively, never run with the container\'s own limits', {
+  skip: !HAVE_SANDBOX_BINARY,
+}, () => {
+  const b = bench(['a.txt'], true);
+  try {
+    // No `.limits` on the mint request, and `bench()`'s minter carries no ceiling — the
+    // mint-time gate (capability.mjs, D-0248) only fires when a ceiling is configured, so
+    // this token reaches execute() with `limits: null` deliberately, to prove the executor's
+    // OWN defensive check catches it independently of the mint-time one.
+    const token = b.minter.mint(b.authorized, ask(['a.txt'], ['EXECUTE']), NOW);
+    assert.equal(token.limits, null, 'fixture check: this token must carry no limits');
+    const report = execute({
+      authorized:b.authorized, minter:b.minter, tokens:[token], shadow:b.shadow,
+      actions:[{ kind:'EXECUTE', path:'a.txt', command:'/bin/true' }],
+      expectation:expectation(['a.txt']), nowUnix:NOW,
+      executeSandbox: { enabled:true, requested:true, binaryPath:SANDBOX_BINARY },
+    });
+    assert.equal(report.performed, 0);
+    assert.equal(report.outcomes[0].reason, EXECUTE_TOKEN_WITHOUT_LIMITS);
+  } finally { b.cleanup(); }
+});
+
+// EXECUTE's granted `path` is the working directory the command runs confined to — not a
+// file, unlike WRITE/DELETE's paths. `'.'` names the shadow root itself via the SAME
+// `contained()` helper those kinds use (`resolve(root, '.') === root`), so this needs its own
+// plan whose step declares `.` as a file, not `bench()`'s file-content fixture.
+function benchDir(destructive = true) {
+  const source = mkdtempSync(join(tmpdir(), 'noesar-exec-dir-src-'));
+  const shadowRoot = mkdtempSync(join(tmpdir(), 'noesar-exec-dir-dst-'));
+  // ShadowWorkspace.ofWorkspace refuses "a shadow of nothing" (a structurally empty
+  // materialisation can never report an undeclared write) — one placeholder file, not part
+  // of the EXECUTE grant itself, satisfies that guard.
+  writeFileSync(join(source, 'placeholder.txt'), 'unrelated to the EXECUTE grant');
+  const plan = {
+    mode:'safe', constraints:[],
+    steps:[{ id:'a', description:'s', files:['.'], commands:[], dependsOn:[],
+      blastRadius:{ paths:['.'], reachesOutsideWorkspace:false, destructive } }],
+  };
+  const authorized = authorizePlan(plan, {
+    approverId:'owner-001', grantedAtUnix:NOW, expiresAtUnix:NOW + 3600, scopeNote:'test',
+  }, NOW);
+  return {
+    source, shadowRoot, authorized, minter: new TokenMinter(SECRET),
+    shadow: ShadowWorkspace.ofWorkspace(source, shadowRoot),
+    cleanup() {
+      rmSync(source, { recursive:true, force:true });
+      rmSync(shadowRoot, { recursive:true, force:true });
+    },
+  };
+}
+
+test('enabled, granted, limited — a real command actually runs, contained, through the real binary', {
+  skip: !HAVE_SANDBOX_BINARY,
+}, () => {
+  const b = benchDir();
+  try {
+    const token = b.minter.mint(b.authorized, {
+      ...ask(['.'], ['EXECUTE']),
+      limits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 },
+    }, NOW);
+    assert.ok(token.limits, 'fixture check: this token must carry limits');
+    const report = execute({
+      authorized:b.authorized, minter:b.minter, tokens:[token], shadow:b.shadow,
+      actions:[{ kind:'EXECUTE', path:'.', command:'/bin/echo', args:['ran for real'] }],
+      expectation:{ pathsTheDiffMustTouch:[], testsExpectedToPass:[], testsExpectedToFail:[] },
+      nowUnix:NOW,
+      executeSandbox: { enabled:true, requested:true, binaryPath:SANDBOX_BINARY },
+    });
+    assert.equal(report.performed, 1, JSON.stringify(report.outcomes));
+    assert.equal(report.outcomes[0].exitCode, 0);
+    assert.match(report.outcomes[0].stdout, /ran for real/);
+  } finally { b.cleanup(); }
+});
+
+test('enabled, granted, limited — spend-before-effect still holds: a forged token runs nothing', {
+  skip: !HAVE_SANDBOX_BINARY,
+}, () => {
+  const b = benchDir();
+  try {
+    const token = b.minter.mint(b.authorized, {
+      ...ask(['.'], ['EXECUTE']),
+      limits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 },
+    }, NOW);
+    const forged = { ...token, mac: token.mac.slice(0, -1) + (token.mac.slice(-1) === '0' ? '1' : '0') };
+    const report = execute({
+      authorized:b.authorized, minter:b.minter, tokens:[forged], shadow:b.shadow,
+      actions:[{ kind:'EXECUTE', path:'.', command:'/bin/echo', args:['must not run'] }],
+      expectation:{ pathsTheDiffMustTouch:[], testsExpectedToPass:[], testsExpectedToFail:[] },
+      nowUnix:NOW,
+      executeSandbox: { enabled:true, requested:true, binaryPath:SANDBOX_BINARY },
+    });
+    assert.equal(report.performed, 0);
+  } finally { b.cleanup(); }
+});
+
+test('the status tells the truth in both directions: disabled names the mechanism, enabled names the surface', () => {
+  const off = executorStatus({ enabled:false, requested:false });
+  assert.equal(off.executionSurface, false);
+  assert.deepEqual(off.refusedOperations, ['EXECUTE']);
+  assert.match(off.reason, /disabled on this installation/);
+
+  const on = executorStatus({ enabled:true, requested:true });
+  assert.equal(on.executionSurface, true);
+  assert.deepEqual(on.refusedOperations, []);
+  assert.match(on.reason, /enabled on this installation/);
+
+  const nothing = executorStatus();
+  assert.equal(nothing.executionSurface, false);
+  assert.equal(nothing.executeSandboxEnabled, false);
+});

@@ -202,3 +202,79 @@ test('the sandbox\'s own report line is parsed and separated from the command\'s
   assert.match(result.stderr, /genuine command stderr/);
   assert.doesNotMatch(result.stderr, /"sandbox":"APPLIED"/, 'the report line must not leak into the command\'s own stderr');
 });
+
+// --- the synchronous twin, used by executor.mjs -------------------------------------------------
+
+import { runSandboxedSync } from '../src/sandbox-runner.mjs';
+
+test('runSandboxedSync refuses a call with no binary configured', () => {
+  assert.throws(
+    () => runSandboxedSync({ binaryPath: null, limits: { memoryBytes: 1024 * 1024 }, command: '/bin/true' }),
+    SandboxError,
+  );
+});
+
+test('runSandboxedSync refuses to run under no limits at all', () => {
+  assert.throws(
+    () => runSandboxedSync({ binaryPath: BINARY, limits: null, command: '/bin/true' }),
+    /no limits at all/,
+  );
+});
+
+test('runSandboxedSync: a tiny command runs to completion under generous limits', { skip: !HAVE_BINARY }, () => {
+  const result = runSandboxedSync({
+    binaryPath: BINARY, limits: { memoryBytes: 128 * 1024 * 1024, cpuSeconds: 5 },
+    command: '/bin/echo', argv: ['hello sync'],
+  });
+  assert.equal(result.performed, true);
+  assert.equal(result.ok, true);
+  assert.match(result.stdout, /hello sync/);
+});
+
+test('runSandboxedSync: a command exiting non-zero is performed but not ok', { skip: !HAVE_BINARY }, () => {
+  const result = runSandboxedSync({
+    binaryPath: BINARY, limits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 },
+    command: '/bin/sh', argv: ['-c', 'exit 17'],
+  });
+  assert.equal(result.performed, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.exitCode, 17);
+});
+
+test('runSandboxedSync: refused-before-running is distinguishable from the async path\'s same case', {
+  skip: !HAVE_BINARY,
+}, () => {
+  const asyncEquivalent = { memoryBytes: Number.MAX_SAFE_INTEGER };
+  // No network/host dependency: just confirm the sync path also reports exit 78 + refused
+  // when the sandbox itself declines, using a spec unlikely to be within any real ceiling.
+  const result = runSandboxedSync({ binaryPath: BINARY, limits: asyncEquivalent, command: '/bin/true' });
+  // On an unbounded host this may or may not be refused (see the async test's own caveat) —
+  // assert only the SHAPE of a refusal when it happens, not that it always happens here.
+  if (result.refused) {
+    assert.equal(result.performed, false);
+    assert.equal(result.exitCode, 78);
+  }
+});
+
+test('runSandboxedSync: a timeout is its own outcome', { skip: !HAVE_BINARY }, () => {
+  const result = runSandboxedSync({
+    binaryPath: BINARY, limits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 30 },
+    command: '/bin/sleep', argv: ['30'], timeoutMs: 300,
+  });
+  assert.equal(result.performed, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.timedOut, true);
+});
+
+test('runSandboxedSync: the sandbox\'s own report is separated from the command\'s real stderr', {
+  skip: !HAVE_BINARY,
+}, () => {
+  const result = runSandboxedSync({
+    binaryPath: BINARY, limits: { memoryBytes: 64 * 1024 * 1024, cpuSeconds: 5 },
+    command: '/bin/sh', argv: ['-c', 'echo "genuine sync stderr" 1>&2'],
+  });
+  assert.ok(result.report);
+  assert.equal(result.report.sandbox, 'APPLIED');
+  assert.match(result.stderr, /genuine sync stderr/);
+  assert.doesNotMatch(result.stderr, /"sandbox":"APPLIED"/);
+});

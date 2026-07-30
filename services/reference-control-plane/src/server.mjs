@@ -31,6 +31,8 @@ import {
 } from './capability.mjs';
 import { compare as compareShadow, shadowStatus, ShadowError } from './shadow.mjs';
 import { executorStatus } from './executor.mjs';
+import { resolveExecuteSandboxConfig } from './execute-sandbox-config.mjs';
+import { detectSandboxSync } from './sandbox-runner.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
 import {
@@ -135,11 +137,25 @@ const exposureScope = resolveBindScope({ bindAddress, bindScope:process.env.NOES
 if (bindAddress && !isWildcardAddress(bindAddress)) allowedHosts.add(bindAddress.toLowerCase());
 
 const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
+// ARCH-008 / D-0250: the client's own decision for this installation, resolved once at boot,
+// before the minter exists — the minter needs the real ceiling to enforce D-0248's mint-time
+// widening check for EXECUTE grants (`exceedsCeiling`); constructing it with no ceiling would
+// leave that check silently never firing, on any installation, whether EXECUTE is enabled or
+// not. `detectSandboxSync` runs the binary's own `--detect` once, synchronously (module scope
+// here has no event loop running yet to await into) — absence or a failed probe is `null`,
+// never assumed.
+const executeSandboxConfig = resolveExecuteSandboxConfig(process.env);
+// Probed only when the operator actually asked for it — an installation that never set
+// NOESAR_EXECUTE_SANDBOX=enabled must not have this process spawn anything at boot either,
+// same rule local-model-runtime.mjs states for itself: nothing executes until configured.
+const sandboxCeiling = executeSandboxConfig.enabled
+  ? detectSandboxSync({ binaryPath: executeSandboxConfig.binaryPath })?.containerCeiling ?? null
+  : null;
 // The capability secret is generated per process and never written down: a token that
 // outlived the engine that issued it would be a grant with no ledger behind it. The
 // consequence -- a restart invalidates every outstanding token -- is reported by
 // capabilityStatus rather than left to be discovered.
-const capabilityMinter = new TokenMinter(randomBytes(32));
+const capabilityMinter = new TokenMinter(randomBytes(32), { ceiling: sandboxCeiling });
 // The engine causal record. In memory, like the capability registry, and eventsStatus()
 // says so; it does not replace the product audit trail, which is a different question
 // (who did what) with a different lifetime.
@@ -168,7 +184,7 @@ const shadowsRoot = String(process.env.NOESAR_SHADOWS_ROOT ?? '').trim()
   || join(tmpdir(), 'noesar-workspace-action-shadows');
 const workspaceActions = new WorkspaceActionOrchestrator({
   workspaceRoot: workspace, shadowsRoot,
-  minter: capabilityMinter, events: engineEvents,
+  minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
 // (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,
@@ -1551,7 +1567,7 @@ const requestListener = async (req, res) => {
     // installation can be asked what it enforces.
     if (req.method === 'GET' && url.pathname === '/api/v1/executor') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      return json(res, 200, executorStatus());
+      return json(res, 200, executorStatus(executeSandboxConfig));
     }
 
     // --- shadow execution · phase 1 step 4 --------------------------------------

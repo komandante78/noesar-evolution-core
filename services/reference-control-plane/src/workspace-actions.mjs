@@ -91,8 +91,9 @@ export class WorkspaceActionOrchestrator {
   #events;
   #runs = new Map();
   #reasoningFor;
+  #executeSandbox;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -110,6 +111,11 @@ export class WorkspaceActionOrchestrator {
     this.#shadowsRoot = shadowsRoot;
     this.#minter = minter;
     this.#events = events;
+    // ARCH-008 / D-0250: the client's own decision, resolved once at boot in server.mjs
+    // (`resolveExecuteSandboxConfig`) and threaded through, never re-read per call — a
+    // config that could change mid-run would make "the token's limits were checked against
+    // the installed ceiling at mint time" stale by the time execute() spends it.
+    this.#executeSandbox = executeSandbox;
     // A factory, not an instance: a router accumulates the provenance of the calls made
     // through it, so one shared across runs would attribute this run's surfaces to the
     // previous one's. One per call, discarded with the call.
@@ -288,7 +294,7 @@ export class WorkspaceActionOrchestrator {
     const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, shadowRoot);
     try {
       const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: file.contents }));
-      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix });
+      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
       const executeEventId = this.#record(runId, approveEventId, approverId, 'executor.ran',
         { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
       this.#record(runId, executeEventId, approverId, 'shadow.compared',

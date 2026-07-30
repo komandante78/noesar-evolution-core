@@ -20,8 +20,9 @@
 // (local-model-runtime.mjs): `spawn(command, argv)`, never a shell string. A command built as
 // text and handed to a shell is a command an operator-supplied value can extend.
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -102,6 +103,23 @@ export async function detectSandbox({ binaryPath, timeoutMs = 5000 } = {}) {
       try { resolve(JSON.parse(stdout)); } catch { resolve(null); }
     });
   });
+}
+
+/// The synchronous twin of `detectSandbox`, for `server.mjs`'s module-scope boot sequence —
+/// synchronous throughout, same as `TokenMinter`'s own construction. Used exactly once, at
+/// startup, to give the live minter the real ceiling it needs to enforce D-0248's mint-time
+/// widening check (`exceedsCeiling`) for EXECUTE grants — without this, a minter constructed
+/// with no ceiling silently never runs that check at all, on any installation.
+export function detectSandboxSync({ binaryPath, timeoutMs = 5000 } = {}) {
+  if (!binaryPath) return null;
+  let result;
+  try {
+    result = spawnSync(binaryPath, ['--detect'], { timeout: timeoutMs, encoding: 'utf8' });
+  } catch {
+    return null;
+  }
+  if (result.error || result.status !== 0) return null;
+  try { return JSON.parse(String(result.stdout ?? '')); } catch { return null; }
 }
 
 /// Run `command` with `argv` under `limits`, via a short-lived `noesar-sandbox` child.
@@ -192,5 +210,79 @@ export async function runSandboxed({
     // Best-effort: the spec never contains a secret (it is six integers), so a leaked temp
     // file is a cleanliness defect, not a security one — but it is still cleaned up.
     await rm(specDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/// The synchronous twin of `runSandboxed`, for callers that must stay synchronous —
+/// `executor.mjs`'s `execute()` is one, deliberately: it does its own effects with
+/// `readFileSync`/`writeFileSync`/`rmSync` throughout, and "the token is spent before the
+/// effect" is a property that is trivially true in synchronous code and a property async
+/// code has to work to preserve. Rather than make `execute()` async — which would ripple into
+/// `workspace-actions.mjs`'s `approve()` and every caller up to `server.mjs`'s route handler,
+/// for a capability nothing calls in production yet — this uses `spawnSync`, the same
+/// primitive Node offers for exactly this case.
+///
+/// Behaviourally identical to `runSandboxed`: same validation, same spec-file format, same
+/// three-way outcome (refused-before-running / ran-and-failed / ran-and-succeeded), same
+/// report/stderr split. Only the mechanism differs.
+export function runSandboxedSync({
+  binaryPath, limits, command, argv = [], cwd, env, timeoutMs = 30000,
+  maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES,
+}) {
+  if (!binaryPath) throw new SandboxError('UNAVAILABLE', 'no sandbox binary configured on this installation');
+  if (!limits || LIMIT_DIMENSIONS.every((dimension) => limits[dimension] === null || limits[dimension] === undefined)) {
+    throw new SandboxError('INVALID', 'runSandboxedSync refuses to run a command under no limits at all');
+  }
+  if (!command) throw new SandboxError('INVALID', 'no command given');
+
+  const specDir = mkdtempSync(join(tmpdir(), 'noesar-sandbox-'));
+  const specPath = join(specDir, `${randomBytes(8).toString('hex')}.json`);
+  try {
+    writeFileSync(specPath, JSON.stringify(limits), { mode: 0o600 });
+
+    let result;
+    try {
+      result = spawnSync(binaryPath, ['--spec', specPath, '--', command, ...argv], {
+        cwd, env, timeout: timeoutMs, killSignal: 'SIGKILL',
+        maxBuffer: maxOutputBytes, encoding: 'utf8',
+      });
+    } catch (error) {
+      throw new SandboxError('UNAVAILABLE', `cannot start the sandbox: ${error.message}`);
+    }
+
+    if (result.error) {
+      // ETIMEDOUT is spawnSync's own signal that the timeout fired and the process was
+      // killed — a real, distinct outcome, not a launch failure, so it is reported as one
+      // rather than thrown.
+      if (result.error.code === 'ETIMEDOUT' || result.signal) {
+        const { commandStderr } = splitSandboxReport(String(result.stderr ?? ''));
+        return {
+          performed: true, ok: false, timedOut: result.error.code === 'ETIMEDOUT',
+          exitCode: null, signal: result.signal ?? null,
+          stdout: String(result.stdout ?? ''), stdoutTruncated: false,
+          stderr: commandStderr, report: null,
+        };
+      }
+      throw new SandboxError('UNAVAILABLE', `sandbox process error: ${result.error.message}`);
+    }
+
+    const stdoutTruncated = Buffer.byteLength(String(result.stdout ?? ''), 'utf8') >= maxOutputBytes;
+    const { report, commandStderr } = splitSandboxReport(String(result.stderr ?? ''));
+    const code = result.status;
+
+    if (code === EX_CONFIG) {
+      return {
+        performed: false, ok: false, refused: true, exitCode: code,
+        reason: report?.reason ?? 'sandbox refused before the command ran',
+        stdout: String(result.stdout ?? ''), stderr: commandStderr, report,
+      };
+    }
+    return {
+      performed: true, ok: code === 0, timedOut: false, exitCode: code, signal: result.signal ?? null,
+      stdout: String(result.stdout ?? ''), stdoutTruncated,
+      stderr: commandStderr, stderrTruncated: false, report,
+    };
+  } finally {
+    rmSync(specDir, { recursive: true, force: true });
   }
 }

@@ -26,6 +26,7 @@
 import { readFileSync, writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { compare, contained, COVERAGE_WHOLE, ShadowError } from './shadow.mjs';
+import { runSandboxedSync, SandboxError } from './sandbox-runner.mjs';
 
 export const ACTIONS = Object.freeze(['READ', 'WRITE', 'DELETE', 'EXECUTE']);
 
@@ -36,13 +37,27 @@ const OPERATION_OF = Object.freeze({
 export const NO_EXECUTION_SURFACE =
   'this layer has no execution surface: a command cannot be contained here, and pretending to run it would be worse than refusing';
 
+// ARCH-008 / D-0250: the client's decision, not this file's. `execute()`'s default is
+// unchanged — call it exactly as every existing caller does, with no `executeSandbox`
+// argument, and EXECUTE is `NO_EXECUTION_SURFACE`, byte-identical to before this file
+// changed (conformance vector EXEC-007 is untouched by this change on purpose). This reason
+// fires only when a caller HAS wired an execute-sandbox config (`execute-sandbox-config.mjs`,
+// `NOESAR_EXECUTE_SANDBOX`) and the operator's own answer on THIS installation is "no".
+export const EXECUTE_DISABLED_BY_OPERATOR =
+  'EXECUTE capability exists on this installation but is disabled by operator configuration (NOESAR_EXECUTE_SANDBOX=disabled)';
+
+export const EXECUTE_TOKEN_WITHOUT_LIMITS =
+  'an EXECUTE token without an isolation envelope cannot be run: the sandbox refuses a command under no limits at all';
+
 function tokenFor(tokens, action, planDigest) {
   return tokens.find((token) => token.planDigest === planDigest
     && token.paths.includes(action.path)
     && token.operations.includes(OPERATION_OF[action.kind]));
 }
 
-export function execute({ authorized, minter, tokens, shadow, actions, expectation, tests = [], nowUnix }) {
+export function execute({
+  authorized, minter, tokens, shadow, actions, expectation, tests = [], nowUnix, executeSandbox = null,
+}) {
   // A shadow holding only the paths the plan named cannot ever report that a file nobody
   // declared was touched: `unexpected` would be empty because there was nothing else there
   // to observe, not because nothing else happened. Refused here rather than run to a result
@@ -60,9 +75,76 @@ export function execute({ authorized, minter, tokens, shadow, actions, expectati
   const outcomes = [];
 
   for (const action of actions ?? []) {
+    if (action.kind === 'EXECUTE' && !executeSandbox?.enabled) {
+      // Default path, unchanged since before D-0250: no config passed at all reports the
+      // exact original reason (EXEC-007, byte-identical). A config that WAS passed but says
+      // `enabled: false` is a different, more accurate fact — the mechanism exists on this
+      // build, an operator chose not to turn it on here — and gets a different reason so the
+      // two are never confused by whoever reads the outcome.
+      const reason = executeSandbox ? EXECUTE_DISABLED_BY_OPERATOR : NO_EXECUTION_SURFACE;
+      outcomes.push({ path:action.path ?? action.command ?? '', operation:'EXECUTE', performed:false,
+        reason, tokenId:null });
+      continue;
+    }
     if (action.kind === 'EXECUTE') {
-      outcomes.push({ path:action.command ?? '', operation:'EXECUTE', performed:false,
-        reason:NO_EXECUTION_SURFACE, tokenId:null });
+      // Enabled on this installation: EXECUTE now goes through the SAME token lookup and
+      // spend-before-effect discipline as every other action kind (`tokenFor`/`minter.spend`
+      // below are the identical calls READ/WRITE/DELETE make), then the effect is a real,
+      // measured, contained process instead of a file operation.
+      const token = tokenFor(tokens ?? [], action, authorized.digest);
+      if (!token) {
+        outcomes.push({ path:action.path, operation:'EXECUTE', performed:false,
+          reason:'no capability token of this plan grants this path and operation', tokenId:null });
+        continue;
+      }
+      try {
+        minter.spend(token, { path:action.path, operation:'EXECUTE' }, nowUnix);
+      } catch (error) {
+        outcomes.push({ path:action.path, operation:'EXECUTE', performed:false,
+          reason:error.reason ?? String(error), tokenId:token.id });
+        continue;
+      }
+      // Belt and braces: `capability.mjs`'s mint() already refuses an EXECUTE request with
+      // no limits on any installation whose minter carries a ceiling (ARCH-008, D-0248). A
+      // token reaching here with none anyway — a different minter, an older token format —
+      // is refused rather than run with the whole container's limits, which is exactly the
+      // per-container isolation this mechanism exists to replace.
+      if (!token.limits) {
+        outcomes.push({ path:action.path, operation:'EXECUTE', performed:false,
+          reason:EXECUTE_TOKEN_WITHOUT_LIMITS, tokenId:token.id });
+        continue;
+      }
+      let cwd;
+      try {
+        // The same containment rule every other action kind uses, not a second one: EXECUTE
+        // runs with its working directory confined to the shadow, exactly like WRITE/DELETE
+        // confine the file they touch.
+        cwd = contained(shadow.root, action.path);
+      } catch (error) {
+        outcomes.push({ path:action.path, operation:'EXECUTE', performed:false,
+          reason:error.reason ?? String(error), tokenId:token.id });
+        continue;
+      }
+      let sandboxResult;
+      try {
+        sandboxResult = runSandboxedSync({
+          binaryPath: executeSandbox.binaryPath, limits: token.limits,
+          command: action.command, argv: action.args ?? [], cwd,
+          timeoutMs: action.timeoutMs, maxOutputBytes: action.maxOutputBytes,
+        });
+      } catch (error) {
+        const reason = error instanceof SandboxError ? error.reason : String(error.message ?? error);
+        outcomes.push({ path:action.path, operation:'EXECUTE', performed:false, reason, tokenId:token.id });
+        continue;
+      }
+      outcomes.push({
+        path:action.path, operation:'EXECUTE', performed:sandboxResult.performed,
+        reason: sandboxResult.performed ? null : (sandboxResult.reason ?? 'the sandbox refused this run'),
+        tokenId:token.id,
+        exitCode: sandboxResult.exitCode ?? null,
+        stdout: sandboxResult.stdout ?? '',
+        stderr: sandboxResult.stderr ?? '',
+      });
       continue;
     }
     if (!ACTIONS.includes(action.kind)) {
@@ -142,14 +224,24 @@ export function execute({ authorized, minter, tokens, shadow, actions, expectati
   };
 }
 
-export function executorStatus() {
+export function executorStatus(executeSandbox = null) {
+  // D-0250: this used to say "there is no sandbox here that could contain a running
+  // process" unconditionally. That stopped being true the moment noesar-sandbox shipped
+  // (D-0248/D-0249) — reporting it anyway would be exactly the fabricated-guarantee failure
+  // mode this project exists to avoid. What is still true, and stated plainly either way: on
+  // THIS installation, is the operator's own answer to NOESAR_EXECUTE_SANDBOX enabled or not.
+  const enabled = Boolean(executeSandbox?.enabled);
   return {
     acceptsOnlyCapabilityTokens: true,
     spendsBeforeEffect: true,
-    executionSurface: false,
-    refusedOperations: ['EXECUTE'],
+    executionSurface: enabled,
+    refusedOperations: enabled ? [] : ['EXECUTE'],
     writesOutsideShadow: false,
     requiresWholeWorkspaceShadow: true,
-    reason: 'Every action must present a token of the approved plan that names its path and operation; the token is spent before the effect, so a refusal means nothing happened. EXECUTE is declared and always refused: there is no sandbox here that could contain a running process. A shadow that holds only the declared paths is refused: it cannot observe an undeclared write, so a clean comparison from it would be an artefact of how it was built.',
+    executeSandboxEnabled: enabled,
+    executeSandboxRequested: Boolean(executeSandbox?.requested),
+    reason: enabled
+      ? 'Every action must present a token of the approved plan that names its path and operation; the token is spent before the effect, so a refusal means nothing happened. EXECUTE is enabled on this installation (NOESAR_EXECUTE_SANDBOX=enabled): a granted token is run inside a short-lived, per-capability-limited child process (ARCH-008), never with the whole container\'s limits, and never without a spent token naming it. A shadow that holds only the declared paths is refused: it cannot observe an undeclared write, so a clean comparison from it would be an artefact of how it was built.'
+      : 'Every action must present a token of the approved plan that names its path and operation; the token is spent before the effect, so a refusal means nothing happened. EXECUTE exists as a mechanism (ARCH-008) but is disabled on this installation — the operator has not set NOESAR_EXECUTE_SANDBOX=enabled, or the sandbox binary is not present. A shadow that holds only the declared paths is refused: it cannot observe an undeclared write, so a clean comparison from it would be an artefact of how it was built.',
   };
 }

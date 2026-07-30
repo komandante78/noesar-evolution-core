@@ -161,7 +161,14 @@ fn plan_digest(plan: &Plan) -> String {
 ///
 /// Held here — and signed here — because the envelope has to be un-widenable in transit for it
 /// to mean anything: the sandbox faithfully applies whatever it is handed.
+// D-0250: found while extending EXECUTE. Without `rename_all`, `Deserialize` matches only the
+// exact Rust field names — a JSON payload carrying `"memoryBytes"` (the format
+// `canonicalLimits` in isolation.mjs and `parse_limits` in noesar-sandbox both use) would
+// silently leave `memory_bytes: None`, no error raised, because serde ignores unknown JSON
+// keys by default. Never exercised until now: no conformance vector had populated `limits`
+// from JSON before this phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CapabilityLimits {
     #[serde(default)]
     pub memory_bytes: Option<u64>,
@@ -746,5 +753,27 @@ mod arch008_limits_tests {
         let zero = CapabilityLimits { core_dump_bytes: Some(0), ..Default::default() };
         let unset = CapabilityLimits::default();
         assert_ne!(canonical_limits(Some(&zero)), canonical_limits(Some(&unset)));
+    }
+
+    #[test]
+    fn deserializes_the_camelcase_wire_format_the_js_minter_and_sandbox_both_use() {
+        // The regression this guards: before `rename_all = "camelCase"`, this exact payload
+        // deserialized to `memory_bytes: None` with no error — serde silently ignores unknown
+        // JSON keys rather than failing, so the bug was invisible until something actually
+        // tried to read a real value back out.
+        let json = r#"{"memoryBytes":67108864,"cpuSeconds":5,"openFiles":null}"#;
+        let limits: CapabilityLimits = serde_json::from_str(json).expect("must deserialize");
+        assert_eq!(limits.memory_bytes, Some(67108864));
+        assert_eq!(limits.cpu_seconds, Some(5));
+        assert_eq!(limits.open_files, None);
+    }
+
+    #[test]
+    fn round_trips_through_camelcase_json_unchanged() {
+        let original = CapabilityLimits { memory_bytes: Some(1), core_dump_bytes: Some(0), ..Default::default() };
+        let json = serde_json::to_string(&original).unwrap();
+        assert!(json.contains("\"memoryBytes\":1"), "serialized JSON was: {json}");
+        let restored: CapabilityLimits = serde_json::from_str(&json).unwrap();
+        assert_eq!(original, restored);
     }
 }
