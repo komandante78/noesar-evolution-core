@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0240: ARCH-001 partial (postgres+api real peers under noesar-supervisord, codev still embedded in api), ARCH-002/ARCH-003 verified live by killing real processes. New finding: INST-004 hardening (read-only rootfs/cap-drop/no-new-privileges) appears lost on the live container vs docs/INSTALLATION_LEDGER.md historical entries — needs re-verification and a dedicated restoration phase. Next: ARCH-005 (adapters cannot self-grant permissions), or the codev third-peer split, or the INST-004 drift — Owner/session choice.",
+  "next_action": "Question posed to the Owner at session close, answer expected at the next session open: ARCH-005 (design the capability gate for adapters — reuse the existing capability engine used by workspace-actions, do not improvise a new one; zero adapter modules named per MASTER_PROJECT/03 §4 exist, only local-model-runtime.mjs exists under a different name and is not yet gated) vs INST-004 (faster — restore the read-only-rootfs/cap-drop hardening lost on the LIVE production container, found this session, not yet fixed). codev third-peer split remains a third open, unblocked option.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

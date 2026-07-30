@@ -71,9 +71,16 @@ ARCH-001 avrebbe reso indistinguibili due regressioni diverse se qualcosa si fos
 **Serve una fase dedicata**: riverificare `INST-004` e, se confermato perso, ripristinarlo
 con i valori esatti (dimensione tmpfs, sintassi pids-limit) mai riverificati qui.
 
-**Prossima scelta**: `ARCH-005` (gli adattatori non possono auto-concedersi permessi),
-oppure la separazione di `codev` come vero terzo figlio, oppure la riparazione `INST-004`
-— nessuna delle tre è bloccata dall'altra.
+**Prossima scelta — POSTA all'Owner in chiusura, RISPOSTA ATTESA all'apertura della
+prossima sessione**: `ARCH-005` (progettare il gate di capability per gli adattatori —
+riusare il motore di capability già esistente per `workspace-actions`, non improvvisarne
+uno nuovo: nessuno dei sette adattatori del documento `03 §4` esiste come modulo nominato,
+`grep` conferma zero occorrenze; l'unico che esiste per davvero sotto altro nome è
+`local-model-runtime.mjs`, 536 righe, e NON passa ancora dal motore di capability token)
+oppure la riparazione `INST-004` (più veloce, riguarda la sicurezza del container GIÀ in
+produzione — vedi il finding sopra). La separazione di `codev` come vero terzo figlio
+resta una terza opzione aperta, non bloccata dalle altre due. **Prima azione della
+prossima sessione: chiedere all'Owner quale delle tre.**
 
 ---
 
