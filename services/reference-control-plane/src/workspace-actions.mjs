@@ -54,6 +54,7 @@ import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
 import { execute } from './executor.mjs';
 import { verifyClaims, projectionCoverage } from './verification.mjs';
+import { assembleSessionProof } from './session-proof.mjs';
 
 export const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
@@ -92,8 +93,9 @@ export class WorkspaceActionOrchestrator {
   #runs = new Map();
   #reasoningFor;
   #executeSandbox;
+  #privacyStateFor;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -116,6 +118,11 @@ export class WorkspaceActionOrchestrator {
     // config that could change mid-run would make "the token's limits were checked against
     // the installed ceiling at mint time" stale by the time execute() spends it.
     this.#executeSandbox = executeSandbox;
+    // SESS-001: the egress state sampled at points in the run's own timeline, not read once
+    // at the end — a run that went local-only and then, mid-way, had a connector enabled must
+    // show both, not overwrite the first with the second. `null` is honest: sessionProof()
+    // reports no samples rather than inventing a state nobody asked derivePrivacy() for.
+    this.#privacyStateFor = privacyStateFor;
     // A factory, not an instance: a router accumulates the provenance of the calls made
     // through it, so one shared across runs would attribute this run's surfaces to the
     // previous one's. One per call, discarded with the call.
@@ -135,9 +142,28 @@ export class WorkspaceActionOrchestrator {
     return event.id;
   }
 
+  // Never throws: a caller that did not wire a sampler gets an honest empty list, not a
+  // missing session proof. `at` names the point in the run's lifecycle the sample was taken.
+  #sampleEgress(at, nowUnix) {
+    if (!this.#privacyStateFor) return null;
+    try {
+      const state = this.#privacyStateFor();
+      return { at, nowUnix, state: state?.state ?? null, disclosures: state?.disclosures ?? [] };
+    } catch {
+      return { at, nowUnix, state: null, disclosures: [], reason: 'the privacy sampler threw' };
+    }
+  }
+
   get(runId) {
     const run = this.#runs.get(runId);
     return run ? { ...run } : null;
+  }
+
+  /** SESS-001: the ten-field Session Proof, assembled from this run and its causal events. */
+  sessionProof(runId) {
+    const run = this.#runs.get(runId);
+    if (!run) return null;
+    return assembleSessionProof({ run, events: this.#events.correlation(runId) });
   }
 
   /**
@@ -198,6 +224,10 @@ export class WorkspaceActionOrchestrator {
       runId, status: 'PENDING_APPROVAL',
       plan: constrained.plan, expectation, files, intent, risk, confidence, claims, provenance,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
+      // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
+      // already carries full contents, which is why it is not duplicated here.
+      request, hypotheses, projectRules, constraints, mode, policy,
+      egressSamples: [this.#sampleEgress('planned', nowUnix)].filter(Boolean),
     });
     return { runId, plan: constrained.plan, intent, expectation, risk, confidence, claims, provenance };
   }
@@ -282,11 +312,20 @@ export class WorkspaceActionOrchestrator {
         uses: step.files.length, expiresAtUnix: approval.expiresAtUnix,
       }, nowUnix);
     } catch (error) {
-      if (error instanceof CapabilityError) refuse('MINT_REFUSED', error.reason);
+      if (error instanceof CapabilityError) {
+        // SESS-001 "autorità": a denial is part of the authority timeline, not only a
+        // thrown error the caller happens to see. Before this, a refused mint left no trace
+        // in the run's own event correlation — the causal chain answered "why did this run
+        // stop" with silence between `approved` and nothing.
+        this.#record(runId, approveEventId, approverId, 'capability.denied',
+          { stepId: step.id, paths: step.files, kind: error.kind, reason: error.reason }, nowUnix);
+        refuse('MINT_REFUSED', error.reason);
+      }
       throw error;
     }
     this.#record(runId, approveEventId, approverId, 'capability.minted',
       { tokenId: token.id, paths: token.paths, operations: token.operations }, nowUnix);
+    run.egressSamples.push(...[this.#sampleEgress('approved', nowUnix)].filter(Boolean));
 
     // Discarded exactly once, in `finally`: scratch space that must not survive the call
     // whether it finished cleanly or threw partway through.

@@ -3171,3 +3171,43 @@ network, non-project container count unchanged.
 
 Predecessor: `noesar-evolution.rollback-arch008-execute-rust-mirror-20260730T114253Z`
 (`:phase4-arch005-manifest-precision`). Rollback cost: none.
+
+## 2026-07-30 · `:phase4-sess001-session-proof` — D-0255 deployed: SESS-001, the Session Proof route
+Tag `noesar-evolution:phase4-sess001-session-proof`, `FROM :phase4-arch008-execute-rust-mirror`.
+New: `session-proof.mjs`, `GET /api/v1/workspace-actions/:id/session-proof`, run fields
+(`hypotheses`/`request`/`egressSamples`), `capability.denied` event. `tools/run-browser-e2e.sh`
+also fixed this phase (`D-0256`, `--tmpfs /run:...,mode=1777` added) — not shipped in any image.
+
+**Verification (pre-deploy)**: byte identity of image contents vs. repository tree confirmed for
+all 3 touched/new `services/reference-control-plane/src/` files via `docker cp` + `diff`. Node
+**1229 pass, 1 honest skip, 0 fail** (up from 1223), ESLint **246 files, 0 errors**, `scripts/
+test.sh` **10/10**, browser E2E **327/327**, accessibility **27/27**, seeded-defect **19/19**,
+`MANIFEST.sha256` **5861/5861**.
+
+**Two self-caused mistakes during this deploy, disclosed rather than smoothed over**:
+1. The first `docker run` copied `NOESAR_ALLOWED_HOSTS`/`NOESAR_EXTERNAL_SURFACES` from a
+   `docker inspect ... | tr ',' '\n'` command I had run **for on-screen readability**, and
+   pasted the newline-separated display output into `-e` instead of the real comma-separated
+   value — `validHostHeader()` then rejected every request with `421`, health stuck at
+   `starting`. Caught immediately (health never went green), not shipped.
+2. Fixing it, I removed that container with `docker rm -f` instead of `docker stop -t 60` first
+   — a live-container mistake, not a `§3a` sequence step skipped on purpose. PostgreSQL's own
+   WAL crash recovery handled it cleanly (`database system was not properly shut down;
+   automatic recovery in progress` → `redo done` → `ready to accept connections`,
+   `migrations:16 rls_tables:15 production_ready:true` unchanged) — no data loss, but the
+   correct move would have been a second clean stop. Named so the next phase does not repeat it.
+
+**Deploy, corrected**: `docker stop -t 60` on the live container → `postgres.stopped clean:true`
+confirmed in the log → backup `BACKUPS/runtime_pre_sess001_session_proof_deploy_
+20260730T130533Z.tar.gz` (12.5 MB, service stopped) → §5a (older rollback
+`arch008-execute-rust-mirror-...T114253Z` removed, predecessor renamed to
+`.rollback-sess001-session-proof-20260730T130533Z`) → new container from the **full** `docker
+inspect --format '{{json .HostConfig}}'` JSON, env re-read correctly the second time →
+`Up (healthy)` at ~30s (after the self-caused WAL recovery above), hardening intact
+(`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`),
+`/livez`/`/readyz`/`/healthz` 200/200/200, `GET .../session-proof` on an unknown run answers
+**401** (reaches the auth gate, not a 404 — the route is wired). Post-cleanup inventory: exactly
+2 `noesar-evolution*` containers, `noesar-evolution-net` the only project network.
+
+Predecessor: `noesar-evolution.rollback-sess001-session-proof-20260730T130533Z`
+(`:phase4-arch008-execute-rust-mirror`). Rollback cost: none.

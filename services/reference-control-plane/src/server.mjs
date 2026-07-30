@@ -182,9 +182,13 @@ const engineEvents = new EventLedger();
 // sharing the shadow root with a provider is now a mount, not an edit to this file.
 const shadowsRoot = String(process.env.NOESAR_SHADOWS_ROOT ?? '').trim()
   || join(tmpdir(), 'noesar-workspace-action-shadows');
+// `currentPrivacy` is a hoisted function declaration defined further below in this module;
+// referencing it here is safe because it is only ever CALLED later, once plan()/approve() run
+// — same pattern sessionDispatch below already relies on for getShadowSnapshot.
 const workspaceActions = new WorkspaceActionOrchestrator({
   workspaceRoot: workspace, shadowsRoot,
   minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
+  privacyStateFor: () => currentPrivacy(null),
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
 // (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,
@@ -1445,6 +1449,15 @@ const requestListener = async (req, res) => {
       const run = workspaceActions.get(workspaceActionMatch[1]);
       if (!run) return json(res, 404, { error:'not_found' });
       return json(res, 200, run);
+    }
+    // SESS-001: the ten-field Session Proof for one run. Same trust level as GET :id above —
+    // this is a derived view of the same object, not a wider disclosure.
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/session-proof$/);
+    if (workspaceActionMatch && req.method === 'GET') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      const proof = workspaceActions.sessionProof(workspaceActionMatch[1]);
+      if (!proof) return json(res, 404, { error:'not_found' });
+      return json(res, 200, proof);
     }
     // "What would this do?", asked before anyone approves it. No token is minted, nothing is
     // executed, and the shadow it reads is discarded before the response is written.

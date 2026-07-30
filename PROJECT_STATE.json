@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0254: acceptance-matrix cleanup — ARCH-001 row was stuck at D-0240 partial state since D-0242 closed it (codev is a real third peer). Corrected. Full INST/SESS/CUBE re-walk remains open, named not rushed. Block A (ARCH-005 D-0252, ARCH-008 D-0253, matrix cleanup D-0254) COMPLETE.",
-  "next_phase": "Decisione aperta, non urgente: mirror Rust EXECUTE-enabled in noesar-executor (fase propria, nuovi vettori condivisi) oppure cablare la superficie test-in-sandbox (execute()s parametro tests, mai popolato) come primo consumatore reale della decisione del cliente.",
+  "phase_status": "D-0255: SESS-001 (Session Proof) built and deployed live — session-proof.mjs assembles all ten fields from a real plan()->approve() run, GET /api/v1/workspace-actions/:id/session-proof. D-0256: tools/run-browser-e2e.sh probe fixed (missing --tmpfs /run, crash-looped since D-0242, unnoticed until this phase). Block B in progress: SESS-001 done, SESS-002/003 next.",
+  "next_phase": "SESS-002: the replay engine — rerun a recorded fixture through the decision layer and assert it coincides (P1, deterministic on decisions only). SESS-003: replay an old session against a newer binary to see if a new policy would have refused it. Then Block C (CUBE-001..009).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "04ad9b6",
-  "last_updated_utc": "2026-07-30T11:52:00Z",
+  "last_commit": "PENDING_COMMIT",
+  "last_updated_utc": "2026-07-30T13:15:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -25,9 +25,9 @@
     },
     {
       "id": "B-002",
-      "severity": "low",
+      "severity": "stale-premise",
       "code": "SECRET_SCAN=HEURISTIC_ONLY",
-      "summary": "Neither gitleaks nor trufflehog is installed and installing new tooling is forbidden by CLAUDE10.md rule 45; a heuristic pattern scan is used instead and is declared as heuristic wherever reported. The detector was self-tested against a synthetic canary and fired correctly. Phase 1 raised severity relevance because 5,976 third-party files entered the repository, but the scan found no key material. Phase 4 completion gate: unchanged as to gitleaks, but ESLint and syft now cover surfaces that previously had no tooling at all, and the heuristic scan was re-run over the full staged set.",
+      "summary": "STALE (D-0257, 2026-07-30): the premise (\"neither gitleaks nor trufflehog is installed\") is false as stated — tools/run-secret-scan.sh runs real gitleaks from a pinned disposable image, no install needed, and exists specifically to close this. It ran and found 2 real findings (see B-011), which the heuristic scan this entry describes never caught. Superseded by B-011 as the live finding; this entry kept for history only.",
       "blocks_next_phase": false,
       "resolution_options": [
         "If a real scanner becomes available, re-scan the full Git history (not only the working tree) before the repository is ever made public"
@@ -63,6 +63,18 @@
       "blocks_next_phase": false,
       "resolution_options": [
         "Nessuna azione residua. Tornare a :phase4-home reintrodurrebbe la divulgazione."
+      ]
+    },
+    {
+      "id": "B-011",
+      "severity": "medium",
+      "code": "SECRET_LEAK_IN_HISTORY=NOESAR_RUST_REASONING_TOKEN",
+      "summary": "D-0257: tools/run-secret-scan.sh (real gitleaks) found NOESAR_RUST_REASONING_TOKEN (the live reasoning-router auth secret, still active) committed in cleartext inside two EVIDENCE/*.json raw env dumps (commits 3bcc9b0 and 1c31f66, both already pushed to origin/main, private repo komandante78/NOESAR-EVOLUTION). Not fixed — requires Owner authorisation (token rotation is a live-credential change; history rewrite is destructive).",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd, then redeploy with the new value.",
+        "Decide whether to purge the two commits from git history (rewrites hashes, force-push required) or accept the exposure as contained within a private repo.",
+        "Process fix for future phases: never write a raw docker inspect env dump into EVIDENCE/ — redact secret-shaped values before writing."
       ]
     }
   ],
@@ -418,7 +430,8 @@
     "sandbox_runner_shipped_d0249": "D-0249: oci/Dockerfile.phase4-sandbox-binary + sandbox-runner.mjs, deployed live. 14 tests against the REAL binary (skip-with-reason if absent). Ceiling-refusal re-measured through the Node caller inside --memory 8g: small cmd exit 0, ceiling+1 refused pre-exec exit 78, 512MiB Buffer.alloc under 64MiB grant killed not leaked. Live verification post-deploy: Up healthy, livez/readyz 200, hardening intact, migrations:16 rls_tables:15 unchanged, running container image ID byte-identical to built image, docker exec noesar-sandbox --detect on LIVE PROD confirms tier:1 SECCOMP_FILTER ceiling 8589934592. Node 1207/1207 (1206 pass+1 honest skip), ESLint 243f 0 errors, MANIFEST 5856/5856. EXECUTE NOT wired: shared conformance oracle EXEC-007 asserts permanent refusal identically on both language sides, reversing it is an unanswered Owner question.",
     "execute_client_decision_d0250": "D-0250: NOESAR_EXECUTE_SANDBOX env var, default disabled, execute-sandbox-config.mjs mirrors NOESAR_LOCAL_MODEL_RUNTIME pattern. executor.mjs EXECUTE wired for real via runSandboxedSync (spawnSync, kept execute() synchronous on purpose to avoid rippling async into approve()/server.mjs). Default path byte-identical to pre-D-0250 (EXEC-007 untouched). New tests against REAL binary: disabled-by-config distinct reason, no-limits defensive refusal, real /bin/echo run through noesar-sandbox performed+stdout captured, forged-token spend-before-effect holds. executorStatus() no longer falsely claims no sandbox exists. Bug found+fixed: CapabilityLimits Rust missing serde rename_all=camelCase (JSON memoryBytes silently lost to None, never exercised before this phase) - 2 new Rust tests prove round-trip. Node 1220/1220 (1219+1 skip), ESLint 244f 0 errors, Rust 47 binaries 135 passed (+2), MANIFEST 5857/5857. Rust noesar-executor EXECUTE mirror explicitly NOT done - scope split, not oversight, conformance vectors untouched.",
     "arch005_manifest_precision_d0252": "D-0252: hardware-probe/sector-modules/compliance-packs get explicit ADAPTER_MANIFESTS entries with operations:[] (real code, verified read/validate-only by reading every route + export). vector-store/object-store/host-bridge get no entry, each reason named in adapter-capability.mjs. Node 1222 tests (1221 pass + 1 honest skip), ESLint 244 files 0 errors. Deployed live :phase4-arch005-manifest-precision, byte identity proven pre-deploy, hardening/migrations verified post-deploy.",
-    "arch008_execute_rust_mirror_d0253": "D-0253: rust/crates/noesar-executor::execute() gains execute_sandbox param, run_sandboxed() spawns noesar-sandbox via std::process::Command (spec file, thread-drained stdout/stderr, EX_CONFIG=78 3-way outcome split) — exact mirror of runSandboxedSync. 3 new live tests against the real binary (tests/sandbox_live.rs, HAVE_BINARY-gated like sandbox-runner.test.mjs): real echo (exitCode 0, stdout captured), real /bin/false (performed:true ok:false), real 64MiB-vs-512MiB kernel-enforced limit (values proven in sandbox-runner.test.mjs, not reinvented). EXEC-011/012 added to conformance/executor-vectors.json (12 total, was 10) — zero-process decision branches (disabled-by-operator, token-without-limits) satisfied on both sides. Full Rust workspace 140/140 (was 135), Node 1223 pass/1 skip/0 fail, ESLint 244f 0 errors, MANIFEST 5859/5859. Deployed live, comment-only on shipped side (Rust crate ships nowhere)."
+    "arch008_execute_rust_mirror_d0253": "D-0253: rust/crates/noesar-executor::execute() gains execute_sandbox param, run_sandboxed() spawns noesar-sandbox via std::process::Command (spec file, thread-drained stdout/stderr, EX_CONFIG=78 3-way outcome split) — exact mirror of runSandboxedSync. 3 new live tests against the real binary (tests/sandbox_live.rs, HAVE_BINARY-gated like sandbox-runner.test.mjs): real echo (exitCode 0, stdout captured), real /bin/false (performed:true ok:false), real 64MiB-vs-512MiB kernel-enforced limit (values proven in sandbox-runner.test.mjs, not reinvented). EXEC-011/012 added to conformance/executor-vectors.json (12 total, was 10) — zero-process decision branches (disabled-by-operator, token-without-limits) satisfied on both sides. Full Rust workspace 140/140 (was 135), Node 1223 pass/1 skip/0 fail, ESLint 244f 0 errors, MANIFEST 5859/5859. Deployed live, comment-only on shipped side (Rust crate ships nowhere).",
+    "sess001_session_proof_d0255": "D-0255: session-proof.mjs (new) assembles the ten SESS-001 fields from a real WorkspaceActionOrchestrator run + its EventLedger correlation. Fixed 3 small gaps found building it: hypotheses/raw request now stored on the run, capability.denied now recorded as an event, egress now sampled at plan()/approve() via injected privacyStateFor(). provenienza declared UNTRACKED (no CUBE yet), fixture declared DECISION_LAYER_ONLY (no SESS-002 replay engine yet). Node 1229/1230 (+6), ESLint 246 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess001-session-proof), MANIFEST 5861/5861."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -821,7 +834,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Block A of the Owner multi-phase plan is done. Block B next: SESS-001..003 (Session Proof package), never built. See SESSION_HANDOFF.md for the full plan and the 4 agreed pause points.",
+  "next_action": "Block B, part 1 of 3 done (SESS-001). Next: SESS-002 (replay engine) — session-proof.mjs already stores everything needed as run.fixtureInputs; build the function that re-runs plan() deterministically against a stored fixture and diffs the decision-layer outputs.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

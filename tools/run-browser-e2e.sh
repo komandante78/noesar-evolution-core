@@ -72,10 +72,15 @@ echo "NETWORK=${NETWORK}"
 # The Host allowlist is baked from the same setting as the publish. The runner reaches
 # the probe by container name, so that name must be allowed or every request answers 421
 # — the defect the LAN access gate found and fixed.
+#
+# `/run` needs to be writable, mode 1777, since D-0242 added codev's unix socket
+# (`/run/codev-peer.sock`) — this probe never got that flag and has crash-looped on boot
+# (EROFS) since, found running T2 for D-0255 rather than by anyone using this script in between.
 docker run -d --name "${PROBE_NAME}" \
   --network "${NETWORK}" \
   --read-only --cap-drop ALL --security-opt no-new-privileges \
   --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --tmpfs /run:rw,nosuid,nodev,noexec,mode=1777 \
   --mount "type=bind,source=${WORKSPACE},target=/workspace,readonly=false" \
   -e NOESAR_WORKSPACE=/workspace \
   -e NOESAR_RUNTIME_ROOT=/opt/noesar \
