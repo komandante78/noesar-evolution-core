@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0250: EXECUTE e ora una decisione per-installazione del cliente (NOESAR_EXECUTE_SANDBOX, default disabled), reale end-to-end in JS (il percorso live). Rust noesar-executor NON specchiato in questa fase per decisione esplicita di scope — non e nel percorso live, nessun nuovo vettore di conformita aggiunto per non violare l oracolo condiviso.",
-  "next_phase": "Rust mirror per EXECUTE-enabled in noesar-executor (spawn nativo di noesar-sandbox, nuovi vettori di conformita condivisi) — oppure, se preferito, la superficie che potrebbe davvero richiedere EXECUTE: cablare execute()s parametro tests (gia esistente, mai popolato) a un plan-authoring surface che esegue test in sandbox.",
+  "phase_status": "D-0251: D-0250 deployato dal vivo (noesar-evolution:phase4-execute-client-decision). NOESAR_EXECUTE_SANDBOX=disabled esplicito, verificato dal processo reale via docker exec. ARCH-008 resta parziale solo per il mirror Rust non costruito.",
+  "next_phase": "Decisione aperta, non urgente: mirror Rust EXECUTE-enabled in noesar-executor (fase propria, nuovi vettori condivisi) oppure cablare la superficie test-in-sandbox (execute()s parametro tests, mai popolato) come primo consumatore reale della decisione del cliente.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "b8fcecc",
-  "last_updated_utc": "2026-07-30T10:34:53Z",
+  "last_updated_utc": "2026-07-30T10:42:37Z",
   "blockers": [
     {
       "id": "B-001",
@@ -819,7 +819,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0250 fatto solo sul lato JS (il percorso realmente servito). NOESAR_EXECUTE_SANDBOX=disabled di default su ogni installazione esistente, zero cambio di comportamento finche un operatore non lo abilita esplicitamente. NON deployato live in questa fase (vedi handoff per la ragione). Bug reale trovato e riparato indipendentemente: CapabilityLimits Rust senza rename_all=camelCase, un payload JSON con memoryBytes si deserializzava silenziosamente a None. NON rifare le misure di D-0248/D-0249. Prima azione: decidere se completare il mirror Rust o wired la superficie test-in-sandbox, oppure procedere altrove.",
+  "next_action": "D-0250/D-0251 completi: EXECUTE e una decisione per-installazione (NOESAR_EXECUTE_SANDBOX), reale e deployata. Nessuna domanda aperta all Owner. Prossimo lavoro e a discrezione: mirror Rust, o superficie che consumi la decisione (oggi nessuna lo fa). Non rifare le misure di D-0248/D-0249/D-0250 ne il deploy di D-0251.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

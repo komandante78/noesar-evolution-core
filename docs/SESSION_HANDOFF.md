@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0250`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0251`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 
@@ -37,15 +37,12 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0250` ha risposto alla domanda di `D-0249`, ma NON è ancora deployato dal vivo — fermato
-per budget di fase (dichiarato ~70 chiamate, superato oltre il 150%), non per un blocco
-tecnico.** Il codice è completo, testato, committato e pushato; manca solo la sequenza di
-deploy già usata in `D-0248`/`D-0249` (stop pulito → backup → §5a → nuovo container con
-config riletta → verifica dal vivo). **Prima cosa da fare: quel deploy**, banale e a basso
-rischio — `NOESAR_EXECUTE_SANDBOX` default `disabled` significa **zero cambio di
-comportamento** su questa installazione finché qualcuno non lo abilita esplicitamente.
+**`D-0250` è ora deployato dal vivo (`D-0251`)** — `:phase4-execute-client-decision`,
+`Up (healthy)`, `NOESAR_EXECUTE_SANDBOX=disabled` confermato via `docker exec` sul processo
+reale. `EXECUTE` è una decisione del cliente, per installazione, reale end-to-end. Nessuna
+domanda aperta all'Owner.
 
-**Poi, una scelta aperta e nominata, non urgente**: il mirror Rust di `noesar-executor` per
+**Una scelta aperta e nominata, non urgente**: il mirror Rust di `noesar-executor` per
 EXECUTE-abilitato **non è stato fatto**, per decisione di scope esplicita — `noesar-executor`
 non è nel percorso live (`services/reference-control-plane` serve ogni richiesta), e aggiungere
 un vettore di conformità condiviso per un comportamento che un solo lato implementa avrebbe
@@ -59,10 +56,12 @@ meccanismo JS di `D-0250` (tutte registrate e provate contro il binario reale).
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: ancora `noesar-evolution:phase4-sandbox-binary` (immagine di `D-0249`) —
-  **`D-0250` non è nell'immagine in esecuzione**, solo nell'albero sorgente committato.
-  `Up (healthy)`, `192.168.178.100:8100→8088`, hardening intatto.
-  Rollback preservato: `noesar-evolution.rollback-sandbox-binary-20260730T100439Z`.
+- **Prodotto vivo**: `noesar-evolution:phase4-execute-client-decision` (`D-0251`) ·
+  `Up (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
+  `migrations:16 rls_tables:15` invariate · byte immagine identici.
+  Rollback preservato: `noesar-evolution.rollback-execute-client-decision-20260730T104115Z`
+  (`:phase4-sandbox-binary`).
+- **`NOESAR_EXECUTE_SANDBOX=disabled`**, confermato dal processo reale (`docker exec`).
 - **atomd**: `atom-evolution:atomd`, `noesar-evolution-net`. Serve **Phi-4-14B Q4_K_M**.
 - **Due container per progetto** — §5a rispettato.
 
@@ -71,12 +70,12 @@ meccanismo JS di `D-0250` (tutte registrate e provate contro il binario reale).
 - **`ARCH-008` è ⚠ parziale, per UNA sola ragione ora**: il mirror Rust di EXECUTE non esiste.
   Tutto il resto (ladder adattivo, limiti sotto il MAC, binario spedito, decisione del
   cliente via `NOESAR_EXECUTE_SANDBOX`, wiring reale in `executor.mjs`) è fatto e provato.
-- **`D-0250` non è ancora deployato dal vivo** — codice pronto, deploy è il prossimo passo.
 - **`ARCH-005` parziale**: solo `launch()` gated; altri 6 adattatori di `03 §4` non esistono.
 - **`INST-002`**: nessun token di installazione — nessuna superficie lo richiede.
 - **`SESS-001..003` e `CUBE-001..009`**: due sottosistemi interi mai costruiti.
-- **`NOESAR_LOCAL_MODEL_RUNTIME=disabled`** sul container vivo, come `NOESAR_EXECUTE_SANDBOX`
-  lo sarà — nessuno dei due gate ha ancora qualcosa che li attraversi in produzione.
+- **`NOESAR_LOCAL_MODEL_RUNTIME=disabled`** e **`NOESAR_EXECUTE_SANDBOX=disabled`** sul
+  container vivo — nessuno dei due gate ha ancora qualcosa che li attraversi in produzione
+  (nessuna superficie chiede `launch()`, nessun piano emette mai un passo `EXECUTE`).
 - **`MANIFEST.sha256` non copre `.claude/` né `CLAUDE10.md`**, nessun tool lo verifica —
   proposta di miglioramento registrata in `D-0247`, non riparata.
 - **Bug menu "Ramo"** (`D-0235`): mai riprodotto, resta aperto.

@@ -3080,3 +3080,22 @@ before anything called `launch()`.
 
 Predecessor: `noesar-evolution.rollback-sandbox-binary-20260730T100439Z` (`:phase4-arch005-adapter-gate`).
 Rollback cost: none — no migration, `AI_STATE_VERSION` unchanged.
+
+## 2026-07-30 · `:phase4-execute-client-decision` — D-0250 deployed: EXECUTE as a client decision
+Tag `noesar-evolution:phase4-execute-client-decision`, `FROM :phase4-sandbox-binary`. No Rust
+rebuild (`noesar-sandbox` unchanged; the `CapabilityLimits` rename_all fix lives in a crate
+never compiled into this image). Only `services/reference-control-plane/` re-copied.
+
+**Verification**: module loaded and resolved `disabled` inside the built image before touching
+production. Deploy: stop `-t 60` → `postgres.stopped clean:true` → backup
+`EVIDENCE/backup_runtime_20260730T104115Z.tar.gz` (12.5 MB) → §5a (older rollback
+`sandbox-binary` removed, predecessor `sandbox-binary` renamed to rollback) → new container,
+config **read back**, `NOESAR_EXECUTE_SANDBOX=disabled` added **explicitly** (parity with
+`NOESAR_LOCAL_MODEL_RUNTIME=disabled`'s own visibility, not left implicit-by-absence). Live:
+`Up (healthy)`, `/livez` `/readyz` 200, hardening intact, `migrations:16 rls_tables:15`
+unchanged, byte identity confirmed. `docker exec` on the **live container**, real env:
+`resolveExecuteSandboxConfig` → `{enabled:false, requested:false}` — the client's decision,
+proven from inside the running process, not assumed.
+
+Predecessor: `noesar-evolution.rollback-execute-client-decision-20260730T104115Z`
+(`:phase4-sandbox-binary`). Rollback cost: none.

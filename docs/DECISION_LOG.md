@@ -4864,3 +4864,11 @@ two different, Owner-level choices, not defaulted to either silently.
 **Status.** installed (source), not yet deployed live — see next action. `ARCH-008`'s remaining gap narrows to exactly one thing: the Rust mirror, named and scoped, not hidden.
 
 **Proposta di miglioramento (dovuta da §67).** Wiring the planner (`workspace-actions.mjs`'s `run.files.map(...)`) to ever emit an `EXECUTE` action is a SEPARATE decision from this one — today, even with `NOESAR_EXECUTE_SANDBOX=enabled`, nothing in the product requests it, so the mechanism is real but dormant everywhere until a plan-authoring surface exists that can ask for it. That surface (what would legitimately need to run a command — tests-in-sandbox is the most obvious candidate, since `CE-020`-adjacent test execution is exactly what `execute()`'s own `tests` parameter already threads through unused) is future work, named not built.
+
+## D-0251 · D-0250 deployato dal vivo — 2026-07-30
+**Decision.** `noesar-evolution:phase4-execute-client-decision` in produzione. Nessun rebuild Rust (il fix `rename_all` non è mai compilato nell'immagine). `NOESAR_EXECUTE_SANDBOX=disabled` impostato esplicitamente, stessa visibilità di `NOESAR_LOCAL_MODEL_RUNTIME=disabled`.
+**Why.** `D-0250` era fermato per budget di fase, non per un blocco — il deploy è la sequenza già provata di `D-0248`/`D-0249`, a basso rischio dato default `disabled`.
+**Rejected.** Nessuna alternativa: il deploy era l'unico passo mancante dichiarato in chiusura.
+**Evidence.** Stop pulito (`postgres.stopped clean:true`), backup 12,5 MB, §5a rispettato, config riletta, `Up (healthy)`, `/livez`+`/readyz` 200, hardening intatto, `migrations:16 rls_tables:15` invariate, byte immagine identici. **`docker exec` sul container vivo**, ambiente reale: `resolveExecuteSandboxConfig` → `{enabled:false, requested:false}` — la decisione del cliente, provata dal processo in esecuzione, non assunta.
+**Reversal cost.** Nessuno.
+**Status.** installato e verificato dal vivo. `ARCH-008` resta ⚠ parziale per l'unica ragione rimasta: il mirror Rust di `noesar-executor`, non costruito per decisione di scope (`D-0250`).

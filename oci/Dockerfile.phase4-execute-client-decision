@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0250: EXECUTE becomes a per-installation client decision (NOESAR_EXECUTE_SANDBOX,
+# default disabled — mirrors NOESAR_LOCAL_MODEL_RUNTIME's own pattern). Real wiring in
+# executor.mjs via the new synchronous runSandboxedSync (spawnSync); default path is
+# byte-identical to before (EXEC-007 untouched).
+#
+# No Rust rebuild: noesar-sandbox (D-0249) is unchanged, and the CapabilityLimits
+# rename_all fix (rust/crates/noesar-capability) is never compiled into this image —
+# that crate mirrors decision logic for the conformance oracle, it is not shipped.
+# Only services/reference-control-plane/ changed.
+
+FROM noesar-evolution:phase4-sandbox-binary
+
+LABEL org.noesar.phase="4-execute-client-decision"
+LABEL org.noesar.arch-008="execute-is-a-per-installation-decision"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001
