@@ -2448,9 +2448,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // browser's (that is the HTTP bridge below). Guarded to the entrypoint like the HTTP
   // listener itself: a test importing this module gets an unstarted dispatch to call
   // directly, not a socket file it did not ask for and would have to clean up.
-  const tuiSocketPath = process.env.NOESAR_TUI_SOCKET_PATH ?? join(workspace, 'tui.sock');
-  startUnixSocketServer({ socketPath: tuiSocketPath, dispatch: sessionDispatch, auth, ledger });
-  logger.info('tui.socket-listening', { component:'session-protocol', path: tuiSocketPath });
+  //
+  // ARCH-001, `codev` peer: this process no longer listens on the externally-reachable
+  // path (NOESAR_TUI_SOCKET_PATH, bind-mounted to the host as tui.sock) — that socket now
+  // belongs to the separate `codev` OS process (bin/codev-child.mjs), which relays bytes
+  // 1:1 to THIS internal-only socket. Moving the listen path is the entire change; the
+  // dispatch/auth/ledger instances below are unchanged, still owned exclusively by `api` —
+  // `codev` carries no business logic, so there is still exactly one engine, now reached by
+  // a third, OS-level-isolated transport instead of a second copy of it. Under /run (the
+  // tmpfs INST-004 restores): container-local, never bind-mounted, invisible outside the
+  // container, gone on restart — a peer socket has no reason to survive one.
+  const codevPeerSocketPath = process.env.NOESAR_CODEV_PEER_SOCKET_PATH ?? '/run/codev-peer.sock';
+  startUnixSocketServer({ socketPath: codevPeerSocketPath, dispatch: sessionDispatch, auth, ledger });
+  logger.info('tui.socket-listening', { component:'session-protocol', path: codevPeerSocketPath });
 
   server.listen(port, host, async () => {
     logger.info('runtime.started', {

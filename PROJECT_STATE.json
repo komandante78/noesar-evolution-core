@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "ARCH-001 STEP: noesar-supervisord PID1 built and deployed live (2 of 3 peers), ARCH-002/ARCH-003 verified live",
+  "phase_status": "D-0242: ARCH-001 COMPLETE — codev is a real third OS peer (byte-transparent relay in bin/codev-child.mjs, api still owns the one dispatch/auth/orchestrator instance). Verified live in production: process tree shows postgres/codev/api all ppid=1. D-0241 (INST-004 hardening) also verified still intact. Both deployed and documented same phase per D-0143.",
   "next_phase": "D-0232 chiuso: il mount ombra condivisa con atomd era gia risolto da D-0226 (domanda stale, mai riverificata); ATOM ora serve Phi-4 su istruzione diretta Owner, misurato 90.5% sullo stesso banco UI-090 (profilo di errore diverso da Qwen2.5-7B, stesso aggregato). Resta: la legge di integrita delle dipendenze (D-0218) non cablata su decompose(), e la Fase 5 isolamento (seccomp non collegato).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "PENDING_D-0234_COMMIT",
-  "last_updated_utc": "2026-07-29T18:39:22Z",
+  "last_updated_utc": "2026-07-30T04:10:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -436,10 +436,10 @@
     ],
     "final_verification": "317/317 tests, 48/48 installer hardening, MANIFEST 5630/5630, container healthy, working tree clean"
   },
-  "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address)",
+  "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address) | LIVE CONTAINER DRIFT FOUND AND FIXED 2026-07-30 (D-0241): the installer test suite above only tests the installer scripts themselves, not the manually-recreated live container — that container had drifted to ReadonlyRootfs:false/CapDrop:null/SecurityOpt:null/PidsLimit:null/Memory:0/Tmpfs:null sometime before :phase4-supervisor was built (found by D-0240). Restored and re-verified live by D-0241; root cause of the drift itself was not investigated (out of scope).",
   "manifest": {
-    "entries": 5835,
-    "verification": "5835/5835 OK, 0 failed, 0 duplicates",
+    "entries": 5838,
+    "verification": "5838/5838 OK, 0 failed, 0 duplicates (regenerated 2026-07-30, D-0243 — found stale since D-0228/2026-07-29, 9 files drifted across s281-s287 never re-manifested)",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -812,7 +812,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Question posed to the Owner at session close, answer expected at the next session open: ARCH-005 (design the capability gate for adapters — reuse the existing capability engine used by workspace-actions, do not improvise a new one; zero adapter modules named per MASTER_PROJECT/03 §4 exist, only local-model-runtime.mjs exists under a different name and is not yet gated) vs INST-004 (faster — restore the read-only-rootfs/cap-drop hardening lost on the LIVE production container, found this session, not yet fixed). codev third-peer split remains a third open, unblocked option.",
+  "next_action": "ARCH-001 is now COMPLETE (D-0242, 2026-07-30) — all three questions D-0240 left open (INST-004 vs ARCH-005 vs codev split) are resolved: INST-004 fixed (D-0241), codev split done (D-0242), which leaves ARCH-005 (design the capability gate for adapters — reuse the existing capability engine used by workspace-actions; zero adapter modules named per MASTER_PROJECT/03 §4 exist as named modules, only local-model-runtime.mjs exists under a different name and is not yet gated) as the one remaining open item from that question. No new Owner question posed at this close — proceed with ARCH-005 unless the Owner redirects.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1323,26 +1323,31 @@
   },
   "last_updated": "2026-07-28T17:16:55Z",
   "arch_001_supervisor": {
-    "status": "PARTIAL_2_OF_3_PEERS",
-    "date": "2026-07-29",
-    "decision": "D-0240",
+    "status": "COMPLETE_3_OF_3_PEERS",
+    "date": "2026-07-30",
+    "decision": "D-0242",
     "crate": "rust/crates/noesar-supervisor",
     "binary": "noesar-supervisord",
     "peers_built": [
       "postgres",
-      "api"
+      "api",
+      "codev"
     ],
-    "peer_missing": "codev (still embedded in api via session-protocol.mjs)",
+    "codev_design": "byte-transparent relay (bin/codev-child.mjs), zero business logic — api still owns the one dispatch/auth/orchestrator instance; only the socket api listens on moved from the externally-reachable path to an internal-only one under /run",
+    "bugs_found_building": [
+      "Docker tmpfs default mode for /run is 0755 root-owned (unlike /tmp, default 1777) — api (uid 10001) could not create the peer socket at all until mode=1777 was added to the --tmpfs /run mount option",
+      "a test asserting the external socket chmod (0600) raced server.listening (flips true before the listen callback that does the chmod has run) — test-only, fixed by synchronizing on the relay log line instead"
+    ],
     "verified_live": [
-      "process tree via /proc (ppid=1 for both peers)",
-      "kill -9 api: postgres unaffected, api respawned",
-      "kill -9 postgres wrapper: api unaffected, real postgres survives as reparented orphan",
-      "docker stop -t 60: clean shutdown 0.157s, postgres.stopped clean:true",
-      "exactly one LISTEN socket (8088) in /proc/net/tcp"
+      "process tree via /proc: postgres/codev/api all ppid=1 (three real peers, both isolated throwaway AND production)",
+      "real authenticated terminal session end-to-end through the relay (tools/tui-client.mjs: login+TOTP+status), real engine payload returned",
+      "kill -9 codev: restarted ~1s later by supervisor backoff, api/postgres untouched",
+      "kill -9 api: postgres/codev untouched; a new terminal connection attempted mid-restart closed fast with no data instead of hanging",
+      "docker stop -t 60: all three peers child.stopped, postgres.stopped clean:true, 0.122s"
     ],
-    "deployed_image": "noesar-evolution:phase4-supervisor",
-    "rollback": "noesar-evolution.rollback-supervisor-20260729T232340Z",
-    "known_limitation": "if the postgres wrapper process dies (not postgres itself), the orphaned real postgres is never signalled by the supervisor and the wrapper refuses to restart while it is still alive (data-safety check, not a bug) — documented, not fixed"
+    "deployed_image": "noesar-evolution:phase4-codev-peer",
+    "rollback": "noesar-evolution.rollback-codev-peer-20260730T040708Z",
+    "tests_added": "3 codev-relay.test.mjs (real temp unix sockets, no mocks) + 3 noesar-supervisor crate tests"
   },
   "inst_004_drift_finding": {
     "status": "REGRESSION_FOUND_NOT_FIXED",

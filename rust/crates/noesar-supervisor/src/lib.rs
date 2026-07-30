@@ -9,14 +9,14 @@
 // behaviour always has been — there is no `.test.mjs` for that file either, and this
 // crate does not pretend a unit test can substitute for watching a real SIGKILL land.
 //
-// Honesty about scope: only TWO peers are wired here today, `postgres` and `api`. `codev`
-// (the CodeN Evolution engine) still runs embedded inside the `api` process
-// (services/reference-control-plane/src/server.mjs) — splitting it into a genuine third
-// OS-level peer needs the session-protocol dispatch it already owns in-process moved
-// behind the same unix-socket RPC boundary `tools/tui-client.mjs` already speaks to from
-// outside the container, and that is real, separate work, not done in this pass. Calling
-// this ARCH-001 "done" would be exactly the kind of fabricated evidence this project's own
-// rules forbid — it is recorded as partial until `codev` is a real third child.
+// All THREE peers are wired here: `postgres`, `api`, and `codev`
+// (services/reference-control-plane/bin/codev-child.mjs). `codev` carries no business
+// logic of its own — it is a byte-transparent relay between the externally-reachable
+// session-protocol socket (NOESAR_TUI_SOCKET_PATH) and the internal-only one `api` now
+// listens on instead (NOESAR_CODEV_PEER_SOCKET_PATH). The actual dispatch (plan/simulate/
+// approve/…) stays owned exclusively by `api`, so there is still exactly one engine — see
+// that file's own header comment for why a second copy of it would be wrong, not just
+// unnecessary.
 
 use serde::Serialize;
 
@@ -71,7 +71,12 @@ pub fn log_line(level: &str, event: &str, child: Option<&str>, detail: serde_jso
     })
 }
 
-/// The declared child table. `codev` is deliberately absent — see the module doc above.
+/// The internal-only peer socket `api` listens on and `codev` relays to — under `/run`
+/// (tmpfs, container-local, never bind-mounted) so both children agree on its path without
+/// either one having to be told the other's env var name.
+const CODEV_PEER_SOCKET_PATH: &str = "/run/codev-peer.sock";
+
+/// The declared child table — all three ARCH-001 peers.
 pub fn supervised_children(workspace_root: &str) -> Vec<ChildSpec> {
     vec![
         ChildSpec {
@@ -92,6 +97,23 @@ pub fn supervised_children(workspace_root: &str) -> Vec<ChildSpec> {
                 // ARCH-001: tells server.mjs its PostgresSupervisor instance must NOT
                 // own the postgres OS process — that is now the `postgres` peer's job.
                 ("NOESAR_POSTGRES_PEER_MODE".to_string(), "1".to_string()),
+                // ARCH-001: api listens on the internal peer socket, not the externally-
+                // reachable one — `codev` owns that path now.
+                ("NOESAR_CODEV_PEER_SOCKET_PATH".to_string(), CODEV_PEER_SOCKET_PATH.to_string()),
+            ],
+            max_restarts: 5,
+        },
+        ChildSpec {
+            name: "codev",
+            program: "node".to_string(),
+            args: vec!["services/reference-control-plane/bin/codev-child.mjs".to_string()],
+            env: vec![
+                ("NOESAR_WORKSPACE".to_string(), workspace_root.to_string()),
+                ("NOESAR_CODEV_PEER_SOCKET_PATH".to_string(), CODEV_PEER_SOCKET_PATH.to_string()),
+                // NOESAR_TUI_SOCKET_PATH is left to codev-child.mjs's own default
+                // (`${workspace}/tui.sock`) unless the container environment overrides
+                // it — same default server.mjs used before this phase, so the host bind
+                // mount (NOESAR_EVOLUTION_RUNTIME/tui.sock) needs no change.
             ],
             max_restarts: 5,
         },
@@ -120,10 +142,10 @@ mod tests {
     }
 
     #[test]
-    fn exactly_two_peers_declared_and_named_honestly() {
+    fn exactly_three_peers_declared() {
         let children = supervised_children("/workspace");
         let names: Vec<&str> = children.iter().map(|c| c.name).collect();
-        assert_eq!(names, vec!["postgres", "api"], "codev is not a peer yet — see module doc");
+        assert_eq!(names, vec!["postgres", "api", "codev"], "ARCH-001 wants exactly three peers");
     }
 
     #[test]
@@ -131,6 +153,28 @@ mod tests {
         let children = supervised_children("/workspace");
         let api = children.iter().find(|c| c.name == "api").expect("api child declared");
         assert!(api.env.iter().any(|(k, v)| k == "NOESAR_POSTGRES_PEER_MODE" && v == "1"));
+    }
+
+    #[test]
+    fn api_and_codev_agree_on_the_same_internal_peer_socket_path() {
+        let children = supervised_children("/workspace");
+        let api = children.iter().find(|c| c.name == "api").expect("api child declared");
+        let codev = children.iter().find(|c| c.name == "codev").expect("codev child declared");
+        let api_path = api.env.iter().find(|(k, _)| k == "NOESAR_CODEV_PEER_SOCKET_PATH").map(|(_, v)| v.as_str());
+        let codev_path = codev.env.iter().find(|(k, _)| k == "NOESAR_CODEV_PEER_SOCKET_PATH").map(|(_, v)| v.as_str());
+        assert!(api_path.is_some(), "api must be told where to listen for codev");
+        assert_eq!(api_path, codev_path, "a mismatch here means codev relays to a socket api never listens on");
+    }
+
+    #[test]
+    fn codev_peer_socket_path_is_under_run_not_the_bind_mounted_workspace() {
+        // /run is the tmpfs INST-004 restores: container-local, never bind-mounted, gone
+        // on restart. Putting the internal peer socket under /workspace instead would leak
+        // it onto the host bind mount for no reason a peer-only RPC channel has.
+        let children = supervised_children("/workspace");
+        let codev = children.iter().find(|c| c.name == "codev").expect("codev child declared");
+        let path = codev.env.iter().find(|(k, _)| k == "NOESAR_CODEV_PEER_SOCKET_PATH").map(|(_, v)| v.as_str());
+        assert_eq!(path, Some("/run/codev-peer.sock"));
     }
 
     #[test]

@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ARCH-001, completion: `codev` becomes a real third OS-level peer.
+# `:phase4-supervisor` wired `postgres` and `api` as two independent peers under
+# noesar-supervisord (PID 1) but left `codev` embedded inside `api` — recorded there as
+# `⚠ partial (2 of 3 peers)`. This image adds the third.
+#
+# `codev` (services/reference-control-plane/bin/codev-child.mjs) carries NO business
+# logic: it is a byte-transparent relay between the externally-reachable session-protocol
+# socket real terminals connect to (NOESAR_TUI_SOCKET_PATH, unchanged path/bind mount —
+# tools/tui-client.mjs needs no change) and an internal-only socket `api` now listens on
+# instead (NOESAR_CODEV_PEER_SOCKET_PATH, under /run — the tmpfs INST-004 restored, never
+# bind-mounted, gone on restart). The actual dispatch (plan/simulate/approve/…) stays
+# owned exclusively by `api`'s in-process instances — see session-protocol.mjs's own
+# header comment for why a second copy of it would be wrong, not merely unnecessary.
+#
+# Built with --network=none --pull=false: cargo builds entirely from
+# rust/vendor + rust/Cargo.lock (D-0173), no registry access needed.
+
+FROM rust:1-bookworm AS supervisor-builder
+ENV RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu
+WORKDIR /build
+COPY rust/ /build/rust/
+RUN cd /build/rust && cargo build --offline --locked --release -p noesar-supervisor \
+ && test -x /build/rust/target/release/noesar-supervisord
+
+FROM noesar-evolution:phase4-supervisor
+
+LABEL org.noesar.phase="4-codev-peer"
+LABEL org.noesar.arch-001="complete-3-of-3-peers"
+
+USER root
+COPY --from=supervisor-builder /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord
+RUN chmod 0755 /opt/noesar/bin/noesar-supervisord
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001
+
+ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]

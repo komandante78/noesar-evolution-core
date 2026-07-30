@@ -4440,3 +4440,167 @@ longer hold, which is disclosed rather than hidden.
 split not done), `ARCH-002` and `ARCH-003` recorded `✅` (both verified live by actually
 killing processes, not by reading the architecture and assuming). `INST-004` posture drift
 recorded as a new, separate, unresolved finding.
+
+## D-0241 · INST-004 hardening restored on the live container — 2026-07-30
+**Decision.** Owner chose, of the three options `D-0240` left open, to fix `INST-004`
+first (faster, and it is a security posture regression already in production). The live
+`noesar-evolution` container was recreated with the hardening flags `INSTALLATION_LEDGER.md`
+has repeated across many prior entries: `--read-only`, `--cap-drop ALL`,
+`--security-opt no-new-privileges:true`, `--pids-limit 512`, `--memory 8g`, `--cpus 4`,
+`--shm-size 64m`, and `--tmpfs /run:rw,nosuid,nodev,noexec` + `--tmpfs /tmp:rw,nosuid,nodev,noexec`.
+No new image — same `noesar-evolution:phase4-supervisor` tag, config-only redeploy.
+**Confirmed before touching anything.** `docker inspect` on the live container reproduced
+exactly what `D-0240` reported: `ReadonlyRootfs=false`, `CapDrop=null`, `SecurityOpt=null`,
+`PidsLimit=null`, `Memory=0`, `Tmpfs=null`. `--user 10001:10001` and `--shm-size 64m` had
+survived. The drift is real, not a stale finding.
+**Sequence.** `docker stop -t 60` → `postgres.stopped clean:true` read in the log → full
+runtime backup (12.5 MB, `BACKUPS/runtime_pre_hardening_deploy_20260730T034633Z/runtime.tar.gz`,
+sha256 `ab02b4d9…`) → predecessor renamed to
+`noesar-evolution.rollback-hardening-20260730T034633Z` → new container started with every
+env var, mount, network, port and restart policy **re-read from the replaced container's own
+`docker inspect`**, plus the restored hardening flags → verified live.
+**Verified live, not assumed.** `Up (healthy)`, `RestartCount=0`. `docker inspect`:
+`ReadonlyRootfs=true`, `CapDrop=[ALL]`, `SecurityOpt=[no-new-privileges:true]`,
+`PidsLimit=512`, `Memory=8589934592` (8 GiB), `NanoCpus=4000000000` (4 CPUs),
+`Tmpfs=map[/run:rw,nosuid,nodev,noexec /tmp:rw,nosuid,nodev,noexec]`, `User=10001:10001`.
+`/livez` and `/readyz` both `200`. `/api/v1/shadow` `401` (gated) against `/api/v1/does-not-exist`
+`404`. `/healthz` unchanged (`disclosed:false` — `B-010` not regressed). Process tree read
+from `/proc` inside the new container: PID 1 = `noesar-supervis`, both `node` processes
+(api, postgres-child wrapper) direct children of PID 1, real `postgres` a child of the
+wrapper — `ARCH-002`/`ARCH-003` topology **not** regressed by this redeploy. Data
+integrity: `migrations":16` (0 re-run), `data-plane.identity-projected: projected:1` — the
+real prior identity, not an empty database.
+**§5a.** Two project containers for this side (installation + the one new rollback). The
+older rollback (`noesar-evolution.rollback-supervisor-20260729T232340Z`) removed only after
+the new container's health was confirmed; its image stays on disk. Networks (10) and
+volumes (35) unchanged.
+**What is still open.** The exact pre-drift `tmpfs` size and `pids-limit` syntax were never
+independently re-verified before this fix — this deploy used the values
+`INSTALLATION_LEDGER.md` line 718-720 already documented (`--pids-limit 512`, default tmpfs
+size), not a rediscovery. If those specific numbers ever mattered for a reason not written
+down anywhere in this repository, that reason is lost; nothing in the test suite or ledger
+suggested they did. **When and how the drift was introduced remains unknown** — `D-0240`
+found it already gone before `:phase4-supervisor` was ever built, so it predates this
+session's work and was not caused by it; no further forensics were run (out of scope for a
+restoration fix).
+**Reversal cost.** None — no migration, `AI_STATE_VERSION` unchanged. Returning to
+`noesar-evolution.rollback-hardening-20260730T034633Z` (`:phase4-supervisor` without the
+flags) reintroduces the exact posture regression this decision fixes; not the ARCH-001
+topology, which is unaffected either way.
+**Status.** Applied and installed. `INST-004` restored and re-verified live. `ARCH-005`
+(adapter capability gate) and the `codev` third-peer split remain the two open options from
+`D-0240`; Owner instructed to proceed with "the rest" toward finishing the project rather
+than stopping to ask again — `codev` is chosen next (see `D-0242`) because it completes
+`ARCH-001`, already `⚠ partial`, using infrastructure (`session-protocol.mjs`'s unix socket,
+already reached externally by `tools/tui-client.mjs`) built this same week, rather than
+opening the unrelated `ARCH-005` surface first.
+
+## D-0242 · ARCH-001 complete — `codev` is a real third OS peer — 2026-07-30
+**Decision.** Owner: proceed with the rest toward finishing NOESAR EVOLUTION rather than
+stopping to ask again after `D-0241`. `codev` is a genuine third OS-level peer under
+`noesar-supervisord` now, closing the gap `D-0240` recorded as `⚠ partial (2 of 3 peers)`.
+**Design: a relay, not a second engine.** `services/reference-control-plane/bin/
+codev-child.mjs` carries zero business logic. It is a byte-transparent TCP-level relay
+between the externally-reachable session-protocol socket real terminals connect to
+(`NOESAR_TUI_SOCKET_PATH`, unchanged path/bind mount — `tools/tui-client.mjs` needed no
+change) and a new internal-only socket `api` now listens on instead
+(`NOESAR_CODEV_PEER_SOCKET_PATH`, under `/run` — the tmpfs `INST-004` restores:
+container-local, never bind-mounted, gone on restart). `session-protocol.mjs` itself is
+unchanged — `api` still owns the one and only `WorkspaceActionOrchestrator`/`AuthService`/
+dispatch instances; only the listen path moved. This directly avoids the exact failure
+`session-protocol.mjs`'s own header comment names: a second dispatch would give a real
+terminal a run history the WebUI cannot see.
+**Why a relay and not, say, a remote-procedure client with its own auth logic**: a relay
+needs no copy of the wire protocol at all — `auth.login`/`auth.mfa`/every `workspace.*`
+method travels through `codev` untouched, parsed only once, by `api`'s own
+`startUnixSocketServer` instance on the internal socket. Building anything smarter here
+would have meant re-deriving exactly the state-duplication risk this design exists to
+avoid.
+**A real bug found building, not reading — twice.**
+1. Docker's tmpfs default mode for `/run` is `0755` root-owned (`/tmp` alone defaults to
+   `1777`) — confirmed on the LIVE production container too, not only in an isolated test.
+   `api`, running as uid 10001 (single-uid posture, `INST-004`), could not create the
+   internal peer socket under `/run` at all: `listen EACCES: permission denied
+   /run/codev-peer.sock`, `api` crash-looping on every restart attempt. Fixed by adding
+   `mode=1777` to the `--tmpfs /run` mount option — sticky, world-writable, matching the
+   posture `/tmp` already had by Docker's own default, safe here because only one uid
+   (10001) ever runs application code in this container. **This means `D-0241`'s restored
+   `/run` tmpfs was, until this deploy, unable to be written to by the container's own
+   application user for anything** — nothing needed it before `codev`, so the gap was
+   silent. Not a regression `D-0241` introduced; a latent gap it inherited from whatever
+   configuration was last known-good, now closed.
+2. `server.listening` on a `net.Server` flips `true` synchronously for a unix socket,
+   before the `listen()` callback (which does the `chmod 0600`) has actually run — a test
+   gating on that flag can race the chmod and observe the file's pre-chmod mode. Caught by
+   the test itself (`0600` expected, `0777` observed) before it ever reached a container;
+   fixed by synchronizing the test on the relay's own "now listening" log line, which is
+   emitted from inside the same callback, after the chmod call — not by touching production
+   code, since the flag-race is a test-only concern (the callback always eventually runs;
+   nothing in `codev-child.mjs` itself depends on `.listening`).
+**Evidence — built AND executed, not assumed.**
+- 3 new relay tests (`services/reference-control-plane/test/codev-relay.test.mjs`) against
+  real temp unix sockets, no mocks: a handshake and a request/response round trip pass
+  through byte-for-byte in both directions; an unreachable internal peer closes the
+  external connection fast with no data, rather than hanging; the external socket file is
+  created `0600`. Full unit suite: **1129/1129** (1126 + 3 new), 0 regressions.
+- `noesar-supervisor` crate: 3 new tests (`exactly_three_peers_declared`,
+  `api_and_codev_agree_on_the_same_internal_peer_socket_path`,
+  `codev_peer_socket_path_is_under_run_not_the_bind_mounted_workspace`) plus the renamed
+  `exactly_three_peers_declared`. `cargo test --offline --locked --workspace`: **26 test
+  binaries, 0 failed** (up from 23 — new supervisor unit tests plus the crate's own
+  `#[cfg(test)]` growth), including all conformance vector suites unaffected.
+- ESLint: 232 files (up from 229), 0 errors, 0 warnings.
+- Built `noesar-evolution:phase4-codev-peer` (`--network=none --pull=false`), byte-identity
+  of `services/reference-control-plane/` inside the image verified against the source tree
+  (`docker cp` + `diff -rq`, 0 differences) before touching anything live.
+- **Verified in an isolated throwaway container first, not the live one** (own network, own
+  bind mounts, own port): process tree from `/proc` — PID 1 = `noesar-supervisord`; three
+  direct children, all `ppid=1` — `postgres`, `api`, `codev`; both socket files present at
+  `0600`. Drove a REAL authenticated terminal session through the relay end to end with
+  `tools/tui-client.mjs` (login, TOTP, a live `status` call) and got back the actual running
+  engine's real status payload, not a canned response. `kill -9` on `codev`'s pid: restarted
+  in ~1s by the supervisor's own backoff, `api` and `postgres` untouched throughout
+  (`livez` stayed 200 the whole time). `kill -9` on `api`'s pid: `postgres` and `codev`
+  untouched; a NEW terminal connection attempted mid-restart closed fast with no data
+  (`gotData=false`) rather than hanging — the fail-fast behaviour this design specifically
+  aims for. `docker stop -t 60`: all three peers logged `child.stopped`, `postgres.stopped
+  clean:true`, total 0.122s.
+- **Deployed to the actual live installation**: `docker stop -t 60` → `postgres.stopped
+  clean:true` read in the log → full runtime backup (12.5 MB,
+  `BACKUPS/runtime_pre_codev_peer_deploy_20260730T040708Z/`) → predecessor renamed
+  `noesar-evolution.rollback-codev-peer-20260730T040708Z` → new container created with every
+  env/mount/network/port/hardening flag re-read from the replaced container's own `docker
+  inspect`, plus `mode=1777` added to the `/run` tmpfs (see the bug above) → verified live:
+  `Up (healthy)`, `RestartCount=0`, all six `INST-004` hardening fields still present,
+  `/livez`+`/readyz` 200, `/api/v1/shadow` 401 vs `/does-not-exist` 404, process tree from
+  `/proc` shows the real three-peer topology in production (`postgres`/`codev`/`api`, all
+  `ppid=1`), both socket files present at `0600`, `migrations":16` (0 re-run),
+  `data-plane.identity-projected: projected:1` (the real prior identity, not empty). §5a
+  respected: older rollback (`rollback-hardening-20260730T034633Z`) removed only after the
+  new container's health was confirmed, leaving exactly two project containers.
+**Reversal cost.** None — no migration, `AI_STATE_VERSION` unchanged. Returning to
+`noesar-evolution.rollback-codev-peer-20260730T040708Z` (`:phase4-supervisor`) restores the
+two-peer topology exactly as `D-0241` left it (`codev` embedded in `api` again) — disclosed,
+not hidden.
+**Status.** Applied and installed. `ARCH-001` recorded `✅ complete (3 of 3 peers)`.
+
+## D-0243 · MANIFEST.sha256 regenerated — stale since `D-0228` (7 sessions of drift) — 2026-07-30
+**Decision.** Ran `sha256sum -c MANIFEST.sha256` as part of `D-0242`'s own verification
+(this project's habit before trusting a "measured" claim) and found 9 pre-existing failures
+unrelated to this session's own changes: `apps/webui-static/{app.js,index.html,styles.css}`,
+`rust/Cargo.lock`, `rust/Cargo.toml`, `services/reference-control-plane/src/
+postgres-supervisor.mjs`, `tools/browser-e2e.mjs`, `MASTER_PROJECT/03_ARCHITETTURA.md` — none
+touched today. The digest's `manifest: 5829/5829 (misurato 2026-07-29, D-0228)` line was
+truthful when written; seven sessions (`s281`-`s287`) touched files inside its scope
+(`postgres-supervisor.mjs` for `NOESAR_POSTGRES_PEER_MODE`, `browser-e2e.mjs` for the panel
+drag test, `apps/webui-static/*` across several UI phases, `rust/Cargo.lock`/`.toml` for the
+supervisor crate) without anyone regenerating the manifest afterward. Not a security finding
+— these are the project's OWN prior, disclosed changes, not tampering — but a housekeeping
+gap worth naming rather than silently absorbing into `D-0242`'s own diff.
+**Fixed**: recomputed sha256 for every path already listed (5835), preserving the exact file
+set — no scope decision revisited here — then appended the 3 new files this phase added
+(`bin/codev-child.mjs`, `test/codev-relay.test.mjs`, `oci/Dockerfile.phase4-codev-peer`).
+`sha256sum -c MANIFEST.sha256`: **5838/5838, 0 mismatches**.
+**Not done**: auditing WHY 7 sessions in a row skipped this, or adding an automated check
+that would have caught it sooner — out of scope for a regeneration fix, named as a gap
+rather than quietly closed.

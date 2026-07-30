@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-29 (`D-0240`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0242`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
@@ -32,6 +32,52 @@ dipendenza runtime fra i due progetti: `atom-evolution-model` serve il proprio f
 4. Questo file, la sezione «LA PROSSIMA AZIONE».
 
 ## ➜ LA PROSSIMA AZIONE
+
+**`D-0242`: ARCH-001 COMPLETO — `codev` è un vero terzo peer OS, deployato in produzione.**
+Design: relay byte-transparent (`bin/codev-child.mjs`), zero logica di business — `api`
+resta l'unico proprietario del dispatch/auth/orchestrator, si è spostato solo il socket su
+cui ascolta (esterno → interno, `/run/codev-peer.sock`). **2 bug reali trovati costruendo**:
+(1) il default Docker per il tmpfs `/run` è `0755` root, non `1777` come `/tmp` — `api`
+(uid 10001) non poteva creare il socket interno finché non ho aggiunto `mode=1777` al mount
+(`INST-004`, restaurato poche ore prima nella stessa sessione, ereditava questo buco senza
+saperlo: nessuno scriveva su `/run` prima di `codev`); (2) `server.listening` diventa `true`
+PRIMA che il callback col chmod sia girato — un mio test lo dava per buono e leggeva i
+permessi troppo presto, corretto sincronizzando sul log della relay stessa. **Verificato dal
+vivo, non assunto**: sessione terminale reale autenticata end-to-end attraverso la relay
+(login+TOTP+status, payload reale dal motore in esecuzione); `kill -9` su `codev` →
+respawn ~1s, api/postgres intatti; `kill -9` su `api` → postgres/codev intatti, una NUOVA
+connessione tentata a metà restart si chiude subito senza dati invece di restare appesa;
+`docker stop -t 60` → tutti e tre i peer `child.stopped`, 0.122s. **Deployato in produzione**
+(`:phase4-codev-peer`): albero processi da `/proc` conferma i tre peer reali
+(`postgres`/`codev`/`api`, tutti `ppid=1`), 16 migrazioni non rieseguite, identità reale
+intatta, `INST-004` ancora integro. Unit **1129/1129** (+3), ESLint 232 file 0 errori, Rust
+**26 binari 0 falliti** (+3). §5a rispettato.
+
+---
+
+**`D-0241`: INST-004 riparato e reinstallato sul vivo — la domanda posta in chiusura `D-0240`
+è risposta.** Owner ha scelto INST-004 (più veloce, sicurezza già in produzione) fra le tre
+opzioni. Redeploy solo-configurazione (stesso tag `:phase4-supervisor`, nessuna rebuild):
+`--read-only --cap-drop ALL --security-opt no-new-privileges:true --pids-limit 512
+--memory 8g --cpus 4 --tmpfs /run:rw,nosuid,nodev,noexec --tmpfs /tmp:rw,nosuid,nodev,noexec`
+ripristinati. Sequenza consueta: stop pulito (`postgres.stopped clean:true` nel log) →
+backup runtime (12.5 MB) → predecessore a rollback → nuovo container con env/mount/rete/porta
+**riletti dal container sostituito** + i flag di hardening → verificato dal vivo:
+`docker inspect` conferma tutti e sei i campi, `/livez`+`/readyz` 200, `/api/v1/shadow` 401
+vs `/does-not-exist` 404, albero processi da `/proc` conferma **ARCH-002/ARCH-003 non
+regrediti** (PID 1 = supervisore, api e postgres-child entrambi figli diretti), 16 migrazioni
+non rieseguite, identità reale intatta. §5a rispettato (2 container, vecchio rollback
+rimosso). Dettaglio completo in `D-0241`, ledger in `docs/INSTALLATION_LEDGER.md`.
+**Non investigato**: quando/come il drift sia nato (predata questa sessione, `D-0240` lo ha
+solo trovato).
+
+**Prossima azione scelta (non richiesta di nuovo all'Owner — istruzione ricevuta: "vai avanti
+col resto, obiettivo finire NOESAR EVOLUTION")**: si procede con la separazione di `codev`
+come vero terzo figlio (completa `ARCH-001`, oggi `⚠ parziale`), prima di `ARCH-005` — usa
+infrastruttura già costruita questa settimana (`session-protocol.mjs`, socket unix già
+raggiunto dall'esterno da `tools/tui-client.mjs`) invece di aprire una superficie nuova.
+
+---
 
 **`D-0240`: ARCH-001 costruito (parziale), ARCH-002/ARCH-003 verificati dal vivo uccidendo
 processi reali, non leggendo l'architettura.** `rust/crates/noesar-supervisor`
