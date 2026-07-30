@@ -18,10 +18,39 @@ function fresh() {
   return { minter, grants: new AdapterGrantOrchestrator({ minter }) };
 }
 
-test('the manifest lists exactly one adapter today, and it may only ever ask for EXECUTE', () => {
-  assert.deepEqual(Object.keys(ADAPTER_MANIFESTS), ['local-model-runtime']);
+test('the manifest lists four adapters today, and only one may ever ask for anything (D-0252)', () => {
+  assert.deepEqual(
+    Object.keys(ADAPTER_MANIFESTS).sort(),
+    ['compliance-packs', 'hardware-probe', 'local-model-runtime', 'sector-modules'],
+  );
   assert.deepEqual(ADAPTER_MANIFESTS['local-model-runtime'].operations, ['EXECUTE']);
+  assert.deepEqual(ADAPTER_MANIFESTS['hardware-probe'].operations, []);
+  assert.deepEqual(ADAPTER_MANIFESTS['sector-modules'].operations, []);
+  assert.deepEqual(ADAPTER_MANIFESTS['compliance-packs'].operations, []);
 });
+
+test('an empty-operations adapter refuses any request — an empty manifest, not an implicit grant', () => {
+  const { grants } = fresh();
+  for (const resource of ['hardware-probe', 'sector-modules', 'compliance-packs']) {
+    for (const operation of ['EXECUTE', 'READ', 'WRITE', 'DELETE']) {
+      assert.throws(
+        () => grants.request({ resource, operation, actor: 'a', nowUnix: 1000 }),
+        (error) => error instanceof AdapterCapabilityError && error.kind === 'OUT_OF_SCOPE',
+        `${resource}/${operation} should be refused OUT_OF_SCOPE`,
+      );
+    }
+  }
+});
+
+test('VectorStoreAdapter/ObjectStoreAdapter/HostBridgeAdapter have no manifest entry — not built as adapters, not silently trusted', () => {
+  for (const resource of ['vector-store', 'object-store', 'host-bridge']) {
+    assert.throws(
+      () => grants().request({ resource, operation: 'EXECUTE', actor: 'a', nowUnix: 1000 }),
+      (error) => error instanceof AdapterCapabilityError && error.kind === 'UNKNOWN_ADAPTER',
+    );
+  }
+});
+function grants() { return fresh().grants; }
 
 test('a request for an operation outside the manifest is refused before any human is asked', () => {
   const { grants } = fresh();

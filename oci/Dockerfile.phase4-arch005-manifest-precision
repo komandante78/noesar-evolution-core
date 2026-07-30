@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0252: ARCH-005's "six adapters don't exist" statement audited individually.
+# hardware-probe/sector-modules/compliance-packs get explicit ADAPTER_MANIFESTS entries
+# with operations: [] (real code, zero privileged operations — a fact, not a gap).
+# vector-store/object-store/host-bridge get no entry, each for a distinct named reason
+# (see adapter-capability.mjs and D-0252). No runtime authorization behaviour changes for
+# local-model-runtime; GET /api/v1/adapters gains three keys with empty operations arrays.
+#
+# Only services/reference-control-plane/ changed. No Rust rebuild (nothing Rust-side touched).
+
+FROM noesar-evolution:phase4-execute-client-decision
+
+LABEL org.noesar.phase="4-arch005-manifest-precision"
+LABEL org.noesar.arch-005="six-adapters-audited-individually"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

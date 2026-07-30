@@ -20,18 +20,65 @@
 import { randomUUID } from 'node:crypto';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 
+// D-0252 audited the six other 03_ARCHITETTURA §4 contracts individually instead of
+// leaving them as one undifferentiated "not yet built" statement, because that statement
+// was imprecise in a way that matters: three of the six have real, shipped, first-party
+// code (hardware.mjs, sector-modules.mjs, compliance-packs.mjs) that simply never grew a
+// privileged (write/spawn/network) operation — gating them would mean minting tokens for
+// operations that do not exist, which is not security work, it is a manifest that lies
+// about what it bounds. The other three remain genuinely absent or out of scope, and are
+// NOT given manifest entries here — see the reasons on each below and D-0252.
+//
+//   - VectorStoreAdapter: postgres-repository.mjs is not a pluggable surface — it is
+//     first-party code with one implementation, wired directly into server.mjs behind
+//     RBAC + Postgres RLS. ARCH-005's concern ("no adapter may self-grant") presumes a
+//     swappable implementation that could misbehave; there isn't one to gate.
+//   - ObjectStoreAdapter: no content-addressed, encrypted object store exists in the
+//     product at all (store.mjs is a plain JSON key-value file). This is a missing
+//     capability, not an ungated one — nothing to write a manifest for yet.
+//   - HostBridgeAdapter ("the little that touches the host, always mediated"): the two
+//     host-touching capabilities that exist — process spawn (local-model-runtime.launch)
+//     and sandboxed EXECUTE (noesar-sandbox, ARCH-008) — are each already gated under
+//     their own name. A third adapter here would re-cover ground two other capabilities
+//     already cover, under a name nothing calls.
 export const ADAPTER_MANIFESTS = Object.freeze({
-  // local-model-runtime.mjs is the one adapter that exists today (03_ARCHITETTURA §6:
-  // the others — VectorStoreAdapter, ObjectStoreAdapter, IndustryModuleProvider,
-  // CompliancePackProvider, HostBridgeAdapter — are not yet built). `launch()` spawns a
-  // real OS process and hands it GPU access; every other method here (detect/configure/
-  // status/attach/complete) does not reach outside the calling process in a way this
-  // manifest governs, and is deliberately left ungated — naming that rather than
-  // pretending the manifest below covers more than it does.
+  // launch() spawns a real OS process and hands it GPU access; every other method here
+  // (detect/configure/status/attach/complete) does not reach outside the calling process
+  // in a way this manifest governs, and is deliberately left ungated — named rather than
+  // implied. attach()'s outbound fetch() to an operator-configured endpoint is tracked
+  // separately as F4-010 (hostname-only validation, requires provider.manage/agent.manage
+  // to exploit), not reopened here.
   'local-model-runtime': Object.freeze({
     operations: Object.freeze(['EXECUTE']),
     resourcePaths: Object.freeze({ EXECUTE: 'adapter://local-model-runtime/launch' }),
     description: 'spawn the operator-configured local inference process (ModelRuntimeAdapter)',
+  }),
+  // HardwareProbeAdapter, as built: discoverHardware()/recommendRuntime() in hardware.mjs
+  // read /proc and query the GPU driver — never write, spawn, or reach the network. There
+  // is no privileged operation to self-grant, so this manifest asks for nothing; any
+  // request against it is refused OUT_OF_SCOPE by construction, the same as an adapter
+  // whose one operation is not in scope.
+  'hardware-probe': Object.freeze({
+    operations: Object.freeze([]),
+    resourcePaths: Object.freeze({}),
+    description: 'read-only hardware discovery (HardwareProbeAdapter) — no privileged operation exists',
+  }),
+  // IndustryModuleProvider, as built: sector-modules.mjs only loads and validates signed
+  // manifests already on disk under NOESAR_SECTOR_MODULES. GET /api/v1/sector-modules[/list]
+  // and POST .../validate are read-only/dry-run — there is no install or activate route,
+  // so nothing here writes, spawns, or reaches the network yet.
+  'sector-modules': Object.freeze({
+    operations: Object.freeze([]),
+    resourcePaths: Object.freeze({}),
+    description: 'read/validate signed sector module manifests (IndustryModuleProvider) — no install route exists yet',
+  }),
+  // CompliancePackProvider, as built: compliance-packs.mjs is the same shape as
+  // sector-modules.mjs — loads and validates signed packs already on disk under
+  // NOESAR_COMPLIANCE_PACKS, no install/activate route.
+  'compliance-packs': Object.freeze({
+    operations: Object.freeze([]),
+    resourcePaths: Object.freeze({}),
+    description: 'read/validate signed compliance packs (CompliancePackProvider) — no install route exists yet',
   }),
 });
 
@@ -169,6 +216,6 @@ export function adapterCapabilityStatus() {
     enforcedBy: 'engine',
     adaptersMaySelfGrant: false,
     grantTtlSeconds: GRANT_TTL_SECONDS,
-    reason: 'A manifest only lists which operations exist to ask for. Only AdapterGrantOrchestrator.approve() mints a token, through the same TokenMinter instance workspace-actions.mjs spends through. local-model-runtime.mjs is the first, and today the only, adapter wired to require one before its privileged operation (launch, which spawns an OS process and hands it GPU access) runs — attach/complete/configure remain ungated, named rather than implied.',
+    reason: 'A manifest only lists which operations exist to ask for. Only AdapterGrantOrchestrator.approve() mints a token, through the same TokenMinter instance workspace-actions.mjs spends through. local-model-runtime.mjs is the only adapter with a privileged operation (launch, which spawns an OS process and hands it GPU access) and it is wired to require a token — attach/complete/configure remain ungated, named rather than implied. hardware-probe/sector-modules/compliance-packs are real, shipped code with zero privileged operations by design (read-only or validate-only) — their empty manifests are not a gap, they are the accurate statement that there is nothing to self-grant. VectorStoreAdapter, ObjectStoreAdapter and HostBridgeAdapter have no entry: no pluggable surface, no implemented capability, or already covered under a different name (D-0252) respectively.',
   };
 }

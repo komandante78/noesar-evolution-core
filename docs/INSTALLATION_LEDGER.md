@@ -3099,3 +3099,43 @@ proven from inside the running process, not assumed.
 
 Predecessor: `noesar-evolution.rollback-execute-client-decision-20260730T104115Z`
 (`:phase4-sandbox-binary`). Rollback cost: none.
+
+## 2026-07-30 · `:phase4-arch005-manifest-precision` — D-0252 deployed: three adapters get honest empty manifests
+Tag `noesar-evolution:phase4-arch005-manifest-precision`, `FROM :phase4-execute-client-decision`.
+No Rust rebuild (nothing Rust-side touched). Only `services/reference-control-plane/` re-copied
+(`adapter-capability.mjs` + its two test files).
+
+**Verification (pre-deploy)**: byte identity of image contents vs. repository tree confirmed via
+`docker cp` + `diff` on both changed files, before touching production. Node **1222 tests (was
+1220), 1221 pass, 1 honest skip, 0 fail**; ESLint **244 files, 0 errors**.
+
+**Deploy**: stop `-t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_arch005_manifest_precision_deploy_20260730T111600Z.tar.gz` (12.5 MB, service
+stopped) → §5a (older rollback `execute-client-decision-20260730T104115Z` removed, predecessor
+renamed to `.rollback-arch005-manifest-precision-20260730T111600Z`).
+
+**Self-caught deployment defect, not a product defect**: the first `docker run` reconstructed
+`HostConfig` from a partial field list (`Binds`/`PortBindings`/`RestartPolicy`/`ReadonlyRootfs`/
+`CapDrop`/`NetworkMode`) and omitted `Tmpfs` — the predecessor's `--tmpfs /run:mode=1777` mount
+that `D-0241` had specifically fixed. The container crash-looped for ~20s
+(`listen EROFS: read-only file system /run/codev-peer.sock`, `session-protocol.mjs`'s Unix socket
+listener) before healthcheck could ever pass. Caught by watching the log instead of assuming
+`Up (health: starting)` would resolve to healthy; stopped and removed within seconds, no traffic
+served, nothing promoted. Re-run from the **full** `HostConfig` JSON (`Tmpfs`, `SecurityOpt`,
+`PidsLimit`, `Memory`, `NanoCpus` included this time, not just the six fields rule 11c's own
+prose happens to name) succeeded on the first attempt: `postgres.ready`, `data-plane.ready
+migrations:16 rls_tables:15 production_ready:true`, healthcheck **healthy** at 21s.
+
+**Verification (post-deploy)**: `Up (healthy)`, `/livez` `/readyz` 200, hardening intact
+(`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0` on the
+surviving container), `migrations:16 rls_tables:15` unchanged. `GET /api/v1/adapters` (no
+session) → `401`, same as before — the new manifest entries did not loosen the route's own
+auth. Rule 11e respected: no suite that bootstraps an owner or mutates settings was run against
+this installation; what was proven is deployed-bytes-equal-tree (pre-deploy) plus service health
+and the auth-gated surface answering (post-deploy). Post-cleanup inventory: exactly 2
+`noesar-evolution*` containers, `noesar-evolution-net` the only project network, no volumes,
+non-project container count unchanged (40).
+
+Predecessor: `noesar-evolution.rollback-arch005-manifest-precision-20260730T111600Z`
+(`:phase4-execute-client-decision`). Rollback cost: none — no runtime authorization behaviour
+changed for any existing gated path.
