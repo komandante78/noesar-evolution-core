@@ -134,6 +134,7 @@ fn every_executor_vector_passes() {
                 reason: "test".into(),
                 uses: mint["uses"].as_u64().unwrap() as u32,
                 expires_at_unix: NOW + 600,
+        limits: None,
             };
             let token = minter
                 .mint(against, &request, NOW)

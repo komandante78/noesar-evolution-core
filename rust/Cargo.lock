@@ -661,6 +661,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "noesar-sandbox"
+version = "0.6.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "noesar-security-kernel"
 version = "0.6.0"
 dependencies = [

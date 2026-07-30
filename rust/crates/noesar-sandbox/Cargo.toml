@@ -1,0 +1,20 @@
+[package]
+name = "noesar-sandbox"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "noesar_sandbox"
+path = "src/lib.rs"
+
+[[bin]]
+name = "noesar-sandbox"
+path = "src/main.rs"
+
+# libc only. This is the one binary in the workspace that runs with the fewest guarantees
+# around it -- it applies limits and then becomes an arbitrary command -- so its dependency
+# surface is kept to the crate that provides the syscalls themselves.
+[dependencies]
+libc.workspace = true

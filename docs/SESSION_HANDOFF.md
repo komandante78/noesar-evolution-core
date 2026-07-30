@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0247`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0248`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3). Era 382 — la storia per-decisione è
 > stata rimossa perché già interamente in `docs/DECISION_LOG.md` (verificato: tutti e 21 i
@@ -44,34 +44,31 @@ runtime: `atom-evolution-model` serve il proprio file dentro `ATOM_EVOLUTION/mod
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`ARCH-008` — la domanda posta in `D-0246` è CHIUSA dall'Owner, e la risposta non era nessuna
-delle due opzioni proposte.** Avevo chiesto di scegliere fra (a) autorizzare cambi all'host
-(kernel con Landlock, delega cgroup Docker) e (b) una fase dedicata al sandbox a processo
-figlio. **L'Owner ha rifiutato la premessa**: l'opzione (a) è **vietata per sempre** —
-NOESAR EVOLUTION è self-hosted e gira su qualunque PC/server/OS, quindi non si tocca l'host
-(regola permanente 3 sopra, `CLAUDE10.md` §16). Porre quella domanda era **un errore mio**,
-non una scelta legittima.
+**`ARCH-008` è ⚠ parziale (`D-0248`): il meccanismo è costruito e MISURATO, ma nessuna
+superficie del prodotto lo usa ancora.** Il prossimo passo è una **fase dedicata al Sandbox
+Manager**: includere `noesar-sandbox` nell'immagine OCI, spendere ogni token `EXECUTE`
+attraverso di esso, e a quel punto la superficie `EXECUTE` può esistere — la ragione dichiarata
+del rifiuto in `executor.mjs` («non c'è una sandbox che possa contenere un processo») **non è
+più vera**. Portata paragonabile al supervisore di `ARCH-001`.
 
-**Quindi `ARCH-008` si costruisce così, e va progettato prima di scrivere codice:** un
-**Sandbox Manager adattivo** che spende ogni capability token in un vero processo figlio a
-vita breve, e che:
+**Non rifare** il probe di `D-0246` né la misura di `D-0248`: entrambe sono registrate.
 
-1. **rileva a runtime** quali primitive l'host offre (Landlock, cgroup v2 scrivibili, seccomp);
-2. usa **seccomp come base garantita ovunque** — confermato disponibile anche sotto il profilo
-   di hardening di produzione (`D-0246`);
-3. aggiunge Landlock e i limiti cgroup **solo dove esistono**, opportunisticamente;
-4. **dichiara per installazione** quale livello di isolamento è attivo, mai lasciarlo intendere.
+Cosa esiste già, misurato dal vivo sotto il profilo di hardening di produzione:
+figlio tenuto a **64 MiB dentro un container da 8 GiB** (`ulimit -v` letto *da dentro* il
+figlio = 65536 KiB, il container è unlimited), 512 MiB rifiutati e 16 MiB riusciti, limite
+**hard** abbassato quindi il figlio non può rialzarlo, `cpuSeconds=1` uccide un ciclo infinito,
+`ptrace` → **EPERM** da 18 syscall filtrate, ampliamento oltre il ceiling rifiutato **nominando
+la dimensione**. Livello su questo host: **tier 1 `SECCOMP_FILTER`** — Landlock e cgroup
+confermati assenti e **gestiti**, non subiti. I limiti viaggiano **dentro il token, sotto il suo
+MAC**, con lo stesso `canonical_limits` nei due minter.
 
-Il probe di `D-0246` **resta prezioso e non va rifatto**: ha misurato il comportamento su un
-host *senza* quelle primitive (`CONFIG_SECURITY_LANDLOCK` non compilato, cgroup non delegati),
-condizione che si presenterà su Windows, macOS, distro minimali e altri NAS. Vedi la memoria
-`project_noesar_evolution_host_lacks_landlock_and_cgroup_delegation_s289`.
+---
 
-**Prerequisito architetturale già nominato in `D-0246`**: oggi né `executor.mjs` né il gate
-degli adattatori (`D-0244`) agiscono fuori processo — entrambi in-process, un solo event loop
-Node a vita lunga. Un filtro seccomp installato per una capacità resterebbe per sempre
-sull'intero processo. **Il processo figlio è il lavoro vero**, di portata paragonabile al
-supervisore di `ARCH-001`.
+## ➜ AZIONE PRECEDENTE (chiusa in `D-0247`, superata da `D-0248`)
+
+La domanda di `D-0246` su `ARCH-008` era mal posta (chiedeva di cambiare l'host) e l'Owner l'ha
+rifiutata; il ladder adattivo che ne è seguito è ora costruito e misurato — vedi `D-0247` e
+`D-0248` in `docs/DECISION_LOG.md`, che è il file che possiede la storia.
 
 ## ➜ Stato dell'installazione
 
@@ -81,13 +78,16 @@ supervisore di `ARCH-001`.
   (`:phase4-codev-peer`).
 - **atomd**: `atom-evolution:atomd`, `noesar-evolution-net`. Serve **Phi-4-14B Q4_K_M**.
 - **Due container per progetto** (installazione + 1 rollback) — §5a rispettato.
-- **`D-0247` non ha richiesto redeploy**: skill, autorità e digest non sono importati da
+- **Né `D-0247` né `D-0248` hanno richiesto redeploy**: skill, autorità, digest e il nuovo
+  binario del sandbox non sono importati da
   `server.mjs` a runtime.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
 - **Nessun `exec`** in nessuna delle due shell — solo le operazioni già guardiane.
-- **`ARCH-008` non è costruito** — investigato (`D-0246`), progettato qui, zero codice.
+- **`ARCH-008` è ⚠ parziale**: il meccanismo è costruito e misurato (`D-0248`) ma **nessuna
+  superficie del prodotto spende un token attraverso il sandbox**; `noesar-sandbox` non è
+  nemmeno nell'immagine OCI, e `executor.mjs` rifiuta `EXECUTE` per progetto.
 - **`ARCH-005` è parziale**: solo `launch()` è gated. `attach()`/`complete()`/`configure()`
   restano scoperti; gli altri 6 adattatori di `03 §4` non esistono.
 - **`INST-002`**: nessun token di installazione esiste — nessuna superficie lo richiede.
@@ -109,23 +109,31 @@ supervisore di `ARCH-001`.
 `B-002` (low): né `gitleaks` né `trufflehog` sono installabili (regola 45); scan euristico a
 pattern, **dichiarato euristico**. Nessun altro.
 
-## ➜ Verificato in `D-0247` (misurato in sessione, non dichiarato)
+## ➜ Verificato in `D-0248` (misurato in sessione, non dichiarato)
 
 | Verifica | Risultato |
 |---|---|
-| unit | **1168/1168**, 71 suite, 0 fail (7,2 s) |
+| unit Node | **1193/1193**, 0 fail (+25: `isolation.test.mjs`) |
+| Rust workspace | **47 binari, 133 passati, 0 falliti** (+26; `conformance/` montata a `/conformance`) |
+| ESLint | **241 file**, 0 errori, 0 warning, 0 `no-undef` |
 | `tools/verify-source.mjs` | `PASS migrations=16 baseline=12/12 intact` |
-| ESLint | **239 file**, 0 errori, 0 warning, 0 `no-undef` |
-| `MANIFEST.sha256` | **5845/5845**, 0 falliti — contato riga per riga, non fidandosi dell'exit code |
-| digest riparato | **18.516 → 10.279 byte (−44,5 %)**, stderr vuoto, escape hatch provata |
-| pattern container portabile | provato dal vivo: `docker run --rm --network none -v repo:ro python:3-slim` → 4/4 PASS |
-| scan segreti | euristico sul diff: 7 hit, tutte la *parola* «token»/«detect-secrets» in prosa, 0 reali |
+| `MANIFEST.sha256` | **5853/5853** — contato riga per riga, non fidandosi dell exit code |
+| isolamento, dal vivo | figlio a **64 MiB in un container da 8 GiB**; 512 MiB rifiutati, 16 MiB riusciti; hard limit non rialzabile; `cpuSeconds=1` → exit 137; `ptrace` → EPERM; ceiling sfondato → rifiutato nominando la dimensione |
+| manomissione del token | alzare `limits.memoryBytes` → `does not verify`; rimuovere `limits` → idem; token pulito → spende |
+| scan segreti | euristico sul diff: 0 reperti |
 
-**Un difetto introdotto da me e catturato rieseguendo, non leggendo**: la prima correzione al
-digest annidava apici singoli in un programma jq già fra apici singoli — `sh -n` **accettava**
-(shell valida, programma sbagliato) e lo script stampava errori su stderr. Riscritto formattando
-con `printf` fuori da jq. Conferma della lezione già in memoria: `sh -n`/`bash -n` non provano
-che uno script faccia la cosa giusta.
+**Due difetti trovati ESEGUENDO.** *Mio, riparato*: una sola relazione usata per due domande —
+`within` (scopo concesso, non impostato = illimitato) applicata anche al ceiling del container
+(dove non impostato = **ereditato**) rifiutava ogni spec normale; separate in `within`/`exceeds`.
+*Preesistente, riparato*: `noesar-supervisor`, **PID 1 dal `D-0240`**, non era in
+`MANIFEST.sha256` mentre ogni altro crate di prima parte c era — il componente più privilegiato
+era l unico fuori dal controllo di integrità.
+
+**Regola rivista, non aggirata**: «un token `EXECUTE` deve portare i propri limiti» ha rotto 11
+test su due design corretti (gate adattatori `D-0244`, contratto dell esecutore). Ora si attiva
+solo dove i limiti si applicano davvero: pretenderli prima registrerebbe una cifra che nessun
+kernel vede.
+
 
 ## ➜ Le domande all'Owner ancora senza risposta
 

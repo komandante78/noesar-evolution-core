@@ -155,6 +155,49 @@ fn plan_digest(plan: &Plan) -> String {
     hex::encode(hasher.finalize())
 }
 
+/// The isolation envelope a capability runs inside (ARCH-008). Mirrors `IsolationLimits` in
+/// rust/crates/noesar-sandbox, which is the crate that actually applies it, and
+/// `LIMIT_DIMENSIONS` in services/reference-control-plane/src/isolation.mjs.
+///
+/// Held here — and signed here — because the envelope has to be un-widenable in transit for it
+/// to mean anything: the sandbox faithfully applies whatever it is handed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CapabilityLimits {
+    #[serde(default)]
+    pub memory_bytes: Option<u64>,
+    #[serde(default)]
+    pub cpu_seconds: Option<u64>,
+    #[serde(default)]
+    pub open_files: Option<u64>,
+    #[serde(default)]
+    pub processes: Option<u64>,
+    #[serde(default)]
+    pub file_size_bytes: Option<u64>,
+    #[serde(default)]
+    pub core_dump_bytes: Option<u64>,
+}
+
+/// The exact string the MAC covers. Must stay byte-identical to `canonicalLimits` in
+/// isolation.mjs: fixed dimension order, `-` for unconstrained. `-` rather than `0` because 0
+/// is itself a real and very restrictive limit (`core_dump_bytes: 0` forbids core dumps), and a
+/// format where "unset" and "zero" collide would sign two different grants the same way.
+pub fn canonical_limits(limits: Option<&CapabilityLimits>) -> String {
+    let Some(limits) = limits else { return "none".to_string() };
+    let field = |value: Option<u64>| match value {
+        Some(number) => number.to_string(),
+        None => "-".to_string(),
+    };
+    format!(
+        "memoryBytes={};cpuSeconds={};openFiles={};processes={};fileSizeBytes={};coreDumpBytes={}",
+        field(limits.memory_bytes),
+        field(limits.cpu_seconds),
+        field(limits.open_files),
+        field(limits.processes),
+        field(limits.file_size_bytes),
+        field(limits.core_dump_bytes),
+    )
+}
+
 /// What an adapter asks for. Inert by construction: nothing on this type produces a token.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CapabilityRequest {
@@ -164,6 +207,9 @@ pub struct CapabilityRequest {
     pub reason: String,
     pub uses: u32,
     pub expires_at_unix: i64,
+    /// Absent means the capability names no envelope of its own — not that it is unlimited.
+    #[serde(default)]
+    pub limits: Option<CapabilityLimits>,
 }
 
 /// Issued by the engine, and only by the engine.
@@ -176,6 +222,8 @@ pub struct CapabilityToken {
     pub operations: Vec<Operation>,
     pub expires_at_unix: i64,
     pub uses_granted: u32,
+    #[serde(default)]
+    pub limits: Option<CapabilityLimits>,
     mac: String,
 }
 
@@ -236,6 +284,13 @@ impl TokenMinter {
         }
         feed(&token.expires_at_unix.to_string());
         feed(&token.uses_granted.to_string());
+        // ARCH-008: the isolation envelope is inside the MAC, not beside it, so it cannot be
+        // widened between minting and spending. `canonical_limits` produces byte-for-byte the
+        // same string as `canonicalLimits` in services/reference-control-plane/src/
+        // isolation.mjs — the fixed dimension order is a wire contract between the two minters,
+        // not a formatting choice. A token carrying no envelope feeds "none", which is why
+        // adding this field left tokens that never had limits signing exactly as before.
+        feed(&canonical_limits(token.limits.as_ref()));
         hex::encode(mac.finalize().into_bytes())
     }
 
@@ -347,6 +402,7 @@ impl TokenMinter {
             operations: request.operations.clone(),
             expires_at_unix: request.expires_at_unix,
             uses_granted: request.uses,
+            limits: request.limits,
             mac: String::new(),
         };
         token.mac = self.sign(&token);
@@ -452,6 +508,7 @@ mod tests {
             reason: "because".into(),
             uses: 1,
             expires_at_unix: NOW + 600,
+            limits: None,
         }
     }
 
@@ -656,5 +713,38 @@ mod tests {
     #[test]
     fn a_short_secret_is_refused_at_construction() {
         assert!(TokenMinter::new(vec![1_u8; 31]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod arch008_limits_tests {
+    use super::*;
+
+    /// The string below is not a guess: it is the literal output of `canonicalLimits` in
+    /// services/reference-control-plane/src/isolation.mjs, asserted there too by
+    /// `test/isolation.test.mjs` ("the canonical MAC order is fixed"). Both sides pin the same
+    /// bytes, so a change to either format fails a test rather than silently producing two
+    /// minters that no longer accept each other's tokens.
+    #[test]
+    fn canonical_limits_matches_the_javascript_minter_byte_for_byte() {
+        let limits = CapabilityLimits { memory_bytes: Some(1), core_dump_bytes: Some(0), ..Default::default() };
+        assert_eq!(
+            canonical_limits(Some(&limits)),
+            "memoryBytes=1;cpuSeconds=-;openFiles=-;processes=-;fileSizeBytes=-;coreDumpBytes=0"
+        );
+    }
+
+    #[test]
+    fn no_envelope_signs_as_none() {
+        assert_eq!(canonical_limits(None), "none");
+    }
+
+    #[test]
+    fn unset_and_zero_do_not_collide() {
+        // 0 is a real limit. If it formatted like "unset", forbidding core dumps and not asking
+        // about them would sign identically.
+        let zero = CapabilityLimits { core_dump_bytes: Some(0), ..Default::default() };
+        let unset = CapabilityLimits::default();
+        assert_ne!(canonical_limits(Some(&zero)), canonical_limits(Some(&unset)));
     }
 }

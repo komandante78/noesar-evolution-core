@@ -81,6 +81,7 @@ fn request_from(value: &Value) -> CapabilityRequest {
         reason: "vector".into(),
         uses: value["uses"].as_u64().unwrap() as u32,
         expires_at_unix: value["expiresAtUnix"].as_i64().unwrap(),
+        limits: None,
     }
 }
 
@@ -132,6 +133,7 @@ fn every_capability_vector_passes() {
         reason: "vector".into(),
         uses: 1,
         expires_at_unix: 1_800_000_600,
+        limits: None,
     };
 
     for vector in data["spend"].as_array().unwrap() {

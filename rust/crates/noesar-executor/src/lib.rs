@@ -303,6 +303,7 @@ mod tests {
             reason: "test".into(),
             uses,
             expires_at_unix: NOW + 600,
+            limits: None,
         }
     }
 

@@ -19,7 +19,8 @@ members = [
   "crates/noesar-shadow",
   "crates/noesar-executor",
   "crates/noesar-events",
-  "crates/noesar-supervisor"
+  "crates/noesar-supervisor",
+  "crates/noesar-sandbox"
 ]
 
 [workspace.package]

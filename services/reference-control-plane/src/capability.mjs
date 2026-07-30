@@ -14,6 +14,7 @@
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { isAbsolute, normalize } from 'node:path';
+import { assertUsable, canonicalLimits, exceedsCeiling, parseLimits, withinGrant } from './isolation.mjs';
 
 export const OPERATIONS = Object.freeze(['READ', 'WRITE', 'DELETE', 'EXECUTE']);
 const DESTRUCTIVE = Object.freeze(['DELETE', 'EXECUTE']);
@@ -72,12 +73,22 @@ export class TokenMinter {
   #issued = new Map();
   #counter = 0;
 
-  constructor(secret) {
+  #ceiling;
+
+  // `ceiling` (ARCH-008) is the installation's own limit envelope, normally what
+  // `noesar-sandbox --detect` reports for this container. It is optional and defaults to
+  // absent: a minter without one still mints, and `isolationStatus()` reports that no ceiling
+  // is being enforced rather than implying one. Passing a ceiling is what makes "no token may
+  // ask for more room than the container has" a check instead of a sentence in a document.
+  constructor(secret, { ceiling = null } = {}) {
     if (!Buffer.isBuffer(secret) || secret.length < 32) {
       invalid('a capability signing secret must be at least 32 bytes');
     }
     this.#secret = secret;
+    this.#ceiling = ceiling ? parseLimits(ceiling) : null;
   }
+
+  ceiling() { return this.#ceiling; }
 
   #sign(token) {
     const mac = createHmac('sha256', this.#secret);
@@ -88,6 +99,15 @@ export class TokenMinter {
     for (const operation of token.operations) feed(mac, operation.toLowerCase());
     feed(mac, String(token.expiresAtUnix));
     feed(mac, String(token.usesGranted));
+    // ARCH-008: the limits are inside the MAC, not beside it. A token whose limits could be
+    // edited in transit would carry a guarantee anyone could widen, which is worse than
+    // carrying none — the sandbox would faithfully apply whatever it was handed and the audit
+    // trail would record the tampered figure as enforced.
+    //
+    // `canonicalLimits` is fed as one fixed-order string, and rust/crates/noesar-capability
+    // feeds the identical string: two implementations of one rule stop agreeing the moment
+    // each formats it its own way.
+    feed(mac, canonicalLimits(token.limits ?? null));
     return mac.digest('hex');
   }
 
@@ -133,6 +153,40 @@ export class TokenMinter {
       outOfScope('a capability may not outlive the approval it descends from');
     }
 
+    // ARCH-008. Order matters here: shape first, then the granted scope, then the container's
+    // own ceiling, then usability. Each refusal names what was wrong, because a refusal an
+    // operator cannot locate is a refusal they will route around.
+    const limits = parseLimits(request.limits ?? null);
+    if (limits) {
+      // The step's own declared envelope is the grant. `withinGrant` is strict — an unset
+      // dimension counts as unlimited and so never satisfies a set grant, because asking for
+      // "no cap" where the plan set one is widening.
+      const granted = step.blastRadius?.limits ? parseLimits(step.blastRadius.limits) : null;
+      if (!withinGrant(limits, granted)) {
+        outOfScope(`the requested limits exceed what step \`${step.id}\` grants`);
+      }
+      // The container ceiling is the *other* relation: an unset dimension is inherited from
+      // the container, not granted without limit. Using the strict one here would refuse every
+      // ordinary request — a defect the Rust crate actually had, found by running it.
+      const over = exceedsCeiling(limits, this.#ceiling);
+      if (over) {
+        outOfScope(`limit \`${over}\` is wider than this installation's own ceiling; a sandbox cannot grant more than the container it runs in`);
+      }
+      assertUsable(limits);
+    } else if (request.operations.includes('EXECUTE') && this.#ceiling) {
+      // EXECUTE is the one operation that starts a process, so it is the one that cannot be
+      // granted without an envelope to run it in — but only once this installation can
+      // actually apply one. The condition is `this.#ceiling`, i.e. enforcement is configured.
+      //
+      // Requiring limits unconditionally was tried and reverted in the same phase: it broke 11
+      // tests across two designs that are both correct — `D-0244`'s adapter gate grants EXECUTE
+      // to `local-model-runtime`, and the executor's contract tests mint an EXECUTE token
+      // precisely to prove the executor refuses it. Neither is a defect. Demanding a limit
+      // before anything enforces one would have recorded a figure nothing applied, which is the
+      // ceremony this project treats as worse than an honest absence.
+      outOfScope('an EXECUTE capability must carry its own limits on an installation that enforces them: without them the process would run with the whole container\'s');
+    }
+
     this.#counter += 1;
     const id = createHash('sha256')
       .update(authorized.digest)
@@ -148,6 +202,7 @@ export class TokenMinter {
       operations: [...request.operations],
       expiresAtUnix: request.expiresAtUnix,
       usesGranted: request.uses,
+      limits,
     };
     token.mac = this.#sign(token);
     this.#issued.set(id, { usesRemaining: request.uses });
