@@ -3055,3 +3055,28 @@ l'API SCIM per gestirlo sparisce.
 - **Reachability note**: the live container runs `NOESAR_LOCAL_MODEL_RUNTIME=disabled` (administrative override), so `launch()` refuses at the `disabled` check before reaching the new gate — the gate exists and is proven by the test suite (26 new tests), not by a live GPU launch on this deployment.
 - **§5a**: two project containers (installation + one rollback, the most recent). Older rollback `rollback-codev-peer-20260730T040708Z` removed after health confirmed, image intact on disk. Networks (10) unchanged.
 - **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato. Returning to `:phase4-codev-peer` removes the capability gate on `launch()` — the adapter answers to `model.manage` RBAC alone again, nothing else.
+
+## 2026-07-30 · `:phase4-sandbox-binary` — ARCH-008: the sandbox binary ships, unwired
+Tag `noesar-evolution:phase4-sandbox-binary`, `FROM :phase4-arch005-adapter-gate`. New builder
+stage compiles `rust/crates/noesar-sandbox` (`--offline --locked`, `rust/vendor`+`Cargo.lock`,
+`RUSTUP_TOOLCHAIN` pinned) and copies the release binary to `/opt/noesar/bin/noesar-sandbox`
+(0755); `services/reference-control-plane/` re-copied for the new `isolation.mjs`/
+`sandbox-runner.mjs`. No ENTRYPOINT change, no migration.
+
+**Verification**: image built `--network=none`; binary present and runs `--detect` inside the
+built image before touching production. Deploy sequence: stop `-t 60` →
+`postgres.stopped clean:true` in log → backup `EVIDENCE/backup_runtime_20260730T100439Z.tar.gz`
+(12.5 MB) → §5a (older rollback `codev-peer` removed, predecessor `arch005-adapter-gate`
+renamed to rollback) → new container, env/mounts/network/hardening **read back** from the
+stopped container, not retyped. Live: `Up (healthy)`, `/livez` `/readyz` 200,
+`ReadonlyRootfs=true CapDrop=[ALL]`, `migrations:16 rls_tables:15` (not re-run), byte identity
+of running container's image ID = built image ID. `docker exec … noesar-sandbox --detect` on
+the live container: `tier:1 SECCOMP_FILTER`, `containerCeiling.memoryBytes:8589934592`.
+
+**Not wired**: no product surface invokes the binary. `executor.mjs`'s `EXECUTE` remains
+permanently refused (shared conformance oracle, `EXEC-007`) — reversing that needs an explicit
+Owner decision, not implied by shipping the binary. Same posture as `D-0244`'s adapter gate
+before anything called `launch()`.
+
+Predecessor: `noesar-evolution.rollback-sandbox-binary-20260730T100439Z` (`:phase4-arch005-adapter-gate`).
+Rollback cost: none — no migration, `AI_STATE_VERSION` unchanged.

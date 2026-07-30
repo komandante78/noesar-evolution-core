@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ARCH-008, D-0249: the noesar-sandbox binary (built and measured in D-0248) becomes part of
+# the shipped product instead of a build artefact only ever run manually.
+#
+# What this image does NOT do: wire the binary to anything. It is copied in, executable, and
+# unused — services/reference-control-plane/src/sandbox-runner.mjs (the Node-side caller) is
+# real, tested infrastructure, but nothing in server.mjs invokes it, and executor.mjs's
+# EXECUTE action remains permanently refused exactly as before (that refusal is asserted
+# identically on both language sides and is part of the shared conformance oracle,
+# conformance/executor-vectors.json case EXEC-007 — reversing it is a decision to name to the
+# Owner explicitly, not one this image makes by including a binary). Same posture D-0244 took
+# with ADAPTER_MANIFESTS before local-model-runtime was live, and D-0222 took with
+# /api/v1/research/gate before any WebUI surface called it: build the real thing, ship it,
+# state plainly that nothing uses it yet.
+#
+# Built with --network=none --pull=false: cargo builds entirely from rust/vendor +
+# rust/Cargo.lock (D-0173), no registry access needed. Same builder pattern as
+# Dockerfile.phase4-codev-peer.
+
+FROM rust:1-bookworm AS sandbox-builder
+ENV RUSTUP_TOOLCHAIN=1.97.1-x86_64-unknown-linux-gnu
+WORKDIR /build
+COPY rust/ /build/rust/
+RUN cd /build/rust && cargo build --offline --locked --release -p noesar-sandbox \
+ && test -x /build/rust/target/release/noesar-sandbox
+
+FROM noesar-evolution:phase4-arch005-adapter-gate
+
+LABEL org.noesar.phase="4-sandbox-binary"
+LABEL org.noesar.arch-008="mechanism-built-not-yet-spent-by-any-surface"
+
+USER root
+COPY --from=sandbox-builder /build/rust/target/release/noesar-sandbox /opt/noesar/bin/noesar-sandbox
+RUN chmod 0755 /opt/noesar/bin/noesar-sandbox
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

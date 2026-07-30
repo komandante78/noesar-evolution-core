@@ -1,6 +1,6 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0248`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0249`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3). Era 382 — la storia per-decisione è
 > stata rimossa perché già interamente in `docs/DECISION_LOG.md` (verificato: tutti e 21 i
@@ -44,27 +44,33 @@ runtime: `atom-evolution-model` serve il proprio file dentro `ATOM_EVOLUTION/mod
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`ARCH-008` è ⚠ parziale (`D-0248`): il meccanismo è costruito e MISURATO, ma nessuna
-superficie del prodotto lo usa ancora.** Il prossimo passo è una **fase dedicata al Sandbox
-Manager**: includere `noesar-sandbox` nell'immagine OCI, spendere ogni token `EXECUTE`
-attraverso di esso, e a quel punto la superficie `EXECUTE` può esistere — la ragione dichiarata
-del rifiuto in `executor.mjs` («non c'è una sandbox che possa contenere un processo») **non è
-più vera**. Portata paragonabile al supervisore di `ARCH-001`.
+**Domanda all'Owner, non decisa qui — `ARCH-008` resta ⚠ parziale per questa ragione sola:**
+`noesar-sandbox` è ora **costruito, misurato E SPEDITO in produzione** (`D-0248`+`D-0249`,
+deploy live verificato). L'unica cosa che manca è che **nessuna superficie del prodotto spende
+un token attraverso di esso** — perché l'unica che potrebbe (`EXECUTE`) è **rifiutata per
+progetto, identicamente sui due lati linguistici**, con la stringa di motivo che fa parte
+dell'oracolo di conformità condiviso (`conformance/executor-vectors.json`, caso `EXEC-007`,
+`noesar-executor` **e** `executor.mjs` la citano parola per parola).
 
-**Non rifare** il probe di `D-0246` né la misura di `D-0248`: entrambe sono registrate.
+**Scoperta a metà fase, non ignorata**: la mia stessa proposta approvata («cablarlo a
+executor.mjs, sblocca EXECUTE») dava per scontato che fosse un cablaggio. Non lo è — è
+**riscrivere un contratto di sicurezza cross-linguaggio**. Ho proceduto con tutto ciò che non
+dipendeva da quella scelta (binario nell'immagine, runner Node reale e testato, deploy live) e
+**non ho toccato `executor.mjs`**.
 
-Cosa esiste già, misurato dal vivo sotto il profilo di hardening di produzione:
-figlio tenuto a **64 MiB dentro un container da 8 GiB** (`ulimit -v` letto *da dentro* il
-figlio = 65536 KiB, il container è unlimited), 512 MiB rifiutati e 16 MiB riusciti, limite
-**hard** abbassato quindi il figlio non può rialzarlo, `cpuSeconds=1` uccide un ciclo infinito,
-`ptrace` → **EPERM** da 18 syscall filtrate, ampliamento oltre il ceiling rifiutato **nominando
-la dimensione**. Livello su questo host: **tier 1 `SECCOMP_FILTER`** — Landlock e cgroup
-confermati assenti e **gestiti**, non subiti. I limiti viaggiano **dentro il token, sotto il suo
-MAC**, con lo stesso `canonical_limits` nei due minter.
+**La domanda vera**: `EXECUTE` deve mai essere concedibile attraverso questo sandbox? Se sì:
+quale superficie potrà richiederlo (oggi **nessuna** — il pianificatore di `workspace-actions.mjs`
+non emette mai un passo `EXECUTE`), e serve un cambio coordinato a `conformance/
+executor-vectors.json` **più** entrambe le implementazioni. Se no: `noesar-sandbox` resta
+infrastruttura reale, testata, spedita — con un solo scopo onesto, provare che il criterio di
+isolamento di `ARCH-008` è soddisfatto — e questo **è già** uno stato finale legittimo, non un
+abbozzo.
+
+**Non rifare** il probe di `D-0246` né le misure di `D-0248`/`D-0249`: tutte registrate.
 
 ---
 
-## ➜ AZIONE PRECEDENTE (chiusa in `D-0247`, superata da `D-0248`)
+## ➜ AZIONE PRECEDENTE (chiusa in `D-0247`, superata da `D-0248`/`D-0249`)
 
 La domanda di `D-0246` su `ARCH-008` era mal posta (chiedeva di cambiare l'host) e l'Owner l'ha
 rifiutata; il ladder adattivo che ne è seguito è ora costruito e misurato — vedi `D-0247` e
@@ -72,15 +78,17 @@ rifiutata; il ladder adattivo che ne è seguito è ora costruito e misurato — 
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto**: `noesar-evolution:phase4-arch005-adapter-gate` · `Up (healthy)` ·
-  `192.168.178.100:8100→8088` · hardening `INST-004` intatto · `migrations:16` (0 rieseguite).
-  Rollback preservato: `noesar-evolution.rollback-arch005-adapter-gate-20260730T074008Z`
-  (`:phase4-codev-peer`).
+- **Prodotto**: `noesar-evolution:phase4-sandbox-binary` · `Up (healthy)` ·
+  `192.168.178.100:8100→8088` · hardening intatto · `migrations:16 rls_tables:15` (0 rieseguite)
+  · byte immagine provati identici all'albero prima del deploy.
+  Rollback preservato: `noesar-evolution.rollback-sandbox-binary-20260730T100439Z`
+  (`:phase4-arch005-adapter-gate`).
+- **`docker exec … noesar-sandbox --detect` sul container VIVO**: `tier:1 SECCOMP_FILTER`,
+  `containerCeiling.memoryBytes:8589934592` — il binario è reale nel container di produzione.
 - **atomd**: `atom-evolution:atomd`, `noesar-evolution-net`. Serve **Phi-4-14B Q4_K_M**.
 - **Due container per progetto** (installazione + 1 rollback) — §5a rispettato.
-- **Né `D-0247` né `D-0248` hanno richiesto redeploy**: skill, autorità, digest e il nuovo
-  binario del sandbox non sono importati da
-  `server.mjs` a runtime.
+- **`D-0247` non ha richiesto redeploy** (skill/autorità/digest non importati a runtime);
+  **`D-0249` sì** (nuovo binario nell'immagine, `D-0143`) — deployato e verificato dal vivo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
