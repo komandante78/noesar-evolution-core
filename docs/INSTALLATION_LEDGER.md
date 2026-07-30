@@ -3272,3 +3272,43 @@ network.
 
 Predecessor: `noesar-evolution.rollback-cube-c1-schema-20260730T144721Z`
 (`:phase4-sess002-003-replay`). Rollback cost: none — three new, unreferenced tables removed.
+
+## 2026-07-30 · `:phase4-cube-typed-views` — D-0262 deployed: `CUBE-004` typed views (migration 0018) + a RESTRICTIVE-only policy defect fixed
+Tag `noesar-evolution:phase4-cube-typed-views`, `FROM :phase4-cube-c1-schema`. New:
+`database/postgres/0018_memory_cube_typed_views.sql` — four typed views over `memory_records`
+(`library_memories`/`workshop_memories`/`corpus_memories`/`experience_memories`, `WITH CHECK
+OPTION`, owned by `noesar_migrator`), direct `SELECT`/`INSERT`/`UPDATE` on `memory_records`
+revoked from `noesar_app`, two new `SECURITY DEFINER` functions
+(`can_read_memory_record`/`can_write_memory_record`) so `memory_vectors`' policy keeps working
+without a direct grant. Also fixes an independent defect found live-verifying this: `0017`'s
+three policies (`memory_records`/`memory_vectors`/`embedding_models`) were each the *only*
+policy on their table and declared `RESTRICTIVE` — with no `PERMISSIVE` policy to narrow, access
+was denied unconditionally since deploy, silent because nothing reads/writes these tables yet.
+Fixed by dropping the `RESTRICTIVE` marker on all three (full detail: `docs/DECISION_LOG.md`
+`D-0262`).
+
+**Verification (pre-deploy)**: static `scripts/test.sh` pg-migrations + pg-contract **PASS**
+(18/18 migration manifest entries). Full suite: `scripts/test.sh` 10/10 STEP, `npm test`
+1246/1247 (1 pre-existing unrelated skip), `npm run lint` 248 files / 0 errors. **Live, against a
+real disposable PostgreSQL** (`--network none`, throwaway workspace, removed after): extended the
+project's own permanent in-container harness (`tools/acceptance/postgres-integration.mjs`) with
+`CUBE04-01..08` — **57/57 PASS**, zero regressions on the pre-existing `DB-*` checks. The
+RESTRICTIVE-only defect and its fix were also confirmed empirically in an isolated hypothesis
+test against the unmodified `0017` schema before the final fix was written (full list in
+`docs/DECISION_LOG.md` `D-0262`).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_cube_typed_views_deploy_20260730T152454Z.tar.gz` (12.7 MB, service stopped)
+→ §5a (older rollback `cube-c1-schema-...T144721Z` removed, predecessor renamed to
+`.rollback-cube-typed-views-20260730T152454Z`) → new container from the full `docker inspect`
+HostConfig JSON, env re-verified comma-separated with before use. **Clean on the first attempt**:
+`Up (healthy)` at 12s, `data-plane.ready migrations:18 rls_tables:18 production_ready:true`,
+`/livez`/`/readyz`/`/healthz` all 200/200/200, hardening intact (`ReadonlyRootfs:true
+CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Byte identity of the two
+changed/new files confirmed via `docker cp` + `diff`. Post-cleanup inventory: exactly 2
+`noesar-evolution*` containers, `noesar-evolution-net` the only project network.
+
+Predecessor: `noesar-evolution.rollback-cube-typed-views-20260730T152454Z`
+(`:phase4-cube-c1-schema`). Rollback cost: reintroduces the `CUBE-004` gap and the
+RESTRICTIVE-only defect — no data loss, nothing reads/writes these tables in application code
+yet.

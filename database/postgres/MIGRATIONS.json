@@ -105,6 +105,12 @@
       "filename": "0017_memory_cubes.sql",
       "sha256": "ebd5255ce4bd21aae6e0e40fd6b82b1d6e29f8e273aab99757499041fa2ca820",
       "version": "0017"
+    },
+    {
+      "bytes": 11340,
+      "filename": "0018_memory_cube_typed_views.sql",
+      "sha256": "93f992b3899a3ac58c2b0ac80abcd1fb2ff2d00f3d0d21dd0f9205a22e359ca6",
+      "version": "0018"
     }
   ],
   "release": "0.6.0",

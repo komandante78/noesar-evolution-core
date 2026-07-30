@@ -396,6 +396,129 @@ async function main() {
     row.user_isolation_verified === true && row.user_isolation_restrictive === true,
     `user_isolation_verified=${row.user_isolation_verified} restrictive=${row.user_isolation_restrictive}`);
 
+  // ---- CUBE04-01..CUBE04-08 : CUBE-004, the typed views 0018 puts in front of
+  // memory_records --------------------------------------------------------------------
+  //
+  // 14_MEMORIA_A_CUBI.md's CUBE-004 (Critical) demands "no programming error" can
+  // return one cube's row as another's. D-0261 found the concrete schema 0017 builds
+  // (14 §9.2, one table + an ENUM column) does not satisfy that by itself; migration
+  // 0018 (D-0262, the Owner's chosen fix) puts four typed views in front of
+  // memory_records and revokes direct access. These are the "test di tipo/schema che
+  // tenta la confusione e verifica il rifiuto strutturale" CUBE-004's own acceptance
+  // row asks for -- structural rejection, not an application-level convention.
+  await expectDenied('CUBE04-01', 'the application role cannot SELECT memory_records directly',
+    () => app.query('SELECT 1 FROM noesar_knowledge.memory_records LIMIT 1'));
+  await expectDenied('CUBE04-01b', 'the application role cannot INSERT into memory_records directly',
+    () => app.query(
+      `INSERT INTO noesar_knowledge.memory_records
+         (id, cube, signature, workspace_id, owner_user_id, category, content,
+          provenance, promotion_state, observed_at)
+       VALUES ($1,'library',$2,$3,$4,'decisione','x','{}'::jsonb,'session',now())`,
+      [crypto.randomUUID(), `cube04-direct-${crypto.randomUUID().slice(0, 8)}`, wsA, userA],
+    ));
+
+  const libId = crypto.randomUUID();
+  const libInsert = await withContext(
+    { actorId: userA, workspaceId: wsA, projectId: projA },
+    (c) => c.query(
+      `INSERT INTO noesar_knowledge.library_memories
+         (id, signature, workspace_id, project_id, owner_user_id,
+          category, content, provenance, promotion_state, observed_at)
+       VALUES ($1,$2,$3,$4,$5,'decisione','library test row','{}'::jsonb,'session',now())
+       RETURNING cube`,
+      [libId, `cube04-lib-${libId.slice(0, 8)}`, wsA, projA, userA],
+    ),
+  );
+  check('CUBE04-02', 'an INSERT through library_memories with no cube column defaults to library',
+    libInsert.rows[0]?.cube === 'library', `cube=${libInsert.rows[0]?.cube}`);
+
+  const wsId = crypto.randomUUID();
+  const wsInsert = await withContext(
+    { actorId: userA, workspaceId: wsA, projectId: projA },
+    (c) => c.query(
+      `INSERT INTO noesar_knowledge.workshop_memories
+         (id, signature, workspace_id, project_id, owner_user_id,
+          category, content, provenance, promotion_state, observed_at)
+       VALUES ($1,$2,$3,$4,$5,'procedura','workshop test row','{}'::jsonb,'session',now())
+       RETURNING cube`,
+      [wsId, `cube04-wk-${wsId.slice(0, 8)}`, wsA, projA, userA],
+    ),
+  );
+  check('CUBE04-03', 'an INSERT through workshop_memories with no cube column defaults to workshop',
+    wsInsert.rows[0]?.cube === 'workshop', `cube=${wsInsert.rows[0]?.cube}`);
+
+  await expectDenied('CUBE04-04',
+    'inserting a library-cube row through the workshop view is rejected structurally, not conventionally',
+    () => withContext({ actorId: userA, workspaceId: wsA, projectId: projA }, (c) => c.query(
+      `INSERT INTO noesar_knowledge.workshop_memories
+         (id, cube, signature, workspace_id, project_id, owner_user_id,
+          category, content, provenance, promotion_state, observed_at)
+       VALUES ($1,'library',$2,$3,$4,$5,'decisione','smuggled row','{}'::jsonb,'session',now())`,
+      [crypto.randomUUID(), `cube04-smuggle-${crypto.randomUUID().slice(0, 8)}`, wsA, projA, userA],
+    )));
+
+  const throughLibrary = await withContext(
+    { actorId: userA, workspaceId: wsA, projectId: projA },
+    (c) => c.query('SELECT id FROM noesar_knowledge.library_memories WHERE id = $1 OR id = $2', [libId, wsId]),
+  );
+  const throughLibraryIds = throughLibrary.rows.map((r) => r.id);
+  check('CUBE04-05',
+    'the library view returns its own row and never the workshop row from the same owner/workspace',
+    throughLibraryIds.includes(libId) && !throughLibraryIds.includes(wsId),
+    `rows: ${throughLibraryIds.join(', ') || 'none'}`);
+
+  await expectDenied('CUBE04-06', 'an UPDATE through a view that would move a row out of its own cube is refused',
+    () => withContext({ actorId: userA, workspaceId: wsA, projectId: projA }, (c) => c.query(
+      `UPDATE noesar_knowledge.library_memories SET cube = 'workshop' WHERE id = $1 RETURNING id`,
+      [libId],
+    )));
+  const cubeUnchanged = await withContext(
+    { actorId: userA, workspaceId: wsA, projectId: projA },
+    (c) => c.query('SELECT cube FROM noesar_knowledge.library_memories WHERE id = $1', [libId]),
+  );
+  check('CUBE04-06b', 'the refused cube-change left the row in its original cube',
+    cubeUnchanged.rows[0]?.cube === 'library', `cube=${cubeUnchanged.rows[0]?.cube}`);
+
+  // memory_vectors' own RLS policy (0017) joined memory_records inline -- a query the
+  // application role could only plan while it still had a direct SELECT grant there.
+  // 0018 replaces that join with two SECURITY DEFINER functions (can_read/write_memory_
+  // record) so revoking the direct grant above does not also break vector indexing.
+  // These two checks are the regression test for that: legitimate access still works,
+  // cross-tenant access is still denied -- same behaviour as before 0018, reached a
+  // different way.
+  const modelId = crypto.randomUUID();
+  await admin.query(
+    `INSERT INTO noesar_knowledge.embedding_models (id, name, dimensions, is_current)
+     VALUES ($1,$2,384,true) ON CONFLICT (id) DO NOTHING`,
+    [modelId, `cube04-model-${modelId.slice(0, 8)}`],
+  );
+  const ownVector = await withContext(
+    { actorId: userA, workspaceId: wsA, projectId: projA },
+    (c) => c.query(
+      'INSERT INTO noesar_knowledge.memory_vectors (record_id, model_id, embedding) VALUES ($1,$2,$3) RETURNING record_id',
+      [libId, modelId, vec(11)],
+    ),
+  );
+  check('CUBE04-07', 'memory_vectors still accepts an index write for a record the actor owns',
+    ownVector.rows[0]?.record_id === libId, JSON.stringify(ownVector.rows[0]));
+
+  const foreignLibId = crypto.randomUUID();
+  await withContext(
+    { actorId: userB, workspaceId: wsB },
+    (c) => c.query(
+      `INSERT INTO noesar_knowledge.library_memories
+         (id, signature, workspace_id, owner_user_id,
+          category, content, provenance, promotion_state, observed_at)
+       VALUES ($1,$2,$3,$4,'decisione','user B library row','{}'::jsonb,'session',now())`,
+      [foreignLibId, `cube04-foreign-${foreignLibId.slice(0, 8)}`, wsB, userB],
+    ),
+  );
+  await expectDenied('CUBE04-08', "memory_vectors still refuses an index write for another workspace's record",
+    () => withContext({ actorId: userA, workspaceId: wsA, projectId: projA }, (c) => c.query(
+      'INSERT INTO noesar_knowledge.memory_vectors (record_id, model_id, embedding) VALUES ($1,$2,$3)',
+      [foreignLibId, modelId, vec(13)],
+    )));
+
   await admin.end();
 
   // ---- DB-25..DB-27 : backup and restore -------------------------------------------

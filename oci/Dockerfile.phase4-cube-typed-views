@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block C, CUBE-004 fix: migration 0018, the four typed views over memory_records
+# (Owner's choice: views + REVOKE, not separate tables). See DECISION_LOG.md D-0262.
+
+FROM noesar-evolution:phase4-cube-c1-schema
+
+LABEL org.noesar.phase="4-cube-typed-views"
+LABEL org.noesar.cube-004="typed-views"
+
+USER root
+COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/
+COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
+USER 10001:10001
