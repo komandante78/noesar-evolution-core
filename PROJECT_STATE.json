@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0262: CUBE-004 closed. Migration 0018 -- four typed views (library/workshop/corpus/experience_memories) over memory_records, WITH CHECK OPTION, owned by noesar_migrator so RLS survives the indirection (a superuser-owned view would have bypassed RLS entirely -- avoided on purpose, verified live). Direct SELECT/INSERT/UPDATE on memory_records revoked from noesar_app. memory_vectors policy rewritten to call two new SECURITY DEFINER functions instead of joining memory_records inline. SECOND, INDEPENDENT DEFECT found live-verifying this and fixed in the same migration: 0017s three policies (memory_records/memory_vectors/embedding_models) were each the ONLY policy on their table and declared RESTRICTIVE -- with no PERMISSIVE policy to narrow, access was denied unconditionally since deploy (silent, nothing read/wrote these tables yet). Verified live: extended the permanent tools/acceptance/postgres-integration.mjs harness with CUBE04-01..08, 57/57 PASS. Deployed live, migrations:18 rls_tables:18. Owners choice was typed views over separate tables (avoids duplicating shared columns/triggers). See D-0262.",
-  "next_phase": "Block C, phase C2 onward: UNBLOCKED. recall() contract (CUBE-006), extractive compaction (CUBE-003, the most delicate part), contamination canary + promotion, WebUI surface (CUBE-009), consolidation layers (CUBE-008, last). No application code reads or writes the memory-cubes schema yet -- C2 is where that starts.",
+  "phase_status": "D-0263: Block C2-C4 built and verified live. memory-service.mjs (write/recall/promote/ensureWorkspace) + memory-compaction.mjs (fail-closed extraction from EventLedger, closed ACTION_RULES table) + approval-queue.mjs 4th memory-candidate source. CUBE-003 and CUBE-006 both closed and verified live (24/24 in the new permanent tools/acceptance/memory-integration.mjs harness). Real bug found and fixed before shipping: listCandidates()/promote() querying through the typed views under an admin connection returned zero rows -- a plain views RLS follows the OWNER identity (noesar_migrator), not the connecting role, so an admin connection with no noesar.actor_id GUC saw nothing. Fixed to query memory_records directly for these two already-privileged methods. Deployed live (:phase4-memory-application-layer), migrations:19 rls_tables:18, canonical workspace projected at boot with the real owner. Remaining: CUBE-008 (embedding model swap, measured end-to-end) and CUBE-009 (WebUI Memoria destination).",
+  "next_phase": "Block C, remainder: CUBE-008 (embedding model swap procedure, measured end-to-end on a small corpus) then CUBE-009 (single Memoria WebUI destination, three gestures, no cube/promotion_state/contamination jargon outside an explicit detail view). No Owner decision pending for either.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "a8ba72e",
-  "last_updated_utc": "2026-07-30T15:26:00Z",
+  "last_updated_utc": "2026-07-30T16:55:00Z",
   "blockers": [
     {
       "id": "B-001",
@@ -433,7 +433,8 @@
     "sess001_session_proof_d0255": "D-0255: session-proof.mjs (new) assembles the ten SESS-001 fields from a real WorkspaceActionOrchestrator run + its EventLedger correlation. Fixed 3 small gaps found building it: hypotheses/raw request now stored on the run, capability.denied now recorded as an event, egress now sampled at plan()/approve() via injected privacyStateFor(). provenienza declared UNTRACKED (no CUBE yet), fixture declared DECISION_LAYER_ONLY (no SESS-002 replay engine yet). Node 1229/1230 (+6), ESLint 246 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess001-session-proof), MANIFEST 5861/5861.",
     "sess002_003_replay_d0259": "D-0259: session-replay.mjs (new) — compareDecisions/comparePolicyOutcome/callAtomReplay/DECISION_SURFACES. WorkspaceActionOrchestrator#replay() (LOCAL_RECOMPUTE vs EXTERNAL_PACK via atomd /v1/replay, D-0227-proven protocol) + #replayHistoricalFixture() (SESS-003 policy drift). Real bug found+fixed: usedExternal counted fixtures itself as external routing, would have sent fully-local decisions down the wrong path — fixed with DECISION_SURFACES (excludes fixtures), shared by session-proof.mjs which had the same bug. 17 new tests incl. a provoked divergence (proves the detector fires, not just passes) and a real /v1/fixtures->/v1/replay HTTP round trip. Node 1246/1247 (+18), ESLint 248 files 0 errors, browser E2E 327/327, accessibility 27/27, deployed live (:phase4-sess002-003-replay), MANIFEST 5863/5863.",
     "cube_c1_schema_d0261": "D-0261: database/postgres/0017_memory_cubes.sql -- embedding_models/memory_records/memory_vectors, RLS, signature_is_immutable trigger, derived_must_cite/counters_only_for_experience/nine-category CHECKs. Verified against a REAL disposable PostgreSQL (not static token-matching): 8 direct psql tests, all matched intended behaviour. scripts/test.sh pg-migrations+pg-contract PASS (17 migrations). Deployed live (:phase4-cube-c1-schema), migrations:17 rls_tables:18. CUBE-004 tension found and flagged, not resolved -- schema is one table with an ENUM cube column, contradicting the criteria own demand for table/type-level separation.",
-    "cube04_typed_views_d0262": "D-0262: database/postgres/0018_memory_cube_typed_views.sql -- four typed views (WITH CHECK OPTION) over memory_records, noesar_app direct access revoked, memory_vectors policy rewritten via 2 new SECURITY DEFINER functions. Also fixes an independent 0017 defect: memory_records/memory_vectors/embedding_models each had only a RESTRICTIVE policy (no PERMISSIVE counterpart), which unconditionally denied every noesar_app write since deploy -- reproduced live on the unmodified 0017 schema, fixed by dropping the RESTRICTIVE marker on all three. Verified live: tools/acceptance/postgres-integration.mjs extended with CUBE04-01..08, 57/57 PASS (zero regressions on pre-existing DB-* checks). Deployed live (:phase4-cube-typed-views), migrations:18 rls_tables:18, hardening intact."
+    "cube04_typed_views_d0262": "D-0262: database/postgres/0018_memory_cube_typed_views.sql -- four typed views (WITH CHECK OPTION) over memory_records, noesar_app direct access revoked, memory_vectors policy rewritten via 2 new SECURITY DEFINER functions. Also fixes an independent 0017 defect: memory_records/memory_vectors/embedding_models each had only a RESTRICTIVE policy (no PERMISSIVE counterpart), which unconditionally denied every noesar_app write since deploy -- reproduced live on the unmodified 0017 schema, fixed by dropping the RESTRICTIVE marker on all three. Verified live: tools/acceptance/postgres-integration.mjs extended with CUBE04-01..08, 57/57 PASS (zero regressions on pre-existing DB-* checks). Deployed live (:phase4-cube-typed-views), migrations:18 rls_tables:18, hardening intact.",
+    "c2_c4_memory_application_layer_d0263": "D-0263: memory-service.mjs+memory-compaction.mjs+approval-queue.mjs 4th source. CUBE-003 (fail-closed compaction, closed ACTION_RULES table over EventLedger) and CUBE-006 (recall() items/coverage/notFound contract) both closed. Contamination canary (derived records cannot understate contamination relative to cited sources) and promotion approval (project-candidate/global-candidate through the existing 4-source ApprovalQueue) built. Real bug found+fixed: admin-mediated listCandidates()/promote() querying through views returned 0 rows (view RLS follows owner identity not connecting role) -- fixed to query memory_records directly. Verified live: new permanent tools/acceptance/memory-integration.mjs harness, 24/24 PASS. npm test 1271/1272 (1 pre-existing unrelated skip). Deployed live (:phase4-memory-application-layer), migrations:19 rls_tables:18, canonical workspace projected at boot."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -462,8 +463,8 @@
   },
   "installer_hardening_regression": "100/100 (tools/test-installer-hardening.mjs) - runs each installer against a stub docker and asserts every hardening flag arrives, plus the full access-mode matrix (default loopback, explicit LAN, address not on host refused, 0.0.0.0 refused without override, choice persisted across reinstall, URL printed, readiness probes the published address) | LIVE CONTAINER DRIFT FOUND AND FIXED 2026-07-30 (D-0241): the installer test suite above only tests the installer scripts themselves, not the manually-recreated live container — that container had drifted to ReadonlyRootfs:false/CapDrop:null/SecurityOpt:null/PidsLimit:null/Memory:0/Tmpfs:null sometime before :phase4-supervisor was built (found by D-0240). Restored and re-verified live by D-0241; root cause of the drift itself was not investigated (out of scope).",
   "manifest": {
-    "entries": 5866,
-    "verification": "5866/5866 OK, 0 failed, 0 duplicates (regenerated 2026-07-30, D-0262 -- surgical patch: 3 changed-file hashes refreshed, 2 new files appended for the CUBE-004 typed-views migration; MASTER_PROJECT/14_MEMORIA_A_CUBI.md hash refreshed for its own CUBE-004 status update)",
+    "entries": 5872,
+    "verification": "5872/5872 OK, 0 failed (regenerated 2026-07-30, D-0263 -- surgical patch: 4 changed-file hashes refreshed, 6 new files appended for the memory application layer, plus the MASTER_PROJECT/14 hash refresh from its own two acceptance-matrix updates)",
     "scope_note": "Covers the delivered product tree. Does NOT cover MASTER_REFERENCE/ (0 of 119 tracked files), so the measuring instruments imported by WP-0 are not integrity-protected. Widening the scope is the Owner decision, recorded as D-0074."
   },
   "deferred_items": [
@@ -836,7 +837,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Start Block C, phase C2: the service layer that actually reads/writes through the four typed views (recall() contract, CUBE-006/CUBE-003). No Owner decision pending.",
+  "next_action": "Build CUBE-008: an admin operation implementing 14 section 9.3s four steps (insert new model not-current, incremental backfill, atomic cutover at 100% coverage, purge old vectors), measured live against a small real corpus. Then CUBE-009.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1345,7 +1346,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-30T15:26:00Z",
+  "last_updated": "2026-07-30T16:55:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",

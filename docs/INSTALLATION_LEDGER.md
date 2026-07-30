@@ -3312,3 +3312,37 @@ Predecessor: `noesar-evolution.rollback-cube-typed-views-20260730T152454Z`
 (`:phase4-cube-c1-schema`). Rollback cost: reintroduces the `CUBE-004` gap and the
 RESTRICTIVE-only defect — no data loss, nothing reads/writes these tables in application code
 yet.
+
+## 2026-07-30 · `:phase4-memory-application-layer` — D-0263 deployed: recall(), compaction, contamination canary, promotion (CUBE-003/CUBE-006)
+Tag `noesar-evolution:phase4-memory-application-layer`, `FROM :phase4-cube-typed-views`. New:
+migration `0019` (read-only `all_memories` union view), `services/reference-control-plane/src/
+memory-service.mjs` (write/recall/promote/ensureWorkspace) and `memory-compaction.mjs`
+(fail-closed extraction from `EventLedger`), `approval-queue.mjs` gains a fourth
+`memory-candidate` source, `server.mjs` wires `MemoryService`, the boot-time workspace
+projection, the `GET /api/v1/memory/recall` route, and an auto-compaction trigger after
+`approve`/`reject`. Full detail: `docs/DECISION_LOG.md` `D-0263`.
+
+**Verification (pre-deploy)**: `npm test` 1271/1272 (1 pre-existing unrelated skip), `npm run
+lint` 253 files / 0 errors, `scripts/test.sh` 10/10 STEP (19/19 migration manifest entries).
+**Live, against a real disposable PostgreSQL**: new permanent harness
+`tools/acceptance/memory-integration.mjs` — **24/24 PASS**, including a real bug caught and
+fixed before shipping (`listCandidates()`/`promote()` querying through the typed views under an
+admin connection returned zero rows regardless of what existed, because a plain view's RLS
+follows the view OWNER's identity, not the connecting role's — fixed to query `memory_records`
+directly for these two already-privileged, `noesar_app`-unreachable methods).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_memory_application_layer_deploy_20260730T165253Z.tar.gz` (12.8 MB, service
+stopped) → §5a (older rollback `cube-typed-views-...T152454Z` removed, predecessor renamed to
+`.rollback-memory-application-layer-20260730T165253Z`) → new container from the full `docker
+inspect` HostConfig JSON. **Clean on the first attempt**: `Up (healthy)` at 12s,
+`data-plane.ready migrations:19 rls_tables:18`, `data-plane.workspace-projected ensured:true`
+(the real owner's id in the boot log), `/livez`/`/readyz` 200/200, hardening intact
+(`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`, `RestartCount:0`). Byte
+identity of all four changed/new files confirmed via `docker cp` + `diff`. Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers, `noesar-evolution-net` the only project
+network.
+
+Predecessor: `noesar-evolution.rollback-memory-application-layer-20260730T165253Z`
+(`:phase4-cube-typed-views`). Rollback cost: none on live data — no application code wrote
+through the new memory service before this phase.

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block C2-C4: recall(), compaction, contamination canary, promotion (D-0263). See
+# DECISION_LOG.md.
+
+FROM noesar-evolution:phase4-cube-typed-views
+
+LABEL org.noesar.phase="4-memory-application-layer"
+LABEL org.noesar.block-c="c2-c4"
+
+USER root
+COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
+USER 10001:10001

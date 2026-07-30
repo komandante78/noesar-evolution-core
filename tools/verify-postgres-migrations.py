@@ -43,6 +43,7 @@ def main() -> int:
         "0016_application_privileges.sql",
         "0017_memory_cubes.sql",
         "0018_memory_cube_typed_views.sql",
+        "0019_memory_all_cubes_view.sql",
     ]
 
     if manifest.get("schemaVersion") != "4.0":

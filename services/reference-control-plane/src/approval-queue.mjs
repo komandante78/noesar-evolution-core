@@ -19,7 +19,7 @@
 // the routes enforce. The interface therefore shows the operator what they can actually
 // act on, instead of offering a button that will be refused.
 
-const SOURCE_PATTERN = /^(workflow-step|agent-step|update):(.+)$/;
+const SOURCE_PATTERN = /^(workflow-step|agent-step|update|memory-candidate):(.+)$/;
 
 export class ApprovalQueue {
   /**
@@ -29,20 +29,27 @@ export class ApprovalQueue {
    * @param {object} deps.aiStore          the AI workspace store, read for agent runs
    * @param {object} deps.updateManager    the update manager, for a staged unapproved update
    * @param {object} deps.ledger           the audit ledger
+   * @param {import('./memory-service.mjs').MemoryService} [deps.memoryService] the memory
+   *   service, for candidates awaiting promotion (14_MEMORIA_A_CUBI.md §4/CUBE-003/D-0262)
    */
-  constructor({ workflowService, agentService, aiStore, updateManager, ledger }) {
+  constructor({ workflowService, agentService, aiStore, updateManager, ledger, memoryService = null }) {
     this.workflowService = workflowService;
     this.agentService = agentService;
     this.aiStore = aiStore;
     this.updateManager = updateManager;
     this.ledger = ledger;
+    this.memoryService = memoryService;
   }
 
   /**
    * Every approval currently waiting, newest requirement last. Read-only: listing the
    * queue never changes anything, so a dashboard may poll it freely.
+   *
+   * Async since D-0263 (memory candidates): listCandidates() is a real PostgreSQL query,
+   * unlike the other three sources which are synchronous in-memory reads. Every caller in
+   * server.mjs already awaits this.
    */
-  list({ projectId = null } = {}) {
+  async list({ projectId = null } = {}) {
     const items = [];
 
     for (const pending of this.workflowService.pendingApprovals({ projectId })) {
@@ -100,11 +107,35 @@ export class ApprovalQueue {
       });
     }
 
+    // A memory candidate awaiting promotion (§4: "nulla viene promosso automaticamente").
+    // Not owned here either, same as the three sources above: memoryService.listCandidates
+    // is the one place a '*-candidate' record can be listed from.
+    if (this.memoryService) {
+      for (const candidate of await this.memoryService.listCandidates({ project: projectId })) {
+        items.push({
+          id: `memory-candidate:${candidate.cube}:${candidate.signature}`,
+          kind: 'memory-candidate',
+          source: 'memory',
+          runId: null,
+          stepId: null,
+          stepKey: null,
+          projectId: candidate.projectId,
+          title: candidate.category,
+          summary: candidate.content.length > 200 ? `${candidate.content.slice(0, 200)}…` : candidate.content,
+          effects: [],
+          contamination: candidate.contamination,
+          promotionState: candidate.promotionState,
+          requestedAt: candidate.observedAt,
+          requiredPermission: 'memory.manage',
+        });
+      }
+    }
+
     return items;
   }
 
-  counts({ projectId = null } = {}) {
-    const items = this.list({ projectId });
+  async counts({ projectId = null } = {}) {
+    const items = await this.list({ projectId });
     const byKind = {};
     for (const item of items) byKind[item.kind] = (byKind[item.kind] ?? 0) + 1;
     return { total: items.length, byKind };
@@ -144,6 +175,15 @@ export class ApprovalQueue {
       const run = this.agentService.updateStep(runId, stepId, { status: 'failed', error: reason ?? 'rejected by approver' }, actorId);
       this.ledger?.append({ actor: actorId, action: 'agent.step-rejected', result: 'rejected', details: { runId, stepId, reason: reason ?? null } });
       return { kind, decision, run };
+    }
+
+    if (kind === 'memory-candidate') {
+      const separator = rest.indexOf(':');
+      const cube = separator === -1 ? '' : rest.slice(0, separator);
+      const signature = separator === -1 ? '' : rest.slice(separator + 1);
+      if (!cube || !signature) throw Object.assign(new Error('Unrecognised memory approval id.'), { status: 404 });
+      if (!this.memoryService) throw Object.assign(new Error('Memory is not available.'), { status: 503 });
+      return { kind, decision, memory: await this.memoryService.promote({ signature, cube, decision, actorId }) };
     }
 
     // kind === 'update'

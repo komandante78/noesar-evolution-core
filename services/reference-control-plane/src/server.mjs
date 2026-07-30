@@ -70,6 +70,8 @@ import { WorkspaceService } from './ai-workspace/workspace-service.mjs';
 import { AgentService } from './ai-workspace/agent-service.mjs';
 import { WorkflowService } from './ai-workspace/workflow-service.mjs';
 import { ApprovalQueue } from './approval-queue.mjs';
+import { MemoryService } from './memory-service.mjs';
+import { compactRun } from './memory-compaction.mjs';
 import { ClosureRegister, ProductMetric } from './product-metric.mjs';
 import { ChatOrchestrator } from './ai-workspace/chat-orchestrator.mjs';
 import { FileExtractor, extractorCapabilities } from './ai-workspace/file-extractors.mjs';
@@ -250,6 +252,26 @@ const postgres = postgresEnabled
 // A function, not the supervisor itself: the directory is constructed now and the
 // database becomes available later, so capturing the value here would capture `null`.
 const userDirectory = new UserDirectory({ auth, ledger, dataPlane: () => postgres });
+// 14_MEMORIA_A_CUBI.md, D-0261/D-0262/D-0263: same "a function, not the supervisor
+// itself" reasoning as userDirectory above.
+const memoryService = new MemoryService({ dataPlane: () => postgres });
+// §4: "la compattazione è automatica — a fine sessione, senza chiedere." A finished
+// workspace-actions run (approved or rejected — both are a decided outcome, §3.1's nine
+// categories include both `decisione` shapes) is compacted right after the response is
+// already being written, never blocking or failing the decision itself: memory is a
+// side-effect of the run, not a precondition for it. Errors are logged, not thrown — a
+// Postgres outage must not turn an otherwise-successful approve/reject into a 500.
+function compactRunAfterDecision(runId) {
+  compactRun({ ledger: engineEvents, memoryService }, { runId, projectId: null })
+    .then((result) => {
+      if (result.written.length > 0) {
+        logger.info('memory.compacted', { component: 'memory', runId, written: result.written.length, skipped: result.skipped });
+      }
+    })
+    .catch((error) => {
+      logger.error('memory.compaction-failed', { component: 'memory', runId, error: error.message });
+    });
+}
 const scimTokenStore = new ScimTokenStore(join(workspace, 'state/scim-tokens.json'));
 // ARCH-005: the same minter and event ledger workspace-actions shares above — a second
 // engine here would let a token minted through one door be unaccountable to the other.
@@ -361,7 +383,7 @@ const updateManager = new UpdateManager({
 });
 // The approval queue reads the three subsystems that own approvals and owns none itself,
 // so it is constructed last — after the update manager it reads from.
-const approvalQueue = new ApprovalQueue({ workflowService, agentService, aiStore, updateManager, ledger });
+const approvalQueue = new ApprovalQueue({ workflowService, agentService, aiStore, updateManager, ledger, memoryService });
 // The product's own metric and the closure register. Both read and write the AI store, so
 // they are constructed with it and with nothing else: the metric has no opinion about who
 // decided, and the closure register has no opinion about what a run is.
@@ -1554,10 +1576,12 @@ const requestListener = async (req, res) => {
       try {
         if (verb === 'approve') {
           const outcome = workspaceActions.approve({ runId, approverId: authenticated.user.id, nowUnix });
+          compactRunAfterDecision(runId);
           return json(res, 200, outcome);
         }
         if (verb === 'reject') {
           const outcome = workspaceActions.reject({ runId, approverId: authenticated.user.id, reason: payload?.reason ?? null, nowUnix });
+          compactRunAfterDecision(runId);
           return json(res, 200, outcome);
         }
         const outcome = workspaceActions.restore({ runId, actor: authenticated.user.id, nowUnix });
@@ -1899,6 +1923,29 @@ const requestListener = async (req, res) => {
     if(match&&req.method==='DELETE'){
       const authenticated=requireSession(req,res,'memory.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,200,aiWorkspace.deleteMemory(match[1],authenticated.user.id));
     }
+    // --- 14_MEMORIA_A_CUBI.md, CUBE-006: the recall() contract -------------------------
+    // One route, both of §11's "cerca" and "sfoglia" gestures — recall({query:''}) with
+    // only filters is a browse, recall({query:'x'}) is a search. `workspace.read`, not
+    // `memory.manage`: this mirrors GET /api/v1/memories above (list=read, write=manage)
+    // and recall() itself never writes anything.
+    if(req.method==='GET'&&url.pathname==='/api/v1/memory/recall'){
+      const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
+      try{
+        const result=await memoryService.recall({
+          query:url.searchParams.get('query')??'',
+          cube:url.searchParams.get('cube')||null,
+          project:url.searchParams.get('project')||null,
+          category:url.searchParams.get('category')||null,
+          since:url.searchParams.get('since')||null,
+          until:url.searchParams.get('until')||null,
+          limit:url.searchParams.get('limit')??20,
+        },{actorId:authenticated.user.id});
+        return json(res,200,result);
+      }catch(error){
+        if(error.status)return json(res,error.status,{error:error.message});
+        throw error;
+      }
+    }
     if(req.method==='GET'&&url.pathname==='/api/v1/artifacts'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;return json(res,200,{artifacts:aiWorkspace.listArtifacts({projectId:url.searchParams.get('projectId'),conversationId:url.searchParams.get('conversationId')})});
     }
@@ -2084,7 +2131,8 @@ const requestListener = async (req, res) => {
     if(req.method==='GET'&&url.pathname==='/api/v1/approvals'){
       const authenticated=requireSession(req,res,'workspace.read');if(!authenticated)return;
       const projectId=url.searchParams.get('projectId');
-      return json(res,200,{approvals:approvalQueue.list({projectId}),counts:approvalQueue.counts({projectId})});
+      const [approvals,counts]=await Promise.all([approvalQueue.list({projectId}),approvalQueue.counts({projectId})]);
+      return json(res,200,{approvals,counts});
     }
     match=url.pathname.match(/^\/api\/v1\/approvals\/([^/]+)\/decision$/);
     if(match&&req.method==='POST'){
@@ -2094,7 +2142,7 @@ const requestListener = async (req, res) => {
       // Read the item BEFORE deciding: once decided it leaves the queue, and with it the
       // instant it became ready. UI-070 measures from that instant, so it is captured
       // here rather than reconstructed afterwards from something that looks like it.
-      const pending=approvalQueue.list().find((item)=>item.id===itemId)??null;
+      const pending=(await approvalQueue.list()).find((item)=>item.id===itemId)??null;
       const outcome=await approvalQueue.decide(itemId,{
         decision:request.decision,
         reason:request.reason??null,
@@ -2658,6 +2706,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         });
         const projection = await userDirectory.projectToDataPlane();
         logger.info('data-plane.identity-projected', { component:'data-plane', ...projection });
+        // 14_MEMORIA_A_CUBI.md, D-0263: the same "projection, not migration" idea as
+        // identity above — one canonical workspace, idempotent, so memory has somewhere
+        // to be RLS-scoped to. Runs after the identity projection on purpose: it needs an
+        // owner already in noesar_identity.users to attach the workspace to.
+        const workspaceProjection = await memoryService.ensureWorkspace();
+        logger.info('data-plane.workspace-projected', { component:'data-plane', ...workspaceProjection });
       } catch (error) {
         // Fail closed and loudly. A runtime that could not open its declared data plane
         // must not fall back to writing JSON files that nobody will ever read again.

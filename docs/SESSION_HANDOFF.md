@@ -1,14 +1,15 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-30 (`D-0262`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-30 (`D-0263`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
 > massimo 4 pause"): A (debito ARCH-005/008 + pulizia matrice) → B (SESS-001..003) →
 > C (CUBE-001..009) → pausa 1 → decisione WebUI → pausa 2 → E+F (debito+packaging) →
 > pausa 3 → G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A e B COMPLETI. Blocco C — fase C1 fatta, `CUBE-004` chiuso (`D-0262`),
-> nessuna decisione dell'Owner pendente. Prossimo: C2, il livello applicativo.**
+> **Blocco A e B COMPLETI. Blocco C — C1-C4 fatti (`CUBE-001/002/003/004/005(schema)/006/007`
+> chiusi), nessuna decisione dell'Owner pendente. Restano `CUBE-008` (cambio modello) e
+> `CUBE-009` (superficie WebUI).**
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -28,81 +29,80 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
    miglioramento; eseguirla è decisione dell'Owner.
 5. **`EXECUTE` è una decisione del CLIENTE** (`D-0250`): già risolto come config.
 
-## ➜ LA PROSSIMA AZIONE — Block C2, nessuna decisione dell'Owner pendente
+## ➜ LA PROSSIMA AZIONE — CUBE-008 poi CUBE-009, nessuna decisione dell'Owner pendente
 
-**`CUBE-004` chiuso (`D-0262`)**: l'Owner ha scelto viste tipate + `REVOKE` (non tabelle
-separate). `database/postgres/0018_memory_cube_typed_views.sql` — quattro viste
-(`library_memories`/`workshop_memories`/`corpus_memories`/`experience_memories`), ciascuna
-`WHERE cube = '<x>' WITH CHECK OPTION`, possedute da `noesar_migrator` (non dal superuser che
-esegue la migrazione — un owner superuser avrebbe fatto bypassare la RLS del tutto, evitato di
-proposito). `noesar_app` non raggiunge più `memory_records` direttamente. Verificato **dal vivo**
-estendendo l'harness permanente `tools/acceptance/postgres-integration.mjs` (`CUBE04-01..08`,
-**57/57 PASS**, zero regressioni sui `DB-*` preesistenti) e **deployato in produzione**
-(`migrations:18 rls_tables:18`).
+**Block C2-C4 fatti (`D-0263`)**: `memory-service.mjs` (write/recall/promote/ensureWorkspace) +
+`memory-compaction.mjs` (estrazione fail-closed da `EventLedger`, tabella `ACTION_RULES`
+chiusa) + `approval-queue.mjs` con una quarta fonte `memory-candidate`. `CUBE-003` e `CUBE-006`
+chiusi e verificati dal vivo. Canary di contaminazione: un record derivato non può dichiararsi
+meno contaminato delle fonti che cita (il valore dichiarato viene sovrascritto, non solo
+validato). Promozione: `project-candidate`/`global-candidate` passano dalla stessa coda di
+approvazione a 4 fonti che già serviva workflow/agent/update.
 
-**⚠️ Secondo difetto indipendente trovato verificando questo dal vivo, e riparato nella stessa
-migrazione**: le tre policy di `0017` (`memory_records`/`memory_vectors`/`embedding_models`)
-erano ciascuna l'UNICA policy sulla propria tabella e dichiarate `RESTRICTIVE` — senza una
-`PERMISSIVE` da restringere, Postgres nega sempre, per chiunque. `memory_records` non è mai
-stata scrivibile da `noesar_app` da quando `0017` è stata deployata, silenzioso perché nessun
-codice applicativo la usava ancora. Riprodotto dal vivo sullo schema `0017` non modificato prima
-di scrivere la correzione. Impossibile riparare editando `0017` (già applicata al prodotto vivo,
-le migrazioni sono immutabili una volta applicate) — riparato dentro `0018` invece, togliendo il
-marcatore `RESTRICTIVE` dalle tre policy (diventano `PERMISSIVE`, lo stesso schema auto-
-sufficiente che `0015` già usa per `vector_entries`/`conversations`/`agents`/`tools`). Dettaglio
-completo in `docs/DECISION_LOG.md` `D-0262`.
+**⚠️ Bug reale trovato verificando questo dal vivo, riparato prima del deploy**:
+`listCandidates()`/`promote()` interrogavano `all_memories`/le viste tipate sotto una
+connessione admin — ragionamento sbagliato: la RLS di una vista normale segue l'identità del
+suo PROPRIETARIO (`noesar_migrator`), non quella del ruolo connesso, quindi una connessione
+admin (che non imposta mai `noesar.actor_id`) vedeva zero righe indipendentemente da cosa
+esistesse davvero. Riprodotto dal vivo (0 candidati trovati nonostante uno esistesse), riparato
+interrogando `memory_records` direttamente per questi due metodi già privilegiati (mai
+raggiungibili da `noesar_app`) — `cube` resta un filtro `WHERE` in più, non eliminato: un
+chiamante che sbaglia cubo per una segnatura reale viene rifiutato invece di agire per sbaglio.
 
-**Prossima azione reale: Block C2**, il livello applicativo che finalmente legge/scrive
-attraverso le quattro viste — contratto `recall()` (`CUBE-006`), compattazione estrattiva
-(`CUBE-003`, la parte più delicata), canary di contaminazione + promozione, superficie WebUI
-(`CUBE-009`), livelli di consolidamento (`CUBE-008`, ultimo). Nessuna decisione dell'Owner
-pendente per iniziare.
+**Prossima azione reale**: `CUBE-008` (procedura di cambio modello di embedding, §9.3, misurata
+end-to-end: inserisci il nuovo modello non-corrente, riempimento incrementale, switch atomico
+di `is_current` al 100% di copertura, cancellazione del vecchio indice) poi `CUBE-009`
+(destinazione `Memoria` nella WebUI, tre gesti, parole normali). Nessuna decisione dell'Owner
+pendente per nessuna delle due.
 
-**Non rifare**: la verifica dei trigger/constraint di `0017` (8 test dal vivo, `D-0261`), le 8
-verifiche `CUBE04-01..08` su viste/RESTRICTIVE (`D-0262`), il motore di replay di `D-0259`,
-l'assemblaggio dei dieci campi di `D-0255`.
+**Non rifare**: le 24 verifiche `MEM-01..24` dal vivo (`D-0263`), le 8 `CUBE04-01..08`
+(`D-0262`), la verifica trigger/constraint di `0017` (`D-0261`), il motore di replay di
+`D-0259`.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-cube-typed-views` (`D-0262`) · `Up (healthy)` ·
-  `192.168.178.100:8100→8088` · hardening intatto · `migrations:18 rls_tables:18` ·
+- **Prodotto vivo**: `noesar-evolution:phase4-memory-application-layer` (`D-0263`) ·
+  `Up (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
+  `migrations:19 rls_tables:18` · workspace canonico proiettato all'avvio con l'owner reale ·
   byte immagine identici · stop pulito.
-  Rollback preservato: `noesar-evolution.rollback-cube-typed-views-20260730T152454Z`
-  (`:phase4-cube-c1-schema`) — **tornare a questo rollback reintroduce sia il gap `CUBE-004`
-  sia il difetto `RESTRICTIVE`-senza-`PERMISSIVE`**.
-- **Le quattro viste tipate**: presenti e verificate, **nessun codice applicativo le legge o
-  le scrive ancora** — la memoria viva resta `ai-workspace.json`. C2 è dove questo inizia.
+  Rollback preservato: `noesar-evolution.rollback-memory-application-layer-20260730T165253Z`
+  (`:phase4-cube-typed-views`).
+- **La memoria a cubi è ora scrivibile e interrogabile da codice reale** (`write`/`recall`/
+  `compactRun`/`promote`), ma **nessuna route ancora la espone al di fuori di
+  `GET /api/v1/memory/recall` e della coda di approvazione** — non c'è ancora una superficie
+  WebUI (`CUBE-009`).
 - **Due container per progetto** — §5a rispettato.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **`CUBE-001`/`CUBE-002`/`CUBE-004`/`CUBE-007` sono ✔ COSTRUITI E VERIFICATI DAL VIVO** — non
-  solo scritti, provati con `INSERT`/`UPDATE` reali contro un Postgres reale che li rifiuta
-  come previsto.
+- **`CUBE-001`/`002`/`003`/`004`/`006`/`007` sono ✔ COSTRUITI E VERIFICATI DAL VIVO**.
 - **`CUBE-005` è ✔ risolto SOLO a livello di schema** — il difetto che lo rende vero OGGI
   (`vector_entries` senza identità di modello) resta aperto e **indipendente** dai cubi.
-- **`CUBE-003`/`006`/`008`/`009` restano interamente non costruiti** — richiedono il livello
-  applicativo (compattazione, `recall()`, WebUI), non solo lo schema.
-- **Le cinque domande aperte di `14 §7`** sono state chiuse adottando i default già proposti
-  dallo stesso documento (`D-0260`), non inventati da zero — nomi, soglia di promozione,
-  ritenzione, identità del Cubo 3.
-- **`INST-002`**: nessun token di installazione — nessuna superficie lo richiede.
-- **Bug menu "Ramo"** (`D-0235`): mai riprodotto, resta aperto.
+- **`CUBE-008`/`009` restano non costruiti**.
+- **`B-009` non ha richiesto una migrazione dati**: `memory_items`, `state.memories` (JSON) e
+  `noesar_core.conversations`/`conversation_messages` sono confermati a **0 righe** in
+  produzione — non c'è nulla da cui migrare. La chat live resta su JSON (`ContextGraph`); solo
+  la NUOVA memoria a cubi è Postgres-nativa fin dal primo scrittore.
+- **Nessun concetto di workspace nel percorso live del prodotto** — un solo workspace
+  canonico (`CANONICAL_WORKSPACE_ID`, costante letterale) è proiettato all'avvio, stesso
+  pattern "proiezione, non migrazione" già usato per l'identità.
+- **Le cinque domande aperte di `14 §7`** chiuse con i default del documento (`D-0260`).
+- **`INST-002`**: nessun token di installazione. **Bug menu "Ramo"** (`D-0235`): mai riprodotto.
 
 ## ➜ Blocker aperti
 
-`B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): storia git ripulita, rotazione
-token rimandata a fine progetto per scelta dell'Owner. Nessun altro.
+`B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata a
+fine progetto per scelta dell'Owner. Nessun altro.
 
-## ➜ Verificato in `D-0262`
+## ➜ Verificato in `D-0263`
 
 | Verifica | Risultato |
 |---|---|
-| `scripts/test.sh` (10 STEP) + `npm test` + `npm run lint` | **PASS** (18 migrazioni, 1246/1247 unit — 1 skip pre-esistente non correlato, 248 file lint 0 errori) |
-| Test dal vivo contro Postgres reale usa-e-getta (`CUBE04-01..08`) | **57/57** (accesso diretto negato, default cubo per vista, `CHECK OPTION` respinge sia `INSERT` sia `UPDATE` fuori cubo, `memory_vectors` funziona ancora per l'owner e nega ancora cross-workspace) |
-| Ipotesi `RESTRICTIVE`-senza-`PERMISSIVE` confermata isolatamente sullo schema `0017` non modificato, poi riparata | **confermato** |
-| deploy live | stop pulito, backup, §5a rispettato, `Up (healthy)`, `migrations:18 rls_tables:18` |
+| `npm test` + `npm run lint` + `scripts/test.sh` | **PASS** (1271/1272 — 1 skip pre-esistente, 253 file lint 0 errori, 19 migrazioni) |
+| Unit `memory-service`/`memory-compaction` (mock) | **27/27** |
+| Dal vivo contro Postgres reale usa-e-getta (`tools/acceptance/memory-integration.mjs`) | **24/24** — canary confermato su righe reali, bug RLS-su-vista riprodotto E riparato, compattazione scarta l'evento sconosciuto |
+| deploy live | stop pulito, backup, §5a rispettato, `Up (healthy)`, `migrations:19 rls_tables:18` |
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-**Nessuna.** `CUBE-004` era l'unica bloccante per il resto del Blocco C.
+**Nessuna.**
