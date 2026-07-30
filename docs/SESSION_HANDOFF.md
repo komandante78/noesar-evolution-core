@@ -33,6 +33,60 @@ dipendenza runtime fra i due progetti: `atom-evolution-model` serve il proprio f
 
 ## ➜ LA PROSSIMA AZIONE
 
+**`D-0246`: ARCH-008 — investigato concretamente sull'host reale, NON costruito. Due
+domande poste all'Owner, risposta attesa all'apertura della prossima sessione.** Un probe
+Rust usa-e-getta (compilato offline dal `libc` già vendorizzato, nessun codice toccato,
+nessun container di produzione sfiorato) ha testato i tre meccanismi nominati da `03 §7`
+contro QUESTO host, sotto il profilo di hardening esatto della produzione: **Landlock
+bloccato dal kernel** (`errno=38 ENOSYS` sulla query di versione ABI di
+`landlock_create_ruleset`, sia senza restrizioni sia sotto hardening completo —
+`CONFIG_SECURITY_LANDLOCK` non è compilato nel kernel 6.18.38 di questo host Unraid, un
+limite di configurazione del kernel indipendente dalla sua versione, non risolvibile da
+codice); **cgroup v2 montati ma non delegati in scrittura** (controller reali visibili
+dentro il container vivo, ogni scrittura rifiutata con `Read-only file system`, confermato
+indipendente dal flag `--read-only` del container stesso — è Docker a non delegare un
+sottoalbero cgroup scrivibile su questo host); **seccomp self-narrowing confermato
+disponibile** (`prctl(PR_SET_NO_NEW_PRIVS)` riesce sotto il profilo hardened) **ma inutile
+come isolamento "per capacità" così com'è**: un filtro installato per una capacità
+resterebbe per sempre sull'intero processo Node — un solo processo a vita lunga che serve
+OGNI richiesta su un solo event loop. **Prerequisito reale nominato**: un Sandbox Manager
+che spende ogni token in un vero processo figlio a vita breve (portata paragonabile al
+lavoro del supervisore di `ARCH-001`) — oggi né `executor.mjs` né il gate degli adattatori
+(`D-0244`) lo fanno, entrambi agiscono in-process. **Nessun codice cambiato in questa
+fase** — dichiararlo costruito sarebbe esattamente la prova fabbricata che le regole di
+questo progetto vietano. **Le due domande poste all'Owner**: (a) autorizzare i cambi a
+livello host (kernel con Landlock, delega cgroup Docker) così un futuro esecutore sandbox
+abbia tutti e tre i meccanismi disponibili, oppure (b) scopare una fase dedicata futura
+all'esecutore sandbox a processo figlio con SOLO seccomp per ora, aggiungendo
+Landlock/cgroup più avanti se l'host lo permetterà mai. Nessuna scelta presa qui.
+
+---
+
+**`D-0245`: ARCH-007 — il diff dei permessi sugli aggiornamenti, applicato non solo
+descritto.** Chiude l'ultimo pezzo mancante di `INST-008`/`ARCH-007` (`03 §8`,
+`08_INSTALLAZIONE.md §9`): "un aggiornamento che chiede più autorità di prima lo dichiara
+esplicitamente e va autorizzato di nuovo". Nuovo `permission-surface.mjs`: la "superficie
+di permesso" di una release è l'insieme dei permessi RBAC che le route di `server.mjs`
+esigono (`requireSession`/`hasPermission`, estratti dal testo sorgente, mai eseguendo il
+server) più le capability degli adattatori (`ADAPTER_MANIFESTS`, `D-0244`).
+`verifyUpdateAuthorized()` è il punto di applicazione: restringere l'autorità non richiede
+mai una nuova autorizzazione, ampliarla sì — e l'autorizzazione deve nominare ESATTAMENTE i
+permessi aggiunti, né di meno né di più (stessa logica "l'ampliamento è tutto l'attacco" già
+usata da `capability.mjs::mint()`). Stessa disciplina approvatore+scadenza di
+`authorizePlan()` — nessun secondo modello di autorizzazione inventato. Due tool CLI,
+`tools/generate-permission-surface.mjs` + `tools/verify-permission-diff.mjs` (l'Update
+Trust Verifier vero e proprio). **Provato end-to-end contro il codice reale**: generata la
+superficie attuale davvero (18 permessi RBAC + 1 capability adattatore), costruito un
+candidato sintetico con 2 permessi in più, eseguito il tool reale tre volte — rifiutato
+senza autorizzazione, rifiutato con un'autorizzazione fuori scope, accettato solo con lo
+scope esatto. 13 test nuovi. Unit **1168/1168** (+13), ESLint 239 file 0 errori,
+`MANIFEST.sha256` **5845/5845** (corretto anche un hash rimasto stale su
+`03_ARCHITETTURA.md` dopo la modifica `D-0244`, mai riflesso nel manifest). **Nessun
+redeploy**: strumentazione a tempo di rilascio, non importata da `server.mjs` a runtime,
+stessa postura dei tool CBOM/ML-BOM di `D-0208`.
+
+---
+
 **`D-0244`: ARCH-005 — `local-model-runtime.mjs` non può più autorizzarsi da solo.**
 Chiude l'ultimo dei tre item lasciati aperti da `D-0240` (INST-004 → `D-0241`, split `codev`
 → `D-0242`, ARCH-005 → questa fase). Nuovo `adapter-capability.mjs`: `ADAPTER_MANIFESTS`

@@ -4691,3 +4691,125 @@ intact on disk. Networks (10) unchanged.
 **Costo di rollback**: nessuno — nessuna migrazione, `AI_STATE_VERSION` invariato.
 Returning to `:phase4-codev-peer` removes the capability gate on `launch()` — the adapter
 would answer to `model.manage` RBAC alone again, nothing else.
+
+## D-0245 · ARCH-007 — the Update Trust Verifier: a permission diff, enforced not just described — 2026-07-30
+**Decision.** `03_ARCHITETTURA.md` §8 / `08_INSTALLAZIONE.md` §9 name the missing piece
+under "Aggiornamenti": "**diff dei permessi** — un aggiornamento che chiede più autorità di
+quella che aveva prima deve dirlo esplicitamente, e va autorizzato di nuovo." `INST-008`
+already had signature/provenance tooling (`D-0208`: `cbom.mjs`, `generate-mlbom.mjs`,
+`sign/verify-release-artifact.mjs`) but the permission-diff half was `⏳`/`⚠ parziale` —
+named, never built. `ARCH-007`'s own acceptance test is explicit: "a package that widens
+scope, verify it is blocked without new authorisation" — that needed a real mechanism to
+run the verb against, not a description of one.
+
+**Built**: new `services/reference-control-plane/src/permission-surface.mjs` — a
+"permission surface" is the RBAC permission strings `server.mjs`'s own routes gate on
+(`requireSession(req, res, '...')` / `auth.hasPermission(user, '...')`, extracted from
+source text, the same declared-not-executed posture `generate-inventory.mjs` already uses)
+plus the adapter capabilities `ADAPTER_MANIFESTS` (`D-0244`) lists. `diffPermissionSurfaces()`
+compares two surfaces; `verifyUpdateAuthorized()` is the enforcement point: shrinking
+authority never needs re-authorisation, widening it does, and the authorisation must name
+**exactly** the tokens being added — not a subset (misses something) and not a superset
+either (an authorisation broader than the actual change is not a description of what
+happened, the same "widening is the whole attack" reasoning `capability.mjs`'s `mint()`
+already applies to a step's declared files). Same approver/expiry discipline as
+`authorizePlan()` throughout the rest of the engine — no second authorisation model
+invented. Two CLI wrappers, mirroring the existing `sign`/`verify-release-artifact.mjs`
+pattern: `tools/generate-permission-surface.mjs` (emits the current codebase's surface,
+optionally signed via the same `signCompliancePack()` primitive `D-0208`'s tooling
+reuses) and `tools/verify-permission-diff.mjs` (the Update Trust Verifier itself —
+`--baseline`/`--candidate`/`--authorization`, exit 0 or 1).
+
+**Verified, not assumed**: 13 new unit tests (extraction against synthetic source AND
+against the real `server.mjs` — 18 real permissions found, not a placeholder count;
+shrinking needs no authorisation; widening RBAC or adapter scope alike is refused with no
+authorisation; a wrong-scoped authorisation does not rescue it; a superset authorisation is
+refused, not accepted; expired or unnamed-approver authorisations refused). **End-to-end
+against the real codebase, not only fixtures**: generated the actual current permission
+surface (18 RBAC permissions + 1 adapter capability) with `generate-permission-surface.mjs`,
+built a synthetic candidate adding 2 permissions, and ran the real CLI three times — refused
+with no authorisation, refused with a wrong-scoped one, accepted only once the
+authorisation named exactly the 2 added tokens. Unit **1168/1168** (+13), ESLint 239 files
+0 errors, `scripts/test.sh` 10/10, `auth-http-smoke` PASS. `MANIFEST.sha256` **5845/5845**
+(also caught and fixed a carried-over gap: `MASTER_PROJECT/03_ARCHITETTURA.md`'s hash had
+gone stale after `D-0244`'s own edit to the `ARCH-005` row and was never refreshed — fixed
+here alongside this phase's own edits, not a new problem, a previously-undetected one).
+
+**No container rebuild or redeploy this phase**: these are release/update-time tools, read
+by nothing at runtime — `server.mjs` does not import `permission-surface.mjs`, same
+posture `D-0208`'s CBOM/ML-BOM/signing tools already have (verified against a live image
+from the host, never copied into or run inside the container). `INST-008`'s own criterion
+moves from `⚠ parziale` to `⚠ quasi completo`: signature, provenance and the permission
+diff all exist and are proven; what remains is wiring them into one update pipeline instead
+of two separate CLI invocations — named as the gap, not built here.
+
+**Not done, named rather than implied**: there is no automated installer that ingests an
+update package and calls this tool automatically — updates today are the manual `D-0143`
+stop/backup/rollback/redeploy sequence a person drives, and this tool is what that person
+(or a future installer) is expected to run before promoting a candidate, not something that
+runs itself. No baseline permission surface is persisted anywhere yet as "the currently
+installed one" — a future phase wiring an actual update pipeline needs to decide where that
+baseline lives and how it gets refreshed after every legitimate deploy. `ARCH-008` (isolamento
+per-capacità) remains open, addressed separately in this same session.
+
+## D-0246 · ARCH-008 investigated on the real host — two of three mechanisms concretely blocked, not "never treated" for lack of trying — 2026-07-30
+**Decision.** `ARCH-008` ("ogni capacità gira con i suoi limiti, non con quelli del
+container intero" — Landlock, seccomp per profile, cgroups v2) has been `⏳`/"Alto risk
+mai trattato" across many prior sessions. Rather than carry that forward again unexamined,
+this phase actually tested each of the three named mechanisms against THIS host, in a
+disposable container built and probed offline (never touching the production container or
+its running data), and found a concrete, mostly negative answer — worth recording
+precisely, because "not built" and "not buildable here without a larger decision" are
+different facts and this backlog item had never distinguished them.
+
+**Landlock — blocked at the kernel, not fixable in code.** A minimal Rust probe
+(`libc::syscall(444, …)`, the `landlock_create_ruleset` ABI-version query, built offline
+from the already-vendored `libc` crate — no new dependency) was run both unrestricted and
+under the exact production hardening profile (`--cap-drop ALL --security-opt
+no-new-privileges:true --user 10001:10001`, default Docker seccomp). Both return `errno=38
+(ENOSYS)` — the kernel itself does not implement the syscall, which is what happens when
+`CONFIG_SECURITY_LANDLOCK` is not compiled into the running kernel, independent of kernel
+*version* (this host runs 6.18.38, years newer than Landlock's 5.13 introduction — the gap
+is a build-time kernel config choice on this Unraid host, not an update owed). Fixing this
+would mean replacing the host's kernel, an operating-system-level change on the physical
+host this project has never been authorised to make and should not attempt unprompted.
+
+**cgroups v2 per-capability limits — blocked by delegation, not code either.** `/sys/fs/cgroup`
+is mounted (cgroup2, controllers `cpuset cpu io memory hugetlb pids` all listed) inside the
+live container, which looked promising, but every write attempt refuses
+(`Read-only file system`) — confirmed independent of the container's own `--read-only`
+rootfs flag (tested again without it: identical refusal). Docker is not delegating a
+writable cgroup subtree to this container. Granting one is a Docker daemon / cgroup driver
+configuration decision made when a container is created, not something the process inside
+it can arrange for itself.
+
+**seccomp self-narrowing — the one mechanism confirmed genuinely available, and the one
+that exposes the real remaining gap.** `prctl(PR_SET_NO_NEW_PRIVS, 1, …)` succeeds
+(`errno=0`) under the identical hardened profile — a process narrowing its OWN syscall
+filter has always been permitted on any Linux kernel with seccomp (which this host plainly
+has: `Seccomp: 2` already shows in `/proc/self/status` for Docker's own default profile).
+But a seccomp filter, once installed, applies for the life of the THREAD that installed it
+and can only ever get stricter, never lifted — and this product is one long-lived Node.js
+process serving every request on one event loop. Installing a capability-specific filter
+inside that process would narrow it for every OTHER request too, permanently, which is not
+"per-capability" isolation, it is "isolate once and never serve anything wider again."
+**The actual prerequisite this reveals**: per-capability isolation of any kind needs a
+Sandbox Manager that is a real, separate process per spend (fork/exec a short-lived child
+that installs its own seccomp profile — and Landlock/cgroups too, on a host where those are
+available — does the one write or launch, and exits) — a concept `03_ARCHITETTURA.md §3`
+already names, and which nothing in the product builds today: `executor.mjs` and the new
+adapter-capability gate (`D-0244`) both spend tokens and act **in-process**.
+
+**Not done, and not fabricated as done**: no code changed this phase. Building a real
+per-spend sandboxed child-process executor is a genuine architectural addition — comparable
+in scope to `ARCH-001`'s supervisor work, not a patch — and doing it hastily inside an
+already-long session, on top of `D-0244`/`D-0245`, would be exactly the kind of rushed,
+unverified claim this project's own rules forbid. Two of the three named mechanisms are
+concretely blocked on THIS host without an infrastructure decision (kernel rebuild; Docker
+cgroup delegation) neither authorised nor safely reversible to make unprompted. The third
+is real but needs the sandbox-executor prerequisite first. **Recommendation, not a
+decision made here**: either (a) the Owner authorises the host-level changes (kernel with
+Landlock, delegated cgroups) so the eventual sandbox executor has all three primitives to
+use, or (b) a dedicated future phase builds the child-process sandbox executor scoped to
+seccomp only, with Landlock/cgroups added later if/when the host permits them — named as
+two different, Owner-level choices, not defaulted to either silently.
