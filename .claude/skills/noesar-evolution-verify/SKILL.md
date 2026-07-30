@@ -33,9 +33,18 @@ after an intermediate edit. During the work, T0/T1 is the loop.
 | markup / DOM structure | T1 + `tools/browser-e2e.mjs` + `tools/accessibility-audit.mjs` |
 | CSS tokens, themes, contrast | `tools/computed-style-snapshot.mjs` + `tools/accessibility-audit.mjs` |
 | installers, packaging, `.gitignore` | `tools/test-installer-hardening.mjs` + `tools/test-packaging-filters.mjs` + `tools/test-cross-platform-installers.mjs` |
-| database schema / migration | `tools/verify-postgres-migrations.py` + `tools/verify-postgres-contract.py` |
-| Rust authority crate | `tools/verify-rust-authority-source.py` + `tools/test-rust-build-provenance.py` |
+| database schema / migration | `tools/verify-postgres-migrations.py` + `tools/verify-postgres-contract.py` — **via `scripts/test.sh`** (see below) |
+| Rust authority crate | `tools/verify-rust-authority-source.py` + `tools/test-rust-build-provenance.py` — **via `scripts/test.sh`** |
 | anything that will be installed | T2, then T3 |
+| anything at all | **portability check** — would this work on a host without Landlock, GPU, delegated cgroups, or these paths? A phase that only passes here is not done (platform law) |
+
+**The four Python verifiers are not directly runnable on every host.** Measured 2026-07-30:
+this host has **no `python3`** (`node v22.18.0` and `docker` are present). Invoking them as
+`python3 tools/....py` fails. `scripts/test.sh` already solves it portably — `NOESAR_PYTHON`
+if present, otherwise `docker run --rm --network none -v "$ROOT:/repo:ro" python:3-slim`, and
+`UNAVAILABLE` declared honestly when neither exists (`D-0225`, which found 2 real pre-existing
+bugs once the steps actually ran). **Always go through `scripts/test.sh`, never call the `.py`
+directly** — and if a step reports `UNAVAILABLE`, that is a declared gap, not a pass.
 
 If the change is not in this table, run T1 and **name** the suite you judged relevant and
 the one you judged irrelevant. An unnamed skip is a skip nobody can audit.
@@ -76,8 +85,13 @@ The duty to hunt and to repair is untouched; what changes is the default target.
   full sweep is more than five phases old; or the Owner asks.
 - **Always declare which of the two ran.** "Scoped to the diff (N files)" and "full sweep"
   are different claims and are never reported as the same thing.
-- `noesar-debuglab`: started **once**, given the batched target list in one pass, and
-  **stopped in the same phase**. Not started at all when the diff carries no code.
+- **Portable instruments first** (`noesar-evolution` §7): the repository's own suites and
+  adversarial/oracle tools, then external analysers only through a **disposable offline
+  container built for that run** (`docker run --rm --network none -v "$ROOT:/repo:ro"`),
+  removed in the same phase. **Repaired 2026-07-30**: this line used to name
+  `noesar-debuglab` (`:8099`) as the instrument — that container and its image no longer
+  exist and the port is dead (verified). No external service is required for the hunt, and
+  none is depended on: a hunt that only works on one host is not portable (platform law).
 - Triage is unchanged and non-negotiable: every hit is checked against the real code and
   every dismissal is recorded with its evidence. A false positive "fixed" is a real
   regression introduced for nothing.

@@ -67,9 +67,28 @@ then blockers, then what was verified, then what was **not** done. History belon
 decision log; the handoff describes *now*. If it exceeds the cap, cut history, never the
 next action.
 
+> **Measure the cap, do not intend it.** Measured 2026-07-30: the handoff was **382 lines —
+> 2.5× the cap**, because every phase prepended its own `D-0xxx` section and none ever cut the
+> tail. A cap nobody measures is not a cap. **Run this before closing the phase:**
+>
+> ```sh
+> wc -l docs/SESSION_HANDOFF.md   # must be ≤ 150
+> ```
+>
+> Over the cap, delete **whole trailing `## ➜ <D-0xxx>` sections** — they are already in
+> `docs/DECISION_LOG.md`, which is the file that owns history. Deleting a duplicate is not
+> losing information; keeping it is paying for it every session. What is never cut: the next
+> action, the open blockers, and what was **not** done.
+
 **Reply to the Owner — ≤ 25 lines** unless more is asked: what changed, the verification
-counts, what is open, one recommendation. Findings go in a table, not in paragraphs. Any
-session write-up produced outside this repository obeys the same cap.
+counts, what is open, **one improvement proposal**, one recommendation. Findings go in a
+table, not in paragraphs. Any session write-up produced outside this repository obeys the
+same cap.
+
+**Improvement proposal — one line, mandatory, every phase** (`noesar-evolution` §MENTALITÀ):
+the single best thing that would make the platform more advanced than what exists elsewhere,
+with its expected benefit and its cost. It is **recorded and proposed, never executed
+silently** — see §5. A phase that reports no proposal has not looked.
 
 ## 4 — Do not narrate what is already written
 
@@ -88,6 +107,21 @@ Everything found that is outside OBJECTIVE goes to `docs/DECISION_LOG.md` for a 
 phase — with one exception already binding: a defect the HUNT AND FIX step is required to
 repair (`CLAUDE10.md` §40a). "While we are here" is how a 25-call phase becomes a
 250-call one.
+
+**How this coexists with the duty to improve, so the two are never in conflict.** The
+`noesar-evolution` skill requires *looking for* a better solution in every phase; this section
+forbids *executing* it uninvited. Both hold at once:
+
+| Found mid-phase | Do |
+|---|---|
+| a defect in scope for HUNT AND FIX | **fix it now** — already binding |
+| a better design for what this phase is building | **say it before building**, then build the agreed one |
+| a better design for something else | **record + propose**, do not touch |
+| a portability breach (host-coupled code) | **treat as a defect**, not an improvement — the platform law is not optional |
+
+Generating the idea is mandatory. Executing it in the same phase is the Owner's call. The
+failure mode this prevents is a phase that silently triples because every improvement was
+taken as authorisation.
 
 Adding a new top-level key to `PROJECT_STATE.json`, a new document to `docs/` (80 already),
 or a new tool to `tools/` is a scope decision, not a detail: name it in the contract or do

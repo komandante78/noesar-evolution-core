@@ -135,14 +135,21 @@ verified work in the source tree for a deployment that never comes.
 ## 5. External systems are off-limits
 
 16. Do not create, start, stop, restart, remove, or exec into any Docker container.
-    **One named exception**, added by the owner so that defect hunting is possible at
-    all: the read-only analysis container `noesar-debuglab` may be started for the
-    `HUNT AND FIX` step of the phase cycle and **must be stopped again within the same
-    phase**. It is not part of this product, it mounts the host read-only, and it is
-    the only place on this host carrying semgrep / bandit / ruff / detect-secrets /
-    shellcheck / mypy. No other container may be touched, and no product container may
-    be created or started outside an authorised installation phase. Containers this
-    project is authorised to create are also **removed** by it — see §5a.
+    **One named exception**, so that defect hunting is possible at all: the
+    `HUNT AND FIX` step may run a **disposable, offline, read-only analysis container
+    built for that run** — `docker run --rm --network none -v "$ROOT:/repo:ro"`, the
+    portable pattern `scripts/test.sh` already uses for the Python verifiers — and it is
+    **removed within the same phase**. No other container may be touched, and no product
+    container may be created or started outside an authorised installation phase.
+    Containers this project is authorised to create are also **removed** by it — see §5a.
+    **Amended 2026-07-30**: this exception previously named a long-lived host service
+    (`noesar-debuglab`, `:8099`) as the *only* place carrying semgrep/bandit/ruff/
+    detect-secrets/shellcheck/mypy. That container and its image no longer exist and the
+    port is dead — verified, not assumed — so the mandatory hunt step pointed at nothing,
+    and a mandatory step that cannot run is a step that gets skipped. It was also
+    host-coupled, which §60–64 forbid. An external analysis service is now **optional and
+    only if already present**; its absence is never a reason to skip the hunt, and the
+    repository's own suites and adversarial/oracle tools are the primary instrument.
 17. Do not modify Docker networks, volumes, `docker-compose` files, or `.env` files
     belonging to any system.
 18. Do not read, write, migrate, or mutate any database, vector store, or queue
@@ -311,6 +318,52 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
     license is **planned**.
 59. These are **proposals**, recorded in `docs/LICENSE_STRATEGY.md`. They are not a
     final legal determination and must not be presented as one.
+
+## 16. Platform law — self-hosted on any PC, server and OS
+
+> Owner instruction, 2026-07-30 (verbatim): *"NON DEVI FARE NULLA CHE SIA COLLEGATO AD
+> UNRAID, È UN PROGETTO SELF HOSTED CHE VA SU TUTTI PC SERVER E OS"*.
+
+60. **The host is not the product.** NOESAR EVOLUTION is self-hosted software installed by
+    other people on arbitrary PCs, servers and operating systems. The machine it is
+    developed on is **one deployment target, never the design target**, and the product
+    never owns the host it runs on.
+61. **A host-level change is never a remedy.** Rebuilding a kernel, reconfiguring the
+    container runtime, delegating cgroups, installing system packages or touching boot
+    configuration is out of scope — not an option to put to the Owner. A phase that can only
+    pass by changing the host has not passed.
+62. **Nothing may presume this host.** No kernel feature, path (`/mnt/cachec`, `/mnt/user`),
+    package, Docker version, GPU or filesystem is presumed present in code, tests or docs.
+63. **Capability is detected, degraded and declared.** Where a mechanism may be absent:
+    detect it at runtime, fall back to a baseline that works everywhere, use better
+    mechanisms opportunistically where present, and **declare per installation** which level
+    is active. A limitation found on one host is a fact about a *category* of host the
+    product must handle — never a blocker on the product.
+64. **Portability is checked before a phase closes.** Would what this phase built work on a
+    host without Landlock, without a GPU, without delegated cgroups, with different paths?
+    If not, that is a defect of the phase.
+
+## 17. Advancement duty — build for tomorrow, measure against the outside
+
+> Owner instruction, 2026-07-30 (verbatim): *"CERCA SEMPRE UNA SOLUZIONE PER MIGLIORARE IL
+> PROGETTO … FAI SEMPRE PER PENSARE AD UN DOMANI, DEVE ESSERE SEMPRE MEGLIO DI ALTRI
+> PROGETTI, DEVE ESSERE UNA PIATTAFORMA AVANZATA"*.
+
+65. **Meeting a criterion is the floor, not the goal.** After a matrix row is satisfied,
+    state in one line whether a better form exists, and what it is.
+66. **Design for tomorrow**: ten times the data, a poorer host, a second model, a second
+    user, a year from now. A present constraint is style, not a ceiling.
+67. **Every phase produces at least one concrete improvement proposal** — architecture,
+    security, performance, portability or usability — with expected benefit and cost,
+    recorded in `docs/DECISION_LOG.md` and named in the reply to the Owner. A phase
+    reporting none has not looked.
+68. **The measuring stick is external**: not "does it satisfy the matrix" but *"is it more
+    advanced than what exists elsewhere, and in exactly what"*. Where the honest answer is
+    no, say so and name the point.
+69. **Improvement never silently widens a phase.** Generating the idea is mandatory;
+    executing it in the same phase is the Owner's decision. The standing exception remains a
+    defect that §40a HUNT AND FIX must repair. A portability breach (§60–64) is a **defect**,
+    not an improvement, and is fixed, not proposed.
 
 ---
 

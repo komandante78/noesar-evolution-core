@@ -57,7 +57,32 @@ printf '  deferred_items: %s\n' "$(jq -r '.deferred_items // [] | length' "$STAT
 printf '\n----- TEST SUITE AS DECLARED IN STATE -----\n'
 printf '  ⚠ these are DECLARATIONS recorded by a past phase, NOT a measurement taken now.\n'
 printf '     Verify before quoting them. They have been stale before.\n'
-jq -r '.product_test_suite // {} | to_entries[] | "  \(.key): \(.value)"' "$STATE"
+# Entries are shown newest-first and TRUNCATED to the head that carries the counts.
+# Measured 2026-07-30: this one section had reached 11.4 KB of an 18.5 KB digest (62%) at
+# 39 entries, because every phase appends one and nothing ever capped it — the tool built
+# to save context had itself become the largest thing in the digest.
+# Override with DIGEST_SUITE_ENTRIES=<n> (0 = all). Full text of any entry stays reachable.
+jq -r --argjson n "${DIGEST_SUITE_ENTRIES:-12}" '
+  ((.product_test_suite // {}) | to_entries) as $e
+  | (if ($n > 0 and ($e|length) > $n) then ($e | .[-$n:]) else $e end)
+  | reverse | .[]
+  | "  \(.key): \((.value|tostring) | if length > 200 then .[:200] + " […]" else . end)"
+' "$STATE"
+# Formatted with printf, not inside the jq program: the advice text contains single quotes,
+# and nesting them in a single-quoted jq program silently ends the shell quoting instead of
+# failing loudly. `sh -n` accepts the result (it is valid shell, just the wrong program) —
+# caught here only by running it. Keep quoting out of jq.
+SUITE_TOTAL=$(jq -r '(.product_test_suite // {}) | length' "$STATE")
+SUITE_SHOWN=${DIGEST_SUITE_ENTRIES:-12}
+if [ "$SUITE_SHOWN" -gt 0 ] 2>/dev/null && [ "$SUITE_TOTAL" -gt "$SUITE_SHOWN" ]; then
+  printf '  … %s older entries hidden (of %s). Newest %s shown, newest first.\n' \
+    "$((SUITE_TOTAL - SUITE_SHOWN))" "$SUITE_TOTAL" "$SUITE_SHOWN"
+  printf "     one entry in full : jq -r '.product_test_suite.\"<key>\"' PROJECT_STATE.json\n"
+  printf "     all keys          : jq -r '.product_test_suite|keys[]' PROJECT_STATE.json\n"
+  printf '     everything        : DIGEST_SUITE_ENTRIES=0 state-digest.sh\n'
+else
+  printf '  (%s entries, all shown)\n' "$SUITE_TOTAL"
+fi
 
 printf '\n----- LAST DECISIONS (docs/DECISION_LOG.md, newest last) -----\n'
 grep -n '^## D-0' docs/DECISION_LOG.md 2>/dev/null | tail -4 | sed 's/^/  /'

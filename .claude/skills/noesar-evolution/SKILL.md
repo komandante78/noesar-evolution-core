@@ -29,6 +29,85 @@ list di `/api/v1/bootstrap`, quindi il prodotto dichiarava di contenere un altro
   `docs/WORK_PLAN_V5_REWRITE.md`, `MASTER_PROJECT/`, `docs/DECISION_LOG.md`,
   `docs/INSTALLATION_LEDGER.md`. **Non** si apre il file di memoria di un altro progetto.
 
+## 🛑 LEGGE DI PIATTAFORMA — self-hosted su QUALSIASI PC, server e OS
+
+**Ordine esplicito dell'Owner, 2026-07-30** (dato dopo che una sessione ha sbagliato):
+*"NON DEVI FARE NULLA CHE SIA COLLEGATO AD UNRAID, È UN PROGETTO SELF HOSTED CHE VA SU TUTTI
+PC SERVER E OS"*.
+
+NOESAR EVOLUTION è software **self-hosted destinato a essere installato da altri**, su
+qualunque PC, server o sistema operativo. L'host Unraid su cui si lavora
+(`/mnt/cachec/NOESAR_EVOLUTION`) è **una delle installazioni possibili, non il bersaglio del
+progetto**. Il prodotto **non possiede l'host** su cui gira — in nessuna installazione reale.
+
+**Vietato, senza eccezioni:**
+
+- Proporre o eseguire una modifica **all'host** come via per chiudere un criterio del prodotto:
+  ricompilare il kernel, cambiare la configurazione del demone Docker, delegare cgroup,
+  installare pacchetti di sistema, toccare il boot. Non è una scelta da sottoporre all'Owner:
+  è fuori dal progetto.
+- Scrivere codice, test o documentazione che **presuppongano** Unraid, questo kernel, questi
+  percorsi (`/mnt/cachec`, `/mnt/user`), questa versione di Docker o questa GPU.
+- Dichiarare un criterio impossibile perché *questo* host non offre un meccanismo.
+
+**Come si risponde invece — la regola positiva.** Un limite trovato su questo host è **un dato
+reale su una CATEGORIA di host che il prodotto deve gestire**, non un blocco. La risposta
+corretta è sempre **adattiva e portabile**:
+
+1. **Rilevare a runtime** cosa l'host offre davvero, senza presumerlo.
+2. **Una base minima che funziona ovunque**, e sempre quella se non c'è altro.
+3. **Meccanismi migliori usati in modo opportunistico** dove esistono.
+4. **Dichiarare** per installazione quale livello è attivo — mai lasciarlo intendere.
+
+*Caso reale, `D-0246`/`ARCH-008`*: Landlock non è compilato in questo kernel e Docker non
+delega un sottoalbero cgroup scrivibile. La risposta sbagliata (già data una volta) è chiedere
+all'Owner di sbloccare l'host. La risposta giusta è un Sandbox Manager che **rileva** le
+primitive disponibili, usa seccomp come base garantita ovunque, e aggiunge Landlock/cgroup solo
+dove l'host li offre. Il probe su questo host resta prezioso: ha misurato **come si comporta
+il prodotto su un host che non ha quelle primitive** — condizione che si presenterà su Windows,
+macOS, distro minimali e altri NAS.
+
+**Verifica di portabilità, prima di chiudere una fase**: ciò che questa fase ha costruito
+funzionerebbe su un host senza Landlock, senza GPU, senza cgroup delegati, con percorsi
+diversi? Se no, è un difetto della fase — non un limite dell'host.
+
+## 🎯 MENTALITÀ IMPOSTA — piattaforma avanzata, sempre rivolta al domani
+
+**Ordine esplicito dell'Owner, 2026-07-30:** *"CERCA SEMPRE UNA SOLUZIONE PER MIGLIORARE IL
+PROGETTO … FAI SEMPRE PER PENSARE AD UN DOMANI, DEVE ESSERE SEMPRE MEGLIO DI ALTRI PROGETTI,
+DEVE ESSERE UNA PIATTAFORMA AVANZATA"*.
+
+Si lavora come **senior software engineer e AI engineer**, con la mentalità di chi sa come si
+rompono i sistemi: si cerca il modo in cui una cosa cede *prima* che ceda, e si progetta per
+l'installazione di domani, non per il test di oggi.
+
+**Quattro doveri, ad ogni fase:**
+
+1. **Non fermarsi al minimo che chiude il criterio.** Chiudere una riga della matrice è la
+   soglia, non l'obiettivo. Dopo aver soddisfatto il criterio, si dichiara in una riga **se
+   esiste una forma migliore** — e quale.
+2. **Progettare per il domani.** Prima di consegnare: questa scelta regge con dieci volte i
+   dati, su un host più povero, con un secondo modello, con un secondo utente, fra un anno?
+   Un vincolo di oggi è **stile, non tetto** — non si progetta al ribasso perché *questo* host
+   è quello che si ha sotto mano.
+3. **Migliorare attivamente, non aspettare che sia chiesto.** Ogni fase produce almeno una
+   proposta concreta di miglioramento — architettura, sicurezza, prestazioni, portabilità,
+   esperienza d'uso — con il beneficio atteso e il costo. Va in `docs/DECISION_LOG.md`, e la
+   migliore si nomina nella risposta all'Owner.
+4. **Il metro è esterno.** La domanda non è "soddisfa la matrice", è **"è più avanzato di ciò
+   che esiste altrove, e in che cosa esattamente"**. Se la risposta onesta è no su un punto,
+   si dice, con il punto nominato.
+
+**Il confine con la disciplina di scope, perché non si contraddicano.** Migliorare **non**
+significa allargare la fase in corso: un'idea trovata a metà lavoro si **registra** e si
+propone, non si esegue di nascosto (`noesar-evolution-budget` §5). L'unica eccezione resta
+quella già vincolante: un difetto che il passo `HUNT AND FIX` deve riparare. Generare l'idea è
+obbligatorio; eseguirla nella stessa fase è una decisione dell'Owner.
+
+**E il lavoro si fa in fretta e pulito**: token risparmiati con le tre skill di economia,
+letture mirate, verifica a livelli, niente narrazione — la qualità non sta nella lunghezza
+della risposta ma in ciò che è stato **misurato**.
+
 ## 🛑 ATOM EVOLUTION — progetto nuovo, in un repository separato, MAI copiare dal vecchio
 
 **Ordine esplicito dell'Owner, 2026-07-28** (dato con forza, dopo che una sessione ha
@@ -160,13 +239,37 @@ valid, required label — a fabricated PASS is not.
 **Do not close a phase without actively looking for defects, and do not merely log
 what you find — repair it.** A phase that "found bugs" and left them is not finished.
 
-Hunt with real tools, not by reading alone. On this host that means starting
-`noesar-debuglab` (`:8099`, `x-debuglab-token` header, `/api/analyze?kind=code&target=…`),
-which carries **semgrep, bandit, ruff, detect-secrets, shellcheck, mypy** — none of
-which exist on the host itself. Scan whatever this phase touched, plus the first-party
-surface: `services/`, `ai-workspace/`, `capabilities/`, `tools/`, `apps/`,
-`rust/crates/`, `oci/`, and the shell installers. **Stop the container again when
-done** — it is not part of this product and must not be left running.
+Hunt with real tools, not by reading alone — and with tools **this repository carries**, so
+the hunt works for anyone who clones it, on any host (see the platform law above).
+
+**The portable hunt, in this order:**
+
+1. **The repository's own suites** — they are the primary instrument, not a fallback:
+   `node --test services/reference-control-plane/test/*.test.mjs`, `tools/run-eslint.sh`,
+   `tools/verify-source.mjs`, and the targeted suites in `noesar-evolution-verify`'s change
+   map. Measured 2026-07-30: 1168 unit tests, 239 files linted.
+2. **The adversarial and oracle tools** — this project's real defect-finders:
+   `tools/seeded-defect-proof.mjs` (proves the detectors fire), the `*-adversarial.test.mjs`
+   files, `tools/accessibility-audit.mjs`, `tools/browser-e2e.mjs`.
+3. **External analysers, only through a disposable container built from the repo** — never a
+   host-installed tool and never a long-lived service. `scripts/test.sh` already carries the
+   portable pattern for exactly this (`docker run --rm --network none -v "$ROOT:/repo:ro"`),
+   which is how the Python verifiers run on a host with no `python3`. The same shape carries
+   `semgrep`/`ruff`/`shellcheck` when a phase needs them. Offline, read-only, removed at once.
+4. **Reading, last** — for the defect classes no scanner sees: configuration, design,
+   authority boundaries, a missing endpoint, an unenforced cap.
+
+Scan whatever this phase touched, plus — when the verify skill requires a full sweep — the
+first-party surface: `services/`, `ai-workspace/`, `capabilities/`, `tools/`, `apps/`,
+`rust/crates/`, `oci/`, and the shell installers.
+
+> **Repaired 2026-07-30.** This step used to *mandate* starting `noesar-debuglab` (`:8099`)
+> as the hunting instrument. That container **and its image no longer exist** on this host
+> and port 8099 is dead — verified, not assumed. A mandatory step pointing at a nonexistent
+> tool is a step that gets silently skipped, which is worse than no step. It was also
+> host-coupled: a hunt that only works on one machine is not a hunt this project owns. Any
+> such external service is now **optional, and only if already present** — its absence is
+> never a reason to skip the hunt, and it is stopped in the same phase if started.
 
 Then fix. The order is: reproduce → understand the root cause → fix the cause, not the
 symptom → prove the fix.
@@ -294,10 +397,16 @@ phase. Continuation requires a new, explicit instruction from the owner.
   phase" is only acceptable when step 7 names a reason it cannot be fixed here. The
   default is to repair it, with a backup, a test and an atomic commit.
 - No database, network, or external dataset is touched, and no product container is
-  created, started or stopped. **One narrow exception:** the read-only analysis
-  container `noesar-debuglab` may be started for step 7 and **must be stopped again in
-  the same phase**. It mounts the host read-only, is not part of this product, and
-  nothing it reports is trusted without triage against the real code.
+  created, started or stopped. **One narrow exception:** step 7 may run a **disposable,
+  offline, read-only analysis container built for that run** (`docker run --rm
+  --network none -v "$ROOT:/repo:ro"`, the pattern `scripts/test.sh` already uses) and it
+  is removed in the same phase. Nothing it reports is trusted without triage against the
+  real code. No long-lived analysis service is depended on, and none is required to exist.
+- **Nothing this project builds may depend on this host.** No kernel feature, package,
+  path, Docker version or GPU is presumed present; capability is detected at runtime and
+  declared per installation. Host-level changes are never proposed as a fix (platform law).
+- **Every phase leaves at least one recorded improvement proposal**, with its expected
+  benefit and cost — generated always, executed only when the Owner says so.
 - **Whatever this project creates, this project removes.** Containers created under an
   authorised installation phase are cleaned up in step 13 — two survive a phase, the
   running installation and one rollback. Host-wide `prune` commands are never used.

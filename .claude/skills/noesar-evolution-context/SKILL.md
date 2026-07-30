@@ -11,25 +11,38 @@ meglio senza spendere sessioni di 1 ora e passa di token"*.
 
 ## The measurement this skill exists for
 
-Measured on 2026-07-27, in this repository:
+**Re-measured 2026-07-30** (previous figures were from 2026-07-27 and every row had drifted —
+`docs/DECISION_LOG.md` had more than **doubled**):
 
-| File | Size | Lines | May it be read whole? |
-|---|---|---|---|
-| `PROJECT_STATE.json` | 80 KB | 1,258 (~120 top-level keys) | **NO — jq only** |
-| `docs/DECISION_LOG.md` | 160 KB | 2,371 | **NO — tail/grep only** |
-| `docs/INSTALLATION_LEDGER.md` | 116 KB | 2,271 | **NO — last entry only** |
-| `MANIFEST.sha256` | 675 KB | 5,739 | **NO — grep/count only** |
-| `MASTER_PROJECT/*.md` | 204 KB total | 14 documents | **NO — named document only** |
-| `docs/SESSION_HANDOFF.md` | 19 KB | 293 | yes — it is sized to be read |
-| `docs/WORK_PLAN_V5_REWRITE.md` | 14 KB | 202 | yes, when the phase needs the plan |
-| `MASTER_PROJECT/09_PIANO.md` | 10 KB | 169 | yes, when the phase needs the plan |
-| `CLAUDE10.md` | 17 KB | 277 | yes — it is the authority |
+| File | Size | Lines | 07-27 | May it be read whole? |
+|---|---|---|---|---|
+| `MANIFEST.sha256` | **688 KB** | 5,845 | 675 KB | **NO — grep/count only** |
+| `docs/DECISION_LOG.md` | **367 KB** | 4,815 | 160 KB ⚠ **+129%** | **NO — tail/grep only** |
+| `docs/INSTALLATION_LEDGER.md` | **182 KB** | 3,057 | 116 KB | **NO — last entry only** |
+| `MASTER_PROJECT/*.md` | **217 KB** | **16** documents | 204 KB / 14 | **NO — named document only** |
+| `PROJECT_STATE.json` | **102 KB** | 1,361 | 80 KB | **NO — jq only** |
+| `docs/SESSION_HANDOFF.md` | **26 KB** | **382** | 19 KB / 293 | yes — but it is **over its 150-line cap** |
+| `docs/WORK_PLAN_V5_REWRITE.md` | 14 KB | 202 | = | yes, when the phase needs the plan |
+| `MASTER_PROJECT/09_PIANO.md` | 10 KB | 169 | = | yes, when the phase needs the plan |
+| `CLAUDE10.md` | 20 KB | 320 | 17 KB | yes — it is the authority |
 
-**Executing the mandated read order literally costs ~400 KB ≈ 100k tokens before a single
-line of work.** That is the largest avoidable cost in this project, it is paid every
-session, and almost all of it is history no phase needs.
+**Executing the mandated read order literally now costs well over 700 KB** — `DECISION_LOG.md`
+alone is 367 KB. The old figure of "~400 KB ≈ 100k tokens" **understated** it. It is the
+largest avoidable cost in this project, paid every session, and almost all of it is history no
+phase needs.
 
-`state-digest.sh` returns the same operative facts in **6.3 KB — 64× less**, measured.
+`state-digest.sh` returns the same operative facts in **10.3 KB**, measured 2026-07-30 after
+the repair below.
+
+> **Defect found and repaired 2026-07-30 — in this skill's own instrument.** The digest had
+> grown to **18.5 KB**, not the 6.3 KB claimed here: `product_test_suite` reached **39 entries
+> / 11.4 KB** and the digest printed all of it verbatim — **62% of the whole output**. Rule 5
+> froze the *top-level* key count but nothing capped growth *inside* a key, so the tool built
+> to save context had become the largest thing in it. Repaired at the source: newest 12
+> entries, each truncated to the 200 chars carrying the counts, with the full text still
+> reachable (`jq -r '.product_test_suite."<key>"'`) and `DIGEST_SUITE_ENTRIES=0` to print
+> everything. **10.3 KB, −44.5%.** Lesson to keep: an economy measure needs its own
+> measurement re-taken, or it silently becomes the cost it was built to remove.
 
 ## Rule 1 — open with the digest, never with Read
 
@@ -92,7 +105,13 @@ twice over.
   A phase's narrative belongs in the handoff and the decision log — not in a new key that
   every later session must scroll past. Adding a top-level key requires a stated reason.
 - **`docs/SESSION_HANDOFF.md` is rewritten** each phase — it is the one file that must
-  describe *now*. Its cap lives in the budget skill.
+  describe *now*. Its cap lives in the budget skill, and **it is currently breached**: 382
+  lines against a cap of 150, because each phase prepended its own section and none ever cut
+  the tail. The cap is enforced mechanically, not by intention — see the budget skill §3.
+- **A key that grows per phase is capped where it is *printed*, not only where it is
+  written.** `product_test_suite` reached 39 entries and 11.4 KB before anyone noticed,
+  because the cost was paid by the digest and not by the writer. Any accumulating key must
+  say how it is truncated at read time.
 
 ## Rule 6 — the digest reports declarations, not measurements
 
