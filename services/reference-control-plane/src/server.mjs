@@ -2413,6 +2413,19 @@ const requestListener = async (req, res) => {
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       return json(res, 200, updateManager.setChannel((await body(req)).channel, { actorId:authenticated.user.id }));
     }
+    if (req.method === 'POST' && url.pathname === '/api/v1/updates/channel-key') {
+      // D-0272: without this route, installChannelKey() was reachable only from a unit
+      // test constructing UpdateManager directly — no operator, online or offline, could
+      // ever pin a channel key on a running installation, so verifyMetadata()/verifyBundle()
+      // failed NO_CHANNEL_KEY unconditionally. Strong reauthentication, same as apply: a
+      // channel key is what makes update packages trusted, so pinning one carries the
+      // same weight as applying one.
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required.' });
+      const { channel, publicKeyPem } = await body(req);
+      return json(res, 200, updateManager.installChannelKey(channel, publicKeyPem, { actorId:authenticated.user.id }));
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/updates/stage') {
       const authenticated = requireOwner(req, res, 'audit.read');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;

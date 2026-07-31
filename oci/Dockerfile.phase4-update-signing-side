@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0272 (Owner thread 1: portale di firma). POST /api/v1/updates/channel-key so
+# UpdateManager#installChannelKey() — present on the class since it was written, never
+# reachable via HTTP — can actually be called, closing the reachability half of
+# deferred_items[2] ("no channel key is pinned, so nothing can be applied"). The matching
+# operator-side signer, tools/sign-update-artifact.mjs, is dev/operator tooling run
+# against the repository, not baked into the runtime image. See docs/DECISION_LOG.md
+# D-0272.
+
+FROM noesar-evolution:phase4-audit-ledger-perf
+
+LABEL org.noesar.phase="4-update-signing-side"
+LABEL org.noesar.block-e="update-manager-channel-key-route"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

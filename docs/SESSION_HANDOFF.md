@@ -1,16 +1,16 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-31 (`D-0271`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-31 (`D-0272`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
 > massimo 4 pause"): A (debito ARCH-005/008) → B (SESS-001..003) → C (CUBE-001..009) →
 > pausa 1 → **decisione WebUI** → pausa 2 → E+F (debito+packaging) → pausa 3 →
 > G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A, B, C, D COMPLETI. Blocco E+F: `deferred_items` si è rivelato essere già la
-> lista del debito (D-0271), 3/7 chiusi. ⛔ L'OWNER HA DECISO L'ORDINE (fine s296): 1)
-> portale di firma aggiornamenti → 2) Passkey/WebAuthn → 3) `oci/Dockerfile` → 4) Blocco
-> G. La prossima sessione parte dal punto 1, non da una scelta propria.**
+> **Blocco A, B, C, D COMPLETI. Blocco E+F: 3/7 debito chiuso (`D-0271`), il resto sono
+> feature nuove nell'ordine deciso dall'Owner: 1) portale di firma ✅ FATTO (`D-0272`,
+> questa sessione) → 2) Passkey/WebAuthn → 3) `oci/Dockerfile` → 4) Blocco G. La prossima
+> sessione parte dal punto 2.**
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -26,91 +26,86 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 4. **DOVERE DI AVANZAMENTO (`CLAUDE10.md` §17, `D-0247`)**: ogni fase produce una proposta
    di miglioramento; eseguirla è decisione dell'Owner.
 5. **`EXECUTE` è una decisione del CLIENTE** (`D-0250`), **e così è la custodia di una
-   chiave di firma release vera** (`D-0271`): nessuna decisione di sicurezza/capacità
-   presa da solo — sempre nominata come domanda per l'Owner, mai inventata.
+   chiave di firma release vera** (`D-0271`/`D-0272`): nessuna decisione di sicurezza/
+   capacità presa da solo — sempre nominata come domanda per l'Owner, mai inventata.
 
-## ⛔ LA PROSSIMA AZIONE — punto 1: portale di firma aggiornamenti
+## ⛔ LA PROSSIMA AZIONE — punto 2: Passkey/WebAuthn
 
-**Ordine deciso dall'Owner, verbatim la richiesta**: "prima fai chiusura, nuova sessione
-parti dal primo e vai avanti" — il "primo" è il thread 1 elencato sotto. **Non scegliere un
-ordine diverso, non saltare al punto 3 o 4 pensando sia più urgente: la sequenza stessa è
-la decisione dell'Owner.**
+**Ordine deciso dall'Owner (fine s296), invariato**: 2) Passkey/WebAuthn → 3)
+`oci/Dockerfile` → 4) Blocco G. **Non saltare l'ordine.**
 
-**Primo passo reale (ancora non fatto)**: capire cosa "portale di firma aggiornamenti" (
-`deferred_items[2]`: "update signing side and portal not implemented — only the offline
-channel is usable, and no channel key is pinned, so nothing can be applied") significa
-concretamente nel codice esistente PRIMA di scrivere qualsiasi riga — stessa disciplina di
-`D3c`/`D-0271`: leggere `services/reference-control-plane/src/update-manager.mjs` e
-qualunque cosa in `docs/` parli di canali/chiavi di aggiornamento, capire cosa esiste già
-(il canale offline) e cosa manca davvero (un lato firma + un modo per fissare/pinnare la
-chiave del canale), prima di assumere lo scope.
+**Primo passo reale (non ancora fatto)**: leggere cosa esiste già in `auth.mjs`/
+`auth-crypto.mjs` (password+TOTP, sessioni, reauth forte) e cosa la matrice di sicurezza
+intende per "Passkey/WebAuthn: MISSING" prima di scrivere codice — stessa disciplina di
+`D3c`/`D-0271`/`D-0272`: leggere prima, scopare dopo, non assumere.
 
-**`D-0271` (giro precedente)**: l'Owner aveva detto "procedi" dopo la pausa 2, senza
-rispondere alle domande di scoping lasciate in sospeso — la reazione giusta (per lo stesso
-principio di `D3c`: leggere lo stato prima di scrivere codice) è stata controllare
-`PROJECT_STATE.json.deferred_items`, che si è rivelato essere ESATTAMENTE la lista
-"debito+packaging" che il piano nomina. Triaggiati tutti gli 8 item:
+## ➜ `D-0272` (questa sessione) — cosa è stato fatto
 
-- **Chiusi con prove (3)**: `tools/verify-package.py` import `sys` inutilizzato rimosso;
-  `AuditLedger.append()` era O(n) per scrittura (rileggeva l'intero ledger a ogni evento
-  solo per trovare l'ultimo hash) — ora O(1), `lastHash` cachato in memoria dalla
-  costruzione; firma di TUTTI e 4 i documenti SBOM (rigenerati freschi contro
-  `:phase4-voice-control`, non contro il tag stantio del report esistente), verificati
-  PASS, tamper-rejection provata.
-- **Investigato, NON chiuso, peggio del previsto (1)**: `oci/Dockerfile` (il Dockerfile
-  canonico, distinto dai ~50 overlay `phase4-*`) **non ha Postgres installato e non ha
-  `noesar-supervisor` come PID1** — ricostruirlo oggi, anche con un passo di rete
-  registrato per `apt-get`, produrrebbe un'immagine che non si avvia come il prodotto
-  reale. Serve una fase dedicata, non una correzione rapida.
-- **Lasciati fuori scope, per motivi nominati (3)**: portale di firma aggiornamenti e
-  Passkey/WebAuthn sono funzionalità nuove, non debito — meritano uno scoping dedicato
-  come `D3c`; TLS off-by-default è design deliberato (`D-0198`), non debito; il pentest
-  indipendente è dell'Owner nel **Blocco G**, non di E+F.
+Letto `update-manager.mjs` per primo, come richiesto: il verificatore lato client (channel
+metadata + package manifest, entrambi Ed25519) era completo e testato, ma **inutilizzabile
+end-to-end** per due motivi meccanici — `installChannelKey()` esisteva sulla classe ma
+**nessuna rotta HTTP la chiamava mai** (irraggiungibile fuori da un unit test che
+costruisce la classe direttamente), e **nessun tool nel repository poteva produrre** un
+artefatto che il verificatore avrebbe accettato.
 
-**L'Owner ha già deciso l'ordine dei quattro fili rimasti** (vedi "LA PROSSIMA AZIONE" in
-cima): 1) portale firma → 2) Passkey/WebAuthn → 3) `oci/Dockerfile` → 4) Blocco G. Non è
-più una domanda aperta — è la prossima sessione che deve partire dal punto 1.
+Costruito: `POST /api/v1/updates/channel-key` (owner+CSRF+strong-reauth, stesso peso di
+`apply`) + `tools/sign-update-artifact.mjs` (`keygen`/`sign-metadata`/`sign-package`, le
+due forme esatte che `update-manager.mjs` verifica). **Il portale `noesar.com` resta fuori
+scope** (`LICENSING_AND_PORTAL_INTERFACE.md` B7, non cambiato) — nominato, non ignorato una
+seconda volta.
 
-**Non rifare**: i 2 test nuovi di `audit.test.mjs`, `scripts/test.sh` 10/10, seeded-defect
-19/19, `MANIFEST.sha256` 5886/5886 (D-0271).
+**Provato dal vivo, non solo a unit test**: `NO_CHANNEL_KEY` prima del pin; dopo
+`keygen`+pin, un bundle e una metadata firmati dal tool verificano entrambi; pipeline
+completa `check → stage → approve → apply` fino a un nuovo `installedVersion`.
+
+**Incidente auto-corretto durante il deploy**: il primo `docker run` del container nuovo
+ometteva l'hardening (`--read-only --cap-drop=ALL --security-opt no-new-privileges:true` +
+i due tmpfs) — un `docker run` scritto a mano invece che dal JSON `HostConfig` salvato.
+Fermato e rimosso nello stesso minuto, mai servito traffico, ricreato correttamente. Vedi
+`docs/INSTALLATION_LEDGER.md` per il dettaglio completo.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-audit-ledger-perf` (`D-0271`) · `Up
-  (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
-  `migrations:19 rls_tables:18`. Rollback preservato:
-  `noesar-evolution.rollback-audit-ledger-perf-20260731T070727Z` (`:phase4-voice-control`).
+- **Prodotto vivo**: `noesar-evolution:phase4-update-signing-side` (`D-0272`) · `Up
+  (healthy)` · `192.168.178.100:8100→8088` · hardening confermato (`ReadonlyRootfs:true
+  CapDrop:[ALL]`) · `migrations:19 rls_tables:18`. Rollback preservato:
+  `noesar-evolution.rollback-update-signing-side-20260731T074913Z`
+  (`:phase4-audit-ledger-perf`).
 - **Due container per progetto** — §5a rispettato.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **Blocco D (Ricerca+TUI+pannelli+tasti+Voce) è COMPLETO** — vedi `D-0266`…`D-0270`.
-- **`oci/Dockerfile` NON riflette il prodotto vivo** — nessuno stato precedente lo aveva
-  mai verificato riga per riga contro la produzione reale prima di `D-0271`.
-- **La chiave di firma SBOM usata in `D-0271` è di sessione, mai persistente** — il
-  fingerprint pubblico è in `docs/SBOM_REPORT.md`, la chiave privata non è mai stata nel
-  repository e non sopravvive a questa sessione.
-- **`deferred_items` in `PROJECT_STATE.json` ORA riflette lo stato vero** — 3 chiusi, 1
-  investigato/riaperto con dettaglio, 3 invariati per motivo nominato.
+- **Il portale `noesar.com` NON è stato costruito** — resta design-only per decisione
+  esplicita precedente (`LICENSING_AND_PORTAL_INTERFACE.md` B7), non per questa sessione.
+- **`tools/sign-update-artifact.mjs` non è nell'immagine Docker** — è tooling operatore/
+  dev, eseguito contro il repository, non contro il container in esecuzione.
+- **La chiave generata da `keygen` è dimostrativa quanto quella SBOM di `D-0271`** —
+  nessuna chiave privata è mai stata scritta nel repository o installata come chiave di
+  canale reale.
+- **`PROJECT_STATE.json.installation`** (il blocco con `image`/`rollback_containers`) è
+  stale da diverse sessioni (ferma a `:phase4-webui`) — non è stato toccato in questa
+  sessione, non è nel suo scope. Lo stato vero dell'installazione vive nella tabella
+  container Docker + qui, non in quel blocco.
 
 ## ➜ Blocker aperti
 
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata a
 fine progetto per scelta dell'Owner. Nessun altro.
 
-## ➜ Verificato in `D-0271`
+## ➜ Verificato in `D-0272`
 
 | Verifica | Risultato |
 |---|---|
-| `node --test` (suite completa) | **1349/1350 PASS** (1 skip pre-esistente, +2) |
-| `tools/run-eslint.sh` | **262 file · 0 errori** |
+| `node --test` (suite completa) | **1353/1354 PASS** (1 skip pre-esistente, +4) |
+| `tools/run-eslint.sh` | **264 file · 0 errori** (+2, i due file nuovi) |
 | `scripts/test.sh` (9 step) | **10/10 PASS** |
 | `tools/seeded-defect-proof.mjs` | **19/19 catturati** |
-| `MANIFEST.sha256` | **5886/5886** |
-| SBOM: 4/4 documenti firmati | tutti `PASS`, tamper-rejection provata su una copia alterata |
-| deploy (`audit.mjs`) | stop pulito, backup, §5a rispettato, `Up (healthy)`, byte identici |
+| `tools/auth-http-smoke.mjs` / `tools/http-smoke.mjs` | **PASS / PASS** |
+| `MANIFEST.sha256` | **5887/5887** (1 hash cambiato, 1 nuova voce) |
+| deploy (`updates-channel-key-http.test.mjs`, 4/4) | stop pulito, backup, §5a, hardening ripristinato dopo l'incidente auto-corretto, `Up (healthy)`, byte identici |
+| probe live non autenticato | `POST /api/v1/updates/channel-key` → `401` |
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
 **Nessuna sull'ordine — deciso** (vedi cima file). Domande che nasceranno scoping il
-punto 1 (portale firma) vanno poste quando emergono, non anticipate qui.
+punto 2 (Passkey/WebAuthn) vanno poste quando emergono, non anticipate qui.

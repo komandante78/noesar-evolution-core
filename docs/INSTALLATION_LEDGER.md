@@ -3615,3 +3615,30 @@ all 4 documents), 1 investigated and found worse than described (oci/Dockerfile 
 — needs its own phase), 2 named out-of-scope (signing-portal, passkey/WebAuthn — net-new
 features, not debt), 1 confirmed deliberate design (TLS default off). The penetration-test
 item belongs to Block G, untouched here.**
+
+## 2026-07-31 · `:phase4-update-signing-side` — D-0272 deployed: the update system's signing side, Owner thread 1
+`POST /api/v1/updates/channel-key` — the missing route for `UpdateManager#installChannelKey()`
+— so a channel's public key can actually be pinned on a running installation (owner+CSRF+
+strong-reauth, same weight as `apply`). `tools/sign-update-artifact.mjs` (`keygen`/
+`sign-metadata`/`sign-package`) is dev/operator tooling, not baked into the image.
+
+Caught during this deploy, fixed before going live: the first container start omitted
+`--read-only --cap-drop=ALL --security-opt no-new-privileges:true --tmpfs /run --tmpfs
+/tmp` (a hand-built `docker run`, not templated from the saved `HostConfig`) — stopped and
+removed within the same minute, never left serving traffic, and recreated correctly from
+the saved `HostConfig`/`Env` JSON captured before the stop.
+
+`docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup (75 MB,
+service stopped) → §5a (`.rollback-audit-ledger-perf-20260731T070727Z` removed,
+predecessor renamed to `.rollback-update-signing-side-20260731T074913Z`) → new container,
+this time with hardening included. `Up (healthy)`, `data-plane.ready migrations:19
+rls_tables:18`, `/livez`/`/readyz` 200/200, hardening confirmed
+(`ReadonlyRootfs:true CapDrop:[ALL] SecurityOpt:[no-new-privileges:true]`). Byte identity
+of `server.mjs` confirmed via `docker run --entrypoint sha256sum` against the built image.
+Live probe, unauthenticated: `POST /api/v1/updates/channel-key` → `401 Authentication
+required` — gated exactly like every other owner-only mutating route. Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-update-signing-side-20260731T074913Z`
+(`:phase4-audit-ledger-perf`). Rollback cost: none on live data — the route only writes a
+public key file under `updates/keys/`; no schema change, no migration.

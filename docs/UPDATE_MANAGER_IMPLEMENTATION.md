@@ -106,12 +106,36 @@ GET  /api/v1/updates/status     GET  /api/v1/updates/history
 POST /api/v1/updates/check      POST /api/v1/updates/channel
 POST /api/v1/updates/stage      POST /api/v1/updates/approve
 POST /api/v1/updates/apply      POST /api/v1/updates/rollback
+POST /api/v1/updates/channel-key
 ```
 
 All owner-only, all CSRF-protected, all audited: who, when, from which version to which,
 verification outcome and result. `update.check`, `update.staged`, `update.approved`,
 `update.backup`, `update.health` and `update.apply` were all observed in the ledger, with
 the chain verifying.
+
+## The signing side (`D-0272`)
+
+`installChannelKey()` existed on the class from the start but, until `D-0272`, had no HTTP
+route — no operator, online or offline, could ever pin a channel's public key on a running
+installation, so `verifyMetadata()`/`verifyBundle()` failed `NO_CHANNEL_KEY` unconditionally
+regardless of what a bundle carried. `POST /api/v1/updates/channel-key` closes that: owner
+session, CSRF, **and** recent strong reauthentication (same weight as `apply`, because a
+pinned key is what makes every future package trusted).
+
+There was also nothing that could *produce* an artefact the verifier would accept:
+`tools/sign-update-artifact.mjs` is the matching signer, in the two exact shapes
+`update-manager.mjs` checks — channel metadata (embedded `signature: "ed25519:..."` over
+`canonicalJsonBytes`) and a package `manifest.json` (detached `manifest.sig`, signed over the
+file's exact bytes) — plus `keygen` to produce a channel's Ed25519 keypair. Proven live in
+`D-0272`: `NO_CHANNEL_KEY` before pinning, a real signed bundle verifying after, and the full
+`check → stage → approve → apply` pipeline completing to a new `installedVersion`.
+
+**Still not implemented, deliberately**: the `noesar.com` portal itself — see
+`docs/LICENSING_AND_PORTAL_INTERFACE.md` Part B, out of scope for Phase 3 or Phase 4. A
+durable, non-session signing key (HSM/secrets manager/cold storage) is an Owner decision,
+not invented here — every key `sign-update-artifact.mjs` produces is exactly as
+session-scoped as the SBOM demonstration key from `D-0271`.
 
 ## Keys and fixtures
 
