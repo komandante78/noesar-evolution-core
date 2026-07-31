@@ -239,7 +239,7 @@ const sessionDispatch = createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot: workspace, engineEvents, workspaceActionsStatus,
   getShadowSnapshot: () => shadowSnapshot, capabilityStatus, capabilityMinter,
-  contextGraph, ledger,
+  contextGraph, ledger, invariantEnforcement: INVARIANT_ENFORCEMENT,
 });
 
 // --- data plane and multi-user directory -------------------------------------

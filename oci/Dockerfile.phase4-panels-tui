@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block D3a (UI-054): the CodeN Evolution TUI reaches the SAME workbench panels the browser
+# shows — plan/map/logs/shadow/invariants/authority/editor/diff routed to the calls that
+# already back those views, and the panels with no real source anywhere (tests, preview,
+# documentation, closure, conversation, activity) answered with the same declared-empty
+# text the browser itself shows, never a guess. Plus the bench's own status line, with the
+# same field-by-field honesty (2 of 12 sourced from this transport: Elapsed, Authority).
+#
+# Deliberately NOT in this image: F1...F9 raw-keypress binding (needs a raw-mode input loop,
+# a separate change from `tools/tui-client.mjs`'s current line-based reader) and Voice
+# (D-0123) — both remain open, see docs/DECISION_LOG.md D-0268.
+
+FROM noesar-evolution:phase4-sessions-tui
+
+LABEL org.noesar.phase="4-panels-tui"
+LABEL org.noesar.block-d="d3a-panels-tui"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

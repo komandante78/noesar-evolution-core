@@ -41,7 +41,7 @@ export class ProtocolError extends Error {
 export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
-  capabilityStatus, capabilityMinter, contextGraph, ledger,
+  capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
 }) {
   const nowUnix = () => Math.floor(Date.now() / 1000);
   const methods = {
@@ -114,6 +114,11 @@ export function createSessionDispatch({
       shadow: getShadowSnapshot(),
       capability: capabilityStatus(capabilityMinter),
     }),
+    // UI-054 (D-0268): the same SEC-003 enforcement declaration `/api/v1/bootstrap` sends
+    // the WebUI's "Invariants" panel — rendered from the server's own record, never a
+    // second hardcoded list that can drift from it (see path-auth.mjs's own comment on
+    // exactly that drift, once real).
+    'product.invariants': () => ({ invariants: invariantEnforcement }),
   };
 
   return async function dispatch(method, params, actor) {

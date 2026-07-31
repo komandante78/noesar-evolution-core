@@ -23,6 +23,7 @@ import { totpCode } from '../src/auth-crypto.mjs';
 import { createSessionDispatch, startUnixSocketServer, PROTOCOL_VERSION } from '../src/session-protocol.mjs';
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
+import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -57,7 +58,7 @@ before(async () => {
     workspaceRoot: ws, engineEvents: events, workspaceActionsStatus,
     getShadowSnapshot: () => shadowStatus(join(ws, 'shadows')),
     capabilityStatus, capabilityMinter: new TokenMinter(randomBytes(32)),
-    contextGraph, ledger,
+    contextGraph, ledger, invariantEnforcement: INVARIANT_ENFORCEMENT,
   });
   socketPath = join(ws, 'tui-test.sock');
   server = startUnixSocketServer({ socketPath, dispatch, auth, ledger });
@@ -205,5 +206,15 @@ describe('session protocol — sessions.* (UI-050, the TUI half of UI-001…UI-0
       call(authenticatedSocket, 'sessions.action', { action: 'archive', ids: [] }),
       (error) => error.kind === 'INVALID_REQUEST',
     );
+  });
+});
+
+// UI-054 (D-0268): the same enforcement declaration `/api/v1/bootstrap` sends the WebUI's
+// Invariants panel, reached over the socket for the TUI's `panel invariants`.
+describe('session protocol — product.invariants (UI-054)', () => {
+  test('returns the exact same record path-auth.mjs exports, not a second copy of it', async () => {
+    const result = await call(authenticatedSocket, 'product.invariants', {});
+    assert.deepEqual(result.invariants, INVARIANT_ENFORCEMENT);
+    assert.ok(result.invariants.length > 0);
   });
 });

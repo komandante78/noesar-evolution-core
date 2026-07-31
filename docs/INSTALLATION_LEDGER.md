@@ -3480,3 +3480,36 @@ Rollback cost: none on live data — additive dispatch methods only, no schema c
 
 **`UI-050` closed for sessions. `CE-020` remains open for the agent-panels half (`UI-054`),
 which is Block D3 alongside Voice (`D-0123`).**
+
+## 2026-07-31 · `:phase4-panels-tui` — D-0268 deployed: workbench panels + status line reachable from the TUI (UI-054), Block D3a
+Tag `noesar-evolution:phase4-panels-tui`, `FROM :phase4-sessions-tui`. Changed:
+`services/reference-control-plane/src/session-protocol.mjs` (+`product.invariants`, same
+`INVARIANT_ENFORCEMENT` record `/api/v1/bootstrap` already sends), `server.mjs` (threads it
+through), `tools/tui-client.mjs` (+`panel <name> [arg]` router + the bench's 12-field status
+line on `status`). Full detail: `docs/DECISION_LOG.md` `D-0268`.
+
+**Verification (pre-deploy)**: full suite **1322/1323** (1 pre-existing skip, up from 1313 —
++1 `session-protocol.test.mjs`, +9 new `tui-client-panels.test.mjs`), ESLint **259 files 0
+errors**, `scripts/test.sh` **10/10**, seeded-defect **19/19**, `auth-http-smoke`/
+`http-smoke` PASS, `MANIFEST.sha256` **5881/5881**. No DOM/markup changed, so browser E2E
+and the accessibility audit were judged irrelevant and not re-run (same reasoning as
+`:phase4-sessions-tui`).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log →
+backup (12.9 MB, service stopped) → §5a (older rollback
+`.rollback-sessions-tui-20260731T022844Z` removed, predecessor renamed to
+`.rollback-panels-tui-20260731T024358Z`) → new container from the full `docker inspect`
+HostConfig JSON. `Up (healthy)`, `data-plane.ready migrations:19 rls_tables:18`,
+`/livez`/`/readyz` 200/200, hardening intact (`ReadonlyRootfs:true CapDrop:[ALL]
+RestartCount:0`). Byte identity of both changed source files confirmed via
+`docker run --entrypoint sha256sum` against the built image. **Live probe, unauthenticated,
+no real session touched**: `product.invariants` before login answers `UNAUTHENTICATED` —
+genuinely wired through `codev`'s relay to `api`'s dispatch on the running product.
+Post-cleanup inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-panels-tui-20260731T024358Z` (`:phase4-sessions-tui`).
+Rollback cost: none on live data — one additive read-only dispatch method, additive CLI
+commands only.
+
+**`UI-054` closed for the panel-name half. `F1…F9` raw-keypress binding and Voice (`D-0123`)
+remain open — named gaps (Block D3b/D3c), not silently dropped.**

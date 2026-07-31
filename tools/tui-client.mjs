@@ -47,7 +47,6 @@ const HELP = `Commands:
   events <runId>        show a run's own causal event trail
   map [path]            scan the workspace (or a subdirectory) — languages, entry points, symbols
   search <query>        literal search across the workspace
-  status                engine status (workspace-actions, shadow, capability)
 
   sessions [active|archived|bin] [page]   list sessions (UI-001…UI-012); default: active, page 1
   session-show <n>                        show session <n> from the last list shown
@@ -57,6 +56,13 @@ const HELP = `Commands:
                                            browser's Delete key)
   session-restore <n…|all>                restore session(s) out of the archive or the bin
   session-undone                          what the last session action could not do
+
+  panel <name> [arg]    a workbench panel's own view, full-screen, as text (UI-054) — one of:
+                         plan, map, logs <runId>, shadow, invariants, authority,
+                         editor <runId>, diff <runId>, tests, documentation, preview,
+                         closure, conversation, activity. 'panel' alone lists the names.
+  status                engine status, plus the bench's own status line (Elapsed/Authority
+                         sourced; the rest read "—", exactly as honestly as the browser's)
 
   help                  this text
   exit                  close the connection and quit
@@ -181,7 +187,73 @@ function printJson(label, value) {
  *  page shown (so `<n>` in `session-show`/`session-archive`/… means "row n of that page",
  *  matching the browser's own numbered rows) and the refusals from the last batch action
  *  (UI-009), since a terminal has no toast to show them in as they happen. */
-export function createTuiState() { return { lastList: null, lastRefused: [] }; }
+export function createTuiState() { return { lastList: null, lastRefused: [], connectedAt: Date.now() }; }
+
+function humanDuration(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const sec = s % 60;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+/** UI-054/UI-035: the SAME twelve labels the workbench's own status line declares, honestly
+ *  — a field this transport cannot source reads "—", exactly like a field the browser
+ *  cannot source. Elapsed and Authority are the two this transport genuinely has (the
+ *  browser sources two more of its own — Network and Sandbox — from HTTP-only privacy and
+ *  UI-toggle state this socket does not carry; that gap is disclosed, not silently narrowed
+ *  away). A status line that invents a number it does not have is worse than one that says
+ *  "—" (same principle as `apps/webui-static/index.html`'s own comment on this line). */
+function formatStatusLine(state, statusResult) {
+  const elapsed = humanDuration((Date.now() - state.connectedAt) / 1000);
+  const authority = String(statusResult.capability?.outstandingTokens ?? '—');
+  const fields = [
+    ['Stage', '—/16'], ['Files', '—'], ['Tests', '—'], ['Warnings', '—'],
+    ['Processes', '—'], ['Remote', '—'], ['Tokens', '—'], ['Cost', '—'],
+    ['Elapsed', elapsed], ['Network', '—'], ['Sandbox', '—'], ['Authority', authority],
+  ];
+  const sourced = fields.filter(([, value]) => value !== '—' && !value.startsWith('—/')).length;
+  return `${fields.map(([label, value]) => `${label} ${value}`).join('  ·  ')}\n(${sourced} of 12 fields have a source from this transport)`;
+}
+
+/** UI-054: the same panels the workbench's agent column and bench tabs show, reached full
+ *  screen as text instead of a docked/floating pane. Names with a real source route to the
+ *  same call the browser makes for that view; names the browser itself only ever shows a
+ *  declared-empty placeholder for (no run has produced one, or the data belongs to a
+ *  different transport, e.g. Conversation shares state with Chat) answer with that same
+ *  honest placeholder here — never a guess. `F1…F9` raw-keypress binding is deliberately
+ *  not built in this phase: this client reads whole lines (see the header comment on
+ *  `LineReader`), and binding function keys needs a raw-mode input loop with its own
+ *  piped-input fallback, a separate, larger change from adding a named command. */
+const DECLARED_EMPTY_PANELS = {
+  tests: 'No run, and this stays true on purpose: the executor is passed an empty test list on this path, so nothing has ever run a plan-declared command.',
+  documentation: 'No documentation is attached to this piece of work.',
+  preview: 'Nothing to preview. A preview renders an artefact the work produced.',
+  closure: 'No run has reached closure in this session yet.',
+  conversation: 'The bench conversation shares the session with Chat and the terminal shell. It is not a second chat with its own state — there is nothing transport-specific to show here.',
+  activity: 'No hypothesis. Evidence is what was recalculated, not what was asserted. No tool has run in this session.',
+};
+const PANEL_NAMES = ['plan', 'map', 'logs', 'shadow', 'invariants', 'authority', 'editor', 'diff', ...Object.keys(DECLARED_EMPTY_PANELS)];
+
+async function runPanel(session, name, arg) {
+  if (!name) { console.log(`Panels: ${PANEL_NAMES.join(', ')}`); return; }
+  if (DECLARED_EMPTY_PANELS[name]) { console.log(DECLARED_EMPTY_PANELS[name]); return; }
+  switch (name) {
+    case 'plan': console.log('Use `plan` to start one, or `get <runId>` for an existing run\'s state.'); return;
+    case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return;
+    case 'logs': if (!arg) { console.log('Usage: panel logs <runId>'); return; } printJson('events', await session.call('events.correlation', { correlationId: arg })); return;
+    case 'shadow': { const status = await session.call('status', {}); printJson('shadow', status.shadow); return; }
+    case 'invariants': {
+      const { invariants } = await session.call('product.invariants', {});
+      for (const entry of invariants) console.log(`  ${String(entry.id ?? '').replace(/_/g, ' ')} — ${entry.status === 'ACTIVE' ? `enforced here (${entry.enforcedBy})` : `enforced elsewhere (${entry.enforcedBy})`}`);
+      return;
+    }
+    case 'authority': { const status = await session.call('status', {}); printJson('authority', status.capability); return; }
+    case 'editor': case 'diff':
+      if (!arg) { console.log(`Usage: panel ${name} <runId>`); return; }
+      printJson(name, await session.call('workspace.get', { runId: arg }));
+      return;
+    default: console.log(`Unknown panel \`${name}\`. Panels: ${PANEL_NAMES.join(', ')}`);
+  }
+}
 
 /** `all` means every row of the last list shown — the terminal equivalent of the browser's
  *  `Ctrl+A` (UI-050), which selects everything on the current page, not every session that
@@ -274,7 +346,13 @@ export async function dispatchCommand(reader, session, line, state) {
     case 'events': printJson('events', await session.call('events.correlation', { correlationId: arg })); return true;
     case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return true;
     case 'search': printJson('matches', await session.call('repoMap.search', { q: arg })); return true;
-    case 'status': printJson('status', await session.call('status', {})); return true;
+    case 'panel': await runPanel(session, rest[0], rest[1]); return true;
+    case 'status': {
+      const result = await session.call('status', {});
+      printJson('status', result);
+      console.log(formatStatusLine(state, result));
+      return true;
+    }
     case 'sessions': await runSessionsList(session, state, rest); return true;
     case 'session-show': {
       const resolved = resolveSessionSelection(state, rest.length ? [rest[0]] : []);
