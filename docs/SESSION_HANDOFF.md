@@ -1,16 +1,16 @@
 # NOESAR EVOLUTION — Session Handoff
 
-> Aggiornato 2026-07-31 (`D-0269`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-07-31 (`D-0270`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
 > massimo 4 pause"): A (debito ARCH-005/008) → B (SESS-001..003) → C (CUBE-001..009) →
 > pausa 1 → **decisione WebUI** → pausa 2 → E+F (debito+packaging) → pausa 3 →
 > G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A, B, C COMPLETI. Decisione WebUI (Owner): costruire Ricerca + TUI +
-> Voce/pannelli staccabili, "non lasciamo nulla indietro". D1 (Ricerca, `D-0266`), D2
-> (sessioni del TUI, `D-0267`), D3a (pannelli per nome, `D-0268`) e D3b (tasti F1…F9,
-> `D-0269`) FATTI. Resta SOLO D3c (Voce) prima della pausa 2.**
+> **Blocco A, B, C COMPLETI. Blocco D (decisione WebUI: Ricerca+TUI+Voce/pannelli) ORA
+> COMPLETO — D1 (`D-0266`), D2 (`D-0267`), D3a (`D-0268`), D3b (`D-0269`), D3c (`D-0270`)
+> tutti fatti. ⛔ SIAMO ALLA PAUSA 2 — punto di stop previsto dal piano stesso, non da
+> continuare senza l'Owner.**
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -33,45 +33,44 @@ istruzione diretta). `D-0266`: `crates/atom-provider/src/research_gate.rs` in
    (`D-0266`): nessun provider imbullonato nel codice, un connettore `tools` pluggable
    come ogni altro, l'operatore lo configura e lo consente.
 
-## ➜ LA PROSSIMA AZIONE — Blocco D3c: Voce (`D-0123`), ultimo pezzo prima della pausa 2
+## ⛔ LA PROSSIMA AZIONE — PAUSA 2, non Blocco E+F
 
-**Block D3b fatto (`D-0269`)**: `tools/tui-client.mjs` porta `panelForFunctionKey`/
-`FUNCTION_KEY_PANELS` (puro: `f1`…`f9` → le prime nove `PANEL_NAMES`, stesso ordine che
-`panel` da solo già elenca) e `wireFunctionKeys(iface, session)`, cablato da `main()` SOLO
-quando `process.stdin.isTTY`, che instrada allo STESSO `runPanel()` già usato dal comando
-digitato `panel <name>` — nessun metodo nuovo lato server, perché ogni pannello che un tasto
-raggiunge aveva già una rotta da `D-0268`. **Nessun deploy Docker**: `tui-client.mjs` non è
-mai stato incluso in nessuna immagine `noesar-evolution:*` (client dell'operatore, eseguito
-dal checkout host) — `D-0143` è soddisfatto dalla verifica completa, non da un deploy che
-non esiste per questo file. Il container vivo resta invariato: `:phase4-panels-tui`.
+**Il piano dell'Owner stesso** (citato in cima a questo file, deciso ancor prima del
+Blocco A) mette una pausa **dopo** la decisione WebUI e **prima** di E+F. Il Blocco D si è
+appena chiuso con `D-0270` — questo NON è un via libera a proseguire da soli su E+F.
+**Fermarsi qui, riportare il lavoro fatto, aspettare l'Owner.**
 
-**Prossima azione reale — D3c, Voce (`D-0123`)**: l'UNICO pezzo rimasto della decisione
-WebUI dell'Owner ("tutto, non lasciamo nulla indietro"). Dichiarata **"idea disegnata, non
-pianificata"** (2026-07-27) — prima di scrivere una riga serve uno SCOPING VERO, non
-presunto: cosa significa concretamente "torre di controllo, non assistente" come superficie
-reale? Domande aperte da risolvere PRIMA del codice: (1) cattura audio — dove, con quale
-libreria (questo progetto non ne ha mai usata una, zero dipendenze è la policy dichiarata
-in testa a `tui-client.mjs` e altrove — un input audio reale rompe quella policy, va deciso
-se un'eccezione è accettabile o se serve un binario esterno separato); (2) TTS — stesso
-problema di dipendenze, più la domanda se serve affatto o se "torre di controllo" significa
-SOLO comandi vocali in ingresso, mai voce in uscita; (3) quale endpoint/trasporto riceve
-l'audio — un quarto peer accanto a `api`/`codev`/(WebUI), o un canale dentro uno di quelli
-già esistenti; (4) cosa "torre di controllo" esclude esplicitamente rispetto ad "assistente"
-(l'Owner ha usato questa distinzione per una ragione — probabilmente: comandi imperativi
-brevi su azioni già esistenti, MAI una conversazione libera con un modello). **Non iniziare
-a scrivere codice prima di avere risposte, anche solo ipotesi esplicite verificate con
-l'Owner se possibile — questo è lo stesso errore che D3a/D3b hanno evitato scopando prima.**
+Se l'Owner chiede esplicitamente di proseguire: **Blocco E+F (debito+packaging)** non ha
+ancora uno scope dettagliato in nessun file di stato — la prima azione reale di quel
+blocco è rileggere questo file e `docs/DECISION_LOG.md` per capire cosa "debito+packaging"
+intende concretamente (probabilmente: gli item ancora aperti elencati sotto "Cosa NON è
+vero" + un giro di pulizia pre-release), non assumerlo.
 
-**Non rifare**: i 4 test di `tui-client-function-keys.test.mjs`, `scripts/test.sh` 10/10,
-seeded-defect 19/19, `MANIFEST.sha256` 5882/5882 (D-0269).
+**Block D3c fatto (`D-0270`)**: Voce come **torre di controllo** (`D-0123`), non
+assistente — `apps/webui-static/voice-control.js` (vocabolario fisso a 5 parole:
+`approve`/`reject`/`cancel`/`repeat`/`status`; reducer puro: `approve`/`reject` chiedono
+la STESSA parola due volte per eseguire, `cancel` o la parola opposta revocano subito,
+qualsiasi altra cosa ripete la domanda invece di indovinare), cablato in `app.js` a un
+toggle microfono nel topbar che chiama lo STESSO `runWorkspaceAction` già usato dai
+pulsanti Approve/Reject visibili — nessuna capacità nuova lato server. **Regressione
+reale trovata e riparata nella stessa fase**: l'audit di accessibilità è sceso a 26/27
+(`#globalSearch` schiacciato a 22px dal nuovo chip nel topbar, `.command` non aveva un
+proprio `min-width`) — riparato alla radice (`.command{min-width:160px}`), non solo
+rimpicciolendo il bottone voce (che avrebbe solo rimandato lo stesso guasto alla prossima
+aggiunta al topbar). **Deployato live** (`:phase4-voice-control`) — a differenza di
+`D-0269`, questa fase tocca `apps/webui-static/`, che È dentro l'immagine Docker.
+
+**Non rifare**: i 22 test di `voice-control.test.mjs`, browser E2E 334/334 (rieseguito
+due volte, la seconda dopo il fix CSS), audit accessibilità 27/27, `scripts/test.sh`
+10/10, seeded-defect 19/19, `MANIFEST.sha256` 5885/5885 (D-0270).
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-panels-tui` (`D-0268`, INVARIATO da `D-0269`
-  — D3b è git-only) · `Up (healthy)` · `192.168.178.100:8100→8088` · hardening intatto ·
-  `migrations:19 rls_tables:18`. Rollback preservato:
-  `noesar-evolution.rollback-panels-tui-20260731T024358Z` (`:phase4-sessions-tui`).
-- **Due container per progetto** — §5a rispettato (invariato, nessun nuovo container).
+- **Prodotto vivo**: `noesar-evolution:phase4-voice-control` (`D-0270`) · `Up (healthy)` ·
+  `192.168.178.100:8100→8088` · hardening intatto · `migrations:19 rls_tables:18`.
+  Rollback preservato: `noesar-evolution.rollback-voice-control-20260731T062228Z`
+  (`:phase4-panels-tui`).
+- **Due container per progetto** — §5a rispettato.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
@@ -79,16 +78,14 @@ seeded-defect 19/19, `MANIFEST.sha256` 5882/5882 (D-0269).
   C, invariato).
 - **`UI-080…096` (Ricerca) sono TUTTI ✔ COSTRUITI** (`D-0266`) — nessun provider di
   ricerca è registrato: la superficie è vera, i dati no.
-- **`UI-050` e `UI-054` sono ORA ENTRAMBI COSTRUITI PER INTERO** (`D-0267`/`D-0268`/
-  `D-0269`) — `CE-020` ("ogni capacità dal TUI") vale ora per OGNI pannello. L'unica
-  capacità WebUI ancora fuori dal TUI/prodotto è la Voce (`D-0123`, D3c) — non iniziata.
-- **`D-0269` non ha toccato NULLA lato server** — `session-protocol.mjs`/`server.mjs`
-  invariati da `D-0268`. Se qualcuno cerca un deploy/rollback per D3b, non esiste: è un
-  cambio di solo client, verificato dai test, non da un container.
+- **`UI-050`/`UI-054`/`D-0123` sono ORA TUTTI COSTRUITI PER INTERO** (`D-0267`…`D-0270`)
+  — `CE-020` ("ogni capacità dal TUI") vale ora anche per la Voce. **Non esiste più
+  nessuna capacità WebUI non ancora raggiungibile da un'altra via.**
+- **La Voce non parla mai spontaneamente** — solo su richiesta (`status`) o come conferma
+  di un'azione (`Approving.`/`Rejecting.`/`Cancelled.`). Nessun narrato continuo, nessuna
+  chat vocale — per design, non per limite tecnico.
 - **La riga di stato del TUI ammette onestamente solo 2 campi su 12** (Elapsed,
-  Authority) — identico principio del browser che ne ammette 4 su 12, non identico
-  insieme di campi: Network e Sandbox richiedono dati solo-HTTP (privacy/bootstrap) che
-  il socket non porta. Un gap dichiarato, non un errore.
+  Authority) — identico principio del browser che ne ammette 4 su 12. Un gap dichiarato.
 - **Nessun concetto di workspace nel percorso live del prodotto** — un solo workspace
   canonico proiettato all'avvio, stesso pattern usato per l'identità.
 
@@ -97,24 +94,26 @@ seeded-defect 19/19, `MANIFEST.sha256` 5882/5882 (D-0269).
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata a
 fine progetto per scelta dell'Owner. Nessun altro.
 
-## ➜ Verificato in `D-0269`
+## ➜ Verificato in `D-0270`
 
 | Verifica | Risultato |
 |---|---|
-| `node --test` (suite completa) | **1325/1326 PASS** (1 skip pre-esistente, +4) |
-| `tools/run-eslint.sh` | **260 file · 0 errori** |
+| `node --test` (suite completa) | **1347/1348 PASS** (1 skip pre-esistente, +22) |
+| `tools/run-eslint.sh` | **262 file · 0 errori** |
 | `scripts/test.sh` (9 step) | **10/10 PASS** |
 | `tools/seeded-defect-proof.mjs` | **19/19 catturati** |
-| `MANIFEST.sha256` | **5882/5882** (1 hash aggiornato — `tools/tui-client.mjs` — 1 file nuovo) |
-| deploy | **nessuno** — file mai incluso in un'immagine Docker, vedi sopra |
+| `MANIFEST.sha256` | **5885/5885** |
+| browser E2E (`tools/run-browser-e2e.sh`) | **334/334 PASS** (rieseguito 2 volte) |
+| audit accessibilità | prima **26/27** (regressione reale, riparata), poi **27/27** |
+| deploy | stop pulito, backup, §5a rispettato, `Up (healthy)`, byte immagine identici |
+| probe live | `GET /voice-control.js` → `200`, servito davvero dal prodotto vivo |
 
-**Non eseguito, dichiarato**: `wireFunctionKeys` stesso non è testato a unità (serve un TTY
-reale, stessa classe di gap del commento su mascheramento password di `login()`); browser
-E2E e audit accessibilità (nessun DOM toccato, nessuna ragione per rieseguirli).
+**Non testato, dichiarato**: `initVoiceControl`'s wiring reale con `SpeechRecognition`/
+`speechSynthesis` veri — servirebbe un motore vocale reale in un browser, assente anche
+nell'E2E headless di questo progetto. Il matcher/reducer/orchestratore sono comunque
+testati per intero con I/O finte (22 test).
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-**Nessuna posta finora su D3c.** Prima di scrivere codice per la Voce servirebbe una
-risposta esplicita alle quattro domande elencate sopra in "LA PROSSIMA AZIONE" — se
-l'Owner non è raggiungibile, la sessione che riprende questo lavoro deve trattarle come
-BLOCCANTI per il codice, non come dettagli da inventare in corsa.
+**Nessuna tecnica sul Blocco D — è chiuso.** L'unica domanda reale ora è se/quando
+proseguire su **Blocco E+F**, la prossima pausa prevista dal piano stesso.

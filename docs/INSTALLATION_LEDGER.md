@@ -3536,3 +3536,47 @@ seeded-defect **19/19**, `MANIFEST.sha256` **5882/5882** (1 changed hash —
 
 **`UI-054` now fully closed, both halves. `CE-020` holds for every TUI-reachable panel.
 Remaining: Voice (`D-0123`, Block D3c) — unscoped, needs a dedicated pass before any code.**
+
+## 2026-07-31 · `:phase4-voice-control` — D-0270 deployed: voice as a control tower (D-0123), Block D3c, Block D complete
+Tag `noesar-evolution:phase4-voice-control`, `FROM :phase4-panels-tui`. Changed: new
+`apps/webui-static/voice-control.js` (vocabulary matcher, status utterance builder, pure
+confirm/revoke state machine, orchestrator, Web Speech feature-detected adapter), `app.js`
+(topbar mic toggle wired to the SAME `runWorkspaceAction` Approve/Reject already call,
+`opts.reason` override so voice reject skips the blocking `prompt()`), `index.html` (mic
+toggle + transcript popover in the topbar), `i18n.js` (IT strings for the 3 new literal
+English UI strings), `styles.css` (`.voice-control`/`.voice-line` rules, plus
+`.command{min-width:160px}` — see below). `services/reference-control-plane/src/` and
+`database/` untouched: this closes purely client-side, same as `D-0267`/`D-0268`/`D-0269`
+before it — no capability voice reaches was not already reachable another way.
+
+**Verification**: full suite **1347/1348** (1 pre-existing skip, up from 1325/1326, +22
+new), ESLint **262 files 0 errors**, `scripts/test.sh` **10/10**, seeded-defect **19/19**,
+`MANIFEST.sha256` **5885/5885**. **Live browser E2E 334/334 PASS**, zero regressions.
+**Accessibility audit — a real regression found and fixed in this same phase**: first run
+**26/27**, `#globalSearch` measured 22px wide at the audit's 1440px viewport because
+`.command{flex:1}` had no `min-width` of its own and the new topbar chip pushed
+`.top-actions` wider — `.command` was the one sibling with nothing stopping it from
+shrinking. Fixed at the layer the invariant lives in (`.command{min-width:160px}`, not a
+narrower voice button that would only defer the same failure to the next topbar addition).
+Reran clean: **27/27**, then **334/334** browser E2E reran once more to confirm the CSS fix
+itself caused no new regression. Full detail: `docs/DECISION_LOG.md` `D-0270`.
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log →
+backup (12.9 MB, service stopped) → §5a (older rollback
+`.rollback-panels-tui-20260731T024358Z` removed, predecessor renamed to
+`.rollback-voice-control-20260731T062228Z`) → new container from the full `docker inspect`
+HostConfig/Env JSON. `Up (healthy)`, `data-plane.ready migrations:19 rls_tables:18`,
+`/livez`/`/readyz`/`/healthz` all 200, hardening intact (`ReadonlyRootfs:true
+CapDrop:[ALL] RestartCount:0 SecurityOpt:[no-new-privileges:true]`). Byte identity of every
+changed source file confirmed via `docker run --entrypoint sh … sha256sum` against the
+built image. **Live probe**: `GET /voice-control.js` on the running product answers `200`
+with the real source — genuinely served, not merely baked into the image. Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-voice-control-20260731T062228Z`
+(`:phase4-panels-tui`). Rollback cost: none on live data — additive files, one additive
+topbar element, one additive backward-compatible function parameter, no schema change.
+
+**`D-0123`/`UI-054`/`CE-020` fully closed. Block D (the Owner's "build everything" WebUI
+decision) is COMPLETE. Per the four-pause plan, this is pausa 2 — the next block (E+F,
+debt+packaging) needs the Owner before starting.**

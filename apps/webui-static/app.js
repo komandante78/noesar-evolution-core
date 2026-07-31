@@ -3,6 +3,7 @@ import { initI18n, applyTranslations } from './i18n.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
+import { initVoiceControl } from './voice-control.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
 // --- theme, applied before anything else ------------------------------------
@@ -1667,7 +1668,7 @@ async function submitPlanForm(event){
     else toast(error.value?.reason??error.message,{kind:'error'});
   }
 }
-async function runWorkspaceAction(kind){
+async function runWorkspaceAction(kind,opts={}){
   if(!currentWorkspaceRun)return;
   const runId=currentWorkspaceRun.runId;
   try{
@@ -1679,7 +1680,11 @@ async function runWorkspaceAction(kind){
       currentWorkspaceRun.status=currentApproveResult.promoted?'PROMOTED':'REFUSED';
       toast(currentApproveResult.promoted?'Approved and promoted.':'Approved, but not promoted — see Shadow run.');
     }else if(kind==='reject'){
-      const reason=prompt('Reason for rejecting this plan (optional):')??null;
+      // 'reason' in opts distinguishes "caller supplied one, even null" (voice control:
+      // D-0123 is hands-free, a blocking native prompt() would defeat the entire point)
+      // from "no opts at all" (the button's own click handler, which still asks — reject
+      // is the one action here a person is expected to explain).
+      const reason='reason' in opts?opts.reason:(prompt('Reason for rejecting this plan (optional):')??null);
       await api(`/api/v1/workspace-actions/${runId}/reject`,{method:'POST',body:JSON.stringify({reason})});
       currentWorkspaceRun.status='REJECTED';
       toast('Rejected.');
@@ -1693,6 +1698,49 @@ async function runWorkspaceAction(kind){
   }catch(error){
     toast(error.value?.reason??error.message,{kind:'error'});
   }
+}
+
+// D-0123/D-0270: voice as a control tower, not an assistant. voice-control.js carries the
+// whole reducer/vocabulary/state machine, tested there without a browser; everything here
+// is thin wiring — the same `currentWorkspaceRun`/`runWorkspaceAction` the visible
+// Approve/Reject buttons already use, never a second way into the product.
+function voiceStatusSnapshot(){
+  if(!currentWorkspaceRun)return{};
+  return{status:currentWorkspaceRun.status,risk:currentWorkspaceRun.risk?.overall,confidence:currentWorkspaceRun.confidence?.value,fileCount:currentWorkspaceRunFiles.length};
+}
+function renderVoiceTranscript(entry){
+  const box=$('#voiceTranscript');if(!box)return;
+  const heard=entry.matched?entry.heard:`${entry.heard} (not recognised)`;
+  box.insertAdjacentHTML('afterbegin',`<div class="voice-line"><b>${escapeHtml(heard)}</b> → ${escapeHtml(entry.utterance??'')}</div>`);
+  while(box.children.length>10)box.removeChild(box.lastChild);
+}
+let voiceControl=null;
+function initVoiceControlUI(){
+  voiceControl=initVoiceControl({
+    hasPendingRun:()=>currentWorkspaceRun?.status==='PENDING_APPROVAL',
+    statusSnapshot:voiceStatusSnapshot,
+    // 'reason' in opts: see runWorkspaceAction's own comment — a voice reject must not
+    // pop a blocking native prompt(), which would defeat the entire "mani libere" point.
+    runAction:(kind)=>runWorkspaceAction(kind,kind==='reject'?{reason:'Rejected via voice control (D-0123).'}:{}),
+    onTranscript:renderVoiceTranscript,
+  });
+  const toggle=$('#voiceToggle');
+  if(!toggle||!voiceControl.available){
+    if(toggle){toggle.disabled=true;$('#voiceToggleLabel').textContent='Voice: unavailable';}
+    return;
+  }
+  let listening=false;
+  // Some engines end a 'continuous' session on a silence timeout regardless of the flag;
+  // restarting on 'onend' while the toggle is still on is the documented workaround, not
+  // a guess — it only fires when the product's own state still says "should be listening".
+  voiceControl.recognition.onend=()=>{if(listening)voiceControl.recognition.start();};
+  toggle.addEventListener('click',()=>{
+    listening=!listening;
+    toggle.setAttribute('aria-pressed',String(listening));
+    $('#voiceToggleLabel').textContent=listening?'Voice: on':'Voice: off';
+    $('#voicePopover')?.classList.toggle('hidden',!listening);
+    if(listening)voiceControl.recognition.start();else voiceControl.recognition.stop();
+  });
 }
 function initWorkspaceActions(){
   addPlanFileRow();
@@ -3003,6 +3051,7 @@ initReadingControls();
 initConfirm();
 initSessions();
 initBench();
+initVoiceControlUI();
 initRouter();
 initializeAuth()
   .then(()=>loadEffectiveZone())
