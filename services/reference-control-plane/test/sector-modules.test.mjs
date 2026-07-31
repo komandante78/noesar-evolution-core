@@ -190,15 +190,17 @@ test('loadSectorModules: maxModules truncates and says so', () => {
   } finally { rmSync(dir, { recursive:true, force:true }); }
 });
 
-test('sectorModulesStatus declares the trust levels, the sources, and that nothing is enforced yet', () => {
+test('sectorModulesStatus declares the trust levels, the sources, and that activation is enforced (D-0274)', () => {
   const status = sectorModulesStatus(repoRoot, join(repoRoot, '.sector-modules'));
   assert.deepEqual(
     status.trustLevels.sort(),
     ['certified-partner', 'community', 'customer-private', 'noesar-official'],
   );
   assert.equal(status.schemaLoaded, true);
-  assert.equal(status.enforced, false);
-  assert.equal(status.wiredToCapabilityMinting, false);
+  assert.equal(status.enforced, true);
+  assert.equal(status.wiredToCapabilityMinting, true);
+  assert.equal(status.moduleRuntimeExecutionExists, false);
+  assert.equal(status.activeModules, 0);
   assert.equal(status.rustTwin, false);
 });
 

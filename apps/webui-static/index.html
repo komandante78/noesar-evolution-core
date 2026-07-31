@@ -70,6 +70,7 @@
         <button class="nav" data-view="models">▦ <span>Models</span></button>
         <button class="nav" data-view="research">⌕ <span>Research</span></button>
         <button class="nav" data-view="settings">⚙ <span>Settings</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
+        <div id="navModules"></div>
       </nav>
     </aside>
 
@@ -474,6 +475,7 @@
           <button class="settings-nav" type="button" data-section="audit">Audit and evidence</button>
           <button class="settings-nav" type="button" data-section="health">Health and logs</button>
           <button class="settings-nav" type="button" data-section="updates">Updates</button>
+          <button class="settings-nav" type="button" data-section="modules">Modules</button>
           </nav>
           <div class="settings-body">
             <!-- A section this account may not open says so here. The gates that used to
@@ -747,6 +749,10 @@
           <section class="panel form-stack"><div class="panel-title"><h2>Release channel</h2></div><label>Channel<select id="updateChannel"></select></label><button class="primary" id="applyChannel" type="button">Change channel</button><hr><div class="inline-form"><button id="approveUpdate" type="button">Approve staged</button><button class="primary" id="applyUpdate" type="button">Apply staged</button><button class="danger" id="rollbackUpdate" type="button">Roll back</button></div><p class="hint">No update channel key is pinned on this installation, so nothing can currently be applied. This is stated rather than hidden.</p></section>
           <section class="panel"><div class="panel-title"><h2>History</h2></div><div id="updatesHistory" class="card-list empty-state">Loading…</div></section>
         </div>
+      </section>
+      <section class="settings-section" id="section-modules" data-section="modules">
+        <div class="section-header"><div><p class="eyebrow">OWNER-BUILT · SIGNED · ONE CLICK</p><h2 class="page-title">Modules</h2><p>A module is a separate product. An Owner module (built and signed by NOESAR) installs and activates in one click — registration and signing happen on the server, never by pasting a key around. Active modules open in a new tab from the sidebar; they are never embedded.</p></div></div>
+        <div id="ownerModulesList" class="card-list empty-state">Loading…</div>
       </section>
           </div>
         </div>

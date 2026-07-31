@@ -24,8 +24,19 @@ const AI_ADMIN = [...AI_USER,'provider.manage','agent.manage','data.manage'];
 const AI_CLIENT_RESTRICTED = ['workspace.read','workspace.write','provider.use'];
 // A service account is non-interactive: it authenticates with a bearer token, has no
 // password and no TOTP, and therefore must not hold a permission whose blast radius
-// depends on a human noticing in time. It reads, and it uses a provider.
-const AI_SERVICE_ACCOUNT = ['workspace.read','provider.use'];
+// depends on a human noticing in time. It reads, it holds a conversation, and it uses a
+// provider — the same three the restricted client holds, and no more.
+//
+// D-0279 widened this from ['workspace.read','provider.use'] on purpose, and the reason
+// is worth stating because the narrower set LOOKED safer than it was: `provider.use`
+// already writes. `POST /api/v1/chat/stream` calls graph.addMessage twice per turn, so an
+// account holding only `provider.use` was already appending content to the workspace; what
+// it could not do was create the conversation to append into, which made the permission
+// self-contradictory rather than restrictive. `workspace.write` closes that gap and adds
+// nothing a `client_restricted` human account does not already have: it still cannot
+// register a provider, define an agent or a tool, or promote anything into shared memory —
+// the three capabilities that would let one account change what another account executes.
+const AI_SERVICE_ACCOUNT = ['workspace.read','workspace.write','provider.use'];
 
 export const ROLES = Object.freeze([
   'owner', 'admin', 'developer', 'user', 'client_restricted', 'service_account',

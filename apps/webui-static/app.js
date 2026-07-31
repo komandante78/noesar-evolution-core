@@ -153,7 +153,7 @@ const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','
 // The Settings destination's own menu: menu inside the menu, in three groups. The order
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
-const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','models-hardware','storage','audit','health','updates'];
+const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','models-hardware','storage','audit','health','updates','modules'];
 // Which section a bare "#/settings" lands on. It is the menu's first entry again: the
 // exception existed only because Sessions was ranked and not built, and a landing surface
 // saying "not built" reads as a broken product. Sessions is built, so the reason is gone
@@ -182,6 +182,10 @@ const SECTION_ACCESS={
   storage:{permission:'data.manage'},
   health:{role:'owner'},
   updates:{role:'owner'},
+  // D-0277: install/activate/deactivate are owner-only server-side (requireOwner); the
+  // section itself is owner-only too, same as updates/health above, rather than showing
+  // every other role a page whose one action always answers 403.
+  modules:{role:'owner'},
 };
 function allows(rule){
   if(!rule)return true;
@@ -483,7 +487,10 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // The approval strip is permanent, so it is filled on sign-in rather than only when the
   // Approvals page is opened — a strip that says nothing until you visit the page it links
   // to cannot do the one job it exists for.
-  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals()]);}
+  // Owner modules join the same permanent-strip reasoning: an ACTIVE module must be
+  // reachable from the sidebar on sign-in, not only after visiting Settings.
+  // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
+  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
@@ -1300,6 +1307,73 @@ $('#applyChannel').addEventListener('click',(event)=>updateAction(event.currentT
 $('#approveUpdate').addEventListener('click',(event)=>updateAction(event.currentTarget,'/api/v1/updates/approve',{},'Approval'));
 $('#applyUpdate').addEventListener('click',(event)=>updateAction(event.currentTarget,'/api/v1/updates/apply',{},'Apply'));
 $('#rollbackUpdate').addEventListener('click',(event)=>updateAction(event.currentTarget,'/api/v1/updates/rollback',{},'Rollback'));
+
+// --- owner modules (D-0277, reauth removed D-0278) ---------------------------
+// GET /api/v1/sector-modules/catalog merges the fixed NOESAR catalog with live
+// install/activate status — the SAME payload drives both the sidebar link and the
+// Settings > Modules cards, so there is exactly one source of truth for "is this
+// module reachable right now", never two lists that can disagree. Install/activate
+// need only the NOESAR owner session (D-0278) — no separate step-up prompt.
+function renderModulesNav(modules){
+  const nav=$('#navModules');
+  if(!nav)return;
+  nav.innerHTML=modules.filter((item)=>item.status==='active').map((item)=>
+    `<a class="nav" href="${escapeHtml(item.externalUrl)}" target="_blank" rel="noopener noreferrer">▣ <span>${escapeHtml(item.name)} ↗</span></a>`
+  ).join('');
+}
+function renderOwnerModules(modules){
+  const list=$('#ownerModulesList');
+  if(!list)return;
+  list.className=modules.length?'card-list module-grid':'card-list empty-state';
+  list.innerHTML=modules.map((item)=>{
+    const badge=item.status==='active'?'badge-on':'badge-off';
+    const label=item.status==='active'?'Active':item.status==='installed'?'Installed':'Not installed';
+    const action=item.status==='not-installed'?'install':item.status==='installed'?'activate':'deactivate';
+    const actionLabel=action==='install'?'Install':action==='activate'?'Activate':'Deactivate';
+    const actionClass=action==='deactivate'?'danger':'primary';
+    const initial=escapeHtml((item.name||'?').trim().charAt(0).toUpperCase());
+    const sectors=(item.sector??[]).map((s)=>`<span class="tag">${escapeHtml(s)}</span>`).join('');
+    return `<article class="entity-card module-card" data-owner-module-card="${item.id}">
+      <div class="module-head">
+        <div class="module-icon" aria-hidden="true">${initial}</div>
+        <div class="module-head-text">
+          <h3>${escapeHtml(item.name)}</h3>
+          <div class="module-meta">
+            <span class="tag trust-official">${escapeHtml(item.trustLevel??'')}</span>
+            <span>v${escapeHtml(item.version??'—')}</span>
+            <span>·</span>
+            <span>${escapeHtml(item.publisher??'—')}</span>
+          </div>
+        </div>
+        <span class="badge ${badge} module-status">${label}</span>
+      </div>
+      <p>${escapeHtml(item.description)}</p>
+      ${sectors?`<div class="module-tags">${sectors}</div>`:''}
+      <div class="module-actions">
+        ${item.status==='active'?`<a class="text-button" href="${escapeHtml(item.externalUrl)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`:''}
+        <button class="${actionClass}" data-module-action="${action}" data-module-id="${item.id}" type="button">${actionLabel}</button>
+      </div>
+    </article>`;
+  }).join('')||'No Owner modules known.';
+  $$('[data-module-action]').forEach((button)=>button.addEventListener('click',()=>runModuleAction(button.dataset.moduleAction,button.dataset.moduleId,button)));
+}
+async function loadOwnerModules(){
+  const data=await api('/api/v1/sector-modules/catalog');
+  const modules=data.modules??[];
+  renderOwnerModules(modules);
+  renderModulesNav(modules);
+}
+async function runModuleAction(action,id,button){
+  await withBusy(button,async()=>{
+    try{
+      await api(`/api/v1/sector-modules/catalog/${id}/${action}`,{method:'POST',body:'{}'});
+      toast(`Module ${action}d.`,{kind:'success'});
+      await loadOwnerModules();
+    }catch(error){
+      reportError(error,`module ${action}`);
+    }
+  });
+}
 
 // --- logs and debug mode ---------------------------------------------------
 async function loadLogs(){
@@ -3040,6 +3114,7 @@ Object.assign(SECTION_LOADERS,{
   storage:loadBackups,
   about:loadAbout,
   audit:refreshApprovals,
+  modules:loadOwnerModules,
 });
 
 initI18n();

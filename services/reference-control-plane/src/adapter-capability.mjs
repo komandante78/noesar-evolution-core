@@ -63,14 +63,18 @@ export const ADAPTER_MANIFESTS = Object.freeze({
     resourcePaths: Object.freeze({}),
     description: 'read-only hardware discovery (HardwareProbeAdapter) — no privileged operation exists',
   }),
-  // IndustryModuleProvider, as built: sector-modules.mjs only loads and validates signed
-  // manifests already on disk under NOESAR_SECTOR_MODULES. GET /api/v1/sector-modules[/list]
-  // and POST .../validate are read-only/dry-run — there is no install or activate route,
-  // so nothing here writes, spawns, or reaches the network yet.
+  // IndustryModuleProvider, as built: GET /api/v1/sector-modules[/list] and POST
+  // .../validate remain read-only/dry-run and stay ungated (nothing to self-grant there).
+  // D-0274 added a real write surface — install/activate/deactivate in sector-modules.mjs
+  // — all three funnel through ONE operation (WRITE) and ONE resource path: they are
+  // distinguished by which HTTP route and which arguments the caller presents after
+  // spending the token, not by the grant itself. A single shared gate here means an owner
+  // approves "a sector-modules write is about to happen" once per action, the same
+  // granularity as local-model-runtime's one EXECUTE gate for launch().
   'sector-modules': Object.freeze({
-    operations: Object.freeze([]),
-    resourcePaths: Object.freeze({}),
-    description: 'read/validate signed sector module manifests (IndustryModuleProvider) — no install route exists yet',
+    operations: Object.freeze(['WRITE']),
+    resourcePaths: Object.freeze({ WRITE: 'adapter://sector-modules/write' }),
+    description: 'install, activate or deactivate a sector module manifest (IndustryModuleProvider)',
   }),
   // CompliancePackProvider, as built: compliance-packs.mjs is the same shape as
   // sector-modules.mjs — loads and validates signed packs already on disk under
@@ -216,6 +220,6 @@ export function adapterCapabilityStatus() {
     enforcedBy: 'engine',
     adaptersMaySelfGrant: false,
     grantTtlSeconds: GRANT_TTL_SECONDS,
-    reason: 'A manifest only lists which operations exist to ask for. Only AdapterGrantOrchestrator.approve() mints a token, through the same TokenMinter instance workspace-actions.mjs spends through. local-model-runtime.mjs is the only adapter with a privileged operation (launch, which spawns an OS process and hands it GPU access) and it is wired to require a token — attach/complete/configure remain ungated, named rather than implied. hardware-probe/sector-modules/compliance-packs are real, shipped code with zero privileged operations by design (read-only or validate-only) — their empty manifests are not a gap, they are the accurate statement that there is nothing to self-grant. VectorStoreAdapter, ObjectStoreAdapter and HostBridgeAdapter have no entry: no pluggable surface, no implemented capability, or already covered under a different name (D-0252) respectively.',
+    reason: 'A manifest only lists which operations exist to ask for. Only AdapterGrantOrchestrator.approve() mints a token, through the same TokenMinter instance workspace-actions.mjs spends through. local-model-runtime.mjs (launch, spawns an OS process and hands it GPU access) and sector-modules.mjs (WRITE, install/activate/deactivate a module manifest — D-0274) are the two adapters with a privileged operation, both wired to require a token — attach/complete/configure on local-model-runtime remain ungated, named rather than implied. hardware-probe/compliance-packs are real, shipped code with zero privileged operations by design (read-only or validate-only) — their empty manifests are not a gap, they are the accurate statement that there is nothing to self-grant. VectorStoreAdapter, ObjectStoreAdapter and HostBridgeAdapter have no entry: no pluggable surface, no implemented capability, or already covered under a different name (D-0252) respectively.',
   };
 }

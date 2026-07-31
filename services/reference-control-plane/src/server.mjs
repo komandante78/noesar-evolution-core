@@ -5,7 +5,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } 
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
 import { authorityStatus, assertReferenceRuntimeAllowed } from './authority.mjs';
 import {
@@ -27,6 +27,8 @@ import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import { researchGateFrom } from './research-gate.mjs';
 import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
+import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
+import { rescanNoesarEvolutionProjects } from './debug-evolution-bridge.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
@@ -38,6 +40,8 @@ import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
 import {
   SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
+  installSectorModule, activateSectorModule, deactivateSectorModule,
+  readInstalledManifest, classifyModuleRisk, signSectorModuleManifest,
 } from './sector-modules.mjs';
 import {
   CompliancePackError, loadCompliancePacks, compliancePacksStatus,
@@ -82,6 +86,7 @@ import { Metrics } from './metrics.mjs';
 import { DebugMode } from './debug-mode.mjs';
 import { Watchdog, watchdogStatePath } from './watchdog.mjs';
 import { UpdateManager } from './update-manager.mjs';
+import { PublisherRegistry, PublisherRegistryError } from './publisher-registry.mjs';
 import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
@@ -92,8 +97,16 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
 const webRoot = resolve(repoRoot, 'apps/webui-static');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
-const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(repoRoot, '.sector-modules'));
-const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(repoRoot, '.compliance-packs'));
+// D-0277: found running a REAL install against a --read-only production-hardened
+// container (the browser E2E probe, same hardening as the live installation) --
+// defaulting these under repoRoot put them under /opt/noesar, which is the read-only
+// image, not the writable volume. Every deploy so far set NOESAR_WORKSPACE but never
+// NOESAR_SECTOR_MODULES/NOESAR_COMPLIANCE_PACKS, so this was live-broken from D-0274
+// onward and nothing had ever actually tried to write to either path until this session.
+// Defaulting under `workspace` (already correctly configured everywhere) means a client
+// gets a working default without needing to remember a second, separate env var.
+const sectorModulesRoot = resolve(process.env.NOESAR_SECTOR_MODULES ?? join(workspace, 'sector-modules'));
+const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(workspace, 'compliance-packs'));
 const technologyRadarRoot = resolve(process.env.NOESAR_TECHNOLOGY_RADAR ?? join(repoRoot, '.technology-radar'));
 const toolCatalogRoot = resolve(process.env.NOESAR_TOOL_CATALOG ?? join(repoRoot, '.tool-catalog'));
 const activeToolRegistry = new ActiveToolRegistry();
@@ -387,6 +400,118 @@ const updateManager = new UpdateManager({
   },
   healthCheck: async () => !watchdog.safeMode.active,
 });
+// D-0275: the trusted publisher registry sector-modules.mjs's activateSectorModule()
+// consults for a high-risk manifest's signing key -- see publisher-registry.mjs.
+const publisherRegistry = new PublisherRegistry({ root: join(workspace, 'publishers'), ledger });
+
+// D-0277: "moduli owner" (a fixed NOESAR-built catalog, OWNER_MODULE_CATALOG) get a
+// one-click Install/Activate instead of asking the Owner to drive the register/sign/mint
+// sequence by hand. The signing key is generated ONCE and held server-side -- same
+// load-or-create idiom auth.mjs already uses for auth-master.key -- because NOESAR itself
+// is the publisher for its own catalog, not a third party the Owner has to hand a key to.
+const ownerSigningKeyPath = join(workspace, 'publishers', 'noesar-signing-key.pem');
+function loadOrCreateOwnerSigningKey() {
+  if (existsSync(ownerSigningKeyPath)) return readFileSync(ownerSigningKeyPath, 'utf8');
+  mkdirSync(join(workspace, 'publishers'), { recursive: true, mode: 0o700 });
+  const { privateKey } = generateKeyPairSync('ed25519');
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+  writeFileSync(ownerSigningKeyPath, pem, { mode: 0o600 });
+  return pem;
+}
+/** Idempotent: registers the `noesar` publisher's key the first time any catalog module
+ * is installed, reuses it on every call after. Returns the private key PEM so the caller
+ * can sign with it in the same request. */
+function ensureOwnerPublisherRegistered({ actorId, nowUnix }) {
+  const privateKeyPem = loadOrCreateOwnerSigningKey();
+  const publicKeyPem = createPublicKey(createPrivateKey(privateKeyPem)).export({ type: 'spki', format: 'pem' });
+  const alreadyRegistered = publisherRegistry.status().publishers
+    .some((publisher) => publisher.publisherId === OWNER_PUBLISHER_ID && publisher.keys.some((key) => key.state === 'active'));
+  if (!alreadyRegistered) {
+    try {
+      publisherRegistry.registerKey({ publisherId: OWNER_PUBLISHER_ID, trustLevel: OWNER_PUBLISHER_TRUST_LEVEL, publicKeyPem, actorId, nowUnix });
+    } catch (error) {
+      // The key file survives an intentional revoke of the registry entry (revoking
+      // trust in a key is not the same act as destroying it). Re-registering the SAME
+      // fingerprint after a revoke is refused as KEY_ALREADY_REGISTERED -- correct to
+      // ignore here: activation still checks the registry's state, so a revoked key
+      // stays refused, this call just avoids crashing on a key that is merely inactive.
+      if (!(error instanceof PublisherRegistryError && error.kind === 'KEY_ALREADY_REGISTERED')) throw error;
+    }
+  }
+  return privateKeyPem;
+}
+
+// D-0278: Debug Evolution as a real tool, not a sidebar bookmark — Owner instruction,
+// verbatim: "devi collegarlo a tutto noesar". Agents and Workflows are the ONE tool
+// system this reference implementation actually has (chat has no autonomous
+// tool-calling loop for any tool, not only this one — POST .../messages is a message
+// store, not an LLM function-calling engine); registering these here makes Debug
+// Evolution's real data selectable as a step in either destination, the same as any
+// other tool. Only if NOESAR_DEBUG_EVOLUTION_TOKEN is configured — declared, not
+// silently skipped, when it is absent (a fresh install with the module not yet
+// installed has nothing to seed a credential for).
+function seedDebugEvolutionTools() {
+  const token = process.env.NOESAR_DEBUG_EVOLUTION_TOKEN;
+  if (!token) { logger.warn('debug_evolution.tools_not_seeded', { reason: 'NOESAR_DEBUG_EVOLUTION_TOKEN not configured' }); return; }
+  const baseUrl = (process.env.NOESAR_DEBUG_EVOLUTION_URL ?? 'http://192.168.178.100:8787').replace(/\/$/, '');
+  const existing = new Set(aiStore.read().tools.map((tool) => tool.name));
+  const seeds = [
+    { name: 'Debug Evolution — List Projects', description: 'The repositories Debug Evolution has registered and scanned.', endpoint: `${baseUrl}/api/v2/projects`, config: { method: 'GET' } },
+    { name: 'Debug Evolution — All Findings', description: 'Every finding Debug Evolution has recorded, across every registered project.', endpoint: `${baseUrl}/api/v2/findings`, config: { method: 'GET' } },
+    { name: 'Debug Evolution — SARIF Report', description: 'A SARIF 2.1.0 report of every current finding, for tools that consume that format.', endpoint: `${baseUrl}/api/v2/sarif`, config: { method: 'GET' } },
+  ];
+  for (const seed of seeds) {
+    if (existing.has(seed.name)) continue;
+    const tool = agentService.registerTool({ name: seed.name, description: seed.description, transport: 'local-http', endpoint: seed.endpoint, config: seed.config, external: false, mutative: false, requiresApproval: false }, 'system');
+    agentService.setToolCredential(tool.id, token);
+  }
+}
+seedDebugEvolutionTools();
+
+// D-0280: one authentication in the system, and it is NOESAR's.
+//
+// Owner instruction, verbatim: "no devi eliminarli password e token devi usare quelli di
+// noesar e un modulo ora". An official module that calls back into this control plane must
+// not require its own credential, and must not require the Owner to type a password into a
+// minting tool to get one -- the same objection that produced the one-click catalog in
+// D-0277. So NOESAR issues it, to itself, at boot.
+//
+// Load-or-create, deliberately the same idiom as loadOrCreateOwnerSigningKey() above: the
+// token is readable exactly once, at issue, so the FILE is the source of truth. Every later
+// boot re-verifies it still authenticates and reissues only if it does not -- which covers
+// the operator revoking it without covering up the revocation, because a revoked token
+// produces a new account-scoped token, never a silent escalation.
+//
+// The credential is written where the module can read it and nowhere else. It is never an
+// environment variable on this side and never crosses the network from here.
+const MODULE_ACCOUNTS = [{ id: 'debug-evolution', displayName: 'Debug Evolution module' }];
+const moduleCredentialsRoot = join(workspace, 'module-credentials');
+
+function ensureModuleServiceAccounts() {
+  const owner = userDirectory.list().find((user) => user.role === 'owner' && (user.status ?? 'active') === 'active');
+  if (!owner) {
+    // A fresh installation with setup not yet completed. Declared, not silently skipped.
+    logger.warn('module_credentials.not_provisioned', { reason: 'no active owner account yet' });
+    return;
+  }
+  mkdirSync(moduleCredentialsRoot, { recursive: true, mode: 0o700 });
+  for (const module of MODULE_ACCOUNTS) {
+    const path = join(moduleCredentialsRoot, `${module.id}.token`);
+    if (existsSync(path)) {
+      const existing = readFileSync(path, 'utf8').trim();
+      if (existing && userDirectory.authenticateServiceToken(existing)) continue;
+      logger.warn('module_credentials.reissuing', { module: module.id, reason: 'stored token no longer authenticates' });
+    }
+    const account = userDirectory.list().find((user) => user.username === module.id);
+    const issued = account
+      ? userDirectory.issueServiceToken({ actorId: owner.id, userId: account.id, name: 'module' })
+      : userDirectory.createServiceAccount({ actorId: owner.id, username: module.id, displayName: module.displayName });
+    writeFileSync(path, issued.token, { mode: 0o600 });
+    logger.info('module_credentials.provisioned', { module: module.id, tokenId: issued.tokenId });
+  }
+}
+ensureModuleServiceAccounts();
+
 // The approval queue reads the three subsystems that own approvals and owns none itself,
 // so it is constructed last — after the update manager it reads from.
 const approvalQueue = new ApprovalQueue({ workflowService, agentService, aiStore, updateManager, ledger, memoryService });
@@ -486,9 +611,41 @@ function serveStatic(pathname, res) {
   } catch { return false; }
 }
 
-function requireSession(req, res, permission = null) {
+/**
+ * D-0279. A service account could be created, could be issued a token, and that token
+ * could be verified — `userDirectory.authenticateServiceToken()` is complete and tested —
+ * but NO request path ever called it, because this function read the session cookie and
+ * nothing else. The role existed on paper and no program could ever use it: the same
+ * shape of defect as the update-channel key in D-0272, a finished verifier with no way in.
+ *
+ * Cookie first, deliberately: a browser that holds a live session must not be able to
+ * downgrade itself onto a token it also happens to send.
+ *
+ * The bearer branch fabricates a session-shaped object rather than returning `session:null`.
+ * Routes elsewhere read `authenticated.session.elevatedUntil` to demand recent strong
+ * reauthentication; with `null` those routes would throw a TypeError and answer 500, and a
+ * 500 is not a denial. With `elevatedUntil:0` they answer 403 — which is the correct answer
+ * for an account that has no password and no TOTP and therefore can never re-prove itself.
+ */
+function resolveAuthenticated(req) {
   const cookies = parseCookies(req.headers.cookie);
-  const authenticated = auth.authenticate(cookies.noesar_session);
+  const bySession = auth.authenticate(cookies.noesar_session);
+  if (bySession) return bySession;
+  const match = /^Bearer\s+(\S+)$/.exec(String(req.headers.authorization ?? ''));
+  if (!match) return null;
+  const resolved = userDirectory.authenticateServiceToken(match[1]);
+  if (!resolved) return null;
+  return {
+    session:{ id:`service:${resolved.tokenId}`, elevatedUntil:0, csrfDigest:null },
+    user:resolved.user,
+    rawUser:null,
+    nonInteractive:true,
+    serviceTokenId:resolved.tokenId,
+  };
+}
+
+function requireSession(req, res, permission = null) {
+  const authenticated = resolveAuthenticated(req);
   if (!authenticated) {
     json(res, 401, { error:'Authentication required.' });
     return null;
@@ -532,6 +689,12 @@ function requireScimAuth(req, res) {
 }
 
 function requireCsrf(req, res, authenticated) {
+  // D-0279. A CSRF token defends an AMBIENT credential — one a browser attaches by itself
+  // to a request some other site caused. A bearer token is never ambient: it exists only
+  // because the caller put it in the header on purpose, so there is nothing for a third
+  // party to ride. This is the same reasoning already written down for SCIM above, applied
+  // to the one other bearer-authenticated caller this product now has.
+  if (authenticated.nonInteractive) return true;
   if (!auth.verifyCsrf(authenticated.session, req.headers['x-noesar-csrf'])) {
     ledger.append({ actor:authenticated.user.id, action:'csrf.denied', result:'denied' });
     json(res, 403, { error:'CSRF validation failed.' });
@@ -1069,6 +1232,13 @@ const requestListener = async (req, res) => {
       return json(res, 200, updated);
     }
 
+    // D-0275: the ad-hoc external-link module mechanism D-0273 built here
+    // (GET/PUT /api/v1/settings/modules[/:id], modules-registry.mjs) is retired now that
+    // the real sector-modules activation framework (D-0274) exists to replace it — see
+    // docs/DECISION_LOG.md D-0275. modules-registry.mjs itself is left on disk, unimported,
+    // per CLAUDE10.md rule 12 (no deletion without an explicit Owner amendment, the same
+    // process D-0195 used for apps/webui-react/).
+
     // --- research report · UI-080…089 ----------------------------------------------
     // The other half of the gate above: intent PROCEED → the designated provider tool →
     // content gate → an ephemeral, session-gated, revocable report. See research.mjs's own
@@ -1218,6 +1388,274 @@ const requestListener = async (req, res) => {
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) return json(res, 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
+
+    // --- sector modules · activation (D-0274) ------------------------------------------
+    // Owner-only (same convention as /api/v1/updates/*: audit.read is the marker
+    // permission, not a new RBAC token — ARCH-007's static extractor sees nothing new).
+    // Each route requires a capabilityToken already minted through
+    // POST /api/v1/adapters/sector-modules/grants -> .../approve (ARCH-005) — these
+    // functions spend it, they do not mint it. Activating a high-risk module additionally
+    // requires the session's own recent strong reauthentication, checked here (a
+    // session-scoped fact sector-modules.mjs cannot see) by peeking the manifest's own
+    // declared risk with readInstalledManifest()+classifyModuleRisk() before deciding.
+    if (req.method === 'POST' && url.pathname === '/api/v1/sector-modules/install') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const result = installSectorModule({
+          productRoot: repoRoot, sectorModulesRoot, id: payload?.id, candidate: payload?.manifest,
+          minter: capabilityMinter, capabilityToken: payload?.capabilityToken ?? null, nowUnix,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.installed', result:'success', details:{ id:result.id } });
+        return json(res, 201, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.install_refused', result:'refused', details:{ id:payload?.id, kind:error.kind } });
+          return json(res, error.kind === 'ALREADY_INSTALLED' ? 409 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/sector-modules/activate') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      const candidate = payload?.id ? readInstalledManifest(sectorModulesRoot, payload.id) : null;
+      if (candidate && classifyModuleRisk(candidate).highRisk && authenticated.session.elevatedUntil < Date.now()) {
+        return json(res, 403, { error:'Recent strong reauthentication is required to activate a high-risk sector module.' });
+      }
+      try {
+        // D-0275: the single-key env-var lookup this route used to do is gone -- a
+        // high-risk manifest's signature is now checked against the trusted publisher
+        // registry (publisherRegistry.findActiveKey(), inside activateSectorModule()).
+        const result = activateSectorModule({
+          productRoot: repoRoot, sectorModulesRoot, id: payload?.id,
+          minter: capabilityMinter, capabilityToken: payload?.capabilityToken ?? null,
+          approverId: authenticated.user.id, nowUnix, publisherRegistry,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.activated', result:'success', details:{ id:result.id, highRisk:result.highRisk, trustLevel:result.trustLevel } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.activate_refused', result:'refused', details:{ id:payload?.id, kind:error.kind } });
+          return json(res, error.kind === 'NOT_FOUND' ? 404 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/sector-modules/deactivate') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const result = deactivateSectorModule({
+          sectorModulesRoot, id: payload?.id, minter: capabilityMinter,
+          capabilityToken: payload?.capabilityToken ?? null, approverId: authenticated.user.id,
+          nowUnix, reason: payload?.reason ?? null,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.deactivated', result:'success', details:{ id:result.id } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.deactivate_refused', result:'refused', details:{ id:payload?.id, kind:error.kind } });
+          return json(res, error.kind === 'NOT_FOUND' ? 404 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+
+    // --- owner module catalog (D-0277) ---------------------------------------------------
+    // One click instead of the seven-call register/sign/mint/install/mint/activate
+    // sequence a human would otherwise have to drive through the raw D-0274/D-0275
+    // routes above -- the server performs registration and signing on the Owner's behalf,
+    // it does not ask them to paste a PEM around. Fixed catalog (OWNER_MODULE_CATALOG):
+    // these routes mint manifests ONLY for ids listed there, never an arbitrary one.
+    if (req.method === 'GET' && url.pathname === '/api/v1/sector-modules/catalog') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      const scan = loadSectorModules(repoRoot, sectorModulesRoot);
+      const entries = OWNER_MODULE_CATALOG.map((entry) => {
+        const installed = scan.valid.find((candidate) => candidate.id === entry.id);
+        // D-0278 graphics pass: version/publisher/trustLevel/sector are read straight off
+        // the same manifest install/activate sign — never a second, independently
+        // maintained copy of this metadata for display purposes only.
+        const manifest = entry.buildManifest();
+        return {
+          id: entry.id, name: entry.name, description: entry.description, externalUrl: entry.externalUrl,
+          status: installed ? installed.state.status : 'not-installed',
+          version: manifest.version, publisher: manifest.publisher, trustLevel: manifest.trust_level,
+          sector: manifest.sector,
+        };
+      });
+      return json(res, 200, { modules: entries });
+    }
+    const catalogInstallMatch = url.pathname.match(/^\/api\/v1\/sector-modules\/catalog\/([^/]+)\/install$/);
+    if (catalogInstallMatch && req.method === 'POST') {
+      // D-0278: owner+CSRF only, no separate strong-reauth step — Owner instruction,
+      // verbatim: "togliere autentificazione dai moduli basta solo quella di noesar,
+      // altrimenti 10 autorizzazioni per moduli". The Owner catalog is a small,
+      // NOESAR-controlled allowlist (findCatalogEntry below), signed with a key this
+      // process holds and never exposes — the risk a step-up reauth defends against
+      // (a stolen session installing an ARBITRARY untrusted manifest) does not apply
+      // the same way here, unlike the raw D-0274/D-0275 routes above, which keep it.
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(catalogInstallMatch[1]);
+      const entry = findCatalogEntry(id);
+      if (!entry) return json(res, 404, { error:'No such catalog module.' });
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const privateKeyPem = ensureOwnerPublisherRegistered({ actorId: authenticated.user.id, nowUnix });
+        const manifest = signSectorModuleManifest(entry.buildManifest(), privateKeyPem);
+        const granted = adapterGrants.request({ resource:'sector-modules', operation:'WRITE', actor:authenticated.user.id, nowUnix });
+        const approved = adapterGrants.approve({ runId:granted.runId, approverId:authenticated.user.id, nowUnix });
+        const result = installSectorModule({
+          productRoot: repoRoot, sectorModulesRoot, id, candidate: manifest,
+          minter: capabilityMinter, capabilityToken: approved.token, nowUnix,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_installed', result:'success', details:{ id } });
+        return json(res, 201, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_install_refused', result:'refused', details:{ id, kind:error.kind } });
+          return json(res, error.kind === 'ALREADY_INSTALLED' ? 409 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+    const catalogActivateMatch = url.pathname.match(/^\/api\/v1\/sector-modules\/catalog\/([^/]+)\/activate$/);
+    if (catalogActivateMatch && req.method === 'POST') {
+      // D-0278: same reasoning as install() above — owner+CSRF only.
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(catalogActivateMatch[1]);
+      if (!findCatalogEntry(id)) return json(res, 404, { error:'No such catalog module.' });
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const granted = adapterGrants.request({ resource:'sector-modules', operation:'WRITE', actor:authenticated.user.id, nowUnix });
+        const approved = adapterGrants.approve({ runId:granted.runId, approverId:authenticated.user.id, nowUnix });
+        const result = activateSectorModule({
+          productRoot: repoRoot, sectorModulesRoot, id, minter: capabilityMinter,
+          capabilityToken: approved.token, approverId: authenticated.user.id, nowUnix, publisherRegistry,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_activated', result:'success', details:{ id } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_activate_refused', result:'refused', details:{ id, kind:error.kind } });
+          return json(res, error.kind === 'NOT_FOUND' ? 404 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+    const catalogDeactivateMatch = url.pathname.match(/^\/api\/v1\/sector-modules\/catalog\/([^/]+)\/deactivate$/);
+    if (catalogDeactivateMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(catalogDeactivateMatch[1]);
+      if (!findCatalogEntry(id)) return json(res, 404, { error:'No such catalog module.' });
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const granted = adapterGrants.request({ resource:'sector-modules', operation:'WRITE', actor:authenticated.user.id, nowUnix });
+        const approved = adapterGrants.approve({ runId:granted.runId, approverId:authenticated.user.id, nowUnix });
+        const result = deactivateSectorModule({
+          sectorModulesRoot, id, minter: capabilityMinter, capabilityToken: approved.token,
+          approverId: authenticated.user.id, nowUnix,
+        });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_deactivated', result:'success', details:{ id } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_deactivate_refused', result:'refused', details:{ id, kind:error.kind } });
+          return json(res, error.kind === 'NOT_FOUND' ? 404 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
+
+    // --- Debug Evolution bridge (D-0278) ------------------------------------------------
+    // The three read-only tools (list projects / all findings / SARIF) are registered as
+    // plain Agents/Workflows tools (seedDebugEvolutionTools() above) and need no route of
+    // their own — the generic tool executor calls Debug Evolution's real API directly.
+    // Triggering a fresh scan is the one action that needs a bridge: Debug Evolution's own
+    // rebuild endpoint takes one project id in the URL path, which the generic
+    // fixed-endpoint tool model cannot parametrise per call, so this is a direct owner
+    // action instead — sequential over all 14 already-registered NOESAR EVOLUTION areas.
+    if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/rescan') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      try {
+        const result = await rescanNoesarEvolutionProjects();
+        ledger.append({ actor:authenticated.user.id, action:'debug_evolution.rescanned', result:'success', details:{ rescanned:result.rescanned, succeeded:result.succeeded } });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error:error.message });
+        throw error;
+      }
+    }
+
+    // --- trusted publisher registry (D-0275) -------------------------------------------
+    // docs/capabilities/PUBLISHER_REVOCATION.md: "Publisher and package revocation require
+    // an Owner session with recent strong reauthentication." Registering a key gets the
+    // same requirement here — it is what makes a publisher trusted in the first place,
+    // the same weight D-0272 gives to pinning an update channel key.
+    if (req.method === 'GET' && url.pathname === '/api/v1/publishers') {
+      const authenticated = requireOwner(req, res, 'audit.read'); if (!authenticated) return;
+      return json(res, 200, publisherRegistry.status());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/publishers/register') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required to register a publisher key.' });
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const result = publisherRegistry.registerKey({
+          publisherId: payload?.publisherId, trustLevel: payload?.trustLevel, publicKeyPem: payload?.publicKeyPem,
+          actorId: authenticated.user.id, nowUnix,
+        });
+        return json(res, 201, result);
+      } catch (error) {
+        if (error instanceof PublisherRegistryError) return json(res, 422, { error:'publisher_registry_refused', kind:error.kind, reason:error.message });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/publishers/revoke') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required to revoke a publisher key.' });
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const result = publisherRegistry.revoke({
+          publisherId: payload?.publisherId, fingerprint: payload?.fingerprint ?? null,
+          actorId: authenticated.user.id, nowUnix, reason: payload?.reason ?? null,
+        });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof PublisherRegistryError) return json(res, error.kind === 'UNKNOWN_PUBLISHER' ? 404 : 422, { error:'publisher_registry_refused', kind:error.kind, reason:error.message });
+        throw error;
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/publishers/set-trust-level') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (authenticated.session.elevatedUntil < Date.now()) return json(res, 403, { error:'Recent strong reauthentication is required to change a publisher trust level.' });
+      const payload = await body(req);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const result = publisherRegistry.setTrustLevel({
+          publisherId: payload?.publisherId, trustLevel: payload?.trustLevel, actorId: authenticated.user.id, nowUnix,
+        });
+        return json(res, 200, result);
+      } catch (error) {
+        if (error instanceof PublisherRegistryError) return json(res, error.kind === 'UNKNOWN_PUBLISHER' ? 404 : 422, { error:'publisher_registry_refused', kind:error.kind, reason:error.message });
         throw error;
       }
     }

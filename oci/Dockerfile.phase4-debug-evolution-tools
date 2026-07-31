@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0278: Debug Evolution as a real, usable tool, not a sidebar bookmark. Owner feedback,
+# verbatim: "debug funziona con tutte le chat? anche con coden evolution?... devi
+# collegarlo a tutto noesar" -- registers Debug Evolution's three parameter-free read
+# endpoints (list projects, all findings, SARIF) as first-class tools in the ONE tool
+# system this product actually has (Agents + Workflows, agent-service.mjs/
+# tool-executor.mjs), plus a dedicated owner+CSRF-gated rescan route
+# (POST /api/v1/debug-evolution/rescan) for the one action that needs a per-call path
+# parameter the generic executor cannot express.
+#
+# Same phase also removes the step-up strong-reauthentication prompt from the Owner
+# module catalog's install/activate routes -- Owner feedback, verbatim: "togliere
+# autentificazione dai moduli basta solo quella di noesar, altrimenti 10 autorizzazioni
+# per moduli" -- and redesigns the Modules settings cards (module-card/.module-grid in
+# styles.css) from the flat .entity-card look to a dedicated, higher-weight treatment
+# (icon tile, trust/version/publisher meta row, sector tags) closer to the hero
+# mode-cards than to a plain settings row.
+#
+# Built FROM the current live tag directly: 35 overlay2 layers, well under the 128 limit
+# (no flatten needed this time).
+
+FROM noesar-evolution:phase4-owner-modules-catalog
+
+LABEL org.noesar.phase="4-debug-evolution-tools"
+LABEL org.noesar.feature="debug-evolution-as-a-tool-plus-modules-graphics-and-reauth-removal"
+LABEL org.noesar.base-image="noesar-evolution:phase4-owner-modules-catalog"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0275: trusted publisher registry — the improvement proposal named at the close of
+# D-0274. sector-modules.mjs's high-risk activation gate previously checked a signature
+# against a single operator-configured public key (NOESAR_SECTOR_MODULE_PUBKEY) with no
+# rotation or revocation. publisher-registry.mjs (new) now implements
+# docs/capabilities/PUBLISHER_REVOCATION.md's exact schema: publisher ID, trust level,
+# public-key path, SHA-256 fingerprint, active/revoked state, registering Owner,
+# registration timestamp — with rotation (add a key without invalidating the old one) and
+# both revocation grains (a single key, or every key a publisher holds). A manifest's own
+# declared `trust_level` must match what its publisher is actually registered at, not
+# merely that some registered key signed it. Three new owner-only routes in server.mjs:
+# POST /api/v1/publishers/{register,revoke,set-trust-level}, GET /api/v1/publishers — all
+# gated owner+CSRF, register/revoke additionally requiring recent strong reauthentication
+# (the same weight D-0272 gives to pinning an update channel key).
+#
+# Built FROM the current live tag directly: 15 overlay2 layers, well under the 128 limit.
+
+FROM noesar-evolution:phase4-sector-modules-activation
+
+LABEL org.noesar.phase="4-publisher-registry"
+LABEL org.noesar.feature="trusted-publisher-key-registry-rotation-revocation"
+LABEL org.noesar.base-image="noesar-evolution:phase4-sector-modules-activation"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

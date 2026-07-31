@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0277: the one-click Owner-module catalog. Owner feedback, verbatim: "non deve essere
+# così complicato... fai in settings sezione moduli owner e moduli utenti... da lì fai
+# vedere sempre in anteprima i moduli installati e attivi con pulsante attiva/disattiva o
+# installa... quando si attiva il modulo appare sulla sidebar". Replaces the raw
+# request/approve/sign/install/request/approve/activate sequence a human would otherwise
+# drive by hand through the D-0274/D-0275 routes with two button clicks: the server
+# performs registration and signing on the Owner's behalf (owner-module-catalog.mjs, new).
+# Debug Evolution is the one catalog entry.
+#
+# Also fixes a real, previously undetected production defect found running this feature
+# for the first time against a --read-only hardened container: sectorModulesRoot/
+# compliancePacksRoot defaulted under /opt/noesar (the read-only image), not under
+# /workspace (the writable volume) -- every install attempt on the LIVE installation would
+# have failed with ENOENT since D-0274 first shipped. No install had ever actually been
+# attempted against the live hardened container until this session's E2E run exposed it.
+#
+# Built FROM the current live tag directly: 28 overlay2 layers, well under the 128 limit.
+
+FROM noesar-evolution:phase4-modules-registry-retired
+
+LABEL org.noesar.phase="4-owner-modules-catalog"
+LABEL org.noesar.feature="one-click-owner-module-install-activate"
+LABEL org.noesar.base-image="noesar-evolution:phase4-modules-registry-retired"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

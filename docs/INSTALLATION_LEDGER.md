@@ -3642,3 +3642,158 @@ inventory: exactly 2 `noesar-evolution*` containers.
 Predecessor: `noesar-evolution.rollback-update-signing-side-20260731T074913Z`
 (`:phase4-audit-ledger-perf`). Rollback cost: none on live data — the route only writes a
 public key file under `updates/keys/`; no schema change, no migration.
+
+## 2026-07-31 · `:phase4-modules-debug-evolution` — D-0273 deployed: external modules (Debug Evolution as the first), and a base-image layer-depth blocker fixed along the way
+
+Build blocked on the first attempt: `FROM noesar-evolution:phase4-update-signing-side`
++ `COPY` failed `docker: max depth exceeded` — the base sat at 127 of Docker's overlay2
+128-layer ceiling (`D-0271`'s already-named `oci/Dockerfile` staleness, now demonstrably
+live-blocking, not theoretical). Fixed with a **content- and config-identical flatten**,
+not a rebuild: `noesar-evolution:phase4-update-signing-side-flat`, produced by
+`docker export`/`docker import` of a container created from the live image (still under
+the `docker create` limit at exactly 127 layers) with every `Config` field replicated via
+`-c` change instructions built from `docker inspect` JSON. Verified before use: `diff` on
+the normalised `Config` JSON (User/WorkingDir/ExposedPorts/Env/Entrypoint/Healthcheck)
+exit 0, and `server.mjs` byte-identical between original and flattened image. Owner asked
+before this was done (`AskUserQuestion`: flatten now vs. stop at source-only) — chose
+flatten. Built the real image `FROM :phase4-update-signing-side-flat` — 8 layers, well
+clear of the limit.
+
+`docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup (13 MB,
+service stopped, `BACKUPS/runtime_pre_modules_debug_evolution_deploy_20260731T085109Z.tar.gz`)
+→ §5a (`.rollback-update-signing-side-20260731T074913Z` removed, predecessor renamed to
+`.rollback-modules-debug-evolution-20260731T085114Z`) → new container from the full
+`docker inspect` `HostConfig`/`Env` JSON, hardening included from the first attempt.
+**Clean on the first attempt**: `Up (healthy)` at ~20s, `data-plane.ready migrations:19
+rls_tables:18 production_ready:true` (unchanged), `/livez`/`/readyz` 200/200, hardening
+confirmed (`ReadonlyRootfs:true CapDrop:[ALL] SecurityOpt:[no-new-privileges:true]
+RestartCount:0`). Byte identity of `server.mjs`, `modules-registry.mjs`, `app.js`,
+`index.html` confirmed via `docker run --entrypoint sha256sum` against the built image.
+Live probe, unauthenticated: `GET`/`PUT /api/v1/settings/modules` both `401`. Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers (a third, unrelated `beautiful_leakey`
+predates this session and was left untouched — see `D-0273`).
+
+Predecessor: `noesar-evolution.rollback-modules-debug-evolution-20260731T085114Z`
+(`:phase4-update-signing-side`). Rollback cost: none on live data — no schema change, no
+migration; `state.settings.modules` is additive and defaults to disabled.
+
+## 2026-07-31 · `:phase4-sector-modules-activation` — D-0274 deployed: sector module install/activate/deactivate, gated through ARCH-005
+
+Built `FROM noesar-evolution:phase4-modules-debug-evolution` (8 layers) — 15 layers total,
+no flatten needed this time. `docker stop -t 60` → `postgres.stopped clean:true` confirmed
+in the log → backup (13 MB, service stopped,
+`BACKUPS/runtime_pre_sector_modules_activation_deploy_20260731T101404Z.tar.gz`) → §5a
+(older rollback removed, predecessor renamed
+`.rollback-sector-modules-activation-20260731T101404Z`) → new container from the live
+predecessor's own `docker inspect` `HostConfig`/`Env`. **Clean on the first attempt**:
+`Up (healthy)` at ~15s, `data-plane.ready migrations:19 rls_tables:18
+production_ready:true` (unchanged), `/livez`/`/readyz` 200/200, hardening confirmed
+(`ReadonlyRootfs:true CapDrop:[ALL] SecurityOpt:[no-new-privileges:true]
+RestartCount:0`). Byte identity of `industry-module-manifest.schema.json`,
+`adapter-capability.mjs`, `sector-modules.mjs`, `server.mjs` confirmed against both the
+built image and the live container. Live probe, unauthenticated: all three new
+`/api/v1/sector-modules/{install,activate,deactivate}` routes `401`. No module was
+installed on the real installation (`CLAUDE10.md` §3a rule 11e — live verification never
+mutates data); the 2-tier lifecycle proof (customer-private, noesar-official high-risk)
+ran against a real in-process server with its own throwaway workspace. Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers (`beautiful_leakey`, flagged in
+`D-0273`, still present and still untouched).
+
+Predecessor: `noesar-evolution.rollback-sector-modules-activation-20260731T101404Z`
+(`:phase4-modules-debug-evolution`). Rollback cost: none on live data — no schema change,
+no migration; `.sector-modules/` is a fresh runtime directory, empty on every deployment
+so far.
+
+## 2026-07-31 · `:phase4-publisher-registry` — D-0275 deployed: trusted publisher key registry (rotation, revocation)
+
+Built `FROM noesar-evolution:phase4-sector-modules-activation` (15 layers) — 21 layers
+total. `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+(13 MB, service stopped,
+`BACKUPS/runtime_pre_publisher_registry_deploy_20260731T104311Z.tar.gz`) → §5a (older
+rollback removed, predecessor renamed `.rollback-publisher-registry-20260731T104311Z`) →
+new container from the live predecessor's own `docker inspect` `HostConfig`/`Env`. **Clean
+on the first attempt**: `Up (healthy)` at ~15s, `data-plane.ready migrations:19
+rls_tables:18 production_ready:true` (unchanged), `/livez`/`/readyz` 200/200, hardening
+confirmed. Byte identity of `publisher-registry.mjs`, `sector-modules.mjs`, `server.mjs`
+confirmed against both the built image and the live container. Live probe,
+unauthenticated: `GET /api/v1/publishers` and all three `POST /api/v1/publishers/*` routes
+`401`. Post-cleanup inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-publisher-registry-20260731T104311Z`
+(`:phase4-sector-modules-activation`). Rollback cost: none on live data — no schema
+change, no migration; `publishers/` is a fresh runtime directory, empty on every
+deployment so far.
+
+## 2026-07-31 · `:phase4-modules-registry-retired` — D-0276 deployed: D-0273's ad-hoc external-link module mechanism retired
+
+Built `FROM noesar-evolution:phase4-publisher-registry` (21 layers) — 28 layers total.
+`docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup (13 MB,
+service stopped,
+`BACKUPS/runtime_pre_modules_registry_retired_deploy_20260731T105921Z.tar.gz`) → §5a
+(older rollback removed, predecessor renamed
+`.rollback-modules-registry-retired-20260731T105921Z`) → new container from the live
+predecessor's own `docker inspect` `HostConfig`/`Env`. **Clean on the first attempt**:
+`Up (healthy)` at ~15s, `data-plane.ready migrations:19 rls_tables:18
+production_ready:true` (unchanged), `/livez`/`/readyz` 200/200, hardening confirmed. Byte
+identity of `app.js`, `index.html`, `server.mjs`, `modules-registry.mjs` confirmed against
+both the built image and the live container. Live probe, unauthenticated:
+`GET /api/v1/settings/modules` `404` (was `401` when the route existed). Post-cleanup
+inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-modules-registry-retired-20260731T105921Z`
+(`:phase4-publisher-registry`). Rollback cost: none on live data — no schema change, no
+migration; any client-side `state.settings.modules` value becomes dead JSON nobody reads,
+nothing was deleted.
+
+## 2026-07-31 · `:phase4-owner-modules-catalog` — D-0277 deployed: one-click Owner-module catalog, plus a real sectorModulesRoot/compliancePacksRoot production fix
+
+Built `FROM noesar-evolution:phase4-modules-registry-retired` (28 layers) — 35 layers
+total. `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+(13 MB, service stopped,
+`BACKUPS/runtime_pre_owner_modules_catalog_deploy_20260731T123557Z.tar.gz`) → §5a (older
+rollback removed, predecessor renamed
+`.rollback-owner-modules-catalog-20260731T123557Z`) → new container from the live
+predecessor's own `docker inspect` `HostConfig`/`Env`. **Clean on the first attempt**:
+`Up (healthy)` at ~15s, `data-plane.ready migrations:19 rls_tables:18
+production_ready:true` (unchanged — the root-path fix changes a runtime default, not a
+migration), `/livez`/`/readyz` 200/200, hardening confirmed. Byte identity of `app.js`,
+`index.html`, `server.mjs`, `owner-module-catalog.mjs` confirmed against both the built
+image and the live container. Live probe, unauthenticated: `GET
+/api/v1/sector-modules/catalog` and `POST .../install` both `401`. Post-cleanup inventory:
+exactly 2 `noesar-evolution*` containers.
+
+**Note for whoever next touches sector-modules or compliance-packs**: before this phase,
+`sectorModulesRoot`/`compliancePacksRoot` resolved under `/opt/noesar` (the read-only
+image) whenever `NOESAR_SECTOR_MODULES`/`NOESAR_COMPLIANCE_PACKS` were unset — which they
+always were, on every deploy since `D-0274`. An install would have failed `ENOENT` on
+this very installation had one ever been attempted. Now defaults under `workspace`.
+Nothing was ever written to the old path on this installation — no data to migrate.
+
+Predecessor: `noesar-evolution.rollback-owner-modules-catalog-20260731T123557Z`
+(`:phase4-modules-registry-retired`). Rollback cost: none on live data — no schema
+change, no migration; no module has been installed on this installation yet.
+
+## 2026-07-31 · `:phase4-debug-evolution-tools` — D-0278 deployed: Debug Evolution as a real tool, reauth removed from the module catalog, Modules cards redesigned
+
+Built `FROM noesar-evolution:phase4-owner-modules-catalog` (35 layers) — 42 layers total.
+`docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup (13 MB,
+service stopped,
+`BACKUPS/runtime_pre_debug_evolution_tools_deploy_20260731T132646Z.tar.gz`) → §5a (older
+rollback removed, predecessor renamed
+`.rollback-debug-evolution-tools-20260731T132646Z`) → new container from the live
+predecessor's own `docker inspect` `HostConfig`/`Env`, plus two new env vars this phase
+needs: `NOESAR_DEBUG_EVOLUTION_TOKEN` (real token, reconfirmed current against the live
+`debug-evolution` container before use) and `NOESAR_DEBUG_EVOLUTION_URL`. **Clean on the
+first attempt**: `Up (healthy)` at ~18s, `data-plane.ready migrations:19 rls_tables:18
+production_ready:true` (unchanged), `/livez`/`/readyz` 200/200, hardening confirmed. Byte
+identity of `app.js`, `styles.css`, `server.mjs` confirmed against both the built image
+and the live container. Confirmed live via `state/ai-workspace.json` on the runtime
+volume (read, not an Owner login): 3 Debug Evolution tools seeded with the real endpoint
+and token. Live probe, unauthenticated: `POST /api/v1/debug-evolution/rescan` `401`,
+`GET /api/v1/sector-modules/catalog` `401`. Post-cleanup inventory: exactly 2
+`noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-debug-evolution-tools-20260731T132646Z`
+(`:phase4-owner-modules-catalog`). Rollback cost: none on live data — no schema change,
+no migration; the two new env vars are additive, their absence only degrades tool
+seeding to a logged no-op.

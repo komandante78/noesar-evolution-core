@@ -94,6 +94,26 @@ async function freshCode(secret, avoid = new Set()) {
   throw new Error('no fresh TOTP step became available');
 }
 
+/**
+ * `freshCode`'s `avoid` set only rejects a code string this SCRIPT has already seen —
+ * it says nothing about the server's own `lastTotpStep` (a real, wall-clock-derived
+ * step number, monotonic regardless of which secret produced a code — auth.mjs's
+ * `consumeTotp`). A code whose STRING is new can still be for a step the server already
+ * consumed, e.g. moments after an MFA replacement's own confirm() call — found running
+ * this exact sequence: two calls three real seconds apart both failed, one as "invalid",
+ * the retry as "already used", because not enough wall-clock time had passed for the
+ * step to actually advance. This waits for a real step boundary strictly after the
+ * moment it is called, which is sufficient to be strictly after any consumption that
+ * already happened by then.
+ */
+async function nextRealStepCode(secret, stepSeconds = 30) {
+  const baseline = Math.floor(Date.now() / 1000 / stepSeconds);
+  while (Math.floor(Date.now() / 1000 / stepSeconds) <= baseline) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return totpCode(secret, Date.now(), stepSeconds);
+}
+
 const browser = await puppeteer.launch({
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
@@ -284,8 +304,11 @@ try {
   // restructure this check's name still remembers.
   check('the sidebar carries thirteen destinations, not twenty-three',
     shell.destinations.length === 13, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
-  check('Settings is one destination holding thirteen sections',
-    shell.sections.length === 13 && shell.menu.length === 13,
+  // Fourteen again as of D-0277: Modules rejoined the menu, this time as a one-click
+  // Owner-catalog installer over the real D-0274/D-0275 activation framework — D-0273's
+  // ad-hoc version was retired in D-0276, same section id, different backend.
+  check('Settings is one destination holding fourteen sections',
+    shell.sections.length === 14 && shell.menu.length === 14,
     `menu=${shell.menu.length} sections=${shell.sections.length}`);
   check('every Settings menu entry has a section behind it and every section an entry',
     shell.menu.every((key) => shell.sections.includes(key)) && shell.sections.every((key) => shell.menu.includes(key)),
@@ -852,6 +875,59 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 1500));
   const persisted = await page.$eval('#settingsTimezoneSummary', (node) => node.textContent);
   check('a settings change survives a reload', /Asia\/Tokyo/.test(persisted));
+
+  // --- D-0277/D-0278: Owner modules — not-installed -> install -> active -> deactivate,
+  // one click each, through the real sector-modules activation framework (D-0274/D-0275).
+  // Owner feedback, verbatim, twice: first "non deve essere così complicato" (D-0277,
+  // collapsed the raw multi-call sequence into two buttons), then "togliere
+  // autentificazione dai moduli basta solo quella di noesar, altrimenti 10 autorizzazioni"
+  // (D-0278, removed the step-up reauth prompt entirely) — a click is now just a click.
+  at('home');
+  resetObservations();
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  const beforeInstall = await page.evaluate(() => document.querySelector('#navModules a.nav'));
+  check('no module sidebar entry before any Owner module is installed', beforeInstall === null);
+
+  await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-owner-module-card="debug-evolution"]', { timeout: 15000 });
+  const notInstalledBadge = await page.$eval('[data-owner-module-card="debug-evolution"] .badge', (node) => node.textContent);
+  check('debug-evolution starts Not installed', /Not installed/.test(notInstalledBadge), notInstalledBadge);
+
+  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="install"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
+    { timeout: 15000 },
+  );
+  check('debug-evolution is Installed after a single click, no reauthentication prompt (D-0278)', true);
+
+  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="activate"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent === 'Active',
+    { timeout: 15000 },
+  );
+  check('debug-evolution is Active after a single click', true);
+
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#navModules a.nav', { timeout: 15000 });
+  const afterActivate = await page.evaluate(() => {
+    const link = document.querySelector('#navModules a.nav');
+    return { href: link?.href ?? null, target: link?.target ?? null, rel: link?.rel ?? null, text: link?.textContent ?? '' };
+  });
+  check('the sidebar entry opens the module in a new tab, not embedded',
+    afterActivate.target === '_blank' && /noopener/.test(afterActivate.rel ?? ''), JSON.stringify(afterActivate));
+  check('the sidebar entry names the module', /Debug Evolution/.test(afterActivate.text), afterActivate.text);
+
+  await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-owner-module-card="debug-evolution"]', { timeout: 15000 });
+  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="deactivate"]');
+  await page.waitForFunction(
+    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
+    { timeout: 15000 },
+  );
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const afterDeactivate = await page.evaluate(() => document.querySelector('#navModules a.nav'));
+  check('deactivating withdraws the sidebar entry again', afterDeactivate === null);
 
   at('sessions');
   // --- sessions: three places, a confirmation, and a keyboard --------------
@@ -1499,10 +1575,12 @@ try {
   await page.type('#loginPassword', PASSWORD);
   await page.click('#loginForm button[type="submit"]');
   await page.waitForSelector('#loginMfaForm:not(.hidden)', { timeout: 15000 });
-  // A fresh step, not just a fresh call. The two codes consumed by the confirmation are
-  // single-use (the F4-002 replay fix), so reusing one inside the same 30-second window
-  // is correctly refused — the harness has to wait, not the product has to relent.
-  const reLogin = await freshCode(newSecret, new Set([codeOne, codeTwo]));
+  // A fresh REAL step, not just a fresh call — nextRealStepCode, not freshCode(avoid):
+  // by this point in the flow other codes have already been consumed on this secret
+  // (the D-0277 Owner-modules install/activate above, among others) that `freshCode`'s
+  // local avoid-set has no way to know about, so its "the string is new" criterion is
+  // not enough to guarantee "the step is later than the server's own lastTotpStep".
+  const reLogin = await nextRealStepCode(newSecret);
   await page.type('#loginTotpCode', reLogin);
   await page.click('#loginMfaForm button[type="submit"]');
   await page.waitForSelector('#authGate.hidden', { timeout: 25000 });
@@ -1561,13 +1639,13 @@ try {
     const destination = (view) => { const node = document.querySelector(`.nav[data-view="${view}"]`); return node ? node.hidden : null; };
     return {
       users: section('people'), backups: section('storage'), health: section('health'),
-      updates: section('updates'),
+      updates: section('updates'), modules: section('modules'),
       settings: destination('settings'), security: section('security'), about: section('about'),
     };
   });
   check('nav hides every section this role cannot open',
     offered.users === true && offered.backups === true && offered.health === true
-    && offered.updates === true, JSON.stringify(offered));
+    && offered.updates === true && offered.modules === true, JSON.stringify(offered));
   check('nav still offers the sections this role can open',
     offered.settings === false && offered.security === false && offered.about === false,
     JSON.stringify(offered));

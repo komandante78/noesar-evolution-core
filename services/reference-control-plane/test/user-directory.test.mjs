@@ -71,8 +71,19 @@ test('permissions narrow as the role narrows', () => {
   assert.equal(can('user', 'provider.manage'), false);
   assert.equal(can('client_restricted', 'memory.manage'), false);
   assert.equal(can('client_restricted', 'provider.use'), true);
-  assert.equal(can('service_account', 'workspace.write'), false);
+  // D-0279 widened the service account from ['workspace.read','provider.use'] to
+  // `client_restricted`'s exact set. The old, narrower set was self-contradictory rather
+  // than restrictive: `provider.use` already writes — chat/stream calls graph.addMessage
+  // twice per turn — so the account could append to a conversation it had no way to
+  // create. Updated deliberately, and NOT relaxed: the four negatives below are the
+  // boundary that must not move, and they are what this case is really guarding.
   assert.equal(can('service_account', 'workspace.read'), true);
+  assert.equal(can('service_account', 'workspace.write'), true);
+  assert.equal(can('service_account', 'provider.use'), true);
+  assert.equal(can('service_account', 'provider.manage'), false);
+  assert.equal(can('service_account', 'agent.manage'), false);
+  assert.equal(can('service_account', 'memory.manage'), false);
+  assert.equal(can('service_account', 'user.manage'), false);
   assert.equal(can('owner', 'coden.owner-bypass'), true);
   assert.equal(can('admin', 'coden.owner-bypass'), false);
 });

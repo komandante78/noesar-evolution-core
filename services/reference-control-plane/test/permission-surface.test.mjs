@@ -37,9 +37,12 @@ test('extraction against the REAL server.mjs finds a real, non-trivial permissio
   assert.ok(permissions.includes('workspace.write'));
 });
 
-test('adapterCapabilityList flattens the real manifest, today exactly one adapter/operation pair', () => {
+test('adapterCapabilityList flattens the real manifest, today two adapter/operation pairs (D-0274)', () => {
   const list = adapterCapabilityList(ADAPTER_MANIFESTS);
-  assert.deepEqual(list, [{ resource: 'local-model-runtime', operation: 'EXECUTE' }]);
+  assert.deepEqual(list, [
+    { resource: 'local-model-runtime', operation: 'EXECUTE' },
+    { resource: 'sector-modules', operation: 'WRITE' },
+  ]);
 });
 
 test('an empty diff (identical surfaces) needs no authorisation at all', () => {

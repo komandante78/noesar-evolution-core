@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0276: retires D-0273's ad-hoc external-link module mechanism now that the real
+# sector-modules activation framework (D-0274, D-0275) exists to replace it — Owner's own
+# instruction, given immediately after D-0275 closed: Debug Evolution becomes a real
+# noesar-official sector module, not a parallel ad-hoc toggle. Removed: the
+# GET/PUT /api/v1/settings/modules[/:id] routes in server.mjs, the 14th Settings section
+# and #navModules sidebar link in apps/webui-static/, and their JS wiring
+# (renderModulesNav/renderModulesSettings/loadModules). modules-registry.mjs itself is
+# left on disk, unimported (CLAUDE10.md rule 12 — no deletion without an explicit Owner
+# amendment, the same process D-0195 used for apps/webui-react/). Two test files rewritten
+# rather than deleted: modules-settings-http.test.mjs now proves the retired routes answer
+# 404, not 200/401.
+
+FROM noesar-evolution:phase4-publisher-registry
+
+LABEL org.noesar.phase="4-modules-registry-retired"
+LABEL org.noesar.feature="d0273-ad-hoc-module-mechanism-retired"
+LABEL org.noesar.base-image="noesar-evolution:phase4-publisher-registry"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

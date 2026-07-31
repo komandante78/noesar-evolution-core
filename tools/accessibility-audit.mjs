@@ -450,7 +450,7 @@ const DESTINATIONS = [
 ];
 const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
-  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
+  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
 ];
 const SURFACES = [
   ...DESTINATIONS.map((name) => ({ name, hash: `#/${name}`, selector: `#view-${name}`, ready: `#view-${name}.active` })),

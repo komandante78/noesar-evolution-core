@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0274: sector module activation. install()/activate()/deactivate() in
+# sector-modules.mjs turn a validated candidate manifest into a persisted lifecycle state
+# (installed -> active -> installed), gated through the same ARCH-005 capability engine
+# every other adapter spends through (adapter-capability.mjs's `sector-modules` manifest
+# now carries a real WRITE operation). Three new owner-only routes in server.mjs:
+# POST /api/v1/sector-modules/{install,activate,deactivate}. A high-risk module (anything
+# beyond filesystem.read.project) additionally needs trust-level eligibility, non-empty
+# evidence, human_oversight.required:true, a verified Ed25519 signature, and the session's
+# own recent strong reauthentication.
+#
+# `schemas/industry-module-manifest.schema.json` gained a `signature` property (it had
+# `additionalProperties:false` and no such field — a signed manifest could not even be
+# installed before this fix, found running the new tests, not by inspection) — copied
+# separately from services/ because it lives at the repository root, not under it.
+#
+# Built FROM the current live tag directly: it sits at 8 overlay2 layers (verified with
+# `docker history`), far under the 128-layer limit that forced the flatten in
+# `:phase4-update-signing-side-flat` (see that Dockerfile and D-0273's Thread-3 note).
+
+FROM noesar-evolution:phase4-modules-debug-evolution
+
+LABEL org.noesar.phase="4-sector-modules-activation"
+LABEL org.noesar.feature="sector-module-install-activate-deactivate"
+LABEL org.noesar.base-image="noesar-evolution:phase4-modules-debug-evolution"
+
+USER root
+COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

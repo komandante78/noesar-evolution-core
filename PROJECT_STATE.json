@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0272: thread 1 of the Owner-ordered sequence (portale firma -> Passkey/WebAuthn -> oci/Dockerfile -> Blocco G) scoped and closed for its signing-side half. Read update-manager.mjs + docs first, as required: found the client-side verifier (channel metadata + package manifest, both Ed25519) was complete and tested, but two things made it unusable end to end -- installChannelKey() had no HTTP route (unreachable outside a unit test constructing the class directly), and nothing in the repo could produce an artefact the verifier would accept. Built POST /api/v1/updates/channel-key (owner+CSRF+strong-reauth, same weight as apply) and tools/sign-update-artifact.mjs (keygen/sign-metadata/sign-package, in the exact two shapes update-manager.mjs checks). Proven live end to end: NO_CHANNEL_KEY before pinning, tool-signed metadata and a tool-signed bundle both verifying after, full check->stage->approve->apply completing to a new installedVersion. The noesar.com portal half of deferred_items[2] stays explicitly out of scope (LICENSING_AND_PORTAL_INTERFACE.md B7, not this phase either) -- named, not silently dropped.",
-  "next_phase": "Owner-ordered thread 2: Passkey/WebAuthn, scoped the same way -- read what exists (matrix says MISSING) and what auth.mjs/auth-crypto.mjs already provide before writing any code -- then thread 3 (oci/Dockerfile reconciliation) and thread 4 (Block G, Owner Bootstrap+pentest). Do not reorder.",
+  "phase_status": "D-0278: Debug Evolution wired as a real tool, the reauth step removed from the module catalog, and the Modules cards redesigned -- built and deployed live. Owner asked whether the D-0277 sidebar link worked with all chats and CodeN Evolution; told plainly it does not (chat has no tool-calling loop for ANY tool in this reference implementation), the Owner ordered three things verbatim: register Debug Evolution as a real tool in the existing Agents/Workflows tool system (not a from-scratch rewrite of its ~8,000-line engine), redesign the Modules cards for professionalism, and drop the strong-reauth step from install/activate (session+CSRF only, \"altrimenti 10 autorizzazioni per moduli\"). debug-evolution-bridge.mjs (new) seeds 3 fixed-endpoint tools (list projects/all findings/SARIF) at boot plus a dedicated owner+CSRF rescan route for the one action the generic executor cannot express. Modules cards rebuilt with an icon tile, trust/version/publisher meta row and sector tags, reusing the .panel gradient language. All three Owner instructions done and verified live.",
+  "next_phase": "Nothing pending on Debug Evolution/Modules -- Owner can install/activate from Settings > Modules with a single click each, and the 3 tools are already usable from any Agent or Workflow. The paused Owner-ordered thread order resumes at thread 2 (Passkey/WebAuthn -- read what auth.mjs/auth-crypto.mjs already provide before writing code), then thread 3 (oci/Dockerfile reconciliation) and thread 4 (Block G, Owner Bootstrap+pentest). \"Moduli utenti\" (customer-private/community self-service modules) is named future work, not yet scoped.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "593d7fb",
-  "last_updated_utc": "2026-07-31T00:45:00Z",
+  "last_updated_utc": "2026-07-31T16:52:38Z",
   "blockers": [
     {
       "id": "B-001",
@@ -102,10 +102,9 @@
   "database_mutation": false,
   "network_configuration": true,
   "installation": {
-    "image": "noesar-evolution:phase4-webui",
-    "image_id": "sha256:9d666c6d0bfb28be06ea6544cfa2fd602152f8542989f8b680e40ba805449c23",
-    "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui",
-    "base_image": "noesar-evolution:phase4-complete-lan (sha256:4e26c950a3d1e994067fdc34ee17e0c62dfee1b6b3a11562a196665ab47897d7)",
+    "image": "noesar-evolution:phase4-module-credentials",
+    "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui -> :phase4-service-token-auth -> :phase4-module-credentials",
+    "base_image": "noesar-evolution:phase4-service-token-auth",
     "dockerfile": "oci/Dockerfile.phase4-webui",
     "build_network": "none",
     "container": "noesar-evolution",
@@ -385,9 +384,9 @@
     }
   ],
   "product_test_suite": {
-    "unit": "1168/1168 (misurato 2026-07-30, D-0245 — +13 su D-0244, +39 su D-0226; le altre righe di questo blocco restano alla loro ultima misura dichiarata, non riverificate qui)",
-    "eslint": "239 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-30, D-0245)",
-    "browser_acceptance": "315/315 (misurato 2026-07-28, D-0211 - riverificato, nessuna regressione)",
+    "unit": "1407/1408 (1 pre-existing honest skip) (misurato 2026-07-31, D-0280 — +4 su D-0278 1403/1404: service-token-http-auth.test.mjs)",
+    "eslint": "276 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-07-31, D-0280)",
+    "browser_acceptance": "340/340 (misurato 2026-07-31, D-0273 — disposable probe rebuilt on the flattened base image after the layer-depth blocker)",
     "adversarial_invariants": "11/11 — services/reference-control-plane/test/coden-invariant-adversarial.test.mjs, dentro la unit suite (misurato 2026-07-27)",
     "installer_hardening": "100/100 (misurato 2026-07-27)",
     "cross_platform_installers": "73/73 — windows NON eseguito, 5 note solo-statiche (misurato 2026-07-27)",
@@ -397,13 +396,13 @@
     "powershell_parse": "6/6 file, parser PowerShell reale; NESSUNO eseguito (misurato 2026-07-27)",
     "secret_scan": "gitleaks 118 commit, 0 reperti di prima parte (misurato 2026-07-27)",
     "reasoning_vectors": "18 vettori, Node 22/22 e Rust 18/18 sullo STESSO file (misurato 2026-07-27)",
-    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-28, D-0209). NON rieseguito in D-0216: tools/accessibility-audit.mjs richiede puppeteer, assente sull host fuori dall immagine browser-e2e, e nessun markup o CSS e cambiato.",
-    "seeded_defects": "19/19 catturati (misurato 2026-07-28, D-0211 - riverificato)",
+    "accessibility": "27/27 su 27 superfici, 0 fail (misurato 2026-07-31, D-0273 — un fail reale trovato e riparato nella stessa sessione, target-size del checkbox Modules, poi 27/27 pulito)",
+    "seeded_defects": "19/19 catturati (misurato 2026-07-31, D-0273 - riverificato)",
     "capability_vectors": "12 vettori mint + 5 spend, Node 25/25 e Rust sullo STESSO file (misurato 2026-07-27)",
     "shadow_vectors": "10 vettori, Node 22/22 e Rust 18/18 sullo STESSO file; whole-workspace, sonda reflink e limiti coperti nativamente su entrambi i lati (misurato 2026-07-27)",
     "event_vectors": "14 vettori, Node 17/17 e Rust sullo STESSO file (misurato 2026-07-27)",
     "executor_vectors": "F4-014 CHIUSO (D-0201) — 10 vettori condivisi, conformance/executor-vectors.json, sullo STESSO file su entrambi i lati (misurato 2026-07-28). Node 23/23 (12 nativi + 11 vettori), Rust 13/13 (12 nativi + 1 vettore)",
-    "manifest": "5845/5845, 0 mismatch (misurato 2026-07-30, D-0245; era 5841/5841 dopo D-0244 — anche corretto un hash stale di MASTER_PROJECT/03_ARCHITETTURA.md mai aggiornato dopo la modifica D-0244 alla riga ARCH-005)",
+    "manifest": "5898/5898, 0 mismatch (misurato 2026-07-31, D-0280 — conteggio OK confrontato col totale righe, non solo exit code)",
     "workspace_actions_http_adversarial": "9/9 — nuovo file HTTP-level, un test per invariante + meta + controllo negativo; ha trovato e chiuso D-0193 (misurato 2026-07-28)",
     "capability_http_adversarial": "4/4 — nuovo file HTTP-level, mint+spend attaccati con un piano reale; ha chiuso F4-017/D-0194 (misurato 2026-07-28)",
     "sector_module_validation": "18/18 — services/reference-control-plane/test/sector-modules.test.mjs, dentro la unit suite (misurato 2026-07-28, D-0204)",
@@ -442,7 +441,13 @@
     "d3a_panels_tui_d0268": "D-0268: session-protocol.mjs product.invariants (same INVARIANT_ENFORCEMENT record as /api/v1/bootstrap). tools/tui-client.mjs panel <name> router (map/logs/shadow/invariants/authority/editor/diff real, tests/documentation/preview/closure/conversation/activity declared-empty matching the browser), status gains the bench 12-field status line (2 of 12 sourced: Elapsed, Authority). +1 session-protocol.test.mjs, +9 tui-client-panels.test.mjs (stubbed session, no socket). Deployed :phase4-panels-tui, live unauthenticated probe confirms wired and gated. F1...F9 and Voice explicitly deferred.",
     "d3b_function_keys_d0269": "D-0269: tools/tui-client.mjs panelForFunctionKey/FUNCTION_KEY_PANELS (pure, f1...f9 -> first nine PANEL_NAMES) + wireFunctionKeys(iface, session) wired from main() only when process.stdin.isTTY, routes through the same runPanel() the typed panel <name> command uses. No server-side change. New tui-client-function-keys.test.mjs, 4 tests. Git-only, no Docker deploy (tui-client.mjs never baked into any image). UI-054 fully closed both halves.",
     "d3c_voice_control_d0270": "D-0270: apps/webui-static/voice-control.js (matchVoiceCommand/buildStatusUtterance/nextVoiceState/createVoiceControlTower/initVoiceControl) + app.js topbar mic toggle wired to the same runWorkspaceAction Approve/Reject already call. New voice-control.test.mjs, 22 tests. Deployed live (:phase4-voice-control). Real a11y regression (#globalSearch squeezed by new topbar chip) found and fixed same phase via .command min-width. D-0123/UI-054/CE-020 fully closed, Block D complete.",
-    "d271_block_ef_debt_triage": "D-0271: 3/7 E+F deferred_items closed with evidence (unused import, AuditLedger O(1) append, SBOM signing on all 4 docs), 1 investigated and found worse than described (oci/Dockerfile would not boot if rebuilt as-is), 3 left as out-of-scope/deliberate/Block-G's-own. Deployed live (:phase4-audit-ledger-perf) for the one change baked into the image (audit.mjs)."
+    "d271_block_ef_debt_triage": "D-0271: 3/7 E+F deferred_items closed with evidence (unused import, AuditLedger O(1) append, SBOM signing on all 4 docs), 1 investigated and found worse than described (oci/Dockerfile would not boot if rebuilt as-is), 3 left as out-of-scope/deliberate/Block-G's-own. Deployed live (:phase4-audit-ledger-perf) for the one change baked into the image (audit.mjs).",
+    "d273_external_modules": "D-0273: modules-registry.mjs (KNOWN_MODULES allowlist + readModulesSettings), GET/PUT /api/v1/settings/modules[/:id] in server.mjs, Settings > Modules 14th section, conditional #navModules sidebar link. 12 new tests (5 pure + 7 HTTP). Full E2E 340/340, a11y 27/27 (1 real target-size fail found+fixed). Deployed live on a flattened base image after finding the un-flattened chain at 127/128 Docker overlay2 layers — see D-0271/D-0273.",
+    "d274_sector_module_activation": "D-0274: installSectorModule/activateSectorModule/deactivateSectorModule (sector-modules.mjs), spend an AdapterGrantOrchestrator WRITE token (adapter-capability.mjs). High-risk gate: trust-level eligibility, evidence, human_oversight, Ed25519 signature, strong reauth. 3 new owner-only routes in server.mjs. 19 new tests (14 in new sector-modules-activation.test.mjs, +4 HTTP lifecycle in adapter-capability-http-adversarial.test.mjs, +1 manifest assertion). Full suite 1384/1385 (1 pre-existing skip). Real bugs found running tests: schema missing signature property, null-token TypeError uncaught, test leaked an active module into the real repo (all fixed). E2E 340/340, a11y 27/27. Deployed live :phase4-sector-modules-activation, no module installed on real data (rule 11e).",
+    "d275_publisher_registry": "D-0275: publisher-registry.mjs (register/rotate/revoke/setTrustLevel/findActiveKey/status), matches docs/capabilities/PUBLISHER_REVOCATION.md schema exactly. activateSectorModule high-risk gate now checks the registry (publisher+fingerprint+declared trust_level) instead of a single global env-var key. 3 new owner-only routes, register/revoke require strong reauth. 12 new tests (9 publisher-registry.test.mjs, +3 net in adapter-capability-http-adversarial.test.mjs). Full suite 1396/1397 (1 pre-existing skip). Refactored sector-modules.mjs canonicalManifestBytes to the shared canonical-json.mjs encoder (was a 3rd hand-rolled copy) and added publicKeyFingerprint to signSectorModuleManifest. Deployed live :phase4-publisher-registry.",
+    "d276_modules_registry_retired": "D-0276: server.mjs GET/PUT /api/v1/settings/modules[/:id] removed, apps/webui-static/ Modules section+sidebar link+JS removed, modules-registry.mjs left unimported per CLAUDE10.md rule 12. modules-settings-http.test.mjs rewritten to prove 404. webui-markup-structure.test.mjs SETTINGS_SECTIONS 14->13. browser-e2e.mjs 6 module checks removed, fourteen->thirteen assertion fixed. Full suite 1391/1392 (1 pre-existing skip). E2E 334/334, a11y 27/27. Deployed live :phase4-modules-registry-retired.",
+    "d277_owner_modules_catalog": "D-0277: owner-module-catalog.mjs (fixed catalog, debug-evolution the one entry) + GET /api/v1/sector-modules/catalog + POST .../catalog/:id/{install,activate,deactivate} -- server-side register/sign/mint, Owner sees two buttons + one reauth prompt. REAL BUG FOUND+FIXED: sectorModulesRoot/compliancePacksRoot defaulted under the read-only /opt/noesar instead of workspace -- every install on the live installation would have failed ENOENT since D-0274, never caught because tests always overrode the env var. tools/browser-e2e.mjs nextRealStepCode() added (freshCode() local dedup does not know the server monotonic lastTotpStep across secrets) -- fixed the same latent flaw in the pre-existing MFA-replacement re-login test too. 4 new HTTP tests. Full suite 1395/1396 (1 pre-existing skip). E2E 342/342 run twice clean (+8 new checks), a11y 27/27. Deployed live :phase4-owner-modules-catalog. No module installed on production yet -- ready for the Owner to click.",
+    "d278_debug_evolution_tools": "D-0278: debug-evolution-bridge.mjs (new) seeds 3 fixed-endpoint tools (list projects/all findings/SARIF) into agent-service.mjs's tool registry at boot, credential-vaulted with NOESAR_DEBUG_EVOLUTION_TOKEN; POST /api/v1/debug-evolution/rescan (owner+CSRF) covers the one action the generic tool-executor.mjs cannot express (project id in the URL path). Owner-module catalog install/activate routes no longer require strong reauth -- session+CSRF only, verbatim Owner instruction (\"altrimenti 10 autorizzazioni per moduli\"). Modules cards redesigned: .module-card/.module-grid in styles.css (icon tile, trust/version/publisher meta row, sector tags), reusing the .panel gradient language instead of the flat .entity-card row look. REAL BUG CAUGHT IN REVIEW (not shipped): seedDebugEvolutionTools()'s first draft called logger.warn() before logger was declared (TDZ) -- moved after ensureOwnerPublisherRegistered's definition before ever running. 8 new HTTP/unit tests (debug-evolution-bridge.test.mjs, debug-evolution-tools-http.test.mjs -- includes a real Agents run that actually calls the seeded tool). Full suite 1403/1404 (1 pre-existing skip). E2E 341/341, a11y 27/27 (AA contrast of the new icon tile confirmed across all 9 themes, reusing .primary's already-proven gradient/text pair). Deployed live :phase4-debug-evolution-tools with NOESAR_DEBUG_EVOLUTION_TOKEN/_URL added; confirmed the 3 tools are actually seeded by reading state/ai-workspace.json on the runtime volume (not an Owner login, per rule 11e)."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -844,7 +849,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "OWNER DECIDED (end of s296): start with thread 1 (update signing side + portal, deferred_items[2] -- \"only the offline channel is usable, no channel key is pinned\") and go forward through the remaining three threads in order after it: 2) Passkey/WebAuthn scoping, 3) oci/Dockerfile reconciliation (D-0271 finding -- it would not boot if rebuilt as-is), 4) Block G (Owner Bootstrap+pentest). Do NOT skip ahead or pick a different order without asking -- this sequence is the Owner own instruction, not a suggestion. First real step on thread 1: read what \"update signing side and portal\" actually refers to in the codebase/docs (the update-manager/update-signing surface, services/reference-control-plane/src/update-manager.mjs and anything channel-key-related) before assuming scope, same discipline as D3c/D-0271.",
+  "next_action": "s301: (1) FATTO — shell orfana PID 444054 + container fantasma silly_knuth eliminati (causa reale: non un loop di rigenerazione, ma un singolo `docker run --rm <immagine> ls ...` bloccato da 8h — l ENTRYPOINT e il supervisore, quindi il Cmd viene ignorato e il PRODOTTO INTERO parte; l api va in crash-loop su `listen EACCES /run/codev-peer.sock` per assenza di `--tmpfs /run:mode=1777`, ma supervisore+postgres tengono vivo il container, quindi `docker run` non esce mai e `--rm` non scatta. Volume anonimo, nessuna porta pubblicata: dati vivi mai toccati). (2) albero non committato da 2 sessioni (s299+s300, 42 file), chiedere se committare/pushare; (3) decisione Owner: spostare Debug Evolution su rete dedicata ora che non ha gate proprio; poi filo 4 Passkey/WebAuthn.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1354,7 +1359,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-31T07:41:54Z",
+  "last_updated": "2026-07-31T12:40:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",
@@ -1387,5 +1392,13 @@
     "date": "2026-07-29",
     "decision": "D-0240",
     "note": "docker inspect on the live container before this deploy showed ReadonlyRootfs:false and CapDrop:null, contradicting INST-004 recorded as done (read-only rootfs, cap-drop ALL, no-new-privileges, tmpfs noexec) in multiple past docs/INSTALLATION_LEDGER.md entries. Likely dropped during one of the several container recreations in session 286. Not restored in this deploy to avoid bundling two unverified risky changes at once. Needs its own dedicated, tested restoration phase."
+  },
+  "module_credentials": {
+    "decision": "D-0280",
+    "summary": "NOESAR emette da sola la credenziale dei suoi moduli ufficiali al boot (ensureModuleServiceAccounts, load-or-create come loadOrCreateOwnerSigningKey). Nessuna password digitata, nessuno strumento di conio.",
+    "path": "${workspace}/module-credentials/<id>.token, mode 0600, letto dal modulo per-richiesta",
+    "security_surface_change": "AI_SERVICE_ACCOUNT + workspace.write (= set di client_restricted). Motivo: provider.use gia scriveva (chat/stream chiama addMessage 2 volte a turno), quindi il set stretto era contraddittorio non restrittivo. Reversibile con una riga in auth.mjs.",
+    "verified_live": "2 turni reali attraverso il relay (ASK 4.4s, ACT piano reale), visibili in state/ai-workspace.json di NOESAR come 4 messaggi; browser reale 0 errori console.",
+    "not_unit_tested": "ensureModuleServiceAccounts() e codice di boot in server.mjs, non importabile senza avviare listener e PostgreSQL — verificato solo dal vivo, dichiarato."
   }
 }

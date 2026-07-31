@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0279: a service account that no program could ever use.
+#
+# Owner ask, verbatim: "poi devi mettere una chat che possa parlare con coden evolution e
+# noesar" -- a chat inside Debug Evolution that relays into this control plane. That relay
+# needs a non-interactive credential, and this product already had one on paper: the
+# `service_account` role, `userDirectory.issueServiceToken()`, and a complete, tested
+# `authenticateServiceToken()`. What it did not have was a request path that ever called
+# the verifier. `requireSession()` read the `noesar_session` cookie and nothing else, so a
+# bearer token was rejected everywhere and the role was unusable by construction -- the
+# same shape of defect as the update-channel key in D-0272, a finished verifier with no
+# way in.
+#
+# Two changes, both in the authentication layer and nowhere else:
+#
+#  1. server.mjs -- `resolveAuthenticated()` tries the cookie FIRST and falls back to a
+#     bearer service token. It returns a session-SHAPED object with `elevatedUntil:0`
+#     rather than `session:null`, so the routes that demand recent strong reauthentication
+#     answer 403 (the right answer for an account with no password and no TOTP) instead of
+#     dereferencing null and answering 500. `requireCsrf()` short-circuits for that caller:
+#     CSRF defends an AMBIENT credential, and a bearer token in an Authorization header is
+#     never ambient -- the same reasoning already written down for SCIM.
+#
+#  2. auth.mjs -- the service-account permission set gains `workspace.write`, matching
+#     `client_restricted` exactly. The narrower set looked safer than it was: `provider.use`
+#     already writes, because chat/stream calls graph.addMessage twice per turn. The account
+#     could append to a conversation but not create the conversation to append into, which
+#     is self-contradictory rather than restrictive. It still cannot register a provider,
+#     define an agent or a tool, or promote into shared memory.
+#
+# THIS IS A SECURITY-SURFACE CHANGE and is named as one: reverting it is a one-line edit in
+# each file. Verified before this build: unit 1403/1404 (1 skipped, 0 failed -- the same
+# figures as D-0278), ESLint 274 files 0 errors 0 warnings.
+#
+# Built FROM the current live tag: 12 overlay2 layers, far below the 128 limit that forced
+# the flatten in D-0273.
+
+FROM noesar-evolution:phase4-debug-evolution-tools
+
+LABEL org.noesar.phase="4-service-token-auth"
+LABEL org.noesar.feature="bearer-service-token-authentication-wired-into-requireSession"
+LABEL org.noesar.base-image="noesar-evolution:phase4-debug-evolution-tools"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

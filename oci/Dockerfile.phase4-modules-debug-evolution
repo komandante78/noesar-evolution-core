@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# External modules: a module is a separate product NOESAR Evolution does not own or
+# embed. Debug Evolution (/mnt/cachec/DEBUG_EVOLUTION/, LAN :8787) ships its own
+# `Content-Security-Policy: frame-ancestors 'none'` — verified live, so an iframe was
+# never an option. GET/PUT /api/v1/settings/modules (services/reference-control-plane/
+# src/modules-registry.mjs, new) lets the client opt a known module in; the sidebar
+# entry (apps/webui-static/app.js::renderModulesNav) then opens it in a new tab, only
+# when enabled. See docs/DECISION_LOG.md D-0273.
+#
+# Built FROM the flattened base (`:phase4-update-signing-side-flat`), not directly FROM
+# `:phase4-update-signing-side` — the un-flattened chain sat at 127 of Docker's 128-layer
+# overlay2 limit and any further FROM+COPY failed with "max depth exceeded". The flatten
+# is a single-layer, content- and config-identical reset (verified byte-for-byte and
+# field-for-field against the live image before use), not a rebuild of anything. The
+# structural fix (a non-chained build) is Owner Thread 3, still open.
+
+FROM noesar-evolution:phase4-update-signing-side-flat
+
+LABEL org.noesar.phase="4-modules-debug-evolution"
+LABEL org.noesar.modules="debug-evolution-external-link"
+LABEL org.noesar.base-image="noesar-evolution:phase4-update-signing-side-flat"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

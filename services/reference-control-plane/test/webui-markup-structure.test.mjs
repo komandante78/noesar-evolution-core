@@ -34,10 +34,13 @@ const DESTINATIONS = [
   'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
-/** The single Settings destination's own menu — menu inside the menu, in three groups. */
+/** The single Settings destination's own menu — menu inside the menu, in three groups.
+ *  'modules' rejoined in D-0277 (owner catalog: one-click install/activate through the
+ *  real D-0274/D-0275 framework) after D-0273's ad-hoc version of it was retired in
+ *  D-0276 — same section id, entirely different backend underneath. */
 const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
-  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates',
+  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
 ];
 /** Pages that changed rank. Their markup must still exist somewhere in the document.
  *  'memory' left this list at D-0265: it is a real destination again (CUBE-009), not a

@@ -18,20 +18,22 @@ function fresh() {
   return { minter, grants: new AdapterGrantOrchestrator({ minter }) };
 }
 
-test('the manifest lists four adapters today, and only one may ever ask for anything (D-0252)', () => {
+test('the manifest lists four adapters today, and two may ask for something (D-0252, D-0274)', () => {
   assert.deepEqual(
     Object.keys(ADAPTER_MANIFESTS).sort(),
     ['compliance-packs', 'hardware-probe', 'local-model-runtime', 'sector-modules'],
   );
   assert.deepEqual(ADAPTER_MANIFESTS['local-model-runtime'].operations, ['EXECUTE']);
   assert.deepEqual(ADAPTER_MANIFESTS['hardware-probe'].operations, []);
-  assert.deepEqual(ADAPTER_MANIFESTS['sector-modules'].operations, []);
+  // D-0274: sector-modules gained a real write surface (install/activate/deactivate),
+  // all three sharing one WRITE gate — see adapter-capability.mjs's manifest comment.
+  assert.deepEqual(ADAPTER_MANIFESTS['sector-modules'].operations, ['WRITE']);
   assert.deepEqual(ADAPTER_MANIFESTS['compliance-packs'].operations, []);
 });
 
 test('an empty-operations adapter refuses any request — an empty manifest, not an implicit grant', () => {
   const { grants } = fresh();
-  for (const resource of ['hardware-probe', 'sector-modules', 'compliance-packs']) {
+  for (const resource of ['hardware-probe', 'compliance-packs']) {
     for (const operation of ['EXECUTE', 'READ', 'WRITE', 'DELETE']) {
       assert.throws(
         () => grants.request({ resource, operation, actor: 'a', nowUnix: 1000 }),
@@ -40,6 +42,19 @@ test('an empty-operations adapter refuses any request — an empty manifest, not
       );
     }
   }
+});
+
+test('sector-modules refuses every operation except WRITE, and WRITE alone is not a token', () => {
+  const { grants } = fresh();
+  for (const operation of ['EXECUTE', 'READ', 'DELETE']) {
+    assert.throws(
+      () => grants.request({ resource: 'sector-modules', operation, actor: 'a', nowUnix: 1000 }),
+      (error) => error instanceof AdapterCapabilityError && error.kind === 'OUT_OF_SCOPE',
+    );
+  }
+  const granted = grants.request({ resource: 'sector-modules', operation: 'WRITE', actor: 'a', nowUnix: 1000 });
+  assert.equal(granted.plan.steps[0].files[0], 'adapter://sector-modules/write');
+  assert.equal(granted.plan.steps[0].blastRadius.destructive, false);
 });
 
 test('VectorStoreAdapter/ObjectStoreAdapter/HostBridgeAdapter have no manifest entry — not built as adapters, not silently trusted', () => {
