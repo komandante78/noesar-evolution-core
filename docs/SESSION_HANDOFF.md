@@ -7,11 +7,10 @@
 > massimo 4 pause"): A (debito ARCH-005/008) → B (SESS-001..003) → C (CUBE-001..009) →
 > pausa 1 → **decisione WebUI** → pausa 2 → E+F (debito+packaging) → pausa 3 →
 > G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A, B, C, D COMPLETI. L'Owner ha detto di proseguire oltre la pausa 2 senza
-> ulteriore scoping — `deferred_items` si è rivelato essere già la lista del debito
-> (D-0271): 3/7 item chiusi, 1 investigato e trovato peggio del previsto, 3 lasciati
-> fuori scope o per decisione dell'Owner. Restano QUATTRO fili aperti, tutti bisognosi
-> di una decisione dell'Owner su quale seguire, non di altro lavoro solitario.**
+> **Blocco A, B, C, D COMPLETI. Blocco E+F: `deferred_items` si è rivelato essere già la
+> lista del debito (D-0271), 3/7 chiusi. ⛔ L'OWNER HA DECISO L'ORDINE (fine s296): 1)
+> portale di firma aggiornamenti → 2) Passkey/WebAuthn → 3) `oci/Dockerfile` → 4) Blocco
+> G. La prossima sessione parte dal punto 1, non da una scelta propria.**
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -30,11 +29,25 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
    chiave di firma release vera** (`D-0271`): nessuna decisione di sicurezza/capacità
    presa da solo — sempre nominata come domanda per l'Owner, mai inventata.
 
-## ⛔ LA PROSSIMA AZIONE — quattro fili aperti, chiedere all'Owner quale seguire
+## ⛔ LA PROSSIMA AZIONE — punto 1: portale di firma aggiornamenti
 
-**`D-0271` (questo giro)**: l'Owner ha detto "procedi" dopo la pausa 2, senza rispondere
-alle domande di scoping lasciate in sospeso — la reazione giusta (per lo stesso principio
-di `D3c`: leggere lo stato prima di scrivere codice) è stata controllare
+**Ordine deciso dall'Owner, verbatim la richiesta**: "prima fai chiusura, nuova sessione
+parti dal primo e vai avanti" — il "primo" è il thread 1 elencato sotto. **Non scegliere un
+ordine diverso, non saltare al punto 3 o 4 pensando sia più urgente: la sequenza stessa è
+la decisione dell'Owner.**
+
+**Primo passo reale (ancora non fatto)**: capire cosa "portale di firma aggiornamenti" (
+`deferred_items[2]`: "update signing side and portal not implemented — only the offline
+channel is usable, and no channel key is pinned, so nothing can be applied") significa
+concretamente nel codice esistente PRIMA di scrivere qualsiasi riga — stessa disciplina di
+`D3c`/`D-0271`: leggere `services/reference-control-plane/src/update-manager.mjs` e
+qualunque cosa in `docs/` parli di canali/chiavi di aggiornamento, capire cosa esiste già
+(il canale offline) e cosa manca davvero (un lato firma + un modo per fissare/pinnare la
+chiave del canale), prima di assumere lo scope.
+
+**`D-0271` (giro precedente)**: l'Owner aveva detto "procedi" dopo la pausa 2, senza
+rispondere alle domande di scoping lasciate in sospeso — la reazione giusta (per lo stesso
+principio di `D3c`: leggere lo stato prima di scrivere codice) è stata controllare
 `PROJECT_STATE.json.deferred_items`, che si è rivelato essere ESATTAMENTE la lista
 "debito+packaging" che il piano nomina. Triaggiati tutti gli 8 item:
 
@@ -54,10 +67,9 @@ di `D3c`: leggere lo stato prima di scrivere codice) è stata controllare
   come `D3c`; TLS off-by-default è design deliberato (`D-0198`), non debito; il pentest
   indipendente è dell'Owner nel **Blocco G**, non di E+F.
 
-**Non c'è più debito sicuro e ben definito da chiudere da soli.** I quattro fili rimasti
-(portale firma, Passkey/WebAuthn, `oci/Dockerfile`, oppure passare al Blocco G) sono TUTTI
-decisioni di scope/priorità dell'Owner, non tecniche — **chiedere quale seguire prima di
-scrivere altro codice**, esattamente come per D3c.
+**L'Owner ha già deciso l'ordine dei quattro fili rimasti** (vedi "LA PROSSIMA AZIONE" in
+cima): 1) portale firma → 2) Passkey/WebAuthn → 3) `oci/Dockerfile` → 4) Blocco G. Non è
+più una domanda aperta — è la prossima sessione che deve partire dal punto 1.
 
 **Non rifare**: i 2 test nuovi di `audit.test.mjs`, `scripts/test.sh` 10/10, seeded-defect
 19/19, `MANIFEST.sha256` 5886/5886 (D-0271).
@@ -100,7 +112,5 @@ fine progetto per scelta dell'Owner. Nessun altro.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-**Quale dei quattro fili seguire**: (1) scoping del portale di firma aggiornamenti; (2)
-scoping di Passkey/WebAuthn; (3) riconciliare `oci/Dockerfile` col prodotto vivo (rischio
-sull'integrità del percorso di build, va fatto con calma); (4) passare al Blocco G
-(Owner Bootstrap+pentest). Nessuna di queste è una scelta tecnica mia da fare da sola.
+**Nessuna sull'ordine — deciso** (vedi cima file). Domande che nasceranno scoping il
+punto 1 (portale firma) vanno poste quando emergono, non anticipate qui.

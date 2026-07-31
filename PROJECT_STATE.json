@@ -844,7 +844,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Ask the Owner which of the four open threads to take next (signing-portal scope, passkey/WebAuthn scope, oci/Dockerfile reconciliation, or Block G) -- do not pick one unilaterally, these are scope/priority decisions, not technical ones. If truly told to keep going without a preference: oci/Dockerfile reconciliation is the most load-bearing (it blocks the literal 'packaging' half of E+F ever being closeable at all) but also the riskiest (production build-path integrity) -- read docs/DECISION_LOG.md D-0271's finding in full before touching it.",
+  "next_action": "OWNER DECIDED (end of s296): start with thread 1 (update signing side + portal, deferred_items[2] -- \"only the offline channel is usable, no channel key is pinned\") and go forward through the remaining three threads in order after it: 2) Passkey/WebAuthn scoping, 3) oci/Dockerfile reconciliation (D-0271 finding -- it would not boot if rebuilt as-is), 4) Block G (Owner Bootstrap+pentest). Do NOT skip ahead or pick a different order without asking -- this sequence is the Owner own instruction, not a suggestion. First real step on thread 1: read what \"update signing side and portal\" actually refers to in the codebase/docs (the update-manager/update-signing surface, services/reference-control-plane/src/update-manager.mjs and anything channel-key-related) before assuming scope, same discipline as D3c/D-0271.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1354,7 +1354,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-31T07:15:00Z",
+  "last_updated": "2026-07-31T07:20:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",
