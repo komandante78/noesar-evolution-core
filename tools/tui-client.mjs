@@ -29,7 +29,7 @@
 //   socketPath defaults to $NOESAR_TUI_SOCKET_PATH, then <repo>/.workspace/tui.sock.
 
 import { connect } from 'node:net';
-import { createInterface } from 'node:readline';
+import { createInterface, emitKeypressEvents } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -61,6 +61,9 @@ const HELP = `Commands:
                          plan, map, logs <runId>, shadow, invariants, authority,
                          editor <runId>, diff <runId>, tests, documentation, preview,
                          closure, conversation, activity. 'panel' alone lists the names.
+                         On a real terminal, F1…F9 jump straight to the first nine of these
+                         (F1 plan … F9 tests), in the same order — a hotkey, not a second
+                         vocabulary; F3/F7/F8 (logs/editor/diff) still ask for a runId.
   status                engine status, plus the bench's own status line (Elapsed/Authority
                          sourced; the rest read "—", exactly as honestly as the browser's)
 
@@ -219,10 +222,7 @@ function formatStatusLine(state, statusResult) {
  *  same call the browser makes for that view; names the browser itself only ever shows a
  *  declared-empty placeholder for (no run has produced one, or the data belongs to a
  *  different transport, e.g. Conversation shares state with Chat) answer with that same
- *  honest placeholder here — never a guess. `F1…F9` raw-keypress binding is deliberately
- *  not built in this phase: this client reads whole lines (see the header comment on
- *  `LineReader`), and binding function keys needs a raw-mode input loop with its own
- *  piped-input fallback, a separate, larger change from adding a named command. */
+ *  honest placeholder here — never a guess. */
 const DECLARED_EMPTY_PANELS = {
   tests: 'No run, and this stays true on purpose: the executor is passed an empty test list on this path, so nothing has ever run a plan-declared command.',
   documentation: 'No documentation is attached to this piece of work.',
@@ -233,7 +233,21 @@ const DECLARED_EMPTY_PANELS = {
 };
 const PANEL_NAMES = ['plan', 'map', 'logs', 'shadow', 'invariants', 'authority', 'editor', 'diff', ...Object.keys(DECLARED_EMPTY_PANELS)];
 
-async function runPanel(session, name, arg) {
+/** D3b, UI-054's other half: `F1`…`F9` map onto the first nine of the same `PANEL_NAMES`
+ *  above, in the same order — no second vocabulary, just a faster way to reach the first
+ *  one. A panel that needs an argument (`logs`, `editor`, `diff`) still asks for one via
+ *  its usual "Usage: panel <name> <runId>" line when reached this way with none available;
+ *  a hotkey does not invent a runId any more than typing the command bare would. Kept pure
+ *  and exported so the mapping is testable without a real TTY — see `wireFunctionKeys`
+ *  below for why the raw-mode plumbing itself is not. */
+export const FUNCTION_KEY_PANELS = PANEL_NAMES.slice(0, 9);
+
+export function panelForFunctionKey(keyName) {
+  const match = /^f([1-9])$/.exec(keyName ?? '');
+  return match ? FUNCTION_KEY_PANELS[Number(match[1]) - 1] : null;
+}
+
+export async function runPanel(session, name, arg) {
   if (!name) { console.log(`Panels: ${PANEL_NAMES.join(', ')}`); return; }
   if (DECLARED_EMPTY_PANELS[name]) { console.log(DECLARED_EMPTY_PANELS[name]); return; }
   switch (name) {
@@ -387,10 +401,39 @@ async function connectSocket() {
   return socket;
 }
 
+const PROMPT = 'coden-evolution> ';
+
+/** D3b: the raw-mode half of `F1`…`F9`. Only wired for a real TTY — a piped/non-TTY stdin
+ *  (this file's own tests, CI, `| node`) never emits `'keypress'` at all, so the fallback
+ *  is silence, not a crash or a hang; every panel stays reachable by typing `panel <name>`
+ *  regardless. `readline.createInterface` already puts a TTY's stdin into raw mode and
+ *  calls `emitKeypressEvents` internally for its own line editing (arrows, backspace);
+ *  `emitKeypressEvents` no-ops a second call on the same stream (guarded by a symbol Node
+ *  sets on the stream itself), so calling it again here is redundant-but-safe, not a
+ *  duplicate-listener bug. `iface.prompt(true)` after the panel output redraws the prompt
+ *  and whatever the user had typed so far from `iface`'s own line buffer, which this
+ *  handler never touches — the same technique any Node CLI uses to print asynchronous
+ *  output above a live prompt. Not exercised by the test suite: it needs a real TTY to mean
+ *  anything, the same class of gap `login()`'s own comment discloses for password masking.
+ */
+function wireFunctionKeys(iface, session) {
+  if (!process.stdin.isTTY) return;
+  emitKeypressEvents(process.stdin);
+  process.stdin.on('keypress', (_char, key) => {
+    const name = panelForFunctionKey(key?.name);
+    if (!name) return;
+    process.stdout.write(`\n[F${FUNCTION_KEY_PANELS.indexOf(name) + 1}] panel ${name}\n`);
+    runPanel(session, name)
+      .catch((error) => console.error(`Error${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`))
+      .finally(() => iface.prompt(true));
+  });
+}
+
 async function main() {
   const socket = await connectSocket();
   const session = new Session(socket);
   const iface = createInterface({ input: process.stdin, output: process.stdout });
+  iface.setPrompt(PROMPT);
   const reader = new LineReader(iface);
 
   let user;
@@ -404,10 +447,11 @@ async function main() {
     return;
   }
   console.log(`Signed in as ${user.username} (${user.role}). Type \`help\` for commands.\n`);
+  wireFunctionKeys(iface, session);
 
   const state = createTuiState();
   for (;;) {
-    const line = await question(reader, 'coden-evolution> ');
+    const line = await question(reader, PROMPT);
     let keepGoing = true;
     try { keepGoing = await dispatchCommand(reader, session, line, state); }
     catch (error) { console.error(`Error${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`); }

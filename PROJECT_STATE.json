@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": 4,
-  "phase_status": "D-0268: Block D3a (UI-054, the panels half of the CodeN Evolution TUI) built and verified live. session-protocol.mjs gains product.invariants (same INVARIANT_ENFORCEMENT record /api/v1/bootstrap already sends). tools/tui-client.mjs gains panel <name> [arg]: map/logs/shadow/invariants/authority/editor/diff route to the SAME calls already backing those browser views; tests/documentation/preview/closure/conversation/activity answer with the browser's own declared-empty text, since no wire method sources them from any transport -- a disclosed gap, not invented data. status now also prints the bench's 12-field status line, sourcing exactly Elapsed and Authority (2 of 12, matching the browser's own honesty model rather than inventing the other ten). Full suite 1322/1323 (up from 1313), ESLint 259 files 0 errors, scripts/test.sh 10/10, seeded-defect 19/19, MANIFEST.sha256 5881/5881. Deployed live (:phase4-panels-tui); unauthenticated live probe confirms product.invariants is genuinely wired and gated. UI-054 closed for the panel-name half; F1...F9 raw-keypress binding (needs a raw-mode input loop, a separate change) and Voice (D-0123, design-only, never estimated) remain open as named Block D3b/D3c.",
-  "next_phase": "Block D3a (panels-by-name) is complete. Remaining from the Owner's WebUI decision: D3b (F1...F9 raw-keypress panel switching in tools/tui-client.mjs -- requires switching its line-based readline/LineReader input loop to a raw-mode keypress loop with a piped-input fallback, its own scoping pass) and D3c (Voice, D-0123 -- design-only, 'idea disegnata, non pianificata', needs a scoping conversation before any code: what a control-tower-not-assistant voice interface actually is as a concrete surface).",
+  "phase_status": "D-0269: Block D3b (UI-054 other half, F1...F9 raw-keypress panel switching) built and verified. tools/tui-client.mjs gains panelForFunctionKey/FUNCTION_KEY_PANELS (pure: f1...f9 -> the first nine of PANEL_NAMES, same order panel alone already lists) and wireFunctionKeys(iface, session), wired from main() only when process.stdin.isTTY, routing through the exact same runPanel() the typed panel <name> command already calls -- no new wire method, no server-side change, since every panel a hotkey reaches already had a route from D-0268. Client-only change: tools/tui-client.mjs has never been baked into any noesar-evolution:* image (operator own terminal client, run from the host checkout), so D-0143 is satisfied by full verification with no Docker deploy -- the live container is unchanged, still :phase4-panels-tui. Full suite 1325/1326 (1 pre-existing skip, up from 1322/1323, +4 new), ESLint 260 files 0 errors, scripts/test.sh 10/10, seeded-defect 19/19, MANIFEST.sha256 5882/5882. UI-054 now fully closed (both halves); CE-020 holds for every TUI-reachable panel. Only Voice (D-0123, Block D3c) remains open.",
+  "next_phase": "Block D3c: Voice (D-0123) -- declared idea disegnata, non pianificata (2026-07-27), the only remaining piece of the Owner build everything WebUI decision. Needs a dedicated scoping pass before any code: what control tower, not assistant means as a concrete surface (audio capture? TTS? which endpoint receives it?) has never been worked out. Once D3c is scoped and closed (or explicitly deferred by the Owner), the WebUI decision block is complete and the multi-phase plan moves to pausa 2 per the Owner own four-pause structure (see docs/SESSION_HANDOFF.md).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -1351,7 +1351,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-07-31T02:45:31Z",
+  "last_updated": "2026-07-31T06:00:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",

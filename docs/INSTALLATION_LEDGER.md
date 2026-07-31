@@ -3513,3 +3513,26 @@ commands only.
 
 **`UI-054` closed for the panel-name half. `F1…F9` raw-keypress binding and Voice (`D-0123`)
 remain open — named gaps (Block D3b/D3c), not silently dropped.**
+
+## 2026-07-31 · (no image tag) — D-0269 shipped: `F1…F9` raw-keypress panel switching (UI-054, Block D3b) — git-only, no Docker deploy
+Changed: `tools/tui-client.mjs` only (`panelForFunctionKey`/`FUNCTION_KEY_PANELS`,
+`wireFunctionKeys`, exported `runPanel`, shared `PROMPT` constant), plus new
+`services/reference-control-plane/test/tui-client-function-keys.test.mjs`. No change to
+`services/reference-control-plane/` or any other file the OCI images copy.
+
+**Why no deploy.** `tools/tui-client.mjs` is the operator's own terminal client, run from
+the host checkout against the product's unix socket — it has never been baked into any
+`noesar-evolution:*` image (see `oci/Dockerfile.phase4-sessions-tui`'s own header comment).
+`D-0267`/`D-0268` redeployed the live container only because they also touched
+`session-protocol.mjs`/`server.mjs`; this change touches neither, so there is nothing in
+the image to update and no live probe that would prove anything a unit test does not
+already prove. The live product container is unchanged: still
+`noesar-evolution:phase4-panels-tui`, `Up (healthy)`.
+
+**Verification (this change only)**: full suite **1325/1326** (1 pre-existing skip, up
+from 1322/1323, +4 new), ESLint **260 files 0 errors**, `scripts/test.sh` **10/10**,
+seeded-defect **19/19**, `MANIFEST.sha256` **5882/5882** (1 changed hash —
+`tools/tui-client.mjs` — 1 new file appended). Full detail: `docs/DECISION_LOG.md` `D-0269`.
+
+**`UI-054` now fully closed, both halves. `CE-020` holds for every TUI-reachable panel.
+Remaining: Voice (`D-0123`, Block D3c) — unscoped, needs a dedicated pass before any code.**
