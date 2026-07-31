@@ -26,6 +26,7 @@ import { INVARIANT_ENFORCEMENT, checkConsentScope, createPathPlan } from './path
 import { ReasoningRefused, reasoningStatus } from './reasoning.mjs';
 import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-router.mjs';
 import { researchGateFrom } from './research-gate.mjs';
+import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
@@ -207,6 +208,10 @@ providerGateway.ensureDefaults();
 const fileExtractor = new FileExtractor({ blobRoot:join(workspace, 'files') });
 const aiWorkspace = new WorkspaceService({ store:aiStore, graph:contextGraph, ledger, fileExtractor });
 const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
+// UI-080…096 — ephemeral by design, see research.mjs's own module comment: a restart
+// revoking every live report link is the declared behaviour, not a gap.
+const researchReportStore = new ResearchReportStore();
+const researchRefusalRegistry = new RefusalRegistry();
 const agentService = new AgentService({ store:aiStore, ledger, executor:toolExecutor, vault:credentialVault });
 const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
 const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger });
@@ -1027,6 +1032,105 @@ const requestListener = async (req, res) => {
             surface:error.surface, endpoint:error.endpoint,
           });
         }
+        throw error;
+      }
+    }
+
+    // --- research provider designation · Settings ---------------------------------
+    // Which registered external tool (agent-service.mjs) the Ricerca destination is allowed
+    // to call. Deliberately reuses the tools/consent machinery already built rather than a
+    // parallel credential store — consenting a tool here already makes it disclosed by
+    // privacy.mjs (UI-089), with no privacy code added by this feature.
+    if (req.method === 'GET' && url.pathname === '/api/v1/settings/research') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      const state = aiStore.read();
+      const toolId = state.settings?.researchProviderToolId ?? null;
+      const tool = toolId ? (state.tools ?? []).find((item) => item.id === toolId) ?? null : null;
+      return json(res, 200, {
+        toolId,
+        configured: Boolean(tool),
+        consented: Boolean(tool?.external && tool?.consent?.granted),
+        eligibleTools: (state.tools ?? []).filter((item) => item.external).map((item) => ({ id:item.id, name:item.name, consented:Boolean(item.consent?.granted) })),
+      });
+    }
+    if (req.method === 'PUT' && url.pathname === '/api/v1/settings/research') {
+      const authenticated = requireSession(req, res, 'provider.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const toolId = request.toolId === null ? null : String(request.toolId ?? '').trim() || null;
+      if (toolId) {
+        const tool = (aiStore.read().tools ?? []).find((item) => item.id === toolId);
+        if (!tool) return json(res, 404, { error:'No such tool.' });
+        if (!tool.external) return json(res, 400, { error:'The research provider must be an external tool.' });
+      }
+      const updated = aiStore.transact((state) => { state.settings ??= {}; state.settings.researchProviderToolId = toolId; return { researchProviderToolId:toolId }; });
+      ledger.append({ actor:authenticated.user.id, action:'research.provider-designated', result:'success', details:updated });
+      return json(res, 200, updated);
+    }
+
+    // --- research report · UI-080…089 ----------------------------------------------
+    // The other half of the gate above: intent PROCEED → the designated provider tool →
+    // content gate → an ephemeral, session-gated, revocable report. See research.mjs's own
+    // module comment for why there is no built-in provider and why the store is in-memory.
+    if (req.method === 'POST' && url.pathname === '/api/v1/research/report') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      if (!requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const state = aiStore.read();
+      try {
+        const outcome = await runResearchReport({
+          objective: request.objective, criteria: request.criteria,
+          actorId: authenticated.user.id, projectId: request.projectId ?? null,
+          gate: researchGateFrom(process.env), tools: state.tools ?? [], executor: toolExecutor,
+          toolId: state.settings?.researchProviderToolId ?? null,
+          ledger, reportStore: researchReportStore, refusalRegistry: researchRefusalRegistry,
+        });
+        if (outcome.outcome === 'PROCEED') {
+          return json(res, 200, { outcome:'PROCEED', reportId:outcome.report.id, expiresAt:outcome.report.expiresAt });
+        }
+        return json(res, 200, outcome);
+      } catch (error) {
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, { error:'reasoning_unavailable', reason:error.reason, surface:error.surface, endpoint:error.endpoint });
+        }
+        if (Number.isInteger(error.status)) return json(res, error.status, { error:error.kind ?? 'research_failed', reason:error.message });
+        throw error;
+      }
+    }
+    const researchReportMatch = url.pathname.match(/^\/api\/v1\/research\/report\/([^/]+)$/);
+    if (researchReportMatch && req.method === 'GET') {
+      // UI-082: a session on THIS installation is required — the link is not public of its
+      // own accord. Sharing it further is a separate act with its own warning (undecided,
+      // not built here — see docs/WEBUI_DESIGN_V3.md §19's own open item).
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      const report = researchReportStore.get(researchReportMatch[1]);
+      if (!report) return json(res, 404, { error:'This report link no longer works — it may have expired, been revoked, or never existed.' });
+      return json(res, 200, report);
+    }
+    const researchRevokeMatch = url.pathname.match(/^\/api\/v1\/research\/report\/([^/]+)\/revoke$/);
+    if (researchRevokeMatch && req.method === 'POST') {
+      const authenticated = requireSession(req, res, 'workspace.write');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const revoked = researchReportStore.revoke(researchRevokeMatch[1], { actorId:authenticated.user.id });
+      if (!revoked) return json(res, 404, { error:'This report link no longer works.' });
+      ledger.append({ actor:authenticated.user.id, action:'research.report-revoked', result:'success', details:{ reportId:researchRevokeMatch[1] } });
+      return json(res, 200, { revoked:true });
+    }
+    // UI-096: the contestation is registered, not auto-resolved — the far side of it is a
+    // human review, out of this route's scope.
+    if (req.method === 'POST' && url.pathname === '/api/v1/research/gate/contest') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      try {
+        const contested = researchRefusalRegistry.contest(String(request.refusalId ?? ''), { note:request.note, actorId:authenticated.user.id });
+        ledger.append({ actor:authenticated.user.id, action:'research.gate-contested', result:'recorded', details:{ refusalId:contested.id, category:contested.category } });
+        return json(res, 200, { contested:true });
+      } catch (error) {
+        if (Number.isInteger(error.status)) return json(res, error.status, { error:error.kind ?? 'contest_failed', reason:error.message });
         throw error;
       }
     }

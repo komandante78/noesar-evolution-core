@@ -68,7 +68,7 @@
         <button class="nav" data-view="agents">◍ <span>Agents</span></button>
         <button class="nav" data-view="workflows">⇉ <span>Workflows</span></button>
         <button class="nav" data-view="models">▦ <span>Models</span></button>
-        <button class="nav" data-view="research">⌕ <span>Research</span><span class="nav-flag">not built</span></button>
+        <button class="nav" data-view="research">⌕ <span>Research</span></button>
         <button class="nav" data-view="settings">⚙ <span>Settings</span><span class="nav-count hidden" id="navApprovalCount">0</span></button>
       </nav>
     </aside>
@@ -437,8 +437,21 @@
       </section>
 
       <section class="view" id="view-research">
-        <div class="section-header"><div><p class="eyebrow">GOAL AND CRITERIA · NOT A SEARCH BOX</p><h1>Research</h1><p>A report with compared candidates, the evidence behind each one, and what was not verified.</p></div><span class="badge badge-off">DECLARED · NOT BUILT</span></div>
-        <section class="panel declared"><p>The twelfth destination (<code>D-0130</code>), declared rather than hidden inside another page to make the count add up. It takes a <b>goal and criteria</b>, not a string, and returns a report reachable through a temporary link that expires and can be revoked — and that link is <b>not public of itself</b> (<code>UI-080…UI-089</code>). Evidence quality is stated per candidate, because reviews can be bought and an average score is not evidence.</p><p><b>There is deliberately no input on this page.</b> The safety gate (<code>UI-090…UI-096</code>) is a requirement that comes <b>before</b> the surface, not a refinement after it: two doors — on the intent before anything leaves, and on the content that comes back — three outcomes rather than two (proceed · ask · refuse), each refusal naming its category, and no query emitted at all when the intent is refused. It classifies intent and effect; it is not a word list, which any synonym or paraphrase defeats.</p><p>It refuses the <b>effect</b>, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable. One category — the exploitation of minors — is not bypassable by any role, the Owner included.</p><p class="hint">Building the surface first would mean shipping an egress path with no gate on it. The order is the safeguard.</p></section>
+        <div class="section-header"><div><p class="eyebrow">GOAL AND CRITERIA · NOT A SEARCH BOX</p><h1>Research</h1><p>A report with compared candidates, the evidence behind each one, and what was not verified.</p></div></div>
+        <section class="panel"><p>Takes a <b>goal and criteria</b>, not a string, and returns a report reachable through a temporary link that expires and can be revoked — the link is <b>not public of itself</b> (<code>UI-080…UI-089</code>). Evidence quality is stated per candidate, because reviews can be bought and an average score is not evidence.</p><p class="hint">Two gates stand in front of it (<code>UI-090…UI-096</code>): on the intent before anything leaves, and on the content that comes back, before it is ever shown — three outcomes, not two (proceed · ask · refuse), each refusal naming its category. It refuses the <b>effect</b>, never the subject: legislation, history, prevention, workplace safety and remediation stay reachable.</p></section>
+        <section class="panel" id="researchProviderPanel">
+          <div class="panel-title"><h2>Research provider</h2><span id="researchProviderStatus" class="badge badge-off">Checking…</span></div>
+          <p class="hint">This installation reaches the open web only through a provider you configure and consent to — the same external-tool mechanism as any other connector (<a href="#/settings/privacy">Settings → Privacy and connectors</a>). No provider is built in.</p>
+          <div class="inline-form hidden" id="researchProviderPicker"><label>Use this tool<select id="researchProviderSelect"></select></label><button id="researchProviderSave" type="button">Set as research provider</button></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h2>New report</h2></div>
+          <label>Goal<input id="researchObjective" placeholder="What do you want compared?" maxlength="500"></label>
+          <label>Criteria<input id="researchCriterionInput" placeholder="Type a criterion and press Enter"></label>
+          <div class="chip-list" id="researchCriteriaChips"></div>
+          <button class="primary" id="researchRunButton" type="button">Run research</button>
+        </section>
+        <section class="panel hidden" id="researchOutcomePanel"></section>
       </section>
 
       <section class="view" id="view-settings">

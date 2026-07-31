@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block D1: the Research destination (UI-080…089) wired to the existing intent/content gate
+# (UI-090…096, D-0222). No built-in provider — a pluggable external tool, reusing the
+# tools/consent mechanism. See docs/DECISION_LOG.md for the decision entry.
+
+FROM noesar-evolution:phase4-memory-webui
+
+LABEL org.noesar.phase="4-research"
+LABEL org.noesar.block-d="d1-research"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

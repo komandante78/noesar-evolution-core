@@ -3413,3 +3413,36 @@ renamed markup id, no schema change.
 
 **This closes MASTER_PROJECT/14_MEMORIA_A_CUBI.md's entire acceptance matrix. Block C is
 complete: CUBE-001 through CUBE-009 all built and verified live.**
+
+## 2026-07-31 · `:phase4-research` — D-0266 deployed: the Research destination on the existing gate (UI-080…096), Block D1
+Tag `noesar-evolution:phase4-research`, `FROM :phase4-memory-webui`. New:
+`services/reference-control-plane/src/research.mjs` (intent gate → designated external tool →
+content gate → ephemeral revocable report), routes in `server.mjs`
+(`/api/v1/settings/research`, `/api/v1/research/report[/:id[/revoke]]`,
+`/api/v1/research/gate/contest`), the Research page wired up in `apps/webui-static/`. Full
+detail: `docs/DECISION_LOG.md` `D-0266`.
+
+**Verification (pre-deploy)**: `npm test` 1296/1297 (1 pre-existing skip, up from 1285 — includes
+`research.test.mjs` 12/12 new), `npm run lint` 257 files / 0 errors. **Live, real Chromium**:
+browser E2E **334/334 PASS**, accessibility audit **27/27 PASS**, both walking Research as one
+of the now-fourteen destinations. One real bug found and fixed before shipping: a bare
+`match = ...` in the two new report routes collided (TDZ) with a `let match` declared 800 lines
+later in the same function — broke every request on the server, caught by 67 unrelated test
+failures across the whole suite, fixed by giving the two matches their own names.
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+`BACKUPS/runtime_pre_research_deploy_20260731T003927Z.tar.gz` (12.9 MB, service stopped) → §5a
+(older rollback `memory-webui-...T173434Z` removed, predecessor renamed to
+`.rollback-research-20260731T003927Z`) → new container from the full `docker inspect` HostConfig
+JSON. **Clean on the first attempt**: `Up (healthy)` at 12s, `data-plane.ready
+migrations:19 rls_tables:18`, `data-plane.workspace-projected ensured:true`, `/livez`/`/readyz`
+200/200, hardening intact (`ReadonlyRootfs:true CapDrop:[ALL] Tmpfs:{/run:mode=1777,/tmp}`,
+`RestartCount:0`). Byte identity of all 5 changed/new files confirmed via `docker cp` + `diff`.
+Post-cleanup inventory: exactly 2 `noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-research-20260731T003927Z` (`:phase4-memory-webui`).
+Rollback cost: none on live data — no schema change, no provider registered yet, the report
+store is in-memory and empty at every restart regardless.
+
+**`UI-080…096` closed. No research provider is registered on this installation — that is an
+operator action (same posture as the reasoning provider), not a code gap.**

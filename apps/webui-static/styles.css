@@ -942,3 +942,6 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   .entry-action,.goal-action,.service-list li,.provenance-list li{border:1px solid CanvasText;background:Canvas}
   .dot.ok,.dot.bad{background:CanvasText}
 }
+/* UI-080 removable criteria chips (Research destination) */
+.chip-list .chip button{margin-inline-start:6px;padding:0 4px;border:0;background:transparent;color:inherit;font-size:calc(var(--text-scale)*13px);line-height:1;cursor:pointer}
+.chip-list .chip button:hover{color:var(--red)}

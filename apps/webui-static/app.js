@@ -2852,8 +2852,128 @@ $('#memorySearchButton').addEventListener('click',runMemorySearch);
 $('#memorySearchQuery').addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();runMemorySearch();}});
 $('#memoryTopicFilter').addEventListener('change',runMemorySearch);
 
+// --- Research (UI-080…096) --------------------------------------------------
+//
+// The one destination that reaches the open web, and only through a provider the operator
+// configures and consents to (`research.mjs`'s own module comment: the SAME tools/consent
+// mechanism every other connector uses, reused rather than duplicated — which is also why
+// UI-089's "declared egress" needs no code here: `privacy.mjs` already discloses a consented
+// external tool). Two gates stand between a goal and a report — outcomes are PROCEED (a
+// report), ASK (more detail needed) or REFUSE (named category, contestable) — and this file
+// never invents a fourth.
+const RESEARCH_CATEGORY_LABELS={
+  'physical-harm':'Instructions for physical harm',
+  'animal-harm':'Instructions to harm an animal',
+  'self-harm':'Self-harm',
+  'legal-evasion':'Evading a legal control',
+};
+function researchCategoryLabel(category){return RESEARCH_CATEGORY_LABELS[category]??category;}
+let researchCriteria=[];
+let researchLastRefusalId=null;
+function researchReportIdFromHash(){
+  const query=(location.hash||'').split('?')[1]||'';
+  return new URLSearchParams(query).get('report');
+}
+function renderResearchCriteriaChips(){
+  const box=$('#researchCriteriaChips');
+  box.innerHTML=researchCriteria.map((value,index)=>`<span class="chip">${escapeHtml(value)} <button type="button" data-remove-criterion="${index}" aria-label="Remove ${escapeHtml(value)}">×</button></span>`).join('');
+  $$('[data-remove-criterion]').forEach((button)=>button.addEventListener('click',()=>{researchCriteria.splice(Number(button.dataset.removeCriterion),1);renderResearchCriteriaChips();}));
+}
+$('#researchCriterionInput').addEventListener('keydown',(event)=>{
+  if(event.key!=='Enter')return;
+  event.preventDefault();
+  const value=$('#researchCriterionInput').value.trim();
+  if(value&&!researchCriteria.includes(value)){researchCriteria.push(value);renderResearchCriteriaChips();}
+  $('#researchCriterionInput').value='';
+});
+async function loadResearchProviderStatus(){
+  const status=$('#researchProviderStatus');
+  const picker=$('#researchProviderPicker');
+  try{
+    const info=await api('/api/v1/settings/research');
+    status.textContent=info.consented?'Configured and consented':info.configured?'Configured, awaiting consent':'Not configured';
+    status.className=`badge ${info.consented?'badge-on':'badge-off'}`;
+    if(currentPermissions.includes('provider.manage')){
+      picker.classList.remove('hidden');
+      $('#researchProviderSelect').innerHTML=info.eligibleTools.length
+        ?info.eligibleTools.map((tool)=>`<option value="${escapeHtml(tool.id)}" ${tool.id===info.toolId?'selected':''}>${escapeHtml(tool.name)}${tool.consented?'':' (not yet consented)'}</option>`).join('')
+        :'<option value="">No external tools registered yet — register one in Agents</option>';
+    }else picker.classList.add('hidden');
+  }catch{
+    status.textContent='Could not read provider status';status.className='badge badge-off';
+  }
+}
+$('#researchProviderSave').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+  const toolId=$('#researchProviderSelect').value||null;
+  try{await api('/api/v1/settings/research',{method:'PUT',body:JSON.stringify({toolId})});toast('Research provider updated.');await loadResearchProviderStatus();}
+  catch(error){reportError(error,'Setting the research provider');}
+}));
+function researchCandidateRow(candidate){
+  if(candidate.excluded)return `<article class="entity-card"><h3>${escapeHtml(candidate.name)} <span class="badge badge-off">Excluded</span></h3><p class="hint">${escapeHtml(candidate.excludedReason)}</p></article>`;
+  const evidence=candidate.evidence.map((row)=>`<li><b>${escapeHtml(row.kind.replaceAll('_',' '))}</b> — ${escapeHtml(row.statement)}</li>`).join('');
+  const q=candidate.evidenceQuality;
+  const quality=[`${q.reviewCount} reviews`,q.timeSpanDays!=null?`over ${q.timeSpanDays} days`:null,q.verifiedPurchaseShare!=null?`${Math.round(q.verifiedPurchaseShare*100)}% verified purchase`:null].filter(Boolean).join(' · ');
+  return `<article class="entity-card"><h3>${escapeHtml(candidate.name)}${candidate.sponsored?' <span class="badge badge-warn">Sponsored — not an affiliate link</span>':''}</h3>`
+    +(candidate.volatileObservedAt?`<small>Observed ${escapeHtml(isoToLocal(candidate.volatileObservedAt))}</small>`:'')
+    +`<ul>${evidence}</ul><p class="hint">Evidence quality: ${escapeHtml(quality)}${q.anomalyFlag?` · <b>${escapeHtml(q.anomalyNote)}</b>`:''}</p></article>`;
+}
+function researchReportLink(reportId){return `${location.origin}${location.pathname}#/research?report=${encodeURIComponent(reportId)}`;}
+async function renderResearchReport(reportId){
+  const panel=$('#researchOutcomePanel');
+  panel.classList.remove('hidden');
+  panel.innerHTML='<p class="hint">Loading the report…</p>';
+  try{
+    const report=await api(`/api/v1/research/report/${encodeURIComponent(reportId)}`);
+    panel.innerHTML=`<div class="panel-title"><h2>Report</h2><span class="badge badge-on">Expires ${escapeHtml(isoToLocal(report.expiresAt))}</span></div>`
+      +`<p class="hint">Link (requires a session on this installation — UI-082): <code>${escapeHtml(researchReportLink(report.id))}</code></p>`
+      +`<p class="hint">The exact string sent to the provider: <code>${escapeHtml(report.queryEcho)}</code></p>`
+      +report.candidates.map(researchCandidateRow).join('')
+      +'<button id="researchRevokeButton" type="button" class="danger">Revoke this link now</button>';
+    $('#researchRevokeButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+      try{await api(`/api/v1/research/report/${encodeURIComponent(report.id)}/revoke`,{method:'POST',body:'{}'});toast('Revoked.');panel.innerHTML='<p class="hint">This report has been revoked.</p>';}
+      catch(error){reportError(error,'Revoking the report');}
+    }));
+  }catch(error){panel.innerHTML=`<p class="hint">${escapeHtml(error.message)}</p>`;}
+}
+function renderResearchOutcome(outcome){
+  const panel=$('#researchOutcomePanel');
+  panel.classList.remove('hidden');
+  if(outcome.outcome==='REFUSE'){
+    researchLastRefusalId=outcome.refusalId;
+    panel.innerHTML=`<div class="panel-title"><h2>Refused</h2><span class="badge badge-off">${escapeHtml(outcome.stage)} check</span></div>`
+      +`<p>${escapeHtml(researchCategoryLabel(outcome.category))}. Legislation, history, prevention and remediation about this topic remain reachable — what is refused is operational instructions.</p>`
+      +'<button id="researchContestButton" type="button">This wasn’t right — contest this decision</button>';
+    $('#researchContestButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+      const note=prompt('Why should this be reconsidered?');
+      if(note===null)return;
+      try{await api('/api/v1/research/gate/contest',{method:'POST',body:JSON.stringify({refusalId:researchLastRefusalId,note})});toast('Recorded for review.');}
+      catch(error){reportError(error,'Contesting the refusal');}
+    }));
+    return;
+  }
+  if(outcome.outcome==='ASK'){
+    panel.innerHTML='<div class="panel-title"><h2>The gate needs more detail</h2></div><p>Add what you actually need to the goal above — for example licensing requirements or authorised sellers — then run it again.</p>';
+    return;
+  }
+  renderResearchReport(outcome.reportId);
+}
+$('#researchRunButton').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
+  const objective=$('#researchObjective').value.trim();
+  if(!objective){toast('A goal is required.',{kind:'error'});return;}
+  $('#researchOutcomePanel').classList.add('hidden');
+  try{renderResearchOutcome(await api('/api/v1/research/report',{method:'POST',body:JSON.stringify({objective,criteria:researchCriteria})}));}
+  catch(error){reportError(error,'Running research');}
+}));
+async function loadResearchDestination(){
+  renderResearchCriteriaChips();
+  await loadResearchProviderStatus();
+  const reportId=researchReportIdFromHash();
+  if(reportId)await renderResearchReport(reportId);
+}
+
 Object.assign(VIEW_LOADERS,{
   memory:loadMemoryDestination,
+  research:loadResearchDestination,
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
   home:loadHome,
