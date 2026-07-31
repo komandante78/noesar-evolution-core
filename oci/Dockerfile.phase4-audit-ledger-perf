@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block E (debt): AuditLedger.append() no longer re-reads the whole ledger file on every
+# write. lastHash is cached in memory after being read once at construction; append() was
+# O(n) in ledger size, now O(1) per write. Deferred debt item from PROJECT_STATE.json,
+# closed this phase. See docs/DECISION_LOG.md for the decision entry.
+
+FROM noesar-evolution:phase4-voice-control
+
+LABEL org.noesar.phase="4-audit-ledger-perf"
+LABEL org.noesar.block-e="audit-ledger-o1-append"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

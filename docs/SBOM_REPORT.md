@@ -154,3 +154,63 @@ and keeping every historical SBOM was never this document's design.
 
 Re-running against the same image with the same pinned syft digest yields the same
 component set; the documents carry a generation timestamp, so their checksums differ.
+
+## Re-run 2026-07-31, and the signing gap actually closed on all four documents
+
+Deferred debt item (`PROJECT_STATE.json.deferred_items`, carried since the 07-28 entry
+above): "no signature on the SBOM documents themselves — demonstrated closeable with
+`sign-release-artifact.mjs`, not yet run against all four." Closed in full this pass, as
+part of Block E+F (debt+packaging) following Block D's completion.
+
+Re-run against the current production image:
+
+| Field | Value |
+|---|---|
+| Target image | `noesar-evolution:phase4-voice-control` |
+| Target image id | `sha256:d935a1ccf919919a25d12cfce963649df098721f8b0dbe219e6f9d9410abc78e` |
+| syft version | `1.49.0` (unchanged) |
+| Generated (UTC) | `2026-07-31T07:02:41Z` |
+| Image CycloneDX components | **8 476** (532 libraries, 1 application, 1 OS, 7 942 files) — unchanged since 07-25: Block D (Research/sessions-TUI/panels/hotkeys/Voice) added zero third-party dependencies, browser-native APIs and existing wire methods only |
+| Image SPDX | 534 packages, 10 207 relationships — unchanged |
+| Source SPDX | 3 781 packages, 14 388 relationships (+8 packages since 07-28 — the new files this session: `voice-control.js`/`voice-control.test.mjs`/`tui-client-function-keys.test.mjs`/`Dockerfile.phase4-voice-control`/`Dockerfile.phase4-panels-tui`/`Dockerfile.phase4-sessions-tui`, no new dependency) |
+
+**All four documents signed and verified, tamper-rejection proven**:
+
+| Document | Signed file | Verify |
+|---|---|---|
+| `image.cyclonedx-json.json` | `image.cyclonedx-json.signed.json` | `PASS` |
+| `image.spdx-json.json` | `image.spdx-json.signed.json` | `PASS` |
+| `source.cyclonedx-json.json` | `source.cyclonedx-json.signed.json` | `PASS` |
+| `source.spdx-json.json` | `source.spdx-json.signed.json` | `PASS` |
+
+Fingerprint (all four, same key): `79aba4927f3ee42c0480e5f361b114d177ccac4a882048308d1e8e47e425aa69`
+
+Public key (Ed25519, SPKI PEM — safe to publish, verifies signatures, cannot forge one):
+
+```
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA0YmoRcxgbTIlQwY7ZClfbulSuTg92/inyR8Kf4mZK4A=
+-----END PUBLIC KEY-----
+```
+
+A hostile actor tampering with a signed document after the fact (one byte flipped in
+`bomFormat`) was verified to fail: `verify-release-artifact.mjs` reports `FAIL signature
+does not verify against the given public key`, not a silent pass.
+
+**⚠️ This key is a demonstration/session key, not a durable release-signing key.** It was
+generated fresh for this operation, the private key exists only in this session's own
+throwaway scratch directory (never inside this repository, never committed), and will not
+survive past this session. Signing these four documents proves the mechanism end to end —
+regeneration, signing, and tamper-detecting verification all work on real ~3–7 MB
+documents, not a toy example — but it does **not** establish a trustworthy release-signing
+identity: nothing links this particular keypair to "NOESAR EVOLUTION, the project" the way
+a key held in an HSM, a hardware token, or a secrets manager with recorded custody would.
+**Before this becomes a real release gate, the Owner needs to decide where a persistent
+signing private key is generated and held** (own machine, HSM, CI secret store, offline
+cold storage) — the same class of decision as `EXECUTE`/egress being a per-installation
+client choice (`D-0250`/`D-0266`), not something to invent unilaterally here. Once that
+key exists, re-signing all four documents with it is the same two commands used above.
+
+Artefacts for this run (unsigned + signed, `SHA256SUMS.txt`/`PROVENANCE.txt` covering all
+eight files): `$ARTIFACT_ROOT/sbom/`, overwriting the 07-28 set — same design as before,
+image tag changes every phase, historical SBOMs were never kept.

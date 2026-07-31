@@ -3580,3 +3580,38 @@ topbar element, one additive backward-compatible function parameter, no schema c
 **`D-0123`/`UI-054`/`CE-020` fully closed. Block D (the Owner's "build everything" WebUI
 decision) is COMPLETE. Per the four-pause plan, this is pausa 2 — the next block (E+F,
 debt+packaging) needs the Owner before starting.**
+
+## 2026-07-31 · `:phase4-audit-ledger-perf` — D-0271 deployed: AuditLedger.append() O(n)→O(1), Block E+F (debt) resumed on Owner instruction
+Tag `noesar-evolution:phase4-audit-ledger-perf`, `FROM :phase4-voice-control`. Changed:
+`services/reference-control-plane/src/audit.mjs` (`lastHash` cached at construction, no
+longer re-read from disk on every `append()`), `+2 audit.test.mjs` tests. Also this pass,
+**not deployed** (not baked into any image): `tools/verify-package.py` (unused `sys`
+import removed, `D-0039` debt closed), `docs/SBOM_REPORT.md` (fresh SBOM regenerated
+against `:phase4-voice-control`, all four documents signed with a session-only Ed25519
+demonstration key, all four verified `PASS`, tamper-rejection proven). Full detail:
+`docs/DECISION_LOG.md` `D-0271`.
+
+**Verification**: full suite **1349/1350** (1 pre-existing skip, up from 1347/1348, +2
+new), ESLint **262 files 0 errors**, `scripts/test.sh` **10/10**, seeded-defect **19/19**,
+`MANIFEST.sha256` **5886/5886**.
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log →
+backup (12.9 MB, service stopped) → §5a (older rollback
+`.rollback-voice-control-20260731T062228Z` removed, predecessor renamed to
+`.rollback-audit-ledger-perf-20260731T070727Z`) → new container from the full `docker
+inspect` HostConfig/Env JSON. `Up (healthy)`, `data-plane.ready migrations:19
+rls_tables:18`, `/livez`/`/readyz` 200/200, hardening intact (`ReadonlyRootfs:true
+CapDrop:[ALL] RestartCount:0`). Byte identity of `audit.mjs` confirmed via `docker run
+--entrypoint sh … sha256sum` against the built image. Post-cleanup inventory: exactly 2
+`noesar-evolution*` containers.
+
+Predecessor: `noesar-evolution.rollback-audit-ledger-perf-20260731T070727Z`
+(`:phase4-voice-control`). Rollback cost: none on live data — the hash-chain format on
+disk is unchanged, a ledger written before this fix verifies identically to one written
+after.
+
+**Block E+F: 3 of 7 debt items closed (unused import, audit ledger O(n), SBOM signing on
+all 4 documents), 1 investigated and found worse than described (oci/Dockerfile staleness
+— needs its own phase), 2 named out-of-scope (signing-portal, passkey/WebAuthn — net-new
+features, not debt), 1 confirmed deliberate design (TLS default off). The penetration-test
+item belongs to Block G, untouched here.**
