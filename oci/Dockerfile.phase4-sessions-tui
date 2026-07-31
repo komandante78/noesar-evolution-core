@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Block D2 (UI-050): the sessions surface (UI-001…UI-012) reached from a real terminal, not
+# just the browser. `session-protocol.mjs` gains three new dispatch methods
+# (`sessions.list`/`sessions.get`/`sessions.action`) that call the SAME `contextGraph`
+# instance the HTTP bridge's `/api/v1/sessions*` routes already use — one engine, a third
+# transport. `tools/tui-client.mjs` (the operator's own terminal client, run from the host
+# checkout, never baked into this image — see `Dockerfile.phase4-codev-peer`'s own note)
+# gains the matching commands. See docs/DECISION_LOG.md D-0267.
+
+FROM noesar-evolution:phase4-research
+
+LABEL org.noesar.phase="4-sessions-tui"
+LABEL org.noesar.block-d="d2-sessions-tui"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

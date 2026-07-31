@@ -48,6 +48,16 @@ const HELP = `Commands:
   map [path]            scan the workspace (or a subdirectory) — languages, entry points, symbols
   search <query>        literal search across the workspace
   status                engine status (workspace-actions, shadow, capability)
+
+  sessions [active|archived|bin] [page]   list sessions (UI-001…UI-012); default: active, page 1
+  session-show <n>                        show session <n> from the last list shown
+  session-archive <n…|all>                archive session(s) — moves, never destroys
+  session-delete <n…|all>                 delete to the 30-day bin — or for good, if the last
+                                           list shown was the bin itself (same rule as the
+                                           browser's Delete key)
+  session-restore <n…|all>                restore session(s) out of the archive or the bin
+  session-undone                          what the last session action could not do
+
   help                  this text
   exit                  close the connection and quit
 `;
@@ -167,7 +177,85 @@ function printJson(label, value) {
   console.log('');
 }
 
-async function dispatchCommand(reader, session, line) {
+/** Fresh per connection, carried through every `dispatchCommand` call: the last sessions
+ *  page shown (so `<n>` in `session-show`/`session-archive`/… means "row n of that page",
+ *  matching the browser's own numbered rows) and the refusals from the last batch action
+ *  (UI-009), since a terminal has no toast to show them in as they happen. */
+export function createTuiState() { return { lastList: null, lastRefused: [] }; }
+
+/** `all` means every row of the last list shown — the terminal equivalent of the browser's
+ *  `Ctrl+A` (UI-050), which selects everything on the current page, not every session that
+ *  exists. Anything else must be one or more 1-based row numbers from that same list. */
+export function resolveSessionSelection(state, tokens) {
+  if (!state.lastList) return { error: 'No session list loaded — run `sessions` first.' };
+  const items = state.lastList.items;
+  if (tokens.length === 1 && tokens[0].toLowerCase() === 'all') {
+    if (!items.length) return { error: 'The current list is empty.' };
+    return { ids: items.map((item) => item.id), items };
+  }
+  const ids = []; const selected = [];
+  for (const token of tokens) {
+    const index = Number(token);
+    if (!Number.isInteger(index) || index < 1 || index > items.length) {
+      return { error: `\`${token}\` is not a session number on the current list (1-${items.length}).` };
+    }
+    ids.push(items[index - 1].id);
+    selected.push(items[index - 1]);
+  }
+  if (!ids.length) return { error: 'Specify one or more session numbers, or `all`.' };
+  return { ids, items: selected };
+}
+
+/** UI-008/UI-051/UI-052 in a terminal: every destructive-or-moving action names what and
+ *  how many before it happens, and a bare Enter — the equivalent of the dangerous button
+ *  never being preselected — cancels rather than confirms. */
+async function confirmPrompt(reader, message) {
+  const answer = await question(reader, `${message} [y/N] `);
+  return /^y(es)?$/i.test(answer.trim());
+}
+
+async function runSessionsList(session, state, rest) {
+  let place = 'active'; let page;
+  for (const token of rest) {
+    if (['active', 'archived', 'bin'].includes(token)) place = token;
+    else if (/^\d+$/.test(token)) page = Number(token);
+    else { console.log(`Unrecognized argument \`${token}\`. Usage: sessions [active|archived|bin] [page]`); return; }
+  }
+  const result = await session.call('sessions.list', { place, page: page ?? 1 });
+  state.lastList = { place: result.place, items: result.items };
+  console.log(`\n${result.place} — ${result.from}-${result.to} of ${result.total} (page ${result.page}/${result.pageCount})`);
+  if (!result.items.length) { console.log('  (none)\n'); return; }
+  result.items.forEach((item, index) => {
+    const flags = [item.archived ? 'archived' : null, item.deletedAt ? 'in bin' : null].filter(Boolean).join(', ');
+    console.log(`  ${index + 1}. ${item.title}  [${item.messageCount} msgs, last ${item.lastActivityAt}]${flags ? ` (${flags})` : ''}`);
+  });
+  console.log('');
+}
+
+const SESSION_ACTION_WORDS = {
+  archive: { verb: 'Archive', consequence: 'Archiving moves the session. Nothing is deleted and it comes back whole.' },
+  bin: { verb: 'Delete', consequence: 'It goes to the bin and stays recoverable for 30 days.' },
+  purge: { verb: 'Delete for good', consequence: 'This cannot be undone. The session, its branches and its messages are destroyed.' },
+  restore: { verb: 'Restore', consequence: 'The session returns to the working list.' },
+};
+
+async function runSessionAction(reader, session, state, action, rest) {
+  const resolved = resolveSessionSelection(state, rest);
+  if (resolved.error) { console.log(resolved.error); return; }
+  const words = SESSION_ACTION_WORDS[action];
+  const titles = resolved.items.map((item) => item.title);
+  console.log(`${words.verb} ${resolved.ids.length} session${resolved.ids.length === 1 ? '' : 's'}:`);
+  for (const title of titles.slice(0, 5)) console.log(`  - ${title}`);
+  if (titles.length > 5) console.log(`  ...and ${titles.length - 5} more`);
+  console.log(words.consequence);
+  if (!(await confirmPrompt(reader, 'Confirm?'))) { console.log('Cancelled.'); return; }
+  const result = await session.call('sessions.action', { action, ids: resolved.ids });
+  state.lastRefused = result.refused ?? [];
+  const refusedNote = result.refused.length ? `, ${result.refused.length} refused (see \`session-undone\`)` : '';
+  console.log(`${words.verb}: ${result.applied.length} applied${refusedNote}.\n`);
+}
+
+export async function dispatchCommand(reader, session, line, state) {
   const [command, ...rest] = line.trim().split(/\s+/);
   const arg = rest.join(' ');
   switch (command) {
@@ -187,6 +275,20 @@ async function dispatchCommand(reader, session, line) {
     case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return true;
     case 'search': printJson('matches', await session.call('repoMap.search', { q: arg })); return true;
     case 'status': printJson('status', await session.call('status', {})); return true;
+    case 'sessions': await runSessionsList(session, state, rest); return true;
+    case 'session-show': {
+      const resolved = resolveSessionSelection(state, rest.length ? [rest[0]] : []);
+      if (resolved.error) { console.log(resolved.error); return true; }
+      printJson('session', await session.call('sessions.get', { id: resolved.ids[0] }));
+      return true;
+    }
+    case 'session-archive': await runSessionAction(reader, session, state, 'archive', rest); return true;
+    case 'session-delete': await runSessionAction(reader, session, state, state.lastList?.place === 'bin' ? 'purge' : 'bin', rest); return true;
+    case 'session-restore': await runSessionAction(reader, session, state, 'restore', rest); return true;
+    case 'session-undone':
+      if (!state.lastRefused.length) console.log('Nothing refused.');
+      else for (const item of state.lastRefused) console.log(`  ${item.id} — ${item.reason}`);
+      return true;
     case 'exit': case 'quit': return false;
     default: console.log(`Unknown command \`${command}\`. Type \`help\` for the list.`); return true;
   }
@@ -225,10 +327,11 @@ async function main() {
   }
   console.log(`Signed in as ${user.username} (${user.role}). Type \`help\` for commands.\n`);
 
+  const state = createTuiState();
   for (;;) {
     const line = await question(reader, 'coden-evolution> ');
     let keepGoing = true;
-    try { keepGoing = await dispatchCommand(reader, session, line); }
+    try { keepGoing = await dispatchCommand(reader, session, line, state); }
     catch (error) { console.error(`Error${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`); }
     if (!keepGoing) break;
   }
@@ -236,9 +339,14 @@ async function main() {
   socket.end();
 }
 
-main()
-  .then(() => process.exit(process.exitCode ?? 0))
-  .catch((error) => {
-    console.error(error.message);
-    process.exit(1);
-  });
+// Guarded like server.mjs's own entrypoint: a test importing this module for
+// `dispatchCommand`/`resolveSessionSelection` coverage must not also open a real socket and
+// block on stdin — nothing else would ever call `main()`.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main()
+    .then(() => process.exit(process.exitCode ?? 0))
+    .catch((error) => {
+      console.error(error.message);
+      process.exit(1);
+    });
+}

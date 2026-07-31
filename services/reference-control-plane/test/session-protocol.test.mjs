@@ -21,6 +21,8 @@ import { AuthService } from '../src/auth.mjs';
 import { AuditLedger } from '../src/audit.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
 import { createSessionDispatch, startUnixSocketServer, PROTOCOL_VERSION } from '../src/session-protocol.mjs';
+import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
+import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -33,7 +35,7 @@ function resolveWorkspaceSubpath(root, subpath) {
   return candidate.startsWith(root) ? candidate : null;
 }
 
-let ws, shadows, socketPath, server, totpSecret, authenticatedSocket;
+let ws, shadows, socketPath, server, totpSecret, authenticatedSocket, contextGraph;
 
 before(async () => {
   ws = mkdtempSync(join(tmpdir(), 'noesar-sp-ws-'));
@@ -49,11 +51,13 @@ before(async () => {
   const workspaceActions = new WorkspaceActionOrchestrator({
     workspaceRoot: ws, shadowsRoot: shadows, minter: new TokenMinter(randomBytes(32)), events,
   });
+  contextGraph = new ContextGraph(new AtomicJsonStore(join(ws, 'ai-workspace.json')));
   const dispatch = createSessionDispatch({
     workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
     workspaceRoot: ws, engineEvents: events, workspaceActionsStatus,
     getShadowSnapshot: () => shadowStatus(join(ws, 'shadows')),
     capabilityStatus, capabilityMinter: new TokenMinter(randomBytes(32)),
+    contextGraph, ledger,
   });
   socketPath = join(ws, 'tui-test.sock');
   server = startUnixSocketServer({ socketPath, dispatch, auth, ledger });
@@ -151,5 +155,55 @@ describe('session protocol — unix socket transport', () => {
     });
     assert.equal(response.ok, false);
     assert.equal(response.error.kind, 'INVALID_JSON');
+  });
+});
+
+// UI-050 (D-0267): the same three `contextGraph` methods the HTTP bridge's
+// `/api/v1/sessions*` routes call, reached over the socket instead — proof that a session
+// archived/binned/restored from the terminal is the same fact the browser would see, not a
+// second copy of it.
+describe('session protocol — sessions.* (UI-050, the TUI half of UI-001…UI-012)', () => {
+  test('sessions.list reflects a conversation created directly on contextGraph', async () => {
+    const { conversation } = contextGraph.createConversation({ title: 'From the socket test' });
+    const listed = await call(authenticatedSocket, 'sessions.list', { place: 'active' });
+    assert.ok(listed.items.some((item) => item.id === conversation.id));
+    assert.equal(listed.place, 'active');
+  });
+
+  test('sessions.get returns the same conversation contextGraph itself would', async () => {
+    const { conversation } = contextGraph.createConversation({ title: 'Fetched by id' });
+    const fetched = await call(authenticatedSocket, 'sessions.get', { id: conversation.id });
+    assert.equal(fetched.conversation.id, conversation.id);
+  });
+
+  test('sessions.action archives one session and it moves place on the next list', async () => {
+    const { conversation } = contextGraph.createConversation({ title: 'To be archived' });
+    const result = await call(authenticatedSocket, 'sessions.action', { action: 'archive', ids: [conversation.id] });
+    assert.equal(result.applied.length, 1);
+    assert.equal(result.refused.length, 0);
+    const archived = await call(authenticatedSocket, 'sessions.list', { place: 'archived' });
+    assert.ok(archived.items.some((item) => item.id === conversation.id));
+  });
+
+  test('sessions.action reports a mixed batch as partial — one applied, one refused, not an all-or-nothing failure', async () => {
+    const { conversation } = contextGraph.createConversation({ title: 'Real one in the same batch' });
+    const result = await call(authenticatedSocket, 'sessions.action', { action: 'bin', ids: [conversation.id, 'no-such-id'] });
+    assert.equal(result.applied.length, 1);
+    assert.equal(result.refused.length, 1);
+    assert.equal(result.refused[0].id, 'no-such-id');
+  });
+
+  test('sessions.action rejects an action outside the five contextGraph verbs before ever touching a session', async () => {
+    await assert.rejects(
+      call(authenticatedSocket, 'sessions.action', { action: 'delete-forever', ids: ['x'] }),
+      (error) => error.kind === 'INVALID_ACTION',
+    );
+  });
+
+  test('sessions.action with no ids is refused rather than silently a no-op', async () => {
+    await assert.rejects(
+      call(authenticatedSocket, 'sessions.action', { action: 'archive', ids: [] }),
+      (error) => error.kind === 'INVALID_REQUEST',
+    );
   });
 });

@@ -3446,3 +3446,37 @@ store is in-memory and empty at every restart regardless.
 
 **`UI-080…096` closed. No research provider is registered on this installation — that is an
 operator action (same posture as the reasoning provider), not a code gap.**
+
+## 2026-07-31 · `:phase4-sessions-tui` — D-0267 deployed: the CodeN Evolution TUI's sessions commands (UI-050), Block D2
+Tag `noesar-evolution:phase4-sessions-tui`, `FROM :phase4-research`. Changed:
+`services/reference-control-plane/src/session-protocol.mjs` (+`sessions.list`/`sessions.get`/
+`sessions.action`, closed over the same `contextGraph`+`ledger` the HTTP bridge already uses),
+`server.mjs` (wires `contextGraph`/`ledger` into `createSessionDispatch`), `tools/tui-client.mjs`
+(+`sessions`/`session-show`/`session-archive`/`session-delete`/`session-restore`/
+`session-undone`, run from the operator's own host checkout — never baked into this image, see
+`Dockerfile.phase4-codev-peer`'s own note). Full detail: `docs/DECISION_LOG.md` `D-0267`.
+
+**Verification (pre-deploy)**: full suite **1312/1313** (1 pre-existing skip, up from 1297 —
++6 `session-protocol.test.mjs`, +9 new `tui-client-sessions.test.mjs`), ESLint **258 files 0
+errors**, `scripts/test.sh` **10/10**, seeded-defect **19/19**, `auth-http-smoke`/`http-smoke`
+PASS, `MANIFEST.sha256` **5880/5880**. No DOM/markup changed this phase, so browser E2E and the
+accessibility audit were judged irrelevant and not re-run (control-plane + CLI change only).
+
+**Deploy**: `docker stop -t 60` → `postgres.stopped clean:true` confirmed in the log → backup
+(12.9 MB, service stopped) → §5a (older rollback `.rollback-research-20260731T003927Z`
+removed, predecessor renamed to `.rollback-sessions-tui-20260731T022844Z`) → new container from
+the full `docker inspect` HostConfig JSON. `Up (healthy)`, `data-plane.ready migrations:19
+rls_tables:18`, `/livez`/`/readyz` 200/200, hardening intact (`ReadonlyRootfs:true
+CapDrop:[ALL] RestartCount:0`). Byte identity of both changed source files confirmed via
+`docker run --entrypoint sha256sum` against the built image. **Live probe, unauthenticated, no
+real session touched**: a raw connection to the host-side `tui.sock` gets the protocol
+handshake, then `sessions.list` before login answers `UNAUTHENTICATED` — the new method is
+genuinely wired through `codev`'s relay to `api`'s dispatch on the running product, gated
+exactly like every other method. Post-cleanup inventory: exactly 2 `noesar-evolution*`
+containers.
+
+Predecessor: `noesar-evolution.rollback-sessions-tui-20260731T022844Z` (`:phase4-research`).
+Rollback cost: none on live data — additive dispatch methods only, no schema change.
+
+**`UI-050` closed for sessions. `CE-020` remains open for the agent-panels half (`UI-054`),
+which is Block D3 alongside Voice (`D-0123`).**

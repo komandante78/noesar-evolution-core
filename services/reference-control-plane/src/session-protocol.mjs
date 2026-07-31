@@ -41,7 +41,7 @@ export class ProtocolError extends Error {
 export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
-  capabilityStatus, capabilityMinter,
+  capabilityStatus, capabilityMinter, contextGraph, ledger,
 }) {
   const nowUnix = () => Math.floor(Date.now() / 1000);
   const methods = {
@@ -58,6 +58,42 @@ export function createSessionDispatch({
       const run = workspaceActions.get(params?.runId);
       if (!run) throw new ProtocolError('NOT_FOUND', `no run \`${params?.runId}\``);
       return run;
+    },
+    // UI-050 (D-0267): the sessions surface (UI-001…UI-012) reached from the terminal, not
+    // just the browser — same three methods the HTTP bridge's `/api/v1/sessions*` routes
+    // already call on `contextGraph`, so a session archived/binned/restored from either
+    // transport is the same fact, not two.
+    'sessions.list': ({ params }) => contextGraph.listSessions({
+      projectId: params?.projectId ?? null, place: params?.place ?? 'active',
+      page: Number(params?.page ?? 1), pageSize: Number(params?.pageSize ?? 10),
+    }),
+    'sessions.get': ({ params }) => contextGraph.getConversation(params?.id),
+    // One verb, any number of sessions — the same batch-with-partial-failure shape as
+    // `POST /api/v1/sessions/actions`, so a selection that is half-refused (UI-009) reads
+    // the same from a terminal as it does from the browser.
+    'sessions.action': ({ params, actor }) => {
+      const action = String(params?.action ?? '');
+      if (!['archive', 'unarchive', 'bin', 'restore', 'purge'].includes(action)) {
+        throw new ProtocolError('INVALID_ACTION', 'action must be archive, unarchive, bin, restore or purge.');
+      }
+      const ids = [...new Set((Array.isArray(params?.ids) ? params.ids : []).map(String))];
+      if (!ids.length) throw new ProtocolError('INVALID_REQUEST', 'at least one session id is required.');
+      if (ids.length > 200) throw new ProtocolError('INVALID_REQUEST', 'at most 200 sessions may be moved at once.');
+      const applied = []; const refused = [];
+      for (const id of ids) {
+        try {
+          if (action === 'archive') applied.push(contextGraph.archiveSession(id, { archived: true }));
+          else if (action === 'unarchive') applied.push(contextGraph.archiveSession(id, { archived: false }));
+          else if (action === 'bin') applied.push(contextGraph.binSession(id));
+          else if (action === 'restore') applied.push(contextGraph.restoreSession(id));
+          else applied.push(contextGraph.purgeSession(id));
+        } catch (error) { refused.push({ id, status: Number(error.status ?? 500), reason: error.message }); }
+      }
+      ledger.append({
+        actor, action: `session.${action}`, result: refused.length ? 'partial' : 'success',
+        details: { requested: ids.length, applied: applied.length, refused: refused.length, transport: 'tui' },
+      });
+      return { action, applied, refused };
     },
     'repoMap.scan': ({ params }) => {
       const target = resolveWorkspaceSubpath(workspaceRoot, params?.path);
