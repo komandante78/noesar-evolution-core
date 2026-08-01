@@ -3837,3 +3837,31 @@ Predecessor: `noesar-evolution.rollback-pre-d0281-reconcile-fix-20260801T001103Z
 (`debug-evolution:1.1.0-noesar-module`, unchanged image, prior network config). Rollback
 cost: none on live data — no schema change, no migration; reverting returns both
 containers to the LAN-published pair.
+
+## 2026-08-01 · `:phase4-module-console-proxy` — D-0282 deployed: module sidebar link restored via an authenticated proxy through NOESAR
+
+`noesar-evolution:phase4-module-console-proxy` (`FROM :phase4-debug-evolution-net-migration`,
+16 overlay2 layers). `docker stop -t 60` → `postgres.stopped clean:true` read in the log →
+backup (`BACKUPS/runtime_pre_d0281_module_proxy_20260801T002903Z.tar.gz`) → §5a (older
+rollback removed, predecessor renamed `.rollback-pre-module-proxy-20260801T002903Z`) →
+recreated from the same generated env-args file used since `D-0281`, with one addition:
+`-p 192.168.178.100:8089:8089` (the new module-console-proxy listener; no other port,
+mount or env value changed). `Up (healthy)` on the first attempt,
+`data-plane.ready migrations:19 rls_tables:18 production_ready:true` unchanged.
+
+Live probes after deploy: boot log —
+`module-console-proxy.started port:8089 target:http://debug-evolution:8787`.
+`curl http://192.168.178.100:8089/styles.css` (no cookie) — `401`.
+`curl http://192.168.178.100:8100/livez` — `200` (NOESAR's own publish unaffected).
+`docker exec noesar-evolution` fetching `http://debug-evolution:8787/styles.css` directly —
+`200` (the proxy's own target is healthy). A real Owner-session pass-through was not
+exercised on this installation — no Owner password/TOTP held by this session, same
+limitation `D-0279` named rather than fabricated a credential to work around; the exact
+code path is proven end to end in `module-console-proxy-catalog-integration.test.mjs`
+against a real session obtained through the real setup flow, in a throwaway workspace.
+
+Predecessor: `noesar-evolution.rollback-pre-module-proxy-20260801T002903Z`
+(`:phase4-debug-evolution-net-migration`). `debug-evolution` untouched by this deploy —
+no image or config change on that side. Rollback cost: none on live data — no schema
+change, no migration; reverting removes the proxy listener/port and the catalog falls
+back to the module's own (LAN-closed) address automatically.

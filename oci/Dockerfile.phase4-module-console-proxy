@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0281 follow-up: the module sidebar link stopped opening in a real browser the moment
+# D-0281 closed Debug Evolution's LAN publish -- the module has no login of its own
+# (D-0280) to protect it if it stayed reachable directly, and the sidebar's
+# `externalUrl` was a hardcoded direct-LAN address that only worked while that publish
+# existed.
+#
+# Fix: a second listener on NOESAR itself (module-console-proxy.mjs), gated on the same
+# session cookie every other NOESAR route checks, root-path proxying to the module over
+# the internal network (no path prefix -- the module's own HTML/JS use absolute paths,
+# which a prefixed mount would silently break). The catalog route now reports the
+# module's externalUrl as NOESAR's own publish address on the proxy port, not the
+# module's own now-closed address.
+#
+# Verified before this build: unit 1416/1417 (1 pre-existing skip, 0 failed, +8 new:
+# 5 proxy unit tests, 3 catalog integration tests), ESLint 280 files 0 errors. Built
+# FROM the previous tag: layers well under the 128 limit.
+
+FROM noesar-evolution:phase4-debug-evolution-net-migration
+
+LABEL org.noesar.phase="4-module-console-proxy"
+LABEL org.noesar.feature="module-sidebar-link-proxied-through-noesars-own-authenticated-publish"
+LABEL org.noesar.base-image="noesar-evolution:phase4-debug-evolution-net-migration"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

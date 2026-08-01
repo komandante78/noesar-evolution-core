@@ -29,6 +29,7 @@ import { researchGateFrom } from './research-gate.mjs';
 import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
 import { rescanNoesarEvolutionProjects } from './debug-evolution-bridge.mjs';
+import { createModuleConsoleProxyServer } from './module-console-proxy.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
 } from './capability.mjs';
@@ -523,6 +524,26 @@ function ensureModuleServiceAccounts() {
   }
 }
 ensureModuleServiceAccounts();
+
+// D-0281 follow-up: the module's own `externalUrl` (owner-module-catalog.mjs) stopped
+// being reachable from a browser on the LAN the moment that phase closed the module's
+// direct LAN exposure -- the module has no login of its own (D-0280) to protect it if
+// it stayed reachable directly. This is the replacement path: a second listener, gated
+// on the SAME session cookie every other NOESAR route checks, root-path proxying to the
+// module over the internal network so its absolute-path assets resolve unmodified.
+// Only started when there is a URL to proxy to; a fresh install with the module not
+// configured gets nothing listening on the port, not a proxy to nowhere.
+let moduleConsoleProxyServer = null;
+if (process.env.NOESAR_DEBUG_EVOLUTION_URL) {
+  moduleConsoleProxyServer = createModuleConsoleProxyServer({
+    targetBaseUrl: process.env.NOESAR_DEBUG_EVOLUTION_URL,
+    moduleName: 'Debug Evolution',
+    isAuthorized: (req) => {
+      const session = optionalSession(req);
+      return Boolean(session && auth.hasPermission(session.user, 'workspace.read'));
+    },
+  });
+}
 
 // The approval queue reads the three subsystems that own approvals and owns none itself,
 // so it is constructed last — after the update manager it reads from.
@@ -1498,8 +1519,19 @@ const requestListener = async (req, res) => {
         // the same manifest install/activate sign — never a second, independently
         // maintained copy of this metadata for display purposes only.
         const manifest = entry.buildManifest();
+        // D-0281: entry.externalUrl was a direct LAN address, dead since the module
+        // moved off the LAN-published network (it has no auth of its own to protect it
+        // if it stayed there). Where a proxy exists for this module, the reachable
+        // address is NOESAR's own publish address on the proxy port instead — same
+        // bindAddress the operator already published NOESAR on, never a second one to
+        // configure. Falls back to the catalog's declared URL when no proxy is running
+        // (module not configured) or no publish address is known, rather than hiding
+        // the field.
+        const proxiedUrl = entry.id === 'debug-evolution' && moduleConsoleProxyServer && bindAddress && !isWildcardAddress(bindAddress)
+          ? `${tls.active ? 'https' : 'http'}://${bindAddress}:${process.env.NOESAR_MODULE_PROXY_PORT ?? 8089}`
+          : entry.externalUrl;
         return {
-          id: entry.id, name: entry.name, description: entry.description, externalUrl: entry.externalUrl,
+          id: entry.id, name: entry.name, description: entry.description, externalUrl: proxiedUrl,
           status: installed ? installed.state.status : 'not-installed',
           version: manifest.version, publisher: manifest.publisher, trustLevel: manifest.trust_level,
           sector: manifest.sector,
@@ -3221,6 +3253,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   startUnixSocketServer({ socketPath: codevPeerSocketPath, dispatch: sessionDispatch, auth, ledger });
   logger.info('tui.socket-listening', { component:'session-protocol', path: codevPeerSocketPath });
 
+  if (moduleConsoleProxyServer) {
+    const proxyPort = Number(process.env.NOESAR_MODULE_PROXY_PORT ?? 8089);
+    moduleConsoleProxyServer.listen(proxyPort, host, () => {
+      logger.info('module-console-proxy.started', { component:'control-plane', port:proxyPort, target:process.env.NOESAR_DEBUG_EVOLUTION_URL });
+    });
+  }
+
   server.listen(port, host, async () => {
     logger.info('runtime.started', {
       // The bind address is described rather than printed: the sink redacts IPv4
@@ -3308,6 +3347,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         stopping = true;
         logger.warn('runtime.stopping', { component:'control-plane', signal });
         watchdog.stop();
+        moduleConsoleProxyServer?.close();
         server.close(async () => {
           try {
             await localModels.release();
@@ -3321,4 +3361,4 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   });
 }
-export { server, logger, watchdog, debugMode, updateManager, timezoneService, metrics, tls, secureCookies };
+export { server, moduleConsoleProxyServer, logger, watchdog, debugMode, updateManager, timezoneService, metrics, tls, secureCookies };
