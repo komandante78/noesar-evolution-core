@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// D-0284, end to end: `POST /api/v1/debug-evolution/triage` against a REAL server.mjs boot,
-// a stub Debug Evolution (findings/evidence/transition) and a stub ATOM (`/v1/hypothesize`),
-// proving the whole chain a curl cannot: NOESAR reads a DETECTED finding, calls the real
-// wire shape ATOM answers on, converts the answer into Debug Evolution's own evidence rows,
-// and attempts the transition Debug Evolution's own state machine decides.
+// D-0284/D-0285, end to end: `POST /api/v1/debug-evolution/triage` against a REAL server.mjs
+// boot, a stub Debug Evolution (findings/evidence/transition) and a stub ATOM
+// (`/v1/hypothesize`), proving the whole chain a curl cannot: NOESAR reads a DETECTED
+// finding, calls the real wire shape ATOM answers on for all three roles (discovery,
+// security, root-cause), converts each answer into Debug Evolution's own evidence rows, and
+// attempts the transition Debug Evolution's own state machine decides. The stub ATOM
+// answers differently per `intent.goal`, so the test can tell the three calls apart the same
+// way the real sidecar would answer three genuinely different questions.
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,6 +28,7 @@ const FINDINGS = [
   { id: 'f-confirmed', project_id: 'p1', rule_id: 'sql-injection', title: 'Already judged', description: 'x', severity: 'high', state: 'CONFIRMED', path: 'src/other.py', line: 1 },
 ];
 const evidenceCalls = [];
+const hypothesizeCalls = [];
 let transitionCall = null;
 
 const stubDebugEvolution = createServer(async (req, res) => {
@@ -71,7 +75,35 @@ const stubAtom = createServer(async (req, res) => {
     return;
   }
   if (req.method === 'POST' && req.url === '/v1/hypothesize') {
+    const chunks = []; for await (const chunk of req) chunks.push(chunk);
+    const { intent } = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    hypothesizeCalls.push(intent.goal);
     res.writeHead(200, { 'content-type': 'application/json' });
+    if (/reachable/.test(intent.goal)) {
+      // security
+      res.end(JSON.stringify({
+        ok: true,
+        value: [{
+          statement: 'reachable from the public /search endpoint with no authentication in between',
+          supporting: [{ kind: 'SUPPORTED', sources: [{ locator: 'src/routes.py:12', excerpt: 'app.route("/search")(lambda: db_query(request.args))' }] }],
+          contrary: 'NOT_SOUGHT',
+        }],
+      }));
+      return;
+    }
+    if (/causal defect/.test(intent.goal)) {
+      // root-cause
+      res.end(JSON.stringify({
+        ok: true,
+        value: [{
+          statement: 'the query builder concatenates instead of parameterising because it predates the ORM migration',
+          supporting: [{ kind: 'SUPPORTED', sources: [{ locator: 'src/db.py:38', excerpt: 'def raw_query(s): return f"SELECT * FROM t WHERE x={s}"' }] }],
+          contrary: 'NONE_FOUND',
+        }],
+      }));
+      return;
+    }
+    // discovery
     res.end(JSON.stringify({
       ok: true,
       value: [{
@@ -156,7 +188,7 @@ after(async () => {
   await new Promise((resolve) => stubAtom.close(resolve));
 });
 
-describe('D-0284 — Phase 2 discovery+skeptic triage works end to end against real ATOM and Debug Evolution wire shapes', () => {
+describe('D-0284/D-0285 — Phase 2 discovery+skeptic+security+root-cause triage works end to end against real ATOM and Debug Evolution wire shapes', () => {
   test('triage without a session is refused', async () => {
     const attempt = await raw('/api/v1/debug-evolution/triage', { method: 'POST' });
     assert.equal(attempt.status, 401);
@@ -167,33 +199,50 @@ describe('D-0284 — Phase 2 discovery+skeptic triage works end to end against r
     assert.equal(attempt.status, 403);
   });
 
-  test('triage only visits the DETECTED finding, calls ATOM for real, and writes real evidence + a real transition', async () => {
+  test('triage only visits the DETECTED finding, calls ATOM once per role for real, and writes real evidence + a real transition', async () => {
     const result = await authed('/api/v1/debug-evolution/triage', { method: 'POST', payload: {} });
     assert.equal(result.status, 200, `triage failed: ${result.text.slice(0, 300)}`);
     assert.equal(result.json.triaged, 1, 'the already-CONFIRMED finding must not be re-triaged');
     assert.equal(result.json.succeeded, 1);
     assert.equal(result.json.results[0].id, 'f-detected');
     assert.equal(result.json.results[0].skipped, false);
-    assert.equal(result.json.results[0].evidenceAdded, 2, 'one supporting + one genuine counter-evidence row');
+    assert.equal(result.json.results[0].hypotheses, 3, 'one hypothesis per role: discovery, security, root-cause');
+    assert.equal(result.json.results[0].evidenceAdded, 4, 'discovery: 1 supporting + 1 counter-evidence; security: 1 supporting; root-cause: 1 supporting');
     assert.equal(result.json.results[0].state, 'HYPOTHESIZED');
-    assert.ok(result.json.provenance.some((entry) => entry.surface === 'hypothesize' && entry.provider === 'atom'), 'provenance must say ATOM answered, not the reference provider');
+    assert.ok(result.json.provenance.filter((entry) => entry.surface === 'hypothesize' && entry.provider === 'atom').length >= 3, 'provenance must show ATOM answered all three hypothesize calls, not the reference provider');
 
-    assert.equal(evidenceCalls.length, 2);
+    assert.equal(hypothesizeCalls.length, 3, 'exactly one hypothesize() call per declared role, not six');
+    assert.ok(hypothesizeCalls.some((goal) => /real defect/.test(goal)), 'discovery intent was asked');
+    assert.ok(hypothesizeCalls.some((goal) => /reachable/.test(goal)), 'security intent was asked');
+    assert.ok(hypothesizeCalls.some((goal) => /causal defect/.test(goal)), 'root-cause intent was asked');
+
+    assert.equal(evidenceCalls.length, 4);
     assert.equal(evidenceCalls[0].evidence_type, 'AI_HYPOTHESIS');
     assert.equal(evidenceCalls[0].source, 'atom');
+    assert.equal(evidenceCalls[0].metadata.role, 'discovery');
     assert.equal(evidenceCalls[1].evidence_type, 'COUNTER_EVIDENCE');
+    assert.equal(evidenceCalls[1].metadata.role, 'discovery');
     assert.match(evidenceCalls[1].summary, /quote\(user_input\)/, 'the real counter-evidence text from the stub must reach Debug Evolution unchanged');
+    assert.equal(evidenceCalls[2].metadata.role, 'security');
+    assert.equal(evidenceCalls[2].evidence_type, 'AI_HYPOTHESIS', 'D-0285: security reasoning is AI_HYPOTHESIS, never SEMANTIC_REACHABILITY');
+    assert.match(evidenceCalls[2].summary, /public \/search endpoint/);
+    assert.equal(evidenceCalls[3].metadata.role, 'root-cause');
+    assert.match(evidenceCalls[3].summary, /ORM migration/);
 
     assert.equal(transitionCall.target, 'HYPOTHESIZED');
     assert.equal(transitionCall.actor, 'atom', 'the actor recorded must distinguish this from a human using the WebUI (actor:"webui")');
-    assert.match(transitionCall.rationale, /concatenates unsanitised user input/);
+    assert.match(transitionCall.rationale, /discovery:.*concatenates unsanitised user input/);
+    assert.match(transitionCall.rationale, /security:.*reachable/);
+    assert.match(transitionCall.rationale, /root-cause:.*ORM migration/);
   });
 
   test('a second triage run adds no new evidence to a finding that already moved past DETECTED — the filter, not memory, does the work', async () => {
     evidenceCalls.length = 0;
+    hypothesizeCalls.length = 0;
     const result = await authed('/api/v1/debug-evolution/triage', { method: 'POST', payload: {} });
     assert.equal(result.status, 200);
     assert.equal(result.json.triaged, 0, 'f-detected is no longer DETECTED after the previous test moved it to HYPOTHESIZED in the stub\'s own state');
     assert.equal(evidenceCalls.length, 0);
+    assert.equal(hypothesizeCalls.length, 0, 'no role is asked anything for a finding that is not DETECTED');
   });
 });

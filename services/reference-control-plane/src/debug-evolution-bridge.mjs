@@ -23,7 +23,7 @@
 
 import { ReasoningUnavailable } from './reasoning-router.mjs';
 import { ReasoningRefused } from './reasoning.mjs';
-import { findingAsGatheredEvidence, findingAsIntent, hypothesisToEvidenceRows } from './debug-evolution-triage.mjs';
+import { findingAsGatheredEvidence, hypothesisToEvidenceRows, TRIAGE_ROLE_INTENTS } from './debug-evolution-triage.mjs';
 
 const NOESAR_PROJECT_NAME_PREFIX = 'NOESAR EVOLUTION';
 
@@ -80,34 +80,41 @@ export async function rescanNoesarEvolutionProjects() {
 }
 
 /**
- * D-0284: one finding, one call to `hypothesize()` (discovery + skeptic in the same answer —
- * see `debug-evolution-triage.mjs`'s header), every resulting evidence row submitted, then a
- * single attempt at `DETECTED -> HYPOTHESIZED` — legal by `de_v2/core.py`'s own `TRANSITIONS`
- * map with no evidence gate on that specific target, so this always either succeeds or fails
- * on something Debug Evolution's own state machine decided, never on a count this module
- * invented. `hypotheses.length === 0` is a real, legitimate answer ("nothing to hypothesize"
- * is not the same as a refusal) and is reported as skipped rather than retried blindly by a
- * caller that cannot tell the two apart.
+ * D-0284/D-0285: one finding, one `hypothesize()` call PER ROLE in `TRIAGE_ROLE_INTENTS`
+ * (`discovery`+`skeptic` combined, then `security`, then `root-cause` — three calls, not
+ * six, because `Hypothesis.contrary` already covers skeptic's half of the first). Every
+ * resulting evidence row across all three is submitted, tagged with which role produced it,
+ * then a single attempt at `DETECTED -> HYPOTHESIZED` — legal by `de_v2/core.py`'s own
+ * `TRANSITIONS` map with no evidence gate on that specific target, so this always either
+ * succeeds or fails on something Debug Evolution's own state machine decided, never on a
+ * count this module invented. A role returning zero hypotheses is a real, legitimate answer
+ * ("nothing to hypothesize" is not the same as a refusal) and contributes nothing rather
+ * than being retried.
  */
 async function triageFinding(finding, { router, token }) {
-  const intent = findingAsIntent(finding);
   const gathered = findingAsGatheredEvidence(finding);
-  const hypotheses = await router.hypothesize(intent, gathered);
-  if (!hypotheses.length) {
-    return { id: finding.id, ok: true, skipped: true, reason: 'no hypothesis returned', evidenceAdded: 0 };
-  }
   let evidenceAdded = 0;
-  for (const hypothesis of hypotheses) {
-    for (const row of hypothesisToEvidenceRows(hypothesis)) {
-      await callDebugEvolution(`/api/v2/findings/${encodeURIComponent(finding.id)}/evidence`, { method: 'POST', token, body: row });
-      evidenceAdded += 1;
+  let totalHypotheses = 0;
+  const statements = [];
+  for (const { role, buildIntent } of TRIAGE_ROLE_INTENTS) {
+    const hypotheses = await router.hypothesize(buildIntent(finding), gathered);
+    totalHypotheses += hypotheses.length;
+    for (const hypothesis of hypotheses) {
+      statements.push(`${role}: ${hypothesis.statement}`);
+      for (const row of hypothesisToEvidenceRows(hypothesis, role)) {
+        await callDebugEvolution(`/api/v2/findings/${encodeURIComponent(finding.id)}/evidence`, { method: 'POST', token, body: row });
+        evidenceAdded += 1;
+      }
     }
   }
-  const rationale = hypotheses.map((hypothesis) => hypothesis.statement).join(' | ');
+  if (!totalHypotheses) {
+    return { id: finding.id, ok: true, skipped: true, reason: 'no hypothesis returned by any role', evidenceAdded: 0 };
+  }
+  const rationale = statements.join(' | ');
   const transitioned = await callDebugEvolution(`/api/v2/findings/${encodeURIComponent(finding.id)}/transition`, {
     method: 'POST', token, body: { target: 'HYPOTHESIZED', actor: 'atom', rationale },
   });
-  return { id: finding.id, ok: true, skipped: false, evidenceAdded, hypotheses: hypotheses.length, state: transitioned.state };
+  return { id: finding.id, ok: true, skipped: false, evidenceAdded, hypotheses: totalHypotheses, state: transitioned.state };
 }
 
 /**

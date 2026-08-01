@@ -1,32 +1,29 @@
 # NOESAR Evolution — Session Handoff
 
-> Aggiornato 2026-08-01 (`D-0284`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-08-01 (`D-0285`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 >
 > ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s303 → s304)
 >
-> **`D-0283` e `D-0284` sono entrambi installati e verificati dal vivo** in questa
-> sessione (Owner: "PROCEDI"). Correzione importante trovata leggendo il contratto ATOM
-> prima di costruire `D-0284`: le quattro superfici scritte in precedenza
-> (`classify`/`confidence`/`evidence`/`expect`) erano sbagliate — le prime tre sono
-> firmate su un `Plan` di modifica codice, non su un reperto. Le superfici giuste sono
-> `hypothesize`+`evidence` (`CLAUDE.md` già corretto). **Committato e pushato**:
-> `NOESAR-EVOLUTION` `ff39fdb`+`fbf168c`, `ATOM-EVOLUTION` `f5227a7` (campo `model`,
-> `A-0022`, anch'esso installato dal vivo in `atomd`).
+> **`D-0283`+`D-0284`+`D-0285` sono tutti installati dal vivo** in questa sessione
+> (Owner: "PROCEDI"/"procedi pure"). Terza correzione trovata prima di scrivere codice
+> per `D-0285`: `security` non produce `SEMANTIC_REACHABILITY` (rigore mai eseguito) —
+> resta `AI_HYPOTHESIS`, come discovery. `reproducer`/`patch-review` scoping chiuso:
+> **restano fuori scope**, richiedono `EXECUTE` (sandbox già costruito,
+> `D-0249`/`D-0250`/`D-0253`, spento di proposito), l'Owner ha rifiutato di accenderlo
+> come effetto collaterale di questa funzione.
 >
-> 1. Fase 2 di Debug Evolution: restano quattro ruoli aperti (`security`, `reproducer`,
->    `root-cause`, `patch-review`) — `reproducer`/`patch-review` toccano esecuzione/patch,
->    esplicitamente escluse dal manifesto del modulo, da scoping prima del codice.
-> 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende
+> 1. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende
 >    ora, nessun altro filo davanti. Primo passo: leggere `auth.mjs`/`auth-crypto.mjs`
 >    prima di scrivere codice.
-> 3. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
+> 2. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
 >    rm` invece di `docker rename` — il container di rollback non esiste più (a
->    differenza di `noesar-evolution`, dove il pattern rename-poi-rm è stato rispettato).
->    Il rollback resta comunque possibile: l'immagine precedente è preservata
->    (`atom-evolution:atomd-pre-a0022-20260801T150733Z`, verificata byte-per-byte) e la
->    configurazione completa è registrata in `docs/DECISION_LOG.md` A-0022 — richiede un
->    `docker run` da zero, non un semplice `docker start`.
+>    differenza di `noesar-evolution`, dove il pattern rename-poi-rm è stato rispettato
+>    per tutti e tre i deploy). Il rollback resta comunque possibile: l'immagine
+>    precedente è preservata (`atom-evolution:atomd-pre-a0022-20260801T150733Z`,
+>    verificata byte-per-byte) e la configurazione completa è registrata in
+>    `docs/DECISION_LOG.md` A-0022 — richiede un `docker run` da zero, non un semplice
+>    `docker start`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase Owner** ("finisci tutto il progetto, massimo 4 pause"):
 > A → B → C → pausa 1 → **decisione WebUI** → pausa 2 → E+F → pausa 3 →
@@ -57,18 +54,20 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ⛔ IMPORTANTE PER QUALSIASI BUILD FUTURO — layer depth del base image
 
-Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-triage`** (`D-0284`, `FROM
-:phase4-module-plug-and-play`) a **20 layer overlay2** (`RootFS.Layers`, non `docker
-history`) — ben sotto il limite di 128. Usare questo tag come base del prossimo `FROM`.
-**Causa strutturale invariata**: `oci/Dockerfile` canonico non fa boot — Thread 2
-dell'Owner sotto, ancora aperto.
+Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-security-root-cause`**
+(`D-0285`, `FROM :phase4-debug-evolution-triage`) a **21 layer overlay2**
+(`RootFS.Layers`, non `docker history`) — ben sotto il limite di 128. Usare questo tag
+come base del prossimo `FROM`. **Causa strutturale invariata**: `oci/Dockerfile`
+canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
 
-## ⛔ LA PROSSIMA AZIONE — nessuna sul lato modulo/triage, riprende il quarto filo
+## ⛔ LA PROSSIMA AZIONE — nessuna sul lato Debug Evolution/Fase 2, riprende il quarto filo
 
-`D-0283` e `D-0284` sono installati, verificati dal vivo, committati e pushati.
-**Nessuna azione dell'assistente è pendente su modulo/plug-and-play/triage.** Riprende:
-scoping dei quattro ruoli agente restanti (Fase 2), poi il quarto filo Owner
-(Passkey/WebAuthn).
+`D-0283`, `D-0284` e `D-0285` sono tutti installati, verificati dal vivo. **Nessuna
+azione dell'assistente è pendente su modulo/plug-and-play/triage/Fase 2.**
+`reproducer`/`patch-review` restano dichiaratamente fuori scope (serve `EXECUTE`
+acceso, l'Owner ha rifiutato di farlo come effetto collaterale) — non c'è altra azione
+pendente su quei due ruoli finché non si riapre il filo apposta. Riprende: il quarto
+filo Owner (Passkey/WebAuthn).
 
 ## ➜ `D-0283` (questa sessione) — cosa è stato fatto
 
@@ -206,12 +205,60 @@ ancora. **Non verificato dal vivo**: il flusso Triage con una sessione Owner rea
 nessuna password/TOTP disponibile in questa sessione, stessa cautela di `D-0279`/
 `D-0282`/`D-0283`.
 
+## ➜ `D-0285` (questa sessione) — Debug Evolution Fase 2, seconda fetta
+
+Confermato dall'Owner: `security`+`root-cause` ora (stesso schema, pura ragione), `reproducer`/
+`patch-review` restano fuori scope — richiedono esecuzione vera di codice, e `EXECUTE`
+(sandbox già costruito, `D-0249`/`D-0250`/`D-0253`, spento per scelta di progetto) non va
+acceso come effetto collaterale di questa funzione.
+
+**Terza correzione**, trovata prima di scrivere codice: la prima proposta per `security`
+diceva "produce evidenza `SEMANTIC_REACHABILITY`". Sbagliato — in `de_v2/core.py` quel tipo
+sta con `STATIC_ANALYZER`/`DETERMINISTIC_REPRODUCER`/`RUNTIME_DETECTOR`/`FORMAL_PROOF`,
+evidenza verificata da strumento o esecuzione, non un'opinione di modello. Etichettare così
+una risposta ATOM avrebbe dichiarato un rigore mai eseguito — lo stesso errore di
+`classify`/`confidence`/`expect`. `security` e `root-cause` aggiungono quindi righe
+`AI_HYPOTHESIS` come `discovery`, e **nessuno dei due tenta una transizione oltre
+`HYPOTHESIZED`** — `REACHABILITY_CHECKED` resta lavoro per uno strumento vero o un umano.
+
+Costruito: `findingAsSecurityIntent()` + `findingAsRootCauseIntent()` in
+`debug-evolution-triage.mjs`, esportate insieme a `findingAsDiscoveryIntent()` (rinominata)
+come `TRIAGE_ROLE_INTENTS`. `triageFinding()` ora chiama `hypothesize()` **tre volte per
+reperto** (non sei — la chiamata discovery copre già skeptic via `Hypothesis.contrary`),
+somma tutta l'evidenza con un tag `role` in `metadata` per tracciabilità, poi un solo
+tentativo di transizione con motivazione che cita tutti e tre i ruoli. Stesso pulsante
+Triage, stessa rotta — evidenza più ricca per clic, non una superficie nuova.
+
+## ➜ Verificato in `D-0285`
+
+| Verifica | Risultato |
+|---|---|
+| `npm test` (suite completa) | **1452/1453 PASS** (1 skip pre-esistente, 0 fail, +4 netti su `D-0284`) |
+| `tools/run-eslint.sh` | **286 file · 0 errori · 0 warning** |
+| unit | 4 nuovi test (forma intent security/root-cause, `TRIAGE_ROLE_INTENTS`, evidenza security resta `AI_HYPOTHESIS` mai `SEMANTIC_REACHABILITY`) + i test esistenti estesi per il tag `role` |
+| HTTP end-to-end | lo stub ATOM ora risponde diversamente per ciascuno dei 3 `intent.goal`; confermate esattamente 3 chiamate `hypothesize()` (non 6), 4 righe di evidenza con i tag di ruolo giusti, una transizione con la motivazione di tutti e tre i ruoli, `provenance()` conferma ATOM su tutte e tre |
+
+## ➜ Installato e verificato dal vivo (Owner: "procedi pure")
+
+`oci/Dockerfile.phase4-debug-evolution-security-root-cause` (`FROM
+:phase4-debug-evolution-triage`, 21 layer). Stessa sequenza degli altri due deploy di
+questa sessione: `docker stop -t 60` → `postgres.stopped clean:true`, exit 0 → backup
+(`BACKUPS/runtime_pre_debug_evolution_security_root_cause_deploy_20260801T154006Z.tar.gz`,
+13 MB, `schemaVersion:3`) → §5a → ricreato con l'`HostConfig` completo letto prima dello
+stop — sano al primo tentativo, nessun imprevisto (terzo deploy di fila senza sorprese).
+
+Verificato dal vivo: `POST /api/v1/debug-evolution/triage` senza sessione risponde `401`;
+una vera chiamata `hypothesize()` con l'intent `security` (reachability da trust boundary)
+inviata da dentro `noesar-evolution` verso `atomd` risponde correttamente sul filo reale.
+**Non verificato dal vivo**: il flusso Triage completo con una sessione Owner reale —
+stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`.
+
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-triage` (`D-0284`) ·
-  `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`. Rollback:
-  `noesar-evolution.rollback-module-plug-and-play-20260801T150531Z`
-  (`:phase4-module-plug-and-play`).
+- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-security-root-cause`
+  (`D-0285`) · `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`.
+  Rollback: `noesar-evolution.rollback-debug-evolution-triage-20260801T154006Z`
+  (`:phase4-debug-evolution-triage`).
 - **`debug-evolution`**: `Up (healthy)`, invariata da `D-0281`.
 - **`atomd`**: ricostruito per `A-0022` (campo `model`), `Up (healthy)`,
   `identity()`/`hypothesize()` invariate dal vivo. **Nota di processo**: la ricreazione
@@ -220,7 +267,7 @@ nessuna password/TOTP disponibile in questa sessione, stessa cautela di `D-0279`
   tramite l'immagine preservata `atom-evolution:atomd-pre-a0022-20260801T150733Z` (byte
   verificati) + un `docker run` da zero con la configurazione registrata in
   `ATOM_EVOLUTION/docs/DECISION_LOG.md` A-0022.
-- **`D-0283` e `D-0284` sono entrambi nell'immagine viva**, verificati dal vivo.
+- **`D-0283`, `D-0284` e `D-0285` sono tutti nell'immagine viva**, verificati dal vivo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
@@ -231,16 +278,24 @@ nessuna password/TOTP disponibile in questa sessione, stessa cautela di `D-0279`
   inerti, e reinstallare resta un clic senza toccare Docker.
 - **Un uninstall non cancella nulla dal disco**: manifest e `state.json` restano, con
   `status:"uninstalled"`.
-- **`D-0284` non tocca `evidence(claim)` direttamente** — solo `hypothesize()`, perché
-  `Hypothesis.supporting`/`.contrary` portano già l'evidenza di entrambi i lati. La
-  superficie `evidence` resta configurata (`NOESAR_EXTERNAL_SURFACES`) ma senza un
-  chiamante proprio.
+- **`D-0284`/`D-0285` non toccano `evidence(claim)` direttamente** — solo
+  `hypothesize()`, perché `Hypothesis.supporting`/`.contrary` portano già l'evidenza di
+  entrambi i lati. La superficie `evidence` resta configurata
+  (`NOESAR_EXTERNAL_SURFACES`) ma senza un chiamante proprio.
 - **Il pulsante Triage esiste, la Fase 2 non è completa**: solo `DETECTED →
-  HYPOTHESIZED`, solo due dei sei ruoli dichiarati. `reproducer`/`patch-review` restano
-  fuori scope finché non c'è uno scoping esplicito (toccano esecuzione/patch).
-- **Lavoro committato E pushato**: `NOESAR-EVOLUTION` `ff39fdb` (feat, D-0283+D-0284)
-  + `fbf168c` (pin) su `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su
-  `origin/main`.
+  HYPOTHESIZED`, quattro dei sei ruoli dichiarati (`D-0285` aggiunge `security`+
+  `root-cause` a `discovery`+`skeptic`). `reproducer`/`patch-review` restano
+  **dichiaratamente e definitivamente fuori scope** finché `EXECUTE` non viene acceso
+  con una decisione a sé — l'Owner l'ha rifiutato come effetto collaterale di questa
+  sessione.
+- **`security` non produce `SEMANTIC_REACHABILITY`** — resta `AI_HYPOTHESIS` come ogni
+  altro ruolo di questa fetta; quel tipo è riservato a evidenza verificata da strumento
+  o esecuzione, non a un'opinione di modello (terza correzione della sessione, stessa
+  categoria di `classify`/`confidence`/`expect`).
+- **Lavoro committato E pushato SOLO fino a `D-0284`**: `NOESAR-EVOLUTION` `ff39fdb`
+  (feat, D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) su `origin/main`.
+  `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main`. **`D-0285` non è né committato
+  né pushato.**
 - **Il proxy funziona per QUALSIASI utente NOESAR autenticato con `workspace.read`**, non
   solo Owner — stesso livello di permesso già usato dalla rotta GET del catalogo.
 
@@ -249,16 +304,16 @@ nessuna password/TOTP disponibile in questa sessione, stessa cautela di `D-0279`
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata
 a fine progetto. `oci/Dockerfile`/layer-depth: Thread 2 dell'Owner sotto, ancora aperto,
 margine ampio (20/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
-tracciata come blocker del prodotto — non blocca il deploy. **Nuovo**: `atomd` non ha
-più un container di rollback dedicato dopo `A-0022` (vedi nota di processo sopra) — solo
+tracciata come blocker del prodotto — non blocca il deploy. `atomd` non ha più un
+container di rollback dedicato dopo `A-0022` (nota di processo sopra) — solo
 un'immagine preservata, non tracciato come blocker perché il rollback resta comunque
 eseguibile.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-1. **Scoping dei restanti quattro ruoli agente** (`security`, `reproducer`, `root-cause`,
-   `patch-review`) — `reproducer`/`patch-review` toccano esecuzione/patch, esclusi dal
-   manifesto del modulo, servirà una decisione esplicita prima del codice.
+1. **Rebuild + installazione di `D-0285`?** Codice pronto, mai installato — serve un
+   nuovo `oci/Dockerfile.phase4-*` `FROM :phase4-debug-evolution-triage`.
+2. **Push su `origin`?** `D-0285` scritto e testato, non ancora committato.
 
-Nessun'altra domanda aperta: rebuild/deploy di `D-0283`/`D-0284`/`A-0022`, commit e push
-di entrambi i repository sono tutti chiusi in questa sessione.
+Nessuna domanda aperta su `reproducer`/`patch-review`: lo scoping è chiuso, restano fuori
+scope finché non si apre un filo dedicato su `EXECUTE`.

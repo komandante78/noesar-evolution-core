@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0285: second slice of Debug Evolution's own Phase 2 (Owner s302) -- security+root-cause
+# join discovery+skeptic (D-0284), two more of the six agent roles Debug Evolution already
+# declares (de_v2/app.py's AGENTS) but has never wired. Still pure reasoning, still zero
+# .pyz changes: three hypothesize() calls per finding now, not one -- discovery+skeptic,
+# security, root-cause -- every resulting evidence row tagged with which role produced it.
+#
+# A correction found before writing code: this session's own proposal for `security` first
+# described it as producing SEMANTIC_REACHABILITY evidence. Wrong -- in de_v2/core.py's own
+# taxonomy that type sits beside STATIC_ANALYZER/DETERMINISTIC_REPRODUCER/RUNTIME_DETECTOR/
+# FORMAL_PROOF, evidence a tool or an execution produced, not a model's opinion, and it is
+# the exact type can_transition() requires for HYPOTHESIZED -> REACHABILITY_CHECKED.
+# Tagging an ATOM answer with it would claim a rigor never performed -- the same mistake
+# classify/confidence/expect would have been in D-0284. security and root-cause therefore
+# add AI_HYPOTHESIS rows exactly like discovery, and neither attempts a transition past
+# HYPOTHESIZED.
+#
+# reproducer/patch-review, the remaining two declared roles, stay explicitly out of scope:
+# both need real code execution, and NOESAR EVOLUTION's own EXECUTE sandbox (D-0249/D-0250/
+# D-0253) stays deliberately disabled per installation -- the Owner declined to enable it as
+# a side effect of this feature.
+#
+# Verified before this build: unit 1452/1453 (1 pre-existing skip, 0 failed, +4 net over
+# D-0284's 1448), ESLint 286 files 0 errors. Built FROM the previous tag: layers well under
+# the 128 limit.
+
+FROM noesar-evolution:phase4-debug-evolution-triage
+
+LABEL org.noesar.phase="4-debug-evolution-security-root-cause"
+LABEL org.noesar.feature="debug-evolution-phase-2-second-slice-security-root-cause-via-atom-hypothesize"
+LABEL org.noesar.base-image="noesar-evolution:phase4-debug-evolution-triage"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001
