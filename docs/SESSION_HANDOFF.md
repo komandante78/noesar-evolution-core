@@ -292,10 +292,10 @@ stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`.
   altro ruolo di questa fetta; quel tipo è riservato a evidenza verificata da strumento
   o esecuzione, non a un'opinione di modello (terza correzione della sessione, stessa
   categoria di `classify`/`confidence`/`expect`).
-- **Lavoro committato E pushato SOLO fino a `D-0284`**: `NOESAR-EVOLUTION` `ff39fdb`
-  (feat, D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) su `origin/main`.
-  `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main`. **`D-0285` non è né committato
-  né pushato.**
+- **Lavoro committato E pushato, tutto**: `NOESAR-EVOLUTION` `ff39fdb` (feat,
+  D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) + `e5159fb` (feat, D-0285) +
+  `4d30820` (pin) su `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su
+  `origin/main`.
 - **Il proxy funziona per QUALSIASI utente NOESAR autenticato con `workspace.read`**, non
   solo Owner — stesso livello di permesso già usato dalla rotta GET del catalogo.
 
@@ -311,9 +311,7 @@ eseguibile.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-1. **Rebuild + installazione di `D-0285`?** Codice pronto, mai installato — serve un
-   nuovo `oci/Dockerfile.phase4-*` `FROM :phase4-debug-evolution-triage`.
-2. **Push su `origin`?** `D-0285` scritto e testato, non ancora committato.
-
-Nessuna domanda aperta su `reproducer`/`patch-review`: lo scoping è chiuso, restano fuori
-scope finché non si apre un filo dedicato su `EXECUTE`.
+Nessuna. `D-0283`, `D-0284`, `D-0285`, `A-0022`: tutti installati dal vivo, verificati,
+committati, pushati. `reproducer`/`patch-review` restano dichiaratamente fuori scope
+finché non si apre un filo dedicato su `EXECUTE` — non è una domanda in sospeso, è una
+decisione già presa (no, non ora).
