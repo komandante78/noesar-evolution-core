@@ -24,6 +24,7 @@
 import { ReasoningUnavailable } from './reasoning-router.mjs';
 import { ReasoningRefused } from './reasoning.mjs';
 import { findingAsGatheredEvidence, hypothesisToEvidenceRows, TRIAGE_ROLE_INTENTS } from './debug-evolution-triage.mjs';
+import { fetchRemoteTarget } from './remote-target-fetch.mjs';
 
 const NOESAR_PROJECT_NAME_PREFIX = 'NOESAR EVOLUTION';
 
@@ -152,4 +153,52 @@ export async function triageUnclassifiedFindings(router) {
     }
   }
   return { triaged: results.length, succeeded: results.filter((r) => r.ok).length, results };
+}
+
+/**
+ * D-0286: Debug Evolution's Phase 3, the second half — `remote-target-fetch.mjs` did the
+ * SSH work and handed back a `.tar.gz` buffer; this uploads it to Debug Evolution's own
+ * `POST /api/v2/projects/import`, the one write in this bridge whose body is not JSON, so
+ * it does not go through `callDebugEvolution()` above. `slug` is the target's OWN id — a
+ * `randomUUID()` is already lowercase hex and hyphens, which is exactly the alphabet Debug
+ * Evolution's `SLUG_RE` accepts, and using the id (stable for the target's whole life)
+ * rather than its name (which an Owner can rename) is what makes a re-fetch overwrite the
+ * SAME directory instead of scattering a new one per rename.
+ */
+async function uploadImportToDebugEvolution({ name, slug, tarBuffer, token }) {
+  const query = new URLSearchParams({ name, slug });
+  const response = await fetch(`${debugEvolutionBaseUrl()}/api/v2/projects/import?${query}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/gzip' },
+    body: tarBuffer,
+    signal: AbortSignal.timeout(180_000),
+  });
+  const text = await response.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch { json = { text }; }
+  if (!response.ok) {
+    const error = Object.assign(new Error(`Debug Evolution import failed (${response.status}): ${json.error ?? text}`), { status: 502 });
+    throw error;
+  }
+  return json;
+}
+
+/**
+ * Fetches `target.remotePath` over SSH (verified against the host key pinned at
+ * registration — `remote-target-fetch.mjs` never relaxes `StrictHostKeyChecking`) and
+ * registers the result in Debug Evolution as a project. `privateKeyPem` is the caller's
+ * concern to decrypt (`RemoteTargetRegistry.resolveCredential()`, in `server.mjs`'s route
+ * handler) and to never log — this function only receives it, uses it for the one `scp`
+ * call inside `fetchRemoteTarget()`, and it is gone the moment that call's own `finally`
+ * cleans up its tmpfs directory.
+ */
+export async function fetchAndScanRemoteTarget(target, privateKeyPem) {
+  const token = debugEvolutionToken();
+  if (!token) {
+    const error = Object.assign(new Error('NOESAR_DEBUG_EVOLUTION_TOKEN is not configured on this deployment.'), { status: 503 });
+    throw error;
+  }
+  const tarBuffer = await fetchRemoteTarget({ target, privateKeyPem });
+  const result = await uploadImportToDebugEvolution({ name: target.name, slug: target.id, tarBuffer, token });
+  return { projectId: result.project?.id ?? null, findingCount: result.finding_count, nodeCount: result.node_count };
 }

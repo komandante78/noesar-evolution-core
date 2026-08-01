@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const AI_STATE_VERSION = 3;
+export const AI_STATE_VERSION = 4;
 
 // Every collection the current version requires. Adding a name here is a schema change
 // and needs a migration below — a state file written before the name existed does not
@@ -10,7 +10,7 @@ export const AI_STATE_VERSION = 3;
 const REQUIRED_COLLECTIONS = Object.freeze([
   'projects','conversations','messages','branches','memories','artifacts','sources',
   'knowledgeChunks','providerProfiles','tools','agents','agentRuns','tasks',
-  'workflows','workflowRuns','reviewSamples','closures',
+  'workflows','workflowRuns','reviewSamples','closures','remoteTargets',
 ]);
 
 export function defaultAiState() {
@@ -33,6 +33,11 @@ export function defaultAiState() {
     workflowRuns: [],
     reviewSamples: [],
     closures: [],
+    // D-0286, Debug Evolution Phase 3: no secret ever lives in this record — `encryptedCredential`
+    // holds the SSH private key exactly the way `providerProfiles` holds a provider API key
+    // (same CredentialVault, same shape). `pinnedHostKey` is the host's OWN public key, not a
+    // secret, captured at registration time and used to verify every later connection.
+    remoteTargets: [],
     settings: {
       defaultProviderId: null,
       externalEgressDefault: 'deny',
@@ -81,6 +86,9 @@ const MIGRATIONS = Object.freeze({
       purgeAfter: item.purgeAfter ?? null,
     })),
   }),
+  // 3 -> 4: D-0286, Debug Evolution Phase 3 (remote targets over SSH). Purely additive:
+  // one empty collection, same posture as 1->2's workflows/workflowRuns.
+  3: (state) => ({ ...state, schemaVersion: 4, remoteTargets: state.remoteTargets ?? [] }),
 });
 
 export function migrateAiState(input) {

@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0286: Debug Evolution's Phase 3 (Owner s302's own plan) -- "bersagli remoti via SSH,
+# credenziali dal vault NOESAR, mai su disco nel modulo". Debug Evolution never sees a
+# credential: NOESAR runs `ssh-keyscan` at registration (capturing the host's own public
+# key, pinned for every later connection -- not just its fingerprint, which alone would be
+# security theatre since ssh/scp verify the real key, not a hash of it), `scp` at fetch
+# time (verified against that pinned key, StrictHostKeyChecking never relaxed), and uploads
+# the result to Debug Evolution's own new `POST /api/v2/projects/import` -- the same "one
+# authentication, and it is NOESAR's" posture D-0280 set for the module's own service
+# token, extended to SSH. New AI_STATE_VERSION 3->4 migration (`remoteTargets`, additive).
+#
+# `openssh-client` is the one new system dependency (ssh-keyscan/ssh-keygen/scp) -- a
+# system binary spawned via argv, never a shell string, matching sandbox-runner.mjs's own
+# stated convention; no third-party SSH library.
+#
+# Verified before this build: unit 1477/1478 (1 pre-existing skip, 0 failed, +25 net over
+# D-0285's 1452), ESLint 291 files 0 errors. remote-target-fetch.mjs and the full HTTP
+# route flow were proven against a REAL local sshd (this host carries a full OpenSSH
+# client+server) -- not mocked: real ssh-keyscan, real scp, real host-key-mismatch
+# refusal, real auth-failure refusal, real path-traversal refusal on Debug Evolution's own
+# side (Python's `tarfile` `filter='data'`, PEP 706).
+
+FROM noesar-evolution:phase4-debug-evolution-security-root-cause
+
+LABEL org.noesar.phase="4-debug-evolution-remote-targets"
+LABEL org.noesar.feature="debug-evolution-phase-3-remote-targets-over-ssh-credential-never-leaves-noesar"
+LABEL org.noesar.base-image="noesar-evolution:phase4-debug-evolution-security-root-cause"
+
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client \
+ && rm -rf /var/lib/apt/lists/*
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

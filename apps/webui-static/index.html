@@ -476,6 +476,7 @@
           <button class="settings-nav" type="button" data-section="health">Health and logs</button>
           <button class="settings-nav" type="button" data-section="updates">Updates</button>
           <button class="settings-nav" type="button" data-section="modules">Modules</button>
+          <button class="settings-nav" type="button" data-section="remote-targets">Remote targets</button>
           </nav>
           <div class="settings-body">
             <!-- A section this account may not open says so here. The gates that used to
@@ -753,6 +754,24 @@
       <section class="settings-section" id="section-modules" data-section="modules">
         <div class="section-header"><div><p class="eyebrow">OWNER-BUILT · SIGNED · ONE CLICK</p><h2 class="page-title">Modules</h2><p>A module is a separate product. An Owner module (built and signed by NOESAR) installs and activates in one click — registration and signing happen on the server, never by pasting a key around. Active modules open in a new tab from the sidebar; they are never embedded.</p></div></div>
         <div id="ownerModulesList" class="card-list empty-state">Loading…</div>
+      </section>
+      <section class="settings-section" id="section-remote-targets" data-section="remote-targets">
+        <div class="section-header"><div><p class="eyebrow">DEBUG EVOLUTION · SSH · CREDENTIAL NEVER LEAVES THIS VAULT</p><h2 class="page-title">Remote targets</h2><p>Scan a codebase on a remote host over SSH. NOESAR fetches it — Debug Evolution never sees the credential. The host's own key is captured and pinned the first time you register a target; a later mismatch refuses the connection rather than trusting a changed identity silently.</p></div></div>
+        <section class="panel form-stack">
+          <div class="panel-title"><h2>Register a target</h2></div>
+          <div class="inline-form">
+            <label>Name<input id="remoteTargetName" type="text" placeholder="e.g. staging-api"></label>
+            <label>Host<input id="remoteTargetHost" type="text" placeholder="host or IP"></label>
+            <label>Port<input id="remoteTargetPort" type="number" value="22" min="1" max="65535"></label>
+          </div>
+          <div class="inline-form">
+            <label>Username<input id="remoteTargetUsername" type="text" placeholder="deploy"></label>
+            <label>Remote path<input id="remoteTargetPath" type="text" placeholder="/srv/app"></label>
+          </div>
+          <button class="primary" id="registerRemoteTarget" type="button">Capture host key</button>
+          <p class="hint">This connects only to fetch the host's own public key for you to confirm below — no credential is sent yet.</p>
+        </section>
+        <div id="remoteTargetsList" class="card-list empty-state">Loading…</div>
       </section>
           </div>
         </div>

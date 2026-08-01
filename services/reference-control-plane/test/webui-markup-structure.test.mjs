@@ -41,6 +41,8 @@ const DESTINATIONS = [
 const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
   'security', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
+  // D-0286, Debug Evolution Phase 3: remote scan targets over SSH.
+  'remote-targets',
 ];
 /** Pages that changed rank. Their markup must still exist somewhere in the document.
  *  'memory' left this list at D-0265: it is a real destination again (CUBE-009), not a

@@ -28,7 +28,9 @@ import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-
 import { researchGateFrom } from './research-gate.mjs';
 import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
-import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings } from './debug-evolution-bridge.mjs';
+import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, fetchAndScanRemoteTarget } from './debug-evolution-bridge.mjs';
+import { RemoteTargetRegistry } from './remote-target-registry.mjs';
+import { keyscanHost, RemoteTargetFetchError } from './remote-target-fetch.mjs';
 import { createModuleConsoleProxyServer } from './module-console-proxy.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
@@ -228,6 +230,9 @@ const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
 const researchReportStore = new ResearchReportStore();
 const researchRefusalRegistry = new RefusalRegistry();
 const agentService = new AgentService({ store:aiStore, ledger, executor:toolExecutor, vault:credentialVault });
+// D-0286: the SAME vault every other credential in this product already uses -- one
+// authentication, one encryption-at-rest key, not a second one to manage for SSH keys.
+const remoteTargetRegistry = new RemoteTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
 const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
 const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger });
 const hardware = discoverHardware();
@@ -1810,6 +1815,107 @@ const requestListener = async (req, res) => {
         if (error instanceof ReasoningUnavailable) {
           return json(res, 503, { error:'reasoning_unavailable', reason:error.reason, surface:error.surface, endpoint:error.endpoint });
         }
+        throw error;
+      }
+    }
+
+    // --- Debug Evolution remote targets (D-0286, Phase 3) -------------------------------
+    // "Bersagli remoti via SSH, credenziali dal vault NOESAR, mai su disco nel modulo"
+    // (Owner s302). Debug Evolution never sees a credential: NOESAR runs `ssh-keyscan` at
+    // registration, `scp` at fetch time, and uploads the result to Debug Evolution's own
+    // `POST /api/v2/projects/import` — the same "one authentication, and it is NOESAR's"
+    // posture D-0280 set for the module's own service token, extended to SSH.
+    if (req.method === 'GET' && url.pathname === '/api/v1/debug-evolution/remote-targets') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      return json(res, 200, { targets: remoteTargetRegistry.list() });
+    }
+    // Step 1: capture the host's own public key via `ssh-keyscan` and store it alongside a
+    // pending target record, before any credential exists for it. The fingerprint returned
+    // here is what the Owner compares against what they already know about this host —
+    // the FULL key, not just the fingerprint, is what actually gets verified later
+    // (`remote-target-fetch.mjs`'s own header explains why the two are not interchangeable).
+    if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/remote-targets') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        const { pinnedHostKey, fingerprint } = await keyscanHost({ host: payload?.host, port: payload?.port ?? 22 });
+        const target = remoteTargetRegistry.createAwaitingKey({
+          name: payload?.name, host: payload?.host, port: payload?.port ?? 22,
+          username: payload?.username, remotePath: payload?.remotePath,
+          pinnedHostKey, fingerprint,
+        }, authenticated.user.id);
+        return json(res, 201, target);
+      } catch (error) {
+        if (error instanceof RemoteTargetFetchError) return json(res, 502, { error: error.kind, reason: error.reason });
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const remoteTargetActivateMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/remote-targets\/([^/]+)\/activate$/);
+    if (remoteTargetActivateMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        const target = remoteTargetRegistry.activate(decodeURIComponent(remoteTargetActivateMatch[1]), payload?.privateKey, authenticated.user.id);
+        return json(res, 200, target);
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const remoteTargetRotateMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/remote-targets\/([^/]+)\/rotate-key$/);
+    if (remoteTargetRotateMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        const target = remoteTargetRegistry.rotateKey(decodeURIComponent(remoteTargetRotateMatch[1]), payload?.privateKey, authenticated.user.id);
+        return json(res, 200, target);
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const remoteTargetFetchMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/remote-targets\/([^/]+)\/fetch-and-scan$/);
+    if (remoteTargetFetchMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (!isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) {
+        return json(res, 409, { error:'The Debug Evolution module is not active on this installation.' });
+      }
+      const id = decodeURIComponent(remoteTargetFetchMatch[1]);
+      let target;
+      try {
+        target = remoteTargetRegistry.get(id);
+      } catch (error) {
+        return json(res, error.status ?? 500, { error: error.message });
+      }
+      try {
+        const privateKeyPem = remoteTargetRegistry.resolveCredential(id);
+        const result = await fetchAndScanRemoteTarget(target, privateKeyPem);
+        const recorded = remoteTargetRegistry.recordFetch(id, { ok: true, projectId: result.projectId }, authenticated.user.id);
+        return json(res, 200, { ...result, target: recorded });
+      } catch (error) {
+        // The target is known to exist at this point (checked above), so recording the
+        // failure against it cannot itself throw "not found" the way it could if `id` had
+        // never been validated.
+        const reason = error instanceof RemoteTargetFetchError ? error.reason : error.message;
+        remoteTargetRegistry.recordFetch(id, { ok: false, error: reason }, authenticated.user.id);
+        if (error instanceof RemoteTargetFetchError) return json(res, 502, { error: error.kind, reason: error.reason });
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const remoteTargetDeleteMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/remote-targets\/([^/]+)$/);
+    if (remoteTargetDeleteMatch && req.method === 'DELETE') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      try {
+        return json(res, 200, remoteTargetRegistry.remove(decodeURIComponent(remoteTargetDeleteMatch[1]), authenticated.user.id));
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
         throw error;
       }
     }

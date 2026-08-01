@@ -32,7 +32,7 @@ const preSeeded = {
   schemaVersion: AI_STATE_VERSION,
   projects: [], conversations: [], messages: [], branches: [], memories: [], artifacts: [],
   sources: [], knowledgeChunks: [], providerProfiles: [], agents: [], agentRuns: [], tasks: [],
-  workflows: [], workflowRuns: [], reviewSamples: [], closures: [],
+  workflows: [], workflowRuns: [], reviewSamples: [], closures: [], remoteTargets: [],
   tools: [
     { id: 'tool-list-projects', name: 'Debug Evolution — List Projects', description: 'x', transport: 'local-http', endpoint: `${OLD_URL}/api/v2/projects`, config: { method: 'GET' }, external: false, consent: { granted: false, grantedAt: null, projectIds: [] }, timeoutMs: 60000, encryptedCredential: null, credentialEphemeral: false, inputSchema: { type: 'object' }, outputSchema: {}, permissions: [], mutative: false, requiresApproval: false, disabled: false, createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z' },
     { id: 'tool-all-findings', name: 'Debug Evolution — All Findings', description: 'x', transport: 'local-http', endpoint: `${OLD_URL}/api/v2/findings`, config: { method: 'GET' }, external: false, consent: { granted: false, grantedAt: null, projectIds: [] }, timeoutMs: 60000, encryptedCredential: null, credentialEphemeral: false, inputSchema: { type: 'object' }, outputSchema: {}, permissions: [], mutative: false, requiresApproval: false, disabled: false, createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z' },

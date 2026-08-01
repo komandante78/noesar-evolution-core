@@ -490,7 +490,7 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // Owner modules join the same permanent-strip reasoning: an ACTIVE module must be
   // reachable from the sidebar on sign-in, not only after visiting Settings.
   // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
-  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules()]);}
+  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
@@ -1373,6 +1373,105 @@ async function runDebugEvolutionTriage(button){
     }
   });
 }
+// D-0286: Debug Evolution Phase 3 — remote targets over SSH. Two states rendered
+// differently: `awaiting-key` (host verified, no credential yet — the Owner confirms the
+// fingerprint out of band and pastes a private key) and `active` (usable, Fetch & Scan
+// available). The credential itself is never displayed back — only whether one is
+// configured, same as every other credentialled entity in this product.
+function renderRemoteTargets(targets){
+  const list=$('#remoteTargetsList');
+  if(!list)return;
+  list.className=targets.length?'card-list':'card-list empty-state';
+  list.innerHTML=targets.map((target)=>{
+    const lastFetch=target.lastFetch?(target.lastFetch.ok?`Last fetch: ${escapeHtml(new Date(target.lastFetch.at).toLocaleString())} — OK`:`Last fetch failed: ${escapeHtml(target.lastFetch.error??'unknown error')}`):'Never fetched.';
+    if(target.status==='awaiting-key'){
+      return `<article class="entity-card" data-remote-target-card="${target.id}">
+        <h3>${escapeHtml(target.name)}</h3>
+        <p>${escapeHtml(target.username)}@${escapeHtml(target.host)}:${escapeHtml(String(target.port))} — <code>${escapeHtml(target.remotePath)}</code></p>
+        <p class="hint">Host key fingerprint — confirm this matches what you already know about this host before pasting a key:<br><code>${escapeHtml(target.fingerprint)}</code></p>
+        <label>Private key (PEM)<textarea data-remote-target-key="${target.id}" rows="4" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></label>
+        <div class="inline-form">
+          <button class="primary" data-remote-target-activate="${target.id}" type="button">Activate</button>
+          <button class="text-button danger" data-remote-target-remove="${target.id}" type="button">Discard</button>
+        </div>
+      </article>`;
+    }
+    return `<article class="entity-card" data-remote-target-card="${target.id}">
+      <h3>${escapeHtml(target.name)} <span class="badge badge-on">Active</span></h3>
+      <p>${escapeHtml(target.username)}@${escapeHtml(target.host)}:${escapeHtml(String(target.port))} — <code>${escapeHtml(target.remotePath)}</code></p>
+      <small>${lastFetch}</small>
+      <div class="inline-form">
+        <button class="primary" data-remote-target-fetch="${target.id}" type="button">Fetch &amp; scan</button>
+        <button class="text-button danger" data-remote-target-remove="${target.id}" type="button">Remove</button>
+      </div>
+    </article>`;
+  }).join('')||'No remote targets registered.';
+  $$('[data-remote-target-activate]').forEach((button)=>button.addEventListener('click',()=>activateRemoteTarget(button.dataset.remoteTargetActivate,button)));
+  $$('[data-remote-target-fetch]').forEach((button)=>button.addEventListener('click',()=>fetchAndScanRemoteTarget(button.dataset.remoteTargetFetch,button)));
+  $$('[data-remote-target-remove]').forEach((button)=>button.addEventListener('click',()=>removeRemoteTarget(button.dataset.remoteTargetRemove,button)));
+}
+async function loadRemoteTargets(){
+  const data=await api('/api/v1/debug-evolution/remote-targets');
+  renderRemoteTargets(data.targets??[]);
+}
+async function registerRemoteTarget(){
+  const button=$('#registerRemoteTarget');
+  await withBusy(button,async()=>{
+    try{
+      const payload={
+        name:$('#remoteTargetName').value.trim(),
+        host:$('#remoteTargetHost').value.trim(),
+        port:Number($('#remoteTargetPort').value)||22,
+        username:$('#remoteTargetUsername').value.trim(),
+        remotePath:$('#remoteTargetPath').value.trim(),
+      };
+      await api('/api/v1/debug-evolution/remote-targets',{method:'POST',body:JSON.stringify(payload)});
+      toast('Host key captured — confirm the fingerprint, then paste a key to activate.',{kind:'success'});
+      for(const id of ['remoteTargetName','remoteTargetHost','remoteTargetUsername','remoteTargetPath'])$(`#${id}`).value='';
+      $('#remoteTargetPort').value='22';
+      await loadRemoteTargets();
+    }catch(error){
+      reportError(error,'register remote target');
+    }
+  });
+}
+async function activateRemoteTarget(id,button){
+  const privateKey=$(`[data-remote-target-key="${id}"]`)?.value.trim();
+  if(!privateKey){toast('Paste the private key first.',{kind:'error'});return;}
+  await withBusy(button,async()=>{
+    try{
+      await api(`/api/v1/debug-evolution/remote-targets/${id}/activate`,{method:'POST',body:JSON.stringify({privateKey})});
+      toast('Remote target activated.',{kind:'success'});
+      await loadRemoteTargets();
+    }catch(error){
+      reportError(error,'activate remote target');
+    }
+  });
+}
+async function fetchAndScanRemoteTarget(id,button){
+  await withBusy(button,async()=>{
+    try{
+      const result=await api(`/api/v1/debug-evolution/remote-targets/${id}/fetch-and-scan`,{method:'POST',body:'{}'});
+      toast(`Fetched and scanned — ${result.findingCount ?? 0} finding(s).`,{kind:'success'});
+      await loadRemoteTargets();
+    }catch(error){
+      reportError(error,'fetch and scan remote target');
+    }
+  });
+}
+async function removeRemoteTarget(id,button){
+  if(!confirm('Remove this remote target? Its stored key is deleted with it — this cannot be undone.'))return;
+  await withBusy(button,async()=>{
+    try{
+      await api(`/api/v1/debug-evolution/remote-targets/${id}`,{method:'DELETE',body:'{}'});
+      toast('Remote target removed.',{kind:'success'});
+      await loadRemoteTargets();
+    }catch(error){
+      reportError(error,'remove remote target');
+    }
+  });
+}
+$('#registerRemoteTarget').addEventListener('click',registerRemoteTarget);
 async function loadOwnerModules(){
   const data=await api('/api/v1/sector-modules/catalog');
   const modules=data.modules??[];

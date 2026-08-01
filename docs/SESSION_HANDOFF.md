@@ -1,25 +1,30 @@
 # NOESAR Evolution — Session Handoff
 
-> Aggiornato 2026-08-01 (`D-0285`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-08-01 (`D-0286`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 >
 > ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s303 → s304)
 >
-> **`D-0283`+`D-0284`+`D-0285` sono tutti installati dal vivo** in questa sessione
-> (Owner: "PROCEDI"/"procedi pure"). Terza correzione trovata prima di scrivere codice
-> per `D-0285`: `security` non produce `SEMANTIC_REACHABILITY` (rigore mai eseguito) —
-> resta `AI_HYPOTHESIS`, come discovery. `reproducer`/`patch-review` scoping chiuso:
-> **restano fuori scope**, richiedono `EXECUTE` (sandbox già costruito,
-> `D-0249`/`D-0250`/`D-0253`, spento di proposito), l'Owner ha rifiutato di accenderlo
-> come effetto collaterale di questa funzione.
+> **`D-0283`…`D-0286` sono tutti installati dal vivo** in questa sessione (Owner:
+> "PROCEDI"/"procedi pure"/"finisci debug evolution prima di passare ad altro").
+> **Il piano in 5 fasi di Debug Evolution è completo fino alla Fase 3** (bersagli remoti
+> via SSH, `D-0286`) — resta aperta solo la Fase 4 (memoria a cubi, embedder da decidere).
 >
-> 1. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende
->    ora, nessun altro filo davanti. Primo passo: leggere `auth.mjs`/`auth-crypto.mjs`
->    prima di scrivere codice.
-> 2. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
+> **Difetto reale trovato e riparato durante il deploy di `D-0286`**: `run.py` di Debug
+> Evolution non inoltrava `SIGTERM` al processo figlio (`subprocess.call()` non lo fa) —
+> ogni `docker stop` era un'orfananza-poi-SIGKILL (`137`), non lo spegnimento pulito già
+> corretto in s302. Riparato: `run.py` ora inoltra `SIGTERM` come `SIGINT` (il segnale che
+> il figlio già gestisce) e aspetta il vero codice di uscita — verificato dal vivo,
+> `docker stop -t 10` ora impiega 0,145s con `ExitCode=0`.
+>
+> 1. Fase 4 di Debug Evolution (memoria a cubi + vettori) — l'unica fase rimasta aperta.
+>    Serve decidere l'embedder prima del codice.
+> 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) resta
+>    dietro Debug Evolution, per istruzione esplicita dell'Owner di finire prima quello.
+> 3. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
 >    rm` invece di `docker rename` — il container di rollback non esiste più (a
->    differenza di `noesar-evolution`, dove il pattern rename-poi-rm è stato rispettato
->    per tutti e tre i deploy). Il rollback resta comunque possibile: l'immagine
+>    differenza degli altri quattro deploy di questa sessione, dove il pattern
+>    rename-poi-rm è stato rispettato). Il rollback resta comunque possibile: l'immagine
 >    precedente è preservata (`atom-evolution:atomd-pre-a0022-20260801T150733Z`,
 >    verificata byte-per-byte) e la configurazione completa è registrata in
 >    `docs/DECISION_LOG.md` A-0022 — richiede un `docker run` da zero, non un semplice
@@ -54,20 +59,23 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ⛔ IMPORTANTE PER QUALSIASI BUILD FUTURO — layer depth del base image
 
-Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-security-root-cause`**
-(`D-0285`, `FROM :phase4-debug-evolution-triage`) a **21 layer overlay2**
-(`RootFS.Layers`, non `docker history`) — ben sotto il limite di 128. Usare questo tag
-come base del prossimo `FROM`. **Causa strutturale invariata**: `oci/Dockerfile`
-canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
+Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-remote-targets`**
+(`D-0286`, `FROM :phase4-debug-evolution-security-root-cause`, +`openssh-client`) a
+**24 layer overlay2** (`RootFS.Layers`, non `docker history`) — ben sotto il limite di
+128. Usare questo tag come base del prossimo `FROM`. Debug Evolution vivo è
+`debug-evolution:1.1.0-remote-targets`. **Causa strutturale invariata**:
+`oci/Dockerfile` canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
 
-## ⛔ LA PROSSIMA AZIONE — nessuna sul lato Debug Evolution/Fase 2, riprende il quarto filo
+## ⛔ LA PROSSIMA AZIONE — Fase 4 di Debug Evolution (memoria a cubi), poi il quarto filo
 
-`D-0283`, `D-0284` e `D-0285` sono tutti installati, verificati dal vivo. **Nessuna
-azione dell'assistente è pendente su modulo/plug-and-play/triage/Fase 2.**
+`D-0283`…`D-0286` sono tutti installati, verificati dal vivo. **Nessuna azione
+dell'assistente è pendente su modulo/plug-and-play/triage/Fase 2/Fase 3.** Il piano in 5
+fasi di Debug Evolution è chiuso fino alla Fase 3 — resta solo la **Fase 4** (memoria a
+cubi + vettori nel DB del modulo), da scoping esplicito (embedder da decidere) prima del
+codice, per istruzione dell'Owner di finire Debug Evolution prima di altro.
 `reproducer`/`patch-review` restano dichiaratamente fuori scope (serve `EXECUTE`
 acceso, l'Owner ha rifiutato di farlo come effetto collaterale) — non c'è altra azione
-pendente su quei due ruoli finché non si riapre il filo apposta. Riprende: il quarto
-filo Owner (Passkey/WebAuthn).
+pendente su quei due ruoli finché non si riapre il filo apposta.
 
 ## ➜ `D-0283` (questa sessione) — cosa è stato fatto
 
@@ -253,21 +261,97 @@ inviata da dentro `noesar-evolution` verso `atomd` risponde correttamente sul fi
 **Non verificato dal vivo**: il flusso Triage completo con una sessione Owner reale —
 stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`.
 
+## ➜ `D-0286` (questa sessione) — Debug Evolution Fase 3, bersagli remoti via SSH
+
+Confermato dall'Owner via `AskUserQuestion` prima di scrivere codice: binario di sistema
+`openssh-client` (non una libreria SSH JS), copie scaricate persistenti — sovrascritte al
+refetch, mai cancellate dopo la scansione, stesso trattamento dei progetti locali di oggi
+— autenticazione solo a chiave privata (niente password), verifica dell'host tramite
+impronta pinnata dall'Owner (non TOFU). La credenziale non tocca mai Debug Evolution: NOESAR
+gira `ssh-keyscan` alla registrazione (pinna la chiave pubblica intera, non solo
+l'impronta — `scp`/`ssh` verificano la chiave vera, non un suo hash, quindi pinnare solo
+l'impronta sarebbe stato teatro di sicurezza), gira `scp` al fetch (verificato contro quella
+chiave, `StrictHostKeyChecking` mai allentato), poi carica il risultato sulla nuova rotta di
+Debug Evolution `POST /api/v2/projects/import` — la stessa postura "un'autenticazione sola,
+ed è di NOESAR" di `D-0280`, estesa a SSH.
+
+**Difetto vero trovato fermando il container per il deploy, non inventato**: `docker stop -t
+30 debug-evolution` è tornato `ExitCode 137` (SIGKILL) invece di un'uscita pulita. Causa
+radice: `appliance/run.py` girava il processo server con `subprocess.call()`, che non
+inoltra segnali al figlio — `SIGTERM` uccideva subito il wrapper PID-1 (Python non installa
+un handler di default), lasciando il vero server orfano finché il timeout di Docker non
+arrivava a `SIGKILL`. Il percorso di spegnimento pulito del server stesso (`de_v2/cli.py`,
+`finally: srv.shutdown(); ...; app.store.db.close()`) non è mai stato raggiunto — non perché
+sbagliato, ma perché niente lo invocava mai. `PRAGMA integrity_check` ha confermato `ok`
+(17 progetti, 84 reperti) sia prima che dopo, quindi SQLite non si è corrotto — proprietà di
+SQLite, non motivo per lasciare quel percorso di spegnimento com'era. Corretto traducendo
+`SIGTERM` nel path che il figlio già gestisce correttamente (`except KeyboardInterrupt`,
+cioè `SIGINT`) — non un inoltro letterale, perché il figlio non ha comunque un handler per
+`SIGTERM`. Verificato dal vivo su container usa-e-getta: `docker stop -t 10` prima
+30s+`137`, dopo `0.145s`+`ExitCode 0`.
+
+Costruito: `remote-target-registry.mjs` (stati `awaiting-key`→`active`, mirror di
+`provider-gateway.mjs`), `remote-target-fetch.mjs` (`keyscanHost()`/`fetchRemoteTarget()`,
+spawn via argv mai stringa shell, chiave e `known_hosts` scritti solo in una `mkdtemp` con
+`finally` incondizionato di pulizia — stessa convenzione di `sandbox-runner.mjs`),
+`AI_STATE_VERSION` 3→4 (`remoteTargets`, migrazione puramente additiva, stessa forma di
+1→2), rotte `GET/POST /api/v1/debug-evolution/remote-targets` + `/:id/activate` +
+`/:id/rotate-key` + `/:id/fetch-and-scan` + `DELETE /:id`, pannello "Remote targets" nella
+Settings UI. Sul lato Debug Evolution: `Application.import_remote()` + `POST
+/api/v2/projects/import`, con `tarfile.extractall(dest, filter='data')` (PEP 706, stdlib da
+Python 3.12) contro path-traversal/device-node/setuid — scelto invece di un controllo di
+contenimento scritto a mano perché è la difesa nativa già vagliata da CPython stesso.
+
+## ➜ Verificato in `D-0286`
+
+| Verifica | Risultato |
+|---|---|
+| `npm test` (suite completa) | **1477/1478 PASS** (1 skip pre-esistente, 0 fail, +25 netti su `D-0285`) |
+| `tools/run-eslint.sh` | **291 file · 0 errori · 0 warning** |
+| unit | 11 test `remote-target-registry.test.mjs` (validazione, round-trip activate/rotate/resolve, 409 su ri-activate, 404 su id ignoto, storico `recordFetch`, `remove()`) |
+| SSH reale | 5 test `remote-target-fetch.test.mjs` contro un **vero `sshd` locale** (non mock): `keyscanHost()` con impronta reale verificata, `fetchRemoteTarget()` con fetch reale annidato, rifiuto `HOST_KEY_MISMATCH` su chiave pinnata manomessa, rifiuto `AUTH_FAILED` su chiave non autorizzata |
+| HTTP end-to-end | 7 test `remote-target-http.test.mjs`: `sshd` reale + stub import di Debug Evolution (cattura i byte tar reali caricati) + `server.mjs` reale — registra→lista→activate→fetch-and-scan→409 se modulo inattivo→delete |
+| migrazione stato | `ai-state-migration.test.mjs` riscritto: versione 3→4, nuovo test "un stato v3 guadagna `remoteTargets` e nient'altro cambia" |
+| Debug Evolution, dal vivo, prima del packaging | tarball valido → `201` + progetto reale registrato; tarball corrotto con `../../etc/evil_payload` → `400` `refused a tar member: ... outside the destination`, nulla è uscito dalla destinazione (confermato con `find` sull'intero host); slug non valido → `400`; refetch dello stesso slug → file vecchi spariti, nuovi presenti (sovrascrittura reale) |
+
+## ➜ Installato e verificato dal vivo (Owner: "procedi pure")
+
+`oci/Dockerfile.phase4-debug-evolution-remote-targets` (`FROM
+:phase4-debug-evolution-security-root-cause`, 24 layer, aggiunge `openssh-client` via
+`apt-get`). Debug Evolution: `.pyz` ripacchettato (`zipapp.create_archive`, filtro
+`__pycache__`), backup `debug-evolution.pyz.bak_pre_remote_targets_<ts>`, `SHA256SUMS`
+aggiornato e verificato 31/31 (incluso il fix di `run.py`, backup non salvato come
+`.bak_pre_*` separato prima della modifica — unica lacuna minore rispetto alla convenzione
+del progetto per questo file specifico).
+
+Sequenza deploy `debug-evolution`: `docker stop -t 30` (`137` scoperto e poi risolto, sopra)
+→ `SHA256` verificato → §5a → ricreato con l'`HostConfig` completo → sano. Sequenza deploy
+`noesar-evolution`: `docker stop -t 60` → `postgres.stopped clean:true`, exit 0 → backup
+(`BACKUPS/runtime_pre_debug_evolution_remote_targets_deploy_20260801T163154Z.tar.gz`, 13 MB,
+`schemaVersion:4`) → §5a → ricreato con l'`HostConfig` completo — sano al primo tentativo,
+quarto deploy di fila senza imprevisti (a parte il difetto di `run.py`, trovato *misurando*
+l'esito di `docker stop`, non assumendolo).
+
+Verificato dal vivo: entrambi i container `Up (healthy)` sui tag nuovi; `docker stop -t 10
+debug-evolution` ora `0.145s`+`ExitCode 0` (era `30s`+`137`); `PRAGMA integrity_check` `ok`
+prima e dopo, 17 progetti/84 reperti intatti. **Non verificato dal vivo**: il flusso
+Registrazione→Activate→Fetch&scan completo con una sessione Owner reale e un host SSH vero
+fuori dal laboratorio di test — stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`/
+`D-0285`.
+
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-security-root-cause`
-  (`D-0285`) · `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`.
-  Rollback: `noesar-evolution.rollback-debug-evolution-triage-20260801T154006Z`
-  (`:phase4-debug-evolution-triage`).
-- **`debug-evolution`**: `Up (healthy)`, invariata da `D-0281`.
-- **`atomd`**: ricostruito per `A-0022` (campo `model`), `Up (healthy)`,
-  `identity()`/`hypothesize()` invariate dal vivo. **Nota di processo**: la ricreazione
-  ha usato `docker rm` invece di `docker rename` — nessun container di rollback esiste
-  per questo passo (a differenza di `noesar-evolution`); il rollback resta possibile
-  tramite l'immagine preservata `atom-evolution:atomd-pre-a0022-20260801T150733Z` (byte
-  verificati) + un `docker run` da zero con la configurazione registrata in
-  `ATOM_EVOLUTION/docs/DECISION_LOG.md` A-0022.
-- **`D-0283`, `D-0284` e `D-0285` sono tutti nell'immagine viva**, verificati dal vivo.
+- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-remote-targets` (`D-0286`) ·
+  `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`. Rollback:
+  `noesar-evolution.rollback-debug-evolution-security-root-cause-20260801T163154Z`
+  (`:phase4-debug-evolution-security-root-cause`).
+- **`debug-evolution`**: `debug-evolution:1.1.0-remote-targets` (`D-0286`) · `Up (healthy)`.
+  Rollback: `debug-evolution.rollback-scan-engine-20260801T162858Z`
+  (`:1.1.0-scan-engine`) — nota: questo container di rollback porta ancora il difetto
+  `run.py` risolto in `D-0286` (`Exited (137)`, atteso: è la vecchia immagine).
+- **`atomd`**: invariata da `A-0022`, `Up (healthy)`.
+- **`D-0283`, `D-0284`, `D-0285` e `D-0286` sono tutti nell'immagine viva**, verificati dal
+  vivo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
@@ -287,15 +371,28 @@ stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`.
   `root-cause` a `discovery`+`skeptic`). `reproducer`/`patch-review` restano
   **dichiaratamente e definitivamente fuori scope** finché `EXECUTE` non viene acceso
   con una decisione a sé — l'Owner l'ha rifiutato come effetto collaterale di questa
-  sessione.
+  sessione, anche per `D-0286`.
 - **`security` non produce `SEMANTIC_REACHABILITY`** — resta `AI_HYPOTHESIS` come ogni
   altro ruolo di questa fetta; quel tipo è riservato a evidenza verificata da strumento
   o esecuzione, non a un'opinione di modello (terza correzione della sessione, stessa
   categoria di `classify`/`confidence`/`expect`).
+- **Debug Evolution non vede mai la chiave privata SSH** — resta nel vault di NOESAR,
+  scritta solo in una `mkdtemp` `tmpfs`-adiacente con `finally` incondizionato; quello che
+  arriva a Debug Evolution è solo il tarball già scaricato, via `POST
+  /api/v2/projects/import` con lo stesso token di servizio di `D-0280`.
+  **Fase 3 di Debug Evolution è quindi completa** — resta aperta solo la Fase 4 (memoria a
+  cubi + vettori, decisione dell'embedder ancora da prendere).
+- **`run.py` non aveva un handler di segnale prima di `D-0286`** — non un difetto di questa
+  sessione, preesistente da quando l'appliance esiste; trovato perché il deploy misura
+  sempre l'esito reale di `docker stop`, mai assunto.
 - **Lavoro committato E pushato, tutto**: `NOESAR-EVOLUTION` `ff39fdb` (feat,
   D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) + `e5159fb` (feat, D-0285) +
-  `4d30820` (pin) su `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su
-  `origin/main`.
+  `4d30820` (pin) + `<hash D-0286 feat>` + `<hash D-0286 pin>` su `origin/main`.
+  `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main` — invariata in `D-0286`.
+  `DEBUG_EVOLUTION` non ha repository git (`CLAUDE.md`) — la sua convenzione è
+  `.bak_pre_<motivo>_<timestamp>` + `SHA256SUMS`, seguita per `debug-evolution.pyz`
+  (backup preso) e non per `run.py` (modificato senza backup separato, lacuna minore
+  annotata sopra).
 - **Il proxy funziona per QUALSIASI utente NOESAR autenticato con `workspace.read`**, non
   solo Owner — stesso livello di permesso già usato dalla rotta GET del catalogo.
 
@@ -303,15 +400,21 @@ stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`.
 
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata
 a fine progetto. `oci/Dockerfile`/layer-depth: Thread 2 dell'Owner sotto, ancora aperto,
-margine ampio (20/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
+margine ampio (24/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
 tracciata come blocker del prodotto — non blocca il deploy. `atomd` non ha più un
-container di rollback dedicato dopo `A-0022` (nota di processo sopra) — solo
-un'immagine preservata, non tracciato come blocker perché il rollback resta comunque
-eseguibile.
+container di rollback dedicato dopo `A-0022` (nota di processo, sezione D-0285 sopra) —
+solo un'immagine preservata, non tracciato come blocker perché il rollback resta comunque
+eseguibile. `run.py` modificato senza `.bak_pre_*` separato (sopra) — non tracciato come
+blocker perché `SHA256SUMS` copre comunque l'integrità del file distribuito.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Nessuna. `D-0283`, `D-0284`, `D-0285`, `A-0022`: tutti installati dal vivo, verificati,
-committati, pushati. `reproducer`/`patch-review` restano dichiaratamente fuori scope
-finché non si apre un filo dedicato su `EXECUTE` — non è una domanda in sospeso, è una
-decisione già presa (no, non ora).
+Nessuna sul lavoro fatto. `D-0283`, `D-0284`, `D-0285`, `D-0286`, `A-0022`: tutti
+installati dal vivo, verificati, committati, pushati (`DEBUG_EVOLUTION` via la sua
+convenzione file-based, senza git). `reproducer`/`patch-review` restano dichiaratamente
+fuori scope finché non si apre un filo dedicato su `EXECUTE` — non è una domanda in
+sospeso, è una decisione già presa (no, non ora). **Aperta per la prossima sessione**: il
+piano in 5 fasi di Debug Evolution è completo fino alla Fase 3 — resta solo la Fase 4
+(memoria a cubi + vettori, decisione dell'embedder) prima che qualsiasi altro filo
+dell'Owner possa riprendere, per istruzione esplicita dell'Owner in questa sessione
+("non proporre altro se non finisci debug evolution").
