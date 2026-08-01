@@ -486,7 +486,7 @@ intatti.
   svista.
 - **Lavoro committato E pushato, tutto**: `NOESAR-EVOLUTION` `ff39fdb` (feat,
   D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) + `e5159fb` (feat, D-0285) +
-  `4d30820` (pin) + `d1c1b73` (feat, D-0286) + `664cca3` (pin) + `<hash D-0287 doc>` su
+  `4d30820` (pin) + `d1c1b73` (feat, D-0286) + `664cca3` (pin) + `86847ca` (doc, D-0287) su
   `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main` — invariata da
   `D-0286`. `DEBUG_EVOLUTION` non ha repository git (`CLAUDE.md`) — la sua convenzione è
   `.bak_pre_<motivo>_<timestamp>` + `SHA256SUMS`, seguita per `debug-evolution.pyz`,
