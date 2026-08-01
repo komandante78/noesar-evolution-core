@@ -5,30 +5,28 @@
 >
 > ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s303 → s304)
 >
-> `D-0283` (plug-and-play del modulo) è **installato e verificato dal vivo** in questa
-> sessione — vedi sotto. `D-0284` (Debug Evolution Fase 2, prima fetta discovery+skeptic)
-> è **scritto e verificato in test, NON installato**. Correzione importante trovata
-> leggendo il contratto ATOM prima di costruire: le quattro superfici scritte in
-> precedenza (`classify`/`confidence`/`evidence`/`expect`) erano sbagliate — le prime tre
-> sono firmate su un `Plan` di modifica codice, non su un reperto. Le superfici giuste
-> sono `hypothesize`+`evidence` (CLAUDE.md già corretto).
+> **`D-0283` e `D-0284` sono entrambi installati e verificati dal vivo** in questa
+> sessione (Owner: "PROCEDI"). Correzione importante trovata leggendo il contratto ATOM
+> prima di costruire `D-0284`: le quattro superfici scritte in precedenza
+> (`classify`/`confidence`/`evidence`/`expect`) erano sbagliate — le prime tre sono
+> firmate su un `Plan` di modifica codice, non su un reperto. Le superfici giuste sono
+> `hypothesize`+`evidence` (`CLAUDE.md` già corretto). **Committato e pushato**:
+> `NOESAR-EVOLUTION` `ff39fdb`+`fbf168c`, `ATOM-EVOLUTION` `f5227a7` (campo `model`,
+> `A-0022`, anch'esso installato dal vivo in `atomd`).
 >
-> 1. **Rebuild + installazione di `D-0284`?** Codice pronto (route, bridge, pulsante
->    Triage, 14 test nuovi), mai installato — serve un nuovo `oci/Dockerfile.phase4-*`
->    `FROM :phase4-module-plug-and-play`.
-> 2. **Push su `origin`?** 6 commit locali avanti (`4f220dc`…`cb9c048` D-0273..D-0281,
->    `7469bb1`+`7eae30f` D-0282) + `D-0283`(installato)/`D-0284`(non installato) di
->    questa sessione, entrambi non committati — chiedere.
-> 3. **Campo `model` in ATOM** (`crates/atom-provider/src/model_client.rs`): codice
->    fatto e verificato (91/91 offline, `A-0022` in `ATOM_EVOLUTION/docs/DECISION_LOG.md`),
->    **non deployato in `atomd`** — nessuno scambio automatico, resta una domanda aperta
->    dell'Owner.
-> 4. Fase 2 di Debug Evolution: restano quattro ruoli aperti (`security`, `reproducer`,
+> 1. Fase 2 di Debug Evolution: restano quattro ruoli aperti (`security`, `reproducer`,
 >    `root-cause`, `patch-review`) — `reproducer`/`patch-review` toccano esecuzione/patch,
 >    esplicitamente escluse dal manifesto del modulo, da scoping prima del codice.
-> 5. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) resta
->    dietro a quanto sopra. Primo passo quando si riprende: leggere
->    `auth.mjs`/`auth-crypto.mjs` prima di scrivere codice.
+> 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende
+>    ora, nessun altro filo davanti. Primo passo: leggere `auth.mjs`/`auth-crypto.mjs`
+>    prima di scrivere codice.
+> 3. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
+>    rm` invece di `docker rename` — il container di rollback non esiste più (a
+>    differenza di `noesar-evolution`, dove il pattern rename-poi-rm è stato rispettato).
+>    Il rollback resta comunque possibile: l'immagine precedente è preservata
+>    (`atom-evolution:atomd-pre-a0022-20260801T150733Z`, verificata byte-per-byte) e la
+>    configurazione completa è registrata in `docs/DECISION_LOG.md` A-0022 — richiede un
+>    `docker run` da zero, non un semplice `docker start`.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
 > **Piano di lavoro multi-fase Owner** ("finisci tutto il progetto, massimo 4 pause"):
 > A → B → C → pausa 1 → **decisione WebUI** → pausa 2 → E+F → pausa 3 →
@@ -59,18 +57,18 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ⛔ IMPORTANTE PER QUALSIASI BUILD FUTURO — layer depth del base image
 
-Il tag **vivo** è **`noesar-evolution:phase4-module-plug-and-play`** (`D-0283`, `FROM
-:phase4-module-console-proxy`) a **18 layer overlay2** (`RootFS.Layers`, non `docker
-history`) — ben sotto il limite di 128. `D-0284` è pronto ma non ancora costruito in
-immagine: il prossimo `oci/Dockerfile.phase4-*` deve avere `FROM
-noesar-evolution:phase4-module-plug-and-play`. **Causa strutturale invariata**:
-`oci/Dockerfile` canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
+Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-triage`** (`D-0284`, `FROM
+:phase4-module-plug-and-play`) a **20 layer overlay2** (`RootFS.Layers`, non `docker
+history`) — ben sotto il limite di 128. Usare questo tag come base del prossimo `FROM`.
+**Causa strutturale invariata**: `oci/Dockerfile` canonico non fa boot — Thread 2
+dell'Owner sotto, ancora aperto.
 
-## ⛔ LA PROSSIMA AZIONE — decidere il rebuild dell'immagine (`D-0284`)
+## ⛔ LA PROSSIMA AZIONE — nessuna sul lato modulo/triage, riprende il quarto filo
 
-Il codice di `D-0283` è scritto e verificato in test, **non installato**. Il prossimo
-passo è la parola dell'Owner sul rebuild `FROM :phase4-module-console-proxy`. Nessun'altra
-azione pendente sul lato Debug Evolution/rete/link.
+`D-0283` e `D-0284` sono installati, verificati dal vivo, committati e pushati.
+**Nessuna azione dell'assistente è pendente su modulo/plug-and-play/triage.** Riprende:
+scoping dei quattro ruoli agente restanti (Fase 2), poi il quarto filo Owner
+(Passkey/WebAuthn).
 
 ## ➜ `D-0283` (questa sessione) — cosa è stato fatto
 
@@ -188,19 +186,41 @@ passant: `router.identity()` risponde sempre per il provider di riferimento, mai
 | `tools/run-eslint.sh` | **286 file · 0 errori · 0 warning** |
 | unit conversione | 10/10: intent esclude remediation/esecuzione, evidenza mai vuota, `SUPPORTED`/`UNSUPPORTED_INFERENCE`→riga con testo reale, nessun tipo ATOM è mai `PRIMARY`, `NOT_SOUGHT`/`NONE_FOUND` non generano riga contraria |
 | HTTP end-to-end | 4/4, contro uno stub ATOM che risponde la vera forma del wire (`wire.rs`) e uno stub Debug Evolution **con stato reale**: solo il reperto `DETECTED` viene visitato, 2 righe di evidenza reali arrivano con il testo dello stub intatto, transizione con `actor:'atom'`, `provenance` conferma che ha risposto ATOM (non il reference provider); una seconda esecuzione non ritriagia nulla perché lo stato è davvero cambiato |
-| **non installato dal vivo** | nessun rebuild, nessun container toccato — decisione dell'Owner in sospeso |
+
+## ➜ Installato e verificato dal vivo (Owner: "PROCEDI")
+
+`oci/Dockerfile.phase4-debug-evolution-triage` (`FROM :phase4-module-plug-and-play`, 20
+layer). Stessa sequenza di `D-0283`: `docker stop -t 60` → `postgres.stopped clean:true`,
+exit 0 → backup (`BACKUPS/runtime_pre_debug_evolution_triage_deploy_
+20260801T150531Z.tar.gz`, 13 MB, `schemaVersion:3`) → §5a → ricreato **con l'`HostConfig`
+completo letto prima dello stop** (la lezione di `D-0283` applicata subito dopo averla
+imparata) — sano al primo tentativo, nessun imprevisto.
+
+Verificato dal vivo, non solo in test: `identity()` di `atomd` interrogata da dentro
+`noesar-evolution` — invariata, nessun campo `model` nella risposta (nessun `ATOM_MODEL`
+configurato in nessun container, quindi il filo resta identico); una vera chiamata
+`hypothesize()` dal vivo risponde correttamente; `POST /api/v1/debug-evolution/triage`
+senza sessione risponde `401` (rotta viva e raggiungibile); `sector-modules/
+debug-evolution/state.json` ancora `active`; il token di servizio del modulo autentica
+ancora. **Non verificato dal vivo**: il flusso Triage con una sessione Owner reale —
+nessuna password/TOTP disponibile in questa sessione, stessa cautela di `D-0279`/
+`D-0282`/`D-0283`.
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-module-plug-and-play` (`D-0283`) ·
-  `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`. **`D-0284`
-  NON è in questa immagine.** Rollback:
-  `noesar-evolution.rollback-module-console-proxy-20260801T133906Z`
-  (`:phase4-module-console-proxy`).
-- **`debug-evolution`**: `Up (healthy)`, invariata da `D-0281`, non toccata in questo
-  deploy.
-- **`D-0283` È nell'immagine viva**, verificato dal vivo (vedi sopra). **`D-0284` NON
-  lo è** — scritto, testato, non installato.
+- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-triage` (`D-0284`) ·
+  `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`. Rollback:
+  `noesar-evolution.rollback-module-plug-and-play-20260801T150531Z`
+  (`:phase4-module-plug-and-play`).
+- **`debug-evolution`**: `Up (healthy)`, invariata da `D-0281`.
+- **`atomd`**: ricostruito per `A-0022` (campo `model`), `Up (healthy)`,
+  `identity()`/`hypothesize()` invariate dal vivo. **Nota di processo**: la ricreazione
+  ha usato `docker rm` invece di `docker rename` — nessun container di rollback esiste
+  per questo passo (a differenza di `noesar-evolution`); il rollback resta possibile
+  tramite l'immagine preservata `atom-evolution:atomd-pre-a0022-20260801T150733Z` (byte
+  verificati) + un `docker run` da zero con la configurazione registrata in
+  `ATOM_EVOLUTION/docs/DECISION_LOG.md` A-0022.
+- **`D-0283` e `D-0284` sono entrambi nell'immagine viva**, verificati dal vivo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
@@ -218,9 +238,9 @@ passant: `router.identity()` risponde sempre per il provider di riferimento, mai
 - **Il pulsante Triage esiste, la Fase 2 non è completa**: solo `DETECTED →
   HYPOTHESIZED`, solo due dei sei ruoli dichiarati. `reproducer`/`patch-review` restano
   fuori scope finché non c'è uno scoping esplicito (toccano esecuzione/patch).
-- **Lavoro committato**: `D-0273`…`D-0281` (4 commit, s301), `D-0282` (`7469bb1`+`7eae30f`).
-  `D-0283`(installato)/`D-0284`(non installato) non ancora committati. Nessun push
-  eseguito.
+- **Lavoro committato E pushato**: `NOESAR-EVOLUTION` `ff39fdb` (feat, D-0283+D-0284)
+  + `fbf168c` (pin) su `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su
+  `origin/main`.
 - **Il proxy funziona per QUALSIASI utente NOESAR autenticato con `workspace.read`**, non
   solo Owner — stesso livello di permesso già usato dalla rotta GET del catalogo.
 
@@ -228,18 +248,17 @@ passant: `router.identity()` risponde sempre per il provider di riferimento, mai
 
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata
 a fine progetto. `oci/Dockerfile`/layer-depth: Thread 2 dell'Owner sotto, ancora aperto,
-margine ampio (18/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
-tracciata come blocker del prodotto — non blocca il deploy.
+margine ampio (20/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
+tracciata come blocker del prodotto — non blocca il deploy. **Nuovo**: `atomd` non ha
+più un container di rollback dedicato dopo `A-0022` (vedi nota di processo sopra) — solo
+un'immagine preservata, non tracciato come blocker perché il rollback resta comunque
+eseguibile.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-1. **Rebuild + installazione di `D-0284`?** Codice pronto, mai installato — serve un
-   nuovo `oci/Dockerfile.phase4-*` `FROM :phase4-module-plug-and-play`.
-2. **Push su `origin`?** `D-0283` installato e verificato dal vivo, `D-0284` scritto e
-   testato — nessuno dei due committato, nessun commit fatto senza richiesta esplicita.
-3. **Campo `model` in ATOM** (`crates/atom-provider/src/model_client.rs`, `ChatRequest`):
-   codice fatto e verificato (91/91 offline, `A-0022`), **non deployato in `atomd`**.
-   Nessuno scambio automatico — resta aperto.
-4. **Scoping dei restanti quattro ruoli agente** (`security`, `reproducer`, `root-cause`,
+1. **Scoping dei restanti quattro ruoli agente** (`security`, `reproducer`, `root-cause`,
    `patch-review`) — `reproducer`/`patch-review` toccano esecuzione/patch, esclusi dal
    manifesto del modulo, servirà una decisione esplicita prima del codice.
+
+Nessun'altra domanda aperta: rebuild/deploy di `D-0283`/`D-0284`/`A-0022`, commit e push
+di entrambi i repository sono tutti chiusi in questa sessione.
