@@ -17,7 +17,7 @@ import { PublisherRegistry } from '../src/publisher-registry.mjs';
 import {
   SectorModuleError, classifyModuleRisk, checkPolicyConsistency, loadPermissionCatalog,
   loadTrustLevelPolicy, installSectorModule, activateSectorModule, deactivateSectorModule,
-  loadModuleState, readInstalledManifest, signSectorModuleManifest,
+  uninstallSectorModule, loadModuleState, readInstalledManifest, signSectorModuleManifest,
   verifySectorModuleManifestSignature,
 } from '../src/sector-modules.mjs';
 
@@ -329,5 +329,85 @@ test('a CapabilityError from a reused (already-spent) token surfaces as NOT_AUTH
       () => installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifestB.id, candidate: manifestB, minter, capabilityToken: token, nowUnix: 2 }),
       (error) => error instanceof SectorModuleError && error.kind === 'NOT_AUTHORIZED',
     );
+  } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
+});
+
+// --- D-0283: uninstall ------------------------------------------------------------------
+// The verb deactivateSectorModule()'s own comment named as missing until now. It is gated by
+// the same spent capability token as the other three, keeps the manifest on disk (rule 12,
+// and it is the audit evidence of what was once trusted), and makes the module installable
+// again rather than a one-way door.
+
+test('uninstall takes an ACTIVE module out in one call, recording the deactivation it implies', () => {
+  const { minter, grants, sectorModulesRoot } = fresh();
+  try {
+    const manifest = lowRiskManifest();
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants), nowUnix: 1 });
+    activateSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 2), approverId: 'test-owner', nowUnix: 2 });
+
+    const result = uninstallSectorModule({ sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 3), approverId: 'test-owner', nowUnix: 3 });
+    assert.equal(result.status, 'uninstalled');
+    assert.equal(result.wasActive, true);
+    const state = loadModuleState(sectorModulesRoot, manifest.id);
+    assert.equal(state.status, 'uninstalled');
+    assert.deepEqual(state.history.map((entry) => entry.event), ['installed', 'activated', 'deactivated', 'uninstalled']);
+    assert.deepEqual(readInstalledManifest(sectorModulesRoot, manifest.id), manifest, 'the manifest stays as evidence');
+  } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
+});
+
+test('an uninstalled module cannot be activated, and cannot be uninstalled twice', () => {
+  const { minter, grants, sectorModulesRoot } = fresh();
+  try {
+    const manifest = lowRiskManifest();
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants), nowUnix: 1 });
+    uninstallSectorModule({ sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 2), approverId: 'test-owner', nowUnix: 2 });
+
+    assert.throws(
+      () => activateSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 3), approverId: 'test-owner', nowUnix: 3 }),
+      (error) => error instanceof SectorModuleError && error.kind === 'NOT_INSTALLED',
+    );
+    assert.throws(
+      () => uninstallSectorModule({ sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 4), approverId: 'test-owner', nowUnix: 4 }),
+      (error) => error instanceof SectorModuleError && error.kind === 'NOT_INSTALLED',
+    );
+  } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
+});
+
+test('installing over an uninstalled module is allowed and carries its history forward', () => {
+  const { minter, grants, sectorModulesRoot } = fresh();
+  try {
+    const manifest = lowRiskManifest();
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants), nowUnix: 1 });
+    uninstallSectorModule({ sectorModulesRoot, id: manifest.id, minter, capabilityToken: grantWrite(grants, 2), approverId: 'test-owner', nowUnix: 2 });
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants, 3), nowUnix: 3 });
+
+    const state = loadModuleState(sectorModulesRoot, manifest.id);
+    assert.equal(state.status, 'installed');
+    assert.deepEqual(state.history.map((entry) => entry.event), ['installed', 'uninstalled', 'installed']);
+  } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
+});
+
+test('an INSTALLED-but-never-active module still refuses to reinstall over itself', () => {
+  const { minter, grants, sectorModulesRoot } = fresh();
+  try {
+    const manifest = lowRiskManifest();
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants), nowUnix: 1 });
+    assert.throws(
+      () => installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants, 2), nowUnix: 2 }),
+      (error) => error instanceof SectorModuleError && error.kind === 'ALREADY_INSTALLED',
+    );
+  } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
+});
+
+test('uninstall without a valid capability token is refused, like every other write', () => {
+  const { minter, grants, sectorModulesRoot } = fresh();
+  try {
+    const manifest = lowRiskManifest();
+    installSectorModule({ productRoot: repoRoot, sectorModulesRoot, id: manifest.id, candidate: manifest, minter, capabilityToken: grantWrite(grants), nowUnix: 1 });
+    assert.throws(
+      () => uninstallSectorModule({ sectorModulesRoot, id: manifest.id, minter, capabilityToken: null, approverId: 'test-owner', nowUnix: 2 }),
+      (error) => error instanceof SectorModuleError && error.kind === 'NOT_AUTHORIZED',
+    );
+    assert.equal(loadModuleState(sectorModulesRoot, manifest.id).status, 'installed', 'a refused uninstall changes nothing');
   } finally { rmSync(sectorModulesRoot, { recursive:true, force:true }); }
 });

@@ -2,16 +2,22 @@
 //
 // D-0278: proves the seeding + rescan route end to end over real HTTP, against a stub
 // Debug Evolution. NOESAR_DEBUG_EVOLUTION_TOKEN/_URL must be set BEFORE server.mjs is
-// imported — seedDebugEvolutionTools() runs once, at module load, the same way every
+// imported — reconcileModuleWiring() runs once, at module load, the same way every
 // other startup-time bootstrap step in server.mjs does.
+//
+// D-0283 added the second precondition this test now writes: the environment alone no
+// longer seeds anything, because it survives an uninstall. The module has to be INSTALLED
+// AND ACTIVE, set up below exactly as the live installation has it. What D-0278 proved is
+// unchanged; what entitles it to be true is now explicit.
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { OWNER_MODULE_CATALOG } from '../src/owner-module-catalog.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -43,6 +49,16 @@ process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';
 process.env.NOESAR_DATA_PLANE = 'reference-json';
+
+// D-0283: the module is installed and active here, which is what entitles the tools to be
+// seeded at boot at all.
+const moduleRoot = join(workspace, 'sector-modules', 'debug-evolution');
+mkdirSync(moduleRoot, { recursive: true });
+writeFileSync(join(moduleRoot, 'manifest.json'), JSON.stringify(OWNER_MODULE_CATALOG[0].buildManifest(), null, 2));
+writeFileSync(join(moduleRoot, 'state.json'), JSON.stringify({
+  status: 'active', installedAtUnix: 1, activatedAtUnix: 2, deactivatedAtUnix: null,
+  history: [{ event: 'installed', atUnix: 1 }, { event: 'activated', atUnix: 2 }],
+}, null, 2));
 
 const { server } = await import('../src/server.mjs');
 

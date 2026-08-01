@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0284: Phase 2 of Debug Evolution's own plan (Owner s302), first slice --
+# discovery+skeptic. Debug Evolution already has the whole apparatus this needs (finding
+# lifecycle, evidence ledger with AI_HYPOTHESIS/COUNTER_EVIDENCE, working evidence/
+# transition endpoints -- the "Evidence Court", D-0280 -- and six agent roles already
+# declared in de_v2/app.py's AGENTS but never wired to anything). Zero changes to the
+# .pyz. The four ATOM surfaces named for this in an earlier session
+# (classify/confidence/evidence/expect) were corrected on inspection of the pinned
+# contract: classify/confidence/expect are signed on a code-change Plan, not a finding.
+# hypothesize(intent, gathered) -> Hypothesis[] is the fit -- Hypothesis already carries
+# both supporting AND contrary evidence in one answer, so discovery+skeptic is one call.
+#
+# New: debug-evolution-triage.mjs (pure conversion), triageUnclassifiedFindings() in
+# debug-evolution-bridge.mjs, POST /api/v1/debug-evolution/triage (owner+CSRF, the same
+# isModuleActive gate D-0283 added to rescan), a "Triage findings" button on the module
+# card. router.identity() was found to always answer for the reference provider
+# regardless of routing -- the route reports provenance() instead.
+#
+# Verified before this build: unit 1448/1449 (1 pre-existing skip, 0 failed, +14 new:
+# debug-evolution-triage.test.mjs 10, debug-evolution-triage-http.test.mjs 4 against a
+# stub ATOM answering the real wire shape from wire.rs and a stateful stub Debug
+# Evolution), ESLint 286 files 0 errors. Built FROM the previous tag: layers well under
+# the 128 limit.
+
+FROM noesar-evolution:phase4-module-plug-and-play
+
+LABEL org.noesar.phase="4-debug-evolution-triage"
+LABEL org.noesar.feature="debug-evolution-phase-2-discovery-skeptic-slice-via-atom-hypothesize"
+LABEL org.noesar.base-image="noesar-evolution:phase4-module-plug-and-play"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

@@ -39,13 +39,14 @@ process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';
 process.env.NOESAR_DATA_PLANE = 'reference-json';
 
-const { server, moduleConsoleProxyServer } = await import('../src/server.mjs');
+const { server, startModuleConsoleProxy, stopModuleConsoleProxy, isModuleConsoleProxyListening } = await import('../src/server.mjs');
 
 const STEP_MS = 30_000;
 const stepStart = (offset = 0) => (Math.floor(Date.now() / STEP_MS) + offset) * STEP_MS;
 
 let base = null;
 let cookie = null;
+let csrf = null;
 
 async function raw(path, { method = 'GET', payload, headers = {} } = {}) {
   const response = await fetch(`${base}${path}`, {
@@ -56,7 +57,7 @@ async function raw(path, { method = 'GET', payload, headers = {} } = {}) {
   let json = null; try { json = JSON.parse(text); } catch { /* non-JSON */ }
   return { status: response.status, json, text };
 }
-function authed(path, opts = {}) { return raw(path, { ...opts, headers: { cookie, ...(opts.headers ?? {}) } }); }
+function authed(path, opts = {}) { return raw(path, { ...opts, headers: { cookie, ...(csrf ? { 'x-noesar-csrf': csrf } : {}), ...(opts.headers ?? {}) } }); }
 
 before(async () => {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -73,13 +74,25 @@ before(async () => {
   assert.equal(response.status, 201, 'setup confirm failed');
   const setCookie = response.headers.getSetCookie?.() ?? [];
   cookie = setCookie.find((entry) => entry.startsWith('noesar_session=')).split(';')[0];
+  csrf = (await response.json()).csrfToken;
+  assert.ok(csrf, 'setup confirm must return a csrf token');
 
-  await new Promise((resolve) => moduleConsoleProxyServer.listen(PROXY_PORT, '127.0.0.1', resolve));
+  // D-0283: the proxy no longer listens because an environment variable is set — it comes
+  // up when the module is ACTIVE. Installing and activating through the real catalog routes
+  // is now part of what this test proves.
+  const installed = await authed('/api/v1/sector-modules/catalog/debug-evolution/install', { method: 'POST', payload: {} });
+  assert.equal(installed.status, 201, `install failed: ${installed.text.slice(0, 200)}`);
+  const activated = await authed('/api/v1/sector-modules/catalog/debug-evolution/activate', { method: 'POST', payload: {} });
+  assert.equal(activated.status, 200, `activate failed: ${activated.text.slice(0, 200)}`);
+  startModuleConsoleProxy();
+  // listen() is asynchronous; wait for the port to answer rather than racing it.
+  for (let attempt = 0; attempt < 50 && !isModuleConsoleProxyListening(); attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => setTimeout(resolve, 50));
 });
 
 after(async () => {
   await new Promise((resolve) => server.close(resolve));
-  await new Promise((resolve) => moduleConsoleProxyServer.close(resolve));
+  stopModuleConsoleProxy();
   await new Promise((resolve) => stubDebugEvolution.close(resolve));
 });
 

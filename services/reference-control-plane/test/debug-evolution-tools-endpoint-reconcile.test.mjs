@@ -6,6 +6,12 @@
 // three tools pointed at a now-unpublished port. This pre-seeds a workspace with tool
 // entries carrying an OLD endpoint (the exact shape a real prior boot would have written)
 // and confirms the NEXT boot, with a NEW NOESAR_DEBUG_EVOLUTION_URL, rewrites them.
+//
+// D-0283 amends the precondition, not the property: the reconcile now runs only for a
+// module that is INSTALLED AND ACTIVE here, so the workspace is pre-seeded with that
+// install state too -- exactly what the live installation this defect was found on has.
+// The opposite direction (not installed -> the tools are taken away) is
+// module-uninstall-wiring.test.mjs.
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,6 +19,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AI_STATE_VERSION } from '../src/ai-workspace/atomic-store.mjs';
+import { OWNER_MODULE_CATALOG } from '../src/owner-module-catalog.mjs';
 
 const OLD_URL = 'http://192.168.178.100:8787';
 const NEW_URL = 'http://debug-evolution:8787';
@@ -34,6 +41,18 @@ const preSeeded = {
   settings: { defaultProviderId: null, externalEgressDefault: 'deny', retentionDays: 365, semanticSearchEnabled: true },
 };
 writeFileSync(join(workspace, 'state/ai-workspace.json'), JSON.stringify(preSeeded, null, 2));
+
+// D-0283: the module is installed and active in this workspace, which is what entitles the
+// tools above to exist at all. Written straight to disk rather than driven through the
+// catalog routes: this test is about the BOOT-time reconcile, which has to have run before
+// the first request could be made.
+const moduleRoot = join(workspace, 'sector-modules', 'debug-evolution');
+mkdirSync(moduleRoot, { recursive: true });
+writeFileSync(join(moduleRoot, 'manifest.json'), JSON.stringify(OWNER_MODULE_CATALOG[0].buildManifest(), null, 2));
+writeFileSync(join(moduleRoot, 'state.json'), JSON.stringify({
+  status: 'active', installedAtUnix: 1785501878, activatedAtUnix: 1785501881, deactivatedAtUnix: null,
+  history: [{ event: 'installed', atUnix: 1785501878 }, { event: 'activated', atUnix: 1785501881 }],
+}, null, 2));
 
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;

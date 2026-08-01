@@ -28,7 +28,7 @@ import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-
 import { researchGateFrom } from './research-gate.mjs';
 import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
-import { rescanNoesarEvolutionProjects } from './debug-evolution-bridge.mjs';
+import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings } from './debug-evolution-bridge.mjs';
 import { createModuleConsoleProxyServer } from './module-console-proxy.mjs';
 import {
   TokenMinter, authorizePlan, capabilityStatus, CapabilityError,
@@ -41,9 +41,10 @@ import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
 import {
   SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
-  installSectorModule, activateSectorModule, deactivateSectorModule,
+  installSectorModule, activateSectorModule, deactivateSectorModule, uninstallSectorModule,
   readInstalledManifest, classifyModuleRisk, signSectorModuleManifest,
 } from './sector-modules.mjs';
+import { moduleLifecycleStatus, isModuleActive, debugEvolutionToolSeeds, reconcileModuleTools } from './module-wiring.mjs';
 import {
   CompliancePackError, loadCompliancePacks, compliancePacksStatus,
   validateCompliancePackDocument, checkPackDates, loadComplianceSchema,
@@ -457,29 +458,29 @@ function ensureOwnerPublisherRegistered({ actorId, nowUnix }) {
 // migration that moved Debug Evolution off the LAN found this the hard way: three tools
 // still pointed at the old published port after it was closed. Reconcile on every boot
 // instead of skipping.
-function seedDebugEvolutionTools() {
-  const token = process.env.NOESAR_DEBUG_EVOLUTION_TOKEN;
-  if (!token) { logger.warn('debug_evolution.tools_not_seeded', { reason: 'NOESAR_DEBUG_EVOLUTION_TOKEN not configured' }); return; }
-  const baseUrl = (process.env.NOESAR_DEBUG_EVOLUTION_URL ?? 'http://192.168.178.100:8787').replace(/\/$/, '');
-  const seeds = [
-    { name: 'Debug Evolution — List Projects', description: 'The repositories Debug Evolution has registered and scanned.', endpoint: `${baseUrl}/api/v2/projects`, config: { method: 'GET' } },
-    { name: 'Debug Evolution — All Findings', description: 'Every finding Debug Evolution has recorded, across every registered project.', endpoint: `${baseUrl}/api/v2/findings`, config: { method: 'GET' } },
-    { name: 'Debug Evolution — SARIF Report', description: 'A SARIF 2.1.0 report of every current finding, for tools that consume that format.', endpoint: `${baseUrl}/api/v2/sarif`, config: { method: 'GET' } },
-  ];
-  for (const seed of seeds) {
-    const current = aiStore.read().tools.find((tool) => tool.name === seed.name);
-    if (current) {
-      if (current.endpoint !== seed.endpoint) {
-        aiStore.transact((state) => { state.tools.find((tool) => tool.id === current.id).endpoint = seed.endpoint; state.tools.find((tool) => tool.id === current.id).updatedAt = new Date().toISOString(); });
-        logger.info('debug_evolution.tool_endpoint_reconciled', { toolId: current.id, name: seed.name });
-      }
-      continue;
-    }
-    const tool = agentService.registerTool({ name: seed.name, description: seed.description, transport: 'local-http', endpoint: seed.endpoint, config: seed.config, external: false, mutative: false, requiresApproval: false }, 'system');
-    agentService.setToolCredential(tool.id, token);
+//
+// D-0283: reconcile in BOTH directions, and off the module's install state rather than off
+// the environment. The environment says where the module is; `sector-modules/<id>/state.json`
+// says whether NOESAR talks to it at all. Before this, uninstalling the module left three
+// working, credentialled tools behind on every boot -- Owner instruction (s302), verbatim:
+// "disinstallare debug evolution deve lasciare noesar intatto".
+const DEBUG_EVOLUTION_MODULE_ID = 'debug-evolution';
+function reconcileDebugEvolutionTools() {
+  const token = process.env.NOESAR_DEBUG_EVOLUTION_TOKEN ?? null;
+  const active = isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID);
+  const baseUrl = process.env.NOESAR_DEBUG_EVOLUTION_URL ?? 'http://192.168.178.100:8787';
+  const summary = reconcileModuleTools({
+    active, token, seeds: debugEvolutionToolSeeds(baseUrl), store: aiStore, agentService,
+  });
+  if (active && !token) logger.warn('debug_evolution.tools_not_seeded', { reason: 'NOESAR_DEBUG_EVOLUTION_TOKEN not configured' });
+  if (summary.attached.length || summary.reconciled.length || summary.detached.length) {
+    logger.info('module_wiring.tools_reconciled', {
+      module: DEBUG_EVOLUTION_MODULE_ID, active,
+      attached: summary.attached.length, reconciled: summary.reconciled.length, detached: summary.detached.length,
+    });
   }
+  return summary;
 }
-seedDebugEvolutionTools();
 
 // D-0280: one authentication in the system, and it is NOESAR's.
 //
@@ -497,11 +498,22 @@ seedDebugEvolutionTools();
 //
 // The credential is written where the module can read it and nowhere else. It is never an
 // environment variable on this side and never crosses the network from here.
+//
+// D-0283: provisioned for a module that is INSTALLED here, and taken away when it is not.
+// A credential that outlives the module it was minted for is exactly the residue an
+// uninstall is supposed to remove -- `disableUser` revokes every live token of the account
+// in one write (user-directory.mjs), so the file left on disk stops authenticating rather
+// than being deleted (rule 12), and a re-install reinstates the account and mints a fresh
+// token through the same load-or-create path.
 const MODULE_ACCOUNTS = [{ id: 'debug-evolution', displayName: 'Debug Evolution module' }];
 const moduleCredentialsRoot = join(workspace, 'module-credentials');
 
+function activeOwnerAccount() {
+  return userDirectory.list().find((user) => user.role === 'owner' && (user.status ?? 'active') === 'active') ?? null;
+}
+
 function ensureModuleServiceAccounts() {
-  const owner = userDirectory.list().find((user) => user.role === 'owner' && (user.status ?? 'active') === 'active');
+  const owner = activeOwnerAccount();
   if (!owner) {
     // A fresh installation with setup not yet completed. Declared, not silently skipped.
     logger.warn('module_credentials.not_provisioned', { reason: 'no active owner account yet' });
@@ -509,13 +521,22 @@ function ensureModuleServiceAccounts() {
   }
   mkdirSync(moduleCredentialsRoot, { recursive: true, mode: 0o700 });
   for (const module of MODULE_ACCOUNTS) {
+    // Not installed (never, or no longer) -> no credential. The token file may still exist
+    // from a previous installation; it does not authenticate while the account is disabled.
+    if (moduleLifecycleStatus(sectorModulesRoot, module.id) === 'not-installed') continue;
+    if (moduleLifecycleStatus(sectorModulesRoot, module.id) === 'uninstalled') { revokeModuleServiceCredential(module.id); continue; }
     const path = join(moduleCredentialsRoot, `${module.id}.token`);
+    let account = userDirectory.list().find((user) => user.username === module.id);
+    if (account && (account.status ?? 'active') !== 'active') {
+      userDirectory.reinstateUser({ actorId: owner.id, userId: account.id });
+      account = userDirectory.list().find((user) => user.username === module.id);
+      logger.info('module_credentials.account_reinstated', { module: module.id });
+    }
     if (existsSync(path)) {
       const existing = readFileSync(path, 'utf8').trim();
       if (existing && userDirectory.authenticateServiceToken(existing)) continue;
       logger.warn('module_credentials.reissuing', { module: module.id, reason: 'stored token no longer authenticates' });
     }
-    const account = userDirectory.list().find((user) => user.username === module.id);
     const issued = account
       ? userDirectory.issueServiceToken({ actorId: owner.id, userId: account.id, name: 'module' })
       : userDirectory.createServiceAccount({ actorId: owner.id, username: module.id, displayName: module.displayName });
@@ -523,7 +544,19 @@ function ensureModuleServiceAccounts() {
     logger.info('module_credentials.provisioned', { module: module.id, tokenId: issued.tokenId });
   }
 }
-ensureModuleServiceAccounts();
+
+/** Uninstall's half of the pair above. Idempotent: a module that never had an account, or
+ * whose account is already disabled, is a no-op, not an error. */
+function revokeModuleServiceCredential(moduleId) {
+  const owner = activeOwnerAccount();
+  const account = userDirectory.list().find((user) => user.username === moduleId && user.role === 'service_account');
+  if (!owner || !account || (account.status ?? 'active') !== 'active') return false;
+  userDirectory.disableUser({ actorId: owner.id, userId: account.id, reason: 'module uninstalled' });
+  logger.info('module_credentials.revoked', { module: moduleId });
+  return true;
+}
+// Called from reconcileModuleWiring() below, with the tools and the console proxy, so the
+// three surfaces are provisioned and torn down together and never from three places.
 
 // D-0281 follow-up: the module's own `externalUrl` (owner-module-catalog.mjs) stopped
 // being reachable from a browser on the LAN the moment that phase closed the module's
@@ -533,8 +566,18 @@ ensureModuleServiceAccounts();
 // module over the internal network so its absolute-path assets resolve unmodified.
 // Only started when there is a URL to proxy to; a fresh install with the module not
 // configured gets nothing listening on the port, not a proxy to nowhere.
+//
+// D-0283: and only while the module is ACTIVE. A listener that keeps proxying a browser
+// into an uninstalled module's console is the same residue as the tools and the credential
+// -- so the port opens on activate and closes on deactivate/uninstall, instead of being
+// decided once at boot by the presence of an environment variable.
+const moduleConsoleProxyPort = Number(process.env.NOESAR_MODULE_PROXY_PORT ?? 8089);
+const moduleConsoleProxyConfigured = Boolean(process.env.NOESAR_DEBUG_EVOLUTION_URL);
 let moduleConsoleProxyServer = null;
-if (process.env.NOESAR_DEBUG_EVOLUTION_URL) {
+let moduleConsoleProxyListening = false;
+
+function ensureModuleConsoleProxyServer() {
+  if (moduleConsoleProxyServer || !moduleConsoleProxyConfigured) return moduleConsoleProxyServer;
   moduleConsoleProxyServer = createModuleConsoleProxyServer({
     targetBaseUrl: process.env.NOESAR_DEBUG_EVOLUTION_URL,
     moduleName: 'Debug Evolution',
@@ -543,7 +586,51 @@ if (process.env.NOESAR_DEBUG_EVOLUTION_URL) {
       return Boolean(session && auth.hasPermission(session.user, 'workspace.read'));
     },
   });
+  return moduleConsoleProxyServer;
 }
+
+/** Idempotent. Returns whether the proxy is listening after the call, so a caller can log
+ * the truth rather than its intention. */
+function startModuleConsoleProxy() {
+  if (!moduleConsoleProxyConfigured || !isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) return false;
+  const proxy = ensureModuleConsoleProxyServer();
+  if (!proxy || moduleConsoleProxyListening) return moduleConsoleProxyListening;
+  moduleConsoleProxyListening = true;
+  proxy.listen(moduleConsoleProxyPort, host, () => {
+    logger.info('module-console-proxy.started', { component:'control-plane', port:moduleConsoleProxyPort, target:process.env.NOESAR_DEBUG_EVOLUTION_URL });
+  });
+  proxy.on('error', (error) => {
+    moduleConsoleProxyListening = false;
+    logger.error('module-console-proxy.failed', { component:'control-plane', port:moduleConsoleProxyPort, error:error.message });
+  });
+  return true;
+}
+
+function stopModuleConsoleProxy() {
+  if (!moduleConsoleProxyServer || !moduleConsoleProxyListening) return false;
+  moduleConsoleProxyListening = false;
+  moduleConsoleProxyServer.close(() => logger.info('module-console-proxy.stopped', { component:'control-plane', port:moduleConsoleProxyPort }));
+  // A closed http.Server cannot listen again; the next activate builds a fresh one.
+  moduleConsoleProxyServer = null;
+  return true;
+}
+
+/**
+ * The one call every module lifecycle transition makes — install, activate, deactivate,
+ * uninstall, and boot. Each of the three surfaces (tools, credential, console proxy) reads
+ * the SAME install state, so they cannot disagree about whether the module is wired in.
+ * `listen` is false at import time (a test importing this module gets no open port, the
+ * same guard the main HTTP listener has); the entrypoint calls it again with `listen`.
+ */
+function reconcileModuleWiring({ listen = false } = {}) {
+  const tools = reconcileDebugEvolutionTools();
+  ensureModuleServiceAccounts();
+  const active = isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID);
+  if (!active) stopModuleConsoleProxy();
+  else if (listen) startModuleConsoleProxy();
+  return { active, tools, proxyListening: moduleConsoleProxyListening };
+}
+reconcileModuleWiring();
 
 // The approval queue reads the three subsystems that own approvals and owns none itself,
 // so it is constructed last — after the update manager it reads from.
@@ -1445,6 +1532,7 @@ const requestListener = async (req, res) => {
           minter: capabilityMinter, capabilityToken: payload?.capabilityToken ?? null, nowUnix,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.installed', result:'success', details:{ id:result.id } });
+        reconcileModuleWiring({ listen: true });
         return json(res, 201, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1473,6 +1561,7 @@ const requestListener = async (req, res) => {
           approverId: authenticated.user.id, nowUnix, publisherRegistry,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.activated', result:'success', details:{ id:result.id, highRisk:result.highRisk, trustLevel:result.trustLevel } });
+        reconcileModuleWiring({ listen: true });
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1494,6 +1583,7 @@ const requestListener = async (req, res) => {
           nowUnix, reason: payload?.reason ?? null,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.deactivated', result:'success', details:{ id:result.id } });
+        reconcileModuleWiring({ listen: true });
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1527,12 +1617,17 @@ const requestListener = async (req, res) => {
         // configure. Falls back to the catalog's declared URL when no proxy is running
         // (module not configured) or no publish address is known, rather than hiding
         // the field.
-        const proxiedUrl = entry.id === 'debug-evolution' && moduleConsoleProxyServer && bindAddress && !isWildcardAddress(bindAddress)
-          ? `${tls.active ? 'https' : 'http'}://${bindAddress}:${process.env.NOESAR_MODULE_PROXY_PORT ?? 8089}`
+        const proxiedUrl = entry.id === 'debug-evolution' && moduleConsoleProxyConfigured && bindAddress && !isWildcardAddress(bindAddress)
+          ? `${tls.active ? 'https' : 'http'}://${bindAddress}:${moduleConsoleProxyPort}`
           : entry.externalUrl;
+        // D-0283: an uninstalled module keeps its manifest on disk (it is the audit
+        // evidence of what was once trusted here), so `scan.valid` still finds it — the
+        // catalog reports it as installable again, which is what an Owner looking at the
+        // card needs to know. `state.status` itself stays `uninstalled` for an audit read.
+        const lifecycle = installed ? installed.state.status : 'not-installed';
         return {
           id: entry.id, name: entry.name, description: entry.description, externalUrl: proxiedUrl,
-          status: installed ? installed.state.status : 'not-installed',
+          status: lifecycle === 'uninstalled' ? 'not-installed' : lifecycle,
           version: manifest.version, publisher: manifest.publisher, trustLevel: manifest.trust_level,
           sector: manifest.sector,
         };
@@ -1564,6 +1659,7 @@ const requestListener = async (req, res) => {
           minter: capabilityMinter, capabilityToken: approved.token, nowUnix,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_installed', result:'success', details:{ id } });
+        reconcileModuleWiring({ listen: true });
         return json(res, 201, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1589,6 +1685,10 @@ const requestListener = async (req, res) => {
           capabilityToken: approved.token, approverId: authenticated.user.id, nowUnix, publisherRegistry,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_activated', result:'success', details:{ id } });
+        // D-0283: the tools, the credential and the console proxy come up HERE, on the
+        // activation, not at boot off an environment variable — that is what makes a
+        // one-click install a real install and a one-click uninstall a real removal.
+        reconcileModuleWiring({ listen: true });
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1613,6 +1713,7 @@ const requestListener = async (req, res) => {
           approverId: authenticated.user.id, nowUnix,
         });
         ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_deactivated', result:'success', details:{ id } });
+        reconcileModuleWiring({ listen: true });
         return json(res, 200, result);
       } catch (error) {
         if (error instanceof SectorModuleError) {
@@ -1622,11 +1723,45 @@ const requestListener = async (req, res) => {
         throw error;
       }
     }
+    // D-0283: the verb the Owner asked for and the product did not have. Owner instruction
+    // (s302), verbatim: "disinstallare debug evolution deve lasciare noesar intatto".
+    // Same gate as the other three catalog routes (owner + CSRF, no separate step-up:
+    // removing a module is a de-escalation, and D-0278's argument against a second prompt
+    // applies with more force here than on install).
+    const catalogUninstallMatch = url.pathname.match(/^\/api\/v1\/sector-modules\/catalog\/([^/]+)\/uninstall$/);
+    if (catalogUninstallMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(catalogUninstallMatch[1]);
+      if (!findCatalogEntry(id)) return json(res, 404, { error:'No such catalog module.' });
+      const nowUnix = Math.floor(Date.now() / 1000);
+      try {
+        const granted = adapterGrants.request({ resource:'sector-modules', operation:'WRITE', actor:authenticated.user.id, nowUnix });
+        const approved = adapterGrants.approve({ runId:granted.runId, approverId:authenticated.user.id, nowUnix });
+        const result = uninstallSectorModule({
+          sectorModulesRoot, id, minter: capabilityMinter, capabilityToken: approved.token,
+          approverId: authenticated.user.id, nowUnix, reason: 'owner uninstalled from the module catalog',
+        });
+        // The state file is written first and the wiring is taken down second, deliberately:
+        // if this process died between the two, the next boot's reconcile reads the same
+        // state and finishes the teardown. The reverse order could leave a module marked
+        // installed with no tools, which nothing would ever repair.
+        const wiring = reconcileModuleWiring({ listen: true });
+        ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_uninstalled', result:'success', details:{ id, wasActive:result.wasActive, toolsDetached:wiring.tools.detached.length } });
+        return json(res, 200, { ...result, toolsDetached: wiring.tools.detached, proxyListening: wiring.proxyListening });
+      } catch (error) {
+        if (error instanceof SectorModuleError) {
+          ledger.append({ actor:authenticated.user.id, action:'sector_modules.catalog_uninstall_refused', result:'refused', details:{ id, kind:error.kind } });
+          return json(res, error.kind === 'NOT_FOUND' ? 404 : 422, { error:'sector_modules_refused', kind:error.kind, reason:error.reason });
+        }
+        throw error;
+      }
+    }
 
     // --- Debug Evolution bridge (D-0278) ------------------------------------------------
     // The three read-only tools (list projects / all findings / SARIF) are registered as
-    // plain Agents/Workflows tools (seedDebugEvolutionTools() above) and need no route of
-    // their own — the generic tool executor calls Debug Evolution's real API directly.
+    // plain Agents/Workflows tools (reconcileDebugEvolutionTools() above) and need no route
+    // of their own — the generic tool executor calls Debug Evolution's real API directly.
     // Triggering a fresh scan is the one action that needs a bridge: Debug Evolution's own
     // rebuild endpoint takes one project id in the URL path, which the generic
     // fixed-endpoint tool model cannot parametrise per call, so this is a direct owner
@@ -1634,12 +1769,47 @@ const requestListener = async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/rescan') {
       const authenticated = requireOwner(req, res, 'audit.read');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      // D-0283: this bridge reads the module's URL and token from the environment, which
+      // outlives the module — the install state is what decides whether it may run at all.
+      if (!isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) {
+        return json(res, 409, { error:'The Debug Evolution module is not active on this installation.' });
+      }
       try {
         const result = await rescanNoesarEvolutionProjects();
         ledger.append({ actor:authenticated.user.id, action:'debug_evolution.rescanned', result:'success', details:{ rescanned:result.rescanned, succeeded:result.succeeded } });
         return json(res, 200, result);
       } catch (error) {
         if (error.status) return json(res, error.status, { error:error.message });
+        throw error;
+      }
+    }
+
+    // D-0284: Phase 2, first slice — discovery+skeptic. Manual trigger, same posture as
+    // rescan above and for the same reason (cost/latency per finding not yet measured on
+    // this deployment — "misura prima, ottimizza dopo"). `hypothesize()`/`evidence()` are
+    // already in `NOESAR_EXTERNAL_SURFACES` on this deployment, so the router below reaches
+    // the real ATOM sidecar with no new configuration; see debug-evolution-triage.mjs's
+    // header for why those two surfaces and not classify/confidence/expect.
+    if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/triage') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (!isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) {
+        return json(res, 409, { error:'The Debug Evolution module is not active on this installation.' });
+      }
+      try {
+        const router = new ReasoningRouter({ workspaceRoot: workspace });
+        const result = await triageUnclassifiedFindings(router);
+        ledger.append({ actor:authenticated.user.id, action:'debug_evolution.triaged', result:'success', details:{ triaged:result.triaged, succeeded:result.succeeded } });
+        // `router.identity()` always answers for the reference provider (it derives from no
+        // argument the router routes) -- `provenance()` is what actually says whether ATOM
+        // or the reference provider answered `hypothesize` for this run.
+        return json(res, 200, { ...result, provenance: router.provenance(), routing: router.routing });
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error:error.message });
+        if (error instanceof ReasoningRefused) return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        if (error instanceof ReasoningUnavailable) {
+          return json(res, 503, { error:'reasoning_unavailable', reason:error.reason, surface:error.surface, endpoint:error.endpoint });
+        }
         throw error;
       }
     }
@@ -3253,12 +3423,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   startUnixSocketServer({ socketPath: codevPeerSocketPath, dispatch: sessionDispatch, auth, ledger });
   logger.info('tui.socket-listening', { component:'session-protocol', path: codevPeerSocketPath });
 
-  if (moduleConsoleProxyServer) {
-    const proxyPort = Number(process.env.NOESAR_MODULE_PROXY_PORT ?? 8089);
-    moduleConsoleProxyServer.listen(proxyPort, host, () => {
-      logger.info('module-console-proxy.started', { component:'control-plane', port:proxyPort, target:process.env.NOESAR_DEBUG_EVOLUTION_URL });
-    });
-  }
+  // D-0283: the port opens here only if the module is active right now; from then on the
+  // lifecycle routes open and close it. Nothing listens for a module that is not installed.
+  startModuleConsoleProxy();
 
   server.listen(port, host, async () => {
     logger.info('runtime.started', {
@@ -3361,4 +3528,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   });
 }
-export { server, moduleConsoleProxyServer, logger, watchdog, debugMode, updateManager, timezoneService, metrics, tls, secureCookies };
+// D-0283: the console proxy is created on activation and discarded on uninstall, so the
+// binding itself changes over the process's life — exported as accessors, because a
+// destructured import would capture whatever `null` happened to be there at import time.
+export function getModuleConsoleProxyServer() { return moduleConsoleProxyServer; }
+export function isModuleConsoleProxyListening() { return moduleConsoleProxyListening; }
+export { server, startModuleConsoleProxy, stopModuleConsoleProxy, logger, watchdog, debugMode, updateManager, timezoneService, metrics, tls, secureCookies };

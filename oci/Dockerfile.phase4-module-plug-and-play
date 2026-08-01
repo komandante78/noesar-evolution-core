@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0283: uninstalling a module now leaves NOESAR intact for real. Owner instruction
+# (s302), verbatim: "disinstallare debug evolution deve lasciare noesar intatto". Before
+# this build, NOESAR_DEBUG_EVOLUTION_URL/_TOKEN (container environment, survives any
+# module operation) decided whether the three Agents/Workflows tools, the module console
+# proxy, and the module's service credential were live -- independent of whether the
+# module was installed, deactivated, or never installed at all, and there was no
+# `uninstall` verb.
+#
+# Fix: module-wiring.mjs (new) makes the module's INSTALL STATE
+# (sector-modules/<id>/state.json), not the environment, decide. reconcileModuleWiring()
+# in server.mjs is now the one call every lifecycle transition and boot makes, moving all
+# three surfaces in both directions. New uninstallSectorModule() +
+# POST /api/v1/sector-modules/catalog/:id/uninstall (owner+CSRF, no step-up) + an
+# Uninstall button on the module card in apps/webui-static/app.js, behind a confirm.
+# Nothing deleted from disk (CLAUDE10.md rule 12): the manifest stays as audit evidence,
+# which is why activate now refuses an uninstalled module and install-over-uninstalled
+# carries its history forward instead of resetting it.
+#
+# Verified before this build: unit 1434/1435 (1 pre-existing skip, 0 failed, +18 new:
+# module-wiring.test.mjs 7, module-uninstall-wiring.test.mjs 6, sector-modules-activation
+# +5), ESLint 283 files 0 errors, a11y 27/27, browser E2E 209/217 (the 8 failures proven
+# pre-existing against a pristine HEAD worktree before this change -- an E2E harness gap
+# in schemas/capabilities image copying and a missing Postgres table, not this feature).
+# Built FROM the previous tag: layers well under the 128 limit.
+
+FROM noesar-evolution:phase4-module-console-proxy
+
+LABEL org.noesar.phase="4-module-plug-and-play"
+LABEL org.noesar.feature="module-install-state-not-environment-decides-noesar-side-wiring-plus-uninstall"
+LABEL org.noesar.base-image="noesar-evolution:phase4-module-console-proxy"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

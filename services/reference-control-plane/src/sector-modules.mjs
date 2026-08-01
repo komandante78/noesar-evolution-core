@@ -286,12 +286,18 @@ export function installSectorModule({ productRoot, sectorModulesRoot, id, candid
   if (!result.valid) refuse('INVALID_MANIFEST', result.errors.join('; '));
   spendAdapterWriteToken({ minter, capabilityToken, nowUnix });
   const dir = moduleDir(sectorModulesRoot, id);
-  if (existsSync(manifestPathFor(sectorModulesRoot, id))) refuse('ALREADY_INSTALLED', `a module named "${id}" is already installed; deactivate and reinstall to replace it`);
+  // D-0283: an `uninstalled` module is installable again -- uninstallSectorModule() keeps
+  // the manifest on disk (rule 12, and it is the audit evidence), so a plain existsSync
+  // would have made "Uninstall" a one-way door that only a shell could reopen. Its history
+  // carries forward: the record of what this installation once trusted is not reset by
+  // re-installing it.
+  const priorState = existsSync(manifestPathFor(sectorModulesRoot, id)) ? loadModuleState(sectorModulesRoot, id) : null;
+  if (priorState && priorState.status !== 'uninstalled') refuse('ALREADY_INSTALLED', `a module named "${id}" is already installed; deactivate and reinstall to replace it`);
   mkdirSync(dir, { recursive: true });
   atomicWriteJson(manifestPathFor(sectorModulesRoot, id), candidate);
   atomicWriteJson(statePathFor(sectorModulesRoot, id), {
     status: 'installed', installedAtUnix: nowUnix, activatedAtUnix: null, deactivatedAtUnix: null,
-    history: [{ event: 'installed', atUnix: nowUnix }],
+    history: [...(priorState?.history ?? []), { event: 'installed', atUnix: nowUnix }],
   });
   return { id, path: manifestPathFor(sectorModulesRoot, id), manifest: candidate };
 }
@@ -320,6 +326,10 @@ export function activateSectorModule({ productRoot, sectorModulesRoot, id, minte
   if (!result.valid) refuse('INVALID_MANIFEST', result.errors.join('; '));
   const state = loadModuleState(sectorModulesRoot, id);
   if (state.status === 'active') refuse('ALREADY_ACTIVE', `module "${id}" is already active`);
+  // D-0283: the manifest of an uninstalled module stays on disk as evidence, so "a manifest
+  // exists" is no longer the same question as "this module is installed here". Without this
+  // check, activate would walk straight past uninstall.
+  if (state.status === 'uninstalled') refuse('NOT_INSTALLED', `module "${id}" is uninstalled; install it again before activating`);
 
   const trustLevels = loadTrustLevelPolicy(productRoot);
   const levelPolicy = trustLevels[candidate.trust_level];
@@ -356,8 +366,8 @@ export function activateSectorModule({ productRoot, sectorModulesRoot, id, minte
 }
 
 /** The "disable" verb from PROJECT_GOVERNANCE/07_INDUSTRY_MODULES/70 -- returns the
- * module to `installed`, does not delete its files. Uninstall (deleting the directory
- * entirely) is out of scope for this step, named rather than silently absent. */
+ * module to `installed`, does not delete its files. The stronger verb is
+ * uninstallSectorModule() below (D-0283), which was named as absent here until it existed. */
 export function deactivateSectorModule({ sectorModulesRoot, id, minter, capabilityToken, approverId, nowUnix, reason }) {
   resolveModuleId(id);
   if (!existsSync(manifestPathFor(sectorModulesRoot, id))) refuse('NOT_FOUND', `no installed module named "${id}"`);
@@ -372,6 +382,41 @@ export function deactivateSectorModule({ sectorModulesRoot, id, minter, capabili
     history: [...state.history, { event: 'deactivated', atUnix: nowUnix, approverId, reason: reason ?? null }],
   });
   return { id, status: 'installed', deactivatedAtUnix: nowUnix };
+}
+
+/**
+ * D-0283, the verb deactivateSectorModule() said was missing. Takes a module out of this
+ * installation for good: `active` or `installed` -> `uninstalled`, in one call from either
+ * (an Owner who clicks Uninstall on a running module means "remove it", not "first click
+ * Deactivate yourself"), so the deactivation is recorded in `history` rather than skipped.
+ *
+ * It removes NOTHING from disk. `CLAUDE10.md` rule 12 forbids deletion, and the manifest is
+ * also the evidence of what was once trusted here — a signature, a publisher fingerprint and
+ * an approval trail that an audit read after the fact still needs. What actually goes away
+ * is the WIRING on NOESAR's side (module-wiring.mjs: tools disabled and stripped of their
+ * credential, console proxy stopped, service token revoked), which is what "leaves NOESAR
+ * intact" means operationally. A later install over an `uninstalled` module is allowed and
+ * keeps this history — see installSectorModule().
+ */
+export function uninstallSectorModule({ sectorModulesRoot, id, minter, capabilityToken, approverId, nowUnix, reason }) {
+  resolveModuleId(id);
+  if (!existsSync(manifestPathFor(sectorModulesRoot, id))) refuse('NOT_FOUND', `no installed module named "${id}"`);
+  const state = loadModuleState(sectorModulesRoot, id);
+  if (state.status === 'uninstalled') refuse('NOT_INSTALLED', `module "${id}" is already uninstalled`);
+  spendAdapterWriteToken({ minter, capabilityToken, nowUnix });
+  const wasActive = state.status === 'active';
+  const history = [...state.history];
+  if (wasActive) history.push({ event: 'deactivated', atUnix: nowUnix, approverId, reason: 'uninstalled' });
+  history.push({ event: 'uninstalled', atUnix: nowUnix, approverId, reason: reason ?? null });
+  atomicWriteJson(statePathFor(sectorModulesRoot, id), {
+    status: 'uninstalled',
+    installedAtUnix: state.installedAtUnix,
+    activatedAtUnix: state.activatedAtUnix,
+    deactivatedAtUnix: wasActive ? nowUnix : state.deactivatedAtUnix,
+    uninstalledAtUnix: nowUnix,
+    history,
+  });
+  return { id, status: 'uninstalled', wasActive, uninstalledAtUnix: nowUnix };
 }
 
 /** Schema + policy in one call, each reloaded fresh -- same posture as buildRepositoryMap
@@ -450,7 +495,9 @@ export function sectorModulesStatus(productRoot, sectorModulesRoot) {
   if (schemaLoaded) {
     try {
       const scan = loadSectorModules(productRoot, sectorModulesRoot);
-      installedModules = scan.valid.length;
+      // D-0283: `valid` is a manifest scan, and an uninstalled module keeps its manifest --
+      // counting those as installed would make the uninstall invisible in status output.
+      installedModules = scan.valid.filter((entry) => entry.state?.status !== 'uninstalled').length;
       invalidManifests = scan.invalid.length;
       activeModules = scan.valid.filter((entry) => entry.state?.status === 'active').length;
     } catch { /* status must not throw even if a scan would */ }

@@ -1351,11 +1351,27 @@ function renderOwnerModules(modules){
       ${sectors?`<div class="module-tags">${sectors}</div>`:''}
       <div class="module-actions">
         ${item.status==='active'?`<a class="text-button" href="${escapeHtml(item.externalUrl)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`:''}
+        ${item.id==='debug-evolution'&&item.status==='active'?'<button class="secondary" data-debug-evolution-triage type="button">Triage findings</button>':''}
+        ${item.status==='not-installed'?'':`<button class="text-button danger" data-module-action="uninstall" data-module-id="${item.id}" type="button">Uninstall</button>`}
         <button class="${actionClass}" data-module-action="${action}" data-module-id="${item.id}" type="button">${actionLabel}</button>
       </div>
     </article>`;
   }).join('')||'No Owner modules known.';
   $$('[data-module-action]').forEach((button)=>button.addEventListener('click',()=>runModuleAction(button.dataset.moduleAction,button.dataset.moduleId,button)));
+  $$('[data-debug-evolution-triage]').forEach((button)=>button.addEventListener('click',()=>runDebugEvolutionTriage(button)));
+}
+// D-0284: Phase 2, first slice (discovery+skeptic) — manual trigger, same posture as the
+// module lifecycle actions above: cost/latency per finding not yet measured on this
+// deployment, so this stays a deliberate click rather than something that fires on its own.
+async function runDebugEvolutionTriage(button){
+  await withBusy(button,async()=>{
+    try{
+      const result=await api('/api/v1/debug-evolution/triage',{method:'POST',body:'{}'});
+      toast(`Triage: ${result.succeeded}/${result.triaged} findings updated.`,{kind:'success'});
+    }catch(error){
+      reportError(error,'debug evolution triage');
+    }
+  });
 }
 async function loadOwnerModules(){
   const data=await api('/api/v1/sector-modules/catalog');
@@ -1363,11 +1379,16 @@ async function loadOwnerModules(){
   renderOwnerModules(modules);
   renderModulesNav(modules);
 }
+// D-0283: uninstall is the one module action that takes capability AWAY from a running
+// installation (its tools stop working, its console port closes, its credential is
+// revoked), so it is the one that asks first — the same posture as purging a project.
+const MODULE_ACTION_DONE={install:'installed',activate:'activated',deactivate:'deactivated',uninstall:'uninstalled'};
 async function runModuleAction(action,id,button){
+  if(action==='uninstall'&&!confirm('Uninstall this module? Its tools stop working, its console closes, and its credential is revoked. NOESAR itself is unaffected, and you can install it again.'))return;
   await withBusy(button,async()=>{
     try{
       await api(`/api/v1/sector-modules/catalog/${id}/${action}`,{method:'POST',body:'{}'});
-      toast(`Module ${action}d.`,{kind:'success'});
+      toast(`Module ${MODULE_ACTION_DONE[action]??`${action}d`}.`,{kind:'success'});
       await loadOwnerModules();
     }catch(error){
       reportError(error,`module ${action}`);
