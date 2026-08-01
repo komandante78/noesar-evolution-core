@@ -1,24 +1,32 @@
 # NOESAR Evolution — Session Handoff
 
-> Aggiornato 2026-08-01 (`D-0286`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-08-01 (`D-0287`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 >
 > ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s303 → s304)
 >
-> **`D-0283`…`D-0286` sono tutti installati dal vivo** in questa sessione (Owner:
+> **`D-0283`…`D-0287` sono tutti installati dal vivo** in questa sessione (Owner:
 > "PROCEDI"/"procedi pure"/"finisci debug evolution prima di passare ad altro").
 > **Il piano in 5 fasi di Debug Evolution è completo fino alla Fase 3** (bersagli remoti
 > via SSH, `D-0286`) — resta aperta solo la Fase 4 (memoria a cubi, embedder da decidere).
+> **`D-0287` non è parte del piano in 5 fasi**: l'Owner ha chiesto quanti tool Debug
+> Evolution usasse davvero, e la risposta onesta era "zero — otto toolpack reali esistono
+> da prima di questa sessione, mai collegati al motore di scansione". Ora 20 lo sono.
 >
 > **Difetto reale trovato e riparato durante il deploy di `D-0286`**: `run.py` di Debug
 > Evolution non inoltrava `SIGTERM` al processo figlio (`subprocess.call()` non lo fa) —
 > ogni `docker stop` era un'orfananza-poi-SIGKILL (`137`), non lo spegnimento pulito già
 > corretto in s302. Riparato: `run.py` ora inoltra `SIGTERM` come `SIGINT` (il segnale che
 > il figlio già gestisce) e aspetta il vero codice di uscita — verificato dal vivo,
-> `docker stop -t 10` ora impiega 0,145s con `ExitCode=0`.
+> `docker stop -t 10` ora impiega 0,145s con `ExitCode=0` (**tenuto anche dopo `D-0287`**).
 >
-> 1. Fase 4 di Debug Evolution (memoria a cubi + vettori) — l'unica fase rimasta aperta.
->    Serve decidere l'embedder prima del codice.
+> **Secondo difetto reale, trovato in `D-0287`**: il parser `shellcheck` di
+> `static-quality.pyz` si aspettava una lista JSON, ma `--format=json1` (il comando che
+> quel toolpack usa davvero) restituisce `{"comments":[...]}` — ogni reperto shellcheck
+> veniva scartato in silenzio da quando il toolpack esiste. Riparato, verificato dal vivo.
+>
+> 1. Fase 4 di Debug Evolution (memoria a cubi + vettori) — l'unica fase rimasta aperta
+>    **del piano dell'Owner**. Serve decidere l'embedder prima del codice.
 > 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) resta
 >    dietro Debug Evolution, per istruzione esplicita dell'Owner di finire prima quello.
 > 3. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
@@ -59,23 +67,33 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
 
 ## ⛔ IMPORTANTE PER QUALSIASI BUILD FUTURO — layer depth del base image
 
-Il tag **vivo** è **`noesar-evolution:phase4-debug-evolution-remote-targets`**
-(`D-0286`, `FROM :phase4-debug-evolution-security-root-cause`, +`openssh-client`) a
+Il tag **vivo** di NOESAR EVOLUTION è invariato da `D-0286`:
+**`noesar-evolution:phase4-debug-evolution-remote-targets`**
+(`FROM :phase4-debug-evolution-security-root-cause`, +`openssh-client`) a
 **24 layer overlay2** (`RootFS.Layers`, non `docker history`) — ben sotto il limite di
-128. Usare questo tag come base del prossimo `FROM`. Debug Evolution vivo è
-`debug-evolution:1.1.0-remote-targets`. **Causa strutturale invariata**:
-`oci/Dockerfile` canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
+128. `D-0287` non ha toccato nessun file NOESAR EVOLUTION, solo Debug Evolution. Debug
+Evolution vivo è ora **`debug-evolution:1.1.0-toolpack-wiring`** (`D-0287`, `FROM` lo
+stesso `Dockerfile` di sempre — non un `FROM` a strati come NOESAR EVOLUTION, questo
+prodotto ricostruisce l'intero `Dockerfile` a ogni release — ora **2,58 GB**, misurato,
+da 119 MB: `golang-go`+`default-jre-headless`+Node/npm+l'albero di dipendenze di
+`checkov`, il costo reale di 20 analizzatori veri). **Causa strutturale invariata**:
+`oci/Dockerfile` canonico di NOESAR EVOLUTION non fa boot — Thread 2 dell'Owner sotto,
+ancora aperto.
 
 ## ⛔ LA PROSSIMA AZIONE — Fase 4 di Debug Evolution (memoria a cubi), poi il quarto filo
 
-`D-0283`…`D-0286` sono tutti installati, verificati dal vivo. **Nessuna azione
-dell'assistente è pendente su modulo/plug-and-play/triage/Fase 2/Fase 3.** Il piano in 5
-fasi di Debug Evolution è chiuso fino alla Fase 3 — resta solo la **Fase 4** (memoria a
-cubi + vettori nel DB del modulo), da scoping esplicito (embedder da decidere) prima del
-codice, per istruzione dell'Owner di finire Debug Evolution prima di altro.
-`reproducer`/`patch-review` restano dichiaratamente fuori scope (serve `EXECUTE`
-acceso, l'Owner ha rifiutato di farlo come effetto collaterale) — non c'è altra azione
-pendente su quei due ruoli finché non si riapre il filo apposta.
+`D-0283`…`D-0287` sono tutti installati, verificati dal vivo. **Nessuna azione
+dell'assistente è pendente su modulo/plug-and-play/triage/Fase 2/Fase 3/cablaggio
+toolpack.** Il piano in 5 fasi di Debug Evolution è chiuso fino alla Fase 3 — resta solo
+la **Fase 4** (memoria a cubi + vettori nel DB del modulo), da scoping esplicito
+(embedder da decidere) prima del codice, per istruzione dell'Owner di finire Debug
+Evolution prima di altro. `D-0287` (20 analizzatori statici reali) **non è parte del
+piano in 5 fasi** — è stato costruito rispondendo a una domanda diretta dell'Owner su
+quanti tool Debug Evolution usasse davvero, non su richiesta di avanzare una fase.
+`reproducer`/`patch-review` e i 16 tool `executes_project_code:true`/dynamic/fuzzing
+lasciati fuori da `D-0287` restano dichiaratamente fuori scope (serve `EXECUTE` acceso,
+l'Owner ha rifiutato due volte di farlo come effetto collaterale) — non c'è altra azione
+pendente su quei ruoli/tool finché non si riapre il filo apposta.
 
 ## ➜ `D-0283` (questa sessione) — cosa è stato fatto
 
@@ -339,18 +357,88 @@ Registrazione→Activate→Fetch&scan completo con una sessione Owner reale e un
 fuori dal laboratorio di test — stessa cautela di `D-0279`/`D-0282`/`D-0283`/`D-0284`/
 `D-0285`.
 
+## ➜ `D-0287` (questa sessione) — 20 analizzatori statici reali, non parte del piano in 5 fasi
+
+L'Owner ha chiesto, senza mezzi termini: quanti tool usa davvero Debug Evolution per fare
+controlli, e a che livello siamo — un modulo mediocre, ottimo, professionale? La risposta
+onesta, misurata prima di rispondere: **zero tool esterni**. Tutti gli 84 reperti nel
+database vivo venivano da `program-genome`, cinque regex scritte a mano in `core.py`. Gli
+otto toolpack sotto `appliance/toolpacks/*.pyz` esistevano già — con un `ToolRunner` vero
+(sandboxing offline di default, `GOPROXY=off`/`PIP_NO_INDEX=1` a meno di autorizzazione
+esplicita), parser SARIF/JSON per ogni strumento, un CLI `run <tool_id>` funzionante — ma
+`discover_toolpacks()` (`de_v2/app.py`) li invocava solo con `doctor` per il cruscotto,
+mai per una scansione vera.
+
+Cablati 20 dei 29 tool catalogati: quelli **offline** (nessun `network_required`) e che
+**non eseguono codice del progetto** (`executes_project_code:false`) — 11 da
+`static-quality.pyz` (`ruff`, `mypy`, `pyright`, `typescript`, `shellcheck`, `hadolint`,
+`semgrep-ce`, `clang-tidy`, `cppcheck`, `checkstyle`, `luacheck`), 9 da
+`security-supply-chain.pyz` (`bandit`, `gosec`, `semgrep-security`, `detect-secrets`,
+`gitleaks`, `trufflehog`, `checkov`, `tfsec`, `kube-linter`). Confermato dall'Owner via
+`AskUserQuestion`, due volte: gli 8 tool che controllano dipendenze contro database di
+vulnerabilità live (`pip-audit`, `cargo-audit`, `cargo-deny`, `govulncheck`, `npm-audit`,
+`osv-scanner`, `trivy-fs`, `grype-dir`) restano fuori — il `ToolRunner` di
+`security-supply-chain.pyz` li blocca già da solo (`BLOCKED_REQUIRES_NETWORK_
+AUTHORIZATION`) come seconda barriera; i restanti 8 tool `executes_project_code:true`
+(`eslint`, `pylint`, `cargo-clippy`, `staticcheck`, `go-vet`, `rubocop`, `phpstan`,
+`stylelint`) più `dynamic-analysis.pyz`/`fuzzing-symbolic.pyz` interi restano fuori scope,
+serve `EXECUTE` acceso — l'Owner l'ha rifiutato di nuovo, seconda volta questa sessione.
+
+I reperti dei tool arrivano nell'Evidence Court come evidenza `STATIC_ANALYZER`
+(`core.py::make_tool_finding()`, nuova) con un solo tentativo di transizione `DETECTED →
+HYPOTHESIZED` — mai oltre: `can_transition()` rifiuta già `CONFIRMED` su sola evidenza
+statica, la stessa cautela di `D-0285`. Selezione per profilo: `fast` gira solo i 7 tool
+che ciascun registry marca `enabled_by_default`; `normal` aggiunge i tool rilevanti per
+linguaggio/manifest presenti nel progetto (derivati dalla stessa lista file già
+enumerata dal passaggio per-file, nessuna seconda scansione del filesystem); `deep` gira
+tutti e 20, più `trufflehog` (tenuto fuori da `normal` — verificato dal vivo che i suoi
+detector sono deliberatamente più conservativi di `gitleaks` su segreti sintetici, non un
+difetto).
+
+**Difetto vero trovato in un toolpack mai esercitato prima**: il parser `shellcheck` di
+`static-quality.pyz` si aspettava una lista JSON semplice, ma `--format=json1` (il comando
+che quel toolpack usa davvero) restituisce `{"comments":[...]}` — ogni reperto shellcheck
+veniva scartato in silenzio da quando il toolpack esiste, mai scoperto perché nessuno
+l'aveva mai davvero invocato. Riparato in `de_toolpack/parsers.py`, verificato dal vivo:
+86 reperti prima della riparazione, 87 dopo — il reperto `SC2086` mancante, presente.
+
+## ➜ Verificato in `D-0287`
+
+| Verifica | Risultato |
+|---|---|
+| Installazione | tutti e 20 i binari (apt/pip/npm/luarocks/6 binari Go con SHA-256 verificato contro le pubblicazioni ufficiali) verificati singolarmente contro un repository di test multi-linguaggio (Python/Shell/Dockerfile/C/Terraform/Kubernetes/Go/Lua/Java), ciascuno con un reperto reale noto, prima di scrivere codice di cablaggio |
+| Scansione `deep` end-to-end | attraverso il vero HTTP API: 20/20 tool tentati, 20/20 completati puliti (0 saltati, 0 in errore, 0 in timeout), reperti reali con evidenza/transizioni corrette — eseguita prima su un harness separato, poi di nuovo contro l'immagine di produzione vera tramite il suo vero entrypoint `run.py` (non aggirato) |
+| Regressione `D-0286` | `docker stop -t 10` ancora `0,145s`/`ExitCode 0` sull'immagine nuova — il fix non è regredito |
+| Scansione reale contro codice reale | 203 file del vero albero sorgente `reference-control-plane` di NOESAR EVOLUTION, 138 reperti — in gran parte `detect-secrets: Secret Keyword` dentro file `*.test.mjs`, quasi certamente falsi positivi su credenziali fittizie di test: restano a `HYPOTHESIZED`, mai asseriti veri — l'Evidence Court funziona come deve |
+
+## ➜ Installato e verificato dal vivo (Owner: "procedi pure" / cablaggio confermato via `AskUserQuestion`)
+
+Solo `debug-evolution` — nessun file NOESAR EVOLUTION toccato, nessun commit necessario su
+quel lato per il codice. Immagine: `debug-evolution:1.1.0-toolpack-wiring`, cresciuta da
+119 MB a **2,58 GB** (misurato, non stimato — `golang-go` per `gosec`,
+`default-jre-headless` per `checkstyle`, Node/npm per `typescript`, l'albero di
+dipendenze di `checkov`: il costo reale di 20 analizzatori veri, non un tool sintetico).
+`debug-evolution.pyz` e `static-quality.pyz` backuppati `.bak_pre_*` prima della modifica
+(convenzione senza git di Debug Evolution), `SHA256SUMS` aggiornato per `Dockerfile` +
+entrambi i `.pyz`, verificato 31/31. Sequenza deploy: `docker stop -t 30` → `0,154s`,
+`exit 0` → backup volume (732 MB) → §5a → ricreato con l'`HostConfig` completo (5 bind
+mount inclusi i due albero-sorgente in sola lettura, `--ip 172.22.0.2` fissato) — sano al
+primo tentativo, `PRAGMA integrity_check` `ok`, 17 progetti/84 reperti preesistenti
+intatti.
+
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-remote-targets` (`D-0286`) ·
-  `Up (healthy)` · `192.168.178.100:8100→8088` + `192.168.178.100:8089→8089`. Rollback:
+- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-remote-targets` (`D-0286`,
+  invariato in `D-0287`) · `Up (healthy)` · `192.168.178.100:8100→8088` +
+  `192.168.178.100:8089→8089`. Rollback:
   `noesar-evolution.rollback-debug-evolution-security-root-cause-20260801T163154Z`
   (`:phase4-debug-evolution-security-root-cause`).
-- **`debug-evolution`**: `debug-evolution:1.1.0-remote-targets` (`D-0286`) · `Up (healthy)`.
-  Rollback: `debug-evolution.rollback-scan-engine-20260801T162858Z`
-  (`:1.1.0-scan-engine`) — nota: questo container di rollback porta ancora il difetto
-  `run.py` risolto in `D-0286` (`Exited (137)`, atteso: è la vecchia immagine).
+- **`debug-evolution`**: `debug-evolution:1.1.0-toolpack-wiring` (`D-0287`) ·
+  `Up (healthy)` · ip fisso `172.22.0.2`. Rollback:
+  `debug-evolution.rollback-remote-targets-20260801T172826Z`
+  (`:1.1.0-remote-targets`).
 - **`atomd`**: invariata da `A-0022`, `Up (healthy)`.
-- **`D-0283`, `D-0284`, `D-0285` e `D-0286` sono tutti nell'immagine viva**, verificati dal
+- **`D-0283`…`D-0287` sono tutti nell'immagine viva**, verificati dal
   vivo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
@@ -384,15 +472,27 @@ fuori dal laboratorio di test — stessa cautela di `D-0279`/`D-0282`/`D-0283`/`
   cubi + vettori, decisione dell'embedder ancora da prendere).
 - **`run.py` non aveva un handler di segnale prima di `D-0286`** — non un difetto di questa
   sessione, preesistente da quando l'appliance esiste; trovato perché il deploy misura
-  sempre l'esito reale di `docker stop`, mai assunto.
+  sempre l'esito reale di `docker stop`, mai assunto. **Tenuto anche dopo `D-0287`**
+  (verificato di nuovo sull'immagine nuova).
+- **Il parser `shellcheck` di `static-quality.pyz` scartava ogni reperto in silenzio prima
+  di `D-0287`** — stesso principio: non un difetto introdotto ora, preesistente da quando
+  il toolpack esiste, mai scoperto perché mai invocato prima di questa sessione.
+- **8 dei 29 tool catalogati restano deliberatamente fuori** (controllano dipendenze
+  contro database live) — non un limite tecnico, una scelta dell'Owner confermata via
+  `AskUserQuestion`; il `ToolRunner` li blocca comunque di default anche se qualcuno li
+  invocasse per errore.
+- **`syft-dir` è installabile ma non collegato**: genera un SBOM, non un reperto
+  (`parser:"none"`) — categoria diversa, lasciata fuori scope su questa base, non per
+  svista.
 - **Lavoro committato E pushato, tutto**: `NOESAR-EVOLUTION` `ff39fdb` (feat,
   D-0283+D-0284) + `fbf168c` (pin) + `408fac4` (doc) + `e5159fb` (feat, D-0285) +
-  `4d30820` (pin) + `<hash D-0286 feat>` + `<hash D-0286 pin>` su `origin/main`.
-  `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main` — invariata in `D-0286`.
-  `DEBUG_EVOLUTION` non ha repository git (`CLAUDE.md`) — la sua convenzione è
-  `.bak_pre_<motivo>_<timestamp>` + `SHA256SUMS`, seguita per `debug-evolution.pyz`
-  (backup preso) e non per `run.py` (modificato senza backup separato, lacuna minore
-  annotata sopra).
+  `4d30820` (pin) + `d1c1b73` (feat, D-0286) + `664cca3` (pin) + `<hash D-0287 doc>` su
+  `origin/main`. `ATOM-EVOLUTION` `f5227a7` (A-0022) su `origin/main` — invariata da
+  `D-0286`. `DEBUG_EVOLUTION` non ha repository git (`CLAUDE.md`) — la sua convenzione è
+  `.bak_pre_<motivo>_<timestamp>` + `SHA256SUMS`, seguita per `debug-evolution.pyz`,
+  `static-quality.pyz` e `Dockerfile` in `D-0287` (backup preso per tutti e tre) e non per
+  `run.py` in `D-0286` (modificato senza backup separato, lacuna minore annotata sopra e
+  ancora non richiusa).
 - **Il proxy funziona per QUALSIASI utente NOESAR autenticato con `workspace.read`**, non
   solo Owner — stesso livello di permesso già usato dalla rotta GET del catalogo.
 
@@ -400,21 +500,26 @@ fuori dal laboratorio di test — stessa cautela di `D-0279`/`D-0282`/`D-0283`/`
 
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata
 a fine progetto. `oci/Dockerfile`/layer-depth: Thread 2 dell'Owner sotto, ancora aperto,
-margine ampio (24/128 layer sul tag corrente). Harness E2E incompleta (sopra), non
-tracciata come blocker del prodotto — non blocca il deploy. `atomd` non ha più un
-container di rollback dedicato dopo `A-0022` (nota di processo, sezione D-0285 sopra) —
-solo un'immagine preservata, non tracciato come blocker perché il rollback resta comunque
-eseguibile. `run.py` modificato senza `.bak_pre_*` separato (sopra) — non tracciato come
-blocker perché `SHA256SUMS` copre comunque l'integrità del file distribuito.
+margine ampio (24/128 layer sul tag corrente — invariato da `D-0287`, che non tocca
+NOESAR EVOLUTION). Harness E2E incompleta (sopra), non tracciata come blocker del
+prodotto — non blocca il deploy. `atomd` non ha più un container di rollback dedicato
+dopo `A-0022` (nota di processo, sezione D-0285 sopra) — solo un'immagine preservata, non
+tracciato come blocker perché il rollback resta comunque eseguibile. `run.py` modificato
+senza `.bak_pre_*` separato (sopra) — non tracciato come blocker perché `SHA256SUMS`
+copre comunque l'integrità del file distribuito. **Nuovo, non un blocker**: l'immagine
+`debug-evolution` è cresciuta a 2,58 GB — non blocca nulla di documentato, ma è un fatto
+da tenere presente per storage/tempi di build futuri.
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Nessuna sul lavoro fatto. `D-0283`, `D-0284`, `D-0285`, `D-0286`, `A-0022`: tutti
-installati dal vivo, verificati, committati, pushati (`DEBUG_EVOLUTION` via la sua
-convenzione file-based, senza git). `reproducer`/`patch-review` restano dichiaratamente
-fuori scope finché non si apre un filo dedicato su `EXECUTE` — non è una domanda in
-sospeso, è una decisione già presa (no, non ora). **Aperta per la prossima sessione**: il
-piano in 5 fasi di Debug Evolution è completo fino alla Fase 3 — resta solo la Fase 4
-(memoria a cubi + vettori, decisione dell'embedder) prima che qualsiasi altro filo
-dell'Owner possa riprendere, per istruzione esplicita dell'Owner in questa sessione
-("non proporre altro se non finisci debug evolution").
+Nessuna sul lavoro fatto. `D-0283`…`D-0287`, `A-0022`: tutti installati dal vivo,
+verificati, committati/pushati dove esiste git (`DEBUG_EVOLUTION` via la sua convenzione
+file-based, senza git). `reproducer`/`patch-review` e i tool `executes_project_code:true`/
+dinamici/fuzzing lasciati fuori da `D-0287` restano dichiaratamente fuori scope finché non
+si apre un filo dedicato su `EXECUTE` — non è una domanda in sospeso, è una decisione già
+presa due volte (no, non ora). **Aperta per la prossima sessione**: il piano in 5 fasi di
+Debug Evolution è completo fino alla Fase 3 — resta solo la Fase 4 (memoria a cubi +
+vettori, decisione dell'embedder) prima che qualsiasi altro filo dell'Owner possa
+riprendere, per istruzione esplicita dell'Owner in questa sessione ("non proporre altro se
+non finisci debug evolution"). `D-0287` non cambia questo: non era parte del piano in 5
+fasi, ma non lo sostituisce neppure — la Fase 4 resta l'unica cosa dichiarata aperta lì.
