@@ -3797,3 +3797,43 @@ Predecessor: `noesar-evolution.rollback-debug-evolution-tools-20260731T132646Z`
 (`:phase4-owner-modules-catalog`). Rollback cost: none on live data — no schema change,
 no migration; the two new env vars are additive, their absence only degrades tool
 seeding to a logged no-op.
+
+## 2026-08-01 · `:phase4-debug-evolution-net-migration` — D-0281 deployed: Debug Evolution moved to the dedicated network, tool-endpoint reconcile-on-boot fix
+
+Two containers recreated. `debug-evolution` first — same image
+(`debug-evolution:1.1.0-noesar-module`), detached from the default `bridge` network and
+its LAN port publish, attached to `noesar-evolution-net`, `DEBUG_EVOLUTION_NOESAR_URL`
+repointed at `http://noesar-evolution:8088`. `noesar-evolution` then, on the new image
+(`noesar-evolution:phase4-debug-evolution-net-migration`, `FROM
+:phase4-module-credentials`, 15 overlay2 layers): `docker stop -t 60` →
+`postgres.stopped clean:true` read in the log → backup
+(`BACKUPS/runtime_pre_d0281_reconcile_fix_20260801T001103Z.tar.gz`, plus an earlier
+network-only backup pair covering both containers' data) → §5a (older rollback pair
+removed each cycle, predecessor renamed) → env list generated from the live
+predecessor's own `docker inspect` output with exactly two values changed
+(`NOESAR_DEBUG_EVOLUTION_URL` → internal DNS name, `NOESAR_ALLOWED_HOSTS` gains
+`noesar-evolution`), rather than retyped by hand. **One earlier recreation attempt in
+this same session was hand-typed instead of generated, dropped several required env
+vars, caught from the boot log (`exposure_scope:"loopback"` instead of `"lan"`,
+`NOESAR_RUST_REASONING_TOKEN` empty) before any traffic reached it, and was stopped and
+removed rather than left running.** `Up (healthy)` on the corrected attempt,
+`data-plane.ready migrations:19 rls_tables:18 production_ready:true` unchanged.
+
+Live probes after deploy: `curl http://192.168.178.100:8787/...` from the host —
+connection refused (LAN publish closed). `curl http://192.168.178.100:8100/livez` —
+`200` (NOESAR's own publish untouched). `docker exec noesar-evolution` reaching
+`http://debug-evolution:8787/api/v2/health` — `200`. `docker exec debug-evolution`
+reaching `http://noesar-evolution:8088/livez` — `200`. Debug Evolution's own
+`/api/v2/uplink`, fetched from inside `noesar-evolution` — `200`,
+`state:"ready"`, `base_url:"http://noesar-evolution:8088"`.
+
+Boot log confirms the fix this phase also shipped: `debug_evolution.tool_endpoint_reconciled`
+for all three previously-seeded tools, no longer skipped because they already existed.
+`state/ai-workspace.json` on the runtime volume: same 3 tool ids, endpoints rewritten
+from the closed LAN port to the internal DNS name.
+
+Predecessor: `noesar-evolution.rollback-pre-d0281-reconcile-fix-20260801T001103Z`
+(`:phase4-module-credentials`). `debug-evolution.rollback-pre-net-migration-20260801T000358Z`
+(`debug-evolution:1.1.0-noesar-module`, unchanged image, prior network config). Rollback
+cost: none on live data — no schema change, no migration; reverting returns both
+containers to the LAN-published pair.

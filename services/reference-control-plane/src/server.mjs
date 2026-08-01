@@ -450,18 +450,30 @@ function ensureOwnerPublisherRegistered({ actorId, nowUnix }) {
 // other tool. Only if NOESAR_DEBUG_EVOLUTION_TOKEN is configured — declared, not
 // silently skipped, when it is absent (a fresh install with the module not yet
 // installed has nothing to seed a credential for).
+//
+// D-0281: dedup was by name only, so a tool already seeded kept its ORIGINAL endpoint
+// forever, even across a boot with a different NOESAR_DEBUG_EVOLUTION_URL -- the network
+// migration that moved Debug Evolution off the LAN found this the hard way: three tools
+// still pointed at the old published port after it was closed. Reconcile on every boot
+// instead of skipping.
 function seedDebugEvolutionTools() {
   const token = process.env.NOESAR_DEBUG_EVOLUTION_TOKEN;
   if (!token) { logger.warn('debug_evolution.tools_not_seeded', { reason: 'NOESAR_DEBUG_EVOLUTION_TOKEN not configured' }); return; }
   const baseUrl = (process.env.NOESAR_DEBUG_EVOLUTION_URL ?? 'http://192.168.178.100:8787').replace(/\/$/, '');
-  const existing = new Set(aiStore.read().tools.map((tool) => tool.name));
   const seeds = [
     { name: 'Debug Evolution — List Projects', description: 'The repositories Debug Evolution has registered and scanned.', endpoint: `${baseUrl}/api/v2/projects`, config: { method: 'GET' } },
     { name: 'Debug Evolution — All Findings', description: 'Every finding Debug Evolution has recorded, across every registered project.', endpoint: `${baseUrl}/api/v2/findings`, config: { method: 'GET' } },
     { name: 'Debug Evolution — SARIF Report', description: 'A SARIF 2.1.0 report of every current finding, for tools that consume that format.', endpoint: `${baseUrl}/api/v2/sarif`, config: { method: 'GET' } },
   ];
   for (const seed of seeds) {
-    if (existing.has(seed.name)) continue;
+    const current = aiStore.read().tools.find((tool) => tool.name === seed.name);
+    if (current) {
+      if (current.endpoint !== seed.endpoint) {
+        aiStore.transact((state) => { state.tools.find((tool) => tool.id === current.id).endpoint = seed.endpoint; state.tools.find((tool) => tool.id === current.id).updatedAt = new Date().toISOString(); });
+        logger.info('debug_evolution.tool_endpoint_reconciled', { toolId: current.id, name: seed.name });
+      }
+      continue;
+    }
     const tool = agentService.registerTool({ name: seed.name, description: seed.description, transport: 'local-http', endpoint: seed.endpoint, config: seed.config, external: false, mutative: false, requiresApproval: false }, 'system');
     agentService.setToolCredential(tool.id, token);
   }

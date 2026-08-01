@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0281: Debug Evolution moved off the LAN-published bridge network onto
+# noesar-evolution-net, reachable only from NOESAR itself. Its own auth gate was removed
+# in D-0280, so the LAN publish (`192.168.178.100:8787`, on the default `bridge` network
+# shared with unrelated containers) meant anything on the LAN could reach it with zero
+# authentication. Both directions now cross the internal Docker network by container
+# name (`http://debug-evolution:8787`, `http://noesar-evolution:8088`) instead of the
+# host's LAN IP; `noesar-evolution`'s Host-header allowlist gains the peer's container
+# name so the anti-DNS-rebinding check does not itself refuse the new path.
+#
+# A real defect found by making this change, not before it: `seedDebugEvolutionTools()`
+# deduped by tool NAME only, so the three tools it had already registered kept their
+# original endpoint forever, even across a boot with a different
+# NOESAR_DEBUG_EVOLUTION_URL. The three tools left over from D-0278/D-0279/D-0280 were
+# still pointed at the now-closed LAN port until this fix -- reconciled on every boot
+# instead of skipped when already present.
+#
+# Verified before this build: unit 1408/1409 (1 pre-existing skip, 0 failed, +1 new
+# reconcile test), ESLint 277 files 0 errors. Built FROM the previous tag: layers well
+# under the 128 limit.
+
+FROM noesar-evolution:phase4-module-credentials
+
+LABEL org.noesar.phase="4-debug-evolution-net-migration"
+LABEL org.noesar.feature="debug-evolution-moved-to-the-dedicated-network-tool-endpoint-reconcile-on-boot"
+LABEL org.noesar.base-image="noesar-evolution:phase4-module-credentials"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

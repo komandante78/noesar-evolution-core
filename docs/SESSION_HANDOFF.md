@@ -1,44 +1,30 @@
 # NOESAR Evolution — Session Handoff
 
-> Aggiornato 2026-07-31 (`D-0280`). Stato completo in `PROJECT_STATE.json`, storia in
+> Aggiornato 2026-08-01 (`D-0281`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 >
-> ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s300 → s301)
+> ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s301 → s302)
 >
-> 1. **Shell orfana appesa sull'host, non risolta — autorizzazione Owner richiesta.** PID `444054`,
->    `/bin/bash -c … docker run --rm noesar-evolution:phase4-sess002-003-replay ls
->    /usr/lib/postgresql/18/bin/`, orfana (`ppid=1`) da **>25 ore**, figlia di una sessione Claude
->    Code di ieri ancora viva (PID `72349`). Quel `docker run` non esce **mai**: l'ENTRYPOINT
->    dell'immagine è `noesar-supervisord`, che ignora il comando e avvia i peer, quindi `--rm` non
->    scatta. Ha già prodotto **due** container fantasma con un PostgreSQL vero dentro. Il primo
->    (`beautiful_leakey`) è stato rimosso in s300 — **e la rimozione ha sbloccato la shell, che è
->    passata al comando successivo del suo script e ne ha creato un secondo** (`silly_knuth`, tuttora
->    in esecuzione, `unhealthy`). **Rimuovere il container senza uccidere prima la shell ne genera un
->    terzo.** Ordine corretto: `kill 444054` → `docker rm -f -v silly_knuth` → verificare che non ne
->    compaia un altro. È un processo dell'host, non un container: chiedere prima.
->    **Lezione permanente**: su un'immagine con ENTRYPOINT supervisore un probe una-tantum si scrive
->    `docker run --rm --entrypoint sh <tag> -lc '<comando>'`, mai `docker run --rm <tag> <comando>`.
-> 2. **Albero di lavoro non committato, seconda sessione di fila.** `git status` porta le modifiche di
->    s299 **e** s300 (≈20 file: `apps/webui-static/*`, `sector-modules.mjs`, `auth.mjs`, `server.mjs`,
->    test, `MANIFEST.sha256`, `docs/*`). Verificate e installate dal vivo, mai committate — nessuna
->    richiesta esplicita dell'Owner in nessuna delle due sessioni. Scansione materiale riservato:
->    pulita. Chiedere se committare e pushare.
-> 3. **Decisione aperta lasciata all'Owner**: Debug Evolution non ha più un cancello proprio e sta
->    sulla bridge Docker di default insieme a `Cloudflare-DDNS` e a qualunque container vi finisca —
->    provato dal vivo che da lì la sua API si raggiunge senza autenticarsi. Proposta: spostarlo su una
->    rete dedicata con NOESAR, così l'assenza di gate resta una scelta locale e non un'apertura.
-> 4. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende dopo.
+> I primi tre punti lasciati da s300 sono tutti chiusi in s301: shell orfana+container
+> fantasma rimossi (diagnosi corretta: non un loop, un singolo `docker run` bloccato
+> dall'ENTRYPOINT supervisore — vedi lezione permanente sotto), lavoro s299+s300 committato
+> (`4f220dc`+`11132f0`, non pushato), Debug Evolution spostato su rete dedicata (`D-0281`).
+>
+> 1. **Push su `origin`?** 2 commit locali avanti (`4f220dc` D-0273..D-0280, `11132f0` +
+>    pin), poi il lavoro di questa sessione (`D-0281`) non ancora committato — chiedere.
+> 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) riprende
+>    ora, nessun altro filo davanti. Primo passo: leggere `auth.mjs`/`auth-crypto.mjs`
+>    (password+TOTP, sessioni, reauth forte) e cosa la matrice di sicurezza intende per
+>    "Passkey/WebAuthn: MISSING" prima di scrivere codice.
 > **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
-> **Piano di lavoro multi-fase in corso su richiesta Owner** ("finisci tutto il progetto,
-> massimo 4 pause"): A (debito ARCH-005/008) → B (SESS-001..003) → C (CUBE-001..009) →
-> pausa 1 → **decisione WebUI** → pausa 2 → E+F (debito+packaging) → pausa 3 →
+> **Piano di lavoro multi-fase Owner** ("finisci tutto il progetto, massimo 4 pause"):
+> A → B → C → pausa 1 → **decisione WebUI** → pausa 2 → E+F → pausa 3 →
 > G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
 > **Blocco A, B, C, D COMPLETI. Blocco E+F: 3/7 debito chiuso (`D-0271`), poi SEI pivot
-> espliciti dell'Owner** — `D-0273`…`D-0278` (modulo esterno ad-hoc → framework di
-> attivazione reale → registry publisher-key reale → meccanismo ad-hoc ritirato → catalogo
-> Owner a un click → Debug Evolution come tool reale + grafica + reauth rimossa) — **tutti
-> e sei ora chiusi**. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` →
-> Blocco G) resta in pausa dietro questo lavoro, riprende quando l'Owner lo richiede.
+> Owner** — `D-0273`…`D-0278` — **tutti chiusi**, seguiti da `D-0279`/`D-0280` (auth
+> service-token + credenziali modulo NOESAR-provisioned) e `D-0281` (rete dedicata +
+> bug di riconciliazione tool trovato dalla migrazione stessa). Il quarto filo (Passkey/
+> WebAuthn → `oci/Dockerfile` → Blocco G) resta l'unico non ancora ripreso.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
@@ -55,89 +41,82 @@ L'autorità operativa è `CLAUDE10.md` e vale **solo** qui.
    di miglioramento — `D-0275` è la prova che viene eseguita, non solo registrata.
 5. **`EXECUTE`, la custodia di chiavi di firma, la forma di un modulo, l'attivazione ad
    alto rischio e la registrazione/revoca publisher sono tutte decisioni del CLIENTE**
-   (`D-0250`, `D-0271`-`D-0275`): mai prese da sole. `D-0277`/`D-0278` non cambiano questo
-   — il server firma per conto dell'Owner solo per il catalogo NOESAR; togliere il passo
-   di reauth (`D-0278`) è stata un'istruzione esplicita dell'Owner, non una scelta mia di
-   ridurre attrito su una decisione che spettava a lui.
+   (`D-0250`, `D-0271`-`D-0275`): mai prese da sole.
 
 ## ⛔ IMPORTANTE PER QUALSIASI BUILD FUTURO — layer depth del base image
 
-Il tag corrente **`noesar-evolution:phase4-debug-evolution-tools`** (`D-0278`, `FROM
-:phase4-owner-modules-catalog`) è a **42 layer overlay2** — ben sotto il limite di 128
-che aveva bloccato `D-0273`. Usare questo tag come base del prossimo `FROM`. **Causa
-strutturale invariata**: `oci/Dockerfile` canonico non fa boot — Thread 3 dell'Owner,
-ancora aperto, margine ora a ~86 build.
+Il tag corrente **`noesar-evolution:phase4-debug-evolution-net-migration`** (`D-0281`,
+`FROM :phase4-module-credentials`) è a **15 layer overlay2** (`RootFS.Layers`, non
+`docker history`) — ben sotto il limite di 128 che aveva bloccato `D-0273`. Usare questo
+tag come base del prossimo `FROM`. **Causa strutturale invariata**: `oci/Dockerfile`
+canonico non fa boot — Thread 2 dell'Owner sotto, ancora aperto.
 
-## ⛔ LA PROSSIMA AZIONE — nessuna, sul lato Debug Evolution/Modules
+## ⛔ LA PROSSIMA AZIONE — nessuna, sul lato Debug Evolution/rete
 
-Debug Evolution è installabile/attivabile dall'Owner dalla WebUI (Settings > Modules, un
-click ciascuno, nessun reauth) ed è già un tool reale utilizzabile da qualsiasi Agent o
-Workflow (3 tool seedati al boot + rotta di rescan). **Nessuna azione dell'assistente è
-pendente su questo.**
+Debug Evolution è ora su `noesar-evolution-net`, irraggiungibile dalla LAN (porta 8787
+non più pubblicata), reachability interna verificata dal vivo in entrambe le direzioni.
+**Nessuna azione dell'assistente è pendente su questo.** Riprende: Passkey/WebAuthn (vedi
+sopra).
 
-Il filo dell'Owner rimasto in pausa (fine s296): 2) Passkey/WebAuthn → 3) `oci/Dockerfile`
-→ 4) Blocco G. Primo passo reale quando ripreso: leggere cosa esiste già in `auth.mjs`/
-`auth-crypto.mjs` (password+TOTP, sessioni, reauth forte) e cosa la matrice di sicurezza
-intende per "Passkey/WebAuthn: MISSING" prima di scrivere codice. **"Moduli utenti"**
-(customer-private/community, self-service) resta lavoro futuro non ancora scoping-ato.
+## ➜ `D-0281` (questa sessione) — cosa è stato fatto
 
-## ➜ `D-0278` (questa sessione) — cosa è stato fatto
+Owner ha chiesto: "abbiamo già fatto il modulo, cosa c'entra la rete dedicata?" — risposta:
+`D-0280` ha tolto il login proprio di Debug Evolution, che stava sulla bridge Docker di
+default con `192.168.178.100:8787` pubblicato sulla LAN — chiunque sulla LAN entrava senza
+autenticarsi. Spostato `debug-evolution` su `noesar-evolution-net` (stessa rete di
+`noesar-evolution`), porta LAN rimossa, entrambe le direzioni ripuntate sul nome DNS
+interno Docker invece dell'IP LAN dell'host. `NOESAR_ALLOWED_HOSTS` di NOESAR ha guadagnato
+`noesar-evolution` (il proprio nome, quello che Debug Evolution ora chiama) — altrimenti il
+suo stesso anti-DNS-rebinding l'avrebbe rifiutato con 421.
 
-Owner ha chiesto se Debug Evolution "funziona con tutte le chat, anche con CodeN
-Evolution" — risposta onesta: la chat semplice non ha un loop di tool-calling per NESSUN
-tool in questo prodotto, è un limite dell'intera reference implementation. Owner ha
-quindi ordinato, verbatim, tre cose: "FAI LA B" (bridge verso il tool system reale già
-esistente, `agent-service.mjs`/`tool-executor.mjs`, non una riscrittura da zero delle
-~8.000 righe di Debug Evolution), "la grafica webui devi cambiarla, ho bisogno di
-professionalità", "togli l'autenticazione dai moduli, basta solo quella di noesar".
-Fatte tutte e tre: `debug-evolution-bridge.mjs` (nuovo) seeda 3 tool a endpoint fisso al
-boot (list projects/all findings/SARIF, credenziale in vault) + rotta dedicata
-`POST /api/v1/debug-evolution/rescan` (owner+CSRF) per l'unica azione che l'executor
-generico non sa esprimere (id progetto nel path). Card Modules ridisegnate
-(`.module-card`/`.module-grid`, icona, riga trust/versione/publisher, tag settore) sullo
-stesso linguaggio grafico di `.panel` invece del look piatto di `.entity-card`. Reauth
-forte rimossa dalle rotte install/activate del catalogo (solo sessione+CSRF).
+**Bug reale trovato dalla migrazione stessa**: `seedDebugEvolutionTools()` deduplicava per
+NOME, quindi i 3 tool già seedati da `D-0278` mantenevano l'endpoint originale per sempre —
+ancora puntati alla porta LAN appena chiusa. Fix: riconciliazione dell'endpoint a ogni
+boot quando esiste già, non skip silenzioso.
 
-## ➜ Verificato in `D-0278`
+## ➜ Verificato in `D-0281`
 
 | Verifica | Risultato |
 |---|---|
-| `node --test` (suite completa) | **1403/1404 PASS** (1 skip pre-esistente, +8) |
-| `tools/run-eslint.sh` | **274 file · 0 errori** |
+| `npm test` (suite completa) | **1408/1409 PASS** (1 skip pre-esistente, +1 nuovo test reconcile) |
+| `tools/run-eslint.sh` | **277 file · 0 errori** |
 | `scripts/test.sh` (9 step) | **10/10 PASS** |
-| `tools/seeded-defect-proof.mjs` | **19/19 catturati** |
-| `MANIFEST.sha256` | **5894/5894** (5 hash cambiati, 0 nuove voci) |
-| Browser E2E | **341/341 PASS** |
-| Accessibility audit | **27/27 PASS** (contrasto AA icona nuova su 9 temi, stessa coppia gradiente/testo di `.primary`) |
-| deploy | stop pulito, backup, §5a, hardening dal primo tentativo, `Up (healthy)`, byte identici, 3 tool confermati seedati via `state/ai-workspace.json` (non login Owner), probe live `401` |
+| LAN port 8787 | connessione rifiutata (chiusa) |
+| NOESAR pubblico 8100 | `/livez` 200 (invariato) |
+| reachability interna NOESAR→Debug Evolution | `/api/v2/health` 200 |
+| reachability interna Debug Evolution→NOESAR | `/livez` 200 |
+| relay end-to-end | `/api/v2/uplink` (via NOESAR) → `state:ready`, `base_url` sul nuovo path |
+| riconciliazione tool | log `tool_endpoint_reconciled` ×3, stessi id, endpoint aggiornato |
+| dati | `migrations:19 rls_tables:18 production_ready:true` invariato |
 
 ## ➜ Stato dell'installazione
 
-- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-tools` (`D-0278`) · `Up
-  (healthy)` · `192.168.178.100:8100→8088` · `migrations:19 rls_tables:18
-  production_ready:true` (invariato). Rollback preservato:
-  `noesar-evolution.rollback-debug-evolution-tools-20260731T132646Z`
-  (`:phase4-owner-modules-catalog`).
-- **Due container per progetto** — §5a rispettato. `beautiful_leakey` (segnalato in
-  `D-0273`, `Up (unhealthy)`) **preesiste ancora, non toccato**.
+- **Prodotto vivo**: `noesar-evolution:phase4-debug-evolution-net-migration` (`D-0281`) ·
+  `Up (healthy)` · `192.168.178.100:8100→8088`. Rollback:
+  `noesar-evolution.rollback-pre-d0281-reconcile-fix-20260801T001103Z`
+  (`:phase4-module-credentials`).
+- **`debug-evolution`**: `Up (healthy)`, stessa immagine `1.1.0-noesar-module`, ora su
+  `noesar-evolution-net`, nessuna porta pubblicata. Rollback:
+  `debug-evolution.rollback-pre-net-migration-20260801T000358Z`.
+- **Due container per progetto ciascuno** — §5a rispettato per entrambi.
+- **Un tentativo di ricreazione auto-corretto in questa sessione**: env assemblato a mano
+  ha omesso variabili richieste (`exposure_scope` finito `loopback` invece di `lan`,
+  token vuoto) — scoperto dal log di boot prima che ricevesse traffico, fermato e
+  rimosso, rifatto generando l'env dall'inspect del predecessore anziché ritrascriverlo.
 
 ## ➜ Cosa NON è vero, e non va scoperto per caso
 
-- **Nessun modulo Debug Evolution è installato/attivo sulla vera installazione** — solo i
-  3 tool sono seedati (letti da endpoint pubblici, nessuna scrittura). Install/Activate
-  restano un'azione dell'Owner dalla WebUI, quando vuole.
 - **`modules-registry.mjs` esiste ancora sul disco, non importato** — scelta deliberata
   (`CLAUDE10.md` regola 12, nessun emendamento richiesto).
-- **Lavoro NON committato**: `D-0273`…`D-0278` restano tutte non committate (regola hard:
-  mai commit senza richiesta esplicita dell'Owner in QUESTA conversazione).
+- **Lavoro committato in questa sessione**: `D-0273`…`D-0280` (2 commit, s301), `D-0281`
+  ancora da committare a fine sessione. Nessun push eseguito.
 
 ## ➜ Blocker aperti
 
 `B-002` (stale, superseded da `B-011`). `B-011` (low-deferred): rotazione token rimandata
-a fine progetto. `oci/Dockerfile`/layer-depth (`D-0271`): Thread 3, ancora aperto, margine
-ampio (42/128 layer). `beautiful_leakey`: ancora da indagare/rimuovere, decisione
-dell'Owner.
+a fine progetto. `oci/Dockerfile`/layer-depth: Thread 2 dell'Owner sotto, ancora aperto,
+margine ampio (15/128 layer sul tag corrente).
 
 ## ➜ Le domande all'Owner ancora senza risposta
 
-Nessuna nuova. `beautiful_leakey` resta l'unica, invariata da `D-0273`.
+Nessuna nuova.
