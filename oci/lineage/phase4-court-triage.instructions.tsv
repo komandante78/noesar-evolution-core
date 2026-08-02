@@ -1,0 +1,106 @@
+     1	819MB	
+     2	0B	LABEL org.noesar.phase=4-modules-debug-evolution
+     3	0B	LABEL org.noesar.modules=debug-evolution-external-link
+     4	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-update-signing-side-flat
+     5	0B	USER root
+     6	408kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+     7	1.93MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+     8	0B	USER 10001:10001
+     9	0B	LABEL org.noesar.phase=4-sector-modules-activation
+    10	0B	LABEL org.noesar.feature=sector-module-install-activate-deactivate
+    11	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-modules-debug-evolution
+    12	0B	USER root
+    13	1.49kB	COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json # buildkit
+    14	1.97MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    15	0B	USER 10001:10001
+    16	0B	LABEL org.noesar.phase=4-publisher-registry
+    17	0B	LABEL org.noesar.feature=trusted-publisher-key-registry-rotation-revocation
+    18	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-sector-modules-activation
+    19	0B	USER root
+    20	2MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    21	0B	USER 10001:10001
+    22	0B	LABEL org.noesar.phase=4-modules-registry-retired
+    23	0B	LABEL org.noesar.feature=d0273-ad-hoc-module-mechanism-retired
+    24	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-publisher-registry
+    25	0B	USER root
+    26	405kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    27	2MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    28	0B	USER 10001:10001
+    29	0B	LABEL org.noesar.phase=4-owner-modules-catalog
+    30	0B	LABEL org.noesar.feature=one-click-owner-module-install-activate
+    31	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-modules-registry-retired
+    32	0B	USER root
+    33	411kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    34	2.02MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    35	0B	USER 10001:10001
+    36	0B	LABEL org.noesar.phase=4-debug-evolution-tools
+    37	0B	LABEL org.noesar.feature=debug-evolution-as-a-tool-plus-modules-graphics-and-reauth-removal
+    38	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-owner-modules-catalog
+    39	0B	USER root
+    40	412kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    41	2.04MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    42	0B	USER 10001:10001
+    43	0B	LABEL org.noesar.phase=4-service-token-auth
+    44	0B	LABEL org.noesar.feature=bearer-service-token-authentication-wired-into-requireSession
+    45	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-debug-evolution-tools
+    46	0B	USER root
+    47	2.05MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    48	0B	USER 10001:10001
+    49	0B	LABEL org.noesar.phase=4-module-credentials
+    50	0B	LABEL org.noesar.feature=noesar-provisions-its-official-modules-own-credential-at-boot
+    51	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-service-token-auth
+    52	0B	USER root
+    53	2.05MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    54	0B	USER 10001:10001
+    55	0B	LABEL org.noesar.phase=4-debug-evolution-net-migration
+    56	0B	LABEL org.noesar.feature=debug-evolution-moved-to-the-dedicated-network-tool-endpoint-reconcile-on-boot
+    57	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-module-credentials
+    58	0B	USER root
+    59	2.06MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    60	0B	USER 10001:10001
+    61	0B	LABEL org.noesar.phase=4-module-console-proxy
+    62	0B	LABEL org.noesar.feature=module-sidebar-link-proxied-through-noesars-own-authenticated-publish
+    63	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-debug-evolution-net-migration
+    64	0B	USER root
+    65	2.08MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    66	0B	USER 10001:10001
+    67	0B	LABEL org.noesar.phase=4-module-plug-and-play
+    68	0B	LABEL org.noesar.feature=module-install-state-not-environment-decides-noesar-side-wiring-plus-uninstall
+    69	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-module-console-proxy
+    70	0B	USER root
+    71	412kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    72	2.12MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    73	0B	USER 10001:10001
+    74	0B	LABEL org.noesar.phase=4-debug-evolution-triage
+    75	0B	LABEL org.noesar.feature=debug-evolution-phase-2-discovery-skeptic-slice-via-atom-hypothesize
+    76	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-module-plug-and-play
+    77	0B	USER root
+    78	413kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    79	2.15MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    80	0B	USER 10001:10001
+    81	0B	LABEL org.noesar.phase=4-debug-evolution-security-root-cause
+    82	0B	LABEL org.noesar.feature=debug-evolution-phase-2-second-slice-security-root-cause-via-atom-hypothesize
+    83	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-debug-evolution-triage
+    84	0B	USER root
+    85	2.16MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    86	0B	USER 10001:10001
+    87	0B	LABEL org.noesar.phase=4-debug-evolution-remote-targets
+    88	0B	LABEL org.noesar.feature=debug-evolution-phase-3-remote-targets-over-ssh-credential-never-leaves-noesar
+    89	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-debug-evolution-security-root-cause
+    90	0B	USER root
+    91	7.92MB	RUN /bin/sh -c apt-get update && apt-get install -y --no-install-recommends openssh-client  && rm -rf /var/lib/apt/lists/* # buildkit
+    92	421kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    93	2.21MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    94	0B	USER 10001:10001
+    95	0B	LABEL org.noesar.phase=4-module-uid-separation
+    96	0B	LABEL org.noesar.feature=sector-module-runs-under-its-own-uid-and-remote-target-screens-without-the-module-touching-the-key
+    97	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-debug-evolution-remote-targets
+    98	0B	USER root
+    99	2.45MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   100	0B	USER 10001:10001
+   101	0B	LABEL org.noesar.phase=4-debug-evolution-api-targets
+   102	0B	LABEL org.noesar.feature=api-targets-registry-and-probe-credentials-stay-in-the-vault-and-are-injected-per-probe
+   103	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-module-uid-separation
+   104	0B	USER root
+   105	2.51MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   106	0B	USER 10001:10001

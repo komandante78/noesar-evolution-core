@@ -5227,3 +5227,60 @@ Predecessor: `noesar-evolution.rollback-cube-typed-views-20260730T152454Z` (`:ph
 **Deploy.** `debug-evolution` only — no NOESAR EVOLUTION file changed, no commit needed on that side. Image grew from 119 MB to 2.58 GB (`golang-go` for `gosec`, `default-jre-headless` for `checkstyle`, `checkov`'s own dependency tree, Node/npm for `typescript` — a real cost of 20 real analyzers, measured, not estimated). Backup (`BACKUPS/debug_evolution_data_pre_toolpack_wiring_<ts>.tar.gz`, 732 MB) → §5a → recreated with the exact original `HostConfig` (all five binds including the two read-only source-tree mounts, `--ip 172.22.0.2` pinned, `--restart unless-stopped`) → healthy on the first attempt, `PRAGMA integrity_check` `ok`, 17 projects/84 pre-existing findings intact. `debug-evolution.pyz` and `static-quality.pyz` both backed up under `.bak_pre_*` before editing (DEBUG_EVOLUTION's own convention — no git); `SHA256SUMS` updated for `Dockerfile`, `appliance/app/debug-evolution.pyz`, `appliance/toolpacks/static-quality.pyz`, verified 31/31 after.
 **Reversal cost.** Low. The rollback container (`debug-evolution.rollback-remote-targets-<ts>`, image `debug-evolution:1.1.0-remote-targets`) is a straight `docker rename` + `docker start` away; the named volume was never reformatted, only read. `AI_STATE_VERSION`/schema untouched — this decision added no new SQLite table or column to `findings`/`evidence`, only new rows of an evidence type (`STATIC_ANALYZER`) the schema already declared.
 **Status.** Built, installed and verified live. Not part of the Owner's own 5-phase plan (Phase 4, cube+vector memory, remains the one open phase of that plan) — this closes a gap the plan itself did not name: real tools existed, unwired, since before this session began.
+
+## D-0294 · `oci/Dockerfile` builds this product again — 77 overlays folded into one file, proven by booting it — 2026-08-02
+**A note on the number.** This file jumps from `D-0287` to `D-0294`: `D-0288`…`D-0293` were
+implemented, deployed and committed (commit `8cffeee`) but **never written into this log** —
+they exist only in that commit message. Not reconstructed here from summaries, because writing
+six decision records from memory would be inventing the very thing this file is for. Named so
+it is not mistaken for a gap in the work.
+
+**Decision.** `oci/Dockerfile` is rewritten as a single-lineage build of the running product:
+a `rust:1-bookworm` builder stage for both peers (`noesar-supervisord`, `noesar-sandbox`, one
+stage instead of the two the overlays used), the pinned pgdg install of PostgreSQL
+`18.4-1.pgdg12+1` and pgvector `0.8.5-1.pgdg12+1`, the exact file set the image actually
+carries, the full `ENV`, and `ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]`. A
+`.dockerignore` is added — nothing it excludes is referenced by any `COPY`. Two labels the live
+image carries, `org.noesar.base-image` and `org.noesar.flatten`, are deliberately dropped: they
+describe a lineage a single-file build does not have, and copying them would re-record a false
+history on a fresh artefact.
+
+**Why.** `D-0271` found this file builds a *different system* — no PostgreSQL, `reference-json`
+data plane, `node server.mjs` as entrypoint. s308 measured why it had become unrecoverable:
+the overlay chain reached **127 of overlay2's 128 layers** at
+`noesar-evolution:phase4-update-signing-side` and was rescued by flattening, and **flattening
+severs source from artefact** — the live image's history is 1 `RUN`, 24 `COPY`, 48 `LABEL` and
+one 819 MB layer with no recorded instruction. The ability to rebuild this product did not live
+in this repository; it lived in ~82 image tags on one host's Docker daemon, one `docker image
+prune` from gone. The recovered instructions are preserved as evidence in `oci/lineage/`.
+
+**Rejected.** Copying `capabilities/`, `schemas/` and `docs/` as whole directories: the running
+image holds 2 files under `capabilities/` and 4 under `schemas/` where this repository holds 43
+of each, so directory copies would ship files the product has never contained. Checked against
+the live image, not inferred. Also rejected: writing the file and reviewing it instead of
+building it — an unverified Dockerfile is the class of artefact this project refuses.
+
+**Evidence.** Built, then compared against `noesar-evolution:phase4-court-triage`, the image
+running in production: `/opt/noesar` holds **295 files in both, `diff` empty**, and **294 of
+295 are identical byte for byte by sha256**. The one that differs is `package.json`, and the
+difference is a finding, not an error: it was copied once at the first build and never again in
+77 overlays, so the *live* image is missing three `npm` scripts this repository has. 24 layers
+against 26, 829 MB against 864 MB. Booted on a throwaway container with an empty volume:
+**healthy in 10 s**, all three ARCH-001 peers spawned (`postgres`, `api`, `codev`), PostgreSQL
+18.4 with pgvector 0.8.5, **19 migrations applied**, `/livez` and `/healthz` both `200`.
+
+**The half that was missing everywhere, found by booting it.** The first boot attempt came up
+`running` and **`unhealthy`** with PostgreSQL perfectly fine: the api peer died five times on
+`listen EACCES: permission denied /run/codev-peer.sock`. The live container runs `--read-only`
+with `--tmpfs /run:...,mode=1777` and `--tmpfs /tmp`, and that **`mode=1777` is load-bearing** —
+uid 10001 cannot create its socket in a root-owned `/run`. None of it was in the image, the
+repository, or any document: **this image has never been able to boot the product on its own,
+and nothing said so.** The run contract is now written at the top of `oci/Dockerfile`.
+
+**Reversal cost.** None to the running system: nothing was deployed, the live container and
+image are untouched, and the previous `oci/Dockerfile` is one `git revert` away.
+**Status.** Built and proven as `noesar-evolution:single-lineage-rebuild`. **Not deployed** —
+replacing the running container with it was not asked for and is not implied by fixing the
+build path. Also found, not fixed: the production image ships
+`services/reference-control-plane/src/server.mjs.bak_pre_uid_separation_20260802T000554Z`, a
+stray backup of the server source, because it sits inside a copied directory.

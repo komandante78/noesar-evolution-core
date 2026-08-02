@@ -1,0 +1,13 @@
+# Keeps the build context to what is actually built from.
+#
+# Without this the context is 4.9 GB, of which 4.8 GB is never copied by any stage:
+# BACKUPS (3.3 GB) and rust/target (1.5 GB, the host's build output — the builder stage
+# compiles into its own target directory inside the container).
+#
+# Nothing listed here is referenced by a COPY in oci/Dockerfile. That is the rule for adding
+# a line: if a stage copies it, it does not belong here.
+.git
+BACKUPS
+EVIDENCE
+rust/target
+**/node_modules

@@ -1,0 +1,337 @@
+     1	74.8MB	# debian.sh --arch 'amd64' out/ 'bookworm' '@1783900800'
+     2	8.9kB	RUN /bin/sh -c groupadd --gid 1000 node   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node # buildkit
+     3	0B	ENV NODE_VERSION=22.23.1
+     4	145MB	RUN /bin/sh -c ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)"     && case "${dpkgArch##*-}" in       amd64) ARCH='x64' OPENSSL_ARCH='linux-x86_64';;       ppc64el) ARCH='ppc64le' OPENSSL_ARCH='linux-ppc64le';;       s390x) ARCH='s390x' OPENSSL_ARCH='linux*-s390x';;       arm64) ARCH='arm64' OPENSSL_ARCH='linux-aarch64';;       armhf) ARCH='armv7l' OPENSSL_ARCH='linux-armv4';;       *) echo "unsupported architecture"; exit 1 ;;     esac     && set -ex     && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends     && rm -rf /var/lib/apt/lists/*     && export GNUPGHOME="$(mktemp -d)"     && for key in       5BE8A3F6C8A5C01D106C0AD820B1A390B168D356       DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7       CC68F5A3106FF448322E48ED27F5E38D5B0A215F       8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600       890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4       C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C       108F52B48DB57BB0CC439B2997B01419BD92F80A       A363A499291CBBC940DD62E41F10027AF002F8B0     ; do       { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" && gpg --batch --fingerprint "$key"; } ||       { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" && gpg --batch --fingerprint "$key"; } ;     done     && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz"     && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc"     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc     && gpgconf --kill all     && rm -rf "$GNUPGHOME"     && grep " node-v$NODE_VERSION-linux-$ARCH.tar.xz\$" SHASUMS256.txt | sha256sum -c -     && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 --no-same-owner     && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt     && find /usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \;     && apt-mark auto '.*' > /dev/null     && find /usr/local -type f -executable -exec ldd '{}' ';'       | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }'       | sort -u       | xargs -r dpkg-query --search       | cut -d: -f1       | sort -u       | xargs -r apt-mark manual     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false     && ln -s /usr/local/bin/node /usr/local/bin/nodejs     && node --version     && npm --version     && rm -rf /tmp/* # buildkit
+     5	0B	ENV YARN_VERSION=1.22.22
+     6	7.18MB	RUN /bin/sh -c set -ex   && savedAptMark="$(apt-mark showmanual)"   && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr --no-install-recommends   && rm -rf /var/lib/apt/lists/*   && export GNUPGHOME="$(mktemp -d)"   && for key in     6A010C5166006599AA17F08146C2130DFD2497F5   ; do     { gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" && gpg --batch --fingerprint "$key"; } ||     { gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" && gpg --batch --fingerprint "$key"; } ;   done   && curl -fsSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz"   && curl -fsSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc"   && gpg --batch --verify yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   && gpgconf --kill all   && rm -rf "$GNUPGHOME"   && mkdir -p /opt   && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg   && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz   && apt-mark auto '.*' > /dev/null   && { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; }   && find /usr/local -type f -executable -exec ldd '{}' ';'     | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }'     | sort -u     | xargs -r dpkg-query --search     | cut -d: -f1     | sort -u     | xargs -r apt-mark manual   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false   && yarn --version   && rm -rf /tmp/* # buildkit
+     7	388B	COPY docker-entrypoint.sh /usr/local/bin/ # buildkit
+     8	0B	ENTRYPOINT ["docker-entrypoint.sh"]
+     9	0B	CMD ["node"]
+    10	0B	LABEL org.opencontainers.image.title=NOESAR Evolution
+    11	0B	LABEL org.opencontainers.image.description=V4 complete self-hosted implementation runtime
+    12	0B	LABEL org.opencontainers.image.licenses=AGPL-3.0-or-later
+    13	0B	LABEL org.opencontainers.image.version=1.0.0-ai-workspace
+    14	0B	LABEL org.noesar.release.channel=complete
+    15	0B	LABEL org.noesar.production-ready=pending-target-validation
+    16	0B	LABEL org.noesar.authority=reference-node
+    17	0B	LABEL org.noesar.authority-protocol=reference-hmac-v1.1
+    18	0B	LABEL org.noesar.data-plane=reference-json
+    19	0B	LABEL org.noesar.postgres-baseline=0.5.0
+    20	502MB	RUN /bin/sh -c apt-get update  && apt-get install -y --no-install-recommends unzip poppler-utils tesseract-ocr ffmpeg ca-certificates  && rm -rf /var/lib/apt/lists/*  && groupadd --gid 10001 noesar  && useradd --uid 10001 --gid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin noesar  && mkdir -p /opt/noesar /workspace  && chown -R 10001:10001 /opt/noesar /workspace # buildkit
+    21	0B	WORKDIR /opt/noesar
+    22	1.58kB	COPY --chown=10001:10001 package.json /opt/noesar/ # buildkit
+    23	473kB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    24	80.5kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    25	0B	ENV NODE_ENV=production NOESAR_RUNTIME_ROOT=/opt/noesar NOESAR_WORKSPACE=/workspace NOESAR_HOST=0.0.0.0 NOESAR_PORT=8088 NOESAR_RELEASE_CHANNEL=complete NOESAR_AUTHORITY_MODE=reference-node NOESAR_DATA_PLANE=reference-json NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1 NOESAR_SECURE_COOKIES=false
+    26	0B	USER 10001:10001
+    27	0B	EXPOSE [8088/tcp]
+    28	0B	VOLUME [/workspace]
+    29	0B	HEALTHCHECK {Test:[CMD node -e require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))] Interval:30s Timeout:5s StartPeriod:10s StartInterval:0s Retries:3}
+    30	0B	ENTRYPOINT ["node" "services/reference-control-plane/src/server.mjs"]
+    31	0B	LABEL org.opencontainers.image.version=1.0.0-ai-workspace-phase4
+    32	0B	LABEL org.noesar.phase=4
+    33	0B	LABEL org.noesar.phase4.remediations=F4-002 F4-004 F4-005 F4-006 F4-007 F4-008
+    34	0B	LABEL org.noesar.base-image=noesar-evolution:phase3
+    35	0B	USER root
+    36	1.58kB	COPY --chown=10001:10001 package.json /opt/noesar/ # buildkit
+    37	527kB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    38	80.5kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    39	0B	USER 10001:10001
+    40	0B	HEALTHCHECK {Test:[CMD node -e require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))] Interval:30s Timeout:5s StartPeriod:10s StartInterval:0s Retries:3}
+    41	0B	ENTRYPOINT ["node" "services/reference-control-plane/src/server.mjs"]
+    42	0B	LABEL org.opencontainers.image.version=1.0.0-ai-workspace-phase4-complete
+    43	0B	LABEL org.noesar.phase=4-complete
+    44	0B	LABEL org.noesar.base-image=noesar-evolution:phase4
+    45	0B	LABEL org.noesar.data-plane=postgresql
+    46	0B	LABEL org.noesar.postgresql.version=18.4-1.pgdg12+1
+    47	0B	LABEL org.noesar.pgvector.version=0.8.5-1.pgdg12+1
+    48	0B	USER root
+    49	4.81kB	COPY oci/keys/apt.postgresql.org.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc # buildkit
+    50	93.4MB	RUN /bin/sh -c set -eux;     install -d -m 0755 /usr/share/postgresql-common/pgdg /etc/postgresql-common;     printf 'create_main_cluster = false\n' > /etc/postgresql-common/createcluster.conf;     echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main'       > /etc/apt/sources.list.d/pgdg.list;     apt-get update;     apt-get install -y --no-install-recommends       postgresql-18=18.4-1.pgdg12+1       postgresql-client-18=18.4-1.pgdg12+1       postgresql-18-pgvector=0.8.5-1.pgdg12+1;     rm -rf /var/lib/apt/lists/*;     /usr/lib/postgresql/18/bin/postgres --version;     test -f /usr/share/postgresql/18/extension/vector.control # buildkit
+    51	0B	WORKDIR /opt/noesar
+    52	1.85kB	COPY --chown=10001:10001 package.json /opt/noesar/ # buildkit
+    53	724kB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+    54	80.5kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    55	100kB	COPY --chown=10001:10001 database/ /opt/noesar/database/ # buildkit
+    56	0B	ENV NOESAR_DATA_PLANE=postgresql NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin NOESAR_POSTGRES_ROOT=/workspace/postgresql NOESAR_MIGRATIONS_DIR=/opt/noesar/database/postgres NOESAR_LOCAL_MODEL_RUNTIME=disabled PATH=/usr/lib/postgresql/18/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    57	0B	USER 10001:10001
+    58	0B	EXPOSE [8088/tcp]
+    59	0B	VOLUME [/workspace]
+    60	0B	HEALTHCHECK {Test:[CMD node -e require('node:http').get('http://127.0.0.1:8088/livez',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))] Interval:30s Timeout:5s StartPeriod:20s StartInterval:0s Retries:3}
+    61	0B	ENTRYPOINT ["node" "services/reference-control-plane/src/server.mjs"]
+    62	0B	LABEL org.opencontainers.image.version=1.0.0-ai-workspace-phase4-complete-lan
+    63	0B	LABEL org.noesar.phase=4-complete-lan
+    64	0B	LABEL org.noesar.base-image=noesar-evolution:phase4-complete
+    65	0B	LABEL org.noesar.phase4.lan-remediations=F4L-001
+    66	0B	LABEL org.noesar.exposure.default=loopback
+    67	0B	USER root
+    68	4.62kB	COPY --chown=10001:10001 services/reference-control-plane/src/http-security.mjs /opt/noesar/services/reference-control-plane/src/http-security.mjs # buildkit
+    69	70.3kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+    70	0B	USER 10001:10001
+    71	0B	USER root
+    72	159kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    73	461kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    74	0B	USER 10001:10001
+    75	0B	USER root
+    76	186kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    77	539kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    78	0B	USER 10001:10001
+    79	0B	USER root
+    80	212kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    81	539kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    82	0B	USER 10001:10001
+    83	0B	USER root
+    84	216kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    85	539kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    86	0B	USER 10001:10001
+    87	0B	USER root
+    88	250kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    89	539kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    90	0B	USER 10001:10001
+    91	0B	USER root
+    92	315kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    93	564kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    94	0B	USER 10001:10001
+    95	0B	USER root
+    96	342kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+    97	579kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+    98	0B	USER 10001:10001
+    99	0B	USER root
+   100	584kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   101	0B	USER 10001:10001
+   102	0B	USER root
+   103	600kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   104	0B	USER 10001:10001
+   105	0B	USER root
+   106	611kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   107	0B	USER 10001:10001
+   108	0B	USER root
+   109	619kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   110	0B	USER 10001:10001
+   111	0B	USER root
+   112	627kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   113	0B	USER 10001:10001
+   114	0B	USER root
+   115	635kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   116	0B	USER 10001:10001
+   117	0B	USER root
+   118	647kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   119	0B	USER 10001:10001
+   120	0B	USER root
+   121	670kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   122	0B	USER 10001:10001
+   123	0B	USER root
+   124	693kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   125	0B	USER 10001:10001
+   126	0B	USER root
+   127	118kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   128	0B	USER 10001:10001
+   129	0B	USER root
+   130	118kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   131	0B	USER 10001:10001
+   132	0B	USER root
+   133	119kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   134	3.15kB	COPY --chown=10001:10001 services/reference-control-plane/src/tls.mjs /opt/noesar/services/reference-control-plane/src/tls.mjs # buildkit
+   135	0B	USER 10001:10001
+   136	0B	HEALTHCHECK {Test:[CMD node -e const h=require('node:http'),s=require('node:https');function t(m,o){return new Promise((res,rej)=>{const r=m.get(o,(x)=>{x.resume();res(x.statusCode)});r.on('error',rej);r.setTimeout(4000,()=>r.destroy(new Error('timeout')))})}(async()=>{try{process.exit((await t(h,'http://127.0.0.1:8088/livez'))===200?0:1)}catch(e){try{process.exit((await t(s,{hostname:'127.0.0.1',port:8088,path:'/livez',rejectUnauthorized:false}))===200?0:1)}catch(e2){process.exit(1)}}})()] Interval:30s Timeout:5s StartPeriod:10s StartInterval:0s Retries:3}
+   137	0B	USER root
+   138	120kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   139	7.48kB	COPY --chown=10001:10001 services/reference-control-plane/src/executor.mjs /opt/noesar/services/reference-control-plane/src/executor.mjs # buildkit
+   140	0B	USER 10001:10001
+   141	0B	USER root
+   142	123kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   143	11.8kB	COPY --chown=10001:10001 services/reference-control-plane/src/sector-modules.mjs /opt/noesar/services/reference-control-plane/src/sector-modules.mjs # buildkit
+   144	532B	COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json # buildkit
+   145	1.05kB	COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json # buildkit
+   146	1.45kB	COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json # buildkit
+   147	0B	USER 10001:10001
+   148	0B	USER root
+   149	127kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   150	11.1kB	COPY --chown=10001:10001 services/reference-control-plane/src/compliance-packs.mjs /opt/noesar/services/reference-control-plane/src/compliance-packs.mjs # buildkit
+   151	1kB	COPY --chown=10001:10001 schemas/compliance-pack.schema.json /opt/noesar/schemas/compliance-pack.schema.json # buildkit
+   152	0B	USER 10001:10001
+   153	0B	USER root
+   154	131kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   155	9.76kB	COPY --chown=10001:10001 services/reference-control-plane/src/technology-radar.mjs /opt/noesar/services/reference-control-plane/src/technology-radar.mjs # buildkit
+   156	890B	COPY --chown=10001:10001 schemas/technology-radar-entry.schema.json /opt/noesar/schemas/technology-radar-entry.schema.json # buildkit
+   157	1.63kB	COPY --chown=10001:10001 docs/governance/technology-radar-seed.json /opt/noesar/docs/governance/technology-radar-seed.json # buildkit
+   158	0B	USER 10001:10001
+   159	0B	USER root
+   160	141kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   161	9.4kB	COPY --chown=10001:10001 services/reference-control-plane/src/scim.mjs /opt/noesar/services/reference-control-plane/src/scim.mjs # buildkit
+   162	7.64kB	COPY --chown=10001:10001 services/reference-control-plane/src/oidc.mjs /opt/noesar/services/reference-control-plane/src/oidc.mjs # buildkit
+   163	0B	USER 10001:10001
+   164	0B	USER root
+   165	141kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   166	19.3kB	COPY --chown=10001:10001 services/reference-control-plane/src/workspace-actions.mjs /opt/noesar/services/reference-control-plane/src/workspace-actions.mjs # buildkit
+   167	9.01kB	COPY --chown=10001:10001 services/reference-control-plane/src/verification.mjs /opt/noesar/services/reference-control-plane/src/verification.mjs # buildkit
+   168	0B	USER 10001:10001
+   169	0B	USER root
+   170	145kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   171	10.5kB	COPY --chown=10001:10001 services/reference-control-plane/src/tool-catalog.mjs /opt/noesar/services/reference-control-plane/src/tool-catalog.mjs # buildkit
+   172	663B	COPY --chown=10001:10001 schemas/tool-catalog-entry.schema.json /opt/noesar/schemas/tool-catalog-entry.schema.json # buildkit
+   173	0B	USER 10001:10001
+   174	0B	USER root
+   175	146kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   176	8.03kB	COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs # buildkit
+   177	5.83kB	COPY --chown=10001:10001 services/reference-control-plane/src/atom-client.mjs /opt/noesar/services/reference-control-plane/src/atom-client.mjs # buildkit
+   178	0B	USER 10001:10001
+   179	0B	USER root
+   180	149kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   181	24kB	COPY --chown=10001:10001 services/reference-control-plane/src/workspace-actions.mjs /opt/noesar/services/reference-control-plane/src/workspace-actions.mjs # buildkit
+   182	9.3kB	COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs # buildkit
+   183	13.6kB	COPY --chown=10001:10001 services/reference-control-plane/src/reasoning.mjs /opt/noesar/services/reference-control-plane/src/reasoning.mjs # buildkit
+   184	0B	USER 10001:10001
+   185	0B	USER root
+   186	152kB	COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs # buildkit
+   187	6.75kB	COPY --chown=10001:10001 services/reference-control-plane/src/research-gate.mjs /opt/noesar/services/reference-control-plane/src/research-gate.mjs # buildkit
+   188	0B	USER 10001:10001
+   189	0B	USER root
+   190	6.64kB	COPY --chown=10001:10001 services/reference-control-plane/src/atom-client.mjs /opt/noesar/services/reference-control-plane/src/atom-client.mjs # buildkit
+   191	9.84kB	COPY --chown=10001:10001 services/reference-control-plane/src/reasoning-router.mjs /opt/noesar/services/reference-control-plane/src/reasoning-router.mjs # buildkit
+   192	0B	USER 10001:10001
+   193	0B	USER root
+   194	354kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   195	0B	USER 10001:10001
+   196	0B	USER root
+   197	363kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   198	842kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   199	0B	USER 10001:10001
+   200	0B	USER root
+   201	367kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   202	854kB	COPY --chown=10001:10001 services/reference-control-plane/src/ /opt/noesar/services/reference-control-plane/src/ # buildkit
+   203	0B	USER 10001:10001
+   204	0B	USER root
+   205	367kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   206	0B	USER 10001:10001
+   207	0B	USER root
+   208	366kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   209	0B	USER 10001:10001
+   210	0B	USER root
+   211	366kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   212	0B	USER 10001:10001
+   213	0B	USER root
+   214	369kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   215	0B	USER 10001:10001
+   216	0B	USER root
+   217	369kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   218	0B	USER 10001:10001
+   219	0B	USER root
+   220	373kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   221	0B	USER 10001:10001
+   222	0B	LABEL org.noesar.phase=4-supervisor
+   223	0B	LABEL org.noesar.arch-001=partial-2-of-3-peers
+   224	0B	USER root
+   225	1.32MB	COPY /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord # buildkit
+   226	1.32MB	RUN /bin/sh -c chmod 0755 /opt/noesar/bin/noesar-supervisord # buildkit
+   227	1.59MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   228	0B	USER 10001:10001
+   229	0B	ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]
+   230	0B	LABEL org.noesar.phase=4-codev-peer
+   231	0B	LABEL org.noesar.arch-001=complete-3-of-3-peers
+   232	0B	USER root
+   233	1.33MB	COPY /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord # buildkit
+   234	1.33MB	RUN /bin/sh -c chmod 0755 /opt/noesar/bin/noesar-supervisord # buildkit
+   235	1.6MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   236	0B	USER 10001:10001
+   237	0B	ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]
+   238	0B	LABEL org.noesar.phase=4-arch005-adapter-gate
+   239	0B	LABEL org.noesar.arch-005=local-model-runtime-launch-gated
+   240	0B	USER root
+   241	1.63MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   242	0B	USER 10001:10001
+   243	0B	LABEL org.noesar.phase=4-sandbox-binary
+   244	0B	LABEL org.noesar.arch-008=mechanism-built-not-yet-spent-by-any-surface
+   245	0B	USER root
+   246	495kB	COPY /build/rust/target/release/noesar-sandbox /opt/noesar/bin/noesar-sandbox # buildkit
+   247	495kB	RUN /bin/sh -c chmod 0755 /opt/noesar/bin/noesar-sandbox # buildkit
+   248	1.69MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   249	0B	USER 10001:10001
+   250	0B	LABEL org.noesar.phase=4-execute-client-decision
+   251	0B	LABEL org.noesar.arch-008=execute-is-a-per-installation-decision
+   252	0B	USER root
+   253	1.72MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   254	0B	USER 10001:10001
+   255	0B	LABEL org.noesar.phase=4-arch005-manifest-precision
+   256	0B	LABEL org.noesar.arch-005=six-adapters-audited-individually
+   257	0B	USER root
+   258	1.72MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   259	0B	USER 10001:10001
+   260	0B	LABEL org.noesar.phase=4-arch008-execute-rust-mirror
+   261	0B	LABEL org.noesar.arch-008=closed-both-language-sides
+   262	0B	USER root
+   263	1.72MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   264	0B	USER 10001:10001
+   265	0B	LABEL org.noesar.phase=4-sess001-session-proof
+   266	0B	LABEL org.noesar.sess-001=built
+   267	0B	USER root
+   268	1.74MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   269	0B	USER 10001:10001
+   270	0B	LABEL org.noesar.phase=4-sess002-003-replay
+   271	0B	LABEL org.noesar.sess-002=built
+   272	0B	LABEL org.noesar.sess-003=built
+   273	0B	USER root
+   274	1.77MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   275	0B	USER 10001:10001
+   276	0B	LABEL org.noesar.phase=4-cube-c1-schema
+   277	0B	LABEL org.noesar.cube-c1=schema-only
+   278	0B	USER root
+   279	68.4kB	COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/ # buildkit
+   280	0B	USER 10001:10001
+   281	0B	LABEL org.noesar.phase=4-cube-typed-views
+   282	0B	LABEL org.noesar.cube-004=typed-views
+   283	0B	USER root
+   284	79.9kB	COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/ # buildkit
+   285	174kB	COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/ # buildkit
+   286	0B	USER 10001:10001
+   287	0B	LABEL org.noesar.phase=4-memory-application-layer
+   288	0B	LABEL org.noesar.block-c=c2-c4
+   289	0B	USER root
+   290	81.8kB	COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/ # buildkit
+   291	1.83MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   292	187kB	COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/ # buildkit
+   293	0B	USER 10001:10001
+   294	0B	LABEL org.noesar.phase=4-memory-model-swap
+   295	0B	LABEL org.noesar.block-c=c5
+   296	0B	USER root
+   297	81.8kB	COPY --chown=10001:10001 database/postgres/ /opt/noesar/database/postgres/ # buildkit
+   298	1.84MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   299	192kB	COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/ # buildkit
+   300	0B	USER 10001:10001
+   301	0B	LABEL org.noesar.phase=4-memory-webui
+   302	0B	LABEL org.noesar.block-c=c6-final
+   303	0B	USER root
+   304	381kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   305	1.84MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   306	0B	USER 10001:10001
+   307	0B	LABEL org.noesar.phase=4-research
+   308	0B	LABEL org.noesar.block-d=d1-research
+   309	0B	USER root
+   310	390kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   311	1.87MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   312	0B	USER 10001:10001
+   313	0B	LABEL org.noesar.phase=4-sessions-tui
+   314	0B	LABEL org.noesar.block-d=d2-sessions-tui
+   315	0B	USER root
+   316	1.88MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   317	0B	USER 10001:10001
+   318	0B	LABEL org.noesar.phase=4-panels-tui
+   319	0B	LABEL org.noesar.block-d=d3a-panels-tui
+   320	0B	USER root
+   321	1.89MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   322	0B	USER 10001:10001
+   323	0B	LABEL org.noesar.phase=4-voice-control
+   324	0B	LABEL org.noesar.block-d=d3c-voice-control
+   325	0B	USER root
+   326	405kB	COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/ # buildkit
+   327	0B	USER 10001:10001
+   328	0B	LABEL org.noesar.phase=4-audit-ledger-perf
+   329	0B	LABEL org.noesar.block-e=audit-ledger-o1-append
+   330	0B	USER root
+   331	1.9MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   332	0B	USER 10001:10001
+   333	0B	LABEL org.noesar.phase=4-update-signing-side
+   334	0B	LABEL org.noesar.block-e=update-manager-channel-key-route
+   335	0B	USER root
+   336	1.91MB	COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/ # buildkit
+   337	0B	USER 10001:10001
