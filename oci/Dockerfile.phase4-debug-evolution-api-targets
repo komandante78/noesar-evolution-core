@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0292 -- API targets, the third and last way to attach a target (Owner s305, point C).
+#
+# A/B/D all answered the same question with different transports: how a SOURCE TREE gets to
+# Debug Evolution. C does not. An API target has no tree -- it is a service that is running,
+# and the product is what it does when you talk to it. `remote-api.pyz` has shipped in the
+# appliance since the first release and had never been connected to anything.
+#
+# WHERE THE WORK HAPPENS, AND WHY IT INVERTS THE SSH CASE. D-0286 could keep an SSH
+# credential entirely out of the module because NOESAR itself runs `scp`. The same trick is
+# not available here and not for want of trying: `remote-api.pyz` is a Python zipapp and this
+# image has no `python3` (measured on the running container -- `openssl`, `ssh`, `scp`, `tar`
+# and `node` are present, `python3` and `curl` are not). Adding a Python runtime here to keep
+# a token out of the module would also put the toolpack on the wrong side of the module
+# boundary the whole product is built around.
+#
+# So the honest description, written down rather than glossed: NOESAR remains the only place
+# an API credential is STORED -- same `CredentialVault`, same encryption-at-rest key as every
+# other secret -- and the module is where it is USED, for the length of one probe. Never
+# written to disk there, never placed in a process argument (the module drives the toolpack
+# over its `rpc` verb on stdin precisely for that reason), never recorded: the toolpack
+# redacts `authorization`/`cookie`/`x-api-key` out of everything it returns. This is a weaker
+# property than the SSH case and is not claimed to be equal to it. It is also a different
+# kind of secret -- an SSH private key opens a whole machine and is merely the means of
+# fetching source, while an API token is scoped to the very service under examination.
+#
+# The toolpack's own authorizations (`--allow-host` plus explicit `--allow-remote-testing`,
+# `--allow-private-targets`, `--allow-mutation`, `--allow-intrusive`,
+# `--allow-billable-request`) are respected, not routed around: they are FIELDS OF THE TARGET
+# RECORD, decided once by the Owner at registration, so every later probe is bound by that
+# decision rather than by whatever a caller passes in. All four default to false on an absent
+# field.
+#
+# THREE DEFECTS FOUND BY RUNNING IT, not by reading it (harness against real services, before
+# this image existed):
+#   1. Every non-zero exit from the TLS probe produced "certificate verification failed" --
+#      including a probe REFUSED by policy for a private address, which invented a HIGH
+#      verdict about a certificate the toolpack had declined to go and look at. Now
+#      classified: only a real verification failure or a port that answers in clear on a
+#      `https://` URL are findings; a policy refusal, an unresolvable name or a closed port
+#      are recorded as steps and nothing more.
+#   2. A probe where nothing was reached at all returned as a success with zero findings --
+#      "observed nothing wrong" reading identically to "observed nothing". It now raises, and
+#      the registry records a failed probe with the reason.
+#   3. The first version of that check then discarded the `DE-API-TLS-ABSENT` finding, whose
+#      whole evidence IS that every step failed. Fixed and re-verified.
+#
+# Also fixed here, found by this change rather than caused by it:
+# `debug-evolution-tools-endpoint-reconcile.test.mjs` hand-listed the workspace collections
+# while claiming the current `schemaVersion`, so no migration ran on its fixture and
+# `validateState` rejected the whole file the moment a purely additive collection was added.
+# It now builds its fixture from `defaultAiState()`.
+#
+# Verified before this build: unit 1507/1508 (1 pre-existing skip, 0 failed), ESLint 295
+# files 0 errors 0 warnings, Debug Evolution SHA256SUMS 31/31. The probe itself was proven
+# live against real services -- a public HTTPS host, this control plane over its real scheme,
+# and a `https://` URL pointed at a port that answers in clear -- including the assertion the
+# design rests on: a canary credential appears in none of the module's database bytes, WAL,
+# audit rows or findings.
+
+FROM noesar-evolution:phase4-module-uid-separation
+
+LABEL org.noesar.phase="4-debug-evolution-api-targets"
+LABEL org.noesar.feature="api-targets-registry-and-probe-credentials-stay-in-the-vault-and-are-injected-per-probe"
+LABEL org.noesar.base-image="noesar-evolution:phase4-module-uid-separation"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001

@@ -25,8 +25,12 @@ import { ReasoningUnavailable } from './reasoning-router.mjs';
 import { ReasoningRefused } from './reasoning.mjs';
 import { findingAsGatheredEvidence, hypothesisToEvidenceRows, TRIAGE_ROLE_INTENTS } from './debug-evolution-triage.mjs';
 import { fetchRemoteTarget } from './remote-target-fetch.mjs';
+import { buildProbeSpec, describeProbeSpec } from './api-target-probe.mjs';
 
 const NOESAR_PROJECT_NAME_PREFIX = 'NOESAR EVOLUTION';
+// Six requests at the toolpack's own 20s per-request ceiling, plus a TLS handshake and the
+// interpreter start, with room left over. Deliberately not `callDebugEvolution`'s 30s.
+const PROBE_TIMEOUT_MS = 180_000;
 
 function debugEvolutionBaseUrl() {
   return String(process.env.NOESAR_DEBUG_EVOLUTION_URL ?? 'http://192.168.178.100:8787').replace(/\/$/, '');
@@ -112,10 +116,47 @@ async function triageFinding(finding, { router, token }) {
     return { id: finding.id, ok: true, skipped: true, reason: 'no hypothesis returned by any role', evidenceAdded: 0 };
   }
   const rationale = statements.join(' | ');
+  // Attempted only from DETECTED. A finding that a probe or the sandbox already advanced to
+  // HYPOTHESIZED is not stuck — it is past this step, and `HYPOTHESIZED -> HYPOTHESIZED` is
+  // not a legal edge in Debug Evolution's own state machine, so asking for it would fail the
+  // whole call AFTER the evidence had already been attached. The evidence is the product
+  // here; the state was earned earlier by something that actually observed the system.
+  if (finding.state !== 'DETECTED') {
+    return { id: finding.id, ok: true, skipped: false, evidenceAdded, hypotheses: totalHypotheses,
+             state: finding.state, transitioned: false,
+             reason: `già oltre DETECTED (${finding.state}): allegate le ipotesi, nessuna transizione richiesta` };
+  }
   const transitioned = await callDebugEvolution(`/api/v2/findings/${encodeURIComponent(finding.id)}/transition`, {
     method: 'POST', token, body: { target: 'HYPOTHESIZED', actor: 'atom', rationale },
   });
-  return { id: finding.id, ok: true, skipped: false, evidenceAdded, hypotheses: totalHypotheses, state: transitioned.state };
+  return { id: finding.id, ok: true, skipped: false, evidenceAdded, hypotheses: totalHypotheses, state: transitioned.state, transitioned: true };
+}
+
+/**
+ * D-0293: one finding, judged on demand, whatever state it is in.
+ *
+ * `triageUnclassifiedFindings()` below sweeps `DETECTED` findings across every project whose
+ * name starts with `NOESAR EVOLUTION`. Both halves of that make it the wrong instrument for
+ * a single verdict: an API target's findings are born `HYPOTHESIZED` (the probe observed
+ * them, it did not guess them), so the sweep never sees one — and a sweep launched to judge
+ * one finding would wake ATOM on every other `DETECTED` finding in the installation.
+ *
+ * So this exists beside it rather than replacing it: same roles, same evidence rows, same
+ * refusal semantics, one finding.
+ */
+export async function triageFindingById(findingId, router) {
+  const token = debugEvolutionToken();
+  if (!token) {
+    const error = Object.assign(new Error('NOESAR_DEBUG_EVOLUTION_TOKEN is not configured on this deployment.'), { status: 503 });
+    throw error;
+  }
+  const court = await callDebugEvolution(`/api/v2/findings/${encodeURIComponent(findingId)}/court`, { token });
+  const finding = court.finding;
+  if (!finding) {
+    const error = Object.assign(new Error('Finding not found in Debug Evolution.'), { status: 404 });
+    throw error;
+  }
+  return triageFinding(finding, { router, token });
 }
 
 /**
@@ -201,4 +242,51 @@ export async function fetchAndScanRemoteTarget(target, privateKeyPem) {
   const tarBuffer = await fetchRemoteTarget({ target, privateKeyPem });
   const result = await uploadImportToDebugEvolution({ name: target.name, slug: target.id, tarBuffer, token });
   return { projectId: result.project?.id ?? null, findingCount: result.finding_count, nodeCount: result.node_count };
+}
+
+/**
+ * D-0292: an API target (Owner s305, point C). The mirror image of the SSH case above —
+ * there NOESAR does the work and the module receives the result; here the module does the
+ * work, because `remote-api.pyz` lives in its image and NOESAR has no Python interpreter to
+ * run it with. `api-target-probe.mjs`'s own header explains why that inversion also
+ * inverts where the credential goes, and what is and is not claimed about it.
+ *
+ * Not routed through `callDebugEvolution()` for one measured reason: that helper's 30s
+ * timeout is shorter than a probe's own worst case. Six requests at the toolpack's 20s
+ * per-request ceiling, plus a TLS handshake, can legitimately exceed it, and a probe cut
+ * short by NOESAR's clock would look to an Owner like a target that failed rather than a
+ * caller that gave up.
+ */
+export async function probeApiTarget(target, credentialHeaders) {
+  const token = debugEvolutionToken();
+  if (!token) {
+    const error = Object.assign(new Error('NOESAR_DEBUG_EVOLUTION_TOKEN is not configured on this deployment.'), { status: 503 });
+    throw error;
+  }
+  const spec = buildProbeSpec(target, credentialHeaders);
+  const response = await fetch(`${debugEvolutionBaseUrl()}/api/v2/api-probe`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(spec),
+    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+  });
+  const text = await response.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch { json = { text }; }
+  if (!response.ok) {
+    // `describeProbeSpec` and not `spec`: an error message is exactly the kind of string
+    // that ends up in a log, a ledger entry and a browser console, and the credential must
+    // not be in any of them.
+    const error = Object.assign(
+      new Error(`Debug Evolution probe failed (${response.status}): ${json.error ?? text}`),
+      { status: 502, probe: describeProbeSpec(spec) },
+    );
+    throw error;
+  }
+  return {
+    projectId: json.project?.id ?? null,
+    findingCount: json.finding_count ?? 0,
+    steps: json.steps ?? [],
+    findings: json.findings ?? [],
+  };
 }

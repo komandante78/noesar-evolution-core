@@ -4,7 +4,8 @@
 // `workflows` and `workflowRuns`; the missing interface parts raised it from 2 to 3 to add
 // `reviewSamples` (UI-070…UI-072) and to backfill the two fields a session needs to be
 // archivable and binnable (UI-011, UI-012); D-0286 raised it from 3 to 4 to add
-// `remoteTargets` (Debug Evolution Phase 3, SSH-fetched scan targets).
+// `remoteTargets` (Debug Evolution Phase 3, SSH-fetched scan targets); D-0292 raised it from
+// 4 to 5 to add `apiTargets` (Debug Evolution point C, probed live services).
 //
 // This test exists because of a defect this project has already found and paid for: PostgreSQL
 // migration 0012 could never be applied to any cluster, which was itself the proof that the
@@ -42,13 +43,14 @@ function versionOneState() {
 }
 
 describe('the AI workspace state migrates forward', () => {
-  test('the current version is 4 and the default state carries every added collection', () => {
-    assert.equal(AI_STATE_VERSION, 4);
+  test('the current version is 5 and the default state carries every added collection', () => {
+    assert.equal(AI_STATE_VERSION, 5);
     const fresh = defaultAiState();
     assert.deepEqual(fresh.workflows, []);
     assert.deepEqual(fresh.workflowRuns, []);
     assert.deepEqual(fresh.reviewSamples, []);
     assert.deepEqual(fresh.remoteTargets, []);
+    assert.deepEqual(fresh.apiTargets, []);
   });
 
   test('a version-2 state gains the review samples, the session fields, and the later remoteTargets collection', () => {
@@ -56,9 +58,10 @@ describe('the AI workspace state migrates forward', () => {
     version2.conversations.push({ id:'c-1', title:'Written before the bin existed', archived:false });
     const migrated = migrateAiState(version2);
 
-    assert.equal(migrated.schemaVersion, 4);
+    assert.equal(migrated.schemaVersion, 5);
     assert.deepEqual(migrated.reviewSamples, []);
     assert.deepEqual(migrated.remoteTargets, [], 'migrateAiState always runs to AI_STATE_VERSION, not just to where this migration itself stops');
+    assert.deepEqual(migrated.apiTargets, []);
     // The backfill is the point: a record written before these fields existed must answer
     // the same way as one written after, or `deletedAt` reads `undefined` and a session
     // looks alive to one operator and dead to another.
@@ -70,29 +73,45 @@ describe('the AI workspace state migrates forward', () => {
   test('a version-3 state gains remoteTargets and nothing else changes', () => {
     const version3 = { ...defaultAiState(), schemaVersion: 3 };
     delete version3.remoteTargets;
+    delete version3.apiTargets;
     version3.projects.push({ id: 'project-1', name: 'Existing project' });
     const migrated = migrateAiState(version3);
 
-    assert.equal(migrated.schemaVersion, 4);
+    assert.equal(migrated.schemaVersion, 5);
     assert.deepEqual(migrated.remoteTargets, []);
     assert.equal(migrated.projects[0].id, 'project-1', 'D-0286 is purely additive -- nothing pre-existing is touched');
   });
 
-  test('the chain runs 1 to 4 in one read, because the installed file is still version 1', () => {
+  test('a version-4 state gains apiTargets and nothing else changes', () => {
+    const version4 = { ...defaultAiState(), schemaVersion: 4 };
+    delete version4.apiTargets;
+    version4.projects.push({ id: 'project-1', name: 'Existing project' });
+    version4.remoteTargets.push({ id: 'target-1', name: 'Registered before D-0292 existed' });
+    const migrated = migrateAiState(version4);
+
+    assert.equal(migrated.schemaVersion, 5);
+    assert.deepEqual(migrated.apiTargets, []);
+    assert.equal(migrated.projects[0].id, 'project-1', 'D-0292 is purely additive -- nothing pre-existing is touched');
+    assert.equal(migrated.remoteTargets[0].id, 'target-1', 'an SSH target registered before this migration must survive it');
+  });
+
+  test('the chain runs 1 to 5 in one read, because the installed file is still version 1', () => {
     const migrated = migrateAiState(versionOneState());
-    assert.equal(migrated.schemaVersion, 4);
+    assert.equal(migrated.schemaVersion, 5);
     assert.deepEqual(migrated.workflows, []);
     assert.deepEqual(migrated.reviewSamples, []);
     assert.deepEqual(migrated.remoteTargets, []);
+    assert.deepEqual(migrated.apiTargets, []);
     assert.equal(migrated.projects[0].id, 'project-1');
   });
 
   test('a version-1 state is upgraded rather than refused', () => {
     const migrated = migrateAiState(versionOneState());
-    assert.equal(migrated.schemaVersion, 4);
+    assert.equal(migrated.schemaVersion, 5);
     assert.deepEqual(migrated.workflows, []);
     assert.deepEqual(migrated.workflowRuns, []);
     assert.deepEqual(migrated.remoteTargets, []);
+    assert.deepEqual(migrated.apiTargets, []);
   });
 
   test('migration preserves every existing record and setting', () => {
@@ -107,7 +126,7 @@ describe('the AI workspace state migrates forward', () => {
   test('an already-current state is returned unchanged', () => {
     const current = defaultAiState();
     const migrated = migrateAiState(current);
-    assert.equal(migrated.schemaVersion, 4);
+    assert.equal(migrated.schemaVersion, 5);
     assert.deepEqual(migrated, current);
   });
 
@@ -135,7 +154,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     writeFileSync(path, original, { encoding: 'utf8', mode: 0o600 });
 
     const read = store.read();
-    assert.equal(read.schemaVersion, 4, 'the installed file must load, not throw');
+    assert.equal(read.schemaVersion, 5, 'the installed file must load, not throw');
     assert.equal(read.projects.length, 1);
 
     // Reading is not writing: the file on disk is still exactly what the running product
@@ -143,7 +162,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     assert.equal(readFileSync(path, 'utf8'), original);
   });
 
-  test('the first write after a migration persists version 4 and keeps the data', () => {
+  test('the first write after a migration persists version 5 and keeps the data', () => {
     const directory = mkdtempSync(join(tmpdir(), 'noesar-ai-migration-write-'));
     const path = join(directory, 'state/ai-workspace.json');
     const store = new AtomicJsonStore(path);
@@ -152,7 +171,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     store.transact((state) => { state.workflows.push({ id: 'workflow-1', name: 'First workflow' }); });
 
     const persisted = JSON.parse(readFileSync(path, 'utf8'));
-    assert.equal(persisted.schemaVersion, 4);
+    assert.equal(persisted.schemaVersion, 5);
     assert.equal(persisted.workflows.length, 1);
     assert.equal(persisted.projects.length, 1, 'the pre-existing project must still be there');
     assert.equal(persisted.tasks[0].title, 'Existing task');
@@ -167,5 +186,6 @@ describe('the store reads and rewrites an installed version-1 file', () => {
     writeFileSync(path, `${JSON.stringify(versionOneState(), null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
     assert.doesNotThrow(() => store.transact((state) => { state.workflowRuns.push({ id: 'run-1' }); }));
     assert.doesNotThrow(() => store.transact((state) => { state.remoteTargets.push({ id: 'target-1' }); }));
+    assert.doesNotThrow(() => store.transact((state) => { state.apiTargets.push({ id: 'api-target-1' }); }));
   });
 });

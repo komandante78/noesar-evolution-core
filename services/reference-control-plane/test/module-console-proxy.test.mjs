@@ -83,3 +83,66 @@ describe('D-0281 — module console proxy', () => {
     await new Promise((resolve) => deadProxy.close(resolve));
   });
 });
+
+// D-0291: the `/noesar-api/` branch. This is the property the remote-target screens in the
+// module's console rest on -- an SSH private key pasted there must reach NOESAR without
+// passing through the module -- so it is proven against two real upstreams that echo what
+// they actually received, not asserted structurally. The module-bound half also closes the
+// gap the cookie test above declares: here the stub echoes headers back, so the stripping
+// is observed rather than inferred.
+describe('D-0291 — /noesar-api/ is answered by NOESAR, not forwarded to the module', () => {
+  const seen = { module: null, noesar: null };
+  const echo = (which) => createServer((req, res) => {
+    seen[which] = { url: req.url, cookie: req.headers.cookie ?? null };
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ which, url: req.url }));
+  });
+
+  let moduleUp, noesarUp, splitProxy, base;
+
+  test('setup', async () => {
+    moduleUp = echo('module'); noesarUp = echo('noesar');
+    await new Promise((r) => moduleUp.listen(0, '127.0.0.1', r));
+    await new Promise((r) => noesarUp.listen(0, '127.0.0.1', r));
+    splitProxy = createModuleConsoleProxyServer({
+      targetBaseUrl: `http://127.0.0.1:${moduleUp.address().port}`,
+      noesarBaseUrl: `http://127.0.0.1:${noesarUp.address().port}`,
+      moduleName: 'Stub Module',
+      isAuthorized: () => true,
+    });
+    await new Promise((r) => splitProxy.listen(0, '127.0.0.1', r));
+    base = `http://127.0.0.1:${splitProxy.address().port}`;
+  });
+
+  test('a /noesar-api/ request reaches NOESAR with the prefix stripped and the cookie kept', async () => {
+    const response = await fetch(`${base}/noesar-api/api/v1/debug-evolution/remote-targets`, {
+      headers: { cookie: 'noesar_session=abc; noesar_csrf=xyz' },
+    });
+    assert.equal((await response.json()).which, 'noesar');
+    assert.equal(seen.noesar.url, '/api/v1/debug-evolution/remote-targets');
+    // Without the cookie NOESAR would 401 every one of these, so keeping it is the
+    // difference between a working screen and a permanently broken one.
+    assert.match(seen.noesar.cookie, /noesar_session=abc/);
+  });
+
+  test('every other path still goes to the module, and the cookie does NOT go with it', async () => {
+    const response = await fetch(`${base}/api/v2/snapshot`, {
+      headers: { cookie: 'noesar_session=must-not-cross' },
+    });
+    assert.equal((await response.json()).which, 'module');
+    assert.equal(seen.module.url, '/api/v2/snapshot');
+    assert.equal(seen.module.cookie, null);
+  });
+
+  test('a path merely CONTAINING the prefix is not diverted — only a true prefix is', async () => {
+    await fetch(`${base}/app/noesar-api/spoof`, { headers: { cookie: 'noesar_session=abc' } });
+    assert.equal(seen.module.url, '/app/noesar-api/spoof');
+    assert.equal(seen.module.cookie, null);
+  });
+
+  test('teardown', async () => {
+    await new Promise((r) => splitProxy.close(r));
+    await new Promise((r) => moduleUp.close(r));
+    await new Promise((r) => noesarUp.close(r));
+  });
+});

@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { AI_STATE_VERSION } from '../src/ai-workspace/atomic-store.mjs';
+import { defaultAiState } from '../src/ai-workspace/atomic-store.mjs';
 import { OWNER_MODULE_CATALOG } from '../src/owner-module-catalog.mjs';
 
 const OLD_URL = 'http://192.168.178.100:8787';
@@ -28,17 +28,18 @@ const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 
 const workspace = mkdtempSync(join(tmpdir(), 'noesar-de-reconcile-'));
 mkdirSync(join(workspace, 'state'), { recursive: true });
+// Built from `defaultAiState()` rather than by listing the collections by hand. The hand-
+// written version claimed `schemaVersion: AI_STATE_VERSION`, so no migration ran on it, and
+// `validateState` rejected the whole file the moment D-0292 added a collection it did not
+// list — a fixture that breaks on a purely additive schema change was testing the fixture,
+// not the reconcile. Overriding `tools` keeps everything this test is actually about.
 const preSeeded = {
-  schemaVersion: AI_STATE_VERSION,
-  projects: [], conversations: [], messages: [], branches: [], memories: [], artifacts: [],
-  sources: [], knowledgeChunks: [], providerProfiles: [], agents: [], agentRuns: [], tasks: [],
-  workflows: [], workflowRuns: [], reviewSamples: [], closures: [], remoteTargets: [],
+  ...defaultAiState(),
   tools: [
     { id: 'tool-list-projects', name: 'Debug Evolution — List Projects', description: 'x', transport: 'local-http', endpoint: `${OLD_URL}/api/v2/projects`, config: { method: 'GET' }, external: false, consent: { granted: false, grantedAt: null, projectIds: [] }, timeoutMs: 60000, encryptedCredential: null, credentialEphemeral: false, inputSchema: { type: 'object' }, outputSchema: {}, permissions: [], mutative: false, requiresApproval: false, disabled: false, createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z' },
     { id: 'tool-all-findings', name: 'Debug Evolution — All Findings', description: 'x', transport: 'local-http', endpoint: `${OLD_URL}/api/v2/findings`, config: { method: 'GET' }, external: false, consent: { granted: false, grantedAt: null, projectIds: [] }, timeoutMs: 60000, encryptedCredential: null, credentialEphemeral: false, inputSchema: { type: 'object' }, outputSchema: {}, permissions: [], mutative: false, requiresApproval: false, disabled: false, createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z' },
     { id: 'tool-sarif', name: 'Debug Evolution — SARIF Report', description: 'x', transport: 'local-http', endpoint: `${OLD_URL}/api/v2/sarif`, config: { method: 'GET' }, external: false, consent: { granted: false, grantedAt: null, projectIds: [] }, timeoutMs: 60000, encryptedCredential: null, credentialEphemeral: false, inputSchema: { type: 'object' }, outputSchema: {}, permissions: [], mutative: false, requiresApproval: false, disabled: false, createdAt: '2026-07-31T00:00:00.000Z', updatedAt: '2026-07-31T00:00:00.000Z' },
   ],
-  settings: { defaultProviderId: null, externalEgressDefault: 'deny', retentionDays: 365, semanticSearchEnabled: true },
 };
 writeFileSync(join(workspace, 'state/ai-workspace.json'), JSON.stringify(preSeeded, null, 2));
 

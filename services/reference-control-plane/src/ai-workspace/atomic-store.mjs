@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export const AI_STATE_VERSION = 4;
+export const AI_STATE_VERSION = 5;
 
 // Every collection the current version requires. Adding a name here is a schema change
 // and needs a migration below — a state file written before the name existed does not
@@ -10,7 +10,7 @@ export const AI_STATE_VERSION = 4;
 const REQUIRED_COLLECTIONS = Object.freeze([
   'projects','conversations','messages','branches','memories','artifacts','sources',
   'knowledgeChunks','providerProfiles','tools','agents','agentRuns','tasks',
-  'workflows','workflowRuns','reviewSamples','closures','remoteTargets',
+  'workflows','workflowRuns','reviewSamples','closures','remoteTargets','apiTargets',
 ]);
 
 export function defaultAiState() {
@@ -38,6 +38,11 @@ export function defaultAiState() {
     // (same CredentialVault, same shape). `pinnedHostKey` is the host's OWN public key, not a
     // secret, captured at registration time and used to verify every later connection.
     remoteTargets: [],
+    // D-0292, Debug Evolution point C: API targets. Same posture as `remoteTargets` — the
+    // record holds `encryptedCredential` and nothing readable — but no host key, because
+    // there is no host identity to pin: TLS already answers that question, and the probe
+    // reports what it found rather than trusting it.
+    apiTargets: [],
     settings: {
       defaultProviderId: null,
       externalEgressDefault: 'deny',
@@ -89,6 +94,9 @@ const MIGRATIONS = Object.freeze({
   // 3 -> 4: D-0286, Debug Evolution Phase 3 (remote targets over SSH). Purely additive:
   // one empty collection, same posture as 1->2's workflows/workflowRuns.
   3: (state) => ({ ...state, schemaVersion: 4, remoteTargets: state.remoteTargets ?? [] }),
+  // 4 -> 5: D-0292, Debug Evolution point C (API targets). Purely additive: one empty
+  // collection, same posture as 3->4's remoteTargets.
+  4: (state) => ({ ...state, schemaVersion: 5, apiTargets: state.apiTargets ?? [] }),
 });
 
 export function migrateAiState(input) {

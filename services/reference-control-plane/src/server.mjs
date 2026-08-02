@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -28,8 +28,9 @@ import { ReasoningRouter, ReasoningUnavailable, routingFrom } from './reasoning-
 import { researchGateFrom } from './research-gate.mjs';
 import { runResearchReport, ResearchReportStore, RefusalRegistry } from './research.mjs';
 import { OWNER_MODULE_CATALOG, OWNER_PUBLISHER_ID, OWNER_PUBLISHER_TRUST_LEVEL, findCatalogEntry } from './owner-module-catalog.mjs';
-import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, fetchAndScanRemoteTarget } from './debug-evolution-bridge.mjs';
+import { rescanNoesarEvolutionProjects, triageUnclassifiedFindings, triageFindingById, fetchAndScanRemoteTarget, probeApiTarget } from './debug-evolution-bridge.mjs';
 import { RemoteTargetRegistry } from './remote-target-registry.mjs';
+import { ApiTargetRegistry } from './api-target-registry.mjs';
 import { keyscanHost, RemoteTargetFetchError } from './remote-target-fetch.mjs';
 import { createModuleConsoleProxyServer } from './module-console-proxy.mjs';
 import {
@@ -233,6 +234,9 @@ const agentService = new AgentService({ store:aiStore, ledger, executor:toolExec
 // D-0286: the SAME vault every other credential in this product already uses -- one
 // authentication, one encryption-at-rest key, not a second one to manage for SSH keys.
 const remoteTargetRegistry = new RemoteTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
+// D-0292: and the same vault again for API credentials -- a third kind of secret, not a
+// third place to keep one.
+const apiTargetRegistry = new ApiTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
 const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
 const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger });
 const hardware = discoverHardware();
@@ -510,11 +514,40 @@ function reconcileDebugEvolutionTools() {
 // in one write (user-directory.mjs), so the file left on disk stops authenticating rather
 // than being deleted (rule 12), and a re-install reinstates the account and mints a fresh
 // token through the same load-or-create path.
-const MODULE_ACCOUNTS = [{ id: 'debug-evolution', displayName: 'Debug Evolution module' }];
+// D-0290: `gid` is the Unix group the module's container runs with, and it is what makes the
+// token readable to a module that is NOT this process's user. It used to be: Debug Evolution
+// ran as uid 10001, the same uid as this control plane, so a 0600 file was readable by it for
+// the wrong reason -- there was no boundary, only a shared identity. The module now has its
+// own uid (10010) and carries 10001 as a supplementary group solely to open this one file.
+//
+// The group, not a chown: this process runs non-root and cannot give a file away to another
+// uid. Writing 0640 with the directory at 0710 is the part it CAN do, and it is enough --
+// the module opens its token by exact path and cannot list the directory to discover anyone
+// else's. When a second module exists, give each its own gid here; the mode bits already
+// assume per-module groups and need no further change.
+const MODULE_ACCOUNTS = [{ id: 'debug-evolution', displayName: 'Debug Evolution module', gid: 10001 }];
 const moduleCredentialsRoot = join(workspace, 'module-credentials');
 
 function activeOwnerAccount() {
   return userDirectory.list().find((user) => user.role === 'owner' && (user.status ?? 'active') === 'active') ?? null;
+}
+
+/** D-0290: make one module's token readable by that module's group, and by nobody else.
+ *
+ * Both halves are things a non-root process can do: `chmod` on a file it owns, and `chgrp`
+ * to a group it belongs to. Giving the file to another UID is not, which is why the module
+ * carries a supplementary group instead of owning its credential. A failure here is logged
+ * and not thrown -- the token is still valid and NOESAR still works; what breaks is the
+ * module's ability to read it, and a warning naming the file is more use at 3am than a
+ * control plane that refuses to finish starting. */
+function grantTokenToModule(path, module) {
+  if (!module.gid) return;
+  try {
+    chownSync(path, -1, module.gid);
+    chmodSync(path, 0o640);
+  } catch (error) {
+    logger.warn('module_credentials.grant_failed', { module: module.id, path, gid: module.gid, reason: error?.message ?? String(error) });
+  }
 }
 
 function ensureModuleServiceAccounts() {
@@ -524,7 +557,14 @@ function ensureModuleServiceAccounts() {
     logger.warn('module_credentials.not_provisioned', { reason: 'no active owner account yet' });
     return;
   }
-  mkdirSync(moduleCredentialsRoot, { recursive: true, mode: 0o700 });
+  // 0710, not 0700: the module's group needs to TRAVERSE this directory to open its own token
+  // by exact path. It deliberately gets no read bit, so it cannot list what else is in here --
+  // traversal is not enumeration. `mkdirSync` does not reapply the mode to a directory that
+  // already exists, so the mode is set explicitly below for installations created before this.
+  mkdirSync(moduleCredentialsRoot, { recursive: true, mode: 0o710 });
+  try { chmodSync(moduleCredentialsRoot, 0o710); } catch (error) {
+    logger.warn('module_credentials.dir_mode_unchanged', { reason: error?.message ?? String(error) });
+  }
   for (const module of MODULE_ACCOUNTS) {
     // Not installed (never, or no longer) -> no credential. The token file may still exist
     // from a previous installation; it does not authenticate while the account is disabled.
@@ -539,13 +579,17 @@ function ensureModuleServiceAccounts() {
     }
     if (existsSync(path)) {
       const existing = readFileSync(path, 'utf8').trim();
-      if (existing && userDirectory.authenticateServiceToken(existing)) continue;
+      // Applied on the already-valid path too, not only after a write: an installation that
+      // predates D-0290 has a 0600 token that still authenticates perfectly, and returning
+      // early would leave the module unable to open the file it is meant to authenticate with.
+      if (existing && userDirectory.authenticateServiceToken(existing)) { grantTokenToModule(path, module); continue; }
       logger.warn('module_credentials.reissuing', { module: module.id, reason: 'stored token no longer authenticates' });
     }
     const issued = account
       ? userDirectory.issueServiceToken({ actorId: owner.id, userId: account.id, name: 'module' })
       : userDirectory.createServiceAccount({ actorId: owner.id, username: module.id, displayName: module.displayName });
-    writeFileSync(path, issued.token, { mode: 0o600 });
+    writeFileSync(path, issued.token, { mode: 0o640 });
+    grantTokenToModule(path, module);
     logger.info('module_credentials.provisioned', { module: module.id, tokenId: issued.tokenId });
   }
 }
@@ -585,6 +629,9 @@ function ensureModuleConsoleProxyServer() {
   if (moduleConsoleProxyServer || !moduleConsoleProxyConfigured) return moduleConsoleProxyServer;
   moduleConsoleProxyServer = createModuleConsoleProxyServer({
     targetBaseUrl: process.env.NOESAR_DEBUG_EVOLUTION_URL,
+    // D-0291: where `/noesar-api/...` goes back to. Loopback, not the LAN address: this is
+    // this same process answering itself, and it must not depend on how NOESAR is published.
+    noesarBaseUrl: `http://127.0.0.1:${port}`,
     moduleName: 'Debug Evolution',
     isAuthorized: (req) => {
       const session = optionalSession(req);
@@ -1795,6 +1842,31 @@ const requestListener = async (req, res) => {
     // already in `NOESAR_EXTERNAL_SURFACES` on this deployment, so the router below reaches
     // the real ATOM sidecar with no new configuration; see debug-evolution-triage.mjs's
     // header for why those two surfaces and not classify/confidence/expect.
+    // D-0293: one finding on demand. Separate from the sweep below, not a parameter of it —
+    // `debug-evolution-bridge.mjs`'s `triageFindingById` explains why the sweep is the wrong
+    // instrument for a single verdict (it only sees DETECTED, and it would wake ATOM on
+    // every other finding in the installation).
+    const triageOneMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/findings\/([^/]+)\/triage$/);
+    if (triageOneMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (!isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) {
+        return json(res, 409, { error:'The Debug Evolution module is not active on this installation.' });
+      }
+      const findingId = decodeURIComponent(triageOneMatch[1]);
+      try {
+        const router = new ReasoningRouter({ workspaceRoot: workspace });
+        const result = await triageFindingById(findingId, router);
+        ledger.append({ actor:authenticated.user.id, action:'debug_evolution.finding_triaged', result:'success',
+                        details:{ findingId, evidenceAdded:result.evidenceAdded ?? 0, hypotheses:result.hypotheses ?? 0, state:result.state } });
+        return json(res, 200, { ...result, provenance: router.provenance(), routing: router.routing });
+      } catch (error) {
+        if (error instanceof ReasoningRefused) return json(res, 422, { error:'reasoning_refused', reason:error.reason });
+        if (error instanceof ReasoningUnavailable) return json(res, 503, { error:'reasoning_unavailable', reason:error.reason });
+        if (error.status) return json(res, error.status, { error:error.message });
+        throw error;
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/triage') {
       const authenticated = requireOwner(req, res, 'audit.read');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
@@ -1914,6 +1986,102 @@ const requestListener = async (req, res) => {
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       try {
         return json(res, 200, remoteTargetRegistry.remove(decodeURIComponent(remoteTargetDeleteMatch[1]), authenticated.user.id));
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+
+    // --- Debug Evolution API targets (D-0292, Owner s305 point C) -----------------------
+    // The third way to attach a target, and the only one whose subject is not a source tree
+    // but a service that is running. Registration and the credential stay here, in the same
+    // vault as everything else; the probe runs in the module, because `remote-api.pyz` is in
+    // its image and this container has no Python interpreter to run it with (measured, not
+    // assumed). `api-target-probe.mjs`'s header states plainly what that inverts and what is
+    // therefore NOT claimed about where the credential goes.
+    if (req.method === 'GET' && url.pathname === '/api/v1/debug-evolution/api-targets') {
+      const authenticated = requireSession(req, res, 'workspace.read'); if (!authenticated) return;
+      return json(res, 200, { targets: apiTargetRegistry.list() });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/debug-evolution/api-targets') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        return json(res, 201, apiTargetRegistry.create({
+          name: payload?.name, baseUrl: payload?.baseUrl, protectedPath: payload?.protectedPath,
+          allowPrivateTargets: payload?.allowPrivateTargets, allowMutation: payload?.allowMutation,
+          allowIntrusive: payload?.allowIntrusive, allowBillable: payload?.allowBillable,
+        }, authenticated.user.id));
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    // Editing rather than delete-and-recreate: the registry's own `update()` explains why —
+    // a grant's history is the part worth keeping, and deleting destroys it.
+    const apiTargetUpdateMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/api-targets\/([^/]+)$/);
+    if (apiTargetUpdateMatch && req.method === 'PATCH') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      try {
+        return json(res, 200, apiTargetRegistry.update(decodeURIComponent(apiTargetUpdateMatch[1]), payload ?? {}, authenticated.user.id));
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const apiTargetCredentialMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/api-targets\/([^/]+)\/credential$/);
+    if (apiTargetCredentialMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(apiTargetCredentialMatch[1]);
+      try {
+        if (req.method === 'DELETE') return json(res, 200, apiTargetRegistry.clearCredential(id, authenticated.user.id));
+        const payload = await body(req);
+        return json(res, 200, apiTargetRegistry.setCredential(id, {
+          scheme: payload?.scheme, headerName: payload?.headerName, secret: payload?.secret,
+        }, authenticated.user.id));
+      } catch (error) {
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const apiTargetProbeMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/api-targets\/([^/]+)\/probe$/);
+    if (apiTargetProbeMatch && req.method === 'POST') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      if (!isModuleActive(sectorModulesRoot, DEBUG_EVOLUTION_MODULE_ID)) {
+        return json(res, 409, { error:'The Debug Evolution module is not active on this installation.' });
+      }
+      const id = decodeURIComponent(apiTargetProbeMatch[1]);
+      let target;
+      try {
+        target = apiTargetRegistry.get(id);
+      } catch (error) {
+        return json(res, error.status ?? 500, { error: error.message });
+      }
+      try {
+        const result = await probeApiTarget(target, apiTargetRegistry.resolveCredentialHeaders(id));
+        const recorded = apiTargetRegistry.recordProbe(id, {
+          ok: true, projectId: result.projectId, findingCount: result.findingCount,
+        }, authenticated.user.id);
+        return json(res, 200, { ...result, target: recorded });
+      } catch (error) {
+        // Same ordering as the SSH fetch above: the target is already known to exist, so
+        // recording the failure cannot itself throw "not found".
+        apiTargetRegistry.recordProbe(id, { ok: false, error: error.message }, authenticated.user.id);
+        if (error.status) return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
+    const apiTargetDeleteMatch = url.pathname.match(/^\/api\/v1\/debug-evolution\/api-targets\/([^/]+)$/);
+    if (apiTargetDeleteMatch && req.method === 'DELETE') {
+      const authenticated = requireOwner(req, res, 'audit.read');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      try {
+        return json(res, 200, apiTargetRegistry.remove(decodeURIComponent(apiTargetDeleteMatch[1]), authenticated.user.id));
       } catch (error) {
         if (error.status) return json(res, error.status, { error: error.message });
         throw error;

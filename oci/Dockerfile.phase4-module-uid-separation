@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# D-0290 + D-0291. Two changes that belong in one build because the first is what makes the
+# second safe to add.
+#
+# D-0290 -- the module's Unix identity. Debug Evolution ran as uid 10001, the SAME uid this
+# control plane runs as. NOESAR protects its runtime secrets with owner-only modes (measured
+# on this deployment: 1908 files at 0600, 55 directories at 0700, 3 at 0400 across
+# NOESAR_EVOLUTION_RUNTIME, NOESAR_EVOLUTION_SHADOWS and config/secrets), and owner-only
+# protects nothing between two processes the kernel considers one user -- the module could
+# open every module credential in the vault, not only its own. Nothing exploited it; it
+# simply was not a boundary. The module now runs as uid/gid 10010 and carries 10001 as a
+# supplementary group, which buys exactly one file: its own service token. Verified before
+# choosing this over a mask of "the sensitive directories": not one of those 1966 protected
+# paths grants read to group 10001 (the only group-readable one is SHADOWS, group 10002 =
+# atomd). `server.mjs` writes that token 0640 with the directory at 0710 -- traversable so
+# the module can open its token by exact path, unreadable so it cannot list what else is
+# there. `chmod` and `chgrp` are what a non-root process CAN do; giving a file away to
+# another uid is not, which is why a supplementary group and not a chown.
+#
+# The identity rather than a list of paths to hide, because a list is a photograph: the next
+# secret written somewhere unforeseen would be exposed again in silence. It also matters
+# beyond this module -- Debug Evolution is the reference sector module, and every future one
+# inherits whatever isolation is established here.
+#
+# D-0291 -- `/noesar-api/` in the module console proxy. The remote-target screens now live in
+# Debug Evolution's own console, and D-0286 decided the module never sees an SSH credential.
+# Those two are only compatible if the private key the Owner pastes does not pass through the
+# module's process. This prefix is how: the proxy answers it itself and forwards to this
+# control plane's own listener with the session cookie intact, so the key travels
+# browser -> NOESAR while the module renders the screen and holds nothing. Not a general
+# escape hatch -- NOESAR's router authorises those requests exactly as it would on 8088, and
+# the proxy's existing session gate has already run before any of it.
+#
+# Verified before this build: unit 1476/1477 (1 pre-existing skip, 0 failed -- the same count
+# D-0286 recorded), ESLint 291 files 0 errors 0 warnings. The uid separation was proven live
+# against the running module before this image existed: 0 of 1966 protected files readable,
+# direct-path reads refused on all five sensitive targets, the module's own token still read.
+
+FROM noesar-evolution:phase4-debug-evolution-remote-targets
+
+LABEL org.noesar.phase="4-module-uid-separation"
+LABEL org.noesar.feature="sector-module-runs-under-its-own-uid-and-remote-target-screens-without-the-module-touching-the-key"
+LABEL org.noesar.base-image="noesar-evolution:phase4-debug-evolution-remote-targets"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
+USER 10001:10001
