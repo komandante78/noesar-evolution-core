@@ -5277,10 +5277,21 @@ uid 10001 cannot create its socket in a root-owned `/run`. None of it was in the
 repository, or any document: **this image has never been able to boot the product on its own,
 and nothing said so.** The run contract is now written at the top of `oci/Dockerfile`.
 
-**Reversal cost.** None to the running system: nothing was deployed, the live container and
-image are untouched, and the previous `oci/Dockerfile` is one `git revert` away.
-**Status.** Built and proven as `noesar-evolution:single-lineage-rebuild`. **Not deployed** —
-replacing the running container with it was not asked for and is not implied by fixing the
-build path. Also found, not fixed: the production image ships
-`services/reference-control-plane/src/server.mjs.bak_pre_uid_separation_20260802T000554Z`, a
-stray backup of the server source, because it sits inside a copied directory.
+**Reversal cost.** Was none while undeployed. Now that it is deployed: low and local — the
+previous container is kept stopped, not removed, as `noesar-evolution-old-court-triage`, and
+the previous `oci/Dockerfile` is one `git revert` away.
+**Status.** **Built, proven and deployed live on Owner authorization.** Container recreated
+from `noesar-evolution:single-lineage-rebuild` with `HostConfig`/env/healthcheck read back out
+of the running container, not retyped: same fixed IP `172.22.0.5` on `noesar-evolution-net`,
+uid `10001:10001`, `--read-only`, `--tmpfs /run:mode=1777` and `--tmpfs /tmp`, `--cap-drop ALL`,
+both port bindings (`8100`, `8089`), both workspace/shadows binds, `restart=unless-stopped`.
+Healthy in **~6 s**. Verified live: `/livez` and `/healthz` both `200` on `192.168.178.100:8100`,
+`atomd` and `debug-evolution` unaffected (`healthy`), all three ARCH-001 peers
+(`postgres`, `api`, `codev`) running inside `noesar-supervisord`. Previous container kept
+stopped as `noesar-evolution-old-court-triage` for rollback. The three `npm` scripts this image
+adds over the live one (`test:accessibility`, `test:installers`,
+`test:installers-cross-platform`) were checked before deploying: dev/test-only, not on any
+runtime path, so their absence from the old image was never a regression. Not fixed by this
+deploy, carried over unchanged: the stray
+`services/reference-control-plane/src/server.mjs.bak_pre_uid_separation_20260802T000554Z` in
+the image.
