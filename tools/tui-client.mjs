@@ -179,7 +179,10 @@ async function runPlanFlow(reader, session) {
   if (!files.length) { console.log('No files named — nothing to plan. The reference reasoning has no model and cannot invent a target from prose alone.'); return; }
   const planned = await session.call('workspace.plan', { request: goal, files });
   console.log(`\nrunId: ${planned.runId}`);
-  console.log('status: PENDING_APPROVAL');
+  // The engine's word for the state, not this client's. This line printed the constant
+  // `PENDING_APPROVAL` until phase 5 — true of every plan this build makes, and still a state
+  // nobody had been told. Found by asking the engine what it had actually answered.
+  console.log(`status: ${planned.status ?? '—'}`);
   console.log(`risk: ${planned.risk.overall}`);
   console.log(`confidence: ${planned.confidence.value.toFixed(2)}`);
   console.log(`files: ${files.map((file) => file.path).join(', ')}\n`);

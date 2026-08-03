@@ -2273,7 +2273,11 @@ async function submitPlanForm(event){
     const planned=await api('/api/v1/workspace-actions/plan',{method:'POST',body:JSON.stringify({
       request:$('#planGoal').value,files,mode:'safe',policy:'restrictive',
     })});
-    currentWorkspaceRun={...planned,status:'PENDING_APPROVAL'};
+    // The run as the engine returned it. This used to stitch `status:'PENDING_APPROVAL'` on
+    // by hand because `plan()` did not return one, and the terminal shell printed the same
+    // constant for the same reason — two clients reporting, as the engine's word, a state the
+    // engine had never said. Phase 5 made the engine return it; nothing is added here.
+    currentWorkspaceRun=planned;
     currentSimulation=null;currentApproveResult=null;currentWorkspaceRunFiles=files;
     trackWorkspaceRunForClosure(currentWorkspaceRun);
     await renderWorkspaceRun();

@@ -144,6 +144,14 @@ COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/
 COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
 COPY --chown=10001:10001 database/ /opt/noesar/database/
 COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
+# The terminal shell itself. The WebUI's CodeN Evolution TUI page names this exact program
+# and tells the reader to run it "from a real terminal on this host (or over SSH into it)" —
+# and until phase 5 of CodeN Evolution the image did not contain it: only `tools/acceptance/`
+# was copied out of `tools/`, so the socket sat listening at /run/codev-peer.sock inside the
+# container with nothing shipped that could speak to it. Measured on the live installation,
+# not inferred. A claim the deployment cannot satisfy is the sidebar's "not built" flag one
+# layer down, and coden-addressable-panels.test.mjs now ties the page to this line.
+COPY --chown=10001:10001 tools/tui-client.mjs /opt/noesar/tools/tui-client.mjs
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
@@ -166,6 +174,12 @@ ENV NODE_ENV=production \
     NOESAR_DATA_PLANE=postgresql \
     NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token \
     NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
+    # Where the terminal shell looks for the socket the server opens. The client's own
+    # fallback is `<repo>/.workspace/tui.sock`, which is right for a from-source install and
+    # wrong here — in the image the repo root is /opt/noesar while the socket lives on the
+    # /run tmpfs. Without this, the command the WebUI prints would need an argument the
+    # WebUI does not print. Measured in phase 5 by running the shipped client in the image.
+    NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock \
     NOESAR_SECURE_COOKIES=false \
     NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin \
     NOESAR_POSTGRES_ROOT=/workspace/postgresql \

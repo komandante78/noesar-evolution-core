@@ -280,4 +280,28 @@ describe('phase 4: the terminal keeps no list of its own', () => {
     assert.match(body, /region === 'bench'/);
     assert.match(body, /slice\(0, 9\)/);
   });
+
+  test('phase 5: the program the interface tells people to run is in the image', () => {
+    // The TUI page names a command and says to run it "from a real terminal on this host (or
+    // over SSH into it)". Measured on the live installation in phase 5: the socket was
+    // listening at /run/codev-peer.sock and the program was NOT in the image — oci/Dockerfile
+    // copied only `tools/acceptance/` out of `tools/`, so there was nothing shipped that could
+    // speak to it. A destination that cannot be reached on the deployment is the "not built"
+    // flag one layer down, so the page and the recipe are tied here instead of being kept in
+    // step by memory.
+    const commanded = html.match(/<pre>node (tools\/[a-z-]+\.mjs)[^<]*<\/pre>/);
+    assert.ok(commanded, 'the TUI page no longer names the program to run; find where it moved');
+    const dockerfile = readFileSync(join(root, 'oci/Dockerfile'), 'utf8');
+    assert.ok(
+      new RegExp(`^COPY[^\\n]*\\s${commanded[1].replace(/\//g, '\\/')}\\s`, 'm').test(dockerfile),
+      `the interface says to run \`${commanded[1]}\`, which oci/Dockerfile does not put in the image`,
+    );
+    assert.ok(existsSync(join(root, commanded[1])), `${commanded[1]} does not exist in the repository`);
+    // And it must work as printed, with no argument: inside the image the client's own
+    // fallback (`<repo>/.workspace/tui.sock`) is the wrong path, because the repo root there
+    // is /opt/noesar while the socket lives on the /run tmpfs. Measured by running the
+    // shipped client in a container built from this file.
+    assert.match(dockerfile, /NOESAR_TUI_SOCKET_PATH=\/run\/codev-peer\.sock/,
+      'the image does not tell the client where the socket is, so the printed command needs an argument the page does not print');
+  });
 });

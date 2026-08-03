@@ -375,7 +375,14 @@ export class WorkspaceActionOrchestrator {
       // externally for `fixtures` itself — session-proof.mjs and replay() both read this.
       fixturePack,
     });
-    return { runId, plan, intent, expectation, risk, confidence, claims, provenance };
+    // `status` is returned, not left for the caller to assume. It was missing until phase 5
+    // of CodeN Evolution, and BOTH shells filled the hole the same way: the browser stitched
+    // `{...planned, status:'PENDING_APPROVAL'}` onto the answer, the terminal printed the
+    // constant `status: PENDING_APPROVAL` — each showing, as the engine's word, a state the
+    // engine had never said. It happened to be true, which is what made it invisible; the day
+    // a mode plans into any other state, two clients would have gone on reporting this one.
+    // Read off the stored run, so it cannot say something the run does not.
+    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance };
   }
 
   /**

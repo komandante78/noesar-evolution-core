@@ -83,6 +83,36 @@ test('plan → approve promotes a real file write and modification', async () =>
   } finally { cleanup(fx); }
 });
 
+test('plan() answers with the run\'s status — the caller must not have to assume one', async () => {
+  // Phase 5 of CodeN Evolution (D-0301). This field was missing, and BOTH shells filled the
+  // hole with the same constant: the browser stitched `{...planned, status:'PENDING_APPROVAL'}`
+  // onto the answer and the terminal printed `status: PENDING_APPROVAL`, each showing as the
+  // engine's word a state the engine had never said. It happened to be true, which is what
+  // kept it invisible. So the assertion is not "it says PENDING_APPROVAL" on its own but "it
+  // says what the run says": a mode that plans into another state must carry both clients
+  // with it rather than leave them reporting this one.
+  const fx = fixture();
+  try {
+    const planned = await fx.orch.plan({ request: 'status', files: [{ path: 's.txt', contents: 'x\n' }], actor: 'owner', nowUnix: NOW });
+    assert.equal(planned.status, fx.orch.get(planned.runId).status);
+    assert.equal(planned.status, 'PENDING_APPROVAL');
+    fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    assert.equal(fx.orch.get(planned.runId).status, 'PROMOTED');
+
+    // And the shape, because behaviour cannot tell the difference and that is the whole
+    // point of the defect: every plan this build makes is PENDING_APPROVAL, so a hardcoded
+    // `status: 'PENDING_APPROVAL'` in the return would pass every assertion above — it is
+    // precisely the constant the two shells were printing before phase 5. Pinning the read
+    // is the only thing that distinguishes "the engine said so" from "the engine happens to
+    // agree". Found by mutating the return to that constant and watching nothing fail.
+    const source = readFileSync(new URL('../src/workspace-actions.mjs', import.meta.url), 'utf8');
+    const planBody = source.slice(source.indexOf('  async plan({'), source.indexOf('   * What would this plan do'));
+    assert.ok(planBody.length > 500, 'plan() moved; this test cannot see its return');
+    assert.match(planBody, /return \{ runId, status: this\.#runs\.get\(runId\)\.status,/,
+      'plan() states a status instead of reading the run\'s own');
+  } finally { cleanup(fx); }
+});
+
 test('the diff shows real before/after content for every touched file', async () => {
   const fx = fixture();
   try {

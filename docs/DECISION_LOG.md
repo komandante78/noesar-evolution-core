@@ -5784,3 +5784,62 @@ assumed; it is a pre-existing gap in the probe environment and is left named, no
 absorbed into this phase's numbers.
 
 **Not deployed.** Source only; the running container is untouched.
+
+## D-0301 · CodeN Evolution, phase 5 of 5: CE-021 proved, and the terminal made reachable — 2026-08-03
+
+**Decision.** `CE-021` — *"the two shells show the same live session, and detaching does not
+stop the work"* — is proved by a probe that does what its acceptance clause says: start in one
+shell, detach, attach from the other. `tools/acceptance/ce-021-two-shells.mjs` starts a real
+server from source, drives the real HTTP bridge with a real cookie/CSRF session and the real
+unix socket with a real MFA login, and kills connections at moments of its own choosing.
+Detaching is `socket.destroy()` — a shell that dies with no goodbye — because `exit` would only
+prove that a clean shutdown is clean. Ten checks, all passing. The access path itself is
+documented in `docs/CODEN_EVOLUTION_TERMINAL_ACCESS.md`, measured rather than described.
+
+**Two defects, both found by measuring rather than reading.**
+
+1. **The program the interface tells people to run was not in the image.** The TUI page says to
+   run `node tools/tui-client.mjs` "from a real terminal on this host (or over SSH into it)".
+   `oci/Dockerfile` copied only `tools/acceptance/` out of `tools/`: on the live installation the
+   socket was listening at `/run/codev-peer.sock` (mode `0600`, uid 10001, on the `/run` tmpfs)
+   with **nothing shipped that could speak to it** — and the socket is not reachable from the
+   host either, by construction. So the destination was "built" in the same sense the sidebar
+   once called it "not built": a claim nobody had checked against the thing it was about. The
+   recipe now ships the client and sets `NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock`, because
+   the client's own fallback (`<repo>/.workspace/tui.sock`) is right for a source install and
+   wrong in an image whose repo root is `/opt/noesar` — without it the printed command would
+   need an argument the page does not print. Both proved by **building the image and running the
+   client inside a disposable container from it**: attached to the live socket as uid 10001,
+   signed in, and driven through phase 4's `/` vocabulary. `coden-addressable-panels.test.mjs`
+   now ties the page's command to the `COPY` line and the `ENV`.
+
+2. **Both shells displayed a run state the engine had never sent.** `workspace-actions.plan()`
+   returned no `status`. The browser stitched `{...planned, status:'PENDING_APPROVAL'}` onto the
+   answer; the terminal printed the constant `status: PENDING_APPROVAL`. Each showed, as the
+   engine's word, something the engine had not said — true of every plan this build makes, which
+   is exactly what kept it invisible. Found because the probe asserts against what the engine
+   *answered*, not against what a shell chose to display. The engine now returns the stored
+   status and both clients print what they were told.
+
+**What the two shells do not share — measured and disclosed, not smoothed over.** Five methods
+are socket-only (`sessions.list`, `sessions.get`, `sessions.action`, `product.invariants`,
+`coden.addresses`); the browser reaches each through a surface of its own, so bridging them
+would add a second way in rather than a missing one. More importantly: the browser bridge checks
+a permission per method and **the socket transport checks none beyond authentication**. Today
+that changes nothing, because every role that can authenticate holds `workspace.read` and
+`workspace.write`, the only two permissions the table names — **the shells agree by coincidence,
+not by construction.** `two-shells-parity.test.mjs` asserts the coincidence still holds and fails
+the day it stops, naming the fix that would then be owed. Deliberately **not** changed here: a
+security model is not something to alter as a side effect of an acceptance phase.
+
+**Verified.** 1620/1621 unit (0 fail, 1 pre-existing skip), ESLint 305 files 0/0/0, CE-021 probe
+10/10, eight mutations and eight failures. The mutation that survived the first pass was, again,
+an assertion of mine that behaviour cannot distinguish: every plan is `PENDING_APPROVAL`, so a
+hardcoded constant in the return passes every behavioural check — the read is pinned by shape,
+and the reason is written where the assertion is. Browser acceptance 240/9, the nine identical
+to the pre-existing baseline measured in phase 4 (the probe's PostgreSQL has no
+`noesar_knowledge.memory_records`).
+
+**Not deployed.** Source only. The image `noesar-evolution:ce021-ship-tui-client` was built to
+prove the recipe and the running installation was not touched; the disposable containers and
+volumes the proof needed were removed.
