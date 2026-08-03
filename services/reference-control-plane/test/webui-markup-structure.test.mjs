@@ -292,14 +292,29 @@ describe('the missing interface parts', () => {
     assert.match(app, /The NOT DONE box is empty/, 'the empty box is refused with a reason');
   });
 
-  test('UI-030…UI-033 · the bench has three regions, eleven tabs, and a terminal outside them', () => {
-    for (const region of ['bench-navigator', 'bench-main', 'bench-agent']) {
+  test('UI-030…UI-033 · the bench keeps every surface it was given, and the terminal stays outside them', () => {
+    // UI-030 named three regions and UI-032 eleven tabs. The FORM of both was superseded by
+    // the Owner's s313 design decision, implemented as D-0299: the Navigator column, the
+    // eleven tabs and the agent menu are replaced by one jump-to-address mechanism, because
+    // three navigation widgets standing open at once was the complaint.
+    //
+    // The SUBSTANCE is asserted here instead, and by name — a criterion may be re-formed by
+    // a later decision, it may not quietly lose its contents while a test is relaxed to let
+    // it. Every surface those criteria named must still exist: the eleven bench panels, and
+    // the Navigator's nine groups, which are panels now rather than a column.
+    for (const region of ['bench-main', 'bench-agent']) {
       assert.ok(html.includes(`class="${region}`), `the ${region} region is missing`);
     }
-    const tabs = [...html.matchAll(/data-bench-tab="([^"]+)"/g)].map((match) => match[1]);
     const panels = [...html.matchAll(/data-bench-panel="([^"]+)"/g)].map((match) => match[1]);
-    assert.equal(tabs.length, 11, `UI-032 names eleven tabs, found ${tabs.length}`);
-    assert.deepEqual(tabs, panels, 'every tab must have exactly one panel, in the same order');
+    for (const surface of ['shadow', 'editor', 'diff', 'tests', 'logs', 'terminal', 'preview', 'map', 'documentation', 'problems', 'closure']) {
+      assert.ok(panels.includes(surface), `UI-032's "${surface}" surface is gone, not merely re-formed`);
+    }
+    for (const group of ['projects', 'recent', 'sessions', 'tasks', 'agents', 'tools', 'plugins', 'history', 'favourites']) {
+      assert.ok(panels.includes(group), `the Navigator's "${group}" group is gone, not merely re-formed`);
+    }
+    // And the switchers stay gone — that is the criterion the decision replaced them with.
+    assert.equal((html.match(/data-bench-tab|data-agent-menu|class="bench-navigator/g) ?? []).length, 0,
+      'a switcher came back beside the addresses that replaced it');
     // UI-033: the terminal is a region, not a tab that disappears. If its markup ever
     // moves inside the panels it becomes exactly what the criterion forbids.
     // Written as positions rather than as a slice between two literal strings: a slice

@@ -195,41 +195,26 @@
 
       <section class="view" id="view-coden">
         <div class="section-header"><div><p class="eyebrow">NATIVE CODING WORKSPACE</p><h1>CodeN Evolution</h1><p>Plan first. Authorize exact paths. Verify every mutation.</p></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
-        <!-- The workbench · UI-030…UI-037. Three regions, not two: a navigator that lives
-             INSIDE the bench (the sidebar is the product's destinations, this is the
-             work's), the bench itself as tabs, and the agent column.
+        <!-- The workbench · UI-030…UI-037. TWO regions now, not three, and no switcher in
+             either of them: the bench (one panel at a time) and the agent column (one panel
+             at a time). The Navigator column, the eleven bench tabs and the five-entry agent
+             menu are gone — three separate navigation widgets on one screen, which is what
+             "too many menus" was about. Nothing they reached was removed: every one of their
+             entries is an address, and the one box in the top bar goes to any of them.
+
+             The Navigator's nine groups are bench panels now, so they are reached the same
+             way everything else is instead of standing permanently open in a column of their
+             own. The breadcrumb below says which panel you are in and opens that box already
+             filtered to this page — a keyboard shortcut is the fast path, never the only
+             path, and `/` would have been the only path without it.
 
              What has no engine behind it says so on its own panel. Emptiness with a
              reason is a state; emptiness with a plausible frame around it is a lie about
              what the build does — the same rule that keeps a declared destination
              visible rather than hidden to make a count come out. -->
         <div class="bench" id="bench">
-          <aside class="bench-navigator" id="benchNavigator" aria-label="Work navigator">
-            <div class="bench-nav-group"><h3>Projects</h3><div id="navProjects" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Recent</h3><div id="navRecent" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Sessions</h3><div id="navSessions" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Tasks</h3><div id="navTasks" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Agents</h3><div id="navAgents" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Tools</h3><div id="navTools" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Plugins</h3><div id="navPlugins" class="bench-nav-list empty-state">None installed. A plugin is a tool with a surface of its own; none is registered.</div></div>
-            <div class="bench-nav-group"><h3>History</h3><div id="navHistory" class="bench-nav-list empty-state">—</div></div>
-            <div class="bench-nav-group"><h3>Favourites</h3><div id="navFavourites" class="bench-nav-list empty-state">Nothing pinned yet.</div></div>
-          </aside>
-
           <section class="bench-main">
-            <div class="bench-tabs" role="tablist" aria-label="Bench">
-              <button class="bench-tab active" type="button" role="tab" aria-selected="true" data-bench-tab="shadow">Shadow</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="editor">Editor</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="diff">Diff</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="tests">Tests</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="logs">Logs</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="terminal">Terminal</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="preview">Preview</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="map">Map</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="documentation">Documentation</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="problems">Problems</button>
-              <button class="bench-tab" type="button" role="tab" aria-selected="false" data-bench-tab="closure">Closure</button>
-            </div>
+            <p class="bench-where"><button type="button" id="benchWhere" aria-haspopup="listbox" aria-controls="globalSearchResults" title="Every panel of this page, by name — the same box / opens">CodeN Evolution · <b id="benchWhereName">Shadow run</b> <span aria-hidden="true">▾</span></button></p>
             <div class="bench-panels">
               <section class="bench-panel active" data-bench-panel="shadow"><h3>Shadow run</h3><div id="shadowRunContent"><p class="declared-empty">No plan exists in this session yet. Create one in the Plan panel — a result is shown here after it has already run on a copy-on-write copy of the workspace: the diff and the time are facts before anyone is asked to approve them, which is why Approve promotes rather than merely allows.</p></div></section>
               <section class="bench-panel" data-bench-panel="editor"><h3>Editor</h3><div id="editorContent"><p class="declared-empty">Nothing is open. The editor shows the files a plan proposes or promotes — a view, never a second write path: every change to the real workspace still goes through Plan → Approve, so a raw edit box here would bypass the capability and shadow chain the rest of this page enforces.</p></div></section>
@@ -260,6 +245,20 @@
                 <div class="panel-title"><h3>Closed</h3><span class="badge badge-off" id="closureCount">0</span></div>
                 <div id="closureList" class="card-list empty-state">Nothing closed yet.</div>
               </section>
+              <!-- The Navigator's nine groups, as nine panels. Same ids, so they are still
+                   filled by the same renderer; same lists, capped at six, from the same
+                   state. What changed is that they are reached by name like everything else
+                   instead of standing open in a column beside the work. Plugins and
+                   Favourites have no engine behind them and keep saying so. -->
+              <section class="bench-panel" data-bench-panel="projects"><h3>Projects</h3><div id="navProjects" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="recent"><h3>Recent</h3><div id="navRecent" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="sessions"><h3>Sessions</h3><div id="navSessions" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="tasks"><h3>Tasks</h3><div id="navTasks" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="agents"><h3>Agents</h3><div id="navAgents" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="tools"><h3>Tools</h3><div id="navTools" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="plugins"><h3>Plugins</h3><div id="navPlugins" class="bench-nav-list empty-state">None installed. A plugin is a tool with a surface of its own; none is registered.</div></section>
+              <section class="bench-panel" data-bench-panel="history"><h3>History</h3><div id="navHistory" class="bench-nav-list empty-state">—</div></section>
+              <section class="bench-panel" data-bench-panel="favourites"><h3>Favourites</h3><div id="navFavourites" class="bench-nav-list empty-state">Nothing pinned yet.</div></section>
             </div>
 
             <!-- UI-033. Persistent and multiple: it keeps its place whichever tab is in
@@ -299,18 +298,14 @@
                authorisation lives here because that is what an authority request is. -->
           <aside class="bench-agent" id="benchAgent" aria-label="Agent">
             <!-- Owner: an abyss of blank space opened between the bench and the agent
-                 column because five always-expanded panels made this column far taller
-                 than the bench beside it. A menu instead of a stack: one panel visible at
-                 a time, chosen by name, height driven by whichever panel is open rather
-                 than by the sum of all five. Every id, every panel's content, unchanged —
-                 Plan opens by default since it is the primary action here. -->
-            <nav class="agent-menu" id="agentMenu" role="tablist" aria-label="Agent panels">
-              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="conversation">Conversation</button>
-              <button class="agent-menu-item active" type="button" role="tab" aria-selected="true" data-agent-menu="plan">Plan</button>
-              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="activity">Agent activity</button>
-              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="authority">Authority requests</button>
-              <button class="agent-menu-item" type="button" role="tab" aria-selected="false" data-agent-menu="invariants">Invariants</button>
-            </nav>
+                 column because five always-expanded panels made this column far taller than
+                 the bench beside it. D-0236/D-0237 answered with a menu — one panel at a
+                 time, chosen by name — and that fixed the height while leaving a third
+                 navigation widget on the screen, which is the part the Owner rejected next.
+                 The menu is gone; the one-panel-at-a-time behaviour it introduced stays, and
+                 the panel is chosen by address (`/coden/agent/plan`) like everything else.
+                 Every id, every panel's content, unchanged — Plan still opens by default,
+                 since it is the primary action here. -->
             <section class="mini-panel agent-panel" data-agent-panel="conversation"><h3>Conversation</h3><p class="declared-empty">The bench conversation shares the session with Chat and with the terminal shell. It is not a second chat with its own state.</p><button class="text-button" data-view-link="chat">Open Chat</button></section>
             <!-- UI-034/UI-036 continued. Plan is now wired to /api/v1/workspace-actions/plan
                  (D-0190/D-0191 made executesPlans/executorWiredToProductActions true on the

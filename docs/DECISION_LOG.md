@@ -5663,3 +5663,57 @@ Enter goes and closes, Escape closes, Ctrl K still opens, and a content row clic
 `#/projects`.
 
 **Not deployed.** Source only; the running container is untouched.
+
+## D-0299 · CodeN Evolution, phase 3 of 5: three navigation widgets become none — 2026-08-03
+
+**Decision.** The Navigator column, the eleven bench tabs and the five-entry agent menu are
+removed from the workbench. This is the change the Owner actually asked for in s313 — the
+first two phases existed to make it possible without losing anything. The complaint was
+never that the three were untidy: `D-0236`/`D-0237` had already made the agent column
+compact, and it was still rejected, because what is felt is the NUMBER of navigation widgets
+standing open at once, not the density of each.
+
+**Nothing they reached stopped being reachable.** The eleven bench panels and the five agent
+panels have had addresses since `D-0297`. The Navigator's nine groups did not, and this is
+where they get them: they are bench panels now — same ids, same lists, same cap of six, the
+same renderer filling them — reached by name like everything else instead of standing
+permanently open in a column beside the work. The bench grid drops from three columns to
+two so no gap is left where the column was.
+
+**One visible affordance is left, and it deliberately holds no list.** A breadcrumb naming
+the panel that is open (`CodeN Evolution · Diff`), which opens the top bar's box with
+`/coden/` already typed — the same 25 addresses, filtered to this page. It is not a menu: it
+owns no destinations of its own, so it cannot drift from the list the box builds out of the
+interface. Without it `/` would be the only way to change panel, and this product's own rule
+— written beside the sidebar rank keys — is that a keyboard shortcut is the fast path and
+never the only path.
+
+**A second crop of dead controls, in the place the first one taught us to look.** The
+Navigator's rows were `<button>` with no handler on them: seven lists of up to six entries,
+none of which did anything when clicked — the same defect `D-0298` found in the search
+results, in a second place. They now open the destination that owns that kind of thing and
+say so in their title, and a test asserts every one of the seven lists passes a destination.
+
+**An acceptance criterion re-formed, and said so rather than quietly relaxed.** `UI-030`
+named three regions and `UI-032` eleven tabs; `webui-markup-structure.test.mjs` asserted
+both. Their FORM is superseded by the Owner's design decision. Their SUBSTANCE is now
+asserted more strictly than before: all twenty bench surfaces and all five agent panels are
+listed by name, so a later move can re-form them again but cannot quietly drop one while a
+test is loosened to allow it. The switchers staying gone is itself asserted.
+
+**Verification.** `npm test` 1581/1582 (0 fail, 1 pre-existing skip), ESLint 0/0/0. Five
+mutations, five failures — a tab put back, the breadcrumb removed, a list left without a
+destination, a Navigator group renamed away, and the breadcrumb stopped from following the
+panel. Browser acceptance **373/373**, including: the three widgets measured as zero pixels
+on screen rather than merely absent from the markup, the bench computing to two columns, a
+Navigator group reached by its own address and its rows leading to `#/projects`, and the
+breadcrumb opening the box with exactly this page's 25 addresses in it.
+
+Three failures in that run came from the harness driving the interface as it used to be —
+the old blocks still clicked `[data-bench-tab]`, and two checks staged their state in ways
+that the address COMPLETION defeats: `page.goto('#/coden')` rewrites the address to the
+panel already showing before a reload can happen, and `/` is a character, not a shortcut,
+while the box has focus. Each was the product behaving as designed and the driver assuming
+otherwise; the driver was corrected, and the notes are in it.
+
+**Not deployed.** Source only; the running container is untouched.

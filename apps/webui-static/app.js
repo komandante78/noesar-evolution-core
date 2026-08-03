@@ -203,9 +203,14 @@ const LEGACY_ROUTES={
 // An address names what you jumped TO, not the whole screen. The bench and the agent
 // column are visible at the same time, so naming one leaves the other where it was —
 // that is what a jump-to-address is. A full layout snapshot is a different mechanism.
+// Phase 3 removed the switchers these regions used to carry: the eleven bench tabs, the
+// five-entry agent menu, and the Navigator column whose nine groups are bench panels now.
+// What is left is the address space itself — a region is a set of panels with one of them
+// showing, chosen by name. Nothing that was reachable stopped being reachable; what stopped
+// existing is three separate widgets for choosing, all standing open at once.
 const CODEN_REGIONS={
-  bench:{controlAttr:'data-bench-tab',panelAttr:'data-bench-panel'},
-  agent:{controlAttr:'data-agent-menu',panelAttr:'data-agent-panel'},
+  bench:{panelAttr:'data-bench-panel'},
+  agent:{panelAttr:'data-agent-panel'},
 };
 const attrSelect=(attr,value)=>value===undefined?`[${attr}]`:`[${attr}="${value}"]`;
 // What a panel does the moment it opens. This used to live in the tab's click handler,
@@ -233,10 +238,13 @@ function activateCodenPanel(region,requested){
   const wanted=codenPanelNames(region).includes(requested)?requested:codenDefaults[region];
   if(!wanted)return'';
   $$(`#view-coden ${attrSelect(spec.panelAttr)}`).forEach((node)=>node.classList.toggle('active',node.getAttribute(spec.panelAttr)===wanted));
-  $$(`#view-coden ${attrSelect(spec.controlAttr)}`).forEach((node)=>{
-    const active=node.getAttribute(spec.controlAttr)===wanted;
-    node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
-  });
+  // The breadcrumb is the one place left on this page that says which panel is open, now
+  // that no tab is sitting there looking selected. It names the bench panel: the agent
+  // column's panel carries its own heading, in view, beside it.
+  if(region==='bench'){
+    const heading=$(`#view-coden ${attrSelect(spec.panelAttr,wanted)}`)?.querySelector('h3')?.textContent?.trim();
+    const slot=$('#benchWhereName');if(slot&&heading)slot.textContent=heading;
+  }
   return wanted;
 }
 // The two things a change of address owes an assistive technology: the document title and
@@ -3285,15 +3293,29 @@ function initBench(){
     const active=$(`#view-coden ${attrSelect(spec.panelAttr)}.active`);
     codenDefaults[region]=active?active.getAttribute(spec.panelAttr):'';
   });
-  // Both switchers, one wiring. The bench tabs and the agent column menu (one panel
-  // visible at a time instead of five stacked, so the column's height stops being the sum
-  // of every panel) used to be two near-identical handlers that each owned their own
-  // panel toggling; they are two regions of one address space now, and the difference
-  // between them is a pair of attribute names.
-  Object.entries(CODEN_REGIONS).forEach(([region,spec])=>{
-    $$(`#view-coden ${attrSelect(spec.controlAttr)}`).forEach((control)=>control.addEventListener('click',()=>{
-      goToCodenPanel(region,control.getAttribute(spec.controlAttr));
-    }));
+  // The breadcrumb: the one visible way into the panels now that the three switchers are
+  // gone. It does not carry a menu of its own — it opens the box that already lists every
+  // address, with this page's prefix typed in, so the mouse reaches exactly what `/`
+  // reaches. That distinction is the whole design: one navigation surface, two ways in.
+  //
+  // Without it, `/` would be the ONLY way to change panel, and this product's own rule is
+  // that a keyboard shortcut is the fast path and never the only path.
+  $('#benchWhere')?.addEventListener('click',()=>{
+    const input=$('#globalSearch');
+    if(!input)return;
+    input.value='/coden/';
+    openPalette();
+    // openPalette() selects what is there so the next keystroke replaces it; here the
+    // prefix is meant to be typed ON, so the caret goes to the end instead.
+    input.setSelectionRange(input.value.length,input.value.length);
+    renderPalette(matchAddresses(input.value),'');
+  });
+  // One delegated listener for the nine list panels, because their rows are re-rendered
+  // whenever the workspace refreshes and per-row listeners would be re-attached, or lost,
+  // on every one of those renders.
+  $('#view-coden .bench-panels')?.addEventListener('click',(event)=>{
+    const row=event.target.closest('.bench-nav-list button[data-jump]');
+    if(row)jumpTo(row.dataset.jump);
   });
   $('#terminalAdd')?.addEventListener('click',()=>{
     terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`,history:[]});
@@ -3309,17 +3331,24 @@ function initBench(){
   initWorkspaceActions();
   initMapPanel();
 }
+// The nine groups the Navigator column used to hold, now nine bench panels reached by
+// address. Same ids, same lists, same cap of six — the column went, its contents did not.
+//
+// Their entries used to be `<button>` with no handler on them either, exactly like the
+// search rows phase 2 found: seven lists of up to six controls, none of which did anything
+// when clicked. They open the destination that owns that kind of thing, and say so, which
+// is as far as this product can honestly take you while nothing has a per-item address.
 function renderBenchNavigator(){
-  const list=(items,label,empty)=>items.length
-    ?items.slice(0,6).map((item)=>`<button type="button" title="${escapeHtml(label(item))}">${escapeHtml(label(item))}</button>`).join('')
+  const list=(items,label,empty,destination)=>items.length
+    ?items.slice(0,6).map((item)=>`<button type="button" data-jump="${escapeHtml(destination)}" title="${escapeHtml(label(item))} — opens ${escapeHtml(destination)}">${escapeHtml(label(item))}</button>`).join('')
     :`<span>${escapeHtml(empty)}</span>`;
-  $('#navProjects').innerHTML=list(state.projects,(item)=>item.name,'No project yet.');
-  $('#navRecent').innerHTML=list(state.artifacts??[],(item)=>item.title,'Nothing opened recently.');
-  $('#navSessions').innerHTML=list(state.conversations,(item)=>item.title,'No session yet.');
-  $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.');
-  $('#navAgents').innerHTML=list(state.agents??[],(item)=>item.name,'No agent.');
-  $('#navTools').innerHTML=list(state.tools??[],(item)=>item.name,'No tool registered.');
-  $('#navHistory').innerHTML=list(state.agentRuns??[],(item)=>`${item.goal??'run'} · ${item.status??''}`,'No run has happened.');
+  $('#navProjects').innerHTML=list(state.projects,(item)=>item.name,'No project yet.','projects');
+  $('#navRecent').innerHTML=list(state.artifacts??[],(item)=>item.title,'Nothing opened recently.','documents');
+  $('#navSessions').innerHTML=list(state.conversations,(item)=>item.title,'No session yet.','chat');
+  $('#navTasks').innerHTML=list(state.tasks??[],(item)=>item.title,'No task.','home');
+  $('#navAgents').innerHTML=list(state.agents??[],(item)=>item.name,'No agent.','agents');
+  $('#navTools').innerHTML=list(state.tools??[],(item)=>item.name,'No tool registered.','coden');
+  $('#navHistory').innerHTML=list(state.agentRuns??[],(item)=>`${item.goal??'run'} · ${item.status??''}`,'No run has happened.','agents');
   for(const id of ['#navProjects','#navRecent','#navSessions','#navTasks','#navAgents','#navTools','#navHistory']){
     const node=$(id);if(node)node.classList.toggle('empty-state',node.querySelector('span')!==null);
   }

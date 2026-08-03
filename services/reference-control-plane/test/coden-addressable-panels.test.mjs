@@ -39,6 +39,8 @@ const REGIONS = {
   bench: { control: 'data-bench-tab', panel: 'data-bench-panel' },
   agent: { control: 'data-agent-menu', panel: 'data-agent-panel' },
 };
+// `control` above is the attribute each region's switcher USED to carry. Phase 3 removed
+// both switchers, and the name is kept here for one reason: to assert they stay removed.
 
 /** Every value of `attr` in the markup, in document order. */
 function values(attr) {
@@ -52,15 +54,16 @@ function tags(attr) {
 
 describe('CodeN Evolution — every panel is an address', () => {
   for (const [region, attrs] of Object.entries(REGIONS)) {
-    test(`${region}: every panel has a control and every control a panel`, () => {
+    test(`${region}: the panels exist, are uniquely named, and have no switcher left`, () => {
       const panels = values(attrs.panel);
-      const controls = values(attrs.control);
       assert.ok(panels.length > 0, `no ${attrs.panel} in the markup`);
-      // A control without a panel is a dead switch; a panel without a control was, until
-      // this phase, unreachable by any means at all. Now it would be reachable by address
-      // and invisible to the mouse — still a defect, and a subtler one.
-      assert.deepEqual([...panels].sort(), [...controls].sort());
       assert.equal(new Set(panels).size, panels.length, `duplicate ${attrs.panel} names`);
+      // Phase 1 asserted a bijection between panels and their switcher's controls. Phase 3
+      // removed the switchers — that was the point of it — so the assertion becomes the
+      // opposite one: no control may come back, because a tab strip returning beside the
+      // address it duplicates is how three navigation widgets grew here the first time.
+      assert.equal((html.match(new RegExp(attrs.control, 'g')) ?? []).length, 0,
+        `${attrs.control} is back in the markup; the panels are chosen by address now`);
     });
 
     test(`${region}: exactly one panel ships active — the default a bare #/coden means`, () => {
@@ -123,6 +126,40 @@ describe('CodeN Evolution — every panel is an address', () => {
     // naming a panel that does not exist; a real browser found it in one run.
     assert.match(body, /if\(currentHash!==want\)\{/);
     assert.doesNotMatch(body, /if\(updateHash&&currentHash!==want\)/);
+  });
+});
+
+describe('phase 3: the switchers are gone and nothing they reached went with them', () => {
+  test('the breadcrumb holds no list of its own — it opens the one box', () => {
+    // The single visible way into the panels now. If it ever grows its own menu, this page
+    // has two lists of destinations again and one of them will go stale, which is the
+    // failure mode this whole programme has been unwinding.
+    const button = html.match(/<button type="button" id="benchWhere"[^>]*>/)?.[0];
+    assert.ok(button, 'the breadcrumb is gone; `/` would be the only way to change panel');
+    assert.match(button, /aria-controls="globalSearchResults"/);
+    const handler = app.slice(app.indexOf("$('#benchWhere')"), app.indexOf("$('#terminalAdd')"));
+    assert.match(handler, /openPalette\(\)/);
+    assert.match(handler, /'\/coden\/'/, 'it must open the box filtered to this page');
+  });
+
+  test('the breadcrumb names the panel that is open', () => {
+    // With no tab left looking selected, this line is the only thing on screen that says
+    // where you are. If it stops following the panel it becomes a label that lies.
+    const body = app.slice(app.indexOf('function activateCodenPanel'), app.indexOf('function announceCodenPanel'));
+    assert.match(body, /benchWhereName/);
+    assert.match(body, /region==='bench'/, 'the bench panel is what the breadcrumb names');
+  });
+
+  test("the Navigator's rows lead somewhere, like every other row does now", () => {
+    // Seven lists of up to six entries, each rendered as a <button> with no handler on it —
+    // the same dead control phase 2 found in the search results, in a second place.
+    const body = app.slice(app.indexOf('function renderBenchNavigator'), app.indexOf('async function renderBenchStatus'));
+    assert.match(body, /data-jump="\$\{escapeHtml\(destination\)\}"/);
+    assert.match(body, /opens \$\{escapeHtml\(destination\)\}/, 'and each row says which page it opens');
+    // Every list passes a destination: a call left without one renders rows that go nowhere.
+    const calls = [...body.matchAll(/=list\((.*?)\);/g)].map((match) => match[1]);
+    assert.equal(calls.length, 7, `expected seven rendered lists, found ${calls.length}`);
+    for (const call of calls) assert.match(call, /,'[a-z-]+'$/, `a list renders rows with no destination: ${call}`);
   });
 });
 

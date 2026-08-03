@@ -547,13 +547,15 @@ try {
   const deepLinked = await page.evaluate(() => ({
     hash: location.hash,
     title: document.title,
-    tabSelected: document.querySelector('[data-bench-tab="diff"]')?.getAttribute('aria-selected'),
+    // Phase 3 removed the tab whose aria-selected this used to read. The breadcrumb is what
+    // says where you are now, so it is what has to be right.
+    where: document.querySelector('#benchWhereName')?.textContent ?? '',
     announced: document.querySelector('#routeAnnouncer')?.textContent ?? '',
   }));
   check('the deep-linked address survives activation instead of being rewritten to #/coden',
     deepLinked.hash === '#/coden/bench/diff', JSON.stringify(deepLinked));
-  check('the panel names itself in the title, the tab and the live region',
-    /^Diff · /.test(deepLinked.title) && deepLinked.tabSelected === 'true' && /Diff/.test(deepLinked.announced),
+  check('the panel names itself in the title, the breadcrumb and the live region',
+    /^Diff · /.test(deepLinked.title) && deepLinked.where === 'Diff' && /Diff/.test(deepLinked.announced),
     JSON.stringify(deepLinked));
 
   // An address names what you jumped TO, not a snapshot of the screen: the agent column and
@@ -579,16 +581,31 @@ try {
   check('an unknown panel name falls back to the default and normalises the address',
     fallback.active === 'shadow' && fallback.hash === '#/coden/bench/shadow', JSON.stringify(fallback));
 
-  // Why the tab uses pushState instead of assigning location.hash: assigning it fires
-  // hashchange, which re-runs VIEW_LOADERS.coden — a round of requests per tab click.
-  // Measured, because it is invisible on screen either way.
+  // Why an in-page move uses pushState instead of assigning location.hash: assigning it
+  // fires hashchange, which re-runs VIEW_LOADERS.coden — a round of requests every time you
+  // change panel. Measured, because it is invisible on screen either way.
+  //
+  // Driven through the box, because phase 3 removed the tab this used to click. The property
+  // is unchanged and so is its value: moving between panels of the page you are already on
+  // must not refetch that page.
+  const jump = async (address, panel) => {
+    // `/` is deliberately inert while something with a caret has focus, so a helper that
+    // presses it must start from nowhere in particular — otherwise a call made after a form
+    // step types a slash into that form and then waits forever for a panel.
+    await page.evaluate(() => { document.activeElement?.blur(); });
+    await page.keyboard.press('/');
+    await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+    await page.keyboard.type(address);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await page.keyboard.press('Enter');
+    await page.waitForSelector(`[data-bench-panel="${panel}"].active`, { timeout: 15000 });
+  };
   const callsBefore = await apiCalls();
-  await clickOrExplain(page, '[data-bench-tab="map"]');
-  await page.waitForSelector('[data-bench-panel="map"].active', { timeout: 15000 });
-  const afterClick = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
+  await jump('coden/bench/map', 'map');
+  const afterJump = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
   const callsAfter = await apiCalls();
-  check('clicking a tab moves the address', afterClick.hash === '#/coden/bench/map', JSON.stringify(afterClick));
-  check('clicking a tab does not refetch the page it is inside',
+  check('jumping to a panel of this page moves the address', afterJump.hash === '#/coden/bench/map', JSON.stringify(afterJump));
+  check('jumping to a panel of this page does not refetch it',
     callsAfter === callsBefore, `${callsBefore} → ${callsAfter} requests to /api/v1/`);
 
   // A bare `#/coden` is completed with the panel that is SHOWING, not with a constant —
@@ -605,12 +622,10 @@ try {
     completed.hash === '#/coden/bench/map' && completed.active === 'map', JSON.stringify(completed));
 
   // pushState with no way back would leave the address ahead of the screen: the Back button
-  // moving the bar and nothing else. Two clicks, so the entry being returned to is one this
+  // moving the bar and nothing else. Two jumps, so the entry being returned to is one this
   // check made itself rather than whatever the steps above happened to leave behind.
-  await clickOrExplain(page, '[data-bench-tab="diff"]');
-  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
-  await clickOrExplain(page, '[data-bench-tab="tests"]');
-  await page.waitForSelector('[data-bench-panel="tests"].active', { timeout: 15000 });
+  await jump('coden/bench/diff', 'diff');
+  await jump('coden/bench/tests', 'tests');
   await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
   const wentBack = await page.evaluate(() => ({
@@ -622,6 +637,85 @@ try {
 
   const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
+
+  at('coden-no-switchers');
+  // --- phase 3: three navigation widgets became none -----------------------
+  // The visible half of the programme. What is checked is that they are gone from the
+  // SCREEN and that nothing they used to reach went with them — the Navigator's nine groups
+  // in particular, which are panels now and would be easy to lose in the move.
+  // The workbench as someone ARRIVING sees it, which takes a little care to stage. A hash
+  // change alone leaves the panel the previous block was on, and `#/coden` then correctly
+  // completes to THAT one — so the check would read the last test's leftovers and call them
+  // the default. Reloading on `#/coden` does not help either: the completion has already
+  // rewritten the address by then, so the reload lands on the completed panel. The fresh
+  // start is taken somewhere the completion cannot reach, and the workbench entered after.
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#view-coden.active', { timeout: 15000 });
+  const switchers = await page.evaluate(() => {
+    const boxed = (selector) => [...document.querySelectorAll(selector)]
+      .filter((node) => node.getBoundingClientRect().height > 0).length;
+    return {
+      tabs: boxed('[data-bench-tab]'),
+      agentMenu: boxed('#agentMenu, [data-agent-menu]'),
+      navigator: boxed('.bench-navigator, #benchNavigator'),
+      benchColumns: getComputedStyle(document.querySelector('#bench')).gridTemplateColumns.split(' ').length,
+      breadcrumb: document.querySelector('#benchWhere')?.getBoundingClientRect().height > 0,
+      where: document.querySelector('#benchWhereName')?.textContent ?? '',
+    };
+  });
+  check('the bench tabs, the agent menu and the Navigator are off the screen',
+    switchers.tabs === 0 && switchers.agentMenu === 0 && switchers.navigator === 0, JSON.stringify(switchers));
+  check('the bench is two columns now, not three, so no gap is left where the column was',
+    switchers.benchColumns === 2, JSON.stringify(switchers));
+  check('one visible affordance is left, and it says which panel is open',
+    switchers.breadcrumb && switchers.where === 'Shadow run', JSON.stringify(switchers));
+
+  // The Navigator's nine groups: reachable, and carrying the same lists as before.
+  await page.goto(`${BASE}/#/coden/bench/projects`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-bench-panel="projects"].active', { timeout: 15000 });
+  const navGroup = await page.evaluate(() => {
+    const panel = document.querySelector('[data-bench-panel="projects"]');
+    const rows = [...panel.querySelectorAll('#navProjects button')];
+    return {
+      onScreen: panel.getBoundingClientRect().height > 0,
+      where: document.querySelector('#benchWhereName')?.textContent ?? '',
+      rows: rows.length,
+      allLead: rows.length > 0 && rows.every((node) => node.dataset.jump),
+      firstTitle: rows[0]?.getAttribute('title') ?? '',
+    };
+  });
+  check("a Navigator group is a panel now, reached by its own address",
+    navGroup.onScreen && navGroup.where === 'Projects', JSON.stringify(navGroup));
+  check('its rows carry the projects this run created, and every one of them leads somewhere',
+    navGroup.rows > 0 && navGroup.allLead && / — opens projects$/.test(navGroup.firstTitle), JSON.stringify(navGroup));
+  await clickOrExplain(page, '#navProjects button[data-jump]');
+  await page.waitForSelector('#view-projects.active', { timeout: 15000 });
+  check('clicking one opens the page that owns it', await page.evaluate(() => location.hash) === '#/projects');
+
+  // The breadcrumb is an affordance onto the one box, not a menu of its own.
+  await page.goto(`${BASE}/#/coden/bench/diff`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  await clickOrExplain(page, '#benchWhere');
+  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  const viaBreadcrumb = await page.evaluate(() => {
+    const options = [...document.querySelectorAll('#globalSearchResults button')];
+    return {
+      value: document.querySelector('#globalSearch').value,
+      focused: document.activeElement?.id === 'globalSearch',
+      count: options.length,
+      allThisPage: options.every((node) => (node.dataset.jump ?? '').startsWith('coden/')),
+      where: document.querySelector('#benchWhereName')?.textContent ?? '',
+    };
+  });
+  // Twenty bench panels (eleven, plus the Navigator's nine) and five agent panels. A floor,
+  // so adding a panel does not fail a check that is not about counting — but losing one in
+  // a later move does.
+  check('the breadcrumb opens the one box, filtered to this page',
+    viaBreadcrumb.focused && viaBreadcrumb.value === '/coden/' && viaBreadcrumb.count >= 25 && viaBreadcrumb.allThisPage,
+    JSON.stringify(viaBreadcrumb));
+  check('and it was naming the panel that was open', viaBreadcrumb.where === 'Diff', JSON.stringify(viaBreadcrumb));
 
   at('jump-to-address');
   // --- one box: `/` goes somewhere ----------------------------------------
@@ -648,6 +742,16 @@ try {
   });
 
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  // From nowhere in particular, and with the box empty. `/` is a character when something
+  // with a caret has focus — which is right, since `coden/bench/diff` has to be typeable —
+  // so a block that means to press it as a SHORTCUT has to start outside the box. The step
+  // before this one leaves focus there, and the first version of this block pressed `/`
+  // into it and searched for "/coden//".
+  await page.evaluate(() => {
+    const box = document.querySelector('#globalSearch');
+    box.value = '';
+    box.blur();
+  });
   await page.keyboard.press('/');
   await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
   const opened = await paletteState();
@@ -1392,22 +1496,23 @@ try {
   const bench = await page.evaluate(() => {
     const box = (selector) => document.querySelector(selector)?.getBoundingClientRect() ?? { width: 0, height: 0 };
     return {
-      navigator: box('#benchNavigator').width,
       main: box('.bench-main').width,
       agent: box('#benchAgent').width,
-      tabs: document.querySelectorAll('[data-bench-tab]').length,
+      // The Navigator column is gone (D-0299) and its nine groups are bench panels, so the
+      // surfaces are counted where they now live instead of a column being measured.
+      panels: document.querySelectorAll('[data-bench-panel]').length,
       statusFields: document.querySelectorAll('[data-status-field]').length,
       sourced: document.querySelector('#statusSourced')?.textContent ?? '',
       terminal: box('#benchTerminal').height,
     };
   });
-  check('UI-030 the three regions are all on screen with a width of their own',
-    bench.navigator > 100 && bench.main > 200 && bench.agent > 100, JSON.stringify(bench));
-  check('UI-032/UI-035 eleven tabs and a twelve-field status line that declares its sources',
-    bench.tabs === 11 && bench.statusFields === 12 && /of 12 fields have a source/.test(bench.sourced),
-    `tabs=${bench.tabs} fields=${bench.statusFields} "${bench.sourced}"`);
+  check('UI-030 the two regions left are both on screen with a width of their own',
+    bench.main > 200 && bench.agent > 100, JSON.stringify(bench));
+  check('UI-032/UI-035 twenty bench surfaces and a twelve-field status line that declares its sources',
+    bench.panels === 20 && bench.statusFields === 12 && /of 12 fields have a source/.test(bench.sourced),
+    `panels=${bench.panels} fields=${bench.statusFields} "${bench.sourced}"`);
 
-  await clickOrExplain(page, '[data-bench-tab="diff"]');
+  await jump('coden/bench/diff', 'diff');
   const persistentTerminal = await page.evaluate(() => ({
     activePanel: document.querySelector('.bench-panel.active')?.dataset.benchPanel ?? '',
     terminalHeight: document.querySelector('#benchTerminal')?.getBoundingClientRect().height ?? 0,
@@ -1460,7 +1565,7 @@ try {
   // the Plan/Shadow run/Diff panels used to describe it as backbone work with no
   // execution surface, which had stopped being true.
   resetObservations();
-  await clickOrExplain(page, '[data-bench-tab="shadow"]');
+  await jump('coden/bench/shadow', 'shadow');
   await page.type('#planGoal', 'add a short note file for this e2e run');
   await page.type('.plan-file-path', 'e2e-notes/browser-e2e-note.txt');
   await page.type('.plan-file-contents', 'written by the browser E2E suite');
@@ -1515,7 +1620,7 @@ try {
   check('Problems reports a clean run rather than "nothing has run"',
     /run was clean/.test(secondaryPanels.problems), secondaryPanels.problems);
 
-  await clickOrExplain(page, '[data-bench-tab="logs"]');
+  await jump('coden/bench/logs', 'logs');
   await page.waitForFunction(
     () => /workspace_action\.promoted/.test(document.querySelector('#workLogsContent')?.textContent ?? ''),
     { timeout: 15000 },
@@ -1525,7 +1630,7 @@ try {
     /workspace_action\.planned/.test(workLogs) && /workspace_action\.promoted/.test(workLogs), workLogs.slice(0, 400));
 
   // --- D-0230: Map — read-only repository understanding, workspace-scoped, not per-run ---
-  await clickOrExplain(page, '[data-bench-tab="map"]');
+  await jump('coden/bench/map', 'map');
   await clickOrExplain(page, '#mapScanBtn');
   await page.waitForFunction(
     () => /Files scanned/.test(document.querySelector('#mapContent')?.textContent ?? ''),
@@ -1547,7 +1652,7 @@ try {
     /browser-e2e-note\.txt/.test(mapSearch) && !/No match/.test(mapSearch), mapSearch.slice(0, 200));
 
   // --- D-0230: the Terminal tab's HTTP bridge (/api/v1/tui/command) ------------------
-  await clickOrExplain(page, '[data-bench-tab="terminal"]');
+  await jump('coden/bench/terminal', 'terminal');
   await page.waitForSelector('#terminalCommandInput', { timeout: 15000 });
   await page.type('#terminalCommandInput', 'status');
   await clickOrExplain(page, '#terminalCommandForm button');
@@ -1573,7 +1678,7 @@ try {
   check('the Terminal tab\'s `get` reaches the SAME run the Plan panel created — one live session, not two',
     terminalGet.includes(planRunId) && terminalGet.includes('PROMOTED'), terminalGet.slice(-300));
 
-  await clickOrExplain(page, '[data-bench-tab="shadow"]');
+  await jump('coden/bench/shadow', 'shadow');
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(
     () => /restored/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),
@@ -1587,7 +1692,7 @@ try {
   //
   // The rule is that the box cannot be empty WITHOUT SAYING SO. Both halves are
   // exercised: an empty box is refused, and an empty box that is declared is accepted.
-  await clickOrExplain(page, '[data-bench-tab="closure"]');
+  await jump('coden/bench/closure', 'closure');
   await page.waitForSelector('#closureForm', { timeout: 15000 });
   await page.type('#closureRisk', 'none');
   await clickOrExplain(page, '#closureForm button.primary');
