@@ -9,8 +9,9 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "86847ca",
-  "last_updated_utc": "2026-08-01T17:40:00Z",
+  "last_commit": "1cc1af8",
+  "last_updated_utc": "2026-08-03T07:31:00Z",
+  "last_commit_note": "STALE_FIELD_CORRECTED 2026-08-03: last_commit/last_updated_utc were 7 commits behind real HEAD (86847ca vs 1cc1af8), missing D-0294 (oci/Dockerfile single-lineage rebuild, deployed), D-0295 (Passkey/WebAuthn, deployed), D-0296 (Block G scoped, pre-auth CBOR DoS fix -- verified live: container noesar-evolution:passkey-webauthn-dos-fix, healthy). phase_status/next_phase below were left untouched (they narrate Debug Evolution's own D-0287 state, 2026-08-01) -- for what changed since, see docs/DECISION_LOG.md D-0288 onward (cube memory Phase 4 closed), D-0289 (sandbox execution wired), D-0290/291/292 (uid separation, SSH+API target attachment). Documentation-only correction, no runtime touched.",
   "blockers": [
     {
       "id": "B-001",

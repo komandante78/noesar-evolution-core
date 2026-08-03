@@ -4,6 +4,18 @@
 > `GPU_RUNTIME=NOT_IMPLEMENTED`, which was accurate for that build. The earlier text is
 > preserved at
 > `BACKUPS/phase4c_docs_20260725T131312Z/GPU_ACCEPTANCE.md.pre_phase4_completion.bak`.
+>
+> **Partially superseded (2026-08-03), not rewritten here.** `docs/DECISION_LOG.md` records a
+> real local model (Qwen2.5-1.5B, later switched to Phi-4-14B) downloaded and served
+> (D-0220/D-0232), and the Chat surface's local provider turned on live (D-0233) — the
+> `GPU_INFERENCE_TEST=BLOCKED_NO_LOCAL_MODEL` verdict below and the "no model weights exist
+> anywhere" evidence are stale for at least that path. Separately, ATOM Evolution's own model
+> container (`atom-evolution-model`, `ghcr.io/ggml-org/llama.cpp:server-cuda`) runs on GPU —
+> that is a different container from `noesar-evolution` and was arguably always out of this
+> document's scope. Not independently re-measured against the current live container in this
+> pass (no `--gpus` inspection was re-run), so the verdict block is left as the last point-in-time
+> measurement rather than overwritten with an unverified new one — see `D-0220`, `D-0232`,
+> `D-0233` for what to re-verify before trusting a new verdict here.
 
 ## Verdict
 

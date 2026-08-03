@@ -1,5 +1,12 @@
 # Phase 4 — End-to-end acceptance report
 
+> **Point-in-time report, dated 2026-07-25 — not rewritten, left as the historical Phase 4
+> record.** Two specific claims below are now superseded and should not be read as current:
+> "**Passkey / WebAuthn does not exist**" (§2) — implemented `D-0295` (2026-08-03), deployed
+> live; and `GPU_RUNTIME=NOT_IMPLEMENTED` (§6) — a real local model has since been served,
+> see `docs/GPU_ACCEPTANCE.md`'s own 2026-08-03 note. The rest of this report describes Phase
+> 4 specifically and is not being re-verified against 2026-08-03 state wholesale.
+
 | Field | Value |
 |---|---|
 | Phase | 4 — end-to-end acceptance, remediation, security and rollback |

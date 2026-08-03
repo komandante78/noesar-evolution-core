@@ -1,5 +1,14 @@
 # NOESAR Evolution — Gap Analysis and the Original Position
 
+> **Superseded (2026-08-03), kept as the historical document that justified the pivot.** This
+> analysis is what `D-0096` acted on to make the rewrite (`MASTER_PROJECT/`) the plan of
+> record. Every gap it names as absent — `ReasoningProvider` (0 files), capability tokens (0
+> files), shadow execution, MEVCM/contamination state, the Security Kernel's 12 components —
+> was subsequently built; see `docs/DECISION_LOG.md` `D-0175` onward and the acceptance
+> matrices in `MASTER_PROJECT/01,03,08,14,15` (`SESS-001…003` and `CUBE-001…009` now fully
+> closed, `ARCH-001…008` and `INST-001…010` mostly closed). Read this file for *why* the
+> rewrite happened, not for current state.
+
 **Date:** 2026-07-26
 **Method:** all 64 documents of `MASTER_REFERENCE/` read in full, then compared against the
 code actually in this repository. Every count below comes from the tree, not from memory.

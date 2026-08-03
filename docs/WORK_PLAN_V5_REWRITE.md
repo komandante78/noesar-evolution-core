@@ -1,5 +1,16 @@
 # Piano di lavoro — la riscrittura come progetto di riferimento
 
+> **Nota (2026-08-03), non riscritto.** Questo piano (Fase 1→7) è stato eseguito quasi per
+> intero da `docs/DECISION_LOG.md` `D-0175` in poi — spina dorsale (`ReasoningProvider`,
+> capability token, esecuzione in ombra), CodeN Evolution, le due shell, memoria a cubi
+> (`CUBE-001…009` tutte chiuse), isolamento (`ARCH-008`), mondo esterno (OIDC/SCIM/Technology
+> Radar/moduli di settore). Resta genuinamente aperto solo il Gruppo 6 (pentest indipendente,
+> `docs/security/INDEPENDENT_PENTEST_SCOPE.md`) e alcuni criteri della matrice CE-001…024 mai
+> ripresi dopo il progetto iniziale (`CE-005`, `CE-010`, `CE-021`) o bloccati per scelta
+> dell'Owner (`CE-015`, richiede `EXECUTE`). Questo file resta "provvisorio" nel testo sotto
+> perché non è mai stato riportato a "completo" — trattalo come piano storico, non come stato
+> corrente.
+
 **Deciso dall'Owner il 2026-07-26.** Da questa data il progetto di riferimento è la
 riscrittura in `MASTER_PROJECT/`. La documentazione V4 è rimossa dall'albero di lavoro.
 
