@@ -22,4 +22,5 @@ requires an external party, by definition — a self-review (however rigorous) i
 independent. `D-0296` ran the closest automatable substitute — a structured internal
 security review of the newest security-relevant surface (WebAuthn) — and found and fixed
 one real defect, which is evidence toward group 6 but does not satisfy it. Group 6
-remains an Owner-scheduled, non-automatable action.
+remains an Owner-scheduled, non-automatable action. Scope prepared in advance for
+whoever runs it: `docs/security/INDEPENDENT_PENTEST_SCOPE.md`.
