@@ -138,17 +138,26 @@ box), so routing them through the bridge would add a second way in rather than a
 `ce-021-two-shells.mjs` measures the difference live and `two-shells-parity.test.mjs` fails if a
 **new** socket-only method appears without a decision.
 
-**Permission model.** The browser bridge looks up a permission per method
-(`TUI_METHOD_PERMISSION` in `server.mjs`) and refuses what the account does not hold. The socket
-transport checks **authentication only** — no per-method permission. Today that difference
-changes nothing, because every role that can authenticate holds `workspace.read` and
-`workspace.write`, the only two permissions the table names: **the shells agree by coincidence,
-not by construction.** `two-shells-parity.test.mjs` asserts the coincidence still holds and fails
-the day it stops — the day a role is added or narrowed that the browser would refuse and the
-socket would not. At that point the fix is a real one: apply the same table on the socket side,
-or write down why a shell that requires filesystem access to a `0600` socket owned by the
-product's uid is trusted differently. **Not decided in this phase, and not silently changed
-either.**
+**Permission model — was a coincidence, now a construction (`D-0302`).** As measured in phase 5,
+the browser bridge looked up a permission per method and the socket transport checked
+**authentication only**. It changed nothing at the time — every role that can authenticate holds
+`workspace.read` and `workspace.write`, the only two permissions the table named — which is
+exactly what made it invisible: **the shells agreed by coincidence, and the coincidence was one
+narrowed role away from ending.**
+
+There is now **one table**, `SESSION_METHOD_POLICY` in `session-protocol.mjs`, and it is enforced
+**inside the dispatch** rather than by each transport: a shell that does not say what its caller
+may do is refused, and a method with no policy entry is refused rather than run with no check at
+all. The HTTP bridge derives its own exposure list from that table instead of keeping a second
+one. A transport added later inherits the gate instead of inheriting the gap.
+
+What this does **not** change: no role is locked out today, because all of them hold both
+permissions — `two-shells-parity.test.mjs` measures that too, so a future narrowing shows up as a
+deliberate product decision rather than as a shell that quietly stopped working.
+
+The socket-only methods are gated at what their own browser routes already require:
+`sessions.list`/`sessions.get` at `workspace.read`, `sessions.action` — which carries `purge` — at
+`workspace.write`, matching `POST /api/v1/sessions/actions`.
 
 **Scrollback.** The browser's Terminal tab keeps its own scrollback per tab, client-side. Two
 tabs on the same session do not share what was typed into them, and never did. The session they

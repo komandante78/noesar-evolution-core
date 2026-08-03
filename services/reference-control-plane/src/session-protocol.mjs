@@ -33,6 +33,56 @@ export class ProtocolError extends Error {
 }
 
 /**
+ * What each method needs, and which transports offer it — one table, both shells.
+ *
+ * Until phase 5 of CodeN Evolution this lived only in server.mjs, as the HTTP bridge's own
+ * `TUI_METHOD_PERMISSION`, and the unix socket transport checked nothing beyond authentication.
+ * Measured then (`D-0301`): the two shells agreed anyway, because every role that can
+ * authenticate holds `workspace.read` and `workspace.write` — they agreed by COINCIDENCE, not
+ * by construction, and the coincidence was one narrowed role away from ending. `D-0302` ends it
+ * properly: the permission is enforced in `dispatch` below, so it holds for every transport
+ * that exists now and any added later, and the bridge derives its exposure list from this table
+ * instead of keeping a second one.
+ *
+ * `permission: null` means session-only — the same as the dedicated routes for those
+ * operations (`GET /api/v1/workspace-actions/:id`, `GET /api/v1/events/:id`), which ask for a
+ * session and nothing beyond it.
+ *
+ * `bridged: false` means the browser does not reach the method through `/api/v1/tui/command`,
+ * because it reaches the same thing through a surface of its own (its Sessions page, its
+ * Invariants panel, its address box). That is an exposure decision, not a weaker gate: the
+ * permission named below is exactly what those routes already require — `GET /api/v1/sessions`
+ * asks `workspace.read`, `POST /api/v1/sessions/actions` asks `workspace.write` — so reaching
+ * them from a terminal costs the same as reaching them from a browser.
+ */
+export const SESSION_METHOD_POLICY = Object.freeze({
+  'workspace.plan': { permission: 'workspace.write', bridged: true },
+  'workspace.simulate': { permission: 'workspace.read', bridged: true },
+  'workspace.approve': { permission: 'workspace.write', bridged: true },
+  'workspace.reject': { permission: 'workspace.write', bridged: true },
+  'workspace.restore': { permission: 'workspace.write', bridged: true },
+  'workspace.get': { permission: null, bridged: true },
+  'repoMap.scan': { permission: 'workspace.read', bridged: true },
+  'repoMap.search': { permission: 'workspace.read', bridged: true },
+  'events.correlation': { permission: null, bridged: true },
+  status: { permission: null, bridged: true },
+  'sessions.list': { permission: 'workspace.read', bridged: false },
+  'sessions.get': { permission: 'workspace.read', bridged: false },
+  'sessions.action': { permission: 'workspace.write', bridged: false },
+  'product.invariants': { permission: null, bridged: false },
+  'coden.addresses': { permission: null, bridged: false },
+});
+
+/** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
+export function bridgedMethodPermissions() {
+  return Object.fromEntries(
+    Object.entries(SESSION_METHOD_POLICY)
+      .filter(([, policy]) => policy.bridged)
+      .map(([method, policy]) => [method, policy.permission]),
+  );
+}
+
+/**
  * Builds the dispatcher once, closed over the instances a caller must not construct a second
  * copy of — constructing a fresh WorkspaceActionOrchestrator here would give the terminal its
  * own runs, invisible to the WebUI, which is exactly the "second client with its own state"
@@ -43,6 +93,12 @@ export function createSessionDispatch({
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
   codenAddressBook,
+  // The policy the gate below reads. A parameter, not a direct reference, for one reason:
+  // "a method with no policy entry is refused" is the fail-closed branch that matters most and
+  // the one the real configuration can never reach, since every implemented method is listed.
+  // A branch nobody can exercise is a branch nobody has checked — mutating the guard away left
+  // every test passing until this seam existed.
+  methodPolicy = SESSION_METHOD_POLICY,
 }) {
   const nowUnix = () => Math.floor(Date.now() / 1000);
   const methods = {
@@ -141,9 +197,27 @@ export function createSessionDispatch({
     },
   };
 
-  return async function dispatch(method, params, actor) {
+  /**
+   * `can(permission) => boolean` is the caller's own authority, supplied by the transport that
+   * knows who is asking. It is REQUIRED for any method whose policy names a permission: a
+   * caller that cannot say what it may do is refused, rather than let through on the grounds
+   * that nobody checked. That is the shape the socket transport had by accident until `D-0302`
+   * — no check at all — and the failure mode of an optional gate is that a new transport
+   * inherits the accident.
+   */
+  return async function dispatch(method, params, actor, can) {
     const handler = methods[method];
     if (!handler) throw new ProtocolError('UNKNOWN_METHOD', `no such method \`${method}\``);
+    const policy = methodPolicy[method];
+    // A method implemented above but absent from the policy table is a programming error, and
+    // it fails closed: an unlisted method is refused, never run under no permission at all.
+    if (!policy) throw new ProtocolError('UNKNOWN_METHOD', `\`${method}\` has no declared permission policy`);
+    if (policy.permission) {
+      if (typeof can !== 'function') {
+        throw new ProtocolError('FORBIDDEN', `\`${method}\` needs \`${policy.permission}\`, and this transport did not say what the caller may do`);
+      }
+      if (!can(policy.permission)) throw new ProtocolError('FORBIDDEN', `\`${method}\` needs \`${policy.permission}\``);
+    }
     return handler({ params, actor });
   };
 }
@@ -192,7 +266,14 @@ export function startUnixSocketServer({ socketPath, dispatch, auth, ledger }) {
             continue;
           }
           if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa` before any other method');
-          respond(id, true, await dispatch(method, params, authenticated.user.id));
+          // The caller's authority, from the same AuthService the HTTP surface asks. Before
+          // `D-0302` this transport passed none and the dispatch asked for none: a terminal
+          // session could call anything its account could authenticate into, including
+          // `sessions.action` with `purge`, which the browser's own route gates on
+          // `workspace.write`. Nothing was exploitable then — every role holds it — and that
+          // is precisely why it had gone unnoticed.
+          respond(id, true, await dispatch(method, params, authenticated.user.id,
+            (permission) => auth.hasPermission(authenticated.user, permission)));
         } catch (error) {
           respond(id, false, error);
         }

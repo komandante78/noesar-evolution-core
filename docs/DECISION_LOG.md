@@ -5843,3 +5843,45 @@ to the pre-existing baseline measured in phase 4 (the probe's PostgreSQL has no
 **Not deployed.** Source only. The image `noesar-evolution:ce021-ship-tui-client` was built to
 prove the recipe and the running installation was not touched; the disposable containers and
 volumes the proof needed were removed.
+
+## D-0302 · One permission table, enforced in the dispatch, for every shell — 2026-08-03
+
+**Decision.** `SESSION_METHOD_POLICY` in `session-protocol.mjs` is now the single statement of
+what each session-protocol method costs and which transports expose it, and the permission is
+enforced **inside the dispatch** rather than by each transport in turn. `server.mjs` derives its
+`TUI_METHOD_PERMISSION` from it (`bridgedMethodPermissions()`) instead of keeping the only copy.
+
+**Why now.** `D-0301` measured the gap while proving `CE-021`: the HTTP bridge checked a
+permission per method, the unix socket transport checked nothing beyond authentication, and the
+two shells agreed anyway — because every role that can authenticate holds `workspace.read` and
+`workspace.write`, the only two permissions the table named. That is a coincidence, not a
+guarantee, and it was one narrowed role away from ending; `sessions.action` carries `purge`,
+which the browser's own route gates on `workspace.write`. Phase 5 deliberately did not change a
+security model as a side effect of an acceptance phase, and reported it instead. This is that
+change, taken on its own.
+
+**Shape.** Three refusals, all fail-closed:
+- a method whose policy names a permission the caller does not hold → `FORBIDDEN`;
+- a transport that supplies no `can(permission)` at all → `FORBIDDEN`, never "nobody checked, so
+  allow". That was the socket's exact shape before this decision, and an optional gate is one
+  new transport away from being no gate;
+- a method implemented but absent from the policy → `UNKNOWN_METHOD`, never run ungated.
+
+The socket-only methods are gated at what their own browser routes already require:
+`sessions.list`/`sessions.get` at `workspace.read`, `sessions.action` at `workspace.write`,
+`product.invariants` and `coden.addresses` session-only — the same as `/api/v1/bootstrap`.
+
+**Nobody is locked out.** Every role holds both permissions, so this refuses no caller that
+works today; `two-shells-parity.test.mjs` measures that as well, so a future narrowing surfaces
+as a deliberate product decision rather than as a shell that quietly stopped working.
+
+**One seam added on purpose.** `createSessionDispatch` takes `methodPolicy`, defaulting to the
+real table. The fail-closed branch that matters most — a method with no policy entry — cannot be
+reached by the real configuration, because every implemented method is listed; mutating that
+guard away left the whole suite green. A branch nobody can exercise is a branch nobody has
+checked, so the seam exists to exercise it. This is the third time in this programme that a
+mutation has caught an assertion written against a case the real input never produces.
+
+**Verified.** 1626/1627 unit (0 fail, 1 pre-existing skip), ESLint 305 files 0/0/0, the CE-021
+probe still 10/10 with the gate in place (a real owner over both transports is refused nothing),
+seven mutations and seven failures.

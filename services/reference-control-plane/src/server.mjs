@@ -96,7 +96,7 @@ import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
-import { createSessionDispatch, startUnixSocketServer, ProtocolError } from './session-protocol.mjs';
+import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -721,12 +721,13 @@ const SAFE_MODE_WRITE_ALLOWLIST = new Set([
 // enforces above. `null` means session-only, same as GET /api/v1/workspace-actions/:id and
 // GET /api/v1/events/:id. A method absent from this table is refused as unknown, not run
 // with no permission check — the fallback for "not listed" must be REFUSE, never ALLOW.
-const TUI_METHOD_PERMISSION = {
-  'workspace.plan': 'workspace.write', 'workspace.approve': 'workspace.write',
-  'workspace.reject': 'workspace.write', 'workspace.restore': 'workspace.write',
-  'workspace.simulate': 'workspace.read', 'repoMap.scan': 'workspace.read', 'repoMap.search': 'workspace.read',
-  'workspace.get': null, 'events.correlation': null, status: null,
-};
+//
+// Derived from session-protocol.mjs's own SESSION_METHOD_POLICY since `D-0302`, rather than
+// written out here. It used to be the only copy, and the unix socket transport — the other
+// shell onto the same dispatch — enforced nothing at all; the two agreed only because every
+// role holds the two permissions this table names (measured in `D-0301`). One table, enforced
+// inside the dispatch, means a method cannot be gated on one shell and open on the other.
+const TUI_METHOD_PERMISSION = bridgedMethodPermissions();
 
 function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
 
@@ -2731,7 +2732,8 @@ const requestListener = async (req, res) => {
         return json(res, 403, { error:'forbidden', requiredPermission });
       }
       try {
-        const result = await sessionDispatch(method, payload?.params, authenticated.user.id);
+        const result = await sessionDispatch(method, payload?.params, authenticated.user.id,
+          (permission) => auth.hasPermission(authenticated.user, permission));
         return json(res, 200, { ok:true, result });
       } catch (error) {
         if (error instanceof WorkspaceActionError || error instanceof RepoMapError || error instanceof ProtocolError) {
