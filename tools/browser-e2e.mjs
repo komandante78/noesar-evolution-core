@@ -623,6 +623,141 @@ try {
   const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
 
+  at('jump-to-address');
+  // --- one box: `/` goes somewhere ----------------------------------------
+  // The keyboard, the focus and the ARIA wiring are the whole feature here, and none of the
+  // three can be checked by reading the file. Driven as a person drives it: press the key,
+  // type, arrow, Enter.
+  resetObservations();
+  const paletteState = () => page.evaluate(() => {
+    const box = document.querySelector('#globalSearchResults');
+    const options = [...box.querySelectorAll('button')];
+    const activeOption = options.find((node) => node.classList.contains('active'));
+    return {
+      open: !box.classList.contains('hidden'),
+      focused: document.activeElement?.id === 'globalSearch',
+      value: document.querySelector('#globalSearch').value,
+      expanded: document.querySelector('#globalSearch').getAttribute('aria-expanded'),
+      activeDescendant: document.querySelector('#globalSearch').getAttribute('aria-activedescendant') || '',
+      count: options.length,
+      addresses: options.filter((node) => node.dataset.jump).length,
+      first: options[0]?.getAttribute('data-jump') ?? '',
+      activeJump: activeOption?.getAttribute('data-jump') ?? '',
+      activeIsActiveDescendant: Boolean(activeOption) && activeOption.id === document.querySelector('#globalSearch').getAttribute('aria-activedescendant'),
+    };
+  });
+
+  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await page.keyboard.press('/');
+  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  const opened = await paletteState();
+  // Thirteen destinations + fifteen Settings sections + the Archive and the Bin + sixteen
+  // workbench panels. Asserted as a floor rather than a number, so adding a panel does not
+  // fail a test that is not about counting.
+  check('`/` opens the box that already existed, with every address in it',
+    opened.open && opened.focused && opened.expanded === 'true' && opened.addresses >= 40, JSON.stringify(opened));
+  check('`/` does not leak into the box as text', opened.value === '', JSON.stringify(opened));
+
+  await page.keyboard.type('diff');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const filtered = await paletteState();
+  check('typing filters to the address, ranked by the address before the label',
+    filtered.first === 'coden/bench/diff', JSON.stringify(filtered));
+  check('the highlighted row is the one aria-activedescendant names',
+    filtered.activeIsActiveDescendant && filtered.activeJump === 'coden/bench/diff', JSON.stringify(filtered));
+
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  const jumped = await page.evaluate(() => ({ hash: location.hash, open: !document.querySelector('#globalSearchResults').classList.contains('hidden') }));
+  check('Enter goes to the address and closes the box',
+    jumped.hash === '#/coden/bench/diff' && !jumped.open, JSON.stringify(jumped));
+
+  // The arrow keys must move the selection without moving the caret out of the input, or
+  // the next character typed lands nowhere.
+  await page.keyboard.press('/');
+  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  await page.keyboard.press('ArrowDown');
+  const moved = await paletteState();
+  await page.keyboard.press('Escape');
+  const escaped = await paletteState();
+  check('the arrow keys move the selection and leave focus in the box',
+    moved.focused && moved.activeIsActiveDescendant, JSON.stringify(moved));
+  check('Escape closes the box', !escaped.open, JSON.stringify(escaped));
+
+  // The guard that matters most: a shortcut that fires while someone is writing is a defect.
+  // The same property is already asserted for `[` further up, against the same guard —
+  // isTyping() — which is exactly why `/` reuses it instead of bringing its own.
+  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#chatInput', { timeout: 15000 });
+  // focus(), not clickOrExplain(): that helper dispatches an in-page click event, and a
+  // synthetic click does not move focus the way a real one does. Driven that way, the whole
+  // phrase went to the body — 'a', 'n', 'd' fell on the floor, '/' opened the box exactly as
+  // it should have, and the check failed against correct behaviour. The bracket check above
+  // focuses the same way for the same reason.
+  await page.evaluate(() => { document.querySelector('#chatInput').focus(); });
+  await page.keyboard.type('and/or');
+  const slashWhileTyping = await page.evaluate(() => ({
+    open: !document.querySelector('#globalSearchResults').classList.contains('hidden'),
+    typed: document.querySelector('#chatInput').value,
+  }));
+  check('`/` typed into a message stays in the message and opens nothing',
+    !slashWhileTyping.open && slashWhileTyping.typed === 'and/or', JSON.stringify(slashWhileTyping));
+
+  // Ctrl K is not taken away because a better key arrived.
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyK');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  const viaCtrlK = await paletteState();
+  check('Ctrl K opens the same box', viaCtrlK.open && viaCtrlK.focused, JSON.stringify(viaCtrlK));
+
+  // Content rows: eight kinds of result that used to be rendered as buttons with no handler
+  // on them at all. What the box shows is checked against what its own data source answers
+  // for the same query, rather than against a guess about which fixtures this run left
+  // behind — a check that silently passes because the search found nothing verifies nothing.
+  const searchProbe = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/search?q=reload', { credentials: 'same-origin' });
+    const body = await response.json().catch(() => ({}));
+    return {
+      project: document.querySelector('#projectChip')?.textContent ?? '',
+      status: response.status,
+      count: (body.results ?? []).length,
+      types: [...new Set((body.results ?? []).map((item) => item.type))],
+    };
+  });
+  check('the box\'s own data source answers with something to show',
+    searchProbe.status === 200 && searchProbe.count > 0, JSON.stringify(searchProbe));
+  await page.keyboard.type('reload');
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  const withContent = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#globalSearchResults button')];
+    const content = rows.filter((node) => !/^(Page|Settings|Bench|Agent)$/.test(node.querySelector('b')?.textContent ?? ''));
+    return {
+      rows: rows.length,
+      content: content.length,
+      jumps: content.filter((node) => node.dataset.jump).length,
+      title: content[0]?.getAttribute('title') ?? '',
+      firstJump: content[0]?.getAttribute('data-jump') ?? '',
+    };
+  });
+  check('the box shows the content its data source found',
+    withContent.content > 0, JSON.stringify({ ...withContent, apiCount: searchProbe.count }));
+  check('a content result is a control that goes somewhere, not a dead button',
+    withContent.content > 0 && withContent.jumps === withContent.content && /^Opens /.test(withContent.title),
+    JSON.stringify(withContent));
+  if (withContent.firstJump) {
+    await clickOrExplain(page, `#globalSearchResults button[data-jump="${withContent.firstJump}"]`);
+    await page.waitForSelector(`#view-${withContent.firstJump}.active`, { timeout: 15000 });
+    const afterContentClick = await page.evaluate(() => location.hash);
+    check('clicking a content result opens the page that owns it',
+      afterContentClick.startsWith(`#/${withContent.firstJump}`), `${afterContentClick} (expected #/${withContent.firstJump})`);
+  } else {
+    check('clicking a content result opens the page that owns it', false, 'no content row carried a destination');
+  }
+
+  const paletteErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
+  check('the box produced no console errors', paletteErrors.length === 0, paletteErrors.join(' | '));
+
   at('workflows');
   // --- WP-2: a workflow, its approval gate, the strip, and the decision ----
   // Driven the way an operator drives it: define a workflow in the form, start it, watch

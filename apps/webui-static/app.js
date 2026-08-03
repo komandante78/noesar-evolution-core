@@ -987,7 +987,186 @@ $('#agentForm').addEventListener('submit',async(event)=>{event.preventDefault();
 $('#runForm').addEventListener('submit',async(event)=>{event.preventDefault();const agent=state.agents.find((item)=>item.id===$('#runAgent').value);const tool=state.tools.find((item)=>agent?.toolIds.includes(item.id));await api('/api/v1/agent-runs',{method:'POST',body:JSON.stringify({agentId:agent.id,projectId:state.activeProjectId,goal:$('#runGoal').value,steps:[{title:'Analyze goal',mutative:false},{title:tool?`Use ${tool.name}`:'Produce result',toolId:tool?.id,mutative:Boolean(tool?.mutative)}]})});event.target.reset();await refreshWorkspace();});
 async function exportData(){const bundle=await api('/api/v1/data/export');const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`noesar-export-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);}
 $('#saveRetention').addEventListener('click',async()=>{await api('/api/v1/data/retention',{method:'PUT',body:JSON.stringify({days:Number($('#retentionDays').value)})});await refreshWorkspace();setStatus('Retention policy saved.');});$('#applyRetention').addEventListener('click',async()=>{const result=await api('/api/v1/data/retention/apply',{method:'POST',body:'{}'});await refreshWorkspace();setStatus(`Retention applied: ${JSON.stringify(result.counts)}`);});$('#exportData').addEventListener('click',exportData);$('#rightExportData').addEventListener('click',exportData);$('#purgeProject').addEventListener('click',async()=>{if(!state.activeProjectId||!confirm('Permanently delete the active project data?'))return;await api('/api/v1/data/purge',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId})});state.activeProjectId=null;state.activeConversationId=null;await refreshWorkspace();});
-let searchTimer;$('#globalSearch').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(async()=>{const q=$('#globalSearch').value.trim();if(!q)return $('#globalSearchResults').classList.add('hidden');const data=await api(`/api/v1/search?q=${encodeURIComponent(q)}&projectId=${encodeURIComponent(state.activeProjectId??'')}`);$('#globalSearchResults').innerHTML=data.results.map((item)=>`<button><b>${escapeHtml(item.type)}</b><span>${escapeHtml(item.item.title??item.item.name??item.item.content??item.id).slice(0,180)}</span><small>${item.score.toFixed(3)}</small></button>`).join('')||'<p>No results</p>';$('#globalSearchResults').classList.remove('hidden');},250);});document.addEventListener('keydown',(event)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();$('#globalSearch').focus();}});
+// --- one box: go to an address, or search what is inside the addresses ------
+// The Owner's objection to this workbench was "too many menus", and the answer accepted in
+// s313 is a single jump-to-address mechanism on `/`. The obvious build is a command palette
+// overlay — and it would have been the wrong one: this product ALREADY has a box in the top
+// bar, on Ctrl K, and a second summonable one beside it would have raised the count of
+// navigation widgets while the complaint was about the count. The mechanism goes where the
+// box already is. `/` and Ctrl K both reach it; the difference is only which key you know.
+//
+// It answers with two kinds of thing, and never conflates them: ADDRESSES (every place in
+// the product, matched here, instantly, with no network) and CONTENT (what the existing
+// /api/v1/search finds inside them, debounced). Addresses appear on the first keystroke
+// because a jump that waits for a round trip is not a jump.
+//
+// The address list is BUILT FROM THE INTERFACE, never written out: the sidebar's own
+// buttons, the Settings menu's own entries, and the bench and agent panels' own attributes.
+// That is the same single-copy rule phase 1 established, and it buys two things beyond
+// staleness — a destination hidden from this account by applyNavAccess() is `hidden` in the
+// DOM and therefore simply absent here, so the box can never offer a page that answers 403;
+// and phase 3 can retire the Navigator column without touching a line of this code.
+const CONTENT_HOME={project:'projects',conversation:'chat',message:'chat',memory:'memory',artifact:'documents',source:'knowledge',tool:'coden',task:'home'};
+function addressBook(){
+  const entries=[];
+  const add=(address,kind,label)=>{if(label)entries.push({address,kind,label});};
+  $$('.nav').forEach((node)=>{
+    if(node.hidden)return;
+    add(node.dataset.view,'Page',node.querySelector('span:not(.nav-count):not(.nav-flag)')?.textContent?.trim());
+  });
+  $$('.settings-nav').forEach((node)=>{
+    if(node.hidden||!node.dataset.section)return;
+    add(`settings/${node.dataset.section}`,'Settings',node.textContent.trim());
+  });
+  // UI-004 calls the Archive a page of its own, and phase 1 left both it and the Bin
+  // addressable; they have no menu entry of their own, so they are named here.
+  if(!$('.settings-nav[data-section="sessions"]')?.hidden){
+    add('settings/sessions/archived','Settings','Sessions · Archive');
+    add('settings/sessions/bin','Settings','Sessions · Bin');
+  }
+  Object.entries(CODEN_REGIONS).forEach(([region,spec])=>{
+    $$(`#view-coden ${attrSelect(spec.panelAttr)}`).forEach((panel)=>{
+      add(`coden/${region}/${panel.getAttribute(spec.panelAttr)}`,region==='bench'?'Bench':'Agent',
+        panel.querySelector('h3')?.textContent?.trim());
+    });
+  });
+  return entries;
+}
+// A leading slash is stripped, so typing the key that opened the box does not also become
+// the first character of the query — and so `/coden/bench/diff` pasted from the address bar
+// finds the panel it names.
+function matchAddresses(query){
+  const q=query.replace(/^\/+/,'').trim().toLowerCase();
+  const all=addressBook();
+  if(!q)return all;
+  // Rank, rather than filter alone: typing "diff" should reach the Diff panel before it
+  // reaches anything whose prose merely contains the word. Array sort is stable, so equal
+  // ranks keep the interface's own order.
+  return all
+    .map((entry)=>{
+      const address=entry.address.toLowerCase();
+      if(address.startsWith(q))return{entry,rank:0};
+      if(address.includes(q))return{entry,rank:1};
+      if(entry.label.toLowerCase().includes(q))return{entry,rank:2};
+      return null;
+    })
+    .filter(Boolean).sort((a,b)=>a.rank-b.rank).map((hit)=>hit.entry);
+}
+const palette={options:[],active:-1};
+function paletteOpen(){return !$('#globalSearchResults').classList.contains('hidden');}
+function renderPalette(addresses,contentHtml){
+  const box=$('#globalSearchResults');
+  const rows=addresses.map((entry)=>`<button type="button" data-jump="${escapeHtml(entry.address)}" role="option" aria-selected="false"><b>${escapeHtml(entry.kind)}</b><span>${escapeHtml(entry.label)}</span><small>/${escapeHtml(entry.address)}</small></button>`).join('');
+  const empty=!rows&&!contentHtml?'<p>Nothing matches that.</p>':'';
+  box.innerHTML=`${rows?`<p class="palette-group">Go to</p>${rows}`:''}${contentHtml}${empty}`;
+  box.classList.remove('hidden');
+  $('#globalSearch').setAttribute('aria-expanded','true');
+  palette.options=[...box.querySelectorAll('button')];
+  setPaletteActive(palette.options.length?0:-1);
+}
+// The highlighted row is announced through aria-activedescendant rather than by moving
+// focus: focus must stay in the input, or every arrow key would take the caret with it and
+// the next character typed would land nowhere.
+function setPaletteActive(index){
+  palette.active=index;
+  palette.options.forEach((node,position)=>{
+    const active=position===index;
+    node.classList.toggle('active',active);
+    node.setAttribute('aria-selected',String(active));
+    if(active){node.id=node.id||`paletteOption${position}`;node.scrollIntoView({block:'nearest'});}
+  });
+  const current=palette.options[index];
+  $('#globalSearch').setAttribute('aria-activedescendant',current?current.id:'');
+}
+function closePalette(){
+  $('#globalSearchResults').classList.add('hidden');
+  $('#globalSearch').setAttribute('aria-expanded','false');
+  $('#globalSearch').setAttribute('aria-activedescendant','');
+  palette.options=[];palette.active=-1;
+}
+function openPalette(){
+  if($('#authGate')&&!$('#authGate').classList.contains('hidden'))return;
+  const input=$('#globalSearch');
+  input.focus();input.select();
+  renderPalette(matchAddresses(input.value),'');
+}
+// Going to an address. Already inside the workbench, a panel is reached with the phase-1
+// in-page move (no refetch); anything else is a real navigation, written straight to the
+// hash so the router activates ONCE — navigate() would activate here and then again on the
+// hashchange its own rewrite fires.
+function jumpTo(address){
+  closePalette();
+  $('#globalSearch').blur();
+  const [view,second,third]=address.split('/');
+  if(view==='coden'&&CODEN_REGIONS[second]&&third&&$('#view-coden')?.classList.contains('active')){
+    goToCodenPanel(second,third);
+    return;
+  }
+  const want=`#/${address}`;
+  if(location.hash===want)goToHash();
+  else location.hash=want;
+}
+let searchTimer;
+$('#globalSearch').addEventListener('input',()=>{
+  const raw=$('#globalSearch').value;
+  // Addresses are local, so they are drawn on this keystroke rather than after the debounce
+  // the network needs.
+  renderPalette(matchAddresses(raw),'');
+  clearTimeout(searchTimer);
+  const q=raw.trim();
+  if(!q)return;
+  searchTimer=setTimeout(async()=>{
+    const data=await api(`/api/v1/search?q=${encodeURIComponent(q)}&projectId=${encodeURIComponent(state.activeProjectId??'')}`);
+    // These rows used to be rendered as <button> with no handler on them at all: eight kinds
+    // of result, every one of them a control that did nothing when clicked. They lead
+    // somewhere now — to the destination that OWNS that kind of thing, which is as far as
+    // this product can honestly take you: nothing here has a per-item address yet, so the
+    // row says which page it opens instead of implying it will select the item.
+    const rows=data.results.map((item)=>{
+      const home=CONTENT_HOME[item.type];
+      const text=String(item.item.title??item.item.name??item.item.content??item.id).slice(0,180);
+      const opens=home?` data-jump="${escapeHtml(home)}" title="Opens ${escapeHtml(home)}"`:' disabled title="This kind of result has no page of its own yet."';
+      return `<button type="button" role="option" aria-selected="false"${opens}><b>${escapeHtml(item.type)}</b><span>${escapeHtml(text)}</span><small>${item.score.toFixed(3)}</small></button>`;
+    }).join('');
+    if($('#globalSearch').value!==raw)return;
+    renderPalette(matchAddresses(raw),rows?`<p class="palette-group">In your workspace</p>${rows}`:'');
+  },250);
+});
+$('#globalSearch').addEventListener('focus',()=>{if(!paletteOpen())renderPalette(matchAddresses($('#globalSearch').value),'');});
+$('#globalSearch').addEventListener('keydown',(event)=>{
+  if(event.key==='Escape'){closePalette();$('#globalSearch').blur();return;}
+  if(!paletteOpen()||!palette.options.length)return;
+  if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+    event.preventDefault();
+    const step=event.key==='ArrowDown'?1:-1;
+    const count=palette.options.length;
+    setPaletteActive((palette.active+step+count)%count);
+    return;
+  }
+  if(event.key==='Enter'){
+    const option=palette.options[palette.active];
+    if(option&&!option.disabled){event.preventDefault();option.click();}
+  }
+});
+// mousedown, not click: the button is inside a popover that closes on blur, and by the time
+// a click event fires the blur has already hidden what was being clicked.
+$('#globalSearchResults').addEventListener('mousedown',(event)=>{event.preventDefault();});
+$('#globalSearchResults').addEventListener('click',(event)=>{
+  const option=event.target.closest('button[data-jump]');
+  if(option)jumpTo(option.dataset.jump);
+});
+$('#globalSearch').addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement!==$('#globalSearch'))closePalette();},0);});
+// The two keys that reach the box. Ctrl K is kept as it was — a shortcut people have
+// already learned is not taken away because a better one arrived — and `/` is the new one,
+// so it is the one guarded against firing mid-sentence: isTyping() is the same guard `[`
+// and `]` use for the sidebar rank, not a second opinion about what counts as typing.
+document.addEventListener('keydown',(event)=>{
+  if(event.isComposing)return;
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openPalette();return;}
+  if(event.key!=='/'||event.ctrlKey||event.metaKey||event.altKey||isTyping(event.target))return;
+  event.preventDefault();
+  openPalette();
+});
 async function refreshHardware(){$('#hardwareOutput').textContent='Running read-only discovery…';try{$('#hardwareOutput').textContent=JSON.stringify(await api('/api/v1/hardware'),null,2);}catch(error){$('#hardwareOutput').textContent=error.message;}}
 $('#refreshHardware').addEventListener('click',refreshHardware);$('#recommendRuntime').addEventListener('click',async()=>{try{$('#runtimeOutput').textContent=JSON.stringify(await api('/api/v1/runtime/recommendation',{method:'POST',body:JSON.stringify({modelBillions:Number($('#modelSize').value),quantizationBits:Number($('#quantBits').value),profile:'Automatic'})}),null,2);}catch(error){setStatus(error.message,true);}});
 $$('[data-mode]').forEach((button)=>button.addEventListener('click',()=>{if(button.disabled)return;codenMode=button.dataset.mode;$$('[data-mode]').forEach((item)=>item.classList.toggle('selected',item===button));$('#modeLabel').textContent=`${codenMode.replace('_',' ')} MODE`;$('#ownerReauth').classList.toggle('hidden',codenMode!=='OWNER_BYPASS');}));

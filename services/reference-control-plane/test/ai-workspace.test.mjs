@@ -40,6 +40,37 @@ test('hybrid search covers knowledge chunks artifacts messages and projects',()=
   }finally{rmSync(f.dir,{recursive:true,force:true});}
 });
 
+test('a project scope does not hide the projects themselves — you can still search your way to another one',()=>{
+  // The assertion above is a disjunction over three types, so it went on passing on the
+  // artifact and the message while `project` was in fact never returned at all: a project
+  // record carries no `projectId`, so the scope filter `item.projectId===projectId` excluded
+  // every one of them. With a project selected, search could not find the project you were
+  // trying to switch to — the defect that made the top-bar box show nothing in s314 for a
+  // query the same endpoint answered with two results unscoped.
+  const f=fixture();
+  try{
+    const here=f.graph.createProject({name:'before reload',description:'the selected one'});
+    f.graph.createProject({name:'after reload',description:'the one you are switching to'});
+    const names=f.service.globalSearch('reload',{projectId:here.id})
+      .filter((item)=>item.type==='project').map((item)=>item.item.name).sort();
+    assert.deepEqual(names,['after reload','before reload']);
+    // And the scope still does its job for the things a project genuinely contains: an
+    // artifact carries its own projectId, so one belonging elsewhere stays out.
+    f.service.createArtifact({projectId:here.id,title:'reload notes',content:'kept'});
+    const other=f.graph.createProject({name:'third'});
+    f.service.createArtifact({projectId:other.id,title:'reload notes',content:'elsewhere'});
+    const artifacts=f.service.globalSearch('reload notes',{projectId:here.id}).filter((item)=>item.type==='artifact');
+    assert.equal(artifacts.length,1);
+    assert.equal(artifacts[0].projectId,here.id);
+    // NOT asserted here, because it is not fixed and a test must not bless a defect: a
+    // MESSAGE record carries `conversationId` and no `projectId`, so a project scope drops
+    // every message too. Unlike a project, a message really is inside a project — through
+    // its conversation — so the filter means to keep it and the data shape defeats it.
+    // Resolving conversation→project for each record is a different change with its own
+    // cost, measured and reported in s314 rather than smuggled into a navigation phase.
+  }finally{rmSync(f.dir,{recursive:true,force:true});}
+});
+
 test('context inspector shows model project files memory tools and token estimate',()=>{
   const f=fixture();
   try{

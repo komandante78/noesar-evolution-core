@@ -5596,3 +5596,70 @@ the legacy-redirect check compared hashes exactly, which a completed address no 
 matches.
 
 **Not deployed.** The running container is untouched; this is source only.
+
+## D-0298 · CodeN Evolution, phase 2 of 5: `/` goes to an address — in the box that already existed, not in a new one — 2026-08-03
+
+**Decision, and the one that mattered.** The accepted s313 design says `/` opens a filterable
+list of every destination. The obvious build is a command-palette overlay, and it would have
+been the wrong one: the top bar already carries a search box, on Ctrl K, so an overlay would
+have ADDED a navigation widget while the Owner's whole objection was how many there are
+(s313: three small tidy menus still read as "too many menus" — the count of interaction
+points, not the density of each). The mechanism therefore goes where the box already is.
+`/` and Ctrl K both reach it; the only difference is which key you happen to know.
+
+The box now answers with two kinds of thing and never conflates them: **addresses** — all 46
+of them, matched locally with no network, drawn on the first keystroke because a jump that
+waits for a round trip is not a jump — and **content**, what `/api/v1/search` finds inside
+those addresses, debounced as before.
+
+**The address list is read off the interface, never written beside it** — the same
+single-copy rule `D-0297` established. It comes from the sidebar's own buttons, the Settings
+menu's own entries, and the bench and agent panels' own attributes. Two things fall out of
+that beyond staleness: a destination `applyNavAccess()` has hidden from this account is
+`hidden` in the DOM and therefore simply absent, so the box cannot offer a page whose every
+request would answer 403; and phase 3 can retire the Navigator column without touching a
+line of this code.
+
+`/` is guarded by the same `isTyping()` the sidebar's `[` and `]` already use — one guard,
+not a second opinion about what counts as typing. Verified in the browser by typing
+"and/or" into the chat composer: the phrase arrives whole and nothing opens.
+
+**A dead control, removed.** The content rows were rendered as `<button>` with no handler on
+them at all — eight kinds of result, every one a control that did nothing when clicked. They
+lead somewhere now: to the destination that OWNS that kind of thing, which is as far as this
+product can honestly go, since nothing here has a per-item address yet. The row says which
+page it opens rather than implying it will select the item, and a test reads the eight types
+out of `workspace-service.mjs` itself, so a ninth type fails the suite instead of shipping
+as another dead row.
+
+**A real defect found while wiring it, and fixed: a project scope hid every project.** The
+box showed nothing for a query the same endpoint answered with two results. Measured, not
+guessed: a project record carries no `projectId` of its own, so `globalSearch`'s scope
+filter `item.projectId===projectId` excluded every project whenever one was selected — you
+could not search your way to the project you wanted to switch to, or find the one you were
+already in. A project is not INSIDE a project, so the scope no longer filters projects;
+scoping remains about what a project contains, and an artifact belonging elsewhere still
+stays out. The pre-existing test missed it by asserting a disjunction —
+`some(['project','artifact','message'])` — which went on passing on the artifact while
+`project` was never returned at all.
+
+**Reported, not fixed: the same shape mismatch hides messages.** A message record carries
+`conversationId` and no `projectId`, so a project scope drops every message too. Unlike a
+project, a message really is inside a project — through its conversation — so here the
+filter means to keep it and the data shape defeats it. Resolving conversation→project per
+record is a different change with its own cost; it is measured and named here rather than
+smuggled into a navigation phase. The test says so in place of asserting it, because a test
+must not bless a defect.
+
+**Verification.** `npm test` 1578/1579 (0 fail, 1 pre-existing skip), 11 new in
+`test/webui-jump-to-address.test.mjs` plus 1 in `ai-workspace.test.mjs`; ESLint 0/0/0. Six
+mutations, six failures, one each — including reverting the search fix and removing the
+`/` typing guard, and one mutation that had to be redone because the first version of it
+patched the sidebar's identical guard instead of this one. Browser acceptance **365/365**,
+which is where the keyboard, the focus and the ARIA wiring are actually proven: `/` opens
+with 46 addresses and does not leak into the box as text, typing ranks `coden/bench/diff`
+first, `aria-activedescendant` names the highlighted row while focus stays in the input,
+Enter goes and closes, Escape closes, Ctrl K still opens, and a content row click lands on
+`#/projects`.
+
+**Not deployed.** Source only; the running container is untouched.

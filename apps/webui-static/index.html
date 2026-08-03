@@ -47,7 +47,11 @@
     <header class="topbar">
       <div class="brand"><span class="brand-mark">N</span><strong>NOESAR</strong><span>Evolution</span></div>
       <button class="chip rank-control" id="sidebarRank" type="button" aria-controls="sidebar" aria-expanded="true" title="Sidebar: full · icons · hidden — [ collapses, ] expands">☰ <span id="sidebarRankLabel">Sidebar: full</span></button>
-      <div class="command"><span>⌕</span><input id="globalSearch" aria-label="Global search" placeholder="Search chats, files, memory, tools and tasks…"><kbd>Ctrl K</kbd><div id="globalSearchResults" class="search-popover hidden"></div></div>
+      <!-- One box, two answers: an address to go to, and what the search finds inside the
+           addresses. `/` and Ctrl K both open it. The overlay palette this replaces would
+           have been a second navigation widget standing beside a box that already existed,
+           and the count of those widgets is the thing being reduced. -->
+      <div class="command"><span>⌕</span><input id="globalSearch" role="combobox" aria-expanded="false" aria-controls="globalSearchResults" aria-autocomplete="list" aria-haspopup="listbox" autocomplete="off" aria-label="Go to a page, or search chats, files, memory, tools and tasks" title="Press / to jump to a page — Ctrl K opens the same box" placeholder="Go to a page, or search — press /"><kbd>/</kbd><div id="globalSearchResults" class="search-popover hidden" role="listbox" aria-label="Places and results"></div></div>
       <!-- UI-037. The reference bar carries search · project · model · privacy · language ·
            time zone · profile; verification coverage is ADDED to them, never in place of
            them. The coverage chip reads "—" because nothing recalculates yet: a coverage

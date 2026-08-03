@@ -153,7 +153,15 @@ export class WorkspaceService {
 
   globalSearch(query,{ projectId=null,types=null,limit=30 }={}) {
     const state=this.store.read(); const records=[];
-    const push=(type,item,text)=>{ if ((!projectId || item.projectId===projectId) && (!types || types.includes(type))) records.push({ type,id:item.id,projectId:item.projectId,searchText:text,item }); };
+    // A project is not INSIDE a project, so the project scope must not filter projects out.
+    // A project record has no `projectId` of its own, so `item.projectId===projectId` was
+    // false for every one of them: with a project selected, this search could return no
+    // project at all — not the selected one, and not the one you were trying to switch TO.
+    // Found in s314 while making the top-bar box the way you get around the product: the box
+    // showed nothing for a query the same endpoint answered with two results unscoped.
+    // Scoping is about what a project CONTAINS; the projects themselves stay findable.
+    const inScope=(type,item)=>!projectId||type==='project'||item.projectId===projectId;
+    const push=(type,item,text)=>{ if (inScope(type,item) && (!types || types.includes(type))) records.push({ type,id:item.id,projectId:item.projectId,searchText:text,item }); };
     for (const item of state.projects) if (!item.archived) push('project',item,`${item.name}\n${item.description}\n${item.instructions}\n${item.tags.join(' ')}`);
     for (const item of state.conversations) if (!item.archived) push('conversation',item,item.title);
     for (const item of state.messages) push('message',item,item.content);

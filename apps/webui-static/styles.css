@@ -975,3 +975,19 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .voice-line:last-child{border-bottom:0}
 #voiceToggle[aria-pressed="true"]{border-color:var(--border-accent-hover);color:var(--text-on-accent-wash)}
 .chip-list .chip button:hover{color:var(--red)}
+/* The one box: jump to an address, or search what is inside the addresses (`/`, Ctrl K).
+   Rows reuse `.search-popover button`'s existing three-column grid — kind · label · address
+   — so an address row and a content row line up as one list instead of looking like two
+   widgets sharing a panel, which is the whole point of putting both in one box. The
+   highlighted row is styled here rather than through :focus, because focus never leaves the
+   input: moving it would take the caret along and the next keystroke would be lost. */
+.palette-group{margin:6px 4px 2px;color:var(--muted);font-size:calc(var(--text-scale)*10px);letter-spacing:.12em;text-transform:uppercase}
+.search-popover button.active{background:var(--surface-selected);color:var(--text-on-accent);border-radius:8px}
+.search-popover button b{color:var(--muted);font-weight:600;font-size:calc(var(--text-scale)*10px);letter-spacing:.06em;text-transform:uppercase}
+.search-popover button.active b,.search-popover button.active small{color:inherit}
+.search-popover button small{color:var(--muted);font-variant-numeric:tabular-nums}
+.search-popover button[disabled]{opacity:.55;cursor:default}
+.search-popover p:not(.palette-group){padding:10px;color:var(--muted)}
+@media(forced-colors:active){
+  .search-popover button.active{border:2px solid CanvasText}
+}
