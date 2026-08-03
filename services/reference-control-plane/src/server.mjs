@@ -97,6 +97,7 @@ import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } f
 import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError } from './session-protocol.mjs';
+import { buildCodenAddressBook } from './coden-address-book.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -264,6 +265,11 @@ const sessionDispatch = createSessionDispatch({
   workspaceRoot: workspace, engineEvents, workspaceActionsStatus,
   getShadowSnapshot: () => shadowSnapshot, capabilityStatus, capabilityMinter,
   contextGraph, ledger, invariantEnforcement: INVARIANT_ENFORCEMENT,
+  // Phase 4: the address list a terminal shell is told about, derived from the very file
+  // this process serves the browser out of — one list, two shells. Passed as a function so
+  // it is read when a shell asks rather than once at boot: a redeploy that swaps the static
+  // directory under a surviving process would otherwise keep answering for the old one.
+  codenAddressBook: () => buildCodenAddressBook(webRoot),
 });
 
 // --- data plane and multi-user directory -------------------------------------

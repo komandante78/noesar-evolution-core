@@ -42,6 +42,7 @@ export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
+  codenAddressBook,
 }) {
   const nowUnix = () => Math.floor(Date.now() / 1000);
   const methods = {
@@ -119,6 +120,25 @@ export function createSessionDispatch({
     // second hardcoded list that can drift from it (see path-auth.mjs's own comment on
     // exactly that drift, once real).
     'product.invariants': () => ({ invariants: invariantEnforcement }),
+    // Phase 4 (D-0300): the address space itself, so `/` means the same thing in a terminal
+    // as it does in the browser. The browser builds its list by reading its own DOM; a
+    // terminal has none, and the alternative — a list written out inside tui-client.mjs —
+    // is the arrangement that had already drifted to fourteen names against the markup's
+    // twenty-five. Derived per call from the file the WebUI is served out of, never cached
+    // here and never declared here (src/coden-address-book.mjs's own comment says what it
+    // refuses to assert). A deployment that cannot read that file answers UNAVAILABLE: a
+    // shell told "no addresses" would go looking for a product with no panels, while a
+    // shell told the source is unreadable knows to look at the deployment.
+    'coden.addresses': () => {
+      if (typeof codenAddressBook !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire an address book');
+      }
+      let addresses;
+      try { addresses = codenAddressBook(); } catch (error) {
+        throw new ProtocolError('UNAVAILABLE', `the interface the address list is read from could not be read: ${error.message}`);
+      }
+      return { addresses, accessFiltered: false };
+    },
   };
 
   return async function dispatch(method, params, actor) {

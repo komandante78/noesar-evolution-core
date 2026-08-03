@@ -24,6 +24,9 @@ import { createSessionDispatch, startUnixSocketServer, PROTOCOL_VERSION } from '
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
 import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
+import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
+
+const WEB_ROOT = new URL('../../../apps/webui-static/', import.meta.url).pathname;
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -59,6 +62,9 @@ before(async () => {
     getShadowSnapshot: () => shadowStatus(join(ws, 'shadows')),
     capabilityStatus, capabilityMinter: new TokenMinter(randomBytes(32)),
     contextGraph, ledger, invariantEnforcement: INVARIANT_ENFORCEMENT,
+    // Phase 4: the real WebUI directory, not a fixture — the point of the method is that a
+    // terminal is told about the address space the browser is actually served.
+    codenAddressBook: () => buildCodenAddressBook(WEB_ROOT),
   });
   socketPath = join(ws, 'tui-test.sock');
   server = startUnixSocketServer({ socketPath, dispatch, auth, ledger });
@@ -216,5 +222,53 @@ describe('session protocol — product.invariants (UI-054)', () => {
     const result = await call(authenticatedSocket, 'product.invariants', {});
     assert.deepEqual(result.invariants, INVARIANT_ENFORCEMENT);
     assert.ok(result.invariants.length > 0);
+  });
+});
+
+// Phase 4 (D-0300): `/` in a terminal means what `/` in the browser means, because the list
+// behind both is one list. This is the method that carries it across.
+describe('session protocol — coden.addresses (phase 4)', () => {
+  test('serves the address space read off the WebUI the browser is served, panels included', async () => {
+    const result = await call(authenticatedSocket, 'coden.addresses', {});
+    const byAddress = new Map(result.addresses.map((entry) => [entry.address, entry]));
+    // Not a fixed count: the assertion is that every panel the markup declares is here,
+    // which is the property that broke when the client kept its own list.
+    assert.deepEqual(
+      result.addresses.filter((entry) => entry.region === 'bench').map((entry) => entry.panel),
+      buildCodenAddressBook(WEB_ROOT).filter((entry) => entry.region === 'bench').map((entry) => entry.panel),
+    );
+    assert.ok(byAddress.has('coden/bench/diff'));
+    assert.ok(byAddress.has('coden/agent/plan'));
+    assert.equal(byAddress.get('coden/bench/diff').kind, 'Bench');
+    assert.match(byAddress.get('coden/bench/tests').declaredEmpty.join(' '), /plan-declared command/);
+  });
+
+  test('the answer states that it is not filtered by what this account may open', async () => {
+    // The browser's box filters by what the sidebar shows for this account; this transport
+    // has no such fact. Saying so is the difference between a disclosed gap and a claim.
+    const result = await call(authenticatedSocket, 'coden.addresses', {});
+    assert.equal(result.accessFiltered, false);
+  });
+
+  test('a deployment whose interface cannot be read answers UNAVAILABLE, never an empty list', async () => {
+    // An empty list would send a shell looking for a product with no panels. This dispatch
+    // is built the same way the real one is, with a reader that fails the way a missing
+    // static directory fails.
+    const broken = createSessionDispatch({
+      workspaceActions: {}, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
+      workspaceRoot: ws, engineEvents: new EventLedger(), workspaceActionsStatus,
+      getShadowSnapshot: () => ({}), capabilityStatus, capabilityMinter: new TokenMinter(randomBytes(32)),
+      contextGraph, ledger: new AuditLedger(join(ws, 'audit.jsonl')), invariantEnforcement: INVARIANT_ENFORCEMENT,
+      codenAddressBook: () => buildCodenAddressBook(join(ws, 'no-such-webui')),
+    });
+    await assert.rejects(broken('coden.addresses', {}, 'owner'), (error) => error.kind === 'UNAVAILABLE');
+
+    const unwired = createSessionDispatch({
+      workspaceActions: {}, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
+      workspaceRoot: ws, engineEvents: new EventLedger(), workspaceActionsStatus,
+      getShadowSnapshot: () => ({}), capabilityStatus, capabilityMinter: new TokenMinter(randomBytes(32)),
+      contextGraph, ledger: new AuditLedger(join(ws, 'audit.jsonl')), invariantEnforcement: INVARIANT_ENFORCEMENT,
+    });
+    await assert.rejects(unwired('coden.addresses', {}, 'owner'), (error) => error.kind === 'UNAVAILABLE');
   });
 });

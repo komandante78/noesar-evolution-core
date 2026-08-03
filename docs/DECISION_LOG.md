@@ -5717,3 +5717,70 @@ while the box has focus. Each was the product behaving as designed and the drive
 otherwise; the driver was corrected, and the notes are in it.
 
 **Not deployed.** Source only; the running container is untouched.
+
+## D-0300 · CodeN Evolution, phase 4 of 5: the terminal stops keeping its own list — 2026-08-03
+
+**Decision.** The `/` jump-to-address mechanism accepted in s313 now works in the terminal
+shell, and it is the same mechanism rather than a second one that resembles it: the address
+list is served over the session protocol (`coden.addresses`), derived from
+`apps/webui-static/index.html` — the very file the browser builds its own list out of — by
+the new `src/coden-address-book.mjs`. `tools/tui-client.mjs` carries no list of destinations
+at all any more.
+
+**Why this and not "add a `/` command".** The phase was scoped as "parity of `/` in the TUI",
+which sounds like a feature to add. Reading the client first showed the actual defect:
+`PANEL_NAMES` in `tui-client.mjs` declared **fourteen** panels against the markup's
+**twenty-five**, with the bench's and the agent column's namespaces flattened into one and
+eleven bench panels — Terminal, Problems, Projects, Recent, Sessions, Tasks, Agents, Tools,
+Plugins, History, Favourites — simply absent. `DECLARED_EMPTY_PANELS` was a second such copy:
+six placeholder texts hand-copied from the interface, of which the ones still quoted had
+drifted from the paragraphs they claimed to be quoting. Nobody had noticed either, because a
+list only ever compared to itself always agrees. That is the same defect phases 1–3 spent
+their time unwinding (`D-0297`…`D-0299`), and the same one that let the sidebar advertise
+this very destination as "not built" for as long as it had been working. So the fix is not to
+correct the list. It is to stop keeping one.
+
+**What the terminal now answers to.** `/` lists all 53 addresses the interface declares,
+grouped by kind. `/diff`, `/coden/bench/diff` and an address pasted out of the browser's own
+address bar all reach the Diff panel — the same three ranks the browser ranks by
+(address-prefix, then address-substring, then label), the same leading-slash strip, the same
+names. `panel <name>` and `F1`…`F9` remain, resolved through the served list rather than
+beside it: the hotkeys are now the first nine BENCH panels in the order the workbench itself
+lists them, so adding a panel to the markup shifts them with it.
+
+**What is deliberately NOT identical, and is said out loud rather than smoothed over.**
+A terminal has no highlighted row to arrow through before committing, so an empty query lists
+instead of preselecting, and a real query's runners-up are named after the jump rather than
+before it — same outcome for the same keystrokes, still correctable. The served list is not
+filtered by what the account may open: the browser filters its own by what the sidebar shows,
+which is a fact of that shell and not of this socket; the answer carries `accessFiltered:
+false` and the listing says so in words. A panel the socket has no method for (Projects,
+Tasks, Recent, …) says exactly that, because an empty result printed there would read as
+"there are none", which is a different claim; a page of the browser shell (`/memory`) says
+where it lives instead. A deployment whose interface cannot be read answers `UNAVAILABLE`
+rather than an empty list, for the same reason: a shell told "no addresses" goes looking for a
+product with no panels.
+
+**Verified.** 1614/1615 unit (0 fail, 1 pre-existing skip; +33 on phase 3's 1581), ESLint
+303 files 0/0/0, and the real client **run**: `node tools/tui-client.mjs` driven over a real
+unix socket against the real dispatch, signing in with a real MFA code, then `/`, `/diff
+<runId>` onto a run made through the same orchestrator, `panel projects`, `panel tests`,
+`/memory`, `/coden/bench/sessions`, a query matching nothing, and `panel` — exit 0.
+Fourteen mutations, fourteen failures.
+
+**Two mutations survived the first pass, and both were the same mistake of mine**: an
+assertion written against a case the current markup does not produce. No panel nests a
+`<section>` today (Closure nests `<div>`s), so `elementSlice`'s depth counting was never
+exercised — a lazy first-close match passed every test. Nothing the parser captures carries an
+HTML entity today, so the decoding was never exercised either. Both are now proved on
+synthetic markup that does contain those cases, since both are one interface edit away from
+mattering.
+
+**Browser acceptance: 240 pass / 9 fail — and the nine are NOT this change.** The same nine
+fail identically on `HEAD` with this work stashed: the disposable probe's PostgreSQL has no
+`noesar_knowledge.memory_records` relation, so `/api/v1/memory/recall` and `/api/v1/approvals`
+answer 500 and the workflows step times out behind them. Measured both ways rather than
+assumed; it is a pre-existing gap in the probe environment and is left named, not silently
+absorbed into this phase's numbers.
+
+**Not deployed.** Source only; the running container is untouched.

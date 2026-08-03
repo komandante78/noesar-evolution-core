@@ -25,12 +25,16 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { parseCodenAddressBook } from '../src/coden-address-book.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');
 const html = readFileSync(join(root, 'apps/webui-static/index.html'), 'utf8');
 const app = readFileSync(join(root, 'apps/webui-static/app.js'), 'utf8');
 const tui = readFileSync(join(root, 'tools/tui-client.mjs'), 'utf8');
+// Phase 4: the address space as the server derives it, used below to check the interface's
+// own documented examples against the interface's own attributes.
+const declaredAddresses = parseCodenAddressBook(html).map((entry) => entry.address);
 
 /** The two regions of CodeN's address space, by the attributes that define them. The
  *  panel NAMES are not written here either — the point of the exercise is that they live
@@ -201,6 +205,22 @@ describe('the interface does not claim what the code contradicts', () => {
     // stop being marked, this test must fail rather than quietly verify nothing.
     assert.ok(documented.size >= 10, `only ${documented.size} marked commands found; the markup moved`);
     for (const verb of documented) {
+      // Phase 4 put ADDRESSES in this column beside the verbs, and the two are checked
+      // against different things: a verb must exist in the dispatch, an address must exist
+      // in the address space. `/` itself is neither — it is the prefix the dispatch tests
+      // for ahead of the verb table, so that no command can shadow an address.
+      if (verb === '/') {
+        assert.match(tui, /command\.startsWith\('\/'\)/, 'the interface documents `/`, which the TUI does not answer to');
+        continue;
+      }
+      if (verb.startsWith('/')) {
+        const documentedAddress = verb.replace(/^\/+/, '');
+        assert.ok(
+          declaredAddresses.includes(documentedAddress) || declaredAddresses.some((address) => address.endsWith(`/${documentedAddress}`)),
+          `the interface documents the address "${verb}", which this markup does not declare`,
+        );
+        continue;
+      }
       assert.ok(implemented.has(verb), `the interface documents "${verb}", which the TUI does not implement`);
     }
   });
@@ -209,5 +229,55 @@ describe('the interface does not claim what the code contradicts', () => {
     const note = html.match(/id="sessionsTuiGap"[^>]*>(.*?)<\/p>/s);
     assert.ok(note, 'the note is gone');
     assert.doesNotMatch(note[1], /not reachable|not built/);
+  });
+});
+
+describe('phase 4: the terminal keeps no list of its own', () => {
+  test('tui-client.mjs asks the server for the address space instead of declaring one', () => {
+    assert.match(tui, /session\.call\('coden\.addresses'/, 'the client no longer fetches the address list');
+    // The two lists this file used to carry, by the names they had. A regression that
+    // reintroduces either would be invisible on screen — the client would simply answer
+    // from a copy again, correctly, right up until the markup moved.
+    assert.doesNotMatch(tui, /const PANEL_NAMES\s*=/);
+    assert.doesNotMatch(tui, /DECLARED_EMPTY_PANELS/);
+  });
+
+  test('no panel name is written into the client, except the three that are also verbs', () => {
+    // `plan`, `map` and `sessions` are dispatch verbs that predate the address space and
+    // are commands in their own right; every other panel name appearing as a literal here
+    // would mean a second list had started to grow back. Full ADDRESSES ('coden/bench/map')
+    // are allowed and expected — those are the routing table's keys, and a name inside one
+    // cannot drift from the markup, because the whole address has to match.
+    const verbsThatAreAlsoPanels = new Set(['plan', 'map', 'sessions']);
+    for (const entry of parseCodenAddressBook(html).filter((address) => address.region)) {
+      if (verbsThatAreAlsoPanels.has(entry.panel)) continue;
+      assert.doesNotMatch(
+        tui, new RegExp(`['"\`]${entry.panel}['"\`]`),
+        `the panel "${entry.panel}" is named in tui-client.mjs; it should come from the served list`,
+      );
+    }
+  });
+
+  test('both shells rank matches the same way, and the browser\'s copy is the one to follow', () => {
+    // Two implementations of one rule, because the browser's must answer without a round
+    // trip and the terminal's must answer without a DOM. They cannot share code, so this
+    // asserts the SHAPE of both: three ranks, address-prefix then address-substring then
+    // label. If the browser's rule changes, this fails and names the file that has to
+    // follow it.
+    const browser = app.slice(app.indexOf('function matchAddresses'), app.indexOf('const palette='));
+    const terminal = tui.slice(tui.indexOf('export function matchAddresses'), tui.indexOf('export function functionKeyAddresses'));
+    for (const source of [browser, terminal]) {
+      assert.ok(source.length > 200, 'one of the two matchers moved; this test cannot see it');
+      assert.match(source, /startsWith\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*0/);
+      assert.match(source, /address\.includes\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*1/);
+      assert.match(source, /label[\s\S]{0,60}includes\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*2/);
+      assert.match(source, /replace\(\/\^\\\/\+\//, 'the leading slash is no longer stripped');
+    }
+  });
+
+  test('the hotkeys are derived from the served list, not from a mapping typed beside it', () => {
+    const body = tui.slice(tui.indexOf('export function functionKeyAddresses'), tui.indexOf('const ADDRESS_VIEWS'));
+    assert.match(body, /region === 'bench'/);
+    assert.match(body, /slice\(0, 9\)/);
   });
 });

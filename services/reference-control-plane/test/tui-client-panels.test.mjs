@@ -1,26 +1,44 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// UI-054 (D-0268): the panels half of the CodeN Evolution TUI — `panel <name>` reaching the
-// same views the workbench's agent column and bench tabs show, full-screen as text, plus the
-// bench's own status line. session-protocol.test.mjs already proves `product.invariants`
-// reaches the real enforcement record; this file proves the CLI routing on top of it against
-// a stubbed `session`, and that a panel with no real source (any transport, not just this
-// one) answers with the same declared-empty text the browser shows rather than a guess.
+// UI-054 (D-0268), rewritten for phase 4 (D-0300): `panel <name>` reaching the same views the
+// workbench shows, full-screen as text. What changed underneath it is where the panel names
+// come from — the server's `coden.addresses`, derived from the markup, instead of a list
+// written inside tools/tui-client.mjs that had drifted to fourteen names against the
+// markup's twenty-five.
+//
+// The stub session answers `coden.addresses` from the REAL interface, through the real
+// parser, so these tests exercise the product's actual address space: `panel projects` is
+// here because the markup has a Projects panel, not because this file remembered to add one.
 
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { dispatchCommand, createTuiState } from '../../../tools/tui-client.mjs';
+import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const addresses = buildCodenAddressBook(join(here, '../../../apps/webui-static'));
 
 function stubs(results = {}) {
   const calls = [];
-  const session = { call: async (method, params) => { calls.push({ method, params }); return results[method] ?? {}; } };
+  const session = {
+    call: async (method, params) => {
+      calls.push({ method, params });
+      if (method === 'coden.addresses') return { addresses, accessFiltered: false };
+      return results[method] ?? {};
+    },
+  };
   const reader = { next: async () => '' };
-  return { session, reader, calls };
+  // The address fetch is not an engine call and would drown every assertion below it; what
+  // each test cares about is which ENGINE method a panel reaches, or that it reaches none.
+  return { session, reader, calls, engineCalls: () => calls.filter((entry) => entry.method !== 'coden.addresses') };
 }
 
 /** dispatchCommand talks to the terminal via console.log — capturing it is the only way to
  *  assert on a declared-empty message without also asserting on session.call, which for
- *  those panels must be zero calls (the whole point: no wire method exists to invent data
- *  from). Restored in a `finally` so a failing assertion never leaves console.log patched. */
+ *  those panels must be zero engine calls (the whole point: no wire method exists to invent
+ *  data from). Restored in a `finally` so a failing assertion never leaves console.log
+ *  patched. */
 async function captureLog(fn) {
   const original = console.log;
   const lines = [];
@@ -29,31 +47,36 @@ async function captureLog(fn) {
   return lines;
 }
 
-describe('dispatchCommand — panel <name> (UI-054)', () => {
-  test('`panel` with no name lists the panel names, without calling the wire at all', async () => {
-    const { session, reader, calls } = stubs();
+describe('dispatchCommand — panel <name> (UI-054, list served by the server)', () => {
+  test('`panel` with no name lists every panel the markup declares, and the hotkeys', async () => {
+    const { session, reader, engineCalls } = stubs();
     const lines = await captureLog(() => dispatchCommand(reader, session, 'panel', createTuiState()));
-    assert.equal(calls.length, 0);
-    assert.match(lines.join('\n'), /Panels: plan, map, logs/);
+    assert.equal(engineCalls().length, 0);
+    const listed = lines.find((line) => line.startsWith('Panels:'));
+    // All twenty-five, not the fourteen the old hand-written list carried.
+    for (const entry of addresses.filter((item) => item.region)) {
+      assert.ok(listed.includes(entry.panel), `\`panel\` does not list ${entry.address}`);
+    }
+    assert.match(lines.find((line) => line.startsWith('Hotkeys:')), /F1 shadow/);
   });
 
   test('`panel map` routes to repoMap.scan, same as the `map` command', async () => {
-    const { session, reader, calls } = stubs({ 'repoMap.scan': { filesScanned: 3 } });
+    const { session, reader, engineCalls } = stubs({ 'repoMap.scan': { filesScanned: 3 } });
     await dispatchCommand(reader, session, 'panel map', createTuiState());
-    assert.deepEqual(calls[0], { method: 'repoMap.scan', params: { path: undefined } });
+    assert.deepEqual(engineCalls()[0], { method: 'repoMap.scan', params: { path: undefined } });
   });
 
   test('`panel logs` with no runId asks for one instead of guessing which run', async () => {
-    const { session, reader, calls } = stubs();
+    const { session, reader, engineCalls } = stubs();
     const lines = await captureLog(() => dispatchCommand(reader, session, 'panel logs', createTuiState()));
-    assert.equal(calls.length, 0);
-    assert.match(lines.join('\n'), /Usage: panel logs <runId>/);
+    assert.equal(engineCalls().length, 0);
+    assert.match(lines.join('\n'), /Usage: \/coden\/bench\/logs <runId>/);
   });
 
   test('`panel logs <runId>` routes to events.correlation', async () => {
-    const { session, reader, calls } = stubs({ 'events.correlation': { events: [] } });
+    const { session, reader, engineCalls } = stubs({ 'events.correlation': { events: [] } });
     await dispatchCommand(reader, session, 'panel logs run-1', createTuiState());
-    assert.deepEqual(calls[0], { method: 'events.correlation', params: { correlationId: 'run-1' } });
+    assert.deepEqual(engineCalls()[0], { method: 'events.correlation', params: { correlationId: 'run-1' } });
   });
 
   test('`panel invariants` calls product.invariants and renders each entry\'s enforcement location', async () => {
@@ -67,25 +90,56 @@ describe('dispatchCommand — panel <name> (UI-054)', () => {
   test('`panel editor <runId>` and `panel diff <runId>` both route to workspace.get — the run IS the editor/diff data', async () => {
     const editor = stubs({ 'workspace.get': { runId: 'r1', files: ['a.txt'] } });
     await dispatchCommand(editor.reader, editor.session, 'panel editor r1', createTuiState());
-    assert.deepEqual(editor.calls[0], { method: 'workspace.get', params: { runId: 'r1' } });
+    assert.deepEqual(editor.engineCalls()[0], { method: 'workspace.get', params: { runId: 'r1' } });
 
     const diff = stubs({ 'workspace.get': { runId: 'r1', files: ['a.txt'] } });
     await dispatchCommand(diff.reader, diff.session, 'panel diff r1', createTuiState());
-    assert.deepEqual(diff.calls[0], { method: 'workspace.get', params: { runId: 'r1' } });
+    assert.deepEqual(diff.engineCalls()[0], { method: 'workspace.get', params: { runId: 'r1' } });
   });
 
-  test('a panel with no real source anywhere (e.g. `tests`) answers with the declared-empty text and calls nothing', async () => {
-    const { session, reader, calls } = stubs();
+  test('`panel sessions` reaches the sessions this shell already lists — the same address, either shell', async () => {
+    // The bench's Sessions panel used not to exist here at all. It is the clearest case of
+    // what phase 4 buys: one address, one list, two shells.
+    const { session, reader, engineCalls } = stubs({ 'sessions.list': { place: 'active', items: [], from: 0, to: 0, total: 0, page: 1, pageCount: 1 } });
+    await dispatchCommand(reader, session, 'panel sessions', createTuiState());
+    assert.deepEqual(engineCalls()[0], { method: 'sessions.list', params: { place: 'active', page: 1 } });
+  });
+
+  test('a panel the product declares empty answers with the product\'s own words, from the markup', async () => {
+    const { session, reader, engineCalls } = stubs();
     const lines = await captureLog(() => dispatchCommand(reader, session, 'panel tests', createTuiState()));
-    assert.equal(calls.length, 0);
-    assert.match(lines.join('\n'), /nothing has ever run a plan-declared command/);
+    assert.equal(engineCalls().length, 0);
+    // Quoted from the interface at call time, not copied into this client: the sentence
+    // asserted here is the one apps/webui-static/index.html carries.
+    const declared = addresses.find((entry) => entry.address === 'coden/bench/tests').declaredEmpty[0];
+    assert.ok(lines.join('\n').includes(declared));
+  });
+
+  test('a panel with no source over this transport says exactly that — never an empty list', async () => {
+    // Projects is filled by the browser over its own HTTP routes. Printing "none" here
+    // would be a claim about the product; printing nothing at all would be a shell that
+    // silently ignores a valid address.
+    const { session, reader, engineCalls } = stubs();
+    const lines = await captureLog(() => dispatchCommand(reader, session, 'panel projects', createTuiState()));
+    assert.equal(engineCalls().length, 0);
+    assert.match(lines.join('\n'), /no source over this transport/);
+    assert.match(lines.join('\n'), /would read as "there are none"/);
   });
 
   test('an unknown panel name is refused, not silently ignored', async () => {
-    const { session, reader, calls } = stubs();
+    const { session, reader, engineCalls } = stubs();
     const lines = await captureLog(() => dispatchCommand(reader, session, 'panel not-a-real-panel', createTuiState()));
-    assert.equal(calls.length, 0);
+    assert.equal(engineCalls().length, 0);
     assert.match(lines.join('\n'), /Unknown panel/);
+  });
+
+  test('the address list is fetched once per connection, not once per command', async () => {
+    const { session, reader, calls } = stubs({ 'repoMap.scan': {} });
+    const state = createTuiState();
+    await dispatchCommand(reader, session, 'panel map', state);
+    await dispatchCommand(reader, session, 'panel tests', state);
+    await captureLog(() => dispatchCommand(reader, session, 'panel', state));
+    assert.equal(calls.filter((entry) => entry.method === 'coden.addresses').length, 1);
   });
 });
 

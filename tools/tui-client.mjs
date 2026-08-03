@@ -57,13 +57,18 @@ const HELP = `Commands:
   session-restore <n…|all>                restore session(s) out of the archive or the bin
   session-undone                          what the last session action could not do
 
-  panel <name> [arg]    a workbench panel's own view, full-screen, as text (UI-054) — one of:
-                         plan, map, logs <runId>, shadow, invariants, authority,
-                         editor <runId>, diff <runId>, tests, documentation, preview,
-                         closure, conversation, activity. 'panel' alone lists the names.
-                         On a real terminal, F1…F9 jump straight to the first nine of these
-                         (F1 plan … F9 tests), in the same order — a hotkey, not a second
-                         vocabulary; F3/F7/F8 (logs/editor/diff) still ask for a runId.
+  /                     every address in the product, listed. The same jump-to-address the
+                         browser's own box answers to on \`/\` — same list, same ranking,
+                         same names, because both shells read one list off the same markup.
+  /<query> [arg]        jump to the best-matching address, exactly as typing in that box and
+                         pressing Enter does: /diff, /coden/bench/diff and a path pasted out
+                         of the browser's address bar all reach the same panel. Addresses
+                         that need one still take a runId: \`/diff <runId>\`.
+
+  panel <name> [arg]    the same jump by bare panel name (UI-054) — 'panel' alone lists them
+                         with their hotkeys. On a real terminal F1…F9 jump straight to the
+                         first nine bench panels, in the order the workbench itself lists
+                         them; a panel that needs a runId still asks for one.
   status                engine status, plus the bench's own status line (Elapsed/Authority
                          sourced; the rest read "—", exactly as honestly as the browser's)
 
@@ -189,8 +194,9 @@ function printJson(label, value) {
 /** Fresh per connection, carried through every `dispatchCommand` call: the last sessions
  *  page shown (so `<n>` in `session-show`/`session-archive`/… means "row n of that page",
  *  matching the browser's own numbered rows) and the refusals from the last batch action
- *  (UI-009), since a terminal has no toast to show them in as they happen. */
-export function createTuiState() { return { lastList: null, lastRefused: [], connectedAt: Date.now() }; }
+ *  (UI-009), since a terminal has no toast to show them in as they happen — plus the served
+ *  address list once something has asked for it, cached for the connection's lifetime. */
+export function createTuiState() { return { lastList: null, lastRefused: [], connectedAt: Date.now(), addresses: null }; }
 
 function humanDuration(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -217,56 +223,175 @@ function formatStatusLine(state, statusResult) {
   return `${fields.map(([label, value]) => `${label} ${value}`).join('  ·  ')}\n(${sourced} of 12 fields have a source from this transport)`;
 }
 
-/** UI-054: the same panels the workbench's agent column and bench tabs show, reached full
- *  screen as text instead of a docked/floating pane. Names with a real source route to the
- *  same call the browser makes for that view; names the browser itself only ever shows a
- *  declared-empty placeholder for (no run has produced one, or the data belongs to a
- *  different transport, e.g. Conversation shares state with Chat) answer with that same
- *  honest placeholder here — never a guess. */
-const DECLARED_EMPTY_PANELS = {
-  tests: 'No run, and this stays true on purpose: the executor is passed an empty test list on this path, so nothing has ever run a plan-declared command.',
-  documentation: 'No documentation is attached to this piece of work.',
-  preview: 'Nothing to preview. A preview renders an artefact the work produced.',
-  closure: 'No run has reached closure in this session yet.',
-  conversation: 'The bench conversation shares the session with Chat and the terminal shell. It is not a second chat with its own state — there is nothing transport-specific to show here.',
-  activity: 'No hypothesis. Evidence is what was recalculated, not what was asserted. No tool has run in this session.',
-};
-const PANEL_NAMES = ['plan', 'map', 'logs', 'shadow', 'invariants', 'authority', 'editor', 'diff', ...Object.keys(DECLARED_EMPTY_PANELS)];
+// --- the address space, and the one place it comes from ---------------------------------
+//
+// Phase 4. Until now this file carried its own list of panels — fourteen names, written out
+// here, against the twenty-five the workbench's markup declares, with the bench's and the
+// agent column's namespaces flattened into one. It had drifted without anyone noticing,
+// because a list only ever compared to itself always agrees. That is the exact shape of the
+// defect phases 1–3 spent their time unwinding, so the fix is not to correct the list: it
+// is to stop keeping one. `coden.addresses` serves the list off the same markup the browser
+// reads its own from (services/reference-control-plane/src/coden-address-book.mjs), so both
+// shells answer to one vocabulary and a client from a stale checkout still shows the
+// SERVER's address space — which is what "the same live session as the workbench" has to
+// mean.
+//
+// Fetched once per connection: the markup cannot change under a running server without a
+// redeploy, and a round trip per keystroke would make `/` slower than the thing it replaced.
 
-/** D3b, UI-054's other half: `F1`…`F9` map onto the first nine of the same `PANEL_NAMES`
- *  above, in the same order — no second vocabulary, just a faster way to reach the first
- *  one. A panel that needs an argument (`logs`, `editor`, `diff`) still asks for one via
- *  its usual "Usage: panel <name> <runId>" line when reached this way with none available;
- *  a hotkey does not invent a runId any more than typing the command bare would. Kept pure
- *  and exported so the mapping is testable without a real TTY — see `wireFunctionKeys`
- *  below for why the raw-mode plumbing itself is not. */
-export const FUNCTION_KEY_PANELS = PANEL_NAMES.slice(0, 9);
-
-export function panelForFunctionKey(keyName) {
-  const match = /^f([1-9])$/.exec(keyName ?? '');
-  return match ? FUNCTION_KEY_PANELS[Number(match[1]) - 1] : null;
+async function addressBook(session, state) {
+  if (!state.addresses) state.addresses = (await session.call('coden.addresses', {})).addresses ?? [];
+  return state.addresses;
 }
 
-export async function runPanel(session, name, arg) {
-  if (!name) { console.log(`Panels: ${PANEL_NAMES.join(', ')}`); return; }
-  if (DECLARED_EMPTY_PANELS[name]) { console.log(DECLARED_EMPTY_PANELS[name]); return; }
-  switch (name) {
-    case 'plan': console.log('Use `plan` to start one, or `get <runId>` for an existing run\'s state.'); return;
-    case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return;
-    case 'logs': if (!arg) { console.log('Usage: panel logs <runId>'); return; } printJson('events', await session.call('events.correlation', { correlationId: arg })); return;
-    case 'shadow': { const status = await session.call('status', {}); printJson('shadow', status.shadow); return; }
-    case 'invariants': {
-      const { invariants } = await session.call('product.invariants', {});
-      for (const entry of invariants) console.log(`  ${String(entry.id ?? '').replace(/_/g, ' ')} — ${entry.status === 'ACTIVE' ? `enforced here (${entry.enforcedBy})` : `enforced elsewhere (${entry.enforcedBy})`}`);
-      return;
-    }
-    case 'authority': { const status = await session.call('status', {}); printJson('authority', status.capability); return; }
-    case 'editor': case 'diff':
-      if (!arg) { console.log(`Usage: panel ${name} <runId>`); return; }
-      printJson(name, await session.call('workspace.get', { runId: arg }));
-      return;
-    default: console.log(`Unknown panel \`${name}\`. Panels: ${PANEL_NAMES.join(', ')}`);
+/** The browser's own ranking, in the same three ranks (app.js::matchAddresses): an address
+ *  that STARTS with what was typed beats one that merely contains it, which beats a match on
+ *  the label's prose — so `/diff` reaches the Diff panel, not the first page whose
+ *  description happens to say "difference". A leading slash is stripped so that typing the
+ *  key that opens the box does not also become the first character of the query, and so an
+ *  address pasted out of the browser's address bar finds the panel it names. Array sort is
+ *  stable, so equal ranks keep the interface's own order. */
+export function matchAddresses(addresses, query) {
+  const wanted = String(query ?? '').replace(/^\/+/, '').trim().toLowerCase();
+  if (!wanted) return [...addresses];
+  return addresses
+    .map((entry) => {
+      const address = entry.address.toLowerCase();
+      if (address.startsWith(wanted)) return { entry, rank: 0 };
+      if (address.includes(wanted)) return { entry, rank: 1 };
+      if (String(entry.label ?? '').toLowerCase().includes(wanted)) return { entry, rank: 2 };
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.rank - b.rank)
+    .map((hit) => hit.entry);
+}
+
+/** D3b, UI-054's other half: `F1`…`F9` reach the first nine BENCH addresses, in the order
+ *  the workbench itself lists them — derived from the served list, not from a mapping typed
+ *  here, so a panel added to the markup shifts the hotkeys the same way it shifts the bench.
+ *  Kept pure (it takes the list) so the mapping stays testable without a real TTY; see
+ *  `wireFunctionKeys` below for why the raw-mode plumbing itself is not. */
+export function functionKeyAddresses(addresses) {
+  return addresses.filter((entry) => entry.region === 'bench').slice(0, 9);
+}
+
+export function addressForFunctionKey(addresses, keyName) {
+  const match = /^f([1-9])$/.exec(keyName ?? '');
+  return match ? (functionKeyAddresses(addresses)[Number(match[1]) - 1] ?? null) : null;
+}
+
+/** What THIS transport can show for an address, and nothing about what any other can. Each
+ *  entry routes to the same engine call the browser's own panel is drawn from — Editor and
+ *  Diff are two angles on one run, so both reach `workspace.get`, exactly as the browser
+ *  renders both out of one in-session run. A panel absent from this table is not a panel
+ *  this file has forgotten: it is one this socket has no method for, and the code below says
+ *  so in those words rather than printing an empty result that would read as "there are
+ *  none". */
+// Each view labels its own output with the panel's label from the served list, so even the
+// heading a reader sees is the workbench's word for that panel rather than a second one
+// chosen here.
+const ADDRESS_VIEWS = {
+  'coden/bench/map': async ({ session, arg, entry }) => printJson(entry.label, await session.call('repoMap.scan', { path: arg || undefined })),
+  'coden/bench/shadow': async ({ session, entry }) => printJson(entry.label, (await session.call('status', {})).shadow),
+  'coden/bench/logs': async ({ session, arg, entry }) => printJson(entry.label, await session.call('events.correlation', { correlationId: arg })),
+  'coden/bench/editor': async ({ session, arg, entry }) => printJson(entry.label, await session.call('workspace.get', { runId: arg })),
+  'coden/bench/diff': async ({ session, arg, entry }) => printJson(entry.label, await session.call('workspace.get', { runId: arg })),
+  // The bench's Sessions panel and the browser's Sessions page are two doors onto the list
+  // this shell already has a whole verb family for. Routing them here rather than leaving
+  // them "not sourced" is the parity the phase is about: the same address, in either shell,
+  // shows the same sessions.
+  'coden/bench/sessions': async ({ session, state }) => runSessionsList(session, state, []),
+  'settings/sessions': async ({ session, state }) => runSessionsList(session, state, []),
+  'coden/agent/authority': async ({ session, entry }) => printJson(entry.label, (await session.call('status', {})).capability),
+  'coden/agent/invariants': async ({ session }) => {
+    const { invariants } = await session.call('product.invariants', {});
+    for (const entry of invariants) console.log(`  ${String(entry.id ?? '').replace(/_/g, ' ')} — ${entry.status === 'ACTIVE' ? `enforced here (${entry.enforcedBy})` : `enforced elsewhere (${entry.enforcedBy})`}`);
+  },
+};
+
+/** Addresses whose honest answer here is about the TRANSPORT, not about the product — so
+ *  they are written here rather than read off the markup. The browser's Terminal panel says
+ *  "this tab moves focus to the terminal region"; in a terminal that sentence is not true,
+ *  and reprinting it would be a copy that lies rather than a copy that drifts. */
+const TRANSPORT_NOTES = {
+  'coden/bench/terminal': 'You are in it. The workbench docks this region below the bench; here it is the whole shell.',
+  'coden/agent/plan': 'Use `plan` to start one, or `get <runId>` for an existing run\'s state.',
+  'coden-tui': 'You are in it — this program is that destination.',
+};
+
+/** The three addresses whose view needs a run named, and the usage line each gives without
+ *  one. A hotkey does not invent a runId any more than typing the bare command would. */
+const NEEDS_RUN_ID = new Set(['coden/bench/logs', 'coden/bench/editor', 'coden/bench/diff']);
+
+export async function showAddress(session, state, entry, arg) {
+  if (!entry) return;
+  const { address } = entry;
+  if (NEEDS_RUN_ID.has(address) && !arg) {
+    console.log(`Usage: /${address} <runId>   (or \`panel ${entry.panel} <runId>\`)`);
+    return;
   }
+  const view = ADDRESS_VIEWS[address];
+  if (view) { await view({ session, state, arg, entry }); return; }
+  if (TRANSPORT_NOTES[address]) { console.log(TRANSPORT_NOTES[address]); return; }
+  // The panel's own declared-empty text, served from the markup the browser renders it
+  // from. This used to be a hand-copied table in this file; six strings, four of which had
+  // already drifted from the paragraphs they claimed to quote.
+  if (entry.declaredEmpty?.length) {
+    console.log(`${entry.label} — what this panel declares:`);
+    for (const paragraph of entry.declaredEmpty) console.log(`  ${paragraph}`);
+    return;
+  }
+  // A page and a panel are different kinds of "not here", and saying so is the difference
+  // between a shell that looks broken and one that tells you where you are. A page belongs
+  // to the browser shell and always did; a PANEL is a place this shell shows in general,
+  // and this particular one is filled over routes the socket does not carry — printing an
+  // empty result for it would read as "there are none", which is a different claim.
+  console.log(entry.region
+    ? `${entry.label} (/${address}) — no source over this transport. The workbench fills this panel from routes this socket does not carry, and an empty result printed here would read as "there are none".`
+    : `${entry.label} (/${address}) — a destination of the browser shell. The address is real and means the same place there; a terminal has no view of it.`);
+}
+
+/** `/` — the jump. Empty query lists every address, grouped; anything else goes straight to
+ *  the best match, which is what typing into the browser's box and pressing Enter does. A
+ *  terminal has no highlighted row to arrow through before committing, so the runners-up are
+ *  named after the jump instead of before it: the same outcome, still correctable. */
+export async function jumpToAddress(session, state, query, arg) {
+  const addresses = await addressBook(session, state);
+  const matches = matchAddresses(addresses, query);
+  if (!String(query ?? '').replace(/^\/+/, '').trim()) {
+    let kind = null;
+    for (const entry of matches) {
+      if (entry.kind !== kind) { kind = entry.kind; console.log(`\n${kind}`); }
+      console.log(`  /${entry.address}${' '.repeat(Math.max(1, 30 - entry.address.length))}${entry.label}`);
+    }
+    console.log(`\n${matches.length} addresses. This list is not filtered by what this account may open — the browser filters its own by what the sidebar shows, which is a fact of that shell.\n`);
+    return;
+  }
+  if (!matches.length) { console.log('Nothing matches that.'); return; }
+  const [best, ...rest] = matches;
+  console.log(`→ ${best.label} (/${best.address})${rest.length ? `   [${rest.length} other match${rest.length === 1 ? '' : 'es'}: ${rest.slice(0, 3).map((entry) => `/${entry.address}`).join(', ')}${rest.length > 3 ? ', …' : ''}]` : ''}`);
+  await showAddress(session, state, best, arg);
+}
+
+/** `panel <name>` — the same jump by bare panel name, kept because it is the vocabulary the
+ *  interface documents and a shortcut must never be the only path. Resolved against the
+ *  served list, so it cannot name a panel the product does not have; a name carried by both
+ *  regions would be ambiguous and is refused rather than guessed at (none is today, and this
+ *  is what makes adding one safe). */
+export async function runPanel(session, state, name, arg) {
+  const addresses = await addressBook(session, state);
+  const panels = addresses.filter((entry) => entry.region);
+  if (!name) {
+    const hotkeys = functionKeyAddresses(addresses);
+    console.log(`Panels: ${panels.map((entry) => entry.panel).join(', ')}`);
+    console.log(`Hotkeys: ${hotkeys.map((entry, index) => `F${index + 1} ${entry.panel}`).join(', ')}`);
+    return;
+  }
+  const found = panels.filter((entry) => entry.panel === name);
+  if (!found.length) { console.log(`Unknown panel \`${name}\`. Panels: ${panels.map((entry) => entry.panel).join(', ')}`); return; }
+  if (found.length > 1) { console.log(`\`${name}\` is a panel in ${found.length} regions. Name the address: ${found.map((entry) => `/${entry.address}`).join(', ')}`); return; }
+  await showAddress(session, state, found[0], arg);
 }
 
 /** `all` means every row of the last list shown — the terminal equivalent of the browser's
@@ -344,6 +469,9 @@ async function runSessionAction(reader, session, state, action, rest) {
 export async function dispatchCommand(reader, session, line, state) {
   const [command, ...rest] = line.trim().split(/\s+/);
   const arg = rest.join(' ');
+  // `/` is a prefix, not a word: `/`, `/diff` and `/coden/bench/diff <runId>` are one
+  // mechanism, and it is checked before the switch so no verb can ever shadow an address.
+  if (command.startsWith('/')) { await jumpToAddress(session, state, command, rest[0]); return true; }
   switch (command) {
     case '': return true;
     case 'help': console.log(HELP); return true;
@@ -360,7 +488,7 @@ export async function dispatchCommand(reader, session, line, state) {
     case 'events': printJson('events', await session.call('events.correlation', { correlationId: arg })); return true;
     case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return true;
     case 'search': printJson('matches', await session.call('repoMap.search', { q: arg })); return true;
-    case 'panel': await runPanel(session, rest[0], rest[1]); return true;
+    case 'panel': await runPanel(session, state, rest[0], rest[1]); return true;
     case 'status': {
       const result = await session.call('status', {});
       printJson('status', result);
@@ -416,14 +544,21 @@ const PROMPT = 'coden-evolution> ';
  *  output above a live prompt. Not exercised by the test suite: it needs a real TTY to mean
  *  anything, the same class of gap `login()`'s own comment discloses for password masking.
  */
-function wireFunctionKeys(iface, session) {
+function wireFunctionKeys(iface, session, state) {
   if (!process.stdin.isTTY) return;
   emitKeypressEvents(process.stdin);
   process.stdin.on('keypress', (_char, key) => {
-    const name = panelForFunctionKey(key?.name);
-    if (!name) return;
-    process.stdout.write(`\n[F${FUNCTION_KEY_PANELS.indexOf(name) + 1}] panel ${name}\n`);
-    runPanel(session, name)
+    if (!/^f[1-9]$/.test(key?.name ?? '')) return;
+    // The mapping comes from the served list, so the first keypress may have to fetch it —
+    // hence the whole handler is a promise chain rather than a lookup. Every subsequent
+    // press reads the connection's cached copy.
+    addressBook(session, state)
+      .then((addresses) => {
+        const entry = addressForFunctionKey(addresses, key.name);
+        if (!entry) return null;
+        process.stdout.write(`\n[${key.name.toUpperCase()}] /${entry.address}\n`);
+        return showAddress(session, state, entry, undefined);
+      })
       .catch((error) => console.error(`Error${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`))
       .finally(() => iface.prompt(true));
   });
@@ -446,10 +581,13 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`Signed in as ${user.username} (${user.role}). Type \`help\` for commands.\n`);
-  wireFunctionKeys(iface, session);
+  console.log(`Signed in as ${user.username} (${user.role}). Type \`help\` for commands, or \`/\` for every address in the product.\n`);
 
+  // The state carries the address cache the hotkeys read, so it is created before they are
+  // wired — a handler holding a state object nothing else uses would fetch the list a second
+  // time and cache it where no typed command could see it.
   const state = createTuiState();
+  wireFunctionKeys(iface, session, state);
   for (;;) {
     const line = await question(reader, PROMPT);
     let keepGoing = true;
