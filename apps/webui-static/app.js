@@ -187,6 +187,70 @@ const LEGACY_ROUTES={
   logs:'settings/health',updates:'settings/updates',backups:'settings/storage',
   about:'settings/about',
 };
+// --- the addresses inside CodeN Evolution ----------------------------------
+// UI-030…UI-037 gave the bench eleven panels and the agent column five, and not one of
+// them had an address: they could be clicked, and never linked to, reloaded, bookmarked
+// or reached by typing. They are now two regions of one address space —
+// `#/coden/bench/diff`, `#/coden/agent/plan` — carried by the same three hash segments
+// Settings and Sessions already use rather than by a fourth invented for them.
+//
+// The panel NAMES are deliberately absent from this file. They are read from the markup's
+// own data-bench-panel/data-agent-panel attributes, because a list of destinations kept
+// by hand beside the markup is exactly how the sidebar came to advertise the TUI as "not
+// built" for as long as the TUI had been working: two copies of one fact, one of them
+// maintained. There is one copy of this fact, and it is the markup.
+//
+// An address names what you jumped TO, not the whole screen. The bench and the agent
+// column are visible at the same time, so naming one leaves the other where it was —
+// that is what a jump-to-address is. A full layout snapshot is a different mechanism.
+const CODEN_REGIONS={
+  bench:{controlAttr:'data-bench-tab',panelAttr:'data-bench-panel'},
+  agent:{controlAttr:'data-agent-menu',panelAttr:'data-agent-panel'},
+};
+const attrSelect=(attr,value)=>value===undefined?`[${attr}]`:`[${attr}="${value}"]`;
+// What a panel does the moment it opens. This used to live in the tab's click handler,
+// which made an address a second-class citizen: `#/coden/bench/closure` would have shown
+// an empty Closure panel, because only a click ever loaded it.
+const CODEN_PANEL_ON_OPEN={
+  bench:{
+    terminal:()=>$('#benchTerminal')?.scrollIntoView({block:'nearest'}),
+    closure:()=>loadClosures(),
+  },
+  agent:{},
+};
+// The panel each region ships as active in the markup — what a bare `#/coden` means.
+// Captured once at boot, before any click or address has moved one.
+const codenDefaults={};
+function codenPanelNames(region){
+  const spec=CODEN_REGIONS[region];
+  return spec?$$(`#view-coden ${attrSelect(spec.panelAttr)}`).map((node)=>node.getAttribute(spec.panelAttr)).filter(Boolean):[];
+}
+// Shows one region's panel and returns the panel actually shown: an unknown name falls
+// back to the region's own default rather than leaving every panel of that region
+// hidden — the same rule activateSection() applies to an unknown Settings section.
+function activateCodenPanel(region,requested){
+  const spec=CODEN_REGIONS[region];if(!spec)return'';
+  const wanted=codenPanelNames(region).includes(requested)?requested:codenDefaults[region];
+  if(!wanted)return'';
+  $$(`#view-coden ${attrSelect(spec.panelAttr)}`).forEach((node)=>node.classList.toggle('active',node.getAttribute(spec.panelAttr)===wanted));
+  $$(`#view-coden ${attrSelect(spec.controlAttr)}`).forEach((node)=>{
+    const active=node.getAttribute(spec.controlAttr)===wanted;
+    node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
+  });
+  return wanted;
+}
+// The two things a change of address owes an assistive technology: the document title and
+// the live region. A panel whose arrival only a sighted user can perceive is not a
+// destination, and a tab click reaching its address without passing through activate()
+// would have skipped both.
+function announceCodenPanel(region,name){
+  const spec=CODEN_REGIONS[region];if(!spec)return;
+  const panel=$(`#view-coden ${attrSelect(spec.panelAttr,name)}`);
+  const heading=panel?.querySelector('h3')?.textContent?.trim();
+  if(!heading)return;
+  document.title=`${heading} · NOESAR Evolution`;
+  const live=$('#routeAnnouncer');if(live)live.textContent=`${heading} panel`;
+}
 // What a page needs before it is worth offering at all. `role` mirrors the routes the
 // server guards with requireOwner — a literal role check, not a permission — and
 // `permission` is tested against the set the server itself reports for this account,
@@ -248,19 +312,69 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // Sections belong to Settings alone. Leaving the destination clears them, otherwise a
   // section would still be marked active behind a page that no longer contains it.
   else $$('.settings-section').forEach((node)=>node.classList.remove('active'));
+  // CodeN reads the same two segments Settings reads: the second names the region, the
+  // third the panel inside it. A bare `#/coden` names no region and moves nothing — the
+  // panels keep whatever they were showing, which is what makes the sidebar entry a way
+  // back to the work rather than a reset of it.
+  let codenAddress='';
+  if(target==='coden'&&CODEN_REGIONS[section]){
+    const shown=activateCodenPanel(section,place);
+    if(shown){codenAddress=`${section}/${shown}`;CODEN_PANEL_ON_OPEN[section]?.[shown]?.();}
+  }
   // The address keeps naming what was asked for. Rewriting it to #/access-denied would
   // make a reload land on a route that does not exist, turning a 403 into a 404.
   // The place is part of the address, so switching to the Archive and reloading lands on
   // the Archive. Only Sessions has one; every other section normalises it away.
   const wantedPlace=activeSection==='sessions'&&['archived','bin'].includes(place)?`/${place}`:'';
-  const want=known?(target==='settings'&&activeSection?`${view}/${activeSection}${wantedPlace}`:view):target;
+  let want=known?view:target;
+  if(known&&target==='settings'&&activeSection)want=`${view}/${activeSection}${wantedPlace}`;
+  // The panel stays in the address on a full activation too. Without this a deep link to
+  // `#/coden/bench/diff` would be rewritten to `#/coden` — and because that rewrite goes
+  // through `location.hash=`, it would fire hashchange and activate the page a second
+  // time: a deep link that both loses its panel and costs two rounds of fetches.
+  if(known&&codenAddress)want=`${view}/${codenAddress}`;
+  // A bare `#/coden` — the sidebar entry, or the legacy `#/tools` — names no panel. It is
+  // completed with the panel that is actually showing rather than left short, so the
+  // address always says where you are; the same normalisation Settings does when
+  // `#/settings` becomes `#/settings/sessions`.
+  let completing=false;
+  if(known&&target==='coden'&&!codenAddress){
+    const active=$(`#view-coden ${attrSelect(CODEN_REGIONS.bench.panelAttr)}.active`);
+    const name=active?.getAttribute(CODEN_REGIONS.bench.panelAttr);
+    if(name){want=`${view}/bench/${name}`;completing=true;}
+  }
+  // A panel that was asked for and does not exist is corrected the same way. Without this
+  // the screen falls back to the default while the ADDRESS keeps naming the panel nobody
+  // has — the bar saying one thing and the page showing another, which is the confusion the
+  // fallback existed to prevent.
+  if(known&&codenAddress&&place&&codenAddress!==`${section}/${place}`)completing=true;
   const currentHash=(location.hash||'').replace(/^#\/?/,'').split('?')[0].trim().toLowerCase();
-  if(updateHash&&currentHash!==want)location.hash=`#/${want}`;
+  // Two acts, and only one of them is a navigation.
+  //
+  // Completing or correcting an address names the SAME place properly, so it is written with
+  // replaceState: that fires nothing, leaves no redundant entry in the Back button's way,
+  // and does not re-enter this function. `location.hash=` would fire hashchange and activate
+  // the page a second time — and this page's loader refetches the bench on every activation.
+  // (Settings normalises through the hash and pays exactly that price; having no view loader,
+  // what it pays is a class flip rather than a round of requests.)
+  //
+  // A correction is deliberately NOT gated on `updateHash`. That flag stops this function
+  // from navigating on behalf of a caller who did not ask it to, and `goToHash` passes it as
+  // false for everything except a legacy redirect — so gating the correction on it made the
+  // correction dead code for every address a person can actually type. Found by driving a
+  // real browser; eleven structural tests could not see it.
+  if(currentHash!==want){
+    if(completing)history.replaceState(null,'',`#/${want}`);
+    else if(updateHash)location.hash=`#/${want}`;
+  }
   const scope=activeSection?document.querySelector(`.settings-section[data-section="${activeSection}"]`):document.querySelector(`#view-${target}`);
   const heading=(scope&&scope.querySelector('h1,h2.page-title'))||document.querySelector(`#view-${target} h1`);
   document.title=heading?`${heading.textContent.trim()} · NOESAR Evolution`:'NOESAR Evolution';
   // Announce the change for assistive technology, which does not observe a class flip.
   const live=$('#routeAnnouncer');if(live)live.textContent=`${heading?heading.textContent.trim():target} view`;
+  // An address that names a panel is announced as that panel, not as the page containing
+  // it: "Diff panel", not "CodeN Evolution view" for eleven different addresses.
+  if(codenAddress)announceCodenPanel(section,codenAddress.split('/')[1]);
   applyPanelRank(view);
   if(permitted&&typeof VIEW_LOADERS[view]==='function')VIEW_LOADERS[view]();
   // A section this account may not open must not fetch. Running the loader anyway fired
@@ -441,7 +555,16 @@ function applyPanelRank(view){
   }
   $$('[data-panel-rank]').forEach((button)=>button.setAttribute('aria-pressed',String(button.dataset.panelRank===rank)));
   const title=$('#contextPanelTitle');
-  if(title){const nav=$$('.nav').find((node)=>node.dataset.view===view);title.textContent=nav?`Context · ${nav.textContent.replace('not built','').trim()}`:'Context';}
+  // The label comes from the nav entry's own label span, not from its whole textContent
+  // with the strings it might also carry deleted afterwards: that was a workaround for one
+  // literal flag ("not built"), and it would have gone on silently pasting the next one
+  // into a panel title. `.nav-count` and `.nav-flag` are the two spans that are not the
+  // label, the same distinction the icons-only sidebar rank already makes in CSS.
+  if(title){
+    const nav=$$('.nav').find((node)=>node.dataset.view===view);
+    const label=nav?.querySelector('span:not(.nav-count):not(.nav-flag)')?.textContent?.trim();
+    title.textContent=label?`Context · ${label}`:'Context';
+  }
   if(rank==='floating')applyPanelPosition(view);
 }
 function setPanelRank(rank){
@@ -2960,29 +3083,39 @@ function renderTerminals(){
     $('#terminalCommandInput')?.focus();
   });
 }
+// Goes to a panel's address. A click and an address are now the same act, which is the
+// whole point: the switcher no longer owns the panel state, it just names where to go.
+//
+// pushState rather than `location.hash=`: assigning the hash fires hashchange, and this
+// page's own loader (VIEW_LOADERS.coden) refetches the bench on every activation — so
+// every tab click would have cost a round of requests. pushState is silent, and the Back
+// button still fires hashchange when it traverses between two different hashes, so the
+// history stays real without a fetch per click.
+function goToCodenPanel(region,name){
+  const shown=activateCodenPanel(region,name);
+  if(!shown)return;
+  CODEN_PANEL_ON_OPEN[region]?.[shown]?.();
+  const want=`#/coden/${region}/${shown}`;
+  if(location.hash!==want)history.pushState(null,'',want);
+  announceCodenPanel(region,shown);
+}
 function initBench(){
-  $$('[data-bench-tab]').forEach((tab)=>tab.addEventListener('click',()=>{
-    const name=tab.dataset.benchTab;
-    $$('[data-bench-tab]').forEach((node)=>{
-      const active=node===tab;
-      node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
-    });
-    $$('[data-bench-panel]').forEach((panel)=>panel.classList.toggle('active',panel.dataset.benchPanel===name));
-    if(name==='terminal')$('#benchTerminal').scrollIntoView({block:'nearest'});
-    if(name==='closure')loadClosures();
-  }));
-  // The agent column menu: one panel visible at a time instead of all five stacked, so
-  // the column's height stops being the sum of every panel and the gap below the
-  // (much shorter) bench disappears. Same pattern as the bench tabs above, a second
-  // instance rather than a shared one because the two switch different panel sets.
-  $$('[data-agent-menu]').forEach((item)=>item.addEventListener('click',()=>{
-    const name=item.dataset.agentMenu;
-    $$('[data-agent-menu]').forEach((node)=>{
-      const active=node===item;
-      node.classList.toggle('active',active);node.setAttribute('aria-selected',String(active));
-    });
-    $$('[data-agent-panel]').forEach((panel)=>panel.classList.toggle('active',panel.dataset.agentPanel===name));
-  }));
+  // The markup's own initially-active panel becomes the region's default, read before any
+  // click or address has moved one — so the default cannot drift from what ships.
+  Object.entries(CODEN_REGIONS).forEach(([region,spec])=>{
+    const active=$(`#view-coden ${attrSelect(spec.panelAttr)}.active`);
+    codenDefaults[region]=active?active.getAttribute(spec.panelAttr):'';
+  });
+  // Both switchers, one wiring. The bench tabs and the agent column menu (one panel
+  // visible at a time instead of five stacked, so the column's height stops being the sum
+  // of every panel) used to be two near-identical handlers that each owned their own
+  // panel toggling; they are two regions of one address space now, and the difference
+  // between them is a pair of attribute names.
+  Object.entries(CODEN_REGIONS).forEach(([region,spec])=>{
+    $$(`#view-coden ${attrSelect(spec.controlAttr)}`).forEach((control)=>control.addEventListener('click',()=>{
+      goToCodenPanel(region,control.getAttribute(spec.controlAttr));
+    }));
+  });
   $('#terminalAdd')?.addEventListener('click',()=>{
     terminals.items.push({id:terminals.next,name:`Terminal ${terminals.next}`,history:[]});
     terminals.active=terminals.next;terminals.next+=1;renderTerminals();

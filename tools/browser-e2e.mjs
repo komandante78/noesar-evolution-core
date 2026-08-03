@@ -304,11 +304,16 @@ try {
   // restructure this check's name still remembers.
   check('the sidebar carries thirteen destinations, not twenty-three',
     shell.destinations.length === 13, `${shell.destinations.length}: ${shell.destinations.join(' ')}`);
-  // Fourteen again as of D-0277: Modules rejoined the menu, this time as a one-click
-  // Owner-catalog installer over the real D-0274/D-0275 activation framework — D-0273's
-  // ad-hoc version was retired in D-0276, same section id, different backend.
-  check('Settings is one destination holding fourteen sections',
-    shell.sections.length === 14 && shell.menu.length === 14,
+  // Fourteen as of D-0277: Modules rejoined the menu, this time as a one-click Owner-catalog
+  // installer over the real D-0274/D-0275 activation framework — D-0273's ad-hoc version was
+  // retired in D-0276, same section id, different backend.
+  //
+  // FIFTEEN since D-0291 (s305): "Remote targets" joined as a section of its own. This check
+  // had been asserting fourteen ever since and was simply not being run — the count and the
+  // name below are corrected here rather than in the phase that added the section, because
+  // this is the run that surfaced it.
+  check('Settings is one destination holding fifteen sections',
+    shell.sections.length === 15 && shell.menu.length === 15,
     `menu=${shell.menu.length} sections=${shell.sections.length}`);
   check('every Settings menu entry has a section behind it and every section an entry',
     shell.menu.every((key) => shell.sections.includes(key)) && shell.sections.every((key) => shell.menu.includes(key)),
@@ -339,7 +344,12 @@ try {
         notFound: document.querySelector('#view-not-found')?.classList.contains('active') === true,
       };
     }, to);
-    if (!landed.onScreen || landed.notFound || landed.hash !== `#/${to}`) {
+    // The address may be the target's, or the target's own completion of it: `#/tools`
+    // redirects to `#/coden`, which then names the panel it is showing (`#/coden/bench/…`).
+    // Accepting a prefix and not merely any hash keeps the check honest — landing on the
+    // wrong destination still fails, and so does landing on `#/codenope`.
+    const arrived = landed.hash === `#/${to}` || landed.hash.startsWith(`#/${to}/`);
+    if (!landed.onScreen || landed.notFound || !arrived) {
       redirects.push({ from, to, ...landed });
     }
   }
@@ -501,6 +511,117 @@ try {
     invariants.enforcedHere === 4 && invariants.elsewhere === 3, JSON.stringify(invariants));
   check('every rendered invariant names where it is enforced',
     invariants.allNameALayer, JSON.stringify(invariants));
+
+  at('coden-addresses');
+  // --- the workbench's panels are addresses -------------------------------
+  // Eleven bench panels and five agent panels could be clicked and nothing else: not
+  // linked to, not reloaded onto, not typed. They carry addresses of their own now
+  // (`#/coden/bench/diff`, `#/coden/agent/authority`), and the checks below are the ones
+  // reading the code cannot make.
+  //
+  // Every assertion is on GEOMETRY, not on classList: `.bench-panel.active` inside a
+  // display:none ancestor is active and has no box, which is the exact shape of the
+  // defect webui-markup-structure.test.mjs exists for. A panel is on screen when it
+  // occupies pixels.
+  resetObservations();
+  const panelBox = (selector) => page.evaluate((sel) => {
+    const node = document.querySelector(sel);
+    if (!node) return { found: false, height: 0 };
+    const box = node.getBoundingClientRect();
+    return { found: true, height: box.height, width: box.width };
+  }, selector);
+  const apiCalls = () => page.evaluate(() => performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/api/v1/')).length);
+
+  // A COLD deep link, which needs the reload to be one: page.goto() to a URL differing only
+  // in its hash is a same-document navigation — it fires hashchange on the page already
+  // loaded and never re-runs boot. The first version of this check did exactly that and
+  // called it a deep link, which would have left the case that matters (open the address in
+  // a new tab) untested while reporting PASS.
+  await page.goto(`${BASE}/#/coden/bench/diff`, { waitUntil: 'networkidle2' });
+  await page.reload({ waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  const diffPanel = await panelBox('[data-bench-panel="diff"]');
+  const shadowPanel = await panelBox('[data-bench-panel="shadow"]');
+  check('a cold deep link to a bench panel puts that panel on screen',
+    diffPanel.height > 0 && shadowPanel.height === 0, JSON.stringify({ diffPanel, shadowPanel }));
+  const deepLinked = await page.evaluate(() => ({
+    hash: location.hash,
+    title: document.title,
+    tabSelected: document.querySelector('[data-bench-tab="diff"]')?.getAttribute('aria-selected'),
+    announced: document.querySelector('#routeAnnouncer')?.textContent ?? '',
+  }));
+  check('the deep-linked address survives activation instead of being rewritten to #/coden',
+    deepLinked.hash === '#/coden/bench/diff', JSON.stringify(deepLinked));
+  check('the panel names itself in the title, the tab and the live region',
+    /^Diff · /.test(deepLinked.title) && deepLinked.tabSelected === 'true' && /Diff/.test(deepLinked.announced),
+    JSON.stringify(deepLinked));
+
+  // An address names what you jumped TO, not a snapshot of the screen: the agent column and
+  // the bench are visible together, so naming one must leave the other where it was. Coming
+  // from the deep link above, "where it was" is Diff — asserting the bench's markup DEFAULT
+  // here would have been asserting that the jump resets the bench, which is the opposite of
+  // the property being claimed.
+  await page.goto(`${BASE}/#/coden/agent/authority`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
+  const authorityPanel = await panelBox('[data-agent-panel="authority"]');
+  const benchUntouched = await panelBox('[data-bench-panel="diff"]');
+  check('an agent-column address moves the agent column and leaves the bench where it was',
+    authorityPanel.height > 0 && benchUntouched.height > 0, JSON.stringify({ authorityPanel, benchUntouched }));
+
+  // An address typed wrong must land somewhere real and then say where it landed — the
+  // rule an unknown Settings section already follows.
+  await page.goto(`${BASE}/#/coden/bench/no-such-panel`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#view-coden.active', { timeout: 15000 });
+  const fallback = await page.evaluate(() => ({
+    hash: location.hash,
+    active: document.querySelector('[data-bench-panel].active')?.getAttribute('data-bench-panel'),
+  }));
+  check('an unknown panel name falls back to the default and normalises the address',
+    fallback.active === 'shadow' && fallback.hash === '#/coden/bench/shadow', JSON.stringify(fallback));
+
+  // Why the tab uses pushState instead of assigning location.hash: assigning it fires
+  // hashchange, which re-runs VIEW_LOADERS.coden — a round of requests per tab click.
+  // Measured, because it is invisible on screen either way.
+  const callsBefore = await apiCalls();
+  await clickOrExplain(page, '[data-bench-tab="map"]');
+  await page.waitForSelector('[data-bench-panel="map"].active', { timeout: 15000 });
+  const afterClick = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
+  const callsAfter = await apiCalls();
+  check('clicking a tab moves the address', afterClick.hash === '#/coden/bench/map', JSON.stringify(afterClick));
+  check('clicking a tab does not refetch the page it is inside',
+    callsAfter === callsBefore, `${callsBefore} → ${callsAfter} requests to /api/v1/`);
+
+  // A bare `#/coden` is completed with the panel that is SHOWING, not with a constant —
+  // which is why this runs while Map is open rather than while the markup default is. It is
+  // completed in place, so the Back button collects no entry for an address that never went
+  // anywhere.
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#view-coden.active', { timeout: 15000 });
+  const completed = await page.evaluate(() => ({
+    hash: location.hash,
+    active: document.querySelector('[data-bench-panel].active')?.getAttribute('data-bench-panel'),
+  }));
+  check('a bare #/coden completes to the panel it is showing, not to the default',
+    completed.hash === '#/coden/bench/map' && completed.active === 'map', JSON.stringify(completed));
+
+  // pushState with no way back would leave the address ahead of the screen: the Back button
+  // moving the bar and nothing else. Two clicks, so the entry being returned to is one this
+  // check made itself rather than whatever the steps above happened to leave behind.
+  await clickOrExplain(page, '[data-bench-tab="diff"]');
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  await clickOrExplain(page, '[data-bench-tab="tests"]');
+  await page.waitForSelector('[data-bench-panel="tests"].active', { timeout: 15000 });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  const wentBack = await page.evaluate(() => ({
+    hash: location.hash,
+    active: document.querySelector('[data-bench-panel].active')?.getAttribute('data-bench-panel'),
+  }));
+  check('the Back button returns to the previous panel, not just to the previous address',
+    wentBack.active === 'diff' && wentBack.hash === '#/coden/bench/diff', JSON.stringify(wentBack));
+
+  const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
+  check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
 
   at('workflows');
   // --- WP-2: a workflow, its approval gate, the strip, and the decision ----

@@ -61,7 +61,13 @@
         <button class="nav active" data-view="home">⌂ <span>Home</span></button>
         <button class="nav" data-view="chat">◗ <span>Chat</span></button>
         <button class="nav" data-view="coden">⌁ <span>CodeN Evolution</span></button>
-        <button class="nav" data-view="coden-tui">▤ <span>CodeN Evolution TUI</span><span class="nav-flag">not built</span></button>
+        <!-- No "not built" flag. The destination's own page carries SESSION PROTOCOL BUILT
+             and it is right: tools/tui-client.mjs is a real client, src/session-protocol.mjs
+             a real server, and bin/codev-child.mjs is listening on tui.sock right now. The
+             flag was a second copy of a fact the code had long moved past — maintained by
+             hand, and stale for as long as the TUI had been working. `.nav-flag` itself
+             stays in the stylesheet: the mechanism is honest, this use of it was not. -->
+        <button class="nav" data-view="coden-tui">▤ <span>CodeN Evolution TUI</span></button>
         <button class="nav" data-view="projects">▢ <span>Projects</span></button>
         <button class="nav" data-view="documents">▥ <span>Documents</span></button>
         <button class="nav" data-view="knowledge">◈ <span>Knowledge</span></button>
@@ -366,7 +372,7 @@
           <p>One program, two shells, joined to the <b>same live session</b> — not a second client with its own state (<code>D-0230</code>). Every command reaches the exact same running <code>workspace-actions</code>/<code>repo-map</code>/event-ledger instances the workbench's own Plan and Terminal panels use.</p>
           <p>A browser page cannot spawn a real operating-system shell, so this destination does not simulate one — it names the real program and how to reach it:</p>
           <pre>node tools/tui-client.mjs [socketPath]</pre>
-          <p>Run from a real terminal on this host (or over SSH into it). <code>socketPath</code> defaults to <code>$NOESAR_TUI_SOCKET_PATH</code>, then the product's own <code>tui.sock</code> inside its workspace. The client signs in with the same account and MFA as the WebUI, then accepts: <code>plan</code>, <code>simulate</code>, <code>approve</code>, <code>reject</code>, <code>restore</code>, <code>get</code>, <code>events</code>, <code>map</code>, <code>search</code>, <code>status</code>.</p>
+          <p>Run from a real terminal on this host (or over SSH into it). <code>socketPath</code> defaults to <code>$NOESAR_TUI_SOCKET_PATH</code>, then the product's own <code>tui.sock</code> inside its workspace. The client signs in with the same account and MFA as the WebUI, then accepts: <code class="cmd">plan</code>, <code class="cmd">simulate</code>, <code class="cmd">approve</code>, <code class="cmd">reject</code>, <code class="cmd">restore</code>, <code class="cmd">get</code>, <code class="cmd">events</code>, <code class="cmd">map</code>, <code class="cmd">search</code>, <code class="cmd">status</code>, <code class="cmd">panel &lt;name&gt;</code> (a workbench panel as text, <kbd>F1</kbd>…<kbd>F9</kbd> for the first nine) and the <code class="cmd">sessions</code> / <code class="cmd">session-show</code> / <code class="cmd">session-archive</code> / <code class="cmd">session-delete</code> / <code class="cmd">session-restore</code> family.</p>
           <p class="hint">What this is not: a way to run an arbitrary shell command. Every one of those verbs is one of the product's own already-guarded operations — <code>workspace-actions.mjs</code> refuses EXECUTE and DELETE permanently and on purpose, on both shells alike.</p>
         </section>
       </section>
@@ -532,16 +538,22 @@
           <table class="keyboard-map">
             <thead><tr><th scope="col">Action</th><th scope="col">Keyboard</th><th scope="col">Terminal shell</th></tr></thead>
             <tbody>
-              <tr><td>Move through the list · open</td><td><kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Enter</kbd></td><td><code>/sessions</code> · <code>/session &lt;n&gt;</code></td></tr>
-              <tr><td>Archive · delete</td><td><kbd>a</kbd> · <kbd>Del</kbd></td><td><code>/archive &lt;n&gt;</code> · <code>/delete &lt;n&gt;</code></td></tr>
-              <tr><td>Select · select the page</td><td><kbd>Space</kbd> · <kbd>Ctrl</kbd>+<kbd>A</kbd></td><td><code>/select &lt;n…&gt;</code> · <code>/select --page</code></td></tr>
-              <tr><td>Move between pages</td><td><kbd>→</kbd> <kbd>←</kbd></td><td><code>/archive --page &lt;n&gt;</code></td></tr>
-              <tr><td>Restore</td><td><kbd>r</kbd></td><td><code>/restore &lt;n&gt;</code></td></tr>
+              <!-- The commands in this column are the ones tools/tui-client.mjs actually
+                   answers to, checked against its own dispatch. They used to be written as
+                   `/sessions`, `/archive <n>`, `/select <n…>` — a slash-prefixed vocabulary
+                   the shell has never had, taught to people who would type it and be told
+                   "unknown command". A selection is not a step of its own there: every verb
+                   takes `<n…|all>` directly. -->
+              <tr><td>Move through the list · open</td><td><kbd>↑</kbd> <kbd>↓</kbd> · <kbd>Enter</kbd></td><td><code class="cmd">sessions</code> · <code class="cmd">session-show &lt;n&gt;</code></td></tr>
+              <tr><td>Archive · delete</td><td><kbd>a</kbd> · <kbd>Del</kbd></td><td><code class="cmd">session-archive &lt;n&gt;</code> · <code class="cmd">session-delete &lt;n&gt;</code></td></tr>
+              <tr><td>Select · select the page</td><td><kbd>Space</kbd> · <kbd>Ctrl</kbd>+<kbd>A</kbd></td><td><code class="cmd">session-archive &lt;n…&gt;</code> · <code class="cmd">session-archive all</code></td></tr>
+              <tr><td>Move between pages</td><td><kbd>→</kbd> <kbd>←</kbd></td><td><code class="cmd">sessions active &lt;n&gt;</code></td></tr>
+              <tr><td>Restore</td><td><kbd>r</kbd></td><td><code class="cmd">session-restore &lt;n&gt;</code></td></tr>
               <tr><td>Confirm · cancel</td><td><kbd>Enter</kbd> · <kbd>Esc</kbd></td><td><code>[y/N]</code></td></tr>
             </tbody>
           </table>
           <p class="hint"><b><kbd>Del</kbd> opens the confirmation; it never deletes on its own</b> (<code>UI-051</code>). In a right-to-left language the pager keys follow the language: <kbd>←</kbd> is forward.</p>
-          <p class="hint" id="sessionsTuiGap">The terminal column above states the intended command surface. <b>It is not reachable yet</b>: the CodeN Evolution TUI is ranked as a destination and declared not built, so <code>UI-050</code> is met on the keyboard and open in the shell.</p>
+          <p class="hint" id="sessionsTuiGap">The terminal column is reachable: <code>node tools/tui-client.mjs</code> answers to every verb in it, against the same live session as this page. <code>UI-050</code> is met on both surfaces. What the shell does not have is the selection step — the keyboard selects and then acts, the shell's verbs take <code>&lt;n…|all&gt;</code> and act at once; a confirmation is still asked either way.</p>
         </section>
       </section>
       <section class="settings-section" id="section-appearance" data-section="appearance">

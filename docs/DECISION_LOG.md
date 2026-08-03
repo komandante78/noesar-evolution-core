@@ -5517,3 +5517,82 @@ characteristic, out of scope for this fix. **Not yet deployed**: the running pro
 container (`noesar-evolution:passkey-webauthn-test`, from `D-0295`) still carries the
 unpatched decoder — redeploying needs its own authorization, the same pattern as every
 deploy this session.
+
+---
+
+**Addendum to `D-0296`, 2026-08-03 (s314).** The paragraph above says the fix was "not yet
+deployed" and names `noesar-evolution:passkey-webauthn-test` as what production carries.
+That is no longer true and is left standing rather than rewritten, per this log's habit of
+correcting by note. Measured at the start of s314, from the live daemon and not from a
+document: `noesar-evolution` is `Up 12 hours (healthy)` on
+**`noesar-evolution:passkey-webauthn-dos-fix`** — the patched image. (`CLAUDE.md`'s own
+container table still named `passkey-webauthn-test` too; corrected in the same session.)
+
+## D-0297 · CodeN Evolution, phase 1 of 5: the workbench's sixteen panels become addresses, and three labels stop lying — 2026-08-03
+
+**Context.** The Owner asked in s311 for graphic work on CodeN Evolution, scoped in s313 to
+the `#/coden` route inside this product (not CodeN Ultra), and accepted a design there: the
+Navigator column, the bench tabs and the agent-column menu — three separate navigation
+widgets the Owner found to be "too many menus" — are to be replaced by a single
+jump-to-address mechanism on `/`, identical in the WebUI and the TUI. s314 begins the
+implementation as a five-phase programme, each phase gated on the Owner's authorization.
+This is phase 1: **nothing can be jumped to before it has an address.**
+
+**Correction to the s313 premise, measured before writing code.** s313 recorded the TUI as
+"not built" and estimated it as a new client plus a new protocol. It is neither. It exists
+and it runs: `tools/tui-client.mjs` (474 lines, zero dependencies), the server half in
+`src/session-protocol.mjs`, and the externally reachable socket owned by the separate
+`codev` process (`bin/codev-child.mjs`, `ARCH-001`). Driven live during this session, it
+answered `Connected — protocol noesar-tui/1` and then refused a bad credential. The
+estimate for the TUI phase drops accordingly; the label was the only thing missing.
+
+**Decision.** The eleven bench panels and five agent panels are two regions of one address
+space — `#/coden/bench/diff`, `#/coden/agent/plan` — carried by the same three hash
+segments Settings and Sessions already use. Three properties are load-bearing:
+
+1. **The panel names are not written in the router.** They are read from the markup's own
+   `data-bench-panel`/`data-agent-panel` attributes. A hand-kept list beside the markup is
+   precisely how the sidebar came to advertise the TUI as "not built" for as long as the
+   TUI had been working: two copies of one fact, one of them maintained.
+2. **A tab click moves the address with `history.pushState`, not `location.hash=`.**
+   Assigning the hash fires `hashchange`, which re-runs `VIEW_LOADERS.coden` — a round of
+   requests per tab click. `pushState` is silent, and the Back button still fires
+   `hashchange` when it traverses two different hashes, so the history stays real. Measured
+   in the browser: 19 → 19 requests to `/api/v1/` across a tab click.
+3. **Completing or correcting an address is not a navigation.** A bare `#/coden` is
+   completed with the panel actually showing, and a panel name nobody has falls back to the
+   default *and takes the address with it*; both are written with `replaceState`, which
+   fires nothing and leaves no redundant entry in the Back button's way.
+
+**Three false claims removed, all of them the interface contradicting its own code:** the
+`not built` flag (the destination's own page says `SESSION PROTOCOL BUILT`, correctly); the
+workaround in `app.js` that deleted the string `not built` out of a panel title, which
+would have gone on silently absorbing the next stale flag; and the Sessions keyboard map,
+which taught a slash-prefixed terminal vocabulary (`/sessions`, `/archive <n>`,
+`/select <n…>`) that `tui-client.mjs` has never answered to. The last one also mattered
+forward: `/` is about to become the jump-to-address key, and a documented command starting
+with `/` would have given one key two meanings.
+
+**A defect in this phase's own code, found by the browser and by nothing else.** The
+address correction was gated on `activate()`'s `updateHash` flag — which `goToHash()`
+passes as `false` for everything except a legacy redirect. The correction was therefore
+dead code for every address a person can type: `#/coden` never completed, and a misspelt
+panel fell back on screen while the address went on naming a panel that does not exist.
+Eleven structural tests passed throughout. Corrections are now ungated; only navigation
+still honours the flag.
+
+**Verification.** `npm test` 1566/1567 (0 fail, 1 pre-existing skip: the sandbox binary is
+not built for this host), of which 11 new in
+`test/coden-addressable-panels.test.mjs`; ESLint 299 files, 0/0/0. Each new assertion was
+self-tested by reintroducing the defect it guards — seven mutations, seven failures, one
+per mutation, sources restored byte-identically. Browser acceptance on a disposable probe:
+**351/351**, including a cold deep link (a reload, because `page.goto` to a hash-only
+difference never reloads the document — the first version of the check called a
+same-document hash change a deep link and would have reported PASS on an untested case),
+the request count across a tab click, and the Back button. Two failures that run surfaced
+were pre-existing and are fixed here rather than in the phase that caused them: the
+Settings section count had been asserted as fourteen since `D-0291` made it fifteen, and
+the legacy-redirect check compared hashes exactly, which a completed address no longer
+matches.
+
+**Not deployed.** The running container is untouched; this is source only.
