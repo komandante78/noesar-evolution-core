@@ -33,6 +33,7 @@
       <form id="loginMfaForm" class="auth-form hidden">
         <label>Authenticator code<input id="loginTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
         <button class="primary" type="submit">Sign in</button>
+        <button class="text-button" type="button" id="loginPasskeyButton">Use a passkey instead</button>
       </form>
       <p class="auth-error" id="authError" role="alert"></p>
     </section>
@@ -696,6 +697,23 @@
               </div>
             </div>
           </div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h2>Passkeys</h2><span id="passkeyCount" class="badge badge-off">0</span></div>
+          <p class="hint">A passkey works instead of an authenticator code when signing in. Adding or removing one still needs your password and a live authenticator code.</p>
+          <div id="passkeyList" class="card-list empty-state">Loading…</div>
+          <form class="form-stack" id="passkeyAddForm">
+            <label>Name this passkey<input id="passkeyName" placeholder="e.g. YubiKey, laptop Touch ID" maxlength="60" required></label>
+            <label>Current password<input id="passkeyPassword" type="password" autocomplete="current-password" required></label>
+            <label>Authenticator code<input id="passkeyTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <button class="primary" type="submit">Add passkey</button>
+          </form>
+          <form class="form-stack hidden" id="passkeyRemoveForm">
+            <p class="hint">Removing "<span id="passkeyRemoveName"></span>"</p>
+            <label>Current password<input id="passkeyRemovePassword" type="password" autocomplete="current-password" required></label>
+            <label>Authenticator code<input id="passkeyRemoveTotp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+            <div class="inline-form"><button class="primary" type="submit">Confirm removal</button><button type="button" id="passkeyRemoveCancel">Cancel</button></div>
+          </form>
         </section>
         <section class="panel"><div class="panel-title"><h2>Active sessions</h2><button class="text-button" id="revokeOthers" type="button">Sign out every other session</button></div><div id="sessionList" class="card-list empty-state">Loading…</div></section>
       </section>

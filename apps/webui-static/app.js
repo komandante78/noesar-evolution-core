@@ -72,8 +72,26 @@ let csrfToken=readCsrfCookie();let currentUser=null;let setupChallenge='';let lo
 // server that enforces it.
 let currentPermissions=[];
 let mfaReplacement=null;
+let passkeyRemoveId=null;
 const state={projects:[],conversations:[],branches:[],memories:[],artifacts:[],sources:[],providers:[],providerCatalog:[],tools:[],agents:[],agentRuns:[],workspaceActionRuns:[],activeProjectId:null,activeConversationId:null,activeBranchId:null};
 const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+// WebAuthn moves binary (challenge, credential IDs, signatures) as ArrayBuffer on the
+// browser side and base64url over the wire — there is no npm dependency in this
+// project to do that conversion, so it is done by hand, once, here.
+function base64urlToBytes(value){
+  const normalized=String(value??'').replace(/-/g,'+').replace(/_/g,'/');
+  const padded=normalized+'='.repeat((4-(normalized.length%4))%4);
+  const binary=atob(padded);
+  const bytes=new Uint8Array(binary.length);
+  for(let index=0;index<binary.length;index+=1)bytes[index]=binary.charCodeAt(index);
+  return bytes;
+}
+function bytesToBase64url(buffer){
+  const bytes=new Uint8Array(buffer);
+  let binary='';
+  for(const byte of bytes)binary+=String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
 function setStatus(message,error=false){$('#statusMessage').textContent=message;$('#statusMessage').classList.toggle('error',error);}
 
 // --- user-visible feedback -------------------------------------------------
@@ -495,6 +513,27 @@ $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
 $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login/mfa',{method:'POST',body:JSON.stringify({challenge:loginChallenge,totpCode:$('#loginTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
+$('#loginPasskeyButton').addEventListener('click',()=>withBusy($('#loginPasskeyButton'),async()=>{
+  try{
+    const options=await api('/api/v1/auth/login/passkey/options',{method:'POST',body:JSON.stringify({challenge:loginChallenge})});
+    const credential=await navigator.credentials.get({publicKey:{
+      challenge:base64urlToBytes(options.challenge),
+      rpId:options.rpId,
+      userVerification:options.userVerification,
+      timeout:options.timeoutMs,
+      allowCredentials:(options.allowCredentials??[]).map((entry)=>({type:entry.type,id:base64urlToBytes(entry.id)})),
+    }});
+    const result=await api('/api/v1/auth/login/passkey',{method:'POST',body:JSON.stringify({
+      challenge:options.challenge,
+      credentialId:bytesToBase64url(credential.rawId),
+      clientDataJSON:bytesToBase64url(credential.response.clientDataJSON),
+      authenticatorData:bytesToBase64url(credential.response.authenticatorData),
+      signature:bytesToBase64url(credential.response.signature),
+    })});
+    csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];
+    await enterApplication();
+  }catch(error){authError(error.message==='The operation either timed out or was not allowed.'?'Passkey sign-in was cancelled.':error.message);}
+},{busyLabel:'Waiting for passkey…'}));
 $('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
 // One entry point for every in-app link, so a link written as "settings/audit" and a link
 // written with a name that has since been demoted both land in the same place. In-page
@@ -989,6 +1028,24 @@ function renderSessions(sessions){
     }catch(error){reportError(error,'Sign out session');}
   })));
 }
+function renderPasskeys(passkeys){
+  $('#passkeyCount').textContent=passkeys.length;
+  const host=$('#passkeyList');
+  if(!passkeys.length){host.className='card-list empty-state';host.textContent='No passkeys added yet.';return;}
+  host.className='card-list';
+  host.innerHTML=passkeys.map((passkey)=>`<article class="entity-card">
+      <h3>${escapeHtml(passkey.name)}</h3>
+      <p>Added ${escapeHtml(isoToLocal(passkey.createdAt))}</p>
+      <small>Last used ${passkey.lastUsedAt?escapeHtml(isoToLocal(passkey.lastUsedAt)):'never'}</small>
+      <div class="inline-form"><button data-remove-passkey="${escapeHtml(passkey.id)}" data-passkey-name="${escapeHtml(passkey.name)}">Remove</button></div>
+    </article>`).join('');
+  $$('[data-remove-passkey]').forEach((button)=>button.addEventListener('click',()=>{
+    passkeyRemoveId=button.dataset.removePasskey;
+    $('#passkeyRemoveName').textContent=button.dataset.passkeyName;
+    $('#passkeyRemoveForm').classList.remove('hidden');
+    $('#passkeyRemoveForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }));
+}
 async function loadSecurity(){
   const overview=$('#securityOverview');
   await panel(overview,'account security',async()=>{
@@ -1002,10 +1059,11 @@ async function loadSecurity(){
       ['Active sessions',data.sessionCount],
       ['Failed sign-ins',data.failedLoginCount],
       ['Account',data.locked?`locked until ${isoToLocal(data.lockedUntil)}`:'active',data.locked?'red':'green'],
-      ['Passkeys',data.passkeySupported?'supported':'not supported in this build'],
+      ['Passkeys',(data.passkeys??[]).length],
     ]);
     badge($('#securityMfaBadge'),data.mfaEnabled?'MFA enrolled':'MFA missing',data.mfaEnabled?'on':'danger');
     renderSessions(data.sessions??[]);
+    renderPasskeys(data.passkeys??[]);
   });
 }
 function showRecoveryCodes(node,codes,heading){
@@ -1113,6 +1171,59 @@ $('#revokeOthers').addEventListener('click',(event)=>withBusy(event.currentTarge
     await loadSecurity();
   }catch(error){reportError(error,'Sign out other sessions');}
 }));
+$('#passkeyAddForm').addEventListener('submit',(event)=>{
+  event.preventDefault();
+  const submit=event.currentTarget.querySelector('button');
+  return withBusy(submit,async()=>{
+    try{
+      const options=await api('/api/v1/auth/passkeys/register',{method:'POST',body:JSON.stringify({
+        password:$('#passkeyPassword').value,totpCode:$('#passkeyTotp').value,
+      })});
+      const credential=await navigator.credentials.create({publicKey:{
+        challenge:base64urlToBytes(options.challenge),
+        rp:{id:options.rpId,name:options.rpName},
+        user:{id:base64urlToBytes(options.userHandle),name:options.username,displayName:options.displayName},
+        pubKeyCredParams:options.pubKeyCredParams,
+        attestation:options.attestation,
+        authenticatorSelection:{userVerification:options.userVerification},
+        excludeCredentials:(options.excludeCredentials??[]).map((entry)=>({type:entry.type,id:base64urlToBytes(entry.id)})),
+        timeout:60000,
+      }});
+      const result=await api('/api/v1/auth/passkeys/register/confirm',{method:'POST',body:JSON.stringify({
+        challenge:options.challenge,
+        credentialId:bytesToBase64url(credential.rawId),
+        clientDataJSON:bytesToBase64url(credential.response.clientDataJSON),
+        attestationObject:bytesToBase64url(credential.response.attestationObject),
+        name:$('#passkeyName').value,
+      })});
+      event.currentTarget.reset();
+      toast(`Passkey "${result.passkey.name}" added.`,{kind:'success'});
+      await loadSecurity();
+    }catch(error){reportError(error,'Add passkey');}
+  });
+});
+$('#passkeyRemoveForm').addEventListener('submit',(event)=>{
+  event.preventDefault();
+  const submit=event.currentTarget.querySelector('button');
+  return withBusy(submit,async()=>{
+    if(!passkeyRemoveId)return toast('Choose a passkey to remove first.',{kind:'error'});
+    try{
+      await api('/api/v1/auth/passkeys/remove',{method:'POST',body:JSON.stringify({
+        password:$('#passkeyRemovePassword').value,totpCode:$('#passkeyRemoveTotp').value,credentialId:passkeyRemoveId,
+      })});
+      event.currentTarget.reset();
+      event.currentTarget.classList.add('hidden');
+      passkeyRemoveId=null;
+      toast('Passkey removed.',{kind:'success'});
+      await loadSecurity();
+    }catch(error){reportError(error,'Remove passkey');}
+  });
+});
+$('#passkeyRemoveCancel').addEventListener('click',()=>{
+  passkeyRemoveId=null;
+  $('#passkeyRemoveForm').reset();
+  $('#passkeyRemoveForm').classList.add('hidden');
+});
 
 // --- users -----------------------------------------------------------------
 async function loadUsers(){

@@ -14,6 +14,7 @@ import {
   verifyTotpStep,
 } from './auth-crypto.mjs';
 import { AuthStore } from './auth-store.mjs';
+import { COSE_ALG_ES256, verifyAssertion, verifyRegistration } from './webauthn.mjs';
 
 const AI_USER = ['workspace.read','workspace.write','provider.use','memory.manage','artifact.manage','knowledge.manage'];
 const AI_ADMIN = [...AI_USER,'provider.manage','agent.manage','data.manage'];
@@ -328,6 +329,64 @@ export class AuthService {
     return this.createSession(user, { mfa:true });
   }
 
+  /**
+   * Stage 2 of login, passkey branch. The password step (`beginLogin`) already ran and
+   * left the SAME `loginChallenges` record that `completeLogin` consumes for TOTP — a
+   * passkey assertion is bound to that one challenge rather than a second, parallel
+   * one, so a passkey response cannot be replayed onto a different login attempt.
+   */
+  passkeyLoginOptions({ challenge, rpId }) {
+    const state = this.store.read();
+    const digest = tokenDigest(String(challenge ?? ''));
+    const item = state.loginChallenges.find((candidate) => candidate.challengeDigest === digest);
+    if (!item || item.expiresAt < Date.now()) throw Object.assign(new Error('Invalid or expired login challenge.'), { status:401 });
+    const user = state.users.find((candidate) => candidate.id === item.userId);
+    if (!user || !(user.passkeys ?? []).length) throw Object.assign(new Error('No passkey is registered for this account.'), { status:404 });
+    return {
+      rpId,
+      challenge,
+      userVerification: 'required',
+      timeoutMs: 60_000,
+      allowCredentials: user.passkeys.map((entry) => ({ type:'public-key', id:entry.id })),
+    };
+  }
+
+  completeLoginWithPasskey({ challenge, credentialId, clientDataJSON, authenticatorData, signature, ip, rpId, origin }) {
+    const state = this.store.read();
+    const digest = tokenDigest(String(challenge ?? ''));
+    const item = state.loginChallenges.find((candidate) => candidate.challengeDigest === digest);
+    if (!item || item.expiresAt < Date.now() || item.ip !== ip) throw Object.assign(new Error('Invalid or expired login challenge.'), { status:401 });
+    const user = state.users.find((candidate) => candidate.id === item.userId);
+    if (!user) throw Object.assign(new Error('User no longer exists.'), { status:401 });
+    const passkey = (user.passkeys ?? []).find((entry) => entry.id === credentialId);
+    if (!passkey) {
+      this.#recordFailure(ip, user.username);
+      this.ledger.append({ actor:user.id, action:'auth.passkey-login-failed', result:'denied', details:{ reason:'unknown-credential' } });
+      throw Object.assign(new Error('Unrecognized passkey.'), { status:401 });
+    }
+    let verified;
+    try {
+      verified = verifyAssertion({
+        clientDataJSON, authenticatorData, signature,
+        expectedChallenge:challenge, expectedOrigin:origin, rpId,
+        publicKeyJwk:passkey.publicKeyJwk, lastSignCount:Number(passkey.signCount ?? 0),
+      });
+    } catch (error) {
+      this.#recordFailure(ip, user.username);
+      this.ledger.append({ actor:user.id, action:'auth.passkey-login-failed', result:'denied', details:{ reason:error.message } });
+      throw Object.assign(new Error('Passkey verification failed.'), { status:401 });
+    }
+    this.store.update((next) => {
+      next.loginChallenges = next.loginChallenges.filter((candidate) => candidate.id !== item.id);
+      const target = next.users.find((candidate) => candidate.id === user.id);
+      const targetPasskey = target.passkeys.find((entry) => entry.id === credentialId);
+      if (targetPasskey) { targetPasskey.signCount = verified.signCount; targetPasskey.lastUsedAt = nowIso(); }
+      target.failedLoginCount = 0;
+      target.lockedUntil = 0;
+    });
+    return this.createSession(user, { mfa:true });
+  }
+
   createSession(user, { mfa=false } = {}) {
     const token = randomToken(32);
     const csrf = randomToken(24);
@@ -468,6 +527,103 @@ export class AuthService {
     return user;
   }
 
+  // --- passkeys ---------------------------------------------------------------------
+  //
+  // Enrolling or removing a passkey is gated by #assertPresence — password AND a live
+  // TOTP code — exactly like replacing the authenticator. TOTP is mandatory at setup
+  // for every MFA-required role and is never removed by adding a passkey, so that
+  // stronger, already-established proof is always available to manage what a passkey
+  // can do. A passkey is therefore additive at login (TOTP or passkey, the user's
+  // choice) and never the sole gate on its own management.
+
+  /** Step 1: prove presence, then hand the browser what it needs to call `create()`. */
+  beginPasskeyRegistration({ userId, password, totpCode, rpId }) {
+    const user = this.#requireUser(userId);
+    const step = this.#assertPresence(user, password, totpCode, 'auth.passkey-register');
+    const challenge = randomToken(24);
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.lastTotpStep = step;
+      target.pendingPasskey = {
+        challengeDigest: tokenDigest(challenge),
+        createdAt: Date.now(), expiresAt: Date.now() + 5 * 60_000,
+      };
+    });
+    this.ledger.append({ actor:userId, action:'auth.passkey-register-started', result:'success' });
+    return {
+      challenge,
+      rpId,
+      rpName: 'NOESAR Evolution',
+      userHandle: Buffer.from(userId, 'utf8').toString('base64url'),
+      username: user.username,
+      displayName: user.displayName,
+      pubKeyCredParams: [{ type:'public-key', alg:COSE_ALG_ES256 }],
+      attestation: 'none',
+      userVerification: 'required',
+      excludeCredentials: (user.passkeys ?? []).map((item) => ({ type:'public-key', id:item.id })),
+      expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+    };
+  }
+
+  /** Step 2: verify what `create()` returned and store the credential. */
+  confirmPasskeyRegistration({ userId, challenge, credentialId, clientDataJSON, attestationObject, name, rpId, origin }) {
+    const user = this.#requireUser(userId);
+    const pending = user.pendingPasskey;
+    if (!pending || pending.expiresAt < Date.now()) throw Object.assign(new Error('Passkey registration expired. Start again.'), { status:410 });
+    if (tokenDigest(String(challenge ?? '')) !== pending.challengeDigest) throw Object.assign(new Error('Invalid passkey registration challenge.'), { status:403 });
+    let verified;
+    try {
+      verified = verifyRegistration({ clientDataJSON, attestationObject, expectedChallenge:challenge, expectedOrigin:origin, rpId });
+    } catch (error) {
+      this.ledger.append({ actor:userId, action:'auth.passkey-register-denied', result:'denied', details:{ reason:error.message } });
+      throw Object.assign(new Error('Passkey registration could not be verified.'), { status:403 });
+    }
+    if (verified.credentialId !== credentialId) {
+      throw Object.assign(new Error('Credential ID does not match the attested data.'), { status:403 });
+    }
+    if ((user.passkeys ?? []).some((item) => item.id === verified.credentialId)) {
+      throw Object.assign(new Error('This passkey is already registered.'), { status:409 });
+    }
+    const record = {
+      id: verified.credentialId,
+      publicKeyJwk: verified.publicKeyJwk,
+      signCount: verified.signCount,
+      name: String(name ?? 'Passkey').trim().slice(0, 60) || 'Passkey',
+      createdAt: nowIso(),
+      lastUsedAt: null,
+    };
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.passkeys = [...(target.passkeys ?? []), record];
+      delete target.pendingPasskey;
+    });
+    this.ledger.append({ actor:userId, action:'auth.passkey-registered', result:'success', details:{ credentialId:record.id } });
+    return { registered:true, passkey:{ id:record.id, name:record.name, createdAt:record.createdAt } };
+  }
+
+  listPasskeys(userId) {
+    const user = this.#requireUser(userId);
+    return (user.passkeys ?? []).map((item) => ({
+      id:item.id, name:item.name, createdAt:item.createdAt, lastUsedAt:item.lastUsedAt,
+    }));
+  }
+
+  removePasskey({ userId, password, totpCode, credentialId }) {
+    const user = this.#requireUser(userId);
+    const step = this.#assertPresence(user, password, totpCode, 'auth.passkey-remove');
+    let removed = false;
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === userId);
+      target.lastTotpStep = step;
+      const before = (target.passkeys ?? []).length;
+      target.passkeys = (target.passkeys ?? []).filter((item) => item.id !== credentialId);
+      removed = target.passkeys.length < before;
+    });
+    if (!removed) throw Object.assign(new Error('That passkey no longer exists.'), { status:404 });
+    this.ledger.append({ actor:userId, action:'auth.passkey-removed', result:'success', details:{ credentialId } });
+    return { removed:true };
+  }
+
   securityOverview(userId, currentSessionId = null) {
     const state = this.store.read();
     const user = state.users.find((item) => item.id === userId);
@@ -494,7 +650,10 @@ export class AuthService {
       locked:Number(user.lockedUntil ?? 0) > now,
       lockedUntil:Number(user.lockedUntil ?? 0) > now ? new Date(user.lockedUntil).toISOString() : null,
       failedLoginCount:Number(user.failedLoginCount ?? 0),
-      passkeySupported:false,
+      passkeySupported:true,
+      passkeys:(user.passkeys ?? []).map((item) => ({
+        id:item.id, name:item.name, createdAt:item.createdAt, lastUsedAt:item.lastUsedAt,
+      })),
       passwordUpdatedAt:user.passwordUpdatedAt ? new Date(user.passwordUpdatedAt).toISOString() : null,
     };
   }

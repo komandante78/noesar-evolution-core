@@ -64,7 +64,8 @@ describe('security overview', () => {
     assert.equal(overview.sessionCount, 1);
     assert.equal(overview.sessions[0].current, true);
     assert.equal(overview.locked, false);
-    assert.equal(overview.passkeySupported, false, 'passkeys are not implemented and must not be claimed');
+    assert.equal(overview.passkeySupported, true, 'passkeys are implemented as of the WebAuthn ES256/none-attestation build');
+    assert.deepEqual(overview.passkeys, [], 'a fresh account has no passkeys enrolled yet');
     // The whole serialised overview must not carry secret material.
     const serialised = JSON.stringify(overview);
     assert.ok(!/[A-Z2-7]{32}/.test(serialised), 'a base32 TOTP secret must never appear in the overview');

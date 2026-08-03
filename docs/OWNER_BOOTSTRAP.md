@@ -149,5 +149,14 @@ published beyond that:
 
 1. terminate TLS at a reverse proxy (examples ship in `deployment/reverse-proxy/`);
 2. set `NOESAR_SECURE_COOKIES=true`;
-3. add the external hostname to `NOESAR_ALLOWED_HOSTS`;
-4. treat passkey/WebAuthn as still **missing** — TOTP is what exists today.
+3. add the external hostname to `NOESAR_ALLOWED_HOSTS`.
+
+## MFA choices at enrolment
+
+TOTP enrolment (step 6 above) cannot be skipped for `owner`/`admin` — that is what
+actually satisfies the mandatory-MFA rule. A passkey (WebAuthn, ES256, `attestation:
+'none'`) can additionally be registered from Settings > Security once signed in
+(`D-0295`), and from then on it works in place of a TOTP code at step 2 of login. It is
+never a substitute for TOTP at first enrolment: registering a passkey itself requires
+proving presence with the password and a live TOTP code, the same way replacing the
+authenticator does.

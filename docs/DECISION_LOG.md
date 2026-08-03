@@ -5295,3 +5295,156 @@ runtime path, so their absence from the old image was never a regression. Not fi
 deploy, carried over unchanged: the stray
 `services/reference-control-plane/src/server.mjs.bak_pre_uid_separation_20260802T000554Z` in
 the image.
+
+## D-0295 · Passkey (WebAuthn) as an alternative to TOTP in the second login factor — 2026-08-03
+
+**Decision.** A passkey now satisfies stage 2 of login exactly where a TOTP code did —
+Owner's choice: `TOTP oppure passkey`, not passwordless and not an additional factor
+stacked on top of both. Scoped narrowly to what the Owner authorised: attestation `none`
+(no attestation certificate chain), algorithm ES256 (P-256) only, and the ceremony bound to
+the SAME `loginChallenge` the password step already minted — a passkey assertion cannot be
+replayed onto a different login attempt. Registering or removing a passkey still requires
+`#assertPresence` (password AND a live TOTP code), never a passkey alone: TOTP stays
+mandatory at enrolment for `owner`/`admin` and is never dropped by adding a passkey, so the
+stronger, already-established factor always exists to govern what a passkey can do.
+
+**Why.** Thread 2, open since s297, scoped in s310 (three product questions: role of the
+passkey, attestation depth, algorithm set) and answered by the Owner in s311. NOESAR
+EVOLUTION carries zero npm dependencies by design — there is no `@simplewebauthn/server`
+here. `webauthn.mjs` is a from-scratch CBOR (RFC 8949, definite-length subset only — CTAP2
+authenticators never emit indefinite-length items) and COSE→JWK decoder, plus
+`verifyRegistration`/`verifyAssertion` on `node:crypto`. WebAuthn ES256 assertion signatures
+are ASN.1 DER-encoded ECDSA, which is `crypto.verify`'s default encoding, so no re-encoding
+step was needed. A signature counter that fails to increase is refused as a clone signal,
+*except* when it is `0` on both sides — most platform authenticators backed by a secure
+enclave do not implement one at all, re-verifying the user by biometric/PIN on every use
+instead, and that case is not comparable.
+
+**Rejected.** A separate WebAuthn challenge parallel to the login's own: reusing the
+existing `loginChallenges` record ties the two ceremonies together for free and rules out a
+class of replay this project would otherwise have had to defend by hand. Extending
+`#assertPresence` itself to accept a passkey in place of TOTP for step-up actions
+(`changePassword`, `beginMfaReplacement`, `regenerateRecoveryCodes`): out of the scope the
+Owner authorised — "sostituisce il TOTP nel secondo fattore di login" names login, not every
+place TOTP is checked, and TOTP remaining permanently enrolled for MFA-required roles made
+this a real choice, not a gap.
+
+**Evidence.** Unit: **1553/1554** (`test/webauthn.test.mjs`, new, 33 tests — RFC 8949
+Appendix A CBOR vectors plus WebAuthn fixtures built with a CBOR *encoder* that exists only
+in the test, since production code only ever needs to decode what a browser sends; covers
+registration/assertion rejection paths: wrong challenge, wrong origin, non-`none`
+attestation, non-ES256 algorithm, RP ID mismatch, missing user verification, stale/replayed
+signature counter, tampered signature, wrong public key, ceremony-type confusion). The one
+pre-existing skip is unchanged. Built (`oci/Dockerfile`, unmodified) as
+`noesar-evolution:passkey-webauthn-test`, healthy in ~7 s. **Proven live in isolation**
+first — separate container, separate port, separate workspace, never connected to
+production — with a Node script playing the browser's role: a genuine P-256 keypair signs
+real CBOR/COSE structures over real HTTP against the running image. 13/13 checks: owner
+setup, password login, passkey registration, **login on the passkey alone with no TOTP
+code**, authenticated session from that login, **a replayed signature counter refused
+(`401`)**, a correctly incremented counter on the same login attempt accepted, passkey
+removal, and login options correctly refusing after removal (`404`, no passkey left).
+
+**Reversal cost.** Was none while undeployed. Now that it is deployed: low and local, same
+shape as `D-0294` — the previous container is kept stopped, not removed, and the previous
+image tag is unaffected.
+
+**Status.** **Built, proven live and deployed on Owner authorization**, all three steps
+separately authorised in the same session (s311). Container recreated from
+`noesar-evolution:single-lineage-rebuild` with `HostConfig`/env/healthcheck read back out of
+the running container: same fixed IP `172.22.0.5` on `noesar-evolution-net`, uid
+`10001:10001`, `--read-only`, `--tmpfs /run:mode=1777` and `--tmpfs /tmp`, `--cap-drop ALL`,
+both port bindings (`8100`, `8089`), both workspace/shadows binds, `restart=unless-stopped`.
+Healthy in **~7 s**. Verified live: `/livez` and `/healthz` both `200` on
+`192.168.178.100:8100`, the owner account's existing data intact on the persistent volume,
+`atomd`/`debug-evolution`/`debug-evolution-runner` unaffected. A smoke test against the real
+production route with a bogus login challenge returned a clean `401`, not a `500` — the real
+owner's credentials were not available in this session, so a full passkey login against
+production data was not attempted. Previous container kept stopped as
+`noesar-evolution-old-single-lineage-rebuild` for rollback.
+
+## D-0296 · Thread 4 (Block G) scoped: Owner Bootstrap re-verified, internal security review found and fixed a real DoS in the new WebAuthn code — 2026-08-03
+
+**Decision.** Block G, open since s297 and never scoped in detail, is defined in
+`docs/SESSION_HANDOFF.md` as "Owner Bootstrap+pentest" — the last block of the Owner's
+7-part plan, marked "obbligatoria, non automatizzabile" from the start. Scoped with the
+Owner via `AskUserQuestion` rather than guessed at, because its two halves are not the
+same kind of work: Owner Bootstrap is a documentation/re-verification task, an
+independent penetration test is not something this assistant can perform — "independent"
+means an external party by definition. The Owner selected three of four options: (1)
+update and re-verify Owner Bootstrap, (2) an internal security self-assessment (explicitly
+not a substitute for group 6 of `PRODUCTION_READINESS_V050.md`), (3) bookkeeping to reflect
+the real current state.
+
+**Owner Bootstrap.** `docs/OWNER_BOOTSTRAP.md` corrected — it told operators to "treat
+passkey/WebAuthn as still missing", false since `D-0295`. Replaced with the real MFA
+relationship: TOTP enrolment is still mandatory and unskippable at first setup; a passkey
+can be added afterward and from then on works in place of a TOTP code at login, but
+registering or removing one still requires proving presence with password+TOTP. The whole
+flow was then re-verified live end to end on a disposable probe container (the running
+production container was never touched): token file `0600`/`10001:10001` with a
+fingerprint matching the startup log, setup refused both without a token and with a wrong
+one, both refusals landing in the audit ledger as `auth.setup-denied` (not just the
+operational log — a distinct file, checked directly), only the token PATH ever in the
+container environment, a second setup attempt refused `409` once initialized, password
+alone answering `mfaRequired:true` with no session cookie issued, a wrong TOTP code
+refused, a correct one logging in `role:owner`/`mfaEnabled:true` with
+`HttpOnly; SameSite=Strict` cookies (confirmed from raw response headers, not inferred),
+and an owner-only route answering `200` with the session and `401` without one. Every
+claim in the document's "What was verified" section reconfirmed against the current image,
+not carried forward from memory.
+
+**Internal security review — one real defect found and fixed.** `/security-review` could
+not run as a skill: this session's working directory is pinned to `/mnt/cachec/NOESAR`,
+one level above the git repository, and does not persist a `cd` between tool calls, so the
+skill's own git-repository check always failed. Reviewed the pending, uncommitted WebAuthn
+diff manually instead, with the same adversarial standard. **Found and fixed**: the CBOR
+decoder (`webauthn.mjs`) had no upper bound on declared array/map length beyond the
+buffer's own size, and it is reached from `POST /api/v1/auth/login/passkey` —
+unauthenticated by necessity, since it IS the login step. Any account holder can
+self-register a passkey (an ordinary, intended action) and thereby learn their own real
+`credentialId`; logging out and POSTing that `credentialId` with an oversized, malformed
+`authenticatorData` reaches the decoder before any signature check. Measured before the
+fix: a 20 MB payload (well inside the existing 64 MB body cap) blocked the single Node
+event loop for **656 ms**, scaling linearly (100 K items = 8.5 ms, 1 M = 47.5 ms, 5 M =
+180.7 ms, 20 M = 655.8 ms) — because `noesar-supervisord` runs the api peer as one process
+(`ARCH-001`), that block stalls every concurrent user, not just the caller. A sustained
+sequence of such requests is a full pre-auth denial of service against the whole instance.
+**Fixed** with an 8 KiB cap on every WebAuthn binary field (`clientDataJSON`,
+`attestationObject`, `authenticatorData`, `signature`), checked before any CBOR/JSON
+parsing — real payloads for `attestation:'none'`/ES256 are under 300 bytes, so the cap
+costs nothing legitimate. Re-measured after the fix: the same 20 MB payload now rejects in
+**12.9 ms** (Node's native base64url decode of the oversized string, unavoidable, but ~50×
+less blocking time and no longer a practical attack at any realistic rate). Two regression
+tests added asserting rejection happens in under 50 ms. This is evidence toward
+`PRODUCTION_READINESS_V050.md` group 6, not a substitute for it — a self-review is not an
+independent one.
+
+**Bookkeeping.** `docs/PRODUCTION_READINESS_V050.md` now states plainly that group 6
+(independent penetration test) is the one gate this project cannot close by writing code.
+
+**Rejected.** Attempting to simulate an "independent" pentest myself: the word means an
+external party, and pretending otherwise would misrepresent the gate as satisfied when it
+is not — the same category of dishonesty this project has refused before (`classify`/
+`confidence`/`expect` mislabeling model opinion as tool-verified evidence, `D-0285`).
+
+**Evidence.** Unit: **1555/1556** (`webauthn.test.mjs` 35/35, +2 net — the size-cap
+regressions — the one pre-existing skip unchanged). Timing measured directly with
+`process.hrtime.bigint()`, not estimated.
+
+**Status.** Owner Bootstrap doc corrected and re-verified live (probe container removed
+after). Security defect found, fixed, tested, and **built** (`noesar-evolution:passkey-
+webauthn-dos-fix`, healthy). Proven live over real HTTP on a disposable probe, not just
+the unit import: registered a genuine passkey, then sent the same 20 MB hostile
+`authenticatorData` to the real running `POST /api/v1/auth/login/passkey` — **251.8 ms**,
+down from 656 ms measured at the decoder level pre-fix. Isolated where that residual comes
+from before calling it done: the identical oversized payload sent to a wholly unrelated
+route that never touches `webauthn.mjs` (`POST /api/v1/auth/login`) cost **152.9 ms** —
+confirming the remainder is this product's existing, shared 64 MB body-read/JSON.parse
+cost on every POST route, not a WebAuthn-specific residual. The fix closes exactly the
+part that was newly, unboundedly attacker-controlled (CBOR decode cost scaling with
+attacker-chosen structure); the small fixed remainder is a pre-existing, whole-product
+characteristic, out of scope for this fix. **Not yet deployed**: the running production
+container (`noesar-evolution:passkey-webauthn-test`, from `D-0295`) still carries the
+unpatched decoder — redeploying needs its own authorization, the same pattern as every
+deploy this session.

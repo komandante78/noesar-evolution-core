@@ -703,7 +703,8 @@ metrics.setGauge('noesar_data_plane_up', 1);
 // mutates is refused in safe mode: the point of safe mode is to preserve
 // evidence, not to keep working badly.
 const SAFE_MODE_WRITE_ALLOWLIST = new Set([
-  '/api/v1/auth/login', '/api/v1/auth/login/mfa', '/api/v1/auth/logout', '/api/v1/auth/reauth',
+  '/api/v1/auth/login', '/api/v1/auth/login/mfa', '/api/v1/auth/login/passkey/options',
+  '/api/v1/auth/login/passkey', '/api/v1/auth/logout', '/api/v1/auth/reauth',
   '/api/v1/debug/enable', '/api/v1/debug/disable',
   '/api/v1/watchdog/safe-mode/leave', '/api/v1/updates/rollback',
 ]);
@@ -722,6 +723,15 @@ const TUI_METHOD_PERMISSION = {
 };
 
 function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
+
+// WebAuthn's RP ID is a bare hostname, never scheme or port — and unlike a fixed
+// product, NOESAR EVOLUTION is self-hosted under whatever host the Owner reaches it
+// on, so it is read from the SAME request the ceremony belongs to rather than a
+// config constant. `origin` reuses the `x-forwarded-proto`-aware pattern already used
+// for SCIM base URLs elsewhere in this file, for the same reason: behind a reverse
+// proxy the socket only knows http.
+function webauthnRpId(req) { return String(req.headers.host ?? '').split(':')[0].toLowerCase(); }
+function webauthnOrigin(req) { return `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`; }
 
 // Repository understanding is workspace-scoped: `subpath` may name a directory inside the
 // product workspace, never an absolute host path or a `..` escape out of it. Returns null on
@@ -1015,6 +1025,19 @@ const requestListener = async (req, res) => {
       const value = auth.completeLogin({ ...(await body(req)), ip:clientIp(req) });
       return sessionResponse(res, value);
     }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/passkey/options') {
+      const payload = await body(req);
+      return json(res, 200, auth.passkeyLoginOptions({ challenge:payload.challenge, rpId:webauthnRpId(req) }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/passkey') {
+      const payload = await body(req);
+      const value = auth.completeLoginWithPasskey({
+        challenge:payload.challenge, credentialId:payload.credentialId,
+        clientDataJSON:payload.clientDataJSON, authenticatorData:payload.authenticatorData, signature:payload.signature,
+        ip:clientIp(req), rpId:webauthnRpId(req), origin:webauthnOrigin(req),
+      });
+      return sessionResponse(res, value);
+    }
     if (req.method === 'GET' && url.pathname === '/api/v1/auth/me') {
       const authenticated = requireSession(req, res);
       if (!authenticated) return;
@@ -1071,6 +1094,37 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res);
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       return json(res, 200, auth.cancelMfaReplacement(authenticated.user.id));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/auth/passkeys') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated) return;
+      return json(res, 200, { passkeys:auth.listPasskeys(authenticated.user.id) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/passkeys/register') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.beginPasskeyRegistration({
+        userId:authenticated.user.id, password:payload.password, totpCode:payload.totpCode, rpId:webauthnRpId(req),
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/passkeys/register/confirm') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 201, auth.confirmPasskeyRegistration({
+        userId:authenticated.user.id, challenge:payload.challenge, credentialId:payload.credentialId,
+        clientDataJSON:payload.clientDataJSON, attestationObject:payload.attestationObject, name:payload.name,
+        rpId:webauthnRpId(req), origin:webauthnOrigin(req),
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/passkeys/remove') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const payload = await body(req);
+      return json(res, 200, auth.removePasskey({
+        userId:authenticated.user.id, password:payload.password, totpCode:payload.totpCode, credentialId:payload.credentialId,
+      }));
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/recovery-codes') {
       const authenticated = requireSession(req, res);
