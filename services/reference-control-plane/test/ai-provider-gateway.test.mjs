@@ -24,7 +24,7 @@ test('local OpenAI-compatible provider completes and streams without external co
     const p=f.gateway.create({type:'local-openai-compatible',name:'Local',baseUrl:`http://127.0.0.1:${port}/v1`,defaultModel:'local-model'});
     f.gateway.update(p.id,{enabled:true});
     const complete=await f.gateway.complete(p.id,{messages:[{role:'user',content:'hi'}]});assert.equal(complete.text,'complete answer');
-    let text='';for await(const delta of f.gateway.stream(p.id,{messages:[{role:'user',content:'hi'}]}))text+=delta;assert.equal(text,'Hello world');
+    let text='';for await(const item of f.gateway.stream(p.id,{messages:[{role:'user',content:'hi'}]}))text+=item.delta;assert.equal(text,'Hello world');
   }finally{rmSync(f.dir,{recursive:true,force:true});await close(server);}
 });
 

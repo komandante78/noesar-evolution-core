@@ -38,6 +38,12 @@ function upstream() {
         res.writeHead(200, { 'content-type': 'text/event-stream' });
         res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: 'alpha ' } }] })}\n\n`);
         res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: 'beta' } }] })}\n\n`);
+        // Real OpenAI-compatible servers only send this frame when the request asked for
+        // it (`stream_options.include_usage`) — asserted by the dedicated usage test below,
+        // which is why this mock checks the flag instead of always sending the frame.
+        if (payload.stream_options?.include_usage) {
+          res.write(`data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 } })}\n\n`);
+        }
         res.write('data: [DONE]\n\n');
         return res.end();
       }
@@ -87,8 +93,38 @@ test('stream yields every delta to completion', async () => {
   const f = fixture(port);
   try {
     const deltas = [];
-    for await (const delta of f.gateway.stream(f.profileId, { messages, actorId: 'tester' })) deltas.push(delta);
+    for await (const item of f.gateway.stream(f.profileId, { messages, actorId: 'tester' })) deltas.push(item.delta);
     assert.deepEqual(deltas.join(''), 'alpha beta');
+  } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+// s317: the addendum's CodeN top bar needs real token/cost figures, not invented ones — this
+// is the streaming path every conversation actually uses, so usage has to survive it. Text
+// chunks in between carry no usage (asserted, not just implied by the mock): a reader that
+// overwrote a running total with null on every ordinary delta would silently lose it again.
+test('stream surfaces usage only on the frame that carries it, not on every delta', async () => {
+  const { server, port } = await upstream();
+  const f = fixture(port);
+  try {
+    const items = [];
+    for await (const item of f.gateway.stream(f.profileId, { messages, actorId: 'tester' })) items.push(item);
+    const withUsage = items.filter((item) => item.usage);
+    assert.equal(withUsage.length, 1, 'exactly one frame should carry usage');
+    assert.deepEqual(withUsage[0].usage, { promptTokens: 12, completionTokens: 3, totalTokens: 15 });
+    assert.ok(items.some((item) => item.delta && !item.usage), 'an ordinary text delta must not carry a stale usage value');
+  } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+test('streamWithFallback forwards usage on the event it tags with the provider', async () => {
+  const { server, port } = await upstream();
+  const f = fixture(port);
+  try {
+    const events = [];
+    for await (const event of f.gateway.streamWithFallback([f.profileId], { messages, actorId: 'tester' })) events.push(event);
+    const withUsage = events.find((event) => event.usage);
+    assert.ok(withUsage, 'streamWithFallback must not drop the usage frame');
+    assert.equal(withUsage.providerId, f.profileId);
+    assert.deepEqual(withUsage.usage, { promptTokens: 12, completionTokens: 3, totalTokens: 15 });
   } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
 });
 
@@ -170,6 +206,23 @@ test('catalog, list, get, route, credential and consent all complete', async () 
     const cleared = f.gateway.clearCredential(f.profileId);
     assert.equal(cleared.credentialConfigured, false);
     assert.ok(f.gateway.ensureDefaults().length >= 1);
+  } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
+});
+
+// s317: contextWindow is declared by the operator, never probed — a provider style has no
+// endpoint that returns its own context length. null means "unknown" and must stay null
+// on anything that isn't a real positive number, not silently become 0 or NaN.
+test('contextWindow defaults to unknown and only accepts a real positive number', async () => {
+  const { server, port } = await upstream();
+  const f = fixture(port);
+  try {
+    assert.equal(f.gateway.get(f.profileId).contextWindow, null, 'unset at creation, since none was given');
+    const withWindow = f.gateway.update(f.profileId, { contextWindow: 32768 });
+    assert.equal(withWindow.contextWindow, 32768);
+    for (const invalid of [0, -5, 'not-a-number', null]) {
+      const cleared = f.gateway.update(f.profileId, { contextWindow: invalid });
+      assert.equal(cleared.contextWindow, null, `${JSON.stringify(invalid)} must not become a false context window`);
+    }
   } finally { server.close(); rmSync(f.dir, { recursive: true, force: true }); }
 });
 

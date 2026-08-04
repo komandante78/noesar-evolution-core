@@ -65,14 +65,17 @@ export class ChatOrchestrator{
     const runId=randomUUID();const controller=new AbortController();this.active.set(runId,{controller,actorId,conversationId});
     res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});
     sse(res,'run',{runId,status:'started',providerRoute});
-    let answer='';let selectedProvider=null;
+    let answer='';let selectedProvider=null;let usage=null;
     try{
+      // `usage` is only ever populated on the frame that carries it (see provider-gateway's
+      // usageFrom()) — most deltas in a stream have none, so the running value is kept
+      // rather than overwritten with a null on every ordinary text chunk.
       for await(const event of this.providers.streamWithFallback(providerRoute,{actorId,projectId:built.inspection.conversation.projectId,model,messages:built.messages,tools:built.tools,dataClasses:built.dataClasses},{signal:controller.signal})){
-        selectedProvider=event.providerId;answer+=event.delta;sse(res,'delta',{runId,providerId:event.providerId,text:event.delta});
+        selectedProvider=event.providerId;answer+=event.delta;if(event.usage)usage=event.usage;sse(res,'delta',{runId,providerId:event.providerId,text:event.delta});
       }
       const citations=this.#citations(built.evidence);
-      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:answer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode},citations});
-      sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
+      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:answer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage},citations});
+      sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations,usage});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
     }catch(error){const stopped=error.name==='AbortError'||controller.signal.aborted;sse(res,stopped?'stopped':'error',{runId,error:stopped?'Generation stopped.':error.message});this.ledger?.append({actor:actorId,action:'chat.complete',result:stopped?'stopped':'error',details:{runId,message:error.message}});
     }finally{this.active.delete(runId);res.end();}
   }

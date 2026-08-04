@@ -451,7 +451,22 @@ function goToHash(){
   // reload would keep resolving the old name and the redirect would be invisible.
   activate(view,{updateHash:Boolean(redirected),section,place});
 }
+// Card D (s313/s317 addendum): a cold load at a real path (typed in the browser bar, or a
+// bookmarked/shared link — server.mjs now answers it with this same shell instead of 404)
+// has to land on the panel the in-page `/` box would open for the same address. Turn the
+// path into the hash this router already knows how to read, before goToHash() ever runs.
+// replaceState, not `location.hash=`: the latter fires hashchange and would activate the
+// page a second time, the exact double-fetch this file's own correction logic elsewhere
+// (activate()) already goes out of its way to avoid. Only on a hash-less load — once a
+// hash exists it stays the single source of truth for every other function here.
+function bootstrapPathIntoHash(){
+  if(location.hash)return;
+  const path=location.pathname.replace(/^\/+/,'');
+  if(!path)return;
+  history.replaceState(null,'',`/#/${path}${location.search}`);
+}
 function initRouter(){
+  bootstrapPathIntoHash();
   window.addEventListener('hashchange',goToHash);
   goToHash();
   initSidebarRank();
@@ -1742,8 +1757,14 @@ function renderModulesNav(modules){
     `<a class="nav" href="${escapeHtml(item.externalUrl)}" target="_blank" rel="noopener noreferrer">▣ <span>${escapeHtml(item.name)} ↗</span></a>`
   ).join('');
 }
-function renderOwnerModules(modules){
-  const list=$('#ownerModulesList');
+// Card C (s313/s317 addendum): CodeN's own Tools/Plugins panel became a second window onto
+// this SAME catalogue — "non un elenco nuovo da inventare" — so the render logic is shared
+// and only the target container differs. Binding is scoped to the container just rendered
+// (`list.querySelectorAll`, not the page-wide `$$`): calling this twice, once per container,
+// over the page-wide selector would rebind a second listener onto whichever container
+// rendered first, and every click there would fire the action twice.
+function renderModuleCatalog(containerId,modules){
+  const list=$(containerId);
   if(!list)return;
   list.className=modules.length?'card-list module-grid':'card-list empty-state';
   list.innerHTML=modules.map((item)=>{
@@ -1778,9 +1799,11 @@ function renderOwnerModules(modules){
       </div>
     </article>`;
   }).join('')||'No Owner modules known.';
-  $$('[data-module-action]').forEach((button)=>button.addEventListener('click',()=>runModuleAction(button.dataset.moduleAction,button.dataset.moduleId,button)));
-  $$('[data-debug-evolution-triage]').forEach((button)=>button.addEventListener('click',()=>runDebugEvolutionTriage(button)));
+  list.querySelectorAll('[data-module-action]').forEach((button)=>button.addEventListener('click',()=>runModuleAction(button.dataset.moduleAction,button.dataset.moduleId,button)));
+  list.querySelectorAll('[data-debug-evolution-triage]').forEach((button)=>button.addEventListener('click',()=>runDebugEvolutionTriage(button)));
 }
+function renderOwnerModules(modules){renderModuleCatalog('#ownerModulesList',modules);}
+function renderCodenModuleCatalog(modules){renderModuleCatalog('#codenModulesList',modules);}
 // D-0284: Phase 2, first slice (discovery+skeptic) — manual trigger, same posture as the
 // module lifecycle actions above: cost/latency per finding not yet measured on this
 // deployment, so this stays a deliberate click rather than something that fires on its own.
@@ -1894,9 +1917,21 @@ async function removeRemoteTarget(id,button){
 }
 $('#registerRemoteTarget').addEventListener('click',registerRemoteTarget);
 async function loadOwnerModules(){
-  const data=await api('/api/v1/sector-modules/catalog');
-  const modules=data.modules??[];
+  // Both catalogue containers start as "Loading…" in the markup. A fetch that throws must
+  // still resolve that state one way or the other — an uncaught rejection here left it
+  // reading "Loading…" forever (found rendering the CodeN copy for Card C: the failure was
+  // real before, just never observed, because nothing previously checked this container for
+  // being stuck). This also keeps the failure from propagating into the Promise.all() this
+  // is called from, which would otherwise cancel every unrelated fetch bundled with it.
+  let modules=[];
+  try{
+    const data=await api('/api/v1/sector-modules/catalog');
+    modules=data.modules??[];
+  }catch(error){
+    reportError(error,'load module catalogue');
+  }
   renderOwnerModules(modules);
+  renderCodenModuleCatalog(modules);
   renderModulesNav(modules);
 }
 // D-0283: uninstall is the one module action that takes capability AWAY from a running
@@ -3369,11 +3404,53 @@ async function renderBenchStatus(){
   set('#statusWarnings','—',false);
   set('#statusProcesses','—',false);
   set('#statusRemote','—',false);
-  set('#statusTokens','—',false);
-  set('#statusCost','—',false);
   set('#statusElapsed',humanDuration(Math.round((Date.now()-benchOpenedAt)/1000)),true);
   set('#statusNetwork',$('#footerPrivacy')?.textContent?.includes('Local-only')?'local only':'see privacy state',true);
   set('#statusSandbox',codenMode==='OWNER_BYPASS'?'owner bypass':'normal',true);
+
+  // Tokens/cost/ctx% — s317. `usage` comes from the streaming pipeline (provider-gateway.mjs
+  // now asks for it and chat-orchestrator.mjs stores it on the assistant message); it is
+  // real telemetry, not a count kept by this page. A conversation with no assistant turn
+  // yet, or a provider that never reported usage, leaves these "—" rather than a plausible
+  // zero — the same rule every other field on this line already follows.
+  let totalTokens=null,latestUsage=null,provider=null;
+  if(state.activeConversationId&&state.activeBranchId){
+    try{
+      const detail=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);
+      const withUsage=(detail.messages??[]).filter((message)=>message.role==='assistant'&&message.metadata?.usage?.totalTokens!=null);
+      if(withUsage.length){
+        totalTokens=withUsage.reduce((sum,message)=>sum+message.metadata.usage.totalTokens,0);
+        latestUsage=withUsage.at(-1).metadata.usage;
+        provider=state.providers?.find((item)=>item.id===withUsage.at(-1).metadata.providerId)??null;
+      }
+    }catch{ /* leave unsourced */ }
+  }
+  set('#statusTokens',totalTokens!=null?String(totalTokens):'—',totalTokens!=null);
+  set('#statusCost',provider?(provider.external?'—':'€0.00 (local)'):'—',Boolean(provider));
+  const ctxChip=$('#codenCtxChip');
+  if(ctxChip){
+    ctxChip.textContent=latestUsage?.totalTokens!=null&&provider?.contextWindow
+      ?`ctx ${Math.min(100,Math.round((latestUsage.totalTokens/provider.contextWindow)*100))}%`
+      :'ctx —';
+  }
+
+  const gitChip=$('#codenGitChip');
+  if(gitChip){
+    try{
+      const status=await api('/api/v1/coden/git-status');
+      if(!status.available)gitChip.textContent='git —';
+      else if(status.detached)gitChip.textContent='git detached';
+      else{
+        const parts=[status.branch];
+        if(status.hasUpstream){
+          if(status.ahead)parts.push(`↑${status.ahead}`);
+          if(status.behind)parts.push(`↓${status.behind}`);
+        }
+        gitChip.textContent=parts.join(' ');
+      }
+    }catch{gitChip.textContent='git —';}
+  }
+
   let live=null;
   try{live=await api('/api/v1/coden/authorisations');}catch{live=null;}
   set('#statusAuthority',live?String(live.count):'—',Boolean(live));

@@ -42,6 +42,7 @@ import { resolveExecuteSandboxConfig } from './execute-sandbox-config.mjs';
 import { detectSandboxSync } from './sandbox-runner.mjs';
 import { EventLedger, eventsStatus } from './events.mjs';
 import { buildRepositoryMap, literalSearch, repoMapStatus, RepoMapError } from './repo-map.mjs';
+import { gitStatus } from './git-status.mjs';
 import {
   SectorModuleError, loadSectorModules, sectorModulesStatus, validateCandidateManifest,
   installSectorModule, activateSectorModule, deactivateSectorModule, uninstallSectorModule,
@@ -1239,6 +1240,16 @@ const requestListener = async (req, res) => {
         }))
         .sort((left, right) => (left.expiresAt < right.expiresAt ? -1 : 1));
       return json(res, 200, { live, count:live.length });
+    }
+    // Git branch status for the top bar (`main ↑2` in the s313/s317 addendum mockup) — read
+    // only, never a write/fetch. Same optional-subpath boundary as repo-map: a path outside
+    // the workspace is rejected before git ever sees it, not after. Not ledgered: this is
+    // polled the same way authorisations is, not a deliberate scan worth auditing.
+    if (req.method === 'GET' && url.pathname === '/api/v1/coden/git-status') {
+      const authenticated = requireSession(req, res, 'coden.plan'); if (!authenticated) return;
+      const target = resolveWorkspaceSubpath(workspace, url.searchParams.get('path'));
+      if (!target) return json(res, 400, { error:'invalid_path', reason:'path escapes the workspace' });
+      return json(res, 200, await gitStatus(target));
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/coden/authorize') {
       const authenticated = requireSession(req, res, 'coden.authorize');
@@ -3701,6 +3712,15 @@ const requestListener = async (req, res) => {
     }
 
     if (req.method === 'GET' && serveStatic(url.pathname, res)) return;
+    // Card D (s313/s317 addendum): an address like /coden/bench/diff has to answer when
+    // typed straight into the browser bar, not just when reached through the app's own
+    // in-page `/` box — "digitabile nella barra del browser" was the literal ask. Gated to
+    // path-shaped requests: a dot in the final segment (.js, .png, a mistyped asset) still
+    // 404s instead of silently turning a missing file into an HTML page. Everything under
+    // /api/ is excluded so this can never shadow a real endpoint, checked against the full
+    // route table before this was added (no non-API route collides with /coden/*).
+    // One handler, reusing serveStatic's own index.html branch — not a second file read.
+    if (req.method === 'GET' && !url.pathname.startsWith('/api/') && !/\.[^/]+$/.test(url.pathname) && serveStatic('/', res)) return;
     return json(res, 404, { error:'Not found', requestId });
   } catch (error) {
     const status = Number(error.status ?? 500);

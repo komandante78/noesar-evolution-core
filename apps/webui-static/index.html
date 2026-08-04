@@ -194,7 +194,15 @@
       </section>
 
       <section class="view" id="view-coden">
-        <div class="section-header"><div><p class="eyebrow">NATIVE CODING WORKSPACE</p><h1>CodeN Evolution</h1><p>Plan first. Authorize exact paths. Verify every mutation.</p></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <!-- s313/s317 addendum §1: the two signals the mockup put in the top bar that had no
+             engine behind them anywhere in the product — a repository has a branch state
+             whether or not anything reads it, and a conversation fills a context window
+             whether or not anything shows how full. Both read real sources (git-status.mjs,
+             the usage a streaming turn now carries) and say "—" rather than guess when the
+             source has nothing: a repo with no upstream, or a provider with no declared
+             contextWindow. Not duplicated here: mode (the switch below already shows it) and
+             local-only (the product-wide topbar already does, s317 chose not to repeat it). -->
+        <div class="section-header"><div><p class="eyebrow">NATIVE CODING WORKSPACE</p><h1>CodeN Evolution</h1><p>Plan first. Authorize exact paths. Verify every mutation.</p></div><div class="chip-list" id="codenTopChips"><span class="chip" id="codenGitChip" title="Branch of the active workspace root, from git itself — not tracked separately by this product">git —</span><span class="chip" id="codenCtxChip" title="Total tokens of the most recent turn against the active provider's declared context window. Reads '—' when the provider has not declared one in Settings › Models &amp; External APIs, rather than guessing.">ctx —</span></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
         <!-- The workbench · UI-030…UI-037. TWO regions now, not three, and no switcher in
              either of them: the bench (one panel at a time) and the agent column (one panel
              at a time). The Navigator column, the eleven bench tabs and the five-entry agent
@@ -362,6 +370,13 @@
         <section class="work-block" id="view-tools">
         <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h2 class="page-title">Tools</h2><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section></div>
+        <!-- Card C, s313/s317 addendum: CE-016 ("at rest the program has zero tools loaded")
+             plus the sector-modules framework already validated live for Debug Evolution
+             (D-0283) — this panel is a second window onto that SAME catalogue (Settings ›
+             Modules), not a CodeN-specific list invented in parallel. The user installs and
+             activates from here exactly as from Settings; renderCodenModuleCatalog() shares
+             every line of render logic with renderOwnerModules(), only the container differs. -->
+        <section class="panel"><div class="panel-title"><h2>Installable catalogues</h2><span>Same catalogue as Settings › Modules</span></div><div id="codenModulesList" class="card-list empty-state">Loading…</div></section>
       </section>
       </section>
 

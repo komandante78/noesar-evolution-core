@@ -71,9 +71,42 @@ function extractOpenAiResponses(value) {
 function extractOpenAiChat(value) { return value.choices?.[0]?.message?.content ?? ''; }
 function extractAnthropic(value) { return (value.content ?? []).filter((item) => item.type === 'text').map((item) => item.text).join(''); }
 
+// Usage is reported differently per style, and by a different frame than the text deltas:
+// openai-chat only attaches it to the final chunk, and only when the request asked for it
+// (`stream_options.include_usage`, set in #request()) — the chunk that carries it has an
+// empty `choices` array, so a reader that only ever looked at `choices[0]` would silently
+// never see it. openai-responses carries it once, on `response.completed`. anthropic-messages
+// splits it across two events (`message_start` has input tokens, `message_delta` has the
+// running output count) and never repeats the input count, so both have to be remembered
+// and merged rather than either being read alone.
+function usageFrom(style, event, remembered) {
+  if (style === 'openai-chat') {
+    const usage = event.usage;
+    if (!usage) return null;
+    return { promptTokens:usage.prompt_tokens ?? null, completionTokens:usage.completion_tokens ?? null, totalTokens:usage.total_tokens ?? null };
+  }
+  if (style === 'openai-responses') {
+    if (event.type !== 'response.completed') return null;
+    const usage = event.response?.usage;
+    if (!usage) return null;
+    return { promptTokens:usage.input_tokens ?? null, completionTokens:usage.output_tokens ?? null, totalTokens:usage.total_tokens ?? null };
+  }
+  if (style === 'anthropic-messages') {
+    if (event.type === 'message_start') { remembered.promptTokens = event.message?.usage?.input_tokens ?? null; return null; }
+    if (event.type === 'message_delta') {
+      const completionTokens = event.usage?.output_tokens ?? null;
+      const promptTokens = remembered.promptTokens ?? null;
+      const totalTokens = promptTokens !== null && completionTokens !== null ? promptTokens + completionTokens : null;
+      return { promptTokens, completionTokens, totalTokens };
+    }
+    return null;
+  }
+  return null;
+}
 async function *parseSse(response, style, signal) {
   if (!response.body) throw statusError('Provider returned no streaming body.', 502);
   const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+  const remembered = {};
   while (true) {
     if (signal?.aborted) throw Object.assign(new Error('Generation stopped.'), { name:'AbortError', status:499 });
     const { value, done } = await reader.read(); if (done) break;
@@ -89,7 +122,8 @@ async function *parseSse(response, style, signal) {
       if (style === 'openai-chat') delta = event.choices?.[0]?.delta?.content ?? '';
       else if (style === 'openai-responses') delta = event.type === 'response.output_text.delta' ? event.delta ?? '' : '';
       else if (style === 'anthropic-messages') delta = event.type === 'content_block_delta' ? event.delta?.text ?? '' : '';
-      if (delta) yield delta;
+      const usage = usageFrom(style, event, remembered);
+      if (delta || usage) yield { delta, usage };
     }
   }
 }
@@ -126,6 +160,11 @@ export class ProviderGateway {
         id:randomUUID(), name:String(input.name ?? descriptor.name).slice(0,120), type:input.type ?? descriptor.type,
         apiStyle, baseUrl, external:Boolean(external), enabled:false, credentialRequired:descriptor.credentialRequired,
         defaultModel:String(input.defaultModel ?? '').slice(0,200), models:Array.isArray(input.models) ? input.models.map(String).slice(0,100) : [],
+        // Declared, never probed: no provider style here returns its own context length,
+        // so a number filled in automatically would be a guess wearing the shape of a fact.
+        // null means "unknown", not zero — the operator states it, or the ctx% field that
+        // reads it stays "—" rather than dividing by an invented denominator.
+        contextWindow:Number.isFinite(Number(input.contextWindow)) && Number(input.contextWindow) > 0 ? Math.trunc(Number(input.contextWindow)) : null,
         consent:{ granted:false, grantedAt:null, projectIds:[], dataClasses:[], allowTools:false, anonymize:true },
         timeoutMs:Math.min(Math.max(Number(input.timeoutMs ?? 120_000), 1_000), 600_000),
         priority:Number.isFinite(Number(input.priority)) ? Number(input.priority) : 100, modes:Array.isArray(input.modes) ? input.modes.map((value)=>String(value).toUpperCase()).filter((value)=>['ASK','CREATE','ACT'].includes(value)) : ['ASK','CREATE','ACT'], fallbackProviderIds:Array.isArray(input.fallbackProviderIds) ? input.fallbackProviderIds.map(String) : [],
@@ -141,6 +180,7 @@ export class ProviderGateway {
       if (patch.apiStyle !== undefined) { if (!STYLES.has(patch.apiStyle)) throw statusError('Unsupported apiStyle.'); profile.apiStyle = patch.apiStyle; }
       for (const key of ['name','defaultModel']) if (patch[key] !== undefined) profile[key] = String(patch[key]).slice(0,200);
       if (patch.models) profile.models = patch.models.map(String).slice(0,100);
+      if (patch.contextWindow !== undefined) profile.contextWindow = Number.isFinite(Number(patch.contextWindow)) && Number(patch.contextWindow) > 0 ? Math.trunc(Number(patch.contextWindow)) : null;
       if (patch.enabled !== undefined) profile.enabled = Boolean(patch.enabled);
       if (patch.external !== undefined) { profile.external = Boolean(patch.external); profile.baseUrl = validateBaseUrl(profile.baseUrl, profile.external); }
       if (patch.timeoutMs !== undefined) profile.timeoutMs = Math.min(Math.max(Number(patch.timeoutMs),1000),600000);
@@ -212,7 +252,10 @@ export class ProviderGateway {
       const system = messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n');
       return { url:`${profile.baseUrl}/messages`, body:{ model:selectedModel, system:system || undefined, messages:messages.filter((item) => item.role !== 'system').map((item) => ({ role:item.role === 'assistant' ? 'assistant':'user', content:item.content })), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens ?? 4096, stream } };
     }
-    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream } };
+    // `stream_options.include_usage` is what makes an OpenAI-compatible streaming response
+    // carry a final usage-bearing chunk at all — without it the field is simply absent, not
+    // zero, and a reader could not tell "no usage was requested" from "the provider has none".
+    return { url:`${profile.baseUrl}/chat/completions`, body:{ model:selectedModel, messages:mapOpenAiMessages(messages), tools:tools.length ? tools : undefined, temperature, max_tokens:maxOutputTokens, stream, stream_options:stream ? { include_usage:true } : undefined } };
   }
   #headers(profile, credential) {
     const headers = { 'content-type':'application/json', 'user-agent':'NOESAR-Evolution/1.0', ...profile.headers };
@@ -293,7 +336,7 @@ export class ProviderGateway {
       throw statusError(`Provider stream failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
     }
     this.ledger?.append({actor:request.actorId??'system',action:'provider.stream',result:'started',details:{providerId:profile.id,external:profile.external,dataClasses:request.dataClasses??['prompt'],redactions:redaction.counts}});
-    for await (const delta of parseSse(response, profile.apiStyle, combined)) yield delta;
+    for await (const item of parseSse(response, profile.apiStyle, combined)) yield item;
   }
   async *streamWithFallback(profileIds,request,options={}){
     const failures=[];
@@ -304,7 +347,7 @@ export class ProviderGateway {
         // In an ES module that is a ReferenceError thrown on the FIRST delta, so every
         // streaming reply failed with "providerId is not defined" and the fallback loop
         // could not report which provider had failed either.
-        for await(const delta of this.stream(profileId,request,options)){emitted=true;yield{providerId:profileId,delta};}
+        for await(const item of this.stream(profileId,request,options)){emitted=true;yield{providerId:profileId,delta:item.delta,usage:item.usage};}
         return;
       }catch(error){
         failures.push({providerId:profileId,error:error.message});
