@@ -212,3 +212,66 @@ describe('the adversarial half — a candidate is not trusted for its provenance
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 });
+
+describe('what running it against the live engine found', () => {
+  test('a file that is not text is never a candidate, however well its bytes match', () => {
+    // Measured, not imagined. With the live installation's workspace root — the runtime
+    // directory, not a source tree — literal search matched byte coincidences INSIDE
+    // PostgreSQL heap files, and the top candidates for "fix the session protocol refusal"
+    // came back as `postgresql/data/base/16384/2664`. A plan proposing to edit a database's
+    // storage is not a weak plan, it is a dangerous one, and in an approval screen it looked
+    // exactly as plausible as a good one.
+    const root = workspace({
+      'heap.bin': `session protocol${String.fromCharCode(0)}${'session '.repeat(40)}`,
+      'real.mjs': '// session protocol\n',
+    });
+    try {
+      const result = groundRequest({ workspaceRoot: root, goal: 'the session protocol', request: 'the session protocol' });
+      assert.deepEqual(result.files.map((f) => f.path), ['real.mjs'],
+        'a binary file reached a plan as something to edit');
+      const skipped = result.grounding.skipped.find((entry) => entry.path === 'heap.bin');
+      assert.ok(skipped, 'the binary candidate vanished instead of being recorded');
+      assert.equal(skipped.reason, 'NOT_TEXT');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('an interpreted goal unrelated to the request cannot steer the search away from it', () => {
+    // The other live finding, and the worse one. ATOM, given `zzqqxx unobtainium flux`,
+    // neither refused nor echoed: it returned "Create a program that generates a random
+    // string of characters from a given set" — fluent, confident, about nothing that was
+    // asked. Searching only the goal meant searching a hallucination, and NO_CANDIDATES
+    // never fired because the invented sentence contained ordinary words.
+    const root = workspace({
+      'asked-about.mjs': '// passkey rotation counter\n',
+      'hallucinated.mjs': '// random string characters generator\n',
+    });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'the passkey rotation counter',
+        goal: 'Create a program that generates a random string of characters',
+      });
+      assert.ok(result.grounding.selected.includes('asked-about.mjs'),
+        "the file the REQUEST points at was not selected — an unrelated goal steered the search");
+      assert.deepEqual(result.grounding.goalOverlap, [],
+        'this fixture is only meaningful when the goal and the request share nothing');
+      assert.equal(result.grounding.goalRelatedToRequest, false,
+        'an unrelated goal must be declared as unrelated, so an approver can see it');
+      assert.ok(result.grounding.terms.includes('passkey'), "the request's own words must always be searched");
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  test('a related goal is reported as related — the signal is not always-on', () => {
+    // Without this the assertion above passes for a module that hardcodes `false`.
+    const root = workspace({ 'a.mjs': '// passkey rotation\n' });
+    try {
+      const result = groundRequest({
+        workspaceRoot: root,
+        request: 'fix the passkey rotation',
+        goal: 'repair passkey rotation handling',
+      });
+      assert.deepEqual(result.grounding.goalOverlap, ['passkey', 'rotation']);
+      assert.equal(result.grounding.goalRelatedToRequest, true);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+});

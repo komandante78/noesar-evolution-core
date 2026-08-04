@@ -170,7 +170,10 @@ export class WorkspaceActionOrchestrator {
     let resolvedFiles = files;
     let grounding = null;
     if (resolvedFiles.length === 0) {
-      const grounded = this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal });
+      // `request` as well as the goal: a provider that answers something unrelated must not
+      // be able to steer this step away from what was actually asked. Measured, not feared —
+      // see request-grounding.mjs.
+      const grounded = this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal, request });
       resolvedFiles = grounded.files;
       grounding = grounded.grounding;
     }

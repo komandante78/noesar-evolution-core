@@ -24,10 +24,16 @@
 //
 // So the property is kept and the refusal is removed, which is possible because they were
 // never the same thing. Here the model NEVER EMITS A PATH. Candidates come out of the
-// repository, by literal search, over terms taken from the interpreted goal; the model's
-// influence on the selection is the goal it returned, and nothing else. Every path in the
-// result was read off a real file this workspace contains. That is the same guarantee the
-// refusal gave, obtained by construction instead of by refusing to act.
+// repository, by literal search over terms taken from the request AND from the interpreted
+// goal; the model's influence on the selection is the goal it returned, and nothing else.
+// Every path in the result was read off a real file this workspace contains. That is the
+// same guarantee the refusal gave, obtained by construction instead of by refusing to act.
+//
+// THE MODEL IS NOT TRUSTED TO BE ABOUT THE REQUEST EITHER. Measured against the live engine
+// with ATOM answering: `interpret` given `zzqqxx unobtainium flux` returned a fluent,
+// confident and entirely unrelated goal. Searching only the goal would have searched that.
+// The request's own words are therefore always in the search, and the overlap between the
+// two is reported. See `groundRequest` for why it is reported rather than enforced.
 //
 // It also makes the repository the oracle for the first step of the cycle, which is what
 // `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §10 puts at build order 8 and calls a
@@ -76,13 +82,12 @@ const STOP_WORDS = new Set([
 
 const MAX_TERMS = 12;
 
-/** The searchable terms of an interpreted goal, in first-appearance order.
+/** The searchable terms of a sentence, in first-appearance order.
  *
- *  Taken from the goal the provider returned rather than from the raw request, deliberately:
- *  it is the one place a real model's understanding is allowed to steer this step. With the
- *  reference provider the goal is the request's first sentence quoted verbatim — a weaker
- *  grounding, honestly weaker, and the same code path, so `CE-022` (the suite passes with
- *  ATOM uninstalled) does not depend on which provider answered. */
+ *  Applied to the request and to the interpreted goal alike. With the reference provider the
+ *  goal is the request's first sentence quoted verbatim, so the two term sets largely
+ *  coincide — a weaker grounding, honestly weaker, and the same code path, so `CE-022` (the
+ *  suite passes with ATOM uninstalled) does not depend on which provider answered. */
 export function searchTermsOf(goal) {
   const seen = new Set();
   const terms = [];
@@ -109,16 +114,34 @@ export function searchTermsOf(goal) {
 export function groundRequest({
   workspaceRoot,
   goal,
+  request = '',
   limit = 5,
   maxFileBytes = 64 * 1024,
   literalSearch = defaultLiteralSearch,
 } = {}) {
-  const terms = searchTermsOf(goal);
+  // BOTH, and the request's words first. Found by running this against the live engine with
+  // ATOM answering: given `zzqqxx unobtainium flux`, `interpret` did not refuse and did not
+  // echo — it returned "Create a program that generates a random string of characters from a
+  // given set", a fluent goal with no relation to anything asked. Searching only the goal
+  // meant searching a hallucination, and the `NO_CANDIDATES` refusal never fired because the
+  // invented sentence had ordinary words in it that matched ordinary files.
+  //
+  // So the goal is not trusted to be about the request. The user's own words are always in
+  // the search, which makes grounding robust to a bad `interpret` instead of dependent on a
+  // good one, and the overlap between the two is REPORTED rather than enforced: a legitimate
+  // paraphrase ("make login faster" -> "improve authentication performance") shares no term
+  // either, so refusing on an empty overlap would refuse the good case and the bad one alike.
+  // Nothing executes without an approval, and the approval can now be given knowing this.
+  const requestTerms = searchTermsOf(request);
+  const goalTerms = searchTermsOf(goal);
+  const terms = [...requestTerms];
+  for (const term of goalTerms) if (!terms.includes(term)) terms.push(term);
+  const goalOverlap = goalTerms.filter((term) => requestTerms.includes(term));
   if (terms.length === 0) {
     throw new GroundingRefused(
       'NO_TERMS',
-      'the interpreted goal carries no term specific enough to look for in this repository; name a file, a symbol or a message',
-      { goal: String(goal ?? '') },
+      'neither the request nor the interpreted goal carries a term specific enough to look for in this repository; name a file, a symbol or a message',
+      { goal: String(goal ?? ''), request: String(request ?? '') },
     );
   }
 
@@ -172,11 +195,28 @@ export function groundRequest({
       skipped.push({ path: candidate.path, reason: 'TOO_LARGE', bytes: size });
       continue;
     }
+    let contents;
     try {
-      files.push({ path: candidate.path, contents: readFileSync(absolute, 'utf8') });
+      contents = readFileSync(absolute, 'utf8');
     } catch {
       skipped.push({ path: candidate.path, reason: 'UNREADABLE' });
+      continue;
     }
+    // Found by running this against the live installation, where the workspace root is the
+    // runtime directory: literal search matched byte coincidences INSIDE PostgreSQL heap
+    // files, and the top candidates for "fix the session protocol refusal" came back as
+    // `postgresql/data/base/16384/2664`. A plan proposing to edit a database's storage is
+    // not a weak plan, it is a dangerous one, and it looked exactly as plausible as a good
+    // one in the approval screen.
+    //
+    // A NUL byte is the cheap, standard test for "this is not text", and it is the right one
+    // here: the question is not what format a file is, it is whether editing it as text is a
+    // coherent thing to propose. Skipped and SAID to be skipped, like every other exclusion.
+    if (contents.includes('\u0000')) {
+      skipped.push({ path: candidate.path, reason: 'NOT_TEXT' });
+      continue;
+    }
+    files.push({ path: candidate.path, contents });
   }
 
   if (files.length === 0) {
@@ -196,6 +236,13 @@ export function groundRequest({
     grounding: {
       derived: true,
       terms,
+      requestTerms,
+      goalTerms,
+      // Empty means the provider's goal shares no searchable word with what was asked. That
+      // is true of a hallucination and also of a good paraphrase, so it is a signal for
+      // whoever approves, not a verdict this module is entitled to reach.
+      goalOverlap,
+      goalRelatedToRequest: goalOverlap.length > 0,
       considered: ranked.length,
       selected: files.map((file) => file.path),
       ranking: ranked.slice(0, limit).map(({ path, distinctTerms, matches, terms: hit }) => ({ path, distinctTerms, matches, terms: hit })),
