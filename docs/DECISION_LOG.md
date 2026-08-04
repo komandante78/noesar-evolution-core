@@ -5885,3 +5885,121 @@ mutation has caught an assertion written against a case the real input never pro
 **Verified.** 1626/1627 unit (0 fail, 1 pre-existing skip), ESLint 305 files 0/0/0, the CE-021
 probe still 10/10 with the gate in place (a real owner over both transports is refused nothing),
 seven mutations and seven failures.
+
+---
+
+## D-0303 · The four questions the Owner was never asked, answered — Card E, MCP, the destination count, and the model catalogue — 2026-08-04
+
+**Context.** `docs/CODEN_EVOLUTION_TERMINAL_ACCESS.md`'s parent addendum (s313) ended with four
+§4 questions requiring Owner sign-off *before* any code. Phases 1-5 were built and closed
+without them being answered — the root cause recorded in s317 for why Cards C and D were
+silently dropped. Q1 (Navigator vs TUI order) went moot, both being done; Q2 (`/` routing
+touching the server) was implemented as Card D and ratified by the s318 deploy. Q3 and Q4 stayed
+open. In s320 the Owner authorised this assistant to decide all of them, plus the model-catalogue
+requirement and one divergence found by measurement. Decided here rather than deferred again,
+because a question that blocks work for three sessions is being answered by silence anyway.
+
+### Q3 · Card E, multimodal — the capability is declared, and its absence is stated
+
+**Decision.** Whether an installation can accept images is a **field a provider profile
+declares**, never something the product probes and never something the product assumes. A
+profile that has not declared vision **refuses an image attachment, naming the reason**.
+
+**Why not the two obvious answers.** "Text and documents only" freezes out every model that does
+have vision, and the product must run on whatever model the deploying user picks — that is not a
+preference here, it is a settled constraint of a self-hosted product for any PC, server or OS.
+"Require a vision model" contradicts the same constraint from the other side.
+
+**Why this shape and not a new one.** It is the posture already taken for `contextWindow` in
+s317: an operator-declared optional field, adopted because no provider style exposes its own
+context length reliably. Capability probing has the same defect — an answer that costs a call
+and returns an opinion. One posture for two fields; a second habit in the same panel would
+teach the operator that declaration is sometimes optional.
+
+**The part that carries the weight is the refusal.** Silently degrading an image to its filename
+would let a run *look* like it considered a picture it never received. That is the exact
+dishonesty `D-0285` refused when it kept `classify`/`confidence`/`expect` off a reperto: a model
+opinion presented as tool-verified evidence. A refusal that names its reason is smaller than a
+downgrade and truer.
+
+**Two constraints inherited, not renegotiated.** An image is untrusted content, and the existing
+prompt-injection fence covers text — vision does not get an exemption from `CE-007`. An image
+out of the workspace to an external provider is egress, so `CE-013`/`CE-014` apply unchanged.
+
+### Q4 · MCP — admitted, because it is already inside the rule, and that is now measured
+
+**Decision.** MCP stays as a connector transport. `mcp-http` and `mcp-stdio` already exist
+(`docs/ai-workspace/TOOLS_AGENTS_MCP_OPENAPI.md`), with stdio executables refused unless
+allowlisted, no shell interpolation, minimised environment, bounded output and duration, and no
+provider token ever passed through an MCP server. Nothing is being built here; a standing
+objection is being resolved.
+
+**The objection was real and specific.** `MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md` §2 cites
+MCP schemas consuming **up to 72%** of a context window *before the work starts*, and invention V
+answers it with "a riposo il programma non ha strumenti". Granting MCP without checking that rule
+would have been a grant on a promise.
+
+**So it was measured, not asserted.** `enforceToolScope` computes the admitted set as the
+intersection of what the caller *named* with what the installation has granted. Nothing is
+admitted for existing. The resting cost of an installed tool is therefore zero however many are
+installed — a property of the code, not a habit of the caller — and MCP servers cannot change it.
+`ce-016-zero-tools-at-rest.test.mjs` now measures this at ten catalogue sizes up to 5000, checks
+the complement (naming is what admits, and only if granted), and checks that a tool named by
+retrieved *content* is recorded and never honoured. Four tests; the mutation that admits every
+granted tool kills all four. **`CE-016` moves from asserted to measured.**
+
+### The destination count · thirteen, and the document moves, not the bar
+
+**Found by measurement, not by reading:** `07_INTERFACCIA.md` §2 prescribed **eleven**
+destinations and `apps/webui-static/index.html` declared **thirteen** — `memory` and `research`
+in addition.
+
+**Decision: the document goes to thirteen.** Not because code outranks a document, but because
+the document's own rule admits both. "Una destinazione è un posto dove decidi di andare":
+Memory is where you decide to go and read what the product learned and what stays (document
+`14`); Research takes a **goal and criteria**, not a string, and returns a report with compared
+candidates and what was not verified, behind two gates (document `15` §7). Neither is
+administrative and neither appears among the fifteen things §2 sent back into Settings — the
+26→11 cut was about administration pages dressed as destinations, which is a different thing.
+The count was never the rule; the test was, and these two pass it. Removing two working
+destinations to make a number match is losing product to satisfy a document. The constraint the
+cut protected is restated in the document instead of discarded: a destination enters only by
+passing that test, and the count in the heading is updated when it does — which is precisely
+what did not happen the first time.
+
+### The model catalogue · designed, not built
+
+`docs/MODEL_CATALOG_DESIGN.md`, per the Owner's s318 requirement, and design-only as that
+requirement said. The one substantive decision inside it: **the publisher is verified, not the
+model.** "Any model" and "only verified sources" contradict each other while a source is a list
+of *models* — a list of approved models is the fixed list the first requirement forbids. They
+stop contradicting when the verified thing is the **origin**: `publisher-registry.mjs` (`D-0275`)
+already holds publisher ID, trust level, key, fingerprint, revocation state and registering
+Owner, with two revocation grains. The catalogue uses it rather than building a second trust
+registry, because two places to revoke means revocation that works in one of them.
+
+### Found while doing this, reported and NOT repaired · the master documents have drifted
+
+Measured, not inferred, while reconciling the destination count:
+
+- `MASTER_PROJECT/` and `docs/progetto-italiano/` share fourteen filenames and **seven of them
+  differ**, in both directions — `02_ATOM.md` is 18566 bytes in `progetto-italiano` against 4813
+  in `MASTER_PROJECT`; `03_ARCHITETTURA.md` is 19288 against 10928 the other way.
+- `MASTER_PROJECT/PROVENANCE.sha256` **already failed on six files** before this session touched
+  anything, and it does not describe either directory: `01`, `03`, `05` and `08` hash to the
+  `progetto-italiano` copies, while `00`, `02` and `09` match neither.
+
+So "canonical is `docs/progetto-italiano/`" — the conclusion s316 recorded — is not something
+the files support: there are two generations with content in each, and a ledger describing a
+third state. **Deliberately not repaired here.** Merging two documentation generations is
+content work whose outcome is the Owner's, and regenerating `PROVENANCE.sha256` would erase the
+only evidence that the drift exists — the same fabrication `09_PIANO.md` §1 names when it says a
+column nobody uses is worse than a missing one. `07_INTERFACCIA.md` was updated in **both**
+copies, keeping them byte-identical as they already were, so this decision adds no drift.
+
+**Also noted, not fixed:** the s317 work (Cards C and D, real telemetry) shipped as `36e315e`
+and deployed in s318 without ever getting an entry in this log. The gap between `D-0302` and
+this entry is that work.
+
+**Verified.** 1672/1673 unit (0 fail, 1 pre-existing skip), ESLint 315 files 0/0/0. `CE-016`
+four tests, one mutation, four failures.

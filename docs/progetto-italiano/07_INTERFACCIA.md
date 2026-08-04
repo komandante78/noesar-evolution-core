@@ -11,7 +11,7 @@ La palette **non è inventata**: è estratta dai pixel di quel riferimento — i
 dominante, verde `#44a259`, ambra `#c5882c`, viola `#7c56b7`, ciano `#34aace`, fondi `#081018`
 e `#0c1824`.
 
-## 2. Undici destinazioni, non ventisei
+## 2. Tredici destinazioni, non ventisei
 
 La regola della specifica è *"semplice prima che tecnico, divulgazione progressiva"*, e il
 riferimento vincolante porta **una sola** voce Impostazioni. Una prima proposta ne aveva
@@ -28,14 +28,33 @@ consegnata, solo ordinato meglio.
   ▢  Progetti
   ▤  Documenti
   ◈  Conoscenza
+  ▧  Memoria                    ← ciò che il prodotto ha imparato del tuo lavoro
+  ⌖  Ricerca                    ← un rapporto commissionato, non una casella di ricerca
   ◍  Agenti
   ⇉  Flussi di lavoro
   ▦  Modelli
   ⚙  Impostazioni               ← UNA sola
 ```
 
-Dieci di queste undici sono esattamente il riferimento vincolante. L'unica aggiunta è il TUI,
-perché le superfici di conversazione devono essere tre e distinte.
+Dieci di queste tredici sono esattamente il riferimento vincolante. Le aggiunte sono tre: il
+TUI, perché le superfici di conversazione devono essere tre e distinte, più Memoria e Ricerca.
+
+**Perché queste due, dopo aver tagliato da ventisei a undici.** Questo elenco diceva *undici* e
+la barra ne portava *tredici*; la divergenza è stata trovata misurando, non leggendo. Risolta a
+favore della barra, e il motivo non è che il codice vince sul documento — è che la regola scritta
+tre righe sopra le ammette entrambe. Memoria è un posto dove **decidi** di andare: cercare cosa
+il prodotto ha imparato, e decidere cosa resta, è un'intenzione, non un passaggio dentro
+qualcos'altro (documento `14`). Ricerca prende **un obiettivo e dei criteri** e restituisce un
+rapporto con i candidati confrontati e ciò che non è stato verificato, dietro due cancelli — è
+un lavoro che si commissiona, non una casella (documento `15`, §7). Nessuna delle due è
+amministrativa, e nessuna delle due compare fra le quindici sezioni qui sotto: il taglio da
+ventisei riguardava pagine di amministrazione travestite da destinazioni, che è un'altra cosa.
+
+Il numero non è mai stato la regola: la regola è la prova, e queste due la passano. Toglierle
+per far tornare un conto sarebbe perdere prodotto per far quadrare un documento. Resta vero il
+vincolo che il taglio proteggeva — **una destinazione entra qui solo passando quella prova**, e
+il conto nel titolo va aggiornato quando succede, invece di lasciare che le due liste divergano
+in silenzio una seconda volta.
 
 Quindici cose sono tornate a essere **sezioni dentro Impostazioni**: sicurezza, utenti,
 privacy, audit, conformità, salute, log, aggiornamenti, backup, licenza, provider, hardware,
