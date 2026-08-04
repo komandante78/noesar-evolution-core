@@ -151,7 +151,17 @@ COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # container with nothing shipped that could speak to it. Measured on the live installation,
 # not inferred. A claim the deployment cannot satisfy is the sidebar's "not built" flag one
 # layer down, and coden-addressable-panels.test.mjs now ties the page to this line.
-COPY --chown=10001:10001 tools/tui-client.mjs /opt/noesar/tools/tui-client.mjs
+#
+# Twice now the list below has been the defect rather than the fix. Phase 5 shipped
+# `tui-client.mjs` after finding it absent; s319 then split the program into
+# `tui-fullscreen.mjs` and `tui-screen.mjs` and this line still named one file, so a build
+# from that tree would have put a program in the image whose very first `import` fails —
+# the same outage as shipping nothing, arrived at by adding code rather than by forgetting
+# it. A hand-kept copy list cannot track an import graph, so the pattern below covers the
+# shell's modules and `tui-import-closure.test.mjs` derives the real closure and fails when
+# a file it reaches is not covered here. The recipe is still explicit; what changed is that
+# a divergence is now measured instead of noticed.
+COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs /opt/noesar/tools/
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json

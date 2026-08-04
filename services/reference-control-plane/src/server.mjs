@@ -271,6 +271,10 @@ const sessionDispatch = createSessionDispatch({
   // it is read when a shell asks rather than once at boot: a redeploy that swaps the static
   // directory under a surviving process would otherwise keep answering for the old one.
   codenAddressBook: () => buildCodenAddressBook(webRoot),
+  // The same reader `GET /api/v1/coden/git-status` uses, against the same root: the terminal's
+  // `remote` field and the browser's `git` chip are one fact, read once, not two readings that
+  // could disagree about the same repository.
+  gitStatus,
 });
 
 // --- data plane and multi-user directory -------------------------------------

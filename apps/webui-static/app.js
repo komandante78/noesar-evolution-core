@@ -4,6 +4,9 @@ import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
 import { initVoiceControl } from './voice-control.js';
+// The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
+// registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
+import { AGENT_COMMANDS, matchCommands, parseCommandPrompt } from './agent-commands.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
 // --- theme, applied before anything else ------------------------------------
@@ -885,7 +888,57 @@ async function sendChat(){
     $('#sendMessage').disabled=false;
   }
 }
-$('#sendMessage').addEventListener('click',sendChat);$('#chatInput').addEventListener('keydown',(event)=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}});$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
+$('#sendMessage').addEventListener('click',sendChat);$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
+
+// The slash commands, in the composer — the same gesture as the terminal shell, off the same
+// list (`agent-commands.js`, imported by both). This is NOT the address box in the top bar:
+// that is navigation, an application's Ctrl-K. This one is a command to the session, typed
+// where you type the message, the way Codex and Claude Code work. Both exist; they are
+// different gestures at different places, and running them off one registry is what keeps the
+// two shells from drifting into two vocabularies.
+let commandMenuIndex=0;
+function commandMenuState(){
+  const typed=$('#chatInput')?.value??'';
+  const parsed=parseCommandPrompt(typed);
+  return parsed?{parsed,hits:matchCommands(parsed.word)}:null;
+}
+function renderCommandMenu(){
+  const box=$('#chatCommands');if(!box)return;
+  const menu=commandMenuState();
+  if(!menu){box.classList.add('hidden');box.innerHTML='';return;}
+  if(commandMenuIndex>=menu.hits.length)commandMenuIndex=0;
+  box.classList.remove('hidden');
+  box.innerHTML=menu.hits.length
+    ?menu.hits.map((command,index)=>`<button type="button" data-command="${escapeHtml(command.name)}" class="${index===commandMenuIndex?'active':''}"><b>/${escapeHtml(command.name)}</b><span>${escapeHtml(command.summary)}</span><small>${escapeHtml(command.argument)}</small></button>`).join('')
+    :'<p>No command matches that.</p>';
+  // Bound within the menu, not through a page-wide selector: a second container rendering the
+  // same markup would otherwise double-bind and fire each click twice.
+  box.querySelectorAll('[data-command]').forEach((button)=>button.addEventListener('click',()=>completeCommand(button.dataset.command)));
+}
+function completeCommand(name){
+  const command=AGENT_COMMANDS.find((entry)=>entry.name===name);
+  if(!command)return;
+  // Completes into the composer WITHOUT sending. Choosing and committing stay two acts, so a
+  // click never becomes an action nobody meant to take.
+  $('#chatInput').value=`/${command.name}${command.argument?' ':''}`;
+  $('#chatInput').focus();
+  renderCommandMenu();
+}
+$('#chatInput').addEventListener('input',()=>{commandMenuIndex=0;renderCommandMenu();});
+$('#chatInput').addEventListener('keydown',(event)=>{
+  const menu=commandMenuState();
+  if(menu&&menu.hits.length){
+    if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      event.preventDefault();
+      commandMenuIndex=(commandMenuIndex+(event.key==='ArrowDown'?1:-1)+menu.hits.length)%menu.hits.length;
+      return renderCommandMenu();
+    }
+    if(event.key==='Tab'){event.preventDefault();return completeCommand(menu.hits[commandMenuIndex].name);}
+    if(event.key==='Escape'){event.preventDefault();$('#chatCommands')?.classList.add('hidden');return undefined;}
+  }
+  if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('#chatCommands')?.classList.add('hidden');sendChat();}
+  return undefined;
+});
 // Active and scheduled work, in one place and each task in exactly one group · UI-062.
 // The grouping itself lives in schedule.js so that it is unit-tested rather than asserted
 // by looking at the screen.
@@ -3398,25 +3451,64 @@ function renderBenchNavigator(){
 async function renderBenchStatus(){
   const sourced=new Set();
   const set=(id,value,has)=>{const node=$(id);if(!node)return;node.textContent=value;if(has)sourced.add(id);};
+  // Six of these read "—" not because the facts were unavailable but because nothing here had
+  // gone and got them, which is a different failure from an unsourceable field — and calling
+  // both "honest" hid it. `tests` is declared by the engine's own workspace-actions status,
+  // and `remote` is the git state THIS FUNCTION ALREADY FETCHES below for the git chip and
+  // then threw away. What is still "—" after this is genuinely absent: `stage` (the sixteen
+  // stage cycle is the engine gap, not a display gap), `files`/`warnings` (no run is open on
+  // this page), `processes` (nothing tracks live children in this build).
   set('#statusStage','—',false);
   set('#statusFiles','—',false);
-  set('#statusTests','—',false);
   set('#statusWarnings','—',false);
   set('#statusProcesses','—',false);
-  set('#statusRemote','—',false);
+  // Fetched once per page load, not per activation. `workspaceActionsStatus()` returns a
+  // frozen capability declaration — the same constants on every call — so asking again each
+  // time this view opens buys nothing and costs a request on a path the browser suite
+  // measures precisely because it must not grow (`jumping to a panel does not refetch it`).
+  if(codenActionStatus===undefined){
+    try{codenActionStatus=await api('/api/v1/workspace-actions');}
+    catch{codenActionStatus=null;}
+  }
+  const actionStatus=codenActionStatus;
+  // "No tests ran, and here is why" is a fact. "—" reports the same screen as a build where
+  // the answer is merely unknown.
+  set('#statusTests',
+    actionStatus?.testExecution===false?'none (EXECUTE refused)':'—',
+    actionStatus?.testExecution===false);
   set('#statusElapsed',humanDuration(Math.round((Date.now()-benchOpenedAt)/1000)),true);
   set('#statusNetwork',$('#footerPrivacy')?.textContent?.includes('Local-only')?'local only':'see privacy state',true);
   set('#statusSandbox',codenMode==='OWNER_BYPASS'?'owner bypass':'normal',true);
+
+  // CodeN top-bar parity with the addendum §1 mockup (project/model/sandbox chips) — sourced
+  // from state already loaded for the product-wide topbar chips, not a second fetch of the
+  // same fact. Hardware's accelerator name is real discovery output (nvidia-smi etc, see
+  // hardware.mjs) when the endpoint is reachable; left off rather than guessed otherwise.
+  const projectChip=$('#codenProjectChip');
+  if(projectChip)projectChip.textContent=`project ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;
+  const modelChip=$('#codenModelChip');
+  if(modelChip){
+    let label=$('#chatModel')?.value||'none';
+    try{
+      const hardware=await api('/api/v1/hardware');
+      const accelerator=hardware?.accelerators?.[0]?.name;
+      if(accelerator)label=`${label} · ${accelerator}`;
+    }catch{ /* leave without an accelerator suffix */ }
+    modelChip.textContent=`model ${label}`;
+  }
+  const sandboxChip=$('#codenSandboxChip');
+  if(sandboxChip)sandboxChip.textContent=`sandbox ${codenMode==='OWNER_BYPASS'?'owner bypass':'normal'}`;
 
   // Tokens/cost/ctx% — s317. `usage` comes from the streaming pipeline (provider-gateway.mjs
   // now asks for it and chat-orchestrator.mjs stores it on the assistant message); it is
   // real telemetry, not a count kept by this page. A conversation with no assistant turn
   // yet, or a provider that never reported usage, leaves these "—" rather than a plausible
   // zero — the same rule every other field on this line already follows.
-  let totalTokens=null,latestUsage=null,provider=null;
+  let totalTokens=null,latestUsage=null,provider=null,conversationMessages=null;
   if(state.activeConversationId&&state.activeBranchId){
     try{
       const detail=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);
+      conversationMessages=detail.messages??[];
       const withUsage=(detail.messages??[]).filter((message)=>message.role==='assistant'&&message.metadata?.usage?.totalTokens!=null);
       if(withUsage.length){
         totalTokens=withUsage.reduce((sum,message)=>sum+message.metadata.usage.totalTokens,0);
@@ -3434,22 +3526,50 @@ async function renderBenchStatus(){
       :'ctx —';
   }
 
-  const gitChip=$('#codenGitChip');
-  if(gitChip){
-    try{
-      const status=await api('/api/v1/coden/git-status');
-      if(!status.available)gitChip.textContent='git —';
-      else if(status.detached)gitChip.textContent='git detached';
-      else{
-        const parts=[status.branch];
-        if(status.hasUpstream){
-          if(status.ahead)parts.push(`↑${status.ahead}`);
-          if(status.behind)parts.push(`↓${status.behind}`);
-        }
-        gitChip.textContent=parts.join(' ');
-      }
-    }catch{gitChip.textContent='git —';}
+  // Addendum §1: the agent column's Conversation panel showed only a stub pointing at
+  // Chat, unlike the mockup's inline turn preview. It is the SAME conversation (no second
+  // chat state, per the panel's own declared-empty text) — this reuses the messages
+  // already fetched above for tokens/cost rather than a second request for one fact.
+  const preview=$('#codenConversationPreview'),empty=$('#codenConversationEmpty');
+  if(preview&&empty){
+    if(conversationMessages?.length){
+      preview.classList.remove('hidden');empty.classList.add('hidden');
+      preview.innerHTML=conversationMessages.slice(-4).map((message)=>
+        `<p class="coden-conversation-turn"><b>${message.role==='user'?'You':escapeHtml(message.role)}</b> ${escapeHtml(message.content.length>140?`${message.content.slice(0,140)}…`:message.content)}</p>`
+      ).join('');
+    }else{
+      preview.classList.add('hidden');preview.innerHTML='';empty.classList.remove('hidden');
+    }
   }
+
+  const gitChip=$('#codenGitChip');
+  // One fetch, two readers: the chip says which branch, the status line's `remote` field says
+  // how far it has diverged. This response was already being fetched for the chip and then
+  // discarded, while `remote` a few lines above reported "—" for a fact sitting in this very
+  // variable. The terminal shell reads the identical state over `coden.gitStatus`.
+  let gitState=null;
+  try{gitState=await api('/api/v1/coden/git-status');}catch{gitState=null;}
+  if(gitChip){
+    if(!gitState?.available)gitChip.textContent='git —';
+    else if(gitState.detached)gitChip.textContent='git detached';
+    else{
+      const parts=[gitState.branch];
+      if(gitState.hasUpstream){
+        if(gitState.ahead)parts.push(`↑${gitState.ahead}`);
+        if(gitState.behind)parts.push(`↓${gitState.behind}`);
+      }
+      gitChip.textContent=parts.join(' ');
+    }
+  }
+  if(gitState?.available){
+    const parts=[gitState.detached?'detached':gitState.branch];
+    if(!gitState.hasUpstream)parts.push('(no upstream)');
+    else if(gitState.ahead||gitState.behind){
+      if(gitState.ahead)parts.push(`↑${gitState.ahead}`);
+      if(gitState.behind)parts.push(`↓${gitState.behind}`);
+    }else parts.push('in sync');
+    set('#statusRemote',parts.filter(Boolean).join(' '),true);
+  }else set('#statusRemote','—',false);
 
   let live=null;
   try{live=await api('/api/v1/coden/authorisations');}catch{live=null;}
@@ -3464,6 +3584,10 @@ async function renderBenchStatus(){
   $('#statusSourced').textContent=`${sourced.size} of 12 fields have a source in this build`;
 }
 let benchOpenedAt=Date.now();
+// `undefined` = never asked; `null` = asked and the request failed. Distinguished so a failed
+// fetch is not retried on every activation while a successful one is cached — and so a build
+// where the route is gone reads as unsourced rather than as a silent retry loop.
+let codenActionStatus;
 async function loadClosures(){
   const runs=[...(state.agentRuns??[]).map((run)=>({id:run.id,label:`Agent run · ${run.goal??run.id}`})),
     ...(state.workflowRuns??[]).map((run)=>({id:run.id,label:`Workflow run · ${run.id}`})),

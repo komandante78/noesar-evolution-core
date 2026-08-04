@@ -32,6 +32,7 @@ import { connect } from 'node:net';
 import { createInterface, emitKeypressEvents } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { runFullScreen } from './tui-fullscreen.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultSocketPath = resolve(here, '..', '.workspace', 'tui.sock');
@@ -590,6 +591,27 @@ async function main() {
   // wired — a handler holding a state object nothing else uses would fetch the list a second
   // time and cache it where no typed command could see it.
   const state = createTuiState();
+
+  // The full-screen surface (`07_INTERFACCIA.md` §4, `CE-020`) — but only on a real terminal.
+  //
+  // The gate is `isTTY`, not a flag with a TTY default, and that is load-bearing: the
+  // acceptance run that proves `CE-021` drives this client with a PIPED stdin, and so does
+  // every scripted use. Raw mode and the alternate screen buffer are meaningless there, and
+  // taking them anyway would turn a passing proof into a hang with no output to explain it.
+  // `NOESAR_TUI_LINE_MODE=1` forces the line shell on a terminal too, for anyone debugging
+  // one command at a time.
+  if (process.stdout.isTTY && process.stdin.isTTY && process.env.NOESAR_TUI_LINE_MODE !== '1') {
+    // `status` only — the agent shell's commands come from the shared registry
+    // (apps/webui-static/agent-commands.js), not from a list the engine has to serve. The
+    // address book is a different gesture and belongs to the browser's top bar.
+    const engineStatus = await session.call('status', {}).catch(() => null);
+    iface.pause();
+    await runFullScreen({ session, status: engineStatus });
+    iface.close();
+    socket.end();
+    return;
+  }
+
   wireFunctionKeys(iface, session, state);
   for (;;) {
     const line = await question(reader, PROMPT);

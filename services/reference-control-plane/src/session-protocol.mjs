@@ -71,6 +71,18 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   'sessions.action': { permission: 'workspace.write', bridged: false },
   'product.invariants': { permission: null, bridged: false },
   'coden.addresses': { permission: null, bridged: false },
+  // The branch state the WebUI's own `git` chip reads (`GET /api/v1/coden/git-status`,
+  // s317). It was reachable from the browser and not from the terminal, so the terminal's
+  // status line read `—` for `remote`: a field with a real source, shown as unsourced only
+  // because one transport had never been given the method.
+  //
+  // `coden.plan`, which is what that HTTP route already requires — NOT `workspace.read`,
+  // which is what a read of the workspace would otherwise suggest. The two are not the same
+  // set: every AI service account holds `workspace.read` and none holds `coden.plan`
+  // (auth.mjs), so gating on the wider one here would let an account reach over this socket
+  // a fact it cannot reach over HTTP. That is precisely the sideways asymmetry `D-0302`
+  // closed, and re-opening it for the convenience of a status field is not a trade.
+  'coden.gitStatus': { permission: 'coden.plan', bridged: false },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -92,7 +104,7 @@ export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
-  codenAddressBook,
+  codenAddressBook, gitStatus,
   // The policy the gate below reads. A parameter, not a direct reference, for one reason:
   // "a method with no policy entry is refused" is the fail-closed branch that matters most and
   // the one the real configuration can never reach, since every implemented method is listed.
@@ -194,6 +206,14 @@ export function createSessionDispatch({
         throw new ProtocolError('UNAVAILABLE', `the interface the address list is read from could not be read: ${error.message}`);
       }
       return { addresses, accessFiltered: false };
+    },
+    // Same module the HTTP route calls, against the same workspace root — not a second
+    // reading of git that could disagree with the browser's chip about the same repository.
+    'coden.gitStatus': () => {
+      if (typeof gitStatus !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a git reader');
+      }
+      return gitStatus(workspaceRoot);
     },
   };
 

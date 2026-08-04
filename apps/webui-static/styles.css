@@ -873,10 +873,34 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    What replaces them is one line saying which panel is open, which opens the top bar's box
    already filtered to this page. An affordance, not a menu: it holds no list of its own,
    so it cannot disagree with the one the box builds from the interface. */
-.bench-where{margin:0}
-.bench-where button{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);font-size:calc(var(--text-scale)*12px)}
+/* The slash-command menu, above the composer — the terminal shell draws the same list under
+   its prompt box. Rows carry the name, what it does, and what it takes, so the menu teaches
+   the command instead of only completing it. */
+.composer{position:relative}
+.composer-commands{position:absolute;bottom:calc(100% + 8px);inset-inline:0;max-height:320px;overflow:auto;border:1px solid var(--accent-brand);border-radius:12px;background:var(--surface-popover);box-shadow:0 24px 80px var(--shadow-overlay);padding:6px;z-index:30}
+.composer-commands button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--text-popover);text-align:start;cursor:pointer}
+.composer-commands button.active{background:var(--surface-selected);color:var(--text-on-accent)}
+.composer-commands button b{color:var(--accent-brand);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.composer-commands button.active b{color:inherit}
+.composer-commands button span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer-commands button.active span,.composer-commands button.active small{color:inherit}
+.composer-commands button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(var(--text-scale)*10px)}
+.composer-commands p{margin:0;padding:10px;color:var(--muted)}
+@media(forced-colors:active){.composer-commands button.active{border:2px solid CanvasText}}
+
+/* The field bar the terminal opens on, in the browser. One row: identity on the left, the
+   mode control on the right — the same reading order as the TUI's top bar, so moving between
+   the two shells does not mean re-finding the same facts in a different arrangement. */
+.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
+.coden-bar .chip-list{margin:0;flex:1}
+.coden-bar .mode-switch{margin-inline-start:auto}
+.bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bench-where button{display:inline-flex;align-items:center;gap:3px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);font-size:calc(var(--text-scale)*12px)}
 .bench-where button:hover{border-color:var(--border-accent-hover);color:var(--text-on-accent-wash)}
 .bench-where b{color:var(--text-primary);font-weight:600}
+.bench-where-slash{color:var(--accent-brand);font-weight:700}
+.bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.bench-where-hint kbd{padding:1px 5px;border:1px solid var(--line);border-radius:5px;color:var(--accent-brand)}
 .bench-panels{border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,var(--panel),var(--panel2));padding:16px;min-height:260px}
 .bench-panel{display:none}
 .bench-panel.active{display:block}
@@ -998,3 +1022,14 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 @media(forced-colors:active){
   .search-popover button.active{border:2px solid CanvasText}
 }
+
+/* Addendum §1 (CodeN Evolution mockup) styled the "/" jump box with an accent border and a
+   heavier shadow so it reads as a distinct overlay, not a stock dropdown. Applied here to the
+   one real box (`.command`/`.search-popover`) rather than a second CodeN-only copy — Card A's
+   own point is that this is the same address box everywhere, not a CodeN skin. */
+.command:focus-within{border-color:var(--accent-brand)}
+.command kbd{color:var(--accent-brand);font-weight:700}
+.search-popover{border-color:var(--accent-brand);box-shadow:0 24px 80px var(--shadow-overlay),0 0 0 1px var(--accent-wash)}
+.coden-conversation-turn{margin:0;padding:7px 0;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px);color:var(--text-list)}
+.coden-conversation-turn:first-child{border-top:0}
+.coden-conversation-turn b{display:block;color:var(--text-primary);font-size:calc(var(--text-scale)*10px);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}

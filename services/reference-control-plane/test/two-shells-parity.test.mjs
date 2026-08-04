@@ -85,7 +85,7 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
   });
 
   test('what only the terminal carries is a declared list, and it is gated like its own routes', () => {
-    // These five are socket-only on purpose: the browser reaches each through a surface of its
+    // These are socket-only on purpose: the browser reaches each through a surface of its
     // own, so bridging them would add a second way in rather than a missing one. The
     // permission each one costs is what that surface's own route already asks — measured
     // against server.mjs above: GET /api/v1/sessions asks workspace.read, POST
@@ -98,6 +98,17 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
       'sessions.action': 'workspace.write',
       'product.invariants': null,
       'coden.addresses': null,
+      // The branch state the browser's own `git` chip already shows. Socket-only for the
+      // same reason as the rest: the browser reaches it through `GET /api/v1/coden/git-status`,
+      // so bridging it would add a second door onto one room.
+      //
+      // `coden.plan` is exactly what THAT route asks. Deliberately not `workspace.read`,
+      // which reads like the natural permission for reading a repository and is the wrong
+      // one here: every AI service account holds `workspace.read` and none holds
+      // `coden.plan`, so the wider gate would let such an account read over this socket a
+      // fact it cannot read over HTTP. That is the sideways widening `D-0302` closed, and a
+      // status-line field is not worth re-opening it for.
+      'coden.gitStatus': 'coden.plan',
     });
   });
 
@@ -158,18 +169,42 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     assert.match(protocolSource, /if \(!authenticated\) throw new ProtocolError\('UNAUTHENTICATED'/);
   });
 
-  test('no role is currently locked out of the terminal shell', () => {
+  test('the shell’s universal core is reachable by every role that can authenticate', () => {
     // Not a rule — a measurement, kept because it is the thing that made the old gap
-    // invisible: every role that can authenticate holds both permissions the policy names, so
-    // the enforcement added in D-0302 refuses nobody today. If this fails, someone narrowed a
-    // role, and the terminal shell just became less capable for that role than it was. That is
-    // then a product decision to take deliberately, which is the point.
-    const required = new Set(Object.values(SESSION_METHOD_POLICY).map((policy) => policy.permission).filter(Boolean));
-    assert.deepEqual([...required].sort(), ['workspace.read', 'workspace.write']);
+    // invisible: the WORK of this shell (plan, simulate, approve, reject, restore, get, map,
+    // search, events, status, sessions) costs `workspace.read`/`workspace.write`, and every
+    // role that can authenticate holds both. The D-0302 enforcement refuses nobody there.
+    //
+    // "Every method" is deliberately NOT what this asserts any more, and the difference was a
+    // decision, not an accident. `coden.gitStatus` costs `coden.plan`, which the three AI
+    // service-account roles do not hold — and must not, since they cannot read that fact over
+    // HTTP either. Nothing was narrowed and no role lost a capability it had: the method is
+    // new, and it arrived at the gate its own HTTP route already stands behind. Widening it to
+    // `workspace.read` to keep this list at two entries would have made the socket more
+    // permissive than the browser for the same fact, which is the exact asymmetry D-0302 shut.
+    const universal = new Set(Object.entries(SESSION_METHOD_POLICY)
+      .filter(([method]) => method !== 'coden.gitStatus')
+      .map(([, policy]) => policy.permission).filter(Boolean));
+    assert.deepEqual([...universal].sort(), ['workspace.read', 'workspace.write']);
     for (const role of ROLES) {
-      for (const permission of required) {
+      for (const permission of universal) {
         assert.ok(RolePermissions[role]?.has(permission), `role \`${role}\` no longer holds \`${permission}\``);
       }
     }
+  });
+
+  test('the one non-universal method is gated exactly as its own HTTP route is', () => {
+    // The claim the comment above rests on, measured rather than asserted: `coden.gitStatus`
+    // and `GET /api/v1/coden/git-status` ask for the same permission. If someone changes one,
+    // this fails and the two transports stop agreeing about who may read the repository.
+    assert.equal(SESSION_METHOD_POLICY['coden.gitStatus'].permission, 'coden.plan');
+    assert.match(serverSource,
+      /url\.pathname === '\/api\/v1\/coden\/git-status'\)\s*\{\s*\n\s*const authenticated = requireSession\(req, res, 'coden\.plan'\)/,
+      'the HTTP route for git status no longer asks for coden.plan');
+
+    // And the roles it therefore excludes are named, so the exclusion is visible rather than
+    // discovered later by someone whose terminal reports `remote —` for no stated reason.
+    const excluded = ROLES.filter((role) => !RolePermissions[role]?.has('coden.plan'));
+    assert.deepEqual(excluded.sort(), ['client_restricted', 'service_account', 'user']);
   });
 });
