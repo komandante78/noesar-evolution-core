@@ -49,6 +49,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
+import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
 import { ReasoningRouter, routingFrom } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
@@ -97,8 +98,9 @@ export class WorkspaceActionOrchestrator {
   #executeSandbox;
   #privacyStateFor;
   #env;
+  #groundRequest;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -116,6 +118,10 @@ export class WorkspaceActionOrchestrator {
     this.#shadowsRoot = shadowsRoot;
     this.#minter = minter;
     this.#events = events;
+    // A seam, for the same reason `methodPolicy` is one in session-protocol.mjs: the
+    // interesting branches here are the refusals, and a refusal that only fires against a
+    // real repository is a refusal no test can reach without building one.
+    this.#groundRequest = groundRequest;
     // ARCH-008 / D-0250: the client's own decision, resolved once at boot in server.mjs
     // (`resolveExecuteSandboxConfig`) and threaded through, never re-read per call — a
     // config that could change mid-run would make "the token's limits were checked against
@@ -152,14 +158,30 @@ export class WorkspaceActionOrchestrator {
    */
   async #runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy }) {
     const intent = await provider.interpret(request, projectRules);
+    // Grounding, and ONLY when the caller named nothing. A caller who named files made a
+    // decision, and a step that silently replaced it with a search result would be answering
+    // a question nobody asked — the operator would approve a plan about files they did not
+    // choose. So this widens what can be planned; it never overrules what was planned.
+    //
+    // It sits here, after `interpret` and inside this method, because the goal it searches on
+    // is the provider's, and calling `interpret` a second time from `plan()` to get it would
+    // be two model calls per plan whose answers are not required to agree — and `session-
+    // replay.mjs` would then report the disagreement as drift originating in this file.
+    let resolvedFiles = files;
+    let grounding = null;
+    if (resolvedFiles.length === 0) {
+      const grounded = this.#groundRequest({ workspaceRoot: this.#workspaceRoot, goal: intent.goal });
+      resolvedFiles = grounded.files;
+      grounding = grounded.grounding;
+    }
     const hypotheses = await provider.hypothesize(intent, []);
     const step = {
       id: 'step-1',
       description: hypotheses[0].statement,
-      files: files.map((file) => file.path),
+      files: resolvedFiles.map((file) => file.path),
       commands: [],
       dependsOn: [],
-      blastRadius: provider.blastRadius(files.map((file) => file.path), false),
+      blastRadius: provider.blastRadius(resolvedFiles.map((file) => file.path), false),
     };
     const plan = provider.buildPlan([step], constraints, mode);
     const constrained = await provider.constrain(plan, policy);
@@ -167,7 +189,10 @@ export class WorkspaceActionOrchestrator {
     const risk = await provider.classify(constrained.plan);
     const confidence = await provider.confidence(constrained.plan, []);
     const expectation = await provider.expect(constrained.plan);
-    return { intent, hypotheses, plan: constrained.plan, risk, confidence, expectation, provenance: provider.provenance() };
+    return {
+      intent, hypotheses, plan: constrained.plan, risk, confidence, expectation,
+      provenance: provider.provenance(), files: resolvedFiles, grounding,
+    };
   }
 
   #record(correlationId, causationId, actor, action, details, nowUnix) {
@@ -318,10 +343,15 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  async plan({ request, files, projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
-    if (!Array.isArray(files) || files.length === 0) {
-      refuse('NO_FILES', 'this reference wiring takes the files to touch as part of the request; the reference provider has no model and cannot invent a target from prose alone');
-    }
+  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
+    // `files` is now optional. It was required, and the refusal that enforced it said the
+    // reference provider "cannot invent a target from prose alone" — true, and the reason
+    // both shells' `/plan` could never do anything: s319's terminal sent `files: []` on
+    // every one. The property that sentence protects is kept, and kept literally: nothing
+    // downstream accepts a path a model wrote. What changed is that when no file is named,
+    // `#runDecisionLayer` asks the REPOSITORY which files the interpreted goal points at
+    // (request-grounding.mjs). An empty list is now a request to look, not a malformed call.
+    if (!Array.isArray(files)) refuse('INVALID_FILES', 'files must be an array when supplied');
     if (!Array.isArray(claims)) refuse('INVALID_CLAIMS', 'claims must be an array if supplied');
     for (const file of files) {
       if (!file || typeof file.path !== 'string' || !file.path.trim()) {
@@ -343,11 +373,19 @@ export class WorkspaceActionOrchestrator {
       decision = await this.#runDecisionLayer({ provider, request, files, projectRules, constraints, mode, policy });
     } catch (error) {
       if (error instanceof ReasoningRefused) refuse('REASONING_REFUSED', error.reason);
+      // A grounding refusal keeps its own code and its own reason rather than collapsing into
+      // one. "Nothing in this workspace mentions `passkey`, `rotation`" tells the operator
+      // what to do next; "NO_FILES" told them only that they had held it wrong.
+      if (error instanceof GroundingRefused) refuse(error.code, error.reason);
       // ReasoningUnavailable and WorkspaceActionError (CONSTRAINED_AWAY, thrown inside
       // #runDecisionLayer) both propagate as-is: neither is a refusal this catch invents.
       throw error;
     }
-    const { intent, hypotheses, plan, risk, confidence, expectation, provenance } = decision;
+    const { intent, hypotheses, plan, risk, confidence, expectation, provenance, grounding } = decision;
+    // The files the decision layer settled on — the caller's when it named any, the
+    // repository's when it did not. Everything below (the recorded run, the shadow, the
+    // executor, the session proof) must see the same list the plan was built from.
+    const planFiles = decision.files;
 
     // SESS-002 capture, best-effort: a plan that succeeded on every real surface must not be
     // failed by a fixture-recording hiccup on the last one. `fixturePack` stays `null` and
@@ -361,11 +399,15 @@ export class WorkspaceActionOrchestrator {
     }
 
     const rootEventId = this.#record(runId, null, actor, 'workspace_action.planned', {
-      goal: intent.goal, files: files.map((file) => file.path), risk: risk.overall, provenance,
+      goal: intent.goal, files: planFiles.map((file) => file.path), risk: risk.overall, provenance,
+      // In the ledger, not only in the answer. Whether the files were chosen by a person or
+      // found by a search is part of what an auditor is reading this line to learn, and a
+      // record that omits it cannot be asked the question later.
+      grounding,
     }, nowUnix);
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
-      plan, expectation, files, intent, hypotheses, risk, confidence, claims, provenance,
+      plan, expectation, files: planFiles, intent, hypotheses, risk, confidence, claims, provenance, grounding,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
@@ -382,7 +424,11 @@ export class WorkspaceActionOrchestrator {
     // engine had never said. It happened to be true, which is what made it invisible; the day
     // a mode plans into any other state, two clients would have gone on reporting this one.
     // Read off the stored run, so it cannot say something the run does not.
-    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance };
+    // `grounding` is returned, not left to be inferred from the plan's file list. A shell
+    // showing "3 files" without saying they were derived invites the operator to read them as
+    // a choice somebody made. `null` when the caller named the files, which is the honest
+    // value: nothing was derived.
+    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding };
   }
 
   /**

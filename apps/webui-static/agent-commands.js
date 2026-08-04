@@ -23,7 +23,12 @@
 // refuses EXECUTE permanently and on purpose, and a prompt is not a way around that.
 
 export const AGENT_COMMANDS = Object.freeze([
-  { name: 'plan', argument: '<goal>', summary: 'Start a plan: a goal, then the exact files it may touch', method: 'workspace.plan' },
+  // This said "a goal, then the exact files it may touch" for as long as naming files was
+  // mandatory — which was also as long as this command could not work at all, since both
+  // shells send an empty list. Files are now found in the repository when none are named
+  // (`request-grounding.mjs`), so the line says that instead. A command's own description is
+  // the first thing to go stale when its engine changes, and both shells render this string.
+  { name: 'plan', argument: '<goal>', summary: 'Start a plan from a goal — the repository decides which files it may touch', method: 'workspace.plan' },
   { name: 'simulate', argument: '<run>', summary: 'Ask what a pending plan would do, executing nothing', method: 'workspace.simulate' },
   { name: 'approve', argument: '<run>', summary: 'Approve a plan — runs in the shadow, promotes only if clean', method: 'workspace.approve' },
   { name: 'reject', argument: '<run> [why]', summary: 'Reject a pending plan', method: 'workspace.reject' },

@@ -247,13 +247,64 @@ test('the claims_verified ledger event records the declaration even on a refused
 
 // --- the adversarial half: proving it never exits its authority -------------
 
-test('a request with no files is refused before anything is planned', async () => {
+// These three replace one test that asserted `NO_FILES`: a plan naming no files was refused
+// outright, which is why both shells' `/plan` could never do anything — s319's terminal sent
+// `files: []` on every one of them.
+//
+// The refusal is gone; the property it protected is not, and the property is what is
+// asserted here. Its own words were "the reference provider has no model and cannot invent a
+// target from prose alone". Grounding does not give it one: it asks the REPOSITORY, by
+// literal search over the interpreted goal, so the model's only influence on which files are
+// chosen is the goal it returned. The first test therefore does not check that an empty list
+// is accepted — it checks that every file such a plan touches exists in the workspace.
+test('a request with no files is grounded in the repository, and every file it plans on is real', async () => {
+  const fx = fixture();
+  try {
+    writeFileSync(join(fx.ws, 'greeting.txt'), 'the greeting shown at startup\n');
+    writeFileSync(join(fx.ws, 'unrelated.txt'), 'nothing to do with it\n');
+    const planned = await fx.orch.plan({ request: 'adjust the greeting', files: [], actor: 'x', nowUnix: NOW });
+    assert.ok(planned.grounding, 'a plan built from prose must say that its files were derived');
+    assert.equal(planned.grounding.derived, true);
+    assert.ok(planned.grounding.terms.includes('greeting'), 'the terms searched for must be reported, not hidden');
+    const touched = planned.plan.steps.flatMap((step) => step.files);
+    assert.ok(touched.length > 0, 'grounding produced a plan that touches nothing');
+    for (const path of touched) {
+      assert.ok(existsSync(join(fx.ws, path)),
+        `the plan names \`${path}\`, which is not in the workspace — a path reached the plan without coming from the repository`);
+    }
+    assert.ok(touched.includes('greeting.txt'), 'the file the goal points at was not selected');
+  } finally { cleanup(fx); }
+});
+
+test('a request that matches nothing is refused, and the refusal names what it searched for', async () => {
   const fx = fixture();
   try {
     await assert.rejects(
-      async () => fx.orch.plan({ request: 'do nothing', files: [], actor: 'x', nowUnix: NOW }),
-      (error) => error instanceof WorkspaceActionError && error.kind === 'NO_FILES',
+      async () => fx.orch.plan({ request: 'zzqqxx unobtainium', files: [], actor: 'x', nowUnix: NOW }),
+      (error) => {
+        assert.ok(error instanceof WorkspaceActionError);
+        assert.equal(error.kind, 'NO_CANDIDATES');
+        // The whole point of replacing `NO_FILES`: a refusal that says what to do next
+        // instead of only that the caller held it wrong.
+        assert.match(error.message, /zzqqxx/);
+        return true;
+      },
     );
+  } finally { cleanup(fx); }
+});
+
+test('naming files still overrules the search — grounding widens what CAN be planned, never what WAS', async () => {
+  const fx = fixture();
+  try {
+    writeFileSync(join(fx.ws, 'greeting.txt'), 'the greeting shown at startup\n');
+    const planned = await fx.orch.plan({
+      request: 'adjust the greeting',
+      files: [{ path: 'chosen.txt', contents: 'named by the caller' }],
+      actor: 'x', nowUnix: NOW,
+    });
+    assert.equal(planned.grounding, null, 'a caller who named files must not be told something was derived');
+    assert.deepEqual(planned.plan.steps.flatMap((step) => step.files), ['chosen.txt'],
+      'the search replaced a choice the caller had already made');
   } finally { cleanup(fx); }
 });
 
