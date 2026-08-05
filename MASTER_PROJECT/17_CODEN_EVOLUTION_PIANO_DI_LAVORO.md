@@ -113,6 +113,40 @@ BUDGET      ~45 chiamate — è la fase grossa, se sfora si divide in 3a/3b
 STOP        Le due shell hanno le stesse regioni, le stesse voci di menu, gli stessi indirizzi
 ```
 
+> ### 🛑 MISURATO IL 2026-08-05, PRIMA DI TOCCARE QUALCOSA — la fase poggiava su una premessa falsa
+>
+> Il passo 1 qui sotto ha fatto il suo lavoro al primo tentativo. **Il terminale rende 8 dei 25
+> indirizzi. Diciassette non hanno una vista.**
+>
+> ```text
+> banco   tests · terminal · preview · documentation · problems · closure · projects
+>         recent · tasks · agents · tools · plugins · history · favourites      (14)
+> agente  conversation · plan · activity                                         (3)
+> ```
+>
+> Non è una dimenticanza del client: `ADDRESS_VIEWS` è una tabella di *cosa questo trasporto sa
+> mostrare*, e un indirizzo assente **dichiara `UNAVAILABLE`** invece di stampare vuoto — che è
+> onesto e già costruito.
+>
+> **Cosa questo cambia.** `16` §4b.3 diceva che i 25 pannelli «non si perdono, erano già
+> indirizzi». È vero per la **navigazione** — ci si arriva — e falso per il **contenuto**: da
+> terminale, diciassette dicono di non essere disponibili. Rimuovere il cruscotto del browser
+> senza costruirli renderebbe `CE-034` falso di diciassette voci, e trasformerebbe una funzione
+> che oggi esiste nel browser in una che non esiste da nessuna parte.
+>
+> **Quindi la fase 3 si divide, come previsto:**
+>
+> | | Cosa | Perché separata |
+> |---|---|---|
+> | **3a** | Le quattro regioni nel browser, e il menu `/`. **Il cruscotto resta.** | è forma, ed è reversibile |
+> | **3b** | I 17 indirizzi mancanti ottengono un metodo e una vista | è **sostanza**, ed è la fase che nessuno aveva contato |
+> | **3c** | Solo allora si rimuove il cruscotto | rimuovere è l'ultimo atto, mai il primo |
+>
+> **3b non è lavoro di interfaccia.** Alcuni di quei diciassette non hanno un metodo sul
+> protocollo, non solo una vista: sono voci nuove in `SESSION_METHOD_POLICY`, con il loro
+> permesso e il loro gate. Va dimensionata come fase a sé, non nascosta dentro un cambio di
+> grafica — che è esattamente il modo in cui le Card C e D sono sparite a luglio.
+
 **L'ordine dentro la fase non è negoziabile:**
 
 1. **Prima si misura** che tutti e 25 gli indirizzi si aprano dal prompt. L'address book ne
