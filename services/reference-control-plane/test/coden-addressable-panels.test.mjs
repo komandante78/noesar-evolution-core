@@ -38,6 +38,7 @@ const tui = readFileSync(join(root, 'tools/tui-client.mjs'), 'utf8');
 // were watching had simply left the file they were watching it in.
 const views = readFileSync(join(root, 'tools/coden-address-views.mjs'), 'utf8');
 const model = readFileSync(join(root, 'apps/webui-static/coden-view-model.js'), 'utf8');
+const css = readFileSync(join(root, 'apps/webui-static/styles.css'), 'utf8');
 // Phase 4: the address space as the server derives it, used below to check the interface's
 // own documented examples against the interface's own attributes.
 const declaredAddresses = parseCodenAddressBook(html).map((entry) => entry.address);
@@ -140,16 +141,28 @@ describe('CodeN Evolution — every panel is an address', () => {
 });
 
 describe('phase 3: the switchers are gone and nothing they reached went with them', () => {
-  test('the breadcrumb holds no list of its own — it opens the one box', () => {
-    // The single visible way into the panels now. If it ever grows its own menu, this page
-    // has two lists of destinations again and one of them will go stale, which is the
-    // failure mode this whole programme has been unwinding.
-    const button = html.match(/<button type="button" id="benchWhere"[^>]*>/)?.[0];
-    assert.ok(button, 'the breadcrumb is gone; `/` would be the only way to change panel');
-    assert.match(button, /aria-controls="globalSearchResults"/);
-    const handler = app.slice(app.indexOf("$('#benchWhere')"), app.indexOf("$('#terminalAdd')"));
-    assert.match(handler, /openPalette\(\)/);
-    assert.match(handler, /'\/coden\/'/, 'it must open the box filtered to this page');
+  test('phase 3c — the panels are reachable with a MOUSE, and by exactly one menu', () => {
+    // This used to assert the breadcrumb existed, "or `/` would be the only way to change
+    // panel" — a real rule of this product: a keyboard shortcut is the fast path, never the
+    // only path. Phase 3c removes the breadcrumb AND the top address box (§4b.4 rule 1: there
+    // is one `/`), so the rule is asserted on the property instead of on the widget that used
+    // to satisfy it. The affordance moved into the prompt's own hint, which already said `/`
+    // opens the menu; nothing was added to the screen, one label became operable.
+    const control = html.match(/<button[^>]*id="codenPromptOpenMenu"[^>]*>/)?.[0];
+    assert.ok(control, 'no mouse path to the menu — `/` would be the only way to change panel');
+    assert.match(control, /aria-controls="codenMenu"/, 'the control must name the ONE menu');
+    const handler = app.slice(app.indexOf("$('#codenPromptOpenMenu')"), app.indexOf("$('#terminalAdd')"));
+    assert.match(handler, /renderCodenMenu\(\)/, 'the control does not open the menu it names');
+    assert.doesNotMatch(handler, /openPalette\(/, 'it opens the address box the phase removed');
+
+    // And the widgets it replaces are really gone, in both directions: the breadcrumb is no
+    // longer a control, and the top box is not shown on this destination. Asserted on the
+    // markup and the stylesheet rather than on a comment, since a comment is what a guard in
+    // this repository cannot tell from a fact.
+    assert.ok(!/<button[^>]*id="benchWhere"/.test(html), 'the breadcrumb is a control again');
+    assert.match(css, /\.app-shell\[data-view="coden"\] \.command\{display:none\}/,
+      'the top address bar is still shown on the destination that has a prompt');
+    assert.match(app, /shell\.dataset\.view=target/, 'nothing tells the shell which destination is open');
   });
 
   test('the breadcrumb names the panel that is open', () => {

@@ -235,6 +235,29 @@ export function addressEntries(addresses) {
 }
 
 /**
+ * What the menu LISTS for a given query — commands always, the address space once something
+ * has been typed.
+ *
+ * Measured, not guessed: folding all fifty-three addresses in unconditionally made the bare
+ * `/` menu useless. The renderer divides its row budget across the four groups, APPLICATIONS
+ * went from eleven entries to sixty-four, and WORK's share shrank until `/approve` no longer
+ * appeared at a normal terminal height. `CE-020` caught it — the acceptance run that types `/`
+ * and looks for the commands the shell is FOR.
+ *
+ * So the bare `/` is the product's own menu, which is what §4b.4 draws: four groups, the
+ * things you do and the places you go. Type anything and the address space joins in, which is
+ * the case where you are looking for a panel by name. This is still ONE menu and one list —
+ * what changes is how much of it a query with no letters in it is worth showing.
+ *
+ * Note what this does NOT do: it does not narrow what can be RESOLVED. Typing a full address
+ * always goes there, whether or not the menu had got round to listing it — the filtering is
+ * about what is worth painting, never about what the prompt accepts.
+ */
+export function menuEntriesFor(word, commands, addresses) {
+  return String(word ?? '').trim() ? [...commands, ...addressEntries(addresses)] : [...commands];
+}
+
+/**
  * What should happen to what the user typed — decided here, performed by the caller.
  *
  * Returns one of:

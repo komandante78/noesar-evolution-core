@@ -256,10 +256,37 @@ export function commandMenuRows(menu, width) {
     // casella, tutto il prodotto" — a menu where three quarters of the product is invisible
     // unless you already know what to type is not that. Every group gets a share now, and a
     // group showing fewer than it holds SAYS so in its own heading instead of just stopping.
-    const share = Math.max(1, Math.floor((limit - groups.length - noteRow) / Math.max(1, groups.length)));
+    // …but an EQUAL share is not a shared budget, and that is the defect phase 3c found.
+    //
+    // `floor((limit - headings - note) / groups)` is 1 at any ordinary terminal height: twelve
+    // rows, four groups and a note leave seven for entries, and a quarter of seven is one. So
+    // the menu showed exactly one entry per group — "WORK 1 of 15" — and `/approve`, the third
+    // thing this shell is FOR, was not on it. 3a's own fix, over-corrected: it made every group
+    // reachable and left the menu useless, and the tests written for it asserted only that each
+    // group APPEARS and that the rows fit. Both stayed true. `CE-020` failed from 3a onward and
+    // nobody saw it, because it is not part of `npm test`.
+    //
+    // Two passes. One entry each first, so every group is still reachable — that property is
+    // 3a's and it stands. Then the rest round-robin, which returns what a short group cannot
+    // use (SESSION holds one entry; CONFIGURE three) to the groups that can, instead of
+    // leaving those rows unspent beside a WORK group showing one of fifteen.
+    const budget = Math.max(groups.length, limit - noteRow);
+    const want = groups.map((group) => group.entries.length);
+    const shares = groups.map(() => 0);
+    let free = budget - groups.length; // one heading row per group, always
+    for (let index = 0; index < groups.length && free > 0; index += 1) {
+      if (want[index] > 0) { shares[index] = 1; free -= 1; }
+    }
+    for (let spent = true; free > 0 && spent;) {
+      spent = false;
+      for (let index = 0; index < groups.length && free > 0; index += 1) {
+        if (shares[index] < want[index]) { shares[index] += 1; free -= 1; spent = true; }
+      }
+    }
 
-    for (const group of groups) {
+    for (const [position, group] of groups.entries()) {
       if (rows.length >= limit) break;
+      const share = Math.max(1, shares[position]);
       // The window follows the selection. Truncating from the top always would hide the
       // highlighted entry as soon as the arrow keys walked past the share — the same defect
       // the prompt box already solves by keeping the caret in view.
@@ -313,7 +340,13 @@ export function renderFrame({ width, height, state }) {
   const rows = [];
 
   const prompt = promptRows(state.prompt ?? '', w);
-  const menu = state.menu ? commandMenuRows({ ...state.menu, rowLimit: Math.max(1, Math.floor(h / 3)) }, w) : [];
+  // Half the screen, not a third — phase 3c. The menu is drawn ONLY while the prompt begins
+  // with `/`, so what it costs is what it costs at the moment you are choosing, and nothing at
+  // any other time. A third of thirty rows is ten, which after four headings and the filtered
+  // note leaves one entry per group: the whole product, one item at a time. The transcript is
+  // still anchored above the prompt and the prompt still cannot be pushed off the bottom —
+  // `commandMenuRows` never returns more rows than it was given.
+  const menu = state.menu ? commandMenuRows({ ...state.menu, rowLimit: Math.max(1, Math.floor(h / 2)) }, w) : [];
   const footer = wrapLines([footerText(state)], w - 2);
   const chromeHeight = prompt.length + menu.length + footer.length + 1;
   const transcriptHeight = Math.max(1, h - chromeHeight);

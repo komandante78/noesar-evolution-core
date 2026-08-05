@@ -30,7 +30,7 @@ import {
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
   createView, say, planTurn, detailLines, gitSummary, CLEARED_NOTE, startForm, fillForm,
-  addressEntries,
+  addressEntries, menuEntriesFor,
 } from '../apps/webui-static/coden-view-model.js';
 // Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
 // `tui-client.mjs` — that file imports this one, and a table two shells share belongs to
@@ -111,7 +111,7 @@ export async function runFullScreen({
     const parsed = parseCommandPrompt(view.prompt);
     view.menu = parsed
       ? {
-        hits: matchCommands(parsed.word, offered()), selected: 0,
+        hits: matchCommands(parsed.word, menuEntriesFor(parsed.word, menu.entries, addressBook)), selected: 0,
         groups: groupMenu, accessFiltered: menu.accessFiltered, hidden: menu.hidden,
       }
       : null;

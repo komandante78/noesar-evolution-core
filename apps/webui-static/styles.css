@@ -858,7 +858,21 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .zoom-row output{min-width:56px;text-align:center}
 
 /* The workbench · UI-030…UI-037 */
-.bench{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
+/* PHASE 3c · the top address bar leaves the destination that has a prompt of its own.
+   `16` §4b.4 rule 1: "un terminale non ha una barra degli indirizzi, e tenerla significherebbe
+   di nuovo due gesti per la stessa cosa. … c'è una `/` sola". It leaves CodeN and stays on the
+   other twelve destinations, which have no prompt to absorb it — `17` fixes this phase's scope
+   at "cambia la destinazione CodeN Evolution", and stripping navigation from twelve pages to
+   satisfy a rule written about one would be the removal doing more than it was asked. */
+.app-shell[data-view="coden"] .command{display:none}
+/* PHASE 3c. The bench is CLOSED until an address opens a panel in it — `16` §4b.3, the
+   panels stop being riquadri sempre presenti. A bare #/coden is the four regions and nothing
+   below them; `data-panel-open` is set by activateCodenPanel and cleared by a bare address. */
+#view-coden:not([data-panel-open]) .bench{display:none}
+/* One column, not two. Two regions each standing open is a dashboard however few panels each
+   of them holds, and §4b.2 draws no side column at all — one panel is open at a time now, so
+   there is no second column left for it to sit in. */
+.bench{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .bench-agent{display:grid;gap:10px;align-content:start}
 .bench-nav-group h3{margin:0 0 4px;font-size:calc(var(--text-scale)*11px);letter-spacing:.09em;text-transform:uppercase;color:var(--accent-eyebrow)}
 .bench-nav-list{padding:0;font-size:calc(var(--text-scale)*12px);color:var(--text-list)}
@@ -895,10 +909,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .coden-bar .chip-list{margin:0;flex:1}
 .coden-bar .mode-switch{margin-inline-start:auto}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.bench-where button{display:inline-flex;align-items:center;gap:3px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--text-chip);font-size:calc(var(--text-scale)*12px)}
-.bench-where button:hover{border-color:var(--border-accent-hover);color:var(--text-on-accent-wash)}
 .bench-where b{color:var(--text-primary);font-weight:600}
-.bench-where-slash{color:var(--accent-brand);font-weight:700}
 .bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
 .bench-where-hint kbd{padding:1px 5px;border:1px solid var(--line);border-radius:5px;color:var(--accent-brand)}
 .bench-panels{border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,var(--panel),var(--panel2));padding:16px;min-height:260px}
@@ -1068,6 +1079,10 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .agent-prompt textarea:focus{outline:none}
 .agent-prompt:focus-within{box-shadow:inset 0 0 0 2px var(--focus-ring)}
 .agent-hint{margin:0;padding:0 14px 9px;background:var(--surface-composer);color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+/* The `/` in the hint is a control, styled as the key it already looked like. It is the
+   mouse's way to the one menu, since the breadcrumb and the address bar left in phase 3c. */
+.hint-key{padding:1px 6px;border:1px solid var(--line);border-radius:5px;background:var(--surface-raised);color:var(--accent-brand);font-family:inherit;font-size:inherit;cursor:pointer}
+.hint-key:hover{border-color:var(--border-accent-hover)}
 /* Under the prompt, which is where the terminal draws it — a reader who learns one shell does
    not have to relearn where the list appears in the other. */
 .agent-menu{border-top:1px solid var(--line);max-height:min(40vh,340px);overflow-y:auto;padding:6px 0;background:var(--surface-popover)}

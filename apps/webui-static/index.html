@@ -241,7 +241,12 @@
             <span class="agent-caret" aria-hidden="true">›</span>
             <textarea id="codenPrompt" rows="1" autocomplete="off" spellcheck="false" aria-label="Prompt" aria-describedby="codenPromptHint" placeholder="Say what should change — or / for the menu"></textarea>
           </div>
-          <p class="agent-hint" id="codenPromptHint">Enter sends · <kbd>/</kbd> opens the menu · Tab completes without sending</p>
+          <!-- PHASE 3c. The `/` in this hint is a real control now. The breadcrumb that used
+               to be the mouse's way into the panels is gone with the address bar, and this
+               product's rule is that a keyboard shortcut is the fast path and never the only
+               path — so the affordance moves to where the one `/` lives instead of becoming a
+               second widget somewhere else. The words are the ones that were already here. -->
+          <p class="agent-hint" id="codenPromptHint">Enter sends · <button type="button" class="hint-key" id="codenPromptOpenMenu" aria-controls="codenMenu" title="Open the menu — the same thing typing / does">/</button> opens the menu · Tab completes without sending</p>
           <div class="agent-menu hidden" id="codenMenu" role="listbox" aria-label="Menu"></div>
         </section>
         <!-- The workbench · UI-030…UI-037. TWO regions now, not three, and no switcher in
@@ -263,7 +268,15 @@
              visible rather than hidden to make a count come out. -->
         <div class="bench" id="bench">
           <section class="bench-main">
-            <p class="bench-where"><button type="button" id="benchWhere" aria-haspopup="listbox" aria-controls="globalSearchResults" title="Every panel of this page, by name — the same box / opens"><span class="bench-where-seg">coden</span><span class="bench-where-slash" aria-hidden="true">/</span><span class="bench-where-seg">bench</span><span class="bench-where-slash" aria-hidden="true">/</span><b id="benchWhereName">Shadow run</b></button><span class="bench-where-hint">press <kbd>/</kbd> to jump elsewhere</span></p>
+            <!-- PHASE 3c. The breadcrumb is gone. It was a button that opened the top address
+                 box already filtered to this page — a second way to ask the one question, and
+                 §4b.4 rule 1 fixes that there is ONE `/`. It was right while the top box was
+                 the only gesture that reached these panels; since 3c-1 the prompt reaches all
+                 twenty-five, measured one by one, so this is a widget standing beside a
+                 mechanism that no longer needs it.
+                 What it also did — say which panel is open — is now the panel's own heading,
+                 which is in view because exactly one panel is open at a time. -->
+            <p class="bench-where" id="benchWhere" role="status"><b id="benchWhereName">Shadow run</b><span class="bench-where-hint">type <kbd>/</kbd> in the prompt to go elsewhere</span></p>
             <div class="bench-panels">
               <section class="bench-panel active" data-bench-panel="shadow"><h3>Shadow run</h3><div id="shadowRunContent"><p class="declared-empty">No plan exists in this session yet. Create one in the Plan panel — a result is shown here after it has already run on a copy-on-write copy of the workspace: the diff and the time are facts before anyone is asked to approve them, which is why Approve promotes rather than merely allows.</p></div></section>
               <section class="bench-panel" data-bench-panel="editor"><h3>Editor</h3><div id="editorContent"><p class="declared-empty">Nothing is open. The editor shows the files a plan proposes or promotes — a view, never a second write path: every change to the real workspace still goes through Plan → Approve, so a raw edit box here would bypass the capability and shadow chain the rest of this page enforces.</p></div></section>

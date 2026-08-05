@@ -558,17 +558,17 @@ try {
     /^Diff · /.test(deepLinked.title) && deepLinked.where === 'Diff' && /Diff/.test(deepLinked.announced),
     JSON.stringify(deepLinked));
 
-  // An address names what you jumped TO, not a snapshot of the screen: the agent column and
-  // the bench are visible together, so naming one must leave the other where it was. Coming
-  // from the deep link above, "where it was" is Diff — asserting the bench's markup DEFAULT
-  // here would have been asserting that the jump resets the bench, which is the opposite of
-  // the property being claimed.
+  // PHASE 3c. This check used to assert the opposite: that an agent address left the bench
+  // panel standing, "because the agent column and the bench are visible together". They are
+  // not, since 3c — two regions each holding an open panel is a dashboard however few panels
+  // each of them has, and §4b.2 draws no side column at all. An address names ONE place, and
+  // now exactly one is open.
   await page.goto(`${BASE}/#/coden/agent/authority`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
   const authorityPanel = await panelBox('[data-agent-panel="authority"]');
-  const benchUntouched = await panelBox('[data-bench-panel="diff"]');
-  check('an agent-column address moves the agent column and leaves the bench where it was',
-    authorityPanel.height > 0 && benchUntouched.height > 0, JSON.stringify({ authorityPanel, benchUntouched }));
+  const benchClosed = await panelBox('[data-bench-panel="diff"]');
+  check('phase 3c — an agent address opens its panel and closes the bench one, so ONE is open',
+    authorityPanel.height > 0 && benchClosed.height === 0, JSON.stringify({ authorityPanel, benchClosed }));
 
   // An address typed wrong must land somewhere real and then say where it landed — the
   // rule an unknown Settings section already follows.
@@ -588,15 +588,17 @@ try {
   // Driven through the box, because phase 3 removed the tab this used to click. The property
   // is unchanged and so is its value: moving between panels of the page you are already on
   // must not refetch that page.
+  // PHASE 3c. This used to press `/` and drive the TOP ADDRESS BOX. That box is gone from this
+  // destination — §4b.4 rule 1, there is one `/` and it is in the prompt — so the helper drives
+  // the prompt, which is the gesture a user now has. Everything it measures below (the address
+  // moves, the page does not refetch, Back returns) is unchanged; only the way in is.
   const jump = async (address, panel) => {
-    // `/` is deliberately inert while something with a caret has focus, so a helper that
-    // presses it must start from nowhere in particular — otherwise a call made after a form
-    // step types a slash into that form and then waits forever for a panel.
-    await page.evaluate(() => { document.activeElement?.blur(); });
-    await page.keyboard.press('/');
-    await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
-    await page.keyboard.type(address);
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await page.evaluate((typed) => {
+      const box = document.querySelector('#codenPrompt');
+      box.value = `/${typed}`;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+      box.focus();
+    }, address);
     await page.keyboard.press('Enter');
     await page.waitForSelector(`[data-bench-panel="${panel}"].active`, { timeout: 15000 });
   };
@@ -615,18 +617,23 @@ try {
   check('jumping to a panel of this page does not refetch it',
     callsAfter === callsBefore, `${callsBefore} → ${callsAfter} requests to /api/v1/`);
 
-  // A bare `#/coden` is completed with the panel that is SHOWING, not with a constant —
-  // which is why this runs while Map is open rather than while the markup default is. It is
-  // completed in place, so the Back button collects no entry for an address that never went
-  // anywhere.
+  // PHASE 3c. A bare `#/coden` used to be COMPLETED to whichever panel happened to be showing,
+  // because a panel was always showing — which is exactly what made this page a dashboard.
+  // `16` §4b.3: the panels "smettono di essere riquadri sempre presenti e restano posti dove si
+  // va". So a bare address now opens none, stays short because that is honest, and the bench is
+  // not on the screen at all. Nothing became unreachable: every one of the twenty-five is an
+  // address the prompt opens, measured one by one in 3c-1 before any of this was removed.
   await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
-  const completed = await page.evaluate(() => ({
+  const bare = await page.evaluate(() => ({
     hash: location.hash,
-    active: document.querySelector('[data-bench-panel].active')?.getAttribute('data-bench-panel'),
+    open: document.querySelectorAll('#view-coden [data-bench-panel].active,#view-coden [data-agent-panel].active').length,
+    benchHeight: document.querySelector('#bench').getBoundingClientRect().height,
+    promptOnScreen: document.querySelector('#codenPrompt').getBoundingClientRect().height > 0,
   }));
-  check('a bare #/coden completes to the panel it is showing, not to the default',
-    completed.hash === '#/coden/bench/map' && completed.active === 'map', JSON.stringify(completed));
+  check('phase 3c — a bare #/coden opens no panel and stays a bare address',
+    bare.hash === '#/coden' && bare.open === 0 && bare.benchHeight === 0 && bare.promptOnScreen,
+    JSON.stringify(bare));
 
   // pushState with no way back would leave the address ahead of the screen: the Back button
   // moving the bar and nothing else. Two jumps, so the entry being returned to is one this
@@ -656,14 +663,20 @@ try {
     transcript: Boolean(document.querySelector('#codenTranscript')),
     prompt: Boolean(document.querySelector('#codenPrompt')),
     menu: Boolean(document.querySelector('#codenMenu')),
-    // The bench is still standing — 3a removes nothing. A phase that quietly removed it
-    // would be 3c arriving early, before the seventeen missing views exist.
+    // PHASE 3c has now removed it, and this is where that is measured on a bare address: 3a
+    // deliberately left it standing, 3b gave the stranded addresses a view, and only then was
+    // removing it something other than deleting a function that exists nowhere else.
     bench: Boolean(document.querySelector('#view-coden .bench')),
+    benchOnScreen: document.querySelector('#view-coden .bench')?.getBoundingClientRect().height > 0,
     opening: document.querySelector('#codenTranscript')?.textContent?.trim() ?? '',
   }));
   check('CE-033 · the browser shows all four regions',
     regions.status && regions.transcript && regions.prompt && regions.menu, JSON.stringify(regions));
-  check('3a removes nothing: the bench is still standing', regions.bench === true, JSON.stringify(regions));
+  // PHASE 3c. The bench markup STAYS — the address book derives all twenty-five addresses
+  // from those very attributes, and the panels hold real forms. What is removed is the
+  // dashboard: it is not on the screen until an address opens a panel in it.
+  check('phase 3c — the bench markup stays, and is off the screen on a bare address',
+    regions.bench === true && regions.benchOnScreen === false, JSON.stringify(regions));
   check('the transcript opens with its note rather than empty',
     regions.opening.includes('CodeN Evolution'), regions.opening.slice(0, 80));
 
@@ -688,6 +701,11 @@ try {
 
   // Tab completes WITHOUT running — the rule both shells follow, and the one that stops a
   // keystroke becoming an action nobody chose.
+  // Counted as a DELTA, not against a literal 1. That literal held only while nothing had
+  // ever typed at this prompt; since 3c the jump helper drives the prompt, so the transcript
+  // carries earlier turns and the check failed on a transcript that was simply used. The
+  // property was always "Tab adds none", and now that is what is measured.
+  const beforeTab = await page.evaluate(() => document.querySelectorAll('#codenTranscript .t-entry').length);
   await page.keyboard.type('pl');
   await new Promise((resolve) => setTimeout(resolve, 150));
   await page.keyboard.press('Tab');
@@ -696,7 +714,8 @@ try {
     entries: document.querySelectorAll('#codenTranscript .t-entry').length,
   }));
   check('Tab completes the prompt and runs nothing',
-    completedPrompt.value === '/plan ' && completedPrompt.entries === 1, JSON.stringify(completedPrompt));
+    completedPrompt.value === '/plan ' && completedPrompt.entries === beforeTab,
+    JSON.stringify({ ...completedPrompt, beforeTab }));
 
   // A real call, over the real bridge, landing in the real transcript.
   await page.evaluate(() => { document.querySelector('#codenPrompt').value = ''; });
@@ -766,16 +785,28 @@ try {
       agentMenu: boxed('#agentMenu, [data-agent-menu]'),
       navigator: boxed('.bench-navigator, #benchNavigator'),
       benchColumns: getComputedStyle(document.querySelector('#bench')).gridTemplateColumns.split(' ').length,
-      breadcrumb: document.querySelector('#benchWhere')?.getBoundingClientRect().height > 0,
-      where: document.querySelector('#benchWhereName')?.textContent ?? '',
+      // PHASE 3c. A bare `#/coden` opens NO panel, so the bench is not on the screen at all —
+      // "nessun pannello fisso", the line the phase-3 contract says must be true afterwards.
+      benchOnScreen: document.querySelector('#bench').getBoundingClientRect().height > 0,
+      addressBar: document.querySelector('#globalSearch')?.getBoundingClientRect().height > 0,
+      promptMenuKey: document.querySelector('#codenPromptOpenMenu')?.getBoundingClientRect().height > 0,
+      breadcrumbIsControl: Boolean(document.querySelector('button#benchWhere')),
+      regions: {
+        transcript: document.querySelector('#codenTranscript')?.getBoundingClientRect().height > 0,
+        prompt: document.querySelector('#codenPrompt')?.getBoundingClientRect().height > 0,
+        status: document.querySelector('.coden-bar')?.getBoundingClientRect().height > 0,
+      },
     };
   });
   check('the bench tabs, the agent menu and the Navigator are off the screen',
     switchers.tabs === 0 && switchers.agentMenu === 0 && switchers.navigator === 0, JSON.stringify(switchers));
-  check('the bench is two columns now, not three, so no gap is left where the column was',
-    switchers.benchColumns === 2, JSON.stringify(switchers));
-  check('one visible affordance is left, and it says which panel is open',
-    switchers.breadcrumb && switchers.where === 'Shadow run', JSON.stringify(switchers));
+  check('phase 3c — a bare #/coden is the four regions and no fixed panel',
+    !switchers.benchOnScreen && switchers.regions.transcript && switchers.regions.prompt && switchers.regions.status,
+    JSON.stringify(switchers));
+  check('phase 3c — the top address bar is gone from the destination that has a prompt',
+    !switchers.addressBar, JSON.stringify(switchers));
+  check('phase 3c — the breadcrumb is no longer a control, and the mouse reaches the one menu',
+    !switchers.breadcrumbIsControl && switchers.promptMenuKey, JSON.stringify(switchers));
 
   // The Navigator's nine groups: reachable, and carrying the same lists as before.
   await page.goto(`${BASE}/#/coden/bench/projects`, { waitUntil: 'networkidle2' });
@@ -786,6 +817,7 @@ try {
     return {
       onScreen: panel.getBoundingClientRect().height > 0,
       where: document.querySelector('#benchWhereName')?.textContent ?? '',
+      agentOpen: document.querySelectorAll('#view-coden [data-agent-panel].active').length,
       rows: rows.length,
       allLead: rows.length > 0 && rows.every((node) => node.dataset.jump),
       firstTitle: rows[0]?.getAttribute('title') ?? '',
@@ -793,34 +825,76 @@ try {
   });
   check("a Navigator group is a panel now, reached by its own address",
     navGroup.onScreen && navGroup.where === 'Projects', JSON.stringify(navGroup));
+  // PHASE 3c: ONE panel is open, across BOTH regions. Two regions each standing open is a
+  // dashboard however few panels each of them holds.
+  check('phase 3c — opening a bench panel closes the agent column, so one panel is open',
+    navGroup.agentOpen === 0, JSON.stringify(navGroup));
   check('its rows carry the projects this run created, and every one of them leads somewhere',
     navGroup.rows > 0 && navGroup.allLead && / — opens projects$/.test(navGroup.firstTitle), JSON.stringify(navGroup));
   await clickOrExplain(page, '#navProjects button[data-jump]');
   await page.waitForSelector('#view-projects.active', { timeout: 15000 });
   check('clicking one opens the page that owns it', await page.evaluate(() => location.hash) === '#/projects');
 
-  // The breadcrumb is an affordance onto the one box, not a menu of its own.
+  // PHASE 3c. The breadcrumb used to open the top address box, prefixed to this page. Both are
+  // gone — §4b.4 rule 1, there is ONE `/`, and it is in the prompt. What replaces the mouse
+  // path is the `/` in the prompt's own hint, which already said it opened the menu.
+  //
+  // This is the check the phase most needs driven rather than read: the removal is only safe
+  // because the prompt reaches all twenty-five, and "the address book declares 25" is not the
+  // same claim as opening one.
   await page.goto(`${BASE}/#/coden/bench/diff`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
-  await clickOrExplain(page, '#benchWhere');
-  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
-  const viaBreadcrumb = await page.evaluate(() => {
-    const options = [...document.querySelectorAll('#globalSearchResults button')];
+  await clickOrExplain(page, '#codenPromptOpenMenu');
+  await page.waitForSelector('#codenMenu:not(.hidden)', { timeout: 15000 });
+  const viaPrompt = await page.evaluate(() => {
+    const options = [...document.querySelectorAll('#codenMenu [data-coden-command]')];
     return {
-      value: document.querySelector('#globalSearch').value,
-      focused: document.activeElement?.id === 'globalSearch',
+      prompt: document.querySelector('#codenPrompt').value,
+      focused: document.activeElement?.id === 'codenPrompt',
       count: options.length,
-      allThisPage: options.every((node) => (node.dataset.jump ?? '').startsWith('coden/')),
+      addresses: options.filter((node) => (node.dataset.codenCommand ?? '').startsWith('coden/')).length,
       where: document.querySelector('#benchWhereName')?.textContent ?? '',
     };
   });
-  // Twenty bench panels (eleven, plus the Navigator's nine) and five agent panels. A floor,
-  // so adding a panel does not fail a check that is not about counting — but losing one in
-  // a later move does.
-  check('the breadcrumb opens the one box, filtered to this page',
-    viaBreadcrumb.focused && viaBreadcrumb.value === '/coden/' && viaBreadcrumb.count >= 25 && viaBreadcrumb.allThisPage,
-    JSON.stringify(viaBreadcrumb));
-  check('and it was naming the panel that was open', viaBreadcrumb.where === 'Diff', JSON.stringify(viaBreadcrumb));
+  // Thirty commands plus the whole address space. A floor, so adding an entry does not fail a
+  // check that is not about counting — but losing the address space in a later move does.
+  // A BARE `/` is the product menu — four groups, the things you do and the places you go.
+  // Folding all fifty-three addresses in unconditionally made this list useless: the renderer
+  // divides its rows across the groups, so WORK shrank until `/approve` fell off it. Measured,
+  // and the rule is in the shared model so both shells list the same thing.
+  check('phase 3c — clicking the hint opens the ONE menu, and a bare / is the product menu',
+    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count >= 25 && viaPrompt.addresses === 0,
+    JSON.stringify(viaPrompt));
+
+  // Type, and the address space joins in — the case where you are looking for a panel by name.
+  await page.keyboard.type('coden/bench/');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const viaTyping = await page.evaluate(() => {
+    const options = [...document.querySelectorAll('#codenMenu [data-coden-command]')];
+    return {
+      count: options.length,
+      addresses: options.filter((node) => (node.dataset.codenCommand ?? '').startsWith('coden/')).length,
+    };
+  });
+  check('phase 3c — typing brings the address space into the same menu',
+    viaTyping.addresses >= 15, JSON.stringify(viaTyping));
+  check('and the open panel still names itself', viaPrompt.where === 'Diff', JSON.stringify(viaPrompt));
+
+  // Driven end to end: type an address at the prompt, press Enter, land on the panel. This is
+  // the gesture that has to work for the removal above to be honest.
+  await page.evaluate(() => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = '/coden/agent/authority';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
+  const landed = await page.evaluate(() => ({
+    hash: location.hash,
+    benchOpen: document.querySelectorAll('#view-coden [data-bench-panel].active').length,
+  }));
+  check('phase 3c — an address typed at the prompt opens its panel, and closes the other region',
+    landed.hash === '#/coden/agent/authority' && landed.benchOpen === 0, JSON.stringify(landed));
 
   at('jump-to-address');
   // --- one box: `/` goes somewhere ----------------------------------------
@@ -856,6 +930,10 @@ try {
     const box = document.querySelector('#globalSearch');
     box.value = '';
     box.blur();
+    // Whatever ELSE holds focus, too. The step before this one leaves the caret in CodeN's
+    // prompt, and since phase 3c that prompt is the one place a '/' is a character rather than
+    // a shortcut — so blurring only this box left the key going to the wrong shell.
+    document.activeElement?.blur();
   });
   await page.keyboard.press('/');
   await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
@@ -875,23 +953,39 @@ try {
   check('the highlighted row is the one aria-activedescendant names',
     filtered.activeIsActiveDescendant && filtered.activeJump === 'coden/bench/diff', JSON.stringify(filtered));
 
-  await page.keyboard.press('Enter');
-  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
-  const jumped = await page.evaluate(() => ({ hash: location.hash, open: !document.querySelector('#globalSearchResults').classList.contains('hidden') }));
-  check('Enter goes to the address and closes the box',
-    jumped.hash === '#/coden/bench/diff' && !jumped.open, JSON.stringify(jumped));
-
-  // The arrow keys must move the selection without moving the caret out of the input, or
-  // the next character typed lands nowhere.
-  await page.keyboard.press('/');
-  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  // PHASE 3c moved these two BEFORE the jump. They are about the box, and the box does not
+  // exist on the CodeN destination any more (§4b.4 rule 1: one `/`, and it is in the prompt).
+  // Run after the jump, they read `focused:false` off an element that is display:none and
+  // report a failure against correct behaviour — the third way this harness has found to fail
+  // a check about a feature that is working.
+  //
+  // The arrow keys must move the selection without moving the caret out of the input, or the
+  // next character typed lands nowhere.
   await page.keyboard.press('ArrowDown');
   const moved = await paletteState();
-  await page.keyboard.press('Escape');
-  const escaped = await paletteState();
   check('the arrow keys move the selection and leave focus in the box',
     moved.focused && moved.activeIsActiveDescendant, JSON.stringify(moved));
+  await page.keyboard.press('Escape');
+  const escaped = await paletteState();
   check('Escape closes the box', !escaped.open, JSON.stringify(escaped));
+
+  // Reopened, refiltered, and only THEN the jump that leaves this destination for good.
+  await page.keyboard.press('/');
+  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  await page.keyboard.type('coden/bench/diff');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
+  const jumped = await page.evaluate(() => ({
+    hash: location.hash,
+    open: !document.querySelector('#globalSearchResults').classList.contains('hidden'),
+    // And the box itself is gone, on the destination that has a prompt of its own.
+    boxOnScreen: document.querySelector('#globalSearch').getBoundingClientRect().height > 0,
+  }));
+  check('Enter goes to the address and closes the box',
+    jumped.hash === '#/coden/bench/diff' && !jumped.open, JSON.stringify(jumped));
+  check('phase 3c — and the box is not on the destination it just arrived at',
+    jumped.boxOnScreen === false, JSON.stringify(jumped));
 
   // The guard that matters most: a shortcut that fires while someone is writing is a defect.
   // The same property is already asserted for `[` further up, against the same guard —

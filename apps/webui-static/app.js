@@ -14,7 +14,7 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, detailLines, CLEARED_NOTE, addressEntries, matchAddresses,
+  createView, say, planTurn, detailLines, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
@@ -249,6 +249,18 @@ function activateCodenPanel(region,requested){
   const spec=CODEN_REGIONS[region];if(!spec)return'';
   const wanted=codenPanelNames(region).includes(requested)?requested:codenDefaults[region];
   if(!wanted)return'';
+  // PHASE 3c — ONE panel is open, across BOTH regions. Two regions each showing a panel is a
+  // dashboard however few panels each of them holds, and `16` §4b.2 draws no side column at
+  // all: the canonical form is status line, transcript, prompt. An address names ONE place, so
+  // opening one now closes the other region's rather than leaving it standing beside it.
+  Object.entries(CODEN_REGIONS).forEach(([other,otherSpec])=>{
+    if(other===region)return;
+    $$(`#view-coden ${attrSelect(otherSpec.panelAttr)}`).forEach((node)=>node.classList.remove('active'));
+  });
+  // The bench is HIDDEN until an address opens something in it. A bare `#/coden` is the four
+  // regions and nothing else — "nessun pannello fisso", which is what the phase-3 contract
+  // asks for in the line that says what must be true afterwards.
+  $('#view-coden')?.setAttribute('data-panel-open','yes');
   $$(`#view-coden ${attrSelect(spec.panelAttr)}`).forEach((node)=>node.classList.toggle('active',node.getAttribute(spec.panelAttr)===wanted));
   // The breadcrumb is the one place left on this page that says which panel is open, now
   // that no tab is sitting there looking selected. It names the bench panel: the agent
@@ -316,6 +328,15 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   else if(!permitted)renderAccessDenied(view);
   $$('.nav').forEach((node)=>node.classList.toggle('active',node.dataset.view===view));
   $$('.view').forEach((node)=>node.classList.toggle('active',node.id===`view-${target}`));
+  // PHASE 3c · which destination is open, on the shell — so the top address box can leave the
+  // ONE destination that has a prompt of its own. `16` §4b.4 rule 1: "un terminale non ha una
+  // barra degli indirizzi, e tenerla significherebbe di nuovo due gesti per la stessa cosa".
+  //
+  // It leaves CodeN, and not the product. The other twelve destinations have no prompt to
+  // absorb it, and `17` fixes the scope of this phase in a line: "cambia la destinazione CodeN
+  // Evolution. Chat resta Chat, Impostazioni restano Impostazioni". Removing it everywhere
+  // would take navigation away from twelve pages to satisfy a rule written about one.
+  const shell=$('#appShell');if(shell)shell.dataset.view=target;
   let activeSection='';
   if(target==='settings')activeSection=activateSection(section);
   // Sections belong to Settings alone. Leaving the destination clears them, otherwise a
@@ -342,15 +363,20 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // through `location.hash=`, it would fire hashchange and activate the page a second
   // time: a deep link that both loses its panel and costs two rounds of fetches.
   if(known&&codenAddress)want=`${view}/${codenAddress}`;
-  // A bare `#/coden` — the sidebar entry, or the legacy `#/tools` — names no panel. It is
-  // completed with the panel that is actually showing rather than left short, so the
-  // address always says where you are; the same normalisation Settings does when
-  // `#/settings` becomes `#/settings/sessions`.
+  // PHASE 3c. A bare `#/coden` used to be COMPLETED to whichever panel happened to be
+  // showing, because a panel was always showing — which is what made this a dashboard rather
+  // than a place with things you go to. `16` §4b.3: the panels "smettono di essere riquadri
+  // sempre presenti e restano posti dove si va".
+  //
+  // So a bare `#/coden` now names no panel and opens none: the four regions, and nothing
+  // below them. The address stays short because it is honest — there is nowhere further in
+  // until you go somewhere. Nothing became unreachable; every one of the twenty-five is an
+  // address the prompt opens, measured one by one in 3c-1 before this line was written.
   let completing=false;
   if(known&&target==='coden'&&!codenAddress){
-    const active=$(`#view-coden ${attrSelect(CODEN_REGIONS.bench.panelAttr)}.active`);
-    const name=active?.getAttribute(CODEN_REGIONS.bench.panelAttr);
-    if(name){want=`${view}/bench/${name}`;completing=true;}
+    $$('#view-coden [data-bench-panel].active,#view-coden [data-agent-panel].active')
+      .forEach((node)=>node.classList.remove('active'));
+    $('#view-coden')?.removeAttribute('data-panel-open');
   }
   // A panel that was asked for and does not exist is corrected the same way. Without this
   // the screen falls back to the default while the ADDRESS keeps naming the panel nobody
@@ -998,7 +1024,7 @@ function renderCodenMenu(){
   const parsed=parseCommandPrompt($('#codenPrompt')?.value??'');
   if(!parsed){box.classList.add('hidden');box.innerHTML='';return;}
   const menu=codenMenu();
-  const hits=matchCommands(parsed.word,codenOffered());
+  const hits=matchCommands(parsed.word,menuEntriesFor(parsed.word,codenMenu().entries,addressBook()));
   if(codenMenuIndex>=hits.length)codenMenuIndex=0;
   box.classList.remove('hidden');
   if(!hits.length){box.innerHTML='<p class="agent-menu-note">No entry matches that.</p>';return;}
@@ -1046,7 +1072,10 @@ async function submitCodenPrompt(){
     // at a time at a prompt that has a perfectly good form just below it. The terminal walks
     // the fields because it has no panel to open — `16` §4b.2: one form, two renditions.
     say(codenView,'tool',`→ /${turn.command}`);renderCodenTranscript();
-    location.hash=`#/${turn.address}`;
+    // Through `jumpTo` for the same reason as the navigate branch below: the closure panel is
+    // a panel of THIS page, so opening it is an in-page move and writing the hash by hand
+    // refetched the bench to arrive where it already was.
+    jumpTo(turn.address);
     const run=$('#closureRun');if(run&&turn.argument)run.value=turn.argument;
     $('#closureSummary')?.focus();
     return undefined;
@@ -1056,11 +1085,18 @@ async function submitCodenPrompt(){
     return $('#logoutButton')?.click();
   }
   if(turn.kind==='navigate'){
-    // A destination in a browser is a route change, which is what this shell owns. The
-    // terminal names the same address and says it has no view for it yet — declared, counted,
-    // and 3b's work. The two menus are the same set; what differs is disclosed.
+    // A destination in a browser is a route change, which is what this shell owns; the
+    // terminal renders the same address into its transcript, off the same shared table.
+    //
+    // PHASE 3c — through `jumpTo`, not `location.hash=`. `jumpTo` already knows the one thing
+    // that matters here: moving between panels of the page you are ALREADY on is an in-page
+    // move (pushState, silent), while anything else is a real navigation. Writing the hash
+    // by hand fired hashchange every time, and this page's loader refetches the bench on
+    // every activation — measured the moment the prompt became the only way in, because until
+    // then the box was doing it correctly and the prompt only ever left the page: 28 → 32
+    // requests for a move that should cost none. One function that knows how to go somewhere.
     say(codenView,'tool',`→ /${turn.command}`);renderCodenTranscript();
-    location.hash=`#/${turn.address}`;
+    jumpTo(turn.address);
     return undefined;
   }
   if(turn.kind!=='call')return renderCodenTranscript();
@@ -1079,7 +1115,7 @@ function wireCodenShell(){
   box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();});
   box.addEventListener('keydown',(event)=>{
     const parsed=parseCommandPrompt(box.value);
-    const hits=parsed?matchCommands(parsed.word,codenOffered()):[];
+    const hits=parsed?matchCommands(parsed.word,menuEntriesFor(parsed.word,codenMenu().entries,addressBook())):[];
     if(hits.length){
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
@@ -3527,22 +3563,21 @@ function initBench(){
     const active=$(`#view-coden ${attrSelect(spec.panelAttr)}.active`);
     codenDefaults[region]=active?active.getAttribute(spec.panelAttr):'';
   });
-  // The breadcrumb: the one visible way into the panels now that the three switchers are
-  // gone. It does not carry a menu of its own — it opens the box that already lists every
-  // address, with this page's prefix typed in, so the mouse reaches exactly what `/`
-  // reaches. That distinction is the whole design: one navigation surface, two ways in.
+  // PHASE 3c. The breadcrumb used to be a button that opened the top address box prefixed to
+  // this page — and it existed for a rule this product does keep: a keyboard shortcut is the
+  // fast path, never the ONLY path. Removing the box and the breadcrumb together would have
+  // left the panels reachable by typing and by nothing else.
   //
-  // Without it, `/` would be the ONLY way to change panel, and this product's own rule is
-  // that a keyboard shortcut is the fast path and never the only path.
-  $('#benchWhere')?.addEventListener('click',()=>{
-    const input=$('#globalSearch');
-    if(!input)return;
-    input.value='/coden/';
-    openPalette();
-    // openPalette() selects what is there so the next keystroke replaces it; here the
-    // prefix is meant to be typed ON, so the caret goes to the end instead.
-    input.setSelectionRange(input.value.length,input.value.length);
-    renderPalette(matchLocalAddresses(input.value),'');
+  // So the mouse path moves to where the one `/` now lives, WITHOUT adding a widget: the hint
+  // under the prompt already reads "`/` opens the menu", and that `/` is made operable. It was
+  // on screen either way; what changed is that clicking it does what it already said.
+  $('#codenPromptOpenMenu')?.addEventListener('click',()=>{
+    const box=$('#codenPrompt');
+    if(!box)return;
+    if(!box.value.startsWith('/'))box.value=`/${box.value}`;
+    box.focus();
+    box.setSelectionRange(box.value.length,box.value.length);
+    codenMenuIndex=0;renderCodenMenu();
   });
   // One delegated listener for the nine list panels, because their rows are re-rendered
   // whenever the workspace refreshes and per-row listeners would be re-attached, or lost,

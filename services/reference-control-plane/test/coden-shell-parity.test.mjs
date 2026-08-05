@@ -25,7 +25,7 @@ import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
   accessRuleFor, accountFromUser, SECTION_ACCESS,
 } from '../../../apps/webui-static/agent-commands.js';
-import { planTurn, FORMS, startForm, fillForm, addressEntries } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../tools/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
@@ -583,6 +583,65 @@ test('CE-036 — every group is reachable at a real terminal height', () => {
         `at ${rowLimit} rows the menu never shows ${group.title}: ${JSON.stringify(rows)}`);
     }
     assert.ok(rows.length <= rowLimit + 1, `${rows.length} rows against a budget of ${rowLimit}`);
+  }
+});
+
+test('phase 3c — the menu offers the address space once something is typed, and not before', () => {
+  // Found by MUTATION, not by reading: replacing the whole rule with "commands only" broke no
+  // test. The bare-`/` half was covered by the budget row above; the half that matters for
+  // navigation — that typing reaches the panels — was measured only by a ten-minute browser
+  // run, which is not a guard anyone gets to feel on a normal edit.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const bare = menuEntriesFor('', AGENT_COMMANDS, book);
+  assert.deepEqual(bare, [...AGENT_COMMANDS], 'a bare / must be the product menu, not every address');
+
+  const typed = menuEntriesFor('coden', AGENT_COMMANDS, book);
+  assert.equal(typed.length, AGENT_COMMANDS.length + book.length);
+  const panels = typed.filter((entry) => String(entry.address ?? '').startsWith('coden/'));
+  assert.equal(panels.length, 25, 'the twenty-five panels are not offered by the menu');
+
+  // And what is offered is what the matcher can then find, which is the property a user has.
+  const hits = matchCommands('coden/bench/diff', typed);
+  assert.ok(hits.some((entry) => entry.name === 'coden/bench/diff'),
+    'the menu offers the address space but the matcher cannot reach it');
+});
+
+test('phase 3c — the menu SPENDS its budget, instead of one entry per group', () => {
+  // Red since 3a, and nothing said so. 3a fixed a real defect — WORK's fourteen entries were
+  // taking every row and three groups never rendered — by giving each group an EQUAL share.
+  // An equal share is not a shared budget: `floor((limit - headings - note) / groups)` is 1 at
+  // any ordinary height, so the menu showed "WORK 1 of 15" and `/approve` was not on the list
+  // the shell exists for. The tests written for 3a asserted that every group APPEARS and that
+  // the rows FIT; both stayed true through two phases. `CE-020` failed the whole time and is
+  // not part of `npm test`, so nobody read it.
+  const hits = [...AGENT_COMMANDS];
+  const work = AGENT_COMMANDS.filter((entry) => entry.group === 'work').length;
+  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 20, groups: groupMenu, accessFiltered: true, hidden: 0 }, 100);
+  // Stripped first: a painted row carries ANSI, so the `/` is preceded by an escape rather
+  // than by whitespace and a naive pattern counts zero of them.
+  const plain = (row) => row.replace(/\u001b\[[0-9;]*m/g, '');
+  const entries = rows.filter((row) => /\s\/[a-z]/.test(plain(row))).length;
+  assert.ok(entries >= 12, `the menu painted ${entries} entries out of a budget of 20 rows`);
+  const workRow = plain(rows.find((row) => row.includes('WORK')));
+  const showing = Number(/ (\d+) of /.exec(workRow)?.[1] ?? work);
+  assert.ok(showing > 1, `WORK shows ${showing} of ${work} — the budget is not being spent`);
+
+  // What a SHORT group cannot use goes to the others rather than sitting unspent. SESSION holds
+  // one entry; an allocator that reserves an equal share for it wastes the difference.
+  const session = AGENT_COMMANDS.filter((entry) => entry.group === 'session').length;
+  assert.equal(session, 1, 'SESSION is no longer the short group this asserts through');
+  assert.ok(showing > Math.floor(20 / MENU_GROUPS.length),
+    `WORK got ${showing}, no more than an equal share would have given it`);
+
+  // 3a's property still holds: every group is reachable, even when the budget is tight.
+  for (const limit of [4, 8, 12, 20]) {
+    const tight = commandMenuRows({ hits, selected: 0, rowLimit: limit, groups: groupMenu }, 100);
+    assert.ok(tight.length <= limit + 1, `rowLimit ${limit} produced ${tight.length} rows`);
+    if (limit >= 8) {
+      for (const group of MENU_GROUPS) {
+        assert.ok(tight.some((row) => row.includes(group.title)), `at ${limit} rows ${group.title} is missing`);
+      }
+    }
   }
 });
 
