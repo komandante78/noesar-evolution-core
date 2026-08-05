@@ -1,6 +1,6 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 5a (`D-0321`). **5b aperta.**
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine **Fase 6** (`D-0323`, `428a5e3`). **NON deployata.**
 >
 > **Programma attivo: CodeN Evolution.** Due file soli, in quest ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
@@ -9,136 +9,67 @@
 > nome**: si legge da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
 > Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### Fatto — **fase 4** (`D-0320`) e **fase 5a** (`D-0321`)
+> ### Fatto — **fase 6**: se ATOM cade, il prodotto continua E LO DICE
 >
-> **Fase 4, il proiettore di contesto.** La trascrizione consegnata al modello passava da 8 voci
-> / 1 044 B alla chiamata 3 a 602 / 85 190 B alla 300 (×81,6); proiettata: 581 B → 1 197 B, e
-> **1 197 B identici alla 400**. Tetto 15 198 B **derivato dallo schema**. Nove sezioni, nessun
-> `append`, nessuna sezione di prosa. **Non cablato a nessuna chiamata al modello**, e voluto:
-> il primo consumatore è l Autore.
->
-> **Fase 5a, l Autore — il buco che tutto il programma esisteva per chiudere.**
+> La regola nell intestazione del router era letta corta: diceva *«non deve mai ripiegare **in
+> silenzio**»* e il codice applicava *«non deve mai ripiegare»*. La parola che porta il peso è
+> **in silenzio**.
 >
 > ```text
-> PRIMA   prosa senza file nominati → grounding trova 3 file → il piano porta i PERCORSI
->         approve() → performed 3 · src/login.js 85205e13… → 85205e13…  INVARIATO
-> DOPO    (modello VIVO, Qwen2.5-Coder 7B, non uno stub) autorati 3 · rifiutati 0
->         percorsi scartati 0 · novità novel · 4,1 s · tutti e 3 gli hash cambiati
->         ledger: 1 evento con 3 fixture rigiocabili
+> PRIMA   (atomd usa-e-getta FERMATO DAVVERO, stato container `exited`, non uno stub)
+>         expect() THREW ReasoningUnavailable · plan() THREW ReasoningUnavailable
+>         router.degradations() — il metodo non esisteva: nulla registrava un ripiego
+>         => nessun compito poteva essere portato a termine
+> DOPO    (stesso demone, sempre `exited`)
+>         plan() PENDING_APPROVAL 11,1 s · degraded=true provider=reference · 3 eventi
+>         authoring authored=2 refused=0 degradations=2 · approve() promoted=true
+>         src/login.js 87684a5ec052f695 -> 82d8a5ac2a625a3b   (i byte su disco SI SONO MOSSI)
+>         Prova di Sessione: degraded=true, **entrambe** le sorgenti nominate, sempre 10 campi
 > ```
 >
-> `src/login.js` torna col limitatore importato, configurato e attaccato alla rotta. **3 file su
-> 3 portano byte che nessuno ha incollato.**
+> **La decisione di ripiego vive in un posto solo per metà**: `ReasoningRouter#degrade` e
+> `declaredFallbackGenerator`. Le porte **rifiutano invece di scegliere**, per costruzione
+> (`D-0322`), quindi la scelta sta dove può essere dichiarata: il punto di assemblaggio.
 >
-> **La regola che decide il disegno è la 1: l Autore non nomina mai un percorso.** Un file per
-> volta, e la risposta è il corpo *di quel file*: non esiste un ramo che estragga un percorso
-> dall uscita del modello, quindi non c è niente con cui allargare l insieme chiuso. Una
-> direttiva di percorso dentro il blocco si toglie, si **conta** e finisce sulla risposta.
+> **Due cose NON degradano, di proposito.** Un **rifiuto** (ATOM ha risposto; chiedere a un
+> provider più debole finché uno dice sì è come un rifiuto diventa un consiglio) — e un
+> **passo già cominciato con ATOM**, che si ferma con un **checkpoint riprendibile** invece di
+> cucire metà ragionamento di una qualità e metà di un altra. `NOESAR_ATOM_FALLBACK=off`
+> riporta il comportamento pre-fase-6, **dichiarato**, non nascosto.
 >
-> **Un difetto trovato ESEGUENDO:** registravo l autoratura prima che la run avesse una radice e
-> il ledger rifiutava il piano come `SECOND_ROOT`. Il ledger aveva ragione e l ordine no.
+> **Due difetti trovati ESEGUENDO, riparati nella fase:**
+> 1. `Author.author()` chiamava il generatore **fuori** dal proprio `try`: un `AuthoringRefused`
+>    sollevato dalla **porta** (ciò che `atomAuthoringGenerator` fa su `NOT_A_FILE` dalla 5b)
+>    sfuggiva e **buttava via ogni file già scritto** nella run — contro una regola scritta in un
+>    commento venti righe più sotto.
+> 2. `server.mjs` **non costruiva nessun Author**: il prodotto installato poteva pianificare e
+>    non scrivere mai un byte.
 >
-> ### 🛑 Perché la fase 5 è divisa — misurato, non supposto
+> **Scope dichiarato:** `17` nomina 4 file, la fase ne ha toccati 7. `tools/coden-view-model.mjs`
+> **non esiste** — il view model condiviso è `apps/webui-static/coden-view-model.js`, e `17` è
+> stato corretto.
 >
-> **ATOM non ha una superficie di autoratura.** `/v1/imagine` compare nel sorgente di ATOM **una
-> volta sola, in un test che asserisce `404`** (`crates/atom-provider/src/http.rs`). Quindi la
-> catena «qualsiasi modello → ATOM controlla e rigenera → la risposta» (`16` §3.1b, dichiarata
-> senza eccezioni su tutte e tre le superfici) **non è costruibile senza toccare un secondo
-> repository**. Oggi i byte vengono dal modello **direttamente**.
+> **Verifiche in sessione:** unit **1807/1808** (0 fail, 1 skip preesistente), ESLint **332
+> file 0/0/0**, e2e browser **257/266** (i 9 identici alla baseline s323), `CE-020` e `CE-021`
+> 0 fail, **18 mutazioni → 18 uccise** da baseline verificata verde prima — 3 sopravvissute al
+> primo giro, ognuna nominava un buco vero di copertura, chiuse e non argomentate via.
+> Secret scan: **3 reperti preesistenti** (commit del 30/07 e 02/08), **nessuno** in un file
+> toccato da questa fase. L atomd usa-e-getta è stato rimosso nella fase; **l atomd vivo non è
+> mai stato fermato** (up da 3 giorni, healthy). **Niente deployato.**
 >
-> ### Prossima — **fase 5b, e si apre con una domanda all Owner, non con del codice**
+> ### Prossima — **fase 7**: il profilo di divergenza collegato
 >
-> Tre strade, da mettere all Owner prima di scrivere: **(a)** una superficie di autoratura nuova
-> in `/mnt/cachec/ATOM_EVOLUTION` (repo git **separato**, i commit non si mescolano mai);
-> **(b)** ATOM che **controlla** con le superfici che ha (`evidence`, `classify`, `confidence`)
-> e la **rigenerazione dichiarata assente**; **(c)** 5b rimandata, e prima le fasi 6/7/8.
-> **Prima cosa da misurare all apertura:** cosa ATOM sa già dire su byte autorati con le dodici
-> superfici esistenti, contro cosa richiederebbe rigenerarli.
+> **Prima misura:** `divergence-profile.mjs` **non è importato da nessun file** (costruito in
+> s320, mai cablato). Vincolo che un test già impone: sulla WebUI va reso come i **quattro
+> segnali col loro `level`**, **mai** come un numero. `buildAuthoringPrompt` accetta già
+> `profile` e lo formatta `- segnale: livello`: la metà Autore è cablaggio, non disegno.
 >
-> ### Aperto da 5a, e non è 5b
+> ### ⏸️ Aperto, non è codice
 >
-> - il **profilo di divergenza** è accettato da `buildAuthoringPrompt` (quattro segnali col
->   livello, mai un punteggio — c è il test) ma **nessuno lo fornisce**: è la **fase 7**, e
->   questo ne è il punto d atterraggio;
-> - **l ombra non esegue i test prima della promozione** — `16` §3.3 vuole lo stadio 11 prima
->   del 13; i byte ora esistono abbastanza presto perché sia possibile;
-> - **nessuna delle due shell** rende il verdetto di autoratura, che è sulla risposta (`authoring`,
->   sempre presente, con la ragione quando è vuoto). Le due shell sono nello stesso stato.
->
-> ### Verificato in sessione
->
-> unit **1791/1792** (0 fail, 1 skip preesistente) · ESLint **330 file 0/0/0** ·
-> `verify-source` PASS · **11 + 11 = 22 mutazioni → 22** · prodotto vivo **200/200/200**.
->
-> **⚠️ Dichiarato e non nascosto:** **una** esecuzione della suite ha riportato **2 rotture** che
-> l output catturato non nominava; **tre esecuzioni successive sono verdi** e non si sono
-> riprodotte. Registrato come *osservato una volta e non attribuito* — «è passato la seconda
-> volta» non è una diagnosi.
->
-> ### ⚠️ Trappole misurate che valgono oltre la fase
->
-> - `npm test` legge `app.js` come **testo**: un TypeError nel browser passa le unit. Solo
->   `bash tools/run-browser-e2e.sh` lo vede.
-> - le acceptance `tools/acceptance/*` **non stanno in `npm test`**.
-> - `git commit -F -` con **heredoc** non committa: l hook pre-commit consuma lo stdin, e un
->   push successivo spinge **nulla** dicendo OK. Messaggio su file, e verificare l hash.
-> - il prodotto pubblica su **`192.168.178.100:8100`** (porta 8088 nel container), non su
->   `127.0.0.1`. L healthcheck vivo è in forma `CMD-SHELL`: generare e validare il comando
->   **prima** di fermare il container.
->
-> **Stato del lavoro:** pushato su `origin/main`. **NON deployato** — il container è invariato
-> su `coden-prose-grounding-v2`.
->
----
-
-
-> Aggiornato 2026-08-01 (`D-0287`). Stato completo in `PROJECT_STATE.json`, storia in
-> `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
->
-> ## ⏭ PRIMA AZIONE ALLA RIAPERTURA (s303 → s304)
->
-> **`D-0283`…`D-0287` sono tutti installati dal vivo** in questa sessione (Owner:
-> "PROCEDI"/"procedi pure"/"finisci debug evolution prima di passare ad altro").
-> **Il piano in 5 fasi di Debug Evolution è completo fino alla Fase 3** (bersagli remoti
-> via SSH, `D-0286`) — resta aperta solo la Fase 4 (memoria a cubi, embedder da decidere).
-> **`D-0287` non è parte del piano in 5 fasi**: l'Owner ha chiesto quanti tool Debug
-> Evolution usasse davvero, e la risposta onesta era "zero — otto toolpack reali esistono
-> da prima di questa sessione, mai collegati al motore di scansione". Ora 20 lo sono.
->
-> **Difetto reale trovato e riparato durante il deploy di `D-0286`**: `run.py` di Debug
-> Evolution non inoltrava `SIGTERM` al processo figlio (`subprocess.call()` non lo fa) —
-> ogni `docker stop` era un'orfananza-poi-SIGKILL (`137`), non lo spegnimento pulito già
-> corretto in s302. Riparato: `run.py` ora inoltra `SIGTERM` come `SIGINT` (il segnale che
-> il figlio già gestisce) e aspetta il vero codice di uscita — verificato dal vivo,
-> `docker stop -t 10` ora impiega 0,145s con `ExitCode=0` (**tenuto anche dopo `D-0287`**).
->
-> **Secondo difetto reale, trovato in `D-0287`**: il parser `shellcheck` di
-> `static-quality.pyz` si aspettava una lista JSON, ma `--format=json1` (il comando che
-> quel toolpack usa davvero) restituisce `{"comments":[...]}` — ogni reperto shellcheck
-> veniva scartato in silenzio da quando il toolpack esiste. Riparato, verificato dal vivo.
->
-> 1. Fase 4 di Debug Evolution (memoria a cubi + vettori) — l'unica fase rimasta aperta
->    **del piano dell'Owner**. Serve decidere l'embedder prima del codice.
-> 2. Il quarto filo dell'Owner (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) resta
->    dietro Debug Evolution, per istruzione esplicita dell'Owner di finire prima quello.
-> 3. **Nota di processo, s303**: la ricreazione di `atomd` per `A-0022` ha usato `docker
->    rm` invece di `docker rename` — il container di rollback non esiste più (a
->    differenza degli altri quattro deploy di questa sessione, dove il pattern
->    rename-poi-rm è stato rispettato). Il rollback resta comunque possibile: l'immagine
->    precedente è preservata (`atom-evolution:atomd-pre-a0022-20260801T150733Z`,
->    verificata byte-per-byte) e la configurazione completa è registrata in
->    `docs/DECISION_LOG.md` A-0022 — richiede un `docker run` da zero, non un semplice
->    `docker start`.
-> **Cap: ≤150 righe** (`noesar-evolution-budget` §3).
-> **Piano di lavoro multi-fase Owner** ("finisci tutto il progetto, massimo 4 pause"):
-> A → B → C → pausa 1 → **decisione WebUI** → pausa 2 → E+F → pausa 3 →
-> G Owner Bootstrap+pentest → pausa 4 (obbligatoria, non automatizzabile).
-> **Blocco A, B, C, D COMPLETI. Blocco E+F: 3/7 debito chiuso (`D-0271`), poi SEI pivot
-> Owner** — `D-0273`…`D-0278` — **tutti chiusi**, seguiti da `D-0279`/`D-0280` (auth
-> service-token + credenziali modulo NOESAR-provisioned), `D-0281` (rete dedicata + bug
-> di riconciliazione tool) e `D-0282` (link sidebar riparato via proxy autenticato). Il
-> quarto filo (Passkey/WebAuthn → `oci/Dockerfile` → Blocco G) resta l'unico non ancora
-> ripreso.
+> `atom-evolution:atomd-a0025-authoring` (binario `baef9d51…`) è **costruito e provato ma NON
+> deployato**: il demone vivo resta su `atomd-a0024-sigterm`, e rimpiazzare ciò che sta
+> servendo è una decisione dell Owner. `D-0312` chiede anche la **frequenza** delle cadute di
+> ATOM: la fase 6 la registra per run ma non la aggrega (proposta in `D-0323`, non eseguita).
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
