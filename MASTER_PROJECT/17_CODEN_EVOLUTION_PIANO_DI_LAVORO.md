@@ -201,6 +201,44 @@ STOP        Le due shell hanno le stesse regioni, le stesse voci di menu, gli st
 > **3c ora è sbloccata:** niente nel browser raggiunge più un pannello che il terminale non
 > raggiunge. Restano fuori il cruscotto e la barra degli indirizzi, che sono esattamente 3c.
 
+> ### ✅ 3c CHIUSA il 2026-08-05 — `D-0319` (`9f2e831` + `0c1f93d`)
+>
+> **Il passo 1 ha rifatto il suo lavoro, e ha ridimensionato la fase una seconda volta.** Aprire
+> i 25 indirizzi **dal prompt**, prima di toccare un file:
+>
+> ```text
+> GESTO                                    BROWSER   PROMPT (ssh)   shell a riga (pipe)
+> i 25 indirizzi CodeN, al prompt             0/25        0/25             25/25
+> le 14 voci «destinazione», per nome        14/14        0/14               —
+> i 25, dalla barra degli indirizzi          25/25    (non esiste)          —
+> ```
+>
+> **Le viste di 3b stavano nella shell che quasi nessuno riceve.** `showAddress()` vive in
+> `tui-client.mjs`, che apre la shell a riga **solo con stdin in pipe**; su un TTY vero — cioè
+> via `ssh` — parte `runFullScreen`, il cui ramo `navigate` rispondeva con una promessa che
+> nominava una fase già consegnata, per tutti e venticinque. Quindi la premessa su cui 3c era
+> stata sbloccata era vera per una shell e **falsa per il prompt**.
+>
+> Perciò 3c si è divisa: **3c-1 il sostituto** (una tabella di viste sola, resa da entrambe le
+> shell; il ranking degli indirizzi che esisteva in **due copie** unificato; `/` che risolve
+> anche un indirizzo) e **3c-2 la rimozione** (cruscotto, doppia regione aperta, barra degli
+> indirizzi su questa destinazione, breadcrumb). Il mouse conserva una strada: la `/` scritta
+> nel suggerimento del prompt è diventata un comando — nulla di aggiunto allo schermo.
+>
+> **Tre difetti trovati ESEGUENDO**, uno più vecchio della fase: `$$(...)` diventato `$(...)`
+> (`String.replace` tratta `$$` come un `$` letterale) — TypeError al boot che le unit non
+> possono vedere, perché leggono `app.js` come testo; il prompt che navigava con
+> `location.hash=` e **rifetchava la pagina** per una mossa interna (28 → 32 richieste); e
+> **`CE-020` rosso da 3a** (`6bb7faf`), per due fasi, perché non sta in `npm test`: la quota
+> «uguale per gruppo» dava **una voce per gruppo** e `/approve` non compariva.
+>
+> **Verificato:** unit **1760/1761**, ESLint 323 0/0/0, **CE-020 0 fail** (era rosso), CE-021 0
+> fail, browser e2e **257/266** con i 9 identici alla baseline, **15 mutazioni → 15**.
+>
+> **Non fatto, dichiarato:** niente è deployato; la regione terminale del banco e la riga di
+> stato a 12 campi restano (cablate) — la prima è ormai un secondo prompt sulla stessa pagina,
+> ed è la proposta di miglioramento registrata.
+
 > **3b non è lavoro di interfaccia.** Alcuni di quei diciassette non hanno un metodo sul
 > protocollo, non solo una vista: sono voci nuove in `SESSION_METHOD_POLICY`, con il loro
 > permesso e il loro gate. Va dimensionata come fase a sé, non nascosta dentro un cambio di

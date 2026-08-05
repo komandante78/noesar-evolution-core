@@ -1,66 +1,82 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3b (`D-0318`, `d6fc9a3`)
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3c (`D-0319`, `9f2e831`+`0c1f93d`)
 >
 > **Programma attivo: CodeN Evolution.** Due file soli, in quest'ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
 > `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
-> `noesar-evolution` è obbligatoria: 5 regole anti-errore, e il contratto a 6 righe si scrive
-> PRIMA di toccare un file.
+> `noesar-evolution` è obbligatoria — **il registro degli skill non la conosce sotto questo
+> nome**: si legge direttamente da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
+> Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### Fatto
+> ### Fatto — **la fase 3 è chiusa per intero** (3a, 3b, 3c)
 >
-> **3a** (`D-0317`, `6bb7faf`) — le quattro regioni del terminale rese nel browser, e `/` come
-> unico menu del prodotto a quattro gruppi, da una fonte sola, filtrato per permesso in
-> entrambe le shell.
->
-> **3b** (`D-0318`, `d6fc9a3`) — i dieci indirizzi che dicevano «nessuna fonte su questo
-> trasporto» hanno metodo e vista. **Zero** ne restano. Un metodo solo per i sette
-> pannelli-elenco (il browser li riempie da una rotta sola), cap a sei **dichiarato**. E
-> `closure` si registra anche dal terminale: la **prima scrittura** che il socket acquista in
-> questo programma, come **form** a tre campi con un copione solo e due rese.
+> **Il passo 1 ha ridimensionato la fase una seconda volta.** Aprire i 25 indirizzi **dal
+> prompt**, prima di toccare un file:
 >
 > ```text
-> indirizzi CodeN   PRIMA  8 viste · 2 note · 5 testi dichiarati · 10 «nessuna fonte»
->                   DOPO  16 viste · 2 note · 7 testi dichiarati ·  0 «nessuna fonte»
+> GESTO                                 BROWSER   PROMPT (ssh)   shell a riga (pipe)
+> i 25 indirizzi CodeN, al prompt          0/25        0/25             25/25
+> le 14 voci «destinazione», per nome     14/14        0/14               —
+> i 25, dalla barra degli indirizzi       25/25    (non esiste)          —
 > ```
 >
-> ### ⏭ PROSSIMA AZIONE — Fase 3c, ora SBLOCCATA
+> **Le viste di 3b stavano nella shell sbagliata.** `showAddress()` vive in `tui-client.mjs`,
+> che apre la shell a riga **solo con stdin in pipe**; via `ssh` parte `runFullScreen`, che
+> rispondeva con una promessa a tutti e venticinque. Quindi 3c si è divisa: **3c-1 il
+> sostituto**, **3c-2 la rimozione**.
 >
-> **Rimuovere il cruscotto e la barra degli indirizzi in alto.** È l'ultimo atto, e adesso è
-> lecito perché niente nel browser raggiunge più un pannello che il terminale non raggiunge —
-> il che era esattamente la premessa falsa che aveva fermato la fase 3 il 2026-08-05.
+> **3c-1** (`9f2e831`) — `tools/coden-address-views.mjs`: una tabella di viste sola, di
+> **nessuna** delle due shell, con il sink come parametro. Il ranking degli indirizzi esisteva
+> in **due copie** byte-diverse: ora una, nel modello condiviso. `/` risolve comando **e**
+> indirizzo, con un solo `planTurn`.
 >
-> **Prima cosa da misurare all'apertura:** aprire tutti e 25 gli indirizzi **dal prompt**, uno
-> per uno, in entrambe le shell. `17` lo mette come passo 1 non negoziabile della fase, e la
-> regola 4 della skill dice perché: prima di rimuovere, si prova che il sostituto funziona —
-> non dopo. «L'address book ne dichiara 25» non è la stessa cosa che averli aperti tutti.
+> **3c-2** (`0c1f93d`) — via il cruscotto, le due regioni aperte insieme, la barra degli
+> indirizzi (**su questa destinazione**, non sulle altre dodici) e il breadcrumb. Il markup
+> resta: l'address book deriva i 25 indirizzi da quegli attributi. Il mouse conserva una
+> strada — la `/` del suggerimento sotto il prompt è diventata un comando.
 >
-> **⚠️ Da non perdere in 3c:** la barra degli indirizzi sparisce (§4b.4 regola 1: una `/` sola),
-> ma i 25 indirizzi restano raggiungibili dal prompt. Rimuovere la barra **e** basta lascerebbe
-> il prodotto senza navigazione.
+> ### Tre difetti trovati ESEGUENDO, uno più vecchio della fase
+>
+> 1. `String.replace` tratta `$$` come un `$` letterale → `$$(...)` diventato `$(...)`,
+>    TypeError al boot. **Le unit non possono vederlo**: leggono `app.js` come testo.
+> 2. il prompt navigava con `location.hash=` e **rifetchava** la pagina per una mossa interna
+>    (28 → 32 richieste). `jumpTo` sapeva già distinguere; ora ci passano entrambi i rami.
+> 3. **`CE-020` era rosso da 3a** (`6bb7faf`), per due fasi, perché **non sta in `npm test`**:
+>    la quota «uguale per gruppo» dava **una voce per gruppo** e `/approve` non compariva.
+>    Bisezionato sui sei commit, non ipotizzato.
 >
 > ### Verificato in sessione (ogni numero prodotto qui)
 >
-> unit **1754/1755** (0 fail, 1 skip preesistente) · ESLint **322 file 0/0/0** · **21 mutazioni
-> su 3a+3b, 21 uccise** (sei sopravvissute al primo giro, ognuna ha prodotto un test vero, non
-> una nota) · browser e2e **252/261**, i 9 fallimenti **identici byte a byte** alla baseline
-> pre-modifica misurata in sessione con `git stash` · la shell del terminale **guidata** con
-> stream iniettati, 13/13 in 3a e 13/13 attraverso il form di 3b.
+> unit **1760/1761** (0 fail, 1 skip preesistente) · ESLint **323 file 0/0/0** · **CE-020 0
+> fail** · **CE-021 0 fail** · browser e2e **257/266**, i 9 fallimenti **identici** alla
+> baseline misurata in sessione · **15 mutazioni, 15 uccise** da baseline verificate verdi
+> prima. Tre sopravvissute al primo giro, ognuna ha prodotto un test vero — una accettava
+> qualsiasi messaggio che **nominasse** il pannello, una cercava un backslash-n letterale
+> invece di un a-capo (non poteva fallire), una copriva una regola che nulla misurava.
+>
+> ### ⏭ PROSSIMA AZIONE — **Fase 4: il proiettore di contesto** (`17`, invenzione I)
+>
+> `OBIETTIVO: ogni chiamata al modello riceve una vista ricostruita da stato, mai una
+> trascrizione.` **Prima cosa da misurare all'apertura:** la forma e la taglia del contesto
+> alla chiamata 3 e alla chiamata 300 — `15` §14 la chiama il rischio numero 1, ed è ciò che
+> l'Autore (fase 5) pagherebbe per primo se non esistesse.
 >
 > ### ⚠️ Non deployato
 >
-> Il container in produzione è invariato su `noesar-evolution:coden-prose-grounding-v2` —
-> verificato healthy, `/livez`+`/healthz` 200/200. **Pushato** su `origin/main`.
+> Il container in produzione è invariato su `noesar-evolution:coden-prose-grounding-v2`.
 > **Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd` la
 > produce sempre); generare e validare il comando **prima** di fermare il container — l'ordine
-> sbagliato è costato ~80 s di downtime in s320.
+> sbagliato è costato ~80 s di downtime in s320. E il nuovo `tools/coden-address-views.mjs` è
+> già in `oci/Dockerfile` (il test di chiusura degli import lo ha imposto prima del build).
 >
 > ### Resta aperto, e non si chiude scrivendo codice
 >
 > **Gruppo 6** (pentest indipendente esterno) è l'unico gate che tiene `productionReady=false`.
 > La deriva `MASTER_PROJECT/` vs `docs/progetto-italiano/` (7 file su 14) è una scelta di
-> contenuto dell'Owner.
+> contenuto dell'Owner. **Otto container di rollback fermi** da sessioni precedenti
+> sopravvivono contro §5a: questa fase non ne ha creato nessuno, e rimuoverli è un'azione sul
+> runtime senza l'Owner presente.
 >
 ---
 

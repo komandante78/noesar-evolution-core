@@ -6199,3 +6199,117 @@ method that currently has none, plus a decision about whether the browser's six-
 a control to use it. **Benefit:** the cap stops being a ceiling and becomes a window. Not
 executed here — it changes what the browser's panel *is*, which is a design decision, not a
 side effect of giving the terminal a view.
+
+## D-0319 — Phase 3c · the substitute first, then the removal (2026-08-05)
+
+**Decision.** CodeN Evolution's browser destination loses its dashboard and its address bar.
+There is one `/`, and it is in the prompt (`16` §4b.4 rule 1). Because `17` makes the order
+non-negotiable — *prima di rimuovere, si prova che il sostituto funziona* — the phase split in
+two, and the first half is the proof.
+
+### The measurement that resized the phase
+
+`17`'s step 1 is to open all twenty-five addresses **from the prompt**, one by one, in both
+shells. Done before a line changed:
+
+```text
+GESTURE                                   BROWSER   PROMPT (ssh)   line shell (pipe)
+the 25 CodeN addresses, at the prompt        0/25        0/25             25/25
+the 14 destination menu entries, by name    14/14        0/14               —
+the 25, from the top address bar            25/25    (no such bar)         —
+```
+
+**Phase 3b's views were built in the shell almost nobody gets.** `showAddress()` lives in
+`tui-client.mjs`, which runs its line shell only when stdin is a PIPE; a real user over `ssh`
+gets `runFullScreen`, whose `navigate` branch answered with a promise naming a phase that had
+already shipped — for all twenty-five. The work was real and unreachable.
+
+So the premise 3c was unblocked on ("nothing in the browser reaches a panel the terminal
+cannot") was true of the line shell and **false of the prompt**. Removing the bar first would
+have taken navigation with it, which is exactly what the handoff warned about.
+
+### 3c-1 · the substitute (`9f2e831`)
+
+- `tools/coden-address-views.mjs` — the view table, belonging to NEITHER shell, because both
+  render it and they already import each other. The sink is a parameter and the lines come
+  back: the line shell prints them, the prompt records them into its transcript.
+- The three-rank address ranking existed **twice**, byte-different, and the terminal's copy
+  carried a comment naming the browser's. A documented duplicate drifts like any other. One
+  copy now, in the shared model; the test that asserted the two copies agree asserts instead
+  that there is nothing left to compare.
+- `/` offers commands **and** the address space, resolved by one `planTurn`. A command keeps
+  its own name (`/diff` is the work command; the panel is `/coden/bench/diff`) and the argument
+  survives the jump, since three of the twenty-five are a view of a run.
+
+### 3c-2 · the removal (`0c1f93d`)
+
+The bench frame, the two-regions-at-once layout, the top address bar (on this destination only)
+and the breadcrumb. The markup stays — the address book derives all twenty-five addresses from
+those attributes and the panels hold real forms; what is removed is the frame.
+
+**The mouse keeps a path.** The breadcrumb existed for a rule this product holds: a keyboard
+shortcut is the fast path, never the only path. The affordance moves to where the one `/` now
+lives — the hint under the prompt already read "`/` opens the menu", and that `/` is now a
+control. Nothing was added to the screen; one label became operable.
+
+**The bar leaves CodeN, not the product.** The other twelve destinations have no prompt to
+absorb it, and `17` fixes this phase's scope at "cambia la destinazione CodeN Evolution".
+
+### Three defects found by executing
+
+1. **`String.replace` treats `$$` in a replacement as an escaped `$`** — `$$(...)` silently
+   became `$(...)`, a `querySelector` with no `.forEach`, a TypeError at boot. The unit suite
+   cannot see this: it reads `app.js` as text and never runs it. The browser found it at once.
+2. **The prompt navigated with `location.hash=`**, so moving between panels of the page you are
+   already on refetched it: 28 → 32 requests for a move that should cost none. Invisible until
+   the prompt became the only way in — the box had always used `jumpTo`, which knows an in-page
+   move from a real navigation. Both prompt branches go through it now.
+3. **`CE-020` had been RED since 3a (`6bb7faf`)**, through two phases, unnoticed because it is
+   not part of `npm test`. 3a repaired a real defect (WORK's entries took every row; three
+   groups never rendered) by giving each group an **equal share** — and an equal share is not a
+   shared budget: `floor((limit - headings - note) / groups)` is 1 at any ordinary height, so
+   the menu showed "WORK 1 of 15" and `/approve` was not on the list this shell exists for. The
+   tests written for 3a asserted that every group appears and that the rows fit; both stayed
+   true. Repaired with a two-pass allocation — one entry each, then round-robin, so a short
+   group's unused rows go to groups that can use them — and the menu takes half the screen while
+   open rather than a third, since it is drawn only while the prompt begins with `/`.
+
+Bisected across the six phase commits rather than assumed: green at `35e6470`, `d558b0f`,
+`e6a3076`; red from `6bb7faf` onward.
+
+### Also measured
+
+Folding all fifty-three addresses into the **bare** `/` menu made it useless, for the same
+budget reason. The address space joins the menu once something is typed — one rule, in the
+shared model, so neither shell can list a different set. A bare `/` is the product's own menu,
+which is what §4b.4 draws.
+
+### Verified
+
+unit **1760/1761** (0 fail, 1 pre-existing skip) · ESLint **323 files 0/0/0** · **CE-020 0
+fail** (red since 3a, green again) · **CE-021 0 fail** · browser e2e **257/266** with the nine
+failures identical to the baseline measured in this session · **15 mutations, 15 killed** from
+baselines verified green first. Three survived a first round, and each produced a real test:
+an assertion that accepted any message merely *naming* the panel (the exact shape of the promise
+being removed), an assertion matching a literal backslash-n rather than a line break (it could
+never have failed), and a rule that nothing checked once typing brought the addresses in.
+
+### What this phase did NOT do
+
+- **Nothing is deployed.** The container is unchanged on `coden-prose-grounding-v2`.
+- **The bench terminal region and the twelve-field status line stay.** Both are wired to real
+  code. The terminal region is arguably a second prompt on a page that now has one — recorded
+  below as this phase's improvement proposal, not executed, because removing a wired surface is
+  a decision rather than a side effect.
+- **Eight stopped rollback containers from earlier sessions survive** against §5a's "one
+  rollback". This phase created none of them, and removing them is a runtime action taken
+  without the Owner present.
+
+### The improvement this phase records
+
+The bench's own terminal region (`UI-033`) was designed when this page had no prompt. It now
+has one, and the two are two boxes that take typed input on the same screen — the shape §4b.4
+rule 1 spends its paragraph on. **Benefit:** one input on the page, matching the terminal shell
+it is supposed to be a rendition of. **Cost:** the region is wired (tabs, scrollback, a command
+form), so folding it into the prompt means deciding what a "terminal tab" means when the whole
+page is one; that is a design decision for the Owner, not a tidy-up.
