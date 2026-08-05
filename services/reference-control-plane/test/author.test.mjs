@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
-import { Author, AuthoringUnavailable, AuthoringRefused, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused, atomAuthoringGenerator, buildAuthoringPrompt, extractBody } from '../src/author.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
@@ -247,4 +247,87 @@ test('every plan carries an authoring verdict — there is no way to read paths 
       assert.ok(planned.authoring.available || planned.authoring.reason, 'unavailable must always carry the reason');
     }
   } finally { cleanup(fx); }
+});
+
+// --- 5b · ATOM in the chain --------------------------------------------------
+
+test('the ATOM port returns a checked file, and says whether ATOM had to regenerate', async () => {
+  const seen = [];
+  const generate = atomAuthoringGenerator({
+    endpoint: 'http://atom.test/', token: 't',
+    fetchImpl: async (url, init) => {
+      seen.push({ url, body: JSON.parse(init.body), token: init.headers['x-atom-token'] });
+      return { ok: true, status: 200, text: async () => JSON.stringify({ ok: true, value: {
+        contents: 'export function loginRoute() { /* limited */ }\n',
+        discardedPaths: [], regenerated: true, firstRejection: 'no fenced block', worldDigest: 'fnv1a64:abc',
+      } }) };
+    },
+  });
+  const result = await new Author({ generate, model: 'atom' })
+    .author({ goal: 'g', step: 's', files: FILES, profile: [{ signal: 'co-modification', level: 'high' }] });
+
+  assert.equal(seen[0].url, 'http://atom.test/v1/author');
+  assert.equal(seen[0].token, 't');
+  // The path is TOLD to ATOM and the contents are handed over: the model reads nothing.
+  assert.equal(seen[0].body.path, 'src/login.js');
+  assert.equal(seen[0].body.contents, FILES[0].contents);
+  assert.deepEqual(seen[0].body.profile, [{ signal: 'co-modification', level: 'high' }]);
+
+  assert.equal(result.contents.get('src/login.js'), 'export function loginRoute() { /* limited */ }\n');
+  const [fixture] = result.fixtures;
+  assert.equal(fixture.provenance.checkedBy, 'atom');
+  assert.equal(fixture.provenance.regenerated, true);
+  assert.equal(fixture.provenance.firstRejection, 'no fenced block');
+});
+
+test('a raw-string port records that NOTHING checked the answer before this side did', async () => {
+  const result = await new Author({ generate: async () => fenced('written') }).author({ goal: 'g', step: 's', files: FILES });
+  assert.equal(result.fixtures[0].provenance, null, 'null is the fact that no provider checked it');
+});
+
+test('this side applies its own rules even to an answer ATOM says it checked', async () => {
+  // CE-007: the output is untrusted content whoever produced it. Two independent checks of
+  // the same rule cost nothing and mean the rule survives a provider that changes.
+  const generate = async () => ({
+    contents: '// path: ../../../etc/passwd\nexport function loginRoute() {}\n',
+    discardedPaths: [], regenerated: false, checkedBy: 'atom',
+  });
+  const result = await new Author({ generate }).author({ goal: 'g', step: 's', files: FILES });
+  assert.deepEqual(result.discarded, [{ path: 'src/login.js', claimed: '../../../etc/passwd' }]);
+  assert.ok(!result.contents.get('src/login.js')?.includes('etc/passwd'));
+
+  const empty = new Author({ generate: async () => ({ contents: '   \n', checkedBy: 'atom' }) });
+  const refused = await empty.author({ goal: 'g', step: 's', files: FILES });
+  assert.deepEqual(refused.refusals.map((item) => item.code), ['EMPTY']);
+});
+
+test('ATOM unreachable REFUSES — it does not quietly ask a model directly', async () => {
+  // The router's rule is «never fall back IN SILENCE», not «never fall back». A fallback
+  // chosen inside the port would be exactly the silent kind, so the port has none.
+  const generate = atomAuthoringGenerator({
+    endpoint: 'http://atom.test', fetchImpl: async () => { throw new Error('connect ECONNREFUSED'); },
+  });
+  await assert.rejects(() => generate({ path: 'a.js', contents: 'x\n' }), (error) => {
+    assert.ok(error instanceof AuthoringUnavailable);
+    assert.match(error.message, /could not be reached for authoring/);
+    return true;
+  });
+});
+
+test('ATOM answering NOT_A_FILE is a different fact from ATOM being down', async () => {
+  const notAFile = atomAuthoringGenerator({
+    endpoint: 'http://atom.test',
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({
+      ok: false, error: { kind: 'NOT_A_FILE', reason: 'asked twice: first `no fenced block`, then `empty block`' },
+    }) }),
+  });
+  await assert.rejects(() => notAFile({ path: 'a.js', contents: 'x\n' }), AuthoringRefused);
+
+  const down = atomAuthoringGenerator({
+    endpoint: 'http://atom.test',
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({
+      ok: false, error: { kind: 'MODEL_UNAVAILABLE', reason: 'model unavailable: connection refused' },
+    }) }),
+  });
+  await assert.rejects(() => down({ path: 'a.js', contents: 'x\n' }), AuthoringUnavailable);
 });

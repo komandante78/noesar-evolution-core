@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
 import { WorkspaceActionOrchestrator } from '../services/reference-control-plane/src/workspace-actions.mjs';
-import { Author, openAiChatGenerator } from '../services/reference-control-plane/src/author.mjs';
+import { Author, openAiChatGenerator, atomAuthoringGenerator } from '../services/reference-control-plane/src/author.mjs';
 import { TokenMinter } from '../services/reference-control-plane/src/capability.mjs';
 import { EventLedger } from '../services/reference-control-plane/src/events.mjs';
 
@@ -33,18 +33,26 @@ writeFileSync(join(ws, 'src/rate-limit.js'), 'export function rateLimit() { /* n
 writeFileSync(join(ws, 'README.md'), '# demo\n\nA login route with no rate limiting.\n');
 
 const endpoint = process.env.NOESAR_AUTHORING_ENDPOINT ?? 'http://127.0.0.1:8420';
+// The chain, when ATOM is reachable: any model below, ATOM above, ATOM is what answers.
+// Falling back to the model directly is a DECLARED choice made here, at assembly, and never
+// inside the port — the router rule is "never fall back in silence", not "never fall back".
+const atomEndpoint = process.env.NOESAR_ATOM_ENDPOINT ?? null;
+const atomToken = process.env.NOESAR_ATOM_TOKEN ?? '';
+const generate = atomEndpoint
+  ? atomAuthoringGenerator({ endpoint: atomEndpoint, token: atomToken })
+  : openAiChatGenerator({ endpoint });
 const events = new EventLedger();
 const orch = new WorkspaceActionOrchestrator({
   workspaceRoot: ws, shadowsRoot: shadows,
   minter: new TokenMinter(randomBytes(32)), events,
-  author: new Author({ generate: openAiChatGenerator({ endpoint }), model: endpoint }),
+  author: new Author({ generate, model: atomEndpoint ? `atom ${atomEndpoint}` : endpoint }),
 });
 const NOW = Math.floor(Date.now() / 1000);
 const REQUEST = 'add rate limiting to the login route';
 
 console.log('PHASE 5 — MISURA DOPO (Author wired to a live model)\n');
 console.log(`request:  "${REQUEST}"   (files named by the caller: NONE)`);
-console.log(`model:    ${endpoint}\n`);
+console.log(`chain:    ${atomEndpoint ? `model ${endpoint} -> ATOM ${atomEndpoint} -> the answer` : `model ${endpoint} DIRECTLY (no ATOM in the chain)`}\n`);
 
 const before = new Map(['src/login.js', 'src/rate-limit.js', 'README.md']
   .map((path) => [path, sha(readFileSync(join(ws, path), 'utf8'))]));
@@ -80,7 +88,7 @@ const authored = events.events();
 const fixtureEvents = authored.filter((event) => event.action === 'workspace_action.authored').map((event) => JSON.parse(event.payload));
 console.log(`ledger: ${fixtureEvents.length} authoring event(s), carrying ${fixtureEvents[0]?.fixtures?.length ?? 0} replayable fixtures`);
 for (const fixture of fixtureEvents[0]?.fixtures ?? []) {
-  console.log(`  ${fixture.path.padEnd(20)} ${fixture.outcome.padEnd(9)} prompt ${fixture.promptDigest.slice(0, 12)} answer ${fixture.answerDigest.slice(0, 12)}`);
+  console.log(`  ${fixture.path.padEnd(20)} ${fixture.outcome.padEnd(9)} checkedBy ${(fixture.provenance?.checkedBy ?? 'nobody').padEnd(6)} regenerated ${String(fixture.provenance?.regenerated ?? 'n/a').padEnd(5)} answer ${fixture.answerDigest.slice(0, 12)}`);
 }
 
 rmSync(ws, { recursive: true, force: true });

@@ -6562,3 +6562,70 @@ take forty. **Proposal:** author the closed set concurrently with a declared cei
 wall time stops being linear in the size of the plan. **Cost:** the novelty digest and the
 fixture order must stay deterministic regardless of completion order, so the concurrency has to
 be in the calls and not in the assembly.
+
+---
+
+## D-0322 — Phase 5b · ATOM in the chain, because the Owner said ATOM is part of this product (2026-08-05)
+
+**Owner instruction, 2026-08-05:** *"atom è di un altro repository ma devi lavorarci perché fa
+parte di NOESAR EVOLUTION"*. `D-0321` had left 5b open pending exactly this decision, with three
+options put forward. This is option (a): the authoring surface was built **in ATOM**
+(`A-0025`, its own repository, its own commit — the two histories never mix).
+
+**What changed here.** One new generation port, `atomAuthoringGenerator`, and the Author now
+accepts two shapes of answer:
+
+```text
+a string      a raw model answer      → THIS side parses it and applies every rule
+{contents,…}  a provider that already checked, and regenerated when the check failed
+```
+
+`POST /v1/author` is the second shape, and that is the chain `16` §3.1b declares:
+
+```text
+   any model  ──▶  ATOM checks and regenerates  ──▶  the answer
+```
+
+**Proved end to end, not asserted.** A disposable `atomd` built from `A-0025`, on
+`noesar-evolution-net`, against the real model sidecar. The same prose request as `D-0321`, no
+files named: **three files authored, every fixture recording `checkedBy: atom`, all three
+hashes on disk moved**, and `src/login.js` came back with a limiter imported and attached.
+Evidence in `EVIDENCE/phase5b-atom-chain-*.txt`. The probe container was removed in the same
+phase and the live `atomd` was never touched.
+
+**This side still applies its own rules, and that is not distrust.** `CE-007` says the Author's
+output is untrusted content **whoever produced it**, and the raw-string path has to keep working
+when ATOM is not installed at all (`CE-022`: the public core stands on its own). So an empty
+file is still refused here, and a path directive is still stripped and counted here, even though
+`/v1/author` strips and counts its own. Two independent checks of one rule cost nothing and mean
+the rule survives a provider that changes.
+
+**The port REFUSES when ATOM is unreachable — it does not quietly ask a model directly.** The
+router's rule is *«never fall back **in silence**»*, not «never fall back». A fallback chosen
+inside a port is exactly the silent kind, so the port has none: choosing it belongs to whoever
+assembles the Author, where the degradation can be declared. That is phase 6's subject, and the
+seam it needs now exists.
+
+**What the fixture records that it could not before:** `provenance` — who checked the answer,
+whether it was regenerated, what was wrong the first time, and the world digest ATOM answered
+under. A raw-string port records `provenance: null`, which is itself the fact that **nothing**
+checked that answer before this line.
+
+### Verified
+
+unit **1796/1797** (0 fail, 1 pre-existing skip) · ESLint **330 files 0/0/0** · the five new
+tests drive the port with a fake `fetch` and assert the request ATOM actually receives (path
+told, contents handed over, profile as levels) · live chain recorded in `EVIDENCE/`.
+
+### What 5b did NOT do
+
+- **The new `atomd` is not deployed.** It is built, proved on a disposable container, and the
+  live daemon still runs `atom-evolution:atomd-a0024-sigterm`. Replacing what is serving is a
+  runtime action, separable from the instruction to work on ATOM, and it is the Owner's call.
+- **Nothing assembles the ATOM port in `server.mjs` yet.** The Author is constructed by whoever
+  builds the orchestrator, and the product's own wiring still passes no author at all — so the
+  installed product plans exactly as it did and says it wrote nothing. Turning it on in the
+  running product is a deployment decision, not a code one, and it wants phase 6's declared
+  degradation beside it.
+- **The divergence profile is still accepted and not supplied** (phase 7), and **neither shell
+  renders the authoring verdict** — both shells in the same state, as rule 3 requires stating.

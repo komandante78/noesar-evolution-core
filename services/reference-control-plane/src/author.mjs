@@ -103,6 +103,29 @@ export function extractBody(answer, path) {
 }
 
 /**
+ * The same rules, applied to an answer a provider already checked.
+ *
+ * A provider that reports having checked is not taken at its word: an empty file is still a
+ * deletion asked for as a write, and a path directive is still stripped and counted here even
+ * though `/v1/author` strips and counts its own. Two independent checks of the same rule cost
+ * nothing and mean the rule survives a provider that changes.
+ */
+function normaliseAuthored(structured, path) {
+  const body = String(structured.contents);
+  if (!body.trim()) throw new AuthoringRefused('EMPTY', 'the provider returned an empty file, which is a deletion asked for as a write', path);
+  const lines = body.split('\n');
+  const discarded = [...(structured.discardedPaths ?? [])];
+  while (lines.length) {
+    const found = PATH_DIRECTIVE.exec(lines[0]);
+    if (!found) break;
+    discarded.push(found[1]);
+    lines.shift();
+  }
+  const cleaned = lines.join('\n');
+  return { body: cleaned.endsWith('\n') ? cleaned : `${cleaned}\n`, discarded };
+}
+
+/**
  * Builds the one message the model is asked. The current contents are FENCED as untrusted
  * material (rule 3): they come from a repository, which is somebody else's text, and the
  * instruction that governs this call sits outside that fence and is not negotiable by it.
@@ -180,16 +203,45 @@ export class Author {
 
     for (const file of files) {
       const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts });
-      const answer = await this.#generate({ prompt, purpose: 'author', path: file.path });
+      const answer = await this.#generate({
+        prompt, purpose: 'author', path: file.path,
+        // The structured form a provider that does its own checking needs. A generator that
+        // ignores these and answers from `prompt` alone is still correct — that is the
+        // installation with no ATOM under it, and `CE-022` requires it to keep working.
+        goal, step, contents: file.contents, profile, attempts,
+      });
+      // Two shapes are accepted, and the difference is who checked the answer.
+      //
+      //   a string        a raw model answer. THIS side parses it and applies every rule.
+      //   {contents,…}    a provider that already checked and, on a failed check, regenerated.
+      //                   ATOM's `/v1/author` is this shape, and it is the chain `16` §3.1b
+      //                   declares: any model below, ATOM above, ATOM is what answers.
+      //
+      // The rules below still run in both cases. Not out of distrust of ATOM — because
+      // `CE-007` says this output is untrusted content whoever produced it, and because the
+      // string path has to keep working when ATOM is not installed at all.
+      const structured = answer && typeof answer === 'object' && typeof answer.contents === 'string' ? answer : null;
       const fixture = {
         path: file.path,
         model: this.#model,
         promptDigest: digest(prompt),
-        answerDigest: digest(String(answer ?? '')),
+        answerDigest: digest(structured ? structured.contents : String(answer ?? '')),
         at: new Date().toISOString(),
+        // What the provider had to do to produce this. `null` when the port answered with a
+        // raw string, which is itself the fact that nothing checked it before this line.
+        provenance: structured
+          ? {
+            checkedBy: structured.checkedBy ?? 'external-provider',
+            regenerated: Boolean(structured.regenerated),
+            firstRejection: structured.firstRejection ?? null,
+            worldDigest: structured.worldDigest ?? null,
+          }
+          : null,
       };
       try {
-        const extracted = extractBody(answer, file.path);
+        const extracted = structured
+          ? normaliseAuthored(structured, file.path)
+          : extractBody(answer, file.path);
         // Rule 1, enforced rather than trusted: whatever the model said about paths is
         // recorded and dropped, and the key used here is the one the PLAN handed in.
         for (const claimed of extracted.discarded) discarded.push({ path: file.path, claimed });
@@ -233,6 +285,72 @@ export class Author {
       },
     };
   }
+}
+
+/**
+ * The generation port that puts ATOM in the chain — `16` §3.1b, in one function.
+ *
+ *     any model below  ──▶  ATOM checks and regenerates  ──▶  the answer
+ *
+ * The difference from `openAiChatGenerator` is not where the bytes come from; it is who
+ * examined them. `POST /v1/author` asks the model, checks the answer against the same rules
+ * this file applies (one block, no path directive, not empty, and not a summary of the file it
+ * was told to rewrite) and, when a check fails, asks again ONCE with the reason named. What
+ * comes back says whether that happened, so «ATOM checks and regenerates» is readable off the
+ * answer instead of taken on trust.
+ *
+ * When ATOM is not reachable this REFUSES rather than quietly asking a model directly. The
+ * router's rule is not "never fall back" — it is «never fall back IN SILENCE», and a fallback
+ * chosen here, inside a port, would be exactly the silent kind. Choosing it belongs to whoever
+ * assembles the Author, where the degradation can be declared.
+ */
+export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null, timeoutMs = 180_000, fetchImpl = fetch }) {
+  const base = String(endpoint ?? '').replace(/\/+$/, '');
+  if (!base) throw new AuthoringUnavailable('an ATOM endpoint is required to author through ATOM');
+  return async ({ goal, step, path, contents, profile = [], attempts = [] }) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetchImpl(`${base}/v1/author`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-atom-token': token,
+          ...(sessionId ? { 'x-atom-session': sessionId } : {}),
+        },
+        body: JSON.stringify({ goal, step, path, contents, profile, attempts }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      throw new AuthoringUnavailable(`ATOM at ${base} could not be reached for authoring: ${error?.message ?? error}`);
+    } finally {
+      clearTimeout(timer);
+    }
+    const text = await response.text();
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new AuthoringUnavailable(`ATOM at ${base} answered with a body that is not JSON`);
+    }
+    if (!response.ok || body?.ok !== true) {
+      const kind = body?.error?.kind ?? `HTTP_${response.status}`;
+      const reason = body?.error?.reason ?? text.slice(0, 200);
+      // Two different facts, kept apart all the way up: an installation problem, and this
+      // request having failed to produce a file after ATOM had already tried twice.
+      if (kind === 'NOT_A_FILE') throw new AuthoringRefused('NOT_A_FILE', `ATOM refused this answer: ${reason}`, path);
+      throw new AuthoringUnavailable(`ATOM refused to author \`${path}\`: ${kind} — ${reason}`);
+    }
+    return {
+      contents: body.value.contents,
+      discardedPaths: body.value.discardedPaths ?? [],
+      regenerated: Boolean(body.value.regenerated),
+      firstRejection: body.value.firstRejection ?? null,
+      worldDigest: body.value.worldDigest ?? null,
+      checkedBy: 'atom',
+    };
+  };
 }
 
 /**
