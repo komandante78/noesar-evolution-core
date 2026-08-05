@@ -1,6 +1,6 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine **Fase 6** (`D-0323`, `428a5e3`). **NON deployata.**
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine **Fase 7** (`D-0326`, `34d497b`). **NON deployata.**
 >
 > **Programma attivo: CodeN Evolution.** Due file soli, in quest ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
@@ -9,67 +9,68 @@
 > nome**: si legge da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
 > Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### Fatto — **fase 6**: se ATOM cade, il prodotto continua E LO DICE
->
-> La regola nell intestazione del router era letta corta: diceva *«non deve mai ripiegare **in
-> silenzio**»* e il codice applicava *«non deve mai ripiegare»*. La parola che porta il peso è
-> **in silenzio**.
+> ### 🟢 IN PRODUZIONE ADESSO — la catena, deployata come una unità
 >
 > ```text
-> PRIMA   (atomd usa-e-getta FERMATO DAVVERO, stato container `exited`, non uno stub)
->         expect() THREW ReasoningUnavailable · plan() THREW ReasoningUnavailable
->         router.degradations() — il metodo non esisteva: nulla registrava un ripiego
->         => nessun compito poteva essere portato a termine
-> DOPO    (stesso demone, sempre `exited`)
->         plan() PENDING_APPROVAL 11,1 s · degraded=true provider=reference · 3 eventi
->         authoring authored=2 refused=0 degradations=2 · approve() promoted=true
->         src/login.js 87684a5ec052f695 -> 82d8a5ac2a625a3b   (i byte su disco SI SONO MOSSI)
->         Prova di Sessione: degraded=true, **entrambe** le sorgenti nominate, sempre 10 campi
+> noesar-evolution   noesar-evolution:phase6-declared-fallback   (repo edfaaa3)   ~7 s downtime
+> atomd              atom-evolution:atomd-a0025-authoring                          ~6 s downtime
+> + NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420   (il modello, sulla rete dei container)
 > ```
 >
-> **La decisione di ripiego vive in un posto solo per metà**: `ReasoningRouter#degrade` e
-> `declaredFallbackGenerator`. Le porte **rifiutano invece di scegliere**, per costruzione
-> (`D-0322`), quindi la scelta sta dove può essere dichiarata: il punto di assemblaggio.
+> Provato **sull artefatto deployato**: sha256 identico su tre livelli, `/v1/author` risponde
+> 400 e non 404, la catena gira (`checkedBy: atom`, 2 file, promosso, 2,6 s) e — con l `atomd`
+> **vero** fermato ~20 s — il prodotto ha continuato in 1,8 s dichiarando `provider=reference`.
+> **La fase 7 NON è in produzione**: il profilo di divergenza non è nell immagine viva.
 >
-> **Due cose NON degradano, di proposito.** Un **rifiuto** (ATOM ha risposto; chiedere a un
-> provider più debole finché uno dice sì è come un rifiuto diventa un consiglio) — e un
-> **passo già cominciato con ATOM**, che si ferma con un **checkpoint riprendibile** invece di
-> cucire metà ragionamento di una qualità e metà di un altra. `NOESAR_ATOM_FALLBACK=off`
-> riporta il comportamento pre-fase-6, **dichiarato**, non nascosto.
+> ### Fatto — **fase 6** (`D-0323`), **frequenza** (`D-0324`), **fase 7** (`D-0326`)
 >
-> **Due difetti trovati ESEGUENDO, riparati nella fase:**
-> 1. `Author.author()` chiamava il generatore **fuori** dal proprio `try`: un `AuthoringRefused`
->    sollevato dalla **porta** (ciò che `atomAuthoringGenerator` fa su `NOT_A_FILE` dalla 5b)
->    sfuggiva e **buttava via ogni file già scritto** nella run — contro una regola scritta in un
->    commento venti righe più sotto.
-> 2. `server.mjs` **non costruiva nessun Author**: il prodotto installato poteva pianificare e
->    non scrivere mai un byte.
+> **Fase 6 — se ATOM cade, il prodotto continua E LO DICE.** La regola nell intestazione del
+> router era letta corta: diceva *«mai ripiegare **in silenzio**»*, il codice applicava *«mai
+> ripiegare»*. Misurato su un demone fermato davvero: prima `plan()` sollevava e nessun compito
+> finiva; dopo, `plan()` risponde e il degrado è dichiarato con provenienza, ragione e ora.
+> Il ripiego vive in **un posto solo per metà** (`ReasoningRouter#degrade`,
+> `declaredFallbackGenerator`): le porte **rifiutano invece di scegliere**. **Non** degradano un
+> **rifiuto** né un **passo già cominciato con ATOM** — quello si ferma con un **checkpoint
+> riprendibile**. `NOESAR_ATOM_FALLBACK=off` riporta il comportamento vecchio, dichiarato.
 >
-> **Scope dichiarato:** `17` nomina 4 file, la fase ne ha toccati 7. `tools/coden-view-model.mjs`
-> **non esiste** — il view model condiviso è `apps/webui-static/coden-view-model.js`, e `17` è
-> stato corretto.
+> **`D-0324` — la frequenza**, letta dal **ledger** e non da un contatore vivo (un contatore
+> muore col processo e lusingherebbe proprio l installazione che si riavvia perché ATOM cade).
+> `rate` è `null` e mai `0` quando nulla è girato: «0 su 0» non è «0%».
 >
-> **Verifiche in sessione:** unit **1807/1808** (0 fail, 1 skip preesistente), ESLint **332
-> file 0/0/0**, e2e browser **257/266** (i 9 identici alla baseline s323), `CE-020` e `CE-021`
-> 0 fail, **18 mutazioni → 18 uccise** da baseline verificata verde prima — 3 sopravvissute al
-> primo giro, ognuna nominava un buco vero di copertura, chiuse e non argomentate via.
-> Secret scan: **3 reperti preesistenti** (commit del 30/07 e 02/08), **nessuno** in un file
-> toccato da questa fase. L atomd usa-e-getta è stato rimosso nella fase; **l atomd vivo non è
-> mai stato fermato** (up da 3 giorni, healthy). **Niente deployato.**
+> **Fase 7 — il profilo di divergenza collegato.** Prima era importato **solo dal proprio test**.
+> **L ordine È la fase**: si calcola in `plan()` dopo che l insieme dei file si è fissato e
+> **prima** che l Autore scriva un byte — dopo sarebbe un critico, lì è un istruzione.
 >
-> ### Prossima — **fase 7**: il profilo di divergenza collegato
+> **Tre difetti trovati collegando moduli che non si erano mai incontrati:**
+> 1. `buildAuthoringPrompt` leggeva `signal.signal`, `divergenceOf` emette `id`: al modello
+>    sarebbe arrivato `- undefined: high`.
+> 2. **Il test che guardava quella riga si era inventato la propria forma di input** ed era
+>    passato per due fasi mentre le forme vere non combaciavano.
+> 3. Il nuovo handler socket prendeva `(params)` dove il dispatch passa `{params, actor}`:
+>    ogni chiamata si rifiutava da sola con un messaggio che sembrava colpa del chiamante.
 >
-> **Prima misura:** `divergence-profile.mjs` **non è importato da nessun file** (costruito in
-> s320, mai cablato). Vincolo che un test già impone: sulla WebUI va reso come i **quattro
-> segnali col loro `level`**, **mai** come un numero. `buildAuthoringPrompt` accetta già
-> `profile` e lo formatta `- segnale: livello`: la metà Autore è cablaggio, non disegno.
+> **Tre guardie esistenti estese, non allentate** — inclusa una la cui asserzione sulla rotta era
+> **posizionale** e si è rotta appena ho scritto un commento sopra la guardia. Un asserzione che
+> fallisce su un commento è quella che il prossimo allarga.
 >
-> ### ⏸️ Aperto, non è codice
+> **Verifiche:** unit **1819/1820** (1 skip preesistente), ESLint **333 file 0/0/0**, e2e browser
+> **257/266** (i 9 identici alla baseline s323), `CE-020`/`CE-021` 0 fail, **14 mutazioni → 14**
+> da baseline verificata verde prima (3 sopravvissute al primo giro, ognuna un buco vero, chiuse
+> con test). **La misura del contratto tiene:** due repository git veri con abitudini opposte
+> producono profili **opposti** per il cambiamento identico.
 >
-> `atom-evolution:atomd-a0025-authoring` (binario `baef9d51…`) è **costruito e provato ma NON
-> deployato**: il demone vivo resta su `atomd-a0024-sigterm`, e rimpiazzare ciò che sta
-> servendo è una decisione dell Owner. `D-0312` chiede anche la **frequenza** delle cadute di
-> ATOM: la fase 6 la registra per run ma non la aggrega (proposta in `D-0323`, non eseguita).
+> ### Prossima — **fase 8, l ULTIMA**: `coden_evolution`, l accesso in una parola
+>
+> **Prima misura:** oggi serve essere amministratore, sapere il nome del container e il percorso
+> del client. **Verifica: prova reale da una SECONDA macchina della rete**, non simulata.
+> **Il confine che non si attraversa:** il **prodotto** fornisce l avviatore portabile (nessun
+> OS e nessun motore di contenitori presunti); l **installazione** fornisce la ricetta per l
+> utente di sistema. Il prodotto **non modifica mai** la configurazione dell host — legge di
+> piattaforma, non una domanda da fare all Owner.
+> **Tre trappole già registrate** (`16` §4.3): il socket non si pubblica sull host; l utente
+> dedicato non entra nel gruppo che controlla i contenitori; su alcuni sistemi la configurazione
+> del demone non sopravvive al riavvio. **E una quarta, imparata in fase 5:** `tools/tui-client.mjs`
+> **non era nell immagine** — l avviatore va **spedito**, e va provato **dentro un container**.
 
 ## 🛑 REGOLA ZERO — un solo progetto esiste
 
