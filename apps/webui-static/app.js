@@ -14,7 +14,7 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, detailLines, reasoningSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
+  createView, say, planTurn, detailLines, reasoningSummary, frequencySummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 // Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
@@ -27,9 +27,13 @@ function updateReasoningChip(reasoning){
   const text=reasoningSummary(reasoning);
   chip.textContent=`reasoning ${text}`;
   chip.classList.toggle('warn',Boolean(reasoning?.degraded));
-  chip.title=reasoning?.degraded
+  // `D-0312` asks for the frequency as well as the state, so it lives in the tooltip of the
+  // chip that already shows the state — one place, not a second widget nobody opens. The
+  // terminal puts the same string in its transcript note, from the same shaper.
+  const state=reasoning?.degraded
     ?`ATOM was asked for and could not be reached. The reference provider answered instead.\n\n${(reasoning.reasons??[]).join('\n')}`
     :'Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.';
+  chip.title=`${state}\n\nHow often ATOM has fallen: ${frequencySummary(reasoning?.frequency)}`;
 }
 
 // --- theme, applied before anything else ------------------------------------

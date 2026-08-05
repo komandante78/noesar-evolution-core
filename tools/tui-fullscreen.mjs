@@ -29,7 +29,7 @@ import {
 // made this file the only place that knew, and left the browser free to invent a second answer
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
-  createView, say, planTurn, detailLines, gitSummary, reasoningSummary, CLEARED_NOTE, startForm, fillForm,
+  createView, say, planTurn, detailLines, gitSummary, reasoningSummary, frequencySummary, CLEARED_NOTE, startForm, fillForm,
   addressEntries, menuEntriesFor,
 } from '../apps/webui-static/coden-view-model.js';
 // Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
@@ -224,7 +224,9 @@ export async function runFullScreen({
         // In the transcript too, and only when it is news. A run that degraded would otherwise
         // change one dim word at the bottom of the screen and nothing else.
         if (result.reasoning.degraded) {
-          record('note', `ATOM was asked for and did not answer — the reference provider answered instead. ${(result.reasoning.reasons ?? []).join(' · ')}`);
+          // The frequency goes in the same line as the event, because «it happened» and «it has
+          // happened 4 times in 120 runs» are answered together or the second is never asked.
+          record('note', `ATOM was asked for and did not answer — the reference provider answered instead. ${(result.reasoning.reasons ?? []).join(' · ')}  [${frequencySummary(result.reasoning.frequency)}]`);
         }
       }
       record('agent', `${turn.command} — ok`, detailLines(result));

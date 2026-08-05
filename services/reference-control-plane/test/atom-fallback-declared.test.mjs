@@ -15,13 +15,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
-import { ReasoningRouter, degradationSummary } from '../src/reasoning-router.mjs';
+import { ReasoningRouter, degradationSummary, degradationFrequency } from '../src/reasoning-router.mjs';
 import { ReasoningUnavailable } from '../src/atom-client.mjs';
 import { Author, AuthoringUnavailable, AuthoringRefused, declaredFallbackGenerator } from '../src/author.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
-import { reasoningSummary, createView } from '../../../apps/webui-static/coden-view-model.js';
+import { reasoningSummary, frequencySummary, createView } from '../../../apps/webui-static/coden-view-model.js';
 
 /** An installation that selected ATOM. `fetchImpl` is what decides whether ATOM is up. */
 const ATOM_ENV = {
@@ -234,4 +234,75 @@ test('both shells shape the degradation from the same function, and neither inve
   const shown = reasoningSummary(degraded);
   assert.match(shown, /^reference \(degraded: /, 'the shell shows a bare provider name and drops the fact that it degraded');
   assert.match(shown, /ATOM could not be reached/, 'the reason is dropped on the way to the screen');
+});
+
+// --- the second half of D-0312: how OFTEN ATOM falls -------------------------------------
+
+test('the frequency is derived from the ledger, so it survives the request that observed it', () => {
+  // Built from event shapes rather than a live run so the arithmetic is testable on its own.
+  // A live run exercises the same function two tests below.
+  const at = (n) => ({ recordedAtUnix: n });
+  const events = [
+    { action: 'workspace_action.planned', payload: '{}', ...at(100) },
+    { action: 'workspace_action.planned', payload: '{}', ...at(200) },
+    { action: 'workspace_action.degraded', payload: JSON.stringify({ reasons: ['atom is down'], surfaces: ['expect'] }), ...at(200) },
+    { action: 'workspace_action.planned', payload: '{}', ...at(300) },
+    { action: 'workspace_action.degraded', payload: JSON.stringify({ reasons: ['atom is down'], surfaces: ['expect', 'decompose'] }), ...at(300) },
+    { action: 'workspace_action.approved', payload: '{}', ...at(310) },
+  ];
+
+  const all = degradationFrequency(events);
+  assert.equal(all.runs, 3, 'the denominator counted something other than planned runs');
+  assert.equal(all.degradedRuns, 2);
+  assert.equal(all.rate, 2 / 3);
+  assert.deepEqual(all.byReason.map((entry) => [entry.key, entry.count]), [['atom is down', 2]]);
+  assert.deepEqual(all.bySurface.map((entry) => entry.key), ['expect', 'decompose']);
+  assert.equal(all.firstAtUnix, 200);
+  assert.equal(all.lastAtUnix, 300);
+
+  // A window narrows both halves, not just the numerator — otherwise a recent spike would be
+  // divided by the whole of history and read as calm.
+  const recent = degradationFrequency(events, { sinceUnix: 250 });
+  assert.equal(recent.runs, 1);
+  assert.equal(recent.degradedRuns, 1);
+  assert.equal(recent.rate, 1);
+});
+
+test('nothing having run is reported as nothing having run, never as healthy', () => {
+  const empty = degradationFrequency([]);
+  assert.equal(empty.runs, 0);
+  assert.equal(empty.rate, null, '0 of 0 reported as a rate reads as a perfect record');
+  assert.equal(frequencySummary(empty), 'no runs yet');
+  assert.equal(frequencySummary(null), '—');
+  assert.equal(frequencySummary({ runs: 4, degradedRuns: 1, rate: 0.25 }), '1/4 runs degraded (25%)');
+});
+
+test('a real degraded run writes the ledger line the frequency counts, and counts itself', async () => {
+  const root = workspace();
+  const events = new EventLedger();
+  const orchestrator = new WorkspaceActionOrchestrator({
+    workspaceRoot: root,
+    shadowsRoot: mkdtempSync(join(tmpdir(), 'noesar-phase6-freq-')),
+    minter: new TokenMinter(randomBytes(32)), events, env: ATOM_ENV,
+    reasoningFor: (sessionId) => new ReasoningRouter({ workspaceRoot: root, env: ATOM_ENV, fetchImpl: DEAD, sessionId }),
+  });
+
+  const planned = await orchestrator.plan({
+    actor: 'owner', request: 'add rate limiting to the login route',
+    files: [{ path: 'src/login.js', contents: 'export function loginRoute(app) {\n  app.post("/login", handler);\n}\n' }],
+    nowUnix: Math.floor(Date.now() / 1000),
+  });
+
+  const written = events.events().filter((event) => event.action === 'workspace_action.degraded');
+  assert.equal(written.length, 1, 'the degradation lives only in the response — a restart forgets it ever happened');
+  const payload = JSON.parse(written[0].payload);
+  assert.ok(payload.reasons.length > 0);
+  assert.ok(payload.surfaces.includes('expect'));
+
+  // The run counts ITSELF: the ledger line is written before the answer is shaped, so a shell
+  // is never shown "0 degraded" on the very response reporting a degradation.
+  assert.equal(planned.reasoning.frequency.runs, 1);
+  assert.equal(planned.reasoning.frequency.degradedRuns, 1);
+  assert.equal(planned.reasoning.frequency.rate, 1);
+  assert.equal(frequencySummary(planned.reasoning.frequency), '1/1 runs degraded (100%)');
 });

@@ -204,6 +204,23 @@ export function reasoningSummary(reasoning) {
 }
 
 /**
+ * How often ATOM has fallen, shaped for a status line — the second half of `D-0312`.
+ *
+ * Formatting lives here and measuring lives in `degradationFrequency`, which returns a RATIO and
+ * refuses to return a percentage string: a module that formats has already decided what a shell
+ * may show.
+ *
+ * "0 of 0" is not "0%". An installation that has never planned anything is not a healthy one,
+ * and rendering it as `0%` would tell an operator the opposite of what the data says.
+ */
+export function frequencySummary(frequency) {
+  if (!frequency || typeof frequency !== 'object') return '—';
+  if (!frequency.runs) return 'no runs yet';
+  const percent = Math.round((frequency.rate ?? 0) * 1000) / 10;
+  return `${frequency.degradedRuns}/${frequency.runs} runs degraded (${percent}%)`;
+}
+
+/**
  * Rank a list of addresses against what was typed — the ONE copy of that rule.
  *
  * It existed twice, byte-different, and the second one's comment said so out loud: "the

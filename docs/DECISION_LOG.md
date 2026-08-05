@@ -6714,3 +6714,40 @@ recorded per run, so nothing yet answers *how often* ATOM falls — `D-0312` ask
 frequency to be measured. A counter on the event ledger, surfaced beside the chip, would turn
 "it degraded" into "it degraded 4 times this week", which is the difference between a symptom
 and a signal. Cost: one aggregation over events already written.
+
+## D-0324 — the other half of `D-0312`: how OFTEN ATOM falls (2026-08-05)
+
+`D-0312` asks for two things. Phase 6 delivered one — the degradation is declared — and left
+*«la frequenza delle cadute va misurata»* recorded per run and never aggregated. A per-run field
+answers *did this session degrade*; an operator's question is *how often*, and the difference
+between those two is the difference between a symptom and a signal. One degradation in a hundred
+runs is an upstream hiccup; forty is a daemon that needs attention, and nothing could tell them
+apart.
+
+**Derived from the LEDGER, not from a live counter.** A counter dies with the process — the
+orchestrator says exactly that about its own run map — and a frequency that resets on restart
+would flatter precisely the installation that keeps restarting because ATOM keeps falling. So
+`plan()` now writes one `workspace_action.degraded` line per degraded run, hung off the plan
+event, and `degradationFrequency()` reads `workspace_action.planned` as the denominator and that
+line as the numerator.
+
+**Three choices that are not arbitrary:**
+
+- **`rate` is `null`, never `0`, when nothing has run.** "0 of 0" and "0 of 400" are different
+  facts, and rendering the first as `0%` tells an operator the second.
+- **A window narrows BOTH halves.** Narrowing only the numerator would divide a recent spike by
+  the whole of history and read as calm.
+- **The frequency rides on the same answer as the degradation**, not on a second route: two
+  shells asking a separate question at different moments would show different numbers for one
+  session. It is computed after the ledger line, so a degraded run counts itself.
+
+**Both shells, from one shaper.** `frequencySummary()` in the shared view model formats; the
+module returns a ratio and refuses to return a percentage string, because a module that formats
+has already decided what a shell may show. Browser: the tooltip of the reasoning chip that
+already carries the state. Terminal: the same string, in the transcript note that reports the
+degradation. **Caught by ESLint, not by reading:** the browser import was added and the tooltip
+edit did not apply, so `frequencySummary` sat unused and the WebUI showed nothing —
+`no-unused-vars` is what found it.
+
+**Verified:** unit **1810/1811** (0 fail, 1 pre-existing skip), ESLint **332 files 0/0/0**,
+**8 mutations → 8 killed** from a baseline verified green first.

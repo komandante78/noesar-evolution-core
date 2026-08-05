@@ -51,7 +51,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
 import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
-import { ReasoningRouter, routingFrom, degradationSummary } from './reasoning-router.mjs';
+import { ReasoningRouter, routingFrom, degradationSummary, degradationFrequency } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
@@ -239,6 +239,17 @@ export class WorkspaceActionOrchestrator {
   }
 
   /** SESS-001: the ten-field Session Proof, assembled from this run and its causal events. */
+  /**
+   * How often ATOM has fallen, over the ledger this installation actually holds.
+   *
+   * `D-0312` asks for the frequency to be MEASURED, and a number nobody can reach is not
+   * measured. Exposed here rather than computed in a route, so the terminal and the browser
+   * ask the same object the same question.
+   */
+  degradationFrequency({ sinceUnix = null } = {}) {
+    return degradationFrequency(this.#events.events(), { sinceUnix });
+  }
+
   sessionProof(runId) {
     const run = this.#runs.get(runId);
     if (!run) return null;
@@ -489,6 +500,24 @@ export class WorkspaceActionOrchestrator {
     }, nowUnix);
     // Now that the run has a root, the stage-9b line can hang off it with a real causation.
     if (authoringEvent) this.#record(runId, rootEventId, actor, authoringEvent[0], authoringEvent[1], nowUnix);
+    // `D-0312` asks for two things and phase 6 delivered one: the degradation is DECLARED, but
+    // «la frequenza delle cadute va misurata» needs it to survive the request that observed it.
+    // A run-scoped field answers "did this session degrade"; only a ledger line can answer "how
+    // often", which is the question an operator actually has. Written once per run, carrying the
+    // whole summary, so the aggregation reads events instead of re-deriving anything.
+    const runDegradation = degradationSummary({ reasoning: reasoningDegradations, authoring: authoring.degradations ?? [] });
+    if (runDegradation.degraded) {
+      this.#record(runId, rootEventId, actor, 'workspace_action.degraded', {
+        provider: runDegradation.provider,
+        requestedProvider: runDegradation.requestedProvider,
+        surfaces: [...runDegradation.surfaces],
+        authoredPaths: [...runDegradation.authoredPaths],
+        reasons: [...runDegradation.reasons],
+        events: runDegradation.events.length,
+        firstAtUnix: runDegradation.firstAtUnix,
+        lastAtUnix: runDegradation.lastAtUnix,
+      }, nowUnix);
+    }
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
       plan, expectation, files: planFiles, intent, hypotheses, risk, confidence, claims, provenance, grounding,
@@ -524,7 +553,11 @@ export class WorkspaceActionOrchestrator {
     // Phase 6: `reasoning` is on the answer for the same reason `authoring` is — a shell that
     // has to infer degradation from a provenance list is a shell that will not, and the
     // product would be back to falling back in silence with the evidence technically present.
-    const reasoning = degradationSummary({ reasoning: reasoningDegradations, authoring: authoring.degradations ?? [] });
+    // The frequency rides on the SAME answer as the degradation, deliberately: a second route
+    // would be a second question, and the two shells would ask it at different moments and show
+    // different numbers for one session. Computed after the ledger line above, so a run that
+    // degraded counts itself.
+    const reasoning = Object.freeze({ ...runDegradation, frequency: this.degradationFrequency() });
     return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning };
   }
 

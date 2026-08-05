@@ -117,6 +117,63 @@ export function degradationSummary({ reasoning = [], authoring = [] } = {}) {
 }
 
 /**
+ * How OFTEN ATOM falls — the half of `D-0312` that phase 6 recorded but did not answer.
+ *
+ * «il ripiego … lo stato è visibile … **e la frequenza delle cadute va misurata**». A per-run
+ * field answers *did this session degrade*; an operator's actual question is *how often*, and
+ * the difference between those two is the difference between a symptom and a signal. One
+ * degradation in a hundred runs is an upstream hiccup; forty is a daemon that needs attention,
+ * and nothing in the product could tell them apart.
+ *
+ * Derived from the LEDGER, not from live counters: counters die with the process (the
+ * orchestrator says so about its own run map), and a frequency that resets on restart would
+ * flatter exactly the installation that is restarting because ATOM keeps falling. The events
+ * are already written — `workspace_action.planned` for the denominator,
+ * `workspace_action.degraded` for the numerator — so this reads history rather than keeping a
+ * second copy of it.
+ *
+ * `sinceUnix` narrows the window; omitted, it is the whole ledger. `runs` is the denominator
+ * and is reported even when it is zero, because "0 of 0" and "0 of 400" are different facts and
+ * a bare `0%` would tell an operator the second when it meant the first.
+ */
+export function degradationFrequency(events = [], { sinceUnix = null } = {}) {
+  const within = (event) => sinceUnix === null || event.recordedAtUnix >= sinceUnix;
+  const parse = (event) => { try { return JSON.parse(event.payload || '{}'); } catch { return {}; } };
+
+  const planned = events.filter((event) => event.action === 'workspace_action.planned' && within(event));
+  const degraded = events.filter((event) => event.action === 'workspace_action.degraded' && within(event));
+
+  const byReason = new Map();
+  const bySurface = new Map();
+  for (const event of degraded) {
+    const payload = parse(event);
+    for (const reason of payload.reasons ?? []) byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
+    for (const surface of payload.surfaces ?? []) bySurface.set(surface, (bySurface.get(surface) ?? 0) + 1);
+  }
+  const at = degraded.map((event) => event.recordedAtUnix).filter((value) => Number.isFinite(value));
+  const tally = (map) => Object.freeze([...map.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .map(([key, count]) => Object.freeze({ key, count })));
+
+  return Object.freeze({
+    runs: planned.length,
+    degradedRuns: degraded.length,
+    // A ratio, not a percentage string: a shell formats, a module measures. `null` rather than
+    // 0 when nothing has run — see the note above about "0 of 0".
+    rate: planned.length ? degraded.length / planned.length : null,
+    byReason: tally(byReason),
+    bySurface: tally(bySurface),
+    firstAtUnix: at.length ? Math.min(...at) : null,
+    lastAtUnix: at.length ? Math.max(...at) : null,
+    windowFromUnix: sinceUnix,
+    // Said out loud: this counts what the LEDGER holds. An installation that trimmed its
+    // ledger, or one restarted with an in-memory ledger, is reporting a shorter history — not
+    // a healthier one, and a reader must be able to tell.
+    source: 'EventLedger — workspace_action.planned as the denominator, workspace_action.degraded as the numerator',
+  });
+}
+
+/**
  * A drop-in for `ReferenceReasoningProvider` whose methods are asynchronous.
  *
  * The synchronous provider remains what it was; this wraps it. Every method returns the same
