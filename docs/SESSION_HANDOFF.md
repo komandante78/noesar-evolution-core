@@ -1,6 +1,6 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3c (`D-0319`, `9f2e831`+`0c1f93d`)
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 4 (`D-0320`, `e375cce`)
 >
 > **Programma attivo: CodeN Evolution.** Due file soli, in quest'ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
@@ -9,74 +9,126 @@
 > nome**: si legge direttamente da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
 > Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### Fatto — **la fase 3 è chiusa per intero** (3a, 3b, 3c)
+> ### Fatto — **fase 4 chiusa: il proiettore di contesto (invenzione I)**
 >
-> **Il passo 1 ha ridimensionato la fase una seconda volta.** Aprire i 25 indirizzi **dal
-> prompt**, prima di toccare un file:
+> **La misura, prima di toccare un file**, sul vero `ContextGraph`, il vero `AtomicJsonStore` e
+> `contextInspection()`, riproducendo verbatim la mappatura di `chat-orchestrator.mjs:32`
+> (`EVIDENCE/phase4-context-projection-measure.mjs`, uscita in
+> `EVIDENCE/phase4-context-projection-measure-20260805T120103Z.txt`):
 >
 > ```text
-> GESTO                                 BROWSER   PROMPT (ssh)   shell a riga (pipe)
-> i 25 indirizzi CodeN, al prompt          0/25        0/25             25/25
-> le 14 voci «destinazione», per nome     14/14        0/14               —
-> i 25, dalla barra degli indirizzi       25/25    (non esiste)          —
+> chiamata      PRIMA (trascrizione)          DOPO (proiezione)
+>       3        8 voci ·  1 044 B                581 B
+>      25       52 voci ·  7 237 B              1 152 B
+>     300      602 voci · 85 190 B              1 197 B
+>     400      802 voci · 113 590 B             1 197 B      ← identico a 300
 > ```
 >
-> **Le viste di 3b stavano nella shell sbagliata.** `showAddress()` vive in `tui-client.mjs`,
-> che apre la shell a riga **solo con stdin in pipe**; via `ssh` parte `runFullScreen`, che
-> rispondeva con una promessa a tutti e venticinque. Quindi 3c si è divisa: **3c-1 il
-> sostituto**, **3c-2 la rimozione**.
+> **×81,6 prima, −98,6 % dopo.** Il tetto (15 198 B) è **derivato dallo schema** da
+> `projectionByteCeiling()`, non scritto in un test: non può allontanarsi dalle sezioni.
 >
-> **3c-1** (`9f2e831`) — `tools/coden-address-views.mjs`: una tabella di viste sola, di
-> **nessuna** delle due shell, con il sink come parametro. Il ranking degli indirizzi esisteva
-> in **due copie** byte-diverse: ora una, nel modello condiviso. `/` risolve comando **e**
-> indirizzo, con un solo `planTurn`.
+> **Detto con precisione, perché la versione onesta è più stretta dello slogan.** La forma
+> *non* è identica fra la chiamata 3 e la 300: alla 3 la sessione ha tre passi di piano e la
+> vista ne mostra tre. È identica **dalla chiamata 25** — da quando i tetti sono raggiunti — e
+> a ogni chiamata è identico l'insieme ordinato delle sezioni. La crescita fra 3 e 25 è lo stato
+> che si riempie fino ai suoi tetti, finita; non è accumulo. `CE-005` asserisce i nomi di
+> sezione a 3 e 300 e la forma **e i byte** a 300 e 400, che è ciò che il codice garantisce.
 >
-> **3c-2** (`0c1f93d`) — via il cruscotto, le due regioni aperte insieme, la barra degli
-> indirizzi (**su questa destinazione**, non sulle altre dodici) e il breadcrumb. Il markup
-> resta: l'address book deriva i 25 indirizzi da quegli attributi. Il mouse conserva una
-> strada — la `/` del suggerimento sotto il prompt è diventata un comando.
+> **Nove sezioni**, esattamente quelle che l'invenzione I nomina (obiettivo, piano, evidenze,
+> domande aperte, diff corrente, firme di fallimento, autorità attiva) più «tentativi» (`15` §5,
+> budget sulla novità) e «segnali del repository», dove atterra l'invenzione II alla fase 7:
+> accetta un segnale con un `level` e **non ha campi numerici**, quindi non c'è porta di
+> servizio per il punteggio che `divergence-profile.mjs` si rifiuta di produrre.
 >
-> ### Tre difetti trovati ESEGUENDO, uno più vecchio della fase
+> **Nessun `append`, nessun `note`, nessuna sezione di prosa.** Quattro rifiuti, ognuno nomina
+> sezione e campo: sezione non dichiarata, campo che la sezione non ha, tipo sbagliato, stringa
+> oltre il massimo. Una stringa troppo lunga si **rifiuta**, non si taglia.
 >
-> 1. `String.replace` tratta `$$` come un `$` letterale → `$$(...)` diventato `$(...)`,
->    TypeError al boot. **Le unit non possono vederlo**: leggono `app.js` come testo.
-> 2. il prompt navigava con `location.hash=` e **rifetchava** la pagina per una mossa interna
->    (28 → 32 richieste). `jumpTo` sapeva già distinguere; ora ci passano entrambi i rami.
-> 3. **`CE-020` era rosso da 3a** (`6bb7faf`), per due fasi, perché **non sta in `npm test`**:
->    la quota «uguale per gruppo» dava **una voce per gruppo** e `/approve` non compariva.
->    Bisezionato sui sei commit, non ipotizzato.
+> ### Tre difetti, tutti trovati misurando o eseguendo
 >
-> ### Verificato in sessione (ogni numero prodotto qui)
+> 1. **Validare in lettura *lanciando*** significava che **una sola riga fuori schema bloccava
+>    ogni chiamata al modello di quella sessione, per sempre** — un diniego di servizio che si
+>    compra con una singola modifica, e che si raggiunge anche solo stringendo lo schema dopo
+>    che i fatti sono stati scritti. Il cancello in **scrittura** lancia ancora (`CE-004`); la
+>    **lettura** esclude la riga, la **conta** e la vista lo dichiara (`held back: 1 out of
+>    schema`), visibile solo quando non è zero.
+> 2. La finestra **ordinava le domande bloccanti in testa e poi prendeva la coda** — cioè le
+>    ordinava per buttarle via. Selezione e presentazione ora sono due passi: si sceglie per
+>    rango, si **rende in ordine di scrittura**.
+> 3. Per **mutazione**: il tetto allentato di uno (`length <= show + 1`) sopravviveva, perché
+>    nessun test teneva esattamente `show + 1` voci. Ora il confine è asserito a `cap−1`, `cap`,
+>    `cap+1` e la mutazione muore.
 >
-> unit **1760/1761** (0 fail, 1 skip preesistente) · ESLint **323 file 0/0/0** · **CE-020 0
-> fail** · **CE-021 0 fail** · browser e2e **257/266**, i 9 fallimenti **identici** alla
-> baseline misurata in sessione · **15 mutazioni, 15 uccise** da baseline verificate verdi
-> prima. Tre sopravvissute al primo giro, ognuna ha prodotto un test vero — una accettava
-> qualsiasi messaggio che **nominasse** il pannello, una cercava un backslash-n letterale
-> invece di un a-capo (non poteva fallire), una copriva una regola che nulla misurava.
+> ### Dove sta davvero il costo, attribuito e non asserito
 >
-> ### ⏭ PROSSIMA AZIONE — **Fase 4: il proiettore di contesto** (`17`, invenzione I)
+> `projMs` cresce con la sessione (0,52 → 2,65 ms a 1 201 fatti). Misurato separando lo store:
+> `projectContext` da solo fa 0,19 ms a 10 fatti, 0,59 ms a 1 201, 3,50 ms a 12 001 — il resto è
+> `AtomicJsonStore.read()` che ri-parsa l'intero file, che è la natura dello store e non di
+> questo modulo. **L'uscita è limitata; il lavoro è lineare nel record.**
 >
-> `OBIETTIVO: ogni chiamata al modello riceve una vista ricostruita da stato, mai una
-> trascrizione.` **Prima cosa da misurare all'apertura:** la forma e la taglia del contesto
-> alla chiamata 3 e alla chiamata 300 — `15` §14 la chiama il rischio numero 1, ed è ciò che
-> l'Autore (fase 5) pagherebbe per primo se non esistesse.
+> ### Verificato in sessione, ogni numero prodotto qui
 >
-> ### ⚠️ Non deployato
+> unit **1776/1777** (0 fail, 1 skip preesistente; era 1760/1761) · ESLint **326 file 0/0/0** ·
+> `verify-source` **PASS**, 19 migrazioni, baseline 12/12 · **11 mutazioni → 11**, da baseline
+> verificata verde prima · prodotto vivo `livez`/`healthz`/`readyz` **200/200/200**.
 >
-> Il container in produzione è invariato su `noesar-evolution:coden-prose-grounding-v2`.
-> **Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd` la
-> produce sempre); generare e validare il comando **prima** di fermare il container — l'ordine
-> sbagliato è costato ~80 s di downtime in s320. E il nuovo `tools/coden-address-views.mjs` è
-> già in `oci/Dockerfile` (il test di chiusura degli import lo ha imposto prima del build).
+> ### NON fatto, dichiarato
 >
-> ### Resta aperto, e non si chiude scrivendo codice
+> - **Nessuna chiamata al modello passa dal proiettore, su nessuna delle due shell.**
+>   `chat-orchestrator.mjs` consegna ancora l'intero ramo; il terminale non rende nessuna
+>   proiezione. È voluto: sostituire ciò che una shell manda al modello è una **rimozione**, e
+>   la regola 3 di `17` dice che il sostituto si prova **prima**. Ora esiste ed è misurato.
+> - **Il motore non scrive ancora nessuna sezione.** Piano, diff e token stanno in `#runs` di
+>   `workspace-actions.mjs` e non sono specchiati nello stato: è la lista file della **fase 5**.
+> - **Niente è deployato.** Il container è invariato su `coden-prose-grounding-v2`.
+> - **Otto container di rollback fermi** da sessioni precedenti sopravvivono contro §5a. Questa
+>   fase non ne ha creato nessuno e non ne ha toccato nessuno.
+> - Un file di evidenza prodotto da questa stessa sessione sette minuti prima
+>   (`…T115406Z.txt`) è stato rimosso quando il successore rigenerato è esistito. Dichiarato e
+>   non taciuto: `CLAUDE.md` dice di non cancellare file.
 >
-> **Gruppo 6** (pentest indipendente esterno) è l'unico gate che tiene `productionReady=false`.
-> La deriva `MASTER_PROJECT/` vs `docs/progetto-italiano/` (7 file su 14) è una scelta di
-> contenuto dell'Owner. **Otto container di rollback fermi** da sessioni precedenti
-> sopravvivono contro §5a: questa fase non ne ha creato nessuno, e rimuoverli è un'azione sul
-> runtime senza l'Owner presente.
+> ### Proposta di miglioramento registrata (non eseguita)
+>
+> `recordContextFact` scrive **un** fatto e per farlo rilegge e riscrive l'intero record della
+> conversazione. **Proposta:** un log di fatti append-only per conversazione. **Beneficio:** il
+> costo lineare sparisce dal percorso di scrittura, e due componenti che scrivono insieme
+> smettono di poterne perdere uno. **Costo:** una collezione nuova significa bump di
+> `schemaVersion` **con la migrazione accanto** — questa fase l'ha evitato di proposito mettendo
+> `contextFacts` sul record della conversazione, la stessa forma additiva usata dalla migrazione
+> a versione 3 per `deletedAt`.
+>
+> ### Prossima — **fase 5, l'Autore** (`17`)
+>
+> **OBIETTIVO:** il prodotto scrive lui il cambiamento, e l'Owner promuove un risultato
+> **misurato**. È il buco che tutto il programma esiste per chiudere: nessuna delle 12 superfici
+> produce il *contenuto* di un file (`workspace-actions.mjs:537` scrive ciò che il chiamante gli
+> passa). File: `src/author.mjs` (nuovo), `src/workspace-actions.mjs`, `test/author.test.mjs`
+> (nuovo — `CE-025`…`CE-030`). **Prima cosa da misurare all'apertura:** che cosa produce oggi
+> `plan()` per una richiesta in prosa senza file nominati — i percorsi ci sono, il contenuto no.
+>
+> **I due vincoli che si sbagliano più facilmente** (`16` §3.2): l'Autore **non nomina mai un
+> percorso** (riceve un insieme chiuso dal Piano; un percorso nella sua uscita si **scarta e si
+> registra**, non si normalizza) e **la sua uscita non tocca il repository vero** (va in ombra,
+> i test girano, e **solo dopo** c'è il dialogo di promozione — `CE-008` esiste apposta).
+>
+> **Il proiettore è il suo primo consumatore**: l'Autore chiama il modello ripetutamente sullo
+> stesso compito, ed è il componente che avrebbe pagato l'assenza dello stato (`16` §5).
+>
+> ### ⚠️ Tre trappole misurate, che valgono oltre la fase
+>
+> - `npm test` legge `app.js` come **testo** e non lo esegue mai: un TypeError nel browser passa
+>   1776 unit e 0 ESLint. Solo `bash tools/run-browser-e2e.sh` lo vede.
+> - le acceptance `tools/acceptance/*` **non stanno in `npm test`**: `CE-020` è rimasta rossa
+>   per due fasi. Eseguirle nella fase, e **bisezionare prima di attribuire** un rosso.
+> - un commit con `git commit -F -` e heredoc **fallisce in silenzio**: l'hook pre-commit
+>   consuma lo stdin. Scrivere il messaggio su file e usare `-F <file>`.
+>
+> **⚠️ Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd` la
+> produce sempre). **Generare e validare il comando PRIMA di fermare il container** — l'ordine
+> sbagliato è costato ~80 s di downtime in s320. Il prodotto pubblica su
+> `192.168.178.100:8100` (porta 8088 nel container), **non** su `127.0.0.1`.
+>
+> **Stato del lavoro:** `e375cce` su `origin/main`. Pushato, **NON deployato**.
 >
 ---
 

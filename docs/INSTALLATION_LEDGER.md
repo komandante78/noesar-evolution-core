@@ -3865,3 +3865,30 @@ Predecessor: `noesar-evolution.rollback-pre-module-proxy-20260801T002903Z`
 no image or config change on that side. Rollback cost: none on live data — no schema
 change, no migration; reverting removes the proxy listener/port and the catalog falls
 back to the module's own (LAN-closed) address automatically.
+
+---
+
+## 2026-08-05 · Phase 4, the context projector (`D-0320`, `e375cce`) — NOT INSTALLED
+
+**Nothing was deployed by this phase, and nothing was installed.** The running container is
+unchanged on `noesar-evolution:coden-prose-grounding-v2` (uid 10001, `--read-only`, tmpfs
+`/run:mode=1777` + `/tmp`, ip 172.22.0.5). Verified live at the close of the phase:
+`livez`/`healthz`/`readyz` = **200 / 200 / 200** on `192.168.178.100:8100` — which is the
+published address, container port 8088; a probe of `127.0.0.1:8100` answers nothing and a probe
+of `172.22.0.5:8088` answers `421` on the host-header check, both expected and neither a fault.
+
+**Containers, images and networks created by this phase: none.** Nothing to clean up. The eight
+stopped rollback containers from earlier sessions survive against §5a's "one rollback"; this
+phase created none of them and touched none of them.
+
+**Two new files ship in the image when a build next happens** —
+`services/reference-control-plane/src/context-projector.mjs` and the test beside it. The
+projector is imported by `ai-workspace/context-graph.mjs`, which is already copied by
+`oci/Dockerfile` as part of `services/`, so no recipe change is required; the import closure
+test (`tui-import-closure.test.mjs`, `D-0303`) covers the terminal client's closure only and is
+not affected, because neither shell imports this module yet.
+
+**No schema version bump, deliberately.** `contextFacts` is an additive field on the
+conversation record, the same shape the migration to `schemaVersion` 3 used for `deletedAt` and
+`purgeAfter`. A record written before this phase reads as having no facts, which is exactly what
+it has. `verify-source` reports 19 migrations and baseline 12/12 intact, unchanged.
