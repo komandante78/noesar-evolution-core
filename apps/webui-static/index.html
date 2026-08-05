@@ -216,6 +216,34 @@
              three-line block occupying the row the terminal spends on state. -->
         <h1 class="visually-hidden">CodeN Evolution</h1>
         <div class="coden-bar"><div class="chip-list" id="codenTopChips"><span class="chip" id="codenProjectChip" title="Active project for this workspace, same value as the global Project chip">project —</span><span class="chip" id="codenGitChip" title="Branch of the active workspace root, from git itself — not tracked separately by this product">git —</span><span class="chip" id="codenModelChip" title="Active model, same value as the global Model chip, plus the accelerator it runs on when hardware discovery reports one">model —</span><span class="chip" id="codenCtxChip" title="Total tokens of the most recent turn against the active provider's declared context window. Reads '—' when the provider has not declared one in Settings › Models &amp; External APIs, rather than guessing.">ctx —</span><span class="chip" id="codenSandboxChip" title="Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below">sandbox —</span></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <!-- PHASE 3a · the four regions — `16` §4b.2. "La WebUI È la TUI, resa in un browser."
+             The canonical form is the terminal's, and this page renders it:
+
+               riga di stato   the `.coden-bar` chips ABOVE — region one, and deliberately
+                               not a second one: the terminal carries the same facts on one
+                               dim footer line, and adding a status strip of our own here
+                               would be the fourth navigation widget `D-0299` spent a phase
+                               removing. Same facts, one place, each shell's own idiom.
+               trascrizione    what you asked, what it did, the result — newest at the bottom
+               prompt          one box, always in the same place
+               menu            ONLY while the prompt begins with `/`, and it is the ONE menu
+                               of the product: work, applications, configure, session
+
+             THE DASHBOARD BELOW STAYS, and that is the whole point of splitting phase 3.
+             Measured 2026-08-05 before writing a line of this: the terminal renders EIGHT of
+             the twenty-five CodeN addresses. Removing the bench now would make `CE-034` false
+             by seventeen and turn functions that exist in one shell into functions that exist
+             nowhere. 3b gives those seventeen a method and a view; 3c removes this. Removing
+             is the last act, never the first. -->
+        <section class="agent-shell" id="codenShell" aria-label="Session">
+          <div class="agent-transcript" id="codenTranscript" role="log" aria-live="polite" aria-label="Transcript"></div>
+          <div class="agent-prompt">
+            <span class="agent-caret" aria-hidden="true">›</span>
+            <textarea id="codenPrompt" rows="1" autocomplete="off" spellcheck="false" aria-label="Prompt" aria-describedby="codenPromptHint" placeholder="Say what should change — or / for the menu"></textarea>
+          </div>
+          <p class="agent-hint" id="codenPromptHint">Enter sends · <kbd>/</kbd> opens the menu · Tab completes without sending</p>
+          <div class="agent-menu hidden" id="codenMenu" role="listbox" aria-label="Menu"></div>
+        </section>
         <!-- The workbench · UI-030…UI-037. TWO regions now, not three, and no switcher in
              either of them: the bench (one panel at a time) and the agent column (one panel
              at a time). The Navigator column, the eleven bench tabs and the five-entry agent

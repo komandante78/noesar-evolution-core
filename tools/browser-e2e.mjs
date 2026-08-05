@@ -635,6 +635,104 @@ try {
   check('the Back button returns to the previous panel, not just to the previous address',
     wentBack.active === 'diff' && wentBack.hash === '#/coden/bench/diff', JSON.stringify(wentBack));
 
+  // --- phase 3a: the four regions, DRIVEN rather than asserted --------------------------
+  //
+  // `16` §4b.2. Every check below types into the real prompt of a real page. The module was
+  // written and unit-tested, and neither of those is the same as it having RUN in a browser:
+  // this project has already shipped a page telling the user to run a client that was not in
+  // the image, and a `plan()` whose `status` both shells invented. Both survived unit tests
+  // and died the first time anything drove them.
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#codenPrompt', { timeout: 15000 });
+  const regions = await page.evaluate(() => ({
+    status: Boolean(document.querySelector('#view-coden .coden-bar')),
+    transcript: Boolean(document.querySelector('#codenTranscript')),
+    prompt: Boolean(document.querySelector('#codenPrompt')),
+    menu: Boolean(document.querySelector('#codenMenu')),
+    // The bench is still standing — 3a removes nothing. A phase that quietly removed it
+    // would be 3c arriving early, before the seventeen missing views exist.
+    bench: Boolean(document.querySelector('#view-coden .bench')),
+    opening: document.querySelector('#codenTranscript')?.textContent?.trim() ?? '',
+  }));
+  check('CE-033 · the browser shows all four regions',
+    regions.status && regions.transcript && regions.prompt && regions.menu, JSON.stringify(regions));
+  check('3a removes nothing: the bench is still standing', regions.bench === true, JSON.stringify(regions));
+  check('the transcript opens with its note rather than empty',
+    regions.opening.includes('CodeN Evolution'), regions.opening.slice(0, 80));
+
+  // `/` opens the ONE menu, in four groups.
+  await page.click('#codenPrompt');
+  await page.keyboard.type('/');
+  await page.waitForSelector('#codenMenu:not(.hidden)', { timeout: 15000 });
+  const menu = await page.evaluate(() => ({
+    groups: [...document.querySelectorAll('#codenMenu .agent-menu-group')].map((node) => node.textContent.trim()),
+    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
+    note: document.querySelector('#codenMenu .agent-menu-note')?.textContent?.trim() ?? '',
+    selected: document.querySelectorAll('#codenMenu button.active').length,
+  }));
+  check('CE-036 · the menu opens with the four groups, in order',
+    JSON.stringify(menu.groups) === JSON.stringify(['WORK', 'APPLICATIONS', 'CONFIGURE', 'SESSION']),
+    JSON.stringify(menu.groups));
+  check('CE-036 · the menu carries work, destinations, configuration and the session',
+    ['plan', 'chat', 'settings', 'logout'].every((name) => menu.entries.includes(name)),
+    menu.entries.join(' '));
+  check('CE-036 · the menu declares whether it was filtered', menu.note.length > 0, menu.note);
+  check('exactly one menu entry is highlighted', menu.selected === 1, String(menu.selected));
+
+  // Tab completes WITHOUT running — the rule both shells follow, and the one that stops a
+  // keystroke becoming an action nobody chose.
+  await page.keyboard.type('pl');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  await page.keyboard.press('Tab');
+  const completedPrompt = await page.evaluate(() => ({
+    value: document.querySelector('#codenPrompt').value,
+    entries: document.querySelectorAll('#codenTranscript .t-entry').length,
+  }));
+  check('Tab completes the prompt and runs nothing',
+    completedPrompt.value === '/plan ' && completedPrompt.entries === 1, JSON.stringify(completedPrompt));
+
+  // A real call, over the real bridge, landing in the real transcript.
+  await page.evaluate(() => { document.querySelector('#codenPrompt').value = ''; });
+  await page.click('#codenPrompt');
+  await page.keyboard.type('/status');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('#codenTranscript .t-entry')].some((node) => node.textContent.includes('status — ok')),
+    { timeout: 15000 },
+  );
+  const ran = await page.evaluate(() => ({
+    kinds: [...document.querySelectorAll('#codenTranscript .t-entry')].map((node) => node.className).join(' '),
+    detail: Boolean(document.querySelector('#codenTranscript .t-entry pre')),
+    menuHidden: document.querySelector('#codenMenu').classList.contains('hidden'),
+  }));
+  check('a work command reaches the engine and answers into the transcript',
+    ran.kinds.includes('t-user') && ran.kinds.includes('t-tool') && ran.kinds.includes('t-agent') && ran.detail,
+    JSON.stringify(ran));
+  check('the menu closes once the line is sent', ran.menuHidden === true, JSON.stringify(ran));
+
+  // `/logout` needs a typed word. This is the one entry whose FIRST form must do nothing, so
+  // the check is that the session survives it.
+  await page.click('#codenPrompt');
+  await page.keyboard.type('/logout');
+  await page.keyboard.press('Enter');
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const afterLogout = await page.evaluate(() => ({
+    signedIn: Boolean(document.querySelector('#authGate')?.classList.contains('hidden')),
+    said: [...document.querySelectorAll('#codenTranscript .t-note')].map((node) => node.textContent).join(' '),
+  }));
+  check('/logout alone asks, and does not end the session',
+    afterLogout.signedIn && /logout confirm/.test(afterLogout.said), JSON.stringify(afterLogout));
+
+  // A destination goes there, typed in the prompt, with no address bar involved.
+  await page.click('#codenPrompt');
+  await page.keyboard.type('/memory');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#view-memory.active', { timeout: 15000 });
+  const navigated = await page.evaluate(() => location.hash);
+  check('a destination typed in the prompt goes there', navigated === '#/memory', navigated);
+  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#codenPrompt', { timeout: 15000 });
+
   const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
 

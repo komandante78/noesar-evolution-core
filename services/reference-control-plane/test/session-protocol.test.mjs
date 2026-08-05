@@ -39,7 +39,7 @@ function resolveWorkspaceSubpath(root, subpath) {
   return candidate.startsWith(root) ? candidate : null;
 }
 
-let ws, shadows, socketPath, server, totpSecret, authenticatedSocket, contextGraph;
+let ws, shadows, socketPath, server, totpSecret, authenticatedSocket, contextGraph, handshake, authService;
 
 before(async () => {
   ws = mkdtempSync(join(tmpdir(), 'noesar-sp-ws-'));
@@ -47,6 +47,7 @@ before(async () => {
   shadows = mkdtempSync(join(tmpdir(), 'noesar-sp-shadows-'));
   const ledger = new AuditLedger(join(ws, 'audit.jsonl'));
   const auth = new AuthService({ workspace: ws, setupToken: SETUP_TOKEN, ledger });
+  authService = auth;
   const begun = auth.beginSetup({ username: 'owner', displayName: 'Owner', password: PASSWORD, suppliedSetupToken: SETUP_TOKEN });
   totpSecret = begun.totpSecret;
   auth.confirmSetup({ challenge: begun.challenge, totpCode: totpCode(totpSecret, stepStart(0)) });
@@ -77,7 +78,7 @@ before(async () => {
   authenticatedSocket = connect(socketPath);
   await new Promise((resolve) => authenticatedSocket.once('data', resolve));
   const begunLogin = await call(authenticatedSocket, 'auth.login', { username: 'owner', password: PASSWORD });
-  await call(authenticatedSocket, 'auth.mfa', { challenge: begunLogin.challenge, totpCode: totpCode(totpSecret, stepStart(1)) });
+  handshake = await call(authenticatedSocket, 'auth.mfa', { challenge: begunLogin.challenge, totpCode: totpCode(totpSecret, stepStart(1)) });
 });
 
 after(async () => {
@@ -115,6 +116,23 @@ describe('session protocol — unix socket transport', () => {
     const hello = await new Promise((resolve) => socket.once('data', (chunk) => resolve(JSON.parse(chunk.toString('utf8').split('\n')[0]))));
     assert.equal(hello.protocol, PROTOCOL_VERSION);
     socket.end();
+  });
+
+  test('CE-036 · the handshake tells the terminal what the account may do', async () => {
+    // Found by mutation, not by reading. Deleting `permissions` from the `auth.mfa` reply
+    // killed no test: the terminal would fall back to `menuFor(null)` and quietly show an
+    // UNFILTERED menu, so `CE-036` — "an entry the account cannot use does not appear, in both
+    // shells" — would be false for one of the two with nothing failing. That is the exact
+    // shape rule 5 of the phase skill describes: a criterion no row measures is not closed.
+    //
+    // The browser has had this since `GET /api/v1/auth/me`; the socket is the transport that
+    // was never given it, which is also how `D-0302` found the socket enforcing no permissions
+    // at all. A description, not a grant: the dispatch still checks `can` on every call.
+    assert.ok(Array.isArray(handshake.permissions), 'the socket sent no permission set');
+    assert.ok(handshake.permissions.includes('workspace.write'), JSON.stringify(handshake.permissions));
+    // Derived from the one ROLE_PERMISSIONS definition rather than a second matrix — asserted
+    // against the AuthService itself, so a hand-written list here would fail.
+    assert.deepEqual(handshake.permissions, authService.permissionsFor(handshake.user.role));
   });
 
   test('no method beyond auth.login/auth.mfa is answered before the socket authenticates', async () => {

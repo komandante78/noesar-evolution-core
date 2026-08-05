@@ -6,7 +6,16 @@ import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedul
 import { initVoiceControl } from './voice-control.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
-import { AGENT_COMMANDS, matchCommands, parseCommandPrompt } from './agent-commands.js';
+import {
+  AGENT_COMMANDS, matchCommands, parseCommandPrompt, resolveCommand,
+  menuFor, groupMenu, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
+} from './agent-commands.js';
+// What a session LOOKS like, and what a typed line MEANS — phase 2 put it where both shells
+// read it. This page drives the same `planTurn` the terminal drives, over its own transport;
+// that is what "la WebUI È la TUI" has to mean in code rather than in prose.
+import {
+  createView, say, planTurn, detailLines, CLEARED_NOTE,
+} from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
 // --- theme, applied before anything else ------------------------------------
@@ -262,24 +271,13 @@ function announceCodenPanel(region,name){
   document.title=`${heading} · NOESAR Evolution`;
   const live=$('#routeAnnouncer');if(live)live.textContent=`${heading} panel`;
 }
-// What a page needs before it is worth offering at all. `role` mirrors the routes the
-// server guards with requireOwner — a literal role check, not a permission — and
-// `permission` is tested against the set the server itself reports for this account,
-// so the two cannot drift apart. An entry absent from this table is open to any signed-in
-// session. None of this is enforcement: every request is still checked by the server.
-// The gates moved with the pages they guard: they are now section gates, and losing one
-// in the move would have turned a restructure into a privilege escalation.
-const ROUTE_ACCESS={};
-const SECTION_ACCESS={
-  people:{permission:'user.manage'},
-  storage:{permission:'data.manage'},
-  health:{role:'owner'},
-  updates:{role:'owner'},
-  // D-0277: install/activate/deactivate are owner-only server-side (requireOwner); the
-  // section itself is owner-only too, same as updates/health above, rather than showing
-  // every other role a page whose one action always answers 403.
-  modules:{role:'owner'},
-};
+// What a page needs before it is worth offering at all. `ROUTE_ACCESS` and `SECTION_ACCESS`
+// are IMPORTED from `agent-commands.js` since phase 3a, not defined here. They were this
+// page's private tables, which was right while only this page had destinations to hide; the
+// `/` menu now offers the same destinations in the terminal, and a gate one shell can read
+// and the other cannot is a gate the other silently does not apply. Moving beat copying:
+// `CE-036` wants the two menus to be the SAME set, and two tables agree only until one is
+// edited. None of this is enforcement — every request is still checked by the server.
 function allows(rule){
   if(!rule)return true;
   if(rule.role&&currentUser?.role!==rule.role)return false;
@@ -939,6 +937,144 @@ $('#chatInput').addEventListener('keydown',(event)=>{
   if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('#chatCommands')?.classList.add('hidden');sendChat();}
   return undefined;
 });
+// --- the agent shell, in the browser · phase 3a -------------------------------------------
+//
+// `16` §4b.2: the canonical form is the terminal's, and this renders it. Four regions — the
+// `.coden-bar` chips (status), the transcript, the prompt, and the `/` menu — driven by the
+// SAME `coden-view-model.js` the terminal drives. Not a second implementation that agrees:
+// `planTurn` decides what a typed line means, in one file, and each shell only performs it.
+//
+// The bench below is untouched. Phase 3a is form, and form is reversible; 3b gives the
+// seventeen CodeN addresses that have no terminal view a method and a view, and 3c removes
+// the bench. Removing before the replacement is proven is the mistake rule 4 of the skill
+// names, and it has already cost this project a phase.
+const codenView=createView();
+let codenMenuIndex=0;
+// What this account may use — the same `menuFor` the terminal calls, on the same list, with
+// the permission set the server reported for this session. Rebuilt on demand rather than
+// cached at load: `currentPermissions` is filled during sign-in, and a menu built before that
+// would be the unfiltered one for the rest of the session.
+function codenMenu(){return menuFor(accountFromUser(currentUser&&{...currentUser,permissions:currentPermissions}));}
+// `sessions.list` and `coden.gitStatus` are `bridged:false` — this page reaches them through
+// routes of its own, which is an exposure decision the policy table records, not a weaker
+// gate (`GET /api/v1/sessions` asks the same `workspace.read`). Routing them here is what
+// keeps `/sessions` and `/git` meaning the same thing in both shells instead of one shell
+// answering UNKNOWN_METHOD; leaving them to the bridge would have made the parity claim false
+// for two of the fourteen work commands.
+const CODEN_UNBRIDGED={
+  'sessions.list':(params)=>api(`/api/v1/sessions?place=${encodeURIComponent(params?.filter||'active')}`),
+  'coden.gitStatus':()=>api('/api/v1/coden/git-status'),
+};
+async function codenCall(method,params){
+  const direct=CODEN_UNBRIDGED[method];
+  if(direct)return direct(params);
+  const response=await api('/api/v1/tui/command',{method:'POST',body:JSON.stringify({method,params})});
+  return response.result;
+}
+function renderCodenTranscript(){
+  const box=$('#codenTranscript');if(!box)return;
+  const glyph={user:'›',agent:'⏺',tool:'⎿',error:'✕',note:'·'};
+  box.innerHTML=codenView.transcript.map((entry)=>{
+    const detail=(entry.detail??[]).length
+      ?`<pre>${escapeHtml(entry.detail.join('\n'))}</pre>`:'';
+    // The glyph is `aria-hidden` and the kind is carried as a word in the class AND as the
+    // element's own label: `07_INTERFACCIA.md` §6 — colour is never the only signal, and a
+    // screen reader must not be read a bullet character in place of "error".
+    return `<div class="t-entry t-${entry.kind}"><span class="t-glyph" aria-hidden="true">${glyph[entry.kind]??'⏺'}</span><div><p>${escapeHtml(entry.text??'')}</p>${detail}</div></div>`;
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+function renderCodenMenu(){
+  const box=$('#codenMenu');if(!box)return;
+  const parsed=parseCommandPrompt($('#codenPrompt')?.value??'');
+  if(!parsed){box.classList.add('hidden');box.innerHTML='';return;}
+  const menu=codenMenu();
+  const hits=matchCommands(parsed.word,menu.entries);
+  if(codenMenuIndex>=hits.length)codenMenuIndex=0;
+  box.classList.remove('hidden');
+  if(!hits.length){box.innerHTML='<p class="agent-menu-note">No entry matches that.</p>';return;}
+  // Grouped by the SAME `groupMenu` the terminal renders with, so the two menus cannot end up
+  // in different orders or under different headings — `CE-036` says same entries, same names,
+  // same order.
+  const note=menu.accessFiltered
+    ?`<p class="agent-menu-note">${menu.hidden?`${menu.hidden} hidden — this account may not use them`:'Filtered for this account'}</p>`
+    :'<p class="agent-menu-note">Not filtered — this shell does not know what this account may use</p>';
+  box.innerHTML=groupMenu(hits).map((group)=>
+    `<p class="agent-menu-group">${escapeHtml(group.title)}</p>${group.entries.map((entry)=>{
+      const index=hits.indexOf(entry);
+      return `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b>/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`;
+    }).join('')}`).join('')+note;
+  box.querySelectorAll('[data-coden-command]').forEach((button)=>
+    button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
+}
+function completeCodenCommand(name){
+  const entry=codenMenu().entries.find((candidate)=>candidate.name===name);
+  if(!entry)return;
+  // Completes WITHOUT sending — choosing and committing stay two acts, the same rule the
+  // terminal's Tab follows. A click that ran the command would make the menu a minefield.
+  $('#codenPrompt').value=`/${entry.name}${entry.argument?' ':''}`;
+  $('#codenPrompt').focus();
+  renderCodenMenu();
+}
+async function submitCodenPrompt(){
+  const box=$('#codenPrompt');if(!box)return;
+  const typed=box.value.trim();
+  box.value='';codenMenuIndex=0;renderCodenMenu();
+  if(!typed)return;
+  const menu=codenMenu();
+  say(codenView,'user',typed);renderCodenTranscript();
+  const turn=planTurn(typed,{
+    resolve:(text)=>resolveCommand(text,menu.entries),
+    parse:parseCommandPrompt,commands:menu.entries,groups:groupMenu,
+  });
+  if(turn.kind==='help'){say(codenView,'agent','Menu:',turn.lines);return renderCodenTranscript();}
+  if(turn.kind==='clear'){codenView.transcript=[{kind:'note',text:CLEARED_NOTE}];return renderCodenTranscript();}
+  if(turn.kind==='unknown'){say(codenView,'error',turn.message);return renderCodenTranscript();}
+  if(turn.kind==='confirm'){say(codenView,'note',turn.message);return renderCodenTranscript();}
+  if(turn.kind==='session'){
+    say(codenView,'note','Ending the session…');renderCodenTranscript();
+    return $('#logoutButton')?.click();
+  }
+  if(turn.kind==='navigate'){
+    // A destination in a browser is a route change, which is what this shell owns. The
+    // terminal names the same address and says it has no view for it yet — declared, counted,
+    // and 3b's work. The two menus are the same set; what differs is disclosed.
+    say(codenView,'tool',`→ /${turn.command}`);renderCodenTranscript();
+    location.hash=`#/${turn.address}`;
+    return undefined;
+  }
+  if(turn.kind!=='call')return renderCodenTranscript();
+  say(codenView,'tool',turn.label);renderCodenTranscript();
+  try{
+    const result=await codenCall(turn.method,turn.params);
+    say(codenView,'agent',`${turn.command} — ok`,detailLines(result));
+  }catch(error){
+    say(codenView,'error',`${turn.command} refused: ${error.value?.error?.reason??error.value?.error??error.message}`);
+  }
+  return renderCodenTranscript();
+}
+function wireCodenShell(){
+  const box=$('#codenPrompt');if(!box)return;
+  renderCodenTranscript();
+  box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();});
+  box.addEventListener('keydown',(event)=>{
+    const parsed=parseCommandPrompt(box.value);
+    const hits=parsed?matchCommands(parsed.word,codenMenu().entries):[];
+    if(hits.length){
+      if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        event.preventDefault();
+        codenMenuIndex=(codenMenuIndex+(event.key==='ArrowDown'?1:-1)+hits.length)%hits.length;
+        return renderCodenMenu();
+      }
+      if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(hits[codenMenuIndex].name);}
+      if(event.key==='Escape'){event.preventDefault();$('#codenMenu')?.classList.add('hidden');return undefined;}
+    }
+    if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void submitCodenPrompt();}
+    return undefined;
+  });
+}
+wireCodenShell();
+
 // Active and scheduled work, in one place and each task in exactly one group · UI-062.
 // The grouping itself lives in schedule.js so that it is unit-tested rather than asserted
 // by looking at the screen.

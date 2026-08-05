@@ -1033,3 +1033,52 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .coden-conversation-turn{margin:0;padding:7px 0;border-top:1px solid var(--line);font-size:calc(var(--text-scale)*12px);color:var(--text-list)}
 .coden-conversation-turn:first-child{border-top:0}
 .coden-conversation-turn b{display:block;color:var(--text-primary);font-size:calc(var(--text-scale)*10px);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+
+/* --- the agent shell · phase 3a (`16` §4b.2) ------------------------------------------------
+   The terminal's four regions, rendered as elements instead of character rows. "La grafica del
+   browser può essere migliore — colore, proporzionale dove serve, un diff leggibile — ma la
+   STRUTTURA è quella." So: the transcript scrolls with the newest turn at the bottom (it is the
+   one being read), the prompt keeps one place and does not move as you type, and the menu
+   appears under it only while the prompt begins with `/`.
+
+   The transcript is CAPPED rather than allowed to grow the page: a region that grows pushes the
+   prompt off the bottom of the window, and the prompt is the one thing that must never move —
+   the same reason the terminal gives it a fixed height in its own frame.
+
+   Every colour is a token and every inset is logical (`UI-046`). The first draft of this block
+   used raw colour-function fallbacks and a physical `padding-left`; the stylesheet's own guards
+   failed it, which is what they are for — a literal is a colour no theme can remap, and a
+   physical padding lands on the wrong side of a right-to-left page. (The guard reads comments
+   as well as declarations, so naming that function here would fail it again — correctly: a
+   scanner that skipped comments would miss a colour commented out and later restored.) */
+.agent-shell{margin:0 0 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface-card);overflow:hidden}
+.agent-transcript{max-height:min(46vh,420px);overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px}
+.t-entry{display:flex;gap:8px;padding:3px 0;font-size:calc(var(--text-scale)*13px);line-height:1.5}
+.t-entry>div{min-width:0;flex:1}
+.t-entry p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.t-glyph{flex:0 0 auto;width:1em;text-align:center}
+.t-user{color:var(--accent-brand)}
+.t-tool{color:var(--text-list);padding-inline-start:14px}
+.t-note{color:var(--text-list)}
+.t-error{color:var(--state-critical-text)}
+.t-entry pre{margin:4px 0 0;padding:8px 10px;border-radius:8px;background:var(--surface-code);color:var(--text-code);font-size:calc(var(--text-scale)*12px);overflow-x:auto;white-space:pre}
+.agent-prompt{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-top:1px solid var(--line);background:var(--surface-composer)}
+.agent-caret{color:var(--accent-brand);font-weight:700;line-height:1.6}
+.agent-prompt textarea{flex:1;min-height:1.6em;max-height:8em;resize:vertical;border:0;background:transparent;color:var(--text-field);font:inherit;font-size:calc(var(--text-scale)*13px);line-height:1.6;padding:0}
+.agent-prompt textarea:focus{outline:none}
+.agent-prompt:focus-within{box-shadow:inset 0 0 0 2px var(--focus-ring)}
+.agent-hint{margin:0;padding:0 14px 9px;background:var(--surface-composer);color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+/* Under the prompt, which is where the terminal draws it — a reader who learns one shell does
+   not have to relearn where the list appears in the other. */
+.agent-menu{border-top:1px solid var(--line);max-height:min(40vh,340px);overflow-y:auto;padding:6px 0;background:var(--surface-popover)}
+.agent-menu-group{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*10px);text-transform:uppercase;letter-spacing:.06em}
+.agent-menu button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;width:100%;text-align:start;padding:6px 14px;border:0;background:transparent;color:var(--text-popover);font:inherit;font-size:calc(var(--text-scale)*12px);cursor:pointer}
+/* The selected entry carries an inset bar as well as a fill — `07_INTERFACCIA.md` §6: colour is
+   never the only signal — and `aria-selected` carries the same fact to a screen reader. */
+.agent-menu button.active{background:var(--surface-selected);color:var(--text-on-accent);box-shadow:inset 3px 0 0 var(--accent-brand)}
+.agent-menu button b{color:var(--accent-brand);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.agent-menu button.active b,.agent-menu button.active span,.agent-menu button.active small{color:inherit}
+.agent-menu button span{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-menu button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(var(--text-scale)*10px)}
+.agent-menu-note{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+@media(forced-colors:active){.agent-menu button.active{border:2px solid CanvasText}}

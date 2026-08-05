@@ -211,23 +211,76 @@ export function promptRows(prompt, width) {
   ];
 }
 
-/** The slash-command menu, under the prompt — the shape both Codex and Claude Code use.
- *  Selection carries a glyph as well as colour (§6: colour is never the only signal). */
+/** The one menu of the product, under the prompt — `16` §4b.4. Four groups (work,
+ *  applications, configure, session) with a dim heading each, because a flat list of
+ *  twenty-nine entries is a list nobody reads. Selection carries a glyph as well as colour
+ *  (§6: colour is never the only signal).
+ *
+ *  `menu.groups` is the grouping function the shell passes through from the shared registry;
+ *  without it the rows are flat. The heading rows count against `rowLimit` like any other, so
+ *  the menu cannot grow past the height the caller allowed it — a menu that overruns pushes
+ *  the prompt off the bottom of the terminal, which is the one row that must never move.
+ *
+ *  When the list was filtered by permission it SAYS so on a final row (`CE-036`): a shorter
+ *  menu that does not explain why it is shorter is indistinguishable from a broken one. */
 export function commandMenuRows(menu, width) {
   const rows = [];
-  const shown = (menu.hits ?? []).slice(0, Math.max(1, menu.rowLimit ?? 8));
-  if (!shown.length) return [`  ${C.dim}no command matches that${C.reset}`];
-  shown.forEach((command, index) => {
+  const hits = menu.hits ?? [];
+  const limit = Math.max(1, menu.rowLimit ?? 8);
+  if (!hits.length) return [`  ${C.dim}no command matches that${C.reset}`];
+
+  const paint = (command, index) => {
     const selected = index === menu.selected;
     const marker = selected ? `${C.accent}▸${C.reset}` : ' ';
     const name = `${selected ? C.accent : C.reset}/${command.name}${C.reset}`;
     const argument = command.argument ? ` ${C.dim}${command.argument}${C.reset}` : '';
     const left = `${marker} ${name}${argument}`;
     const gap = width - visibleWidth(left) - visibleWidth(command.summary) - 3;
-    rows.push(gap > 1
+    return gap > 1
       ? `  ${left}${' '.repeat(gap)}${C.dim}${command.summary}${C.reset}`
-      : `  ${left}`);
-  });
+      : `  ${left}`;
+  };
+
+  // The index a row carries is its position in the FLAT hit list, which is what the arrow
+  // keys move through. Rebuilding it per group would make the highlight land on a different
+  // entry than the one Tab completes, for every group after the first.
+  if (typeof menu.groups === 'function') {
+    const groups = menu.groups(hits);
+    const noteRow = menu.accessFiltered ? 1 : 0;
+
+    // THE BUDGET IS SHARED ACROSS THE GROUPS, not spent first-come.
+    //
+    // Found by driving the shell, not by reading it. On a 30-row terminal the budget is ten
+    // rows, and filling them in order meant WORK's fourteen entries took every one:
+    // APPLICATIONS, CONFIGURE and SESSION never rendered at all. `16` §4b.4 calls this "una
+    // casella, tutto il prodotto" — a menu where three quarters of the product is invisible
+    // unless you already know what to type is not that. Every group gets a share now, and a
+    // group showing fewer than it holds SAYS so in its own heading instead of just stopping.
+    const share = Math.max(1, Math.floor((limit - groups.length - noteRow) / Math.max(1, groups.length)));
+
+    for (const group of groups) {
+      if (rows.length >= limit) break;
+      // The window follows the selection. Truncating from the top always would hide the
+      // highlighted entry as soon as the arrow keys walked past the share — the same defect
+      // the prompt box already solves by keeping the caret in view.
+      const chosen = group.entries.findIndex((command) => hits.indexOf(command) === menu.selected);
+      const start = chosen >= share ? Math.min(chosen - share + 1, group.entries.length - share) : 0;
+      const shown = group.entries.slice(start, start + share);
+      rows.push(`  ${C.dim}${shown.length < group.entries.length
+        ? `${group.title}  ${shown.length} of ${group.entries.length}`
+        : group.title}${C.reset}`);
+      for (const command of shown) {
+        if (rows.length >= limit) break;
+        rows.push(paint(command, hits.indexOf(command)));
+      }
+    }
+  } else {
+    hits.slice(0, limit).forEach((command, index) => rows.push(paint(command, index)));
+  }
+
+  if (menu.accessFiltered && rows.length < limit) {
+    rows.push(`  ${C.dim}${menu.hidden ? `${menu.hidden} hidden — this account may not use them` : 'filtered for this account'}${C.reset}`);
+  }
   return rows;
 }
 

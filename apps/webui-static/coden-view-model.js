@@ -114,19 +114,29 @@ export function gitSummary(git) {
  *   { kind: 'clear' }                                  reset the transcript
  *   { kind: 'unknown', message }                       say this, do nothing
  *   { kind: 'call', command, argument, method, params, label }
+ *   { kind: 'navigate', command, address, label }      an application or a setting
+ *   { kind: 'confirm', command, action, message }      logout, before the second word
+ *   { kind: 'session', command, action }               logout, after it
  *
  * `resolve`, `parse` and `commands` are injected rather than imported so that this module
  * stays free of even that dependency and a test can drive it with a known registry.
+ * `commands` is the list this ACCOUNT may use — already filtered by `menuFor` — so a typed
+ * `/modules` from an account that cannot see it resolves to nothing and is answered as an
+ * unknown word, exactly like a name that does not exist. An entry hidden from the menu but
+ * still runnable by typing it would make the filtering decorative.
  */
-export function planTurn(typed, { resolve, parse, commands }) {
+export function planTurn(typed, { resolve, parse, commands, groups }) {
   const line = String(typed ?? '').trim();
   if (!line) return { kind: 'empty' };
 
   if (line === '/help' || line === '/') {
-    return {
-      kind: 'help',
-      lines: commands.map((c) => `/${c.name} ${c.argument}`.trim().padEnd(28) + c.summary),
-    };
+    // Grouped when the caller supplies the grouping, flat when it does not — the four groups
+    // are `16` §4b.4, and a caller that has none still gets a usable list rather than nothing.
+    const format = (c) => `  /${c.name} ${c.argument ?? ''}`.trimEnd().padEnd(28) + c.summary;
+    const lines = groups
+      ? groups(commands).flatMap((group) => [group.title, ...group.entries.map(format)])
+      : commands.map((c) => format(c).trimStart());
+    return { kind: 'help', lines };
   }
   if (line === '/clear') return { kind: 'clear' };
 
@@ -142,16 +152,40 @@ export function planTurn(typed, { resolve, parse, commands }) {
     };
   }
 
-  const build = RUN[resolved.command.name];
-  if (!build) return { kind: 'unknown', message: `\`/${resolved.command.name}\` has no transport here.` };
+  const { command, argument } = resolved;
 
-  const [method, params] = build(resolved.argument);
+  // A destination. The shell performs it with whatever "going somewhere" means for it — a
+  // route change in a browser, a rendered address in a terminal — and this module names the
+  // place without knowing which.
+  if (command.kind === 'address') {
+    return { kind: 'navigate', command: command.name, address: command.address, label: command.summary };
+  }
+
+  // `/logout` twice, and the second time as a typed WORD. `15` §13 refuses a one-key
+  // confirmation for exactly this: in a terminal a lone `y` is one paste away from being
+  // typed by something that is not you.
+  if (command.kind === 'session') {
+    if (argument.trim().toLowerCase() !== 'confirm') {
+      return {
+        kind: 'confirm',
+        command: command.name,
+        action: command.action,
+        message: `This ends the session for every shell attached to it. Type \`/${command.name} confirm\` to go ahead.`,
+      };
+    }
+    return { kind: 'session', command: command.name, action: command.action };
+  }
+
+  const build = RUN[command.name];
+  if (!build) return { kind: 'unknown', message: `\`/${command.name}\` has no transport here.` };
+
+  const [method, params] = build(argument);
   return {
     kind: 'call',
-    command: resolved.command.name,
-    argument: resolved.argument,
+    command: command.name,
+    argument,
     method,
     params,
-    label: `${method}(${resolved.argument || ''})`,
+    label: `${method}(${argument || ''})`,
   };
 }

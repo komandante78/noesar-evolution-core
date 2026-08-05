@@ -142,6 +142,30 @@ STOP        Le due shell hanno le stesse regioni, le stesse voci di menu, gli st
 > | **3b** | I 17 indirizzi mancanti ottengono un metodo e una vista | è **sostanza**, ed è la fase che nessuno aveva contato |
 > | **3c** | Solo allora si rimuove il cruscotto | rimuovere è l'ultimo atto, mai il primo |
 >
+> ### ✅ 3a CHIUSA il 2026-08-05 — `D-0317`
+>
+> Le quattro regioni nel browser e il menu `/` a quattro gruppi (29 voci: 14 lavoro, 11
+> applicazioni, 3 configurazione, 1 sessione), **una fonte sola**, filtrate per permesso in
+> **entrambe** le shell. Il cruscotto è ancora in piedi, come previsto.
+>
+> **Due difetti trovati ESEGUENDO, non leggendo:** (1) il menu del terminale poteva mostrare
+> **un solo gruppo** — `renderFrame` gli dà `h/3` righe e le quattordici voci di LAVORO le
+> prendevano tutte, quindi APPLICAZIONI/CONFIGURA/SESSIONE non comparivano mai; ora il budget si
+> divide fra i gruppi, la finestra segue la selezione e un gruppo troncato lo dichiara
+> (`WORK 2 of 14`). (2) ogni shell si costruiva da sé l'oggetto `{permissions, role}`: trovato
+> per mutazione, azzerarne uno rendeva quel menu non filtrato senza far fallire niente.
+>
+> **`/skills` NON è nel menu**, benché §4b.4 lo disegni: il prodotto non ha una superficie skill
+> (misurato). Una voce che si apre sul nulla è ciò che la regola 3 vieta.
+>
+> **Verificato:** unit **1743/1744**, ESLint 322 0/0/0, **15 mutazioni → 15**, browser e2e
+> **252/261** con l'insieme dei 9 fallimenti **identico** alla baseline pre-modifica (misurata
+> in sessione con `git stash`), e la shell del terminale **guidata** con stream iniettati, 13/13.
+>
+> **Non fatto in 3a, dichiarato:** la barra degli indirizzi in alto resta (va con 3c, insieme al
+> cruscotto che naviga); il terminale continua a non avere una vista per una destinazione — la
+> nomina con l'etichetta della lista servita e dice di non averla, che è il lavoro di **3b**.
+
 > **3b non è lavoro di interfaccia.** Alcuni di quei diciassette non hanno un metodo sul
 > protocollo, non solo una vista: sono voci nuove in `SESSION_METHOD_POLICY`, con il loro
 > permesso e il loro gate. Va dimensionata come fase a sé, non nascosta dentro un cambio di

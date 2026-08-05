@@ -33,6 +33,7 @@ import { createInterface, emitKeypressEvents } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { runFullScreen } from './tui-fullscreen.mjs';
+import { accountFromUser } from '../apps/webui-static/agent-commands.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultSocketPath = resolve(here, '..', '.workspace', 'tui.sock');
@@ -166,7 +167,11 @@ async function login(reader, session) {
   const begun = await session.call('auth.login', { username, password });
   const totpCode = await question(reader, 'Authenticator code: ');
   const confirmed = await session.call('auth.mfa', { challenge: begun.challenge, totpCode });
-  return confirmed.user;
+  // The permission set travels with the user since phase 3a, so this shell can hide the menu
+  // entries the account cannot use — `CE-036`, in BOTH shells rather than only the browser.
+  // A deployment that predates the field leaves `permissions` undefined, and `menuFor(null)`
+  // then declares the list UNFILTERED rather than quietly showing everything as if checked.
+  return { ...confirmed.user, permissions: confirmed.permissions ?? null };
 }
 
 // `plan <prose>` — the request is the sentence, and which files it touches is the engine's
@@ -644,7 +649,15 @@ async function main() {
     // address book is a different gesture and belongs to the browser's top bar.
     const engineStatus = await session.call('status', {}).catch(() => null);
     iface.pause();
-    await runFullScreen({ session, status: engineStatus });
+    // `account` is what the menu is filtered by (`CE-036`). `permissions: null` — a server
+    // that does not send the set — travels straight through to `menuFor`, which then says the
+    // list is unfiltered instead of implying it was checked.
+    await runFullScreen({
+      session,
+      status: engineStatus,
+      account: accountFromUser(user),
+      onLeave: () => { socket.end(); },
+    });
     iface.close();
     socket.end();
     return;

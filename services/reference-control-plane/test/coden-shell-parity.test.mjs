@@ -1,0 +1,360 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// `CE-033`, `CE-034`, `CE-036` — the rows `16` §4b.5 added because nothing measured them.
+//
+// The clause "le due shell non divergono in nessun punto" has been written since 26 July and
+// was never applied, and the reason is the one rule 5 of the skill states: **a criterion no
+// matrix row measures is not closed, however firmly the document asserts it.** `CE-020` asked
+// only that every capability have a keyboard form, which is far weaker than being the same
+// interface. This file is the row.
+//
+// What it deliberately does NOT do: assert that the two shells share an implementation. They
+// must not — one writes ANSI rows clipped to a column, the other writes elements. `CE-033` is
+// worded "ispezione strutturale delle due RESE, non delle due implementazioni", so the
+// assertions below are about the regions each shell puts on screen and the set of entries each
+// one offers, read from the artefacts a user actually gets.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+import {
+  AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
+  accessRuleFor, accountFromUser, SECTION_ACCESS,
+} from '../../../apps/webui-static/agent-commands.js';
+import { planTurn } from '../../../apps/webui-static/coden-view-model.js';
+import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
+import { commandMenuRows } from '../../../tools/tui-screen.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
+
+const MARKUP = read('apps/webui-static/index.html');
+const BROWSER = read('apps/webui-static/app.js');
+const TERMINAL = read('tools/tui-fullscreen.mjs');
+// The client is where the account is READ off the handshake; the full-screen shell is where
+// it is used. Two files, and `M-11` lived in the seam between them.
+const TERMINAL_CLIENT = read('tools/tui-client.mjs');
+
+// --- CE-036 · the menu is one list, in four groups, filtered and declared -------------------
+
+test('CE-036 — the menu has exactly the four groups the design fixes, in order', () => {
+  assert.deepEqual(MENU_GROUPS.map((group) => group.id), ['work', 'applications', 'configure', 'session']);
+  // Every entry belongs to one of them. An entry with a group nobody renders would be present
+  // in the list and absent from both menus, which is the failure mode a flat list hides.
+  const known = new Set(MENU_GROUPS.map((group) => group.id));
+  for (const entry of AGENT_COMMANDS) assert.ok(known.has(entry.group), `\`/${entry.name}\` has no group`);
+  for (const group of MENU_GROUPS) {
+    assert.ok(AGENT_COMMANDS.some((entry) => entry.group === group.id), `group \`${group.id}\` is empty`);
+  }
+});
+
+test('CE-036 — a name resolves to exactly one entry', () => {
+  // `resolveCommand` finds by exact name across the whole list. Two entries sharing a name
+  // would make `/models` mean whichever was declared first — a menu that reads unambiguous
+  // and behaves otherwise.
+  const seen = new Set();
+  for (const entry of AGENT_COMMANDS) {
+    assert.ok(!seen.has(entry.name), `\`/${entry.name}\` is declared twice`);
+    seen.add(entry.name);
+  }
+});
+
+test('CE-036 — every work entry names the permission its own method is gated on', () => {
+  // The one place a second copy could drift. `agent-commands.js` carries the permission
+  // because the browser cannot import out of `services/`; this makes it DERIVED rather than
+  // duplicated. Mutate either side and this fails — which is what `PANEL_NAMES` never had,
+  // since a list compared only with itself always agrees.
+  for (const entry of AGENT_COMMANDS.filter((candidate) => candidate.kind === 'call')) {
+    const policy = SESSION_METHOD_POLICY[entry.method];
+    assert.ok(policy, `\`/${entry.name}\` names \`${entry.method}\`, which has no policy entry`);
+    assert.equal(entry.permission, policy.permission,
+      `\`/${entry.name}\` claims \`${entry.permission}\` but the dispatch enforces \`${policy.permission}\``);
+  }
+});
+
+test('CE-036 — an account without a permission is not offered the entries needing it', () => {
+  const owner = menuFor({ permissions: ['workspace.read', 'workspace.write', 'coden.plan'], role: 'owner' });
+  const reader = menuFor({ permissions: ['workspace.read'], role: 'reader' });
+
+  assert.equal(owner.accessFiltered, true);
+  assert.equal(reader.accessFiltered, true);
+
+  const names = (menu) => menu.entries.map((entry) => entry.name);
+  assert.ok(names(owner).includes('plan'), 'an account with workspace.write may plan');
+  assert.ok(!names(reader).includes('plan'), 'an account without workspace.write is not offered plan');
+  assert.ok(names(reader).includes('simulate'), 'workspace.read is enough for simulate');
+  // Role-gated destinations, through the SAME table the browser hides its nav with.
+  assert.ok(names(owner).includes('modules'), 'the Owner is offered the modules section');
+  assert.ok(!names(reader).includes('modules'), 'a non-owner is not offered an owner-only section');
+  assert.equal(reader.hidden, AGENT_COMMANDS.length - reader.entries.length);
+  assert.ok(reader.hidden > 0, 'the reader really lost entries — otherwise this test proves nothing');
+});
+
+test('CE-036 — both shells build their account with the shared reader, not by hand', () => {
+  // `M-11`: each shell used to assemble `{permissions, role}` itself, and setting either one
+  // to `null` turned that shell's menu unfiltered with no test failing. One reader now, and
+  // its default is the honest branch.
+  assert.equal(accountFromUser(null), null);
+  assert.equal(accountFromUser({ role: 'owner' }), null, 'a user with no permission array is NOT an account');
+  assert.deepEqual(accountFromUser({ role: 'owner', permissions: ['workspace.read'] }),
+    { permissions: ['workspace.read'], role: 'owner' });
+  // And the filtered menu that comes out of it is genuinely filtered, rather than the
+  // unfiltered one wearing the right shape.
+  assert.equal(menuFor(accountFromUser({ role: 'reader', permissions: ['workspace.read'] })).accessFiltered, true);
+  assert.equal(menuFor(accountFromUser(null)).accessFiltered, false);
+  for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL_CLIENT]]) {
+    assert.match(source, /accountFromUser\(/, `${label} still assembles its account by hand`);
+  }
+});
+
+test('CE-036 — a shell that does not know the account declares the list UNFILTERED', () => {
+  // The honest branch, and the one that matters: showing every entry while implying it was
+  // checked is worse than showing every entry and saying nobody checked. Same posture
+  // `coden.addresses` already takes with `accessFiltered:false`.
+  const unknown = menuFor(null);
+  assert.equal(unknown.accessFiltered, false);
+  assert.equal(unknown.hidden, 0);
+  assert.equal(unknown.entries.length, AGENT_COMMANDS.length);
+});
+
+test('CE-036 — a hidden entry cannot be run by typing it anyway', () => {
+  // Filtering that only removes the entry from a list is decoration. `planTurn` resolves
+  // against the FILTERED set, so the typed name is answered as an unknown word.
+  const reader = menuFor({ permissions: ['workspace.read'], role: 'reader' });
+  const turn = planTurn('/plan do the thing', {
+    resolve: (text) => resolveCommand(text, reader.entries),
+    parse: (text) => (text.startsWith('/') ? { word: text.slice(1).split(' ')[0], argument: '' } : null),
+    commands: reader.entries,
+    groups: groupMenu,
+  });
+  assert.equal(turn.kind, 'unknown');
+  assert.match(turn.message, /No command named `plan`/);
+});
+
+test('CE-036 — the access rule for a settings address comes from the section table', () => {
+  assert.deepEqual(accessRuleFor('settings/modules'), SECTION_ACCESS.modules);
+  assert.equal(accessRuleFor('chat'), null);
+  assert.equal(accessRuleFor('models'), null);
+});
+
+// --- CE-034 · the same set of things, by the same names, in both shells ---------------------
+
+test('CE-034 — neither shell writes an entry of its own', () => {
+  // The rule that killed `PANEL_NAMES`: one file, imported by both. Not "two files that
+  // happen to agree today". Proven by reading the shells' source for the import and for the
+  // absence of a hand-written list.
+  for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL]]) {
+    assert.match(source, /from '\.{1,2}(\/apps\/webui-static)?\/agent-commands\.js'/,
+      `${label} does not import the shared registry`);
+    assert.match(source, /menuFor\(/, `${label} does not build its menu with menuFor`);
+    assert.match(source, /groupMenu/, `${label} does not group with the shared grouping`);
+  }
+});
+
+test('CE-034 — both shells resolve a typed line through the same planTurn', () => {
+  for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL]]) {
+    assert.match(source, /planTurn\(/, `${label} decides what a line means on its own`);
+  }
+});
+
+test('CE-034 — every work entry has a transport in the browser', () => {
+  // The asymmetry that would otherwise be silent. Two of the fourteen work methods are
+  // `bridged:false`, so `/api/v1/tui/command` refuses them; the browser reaches those two
+  // through routes of its own. Without this assertion `/sessions` and `/git` would answer in
+  // the terminal and fail in the browser, and the parity claim would be false for two
+  // commands with nothing failing to say so.
+  const unbridged = AGENT_COMMANDS
+    .filter((entry) => entry.kind === 'call' && SESSION_METHOD_POLICY[entry.method]?.bridged === false)
+    .map((entry) => entry.method);
+  assert.ok(unbridged.length > 0, 'if nothing is unbridged this assertion has stopped meaning anything');
+  for (const method of unbridged) {
+    assert.ok(BROWSER.includes(`'${method}':`),
+      `\`${method}\` is not bridged and the browser has no direct route for it`);
+  }
+});
+
+test('CE-034 — a destination entry names an address, and the address book is where it lives', () => {
+  for (const entry of AGENT_COMMANDS.filter((candidate) => candidate.kind === 'address')) {
+    assert.ok(entry.address, `\`/${entry.name}\` is a destination with no address`);
+    // The destination exists in the markup both the browser renders and the address book is
+    // derived from. `settings/…` addresses are sections, matched by their section attribute.
+    const [view, section] = entry.address.split('/');
+    const pattern = section
+      ? new RegExp(`data-section="${section}"`)
+      : new RegExp(`id="view-${view}"`);
+    assert.match(MARKUP, pattern, `\`/${entry.name}\` points at \`${entry.address}\`, which the page has no region for`);
+  }
+});
+
+test('CE-034 — /skills is absent, because the product has no skills surface', () => {
+  // `16` §4b.4 draws `/skills` in its mockup. Drawing it here would be an entry that opens
+  // nothing — rule 3 of §4b.4 forbids exactly that, and matching a mockup is not a reason.
+  assert.ok(!AGENT_COMMANDS.some((entry) => entry.name === 'skills'));
+  assert.ok(!/data-section="skills"/.test(MARKUP), 'a skills section now exists — add the entry');
+});
+
+// --- CE-033 · the same regions -------------------------------------------------------------
+
+test('CE-033 — the browser renders the four regions the terminal does', () => {
+  // Structural, on the two renditions. The terminal's regions are read off the frame it
+  // writes; the browser's off the markup it serves.
+  for (const id of ['codenTranscript', 'codenPrompt', 'codenMenu']) {
+    assert.match(MARKUP, new RegExp(`id="${id}"`), `the browser has no ${id} region`);
+  }
+  // The status line is the `.coden-bar` chips, not a second strip: same facts, each shell's
+  // own idiom. Asserted so that a later phase deleting the bar fails here rather than quietly
+  // leaving the browser with three regions against the terminal's four.
+  assert.match(MARKUP, /class="coden-bar"/, 'the browser has no status region');
+});
+
+test('CE-033 — neither shell has a region the other has not', () => {
+  // The terminal's four, from the pure renderer's own output rather than from its source.
+  const menuRows = commandMenuRows(
+    { hits: [...AGENT_COMMANDS].slice(0, 4), selected: 0, rowLimit: 12, groups: groupMenu, accessFiltered: true, hidden: 3 },
+    80,
+  );
+  assert.ok(menuRows.length > 0, 'the terminal renders no menu');
+  assert.ok(menuRows.some((row) => row.includes('WORK')), 'the terminal menu has no group headings');
+  assert.ok(menuRows.some((row) => row.includes('hidden')), 'the terminal menu does not declare it was filtered');
+});
+
+test('CE-033 — the terminal menu cannot outgrow the height it was given', () => {
+  // Group headings are rows too. Counting only the entries let a menu of four groups push the
+  // prompt off the bottom of a short terminal — and the prompt is the one row that must never
+  // move.
+  for (const limit of [1, 3, 7, 12]) {
+    const rows = commandMenuRows(
+      { hits: [...AGENT_COMMANDS], selected: 0, rowLimit: limit, groups: groupMenu, accessFiltered: true, hidden: 0 },
+      80,
+    );
+    assert.ok(rows.length <= limit + 1, `rowLimit ${limit} produced ${rows.length} rows`);
+  }
+});
+
+test('CE-036 — every group is reachable at a real terminal height', () => {
+  // Found by DRIVING the shell, not by reading it. `renderFrame` gives the menu `h/3` rows, so
+  // a 30-row terminal budgets ten — and spending them first-come meant WORK's fourteen entries
+  // took all ten and APPLICATIONS, CONFIGURE and SESSION never rendered. "Una casella, tutto
+  // il prodotto" is false if three quarters of the product only appears once you already know
+  // what to type. No unit test failed; the menu simply showed one group.
+  const hits = [...AGENT_COMMANDS];
+  for (const rowLimit of [10, 12, 16]) {
+    const rows = commandMenuRows({ hits, selected: 0, rowLimit, groups: groupMenu, accessFiltered: true, hidden: 0 }, 100);
+    for (const group of MENU_GROUPS) {
+      assert.ok(rows.some((row) => row.includes(group.title)),
+        `at ${rowLimit} rows the menu never shows ${group.title}: ${JSON.stringify(rows)}`);
+    }
+    assert.ok(rows.length <= rowLimit + 1, `${rows.length} rows against a budget of ${rowLimit}`);
+  }
+});
+
+test('CE-036 — a group showing fewer entries than it holds says so', () => {
+  // Truncating is the fix; truncating SILENTLY is not — a reader who cannot tell there is more
+  // takes what is shown for the whole group. The same rule `detailLines` already follows.
+  const hits = [...AGENT_COMMANDS];
+  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 12, groups: groupMenu }, 100);
+  const work = rows.find((row) => row.includes('WORK'));
+  assert.match(work, / \d+ of 14/, `WORK is truncated but does not say so: ${JSON.stringify(work)}`);
+  // A group that fits shows no count — a "4 of 4" would be noise on every row.
+  const session = rows.find((row) => row.includes('SESSION'));
+  assert.ok(!/ \d+ of \d+/.test(session), `SESSION fits entirely but claims to be truncated: ${JSON.stringify(session)}`);
+});
+
+test('CE-036 — the selected entry is painted however far down its group it sits', () => {
+  // The window follows the selection. A fixed window would hide the highlight the moment the
+  // arrow keys walked past the share, which is the same defect the prompt box already solves
+  // by keeping the caret visible — and it would be invisible in exactly the case it matters.
+  const hits = [...AGENT_COMMANDS];
+  for (let selected = 0; selected < hits.length; selected += 1) {
+    const rows = commandMenuRows({ hits, selected, rowLimit: 12, groups: groupMenu }, 100);
+    const marked = rows.filter((row) => row.includes('▸'));
+    assert.equal(marked.length, 1, `selection ${selected} (\`/${hits[selected].name}\`) painted ${marked.length} markers`);
+    assert.match(marked[0], new RegExp(`/${hits[selected].name}\\b`),
+      `selection ${selected} should be \`/${hits[selected].name}\`, got ${JSON.stringify(marked[0])}`);
+  }
+});
+
+test('CE-033 — the highlight and Tab agree on which entry is selected', () => {
+  // The index each painted row carries is its position in the FLAT hit list, which is what the
+  // arrow keys move through. Rebuilding it per group would put the marker on a different entry
+  // than the one Tab completes, for every group after the first — invisible in the first
+  // group, wrong everywhere else.
+  const hits = [...AGENT_COMMANDS];
+  const applications = hits.findIndex((entry) => entry.group === 'applications');
+  assert.ok(applications > 0, 'no entry after the first group — this assertion would prove nothing');
+  const rows = commandMenuRows({ hits, selected: applications, rowLimit: 99, groups: groupMenu }, 80);
+  const marked = rows.filter((row) => row.includes('▸'));
+  assert.equal(marked.length, 1, 'exactly one row is marked');
+  assert.match(marked[0], new RegExp(`/${hits[applications].name}\\b`));
+});
+
+// --- the session group ----------------------------------------------------------------------
+
+test('/logout needs a second, TYPED word — never a single key', () => {
+  // `15` §13: "in un terminale `y` è a un incollaggio di distanza dall'essere digitato da
+  // qualcosa che non sei tu". Both shells run this through the shared model, so neither can
+  // decide to accept a keystroke instead.
+  const parse = (text) => {
+    if (!text.startsWith('/')) return null;
+    const body = text.slice(1); const space = body.indexOf(' ');
+    return space === -1 ? { word: body, argument: '' } : { word: body.slice(0, space), argument: body.slice(space + 1).trim() };
+  };
+  const drive = (line) => planTurn(line, {
+    resolve: (text) => resolveCommand(text, AGENT_COMMANDS), parse, commands: AGENT_COMMANDS, groups: groupMenu,
+  });
+  const first = drive('/logout');
+  assert.equal(first.kind, 'confirm');
+  assert.match(first.message, /logout confirm/);
+  const second = drive('/logout confirm');
+  assert.equal(second.kind, 'session');
+  assert.equal(second.action, 'logout');
+  // A near miss is not a confirmation.
+  assert.equal(drive('/logout y').kind, 'confirm');
+});
+
+test('the help listing is grouped when the caller supplies the grouping', () => {
+  const turn = planTurn('/', {
+    resolve: () => null, parse: () => null, commands: AGENT_COMMANDS, groups: groupMenu,
+  });
+  assert.equal(turn.kind, 'help');
+  for (const group of MENU_GROUPS) assert.ok(turn.lines.includes(group.title), `no ${group.title} heading`);
+  // And still usable for a caller with no grouping, rather than throwing or emitting nothing.
+  const flat = planTurn('/', { resolve: () => null, parse: () => null, commands: AGENT_COMMANDS });
+  assert.equal(flat.kind, 'help');
+  assert.equal(flat.lines.length, AGENT_COMMANDS.length);
+});
+
+test('a group with nothing left in it renders no heading', () => {
+  // Found by mutation, not by reading: deleting `groupMenu`'s empty-group filter killed no
+  // test, and the branch is reachable on the commonest path there is. `/pl` matches only work
+  // entries, so APPLICATIONS, CONFIGURE and SESSION are empty — and without the filter each
+  // would render a heading over nothing, in both shells. Typing a couple of letters is not an
+  // edge case; it is what using the menu IS.
+  const hits = matchCommands('appro', AGENT_COMMANDS);
+  const present = new Set(hits.map((entry) => entry.group));
+  assert.ok(hits.length > 0, 'the query matched nothing — this assertion would prove nothing');
+  assert.ok(present.size < MENU_GROUPS.length, 'the query matched every group — pick a narrower one');
+
+  // Stated against what is ACTUALLY in the hits rather than a hand-picked expectation: the
+  // first draft asserted `['work']` for a query of `pl`, which also matches the word "plans"
+  // inside the `coden` summary — so the assertion failed on a correct implementation, for a
+  // reason that had nothing to do with the property. Derive, do not guess.
+  assert.deepEqual(groupMenu(hits).map((group) => group.id), MENU_GROUPS.map((g) => g.id).filter((id) => present.has(id)));
+
+  // And the terminal must not paint the heading either — the model and the renderer are two
+  // places this could go wrong, and `groupMenu` is only one of them.
+  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 99, groups: groupMenu }, 80);
+  for (const group of MENU_GROUPS.filter((candidate) => !present.has(candidate.id))) {
+    assert.ok(!rows.some((row) => row.includes(group.title)), `\`${group.title}\` was painted over an empty group`);
+  }
+});
+
+test('matchCommands ranks and filters within the list it is given', () => {
+  const reader = menuFor({ permissions: ['workspace.read'], role: 'reader' });
+  const hits = matchCommands('p', reader.entries);
+  assert.ok(!hits.some((entry) => entry.name === 'plan'), 'a hidden entry must not come back through the matcher');
+  assert.ok(hits.every((entry) => reader.entries.includes(entry)));
+});

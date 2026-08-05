@@ -6003,3 +6003,99 @@ this entry is that work.
 
 **Verified.** 1672/1673 unit (0 fail, 1 pre-existing skip), ESLint 315 files 0/0/0. `CE-016`
 four tests, one mutation, four failures.
+
+---
+
+## D-0317 · CodeN Evolution phase 3a: the browser takes the terminal's four regions, and `/` becomes the one menu — 2026-08-05
+
+`MASTER_PROJECT/17` phase 3, split into 3a/3b/3c by the measurement in `e6a3076`. **3a is form,
+and 3a removes nothing.** The bench is still standing, deliberately: the terminal renders eight
+of the twenty-five CodeN addresses, and removing the workbench before the other seventeen have a
+method and a view (3b) would make `CE-034` false by seventeen and turn functions that exist in
+one shell into functions that exist nowhere. Removing is 3c, and it is the last act.
+
+**What is true now that was not.** The CodeN destination in the browser renders the same four
+regions the terminal does — status line, transcript, prompt, `/` menu — driven by the same
+`coden-view-model.js` `planTurn` the terminal drives, over its own transport. The status region
+is the `.coden-bar` chips that were already there rather than a second strip: the terminal
+carries the same facts on one dim footer, and adding a status bar of our own would be the fourth
+navigation widget `D-0299` spent a phase removing.
+
+**`/` is now the whole product, in four groups** (`16` §4b.4): work (14 engine commands),
+applications (11 destinations), configure (models, modules, settings), session (`/logout`).
+Twenty-nine entries, one file, both shells.
+
+### Four decisions inside it
+
+1. **`/skills` is in §4b.4's drawing and is NOT in the menu.** Measured: this product has no
+   skills destination, section or route. Rule 3 of §4b.4 forbids an entry that appears and then
+   refuses, and matching a mockup is not a reason to draw a door onto nothing. A test asserts it
+   stays absent *until* a skills section exists.
+2. **`ROUTE_ACCESS`/`SECTION_ACCESS` moved out of `app.js`** into the file both shells import.
+   They were the browser's private tables, which was right while only the browser had
+   destinations to hide. `CE-036` requires the two menus to be the same set; a gate one shell can
+   read and the other cannot is a gate the other silently does not apply. Moved, not copied.
+3. **The socket handshake now returns the account's permissions**, from `permissionsFor` — the
+   same derivation `GET /api/v1/auth/me` already gave the browser. Until now only the browser
+   was ever told what its account holds, so only the browser could filter. A description, not a
+   grant: `dispatch` still checks `can` on every call.
+4. **A hidden entry cannot be run by typing it anyway.** `planTurn` resolves against the
+   FILTERED list, so a name the account may not use is answered as an unknown word. Filtering
+   that only shortens a list is decoration.
+
+### Two defects found by running it, not by reading it
+
+- **The terminal menu could only ever show one group.** `renderFrame` budgets the menu `h/3`
+  rows — ten on a 30-row terminal — and spending them first-come meant WORK's fourteen entries
+  took all ten: APPLICATIONS, CONFIGURE and SESSION never rendered. "Una casella, tutto il
+  prodotto" is false when three quarters of the product appears only if you already know what to
+  type. Every group now gets a share of the budget, the window follows the selection so the
+  highlight cannot be truncated away, and a group showing fewer entries than it holds says
+  `WORK 2 of 14` rather than simply stopping. No unit test had failed — the menu just showed one
+  group, and only driving the shell revealed it.
+- **Each shell assembled its own `{permissions, role}` object.** Found by mutation (`M-11`):
+  setting either one to `null` turned that shell's menu unfiltered with nothing failing. One
+  shared `accountFromUser` now, whose default is the honest branch — a user with no permission
+  array is not an account, so `menuFor` declares the list UNFILTERED instead of showing
+  everything as though it had been checked.
+
+### Verified — every number produced in this session
+
+- **Unit 1743/1744** (0 fail, 1 pre-existing skip), from a baseline of 1718/1719.
+- **ESLint 322 files, 0 errors, 0 warnings, 0 no-undef.**
+- **15 mutations → 15 kills.** Two of them (`M-8`, `M-10`) first reported false kills, caused by
+  a test of mine that was failing on the clean tree; both were re-run from a green baseline and
+  killed genuinely. `M-11` genuinely survived and produced the `accountFromUser` repair above.
+- **Browser e2e 252/261**, against a pre-change baseline of 240/249 measured in this session by
+  stashing the change and re-running: the twelve new checks all pass and the nine failures are
+  **byte-identical** to the baseline set (`memory_records` missing in the e2e image, and a
+  workflows timeout behind it). Not worsened, and proved so rather than asserted.
+- **The terminal shell was DRIVEN**, with injected streams and a fake session: thirteen checks
+  covering the four groups, the filtered declaration, a reader not being offered `/plan` or
+  `/modules`, a destination answered with the label from `coden.addresses`, `/logout` asking
+  first and ending the shell only on the second typed word, and the alternate screen restored on
+  exit. This is what found the budget defect above.
+
+### What phase 3a did NOT do, said plainly
+
+- **The bench is untouched** — by design, and 3c removes it.
+- **The address bar in the top box still exists.** §4b.4 rule 1 says it disappears when the
+  browser takes the terminal's form, so that there is one `/` and not two. It stays through 3a
+  because the bench it navigates is still standing; removing it belongs with 3c.
+- **The terminal still has no view for a destination.** `/memory` in the terminal names the
+  destination with the label from the served address list and says this shell has no view for it
+  yet. That is the same honest `UNAVAILABLE` posture as the seventeen CodeN addresses, and it is
+  3b's work — counted, not hidden.
+- **`/logout` in the browser reuses the existing logout button** rather than a second sign-out
+  path. One way to end a session.
+
+### The improvement this phase records (`noesar-evolution` skill, standing rule)
+
+The menu's per-group budget solves the terminal's height problem, but both shells still render
+**all twenty-nine entries** on a bare `/`. The better form is a menu that ranks by what this
+session has actually used — most-recent-first within each group — so the entries a given user
+reaches for surface without typing. **Cost:** a per-account usage counter, which is state this
+product does not currently keep for the menu, and a decision about whether that counter is
+per-device or per-account. **Benefit:** the group budget stops being a truncation and becomes a
+ranking. Not executed here: it is a new piece of state, which is a decision for the Owner and
+not a side effect of a graphics phase.

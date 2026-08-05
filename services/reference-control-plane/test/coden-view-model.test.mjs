@@ -42,13 +42,28 @@ describe('the view model — what a session looks like, decided once', () => {
     for (const kind of TRANSCRIPT_KINDS) assert.doesNotThrow(() => say(view, kind, 'x'));
   });
 
-  test('every command in the shared registry has a transport', () => {
-    // The registry and the call map are two lists; this is the only thing that keeps them the
-    // same length. `help` and `clear` are handled by planTurn itself and own no method.
-    const handledInside = new Set(['help', 'clear']);
+  test('every entry in the shared registry can actually be performed', () => {
+    // The registry and the call map are two lists; this is the only thing that keeps them
+    // consistent. Phase 3a made the registry the WHOLE menu — work, applications, configure,
+    // session — so "has an engine call" stopped being the right question for every entry and
+    // became the right question for the WORK ones. Each other kind is checked for what IT
+    // needs, which makes this stricter than before rather than looser: every kind must declare
+    // something a shell can act on, and an entry with a kind nobody handles fails outright.
     for (const command of AGENT_COMMANDS) {
-      if (handledInside.has(command.name)) continue;
-      assert.ok(RUN[command.name], `\`/${command.name}\` is offered but has no engine call`);
+      if (command.kind === 'call') {
+        assert.ok(RUN[command.name], `\`/${command.name}\` is offered but has no engine call`);
+      } else if (command.kind === 'address') {
+        assert.ok(command.address, `\`/${command.name}\` is a destination with no address`);
+      } else if (command.kind === 'session') {
+        assert.ok(command.action, `\`/${command.name}\` is a session entry with no action`);
+      } else {
+        assert.equal(command.kind, 'shell', `\`/${command.name}\` has an unknown kind \`${command.kind}\``);
+        // `help` and `clear` — answered by planTurn itself, so they own no method and no
+        // address. Named explicitly: "the shell answers it" is a claim planTurn has to honour,
+        // and a third entry making it would go silently unanswered.
+        assert.ok(['help', 'clear'].includes(command.name),
+          `\`/${command.name}\` says the shell answers it, but planTurn answers only help and clear`);
+      }
     }
   });
 

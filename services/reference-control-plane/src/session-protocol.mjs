@@ -282,7 +282,15 @@ export function startUnixSocketServer({ socketPath, dispatch, auth, ledger }) {
             const value = auth.completeLogin({ challenge: params?.challenge, totpCode: params?.totpCode, ip: 'unix-socket' });
             authenticated = { user: value.user };
             ledger.append({ actor: value.user.id, action: 'tui.session-started', result: 'success', details: { transport: 'unix-socket' } });
-            respond(id, true, { user: value.user });
+            // The permission set comes back with the user, exactly as `GET /api/v1/auth/me`
+            // gives it to the browser — from `permissionsFor`, derived from the one
+            // `ROLE_PERMISSIONS` definition, never a second matrix. Phase 3a needs it because
+            // `CE-036` requires the menu to hide what the account cannot use IN BOTH SHELLS,
+            // and until now only the browser was ever told what its account holds. A terminal
+            // left to guess would either offer everything (a menu of doors that answer 403)
+            // or hide by a table of its own (the drift `PANEL_NAMES` already demonstrated).
+            // A description, not a grant: the dispatch still checks `can` on every call.
+            respond(id, true, { user: value.user, permissions: auth.permissionsFor(value.user.role) });
             continue;
           }
           if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa` before any other method');

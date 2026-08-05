@@ -168,11 +168,19 @@ describe('the slash commands live in the prompt, and both shells share one list'
     assert.deepEqual(parseCommandPrompt('/status'), { word: 'status', argument: '' });
   });
 
-  test('every command names a real engine method, or none at all', () => {
-    // A command with a method that does not exist would render in the menu and fail on use.
-    // `null` is allowed and means the shell answers it itself (`/help`, `/clear`).
+  test('every entry names a real engine method, or is honestly not a call at all', () => {
+    // An entry with a method that does not exist would render in the menu and fail on use.
+    // Since phase 3a the menu is the whole product, so only the WORK entries name a method;
+    // `null` on one of those means the shell answers it itself (`/help`, `/clear`), and an
+    // entry of any other kind must not carry a method at all — a destination with a method
+    // would be two ways of performing one line, and the shells would pick different ones.
     for (const command of AGENT_COMMANDS) {
-      assert.ok(command.method === null || typeof command.method === 'string');
+      if (command.kind === 'call' || command.kind === 'shell') {
+        assert.ok(command.method === null || typeof command.method === 'string',
+          `\`/${command.name}\` has a method that is neither null nor a name`);
+      } else {
+        assert.equal(command.method, undefined, `\`/${command.name}\` is not a call but names a method`);
+      }
       assert.ok(command.summary.length > 10, `\`/${command.name}\` needs a summary worth reading`);
     }
   });
