@@ -1,5 +1,69 @@
 # NOESAR Evolution — Session Handoff
 
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3a di CodeN Evolution (`D-0317`, `6bb7faf`)
+>
+> **Il programma attivo è CodeN Evolution.** Si leggono, in quest'ordine e sono due file soli:
+> `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 dice cosa deve fare)
+> e `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
+> `noesar-evolution` è obbligatoria e porta 5 regole anti-errore.
+>
+> ### Fatto in 3a
+>
+> Le **quattro regioni** del terminale rese nel browser (riga di stato = i chip `.coden-bar`
+> che c'erano già, trascrizione, prompt, menu) sullo **stesso** `planTurn` di
+> `coden-view-model.js`. `/` apre **l'unico menu del prodotto** a quattro gruppi — 29 voci:
+> 14 lavoro, 11 applicazioni, 3 configurazione, `/logout` — da **una fonte sola**
+> (`agent-commands.js`), filtrate per permesso in **entrambe** le shell. Per farlo l'handshake
+> del socket ora restituisce i permessi dell'account: prima solo il browser sapeva cosa il
+> proprio account potesse fare, quindi solo il browser poteva filtrare.
+>
+> ### Verificato in sessione, ogni numero prodotto qui
+>
+> unit **1743/1744** (0 fail, 1 skip preesistente) da una baseline di 1718/1719 · ESLint **322
+> file 0/0/0** · **15 mutazioni → 15 uccise** · browser e2e **252/261**, con i 9 fallimenti
+> **identici byte a byte** alla baseline pre-modifica misurata in sessione con `git stash` ·
+> la shell del **terminale guidata davvero** con stream iniettati, **13/13**.
+>
+> ### ⚠️ NON fatto in 3a — dichiarato, non dimenticato
+>
+> - **Il cruscotto resta in piedi.** È il punto della divisione 3a/3b/3c: il terminale rende
+>   **8 dei 25 indirizzi** CodeN, e toglierlo prima che i **17** restanti abbiano un metodo e
+>   una vista renderebbe `CE-034` falso di diciassette.
+> - **La barra degli indirizzi in alto resta.** §4b.4 regola 1 dice che sparisce quando il
+>   browser prende la forma del terminale — va con **3c**, insieme al cruscotto che naviga.
+> - **Il terminale non ha ancora una vista per una destinazione**: `/memory` la nomina con
+>   l'etichetta della lista servita e dichiara di non averla. È il lavoro di **3b**.
+> - **`/skills` non esiste nel menu** benché §4b.4 lo disegni: il prodotto non ha una
+>   superficie skill (misurato). Un test la tiene assente finché non ne esiste una.
+>
+> ### ⏭ PROSSIMA AZIONE — Fase 3b
+>
+> Dare **metodo e vista** ai 17 indirizzi CodeN che il terminale non rende. **Non è lavoro di
+> interfaccia:** alcuni non hanno un *metodo* sul protocollo, quindi sono voci nuove in
+> `SESSION_METHOD_POLICY` con il loro permesso e il loro gate. Prima cosa da misurare
+> all'apertura: quali dei 17 hanno già un metodo e quali no.
+>
+> I 17: banco — tests · preview · documentation · problems · closure · projects · recent ·
+> tasks · agents · tools · plugins · history · favourites (13, più `terminal` che ha solo una
+> nota di trasporto); agente — conversation · activity (e `plan`, nota di trasporto).
+>
+> **Non deployato.** Il container in produzione è invariato su
+> `noesar-evolution:coden-prose-grounding-v2` — verificato healthy, `/livez`+`/healthz`
+> 200/200 a fine fase. **Pushato** su `origin/main`: `ea2d391..6bb7faf`.
+>
+> **⚠️ Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd`
+> la produce sempre), e uno script che rilegge `docker inspect` deve accettarla. Generare e
+> validare il comando **prima** di fermare il container — l'ordine sbagliato è costato ~80 s di
+> downtime in s320.
+>
+> **Resta aperto e non riparabile senza una scelta di contenuto dell'Owner:** la deriva
+> `MASTER_PROJECT/` vs `docs/progetto-italiano/` (7 file su 14; `PROVENANCE.sha256` non
+> descrive nessuna delle due). **Gruppo 6** (pentest indipendente) resta l'unico gate che tiene
+> `productionReady=false`, e non si chiude scrivendo codice.
+
+---
+
+
 > Aggiornato 2026-08-01 (`D-0287`). Stato completo in `PROJECT_STATE.json`, storia in
 > `docs/DECISION_LOG.md`, installazioni in `docs/INSTALLATION_LEDGER.md`.
 >
