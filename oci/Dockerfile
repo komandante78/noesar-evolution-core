@@ -161,7 +161,10 @@ COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # shell's modules and `tui-import-closure.test.mjs` derives the real closure and fails when
 # a file it reaches is not covered here. The recipe is still explicit; what changed is that
 # a divergence is now measured instead of noticed.
-COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs /opt/noesar/tools/
+# Third time, and the guard did its job: phase 3c moved the address views into
+# `coden-address-views.mjs` so both terminal shells could render them, and the closure test
+# failed on this line before any container was built.
+COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs /opt/noesar/tools/
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json

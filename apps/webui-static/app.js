@@ -14,7 +14,7 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, detailLines, CLEARED_NOTE,
+  createView, say, planTurn, detailLines, CLEARED_NOTE, addressEntries, matchAddresses,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 
@@ -955,6 +955,15 @@ let codenMenuIndex=0;
 // cached at load: `currentPermissions` is filled during sign-in, and a menu built before that
 // would be the unfiltered one for the rest of the session.
 function codenMenu(){return menuFor(accountFromUser(currentUser&&{...currentUser,permissions:currentPermissions}));}
+// Phase 3c · what `/` offers: the commands, plus the address space. `16` §4b.4 rule 1 — "una
+// casella, tutto il prodotto" — and the reason the top box can be removed at all: it was the
+// only gesture in this shell that opened the twenty-five CodeN panels. Measured before this
+// existed: 0 of 25 resolved at either prompt.
+//
+// `addressBook()` reads the markup's own attributes and `addressEntries` shapes them, so this
+// page writes no list of its own — the same rule that killed `PANEL_NAMES`. The terminal folds
+// in the list it is SERVED, derived from this same markup, so the two prompts offer one set.
+function codenOffered(){return [...codenMenu().entries,...addressEntries(addressBook())];}
 // `sessions.list` and `coden.gitStatus` are `bridged:false` — this page reaches them through
 // routes of its own, which is an exposure decision the policy table records, not a weaker
 // gate (`GET /api/v1/sessions` asks the same `workspace.read`). Routing them here is what
@@ -989,7 +998,7 @@ function renderCodenMenu(){
   const parsed=parseCommandPrompt($('#codenPrompt')?.value??'');
   if(!parsed){box.classList.add('hidden');box.innerHTML='';return;}
   const menu=codenMenu();
-  const hits=matchCommands(parsed.word,menu.entries);
+  const hits=matchCommands(parsed.word,codenOffered());
   if(codenMenuIndex>=hits.length)codenMenuIndex=0;
   box.classList.remove('hidden');
   if(!hits.length){box.innerHTML='<p class="agent-menu-note">No entry matches that.</p>';return;}
@@ -1008,7 +1017,7 @@ function renderCodenMenu(){
     button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
 }
 function completeCodenCommand(name){
-  const entry=codenMenu().entries.find((candidate)=>candidate.name===name);
+  const entry=codenOffered().find((candidate)=>candidate.name===name);
   if(!entry)return;
   // Completes WITHOUT sending — choosing and committing stay two acts, the same rule the
   // terminal's Tab follows. A click that ran the command would make the menu a minefield.
@@ -1021,11 +1030,11 @@ async function submitCodenPrompt(){
   const typed=box.value.trim();
   box.value='';codenMenuIndex=0;renderCodenMenu();
   if(!typed)return;
-  const menu=codenMenu();
+  const offered=codenOffered();
   say(codenView,'user',typed);renderCodenTranscript();
   const turn=planTurn(typed,{
-    resolve:(text)=>resolveCommand(text,menu.entries),
-    parse:parseCommandPrompt,commands:menu.entries,groups:groupMenu,
+    resolve:(text)=>resolveCommand(text,offered),
+    parse:parseCommandPrompt,commands:offered,groups:groupMenu,
   });
   if(turn.kind==='help'){say(codenView,'agent','Menu:',turn.lines);return renderCodenTranscript();}
   if(turn.kind==='clear'){codenView.transcript=[{kind:'note',text:CLEARED_NOTE}];return renderCodenTranscript();}
@@ -1070,7 +1079,7 @@ function wireCodenShell(){
   box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();});
   box.addEventListener('keydown',(event)=>{
     const parsed=parseCommandPrompt(box.value);
-    const hits=parsed?matchCommands(parsed.word,codenMenu().entries):[];
+    const hits=parsed?matchCommands(parsed.word,codenOffered()):[];
     if(hits.length){
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
@@ -1255,26 +1264,12 @@ function addressBook(){
   });
   return entries;
 }
-// A leading slash is stripped, so typing the key that opened the box does not also become
-// the first character of the query — and so `/coden/bench/diff` pasted from the address bar
-// finds the panel it names.
-function matchAddresses(query){
-  const q=query.replace(/^\/+/,'').trim().toLowerCase();
-  const all=addressBook();
-  if(!q)return all;
-  // Rank, rather than filter alone: typing "diff" should reach the Diff panel before it
-  // reaches anything whose prose merely contains the word. Array sort is stable, so equal
-  // ranks keep the interface's own order.
-  return all
-    .map((entry)=>{
-      const address=entry.address.toLowerCase();
-      if(address.startsWith(q))return{entry,rank:0};
-      if(address.includes(q))return{entry,rank:1};
-      if(entry.label.toLowerCase().includes(q))return{entry,rank:2};
-      return null;
-    })
-    .filter(Boolean).sort((a,b)=>a.rank-b.rank).map((hit)=>hit.entry);
-}
+// Phase 3c: the three-rank ranking used to be written out HERE and again in
+// `tui-client.mjs`, whose copy carried a comment naming this one — a documented duplicate,
+// which is still a duplicate. It lives in the shared view model now, so the two shells cannot
+// rank one query two ways. This wrapper only supplies the list, which is the part that really
+// does differ: this shell reads the DOM, the other is served it.
+function matchLocalAddresses(query){return matchAddresses(addressBook(),query);}
 const palette={options:[],active:-1};
 function paletteOpen(){return !$('#globalSearchResults').classList.contains('hidden');}
 function renderPalette(addresses,contentHtml){
@@ -1311,7 +1306,7 @@ function openPalette(){
   if($('#authGate')&&!$('#authGate').classList.contains('hidden'))return;
   const input=$('#globalSearch');
   input.focus();input.select();
-  renderPalette(matchAddresses(input.value),'');
+  renderPalette(matchLocalAddresses(input.value),'');
 }
 // Going to an address. Already inside the workbench, a panel is reached with the phase-1
 // in-page move (no refetch); anything else is a real navigation, written straight to the
@@ -1334,7 +1329,7 @@ $('#globalSearch').addEventListener('input',()=>{
   const raw=$('#globalSearch').value;
   // Addresses are local, so they are drawn on this keystroke rather than after the debounce
   // the network needs.
-  renderPalette(matchAddresses(raw),'');
+  renderPalette(matchLocalAddresses(raw),'');
   clearTimeout(searchTimer);
   const q=raw.trim();
   if(!q)return;
@@ -1352,10 +1347,10 @@ $('#globalSearch').addEventListener('input',()=>{
       return `<button type="button" role="option" aria-selected="false"${opens}><b>${escapeHtml(item.type)}</b><span>${escapeHtml(text)}</span><small>${item.score.toFixed(3)}</small></button>`;
     }).join('');
     if($('#globalSearch').value!==raw)return;
-    renderPalette(matchAddresses(raw),rows?`<p class="palette-group">In your workspace</p>${rows}`:'');
+    renderPalette(matchLocalAddresses(raw),rows?`<p class="palette-group">In your workspace</p>${rows}`:'');
   },250);
 });
-$('#globalSearch').addEventListener('focus',()=>{if(!paletteOpen())renderPalette(matchAddresses($('#globalSearch').value),'');});
+$('#globalSearch').addEventListener('focus',()=>{if(!paletteOpen())renderPalette(matchLocalAddresses($('#globalSearch').value),'');});
 $('#globalSearch').addEventListener('keydown',(event)=>{
   if(event.key==='Escape'){closePalette();$('#globalSearch').blur();return;}
   if(!paletteOpen()||!palette.options.length)return;
@@ -3547,7 +3542,7 @@ function initBench(){
     // openPalette() selects what is there so the next keystroke replaces it; here the
     // prefix is meant to be typed ON, so the caret goes to the end instead.
     input.setSelectionRange(input.value.length,input.value.length);
-    renderPalette(matchAddresses(input.value),'');
+    renderPalette(matchLocalAddresses(input.value),'');
   });
   // One delegated listener for the nine list panels, because their rows are re-rendered
   // whenever the workspace refreshes and per-row listeners would be re-attached, or lost,

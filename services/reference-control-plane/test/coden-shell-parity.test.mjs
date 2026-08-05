@@ -25,11 +25,12 @@ import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
   accessRuleFor, accountFromUser, SECTION_ACCESS,
 } from '../../../apps/webui-static/agent-commands.js';
-import { planTurn, FORMS, startForm, fillForm } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm, addressEntries } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../tools/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
 import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
+import { showAddress } from '../../../tools/coden-address-views.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
@@ -137,7 +138,7 @@ test('CE-036 — a hidden entry cannot be run by typing it anyway', () => {
     groups: groupMenu,
   });
   assert.equal(turn.kind, 'unknown');
-  assert.match(turn.message, /No command named `plan`/);
+  assert.match(turn.message, /Nothing named `plan`/);
 });
 
 test('CE-036 — the access rule for a settings address comes from the section table', () => {
@@ -214,7 +215,10 @@ test('CE-034 — no CodeN address is left saying "no source over this transport"
   const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static')).filter((entry) => entry.address.startsWith('coden/'));
   assert.equal(book.length, 25, 'the CodeN address space changed size — re-measure before trusting the rest');
 
-  const client = read('tools/tui-client.mjs');
+  // Phase 3c: the table moved to `coden-address-views.mjs`, because BOTH terminal shells
+  // render it now — 3b had built it inside the client, where only the line shell could reach
+  // it, and the prompt answered "no view for it yet" about finished work for all twenty-five.
+  const client = read('tools/coden-address-views.mjs');
   const viewsBlock = client.slice(client.indexOf('const ADDRESS_VIEWS'), client.indexOf('const TRANSPORT_NOTES'));
   const views = [...viewsBlock.matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);
   const notes = [...client.slice(client.indexOf('const TRANSPORT_NOTES')).matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);
@@ -224,6 +228,152 @@ test('CE-034 — no CodeN address is left saying "no source over this transport"
     && !entry.declaredEmpty?.length);
   assert.deepEqual(stranded.map((entry) => entry.address), [],
     'these addresses answer "no source over this transport" — give them a method, a note, or a declared reason');
+});
+
+test('phase 3c — all 25 CodeN addresses open FROM THE PROMPT, driven one by one', async () => {
+  // `17`'s step 1, as a row rather than as a session's good intentions: "aprire tutti e 25 gli
+  // indirizzi DAL PROMPT, uno per uno, in entrambe le shell". The address book declaring 25 is
+  // not the same claim, and the difference was the whole finding of this phase — measured
+  // before a line changed: 0 of 25 resolved at the prompt, in both shells, while 25 of 25
+  // rendered in the line shell that nobody gets over `ssh`.
+  //
+  // Driven, with injected streams, because that is the only way to see what the shell a real
+  // user gets actually answers. Reading the view table would have measured the half that was
+  // already complete.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const coden = book.filter((entry) => entry.address.startsWith('coden/'));
+  assert.equal(coden.length, 25, 'the CodeN address space changed size — re-measure before trusting the rest');
+
+  const session = {
+    call: async (method) => {
+      if (method === 'coden.addresses') return { addresses: book, accessFiltered: false };
+      if (method === 'coden.gitStatus') return { available: true, branch: 'main' };
+      if (method === 'status') return { shadow: {}, capability: {} };
+      if (method === 'closure.list') return { closures: [] };
+      if (method === 'sessions.list') return { place: 'active', items: [], total: 0, page: 1, pageCount: 1, from: 0, to: 0 };
+      if (method === 'repoMap.scan') return { files: [] };
+      if (method === 'product.invariants') return { invariants: [] };
+      if (method === 'coden.benchLists') return { lists: Object.fromEntries(coden.map((e) => [e.panel, { shown: [], total: 0 }])) };
+      return {};
+    },
+  };
+  const frames = [];
+  const out = new EventEmitter();
+  out.columns = 200; out.rows = 60; out.isTTY = false;
+  out.write = (chunk) => { frames.push(String(chunk).replace(/\[[0-9;?]*[a-zA-Z]/g, '')); return true; };
+  out.off = out.removeListener.bind(out);
+  const input = new EventEmitter();
+  input.isTTY = false; input.isRaw = false;
+  input.off = input.removeListener.bind(input);
+
+  const finished = runFullScreen({
+    session, status: {}, account: { permissions: ['workspace.read', 'workspace.write', 'coden.plan'], role: 'owner' },
+    out, input,
+  });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 15));
+  const type = async (line) => {
+    for (const character of line) input.emit('keypress', character, { name: character });
+    input.emit('keypress', null, { name: 'return' });
+    await settle();
+  };
+  await settle();
+
+  const stranded = [];
+  for (const entry of coden) {
+    // The transcript SCROLLS, so a frame carries every earlier answer too. A first draft of
+    // this classified on the whole frame and read a refusal left over from the address before
+    // it — a verdict that was right or wrong for reasons unrelated to the address under test.
+    // Clearing between probes is what makes each frame about one address.
+    await type('/clear');
+    frames.length = 0;
+    await type(`/${entry.address}`);
+    const screen = frames.join('\n');
+
+    // What the SHARED table renders for this address, computed independently, so the check is
+    // "the prompt shows the view" rather than "the prompt mentions the panel". The first draft
+    // asserted the label appeared — and a mutation replacing the rendering with a sentence
+    // NAMING the panel walked straight past it, which is the exact shape of the defect this
+    // phase exists to remove: a message that names a destination instead of opening it.
+    const expected = (await showAddress(session, { lastList: null }, entry, '', () => {}))
+      .map((line) => line.trim()).filter((line) => line.length > 12);
+    const shown = expected.length === 0
+      ? screen.includes(entry.label)
+      : expected.some((line) => screen.includes(line.slice(0, 40)));
+
+    if (/Nothing named/.test(screen) || /is not in the address list/.test(screen) || !shown) {
+      stranded.push(entry.address);
+    }
+  }
+  input.emit('keypress', null, { name: 'c', ctrl: true });
+  await finished;
+
+  assert.deepEqual(stranded, [],
+    'these do not open from the prompt — and the box that used to reach them is what 3c removes');
+});
+
+test('phase 3c — the prompt offers the address space, and neither shell writes the list', () => {
+  // Rule 2 of §4b.4. The entries are SHAPED from the served list by the shared model, so a
+  // panel added to the markup appears in both menus without either shell being edited — the
+  // property `PANEL_NAMES` never had.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const shaped = addressEntries(book);
+  assert.equal(shaped.length, book.length);
+  assert.ok(shaped.every((entry) => entry.kind === 'address' && entry.name === entry.address),
+    'an address entry must be typed by the name it is shown under');
+  // APPLICATIONS, by §4b.4's own criterion — "è un posto dove si va". A fifth group would be a
+  // fifth thing to choose from, which is what rule 1 spends its paragraph forbidding.
+  assert.ok(shaped.every((entry) => entry.group === 'applications'));
+  assert.ok(MENU_GROUPS.some((group) => group.id === 'applications'));
+
+  for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL]]) {
+    assert.match(source, /addressEntries\(/, `${label} does not fold the address space into its menu`);
+  }
+  // And a typed address resolves through the SAME `planTurn` a command does — one mechanism,
+  // not a fallback bolted beside it.
+  const entries = [...AGENT_COMMANDS, ...shaped];
+  const parse = (text) => {
+    if (!text.startsWith('/')) return null;
+    const body = text.slice(1); const space = body.indexOf(' ');
+    return space === -1 ? { word: body, argument: '' } : { word: body.slice(0, space), argument: body.slice(space + 1).trim() };
+  };
+  const turn = planTurn('/coden/bench/diff run-9', {
+    resolve: (text) => resolveCommand(text, entries), parse, commands: entries, groups: groupMenu,
+  });
+  assert.equal(turn.kind, 'navigate');
+  assert.equal(turn.address, 'coden/bench/diff');
+  // The argument survives. Three of the twenty-five are a view OF A RUN, and a jump that threw
+  // its subject away would open them at nothing while looking like it had worked.
+  assert.equal(turn.argument, 'run-9');
+  // A command still wins its own name: `/diff` is the work command, and the Diff PANEL is
+  // reached by its full address. Without this the menu would silently change what `/diff` does.
+  const command = planTurn('/diff run-9', {
+    resolve: (text) => resolveCommand(text, entries), parse, commands: entries, groups: groupMenu,
+  });
+  assert.equal(command.kind, 'call');
+});
+
+test('phase 3c — a rendered address returns LINES, none of them carrying a line break', async () => {
+  // Found by driving, not by reading. These views were written against stdout, where a write
+  // beginning with a break means a blank line and then a label. Collected into a transcript
+  // that IS a list of lines, that becomes one "line" with a break inside it — and the frame
+  // indents the first physical line while the rest hang at column zero. The sessions list came
+  // out with its heading torn away from its own rows, in a shell whose whole screen is the
+  // transcript.
+  //
+  // The first version of this assertion looked for a literal backslash-n rather than a line
+  // break, so it could not fail — and it did not, under the mutation that put the defect back.
+  // The mutation is what found it; the test as written proved nothing.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const entry = book.find((candidate) => candidate.address === 'coden/bench/sessions');
+  const session = {
+    call: async () => ({ place: 'active', items: [{ title: 'a session', messageCount: 3, lastActivityAt: 'now' }],
+      total: 1, page: 1, pageCount: 1, from: 1, to: 1 }),
+  };
+  const lines = await showAddress(session, { lastList: null }, entry, '', () => {});
+  assert.ok(lines.length > 1, 'the sessions view rendered nothing to check');
+  const broken = lines.filter((line) => line.includes(String.fromCharCode(10)));
+  assert.deepEqual(broken, [], 'a rendered line carries its own break');
+  assert.ok(lines.some((line) => line.includes('a session')), 'the rows themselves were lost');
 });
 
 test('phase 3b — the panels with no engine DECLARE it, rather than wearing a list class', () => {

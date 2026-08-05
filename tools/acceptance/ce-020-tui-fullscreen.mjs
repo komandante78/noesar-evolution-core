@@ -292,7 +292,7 @@ try {
   for (const character of '/nope') input.press(character);
   input.press('\r', { name: 'return' });
   await settle();
-  check(lastFrame(out).includes('No command named'),
+  check(lastFrame(out).includes('Nothing named'),
     'an unknown command says so instead of running the closest match');
 
   // 8 — leaving restores the terminal. A full-screen program that exits without putting the

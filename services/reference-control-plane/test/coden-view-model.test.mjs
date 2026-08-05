@@ -90,7 +90,7 @@ describe('the view model — what a session looks like, decided once', () => {
   test('a slash word that names nothing is said, not guessed at', () => {
     const turn = planTurn('/pIan something', deps);
     assert.equal(turn.kind, 'unknown');
-    assert.match(turn.message, /No command named/);
+    assert.match(turn.message, /Nothing named/);
   });
 
   test('an empty line is a turn that does nothing', () => {

@@ -9,9 +9,11 @@
 // panel dashboard with a navigator and a bench, which was a misread: that layout is the
 // WORKBENCH (`07_INTERFACCIA.md` §4, the browser's page). The terminal is an agent.
 //
-// The `/` here belongs to the PROMPT and is a command to the session. It is not the address
-// box — that is navigation, it lives in the browser's top bar, and it is a different gesture.
-// Both exist; conflating them was the original error.
+// The `/` here belongs to the PROMPT, and since phase 3c it is the ONLY one — `16` §4b.4
+// rule 1. It was true for a while that navigation was a separate gesture living in the
+// browser's top bar; the Owner's decision of 2026-08-05 ends that, because two boxes for one
+// question is the thing `D-0299` spent a phase reducing. So this prompt takes both a command
+// to the session and an address to go to, resolved against one list.
 //
 // One session, two shells (`06_CODEN_EVOLUTION.md` §9): every command below runs the same
 // engine method the browser runs, over the same socket, so detaching one shell leaves the
@@ -28,7 +30,12 @@ import {
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
   createView, say, planTurn, detailLines, gitSummary, CLEARED_NOTE, startForm, fillForm,
+  addressEntries,
 } from '../apps/webui-static/coden-view-model.js';
+// Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
+// `tui-client.mjs` — that file imports this one, and a table two shells share belongs to
+// neither of them.
+import { showAddress } from './coden-address-views.mjs';
 
 /**
  * Runs the agent shell until the user leaves it. Resolves when the screen is torn down; the
@@ -54,6 +61,22 @@ export async function runFullScreen({
   // guard narrowed to let this through would stop catching the thing it exists for.
   const menu = menuFor(account);
 
+  // Phase 3c. The address space, fetched once and kept — the same list the browser derives
+  // from the markup, served over the socket so a client from a stale checkout shows the
+  // SERVER's addresses rather than its own. `addressState` is what the session-listing views
+  // remember a page in, exactly as the line shell's own state does; it is created here so the
+  // two shells cannot answer `sessions` off two different "last list shown".
+  const addressState = { lastList: null, lastRefused: [], addresses: null };
+  let addressBook = [];
+  const loadAddresses = async () => {
+    if (addressBook.length) return addressBook;
+    const served = await session.call('coden.addresses', {}).catch(() => null);
+    addressBook = served?.addresses ?? [];
+    return addressBook;
+  };
+  const addressEntry = async (address) =>
+    (await loadAddresses()).find((entry) => entry.address === address) ?? null;
+
   // Why the session group needs these two. `/logout` has to tear the screen down from inside
   // the submit handler, which runs before the keypress loop below has been built — so the
   // teardown is bound here and filled in there, and `leave` carries out WHY the shell ended so
@@ -78,11 +101,17 @@ export async function runFullScreen({
     if (status?.workspaceActions?.testExecution === false) view.tests = 'tests none (EXECUTE refused)';
   };
 
+  // The menu offers the commands AND the address space — `16` §4b.4 rule 1, "una casella,
+  // tutto il prodotto". The addresses are appended from the SERVED list through the shared
+  // shaper, never written here; `groupMenu` files them under APPLICATIONS by the document's
+  // own criterion ("è un posto dove si va"). Commands come first so a typed `/diff` still
+  // offers the work command ahead of the Diff panel.
+  const offered = () => [...menu.entries, ...addressEntries(addressBook)];
   const refilter = () => {
     const parsed = parseCommandPrompt(view.prompt);
     view.menu = parsed
       ? {
-        hits: matchCommands(parsed.word, menu.entries), selected: 0,
+        hits: matchCommands(parsed.word, offered()), selected: 0,
         groups: groupMenu, accessFiltered: menu.accessFiltered, hidden: menu.hidden,
       }
       : null;
@@ -129,9 +158,9 @@ export async function runFullScreen({
     // What the line MEANS is decided by the shared model; this shell only performs it. The
     // browser will perform the same intents over its own transport, which is the whole point.
     const turn = planTurn(typed, {
-      resolve: (text) => resolveCommand(text, menu.entries),
+      resolve: (text) => resolveCommand(text, offered()),
       parse: parseCommandPrompt,
-      commands: menu.entries,
+      commands: offered(),
       groups: groupMenu,
     });
 
@@ -151,21 +180,34 @@ export async function runFullScreen({
     }
     if (turn.kind === 'session') { leave = turn.action; return finish?.(); }
 
-    // A destination. The name comes from the served address list, never from a second table
-    // in this file — the arrangement that had drifted to fourteen names against a markup of
-    // twenty-five. What this shell CANNOT do yet it says: phase 3a builds the form, and
-    // rendering another destination in this shell is 3b, along with the seventeen CodeN
-    // addresses already measured as having no view here. Saying so is the same posture
-    // `coden.addresses` takes when it cannot read its source — an honest UNAVAILABLE beats a
-    // blank screen that reads as "there is nothing there".
+    // A destination — and since phase 3c this shell RENDERS it rather than promising it.
+    //
+    // What was here answered every destination by saying this shell had none built, and named
+    // the phase that would build them. That phase HAD built them — in `showAddress()`, which
+    // only the LINE shell called, and the line shell only runs when stdin is a pipe. So a real
+    // user over `ssh` got that sentence for every one of the twenty-five, about finished work.
+    // Measured at the start of 3c: 25 of 25 rendered in the line shell, 0 of 25 here.
+    // (Worded around the old string on purpose: the guard that checks it is gone reads this
+    // file's comments too, and cannot tell a quotation from a live message.)
+    //
+    // The lines come back from the same table both shells now use, and go into the transcript
+    // as a detail block — which is what "going somewhere" MEANS in a shell whose whole screen
+    // is a transcript. No second view table lives in this file, for the reason that has cost
+    // this project twice: a list compared only with itself always agrees.
     if (turn.kind === 'navigate') {
       record('tool', `→ /${turn.command}`);
-      const known = await session.call('coden.addresses', {})
-        .then(({ addresses }) => addresses.find((entry) => entry.address === turn.address))
-        .catch(() => null);
-      record(known ? 'agent' : 'error', known
-        ? `${known.label} — this shell has no view for it yet (phase 3b). The browser renders it at #/${turn.address}.`
-        : `\`${turn.address}\` is not in the address list this deployment serves.`);
+      draw();
+      const known = await addressEntry(turn.address);
+      if (!known) {
+        record('error', `\`${turn.address}\` is not in the address list this deployment serves.`);
+        return draw();
+      }
+      try {
+        const lines = await showAddress(session, addressState, known, turn.argument ?? '', () => {});
+        record('agent', known.label, lines);
+      } catch (error) {
+        record('error', `${known.label} refused${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
+      }
       return draw();
     }
     if (turn.kind !== 'call') return draw();
@@ -187,6 +229,10 @@ export async function runFullScreen({
   if (input.isTTY) input.setRawMode(true);
 
   await refreshFooter();
+  // Before the first keystroke, not on it. The menu and the prompt resolve against the same
+  // list, so a shell that had not loaded the addresses yet would answer "nothing named that"
+  // to an address it is about to start offering — which is worse than a slow open.
+  await loadAddresses();
   draw();
 
   await new Promise((resolve) => {

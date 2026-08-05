@@ -34,6 +34,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { runFullScreen } from './tui-fullscreen.mjs';
 import { accountFromUser } from '../apps/webui-static/agent-commands.js';
+import { matchAddresses } from '../apps/webui-static/coden-view-model.js';
+import { printJson, runSessionsList, showAddress } from './coden-address-views.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultSocketPath = resolve(here, '..', '.workspace', 'tui.sock');
@@ -232,11 +234,6 @@ async function runPlanFlow(reader, session, request = '') {
   console.log('');
 }
 
-function printJson(label, value) {
-  console.log(`\n${label}:`);
-  console.log(JSON.stringify(value, null, 2));
-  console.log('');
-}
 
 /** Fresh per connection, carried through every `dispatchCommand` call: the last sessions
  *  page shown (so `<n>` in `session-show`/`session-archive`/… means "row n of that page",
@@ -291,28 +288,18 @@ async function addressBook(session, state) {
   return state.addresses;
 }
 
-/** The browser's own ranking, in the same three ranks (app.js::matchAddresses): an address
- *  that STARTS with what was typed beats one that merely contains it, which beats a match on
- *  the label's prose — so `/diff` reaches the Diff panel, not the first page whose
- *  description happens to say "difference". A leading slash is stripped so that typing the
- *  key that opens the box does not also become the first character of the query, and so an
- *  address pasted out of the browser's address bar finds the panel it names. Array sort is
- *  stable, so equal ranks keep the interface's own order. */
-export function matchAddresses(addresses, query) {
-  const wanted = String(query ?? '').replace(/^\/+/, '').trim().toLowerCase();
-  if (!wanted) return [...addresses];
-  return addresses
-    .map((entry) => {
-      const address = entry.address.toLowerCase();
-      if (address.startsWith(wanted)) return { entry, rank: 0 };
-      if (address.includes(wanted)) return { entry, rank: 1 };
-      if (String(entry.label ?? '').toLowerCase().includes(wanted)) return { entry, rank: 2 };
-      return null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.rank - b.rank)
-    .map((hit) => hit.entry);
-}
+/** Phase 3c. The ranking used to live HERE, in full, with a comment saying it was "the
+ *  browser's own ranking, in the same three ranks (app.js::matchAddresses)" — a documented
+ *  duplicate, which is still a duplicate: the note explains the drift, it does not stop it.
+ *  Both copies now come from the shared view model, so the two shells cannot rank the same
+ *  query two ways. Re-exported rather than have callers reach past this module, since this is
+ *  where the address verbs of this shell live. */
+export { matchAddresses };
+
+/** Re-exported for the same reason: `showAddress` moved to `coden-address-views.mjs` in phase
+ *  3c because two shells render it, but jumping to an address is a verb of THIS shell and its
+ *  callers should not have to know where the table went. */
+export { showAddress };
 
 /** D3b, UI-054's other half: `F1`…`F9` reach the first nine BENCH addresses, in the order
  *  the workbench itself lists them — derived from the served list, not from a mapping typed
@@ -338,127 +325,8 @@ export function addressForFunctionKey(addresses, keyName) {
 // Each view labels its own output with the panel's label from the served list, so even the
 // heading a reader sees is the workbench's word for that panel rather than a second one
 // chosen here.
-/** Phase 3b. One of the seven bench list panels, off the ONE call that serves all seven —
- *  the same shape the browser fills them from. Shared rather than written out seven times so
- *  the seven cannot drift into seven slightly different renderings of one thing, which is
- *  `PANEL_NAMES` again at a smaller scale.
- *
- *  The cap and the total both come from the engine, and the count is PRINTED: the browser
- *  slices to six as well, so showing sixty here would be the two shells disagreeing about what
- *  the panel is, and showing six silently would let a reader take six for all of them. */
-async function benchList({ session, entry }) {
-  const { lists } = await session.call('coden.benchLists', {});
-  // The key comes off the SERVED entry, never from a literal in this file. A first draft took
-  // the panel name as an argument, one call per panel, and `coden-addressable-panels.test.mjs`
-  // refused it — correctly: six panel names written here are six names that can drift from the
-  // markup, which is exactly how `PANEL_NAMES` reached fourteen against twenty-five. Reading
-  // `entry.panel` makes the engine's key and the markup's panel one thing, and a mismatch
-  // surfaces as a missing list rather than silently.
-  //
-  // (That guard reads comments as well as code, so naming one of the panels in this paragraph
-  // would fail it again — and rightly: it cannot tell a comment from a table, and a guard
-  // narrowed to tell them apart would stop catching a table written as one.)
-  const list = lists?.[entry.panel];
-  if (!list) { console.log(`${entry.label} — this deployment served no list for this panel.`); return; }
-  if (!list.total) { console.log(`${entry.label} — none.`); return; }
-  console.log(`${entry.label} — showing ${list.shown.length} of ${list.total}:`);
-  for (const item of list.shown) {
-    console.log(`  ${item.name ?? item.title ?? item.goal ?? item.id}${item.status ? ` · ${item.status}` : ''}`);
-  }
-}
-
-const ADDRESS_VIEWS = {
-  'coden/bench/map': async ({ session, arg, entry }) => printJson(entry.label, await session.call('repoMap.scan', { path: arg || undefined })),
-  'coden/bench/projects': benchList,
-  'coden/bench/recent': benchList,
-  'coden/bench/tasks': benchList,
-  'coden/bench/agents': benchList,
-  'coden/bench/tools': benchList,
-  'coden/bench/history': benchList,
-  // The browser's Conversation panel says the bench conversation IS the Chat session and this
-  // shell's — "not a second chat with its own state". So this shows the session the shell is
-  // attached to, from the verb family it already has, rather than inventing a per-panel
-  // conversation object the browser does not have either.
-  'coden/agent/conversation': async ({ session, entry }) => {
-    const listed = await session.call('sessions.list', { place: 'active', pageSize: 1 });
-    const current = (listed?.sessions ?? listed?.items ?? [])[0];
-    console.log(`${entry.label} — ${current
-      ? `${current.title ?? current.id} — the same session Chat and this shell share`
-      : 'no conversation is active in this session yet'}`);
-  },
-  'coden/bench/closure': async ({ session, entry }) => {
-    const { closures } = await session.call('closure.list', {});
-    if (!closures.length) { console.log(`${entry.label} — nothing closed yet. \`closure <runId>\` records one.`); return; }
-    console.log(`${entry.label} — ${closures.length} closed:`);
-    for (const item of closures) {
-      // NOT DONE first, and never omitted. `UI-036`: a report that lists only what went well
-      // teaches uniform trust, which is the opposite of useful — so the field the object
-      // exists to carry leads, rather than sitting under a summary a reader will skim.
-      console.log(`  ${item.runId} · ${item.closedAt} · ${item.actorId}`);
-      console.log(`    NOT DONE: ${item.nothingLeftUndone ? 'nothing was left undone, and that was stated' : item.notDone.join('; ')}`);
-      console.log(`    residual risk: ${item.residualRisk}`);
-      if (item.summary) console.log(`    ${item.summary}`);
-    }
-  },
-  'coden/bench/shadow': async ({ session, entry }) => printJson(entry.label, (await session.call('status', {})).shadow),
-  'coden/bench/logs': async ({ session, arg, entry }) => printJson(entry.label, await session.call('events.correlation', { correlationId: arg })),
-  'coden/bench/editor': async ({ session, arg, entry }) => printJson(entry.label, await session.call('workspace.get', { runId: arg })),
-  'coden/bench/diff': async ({ session, arg, entry }) => printJson(entry.label, await session.call('workspace.get', { runId: arg })),
-  // The bench's Sessions panel and the browser's Sessions page are two doors onto the list
-  // this shell already has a whole verb family for. Routing them here rather than leaving
-  // them "not sourced" is the parity the phase is about: the same address, in either shell,
-  // shows the same sessions.
-  'coden/bench/sessions': async ({ session, state }) => runSessionsList(session, state, []),
-  'settings/sessions': async ({ session, state }) => runSessionsList(session, state, []),
-  'coden/agent/authority': async ({ session, entry }) => printJson(entry.label, (await session.call('status', {})).capability),
-  'coden/agent/invariants': async ({ session }) => {
-    const { invariants } = await session.call('product.invariants', {});
-    for (const entry of invariants) console.log(`  ${String(entry.id ?? '').replace(/_/g, ' ')} — ${entry.status === 'ACTIVE' ? `enforced here (${entry.enforcedBy})` : `enforced elsewhere (${entry.enforcedBy})`}`);
-  },
-};
-
-/** Addresses whose honest answer here is about the TRANSPORT, not about the product — so
- *  they are written here rather than read off the markup. The browser's Terminal panel says
- *  "this tab moves focus to the terminal region"; in a terminal that sentence is not true,
- *  and reprinting it would be a copy that lies rather than a copy that drifts. */
-const TRANSPORT_NOTES = {
-  'coden/bench/terminal': 'You are in it. The workbench docks this region below the bench; here it is the whole shell.',
-  'coden/agent/plan': 'Use `plan` to start one, or `get <runId>` for an existing run\'s state.',
-  'coden-tui': 'You are in it — this program is that destination.',
-};
-
-/** The three addresses whose view needs a run named, and the usage line each gives without
- *  one. A hotkey does not invent a runId any more than typing the bare command would. */
-const NEEDS_RUN_ID = new Set(['coden/bench/logs', 'coden/bench/editor', 'coden/bench/diff']);
-
-export async function showAddress(session, state, entry, arg) {
-  if (!entry) return;
-  const { address } = entry;
-  if (NEEDS_RUN_ID.has(address) && !arg) {
-    console.log(`Usage: /${address} <runId>   (or \`panel ${entry.panel} <runId>\`)`);
-    return;
-  }
-  const view = ADDRESS_VIEWS[address];
-  if (view) { await view({ session, state, arg, entry }); return; }
-  if (TRANSPORT_NOTES[address]) { console.log(TRANSPORT_NOTES[address]); return; }
-  // The panel's own declared-empty text, served from the markup the browser renders it
-  // from. This used to be a hand-copied table in this file; six strings, four of which had
-  // already drifted from the paragraphs they claimed to quote.
-  if (entry.declaredEmpty?.length) {
-    console.log(`${entry.label} — what this panel declares:`);
-    for (const paragraph of entry.declaredEmpty) console.log(`  ${paragraph}`);
-    return;
-  }
-  // A page and a panel are different kinds of "not here", and saying so is the difference
-  // between a shell that looks broken and one that tells you where you are. A page belongs
-  // to the browser shell and always did; a PANEL is a place this shell shows in general,
-  // and this particular one is filled over routes the socket does not carry — printing an
-  // empty result for it would read as "there are none", which is a different claim.
-  console.log(entry.region
-    ? `${entry.label} (/${address}) — no source over this transport. The workbench fills this panel from routes this socket does not carry, and an empty result printed here would read as "there are none".`
-    : `${entry.label} (/${address}) — a destination of the browser shell. The address is real and means the same place there; a terminal has no view of it.`);
-}
-
+// The address views moved to `tools/coden-address-views.mjs` in phase 3c — they are
+// rendered by BOTH terminal shells now, so they belong to neither of them.
 /** `/` — the jump. Empty query lists every address, grouped; anything else goes straight to
  *  the best match, which is what typing into the browser's box and pressing Enter does. A
  *  terminal has no highlighted row to arrow through before committing, so the runners-up are
@@ -532,24 +400,6 @@ async function confirmPrompt(reader, message) {
   return /^y(es)?$/i.test(answer.trim());
 }
 
-async function runSessionsList(session, state, rest) {
-  let place = 'active'; let page;
-  for (const token of rest) {
-    if (['active', 'archived', 'bin'].includes(token)) place = token;
-    else if (/^\d+$/.test(token)) page = Number(token);
-    else { console.log(`Unrecognized argument \`${token}\`. Usage: sessions [active|archived|bin] [page]`); return; }
-  }
-  const result = await session.call('sessions.list', { place, page: page ?? 1 });
-  state.lastList = { place: result.place, items: result.items };
-  console.log(`\n${result.place} — ${result.from}-${result.to} of ${result.total} (page ${result.page}/${result.pageCount})`);
-  if (!result.items.length) { console.log('  (none)\n'); return; }
-  result.items.forEach((item, index) => {
-    const flags = [item.archived ? 'archived' : null, item.deletedAt ? 'in bin' : null].filter(Boolean).join(', ');
-    console.log(`  ${index + 1}. ${item.title}  [${item.messageCount} msgs, last ${item.lastActivityAt}]${flags ? ` (${flags})` : ''}`);
-  });
-  console.log('');
-}
-
 const SESSION_ACTION_WORDS = {
   archive: { verb: 'Archive', consequence: 'Archiving moves the session. Nothing is deleted and it comes back whole.' },
   bin: { verb: 'Delete', consequence: 'It goes to the bin and stays recoverable for 30 days.' },
@@ -583,22 +433,22 @@ export async function dispatchCommand(reader, session, line, state) {
     case '': return true;
     case 'help': console.log(HELP); return true;
     case 'plan': await runPlanFlow(reader, session, arg); return true;
-    case 'simulate': printJson('simulation', await session.call('workspace.simulate', { runId: arg })); return true;
-    case 'approve': printJson('result', await session.call('workspace.approve', { runId: arg })); return true;
+    case 'simulate': printJson(console.log, 'simulation', await session.call('workspace.simulate', { runId: arg })); return true;
+    case 'approve': printJson(console.log, 'result', await session.call('workspace.approve', { runId: arg })); return true;
     case 'reject': {
       const [runId, ...reasonParts] = rest;
-      printJson('result', await session.call('workspace.reject', { runId, reason: reasonParts.join(' ') || null }));
+      printJson(console.log, 'result', await session.call('workspace.reject', { runId, reason: reasonParts.join(' ') || null }));
       return true;
     }
-    case 'restore': printJson('result', await session.call('workspace.restore', { runId: arg })); return true;
-    case 'get': printJson('run', await session.call('workspace.get', { runId: arg })); return true;
-    case 'events': printJson('events', await session.call('events.correlation', { correlationId: arg })); return true;
-    case 'map': printJson('map', await session.call('repoMap.scan', { path: arg || undefined })); return true;
-    case 'search': printJson('matches', await session.call('repoMap.search', { q: arg })); return true;
+    case 'restore': printJson(console.log, 'result', await session.call('workspace.restore', { runId: arg })); return true;
+    case 'get': printJson(console.log, 'run', await session.call('workspace.get', { runId: arg })); return true;
+    case 'events': printJson(console.log, 'events', await session.call('events.correlation', { correlationId: arg })); return true;
+    case 'map': printJson(console.log, 'map', await session.call('repoMap.scan', { path: arg || undefined })); return true;
+    case 'search': printJson(console.log, 'matches', await session.call('repoMap.search', { q: arg })); return true;
     case 'panel': await runPanel(session, state, rest[0], rest[1]); return true;
     case 'status': {
       const result = await session.call('status', {});
-      printJson('status', result);
+      printJson(console.log, 'status', result);
       console.log(formatStatusLine(state, result));
       return true;
     }
@@ -606,7 +456,7 @@ export async function dispatchCommand(reader, session, line, state) {
     case 'session-show': {
       const resolved = resolveSessionSelection(state, rest.length ? [rest[0]] : []);
       if (resolved.error) { console.log(resolved.error); return true; }
-      printJson('session', await session.call('sessions.get', { id: resolved.ids[0] }));
+      printJson(console.log, 'session', await session.call('sessions.get', { id: resolved.ids[0] }));
       return true;
     }
     case 'session-archive': await runSessionAction(reader, session, state, 'archive', rest); return true;

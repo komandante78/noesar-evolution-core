@@ -26,12 +26,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseCodenAddressBook } from '../src/coden-address-book.mjs';
+import { matchAddresses } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');
 const html = readFileSync(join(root, 'apps/webui-static/index.html'), 'utf8');
 const app = readFileSync(join(root, 'apps/webui-static/app.js'), 'utf8');
 const tui = readFileSync(join(root, 'tools/tui-client.mjs'), 'utf8');
+// Phase 3c: the address VIEWS moved out of the client into a module both terminal shells
+// render — so the guards below read that file too, rather than passing because the table they
+// were watching had simply left the file they were watching it in.
+const views = readFileSync(join(root, 'tools/coden-address-views.mjs'), 'utf8');
+const model = readFileSync(join(root, 'apps/webui-static/coden-view-model.js'), 'utf8');
 // Phase 4: the address space as the server derives it, used below to check the interface's
 // own documented examples against the interface's own attributes.
 const declaredAddresses = parseCodenAddressBook(html).map((entry) => entry.address);
@@ -258,27 +264,70 @@ describe('phase 4: the terminal keeps no list of its own', () => {
     }
   });
 
-  test('both shells rank matches the same way, and the browser\'s copy is the one to follow', () => {
-    // Two implementations of one rule, because the browser's must answer without a round
-    // trip and the terminal's must answer without a DOM. They cannot share code, so this
-    // asserts the SHAPE of both: three ranks, address-prefix then address-substring then
-    // label. If the browser's rule changes, this fails and names the file that has to
-    // follow it.
-    const browser = app.slice(app.indexOf('function matchAddresses'), app.indexOf('const palette='));
-    const terminal = tui.slice(tui.indexOf('export function matchAddresses'), tui.indexOf('export function functionKeyAddresses'));
-    for (const source of [browser, terminal]) {
-      assert.ok(source.length > 200, 'one of the two matchers moved; this test cannot see it');
-      assert.match(source, /startsWith\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*0/);
-      assert.match(source, /address\.includes\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*1/);
-      assert.match(source, /label[\s\S]{0,60}includes\([a-z]+\)\)\s*return\s*\{\s*entry,\s*rank:\s*2/);
-      assert.match(source, /replace\(\/\^\\\/\+\//, 'the leading slash is no longer stripped');
+  test('phase 3c — the ranking exists ONCE, and both shells import it', () => {
+    // This test used to assert the SHAPE of two implementations, on the premise that "they
+    // cannot share code, so this asserts the shape of both". The premise was false: the rule
+    // needs a list and a query, and where the list comes from is the only part that differs.
+    // Both copies were real, byte-different, and the terminal's carried a comment naming the
+    // browser's — a documented duplicate, which drifts exactly like an undocumented one. A
+    // test that checks two copies agree TODAY is the arrangement that let `PANEL_NAMES` reach
+    // fourteen against twenty-five; the fix is that there is nothing left to compare.
+    assert.match(model, /export function matchAddresses\(addresses, query\)/,
+      'the shared model no longer owns the ranking');
+    for (const [label, source] of [['the browser', app], ['the terminal', tui]]) {
+      assert.doesNotMatch(source, /function matchAddresses\s*\(\s*query\s*\)/,
+        `${label} has grown its own ranking again`);
+      assert.doesNotMatch(source, /rank:\s*[012]/,
+        `${label} spells out the ranks itself instead of importing the rule`);
+      assert.match(source, /matchAddresses/, `${label} does not use the shared ranking at all`);
     }
+    // And the rule itself still ranks the way the product depends on: prefix, then substring,
+    // then the label's prose. Asserted on BEHAVIOUR now that there is one implementation —
+    // reading its source shape was only ever a way to compare two of them.
+    const book = [
+      { address: 'coden/bench/diff', label: 'Diff' },
+      { address: 'settings/models', label: 'Models — the difference engine' },
+      { address: 'chat', label: 'Chat' },
+    ];
+    assert.deepEqual(matchAddresses(book, 'coden/bench/diff').map((e) => e.address), ['coden/bench/diff']);
+    assert.deepEqual(matchAddresses(book, '/diff').map((e) => e.address), ['coden/bench/diff', 'settings/models'],
+      'a leading slash was not stripped, or the label rank was lost');
+    assert.equal(matchAddresses(book, '').length, book.length, 'an empty query must list everything');
   });
 
   test('the hotkeys are derived from the served list, not from a mapping typed beside it', () => {
-    const body = tui.slice(tui.indexOf('export function functionKeyAddresses'), tui.indexOf('const ADDRESS_VIEWS'));
+    // The end anchor was `const ADDRESS_VIEWS`, which left the client in phase 3c. A slice
+    // whose end anchor is missing runs to the end of the file — so this would have kept
+    // passing while measuring the whole client instead of the one function, which is a guard
+    // that has quietly stopped guarding. Anchored on the next declaration instead.
+    const start = tui.indexOf('export function functionKeyAddresses');
+    const end = tui.indexOf('export function addressForFunctionKey');
+    assert.ok(start > 0 && end > start, 'functionKeyAddresses moved; update this test');
+    const body = tui.slice(start, end);
     assert.match(body, /region === 'bench'/);
     assert.match(body, /slice\(0, 9\)/);
+  });
+
+  test('phase 3c — the address views are rendered by BOTH terminal shells, from one table', () => {
+    // The defect this phase opened on. Phase 3b built a view for every address, in
+    // `showAddress`, printing to stdout — and `tui-client.mjs` only runs its line shell when
+    // stdin is a PIPE. On a real TTY, which is what `ssh` gives you, `runFullScreen` answered
+    // "this shell has no view for it yet (phase 3b)" for all twenty-five. Measured: 25 of 25
+    // rendered in the line shell, 0 of 25 at the prompt.
+    assert.match(views, /export async function showAddress/, 'the shared view table is gone');
+    assert.doesNotMatch(views, /console\.log\(/,
+      'a view writes straight to stdout again, which only one of the two shells can render');
+    const shell = readFileSync(join(root, 'tools/tui-fullscreen.mjs'), 'utf8');
+    assert.match(shell, /from '\.\/coden-address-views\.mjs'/,
+      'the prompt does not render addresses off the shared table');
+    assert.doesNotMatch(shell, /no view for it yet/,
+      'the prompt still promises a phase that has shipped');
+    // And neither shell may grow a table of its own again — the failure mode is not "the
+    // views are missing", it is "there are two of them and one is maintained".
+    for (const [label, source] of [['the line shell', tui], ['the prompt', shell]]) {
+      assert.doesNotMatch(source, /const ADDRESS_VIEWS/, `${label} has grown its own view table`);
+      assert.doesNotMatch(source, /const TRANSPORT_NOTES/, `${label} has grown its own transport notes`);
+    }
   });
 
   test('phase 5: the program the interface tells people to run is in the image', () => {

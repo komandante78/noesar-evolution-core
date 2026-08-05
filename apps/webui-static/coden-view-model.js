@@ -178,6 +178,63 @@ export function gitSummary(git) {
 }
 
 /**
+ * Rank a list of addresses against what was typed — the ONE copy of that rule.
+ *
+ * It existed twice, byte-different, and the second one's comment said so out loud: "the
+ * browser's own ranking, in the same three ranks (app.js::matchAddresses)". A rule maintained
+ * in two files is `PANEL_NAMES` again, and a documented duplicate is still a duplicate — the
+ * note explains the drift, it does not prevent it.
+ *
+ * Three ranks: an address that STARTS with the query beats one that merely contains it, which
+ * beats a match on the label's prose — so `diff` reaches the Diff panel rather than the first
+ * page whose description happens to say "difference". A leading slash is stripped, so the key
+ * that opens the menu does not also become the first character of the query. Array sort is
+ * stable, so equal ranks keep the interface's own order.
+ */
+export function matchAddresses(addresses, query) {
+  const wanted = String(query ?? '').replace(/^\/+/, '').trim().toLowerCase();
+  if (!wanted) return [...addresses];
+  return addresses
+    .map((entry) => {
+      const address = String(entry.address ?? '').toLowerCase();
+      if (address.startsWith(wanted)) return { entry, rank: 0 };
+      if (address.includes(wanted)) return { entry, rank: 1 };
+      if (String(entry.label ?? '').toLowerCase().includes(wanted)) return { entry, rank: 2 };
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.rank - b.rank)
+    .map((hit) => hit.entry);
+}
+
+/**
+ * The served addresses, shaped as menu entries — so `/` offers them without either shell
+ * writing a list of its own.
+ *
+ * They go in APPLICATIONS by §4b.4's own criterion: that group is "le destinazioni del
+ * prodotto — è un posto dove si va", and a bench panel is exactly that. A fifth group would
+ * have been a fifth thing to choose from, which is what rule 1 spends its whole paragraph
+ * forbidding; and a hand-written copy of the panel names is what `PANEL_NAMES` was.
+ *
+ * `name` IS the address, so what the menu shows is what you type. The commands keep their
+ * short names — `/diff` stays the work command — and an address is reached by its full
+ * address, which is the only spelling that cannot collide with one.
+ */
+export function addressEntries(addresses) {
+  return (addresses ?? [])
+    .filter((entry) => entry.address)
+    .map((entry) => ({
+      name: entry.address,
+      argument: '',
+      summary: entry.label ?? entry.address,
+      group: 'applications',
+      kind: 'address',
+      address: entry.address,
+      permission: null,
+    }));
+}
+
+/**
  * What should happen to what the user typed — decided here, performed by the caller.
  *
  * Returns one of:
@@ -196,6 +253,19 @@ export function gitSummary(git) {
  * `/modules` from an account that cannot see it resolves to nothing and is answered as an
  * unknown word, exactly like a name that does not exist. An entry hidden from the menu but
  * still runnable by typing it would make the filtering decorative.
+ *
+ * # Phase 3c · why the prompt resolves an address at all
+ *
+ * `16` §4b.4 rule 1 fixes it: there is ONE `/`. The browser's top box was the only gesture
+ * that opened the twenty-five CodeN panels, and 3c removes it — so the prompt has to reach
+ * them, or removing the box takes navigation with it. Measured before writing this: typed at
+ * the prompt, 0 of 25 resolved, in BOTH shells.
+ *
+ * Nothing in THIS function knows that. The caller resolves against one list — its commands
+ * plus `addressEntries(served)` — and an address arrives here as an entry whose `kind` is
+ * already `address`. A second lookup here, after the first one failed, would have been a
+ * second mechanism for one gesture, which is the thing rule 1 exists to prevent; and it
+ * would have let the two shells offer one set in the menu and accept another at the prompt.
  */
 export function planTurn(typed, { resolve, parse, commands, groups }) {
   const line = String(typed ?? '').trim();
@@ -214,12 +284,13 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
 
   const resolved = resolve(line);
   if (!resolved) {
-    // Prose, or a slash word that names nothing. Said plainly rather than guessed at: running
-    // the nearest command would be an action nobody chose.
+    // Prose, or a slash word that names nothing — neither a command nor an address, since
+    // phase 3c puts both in the one list the caller resolves against. Said plainly rather than
+    // guessed at: running the nearest command would be an action nobody chose.
     return {
       kind: 'unknown',
       message: line.startsWith('/')
-        ? `No command named \`${parse(line)?.word ?? ''}\`. Type / for the list.`
+        ? `Nothing named \`${parse(line)?.word ?? ''}\`. Type / for the list.`
         : 'This shell has no model wired for prose. Every capability is a command — type / for the list.',
     };
   }
@@ -230,7 +301,11 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
   // route change in a browser, a rendered address in a terminal — and this module names the
   // place without knowing which.
   if (command.kind === 'address') {
-    return { kind: 'navigate', command: command.name, address: command.address, label: command.summary };
+    // `argument` since phase 3c: three of the twenty-five panels are a view OF A RUN
+    // (`/coden/bench/diff <runId>`), and dropping it here would make them the only addresses
+    // that cannot be opened at the thing they show — a jump that arrives with its subject
+    // thrown away.
+    return { kind: 'navigate', command: command.name, address: command.address, label: command.summary, argument };
   }
 
   // A form. The intent names the capability; each shell renders it in its own idiom — the
