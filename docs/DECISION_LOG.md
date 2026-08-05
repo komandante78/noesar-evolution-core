@@ -6629,3 +6629,88 @@ told, contents handed over, profile as levels) · live chain recorded in `EVIDEN
   degradation beside it.
 - **The divergence profile is still accepted and not supplied** (phase 7), and **neither shell
   renders the authoring verdict** — both shells in the same state, as rule 3 requires stating.
+
+## D-0323 — Phase 6 · if ATOM falls the product carries on, and says so (2026-08-05)
+
+**The rule was read short for a long time.** `reasoning-router.mjs` carried, in its own header,
+*«It must never fall back silently»* — and enforced the shorter sentence: a routed surface whose
+provider was unavailable raised `ReasoningUnavailable`, and the session ended. The word carrying
+the weight is **silently**. `D-0312` does not ask the product to stop; it asks it to carry on and
+to declare the degradation.
+
+**Measured before, on a really stopped daemon** (a disposable `atomd` built from
+`atom-evolution:atomd-a0025-authoring`, run on `noesar-evolution-net`, then `docker stop`ped —
+container state `exited`, not a stub written to refuse):
+
+```text
+atomd UP     plan() -> PENDING_APPROVAL, authoring authored=2   (ATOM wrote the bytes)
+atomd DOWN   expect() THREW ReasoningUnavailable
+             plan()   THREW ReasoningUnavailable   -> no task could be finished at all
+             router.degradations() -- the method did not exist; nothing recorded a fallback
+```
+
+**Measured after, same disposable daemon still `exited`:**
+
+```text
+plan()       PENDING_APPROVAL  (11.1s)
+reasoning    degraded=true provider=reference  events=3  firstAtUnix=1785945643
+             "the external provider at ... could not be reached: fetch failed"
+             "ATOM at ... could not be reached for authoring: fetch failed"
+authoring    authored=2  refused=0  degradations=2
+status line  reference (degraded: the external provider at ... could not be reached: fetch failed)
+approve()    promoted=true
+src/login.js 87684a5ec052f695 -> 82d8a5ac2a625a3b        (the bytes on disk MOVED)
+PROOF        degraded=true provider=reference  fields=10
+```
+
+**Where the decision lives, and why there is exactly one such place.** `atomAuthoringGenerator`
+refuses instead of falling back, deliberately (`D-0322`): a port that quietly asked a model
+directly would be the silent kind. So the choice is made at assembly — `declaredFallbackGenerator`
+for authoring, `ReasoningRouter#degrade` for the reasoning surfaces — where the run, the ledger,
+the Session Proof and both status lines can be told. `degradationSummary()` derives the word
+"degraded" once, for every reader, because rule 5 of `17` is about criteria each module derives
+its own way.
+
+**Two things deliberately NOT degraded.**
+
+- **A refusal is not unavailability.** ATOM reachable and saying no stands. Asking a weaker
+  provider until one says yes is how a refusal becomes advisory.
+- **A step begun with ATOM is not finished without it.** If ATOM answered earlier in the session
+  and then falls, the run stops with a **resumable checkpoint** on the error (which surface,
+  what ATOM had already answered, the reason, the instant) rather than stitching half a
+  reasoning of one quality to half of another. A refusal counts as ATOM having answered.
+
+**`NOESAR_ATOM_FALLBACK=off`** restores the pre-phase-6 behaviour for an installation that would
+rather stop. Declared, not a hidden default; four existing tests that measured the old
+classification now assert it there, where the raise still happens.
+
+**Two defects found by executing, both repaired in the phase.**
+
+1. **`Author.author()` called the generator OUTSIDE its try block.** An `AuthoringRefused` raised
+   by the *port* — which is what `atomAuthoringGenerator` does on `NOT_A_FILE`, added in phase 5b
+   — escaped `author()` entirely and threw away every file already written in the run. The rule
+   «one file the model could not answer for does not throw away the files it could» was stated in
+   a comment twenty lines below and enforced only for refusals raised *after* the call.
+2. **`server.mjs` built no Author at all.** The installed product could plan and never write a
+   byte. The assembly point is where phase 6's declaration has to be made, so it is built here.
+
+**Scope, stated rather than discovered later.** `17` names four files; this phase touched seven.
+`tools/coden-view-model.mjs` **does not exist** — the shared view model is
+`apps/webui-static/coden-view-model.js`, and `17` is corrected. `author.mjs`,
+`workspace-actions.mjs` and `server.mjs` were added because the STOP condition («with atomd
+stopped a task is carried to completion») cannot be demonstrated on a product that assembles no
+Author.
+
+**Verified in-session:** unit **1807/1808** (0 fail, 1 pre-existing skip), ESLint **332 files
+0/0/0**, browser e2e **257/266** (the 9 identical to the s323 baseline), `CE-020` 0 fail,
+`CE-021` 0 fail, **18 mutations → 18 killed** from a baseline verified green first — 3 survived
+the first round and each named a real coverage hole (a refusal not counting as an answer; the
+Session Proof's two degradation sources indistinguishable through one boolean), closed rather
+than argued away. The disposable `atomd` was removed in the same phase; **the live `atomd` was
+never stopped** (up 3 days, healthy) and **nothing was deployed**.
+
+**Improvement proposed, not executed** (skill §"migliorare attivamente"): the degradation is
+recorded per run, so nothing yet answers *how often* ATOM falls — `D-0312` asks for that
+frequency to be measured. A counter on the event ledger, surfaced beside the chip, would turn
+"it degraded" into "it degraded 4 times this week", which is the difference between a symptom
+and a signal. Cost: one aggregation over events already written.

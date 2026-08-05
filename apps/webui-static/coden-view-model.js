@@ -149,6 +149,10 @@ export function createView(overrides = {}) {
     git: '—',
     model: '—',
     context: '—',
+    // Phase 6: which provider is actually answering. `—` until a run says. The whole of
+    // `D-0312` is that the product carries on WITHOUT carrying on quietly, and a status line
+    // that cannot show the difference is where "quietly" would come back in.
+    reasoning: '—',
     sourcedNote: null,
     ...overrides,
   };
@@ -175,6 +179,28 @@ export function gitSummary(git) {
     if (git.behind) parts.push(`↓${git.behind}`);
   }
   return parts.join(' ');
+}
+
+/**
+ * The reasoning chip — built from what the engine answered, exactly like `gitSummary`, and
+ * never from a second opinion this file forms on its own.
+ *
+ * Three states, and the third is the point of phase 6:
+ *
+ *   '—'                       nothing has run yet, or the engine did not say
+ *   'atom'                    the chain worked: ATOM checked and answered
+ *   'reference (degraded: …)' ATOM was asked for, could not be reached, and the reference
+ *                             provider answered instead — with the reason, in the same words
+ *                             the Session Proof records
+ *
+ * The reason is CARRIED, not summarised into a symbol. A red dot next to "reference" would be
+ * a shell deciding how bad it is; the operator decides that, and needs the sentence to do it.
+ */
+export function reasoningSummary(reasoning) {
+  if (!reasoning || typeof reasoning !== 'object') return '—';
+  if (!reasoning.degraded) return reasoning.provider ?? 'atom';
+  const why = (reasoning.reasons ?? []).filter(Boolean)[0];
+  return why ? `reference (degraded: ${why})` : 'reference (degraded)';
 }
 
 /**

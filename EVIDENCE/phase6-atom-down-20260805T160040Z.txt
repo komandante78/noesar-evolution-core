@@ -1,0 +1,10 @@
+plan()      PENDING_APPROVAL   (11.1s)
+reasoning   degraded=true provider=reference
+            reasons: the external provider at http://172.22.0.6:8410 could not be reached: fetch failed | ATOM at http://172.22.0.6:8410 could not be reached for authoring: fetch failed
+            firstAtUnix=1785945643  events=3
+authoring   authored=2 refused=0 degradations=2
+status line "reference (degraded: the external provider at http://172.22.0.6:8410 could not be reached: fetch failed)"
+approve()   promoted=true
+src/login.js 87684a5ec052f695 -> 82d8a5ac2a625a3b
+PROOF       degraded=true provider=reference fields=10
+            the external provider at http://172.22.0.6:8410 could not be reached: fetch failed | ATOM at http://172.22.0.6:8410 could not be reached for authoring: fetch failed

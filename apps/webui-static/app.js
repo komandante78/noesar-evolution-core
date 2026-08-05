@@ -14,9 +14,23 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, detailLines, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
+  createView, say, planTurn, detailLines, reasoningSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
+// Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
+// second caller cannot start phrasing the degradation its own way. `title` carries every
+// reason in full — the chip has room for one sentence, an operator deciding what to do needs
+// them all, and truncating without saying so would be its own small silence.
+function updateReasoningChip(reasoning){
+  const chip=$('#codenReasoningChip');
+  if(!chip)return;
+  const text=reasoningSummary(reasoning);
+  chip.textContent=`reasoning ${text}`;
+  chip.classList.toggle('warn',Boolean(reasoning?.degraded));
+  chip.title=reasoning?.degraded
+    ?`ATOM was asked for and could not be reached. The reference provider answered instead.\n\n${(reasoning.reasons??[]).join('\n')}`
+    :'Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.';
+}
 
 // --- theme, applied before anything else ------------------------------------
 // This runs at the top of the module on purpose. A theme applied later — after the first
@@ -2547,6 +2561,15 @@ async function submitPlanForm(event){
     currentSimulation=null;currentApproveResult=null;currentWorkspaceRunFiles=files;
     trackWorkspaceRunForClosure(currentWorkspaceRun);
     await renderWorkspaceRun();
+    // Phase 6 (`D-0312`): the same fact, from the same field of the same answer, through the
+    // SAME shaper the terminal uses. Two shells deriving "degraded" from one response in two
+    // files is how they stop agreeing; `reasoningSummary` is imported, not reimplemented.
+    updateReasoningChip(planned.reasoning);
+    if(planned.reasoning?.degraded){
+      // Not only the chip. A chip is a state you can miss; falling back to a weaker provider
+      // is news, and news is told once, plainly, when it happens.
+      toast(`ATOM did not answer — the reference provider answered instead. ${(planned.reasoning.reasons??[]).join(' · ')}`,{kind:'error'});
+    }
     toast('Plan created — pending approval.');
   }catch(error){
     if(error.status===503)toast(`Reasoning unavailable: ${error.value?.reason??error.message}`,{kind:'error'});

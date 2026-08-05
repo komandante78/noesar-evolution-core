@@ -47,6 +47,21 @@ function envFor(endpoint, extra = {}) {
   };
 }
 
+/**
+ * The same installation, with phase 6's declared fallback turned off.
+ *
+ * Four tests below draw a distinction that is still exactly right and still worth guarding —
+ * unreachable is NOT a refusal, and a non-200 is the transport rather than the contract — but
+ * they were written when an unavailable provider always ended the call, so they measured the
+ * classification THROUGH the raise. Since `D-0312` the default is to carry on and declare it,
+ * which would make them fail for the one reason that is not a defect: the product doing what
+ * the Owner asked. They keep asserting the classification here, where the raise still happens;
+ * the default-configuration behaviour is measured by the test that follows the `simulate` one
+ * and by `atom-fallback-declared.test.mjs`, so both the old distinction and the new behaviour
+ * have something that fails when they break.
+ */
+const strict = (endpoint, extra = {}) => envFor(endpoint, { NOESAR_ATOM_FALLBACK: 'off', ...extra });
+
 test('with no configuration every surface is the reference provider', async () => {
   const routing = routingFrom({});
   assert.equal(routing.externalSelected, false);
@@ -116,7 +131,7 @@ test('a provider that cannot read the shadow refuses, and a refusal is not a pre
 });
 
 test('an unreachable provider makes simulate unavailable, never `supported: false`', async () => {
-  const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: envFor('http://127.0.0.1:1') });
+  const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: strict('http://127.0.0.1:1') });
   // The dangerous confusion: reporting the reference provider's honest "I cannot simulate"
   // for a selected provider that was simply not there. They are indistinguishable to a reader
   // and mean opposite things about whether simulation is possible at all.
@@ -124,6 +139,23 @@ test('an unreachable provider makes simulate unavailable, never `supported: fals
     () => router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/shadows/run-1'),
     (error) => error instanceof ReasoningUnavailable,
   );
+});
+
+test('a DEGRADED simulate is still distinguishable from the reference provider\'s honest answer', async () => {
+  // The same dangerous confusion the strict test above names, in the configuration that is now
+  // the default. Since phase 6 the reference provider DOES answer when ATOM is unreachable, so
+  // `supported:false` genuinely comes back — and the fact that must survive is that a reader
+  // can still tell "nothing can simulate" from "the thing that could was not there".
+  const router = new ReasoningRouter({ workspaceRoot: '/workspace', env: envFor('http://127.0.0.1:1') });
+  const outcome = await router.simulate({ steps: [], constraints: [], mode: 'safe' }, '/shadows/run-1');
+
+  assert.equal(outcome.supported, false, 'the work did not carry on');
+  assert.equal(router.degraded, true, 'this reads exactly like an installation that never selected a provider');
+  const [record] = router.degradations();
+  assert.equal(record.surface, 'simulate');
+  assert.equal(record.requestedProvider, 'atom');
+  assert.match(record.reason, /could not be reached/);
+  assert.equal(router.provenance()[0].degraded, true);
 });
 
 test('an external provider is selected only for its surfaces, and provenance says so', async () => {
@@ -156,7 +188,7 @@ test('an external provider is selected only for its surfaces, and provenance say
 
 test('an unreachable external provider is reported, never replaced by the reference one', async () => {
   // Port 1 on loopback refuses immediately: unreachable without waiting for a timeout.
-  const router = new ReasoningRouter({ env: envFor('http://127.0.0.1:1') });
+  const router = new ReasoningRouter({ env: strict('http://127.0.0.1:1') });
   const plan = router.buildPlan(
     [{ id: 'step-1', description: 'd', files: ['src/a.rs'], commands: ['cargo test'], dependsOn: [], blastRadius: router.blastRadius(['src/a.rs'], false) }],
     [], 'safe',
@@ -199,7 +231,7 @@ test('a provider that fails is not a provider that refused', async () => {
   ]) {
     const stub = await stubProvider(() => ({ status: 200, payload }));
     try {
-      const router = new ReasoningRouter({ env: envFor(stub.endpoint) });
+      const router = new ReasoningRouter({ env: strict(stub.endpoint) });
       const plan = router.buildPlan(
         [{ id: 'a', description: 'd', files: ['x'], commands: [], dependsOn: [], blastRadius: router.blastRadius(['x'], false) }],
         [], 'safe',
@@ -218,7 +250,7 @@ test('a non-200 means the request never reached the contract, so it is unavailab
       payload: { ok: false, error: { kind: 'BAD_REQUEST', reason: `status ${status}` } },
     }));
     try {
-      const router = new ReasoningRouter({ env: envFor(stub.endpoint) });
+      const router = new ReasoningRouter({ env: strict(stub.endpoint) });
       await assert.rejects(
         () => router.decompose({ id: 'a', files: ['x'], commands: [], blastRadius: router.blastRadius(['x'], false) }),
         ReasoningUnavailable,

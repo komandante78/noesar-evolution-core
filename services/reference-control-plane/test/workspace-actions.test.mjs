@@ -475,12 +475,13 @@ async function stubProvider(handler) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return { endpoint: `http://127.0.0.1:${server.address().port}`, seen, close: () => server.close() };
 }
-function externalEnv(endpoint, surfaces) {
+function externalEnv(endpoint, surfaces, extra = {}) {
   return {
     NOESAR_REASONING_MODE: 'rust-external',
     NOESAR_RUST_REASONING_ENDPOINT: endpoint,
     NOESAR_RUST_REASONING_TOKEN: 'a-token-long-enough-for-the-daemon',
     NOESAR_EXTERNAL_SURFACES: surfaces,
+    ...extra,
   };
 }
 function routedFixture(env) {
@@ -531,12 +532,31 @@ test('a selected external provider answers on the path that mints a token', asyn
 test('a selected provider that is unreachable makes plan() unavailable, never refused', async () => {
   // 422 "refused" would tell the caller their plan was rejected. Nothing was rejected — the
   // provider they chose was not there, and those are opposite facts about the same run.
-  const fx = routedFixture(externalEnv('http://127.0.0.1:1', 'expect'));
+  //
+  // Phase 6 (`D-0312`) made carrying on the DEFAULT, so this classification is asserted in the
+  // configuration that still raises — the installation that chose to stop rather than degrade.
+  // The distinction itself is unchanged, and is exactly what `NOESAR_ATOM_FALLBACK=off` buys.
+  const fx = routedFixture(externalEnv('http://127.0.0.1:1', 'expect', { NOESAR_ATOM_FALLBACK: 'off' }));
   try {
     await assert.rejects(
       () => fx.orch.plan({ request: 'write', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW }),
       (error) => error instanceof ReasoningUnavailable && !(error instanceof WorkspaceActionError),
     );
+  } finally { cleanup(fx); }
+});
+
+test('by default that same run carries on, and the answer says it degraded', async () => {
+  // The phase-6 half of the pair above, on the orchestrator rather than the router: the caller
+  // gets a plan AND is told, on the same answer, that ATOM did not produce it.
+  const fx = routedFixture(externalEnv('http://127.0.0.1:1', 'expect'));
+  try {
+    const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    assert.equal(planned.status, 'PENDING_APPROVAL', 'the session stopped instead of carrying on');
+    assert.equal(planned.reasoning.degraded, true, 'it carried on without saying so — the silent fallback');
+    assert.equal(planned.reasoning.provider, 'reference');
+    assert.ok(planned.reasoning.surfaces.includes('expect'));
+    assert.ok(planned.reasoning.reasons.some((reason) => /could not be reached/.test(reason)));
+    assert.ok(Number.isFinite(planned.reasoning.firstAtUnix), 'degraded, but the answer does not say when');
   } finally { cleanup(fx); }
 });
 

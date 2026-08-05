@@ -1,0 +1,59 @@
+noesar-evolution-phase6-atomd	Exited (0) 17 minutes ago
+noesar-evolution	Up 23 hours (healthy)
+noesar-evolution-old-coden-prose-grounding	Exited (0) 23 hours ago
+noesar-evolution-old-coden-phase5-permission-gate	Exited (0) 34 hours ago
+noesar-evolution-old-passkey-webauthn-dos-fix	Exited (0) 47 hours ago
+noesar-evolution-old-passkey-webauthn-test	Exited (0) 2 days ago
+noesar-evolution-old-single-lineage-rebuild	Exited (0) 2 days ago
+atomd	Up 3 days (healthy)
+atomd-old-a0024	Exited (137) 3 days ago
+debug-evolution-runner	Up 3 days (healthy)
+debug-evolution	Up 3 days (healthy)
+noesar-evolution-old-court-triage	Exited (0) 2 days ago
+debug-evolution-runner-old-api-targets	Exited (0) 3 days ago
+debug-evolution-old-api-targets	Exited (0) 3 days ago
+noesar-evolution-old-api-targets	Exited (0) 3 days ago
+debug-evolution-pre-sandbox	Exited (0) 3 days ago
+debug-evolution-pre-cube-memory	Exited (0) 3 days ago
+noesar-evolution-old-uid-sep	Exited (0) 3 days ago
+debug-evolution.rollback-remote-targets-20260801T172826Z	Exited (0) 3 days ago
+noesar-evolution.rollback-debug-evolution-security-root-cause-20260801T163154Z	Exited (0) 4 days ago
+atomd-old-a0023	Exited (137) 3 days ago
+atom-evolution-model	Up 4 days (healthy)
+qbittorrent	Up 5 days
+atomd.rollback-pre-a0021-20260729T154407Z	Exited (137) 7 days ago
+coden-ultra-full-product	Exited (0) 10 days ago
+coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z	Exited (0) 12 days ago
+coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z	Exited (0) 12 days ago
+noesar-coden-ultra-nllb	Exited (0) 11 days ago
+ai-lab	Exited (0) 11 days ago
+binhex-prowlarr	Up 10 days (healthy)
+sonarr	Up 10 days
+radarr	Up 10 days
+Plex-Media-Server	Exited (0) 5 days ago
+ai-lab-prev-s214b	Exited (0) 2 weeks ago
+stats-hub	Exited (0) 11 days ago
+schema-service	Exited (0) 3 weeks ago
+coden-ultra-brainlab	Exited (0) 11 days ago
+nous-simulator-engine	Exited (0) 3 weeks ago
+noesar-webui	Exited (0) 11 days ago
+coden-ultra-brainlab-phase4-bak	Exited (0) 3 weeks ago
+coden-ultra-trainer	Exited (0) 3 weeks ago
+coden-nous-train	Exited (0) 4 weeks ago
+nous-phase0-training	Exited (0) 3 weeks ago
+nova-ai	Exited (137) 5 weeks ago
+coden-benchmark-lab	Exited (0) 11 days ago
+fridayn-model-factory	Exited (143) 7 weeks ago
+noesar-fridayn-tei-embedder-v2	Exited (0) 11 days ago
+Nginx-Proxy-Manager-Official	Up 10 days
+noesar-fridayn-tei-reranker-v1	Exited (0) 4 weeks ago
+binhex-flaresolverr	Up 10 days (healthy)
+EmbyServer	Up 10 days
+noesar-core	Exited (2) 11 days ago
+noesar-dataset-factory	Exited (137) 4 weeks ago
+noesar-gateway	Exited (2) 4 weeks ago
+noesar-qdrant	Exited (143) 4 weeks ago
+noesar-db	Exited (0) 11 days ago
+Krusader	Exited (143) 4 weeks ago
+Unraid-Cloudflared-Tunnel	Up 10 days
+Cloudflare-DDNS	Up 10 days

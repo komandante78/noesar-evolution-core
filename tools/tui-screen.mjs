@@ -320,6 +320,14 @@ export function footerText(state) {
   if (state.git && state.git !== '—') parts.push(`${C.good}${state.git}${C.reset}`);
   parts.push(state.mode === 'OWNER_BYPASS' ? `${C.warn}owner bypass${C.reset}` : 'normal');
   if (state.model && state.model !== '—') parts.push(state.model);
+  // Phase 6 (`D-0312`): a degraded session says so in the status line, in WARN colour, and
+  // never scrolls away with the transcript. `atom` — the chain working — is the quiet case and
+  // is shown plainly; the point of the field is that its absence cannot be mistaken for health.
+  if (state.reasoning && state.reasoning !== '—') {
+    parts.push(String(state.reasoning).startsWith('reference')
+      ? `${C.warn}${state.reasoning}${C.reset}`
+      : state.reasoning);
+  }
   if (state.context && state.context !== '—') parts.push(`ctx ${state.context}`);
   if (state.tests) parts.push(state.tests);
   parts.push(`${STATES.safe.glyph} ${state.network ?? 'local-only'}`);

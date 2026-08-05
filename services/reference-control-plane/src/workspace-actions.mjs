@@ -51,7 +51,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
 import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
-import { ReasoningRouter, routingFrom } from './reasoning-router.mjs';
+import { ReasoningRouter, routingFrom, degradationSummary } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
 import { ShadowWorkspace, contained } from './shadow.mjs';
@@ -392,9 +392,19 @@ export class WorkspaceActionOrchestrator {
       if (error instanceof GroundingRefused) refuse(error.code, error.reason);
       // ReasoningUnavailable and WorkspaceActionError (CONSTRAINED_AWAY, thrown inside
       // #runDecisionLayer) both propagate as-is: neither is a refusal this catch invents.
+      //
+      // Phase 6: a ReasoningUnavailable that reaches here now means one of two things, and the
+      // router has already distinguished them. Either the installation set
+      // `NOESAR_ATOM_FALLBACK=off` and asked to stop, or ATOM answered earlier in this run and
+      // then fell — in which case `error.checkpoint` carries what a resume needs. Neither is
+      // re-decided here; it is passed on intact, checkpoint included.
       throw error;
     }
     const { intent, hypotheses, plan, risk, confidence, expectation, provenance, grounding } = decision;
+    // Phase 6: which surfaces asked for ATOM and were served by the reference provider. Read
+    // off the router rather than derived from `provenance`, so the reason and the instant come
+    // from where the decision was made instead of being reconstructed after the fact.
+    const reasoningDegradations = typeof provider.degradations === 'function' ? provider.degradations() : [];
     // The files the decision layer settled on — the caller's when it named any, the
     // repository's when it did not. Everything below (the recorded run, the shadow, the
     // executor, the session proof) must see the same list the plan was built from.
@@ -446,6 +456,10 @@ export class WorkspaceActionOrchestrator {
           novelty: result.novelty,
           unchangedPaths: result.unchanged,
           refusals: result.refusals,
+          // Phase 6 (`D-0312`): who actually wrote these bytes when ATOM was asked for and
+          // could not be reached. `[]` is "nothing degraded", and it is always present — a
+          // field that appears only on failure is a field a shell learns to ignore.
+          degradations: result.degradations ?? [],
           // Rule 1 of `16` §3.2, reported and not merely obeyed: a path the model tried to
           // name is on the answer, so "it never widens the set" is a claim with a number
           // beside it instead of a sentence in a comment.
@@ -478,6 +492,9 @@ export class WorkspaceActionOrchestrator {
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
       plan, expectation, files: planFiles, intent, hypotheses, risk, confidence, claims, provenance, grounding,
+      // Phase 6: kept on the RUN, because the Session Proof is assembled from the run long
+      // after the router that made these records has gone out of scope.
+      reasoningDegradations,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
@@ -504,7 +521,11 @@ export class WorkspaceActionOrchestrator {
     // `authoring` is returned, never left to be inferred. A shell that shows a plan without
     // saying whether the product wrote anything invites the operator to read paths as content,
     // which is exactly how the missing Author went unnoticed through five phases.
-    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring };
+    // Phase 6: `reasoning` is on the answer for the same reason `authoring` is — a shell that
+    // has to infer degradation from a provenance list is a shell that will not, and the
+    // product would be back to falling back in silence with the evidence technically present.
+    const reasoning = degradationSummary({ reasoning: reasoningDegradations, authoring: authoring.degradations ?? [] });
+    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning };
   }
 
   /**

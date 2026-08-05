@@ -16,6 +16,7 @@
 // without checking would be worse than STATUS_UNKNOWN.
 
 import { DECISION_SURFACES } from './session-replay.mjs';
+import { degradationSummary } from './reasoning-router.mjs';
 
 export const SESSION_PROOF_VERSION = '1.0.0';
 export const SESSION_PROOF_FIELDS = Object.freeze([
@@ -120,12 +121,26 @@ export function assembleSessionProof({ run, events }) {
   for (const name of SESSION_PROOF_FIELDS) {
     if (!(name in fields)) throw new Error(`session-proof.mjs is missing field \`${name}\` — SESS-001 requires all ten`);
   }
+  // Phase 6 (`D-0312`): the Session Proof says whether this session ran at the quality it asked
+  // for. It is a header fact, beside `status`, and NOT an eleventh field — SESS-001 freezes the
+  // ten and a proof that quietly grew one would no longer be the thing that document describes.
+  //
+  // Always present, `degraded:false` on a healthy run. The alternative — a key that appears
+  // only when something went wrong — is a key readers learn to skip, and its absence would be
+  // indistinguishable from a proof assembled by code that predates this phase.
+  const degradation = degradationSummary({
+    reasoning: run.reasoningDegradations ?? [],
+    authoring: run.authoring?.degradations ?? [],
+  });
   return {
     version: SESSION_PROOF_VERSION,
     runId: run.runId,
     status: run.status,
+    degradation,
     generatedAtUnix: Math.floor(Date.now() / 1000),
     fields,
+    // The digest covers the ten fields, as it always has. `degradation` is derived from the
+    // same run and adding it here would change every historical digest for no new information.
     digest: digest(fields),
   };
 }

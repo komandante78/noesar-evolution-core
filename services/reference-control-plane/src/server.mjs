@@ -70,6 +70,7 @@ import {
   ActiveToolRegistry, toolCatalogStatus,
 } from './tool-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
+import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
 import { AdapterGrantOrchestrator, AdapterCapabilityError, adapterCapabilityStatus } from './adapter-capability.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -208,10 +209,47 @@ const shadowsRoot = String(process.env.NOESAR_SHADOWS_ROOT ?? '').trim()
 // `currentPrivacy` is a hoisted function declaration defined further below in this module;
 // referencing it here is safe because it is only ever CALLED later, once plan()/approve() run
 // — same pattern sessionDispatch below already relies on for getShadowSnapshot.
+// Phase 6, THE ASSEMBLY POINT — the only place in this product where a fallback is chosen.
+//
+// Until now nothing here built an Author at all, so the installed product planned without ever
+// writing a byte and said so. Both generation ports exist and neither may decide this on its
+// own: `atomAuthoringGenerator` REFUSES when ATOM is unreachable (a port that quietly asked a
+// model instead would be the silent fallback the router forbids), and `openAiChatGenerator`
+// knows nothing about ATOM. The choice between them is a declaration, so it is made here,
+// where the run, the ledger, the Session Proof and both status lines can be told.
+//
+// Three installations, three behaviours, none of them a surprise:
+//
+//   no model configured          the Author is absent; plan() says why, and writes nothing
+//   a model, no ATOM             the model answers; THIS side applies all seven rules (CE-022)
+//   a model and ATOM             the chain; and if ATOM falls, the model answers, DECLARED
+function buildAuthor() {
+  const modelEndpoint = String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim();
+  const atomEndpoint = String(process.env.NOESAR_RUST_REASONING_ENDPOINT ?? '').trim();
+  // No model underneath means there is nothing to author with and nothing to fall back to.
+  // Absent beats a guess — the same posture `simulate` takes with `supported:false`.
+  if (!modelEndpoint) return null;
+  const model = openAiChatGenerator({ endpoint: modelEndpoint, model: process.env.NOESAR_AUTHORING_MODEL || null });
+  if (!atomEndpoint) return new Author({ generate: model, model: modelEndpoint });
+  const chain = declaredFallbackGenerator({
+    primary: atomAuthoringGenerator({ endpoint: atomEndpoint, token: process.env.NOESAR_RUST_REASONING_TOKEN ?? '' }),
+    fallback: model,
+    // The run carries the record and the Session Proof records it; this line is for whoever is
+    // WATCHING the installation rather than using it, to whom an API response is invisible.
+    // `logger` is declared further down this module; this arrow only RUNS at plan() time, by
+    // which point it is assigned — the same deferred-reference pattern `currentPrivacy` uses
+    // twenty lines above, and the reason this is an arrow rather than a bound reference.
+    onDegrade: (record) => logger.warn('authoring degraded to the reference model', {
+      path: record.path, reason: record.reason, at: record.at,
+    }),
+  });
+  return new Author({ generate: chain, model: `atom ${atomEndpoint} → ${modelEndpoint}` });
+}
 const workspaceActions = new WorkspaceActionOrchestrator({
   workspaceRoot: workspace, shadowsRoot,
   minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
   privacyStateFor: () => currentPrivacy(null),
+  author: buildAuthor(),
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
 // (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,

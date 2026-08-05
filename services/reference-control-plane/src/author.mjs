@@ -203,13 +203,32 @@ export class Author {
 
     for (const file of files) {
       const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts });
-      const answer = await this.#generate({
-        prompt, purpose: 'author', path: file.path,
-        // The structured form a provider that does its own checking needs. A generator that
-        // ignores these and answers from `prompt` alone is still correct — that is the
-        // installation with no ATOM under it, and `CE-022` requires it to keep working.
-        goal, step, contents: file.contents, profile, attempts,
-      });
+      let answer;
+      try {
+        answer = await this.#generate({
+          prompt, purpose: 'author', path: file.path,
+          // The structured form a provider that does its own checking needs. A generator that
+          // ignores these and answers from `prompt` alone is still correct — that is the
+          // installation with no ATOM under it, and `CE-022` requires it to keep working.
+          goal, step, contents: file.contents, profile, attempts,
+        });
+      } catch (error) {
+        // FOUND BY EXECUTING, phase 6. This call used to sit OUTSIDE the try below, so a
+        // refusal raised by the PORT — which is what `atomAuthoringGenerator` does on
+        // `NOT_A_FILE`, added in phase 5b — escaped `author()` entirely and threw away every
+        // file already written in this run. The rule two dozen lines down («one file the model
+        // could not answer for does not throw away the files it could») was stated in a comment
+        // and enforced only for refusals raised after the call. A port that refuses is one of
+        // the two shapes the loop handles, so it is handled in the same place, the same way.
+        if (!(error instanceof AuthoringRefused)) throw error;
+        refusals.push({ path: file.path, code: error.code, reason: error.reason });
+        fixtures.push({
+          path: file.path, model: this.#model, promptDigest: digest(prompt),
+          answerDigest: null, at: new Date().toISOString(), provenance: null,
+          outcome: 'refused', refusal: { code: error.code, reason: error.reason },
+        });
+        continue;
+      }
       // Two shapes are accepted, and the difference is who checked the answer.
       //
       //   a string        a raw model answer. THIS side parses it and applies every rule.
@@ -267,12 +286,19 @@ export class Author {
     const attemptDigest = digest([...contents.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([path, body]) => `${path} ${digest(body)}`).join('\n'));
 
+    // Phase 6: whatever the assembled generator had to fall back to during THIS run. A plain
+    // port has no `drain` and the list is empty, which is the same answer as "nothing
+    // degraded" and is exactly right — an installation with no ATOM configured never wanted
+    // ATOM, so it never degraded away from it.
+    const degradations = typeof this.#generate.drain === 'function' ? this.#generate.drain() : [];
+
     return {
       contents,
       unchanged,
       discarded,
       refusals,
       fixtures,
+      degradations,
       attemptDigest,
       novelty: previousAttemptDigests.includes(attemptDigest) ? 'repeat' : 'novel',
       summary: {
@@ -351,6 +377,56 @@ export function atomAuthoringGenerator({ endpoint, token = '', sessionId = null,
       checkedBy: 'atom',
     };
   };
+}
+
+/**
+ * The assembly point — where a fallback is CHOSEN, which is the only place it may be.
+ *
+ * `atomAuthoringGenerator` refuses when ATOM is unreachable, deliberately: a port that quietly
+ * asked a model directly would be the silent fallback the router's rule forbids. This function
+ * is what phase 6 adds above it — it catches exactly that refusal, asks the model underneath,
+ * and RECORDS the swap: which provider was wanted, which answered, why, and when.
+ *
+ *     ATOM reachable      →  atom answers      (checkedBy: atom, nothing recorded)
+ *     ATOM unreachable    →  the model answers (provenance `reference`, reason, instant)
+ *     ATOM said NOT_A_FILE→  the refusal stands (ATOM answered; asking a weaker provider
+ *                            until one says yes is how a refusal becomes advisory)
+ *
+ * `onDegrade` is called, not merely logged: the caller is what puts the fact on the run, in the
+ * ledger, in the Session Proof and in both status lines. A degradation nobody is told about is
+ * the one thing `D-0312` actually forbids.
+ */
+export function declaredFallbackGenerator({ primary, fallback, onDegrade = () => {} }) {
+  if (typeof primary !== 'function') throw new AuthoringUnavailable('a primary generator is required');
+  if (typeof fallback !== 'function') throw new AuthoringUnavailable('a fallback generator is required, or there is nothing to degrade to');
+  // Accumulated here and DRAINED by the Author at the end of each authoring run, so the records
+  // belong to one run and cannot bleed into the next. A shared mutable list read without
+  // draining would report the previous session's degradation on a healthy one.
+  let pending = [];
+  const generate = async (request) => {
+    try {
+      return await primary(request);
+    } catch (error) {
+      // A content refusal is ATOM having answered. Only unreachability degrades.
+      if (!(error instanceof AuthoringUnavailable)) throw error;
+      const record = Object.freeze({
+        path: request?.path ?? null,
+        requestedProvider: 'atom',
+        provider: 'reference',
+        reason: error.reason ?? error.message,
+        atUnix: Math.floor(Date.now() / 1000),
+        at: new Date().toISOString(),
+      });
+      pending.push(record);
+      onDegrade(record);
+      // The raw-string path: this side parses the answer and applies every one of the seven
+      // rules itself, because nothing checked it before this line and `CE-007` says so.
+      return fallback(request);
+    }
+  };
+  /** Hands over this run's degradations and forgets them. */
+  generate.drain = () => { const drained = pending; pending = []; return drained; };
+  return generate;
 }
 
 /**

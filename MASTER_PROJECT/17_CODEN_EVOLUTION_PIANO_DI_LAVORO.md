@@ -419,7 +419,7 @@ facilmente:
 OBIETTIVO   ATOM irraggiungibile non ferma il lavoro, e il degrado è visibile
 FILE        services/reference-control-plane/src/reasoning-router.mjs
             services/reference-control-plane/src/session-proof.mjs
-            tools/coden-view-model.mjs                    (la riga di stato lo mostra)
+            apps/webui-static/coden-view-model.js         (la riga di stato lo mostra)
             test/atom-fallback-declared.test.mjs          (nuovo)
 MISURA      PRIMA: atomd fermo ⇒ 503 reasoning_unavailable ⇒ la sessione si ferma
             DOPO:  atomd fermo ⇒ risponde il riferimento, provenienza `reference` + ragione + ora

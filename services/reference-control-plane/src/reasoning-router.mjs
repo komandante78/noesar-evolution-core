@@ -9,10 +9,21 @@
 //
 // # What this must never do
 //
-// * **It must never fall back silently.** If a surface is routed to an external provider and
-//   that provider is unavailable, the router raises `ReasoningUnavailable`. Answering with
-//   the reference provider instead would attach a plausible answer to a provenance that is a
-//   lie, and the whole point of recording provenance is to be able to trust it.
+// * **It must never fall back SILENTLY.** The word carrying the weight is *silently*, and for a
+//   long time this file enforced the shorter rule instead: a surface routed to an unavailable
+//   provider raised `ReasoningUnavailable`, and the session stopped. Measured on a really
+//   stopped daemon (`EVIDENCE/phase6-measure-before.mjs`, not a stub): `plan()` threw and no
+//   task could be finished at all. That is not what `D-0312` asks for — it asks that if ATOM
+//   falls the product CARRIES ON, and SAYS SO. So the fallback exists, and every one of them
+//   is recorded: which surface, which provider answered instead, the reason, and the instant.
+//   What is still forbidden is answering from the reference provider while reporting a
+//   provenance that says otherwise — that would attach a plausible answer to a lie, and the
+//   whole point of recording provenance is to be able to trust it.
+// * **It must never finish a step at two qualities.** A fallback is honest when the reference
+//   provider answers the WHOLE piece of work. If ATOM already answered a surface in this
+//   session and then falls, degrading the rest would stitch half a reasoning of one quality to
+//   half of another — so that case stops instead, with a resumable checkpoint on the error
+//   (`D-0312`: «un passo in corso si ferma con un checkpoint riprendibile»).
 // * **It must never become required.** With no configuration, every surface is the reference
 //   provider and this file changes nothing about how the product behaves. `09_PIANO.md` §3 is
 //   measured in that state: if "done" needed an external provider, it would not be done.
@@ -57,16 +68,51 @@ export function routingFrom(env = process.env) {
   // error the operator should see, not a line to drop quietly.
   const unknown = requested.filter((name) => !ROUTABLE.includes(name));
 
+  // `D-0312`, and the only way to turn it off is to say so. An installation that would rather
+  // stop than be served by the reference provider sets `NOESAR_ATOM_FALLBACK=off` and gets the
+  // pre-phase-6 behaviour back — declared, not a hidden default. Anything else, including the
+  // variable being absent, carries on and declares the degradation.
+  const fallback = String(env.NOESAR_ATOM_FALLBACK ?? 'declared').trim().toLowerCase();
+
   return Object.freeze({
     mode,
     endpoint: endpoint || null,
     hasToken: Boolean(token),
+    fallbackWhenUnavailable: fallback !== 'off',
     externalSurfaces: Object.freeze(external),
     unknownSurfaces: Object.freeze(unknown),
     // Stated rather than inferred from an empty list: "nothing is routed away" and "an
     // external provider was selected but has no endpoint" are different situations.
     externalSelected: mode === ReasoningMode.RUST_EXTERNAL,
     endpointMissing: mode === ReasoningMode.RUST_EXTERNAL && !endpoint,
+  });
+}
+
+/**
+ * One shape for "was this answer degraded, and how", derived in ONE place.
+ *
+ * Reasoning and authoring degrade independently — ATOM can be reachable for `expect` and gone
+ * by the time a file is written — but a session is degraded if either was, and every reader
+ * (the run, the Session Proof, both status lines) must agree on that word. Rule 5 of `17`: a
+ * criterion two modules each derive their own way is a criterion nothing measures.
+ *
+ * `reasons` is deliberately a list of sentences, not a code: what a status line shows and what
+ * a Session Proof records are the same words, so an operator who asks "why" of one and of the
+ * other cannot be given two different answers.
+ */
+export function degradationSummary({ reasoning = [], authoring = [] } = {}) {
+  const all = [...reasoning, ...authoring];
+  const at = all.map((entry) => entry.atUnix).filter((value) => Number.isFinite(value));
+  return Object.freeze({
+    degraded: all.length > 0,
+    provider: all.length > 0 ? 'reference' : 'atom',
+    requestedProvider: 'atom',
+    events: Object.freeze(all.map((entry) => Object.freeze({ ...entry }))),
+    surfaces: Object.freeze(reasoning.map((entry) => entry.surface)),
+    authoredPaths: Object.freeze(authoring.map((entry) => entry.path).filter(Boolean)),
+    reasons: Object.freeze([...new Set(all.map((entry) => entry.reason))]),
+    firstAtUnix: at.length ? Math.min(...at) : null,
+    lastAtUnix: at.length ? Math.max(...at) : null,
   });
 }
 
@@ -83,6 +129,11 @@ export class ReasoningRouter {
   #routing;
   #sessionId;
   #provenance = [];
+  #degradations = [];
+  /** Whether ATOM has actually ANSWERED in this session — set on success only, which is what
+   *  makes the difference between "ATOM was never there" (degrade) and "ATOM fell mid-step"
+   *  (stop with a checkpoint) a fact rather than a guess. */
+  #answeredExternally = [];
 
   /**
    * `sessionId` is optional and changes nothing about the answers. It lets an external
@@ -112,6 +163,18 @@ export class ReasoningRouter {
   /** Which provider answered which surface, in the order they were asked. */
   provenance() { return [...this.#provenance]; }
 
+  /**
+   * Every time this session asked for ATOM and was served by the reference provider instead.
+   *
+   * Empty is the normal case and means exactly that — not "we did not look". A caller that
+   * shows a session without reading this is showing a degraded answer as a full one, which is
+   * the silence the rule at the top of this file forbids.
+   */
+  degradations() { return this.#degradations.map((entry) => ({ ...entry })); }
+
+  /** One boolean for a status line, so a shell does not have to derive it from a list. */
+  get degraded() { return this.#degradations.length > 0; }
+
   identity() { return this.#reference.identity(); }
 
   /** Not routed: it derives a value from arguments the caller already holds. */
@@ -130,20 +193,77 @@ export class ReasoningRouter {
     this.#provenance.push({ surface, provider });
   }
 
-  async #external(surface, payload) {
+  /**
+   * `local` is the same call against the reference provider, passed as a thunk rather than
+   * rebuilt here: the fallback must run the identical arguments, and a second construction of
+   * the payload is a second place for them to drift apart.
+   */
+  async #external(surface, payload, local) {
     try {
       const value = await this.#client.call(surface, payload);
+      this.#answeredExternally.push(surface);
       this.#note(surface, 'atom');
       return value;
     } catch (error) {
       if (error instanceof ReasoningRefused) {
         // A refusal is an answer, and the provider that made it is still the one that
-        // answered. Recording it keeps the provenance honest about refusals too.
+        // answered. Recording it keeps the provenance honest about refusals too. It is
+        // emphatically NOT a fallback trigger: ATOM was reachable and said no, and asking a
+        // weaker provider until one says yes is how a refusal becomes advisory.
+        this.#answeredExternally.push(surface);
         this.#note(surface, 'atom');
         throw error;
       }
+      if (!(error instanceof ReasoningUnavailable)) throw error;
+      return this.#degrade(surface, error, local);
+    }
+  }
+
+  /**
+   * The one place a fallback is decided. Not inside `AtomClient` and not inside a generation
+   * port — both are too far down to declare anything, and a fallback nobody can see from the
+   * outside is the silent kind.
+   */
+  #degrade(surface, error, local) {
+    // An installation that chose to stop rather than degrade gets what it chose, unchanged.
+    if (!this.#routing.fallbackWhenUnavailable) throw error;
+
+    if (this.#answeredExternally.length > 0) {
+      // `D-0312`: a step begun with ATOM is not finished without it. Half a reasoning at one
+      // quality and half at another is worse than a stop, because nothing downstream can tell
+      // which half it is reading. The error carries what a resume needs, so "stops" means
+      // "stops resumably" and not "the work is lost".
+      error.checkpoint = Object.freeze({
+        resumable: true,
+        sessionId: this.#sessionId,
+        stoppedAtSurface: surface,
+        answeredExternally: Object.freeze([...this.#answeredExternally]),
+        reason: error.reason ?? error.message,
+        atUnix: Math.floor(Date.now() / 1000),
+        at: new Date().toISOString(),
+        explanation: 'ATOM answered earlier in this session and then became unreachable. Resuming with the reference provider would finish this step at a different quality from the part already done, so it stops here with everything needed to re-run it once ATOM is back (D-0312).',
+      });
       throw error;
     }
+
+    // ATOM was never reached in this session: the reference provider can answer the WHOLE of
+    // it, which is the case where carrying on is honest.
+    const value = local();
+    const record = Object.freeze({
+      surface,
+      provider: 'reference',
+      requestedProvider: 'atom',
+      reason: error.reason ?? error.message,
+      endpoint: this.#routing.endpoint,
+      atUnix: Math.floor(Date.now() / 1000),
+      at: new Date().toISOString(),
+    });
+    this.#degradations.push(record);
+    // The provenance entry says `reference`, because the reference provider is what answered —
+    // and carries the degradation beside it, so a reader cannot mistake this for a surface that
+    // was never routed anywhere in the first place.
+    this.#provenance.push({ surface, provider: 'reference', degraded: true, reason: record.reason, at: record.at });
+    return value;
   }
 
   #local(surface, run) {
@@ -156,77 +276,77 @@ export class ReasoningRouter {
     if (!this.#routes('interpret')) {
       return this.#local('interpret', () => this.#reference.interpret(request, projectRules));
     }
-    return this.#external('interpret', { request, projectRules, mapDigest: '' });
+    return this.#external('interpret', { request, projectRules, mapDigest: '' }, () => this.#reference.interpret(request, projectRules));
   }
 
   async hypothesize(intent, gathered = []) {
     if (!this.#routes('hypothesize')) {
       return this.#local('hypothesize', () => this.#reference.hypothesize(intent, gathered));
     }
-    return this.#external('hypothesize', { intent, gathered });
+    return this.#external('hypothesize', { intent, gathered }, () => this.#reference.hypothesize(intent, gathered));
   }
 
   async plan(chosen, constraints = [], mode = 'safe') {
     if (!this.#routes('plan')) {
       return this.#local('plan', () => this.#reference.plan(chosen, constraints, mode));
     }
-    return this.#external('plan', { chosen, constraints, mode });
+    return this.#external('plan', { chosen, constraints, mode }, () => this.#reference.plan(chosen, constraints, mode));
   }
 
   async decompose(step) {
     if (!this.#routes('decompose')) {
       return this.#local('decompose', () => this.#reference.decompose(step));
     }
-    return this.#external('decompose', { step });
+    return this.#external('decompose', { step }, () => this.#reference.decompose(step));
   }
 
   async expect(plan) {
     if (!this.#routes('expect')) {
       return this.#local('expect', () => this.#reference.expect(plan));
     }
-    return this.#external('expect', { plan });
+    return this.#external('expect', { plan }, () => this.#reference.expect(plan));
   }
 
   async constrain(plan, policy) {
     if (!this.#routes('constrain')) {
       return this.#local('constrain', () => this.#reference.constrain(plan, policy));
     }
-    return this.#external('constrain', { plan, policy });
+    return this.#external('constrain', { plan, policy }, () => this.#reference.constrain(plan, policy));
   }
 
   async classify(plan) {
     if (!this.#routes('classify')) {
       return this.#local('classify', () => this.#reference.classify(plan));
     }
-    return this.#external('classify', { plan });
+    return this.#external('classify', { plan }, () => this.#reference.classify(plan));
   }
 
   async confidence(plan, results = []) {
     if (!this.#routes('confidence')) {
       return this.#local('confidence', () => this.#reference.confidence(plan, results));
     }
-    return this.#external('confidence', { plan, results });
+    return this.#external('confidence', { plan, results }, () => this.#reference.confidence(plan, results));
   }
 
   async evidence(claim) {
     if (!this.#routes('evidence')) {
       return this.#local('evidence', () => this.#reference.evidence(claim));
     }
-    return this.#external('evidence', { claim });
+    return this.#external('evidence', { claim }, () => this.#reference.evidence(claim));
   }
 
   async cancel(plan) {
     if (!this.#routes('cancel')) {
       return this.#local('cancel', () => this.#reference.cancel(plan));
     }
-    return this.#external('cancel', { plan });
+    return this.#external('cancel', { plan }, () => this.#reference.cancel(plan));
   }
 
   async fixtures(sessionId) {
     if (!this.#routes('fixtures')) {
       return this.#local('fixtures', () => this.#reference.fixtures(sessionId));
     }
-    return this.#external('fixtures', { sessionId });
+    return this.#external('fixtures', { sessionId }, () => this.#reference.fixtures(sessionId));
   }
 
   /**
@@ -242,7 +362,7 @@ export class ReasoningRouter {
     if (!this.#routes('simulate')) {
       return this.#local('simulate', () => this.#reference.simulate(plan, shadowWorkspace));
     }
-    return this.#external('simulate', { plan, shadowWorkspace });
+    return this.#external('simulate', { plan, shadowWorkspace }, () => this.#reference.simulate(plan, shadowWorkspace));
   }
 }
 
