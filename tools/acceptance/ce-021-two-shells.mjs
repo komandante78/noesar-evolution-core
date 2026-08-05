@@ -257,6 +257,37 @@ try {
   check(socketOnly.length === 3,
     'the asymmetry between the shells is exactly the known one', `socket-only: ${socketOnly.join(', ')}`);
 
+  // 5b — phase 1 of `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md`: the SAME SENTENCE,
+  //      with no file named, planned from each shell, must reach the same files.
+  //
+  //      Every other check here names its files, so none of them ever exercised the path where
+  //      the REPOSITORY chooses — which is exactly where the two shells had drifted. `D-0303`
+  //      made `files` optional; the browser was updated and the line shell went on refusing
+  //      client-side, before the request could reach the engine. A probe that always names its
+  //      files cannot see that, and for two sessions it did not.
+  //
+  //      Placed before the logout below on purpose: this one needs both sessions alive.
+  const prose = 'restore the session token when the workspace reloads';
+  const fromTerminal = await terminalAgain.call('workspace.plan', { request: prose, files: [] });
+  const fromBrowser = await browserCommand('workspace.plan', { request: prose, files: [] });
+  const browserPlan = fromBrowser.json?.result ?? {};
+
+  check(Boolean(fromTerminal.runId) && Boolean(browserPlan.runId),
+    'a sentence with no file named is planned by both shells',
+    `terminal ${fromTerminal.runId ? 'ok' : 'REFUSED'}, browser ${browserPlan.runId ? 'ok' : 'REFUSED'}`);
+
+  const terminalFiles = [...(fromTerminal.grounding?.selected ?? [])].sort();
+  const browserFiles = [...(browserPlan.grounding?.selected ?? [])].sort();
+  check(terminalFiles.length > 0 && JSON.stringify(terminalFiles) === JSON.stringify(browserFiles),
+    'the same sentence reaches the same files from either shell',
+    `${terminalFiles.length} file(s): ${terminalFiles.join(', ') || '(none)'}`);
+
+  // The provenance travels with them: a shell showing these paths without saying the engine
+  // searched for them would invite approval under a false premise.
+  check(fromTerminal.grounding?.derived === true && browserPlan.grounding?.derived === true,
+    'both shells are told the file list was derived, not named',
+    `terminal derived=${fromTerminal.grounding?.derived}, browser derived=${browserPlan.grounding?.derived}`);
+
   // 6 — the same thing in the other direction, with the browser SIGNED OUT rather than
   //     merely quiet: the terminal picks up work whose originating session no longer exists.
   const startedInBrowser = await browserCommand('workspace.plan', {

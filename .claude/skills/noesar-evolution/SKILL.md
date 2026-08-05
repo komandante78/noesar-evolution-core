@@ -182,6 +182,70 @@ Se hai poco contesto: `09_PIANO.md` §1 dice **dove siamo davvero, misurato**, e
 (inglese canonico) resta valida per il codice e per gli artefatti prodotti; la traduzione
 canonica del progetto si fa **dopo** l'approvazione dei contenuti, mai prima.
 
+## 🎯 IL PROGRAMMA ATTIVO — CodeN Evolution, e i due documenti che lo governano
+
+**Deciso dall'Owner il 2026-08-05.** Il lavoro in corso è **CodeN Evolution**, e vive in due
+documenti che si leggono **prima di qualunque altra cosa** quando la sessione lo tocca:
+
+| Documento | Cosa dà |
+|---|---|
+| `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` | **cosa deve fare** (§0, in chiaro) e le decisioni `D-0304`…`D-0314` |
+| `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` | **le 8 fasi**, ognuna con contratto, misura e condizione di stop |
+
+**Il requisito dell'Owner, in una riga:** CodeN Evolution deve **poter modificare e creare ciò
+che l'Owner vuole**, raggiungibile con `ssh` dalla rete scrivendo `coden_evolution`, e la WebUI
+**è** la TUI resa in un browser — non una seconda interfaccia.
+
+**La catena del ragionamento, che non si rinegozia:** qualsiasi modello sotto → **ATOM** controlla
+e rigenera → **ATOM è ciò che risponde**, su Chat, CodeN Evolution e TUI. Il modello è
+intercambiabile, ATOM no, e **ATOM resta fuori da git**. Se ATOM cade il prodotto continua sul
+modello **dichiarandolo** (`D-0312`) — mai in silenzio.
+
+**Il buco che il programma esiste per chiudere:** nessuna superficie del prodotto produce il
+contenuto di un file. L'esecutore scrive ciò che il chiamante gli passa
+(`workspace-actions.mjs:537`). Tutto l'apparato di autorizzazione e prova è costruito attorno a
+un cambiamento che l'Owner deve scrivere a mano.
+
+### Le cinque regole contro l'errore che questo progetto commette davvero
+
+Non sono generiche: ognuna nasce da un fallimento **misurato in questo repository**.
+
+1. **Apri `17`, trova la fase corrente, scrivi il contratto a sei righe PRIMA di toccare un
+   file.** Se la lista dei file non si riesce a scrivere prima, la fase non è scoperta: si
+   divide e lo si dice. *(Perché: le 5 fasi di luglio hanno lasciato fuori tre Card e nessuno
+   se n'è accorto, perché la consegna non era scritta prima di cominciare.)*
+
+2. **Non dichiarare funzionante ciò che non hai eseguito in questa sessione** — soprattutto ciò
+   che "ovviamente funziona" perché il codice sembra dirlo. *(Perché: la pagina diceva di
+   eseguire un client che non era nell'immagine; `plan()` non restituiva `status` ed entrambe le
+   shell lo inventavano; un verdetto TLS è stato inventato su una sonda che la policy aveva
+   rifiutato.)*
+
+3. **Se costruisci per una shell, dichiara lo stato dell'altra nella stessa risposta** — sempre,
+   anche quando non l'hai toccata. *(Perché: s320 ha cablato la prosa nel browser e non nel
+   terminale, senza dirlo, contro «le due shell non divergono in nessun punto».)*
+
+4. **Prima di rimuovere, prova che il sostituto funziona. Non dopo.** *(Perché: la fase 3
+   rimuove 25 pannelli fissi contando che siano raggiungibili come indirizzi — e "l'address book
+   ne dichiara 25" non è la stessa cosa che averli aperti tutti e venticinque.)*
+
+5. **Un criterio che nessuna riga di matrice misura NON è chiuso**, per quanto il documento lo
+   affermi. Se manca la riga, la si aggiunge. *(Perché: «le due shell non divergono in nessun
+   punto» è scritto dal 26 luglio, mai applicato, e niente lo faceva fallire. Ed è la stessa
+   ragione per cui nessuno aveva notato il buco della generazione: 24 righe misuravano il
+   cambiamento, **nessuna chiedeva chi lo avesse scritto**.)*
+
+### Chiusura di ogni fase — tre righe, mai di più
+
+```text
+FATTO        cosa è vero adesso che prima non lo era, con la misura
+NON FATTO    cosa era in questa fase e non è stato consegnato, e perché
+PROSSIMA     la fase successiva, e la prima cosa da misurare quando si apre
+```
+
+`NON FATTO` non può essere vuoto senza dirlo. È la stessa regola che il prodotto impone a sé
+stesso nel rapporto finale (`CE-019`), e vale per chi lo costruisce.
+
 ## The cycle — mandatory, ordered, no step skipped
 
 Every phase executes exactly these steps, in this order:

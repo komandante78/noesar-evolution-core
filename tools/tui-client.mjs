@@ -39,7 +39,8 @@ const defaultSocketPath = resolve(here, '..', '.workspace', 'tui.sock');
 const socketPath = process.argv[2] ?? process.env.NOESAR_TUI_SOCKET_PATH ?? defaultSocketPath;
 
 const HELP = `Commands:
-  plan                  start a new plan — prompts for a goal, then files (path + contents)
+  plan <what you want> plan it — say it in prose; the repository finds the files
+  plan                  same, but asks for the goal, then lets you name files yourself
   simulate <runId>      ask what a pending plan would do, without executing it
   approve <runId>       approve a pending plan (executes into the shadow, promotes if clean)
   reject <runId> [why]  reject a pending plan
@@ -168,16 +169,37 @@ async function login(reader, session) {
   return confirmed.user;
 }
 
-async function runPlanFlow(reader, session) {
-  const goal = await question(reader, 'Goal: ');
+// `plan <prose>` — the request is the sentence, and which files it touches is the engine's
+// business.
+//
+// This refused, client-side, whenever no file had been named: *"the reference reasoning has no
+// model and cannot invent a target from prose alone"*. That sentence was true when it was
+// written, and the engine outgrew it (`D-0303`): `files` is optional, and an empty list is a
+// request to LOOK — `#runDecisionLayer` asks the repository which files the interpreted goal
+// points at (`request-grounding.mjs`). The browser was updated and this shell was not, so the
+// line shell could not plan at all while the full-screen shell had been sending `files: []`
+// since s319. Two shells, one of them wired — exactly what `06_CODEN_EVOLUTION.md` §1 forbids,
+// and invisible because nothing compared them.
+//
+// Naming files by hand stays possible: it is a SUPERSET of what the engine now does for
+// itself, and a caller who already knows the target should not be made to guess along with it.
+// It is only offered when no prose came with the verb, so `plan <prose>` stays ONE gesture
+// instead of a sentence followed by an interrogation.
+async function runPlanFlow(reader, session, request = '') {
+  const typed = String(request ?? '').trim();
+  const goal = typed || (await question(reader, 'Goal: ')).trim();
+  if (!goal) { console.log('No request — nothing to plan.'); return; }
+
   const files = [];
-  for (;;) {
-    const path = await question(reader, 'File path (blank to finish): ');
-    if (!path.trim()) break;
-    const contents = await readMultiline(reader, `Contents of ${path}:`);
-    files.push({ path: path.trim(), contents });
+  if (!typed) {
+    for (;;) {
+      const path = await question(reader, 'File path (blank to let the repository choose): ');
+      if (!path.trim()) break;
+      const contents = await readMultiline(reader, `Contents of ${path}:`);
+      files.push({ path: path.trim(), contents });
+    }
   }
-  if (!files.length) { console.log('No files named — nothing to plan. The reference reasoning has no model and cannot invent a target from prose alone.'); return; }
+
   const planned = await session.call('workspace.plan', { request: goal, files });
   console.log(`\nrunId: ${planned.runId}`);
   // The engine's word for the state, not this client's. This line printed the constant
@@ -186,7 +208,23 @@ async function runPlanFlow(reader, session) {
   console.log(`status: ${planned.status ?? '—'}`);
   console.log(`risk: ${planned.risk.overall}`);
   console.log(`confidence: ${planned.confidence.value.toFixed(2)}`);
-  console.log(`files: ${files.map((file) => file.path).join(', ')}\n`);
+
+  // Which files, and WHO chose them. The engine returns `grounding` precisely so that a shell
+  // cannot show a derived list as though a person had named it — `null` means the caller named
+  // them, which is the honest value: nothing was derived.
+  const grounding = planned.grounding ?? null;
+  const chosen = grounding?.derived ? (grounding.selected ?? []) : files.map((file) => file.path);
+  console.log(`files: ${chosen.join(', ') || '(none)'}`);
+  if (grounding?.derived) {
+    console.log(`  chosen by the repository from ${grounding.considered} candidate(s), on: ${(grounding.terms ?? []).join(', ') || '—'}`);
+    // An empty overlap is true of a hallucination AND of a good paraphrase, so it is reported
+    // as a signal for whoever approves — never resolved here into a verdict this shell has no
+    // standing to reach.
+    if (grounding.goalRelatedToRequest === false) {
+      console.log('  ⚠ the interpreted goal shares no searchable word with what you asked — read the plan before approving');
+    }
+  }
+  console.log('');
 }
 
 function printJson(label, value) {
@@ -479,7 +517,7 @@ export async function dispatchCommand(reader, session, line, state) {
   switch (command) {
     case '': return true;
     case 'help': console.log(HELP); return true;
-    case 'plan': await runPlanFlow(reader, session); return true;
+    case 'plan': await runPlanFlow(reader, session, arg); return true;
     case 'simulate': printJson('simulation', await session.call('workspace.simulate', { runId: arg })); return true;
     case 'approve': printJson('result', await session.call('workspace.approve', { runId: arg })); return true;
     case 'reject': {

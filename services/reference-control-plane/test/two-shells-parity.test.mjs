@@ -207,4 +207,62 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     const excluded = ROLES.filter((role) => !RolePermissions[role]?.has('coden.plan'));
     assert.deepEqual(excluded.sort(), ['client_restricted', 'service_account', 'user']);
   });
+
+  // ── Phase 1 of `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` ──────────────────
+  //
+  // The defect this guards was not a missing feature: it was ONE SHELL WIRED OF TWO, with
+  // nothing comparing them. `D-0303` made `files` optional on `workspace.plan` — an empty list
+  // is a request to look, and the repository chooses. `apps/webui-static/` and
+  // `tools/tui-fullscreen.mjs` were updated; the line shell in `tools/tui-client.mjs` was not,
+  // and refused CLIENT-SIDE with a sentence the engine had outgrown. It never reached the
+  // engine, so no engine test could have seen it.
+  //
+  // The line shell is not a corner: `tools/acceptance/ce-021-two-shells.mjs` drives this
+  // client with piped stdin, which is exactly the branch that was broken.
+  describe('prose reaches the engine from every shell (phase 1)', () => {
+    const toolsRoot = join(root, '../../tools');
+    const tuiClientSource = readFileSync(join(toolsRoot, 'tui-client.mjs'), 'utf8');
+    const tuiFullscreenSource = readFileSync(join(toolsRoot, 'tui-fullscreen.mjs'), 'utf8');
+    const appSource = readFileSync(join(root, '../../apps/webui-static/app.js'), 'utf8');
+
+    test('no shell refuses a plan locally for naming no file', () => {
+      // The exact sentence, and the shape of any successor: a shell that decides on its own
+      // that a fileless request cannot be planned is deciding something that belongs to the
+      // engine, and it will be wrong the next time the engine changes.
+      for (const [name, source] of [
+        ['tools/tui-client.mjs', tuiClientSource],
+        ['tools/tui-fullscreen.mjs', tuiFullscreenSource],
+        ['apps/webui-static/app.js', appSource],
+      ]) {
+        assert.ok(!/console\.log\('No files named/.test(source),
+          `${name} still refuses to plan when no file is named`);
+      }
+    });
+
+    test('the line shell passes the typed prose through instead of dropping it', () => {
+      // `case 'plan': await runPlanFlow(reader, session);` dropped `arg` on the floor, which is
+      // why the verb could only ever start an interrogation. One argument, and the whole gesture.
+      assert.match(tuiClientSource, /case 'plan': await runPlanFlow\(reader, session, arg\)/,
+        'the line shell no longer forwards the typed request to the plan flow');
+      assert.match(tuiClientSource, /session\.call\('workspace\.plan', \{ request: goal, files \}\)/,
+        'the line shell no longer sends the goal with its (possibly empty) file list');
+    });
+
+    test('the full-screen shell still sends an empty file list with the prose', () => {
+      // It has done this since s319 and was the only shell that did. Naming it here means a
+      // future shell inherits the check instead of inheriting the gap.
+      assert.match(tuiFullscreenSource, /\['workspace\.plan', \{ request: argument, files: \[\] \}\]/,
+        'the full-screen shell no longer sends an empty file list with the prose');
+    });
+
+    test('a derived file list is shown as derived, never as a choice someone made', () => {
+      // `grounding` exists so a shell cannot pass off the engine's search as a human's
+      // decision — the two deserve different scrutiny. A shell printing the paths without the
+      // provenance invites approval under a false premise.
+      assert.match(tuiClientSource, /planned\.grounding/,
+        'the line shell prints a file list without saying who chose it');
+      assert.match(tuiClientSource, /goalRelatedToRequest === false/,
+        'the line shell no longer surfaces a goal unrelated to the request');
+    });
+  });
 });
