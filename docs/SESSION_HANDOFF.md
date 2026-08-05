@@ -1,66 +1,67 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3a di CodeN Evolution (`D-0317`, `6bb7faf`)
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 3b (`D-0318`, `d6fc9a3`)
 >
-> **Il programma attivo è CodeN Evolution.** Si leggono, in quest'ordine e sono due file soli:
-> `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 dice cosa deve fare)
-> e `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
-> `noesar-evolution` è obbligatoria e porta 5 regole anti-errore.
+> **Programma attivo: CodeN Evolution.** Due file soli, in quest'ordine:
+> `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
+> `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
+> `noesar-evolution` è obbligatoria: 5 regole anti-errore, e il contratto a 6 righe si scrive
+> PRIMA di toccare un file.
 >
-> ### Fatto in 3a
+> ### Fatto
 >
-> Le **quattro regioni** del terminale rese nel browser (riga di stato = i chip `.coden-bar`
-> che c'erano già, trascrizione, prompt, menu) sullo **stesso** `planTurn` di
-> `coden-view-model.js`. `/` apre **l'unico menu del prodotto** a quattro gruppi — 29 voci:
-> 14 lavoro, 11 applicazioni, 3 configurazione, `/logout` — da **una fonte sola**
-> (`agent-commands.js`), filtrate per permesso in **entrambe** le shell. Per farlo l'handshake
-> del socket ora restituisce i permessi dell'account: prima solo il browser sapeva cosa il
-> proprio account potesse fare, quindi solo il browser poteva filtrare.
+> **3a** (`D-0317`, `6bb7faf`) — le quattro regioni del terminale rese nel browser, e `/` come
+> unico menu del prodotto a quattro gruppi, da una fonte sola, filtrato per permesso in
+> entrambe le shell.
 >
-> ### Verificato in sessione, ogni numero prodotto qui
+> **3b** (`D-0318`, `d6fc9a3`) — i dieci indirizzi che dicevano «nessuna fonte su questo
+> trasporto» hanno metodo e vista. **Zero** ne restano. Un metodo solo per i sette
+> pannelli-elenco (il browser li riempie da una rotta sola), cap a sei **dichiarato**. E
+> `closure` si registra anche dal terminale: la **prima scrittura** che il socket acquista in
+> questo programma, come **form** a tre campi con un copione solo e due rese.
 >
-> unit **1743/1744** (0 fail, 1 skip preesistente) da una baseline di 1718/1719 · ESLint **322
-> file 0/0/0** · **15 mutazioni → 15 uccise** · browser e2e **252/261**, con i 9 fallimenti
-> **identici byte a byte** alla baseline pre-modifica misurata in sessione con `git stash` ·
-> la shell del **terminale guidata davvero** con stream iniettati, **13/13**.
+> ```text
+> indirizzi CodeN   PRIMA  8 viste · 2 note · 5 testi dichiarati · 10 «nessuna fonte»
+>                   DOPO  16 viste · 2 note · 7 testi dichiarati ·  0 «nessuna fonte»
+> ```
 >
-> ### ⚠️ NON fatto in 3a — dichiarato, non dimenticato
+> ### ⏭ PROSSIMA AZIONE — Fase 3c, ora SBLOCCATA
 >
-> - **Il cruscotto resta in piedi.** È il punto della divisione 3a/3b/3c: il terminale rende
->   **8 dei 25 indirizzi** CodeN, e toglierlo prima che i **17** restanti abbiano un metodo e
->   una vista renderebbe `CE-034` falso di diciassette.
-> - **La barra degli indirizzi in alto resta.** §4b.4 regola 1 dice che sparisce quando il
->   browser prende la forma del terminale — va con **3c**, insieme al cruscotto che naviga.
-> - **Il terminale non ha ancora una vista per una destinazione**: `/memory` la nomina con
->   l'etichetta della lista servita e dichiara di non averla. È il lavoro di **3b**.
-> - **`/skills` non esiste nel menu** benché §4b.4 lo disegni: il prodotto non ha una
->   superficie skill (misurato). Un test la tiene assente finché non ne esiste una.
+> **Rimuovere il cruscotto e la barra degli indirizzi in alto.** È l'ultimo atto, e adesso è
+> lecito perché niente nel browser raggiunge più un pannello che il terminale non raggiunge —
+> il che era esattamente la premessa falsa che aveva fermato la fase 3 il 2026-08-05.
 >
-> ### ⏭ PROSSIMA AZIONE — Fase 3b
+> **Prima cosa da misurare all'apertura:** aprire tutti e 25 gli indirizzi **dal prompt**, uno
+> per uno, in entrambe le shell. `17` lo mette come passo 1 non negoziabile della fase, e la
+> regola 4 della skill dice perché: prima di rimuovere, si prova che il sostituto funziona —
+> non dopo. «L'address book ne dichiara 25» non è la stessa cosa che averli aperti tutti.
 >
-> Dare **metodo e vista** ai 17 indirizzi CodeN che il terminale non rende. **Non è lavoro di
-> interfaccia:** alcuni non hanno un *metodo* sul protocollo, quindi sono voci nuove in
-> `SESSION_METHOD_POLICY` con il loro permesso e il loro gate. Prima cosa da misurare
-> all'apertura: quali dei 17 hanno già un metodo e quali no.
+> **⚠️ Da non perdere in 3c:** la barra degli indirizzi sparisce (§4b.4 regola 1: una `/` sola),
+> ma i 25 indirizzi restano raggiungibili dal prompt. Rimuovere la barra **e** basta lascerebbe
+> il prodotto senza navigazione.
 >
-> I 17: banco — tests · preview · documentation · problems · closure · projects · recent ·
-> tasks · agents · tools · plugins · history · favourites (13, più `terminal` che ha solo una
-> nota di trasporto); agente — conversation · activity (e `plan`, nota di trasporto).
+> ### Verificato in sessione (ogni numero prodotto qui)
 >
-> **Non deployato.** Il container in produzione è invariato su
-> `noesar-evolution:coden-prose-grounding-v2` — verificato healthy, `/livez`+`/healthz`
-> 200/200 a fine fase. **Pushato** su `origin/main`: `ea2d391..6bb7faf`.
+> unit **1754/1755** (0 fail, 1 skip preesistente) · ESLint **322 file 0/0/0** · **21 mutazioni
+> su 3a+3b, 21 uccise** (sei sopravvissute al primo giro, ognuna ha prodotto un test vero, non
+> una nota) · browser e2e **252/261**, i 9 fallimenti **identici byte a byte** alla baseline
+> pre-modifica misurata in sessione con `git stash` · la shell del terminale **guidata** con
+> stream iniettati, 13/13 in 3a e 13/13 attraverso il form di 3b.
 >
-> **⚠️ Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd`
-> la produce sempre), e uno script che rilegge `docker inspect` deve accettarla. Generare e
-> validare il comando **prima** di fermare il container — l'ordine sbagliato è costato ~80 s di
-> downtime in s320.
+> ### ⚠️ Non deployato
 >
-> **Resta aperto e non riparabile senza una scelta di contenuto dell'Owner:** la deriva
-> `MASTER_PROJECT/` vs `docs/progetto-italiano/` (7 file su 14; `PROVENANCE.sha256` non
-> descrive nessuna delle due). **Gruppo 6** (pentest indipendente) resta l'unico gate che tiene
-> `productionReady=false`, e non si chiude scrivendo codice.
-
+> Il container in produzione è invariato su `noesar-evolution:coden-prose-grounding-v2` —
+> verificato healthy, `/livez`+`/healthz` 200/200. **Pushato** su `origin/main`.
+> **Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd` la
+> produce sempre); generare e validare il comando **prima** di fermare il container — l'ordine
+> sbagliato è costato ~80 s di downtime in s320.
+>
+> ### Resta aperto, e non si chiude scrivendo codice
+>
+> **Gruppo 6** (pentest indipendente esterno) è l'unico gate che tiene `productionReady=false`.
+> La deriva `MASTER_PROJECT/` vs `docs/progetto-italiano/` (7 file su 14) è una scelta di
+> contenuto dell'Owner.
+>
 ---
 
 
