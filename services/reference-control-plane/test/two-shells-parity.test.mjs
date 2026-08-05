@@ -109,6 +109,16 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
       // fact it cannot read over HTTP. That is the sideways widening `D-0302` closed, and a
       // status-line field is not worth re-opening it for.
       'coden.gitStatus': 'coden.plan',
+      // Phase 3b. The seven bench list panels, socket-only for the same reason as the rest:
+      // the browser fills all seven from `GET /api/v1/ai/bootstrap`, so bridging this would be
+      // a second door onto one room. `workspace.read` is what that route already asks.
+      'coden.benchLists': 'workspace.read',
+      // The closure register. TWO entries rather than one, and that is the point: `GET
+      // /api/v1/closures` asks `workspace.read` and `POST` asks `workspace.write`, so folding
+      // them together would hand a reader the power to RECORD a closure over the socket that
+      // the browser refuses them — precisely the sideways widening `D-0302` closed.
+      'closure.list': 'workspace.read',
+      'closure.record': 'workspace.write',
     });
   });
 

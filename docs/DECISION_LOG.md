@@ -6099,3 +6099,103 @@ product does not currently keep for the menu, and a decision about whether that 
 per-device or per-account. **Benefit:** the group budget stops being a truncation and becomes a
 ranking. Not executed here: it is a new piece of state, which is a decision for the Owner and
 not a side effect of a graphics phase.
+
+---
+
+## D-0318 · CodeN Evolution phase 3b: the ten stranded addresses get a method and a view, and a closure can be recorded from a terminal — 2026-08-05
+
+`MASTER_PROJECT/17` phase 3b. Measured before writing anything, and it **resized the phase**:
+the "seventeen addresses with no view" recorded in `D-0317` are seventeen without a *method*,
+but seven of them already answered honestly — 2 transport notes and 5 serving the panel's own
+declared text. **Ten** answered `no source over this transport`, which is a true sentence and
+not a view. Ten was the work.
+
+```text
+PRIMA   8 viste reali · 2 note di trasporto · 5 testi dichiarati · 10 «nessuna fonte»
+DOPO   16 viste reali · 2 note di trasporto · 7 testi dichiarati · 0 «nessuna fonte»
+```
+
+### The decisions
+
+1. **ONE method for the seven list panels, not seven.** Measured: the browser fills Projects,
+   Recent, Sessions, Tasks, Agents, Tools and History from a single route
+   (`GET /api/v1/ai/bootstrap`). Seven socket methods would be seven chances for the two shells
+   to disagree about which snapshot they are looking at, and the browser does not take seven
+   either. `coden.benchLists`, gated on the `workspace.read` that route already asks.
+2. **The lists are capped at six, and the cap is declared.** Not a transport preference: the
+   browser's own renderer slices to six, so a terminal showing sixty would be the two shells
+   disagreeing about what the panel *is*. The total travels alongside, so `showing 2 of 9` is
+   said rather than implied.
+3. **`closure.list` and `closure.record` are two entries, not one.** `GET /api/v1/closures`
+   asks `workspace.read` and `POST` asks `workspace.write`; folding them together would hand a
+   reader the power to record a closure over the socket that the browser refuses them — the
+   sideways widening `D-0302` closed.
+4. **`/closure` is a FORM, and forms are a new intent kind.** `UI-036` requires a closure to
+   name what was left undone *or* state that nothing was, plus the residual risk, and the
+   register refuses one that does neither. Three fields with a mandatory refusal clause do not
+   fit on a prompt line. One field script (`FORMS` in `coden-view-model.js`), two renditions:
+   the browser opens the panel that already holds the form; the terminal walks the fields.
+   A browser that re-asked the three questions at its prompt would be a second form ten pixels
+   above the real one.
+
+### Three defects found, two of them by running it
+
+- **An empty answer inside a form was dropped, and shifted every later answer up a field.**
+  `submit()` opened with `if (!typed) return draw();` — correct for a prompt taking *commands*,
+  wrong inside a form, where an empty line is an answer and the field it most often lands on is
+  the one asking what was NOT done. It did not lose one answer: a driven run produced a closure
+  with `notDone` holding the risk and `residualRisk` holding the next command the user typed.
+  **A record whose entire purpose is honesty, quietly filled with the wrong content.** Fixed by
+  ordering; guarded by driving the shell, after a first guard that asserted the *order of two
+  source lines* was walked past by a mutation that re-introduced the early return inside the
+  form branch. A positional assertion describes one way to reintroduce a defect, not the defect.
+- **Plugins and Favourites declared their emptiness in the wrong class.** Both carried a real
+  statement — there is no plugin registry, there is no way to pin anything (measured: no route,
+  no store, no handler) — inside a `bench-nav-list empty-state` div, the class the Navigator's
+  *data* lists wear while waiting to be filled. `coden-address-book.mjs` reads that class
+  precisely to tell a statement from a placeholder, so it could not see them, and the terminal
+  said `no source over this transport` about two panels that had already said there is no
+  source. Also: **"Nothing pinned yet."** — the "yet" promising a feature that does not exist,
+  which is the plausible frame this product treats as worse than an error.
+- **A flaky check in the verification instrument.** `jumping to a panel does not refetch it`
+  sampled its counter without waiting for the page to go quiet, so requests from the previous
+  step landed between the two samples and the jump was blamed for two fetches it never made.
+  It cost a real investigation during this phase. Fixed with an idle wait — a check that fails
+  at random is one people learn to re-run rather than believe, which is worse than not having
+  it.
+
+### Verified — every number produced in this session
+
+- **Unit 1754/1755** (0 fail, 1 pre-existing skip), from 1743/1744 at the end of 3a.
+- **ESLint 322 files, 0/0/0.**
+- **6 mutations → 6 kills.** Three (`M-16`, `M-19`, `M-20`) **survived first**, and each one
+  produced a real test rather than a note: an empty form answer being dropped again, the cap
+  being removed, and every bench panel showing whichever list came back first — that last one
+  invisible to any test that stubs a single list, which is why the new test stubs three.
+- **Browser e2e 252/261**, the nine failures byte-identical to the pre-change baseline measured
+  in this session. One run reported a tenth; it was the flaky check above, and it is repaired
+  rather than re-run until green.
+- **The terminal shell DRIVEN through the whole closure form** — 13 checks: refusal before the
+  first question when no run is named, the three questions in order, the record reaching the
+  engine with the right fields, the register's own refusal surfaced as itself, `nothing` accepted
+  as the explicit statement, `/cancel` abandoning it, and the shell taking commands afterwards.
+
+### What 3b did NOT do
+
+- **The bench still stands, and so does the top address bar.** Both belong to **3c**, which is
+  now unblocked: nothing in the browser reaches a panel the terminal cannot.
+- **`plan` and `terminal` remain transport notes**, not views. "You are in it" and "use `plan`
+  to start one" are the honest answers in a terminal; a view would be inventing a screen the
+  browser does not have either.
+- **The browser's closure form is unchanged.** `/closure` opens it and fills the run; the
+  fields, the refusal and the checkbox are the ones that were already there.
+
+### The improvement this phase records
+
+`coden.benchLists` returns a snapshot with no cursor: six of nine is shown, and the other three
+are unreachable from a terminal. The better form is a `page` parameter on the same method, so a
+terminal can walk a list the browser only ever samples. **Cost:** a pagination contract on a
+method that currently has none, plus a decision about whether the browser's six-item panel grows
+a control to use it. **Benefit:** the cap stops being a ceiling and becomes a window. Not
+executed here — it changes what the browser's panel *is*, which is a design decision, not a
+side effect of giving the terminal a view.

@@ -1031,6 +1031,17 @@ async function submitCodenPrompt(){
   if(turn.kind==='clear'){codenView.transcript=[{kind:'note',text:CLEARED_NOTE}];return renderCodenTranscript();}
   if(turn.kind==='unknown'){say(codenView,'error',turn.message);return renderCodenTranscript();}
   if(turn.kind==='confirm'){say(codenView,'note',turn.message);return renderCodenTranscript();}
+  if(turn.kind==='form'){
+    // The same capability, in this shell's idiom. The closure panel already IS this form, so
+    // `/closure` opens it and puts the run into it rather than re-asking three questions one
+    // at a time at a prompt that has a perfectly good form just below it. The terminal walks
+    // the fields because it has no panel to open — `16` §4b.2: one form, two renditions.
+    say(codenView,'tool',`→ /${turn.command}`);renderCodenTranscript();
+    location.hash=`#/${turn.address}`;
+    const run=$('#closureRun');if(run&&turn.argument)run.value=turn.argument;
+    $('#closureSummary')?.focus();
+    return undefined;
+  }
   if(turn.kind==='session'){
     say(codenView,'note','Ending the session…');renderCodenTranscript();
     return $('#logoutButton')?.click();

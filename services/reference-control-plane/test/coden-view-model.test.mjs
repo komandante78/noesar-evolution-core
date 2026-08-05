@@ -17,7 +17,7 @@ import {
 } from '../../../apps/webui-static/agent-commands.js';
 import {
   RUN, createView, say, planTurn, detailLines, gitSummary,
-  TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES,
+  TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES, FORMS,
 } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +54,10 @@ describe('the view model — what a session looks like, decided once', () => {
         assert.ok(RUN[command.name], `\`/${command.name}\` is offered but has no engine call`);
       } else if (command.kind === 'address') {
         assert.ok(command.address, `\`/${command.name}\` is a destination with no address`);
+      } else if (command.kind === 'form') {
+        // A form declares BOTH: the method it ends at and the field script that gets there.
+        assert.ok(command.method, `\`/${command.name}\` is a form with no method to submit to`);
+        assert.ok(FORMS[command.name]?.fields?.length, `\`/${command.name}\` is a form with no fields`);
       } else if (command.kind === 'session') {
         assert.ok(command.action, `\`/${command.name}\` is a session entry with no action`);
       } else {

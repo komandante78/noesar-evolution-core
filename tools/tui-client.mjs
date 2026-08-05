@@ -338,8 +338,68 @@ export function addressForFunctionKey(addresses, keyName) {
 // Each view labels its own output with the panel's label from the served list, so even the
 // heading a reader sees is the workbench's word for that panel rather than a second one
 // chosen here.
+/** Phase 3b. One of the seven bench list panels, off the ONE call that serves all seven —
+ *  the same shape the browser fills them from. Shared rather than written out seven times so
+ *  the seven cannot drift into seven slightly different renderings of one thing, which is
+ *  `PANEL_NAMES` again at a smaller scale.
+ *
+ *  The cap and the total both come from the engine, and the count is PRINTED: the browser
+ *  slices to six as well, so showing sixty here would be the two shells disagreeing about what
+ *  the panel is, and showing six silently would let a reader take six for all of them. */
+async function benchList({ session, entry }) {
+  const { lists } = await session.call('coden.benchLists', {});
+  // The key comes off the SERVED entry, never from a literal in this file. A first draft took
+  // the panel name as an argument, one call per panel, and `coden-addressable-panels.test.mjs`
+  // refused it — correctly: six panel names written here are six names that can drift from the
+  // markup, which is exactly how `PANEL_NAMES` reached fourteen against twenty-five. Reading
+  // `entry.panel` makes the engine's key and the markup's panel one thing, and a mismatch
+  // surfaces as a missing list rather than silently.
+  //
+  // (That guard reads comments as well as code, so naming one of the panels in this paragraph
+  // would fail it again — and rightly: it cannot tell a comment from a table, and a guard
+  // narrowed to tell them apart would stop catching a table written as one.)
+  const list = lists?.[entry.panel];
+  if (!list) { console.log(`${entry.label} — this deployment served no list for this panel.`); return; }
+  if (!list.total) { console.log(`${entry.label} — none.`); return; }
+  console.log(`${entry.label} — showing ${list.shown.length} of ${list.total}:`);
+  for (const item of list.shown) {
+    console.log(`  ${item.name ?? item.title ?? item.goal ?? item.id}${item.status ? ` · ${item.status}` : ''}`);
+  }
+}
+
 const ADDRESS_VIEWS = {
   'coden/bench/map': async ({ session, arg, entry }) => printJson(entry.label, await session.call('repoMap.scan', { path: arg || undefined })),
+  'coden/bench/projects': benchList,
+  'coden/bench/recent': benchList,
+  'coden/bench/tasks': benchList,
+  'coden/bench/agents': benchList,
+  'coden/bench/tools': benchList,
+  'coden/bench/history': benchList,
+  // The browser's Conversation panel says the bench conversation IS the Chat session and this
+  // shell's — "not a second chat with its own state". So this shows the session the shell is
+  // attached to, from the verb family it already has, rather than inventing a per-panel
+  // conversation object the browser does not have either.
+  'coden/agent/conversation': async ({ session, entry }) => {
+    const listed = await session.call('sessions.list', { place: 'active', pageSize: 1 });
+    const current = (listed?.sessions ?? listed?.items ?? [])[0];
+    console.log(`${entry.label} — ${current
+      ? `${current.title ?? current.id} — the same session Chat and this shell share`
+      : 'no conversation is active in this session yet'}`);
+  },
+  'coden/bench/closure': async ({ session, entry }) => {
+    const { closures } = await session.call('closure.list', {});
+    if (!closures.length) { console.log(`${entry.label} — nothing closed yet. \`closure <runId>\` records one.`); return; }
+    console.log(`${entry.label} — ${closures.length} closed:`);
+    for (const item of closures) {
+      // NOT DONE first, and never omitted. `UI-036`: a report that lists only what went well
+      // teaches uniform trust, which is the opposite of useful — so the field the object
+      // exists to carry leads, rather than sitting under a summary a reader will skim.
+      console.log(`  ${item.runId} · ${item.closedAt} · ${item.actorId}`);
+      console.log(`    NOT DONE: ${item.nothingLeftUndone ? 'nothing was left undone, and that was stated' : item.notDone.join('; ')}`);
+      console.log(`    residual risk: ${item.residualRisk}`);
+      if (item.summary) console.log(`    ${item.summary}`);
+    }
+  },
   'coden/bench/shadow': async ({ session, entry }) => printJson(entry.label, (await session.call('status', {})).shadow),
   'coden/bench/logs': async ({ session, arg, entry }) => printJson(entry.label, await session.call('events.correlation', { correlationId: arg })),
   'coden/bench/editor': async ({ session, arg, entry }) => printJson(entry.label, await session.call('workspace.get', { runId: arg })),

@@ -47,6 +47,78 @@ export const RUN = {
   git: () => ['coden.gitStatus', {}],
 };
 
+/**
+ * Phase 3b — the forms. A form is a capability whose input does not fit on one prompt line.
+ *
+ * `closure` is the only one, and its shape is not chosen for convenience: `UI-036` requires a
+ * closure to name what was left undone OR to state that nothing was, and to state the residual
+ * risk — and the register REFUSES one that does neither. Three fields with a mandatory refusal
+ * clause is a form, and folding it into `closure <run> | did | not-done | risk` would make the
+ * one field the whole object exists to carry the easiest to leave off.
+ *
+ * Defined here, once, so the two shells ask the SAME questions in the same order. HOW each asks
+ * differs: the browser already has this as a panel with a form in it and opens that; the
+ * terminal walks the fields at its prompt. One capability, two renditions (`16` §4b.2) —
+ * rather than one shell having a closure the other does not, which is `CE-034` failing.
+ */
+export const FORMS = {
+  closure: {
+    method: 'closure.record',
+    address: 'coden/bench/closure',
+    argument: 'runId',
+    fields: [
+      { name: 'summary', ask: 'What was done — one paragraph. What changed, and why it was accepted.' },
+      {
+        name: 'notDone',
+        // The wording carries the rule instead of hiding it behind a refusal three steps later.
+        ask: 'What was NOT done — one item per line, `;` between them. Type `nothing` to state that nothing was left undone; that statement is recorded as yours.',
+      },
+      { name: 'residualRisk', ask: 'Residual risk. "none" is an answer; silence is not.' },
+    ],
+  },
+};
+
+/** Begins a form, or says why it cannot begin. Pure: returns state, performs nothing. */
+export function startForm(name, argument) {
+  const spec = FORMS[name];
+  if (!spec) return null;
+  const subject = String(argument ?? '').trim();
+  if (!subject) return { error: `\`/${name}\` needs a ${spec.argument}: \`/${name} <${spec.argument}>\`` };
+  return { form: { name, subject, index: 0, answers: {} }, ask: spec.fields[0].ask };
+}
+
+/**
+ * Feeds one typed line into a running form.
+ *
+ * Returns `{ ask }` while more is wanted, `{ method, params }` once it is complete, or
+ * `{ cancelled: true }` for `/cancel`. A form you cannot get out of is a trap, and in a shell
+ * whose whole point is that the session outlives the shell, being stuck in one is worse here
+ * than it would be elsewhere.
+ */
+export function fillForm(form, line) {
+  const spec = FORMS[form.name];
+  const typed = String(line ?? '').trim();
+  if (typed === '/cancel') return { cancelled: true };
+
+  form.answers[spec.fields[form.index].name] = typed;
+  form.index += 1;
+  if (form.index < spec.fields.length) return { ask: spec.fields[form.index].ask };
+
+  const notDone = form.answers.notDone ?? '';
+  const nothing = notDone.toLowerCase() === 'nothing';
+  return {
+    method: spec.method,
+    params: {
+      runId: form.subject,
+      summary: form.answers.summary ?? '',
+      // Split on `;`, dropping empties, so `a; b;` is two items rather than three.
+      notDone: nothing ? [] : notDone.split(';').map((item) => item.trim()).filter(Boolean),
+      nothingLeftUndone: nothing,
+      residualRisk: form.answers.residualRisk ?? '',
+    },
+  };
+}
+
 // Ten lines, and the count of what was dropped.
 //
 // It was twenty-four, and a single `/map` buried the tool call that produced it: the answer
@@ -159,6 +231,20 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
   // place without knowing which.
   if (command.kind === 'address') {
     return { kind: 'navigate', command: command.name, address: command.address, label: command.summary };
+  }
+
+  // A form. The intent names the capability; each shell renders it in its own idiom — the
+  // browser opens the panel that already holds the form, the terminal walks the fields at its
+  // prompt. Deciding WHICH here, rather than in each shell, is what stops one of them growing
+  // a closure the other does not have.
+  if (command.kind === 'form') {
+    return {
+      kind: 'form',
+      command: command.name,
+      argument,
+      address: FORMS[command.name]?.address ?? null,
+      method: command.method,
+    };
   }
 
   // `/logout` twice, and the second time as a typed WORD. `15` §13 refuses a one-key

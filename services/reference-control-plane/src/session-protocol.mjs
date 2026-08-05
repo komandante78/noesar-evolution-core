@@ -83,6 +83,22 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // a fact it cannot reach over HTTP. That is precisely the sideways asymmetry `D-0302`
   // closed, and re-opening it for the convenience of a status field is not a trade.
   'coden.gitStatus': { permission: 'coden.plan', bridged: false },
+  // Phase 3b. The bench's list panels — Projects, Recent, Sessions, Tasks, Agents, Tools,
+  // History — answered "no source over this transport" in the terminal, because the browser
+  // fills all seven from ONE route (`GET /api/v1/ai/bootstrap`, via `refreshWorkspace`) and
+  // the socket had never been given it. ONE method, not seven, for exactly that reason:
+  // seven would be seven chances for the two shells to disagree about which snapshot they are
+  // looking at, and the browser does not take seven either.
+  //
+  // `workspace.read` — what that route already requires, not a wider one for a list's sake.
+  'coden.benchLists': { permission: 'workspace.read', bridged: false },
+  // The closure register (`UI-036`). Read and write are SEPARATE entries because they are
+  // separate permissions on the routes already serving them (`GET /api/v1/closures` asks
+  // `workspace.read`, `POST` asks `workspace.write`). Collapsing them into one would hand a
+  // reader the power to record a closure over the socket that the browser refuses them —
+  // the sideways asymmetry `D-0302` exists to prevent.
+  'closure.list': { permission: 'workspace.read', bridged: false },
+  'closure.record': { permission: 'workspace.write', bridged: false },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -105,6 +121,16 @@ export function createSessionDispatch({
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
   codenAddressBook, gitStatus,
+  // Phase 3b. The same two objects the HTTP routes for these already hold — passed in rather
+  // than constructed here, for the reason this factory's own comment gives about the
+  // orchestrator: a second instance would give the terminal its own lists and its own closure
+  // register, invisible to the browser, which is the "second client with its own state" the
+  // design rejects.
+  // `getClosureRegister` is a FUNCTION and `aiWorkspace` is not, and the asymmetry is not
+  // stylistic: server.mjs builds the workspace service before it builds this dispatch and the
+  // closure register after it. A direct reference to the later one would read an uninitialised
+  // binding at construction time.
+  aiWorkspace, getClosureRegister,
   // The policy the gate below reads. A parameter, not a direct reference, for one reason:
   // "a method with no policy entry is refused" is the fail-closed branch that matters most and
   // the one the real configuration can never reach, since every implemented method is listed.
@@ -206,6 +232,59 @@ export function createSessionDispatch({
         throw new ProtocolError('UNAVAILABLE', `the interface the address list is read from could not be read: ${error.message}`);
       }
       return { addresses, accessFiltered: false };
+    },
+    // Phase 3b. The seven bench list panels, from the same snapshot `GET /api/v1/ai/bootstrap`
+    // serves the browser. Only the seven keys those panels render are returned — the snapshot
+    // also carries providers, memories, sources and branches, and a terminal asking for a list
+    // of projects has not asked for the provider catalogue.
+    //
+    // Each list is CAPPED at six, which is not a transport decision: the browser's own
+    // renderer slices to six (`renderBenchNavigator`), and a terminal showing sixty where the
+    // browser shows six would be the two shells disagreeing about what the panel IS. The total
+    // travels alongside, so "6 of 41" can be said rather than implied.
+    'coden.benchLists': () => {
+      if (!aiWorkspace || typeof aiWorkspace.snapshot !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the workspace snapshot');
+      }
+      const snapshot = aiWorkspace.snapshot();
+      const panels = {
+        projects: 'projects', recent: 'artifacts', sessions: 'conversations',
+        tasks: 'tasks', agents: 'agents', tools: 'tools', history: 'agentRuns',
+      };
+      const lists = {};
+      for (const [panel, key] of Object.entries(panels)) {
+        const all = Array.isArray(snapshot[key]) ? snapshot[key] : [];
+        lists[panel] = { shown: all.slice(0, 6), total: all.length };
+      }
+      return { lists, cappedAt: 6 };
+    },
+    'closure.list': () => {
+      const register = typeof getClosureRegister === 'function' ? getClosureRegister() : null;
+      if (!register) throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the closure register');
+      return { closures: register.list({ projectId: null }) };
+    },
+    // The one WRITE this phase adds to the socket. The register's own refusal — a closure that
+    // neither names what was left undone nor states that nothing was — is enforced inside
+    // `record`, so it holds here exactly as it holds for the browser's form: this method
+    // passes the fields through and lets the register refuse. Re-implementing the check here
+    // would be a second copy of the rule that matters most in the object.
+    'closure.record': ({ params, actor }) => {
+      const register = typeof getClosureRegister === 'function' ? getClosureRegister() : null;
+      if (!register) throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the closure register');
+      // Every field the register accepts, not a subset: a socket that could record only part
+      // of a closure would make the terminal's closure a different KIND of object from the
+      // browser's, which is `CE-034` failing quietly rather than loudly.
+      return register.record({
+        runId: params?.runId,
+        kind: params?.kind ?? 'agent-run',
+        projectId: params?.projectId ?? null,
+        summary: params?.summary ?? '',
+        notDone: params?.notDone ?? [],
+        nothingLeftUndone: Boolean(params?.nothingLeftUndone),
+        residualRisk: params?.residualRisk ?? '',
+        reviewSeconds: params?.reviewSeconds ?? null,
+        actorId: actor,
+      });
     },
     // Same module the HTTP route calls, against the same workspace root — not a second
     // reading of git that could disagree with the browser's chip about the same repository.

@@ -101,6 +101,12 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'status', argument: '', summary: 'Engine status, authority, shadow', group: 'work', kind: 'call', method: 'status', permission: null },
   { name: 'sessions', argument: '[active|archived|bin]', summary: 'List sessions', group: 'work', kind: 'call', method: 'sessions.list', permission: 'workspace.read' },
   { name: 'git', argument: '', summary: 'Branch and divergence of the workspace', group: 'work', kind: 'call', method: 'coden.gitStatus', permission: 'coden.plan' },
+  // Phase 3b. A FORM, not a call: `UI-036` makes a closure name what was left undone or
+  // state that nothing was, plus the residual risk, and the register refuses one that does
+  // neither. Three fields with a mandatory refusal clause do not fit on a prompt line, so each
+  // shell renders the same capability its own way (`coden-view-model.js`'s `FORMS`): the
+  // browser opens the panel that already holds the form, the terminal walks the fields.
+  { name: 'closure', argument: '<run>', summary: 'Close a piece of work — what was done, what was NOT, and the residual risk', group: 'work', kind: 'form', method: 'closure.record', permission: 'workspace.write' },
   { name: 'help', argument: '', summary: 'These commands', group: 'work', kind: 'shell', method: null, permission: null },
   { name: 'clear', argument: '', summary: 'Clear the transcript on screen (the session keeps its state)', group: 'work', kind: 'shell', method: null, permission: null },
 

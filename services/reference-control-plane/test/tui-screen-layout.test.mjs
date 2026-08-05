@@ -175,7 +175,9 @@ describe('the slash commands live in the prompt, and both shells share one list'
     // entry of any other kind must not carry a method at all — a destination with a method
     // would be two ways of performing one line, and the shells would pick different ones.
     for (const command of AGENT_COMMANDS) {
-      if (command.kind === 'call' || command.kind === 'shell') {
+      // A FORM names a method too (phase 3b): it is a call whose input needs more than one
+      // line, not a different kind of destination.
+      if (command.kind === 'call' || command.kind === 'shell' || command.kind === 'form') {
         assert.ok(command.method === null || typeof command.method === 'string',
           `\`/${command.name}\` has a method that is neither null nor a name`);
       } else {

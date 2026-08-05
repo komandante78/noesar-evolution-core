@@ -275,6 +275,12 @@ const sessionDispatch = createSessionDispatch({
   // `remote` field and the browser's `git` chip are one fact, read once, not two readings that
   // could disagree about the same repository.
   gitStatus,
+  // Phase 3b: the SAME objects the HTTP routes for these already use, so the terminal's bench
+  // lists and the browser's are one snapshot, and the closure register is one register.
+  // `closureRegister` arrives as a thunk because it is constructed further down this file,
+  // after this dispatch — reading the binding directly here would read it uninitialised.
+  aiWorkspace,
+  getClosureRegister: () => closureRegister,
 });
 
 // --- data plane and multi-user directory -------------------------------------

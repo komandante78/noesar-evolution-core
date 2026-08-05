@@ -27,7 +27,7 @@ import {
 // made this file the only place that knew, and left the browser free to invent a second answer
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
-  createView, say, planTurn, detailLines, gitSummary, CLEARED_NOTE,
+  createView, say, planTurn, detailLines, gitSummary, CLEARED_NOTE, startForm, fillForm,
 } from '../apps/webui-static/coden-view-model.js';
 
 /**
@@ -93,8 +93,36 @@ export async function runFullScreen({
     const typed = view.prompt.trim();
     view.prompt = '';
     view.menu = null;
-    if (!typed) return draw();
 
+    // A form in progress SWALLOWS the line — INCLUDING AN EMPTY ONE — so this runs before the
+    // empty-prompt early return below. `/cancel` is the way out and `fillForm` owns it: a form
+    // you cannot leave is a trap, and this shell's premise is that you can walk away from it.
+    //
+    // The ordering is the whole fix. An empty prompt means "do nothing" only while the prompt
+    // is taking COMMANDS; inside a form it is an answer, and the field where an empty answer
+    // is most likely is the one asking what was NOT done. Dropping it silently did not lose one
+    // answer — it shifted every later one up a field. Measured by driving it: a closure came
+    // out with `notDone` holding the risk and `residualRisk` holding the next command the user
+    // typed. A record whose entire purpose is honesty, quietly filled with the wrong content.
+    if (view.form) {
+      if (typed) { record('user', typed); draw(); }
+      const step = fillForm(view.form, typed);
+      if (step.cancelled) { view.form = null; record('note', 'Closure abandoned. Nothing was recorded.'); return draw(); }
+      if (step.ask) { record('agent', step.ask); return draw(); }
+      view.form = null;
+      record('tool', `${step.method}(${step.params.runId})`);
+      draw();
+      try {
+        record('agent', 'closure — recorded', detailLines(await session.call(step.method, step.params)));
+      } catch (error) {
+        // The register's own refusal, shown as itself. Re-checking the rule in this shell would
+        // be a second copy of the one thing `UI-036` exists to enforce.
+        record('error', `closure refused${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
+      }
+      return draw();
+    }
+
+    if (!typed) return draw();
     record('user', typed);
     draw();
 
@@ -111,6 +139,16 @@ export async function runFullScreen({
     if (turn.kind === 'clear') { view.transcript = [{ kind: 'note', text: CLEARED_NOTE }]; return draw(); }
     if (turn.kind === 'unknown') { record('error', turn.message); return draw(); }
     if (turn.kind === 'confirm') { record('note', turn.message); return draw(); }
+    // A form: this shell walks its fields at the prompt. The browser opens the panel that
+    // already holds the same form — one capability, two renditions.
+    if (turn.kind === 'form') {
+      const begun = startForm(turn.command, turn.argument);
+      if (!begun || begun.error) { record('error', begun?.error ?? `\`/${turn.command}\` has no form here.`); return draw(); }
+      view.form = begun.form;
+      record('agent', begun.ask);
+      record('note', 'Answer one line at a time. `/cancel` abandons it.');
+      return draw();
+    }
     if (turn.kind === 'session') { leave = turn.action; return finish?.(); }
 
     // A destination. The name comes from the served address list, never from a second table

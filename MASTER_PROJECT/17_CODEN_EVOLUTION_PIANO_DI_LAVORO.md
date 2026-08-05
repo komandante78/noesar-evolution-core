@@ -166,6 +166,41 @@ STOP        Le due shell hanno le stesse regioni, le stesse voci di menu, gli st
 > cruscotto che naviga); il terminale continua a non avere una vista per una destinazione — la
 > nomina con l'etichetta della lista servita e dice di non averla, che è il lavoro di **3b**.
 
+> ### ✅ 3b CHIUSA il 2026-08-05 — `D-0318`
+>
+> **La misura ha ridimensionato la fase.** I «17 senza vista» sono 17 senza *metodo*, ma sette
+> rispondevano già onestamente (2 note di trasporto + 5 che servono il testo dichiarato dal
+> pannello). **Dieci** dicevano «nessuna fonte su questo trasporto» — vera, ma non è una vista.
+>
+> ```text
+> PRIMA   8 viste ·  2 note · 5 testi dichiarati · 10 «nessuna fonte»
+> DOPO   16 viste ·  2 note · 7 testi dichiarati ·  0 «nessuna fonte»
+> ```
+>
+> **UN metodo per i sette pannelli-elenco, non sette**: il browser li riempie tutti da una
+> rotta sola (`/api/v1/ai/bootstrap`), e sette metodi sarebbero sette occasioni per le due
+> shell di guardare istantanee diverse. Cap a sei **dichiarato** (`showing 2 of 9`), perché il
+> browser affetta a sei: mostrarne sessanta sarebbe un disaccordo su cosa *sia* il pannello.
+>
+> **`closure` si registra anche dal terminale**, ed è la prima SCRITTURA che il socket acquista
+> in questo programma: `closure.list`/`closure.record` sono due voci di policy separate perché
+> le due rotte HTTP chiedono permessi diversi. `/closure` è un **form**: tre campi con una
+> clausola di rifiuto obbligatoria non stanno su una riga di prompt. Un solo copione di domande,
+> due rese — il browser apre il pannello che il form ce l'ha già, il terminale cammina i campi.
+>
+> **Tre difetti, due trovati eseguendo:** (1) una risposta **vuota** dentro un form veniva
+> scartata e faceva slittare di un campo tutte le successive — una chiusura reale è uscita con
+> il rischio dentro `notDone` e il comando successivo dentro `residualRisk`; (2) `plugins` e
+> `favourites` dichiaravano il vuoto con la classe sbagliata, e «Nothing pinned yet.» prometteva
+> una funzione inesistente; (3) una guardia **intermittente** nel browser e2e, riparata.
+>
+> **Verificato:** unit **1754/1755**, ESLint 322 0/0/0, **6 mutazioni → 6** (tre sopravvissute
+> alla prima, ognuna ha prodotto un test vero), browser e2e **252/261** con i 9 fallimenti
+> identici alla baseline, e la shell del terminale **guidata** attraverso tutto il form, 13/13.
+>
+> **3c ora è sbloccata:** niente nel browser raggiunge più un pannello che il terminale non
+> raggiunge. Restano fuori il cruscotto e la barra degli indirizzi, che sono esattamente 3c.
+
 > **3b non è lavoro di interfaccia.** Alcuni di quei diciassette non hanno un metodo sul
 > protocollo, non solo una vista: sono voci nuove in `SESSION_METHOD_POLICY`, con il loro
 > permesso e il loro gate. Va dimensionata come fase a sé, non nascosta dentro un cambio di

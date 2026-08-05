@@ -17,6 +17,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -24,9 +25,11 @@ import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
   accessRuleFor, accountFromUser, SECTION_ACCESS,
 } from '../../../apps/webui-static/agent-commands.js';
-import { planTurn } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../tools/tui-screen.mjs';
+import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
+import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
@@ -67,7 +70,10 @@ test('CE-036 — every work entry names the permission its own method is gated o
   // because the browser cannot import out of `services/`; this makes it DERIVED rather than
   // duplicated. Mutate either side and this fails — which is what `PANEL_NAMES` never had,
   // since a list compared only with itself always agrees.
-  for (const entry of AGENT_COMMANDS.filter((candidate) => candidate.kind === 'call')) {
+  // Forms are included: `/closure` submits to `closure.record` and must claim exactly what
+  // that method is gated on. Filtering to 'call' alone left the one WRITE this phase added
+  // outside the guard that exists to stop a menu entry lying about its own cost.
+  for (const entry of AGENT_COMMANDS.filter((candidate) => ['call', 'form'].includes(candidate.kind))) {
     const policy = SESSION_METHOD_POLICY[entry.method];
     assert.ok(policy, `\`/${entry.name}\` names \`${entry.method}\`, which has no policy entry`);
     assert.equal(entry.permission, policy.permission,
@@ -196,6 +202,185 @@ test('CE-034 — /skills is absent, because the product has no skills surface', 
   assert.ok(!/data-section="skills"/.test(MARKUP), 'a skills section now exists — add the entry');
 });
 
+// --- phase 3b · every address answers, and none of them answers "no source" -----------------
+
+test('CE-034 — no CodeN address is left saying "no source over this transport"', () => {
+  // The row that sizes 3b, and the one that would have let it quietly not happen. Measured at
+  // the start of the phase: 8 real views, 2 transport notes, 5 panels serving their own
+  // declared text, and TEN answering "no source over this transport" — a sentence that is
+  // honest but is not a view. This asserts the tier of every one of the twenty-five, off the
+  // real markup and the real client, so a panel added later without a source fails here rather
+  // than being discovered by someone typing its name.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static')).filter((entry) => entry.address.startsWith('coden/'));
+  assert.equal(book.length, 25, 'the CodeN address space changed size — re-measure before trusting the rest');
+
+  const client = read('tools/tui-client.mjs');
+  const viewsBlock = client.slice(client.indexOf('const ADDRESS_VIEWS'), client.indexOf('const TRANSPORT_NOTES'));
+  const views = [...viewsBlock.matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);
+  const notes = [...client.slice(client.indexOf('const TRANSPORT_NOTES')).matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);
+
+  const stranded = book.filter((entry) => !views.includes(entry.address)
+    && !notes.includes(entry.address)
+    && !entry.declaredEmpty?.length);
+  assert.deepEqual(stranded.map((entry) => entry.address), [],
+    'these addresses answer "no source over this transport" — give them a method, a note, or a declared reason');
+});
+
+test('phase 3b — the panels with no engine DECLARE it, rather than wearing a list class', () => {
+  // Plugins and Favourites carried their statement inside a `bench-nav-list empty-state` div —
+  // the class the Navigator's DATA lists wear while waiting to be filled — so the address book,
+  // which reads that class precisely to tell a statement from a placeholder, could not see it.
+  // The terminal then said "no source over this transport" about two panels that had already
+  // said there is no source. And "Nothing pinned yet." promised a pinning feature that does
+  // not exist, which is the plausible frame this product treats as worse than an error.
+  const book = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  for (const panel of ['plugins', 'favourites']) {
+    const entry = book.find((candidate) => candidate.panel === panel);
+    assert.ok(entry?.declaredEmpty?.length, `\`${panel}\` declares nothing the other shell can serve`);
+    assert.match(entry.declaredEmpty.join(' '), /can be:/, `\`${panel}\` does not say the build CANNOT do this`);
+  }
+  // Asserted on what the address book SERVES, not on the raw markup: the markup also carries
+  // a comment quoting the old wording as the record of why it changed, and a check that cannot
+  // tell a quotation from a live string would force the history out of the file to stay green.
+  const favourites = book.find((candidate) => candidate.panel === 'favourites');
+  assert.ok(!/pinned yet/.test(favourites.declaredEmpty.join(' ')), '"yet" promises a feature that does not exist');
+});
+
+test('phase 3b — the closure form asks the same questions in both shells, and cannot be half-filled', () => {
+  // `UI-036`: a closure names what was left undone or states that nothing was, AND states the
+  // residual risk. The register refuses one that does neither, so this checks the SHAPE the two
+  // shells collect — one script, so neither can ask a different set.
+  assert.deepEqual(FORMS.closure.fields.map((field) => field.name), ['summary', 'notDone', 'residualRisk']);
+  assert.equal(FORMS.closure.method, 'closure.record');
+
+  const begun = startForm('closure', 'run-1');
+  assert.ok(begun.form && begun.ask, JSON.stringify(begun));
+  assert.equal(startForm('closure', '').error?.includes('runId'), true, 'a closure with no run must be refused up front');
+
+  // Walking it through produces exactly the params the register's own signature takes.
+  let step = fillForm(begun.form, 'moved the menu into one list');
+  assert.ok(step.ask);
+  // No ';' inside the answer: it is the separator, and a first draft of this test put one
+  // there and then expected one item back. The code was right.
+  step = fillForm(begun.form, 'the browser still has its own address bar, which 3c removes');
+  assert.ok(step.ask);
+  step = fillForm(begun.form, 'none');
+  assert.equal(step.method, 'closure.record');
+  assert.deepEqual(step.params, {
+    runId: 'run-1',
+    summary: 'moved the menu into one list',
+    notDone: ['the browser still has its own address bar, which 3c removes'],
+    nothingLeftUndone: false,
+    residualRisk: 'none',
+  });
+});
+
+test('phase 3b — "nothing" is a STATEMENT, not an empty answer', () => {
+  // The register accepts an empty `notDone` only when `nothingLeftUndone` is explicitly true —
+  // the browser's checkbox, and this word. Typing nothing at all must NOT become that claim:
+  // silence and "nothing was left undone" are different things, and conflating them is how a
+  // report that lists only what went well gets produced by accident.
+  const stated = startForm('closure', 'run-2').form;
+  fillForm(stated, 'did the thing'); fillForm(stated, 'nothing');
+  const done = fillForm(stated, 'none');
+  assert.equal(done.params.nothingLeftUndone, true);
+  assert.deepEqual(done.params.notDone, []);
+
+  const silent = startForm('closure', 'run-3').form;
+  fillForm(silent, 'did the thing'); fillForm(silent, '');
+  const empty = fillForm(silent, 'none');
+  assert.equal(empty.params.nothingLeftUndone, false, 'an empty line became the explicit claim');
+  assert.deepEqual(empty.params.notDone, []);
+  // Which the register then refuses — the rule stays in the object, not in the shells.
+});
+
+test('phase 3b — an EMPTY answer is an answer, and does not shift every later one up a field', () => {
+  // Found by driving the shell, not by reading it. `submit()` opened with
+  // `if (!typed) return draw();` — right for a prompt taking COMMANDS, wrong inside a form,
+  // where an empty line IS an answer and the field it most often lands on is the one asking
+  // what was NOT done. It did not lose one answer: it shifted every later one up a field, so a
+  // real run came out with `notDone` holding the risk and `residualRisk` holding the next
+  // command the user typed. A record whose entire purpose is honesty, quietly filled with the
+  // wrong content, and nothing failed.
+  //
+  // The model half is asserted here; the ORDERING inside the shell is asserted next, because
+  // this is one defect living in two files.
+  const form = startForm('closure', 'run-5').form;
+  assert.ok(fillForm(form, 'did the thing').ask);
+  assert.ok(fillForm(form, '').ask, 'an empty answer did not advance the form');
+  const done = fillForm(form, 'none');
+  assert.equal(done.params.residualRisk, 'none', 'the risk field caught the wrong line');
+  assert.deepEqual(done.params.notDone, []);
+  assert.equal(done.params.nothingLeftUndone, false, 'an empty line silently became the explicit claim');
+});
+
+test('phase 3b — the SHELL passes an empty answer to the form, driven not read', async () => {
+  // The other half of that defect lives in `submit()`, and the first attempt to guard it
+  // asserted the ORDER of two statements in the source. A mutation walked straight past it: it
+  // put a second empty-return INSIDE the form branch, leaving both original lines in their
+  // original order while the bug was fully back. A positional assertion describes one way to
+  // reintroduce a defect, not the defect.
+  //
+  // So this DRIVES the real shell instead, with injected streams — which `runFullScreen`
+  // already supports, and which is how the defect was found in the first place.
+  const recorded = [];
+  const session = {
+    call: async (method, params) => {
+      if (method !== 'closure.record') return {};
+      recorded.push(params);
+      return { id: `closure:${params.runId}` };
+    },
+  };
+  const out = new EventEmitter();
+  out.columns = 100; out.rows = 30; out.isTTY = false;
+  out.write = () => true;
+  out.off = out.removeListener.bind(out);
+  const input = new EventEmitter();
+  input.isTTY = false; input.isRaw = false;
+  input.off = input.removeListener.bind(input);
+
+  const finished = runFullScreen({
+    session, status: {}, account: { permissions: ['workspace.read', 'workspace.write'], role: 'owner' }, out, input,
+  });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+  const send = async (line) => {
+    for (const character of line) input.emit('keypress', character, { name: character });
+    input.emit('keypress', null, { name: 'return' });
+    await settle();
+  };
+
+  await settle();
+  await send('/closure run-empty');
+  await send('what changed');
+  await send('');            // the answer that used to vanish
+  await send('none');
+  input.emit('keypress', null, { name: 'c', ctrl: true });
+  await finished;
+
+  assert.equal(recorded.length, 1, 'the form did not complete — the empty answer was dropped');
+  assert.equal(recorded[0].residualRisk, 'none', 'the risk field caught the wrong line');
+  assert.deepEqual(recorded[0].notDone, []);
+  assert.equal(recorded[0].nothingLeftUndone, false, 'an empty line silently became the explicit claim');
+});
+
+test('phase 3b — a form can always be abandoned', () => {
+  // A form you cannot leave is a trap, and in a shell whose premise is that the session
+  // outlives the shell, being stuck in one is worse here than elsewhere.
+  const form = startForm('closure', 'run-4').form;
+  assert.deepEqual(fillForm(form, '/cancel'), { cancelled: true });
+});
+
+test('phase 3b — both shells perform the form intent, neither invents its own questions', () => {
+  for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL]]) {
+    assert.match(source, /turn\.kind\s*===\s*'form'/, `${label} does not handle the form intent`);
+  }
+  // Only the terminal walks the fields — the browser opens the panel that already holds the
+  // form. Same capability, each shell's idiom; a browser that re-asked the three questions in
+  // its prompt would be a second form ten pixels above the real one.
+  assert.match(TERMINAL, /fillForm\(/, 'the terminal does not walk the fields');
+  assert.ok(!/fillForm\(/.test(BROWSER), 'the browser grew a second copy of the form');
+});
+
 // --- CE-033 · the same regions -------------------------------------------------------------
 
 test('CE-033 — the browser renders the four regions the terminal does', () => {
@@ -257,7 +442,7 @@ test('CE-036 — a group showing fewer entries than it holds says so', () => {
   const hits = [...AGENT_COMMANDS];
   const rows = commandMenuRows({ hits, selected: 0, rowLimit: 12, groups: groupMenu }, 100);
   const work = rows.find((row) => row.includes('WORK'));
-  assert.match(work, / \d+ of 14/, `WORK is truncated but does not say so: ${JSON.stringify(work)}`);
+  assert.match(work, new RegExp(` \\d+ of ${AGENT_COMMANDS.filter((e) => e.group === 'work').length}`), `WORK is truncated but does not say so: ${JSON.stringify(work)}`);
   // A group that fits shows no count — a "4 of 4" would be noise on every row.
   const session = rows.find((row) => row.includes('SESSION'));
   assert.ok(!/ \d+ of \d+/.test(session), `SESSION fits entirely but claims to be truncated: ${JSON.stringify(session)}`);

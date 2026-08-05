@@ -125,11 +125,17 @@ describe('`/` in the terminal — the same jump the browser answers to', () => {
     assert.match(pageOutput, /a destination of the browser shell/);
     assert.match(pageOutput, /means the same place there/);
 
-    const panel = stubs();
+    // The second half of this contrast changed in 3b, in the right direction. `tasks` was a
+    // panel with no method, so jumping to it answered "no source over this transport". It has
+    // one now (`coden.benchLists`), so the jump reaches the engine and shows the list. There
+    // are still two kinds of "not here" — a PAGE of the other shell still says where it lives
+    // — but a panel of this shell is no longer one of them.
+    const panel = stubs({ 'coden.benchLists': { cappedAt: 6, lists: { tasks: { shown: [{ title: 'ship 3b' }], total: 1 } } } });
     const panelOutput = await captureLog(() => dispatchCommand(panel.reader, panel.session, '/coden/bench/tasks', createTuiState()));
-    assert.equal(panel.engineCalls().length, 0);
-    assert.match(panelOutput, /no source over this transport/);
-    assert.match(panelOutput, /would read as "there are none"/);
+    assert.deepEqual(panel.engineCalls().map((entry) => entry.method), ['coden.benchLists']);
+    assert.match(panelOutput, /showing 1 of 1/);
+    assert.match(panelOutput, /ship 3b/);
+    assert.doesNotMatch(panelOutput, /no source over this transport/);
   });
 
   test('a query that matches nothing says so — it does not jump somewhere plausible', async () => {

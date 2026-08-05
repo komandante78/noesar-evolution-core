@@ -115,13 +115,59 @@ describe('dispatchCommand — panel <name> (UI-054, list served by the server)',
     assert.ok(lines.join('\n').includes(declared));
   });
 
-  test('a panel with no source over this transport says exactly that — never an empty list', async () => {
-    // Projects is filled by the browser over its own HTTP routes. Printing "none" here
-    // would be a claim about the product; printing nothing at all would be a shell that
-    // silently ignores a valid address.
-    const { session, reader, engineCalls } = stubs();
+  test('phase 3b · a bench list panel now HAS a source, and says how much of it is shown', async () => {
+    // This asserted the opposite until 3b, and correctly: Projects was filled by the browser
+    // over routes the socket did not carry, so printing "none" here would have been a claim
+    // about the product. `coden.benchLists` gives the socket the same snapshot the browser
+    // fills all seven panels from, so the honest answer changed — and the test now states what
+    // it is, rather than being deleted for having become inconvenient.
+    const { session, reader, engineCalls } = stubs({
+      'coden.benchLists': { cappedAt: 6, lists: { projects: { shown: [{ name: 'alpha' }, { name: 'beta' }], total: 9 } } },
+    });
     const lines = await captureLog(() => dispatchCommand(reader, session, 'panel projects', createTuiState()));
-    assert.equal(engineCalls().length, 0);
+    assert.deepEqual(engineCalls().map((entry) => entry.method), ['coden.benchLists']);
+    const printed = lines.join('\n');
+    // "2 of 9" rather than two rows and silence: the browser slices to six too, so a reader
+    // has to be able to see that what they are shown is a window and not the whole list.
+    assert.match(printed, /showing 2 of 9/);
+    assert.match(printed, /alpha/);
+    assert.match(printed, /beta/);
+  });
+
+  test('phase 3b · each list panel shows ITS OWN list, not whichever came back first', async () => {
+    // The seven panels share one view function and one engine call, which is the point — and
+    // also the risk. Found by mutation: reading the first value of the response instead of the
+    // one keyed by this panel left every test green while every panel showed Projects. Stubbing
+    // one list at a time could never have caught it, so this stubs several and checks that each
+    // address lands on its own.
+    const lists = {
+      projects: { shown: [{ name: 'the-project' }], total: 1 },
+      agents: { shown: [{ name: 'the-agent' }], total: 1 },
+      tools: { shown: [{ name: 'the-tool' }], total: 1 },
+    };
+    for (const [panel, expected] of [['projects', 'the-project'], ['agents', 'the-agent'], ['tools', 'the-tool']]) {
+      const { session, reader } = stubs({ 'coden.benchLists': { cappedAt: 6, lists } });
+      const printed = (await captureLog(() => dispatchCommand(reader, session, `panel ${panel}`, createTuiState()))).join('\n');
+      assert.match(printed, new RegExp(expected), `\`panel ${panel}\` did not show its own list`);
+      for (const other of ['the-project', 'the-agent', 'the-tool'].filter((name) => name !== expected)) {
+        assert.doesNotMatch(printed, new RegExp(other), `\`panel ${panel}\` also showed ${other}`);
+      }
+    }
+  });
+
+  test('the "no source over this transport" branch survives, though no real address reaches it', async () => {
+    // After 3b each of the twenty-five has a view, a transport note, or its own declared text,
+    // so this branch is unreachable from the real address space — which is precisely when a
+    // branch stops being checked, a failure mode this repository has already been bitten by.
+    // Driven with a synthetic region entry so the wording stays covered for whatever address
+    // needs it next.
+    const invented = [...addresses, {
+      address: 'coden/bench/not-wired', panel: 'not-wired', label: 'Not wired', region: 'bench', declaredEmpty: [],
+    }];
+    const session = {
+      call: async (method) => (method === 'coden.addresses' ? { addresses: invented, accessFiltered: false } : {}),
+    };
+    const lines = await captureLog(() => dispatchCommand({ next: async () => '' }, session, 'panel not-wired', createTuiState()));
     assert.match(lines.join('\n'), /no source over this transport/);
     assert.match(lines.join('\n'), /would read as "there are none"/);
   });

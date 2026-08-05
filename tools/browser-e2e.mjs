@@ -600,6 +600,13 @@ try {
     await page.keyboard.press('Enter');
     await page.waitForSelector(`[data-bench-panel="${panel}"].active`, { timeout: 15000 });
   };
+  // Sampled only once the page has gone quiet. Without this the counter could be read while
+  // requests from the PREVIOUS step were still in flight, and they then landed between the two
+  // samples — reporting "26 → 28" and blaming the jump for two fetches it never made. Seen
+  // intermittently while phase 3b was being verified, and it cost a real investigation: a check
+  // that fails at random is one people learn to re-run rather than believe, which is worse than
+  // not having it. `catch` because a page that is ALREADY idle never fires the event.
+  await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {});
   const callsBefore = await apiCalls();
   await jump('coden/bench/map', 'map');
   const afterJump = await page.evaluate(() => ({ hash: location.hash, title: document.title }));

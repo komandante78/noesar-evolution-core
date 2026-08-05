@@ -305,9 +305,23 @@
               <section class="bench-panel" data-bench-panel="tasks"><h3>Tasks</h3><div id="navTasks" class="bench-nav-list empty-state">—</div></section>
               <section class="bench-panel" data-bench-panel="agents"><h3>Agents</h3><div id="navAgents" class="bench-nav-list empty-state">—</div></section>
               <section class="bench-panel" data-bench-panel="tools"><h3>Tools</h3><div id="navTools" class="bench-nav-list empty-state">—</div></section>
-              <section class="bench-panel" data-bench-panel="plugins"><h3>Plugins</h3><div id="navPlugins" class="bench-nav-list empty-state">None installed. A plugin is a tool with a surface of its own; none is registered.</div></section>
+              <!-- Phase 3b. Plugins and Favourites were `bench-nav-list empty-state` divs —
+                   the class the Navigator's DATA lists wear while waiting to be filled — and
+                   nothing has ever filled them, because this build has no plugin registry and
+                   no way to pin anything (measured: no route, no store, no handler). The class
+                   was saying "a list that has not loaded yet" about text that is a statement
+                   of what the build does NOT have, and `coden-address-book.mjs` reads that
+                   class precisely to tell the two apart. So the terminal fell through to "no
+                   source over this transport", which about these two is FALSE: there is no
+                   source, and the panel already said so. Marked as what they are, and now
+                   served in both shells off the one string.
+
+                   Favourites also said "Nothing pinned yet." — the "yet" promising a feature
+                   that does not exist, which is the plausible frame this product treats as
+                   worse than an error. -->
+              <section class="bench-panel" data-bench-panel="plugins"><h3>Plugins</h3><p class="declared-empty">None installed, and none can be: a plugin is a tool with a surface of its own, and this build has no registry to put one in.</p></section>
               <section class="bench-panel" data-bench-panel="history"><h3>History</h3><div id="navHistory" class="bench-nav-list empty-state">—</div></section>
-              <section class="bench-panel" data-bench-panel="favourites"><h3>Favourites</h3><div id="navFavourites" class="bench-nav-list empty-state">Nothing pinned yet.</div></section>
+              <section class="bench-panel" data-bench-panel="favourites"><h3>Favourites</h3><p class="declared-empty">Nothing is pinned, and nothing can be: this build has no way to pin anything, so this panel is empty by construction rather than because you have not used it.</p></section>
             </div>
 
             <!-- UI-033. Persistent and multiple: it keeps its place whichever tab is in

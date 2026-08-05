@@ -66,6 +66,13 @@ before(async () => {
     // Phase 4: the real WebUI directory, not a fixture — the point of the method is that a
     // terminal is told about the address space the browser is actually served.
     codenAddressBook: () => buildCodenAddressBook(WEB_ROOT),
+    // Phase 3b: a snapshot with MORE than the six the panels show, so the cap is exercised
+    // rather than merely present. Nine projects, one agent.
+    aiWorkspace: { snapshot: () => ({
+      projects: Array.from({ length: 9 }, (unused, index) => ({ id: String(index), name: `p${index}` })),
+      agents: [{ id: 'a', name: 'the-agent' }],
+      artifacts: [], conversations: [], tasks: [], tools: [], agentRuns: [],
+    }) },
   });
   socketPath = join(ws, 'tui-test.sock');
   server = startUnixSocketServer({ socketPath, dispatch, auth, ledger });
@@ -133,6 +140,25 @@ describe('session protocol — unix socket transport', () => {
     // Derived from the one ROLE_PERMISSIONS definition rather than a second matrix — asserted
     // against the AuthService itself, so a hand-written list here would fail.
     assert.deepEqual(handshake.permissions, authService.permissionsFor(handshake.user.role));
+  });
+
+  test('phase 3b · coden.benchLists caps at six and says how many there really are', async () => {
+    // The cap is not a transport preference: `renderBenchNavigator` slices to six in the
+    // browser, so a terminal printing all nine would be the two shells disagreeing about what
+    // the panel IS. Found by mutation — removing the slice killed no test, because every other
+    // assertion happened to use a list shorter than the cap.
+    const { lists, cappedAt } = await call(authenticatedSocket, 'coden.benchLists', {});
+    assert.equal(cappedAt, 6);
+    assert.equal(lists.projects.total, 9, 'the fixture no longer exceeds the cap; this proves nothing');
+    assert.equal(lists.projects.shown.length, 6, 'the list was not capped');
+    // The total travels alongside so "6 of 9" can be SAID rather than implied: six rows and
+    // silence would read as all of them.
+    assert.equal(lists.agents.shown.length, 1);
+    assert.equal(lists.agents.total, 1);
+    // All seven panels answer, including the empty ones — a missing key makes the terminal say
+    // "this deployment served no list", which is a different claim from "none".
+    assert.deepEqual(Object.keys(lists).sort(),
+      ['agents', 'history', 'projects', 'recent', 'sessions', 'tasks', 'tools']);
   });
 
   test('no method beyond auth.login/auth.mfa is answered before the socket authenticates', async () => {
