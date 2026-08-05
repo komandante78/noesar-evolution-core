@@ -1,0 +1,351 @@
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED              STATUS                          PORTS                                                            NAMES
+0a247e765f29   atom-evolution:atomd-a0025-authoring                          "/usr/local/bin/atomd"   About a minute ago   Up 20 seconds (healthy)         8410/tcp                                                         atomd
+e711883fd9b4   noesar-evolution:phase6-declared-fallback                     "/opt/noesar/bin/noe…"   About a minute ago   Up About a minute (healthy)     192.168.178.100:8089->8089/tcp, 192.168.178.100:8100->8088/tcp   noesar-evolution
+1fd4976d1dfa   noesar-evolution:coden-prose-grounding-v2                     "/opt/noesar/bin/noe…"   24 hours ago         Exited (0) About a minute ago                                                                    noesar-evolution-old-phase6-declared-fallback
+4013c42b84fd   noesar-evolution:coden-prose-grounding                        "/opt/noesar/bin/noe…"   24 hours ago         Exited (0) 24 hours ago                                                                          noesar-evolution-old-coden-prose-grounding
+646acd14b592   noesar-evolution:coden-phase5-permission-gate                 "/opt/noesar/bin/noe…"   2 days ago           Exited (0) 34 hours ago                                                                          noesar-evolution-old-coden-phase5-permission-gate
+755222b5fc46   noesar-evolution:passkey-webauthn-dos-fix                     "/opt/noesar/bin/noe…"   2 days ago           Exited (0) 2 days ago                                                                            noesar-evolution-old-passkey-webauthn-dos-fix
+169053960f8e   noesar-evolution:passkey-webauthn-test                        "/opt/noesar/bin/noe…"   2 days ago           Exited (0) 2 days ago                                                                            noesar-evolution-old-passkey-webauthn-test
+d8473fd643dc   noesar-evolution:single-lineage-rebuild                       "/opt/noesar/bin/noe…"   3 days ago           Exited (0) 2 days ago                                                                            noesar-evolution-old-single-lineage-rebuild
+6a45f263bc7d   atom-evolution:atomd-a0024-sigterm                            "/usr/local/bin/atomd"   3 days ago           Exited (0) About a minute ago                                                                    atomd-old-phase6-a0025
+215f086b82ac   atom-evolution:atomd-a0023-hypothesize                        "/usr/local/bin/atomd"   3 days ago           Exited (137) 3 days ago                                                                          atomd-old-a0024
+ab4c6546bdfa   debug-evolution:1.7.0-court-triage                            "python3 /opt/debug-…"   3 days ago           Up 3 days (healthy)                                                                              debug-evolution-runner
+ff51e0c01dd7   debug-evolution:1.7.0-court-triage                            "python3 /opt/debug-…"   3 days ago           Up 3 days (healthy)             8787/tcp                                                         debug-evolution
+6aa67f7676c1   noesar-evolution:phase4-court-triage                          "/opt/noesar/bin/noe…"   3 days ago           Exited (0) 3 days ago                                                                            noesar-evolution-old-court-triage
+141fa3ef4722   debug-evolution:1.4.0-remote-targets-ui                       "python3 /opt/debug-…"   3 days ago           Exited (0) 3 days ago                                                                            debug-evolution-runner-old-api-targets
+c03ecbb4c094   debug-evolution:1.4.0-remote-targets-ui                       "python3 /opt/debug-…"   3 days ago           Exited (0) 3 days ago                                                                            debug-evolution-old-api-targets
+915ef91d89e3   noesar-evolution:phase4-module-uid-separation                 "/opt/noesar/bin/noe…"   3 days ago           Exited (0) 3 days ago                                                                            noesar-evolution-old-api-targets
+19e13d2c21f4   debug-evolution:1.1.1-cube-memory                             "python3 /opt/debug-…"   3 days ago           Exited (0) 3 days ago                                                                            debug-evolution-pre-sandbox
+efee184fde5a   debug-evolution:1.1.0-toolpack-wiring                         "python3 /opt/debug-…"   3 days ago           Exited (0) 3 days ago                                                                            debug-evolution-pre-cube-memory
+71f7de5f60b0   noesar-evolution:phase4-debug-evolution-remote-targets        "/opt/noesar/bin/noe…"   4 days ago           Exited (0) 3 days ago                                                                            noesar-evolution-old-uid-sep
+f7c8264c0879   debug-evolution:1.1.0-remote-targets                          "python3 /opt/debug-…"   4 days ago           Exited (0) 3 days ago                                                                            debug-evolution.rollback-remote-targets-20260801T172826Z
+c947e4ff6d15   noesar-evolution:phase4-debug-evolution-security-root-cause   "/opt/noesar/bin/noe…"   4 days ago           Exited (0) 4 days ago                                                                            noesar-evolution.rollback-debug-evolution-security-root-cause-20260801T163154Z
+e9de05691249   atom-evolution:atomd                                          "/usr/local/bin/atomd"   4 days ago           Exited (137) 3 days ago                                                                          atomd-old-a0023
+fab0b37bd9ab   ghcr.io/ggml-org/llama.cpp:server-cuda                        "/app/llama-server -…"   4 days ago           Up 4 days (healthy)             127.0.0.1:8420->8420/tcp                                         atom-evolution-model
+e09a9d2f46c5   ghcr.io/hotio/qbittorrent:latest                              "/init"                  5 days ago           Up 5 days                                                                                        qbittorrent
+8bdc751fe4e2   d15b3ab6eccd                                                  "/usr/local/bin/atomd"   7 days ago           Exited (137) 7 days ago                                                                          atomd.rollback-pre-a0021-20260729T154407Z
+264f562d1a64   coden-ultra-full-product:untagged-filename-fix-s254           "/app/entrypoint.sh"     12 days ago          Exited (0) 10 days ago                                                                           coden-ultra-full-product
+a21393fae7cb   coden-ultra-full-product:skill-context-secret-gate-s250       "/app/entrypoint.sh"     12 days ago          Exited (0) 12 days ago                                                                           coden-ultra-full-product.rollback-untagged-filename-fix-s254-20260724T113326Z
+aa1221880607   coden-ultra-full-product:triple-cue-secret-gate-s250          "/app/entrypoint.sh"     12 days ago          Exited (0) 12 days ago                                                                           coden-ultra-full-product.rollback-triple-cue-secret-gate-s250-20260724T055153Z
+4b022fd829bd   noesar-coden-ultra-nllb:v1                                    "uvicorn app:app --h…"   12 days ago          Exited (0) 11 days ago                                                                           noesar-coden-ultra-nllb
+2bd6b8fa9027   ai-lab:auth-hardening-s247                                    "uvicorn main:app --…"   13 days ago          Exited (0) 11 days ago                                                                           ai-lab
+6c9e19acebc3   binhex/arch-prowlarr                                          "/usr/bin/dumb-init …"   13 days ago          Up 10 days (healthy)                                                                             binhex-prowlarr
+1ffd8185eee3   lscr.io/linuxserver/sonarr:latest                             "/init"                  2 weeks ago          Up 10 days                                                                                       sonarr
+e359e9c60f21   lscr.io/linuxserver/radarr:latest                             "/init"                  2 weeks ago          Up 10 days                                                                                       radarr
+8da6b7c8690b   plexinc/pms-docker                                            "/init"                  2 weeks ago          Exited (0) 5 days ago                                                                            Plex-Media-Server
+1844fc9b3cfc   ai-lab:phaseE-s214                                            "uvicorn main:app --…"   2 weeks ago          Exited (0) 2 weeks ago                                                                           ai-lab-prev-s214b
+ed3ff4e6e74f   stats-hub:v3                                                  "uvicorn main:app --…"   2 weeks ago          Exited (0) 11 days ago                                                                           stats-hub
+3abc38757fcb   nous-trainer:v3-s134                                          "bash -c 'pip instal…"   3 weeks ago          Exited (0) 3 weeks ago                                                                           schema-service
+2625e035f293   0b8d6776ec19                                                  "python -m uvicorn a…"   3 weeks ago          Exited (0) 11 days ago                                                                           coden-ultra-brainlab
+aa120b8eb4eb   nous-simulator-engine:v5                                      "python3 -m uvicorn …"   3 weeks ago          Exited (0) 3 weeks ago                                                                           nous-simulator-engine
+b3c375756cf2   noesar-webui:coden-ultra-bench-s190                           "uvicorn app.main:ap…"   3 weeks ago          Exited (0) 11 days ago                                                                           noesar-webui
+2c8e597187a8   coden-ultra-brainlab:phase4                                   "python -m uvicorn a…"   3 weeks ago          Exited (0) 3 weeks ago                                                                           coden-ultra-brainlab-phase4-bak
+f572c4629ea0   coden-ultra-trainer:phase2                                    "uvicorn app.main:ap…"   3 weeks ago          Exited (0) 3 weeks ago                                                                           coden-ultra-trainer
+2d12eaca1dbc   nous-trainer:v3-s134                                          "python3 train_run.p…"   4 weeks ago          Exited (0) 4 weeks ago                                                                           coden-nous-train
+03da0a8dc4ce   nous-trainer:v3-s134                                          "python3 -m nous_v3.…"   4 weeks ago          Exited (0) 3 weeks ago                                                                           nous-phase0-training
+90304f2311fd   nova-ai:V.0.0.6                                               "/app/install/docker…"   6 weeks ago          Exited (137) 5 weeks ago                                                                         nova-ai
+58093b52d931   coden-benchmark-lab:2.4.2                                     "uvicorn app.main:ap…"   7 weeks ago          Exited (0) 11 days ago                                                                           coden-benchmark-lab
+944ceffa426b   fridayn-model-factory:v1                                      "/usr/bin/tini -- /a…"   7 weeks ago          Exited (143) 7 weeks ago                                                                         fridayn-model-factory
+593f59711ae8   ghcr.io/huggingface/text-embeddings-inference:cuda-1.9        "./entrypoint.sh --m…"   2 months ago         Exited (0) 11 days ago                                                                           noesar-fridayn-tei-embedder-v2
+c405eff0f976   jc21/nginx-proxy-manager                                      "/init"                  2 months ago         Up 10 days                                                                                       Nginx-Proxy-Manager-Official
+0bd09cfbf6ad   ghcr.io/huggingface/text-embeddings-inference:cuda-1.9        "./entrypoint.sh --m…"   2 months ago         Exited (0) 4 weeks ago                                                                           noesar-fridayn-tei-reranker-v1
+32bb8d3f64dc   ghcr.io/binhex/arch-flaresolverr                              "/usr/bin/dumb-init …"   2 months ago         Up 10 days (healthy)                                                                             binhex-flaresolverr
+6b6205e79d8e   emby/embyserver:latest                                        "/init"                  2 months ago         Up 10 days                                                                                       EmbyServer
+4124ebf112c2   noesar-core:data-factory-curated-api-20260525T153414Z         "/usr/local/bin/noes…"   2 months ago         Exited (2) 11 days ago                                                                           noesar-core
+17375b0ac642   noesar-dataset-factory:worker-job-ui-20260525T133055Z         "python -m src.worker"   2 months ago         Exited (137) 4 weeks ago                                                                         noesar-dataset-factory
+79761a33e8eb   noesar-gateway:stage2a                                        "/usr/local/bin/noes…"   2 months ago         Exited (2) 4 weeks ago                                                                           noesar-gateway
+d0ac1ed56fd8   qdrant/qdrant:v1.12.6                                         "./entrypoint.sh"        2 months ago         Exited (143) 4 weeks ago                                                                         noesar-qdrant
+b40388b0c52e   postgres:16-alpine                                            "docker-entrypoint.s…"   2 months ago         Exited (0) 11 days ago                                                                           noesar-db
+3c0e420a9a7b   ich777/krusader                                               "/opt/scripts/start.…"   2 months ago         Exited (143) 4 weeks ago                                                                         Krusader
+876b5eb75595   figro/unraid-cloudflared-tunnel                               "./cloudflared.sh"       3 months ago         Up 10 days                                                                                       Unraid-Cloudflared-Tunnel
+3d72932d01e9   oznu/cloudflare-ddns                                          "/init"                  3 months ago         Up 10 days                                                                                       Cloudflare-DDNS
+---IMAGES---
+IMAGE                                                                      ID             DISK USAGE   CONTENT SIZE   EXTRA
+ai-lab:auth-hardening-s247                                                 7ef53b0e4446        191MB             0B   U    
+ai-lab:phaseA-s211                                                         f068dcb6ccec        191MB             0B        
+ai-lab:phaseC-s211                                                         db752464659b        191MB             0B        
+ai-lab:phaseE-s214                                                         7edc0e5b5632        191MB             0B   U    
+ai-lab:phaseE-s214b                                                        c60396cf27af        191MB             0B        
+alpine:latest                                                              d529dd0c6e55       8.42MB             0B        
+anchore/syft:latest                                                        428d6ddda903       86.2MB             0B        
+atom-evolution:atomd                                                       e9ccd0516688       78.2MB             0B   U    
+atom-evolution:atomd-a0023-hypothesize                                     174522e3bf0e       78.3MB             0B   U    
+atom-evolution:atomd-a0024-sigterm                                         1d48b30160b4       78.3MB             0B   U    
+atom-evolution:atomd-a0025-authoring                                       8775ae83b5be       78.4MB             0B   U    
+atom-evolution:atomd-pre-a0021-20260729T154323Z                            d15b3ab6eccd       78.2MB             0B   U    
+atom-evolution:atomd-pre-a0022-20260801T150733Z                            3cb6f53a9f8e       78.2MB             0B        
+atom-serve:v1                                                              46dffef84b0e       6.29GB             0B        
+atom-train:v1                                                              8d49bab38828       6.25GB             0B        
+binhex/arch-prowlarr:latest                                                9c6c528fc554       1.24GB             0B   U    
+coden-benchmark-lab:2.4.2                                                  f56b2670997d        159MB             0B   U    
+coden-nous:0.1                                                             ae3a6a6eff75        5.3GB             0B        
+coden-nous:0.2                                                             92d1e40f3e64        5.3GB             0B        
+coden-ultra-brainlab:phase3                                                c7d99a979958        185MB             0B        
+coden-ultra-brainlab:phase4                                                925161248f9a        185MB             0B   U    
+coden-ultra-brainlab:phase7                                                0b8d6776ec19        185MB             0B   U    
+coden-ultra-full-product:assimilate-prompt-gate-s244                       9230c273fcc3       3.49GB             0B        
+coden-ultra-full-product:atom-sandbox-overlay-phase1-s223                  91b11e32cef6       3.48GB             0B        
+coden-ultra-full-product:atom-seam-s221                                    957cca451209       3.47GB             0B        
+coden-ultra-full-product:atom-seam-s221b                                   c322d44de5e4       3.47GB             0B        
+coden-ultra-full-product:atom-seam-s221c                                   9bcf6b52ba29       3.47GB             0B        
+coden-ultra-full-product:atom-shadow-prepare-phase2a-build-s231            2a845a3c449b       3.49GB             0B        
+coden-ultra-full-product:canary-secret-sse-hardening-v2-1-build-s235       2d4b5215280d       3.49GB             0B        
+coden-ultra-full-product:canary-secret-sse-hardening-v2-2-cues-fix-s235    597d7dc3a807       3.49GB             0B        
+coden-ultra-full-product:chat-bridge-s222                                  e8da77e3e058       3.47GB             0B        
+coden-ultra-full-product:chat-bridge-s222b                                 31804b4726ac       3.48GB             0B        
+coden-ultra-full-product:english-i18n-phase1-s247                          fdf0ffdb4b9b       3.49GB             0B        
+coden-ultra-full-product:episodic-schema-remediation-v1-1-build-s234       f6078aefb76c       3.37GB             0B        
+coden-ultra-full-product:fence-normalize-s222                              97892e573d5c       3.48GB             0B        
+coden-ultra-full-product:gate6-stream-fix-s247                             4c7b8c26d004       3.49GB             0B        
+coden-ultra-full-product:gate6-sweep-8fix-audited-s247                     429a38fab8d0       3.49GB             0B        
+coden-ultra-full-product:node-synapses-s195                                8c4de2b431f0       3.53GB             0B        
+coden-ultra-full-product:node-synapses-s195b                               8e56fadc5c1a       3.52GB             0B        
+coden-ultra-full-product:phase2-multilang-s247                             9047fa77dcbb       3.49GB             0B        
+coden-ultra-full-product:phase3-webui-parity-s248                          d796abe3d631       3.49GB             0B        
+coden-ultra-full-product:pre-shadow-baseline-remediation-v1-1-build-s232   5c3615fcccb4       3.49GB             0B        
+coden-ultra-full-product:reflex-cache-secret-gate-v2-4-s243                98831ece300c       3.49GB             0B        
+coden-ultra-full-product:safety-translation-order-fix-s249                 97158ffbd0df       3.49GB             0B        
+coden-ultra-full-product:sandbox-isolate-s222                              ea59f92e6b73       3.48GB             0B        
+coden-ultra-full-product:secret-gate-full-thread-s244                      8951a43ec0ee       3.49GB             0B        
+coden-ultra-full-product:secret-gate-triple-fix-s244                       70df7568ab37       3.49GB             0B        
+coden-ultra-full-product:skill-context-secret-gate-s250                    498c9066e41c       3.49GB             0B   U    
+coden-ultra-full-product:skills-sse-remediation-v1-build-s233              da62e64ed22d       3.37GB             0B        
+coden-ultra-full-product:stream-bridge-s222                                dbb6e4965cd6       3.48GB             0B        
+coden-ultra-full-product:stream-sse-fix-s222                               2fafa9def6de       3.48GB             0B        
+coden-ultra-full-product:triple-cue-secret-gate-s250                       6727c99d93ae       3.49GB             0B   U    
+coden-ultra-full-product:untagged-filename-fix-s254                        eec4f8a2823e       3.51GB             0B   U    
+coden-ultra-neural-cg:v1                                                   6cb5da555935       3.54GB             0B        
+coden-ultra-neural-cg:v1-with-model                                        9ce14338cb36       12.6GB             0B        
+coden-ultra-trainer:phase1                                                 db1e06cb252f        150MB             0B        
+coden-ultra-trainer:phase2                                                 d5d5b4896e0e        150MB             0B   U    
+curlimages/curl:latest                                                     5c3599497451       23.8MB             0B        
+debian:bookworm-slim                                                       cae69e86e0b0       74.8MB             0B        
+debug-evolution:1.1.0                                                      8982a2eda080        118MB             0B        
+debug-evolution:1.1.0-login-ui                                             96ea60b884cc        118MB             0B        
+debug-evolution:1.1.0-noesar-module                                        cdaf722fd4d8        119MB             0B        
+debug-evolution:1.1.0-noesar-style-uplink                                  2cb3ae1385ce        119MB             0B        
+debug-evolution:1.1.0-professional-noauth                                  8927423d2f01        119MB             0B        
+debug-evolution:1.1.0-regen-token                                          9d780fffb787        118MB             0B        
+debug-evolution:1.1.0-remote-targets                                       6df74a480d1d        119MB             0B   U    
+debug-evolution:1.1.0-scan-engine                                          b21a9a5d7d03        119MB             0B        
+debug-evolution:1.1.0-toolpack-wiring                                      63878fbcb622       2.58GB             0B   U    
+debug-evolution:1.1.1-cube-memory                                          843790db4cc5       2.58GB             0B   U    
+debug-evolution:1.2.0-sandbox-execution                                    776c3bba3b62       2.58GB             0B        
+debug-evolution:1.3.0-uid-separation                                       af8c3c7994fa       2.58GB             0B        
+debug-evolution:1.4.0-remote-targets-ui                                    2242950bc05b       2.58GB             0B   U    
+debug-evolution:1.5.0-api-targets                                          56ff705008fb       2.58GB             0B        
+debug-evolution:1.5.1-api-targets-probe-panel                              8a7b5cfc5705       2.58GB             0B        
+debug-evolution:1.5.2-endpoint-dedup                                       9cc2101f4002       2.58GB             0B        
+debug-evolution:1.6.0-target-edit                                          bc11d0b61247       2.58GB             0B        
+debug-evolution:1.7.0-court-triage                                         02c4892d993c       2.58GB             0B   U    
+debug-evolution:rollback-pre-uid-separation                                776c3bba3b62       2.58GB             0B        
+dperson/samba:latest                                                       aac8a52c5b16       52.1MB             0B        
+emby/embyserver:latest                                                     fa0dadda51e7        758MB             0B   U    
+figro/unraid-cloudflared-tunnel:latest                                     11d4f2a7a970       8.92MB             0B   U    
+fridayn-model-factory:v1                                                   ea1047f12918       17.9GB             0B   U    
+ghcr.io/binhex/arch-flaresolverr:latest                                    b5e4cd083547       1.62GB             0B   U    
+ghcr.io/ggml-org/llama.cpp:server-cuda                                     957b63459108       4.34GB             0B   U    
+ghcr.io/hotio/qbittorrent:latest                                           b12e02e3dac6        154MB             0B   U    
+ghcr.io/huggingface/text-embeddings-inference:cuda-1.9                     d9bb2dec9ada       5.17GB             0B   U    
+ghcr.io/puppeteer/puppeteer:latest                                         c8006c38888d       2.02GB             0B        
+ich777/krusader:latest                                                     cbb3830d5f3c       1.18GB             0B   U    
+jc21/nginx-proxy-manager:latest                                            f44e23f5e4d7        1.2GB             0B   U    
+lscr.io/linuxserver/openssh-server:latest                                  731b55010b42       36.8MB             0B        
+lscr.io/linuxserver/radarr:latest                                          c7ba8b2b6c4c        219MB             0B   U    
+lscr.io/linuxserver/sonarr:latest                                          4874781c27d8        203MB             0B   U    
+mcr.microsoft.com/powershell:latest                                        0feac0f6bbe6        339MB             0B        
+node:20                                                                    33ed5ef90e83        1.1GB             0B        
+node:20-slim                                                               9da6b4e352d0        200MB             0B        
+node:22-bookworm-slim                                                      bd16adabad76        227MB             0B        
+node:22-slim                                                               3e7aa5bf2da2        227MB             0B        
+noesar-coden-ultra-nllb:v1                                                 d037aed26fa5       1.19GB             0B   U    
+noesar-core:data-factory-curated-api-20260525T153414Z                      f84a40249fda       17.1MB             0B   U    
+noesar-dataset-factory:worker-job-ui-20260525T133055Z                      904dab2edd8e        120MB             0B   U    
+noesar-evolution:ce021-ship-tui-client                                     a313a0e22426        829MB             0B        
+noesar-evolution:coden-addendum-cards-cd                                   6d52156d658d        829MB             0B        
+noesar-evolution:coden-agent-shell                                         85f334980e13        829MB             0B        
+noesar-evolution:coden-phase5-permission-gate                              23d98d85782f        829MB             0B   U    
+noesar-evolution:coden-prose-grounding                                     be4d7ef61e4c        829MB             0B   U    
+noesar-evolution:coden-prose-grounding-v2                                  a68a7ed4131e        829MB             0B   U    
+noesar-evolution:passkey-webauthn-dos-fix                                  90b4d6d853c8        829MB             0B   U    
+noesar-evolution:passkey-webauthn-test                                     191646912c7c        829MB             0B   U    
+noesar-evolution:phase3                                                    24dfc4923536        729MB             0B        
+noesar-evolution:phase4                                                    1cf0ada84d2b        730MB             0B        
+noesar-evolution:phase4-arch005-adapter-gate                               6d63287eb929        853MB             0B        
+noesar-evolution:phase4-arch005-manifest-precision                         b8de496c1a7f        859MB             0B        
+noesar-evolution:phase4-arch008-execute-rust-mirror                        f5cfe3557ca5        860MB             0B        
+noesar-evolution:phase4-atom-acting-path                                   df2c2f781f80        837MB             0B        
+noesar-evolution:phase4-atom-all-surfaces                                  441a93d27427        837MB             0B        
+noesar-evolution:phase4-atom-routing                                       02bb1a6f7df1        837MB             0B        
+noesar-evolution:phase4-audit-ledger-perf                                  93bf8f57e854        879MB             0B        
+noesar-evolution:phase4-capability                                         c623514532cf        832MB             0B        
+noesar-evolution:phase4-capability-csrf                                    66407fc37465        836MB             0B        
+noesar-evolution:phase4-chat-ui-fixes                                      b2562f583288        841MB             0B        
+noesar-evolution:phase4-coden-agent-declutter                              b30b8c4d3ba5        841MB             0B        
+noesar-evolution:phase4-coden-agent-menu                                   e3ad93bcf44f        842MB             0B        
+noesar-evolution:phase4-codev-peer                                         be73c3d1134d        851MB             0B        
+noesar-evolution:phase4-complete                                           52987fbbb7b5        824MB             0B        
+noesar-evolution:phase4-complete-lan                                       4e26c950a3d1        824MB             0B        
+noesar-evolution:phase4-compliance-packs                                   a9553f63ffbd        836MB             0B        
+noesar-evolution:phase4-court-triage                                       d51a22734f90        864MB             0B   U    
+noesar-evolution:phase4-cow                                                7849b44ce3b0        834MB             0B        
+noesar-evolution:phase4-csrf-hardening                                     3744fa680328        836MB             0B        
+noesar-evolution:phase4-cube-c1-schema                                     dfaf08d1fddb        864MB             0B        
+noesar-evolution:phase4-cube-typed-views                                   d2b64ebbb2d3        864MB             0B        
+noesar-evolution:phase4-debug-evolution-api-targets                        080a01bbfb56        863MB             0B        
+noesar-evolution:phase4-debug-evolution-api-targets-edit                   c36a6832ae6c        864MB             0B        
+noesar-evolution:phase4-debug-evolution-net-migration                      f3d28d1cc6f0        839MB             0B        
+noesar-evolution:phase4-debug-evolution-remote-targets                     a0b4b4634d81        859MB             0B   U    
+noesar-evolution:phase4-debug-evolution-security-root-cause                3effe7092f1a        848MB             0B   U    
+noesar-evolution:phase4-debug-evolution-tools                              5e8faa470e20        833MB             0B        
+noesar-evolution:phase4-debug-evolution-triage                             6470fa2d8850        846MB             0B        
+noesar-evolution:phase4-events                                             39d8745dbd49        834MB             0B        
+noesar-evolution:phase4-execute-client-decision                            0c0a60e4982d        857MB             0B        
+noesar-evolution:phase4-executor                                           cbf22c71d0bb        833MB             0B        
+noesar-evolution:phase4-findings                                           52a20df100b4        836MB             0B        
+noesar-evolution:phase4-healthz                                            9819ca70d50a        830MB             0B        
+noesar-evolution:phase4-home                                               377f34255ee8        830MB             0B        
+noesar-evolution:phase4-memory-application-layer                           4f59158cf1c2        866MB             0B        
+noesar-evolution:phase4-memory-model-swap                                  b56aaadcead1        868MB             0B        
+noesar-evolution:phase4-memory-webui                                       94a3fffb92bc        871MB             0B        
+noesar-evolution:phase4-module-console-proxy                               8c04cd149cec        841MB             0B        
+noesar-evolution:phase4-module-credentials                                 177a4a5c00fc        837MB             0B        
+noesar-evolution:phase4-module-plug-and-play                               d116295397c9        843MB             0B        
+noesar-evolution:phase4-module-uid-separation                              6d49f841b652        861MB             0B   U    
+noesar-evolution:phase4-modules-debug-evolution                            50d1cf5380db        821MB             0B        
+noesar-evolution:phase4-modules-registry-retired                           63cd394dd43f        828MB             0B        
+noesar-evolution:phase4-oidc-saml-scim                                     50ff8d462878        837MB             0B        
+noesar-evolution:phase4-owner-modules-catalog                              9f196b6b2376        830MB             0B        
+noesar-evolution:phase4-panel-draggable                                    9760e8c7081f        842MB             0B        
+noesar-evolution:phase4-panel-hidden-default                               c5ef1c68ef7a        842MB             0B        
+noesar-evolution:phase4-panels-tui                                         6a1b2b57fe1c        877MB             0B        
+noesar-evolution:phase4-parts                                              bb1cc113c0e3        829MB             0B        
+noesar-evolution:phase4-privacy-footer                                     9c9bdad9842b        841MB             0B        
+noesar-evolution:phase4-publisher-registry                                 38349770eb27        825MB             0B        
+noesar-evolution:phase4-reasoning                                          316d00bafcea        831MB             0B        
+noesar-evolution:phase4-recompute-verifier                                 acf2e7382f14        837MB             0B        
+noesar-evolution:phase4-repomap                                            048cb8911df3        835MB             0B        
+noesar-evolution:phase4-research                                           58821364016c        873MB             0B        
+noesar-evolution:phase4-research-gate                                      815672bd7376        837MB             0B        
+noesar-evolution:phase4-sandbox-binary                                     e35e95aa4432        855MB             0B        
+noesar-evolution:phase4-sector-modules                                     9417f748e8dc        836MB             0B        
+noesar-evolution:phase4-sector-modules-activation                          2f7ee05b57f8        823MB             0B        
+noesar-evolution:phase4-service-token-auth                                 803fa25bef91        835MB             0B        
+noesar-evolution:phase4-sess001-session-proof                              29a406fe8465        862MB             0B        
+noesar-evolution:phase4-sess002-003-replay                                 6e69dca2a92c        864MB             0B        
+noesar-evolution:phase4-session-protocol                                   18ccb0067fb3        840MB             0B        
+noesar-evolution:phase4-sessions-tui                                       3633fd18ce5f        875MB             0B        
+noesar-evolution:phase4-shadow                                             3ba388563c2f        832MB             0B        
+noesar-evolution:phase4-structure                                          181918482959        827MB             0B        
+noesar-evolution:phase4-supervisor                                         e4d0e65babba        847MB             0B        
+noesar-evolution:phase4-technology-radar                                   bd7058c218ac        836MB             0B        
+noesar-evolution:phase4-themes                                             483b0fb5340b        828MB             0B        
+noesar-evolution:phase4-tls                                                a5e0984cf8b8        836MB             0B        
+noesar-evolution:phase4-tokens                                             f42baf588b06        827MB             0B        
+noesar-evolution:phase4-tool-catalog                                       0720d17f1e76        837MB             0B        
+noesar-evolution:phase4-update-signing-side                                f951b9b89997        881MB             0B        
+noesar-evolution:phase4-update-signing-side-flat                           121e9934bfe1        819MB             0B        
+noesar-evolution:phase4-voice-control                                      d935a1ccf919        877MB             0B        
+noesar-evolution:phase4-webui                                              9d666c6d0bfb        825MB             0B        
+noesar-evolution:phase4-workspace-actions                                  90dc5aab2dfe        836MB             0B        
+noesar-evolution:phase4-workspace-actions-panels                           716d0b7364eb        839MB             0B        
+noesar-evolution:phase4-workspace-actions-ui                               43e1bd4e7fdc        838MB             0B        
+noesar-evolution:phase4-wp2                                                54ca3e7a2751        826MB             0B        
+noesar-evolution:phase6-declared-fallback                                  5ea04e19a104        830MB             0B   U    
+noesar-evolution:single-lineage-rebuild                                    a1619d18a5e2        829MB             0B   U    
+noesar-gateway:stage2a                                                     32c43ae7c480       13.6MB             0B   U    
+noesar-webui:cg-pipeline-s190                                              47f7dec4d3c4        736MB             0B        
+noesar-webui:coden-ultra-bench-s190                                        d53416dd22cf        736MB             0B   U    
+noesar/noesar:1.7.1                                                        aa3060f8a78c       3.41GB             0B        
+noesar/noesar:1.7.2                                                        a2d76593e989       3.41GB             0B        
+noesar/noesar:cpu                                                          98f34c793eab        349MB             0B        
+noesar/noesar:latest                                                       a2d76593e989       3.41GB             0B        
+nous-farm:1.0                                                              7eb37f36cca2       1.34GB             0B        
+nous-farm:1.1                                                              2955345e4133       1.34GB             0B        
+nous-simulator-engine:v4                                                   406a40f01504        5.7GB             0B        
+nous-simulator-engine:v5                                                   46508d3c7736        5.7GB             0B   U    
+nous-trainer:v3-s125                                                       b1c1a9d47f67        5.3GB             0B        
+nous-trainer:v3-s134                                                       e6a1ce47ee2f       5.66GB             0B   U    
+nova-ai:V.0.0.6                                                            a1a4e615ea6b        148MB             0B   U    
+oznu/cloudflare-ddns:latest                                                a2e30a1da73e       36.3MB             0B   U    
+pihole/pihole:latest                                                       637b4ff0203b       97.9MB             0B        
+plexinc/pms-docker:latest                                                  96f1f4f7569d        357MB             0B   U    
+postgres:16-alpine                                                         667495ca2ac3        276MB             0B   U    
+python:3-slim                                                              7da13cf8e04e        119MB             0B        
+python:3.11-slim                                                           1c03896dbf0e        125MB             0B        
+python:3.12-slim                                                           9cbfea842643        119MB             0B        
+python:3.13-slim                                                           d2e817ebc210        118MB             0B        
+qdrant/qdrant:v1.12.6                                                      4ece0d2bfe68        187MB             0B   U    
+rete-neurale-test:torch-env                                                e6a1ce47ee2f       5.66GB             0B   U    
+rust:1-bookworm                                                            a0635962c16d       1.57GB             0B        
+searxng/searxng:latest                                                     844a75e8a3a6        258MB             0B        
+stats-hub:v1                                                               bbd7c08f02c6        150MB             0B        
+stats-hub:v2                                                               7666bde9ef79        150MB             0B        
+stats-hub:v3                                                               b73cd81db0f1        150MB             0B   U    
+zricethezav/gitleaks:latest                                                4b81af4c7b41       50.3MB             0B        
+---NETWORKS---
+NETWORK ID     NAME                   DRIVER    SCOPE
+c06d787e975c   br0                    macvlan   local
+b77b4fe2593a   bridge                 bridge    local
+f6241d9ccde6   coden-bridge           bridge    local
+7175c4af2fec   coden-local            bridge    local
+40f4ceaab3ec   deploy_default         bridge    local
+112b7d278067   host                   host      local
+8ab2ca15b91e   noesar-e2e-net         bridge    local
+f55f74343e47   noesar-evolution-net   bridge    local
+f4b140b767f9   noesar-local           bridge    local
+8528d96f624f   none                   null      local
+---VOLUMES---
+DRIVER    VOLUME NAME
+local     0a00bb46187e4045c3c9f1dcf02507947da3137b3f9912309fd773577b9eb08d
+local     0be7ed2998d2f28841bb57546c80ae69a7e401f64e7e8967b3b0d9d53ebf35f1
+local     00de13a2fb52585099a3525dd09a4421f10b63c3f30aa9a158c9b905de5e0299
+local     1c0f4b7ab03d17328ebed1f6c02fed942f7ab81f2c950e9324898c461f418dc6
+local     2b100680d405957d99294b07f176880c65c8c947f827ecd5f7ed51ef07b2e61a
+local     3a63a07987b17661c910ad5b92a153fdf5efb6fe73b22a4c6e4832096b9b3359
+local     5aba328094c74601b0979b0101b4c17f17f7ec9e0d441d9ed451c53286481798
+local     5d8b8474e8ee14b7b1c73ad63fba875278c0af73e2eb8505abfe478ba0376e21
+local     6c69e02689510f59a27c222b647fbf3c8ad05e1e2aa22cf834d94ed7de5ad791
+local     7bc628c437ad60d3acca4c3db5dd0357c4a4f6ae195c7067527bf89d9e4f95a4
+local     07e04a813e2d9bf11a5147d47d4aeb0d3d677f76d1981724402db08188e38bb4
+local     9bc7efaa6aacaf2692cb964b607dfb248f9eaa0349095416a6e6e614b92d7a22
+local     9e15c6b9b8b98a05ed076e25fca4e066bfc01d4a4537cbb82b9cd9ddb4be7897
+local     9f455c76aba73bcd018b1cae897ee2f18580ad62f0a707cdf5b8171b80967f13
+local     15ea4903ff8e6d640f92c8eafa4b3f6a5da7b99a0240aed16f0a89f0b0932c3b
+local     017cbfa7ee586dbe0918d5171ac9a84ace25e675cd70055f1c3ac8bd68454795
+local     80b970ad1bcd188ccdd230b66cbedabcbdcd67c0bf1f9b45f90b36179dae4b23
+local     92f60cb48b7013e1639844273607be9cb06ffe45d6edce9a8b8bd6437a90b67b
+local     928b5c104fd9f8b6eb1be48c23ddb63944fedcf74f7eba9fdac336b2984ad927
+local     957de204fc95408def9e1380b598d83694de9ed1871e4c335b2124667c86b65f
+local     1994f6b3d41d0a1d76be7a76eea975be366f260e457798a6fbb2b5512e1caf99
+local     8511d8a88cb7035f02b58ab0069d509bc7afa39511965f4501c03ca69b2ba1ee
+local     15037e5ea8df0c186375a827f33dd1967b27a611b9af3460b3a2ad2542e8b300
+local     35431c05e9fdbeb88b09d4ec9040e8c96b24245e55077f81d5418b0cd30c1848
+local     076135fd4b66d198376ab43c6f3af1f1c2e6b1b1a51ecaab702693fe46e04cac
+local     306403f6bdefd175ebb5d35f5a1b298d0c0b8e6c126a565697e39456778aac33
+local     332979e93843d46fab89b0f160001790c0a7c679fdbe9ec0cf089eb9ea1e4ccd
+local     797250fea9a3330d6f40cc3d5f3285c09a3f8eb176fbf7a2840cc17e3647c339
+local     a06c8387a682a6e2ccafb90b097d415a37f3488c8e6a5b0e04ce7677ecc78ee7
+local     a6402879c71f79f92bbdec770e1232f67ae5ebd749d4e3198ac4fd18517fcf99
+local     ai_lab_data
+local     b61727a74686528d25f3618a0f25d9e3042615a068f3ee9d98c86d6c7431ba7e
+local     brainlab_data
+local     c850a38844c23ad9064fb150885cbe42c1ae544651e277b55ea799d21ca4e0f6
+local     c7921216e8877020ce4e35360de019155b50fcfa1ae3497463874439b9b2bd9f
+local     c8294891b55dcc341b90955ab84e3419194ef6f866ac785f4e3cee399039ea66
+local     ca35aa70d02914641a54029097d04427d581e2fa10efad70be2c31da40984e24
+local     cdc68fbd2d228fc572e92c0b6ffbd784f25d686a7be9ddd0daf675bcce901ef2
+local     d0c22e22dbb3b1de20ceb1fe8fd9eff5394c9e349e50c43dcec55df754684db1
+local     d1a6b957dd0453ee104560c5d740ad161947db23ae624f03e689c97df8704cd5
+local     d1b941631a5b8ade782020b6bb577a6de16627ac58a74cd6737343e4d2c4ffae
+local     d567da6be77cba539b98e5d23cf52a06f22c0729b9e245d8fbb9fdba4cb82b89
+local     db103f6bb390a63ee6c2ef2fafaf30f8f69239ece11be7e881e7a91c8b59ede2
+local     dcc624d1f0f012030aa7cc42e6891caf6981f73cf90ed44d298b9a630d32b8e1
+local     de54b7aecd2b9de43b71ac948a14e6145dff89dffb1bb5d6275030d5d83283fa
+local     debug_evolution_data
+local     debug_evolution_sandbox
+local     e33a393f2b2f73712a6ba0dcc04e5be03ac7962657c3ff2baf5d861fcd522420
+local     ec958f354afe69ab497d7bdaf98fb18ca636fba366cffb73aee48f4ae2d98ab7
+local     f8cd93d8ae7f7fea0a92badd9bce992c45b14bf3d28bd9f479ace678c2353832
+local     f4612cb2bfa954fb55f1d7b3409311c5eea2daec12ff3c1f7bc26b41c056229d
+local     stats_hub_data

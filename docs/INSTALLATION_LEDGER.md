@@ -3915,3 +3915,53 @@ No image was built, no network was created, no volume was touched. The pre-clean
 (binary `baef9d51…`), built and proved in `D-0322`. Replacing a daemon that is currently serving
 is an action on the runtime. Its healthcheck and fixed IP are **not in the image** and must be
 copied from the live container, not rewritten.
+
+## 2026-08-05 — the chain DEPLOYED, as one unit (`D-0325`)
+
+**The decision, and the measurement that made it.** The open question was «deploy
+`atom-evolution:atomd-a0025-authoring`, or not». Measured on the live container first:
+`buildAuthor` appeared **0 times** in the running image, and there was **no
+`NOESAR_AUTHORING_ENDPOINT`** — so nothing in production could ever call `/v1/author` and
+deploying `a0025` alone was provably a no-op. The same inspection found the argument for acting:
+the live product already ran `NOESAR_REASONING_MODE=rust-external` against `http://atomd:8410`
+with **nine** surfaces routed, and without phase 6 an `atomd` fall stopped the session. The
+phase-6 BEFORE state was the production state. So: the chain, as one unit, or nothing.
+
+**Order chosen deliberately: NOESAR first, then `atomd`.** With phase 6 in place an `atomd`
+restart is non-fatal; the reverse order would have opened a window in which the old product
+stopped. This is what phase 6 buys, used the first time it existed.
+
+| Container | From | To | Downtime | Rollback kept |
+|---|---|---|---|---|
+| `noesar-evolution` | `coden-prose-grounding-v2` | `noesar-evolution:phase6-declared-fallback` (repo `edfaaa3`) | **~7 s** | `noesar-evolution-old-phase6-declared-fallback` |
+| `atomd` | `atomd-a0024-sigterm` | `atom-evolution:atomd-a0025-authoring` | **~6 s** | `atomd-old-phase6-a0025` |
+
+`a0025` is a direct child of `a0024` on a linear history, so the SIGTERM fix travels with it.
+One environment variable was added: `NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420` — the
+model sidecar's address **on the container network**, not `127.0.0.1`.
+
+**The recreate was generated and VALIDATED before anything was stopped** (`/tmp/recreate.mjs`,
+from the snapshot in `EVIDENCE/live_config_pre_phase6_deploy_20260805T162814Z.json`): user,
+network, fixed IP, `--read-only`, `--cap-drop ALL`, both tmpfs including `/run:mode=1777`,
+restart policy, port bindings on `192.168.178.100`, all 29 environment variables, and the
+healthcheck **in its live `CMD-SHELL` form**. Skipping that validation cost ~80 s of downtime in
+s320; here it cost one dry run and 7 s of real downtime.
+
+**Verified on the DEPLOYED artifact, not on the repo:**
+
+- three-level sha256 of `app.js` identical — repo HEAD, container, and the body served by
+  `:8100` — `53de0f6779cd110f`
+- `buildAuthor` present (2 occurrences), `degradationFrequency` present
+- `POST /v1/author` on the live `atomd` answers **400** to an empty body, not 404 — the route exists
+- **the chain, live:** `plan()` 2.6 s, `provider=atom`, `degraded=false`, `checkedBy: atom`,
+  2 files authored, `approve() promoted=true`, `src/login.js` `87684a5ec052f695 → 88d06bcbd467c5aa`
+- **the safety net, live, with the real `atomd` stopped for ~20 s:** `plan()` 1.8 s (not a
+  throw), `degraded=true provider=reference`, both reasons named, frequency `1/1`, 2 files
+  authored, `approve() promoted=true`, hash moved. `atomd` restarted healthy; the product
+  reported `healthy` throughout.
+
+**Cleanup (§13).** Exactly two containers of this project run and exactly one rollback each
+survives. Twelve stale rollback containers were removed by name, none of them `Up`, their images
+left on disk so every documented rollback path still works. No `prune` of any kind was used.
+The `debug-evolution*` containers belong to a **separate product** and were not touched; 36
+containers outside this project are unchanged, and all 10 networks are unchanged.
