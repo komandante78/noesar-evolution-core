@@ -6313,3 +6313,132 @@ rule 1 spends its paragraph on. **Benefit:** one input on the page, matching the
 it is supposed to be a rendition of. **Cost:** the region is wired (tabs, scrollback, a command
 form), so folding it into the prompt means deciding what a "terminal tab" means when the whole
 page is one; that is a design decision for the Owner, not a tidy-up.
+
+---
+
+## D-0320 — Phase 4 · the context projector: the state has a schema, and the view is rebuilt from it (2026-08-05)
+
+**Decision.** CodeN Evolution gets the first half of invention I (`D-0107`): a session state made
+of typed facts with a schema, and a projector that rebuilds the model-facing view from those
+facts, from zero, every call. `services/reference-control-plane/src/context-projector.mjs` is
+new; `ai-workspace/context-graph.mjs` stops being only an archive and gains the state side.
+
+### The measurement that opened the phase, before a file was touched
+
+`17` makes this non-negotiable, and it paid immediately. Driven through the real
+`ContextGraph`, the real `AtomicJsonStore` and `WorkspaceService.contextInspection()`, with the
+one-for-one mapping `chat-orchestrator.mjs:32` performs reproduced verbatim
+(`EVIDENCE/phase4-context-projection-measure.mjs`):
+
+```text
+call     entries    bytes   tokenEst   readMs
+   3           8     1044        173     0.30
+  25          52     7237       1386     0.30
+ 100         202    28390       5530     1.16
+ 300         602    85190      16680     3.33
+ 400         802   113590      22255     4.39
+```
+
+**×81.6 in bytes between call 3 and call 300**, and not the same shape either — the run of roles
+a component would have to reconstruct is a different run each time. That is the growth `15` §2
+blames for coherence breaking after 25–30 calls.
+
+The same run, projected:
+
+```text
+call     bytes   projMs   shape
+   3       581     0.67   goal:1|plan:3|evidence:3|questions:0|diff:3|…
+  25      1152     0.52   goal:1|plan:8|evidence:6|questions:0|diff:10|…
+ 300      1197     2.25   goal:1|plan:8|evidence:6|questions:0|diff:10|…
+ 400      1197     2.65   goal:1|plan:8|evidence:6|questions:0|diff:10|…
+```
+
+**98.6 % smaller at call 300**, and `bytes(400) === bytes(300)` exactly. The ceiling — 15 198
+bytes — is *derived from the schema* by `projectionByteCeiling()`, not typed into a test, so it
+cannot drift away from the sections it describes.
+
+**Stated precisely, because the honest version is narrower than the slogan.** The shape is not
+identical at call 3 and call 300: at call 3 the session has three plan steps, so the view shows
+three. What is identical from call 25 onward — the moment the caps are reached — is the shape,
+and what is identical at every call is the ordered set of sections and their fields. The growth
+between call 3 and call 25 is the state *filling up to its caps*, which is bounded and finite;
+it is not accumulation. `CE-005` asserts the section names at 3 and 300 and the shape and bytes
+at 300 and 400, which is what the code actually guarantees.
+
+### What the schema refuses, and why there is no way around it
+
+Nine sections, exactly what invention I names as the state — goal, plan, evidence, open
+questions, current diff, failure signatures, active authority — plus approaches tried (`15` §5,
+budget on novelty) and repository signals, which is where invention II lands when phase 7
+connects it. That section accepts a signal with a `level` and has no numeric field, so there is
+no back door for the score `divergence-profile.mjs` refuses to produce.
+
+There is no `append`, no `note`, no `text` section and no escape hatch. Four refusals, each
+naming the section and the field: an undeclared section, a field the section does not have, a
+value of the wrong type, and a string over its declared maximum. **Oversized strings are refused,
+not clipped** — clipping would hide from the writer, permanently, that they have not said their
+fact in the schema's terms.
+
+### The defect found by measuring, and repaired in the phase
+
+Validating on read while throwing on failure meant **one out-of-schema row in the store bricked
+every model call of that session, for good** — a denial of service purchasable with a single
+edit, and equally reachable by tightening the schema after facts had been written. The write
+gate still throws (that is `CE-004`). The read now excludes the row, **counts** it, and declares
+the count on the rendered view (`held back: 1 out of schema, 1 in no section`) — visible when it
+is non-zero and absent when it is not, so the line never teaches the reader to skip it.
+
+### The defect found by the tests, and what its shape changed
+
+The first window implementation sorted blocking questions to the front and then took the tail —
+that is, it ordered them precisely so it could throw them away. Selection and presentation are
+now two steps: a section is selected on rank, then **restored to write order** for rendering.
+
+### Also found, by mutation, after eleven mutations from a baseline verified green first
+
+Ten were killed at once. The eleventh — `length <= show` loosened to `length <= show + 1` —
+survived, because no test held exactly `show + 1` entries. The boundary is now asserted at
+`cap − 1`, `cap` and `cap + 1`, and the mutation dies. **11 mutations → 11.**
+
+### Where the cost really is, attributed rather than asserted
+
+`projMs` grows with the session (0.52 ms → 2.65 ms at 1 201 facts). Measured apart from the
+store: `projectContext` alone is 0.19 ms at 10 facts, 0.59 ms at 1 201, 3.50 ms at 12 001 — the
+rest is `AtomicJsonStore.read()` re-parsing the whole file, which is the store's nature and not
+this module's. The **output** is bounded; the **work** is linear in the record. At any plausible
+session size this is noise, and it is named here so nobody has to rediscover it.
+
+### What this phase did NOT do
+
+- **No model call is routed through the projector yet, on either shell.** Neither the terminal
+  nor the browser renders a projection, and `chat-orchestrator.mjs` still hands the provider the
+  whole branch. That is deliberate: replacing what a shell sends to the model is a removal, and
+  rule 3 of `17` says the substitute is proved first. The substitute now exists and is measured;
+  phase 5 (the Author) is its first consumer, which is the order `16` §5 argues for.
+- **Nothing is deployed.** The container is unchanged on `coden-prose-grounding-v2`.
+- **No section is written by the engine yet.** `workspace-actions.mjs` holds the plan, the diff
+  and the tokens in `#runs` and does not mirror them into the state; wiring that is phase 5's
+  file list, not this one's.
+- **Eight stopped rollback containers from earlier sessions still survive** against §5a. This
+  phase created none and touched none.
+- One evidence file this session had itself produced seven minutes earlier
+  (`…T115406Z.txt`) was removed once its regenerated successor existed. Declared rather than
+  passed over: `CLAUDE.md` says do not delete files, and the exception taken here is a
+  throwaway artefact of this same session.
+
+### The improvement this phase records
+
+`recordContextFact` writes one fact per call and re-reads and re-writes the whole conversation
+record to do it. **Proposal:** an append-only fact log per conversation, so a write is a write
+and not a read-modify-write of the session. **Benefit:** the linear cost above disappears from
+the write path, and two components writing facts concurrently stop being able to lose one.
+**Cost:** a new collection means a `schemaVersion` bump with a migration beside it — this phase
+deliberately avoided one by putting `contextFacts` on the conversation record, the same additive
+shape the migration to version 3 used for `deletedAt`.
+
+### Verified
+
+unit **1776/1777** (0 fail, 1 pre-existing skip; 1760/1761 before this phase) · ESLint **326
+files 0/0/0** · `verify-source` **PASS**, migrations 19, baseline 12/12 intact · **11 mutations,
+11 killed** · the long task measured at **n = 400** on a real store, with the branch genuinely
+carrying 800 messages and then 1 600, the projection unmoved.

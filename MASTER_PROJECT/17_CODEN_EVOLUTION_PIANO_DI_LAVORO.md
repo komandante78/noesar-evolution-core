@@ -275,6 +275,52 @@ BUDGET      ~40 chiamate
 STOP        Un test rifiuta una scrittura fuori schema, e la misura a n>300 è registrata
 ```
 
+> ### ✅ FASE 4 CHIUSA il 2026-08-05 — `D-0320`
+>
+> **La misura, fatta prima di toccare un file, sul vero `ContextGraph` e sul vero store:**
+>
+> ```text
+> chiamata      PRIMA (trascrizione)          DOPO (proiezione)
+>       3        8 voci ·  1 044 B                581 B
+>      25       52 voci ·  7 237 B              1 152 B
+>     300      602 voci · 85 190 B              1 197 B
+>     400      802 voci · 113 590 B             1 197 B      ← identico a 300
+> ```
+>
+> **×81,6 prima, −98,6 % dopo**, e il tetto (15 198 B) è **derivato dallo schema**, non scritto
+> in un test: non può allontanarsi dalle sezioni che descrive.
+>
+> **Detto con precisione, perché la versione onesta è più stretta dello slogan.** La forma
+> *non* è identica fra la chiamata 3 e la 300: alla 3 la sessione ha tre passi di piano, e la
+> vista ne mostra tre. È identica **dalla chiamata 25**, cioè da quando i tetti sono raggiunti,
+> e a ogni chiamata è identico l'insieme ordinato delle sezioni. La crescita fra 3 e 25 è lo
+> stato che **si riempie fino ai suoi tetti** — finita e limitata — non un accumulo.
+>
+> **Nove sezioni**, esattamente quelle che l'invenzione I nomina, più «tentativi» e «segnali del
+> repository» (dove atterra l'invenzione II alla fase 7: accetta un segnale con un `level` e non
+> ha campi numerici, quindi nessuna porta di servizio per il punteggio). **Nessun `append`,
+> nessun `note`, nessun campo di prosa.** Una stringa oltre il massimo si **rifiuta**, non si
+> taglia: tagliare nasconderebbe per sempre a chi scrive che non l'ha detto nei termini dello
+> schema.
+>
+> **Tre difetti, tutti trovati misurando o eseguendo:** (1) validare in lettura *lanciando*
+> significava che **una sola riga fuori schema bloccava ogni chiamata al modello di quella
+> sessione, per sempre** — ora la riga si esclude, si **conta** e la vista lo dichiara; (2) la
+> finestra ordinava le domande bloccanti in testa e poi prendeva la coda, cioè le ordinava per
+> buttarle via — selezione e presentazione ora sono due passi; (3) per **mutazione**, il tetto
+> allentato di uno sopravviveva, perché nessun test teneva esattamente `show + 1` voci.
+>
+> **Verificato:** unit **1776/1777** (era 1760/1761), ESLint **326** 0/0/0, `verify-source`
+> PASS, **11 mutazioni → 11** da baseline verificata verde prima.
+>
+> **Non fatto, dichiarato:** **nessuna chiamata al modello passa ancora dal proiettore, su
+> nessuna delle due shell** — `chat-orchestrator.mjs` consegna ancora l'intero ramo, e il
+> terminale non rende nessuna proiezione. È voluto: sostituire ciò che una shell manda al
+> modello è una **rimozione**, e la regola 3 dice che il sostituto si prova prima. Il sostituto
+> ora esiste ed è misurato; il suo primo consumatore è la **fase 5**, che è l'ordine che `16` §5
+> sostiene. Il motore non scrive ancora nessuna sezione: piano, diff e token stanno in `#runs`
+> di `workspace-actions.mjs`, che è la lista file della fase 5. Niente è deployato.
+
 **Perché prima dell'Autore.** `15` §14 lo chiama il rischio numero 1: *«se lo stato e il
 proiettore non sono i primi, ogni componente scritto prima va rifatto»*. L'Autore è il primo
 componente che paga davvero quell'assenza, perché chiama il modello **ripetutamente sullo stesso

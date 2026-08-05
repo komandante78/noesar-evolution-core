@@ -1,0 +1,88 @@
+PHASE 4 — MISURA PRIMA (context handed to the model, per call)
+
+     call  entries    bytes tokenEst   readMs    shape
+        3        8     1044      173      0.3system>user>assistant>user>assistant>...
+       25       52     7237     1386     0.29system>user>assistant>user>assistant>...
+       50      102    14287     2767     0.55system>user>assistant>user>assistant>...
+      100      202    28390     5530     1.14system>user>assistant>user>assistant>...
+      200      402    56790    11105     2.25system>user>assistant>user>assistant>...
+      300      602    85190    16680      3.2system>user>assistant>user>assistant>...
+      400      802   113590    22255     4.23system>user>assistant>user>assistant>...
+
+CALL 3 vs CALL 300
+  entries   8 -> 602   (x75.3)
+  bytes     1044 -> 85190   (x81.6)
+  tokenEst  173 -> 16680
+  same shape? false
+  same keys?  true  (content,role)
+
+  read cost  0.3ms -> 3.2ms
+
+
+PHASE 4 — MISURA DOPO (context-projector.mjs, same run, same store)
+
+     call    bytes   projMs    shape
+        3      581     0.67  goal:1|plan:3|evidence:3|questions:0|diff:3|failures:0|tokens:0|attempts:0|repository:0
+       25     1152     0.51  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+       50     1152     0.58  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+      100     1160      1.1  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+      200     1197     4.44  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+      300     1197     2.16  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+      400     1197     2.54  goal:1|plan:8|evidence:6|questions:0|diff:10|failures:0|tokens:0|attempts:0|repository:0
+
+CALL 3 vs CALL 300
+  bytes        581 -> 1197   (x2.06)
+  same shape?  false
+  ceiling      15198 bytes, derived from the schema — never exceeded above
+  call 400 == call 300 in bytes? true
+
+  reduction at call 300: 85190 -> 1197 bytes (98.6% smaller)
+
+
+THE VIEW AT CALL 300, IN FULL (nothing is elided by this script)
+
+SESSION STATE (projection 1.0.0, ctx-0a225aa0)
+
+GOAL
+  keep working on the same task until it is done
+
+PLAN — showing 8 of 400
+  393. [done] edit src/file-393.mjs
+  394. [done] edit src/file-394.mjs
+  395. [done] edit src/file-395.mjs
+  396. [done] edit src/file-396.mjs
+  397. [done] edit src/file-397.mjs
+  398. [done] edit src/file-398.mjs
+  399. [done] edit src/file-399.mjs
+  400. [done] edit src/file-400.mjs
+
+EVIDENCE — showing 6 of 400
+  recomputed: step 395 re-ran the suite (npm test)
+  recomputed: step 396 re-ran the suite (npm test)
+  recomputed: step 397 re-ran the suite (npm test)
+  recomputed: step 398 re-ran the suite (npm test)
+  recomputed: step 399 re-ran the suite (npm test)
+  recomputed: step 400 re-ran the suite (npm test)
+
+OPEN QUESTIONS — none
+
+CURRENT DIFF — showing 10 of 400
+  src/file-391.mjs +391/-1
+  src/file-392.mjs +392/-1
+  src/file-393.mjs +393/-1
+  src/file-394.mjs +394/-1
+  src/file-395.mjs +395/-1
+  src/file-396.mjs +396/-1
+  src/file-397.mjs +397/-1
+  src/file-398.mjs +398/-1
+  src/file-399.mjs +399/-1
+  src/file-400.mjs +400/-1
+
+FAILURE SIGNATURES — none
+
+ACTIVE AUTHORITY — none
+
+APPROACHES TRIED — none
+
+REPOSITORY SIGNALS — none
+

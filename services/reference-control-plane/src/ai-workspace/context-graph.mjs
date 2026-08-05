@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomUUID } from 'node:crypto';
+import { validateFact, projectContext } from '../context-projector.mjs';
 
 const MODES = new Set(['ASK','CREATE','ACT']);
 const ROLES = new Set(['system','user','assistant','tool']);
@@ -325,6 +326,61 @@ export class ContextGraph {
       const head = findById(state.messages, branch.headId, 'Message');
       branch.headId = head.parents[0] ?? null; branch.updatedAt = now(); return branch;
     });
+  }
+
+  // --- session state · invention I -----------------------------------------
+  //
+  // Until phase 4 this class was ONLY an archive of messages, and `16` §5 named it as such:
+  // *«`context-graph.mjs` è un archivio di messaggi che accumula»*. It still is an archive,
+  // and it must be — the messages are the RECORD of what happened, and a record that forgets
+  // is not a record. What it was missing is the other half: the session's STATE.
+  //
+  // The two are not the same thing and are not read for the same purpose:
+  //
+  //   messages   what was said, in order, kept whole, grows with the session — the record
+  //   facts      what is TRUE of this session now, typed, capped when projected — the state
+  //
+  // Every call to the model is built from the second (`context-projector.mjs`), never from
+  // the first. `projectSessionContext` deliberately does not call `branchMessages`, and a
+  // test asserts the projection is identical whether the branch holds four messages or eight
+  // hundred: that is the whole of `CE-005`, and it is not true of anything that reads a
+  // transcript, however carefully it trims one.
+
+  /**
+   * Writes one typed fact into the session's state.
+   *
+   * There is no other way in, and there is no free-text section to aim at: the projector's
+   * schema refuses an unknown section, an unknown field, a wrong type and an oversized
+   * string, naming which (`ContextSchemaViolation`, `CE-004`). A component that wants to
+   * influence the model states its fact in the schema's terms or does not get to.
+   */
+  recordContextFact({ conversationId, section, value }) {
+    // Validated BEFORE the transaction opens: a refused write must not have touched the
+    // store, and must not leave a conversation's `updatedAt` claiming something happened.
+    const normalised = validateFact(section, value);
+    return this.store.transact((state) => {
+      const conversation = findById(state.conversations, conversationId, 'Conversation');
+      // Additive field, defaulted at every read site — the same shape the migration to
+      // schemaVersion 3 used for `deletedAt` and `purgeAfter`, and the reason this phase
+      // needs no version bump: a conversation written before it reads as having no facts,
+      // which is exactly what it has.
+      conversation.contextFacts = [...(conversation.contextFacts ?? []), { section, value:normalised, at:now() }];
+      conversation.updatedAt = now();
+      return { conversationId, section, value:normalised, total:conversation.contextFacts.length };
+    });
+  }
+
+  /** The record side of the state: every fact this session has written, in order. Uncapped
+   *  on purpose — the cap belongs to the projection, not to what is kept. */
+  contextFacts(conversationId) {
+    const state = this.store.read();
+    return [...(findById(state.conversations, conversationId, 'Conversation').contextFacts ?? [])];
+  }
+
+  /** The view a model call receives: rebuilt from zero out of the facts, bounded by the
+   *  schema, and independent of how many messages the branch holds. */
+  projectSessionContext(conversationId) {
+    return projectContext(this.contextFacts(conversationId));
   }
 
   branchMessages(conversationId, branchId) {
