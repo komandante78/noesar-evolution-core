@@ -248,11 +248,16 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
         'the line shell no longer sends the goal with its (possibly empty) file list');
     });
 
-    test('the full-screen shell still sends an empty file list with the prose', () => {
-      // It has done this since s319 and was the only shell that did. Naming it here means a
-      // future shell inherits the check instead of inheriting the gap.
-      assert.match(tuiFullscreenSource, /\['workspace\.plan', \{ request: argument, files: \[\] \}\]/,
-        'the full-screen shell no longer sends an empty file list with the prose');
+    test('the shared model sends an empty file list with the prose, for every shell', () => {
+      // The full-screen shell has done this since s319 and was the only shell that did. Phase 2
+      // moved the rule into `coden-view-model.js`, so the check follows it: asserting here on
+      // `tui-fullscreen.mjs` would now pass for the wrong reason — by finding nothing — which
+      // is how a guard becomes decoration.
+      const model = readFileSync(join(root, '../../apps/webui-static/coden-view-model.js'), 'utf8');
+      assert.match(model, /\['workspace\.plan', \{ request: argument, files: \[\] \}\]/,
+        'the shared model no longer sends an empty file list with the prose');
+      assert.ok(!/const RUN = \{/.test(tuiFullscreenSource),
+        'the full-screen shell has grown a second command→call map');
     });
 
     test('a derived file list is shown as derived, never as a choice someone made', () => {

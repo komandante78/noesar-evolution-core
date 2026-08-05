@@ -22,62 +22,21 @@ import { renderFrame, SCREEN } from './tui-screen.mjs';
 import {
   AGENT_COMMANDS, matchCommands, parseCommandPrompt, resolveCommand,
 } from '../apps/webui-static/agent-commands.js';
-
-/** How each command turns into a call and a transcript entry. The engine method comes from
- *  the shared registry, so this decides only what to send and how to say what came back. */
-const RUN = {
-  plan: (argument) => ['workspace.plan', { request: argument, files: [] }],
-  simulate: (argument) => ['workspace.simulate', { runId: argument }],
-  approve: (argument) => ['workspace.approve', { runId: argument }],
-  reject: (argument) => {
-    const [runId, ...why] = argument.split(' ');
-    return ['workspace.reject', { runId, reason: why.join(' ') || undefined }];
-  },
-  restore: (argument) => ['workspace.restore', { runId: argument }],
-  diff: (argument) => ['workspace.get', { runId: argument }],
-  map: (argument) => ['repoMap.scan', argument ? { path: argument } : {}],
-  search: (argument) => ['repoMap.search', { q: argument }],
-  events: (argument) => ['events.correlation', { correlationId: argument }],
-  status: () => ['status', {}],
-  sessions: (argument) => ['sessions.list', argument ? { filter: argument } : {}],
-  git: () => ['coden.gitStatus', {}],
-};
-
-// Ten lines, and the count of what was dropped.
-//
-// It was twenty-four, and a single `/map` buried the tool call that produced it: the answer
-// scrolled the question off the screen, which is the opposite of what a transcript is for.
-// Truncating is the fix; truncating SILENTLY would not be — a reader who cannot see that
-// there was more would take ten lines for the whole answer.
-const DETAIL_LINES = 10;
-
-const detailLines = (value) => {
-  const all = (value === undefined || value === null ? '(nothing)' : JSON.stringify(value, null, 2)).split('\n');
-  return all.length <= DETAIL_LINES
-    ? all
-    : [...all.slice(0, DETAIL_LINES), `… ${all.length - DETAIL_LINES} more lines`];
-};
+// What a session looks like — the transcript, the prompt, the menu, and what a typed line
+// MEANS — is `apps/webui-static/coden-view-model.js` since phase 2. It used to be here, which
+// made this file the only place that knew, and left the browser free to invent a second answer
+// when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
+import {
+  createView, say, planTurn, detailLines, gitSummary, CLEARED_NOTE,
+} from '../apps/webui-static/coden-view-model.js';
 
 /**
  * Runs the agent shell until the user leaves it. Resolves when the screen is torn down; the
  * caller still owns the socket.
  */
 export async function runFullScreen({ session, status, out = process.stdout, input = process.stdin }) {
-  const view = {
-    transcript: [
-      { kind: 'note', text: 'CodeN Evolution — attached to the live session. Type a command, or / for the list.' },
-    ],
-    prompt: '',
-    menu: null,
-    mode: 'NORMAL',
-    network: 'local-only',
-    git: '—',
-    model: '—',
-    context: '—',
-    sourcedNote: null,
-  };
-
-  const say = (kind, text, detail) => { view.transcript.push({ kind, text, detail }); };
+  const view = createView();
+  const record = (kind, text, detail) => say(view, kind, text, detail);
 
   const draw = () => {
     out.write(SCREEN.home + renderFrame({
@@ -90,15 +49,7 @@ export async function runFullScreen({ session, status, out = process.stdout, inp
   // nothing but latency.
   const refreshFooter = async () => {
     const git = await session.call('coden.gitStatus', {}).catch(() => null);
-    if (git?.available) {
-      const parts = [git.detached ? 'detached' : git.branch];
-      if (!git.hasUpstream) parts.push('(no upstream)');
-      else {
-        if (git.ahead) parts.push(`↑${git.ahead}`);
-        if (git.behind) parts.push(`↓${git.behind}`);
-      }
-      view.git = parts.join(' ');
-    }
+    if (git?.available) view.git = gitSummary(git);
     // "No tests ran, and here is why" is a fact; omitting it reports the same footer as a
     // build where the answer is merely unknown.
     if (status?.workspaceActions?.testExecution === false) view.tests = 'tests none (EXECUTE refused)';
@@ -116,40 +67,27 @@ export async function runFullScreen({ session, status, out = process.stdout, inp
     view.menu = null;
     if (!typed) return draw();
 
-    say('user', typed);
+    record('user', typed);
     draw();
 
-    if (typed === '/help' || typed === '/') {
-      say('agent', 'Commands:', AGENT_COMMANDS.map((c) => `/${c.name} ${c.argument}`.trim().padEnd(28) + c.summary));
-      return draw();
-    }
-    if (typed === '/clear') {
-      view.transcript = [{ kind: 'note', text: 'Transcript cleared. The session kept its state — this shell is a viewer.' }];
-      return draw();
-    }
+    // What the line MEANS is decided by the shared model; this shell only performs it. The
+    // browser will perform the same intents over its own transport, which is the whole point.
+    const turn = planTurn(typed, {
+      resolve: resolveCommand, parse: parseCommandPrompt, commands: AGENT_COMMANDS,
+    });
 
-    const resolved = resolveCommand(typed);
-    if (!resolved) {
-      // Prose, or a slash word that names nothing. Said plainly rather than guessed at: the
-      // reference provider has no model (`workspace-actions.mjs` says so in its own status),
-      // so this shell cannot answer prose, and quietly running the nearest command would be
-      // an action nobody chose.
-      say('error', typed.startsWith('/')
-        ? `No command named \`${parseCommandPrompt(typed).word}\`. Type / for the list.`
-        : 'This shell has no model wired for prose. Every capability is a command — type / for the list.');
-      return draw();
-    }
+    if (turn.kind === 'help') { record('agent', 'Commands:', turn.lines); return draw(); }
+    if (turn.kind === 'clear') { view.transcript = [{ kind: 'note', text: CLEARED_NOTE }]; return draw(); }
+    if (turn.kind === 'unknown') { record('error', turn.message); return draw(); }
+    if (turn.kind !== 'call') return draw();
 
-    const build = RUN[resolved.command.name];
-    if (!build) { say('error', `\`/${resolved.command.name}\` has no transport here.`); return draw(); }
-    const [method, params] = build(resolved.argument);
-    say('tool', `${method}(${resolved.argument || ''})`);
+    record('tool', turn.label);
     draw();
     try {
-      const result = await session.call(method, params);
-      say('agent', `${resolved.command.name} — ok`, detailLines(result));
+      const result = await session.call(turn.method, turn.params);
+      record('agent', `${turn.command} — ok`, detailLines(result));
     } catch (error) {
-      say('error', `${resolved.command.name} refused${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
+      record('error', `${turn.command} refused${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
     }
     draw();
   };
