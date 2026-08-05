@@ -3892,3 +3892,26 @@ not affected, because neither shell imports this module yet.
 conversation record, the same shape the migration to `schemaVersion` 3 used for `deletedAt` and
 `purgeAfter`. A record written before this phase reads as having no facts, which is exactly what
 it has. `verify-source` reports 19 migrations and baseline 12/12 intact, unchanged.
+
+## 2026-08-05 — Phase 6 (`D-0323`): NO installation change
+
+Recorded rather than skipped, because a step that cannot be performed is declared.
+
+**Nothing was installed, deployed, or restarted.** The running `noesar-evolution` container still
+serves `noesar-evolution:coden-prose-grounding-v2`, unchanged and healthy (`/livez` 200,
+`/readyz` 200, verified after cleanup). The live `atomd` was **never stopped**: it has been up
+since 2026-08-02 and still runs `atom-evolution:atomd-a0024-sigterm`.
+
+**One throwaway container was created and removed in the same phase**, as the cycle requires:
+
+| Name | Image | Purpose | Removed |
+|---|---|---|---|
+| `noesar-evolution-phase6-atomd` | `atom-evolution:atomd-a0025-authoring` | the daemon the AFTER measurement really stopped, so «atomd fermato davvero, non simulato» is a fact | yes — `docker rm`, verified absent |
+
+No image was built, no network was created, no volume was touched. The pre-cleanup inventory is
+`EVIDENCE/docker_inventory_pre_cleanup_20260805T160841Z.txt`.
+
+**Still not deployed, and still the Owner's call:** `atom-evolution:atomd-a0025-authoring`
+(binary `baef9d51…`), built and proved in `D-0322`. Replacing a daemon that is currently serving
+is an action on the runtime. Its healthcheck and fixed IP are **not in the image** and must be
+copied from the live container, not rewritten.
