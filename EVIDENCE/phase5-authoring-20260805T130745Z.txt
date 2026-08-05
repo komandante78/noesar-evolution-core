@@ -1,0 +1,46 @@
+PHASE 5 — MISURA DOPO (Author wired to a live model)
+
+request:  "add rate limiting to the login route"   (files named by the caller: NONE)
+model:    http://127.0.0.1:8420
+
+planned in 4.6s
+
+authoring, as the run reports it:
+  available        true
+  reason           (none — it ran)
+  authored         3
+  unchanged        0   []
+  refused          0   []
+  paths discarded  0   []
+  novelty          novel
+  bytes written    867
+
+bytes on disk, before -> after approve():
+  src/login.js         85205e13819b2747 -> 5412fd44dafafaf3   *** CHANGED ***
+  src/rate-limit.js    d0776ac8f9ad6489 -> ecdc8842933af6d0   *** CHANGED ***
+  README.md            b56e5703de1cf994 -> 90140add3288db24   *** CHANGED ***
+
+verdict: 3 of 3 files carry bytes nobody pasted.
+
+src/login.js as the product wrote it:
+
+import { rateLimit } from 'express-rate-limit';
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many login attempts from this IP, please try again after 15 minutes"
+});
+
+export function loginRoute(app) {
+  app.use('/login', loginLimiter);
+  app.post('/login', async (request, reply) => {
+    const { user, password } = request.body;
+    return reply.send(await authenticate(user, password));
+  });
+}
+
+ledger: 1 authoring event(s), carrying 3 replayable fixtures
+  README.md            written   prompt 78934c76d565 answer 303f942e0514
+  src/login.js         written   prompt 65b535a9f6b8 answer 7ff1807893a9
+  src/rate-limit.js    written   prompt 18e29a6ece32 answer 0c9eddbecf2d

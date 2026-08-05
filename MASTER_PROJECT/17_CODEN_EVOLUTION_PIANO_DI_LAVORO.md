@@ -346,6 +346,60 @@ BUDGET      ~50 chiamate — se sfora si divide, non si tira dritto
 STOP        Una frase in prosa diventa un diff reale, provato in ombra, che l'Owner promuove
 ```
 
+> ### ✅ FASE 5a CHIUSA il 2026-08-05 — `D-0321`. **5b resta aperta, e il motivo è misurato.**
+>
+> **La fase si divide prima di toccare un file**, come la regola impone: **ATOM non ha una
+> superficie di autoratura.** `/v1/imagine` compare nel sorgente di ATOM **una volta sola, in un
+> test che asserisce `404`**. Quindi «qualsiasi modello → ATOM controlla e rigenera → la
+> risposta» non è costruibile senza cambiare un secondo repository — decisione dell'Owner, non
+> effetto collaterale di questa fase. **5a = l'Autore. 5b = la metà ATOM.**
+>
+> **La misura di apertura**, sul vero workspace e sul vero orchestratore, con una richiesta in
+> prosa che **non nomina nessun file**:
+>
+> ```text
+> PRIMA   grounding trova 3 file · il piano porta i PERCORSI · "contents" non compare
+>         approve() → performed 3 · src/login.js  85205e13… → 85205e13…  INVARIATO
+>
+> DOPO    (modello vivo, Qwen2.5-Coder 7B) autorati 3 · invariati 0 · rifiutati 0
+>         percorsi scartati 0 · novità novel · 4,1 s
+>         src/login.js  85205e13… → 08784ada…   CAMBIATO   (e le altre due anche)
+>         ledger: 1 evento di autoratura con 3 fixture rigiocabili
+> ```
+>
+> **3 file su 3 portano byte che nessuno ha incollato**, e `src/login.js` torna col limitatore
+> importato, configurato e attaccato alla rotta.
+>
+> **La regola che decide il disegno è la 1: l'Autore non nomina mai un percorso.** Gli si chiede
+> **un file per volta** e la sua risposta è il corpo *di quel file* — non esiste un ramo di
+> codice che estragga un percorso dall'uscita del modello, quindi non c'è niente con cui
+> allargare l'insieme chiuso. Una direttiva di percorso dentro il blocco si toglie, si **conta**
+> e finisce **sulla risposta della run**.
+>
+> **Il blocco recintato è obbligatorio**: senza, non si distingue un file da un paragrafo su un
+> file, e indovinare significherebbe scrivere la prosa del modello nel repository dell'operatore
+> la prima volta che diventa chiacchierone. `NO_FENCE`, `MANY_FENCES`, `EMPTY` sono rifiuti con
+> un nome — l'ultimo perché un file vuoto è **una cancellazione chiesta come scrittura**.
+>
+> **Un difetto trovato ESEGUENDO:** registravo l'autoratura prima che la run avesse una radice, e
+> il ledger rifiutava il piano come `SECOND_ROOT`. **Il ledger aveva ragione e l'ordine no**:
+> l'autoratura *accade* prima (i byte devono esistere prima che si chieda di approvarli) ma il
+> piano è ciò che la run **è**, quindi l'autoratura gli discende. Un test asserisce la causazione.
+>
+> **Verificato:** unit **1791/1792**, ESLint **330** 0/0/0, **11 mutazioni → 11**, più una
+> autoratura reale contro il modello vivo. **Dichiarato e non nascosto:** una singola esecuzione
+> della suite ha riportato **2 rotture** che l'output catturato non nominava; **tre esecuzioni
+> successive sono verdi** e non si sono riprodotte — registrato come *osservato una volta e non
+> attribuito*, perché «è passato la seconda volta» non è una diagnosi.
+>
+> **Non fatto in 5a, dichiarato:** ATOM non è nella catena (è 5b); il profilo di divergenza è
+> **accettato ma non fornito** — `buildAuthoringPrompt` prende i quattro segnali col loro livello
+> e un test prova che non diventano mai un punteggio, ma nessuno chiama ancora
+> `divergence-profile.mjs`, che è la **fase 7** e questo ne è il punto d'atterraggio; l'ombra non
+> esegue ancora i test **prima** della promozione (`16` §3.3 vuole lo stadio 11 prima del 13 — i
+> byte ora esistono abbastanza presto perché sia possibile); **nessuna delle due shell** rende
+> ancora il verdetto di autoratura, ed è sulla risposta. Niente è deployato.
+
 **La catena:** qualsiasi modello sotto → **ATOM** controlla e rigenera → la risposta. Su tutte e
 tre le superfici.
 

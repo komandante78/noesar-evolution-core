@@ -6442,3 +6442,123 @@ unit **1776/1777** (0 fail, 1 pre-existing skip; 1760/1761 before this phase) ·
 files 0/0/0** · `verify-source` **PASS**, migrations 19, baseline 12/12 intact · **11 mutations,
 11 killed** · the long task measured at **n = 400** on a real store, with the branch genuinely
 carrying 800 messages and then 1 600, the projection unmoved.
+
+---
+
+## D-0321 — Phase 5a · the Author: the product writes the change (2026-08-05)
+
+**Decision.** CodeN Evolution gets the component `16` §1 measured as missing from the
+specification before it was missing from the code. `src/author.mjs` is new; `workspace-actions.mjs`
+gains stage 9b and stops writing back the caller's own bytes.
+
+**The phase is split, and the split was declared before a file was touched.** `17` says a phase
+whose file list cannot be written first is not covered. **5a** is the Author. **5b** is ATOM's
+half of the chain, and it is separate for a measured reason: **ATOM has no authoring surface.**
+`/v1/imagine` appears in ATOM's own source exactly once, in a test asserting it returns `404`.
+So «any model → ATOM checks and regenerates → the answer» cannot be built without changing a
+second repository, which is a decision for the Owner and not a side effect of this phase.
+
+### The measurement that opened the phase
+
+Driven end to end against a real workspace and a real orchestrator
+(`EVIDENCE/phase5-measure-before.mjs`), with a prose request naming **no** files:
+
+```text
+request        "add rate limiting to the login route"
+grounding      the repository chose README.md, src/login.js, src/rate-limit.js
+plan carries   paths — and the string "contents" appears nowhere in the answer
+approve()      performed 3
+src/login.js   85205e13819b2747 -> 85205e13819b2747   *** UNCHANGED ***
+```
+
+The product "changes three files" by writing back the bytes that were already there. That is
+`16` §1 confirmed by execution rather than by reading, and it is the sentence the phase deletes.
+
+### The same request, after — against a live model, not a stub
+
+`EVIDENCE/phase5-measure-after.mjs`, Qwen2.5-Coder 7B on this installation's local runtime:
+
+```text
+planned in 4.1 s ·  authored 3 · unchanged 0 · refused 0 · paths discarded 0 · novelty novel
+README.md          b56e5703de1cf994 -> 90140add3288db24   CHANGED
+src/login.js       85205e13819b2747 -> 08784adad5329163   CHANGED
+src/rate-limit.js  d0776ac8f9ad6489 -> ecdc8842933af6d0   CHANGED
+ledger: 1 authoring event carrying 3 replayable fixtures
+```
+
+and `src/login.js` came back with a limiter imported, configured and attached to the route. **3
+of 3 files carry bytes nobody pasted.**
+
+### The seven rules of `16` §3.2, enforced rather than requested
+
+The one that decides the design is **rule 1: the Author never names a path.** It is asked for
+one file at a time and its answer is the body of *that* file — there is no code path that parses
+a path out of a model's output, so there is nothing to widen the closed set with. A path
+directive inside the block is stripped, **counted, and reported on the run** (`discarded`),
+because a rule nothing measures is the criterion `17` rule 5 is about.
+
+**A fenced block is required.** Without one there is no way to tell a file from a paragraph
+about a file, and guessing would write the model's prose into the operator's repository the
+first time it felt chatty. `NO_FENCE`, `MANY_FENCES` and `EMPTY` are named refusals — the last
+because an empty file is a deletion asked for as a write. **One file the model cannot answer for
+does not throw away the files it could**: the run reports which part is missing.
+
+**Rule 7 is checkable by reading and is also checked by running:** `author.mjs` imports neither
+`node:fs` nor the minter nor the executor, and a full authoring run leaves an empty directory
+empty. The source scan strips comments first — this module's header discusses `node:fs` at
+length, and a guard that reads its own documentation as evidence has already been written three
+times on this project.
+
+**An installation with nothing underneath is told so.** `AuthoringUnavailable` carries *"this
+installation can plan a change but cannot write one, and will not present empty contents as a
+result"* — the posture `simulate` already takes. A model that is **down** leaves the plan intact
+and writes nothing: a plan that is otherwise correct must not be destroyed by an endpoint, and
+half a change must never be written.
+
+### The defect found by executing, and its root cause
+
+The first wiring recorded the authoring event before the run had a root, and the ledger refused
+`workspace_action.planned` as a `SECOND_ROOT`. **The ledger was right and the order was wrong.**
+Authoring HAPPENS before the plan is recorded — the bytes must exist before anyone is asked to
+approve them — but the plan is what the run *is*, so the authoring hangs off it as an effect.
+A test now asserts `authored.causationId === root.id`.
+
+**Also deliberate, and worth naming:** authoring is not reachable from `#runDecisionLayer`. That
+method is what `replay()` re-runs, and a model writing fresh bytes on every replay would be
+reported as drift originating in this file — when it is the one thing `01_VISIONE_E_POSIZIONE.md`
+already declares non-deterministic and reproduces from fixtures instead.
+
+### Verified
+
+unit **1791/1792** (0 fail, 1 pre-existing skip) · ESLint **330 files 0/0/0** · **11 mutations,
+11 killed** from a baseline verified green first · one authoring run against a live model,
+recorded in `EVIDENCE/phase5-authoring-*.txt`.
+
+**Declared, not glossed over:** one full-suite run reported **2 failures** and did not name them
+in the output that was captured; **three consecutive runs since are green at 1791/1792** and the
+failure has not recurred. It is recorded here as observed-once-and-unattributed rather than
+called clean, because "it passed the second time" is not a diagnosis.
+
+### What 5a did NOT do
+
+- **ATOM is not in the chain.** The bytes come from the model directly. `16` §3.1b says ATOM
+  checks and regenerates on all three surfaces; that is **5b**, and it needs an authoring
+  surface ATOM does not have (`/v1/imagine` → 404, measured in ATOM's own tests).
+- **The divergence profile is accepted but not supplied.** `buildAuthoringPrompt` takes the four
+  signals and a test proves they arrive as levels and never as a score, but nothing calls
+  `divergence-profile.mjs` yet — that is **phase 7**, and this is its landing site.
+- **The shadow does not run the tests before promotion.** `approve()` still executes into the
+  shadow and then promotes; `16` §3.3 wants stage 11 *before* stage 13 so the gate sees a
+  measured result. The bytes now exist early enough for it, which is the precondition.
+- **Neither shell shows the authoring verdict yet.** It is on the answer (`authoring`, always,
+  with a reason when empty) and no shell renders it. Declared here because rule 3 of `17` says
+  the state of the other shell is stated in the same breath — here both are in the same state.
+- **Nothing is deployed**, and no container was created or touched.
+
+### The improvement this phase records
+
+Authoring is one model call per file, sequential — three files took 4.1 s here and thirty would
+take forty. **Proposal:** author the closed set concurrently with a declared ceiling. **Benefit:**
+wall time stops being linear in the size of the plan. **Cost:** the novelty digest and the
+fixture order must stay deterministic regardless of completion order, so the concurrency has to
+be in the calls and not in the assembly.

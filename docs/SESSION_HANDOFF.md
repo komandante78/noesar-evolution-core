@@ -1,134 +1,93 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 4 (`D-0320`, `e375cce`)
+> ## ⏭ STATO CORRENTE — 2026-08-05, fine Fase 5a (`D-0321`). **5b aperta.**
 >
-> **Programma attivo: CodeN Evolution.** Due file soli, in quest'ordine:
+> **Programma attivo: CodeN Evolution.** Due file soli, in quest ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
 > `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
 > `noesar-evolution` è obbligatoria — **il registro degli skill non la conosce sotto questo
-> nome**: si legge direttamente da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
+> nome**: si legge da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
 > Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### Fatto — **fase 4 chiusa: il proiettore di contesto (invenzione I)**
+> ### Fatto — **fase 4** (`D-0320`) e **fase 5a** (`D-0321`)
 >
-> **La misura, prima di toccare un file**, sul vero `ContextGraph`, il vero `AtomicJsonStore` e
-> `contextInspection()`, riproducendo verbatim la mappatura di `chat-orchestrator.mjs:32`
-> (`EVIDENCE/phase4-context-projection-measure.mjs`, uscita in
-> `EVIDENCE/phase4-context-projection-measure-20260805T120103Z.txt`):
+> **Fase 4, il proiettore di contesto.** La trascrizione consegnata al modello passava da 8 voci
+> / 1 044 B alla chiamata 3 a 602 / 85 190 B alla 300 (×81,6); proiettata: 581 B → 1 197 B, e
+> **1 197 B identici alla 400**. Tetto 15 198 B **derivato dallo schema**. Nove sezioni, nessun
+> `append`, nessuna sezione di prosa. **Non cablato a nessuna chiamata al modello**, e voluto:
+> il primo consumatore è l Autore.
+>
+> **Fase 5a, l Autore — il buco che tutto il programma esisteva per chiudere.**
 >
 > ```text
-> chiamata      PRIMA (trascrizione)          DOPO (proiezione)
->       3        8 voci ·  1 044 B                581 B
->      25       52 voci ·  7 237 B              1 152 B
->     300      602 voci · 85 190 B              1 197 B
->     400      802 voci · 113 590 B             1 197 B      ← identico a 300
+> PRIMA   prosa senza file nominati → grounding trova 3 file → il piano porta i PERCORSI
+>         approve() → performed 3 · src/login.js 85205e13… → 85205e13…  INVARIATO
+> DOPO    (modello VIVO, Qwen2.5-Coder 7B, non uno stub) autorati 3 · rifiutati 0
+>         percorsi scartati 0 · novità novel · 4,1 s · tutti e 3 gli hash cambiati
+>         ledger: 1 evento con 3 fixture rigiocabili
 > ```
 >
-> **×81,6 prima, −98,6 % dopo.** Il tetto (15 198 B) è **derivato dallo schema** da
-> `projectionByteCeiling()`, non scritto in un test: non può allontanarsi dalle sezioni.
+> `src/login.js` torna col limitatore importato, configurato e attaccato alla rotta. **3 file su
+> 3 portano byte che nessuno ha incollato.**
 >
-> **Detto con precisione, perché la versione onesta è più stretta dello slogan.** La forma
-> *non* è identica fra la chiamata 3 e la 300: alla 3 la sessione ha tre passi di piano e la
-> vista ne mostra tre. È identica **dalla chiamata 25** — da quando i tetti sono raggiunti — e
-> a ogni chiamata è identico l'insieme ordinato delle sezioni. La crescita fra 3 e 25 è lo stato
-> che si riempie fino ai suoi tetti, finita; non è accumulo. `CE-005` asserisce i nomi di
-> sezione a 3 e 300 e la forma **e i byte** a 300 e 400, che è ciò che il codice garantisce.
+> **La regola che decide il disegno è la 1: l Autore non nomina mai un percorso.** Un file per
+> volta, e la risposta è il corpo *di quel file*: non esiste un ramo che estragga un percorso
+> dall uscita del modello, quindi non c è niente con cui allargare l insieme chiuso. Una
+> direttiva di percorso dentro il blocco si toglie, si **conta** e finisce sulla risposta.
 >
-> **Nove sezioni**, esattamente quelle che l'invenzione I nomina (obiettivo, piano, evidenze,
-> domande aperte, diff corrente, firme di fallimento, autorità attiva) più «tentativi» (`15` §5,
-> budget sulla novità) e «segnali del repository», dove atterra l'invenzione II alla fase 7:
-> accetta un segnale con un `level` e **non ha campi numerici**, quindi non c'è porta di
-> servizio per il punteggio che `divergence-profile.mjs` si rifiuta di produrre.
+> **Un difetto trovato ESEGUENDO:** registravo l autoratura prima che la run avesse una radice e
+> il ledger rifiutava il piano come `SECOND_ROOT`. Il ledger aveva ragione e l ordine no.
 >
-> **Nessun `append`, nessun `note`, nessuna sezione di prosa.** Quattro rifiuti, ognuno nomina
-> sezione e campo: sezione non dichiarata, campo che la sezione non ha, tipo sbagliato, stringa
-> oltre il massimo. Una stringa troppo lunga si **rifiuta**, non si taglia.
+> ### 🛑 Perché la fase 5 è divisa — misurato, non supposto
 >
-> ### Tre difetti, tutti trovati misurando o eseguendo
+> **ATOM non ha una superficie di autoratura.** `/v1/imagine` compare nel sorgente di ATOM **una
+> volta sola, in un test che asserisce `404`** (`crates/atom-provider/src/http.rs`). Quindi la
+> catena «qualsiasi modello → ATOM controlla e rigenera → la risposta» (`16` §3.1b, dichiarata
+> senza eccezioni su tutte e tre le superfici) **non è costruibile senza toccare un secondo
+> repository**. Oggi i byte vengono dal modello **direttamente**.
 >
-> 1. **Validare in lettura *lanciando*** significava che **una sola riga fuori schema bloccava
->    ogni chiamata al modello di quella sessione, per sempre** — un diniego di servizio che si
->    compra con una singola modifica, e che si raggiunge anche solo stringendo lo schema dopo
->    che i fatti sono stati scritti. Il cancello in **scrittura** lancia ancora (`CE-004`); la
->    **lettura** esclude la riga, la **conta** e la vista lo dichiara (`held back: 1 out of
->    schema`), visibile solo quando non è zero.
-> 2. La finestra **ordinava le domande bloccanti in testa e poi prendeva la coda** — cioè le
->    ordinava per buttarle via. Selezione e presentazione ora sono due passi: si sceglie per
->    rango, si **rende in ordine di scrittura**.
-> 3. Per **mutazione**: il tetto allentato di uno (`length <= show + 1`) sopravviveva, perché
->    nessun test teneva esattamente `show + 1` voci. Ora il confine è asserito a `cap−1`, `cap`,
->    `cap+1` e la mutazione muore.
+> ### Prossima — **fase 5b, e si apre con una domanda all Owner, non con del codice**
 >
-> ### Dove sta davvero il costo, attribuito e non asserito
+> Tre strade, da mettere all Owner prima di scrivere: **(a)** una superficie di autoratura nuova
+> in `/mnt/cachec/ATOM_EVOLUTION` (repo git **separato**, i commit non si mescolano mai);
+> **(b)** ATOM che **controlla** con le superfici che ha (`evidence`, `classify`, `confidence`)
+> e la **rigenerazione dichiarata assente**; **(c)** 5b rimandata, e prima le fasi 6/7/8.
+> **Prima cosa da misurare all apertura:** cosa ATOM sa già dire su byte autorati con le dodici
+> superfici esistenti, contro cosa richiederebbe rigenerarli.
 >
-> `projMs` cresce con la sessione (0,52 → 2,65 ms a 1 201 fatti). Misurato separando lo store:
-> `projectContext` da solo fa 0,19 ms a 10 fatti, 0,59 ms a 1 201, 3,50 ms a 12 001 — il resto è
-> `AtomicJsonStore.read()` che ri-parsa l'intero file, che è la natura dello store e non di
-> questo modulo. **L'uscita è limitata; il lavoro è lineare nel record.**
+> ### Aperto da 5a, e non è 5b
 >
-> ### Verificato in sessione, ogni numero prodotto qui
+> - il **profilo di divergenza** è accettato da `buildAuthoringPrompt` (quattro segnali col
+>   livello, mai un punteggio — c è il test) ma **nessuno lo fornisce**: è la **fase 7**, e
+>   questo ne è il punto d atterraggio;
+> - **l ombra non esegue i test prima della promozione** — `16` §3.3 vuole lo stadio 11 prima
+>   del 13; i byte ora esistono abbastanza presto perché sia possibile;
+> - **nessuna delle due shell** rende il verdetto di autoratura, che è sulla risposta (`authoring`,
+>   sempre presente, con la ragione quando è vuoto). Le due shell sono nello stesso stato.
 >
-> unit **1776/1777** (0 fail, 1 skip preesistente; era 1760/1761) · ESLint **326 file 0/0/0** ·
-> `verify-source` **PASS**, 19 migrazioni, baseline 12/12 · **11 mutazioni → 11**, da baseline
-> verificata verde prima · prodotto vivo `livez`/`healthz`/`readyz` **200/200/200**.
+> ### Verificato in sessione
 >
-> ### NON fatto, dichiarato
+> unit **1791/1792** (0 fail, 1 skip preesistente) · ESLint **330 file 0/0/0** ·
+> `verify-source` PASS · **11 + 11 = 22 mutazioni → 22** · prodotto vivo **200/200/200**.
 >
-> - **Nessuna chiamata al modello passa dal proiettore, su nessuna delle due shell.**
->   `chat-orchestrator.mjs` consegna ancora l'intero ramo; il terminale non rende nessuna
->   proiezione. È voluto: sostituire ciò che una shell manda al modello è una **rimozione**, e
->   la regola 3 di `17` dice che il sostituto si prova **prima**. Ora esiste ed è misurato.
-> - **Il motore non scrive ancora nessuna sezione.** Piano, diff e token stanno in `#runs` di
->   `workspace-actions.mjs` e non sono specchiati nello stato: è la lista file della **fase 5**.
-> - **Niente è deployato.** Il container è invariato su `coden-prose-grounding-v2`.
-> - **Otto container di rollback fermi** da sessioni precedenti sopravvivono contro §5a. Questa
->   fase non ne ha creato nessuno e non ne ha toccato nessuno.
-> - Un file di evidenza prodotto da questa stessa sessione sette minuti prima
->   (`…T115406Z.txt`) è stato rimosso quando il successore rigenerato è esistito. Dichiarato e
->   non taciuto: `CLAUDE.md` dice di non cancellare file.
+> **⚠️ Dichiarato e non nascosto:** **una** esecuzione della suite ha riportato **2 rotture** che
+> l output catturato non nominava; **tre esecuzioni successive sono verdi** e non si sono
+> riprodotte. Registrato come *osservato una volta e non attribuito* — «è passato la seconda
+> volta» non è una diagnosi.
 >
-> ### Proposta di miglioramento registrata (non eseguita)
+> ### ⚠️ Trappole misurate che valgono oltre la fase
 >
-> `recordContextFact` scrive **un** fatto e per farlo rilegge e riscrive l'intero record della
-> conversazione. **Proposta:** un log di fatti append-only per conversazione. **Beneficio:** il
-> costo lineare sparisce dal percorso di scrittura, e due componenti che scrivono insieme
-> smettono di poterne perdere uno. **Costo:** una collezione nuova significa bump di
-> `schemaVersion` **con la migrazione accanto** — questa fase l'ha evitato di proposito mettendo
-> `contextFacts` sul record della conversazione, la stessa forma additiva usata dalla migrazione
-> a versione 3 per `deletedAt`.
+> - `npm test` legge `app.js` come **testo**: un TypeError nel browser passa le unit. Solo
+>   `bash tools/run-browser-e2e.sh` lo vede.
+> - le acceptance `tools/acceptance/*` **non stanno in `npm test`**.
+> - `git commit -F -` con **heredoc** non committa: l hook pre-commit consuma lo stdin, e un
+>   push successivo spinge **nulla** dicendo OK. Messaggio su file, e verificare l hash.
+> - il prodotto pubblica su **`192.168.178.100:8100`** (porta 8088 nel container), non su
+>   `127.0.0.1`. L healthcheck vivo è in forma `CMD-SHELL`: generare e validare il comando
+>   **prima** di fermare il container.
 >
-> ### Prossima — **fase 5, l'Autore** (`17`)
->
-> **OBIETTIVO:** il prodotto scrive lui il cambiamento, e l'Owner promuove un risultato
-> **misurato**. È il buco che tutto il programma esiste per chiudere: nessuna delle 12 superfici
-> produce il *contenuto* di un file (`workspace-actions.mjs:537` scrive ciò che il chiamante gli
-> passa). File: `src/author.mjs` (nuovo), `src/workspace-actions.mjs`, `test/author.test.mjs`
-> (nuovo — `CE-025`…`CE-030`). **Prima cosa da misurare all'apertura:** che cosa produce oggi
-> `plan()` per una richiesta in prosa senza file nominati — i percorsi ci sono, il contenuto no.
->
-> **I due vincoli che si sbagliano più facilmente** (`16` §3.2): l'Autore **non nomina mai un
-> percorso** (riceve un insieme chiuso dal Piano; un percorso nella sua uscita si **scarta e si
-> registra**, non si normalizza) e **la sua uscita non tocca il repository vero** (va in ombra,
-> i test girano, e **solo dopo** c'è il dialogo di promozione — `CE-008` esiste apposta).
->
-> **Il proiettore è il suo primo consumatore**: l'Autore chiama il modello ripetutamente sullo
-> stesso compito, ed è il componente che avrebbe pagato l'assenza dello stato (`16` §5).
->
-> ### ⚠️ Tre trappole misurate, che valgono oltre la fase
->
-> - `npm test` legge `app.js` come **testo** e non lo esegue mai: un TypeError nel browser passa
->   1776 unit e 0 ESLint. Solo `bash tools/run-browser-e2e.sh` lo vede.
-> - le acceptance `tools/acceptance/*` **non stanno in `npm test`**: `CE-020` è rimasta rossa
->   per due fasi. Eseguirle nella fase, e **bisezionare prima di attribuire** un rosso.
-> - un commit con `git commit -F -` e heredoc **fallisce in silenzio**: l'hook pre-commit
->   consuma lo stdin. Scrivere il messaggio su file e usare `-F <file>`.
->
-> **⚠️ Prima di qualunque deploy**: l'healthcheck vivo è in forma `CMD-SHELL` (`--health-cmd` la
-> produce sempre). **Generare e validare il comando PRIMA di fermare il container** — l'ordine
-> sbagliato è costato ~80 s di downtime in s320. Il prodotto pubblica su
-> `192.168.178.100:8100` (porta 8088 nel container), **non** su `127.0.0.1`.
->
-> **Stato del lavoro:** `e375cce` su `origin/main`. Pushato, **NON deployato**.
+> **Stato del lavoro:** pushato su `origin/main`. **NON deployato** — il container è invariato
+> su `coden-prose-grounding-v2`.
 >
 ---
 

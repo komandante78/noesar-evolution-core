@@ -49,6 +49,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
+import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
 import { ReasoningRouter, routingFrom } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
@@ -99,8 +100,9 @@ export class WorkspaceActionOrchestrator {
   #privacyStateFor;
   #env;
   #groundRequest;
+  #author;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -122,6 +124,14 @@ export class WorkspaceActionOrchestrator {
     // interesting branches here are the refusals, and a refusal that only fires against a
     // real repository is a refusal no test can reach without building one.
     this.#groundRequest = groundRequest;
+    // Stage 9b (`16` §3.3): the component that writes the contents. Optional and absent by
+    // default — an installation with no model configured plans exactly as it did before and
+    // says so, rather than presenting empty contents as a result. It is deliberately NOT
+    // reachable from `#runDecisionLayer`: that method is what `replay()` re-runs, and a model
+    // writing fresh bytes on every replay would be reported as drift originating in this file
+    // when it is the one thing `01_VISIONE_E_POSIZIONE.md` already declares non-deterministic
+    // and reproduces from fixtures instead.
+    this.#author = author;
     // ARCH-008 / D-0250: the client's own decision, resolved once at boot in server.mjs
     // (`resolveExecuteSandboxConfig`) and threaded through, never re-read per call — a
     // config that could change mid-run would make "the token's limits were checked against
@@ -401,6 +411,61 @@ export class WorkspaceActionOrchestrator {
       fixturePack = null;
     }
 
+    // ── Stage 9b · AUTHORING (`16` §3.3) ────────────────────────────────────────────────
+    //
+    // After the blast radius, before the expectation is checked against anything real, and
+    // long before authorisation: what is promoted must be a MEASURED result, so the bytes have
+    // to exist by the time anyone is asked to approve them.
+    //
+    // Everything here is best-effort in one specific sense and not in another: a model that is
+    // down, refuses, or answers with prose must not destroy a plan that is otherwise correct —
+    // the plan is still a plan, and the run says plainly that nothing was written. What is NOT
+    // best-effort is silence: `authoring` is always on the answer, with a reason when it is
+    // empty. `null` would let a shell show "3 files" without saying whether anything was
+    // written, which is the exact shape of the gap `16` §1 measured.
+    // The authoring HAPPENS here — before the plan is recorded, because the bytes must exist
+    // by the time anyone is asked to approve them — but it is not WRITTEN to the ledger until
+    // the run has a root. Found by executing, not by reading: recording it here with a null
+    // causation made authoring the root of the correlation, and `workspace_action.planned` was
+    // then refused as a second root (`events.mjs`, `SECOND_ROOT`). The ledger was right and the
+    // order was wrong: the plan is what this run IS, and the authoring is caused by it.
+    let authoring = { available: false, reason: Author.NO_MODEL_REASON, authored: 0 };
+    let authoringEvent = null;
+    const authoredContents = new Map();
+    if (this.#author?.available) {
+      try {
+        const result = await this.#author.author({
+          goal: intent.goal,
+          step: plan.steps?.[0]?.description ?? intent.goal,
+          files: planFiles,
+        });
+        for (const [path, body] of result.contents) authoredContents.set(path, body);
+        authoring = {
+          available: true, reason: null,
+          ...result.summary,
+          novelty: result.novelty,
+          unchangedPaths: result.unchanged,
+          refusals: result.refusals,
+          // Rule 1 of `16` §3.2, reported and not merely obeyed: a path the model tried to
+          // name is on the answer, so "it never widens the set" is a claim with a number
+          // beside it instead of a sentence in a comment.
+          discarded: result.discarded,
+        };
+        authoringEvent = ['workspace_action.authored', {
+          authored: result.summary.authored, unchanged: result.summary.unchanged,
+          refused: result.summary.refused, discardedPaths: result.summary.discardedPaths,
+          novelty: result.novelty, digest: result.summary.digest,
+          // The fixtures themselves, not a count: `CE-006` asks for the session to be
+          // re-runnable, and a ledger line saying "there were three" replays nothing.
+          fixtures: result.fixtures,
+        }];
+      } catch (error) {
+        if (!(error instanceof AuthoringUnavailable) && !(error instanceof AuthoringRefused)) throw error;
+        authoring = { available: true, reason: error.reason, authored: 0, failed: true };
+        authoringEvent = ['workspace_action.authoring_failed', { reason: error.reason }];
+      }
+    }
+
     const rootEventId = this.#record(runId, null, actor, 'workspace_action.planned', {
       goal: intent.goal, files: planFiles.map((file) => file.path), risk: risk.overall, provenance,
       // In the ledger, not only in the answer. Whether the files were chosen by a person or
@@ -408,6 +473,8 @@ export class WorkspaceActionOrchestrator {
       // record that omits it cannot be asked the question later.
       grounding,
     }, nowUnix);
+    // Now that the run has a root, the stage-9b line can hang off it with a real causation.
+    if (authoringEvent) this.#record(runId, rootEventId, actor, authoringEvent[0], authoringEvent[1], nowUnix);
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
       plan, expectation, files: planFiles, intent, hypotheses, risk, confidence, claims, provenance, grounding,
@@ -415,6 +482,9 @@ export class WorkspaceActionOrchestrator {
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
       request, projectRules, constraints, mode, policy,
+      // Stage 9b output. The map belongs to the RUN, not to the caller: `approve()` reads it,
+      // and nothing between here and there can add a key the Plan had not settled on.
+      authoredContents, authoring,
       egressSamples: [this.#sampleEgress('planned', nowUnix)].filter(Boolean),
       // SESS-002: the captured replay pack, `null` when capture failed or nothing routed
       // externally for `fixtures` itself — session-proof.mjs and replay() both read this.
@@ -431,7 +501,10 @@ export class WorkspaceActionOrchestrator {
     // showing "3 files" without saying they were derived invites the operator to read them as
     // a choice somebody made. `null` when the caller named the files, which is the honest
     // value: nothing was derived.
-    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding };
+    // `authoring` is returned, never left to be inferred. A shell that shows a plan without
+    // saying whether the product wrote anything invites the operator to read paths as content,
+    // which is exactly how the missing Author went unnoticed through five phases.
+    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring };
   }
 
   /**
@@ -534,7 +607,12 @@ export class WorkspaceActionOrchestrator {
     const shadowRoot = join(this.#shadowsRoot, runId);
     const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, shadowRoot);
     try {
-      const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: file.contents }));
+      // Stage 9b, spent. This line used to read `contents: file.contents` — the caller's own
+      // bytes written back unchanged, which is what made `approve()` perform three WRITEs and
+      // leave every hash identical (`EVIDENCE/phase5-measure-before.mjs`). The authored bytes
+      // win where they exist; where they do not the previous behaviour is kept exactly, so an
+      // installation with no model configured is not made worse by this path existing.
+      const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));
       const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
       const executeEventId = this.#record(runId, approveEventId, approverId, 'executor.ran',
         { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
