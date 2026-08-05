@@ -157,13 +157,31 @@ test('rule 3: the current contents are fenced as untrusted, and the instruction 
 });
 
 test('rule 6: the divergence profile goes in as four signals with a level, never as a score', () => {
-  const prompt = buildAuthoringPrompt({
-    goal: 'g', step: 's', path: 'a.js', contents: 'x\n',
-    profile: [{ signal: 'co-modification', level: 'high' }, { signal: 'tests per change', level: 'medium' }],
-  });
-  assert.match(prompt, /co-modification: high/);
-  assert.match(prompt, /tests per change: medium/);
-  assert.ok(!/\b\d+(\.\d+)?\s*%/.test(prompt), 'a percentage would be the score the profile refuses to produce');
+  // REWRITTEN in phase 7, and the reason matters more than the change. This test used to feed
+  // `{ signal: 'co-modification', level: 'high' }` — a shape `divergenceOf` has never once
+  // produced. It invented its own input, asserted the prompt echoed it, and passed for two
+  // phases while `buildAuthoringPrompt` read a key the real profile does not carry. Connecting
+  // the two in phase 7 would have sent the model `- undefined: high`.
+  //
+  // The input here is now the shape the module actually emits, keys and all.
+  const profile = [
+    { id: 'scope', level: 'none', note: '1 file(s) across 1 layer(s); accepted changes here touch a median of 2 across 1' },
+    { id: 'co-change', level: 'high', note: 'src/a.js changes with test/a.test.js in 88% of its changes — not here' },
+    { id: 'tests', level: 'high', note: 'no test changed; 100% of accepted changes here carry one' },
+    { id: 'new-files', level: 'none', note: 'every file here has been changed before' },
+  ];
+  const prompt = buildAuthoringPrompt({ goal: 'g', step: 's', path: 'a.js', contents: 'x\n', profile });
+
+  for (const signal of profile) assert.match(prompt, new RegExp(`- ${signal.id}: ${signal.level}`));
+  assert.ok(!prompt.includes('undefined'), 'a signal name arrived as `undefined`');
+
+  // The rule is "never a SCORE", not "never a digit". A note saying 88% of a file's changes
+  // carried a partner is an OBSERVATION about history, and it is the half that tells a model
+  // what to do. What must never appear is a number ranking this change as a whole — the
+  // aggregate `divergence-profile.mjs` refuses to compute, and which the prompt must not
+  // compute on its behalf.
+  assert.ok(!/divergence (score|rating|index)|overall[: ]+\d|risk score/i.test(prompt),
+    'the prompt ranks the change with a single number the profile refuses to produce');
 });
 
 test('an approach already tried is named in the prompt so it is not tried again', () => {

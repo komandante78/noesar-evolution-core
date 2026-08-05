@@ -71,6 +71,7 @@ import {
 } from './tool-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
+import { profileChange } from './divergence-profile.mjs';
 import { AdapterGrantOrchestrator, AdapterCapabilityError, adapterCapabilityStatus } from './adapter-capability.mjs';
 import { evaluateEgress, privacyBanner, derivePrivacy } from './privacy.mjs';
 import { JsonStore } from './store.mjs';
@@ -1293,6 +1294,33 @@ const requestListener = async (req, res) => {
     // only, never a write/fetch. Same optional-subpath boundary as repo-map: a path outside
     // the workspace is rejected before git ever sees it, not after. Not ledgered: this is
     // polled the same way authorisations is, not a deliberate scan worth auditing.
+    // Phase 7 (`CE-010`): the divergence profile for a named set of paths — the browser's twin
+    // of the terminal's `coden.divergence`. Both call the SAME profiler against the SAME root,
+    // so the profile shown beside a diff and the one printed in a terminal are one reading of
+    // one repository, not two that could disagree.
+    //
+    // POST, not GET: the paths are the request, a list of them does not belong in a query
+    // string, and profiling walks git history — which is work, and a verb that says so.
+    if (req.method === 'POST' && url.pathname === '/api/v1/coden/divergence') {
+      // `requireCsrf` like every other POST here. This one mutates nothing, but it walks git
+      // history over paths the caller names — a route a foreign page can make the browser call
+      // is a route that spends this server's time on that page's behalf.
+      const authenticated = requireSession(req, res, 'coden.plan');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const paths = Array.isArray(request?.paths) ? request.paths.map(String).filter(Boolean) : [];
+      if (!paths.length) return json(res, 400, { error: 'a divergence profile needs the paths a change touches' });
+      try {
+        const profiled = await profileChange(workspace, paths);
+        return json(res, 200, { available: true, reason: null, signals: profiled.signals, basis: profiled.basis });
+      } catch (error) {
+        // A workspace with no git history is a real installation. It is told so, with the
+        // reason, rather than being handed a 500 for a condition nothing went wrong in.
+        if (error?.name !== 'DivergenceUnavailable') throw error;
+        return json(res, 200, { available: false, reason: error.reason ?? error.message, signals: [], basis: null });
+      }
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/v1/coden/git-status') {
       const authenticated = requireSession(req, res, 'coden.plan'); if (!authenticated) return;
       const target = resolveWorkspaceSubpath(workspace, url.searchParams.get('path'));

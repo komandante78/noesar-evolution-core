@@ -20,6 +20,7 @@
 // per newline, instead of pulling in a message-framing library.
 
 import { createServer } from 'node:net';
+import { profileChange as defaultProfileChange } from './divergence-profile.mjs';
 import { existsSync, unlinkSync, chmodSync } from 'node:fs';
 
 export const PROTOCOL_VERSION = 'noesar-tui/1';
@@ -83,6 +84,12 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // a fact it cannot reach over HTTP. That is precisely the sideways asymmetry `D-0302`
   // closed, and re-opening it for the convenience of a status field is not a trade.
   'coden.gitStatus': { permission: 'coden.plan', bridged: false },
+  // Phase 7. The divergence profile, on demand. `plan()` already returns one for the files it
+  // settled on; this is for asking about a set the caller names — the diff being reviewed, a
+  // change not planned yet. `coden.plan` for the same reason `coden.gitStatus` uses it: this
+  // reads the HISTORY of the repository, which is what a plan is entitled to, and widening it
+  // to `workspace.read` for the convenience of a panel is not a trade.
+  'coden.divergence': { permission: 'coden.plan', bridged: false },
   // Phase 3b. The bench's list panels — Projects, Recent, Sessions, Tasks, Agents, Tools,
   // History — answered "no source over this transport" in the terminal, because the browser
   // fills all seven from ONE route (`GET /api/v1/ai/bootstrap`, via `refreshWorkspace`) and
@@ -120,7 +127,7 @@ export function createSessionDispatch({
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot, engineEvents, workspaceActionsStatus, getShadowSnapshot,
   capabilityStatus, capabilityMinter, contextGraph, ledger, invariantEnforcement,
-  codenAddressBook, gitStatus,
+  codenAddressBook, gitStatus, profileChange = defaultProfileChange,
   // Phase 3b. The same two objects the HTTP routes for these already hold — passed in rather
   // than constructed here, for the reason this factory's own comment gives about the
   // orchestrator: a second instance would give the terminal its own lists and its own closure
@@ -288,6 +295,30 @@ export function createSessionDispatch({
     },
     // Same module the HTTP route calls, against the same workspace root — not a second
     // reading of git that could disagree with the browser's chip about the same repository.
+    // The dispatch hands every handler `{ params, actor }`, not the params directly. Taking
+    // `params` here read `.paths` off the envelope, found nothing, and refused every call with
+    // «needs the paths a change touches» — a refusal that reads like the caller's mistake.
+    // Caught by driving the real dispatch in a test rather than calling the handler.
+    'coden.divergence': async ({ params }) => {
+      if (typeof profileChange !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a divergence profiler');
+      }
+      const paths = Array.isArray(params?.paths) ? params.paths.map(String).filter(Boolean) : [];
+      if (!paths.length) {
+        throw new ProtocolError('INVALID', 'a divergence profile needs the paths a change touches');
+      }
+      try {
+        const profiled = await profileChange(workspaceRoot, paths);
+        // Four signals with their level. The module refuses to produce a score, and this
+        // transport must not become the quiet place one appears.
+        return { available: true, reason: null, signals: profiled.signals, basis: profiled.basis };
+      } catch (error) {
+        // A workspace with no history is a real installation, not an error to shout about.
+        // Declared and answered, exactly as plan() declares it.
+        if (error?.name !== 'DivergenceUnavailable') throw error;
+        return { available: false, reason: error.reason ?? error.message, signals: [], basis: null };
+      }
+    },
     'coden.gitStatus': () => {
       if (typeof gitStatus !== 'function') {
         throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a git reader');

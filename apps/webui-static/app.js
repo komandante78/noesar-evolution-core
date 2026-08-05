@@ -14,13 +14,38 @@ import {
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
-  createView, say, planTurn, detailLines, reasoningSummary, frequencySummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
+  createView, say, planTurn, detailLines, reasoningSummary, frequencySummary,
+  divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 // Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
 // second caller cannot start phrasing the degradation its own way. `title` carries every
 // reason in full — the chip has room for one sentence, an operator deciding what to do needs
 // them all, and truncating without saying so would be its own small silence.
+// Phase 7 (`CE-010`): the divergence profile, rendered BESIDE the diff as four signals with
+// their level. Never a number: `divergence-profile.mjs` refuses to produce a score and this is
+// where one would most plausibly reappear, as an average that reads like rigour.
+function renderDivergence(divergence){
+  const host=$('#codenDivergence');
+  if(!host)return;
+  const lines=divergenceLines(divergence);
+  if(!lines.length){host.textContent='';host.classList.add('hidden');return;}
+  host.classList.remove('hidden');
+  host.textContent='';
+  const head=document.createElement('div');
+  head.className='divergence-head';
+  head.textContent=`divergence — ${divergenceSummary(divergence)}`;
+  host.append(head);
+  for(const line of lines){
+    const row=document.createElement('div');
+    row.className=`divergence-signal level-${line.level}`;
+    const id=document.createElement('span');id.className='divergence-id';id.textContent=line.id;
+    const level=document.createElement('span');level.className='divergence-level';level.textContent=line.level;
+    const note=document.createElement('span');note.className='divergence-note';note.textContent=line.note;
+    row.append(id,level,note);
+    host.append(row);
+  }
+}
 function updateReasoningChip(reasoning){
   const chip=$('#codenReasoningChip');
   if(!chip)return;
@@ -2569,6 +2594,7 @@ async function submitPlanForm(event){
     // SAME shaper the terminal uses. Two shells deriving "degraded" from one response in two
     // files is how they stop agreeing; `reasoningSummary` is imported, not reimplemented.
     updateReasoningChip(planned.reasoning);
+    renderDivergence(planned.divergence);
     if(planned.reasoning?.degraded){
       // Not only the chip. A chip is a state you can miss; falling back to a weaker provider
       // is news, and news is told once, plainly, when it happens.

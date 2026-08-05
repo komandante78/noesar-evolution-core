@@ -22,6 +22,14 @@ import { dirname, join } from 'node:path';
 import { RolePermissions, ROLES } from '../src/auth.mjs';
 import { SESSION_METHOD_POLICY, bridgedMethodPermissions, createSessionDispatch } from '../src/session-protocol.mjs';
 
+/**
+ * The socket methods that cost `coden.plan` rather than the universal workspace permissions.
+ *
+ * A LIST, not a growing chain of `!==`: every entry must have an HTTP twin asking the same
+ * permission, and the test below proves it for each. Adding one here without its route fails.
+ */
+const CODEN_PLAN_METHODS = ['coden.gitStatus', 'coden.divergence'];
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const protocolSource = readFileSync(join(root, 'src/session-protocol.mjs'), 'utf8');
@@ -119,6 +127,17 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
       // the browser refuses them — precisely the sideways widening `D-0302` closed.
       'closure.list': 'workspace.read',
       'closure.record': 'workspace.write',
+      // Phase 7, and this guard did exactly what it promises: a new socket-only method failed
+      // here until somebody decided which it is. The decision, on the record.
+      //
+      // Socket-only for the reason all of these are: the browser reaches the same profiler
+      // through `POST /api/v1/coden/divergence`, so bridging this would be a second door onto
+      // one room. `coden.plan` because that is what the HTTP twin asks — NOT `workspace.read`,
+      // which reads like the natural permission for reading a repository and is wrong here for
+      // the same reason it is wrong for `coden.gitStatus`: every AI service account holds
+      // `workspace.read` and none holds `coden.plan`, so the wider gate would let such an
+      // account read over this socket what it cannot read over HTTP.
+      'coden.divergence': 'coden.plan',
     });
   });
 
@@ -192,8 +211,12 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     // new, and it arrived at the gate its own HTTP route already stands behind. Widening it to
     // `workspace.read` to keep this list at two entries would have made the socket more
     // permissive than the browser for the same fact, which is the exact asymmetry D-0302 shut.
+    //
+    // Phase 7 makes it two: `coden.divergence` arrived at the same gate, for the same reason,
+    // and is excluded the same way. The exclusion is a NAMED LIST rather than a growing chain
+    // of `!==`, so adding a third forces the next test to prove its HTTP route agrees.
     const universal = new Set(Object.entries(SESSION_METHOD_POLICY)
-      .filter(([method]) => method !== 'coden.gitStatus')
+      .filter(([method]) => !CODEN_PLAN_METHODS.includes(method))
       .map(([, policy]) => policy.permission).filter(Boolean));
     assert.deepEqual([...universal].sort(), ['workspace.read', 'workspace.write']);
     for (const role of ROLES) {
@@ -203,14 +226,34 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     }
   });
 
-  test('the one non-universal method is gated exactly as its own HTTP route is', () => {
-    // The claim the comment above rests on, measured rather than asserted: `coden.gitStatus`
-    // and `GET /api/v1/coden/git-status` ask for the same permission. If someone changes one,
-    // this fails and the two transports stop agreeing about who may read the repository.
-    assert.equal(SESSION_METHOD_POLICY['coden.gitStatus'].permission, 'coden.plan');
-    assert.match(serverSource,
-      /url\.pathname === '\/api\/v1\/coden\/git-status'\)\s*\{\s*\n\s*const authenticated = requireSession\(req, res, 'coden\.plan'\)/,
-      'the HTTP route for git status no longer asks for coden.plan');
+  test('every non-universal method is gated exactly as its own HTTP route is', () => {
+    // The claim the comment above rests on, measured rather than asserted: each socket method
+    // that costs `coden.plan` has an HTTP twin asking the same permission. If someone changes
+    // one side, this fails and the two transports stop agreeing about who may read the
+    // repository — which is the whole failure mode `D-0302` closed.
+    for (const method of CODEN_PLAN_METHODS) {
+      assert.equal(SESSION_METHOD_POLICY[method]?.permission, 'coden.plan',
+        `\`${method}\` is listed as a coden.plan method and its policy says otherwise`);
+    }
+    // Scoped to the route's own BLOCK, not to the line that happens to follow the brace. The
+    // first version of this asserted adjacency and broke the moment a comment was written
+    // above the guard — an assertion that fails on a comment is one that will be loosened by
+    // whoever hits it next, and a loosened guard is worse than an honest one.
+    const routeGuard = (pathname) => {
+      const start = serverSource.indexOf(`url.pathname === '${pathname}'`);
+      assert.ok(start > -1, `there is no HTTP route for ${pathname}`);
+      // Up to the next route, so a `requireSession` belonging to a LATER route cannot satisfy
+      // this one — the way an over-wide window would quietly let an unguarded route pass.
+      const next = serverSource.indexOf('url.pathname ===', start + 20);
+      return serverSource.slice(start, next > -1 ? next : start + 2000);
+    };
+    for (const [method, pathname] of [
+      ['coden.gitStatus', '/api/v1/coden/git-status'],
+      ['coden.divergence', '/api/v1/coden/divergence'],
+    ]) {
+      assert.match(routeGuard(pathname), /requireSession\(req, res, 'coden\.plan'\)/,
+        `the HTTP twin of \`${method}\` (${pathname}) no longer asks for coden.plan`);
+    }
 
     // And the roles it therefore excludes are named, so the exclusion is visible rather than
     // discovered later by someone whose terminal reports `remote —` for no stated reason.

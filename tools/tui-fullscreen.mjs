@@ -29,7 +29,8 @@ import {
 // made this file the only place that knew, and left the browser free to invent a second answer
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
-  createView, say, planTurn, detailLines, gitSummary, reasoningSummary, frequencySummary, CLEARED_NOTE, startForm, fillForm,
+  createView, say, planTurn, detailLines, gitSummary, reasoningSummary, frequencySummary,
+  divergenceLines, divergenceSummary, CLEARED_NOTE, startForm, fillForm,
   addressEntries, menuEntriesFor,
 } from '../apps/webui-static/coden-view-model.js';
 // Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
@@ -228,6 +229,13 @@ export async function runFullScreen({
           // happened 4 times in 120 runs» are answered together or the second is never asked.
           record('note', `ATOM was asked for and did not answer — the reference provider answered instead. ${(result.reasoning.reasons ?? []).join(' · ')}  [${frequencySummary(result.reasoning.frequency)}]`);
         }
+      }
+      // Phase 7 (`CE-010`): the profile is shown BESIDE the change, as four signals with their
+      // level — never a number, and never a bare colour. The notes carry what a maintainer
+      // would actually say, and they come from the same shaper the browser uses.
+      if (result && typeof result === 'object' && result.divergence) {
+        record('note', `divergence — ${divergenceSummary(result.divergence)}`,
+          divergenceLines(result.divergence).map((line) => `${line.id}: ${line.level}${line.note ? ` — ${line.note}` : ''}`));
       }
       record('agent', `${turn.command} — ok`, detailLines(result));
     } catch (error) {

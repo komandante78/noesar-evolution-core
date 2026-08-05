@@ -144,7 +144,19 @@ export function buildAuthoringPrompt({ goal, step, path, contents, profile = [],
     lines.push('', 'Conventions induced from this repository\'s own history — match them:');
     // Four signals with their level, never a score. `divergence-profile.mjs` refuses to
     // produce a number and this must not quietly reintroduce one by averaging them.
-    for (const signal of profile) lines.push(`- ${signal.signal}: ${signal.level}`);
+    //
+    // FOUND WIRING IT, phase 7: this read `signal.signal`, and `divergenceOf` emits `id`. The
+    // line was written before either side existed and nothing had ever put them in the same
+    // room, so the model would have been sent `- undefined: high` — a prompt that looks
+    // populated and says nothing. Neither a test nor a linter can see a key that is only wrong
+    // relative to another module.
+    //
+    // The `note` goes in too, and it is the half that carries the information: «no test
+    // changed; 78% of accepted changes here carry one» tells a model what to DO, where `tests:
+    // high` only tells it that something is wrong.
+    for (const signal of profile) {
+      lines.push(`- ${signal.id}: ${signal.level}${signal.note ? ` — ${signal.note}` : ''}`);
+    }
   }
   if (attempts.length) {
     lines.push('', 'Approaches already tried on this step — do not repeat them:');

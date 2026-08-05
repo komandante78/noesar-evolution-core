@@ -51,6 +51,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { ReasoningRefused } from './reasoning.mjs';
 import { Author, AuthoringUnavailable, AuthoringRefused } from './author.mjs';
 import { groundRequest as defaultGroundRequest, GroundingRefused } from './request-grounding.mjs';
+import { profileChange as defaultProfileChange, DivergenceUnavailable } from './divergence-profile.mjs';
 import { ReasoningRouter, routingFrom, degradationSummary, degradationFrequency } from './reasoning-router.mjs';
 import { ReasoningUnavailable } from './atom-client.mjs';
 import { authorizePlan, CapabilityError } from './capability.mjs';
@@ -101,8 +102,9 @@ export class WorkspaceActionOrchestrator {
   #env;
   #groundRequest;
   #author;
+  #profileChange;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -124,6 +126,10 @@ export class WorkspaceActionOrchestrator {
     // interesting branches here are the refusals, and a refusal that only fires against a
     // real repository is a refusal no test can reach without building one.
     this.#groundRequest = groundRequest;
+    // Phase 7. A seam for the same reason `groundRequest` is one: the interesting branches are
+    // the refusals, and «this workspace is not a git repository» is not reachable in a test
+    // without building one.
+    this.#profileChange = profileChange;
     // Stage 9b (`16` §3.3): the component that writes the contents. Optional and absent by
     // default — an installation with no model configured plans exactly as it did before and
     // says so, rather than presenting empty contents as a result. It is deliberately NOT
@@ -450,6 +456,27 @@ export class WorkspaceActionOrchestrator {
     // causation made authoring the root of the correlation, and `workspace_action.planned` was
     // then refused as a second root (`events.mjs`, `SECOND_ROOT`). The ledger was right and the
     // order was wrong: the plan is what this run IS, and the authoring is caused by it.
+    // Phase 7 (`CE-010`): the divergence profile, computed HERE — after the plan has settled
+    // which files it touches, and BEFORE the Author is asked for a single byte.
+    //
+    // The order is the whole point, and it is what `16` §3.2 rule 6 states: invention II is not
+    // for judging a diff afterwards, it is for writing one that resembles the diffs this
+    // repository has already accepted. Computed after the fact it would be a critic; computed
+    // here it is an instruction.
+    //
+    // Never fatal. A workspace with no git history, a shallow clone, a directory that is not a
+    // repository at all — each is a real installation and each still gets a plan. What it does
+    // not get is a profile invented to fill the field: `available:false` carrying the reason,
+    // the same posture `simulate` takes with `supported:false`.
+    let divergence = { available: false, reason: null, signals: [], basis: null };
+    try {
+      const profiled = await this.#profileChange(this.#workspaceRoot, planFiles.map((file) => file.path));
+      divergence = { available: true, reason: null, signals: profiled.signals, basis: profiled.basis };
+    } catch (error) {
+      if (!(error instanceof DivergenceUnavailable)) throw error;
+      divergence = { available: false, reason: error.reason ?? error.message, signals: [], basis: null };
+    }
+
     let authoring = { available: false, reason: Author.NO_MODEL_REASON, authored: 0 };
     let authoringEvent = null;
     const authoredContents = new Map();
@@ -459,6 +486,9 @@ export class WorkspaceActionOrchestrator {
           goal: intent.goal,
           step: plan.steps?.[0]?.description ?? intent.goal,
           files: planFiles,
+          // Rule 6 of `16` §3.2, and the reason the profile is computed above rather than
+          // beside the diff: the Author writes WITH the repository's conventions in hand.
+          profile: divergence.signals,
         });
         for (const [path, body] of result.contents) authoredContents.set(path, body);
         authoring = {
@@ -524,6 +554,7 @@ export class WorkspaceActionOrchestrator {
       // Phase 6: kept on the RUN, because the Session Proof is assembled from the run long
       // after the router that made these records has gone out of scope.
       reasoningDegradations,
+      divergence,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
@@ -558,7 +589,7 @@ export class WorkspaceActionOrchestrator {
     // different numbers for one session. Computed after the ledger line above, so a run that
     // degraded counts itself.
     const reasoning = Object.freeze({ ...runDegradation, frequency: this.degradationFrequency() });
-    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning };
+    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence };
   }
 
   /**

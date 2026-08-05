@@ -6751,3 +6751,69 @@ edit did not apply, so `frequencySummary` sat unused and the WebUI showed nothin
 
 **Verified:** unit **1810/1811** (0 fail, 1 pre-existing skip), ESLint **332 files 0/0/0**,
 **8 mutations → 8 killed** from a baseline verified green first.
+
+## D-0326 — Phase 7 · the divergence profile connected (2026-08-05)
+
+**Measured before:** `divergence-profile.mjs` was imported by **its own test and nothing else**.
+`context-projector.mjs:114` called it "invention II's landing site" — in a comment, which is
+prose, not an import. Built in s320 and never connected.
+
+**The order is the phase.** Rule 6 of `16` §3.2: invention II is *«not for judging a diff
+afterwards, but for writing one that resembles the diffs this repository has accepted»*. So the
+profile is computed in `plan()` **after** the file set settles and **before** the Author is asked
+for a byte. Computed afterwards it is a critic; computed there it is an instruction. A test
+asserts the causation by capturing what the generator was actually handed.
+
+**Two defects found by connecting two modules that had never met.**
+
+1. **`buildAuthoringPrompt` read `signal.signal`; `divergenceOf` emits `id`.** Wired naively the
+   model would have received `- undefined: high` — a prompt that looks populated and says
+   nothing. Neither module was wrong on its own, which is why nothing caught it.
+2. **The test for that line encoded the defect.** `rule 6` fed `{ signal: 'co-modification',
+   level: 'high' }`, a shape `divergenceOf` has never produced, and asserted the prompt echoed
+   it. It invented its own input and passed for two phases. Rewritten against the real shape.
+   *(This is the trap `MEMORY` already names: a test on an input the real input never produces.)*
+
+**The `note` goes into the prompt too**, and it is the half that carries information: «no test
+changed; 100% of accepted changes here carry one» tells a model what to do, where `tests: high`
+is a colour. Still never a score — and the rule is *never a SCORE*, not *never a digit*: a note
+quoting 88% is an observation about history. What must not exist is a number ranking the change
+as a whole, and a test asserts exactly that distinction.
+
+**Twin surfaces, one profiler.** `coden.divergence` over the socket and `POST
+/api/v1/coden/divergence` over HTTP, both `coden.plan`, both against the same root. Socket-only
+because bridging would be a second door onto one room.
+
+**Three guards did their job, and were extended rather than loosened.**
+
+- `two-shells-parity` refuses a new socket-only method until somebody names it: *«A NEW
+  socket-only method fails here until someone decides which it is.»* It did. The decision is on
+  the record, with the reason `workspace.read` would be wrong.
+- The "one non-universal method" test became **every** non-universal method, driven by a named
+  list `CODEN_PLAN_METHODS`, so a third arrival must prove its HTTP route agrees.
+- Its route assertion was **positional** — the line after the brace — and broke the moment a
+  comment was written above the guard. Rewritten to be scoped to the route's block, bounded by
+  the next route so a later `requireSession` cannot satisfy an earlier route. An assertion that
+  fails on a comment is one the next person loosens.
+
+**Defect found by a mutation, in my own new route:** the handler took `(params)` where the
+dispatch hands `{ params, actor }`, so every call refused itself with «needs the paths a change
+touches» — a refusal that reads like the caller's mistake. Caught by driving the real dispatch
+in a test rather than calling the handler directly.
+
+**Verified:** unit **1819/1820** (0 fail, 1 pre-existing skip), ESLint **333 files 0/0/0**,
+browser e2e **257/266** (the 9 identical to baseline), `CE-020` and `CE-021` 0 fail, **14
+mutations → 14 killed** from a baseline verified green first — 3 survived the first round (an
+unguarded CSRF check, a level passed through unvalidated, a quiet profile indistinguishable from
+an absent one) and each was closed with a test rather than argued away.
+
+**The measure `17` asks for, met:** two real git repositories with opposite habits — one that
+always ships a test with its source, one that never does — produce **opposite** profiles for the
+identical change (`tests: high` vs `tests: none`, `co-change: high` vs `none`), and both shells
+render them as four signals with their level.
+
+**Improvement proposed, not executed:** the profile is recomputed per plan, and
+`buildRepositoryConventions` walks git history each time — on a large repository that is the
+slowest thing in `plan()`. A conventions cache keyed by `HEAD` would make it free for every plan
+between two commits. Cost: one invalidation rule; benefit: the profile stops being a reason to
+skip profiling.

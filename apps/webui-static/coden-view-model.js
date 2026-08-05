@@ -221,6 +221,43 @@ export function frequencySummary(frequency) {
 }
 
 /**
+ * The divergence profile, shaped for a screen — `CE-010`, and the one rule it carries.
+ *
+ * **Four signals with their level. Never a number.** `divergence-profile.mjs` refuses to
+ * produce a score, and a test guards that refusal; this is the place a score would most
+ * plausibly sneak back in — averaging four levels into "68% divergent" reads as rigour and is
+ * an invention. So the levels are shown as they are, and nothing here counts them.
+ *
+ * The `note` is carried, not summarised. «no test changed; 78% of accepted changes here carry
+ * one» is the sentence a maintainer would say; `tests: high` is a colour.
+ *
+ * Unavailable is a real answer with a real reason — a workspace with no git history has no
+ * precedent to diverge FROM, which is not the same as diverging from none.
+ */
+export const DIVERGENCE_LEVELS = Object.freeze(['none', 'medium', 'high']);
+
+export function divergenceLines(divergence) {
+  if (!divergence || typeof divergence !== 'object') return [];
+  if (!divergence.available) {
+    return [{ id: 'divergence', level: 'unavailable', note: divergence.reason ?? 'no profile was computed for this change' }];
+  }
+  return (divergence.signals ?? []).map((signal) => ({
+    id: signal.id,
+    level: DIVERGENCE_LEVELS.includes(signal.level) ? signal.level : 'unknown',
+    note: signal.note ?? '',
+  }));
+}
+
+/** The one-line form a status row can hold: which signals are raised, not how many. */
+export function divergenceSummary(divergence) {
+  if (!divergence || typeof divergence !== 'object') return '—';
+  if (!divergence.available) return 'divergence unavailable';
+  const raised = (divergence.signals ?? []).filter((signal) => signal.level && signal.level !== 'none');
+  if (!raised.length) return 'in keeping with this repository';
+  return raised.map((signal) => `${signal.id} ${signal.level}`).join(' · ');
+}
+
+/**
  * Rank a list of addresses against what was typed — the ONE copy of that rule.
  *
  * It existed twice, byte-different, and the second one's comment said so out loud: "the
