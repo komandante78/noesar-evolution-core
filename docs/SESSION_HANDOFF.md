@@ -1,63 +1,87 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-06. **Fase 7 (`D-0326`) DEPLOYATA (`D-0327`).** Owner ha chiesto
-> esplicitamente il deploy prima di aprire la fase 8; poi ha chiesto di FERMARSI per un controllo.
+> ## ⏭ STATO CORRENTE — 2026-08-06 (s328). **Punti 2 e 3 della lista Owner CHIUSI**
+> (`D-0335`, `D-0336`). Commit **`91a5925`** su `main`, **locale: non pushato, non deployato.**
 >
-> **Programma attivo: CodeN Evolution.** Due file soli, in quest ordine:
-> `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
-> `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` (le 8 fasi). La skill
-> `noesar-evolution` è obbligatoria — **il registro degli skill non la conosce sotto questo
-> nome**: si legge da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
-> Il contratto a 6 righe si scrive PRIMA di toccare un file.
+> **Leggere per primo:** `docs/OWNER_CHANGE_LIST_S326.md` — è il documento vivo e dice cosa è
+> vero adesso. Stato della lista: **1 = da fare · 2a ✅ · 2b ✅ · 3 ✅ · 4a ✅ · 4b ✅**.
 >
-> ### 🟢 IN PRODUZIONE ADESSO — fase 7 inclusa
+> ### Cosa è vero adesso che prima non lo era
+>
+> **`/` non è più una lista piatta.** Un `/` nudo elenca i **gruppi** (7 righe, con conteggio e
+> suggerimento **derivato** dalle voci); una lettera sola apre un gruppo; una lettera più testo
+> filtra dentro (`/t mcp`). Il livello lo decide `menuFrame` nel **modello condiviso**: le due
+> shell lo dipingono e basta, quindi non possono divergere per costruzione.
+>
+> **Non è un restyling, è la riparazione di un difetto misurato due volte e due volte solo
+> dichiarato:** il terminale stampa `WORK  5 of 15` perché trenta voci non ci stanno, e
+> `menuEntriesFor` teneva i **53 indirizzi FUORI** dal `/` nudo perché affogavano il menu
+> (`CE-020` rosso per due fasi). Ora gli indirizzi costano **un numero** sulla riga
+> DESTINATIONS, e il gruppo aperto ha tutto il budget.
+>
+> **La pila è uscita da `#/coden`.** La misura che conta **non era nella lista dell'Owner**: la
+> superficie `Strumenti` **non aveva alcun indirizzo** — un `work-block` dentro `view-coden`,
+> quindi né bottone di nav, né sezione, né pannello di banco, e perciò **irraggiungibile dal
+> terminale**. Ora è la destinazione `tools`, raggiunta da `/` e **non** da un tredicesimo
+> bottone nella sidebar (è il punto 3: una porta sola). `Installable catalogues` è
+> **cancellato**, non spostato — era una seconda resa di Settings › Modules, e la sostituzione è
+> stata **provata prima** di rimuoverlo. `/approvals` è **nuovo**: la striscia in fondo si
+> poteva cliccare e non digitare.
+>
+> **Forma di terminale (2a)**, su `#view-coden` **soltanto** — la regola è dell'Owner: CodeN
+> prende la forma del terminale, **la chat di NOESAR resta una chat**, e le due condividono le
+> classi `.agent-*`. Più la metà funzionale: la riga di stato dice **cosa fa il prossimo tasto**
+> e cambia col contesto (`promptKeys`, condivisa con il terminale).
+>
+> ### Due difetti veri, trovati misurando e riparati qui
+>
+> 1. **La selezione poteva finire su una riga mai disegnata.** Con quattro gruppi il budget del
+>    menu arrivava sempre in fondo; con sette no. La finestra sui gruppi ora **segue la
+>    selezione** e dichiara `⋯ N gruppi sopra`.
+> 2. **La riga riservata alla nota veniva mangiata dalle voci.** Con `accessFiltered:false` il
+>    disclaimer *«nobody checked»* spariva a **ogni** altezza. Trovato con una scansione di
+>    equivalenza dopo che la mutazione era sopravvissuta.
+>
+> ### Correzione onesta alla lista dell'Owner
+>
+> Due delle sei voci nominate — `LOCAL ONLY VERIFIED` e `Approvals: 0 / Open queue` — **non
+> sono di quella pagina**: sono la striscia di stato **globale** (`#approvalStrip`), su ogni
+> destinazione. Trattarle come parte della pila avrebbe tolto una barra di stato a tutto il
+> prodotto.
+>
+> ### Verifiche, tutte eseguite in questa sessione
 >
 > ```text
-> noesar-evolution   noesar-evolution:phase7-divergence-profile   (repo fbfe6a4/34d497b)   ~26 s downtime
-> atomd              atom-evolution:atomd-a0025-authoring                                    invariato
-> + NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420   (il modello, sulla rete dei container)
+> npm test              1865 / 1866  (1 skipped)   0 fail
+> tools/run-eslint.sh   334 file  0 errori  0 warning  0 no-undef
+> mutazioni             18 → 18 uccise
+> CE-020                20 / 20      CE-021   13 / 13
+> browser-e2e           409 / 409    zero fail
+> secret scan           i 6 leak sono TUTTI in commit storici (B-011, noto e accettato);
+>                       zero leak nei 15 file di questo commit
 > ```
 >
-> Provato **sull artefatto deployato**: sha256 dei 4 file toccati dalla fase 7 identico fra
-> container e repo HEAD, `/livez` `/readyz` `/healthz` 200, boot pulito (19 migrazioni/18
-> rls_tables invariate, zero error/warn), `atomd` raggiungibile (`401`, non timeout). **Non
-> esercitato dal vivo**: una vera chiamata `plan()` che mostri la divergenza su due repository
-> reali — nessun harness di accettazione per questo è nell immagine; dichiarato, non inventato.
-> Dettagli completi: `docs/INSTALLATION_LEDGER.md` § *"Phase 7 DEPLOYED"* (`D-0327`).
+> ### Trappola di metodo, da non ripagare
 >
-> **Difetto trovato deployando, riparato per questa volta:** l `EVIDENCE/` di `D-0325` (il
-> deploy precedente) ha i token in chiaro nonostante `B-011` dichiarasse il fix di redazione già
-> in vigore — dichiarato ma non applicato al proprio stesso deploy. Questa volta il dump grezzo
-> è restato solo nello scratchpad di sessione; il file in `EVIDENCE/` ha i valori
-> `TOKEN`/`SECRET`/`PASS` redatti. Il file vecchio **non è stato riscritto** (nessuna
-> autorizzazione a toccare la storia git per questo deploy).
+> **`String.replace` sostituisce solo la PRIMA occorrenza.** `noteRow` è dichiarato **due
+> volte** in `tui-screen.mjs`, quindi l'harness di mutazione mutava il ramo sbagliato e diceva
+> «sopravvissuta» su una riga che non aveva toccato. Un controllo deliberatamente assurdo
+> (`noteRow = 4`) **non è scattato**: è così che si è visto che era rotto il rilevatore, non il
+> codice. **Prima di credere a una mutazione sopravvissuta, provare che il rilevatore sappia
+> distinguere qualcosa.**
 >
-> ### 🔧 `D-0328` — riparato dopo il deploy, NON deployato
+> ### 🎯 PROSSIMO — il **punto 1**, e ha una domanda da sciogliere PRIMA di scrivere
 >
-> **Trovato verificando una risposta, non cercandolo.** L Owner ha chiesto come si raggiunge la
-> TUI via `ssh`; provandolo sul vivo invece di recitarlo è saltato fuori `/run/codev-peer.sock`
-> **sull host**, `root:root`, senza nessuno in ascolto. **Riprodotto**: `npm test` muoveva inode
-> e data di nascita a ogni giro (`588147` → `588957`). Bisezionato a `stream-crash-survival` e
-> `lan-exposure` — i due che avviano `server.mjs` come processo **figlio** (gli altri 28 lo
-> importano in-process, che il guard lascia passare di proposito).
+> Cosa si presenta al socket **al posto del cookie, e chi può fabbricarlo**.
+> `session-protocol.mjs` dichiara in testa che autentica la propria sessione *«rather than
+> trusting a cookie, since a socket connection has none»*: è una decisione presa apposta, quindi
+> cambiarla è una questione di **autorità**, non di comodità.
 >
-> **La causa non era «due test hanno scordato una variabile»**: `startUnixSocketServer` faceva
-> `if (existsSync(p)) unlinkSync(p)` — cancella prima, chiedi mai — giusto per un cadavere e
-> catastrofico per un peer vivo, perché il codice **non guardava**. Su questa installazione è
-> invisibile (`/run` è tmpfs privata del container); su un installazione **nativa**, che la
-> legge di piattaforma impone di supportare, quel percorso **è** il trasporto terminale vivo.
->
-> **Tre livelli:** l invariante (`reclaimSocketPath` sonda connettendosi: vivo → rifiuta, morto →
-> recupera), l isolamento nei 3 punti che lo mancavano, e una guardia derivata dal sorgente che
-> prende il prossimo. **Stesso difetto riparato in `codev-child.mjs`** sul percorso *esterno*,
-> che è persistente e quindi peggiore. `ce-020`/`ce-021` lo facevano già giusto: il modello
-> c era, era stato solo mancato.
->
-> **Verificato:** unit **1829/1830**, ESLint **334 0/0/0**, `CE-020`/`CE-021` 0 fail, **2
-> mutazioni → 2**, e soprattutto **l inode del socket sull host NON si muove più** su una suite
-> intera (`589028`, invariato) dove prima cambiava sempre. **Non deployato**: il vivo non può
-> essere morso da questo difetto.
->
+> **Da fare comunque, e non richiede decisioni:** `git push origin main` (`91a5925`).
+> La fase 8 di `MASTER_PROJECT/17` **resta ferma** su istruzione esplicita dell'Owner.
+
+---
+
 > ### Fatto — **fase 6** (`D-0323`), **frequenza** (`D-0324`), **fase 7** (`D-0326`)
 >
 > **Fase 6 — se ATOM cade, il prodotto continua E LO DICE.** La regola nell intestazione del
