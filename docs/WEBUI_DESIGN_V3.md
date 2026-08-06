@@ -502,7 +502,7 @@ temi**. Questo è il primo passo, e solo il primo. Decisioni `D-0137…D-0142`.
 | **CodeN Evolution TUI** e **Ricerca** come destinazioni | **dichiarate, non costruite** (`D-0141`) | pagine che dicono cosa manca |
 | Il **gate della Ricerca** (`UI-090…UI-096`) | **non costruito** — e per questo la superficie non esiste (`D-0142`) | nessun campo che possa emettere una query |
 | Nove temi, selettore di colore libero, layer di token | **non costruito** — è il passo 2 e 3 | sezione *Aspetto*, dichiarata |
-| Gestione delle sessioni `UI-001…UI-012` | **non costruita** | sezione *Sessioni*, dichiarata |
+| Gestione delle sessioni `UI-001…UI-012` | ✅ **COSTRUITA** — riga corretta in s326, era rimasta ferma a «non costruita» | `Impostazioni › Sessioni` (`#/settings/sessions`), `app.js` §*Work sessions* |
 
 ## 23. Verifiche prodotte, tutte eseguite in sessione
 

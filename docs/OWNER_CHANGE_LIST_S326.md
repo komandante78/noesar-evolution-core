@@ -138,10 +138,47 @@ sul click**, per archiviare / eliminare / ripristinare. La proposta di consenso 
 si fa il popup. Resta valida `UI-010` per l'azione **irreversibile** (`purge` / svuota cestino):
 popup **più** pulsante pericoloso non preselezionato ed `Esc` che annulla.
 
-### 4a · Il fatto che ridimensiona questo punto: È GIÀ SPECIFICATO, e NON è costruito
+### 4a · CORRETTO IN SESSIONE — non è «da costruire»: **è già costruito**
 
-`docs/WEBUI_DESIGN_V3.md` porta `UI-001…UI-012`, e alla **riga 505** dichiara:
-*«Gestione delle sessioni `UI-001…UI-012` — **non costruita**»*.
+> ⚠️ **Correzione di un mio errore, registrata perché è la classe di errore che questo
+> progetto ripete.** Ho detto due volte all'Owner che `UI-001…UI-012` era *«non costruita»*,
+> fidandomi della riga 505 di `docs/WEBUI_DESIGN_V3.md` **invece di guardare il codice**.
+> Misurato poi davvero: **è costruita**, e con i test. La riga 505 era **stale** ed è stata
+> corretta in s326. Vedi `feedback_verify_policy_against_reality_before_trusting_it`.
+
+**Cosa esiste davvero, verificato leggendo `apps/webui-static/`:**
+
+| Riga | Stato reale |
+|---|---|
+| `UI-001` / `UI-002` | ✅ cinque distese + scroller dalla sesta, conteggio sopra |
+| `UI-003` | ✅ `Archive…` / `Delete…` per riga (i puntini = chiede prima) |
+| `UI-004` | ✅ tre posti *Working list · Archive · Bin*, con `#sessionsReturn` |
+| `UI-005` | ✅ `sessionPageSize()` → **10** per archivio e cestino |
+| `UI-006` | ✅ `Restore` + `Delete…` sulle archiviate |
+| `UI-007` | ✅ caselle per riga + `workSessions.selected` (Set) |
+| `UI-010` / `UI-012` | ✅ `Delete for good…` in classe `danger`; ritenzione dichiarata nello stato vuoto |
+
+Test vivi: `session-lifecycle.test.mjs` **8/8**, più `webui-markup-structure`,
+`tui-client-sessions`, e la e2e browser.
+
+**Quindi il vero divario non è costruire, è DOVE VIVE e COME SI CHIAMA:**
+
+1. La superficie sta in **`Impostazioni › Sessioni`** (`SETTINGS_SECTIONS`,
+   `#/settings/sessions`), non nella **sidebar** come l'Owner chiede.
+2. Si chiama **«Sessions»**. Il codice stesso annota che *«"Session" è sovraccarico in questo
+   prodotto»* — Impostazioni › Sicurezza elenca le sessioni di **accesso**, questa elenca
+   sessioni di **lavoro**. L'Owner le chiama **chat**.
+3. È una **vista da operatore** per gestirle, non l'elenco da cui **si lavora**: manca il gesto
+   «clicco e continuo quella conversazione».
+
+**Il rischio numero uno di questo punto, da scriverlo prima di cominciare:** costruire una
+**seconda** resa della stessa lista nella sidebar. Sarebbe due renderer per un solo oggetto —
+esattamente la classe di divergenza che questo progetto ha già pagato (`PANEL_NAMES` 14 contro
+25, `D-0300`). **Una implementazione sola, resa dove serve.**
+
+**Scope reale di 4a, dopo la misura:** portare la superficie esistente nella sidebar come
+**Chat**, con il menu a tendina richiesto, **senza duplicarla** — e decidere il nome unico
+(*chat* vs *sessioni*) perché oggi la parola è sovraccarica.
 
 | Richiesta Owner | Riga già esistente |
 |---|---|
