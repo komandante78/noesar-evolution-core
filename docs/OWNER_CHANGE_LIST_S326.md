@@ -1,6 +1,29 @@
 # Lista modifiche richieste dall'Owner — aperta in s326 (2026-08-06)
 
-> **STATO: IN RACCOLTA — NON IMPLEMENTARE.**
+> **STATO: 4a CONSEGNATO · 4b A METÀ · 1, 2, 3 ANCORA DA FARE.**
+>
+> Aggiornato a fine s326. L'Owner ha autorizzato l'esecuzione («PROCEDI E INIZIA DA 4»,
+> «PROCEDI CON 4B») dopo che i punti 1-4 erano stati raccolti. Cosa è vero adesso:
+>
+> | Punto | Stato |
+> |---|---|
+> | **1** Autenticazione unica TUI ↔ NOESAR | **non iniziato** — resta la domanda A |
+> | **2** WebUI stile terminale, sezioni fuori dalla pagina | **non iniziato** |
+> | **3** `/` progressivo, una porta sola | **approvato come disegno, non costruito** |
+> | **4a** chat nella sidebar | ✅ **consegnato e provato nel browser** (`D-0329`) |
+> | **4b** unire lavoro e ricerca | ⚠️ **metà**: le fonti sì, il piano **no** (`D-0332`) |
+>
+> **Il fatto che blocca la seconda metà di 4b, e che è una decisione dell'Owner:** un lavoro
+> **non è legato a una chat**. `sessionId` in `workspace-actions.mjs` è l'id della run stessa,
+> `conversationId` compare zero volte, e la rotta di lista restituisce una dichiarazione di
+> capacità, non i lavori. Serve decidere se una run appartiene a una conversazione — e **cosa
+> succede alle run avviate dal terminale**, che una conversazione non ce l'hanno.
+>
+> ---
+>
+> **Testo originale del patto, tenuto perché è la regola con cui la lista è stata costruita:**
+>
+> **STATO ALLA RACCOLTA: IN RACCOLTA — NON IMPLEMENTARE.**
 >
 > Patto stabilito dall'Owner in s326, verbatim: *«DEVI FARE DELLE MODIFICHE PRIMA FAREMO UNA
 > LISTA E FINO A MIA AUTORIZZAZIONE ASSIMILI LA LISTA»*. Finché questo file dice IN RACCOLTA:
