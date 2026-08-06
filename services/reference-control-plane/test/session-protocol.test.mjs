@@ -190,6 +190,27 @@ describe('session protocol — unix socket transport', () => {
     assert.ok(trail.events.map((event) => event.action).includes('workspace_action.promoted'));
   });
 
+  // Point 4b, the half of the Owner's decision that has to be enforced rather than displayed:
+  // a terminal session has no conversation to speak for, so it cannot file work under one.
+  test('a run planned over the socket belongs to no chat, even when the caller sends one', async () => {
+    const planned = await call(authenticatedSocket, 'workspace.plan', {
+      request: 'a terminal plan', files: [{ path: 'terminal-run.txt', contents: 'x' }],
+      // Sent on purpose. The socket must IGNORE it rather than refuse: what this asserts is
+      // that the shell cannot attribute work to a conversation, not that a stray field breaks.
+      conversationId: 'conv-the-terminal-was-never-part-of',
+    });
+    assert.equal(planned.conversationId, null);
+
+    const listing = await call(authenticatedSocket, 'workspace.runs', { scope: 'unattached' });
+    assert.ok(listing.runs.some((run) => run.runId === planned.runId));
+    // And absent from the chat it tried to name — asked of the same orchestrator the browser
+    // reads, so this is the grouping the Work column shows, not a parallel one.
+    const chat = await call(authenticatedSocket, 'workspace.runs', {
+      scope: 'conversation', conversationId: 'conv-the-terminal-was-never-part-of',
+    });
+    assert.deepEqual(chat.runs, []);
+  });
+
   test('repoMap.scan and repoMap.search reach the real workspace over the socket', async () => {
     const map = await call(authenticatedSocket, 'repoMap.scan', {});
     assert.ok(map.filesScanned >= 1);

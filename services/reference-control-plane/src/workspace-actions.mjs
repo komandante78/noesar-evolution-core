@@ -244,6 +244,63 @@ export class WorkspaceActionOrchestrator {
     return run ? { ...run } : null;
   }
 
+  /**
+   * The runs a chat owns — point 4b, and the only place in the product that answers "which
+   * work belongs to this conversation". Three scopes, all explicit: `conversation` for one
+   * chat, `unattached` for the runs nobody opened from a chat (every terminal run, by
+   * construction), `all` for both. There is deliberately no "current conversation" default:
+   * a caller that does not say which chat it means gets everything and has to group it, rather
+   * than being handed whichever chat happened to be open — that guess is the whole defect.
+   *
+   * Summaries, not runs. A run carries `files[].contents` in full and `authoredContents` with
+   * it; a list rendered in a side panel has no business holding the bytes of the workspace,
+   * and the single-run route already exists for anyone who needs them.
+   */
+  runsFor({ scope = 'all', conversationId = null } = {}) {
+    if (scope !== 'all' && scope !== 'conversation' && scope !== 'unattached') {
+      refuse('INVALID_SCOPE', 'scope must be `all`, `conversation` or `unattached`');
+    }
+    if (scope === 'conversation' && (typeof conversationId !== 'string' || !conversationId.trim())) {
+      refuse('INVALID_CONVERSATION', 'scope `conversation` needs a non-empty conversationId');
+    }
+    const all = [...this.#runs.values()];
+    const selected = all.filter((run) => {
+      if (scope === 'all') return true;
+      if (scope === 'unattached') return run.conversationId === null;
+      return run.conversationId === conversationId;
+    });
+    return {
+      scope,
+      conversationId: scope === 'conversation' ? conversationId : null,
+      runs: selected
+        .slice()
+        // Newest first, with the id as tiebreak so two runs planned in the same second do not
+        // change places between two reads of the same list.
+        .sort((a, b) => (b.createdAtUnix - a.createdAtUnix) || a.runId.localeCompare(b.runId))
+        .map((run) => ({
+          runId: run.runId,
+          conversationId: run.conversationId,
+          status: run.status,
+          createdAtUnix: run.createdAtUnix,
+          actor: run.actor,
+          request: run.request ?? null,
+          filePaths: (run.files ?? []).map((file) => file.path),
+          fileCount: (run.files ?? []).length,
+          risk: run.risk?.overall ?? null,
+        })),
+      counts: {
+        total: all.length,
+        attached: all.filter((run) => run.conversationId !== null).length,
+        unattached: all.filter((run) => run.conversationId === null).length,
+      },
+      // Declared, not discovered later by an operator whose plan vanished. `#runs` is a Map on
+      // this instance: the relation a chat now owns lives exactly as long as the process does.
+      // Making it outlive a restart is a store, not a field, and it is not what point 4b asked
+      // for — so it is stated here rather than implied by a list that looks permanent.
+      persistence: { durable: false, reason: 'runs are held in memory for the life of this process' },
+    };
+  }
+
   /** SESS-001: the ten-field Session Proof, assembled from this run and its causal events. */
   /**
    * How often ATOM has fallen, over the ledger this installation actually holds.
@@ -373,7 +430,18 @@ export class WorkspaceActionOrchestrator {
    * reference provider cannot derive (see the module comment) and is required, not defaulted:
    * a caller with nothing to name should not reach this at all.
    */
-  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [] }) {
+  async plan({ request, files = [], projectRules = [], constraints = [], mode = 'safe', policy = 'restrictive', actor, nowUnix, claims = [], conversationId = null }) {
+    // Point 4b, Owner decision of 2026-08-06: THE CHAT OWNS THE RUN. A caller that opened this
+    // run from a conversation hands its id here and the run carries it for life; a caller that
+    // did not — every run started from the terminal, which has no conversation by construction
+    // — leaves it `null` and is listed as unattached rather than guessed at. The id is opaque
+    // to this module deliberately: whether that conversation EXISTS is authority the transport
+    // holds (server.mjs resolves it against the context graph before calling), and asking the
+    // same question twice is how two answers to it get built. What IS enforced here is shape,
+    // because a non-string reaching the run would be a link nothing can ever resolve back.
+    if (conversationId !== null && (typeof conversationId !== 'string' || !conversationId.trim())) {
+      refuse('INVALID_CONVERSATION', 'conversationId must be a non-empty string when supplied');
+    }
     // `files` is now optional. It was required, and the refusal that enforced it said the
     // reference provider "cannot invent a target from prose alone" — true, and the reason
     // both shells' `/plan` could never do anything: s319's terminal sent `files: []` on
@@ -550,6 +618,10 @@ export class WorkspaceActionOrchestrator {
     }
     this.#runs.set(runId, {
       runId, status: 'PENDING_APPROVAL',
+      // The owning conversation, or `null` for a run nobody opened from a chat. Stored on the
+      // RUN and never recomputed: `runsFor()` below reads this field and only this field, so
+      // there is exactly one answer in the product to "which chat does this work belong to".
+      conversationId,
       plan, expectation, files: planFiles, intent, hypotheses, risk, confidence, claims, provenance, grounding,
       // Phase 6: kept on the RUN, because the Session Proof is assembled from the run long
       // after the router that made these records has gone out of scope.
@@ -589,7 +661,10 @@ export class WorkspaceActionOrchestrator {
     // different numbers for one session. Computed after the ledger line above, so a run that
     // degraded counts itself.
     const reasoning = Object.freeze({ ...runDegradation, frequency: this.degradationFrequency() });
-    return { runId, status: this.#runs.get(runId).status, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence };
+    // `conversationId` is read off the stored run for the same reason `status` is: a shell that
+    // stitches the link it just sent onto the answer would show its own input as the engine's
+    // word, and the day the engine declines to keep it the shell would go on displaying it.
+    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence };
   }
 
   /**

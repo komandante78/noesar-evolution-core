@@ -7103,3 +7103,80 @@ an uncited chat SAYS it is uncited, and the plan block states the missing link. 
 **Honestly labelled:** the deduplication itself is covered by source-scanning assertions, not
 by execution — `npm test` reads `app.js` as text, and the e2e chats carry no citations to
 exercise it with. Proving the rollup on real citations needs a fixture that produces them.
+
+## D-0333 — point 4b, the second half: the chat owns the run (2026-08-06)
+
+**The decision was the Owner's, and it had to be, because it was not a coding choice.** `D-0332`
+delivered the half of point 4b that invented nothing — Sources — and stopped at the Plan block
+with the gap declared in words: *a run is not attached to a conversation*. `sessionId` in
+`workspace-actions.mjs` was the run's own id, `conversationId` appeared zero times in that file,
+and rendering "the plan for this chat" would have meant fabricating the link in the browser.
+
+Asked as one question with its consequence attached — **what happens to runs started from the
+terminal, which have no conversation** — the Owner chose: **the chat owns the run**. Whoever
+opens a run from a chat hands over its `conversationId` and the run carries it for life; runs
+started anywhere else carry `null` and are listed, labelled, as belonging to no chat.
+
+**Where each half of that lives, and why it is split.**
+
+- `plan()` takes `conversationId` and stores it on the run. The id is **opaque** to that module:
+  it enforces shape, not existence.
+- **Existence is the transport's authority.** `server.mjs` resolves the id against the context
+  graph before calling, and refuses `UNKNOWN_CONVERSATION` rather than storing a link that
+  resolves to nothing — which would have rendered exactly like a chat with no work.
+- `runsFor({scope})` is the single answer to "which work belongs to this conversation": three
+  explicit scopes, **no "current conversation" default**. A caller that does not say which chat
+  it means gets everything and must group it — being handed whichever chat happened to be open
+  is the whole defect this point exists to remove.
+- **The terminal cannot forge the link.** `workspace.plan` on the socket pins `conversationId:
+  null` and never reads it off the wire; a terminal session has no conversation to speak for.
+  It *can* read the grouping (`workspace.runs`, `workspace.read`), because leaving one shell
+  unable to see what the other shows would rebuild by omission the asymmetry `D-0302` closed.
+  The parity guard did its job: the new socket-only method failed the suite until the choice was
+  made explicitly and written down.
+
+**In the browser, one renderer.** `workRunRows()` draws both lists — the chat's Work column and
+the unattached group under Plan. Two functions drawing one object is what `D-0300` cost this
+project and what `D-0329` nearly repeated. The attachment is created by **one explicit gesture**
+("Start work from this chat"), carried to the Plan form that already exists, **named on that
+form** and detachable there: an attachment the operator cannot see is how work gets filed under
+a conversation nobody meant.
+
+**Declared, not fixed, and it is the honest size of what was asked.** `#runs` is a `Map` on the
+instance: the relation lives as long as the process. The listing says so
+(`persistence.durable:false`) and the panel repeats it — removing that line would not make runs
+durable, only the loss silent. **Improvement proposed for the Owner:** persist runs and the
+relation, so "the plan of this chat" survives a restart. It is a store, not a field, and it was
+not what point 4b asked for.
+
+**Verified:** unit 1855/1856 (1 pre-existing skip), ESLint 0/0/0, **8 mutations → 8** against
+green baselines (conversation scope widened, unattached scope widened, the field dropped, the
+shape check disabled, the summary leaking whole runs, the terminal forwarding an id off the
+wire, the server skipping the existence check, the runs route moved below the `:id` matcher),
+and driven in a real browser: an empty chat says so, the gesture names the chat on the form, and
+a plan created with nothing attached is listed as belonging to none.
+
+## D-0334 — three red e2e checks that were red against a correct product (2026-08-06)
+
+The three failures `D-0331` left unattributed are attributed, and none was a product defect.
+
+**Two were the same mistake twice.** The `workspace-actions` step opened `coden/bench/shadow` —
+a **bench** panel — and then clicked `#planForm button.primary`, which lives in the **agent**
+region. Since phase 3c (`D-0319`) exactly one panel is open across both regions, so opening a
+bench panel closes Plan and its button is legitimately `0x0`. `#planRestoreBtn` failed later for
+the identical reason. The cost was not the two red lines: the step **died at the click**, so
+everything after it never ran. Fixing both took the suite from **349 checks to 403**.
+
+**The third was a guard asserting a layout the product deliberately removed.** `UI-030` required
+`.bench-main > 200 && #benchAgent > 100` — both regions standing open at once. The first guess
+was that the regions were measured before the view was on screen; that guess was **wrong**, and
+waiting for `#view-coden.active` *and* a laid-out `.bench-main` proved it by timing out. The
+stylesheet says why, where the rule lives: `#view-coden:not([data-panel-open]) .bench{display:none}`
+(phase 3c, `16` §4b.3 — the panels stop being always-present) and `.bench{grid-template-columns:
+minmax(0,1fr)}` — *"One column, not two … there is no second column left for it to sit in"*. The
+check was rewritten to the design that exists: a bare `#/coden` opens **no** bench, and an
+addressed panel opens its region with a real width.
+
+**Result: 403/403, zero failures** — the first fully green run of this suite. A red that stands
+against correct behaviour is worse than no check at all, because it teaches people to re-run
+rather than believe.

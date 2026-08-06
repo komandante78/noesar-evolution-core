@@ -138,6 +138,22 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
       // `workspace.read` and none holds `coden.plan`, so the wider gate would let such an
       // account read over this socket what it cannot read over HTTP.
       'coden.divergence': 'coden.plan',
+      // Point 4b (Owner decision, 2026-08-06: the chat owns the run), and the guard earned its
+      // keep a second time — this method failed here until the choice was made explicitly.
+      //
+      // Socket-only for the reason all of these are: the browser reaches the same listing
+      // through `GET /api/v1/workspace-actions/runs`, so bridging it would be a second door
+      // onto one room. `workspace.read` because that is exactly what the HTTP twin asks, and
+      // here — unlike `coden.gitStatus` and `coden.divergence` — the wide permission is the
+      // RIGHT one: `GET /api/v1/workspace-actions/:id` already discloses a whole run, contents
+      // included, at that same level, and these are summaries of runs. Asking for more over the
+      // socket than over HTTP is the sideways asymmetry `D-0302` closed, in the other direction.
+      //
+      // Read-only, deliberately, and it is the half of the decision that had to be ENFORCED:
+      // the terminal can SEE which chat owns which run, and can never CREATE that link —
+      // `workspace.plan` in the dispatch pins `conversationId: null` rather than reading it
+      // off the wire, because a terminal session has no conversation to speak for.
+      'workspace.runs': 'workspace.read',
     });
   });
 

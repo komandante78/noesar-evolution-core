@@ -224,14 +224,15 @@
                of the included context. What research turns up used to scroll away with the
                messages; here it stays put, which is the whole point of the pattern.
 
-               WHAT IS DELIBERATELY ABSENT, AND SAYS SO: the plan and the files a change
-               touches. A workspace-action run is NOT attached to a conversation anywhere in
-               this build — measured, s326: `sessionId` in workspace-actions.mjs is the run's
-               OWN id (`const runId = randomUUID()`), and `conversationId` appears zero times
-               in that file. Showing "the work for this chat" therefore needs a relation the
-               product does not have, and inventing one in the browser would be a second
-               source of truth about which run belongs where. The panel declares the gap
-               instead of rendering an empty box. -->
+               THE PLAN BLOCK, s327. It used to declare a gap: a workspace-action run was not
+               attached to a conversation anywhere in this build, so "the work for this chat"
+               named a relation the product did not have. The Owner decided the relation on
+               2026-08-06 — THE CHAT OWNS THE RUN — and it now exists in the engine: `plan()`
+               takes a `conversationId` and the run carries it. So this block renders runs it
+               is GIVEN by `/api/v1/workspace-actions/runs?conversationId=…`; it still derives
+               nothing. Runs started from the terminal have no conversation by construction and
+               are never shown here — they are listed, unattached and labelled as such, in the
+               CodeN work surface rather than filed under whichever chat happens to be open. -->
           <aside class="panel context-panel" id="chatWorkPanel">
             <div class="panel-title"><h2>Work</h2><span id="tokenEstimate">0 tokens</span></div>
             <section class="work-block">
@@ -239,8 +240,9 @@
               <div id="chatSources" class="work-sources"></div>
             </section>
             <section class="work-block">
-              <h3>Plan</h3>
-              <p class="declared-empty" id="chatPlanDeclared">No plan is linked to this chat. A run is not attached to a conversation in this build, so none can be shown here without inventing the link.</p>
+              <h3>Plan <span class="work-count" id="chatPlanCount"></span></h3>
+              <div id="chatPlan" class="work-plan"></div>
+              <button id="startWorkFromChat" type="button">Start work from this chat</button>
             </section>
             <section class="work-block">
               <h3>Included context</h3>
@@ -448,12 +450,26 @@
             <section class="mini-panel code-panel agent-panel active" id="planPanel" data-agent-panel="plan">
               <div class="panel-title"><h3>Plan</h3><span class="badge badge-off" id="planRunBadge">No plan yet</span></div>
               <form class="form-stack" id="planForm">
+                <!-- s327, point 4b: which chat this run will belong to, shown BEFORE it is
+                     created rather than discovered afterwards in a side panel. Empty unless the
+                     operator arrived here from a chat — a plan started straight from this form
+                     belongs to no conversation, and the product says so instead of filing it
+                     under whichever chat was last open. -->
+                <p class="hint" id="planAttachment"></p>
                 <label>What this plan does<textarea id="planGoal" placeholder="One sentence: what should become true." required></textarea></label>
                 <div id="planFileRows"></div>
                 <button class="text-button" type="button" id="planAddFile">+ File</button>
                 <button class="primary" type="submit">Create plan</button>
               </form>
               <div id="planResult" class="result empty">No plan object exists yet. The Plan is the backbone's first object: nothing changes except by executing an authorised one.</div>
+              <!-- s327, point 4b: the runs no chat owns — every run started from the terminal,
+                   which has no conversation by construction. Shown here rather than in a chat's
+                   Work column: visible, grouped and labelled, never filed under a conversation
+                   that did not open them. -->
+              <section class="work-block">
+                <h3>Runs not attached to any chat <span class="work-count" id="unattachedRunCount"></span></h3>
+                <div id="unattachedRuns" class="work-plan"></div>
+              </section>
               <div class="inline-form hidden" id="planActions">
                 <button class="secondary" type="button" id="planSimulateBtn">Simulate</button>
                 <button class="primary" type="button" id="planApproveBtn">Approve — promotes if clean</button>

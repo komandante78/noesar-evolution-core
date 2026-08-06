@@ -276,7 +276,11 @@ const CODEN_PANEL_ON_OPEN={
     terminal:()=>$('#benchTerminal')?.scrollIntoView({block:'nearest'}),
     closure:()=>loadClosures(),
   },
-  agent:{},
+  // Point 4b: opening Plan loads the runs no chat owns. It belongs here rather than in the
+  // chat's Work column on purpose — a run started from the terminal has no conversation by
+  // construction, and showing it beside a conversation is precisely the false attribution the
+  // Owner's decision rules out. Declared and visible, just not filed under someone.
+  agent:{plan:()=>renderUnattachedRuns()},
 };
 // The panel each region ships as active in the markup — what a bare `#/coden` means.
 // Captured once at boot, before any click or address has moved one.
@@ -867,7 +871,12 @@ function renderProjects(){$('#projectCount').textContent=state.projects.length;$
 $('#projectForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:$('#projectName').value,description:$('#projectDescription').value,instructions:$('#projectInstructions').value,tags:$('#projectTags').value.split(',').map((v)=>v.trim()).filter(Boolean),knowledgePolicy:{mode:$('#projectKnowledgeMode').value,limit:Number($('#projectKnowledgeLimit').value),maxCharacters:60000}})});state.activeProjectId=project.id;event.target.reset();await refreshWorkspace();setStatus('Project created.');}catch(error){setStatus(error.message,true);}});
 $('#chatProject').addEventListener('change',async(event)=>{state.activeProjectId=event.target.value||null;state.activeConversationId=null;await refreshWorkspace();});
 $('#chatConversation').addEventListener('change',async(event)=>selectConversation(event.target.value));
-async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#messageList').textContent='Create or select a conversation.';return;}state.activeConversationId=id;const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?' · external':' · local'}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();await refreshMessages();}
+async function selectConversation(id,rerender=true){if(!id){state.activeConversationId=null;$('#messageList').textContent='Create or select a conversation.';return;}state.activeConversationId=id;const detail=await api(`/api/v1/conversations/${encodeURIComponent(id)}`);state.branches=state.branches.filter((item)=>item.conversationId!==id).concat(detail.branches);state.activeBranchId=detail.conversation.activeBranchId;currentMode=detail.conversation.mode;setMode(currentMode);$('#chatBranch').innerHTML=optionList(detail.branches,{empty:'No branch',label:(item)=>item.name,selected:state.activeBranchId});$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Select provider',label:(item)=>`${item.name}${item.external?' · external':' · local'}`,selected:detail.conversation.providerId});$('#chatModel').value=detail.conversation.model??'';if(rerender)renderProjectOptions();
+// Point 4b: BEFORE `refreshMessages()`, deliberately — that call can throw, and everything
+// after it would then never run. The same ordering, for the same reason, that `loadChatNav()`
+// is given in `refreshWorkspace` (`D-0329`); the test asserts the order, not the presence.
+await renderChatPlan();
+await refreshMessages();}
 $('#newConversation').addEventListener('click',async()=>{if(!state.activeProjectId)return setStatus('Create or select a project first.',true);const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);renderMessages(data.messages);await inspectContext();}
@@ -920,6 +929,84 @@ function renderChatSources(messages){
     <small>${escapeHtml(source.evidence.join(' · '))} · claim ${escapeHtml(source.claim.join(' · '))}${source.turns>1?` · cited in ${source.turns} turns`:''}</small>
   </div>`).join('');
 }
+/**
+ * The work this chat owns — point 4b, second half, after the Owner settled the relation on
+ * 2026-08-06: THE CHAT OWNS THE RUN.
+ *
+ * Asked of the engine, never assembled here. The browser sends a conversation id and renders
+ * what comes back; it does not decide that the run it just created is "probably" this chat's,
+ * which is the guess the panel refused to make while the relation did not exist. A chat with
+ * no runs says so, and says it differently from a chat whose runs could not be fetched — those
+ * are two different facts and looked identical in every earlier version of this panel.
+ */
+async function renderChatPlan(){
+  const host=$('#chatPlan');
+  if(!host)return;
+  const count=$('#chatPlanCount');
+  if(!state.activeConversationId){
+    if(count)count.textContent='';
+    host.innerHTML='<p class="declared-empty">No conversation is open.</p>';
+    return;
+  }
+  let listing;
+  try{
+    listing=await api(`/api/v1/workspace-actions/runs?conversationId=${encodeURIComponent(state.activeConversationId)}`);
+  }catch(error){
+    if(count)count.textContent='';
+    // Not an empty state. "This chat has no work" and "the product could not tell me" must not
+    // render the same, or a broken route reads as a quiet chat forever.
+    host.innerHTML=`<p class="declared-empty">The work for this chat could not be read: ${escapeHtml(error.value?.reason??error.message)}</p>`;
+    return;
+  }
+  const runs=listing.runs??[];
+  if(count)count.textContent=runs.length?String(runs.length):'';
+  if(!runs.length){
+    host.innerHTML='<p class="declared-empty">No work has been started from this chat yet.</p>';
+    return;
+  }
+  host.innerHTML=workRunRows(listing);
+}
+/**
+ * One rendering of a run list, used by both places that show one — the chat's Work column and
+ * the unattached group under Plan. Two functions drawing the same object is the divergence this
+ * project has already paid for twice (`PANEL_NAMES` 14 against 25, `D-0300`; the sessions list
+ * nearly rebuilt in the sidebar, `D-0329`), so the second caller reuses this rather than its
+ * own loop.
+ */
+function workRunRows(listing){
+  return (listing.runs??[]).map((run)=>`<div class="work-run" data-run-id="${escapeHtml(run.runId)}">
+    <span class="work-run-status">${escapeHtml(run.status)}</span>
+    <span class="work-run-goal">${escapeHtml(run.request??'(no goal recorded)')}</span>
+    <small>${run.fileCount} file${run.fileCount===1?'':'s'}${run.filePaths.length?` · ${escapeHtml(run.filePaths.slice(0,3).join(' · '))}${run.filePaths.length>3?` and ${run.filePaths.length-3} more`:''}`:''}${run.risk?` · risk ${escapeHtml(run.risk)}`:''}</small>
+  </div>`).join('')
+    // The engine declares that runs do not survive a restart; the panel repeats it rather than
+    // presenting a list that looks like history. Removing the declaration would not make the
+    // runs durable, only the loss silent.
+    +(listing.persistence?.durable===false?`<p class="hint">${escapeHtml(listing.persistence.reason)} — this list is not history.</p>`:'');
+}
+/**
+ * The runs no chat owns — every run started from the terminal, and any started from the Plan
+ * form without attaching one. Point 4b: visible and labelled, never shown beside a conversation
+ * that did not open them.
+ */
+async function renderUnattachedRuns(){
+  const host=$('#unattachedRuns');
+  if(!host)return;
+  const count=$('#unattachedRunCount');
+  let listing;
+  try{
+    listing=await api('/api/v1/workspace-actions/runs?scope=unattached');
+  }catch(error){
+    if(count)count.textContent='';
+    host.innerHTML=`<p class="declared-empty">These runs could not be read: ${escapeHtml(error.value?.reason??error.message)}</p>`;
+    return;
+  }
+  const runs=listing.runs??[];
+  if(count)count.textContent=runs.length?String(runs.length):'';
+  host.innerHTML=runs.length
+    ?workRunRows(listing)
+    :'<p class="declared-empty">Every run in this session belongs to a chat. Runs started from the terminal appear here.</p>';
+}
 function bindMessageActions(messages){$$('[data-edit-message]').forEach((button)=>button.addEventListener('click',async()=>{const message=messages.find((item)=>item.id===button.dataset.editMessage);const content=prompt('Edit message',message.content);if(content===null)return;await api(`/api/v1/messages/${message.id}`,{method:'PATCH',body:JSON.stringify({branchId:state.activeBranchId,content})});await refreshMessages();}));$$('[data-fork-message]').forEach((button)=>button.addEventListener('click',()=>forkAt(button.dataset.forkMessage)));$$('[data-exclude-message]').forEach((button)=>button.addEventListener('click',async()=>{await api(`/api/v1/messages/${button.dataset.excludeMessage}/exclude`,{method:'POST',body:JSON.stringify({branchId:state.activeBranchId,excluded:true})});await refreshMessages();}));$$('[data-retry-message]').forEach((button)=>button.addEventListener('click',async()=>{const index=messages.findIndex((item)=>item.id===button.dataset.retryMessage);const previous=[...messages.slice(0,index)].reverse().find((item)=>item.role==='user');if(previous){$('#chatInput').value=previous.content;await sendChat();}}));}
 async function forkAt(messageId){const name=prompt('Branch name','alternative');if(!name)return;const branch=await api(`/api/v1/conversations/${state.activeConversationId}/fork`,{method:'POST',body:JSON.stringify({fromMessageId:messageId,name})});state.activeBranchId=branch.id;await selectConversation(state.activeConversationId);}
 $('#forkBranch').addEventListener('click',async()=>{const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const head=data.messages.at(-1);if(head)await forkAt(head.id);});
@@ -928,6 +1015,17 @@ $('#compareBranches').addEventListener('click',async()=>{const detail=await api(
 $('#mergeBranch').addEventListener('click',async()=>{const detail=await api(`/api/v1/conversations/${state.activeConversationId}`);const other=detail.branches.find((item)=>item.id!==state.activeBranchId);if(!other)return setStatus('No branch available to merge.',true);await api(`/api/v1/conversations/${state.activeConversationId}/merge`,{method:'POST',body:JSON.stringify({sourceBranchId:other.id,targetBranchId:state.activeBranchId,note:`Merged branch ${other.name}`})});await refreshMessages();});
 async function inspectContext(){if(!state.activeConversationId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/context?branchId=${state.activeBranchId}`);$('#tokenEstimate').textContent=`≈ ${data.tokenEstimate} tokens`;$('#chatContextSummary').textContent=`${data.messages.length} messages · ${data.memories.length} memories · ${data.sources.length} sources · ${data.tools.length} tools`;$('#contextInspector').textContent=JSON.stringify({mode:data.conversation.mode,providerId:data.providerId,model:data.model,project:data.project?.name,included:data.included,tokenEstimate:data.tokenEstimate},null,2);}
 $('#inspectContext').addEventListener('click',inspectContext);
+// Point 4b: the one gesture that creates the link. It carries the chat to the Plan form that
+// already exists rather than growing a second plan form inside the chat — two forms for one
+// object is what `D-0300` cost this project, and the Owner's own point 2 is about there being
+// fewer surfaces, not more.
+$('#startWorkFromChat')?.addEventListener('click',()=>{
+  if(!state.activeConversationId)return toast('Open a chat first.',{kind:'error'});
+  const conversation=state.conversations.find((item)=>item.id===state.activeConversationId);
+  chatWorkAttachment={id:state.activeConversationId,title:conversation?.title??state.activeConversationId};
+  renderPlanAttachment();
+  jumpTo('coden/agent/plan');
+});
 async function sendChat(){
   if(!state.activeConversationId)return setStatus('Create a conversation first.',true);
   const content=$('#chatInput').value.trim();
@@ -2622,6 +2720,24 @@ function trackWorkspaceRunForClosure(run){
   const label=`Workspace action · ${run.intent?.goal??run.runId}`;
   if(existing)existing.label=label;else state.workspaceActionRuns.push({id:run.runId,label});
 }
+// Point 4b: the chat a plan created from this form will belong to. `null` unless the operator
+// came here through "Start work from this chat" — an explicit gesture, not the conversation
+// that happens to be open. Attaching implicitly is the same class of guess as rendering the
+// link in the browser: it would file terminal-shaped work under whatever chat was last read.
+let chatWorkAttachment=null;
+function renderPlanAttachment(){
+  const host=$('#planAttachment');
+  if(!host)return;
+  if(!chatWorkAttachment){
+    host.textContent='This run will belong to no chat. Start one from a chat’s Work column to attach it.';
+    return;
+  }
+  // Named, and detachable in the same breath. An attachment that survives out of sight is how
+  // a later run gets filed under a chat nobody meant — so it is stated on the form that creates
+  // the run, next to the control that undoes it, rather than remembered by the operator.
+  host.innerHTML=`This run will belong to the chat “${escapeHtml(chatWorkAttachment.title)}”. <button class="text-button" type="button" id="planAttachmentClear">Detach</button>`;
+  $('#planAttachmentClear')?.addEventListener('click',()=>{chatWorkAttachment=null;renderPlanAttachment();});
+}
 async function submitPlanForm(event){
   event.preventDefault();
   const files=planFiles();
@@ -2629,6 +2745,9 @@ async function submitPlanForm(event){
   try{
     const planned=await api('/api/v1/workspace-actions/plan',{method:'POST',body:JSON.stringify({
       request:$('#planGoal').value,files,mode:'safe',policy:'restrictive',
+      // Sent, never assumed on the way back: the panel reads `planned.conversationId` off the
+      // engine's answer below, so a link the engine declined to keep cannot go on being drawn.
+      conversationId:chatWorkAttachment?.id??null,
     })});
     // The run as the engine returned it. This used to stitch `status:'PENDING_APPROVAL'` on
     // by hand because `plan()` did not return one, and the terminal shell printed the same
@@ -2648,7 +2767,11 @@ async function submitPlanForm(event){
       // is news, and news is told once, plainly, when it happens.
       toast(`ATOM did not answer — the reference provider answered instead. ${(planned.reasoning.reasons??[]).join(' · ')}`,{kind:'error'});
     }
-    toast('Plan created — pending approval.');
+    // The chat's Work column, refreshed from the engine — not patched with the run this
+    // function is holding. `planned.conversationId` is what the run actually carries.
+    if(planned.conversationId&&planned.conversationId===state.activeConversationId)await renderChatPlan();
+    if(!planned.conversationId)await renderUnattachedRuns();
+    toast(planned.conversationId?'Plan created — pending approval, attached to this chat.':'Plan created — pending approval.');
   }catch(error){
     if(error.status===503)toast(`Reasoning unavailable: ${error.value?.reason??error.message}`,{kind:'error'});
     else toast(error.value?.reason??error.message,{kind:'error'});
@@ -2732,6 +2855,10 @@ function initWorkspaceActions(){
   addPlanFileRow();
   $('#planAddFile')?.addEventListener('click',addPlanFileRow);
   $('#planForm')?.addEventListener('submit',submitPlanForm);
+  // Rendered once at wiring time, so the form states where a run will be filed even before
+  // anybody has touched a chat. An empty line here would read as "no opinion", which is the
+  // one thing this field must never mean.
+  renderPlanAttachment();
   $('#planSimulateBtn')?.addEventListener('click',()=>runWorkspaceAction('simulate'));
   $('#planApproveBtn')?.addEventListener('click',()=>runWorkspaceAction('approve'));
   $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));

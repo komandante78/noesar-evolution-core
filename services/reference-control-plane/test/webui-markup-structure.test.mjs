@@ -413,11 +413,19 @@ describe('the missing interface parts', () => {
       assert.match(html, /<h3>Included context<\/h3>\s*<pre id="contextInspector">/);
     });
 
-    test('the plan block DECLARES that no run is attached to a chat, instead of showing an empty box', () => {
-      assert.ok(html.includes('id="chatPlanDeclared"'), 'the plan block must exist to declare its own gap');
+    // s327 REPLACES the s326 assertion here, and the replacement is the point rather than a
+    // relaxation. That test required the panel to DECLARE that a run is not attached to a
+    // conversation — true when it was written, and false the moment the Owner settled the
+    // relation on 2026-08-06 and the engine grew it. A guard whose subject has been built has
+    // to be rewritten to the new truth: left as it was, it would have forced the product to go
+    // on telling operators it cannot do what it now does.
+    test('the plan block RENDERS the runs this chat owns, and the old declaration is gone', () => {
+      assert.ok(html.includes('id="chatPlan"'), 'the plan block must have somewhere to render runs');
+      assert.ok(!html.includes('id="chatPlanDeclared"'), 'the declaration of a gap that no longer exists must not survive it');
       const panel = html.slice(html.indexOf('id="chatWorkPanel"'), html.indexOf('</aside>', html.indexOf('id="chatWorkPanel"')));
-      assert.match(panel, /not attached to a conversation/i,
-        'the gap must be stated in words the reader sees, not left as an empty region');
+      assert.doesNotMatch(panel, /not attached to a conversation/i,
+        'the panel must not still describe the product as unable to link work to a chat');
+      assert.ok(panel.includes('id="startWorkFromChat"'), 'the gesture that creates the link belongs in this column');
     });
 
     test('the rollup does not invent a second vocabulary for evidence', () => {
@@ -544,5 +552,59 @@ describe('the initial screen · UI-060…UI-063', () => {
     const backups = html.slice(start, end);
     assert.match(backups, /not encrypted/i);
     assert.match(backups, /authentication master key/i);
+  });
+});
+
+// --- point 4b · the chat owns the run (Owner decision, 2026-08-06) -----------------------
+// The engine now holds the relation. What these guard is the browser's half of the bargain:
+// it renders what it is given, in one place, and never derives which chat owns what.
+describe('point 4b · the work column renders a relation it does not invent', () => {
+  const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
+  // Comments are read by a source-scanning guard exactly like code (s322, learned the hard
+  // way), and the comments in this feature are full of the words being asserted on. Every
+  // assertion below runs against the stripped source.
+  const code = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  test('the Work column has a Plan block and the one gesture that attaches a chat', () => {
+    for (const id of ['chatPlan', 'chatPlanCount', 'startWorkFromChat', 'planAttachment', 'unattachedRuns']) {
+      assert.ok(html.includes(`id="${id}"`), `#${id} must exist in the shipped markup`);
+    }
+    // The declaration the panel used to carry is gone, because the gap it declared is closed.
+    // Left behind, it would tell an operator the product cannot do what it now does.
+    assert.ok(!html.includes('id="chatPlanDeclared"'), 'the old "no plan is linked" declaration must not survive the relation existing');
+  });
+
+  test('one renderer draws both run lists', () => {
+    // `D-0300` cost this project a second list of panels; `D-0329` nearly cost it a second
+    // sessions list. A run row is built in exactly one place, and both callers use it.
+    const rows = [...code.matchAll(/class="work-run"/g)];
+    assert.equal(rows.length, 1, 'a run row must be built by one function, not once per caller');
+    assert.ok(code.includes('function workRunRows('), 'the shared renderer must exist by name');
+    assert.ok(code.includes('workRunRows(listing)'), 'the chat column must call the shared renderer');
+    assert.match(code, /renderUnattachedRuns[\s\S]*workRunRows\(listing\)/, 'the unattached list must call it too');
+  });
+
+  test('the browser never derives the link from whichever chat is open', () => {
+    // The defect this whole point exists to avoid: attaching the run to the conversation that
+    // happens to be active. The plan call may send the EXPLICIT attachment and nothing else.
+    const planCall = code.slice(code.indexOf("api('/api/v1/workspace-actions/plan'"), code.indexOf("api('/api/v1/workspace-actions/plan'") + 600);
+    assert.ok(planCall.includes('conversationId:chatWorkAttachment?.id??null'), 'the plan call sends the explicit attachment');
+    assert.ok(!planCall.includes('conversationId:state.activeConversationId'), 'the active conversation must never be attached implicitly');
+  });
+
+  test('the chat column is filled before the call that can throw past it', () => {
+    // Same ordering, same reason as `loadChatNav()` in `D-0329`: `refreshMessages()` can throw,
+    // and everything after it would then never run. The ORDER is the assertion, not presence.
+    const body = code.slice(code.indexOf('async function selectConversation'));
+    const plan = body.indexOf('await renderChatPlan()');
+    const messages = body.indexOf('await refreshMessages()');
+    assert.ok(plan > -1 && messages > -1, 'both calls must be in selectConversation');
+    assert.ok(plan < messages, 'renderChatPlan() must run before refreshMessages()');
+  });
+
+  test('an unreadable list and an empty one do not render the same', () => {
+    // Two different facts. Rendered identically, a broken route reads as a quiet chat forever.
+    assert.ok(code.includes('The work for this chat could not be read'), 'a failed read says so');
+    assert.ok(code.includes('No work has been started from this chat yet'), 'an empty chat says so');
   });
 });

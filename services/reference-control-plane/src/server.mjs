@@ -2616,6 +2616,25 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       return json(res, 200, workspaceActionsStatus());
     }
+    // Point 4b: the runs one chat owns. It sits ABOVE the `/:id` matcher below on purpose —
+    // that pattern is `([^/]+)` and would happily read the word `runs` as a run id and answer
+    // 404 for a route that exists.
+    if (req.method === 'GET' && url.pathname === '/api/v1/workspace-actions/runs') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      // Reading which work belongs where is reading, not deciding — `workspace.read`, the same
+      // level as GET :id, which discloses strictly more than these summaries do.
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      const conversationId = url.searchParams.get('conversationId');
+      const scope = url.searchParams.get('scope') ?? (conversationId ? 'conversation' : 'all');
+      try {
+        return json(res, 200, workspaceActions.runsFor({ scope, conversationId }));
+      } catch (error) {
+        if (error instanceof WorkspaceActionError) return json(res, 422, { error:'workspace_action_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/workspace-actions/plan') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
@@ -2624,11 +2643,28 @@ const requestListener = async (req, res) => {
       if (!requireCsrf(req, res, authenticated)) return;
       const payload = await body(req);
       const nowUnix = Math.floor(Date.now() / 1000);
+      // Point 4b, and the half of the Owner's decision that has to be enforced rather than
+      // merely recorded: a run may name the chat that opened it, but ONLY a chat that exists.
+      // The check happens here because this is where the context graph is — workspace-actions
+      // holds the id opaquely — and it is fail-closed: an unknown conversation refuses the run
+      // instead of storing a link that resolves to nothing and rendering as an empty panel.
+      let conversationId = null;
+      if (payload?.conversationId !== undefined && payload?.conversationId !== null) {
+        if (typeof payload.conversationId !== 'string' || !payload.conversationId.trim()) {
+          return json(res, 422, { error:'workspace_action_refused', kind:'INVALID_CONVERSATION', reason:'conversationId must be a non-empty string when supplied' });
+        }
+        try {
+          contextGraph.getConversation(payload.conversationId);
+        } catch {
+          return json(res, 422, { error:'workspace_action_refused', kind:'UNKNOWN_CONVERSATION', reason:`no conversation \`${payload.conversationId}\`` });
+        }
+        conversationId = payload.conversationId;
+      }
       try {
         const planned = await workspaceActions.plan({
           request: payload?.request, files: payload?.files, projectRules: payload?.projectRules ?? [],
           constraints: payload?.constraints ?? [], mode: payload?.mode ?? 'safe', policy: payload?.policy ?? 'restrictive',
-          actor: authenticated.user.id, nowUnix, claims: payload?.claims ?? [],
+          actor: authenticated.user.id, nowUnix, claims: payload?.claims ?? [], conversationId,
         });
         return json(res, 201, planned);
       } catch (error) {

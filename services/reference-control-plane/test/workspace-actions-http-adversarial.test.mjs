@@ -255,3 +255,85 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     assert.deepEqual(unknown.json.events, []);
   });
 });
+
+// --- point 4b · the chat owns the run, across the HTTP boundary ------------------------------
+// The orchestrator holds a conversation id opaquely (workspace-actions.mjs says so in as many
+// words); whether that conversation EXISTS is authority this boundary holds. These are the
+// attempts on it.
+describe('point 4b · attaching a run to a chat', () => {
+  async function newConversation(title) {
+    const project = await authed('/api/v1/projects', { method: 'POST', payload: { name: `p-${title}` } });
+    assert.equal(project.status, 201, `project failed: ${project.text.slice(0, 200)}`);
+    const created = await authed('/api/v1/conversations', {
+      method: 'POST', payload: { projectId: project.json.id, title },
+    });
+    assert.equal(created.status, 201, `conversation failed: ${created.text.slice(0, 200)}`);
+    return created.json.conversation.id;
+  }
+
+  test('the runs route is not eaten by the `/:id` matcher above it', async () => {
+    // `/api/v1/workspace-actions/([^/]+)` would read the word `runs` as a run id and answer
+    // 404 for a route that exists. Ordering is the whole fix, so it gets its own attempt.
+    const listing = await authed('/api/v1/workspace-actions/runs');
+    assert.equal(listing.status, 200);
+    assert.ok(Array.isArray(listing.json.runs));
+    assert.equal(listing.json.persistence.durable, false);
+  });
+
+  test('a plan naming a real conversation is attached, and shows up in that chat only', async () => {
+    const mine = await newConversation('mine');
+    const other = await newConversation('other');
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'attached work', files: [{ path: 'attached.txt', contents: 'x' }], conversationId: mine },
+    });
+    assert.equal(planned.status, 201, `plan failed: ${planned.text.slice(0, 200)}`);
+    assert.equal(planned.json.conversationId, mine);
+
+    const here = await authed(`/api/v1/workspace-actions/runs?conversationId=${encodeURIComponent(mine)}`);
+    assert.ok(here.json.runs.some((run) => run.runId === planned.json.runId));
+    const elsewhere = await authed(`/api/v1/workspace-actions/runs?conversationId=${encodeURIComponent(other)}`);
+    assert.ok(!elsewhere.json.runs.some((run) => run.runId === planned.json.runId));
+  });
+
+  test('a plan naming a conversation that does not exist is REFUSED, not filed anyway', async () => {
+    // Fail-closed. The alternative — storing the id and letting the panel render empty — is a
+    // link that resolves to nothing, which looks exactly like a chat with no work.
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'ghost work', files: [{ path: 'ghost.txt', contents: 'x' }], conversationId: 'conv-does-not-exist' },
+    });
+    assert.equal(planned.status, 422);
+    assert.equal(planned.json.kind, 'UNKNOWN_CONVERSATION');
+
+    // And nothing was created under that name.
+    const listing = await authed('/api/v1/workspace-actions/runs?conversationId=conv-does-not-exist');
+    assert.deepEqual(listing.json.runs, []);
+  });
+
+  test('a plan with no conversation is unattached, and stays out of every chat list', async () => {
+    const chat = await newConversation('untouched');
+    const planned = await authed('/api/v1/workspace-actions/plan', {
+      method: 'POST',
+      payload: { request: 'unattached work', files: [{ path: 'unattached.txt', contents: 'x' }] },
+    });
+    assert.equal(planned.status, 201);
+    assert.equal(planned.json.conversationId, null);
+
+    const unattached = await authed('/api/v1/workspace-actions/runs?scope=unattached');
+    assert.ok(unattached.json.runs.some((run) => run.runId === planned.json.runId));
+    const inChat = await authed(`/api/v1/workspace-actions/runs?conversationId=${encodeURIComponent(chat)}`);
+    assert.ok(!inChat.json.runs.some((run) => run.runId === planned.json.runId));
+  });
+
+  test('a malformed conversationId is refused at the boundary, before the orchestrator', async () => {
+    for (const bad of ['', '   ', 42, { id: 'x' }]) {
+      const planned = await authed('/api/v1/workspace-actions/plan', {
+        method: 'POST',
+        payload: { request: 'bad link', files: [{ path: 'bad.txt', contents: 'x' }], conversationId: bad },
+      });
+      assert.equal(planned.status, 422, `\`${JSON.stringify(bad)}\` should not plan`);
+      assert.ok(['INVALID_CONVERSATION', 'UNKNOWN_CONVERSATION'].includes(planned.json.kind));
+    }
+  });
+});

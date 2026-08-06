@@ -1,6 +1,6 @@
 # Lista modifiche richieste dall'Owner — aperta in s326 (2026-08-06)
 
-> **STATO: 4a CONSEGNATO · 4b A METÀ · 1, 2, 3 ANCORA DA FARE.**
+> **STATO: 4a e 4b CONSEGNATI · 1, 2, 3 ANCORA DA FARE.**
 >
 > Aggiornato a fine s326. L'Owner ha autorizzato l'esecuzione («PROCEDI E INIZIA DA 4»,
 > «PROCEDI CON 4B») dopo che i punti 1-4 erano stati raccolti. Cosa è vero adesso:
@@ -11,13 +11,37 @@
 > | **2** WebUI stile terminale, sezioni fuori dalla pagina | **non iniziato** |
 > | **3** `/` progressivo, una porta sola | **approvato come disegno, non costruito** |
 > | **4a** chat nella sidebar | ✅ **consegnato e provato nel browser** (`D-0329`) |
-> | **4b** unire lavoro e ricerca | ⚠️ **metà**: le fonti sì, il piano **no** (`D-0332`) |
+> | **4b** unire lavoro e ricerca | ✅ **completo**: fonti (`D-0332`) **e** piano (`D-0333`, s327) |
 >
-> **Il fatto che blocca la seconda metà di 4b, e che è una decisione dell'Owner:** un lavoro
+> **Il fatto che bloccava la seconda metà di 4b, e che era una decisione dell'Owner:** un lavoro
 > **non è legato a una chat**. `sessionId` in `workspace-actions.mjs` è l'id della run stessa,
 > `conversationId` compare zero volte, e la rotta di lista restituisce una dichiarazione di
-> capacità, non i lavori. Serve decidere se una run appartiene a una conversazione — e **cosa
+> capacità, non i lavori. Serviva decidere se una run appartiene a una conversazione — e **cosa
 > succede alle run avviate dal terminale**, che una conversazione non ce l'hanno.
+>
+> ### ✅ DECISIONE PRESA DALL'OWNER (2026-08-06, s327): **la chat possiede la run**
+>
+> - chi avvia dalla chat passa il **`conversationId`**: la run lo porta con sé, e la colonna
+>   destra mostra il piano **di quella chat**;
+> - le run avviate **dal terminale** restano **senza conversazione** (`conversationId: null`) e
+>   si vedono in un gruppo **dichiarato** «avviate dal terminale» — visibili, non nascoste, e
+>   soprattutto **non attribuite** a una chat che non le ha aperte;
+> - il legame è **additivo**: niente cambia per chi lavora dal terminale oggi.
+>
+> **Secondo fatto misurato in s327, che la decisione tira dentro:** `#runs = new Map()`
+> (`workspace-actions.mjs:98`) — le run vivono **solo in memoria** e muoiono col processo.
+> Perché «il piano di questa chat» sia ancora lì dopo un riavvio, la relazione va **persistita**,
+> non solo aggiunta al volo. Non è una domanda per l'Owner: è la dimensione vera del pezzo.
+>
+> **✅ COSTRUITO in s327 (`D-0333`), 4b è chiuso.** La run porta il `conversationId`; il
+> terminale **non può** fabbricarlo (`conversationId: null` fissato nel dispatch, non letto dal
+> filo) ma **può leggere** il raggruppamento; una conversazione inesistente **rifiuta** la run
+> invece di archiviarla sotto un legame che non risolve. Un solo renderer per le due liste, e
+> un solo gesto esplicito che crea il legame, **nominato sul form** e staccabile lì.
+> La non-persistenza è **dichiarata** dal motore e ripetuta dal pannello: la lista dice che non
+> è una storia. **Proposta di miglioramento all'Owner, non eseguita:** persistere run e
+> relazione — è un archivio, non un campo, e non è ciò che 4b chiedeva.
+> Verifiche: unit **1855/1856**, ESLint **0/0/0**, **8 mutazioni → 8**, browser **403/403**.
 >
 > ---
 >

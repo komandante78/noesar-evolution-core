@@ -125,6 +125,11 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   'workspace.reject': { permission: 'workspace.write', bridged: true },
   'workspace.restore': { permission: 'workspace.write', bridged: true },
   'workspace.get': { permission: null, bridged: true },
+  // Point 4b. The terminal can READ which chat owns which run — including its own runs, which
+  // own none — even though it can never CREATE that link (see `workspace.plan` in the dispatch
+  // below). Reading is `workspace.read`; leaving the terminal unable to see the grouping the
+  // browser shows would rebuild by omission the very asymmetry `D-0302` closed.
+  'workspace.runs': { permission: 'workspace.read', bridged: false },
   'repoMap.scan': { permission: 'workspace.read', bridged: true },
   'repoMap.search': { permission: 'workspace.read', bridged: true },
   'events.correlation': { permission: null, bridged: true },
@@ -213,11 +218,22 @@ export function createSessionDispatch({
       request: params?.request, files: params?.files ?? [], projectRules: params?.projectRules ?? [],
       constraints: params?.constraints ?? [], mode: params?.mode ?? 'safe', policy: params?.policy ?? 'restrictive',
       actor, nowUnix: nowUnix(), claims: params?.claims ?? [],
+      // Point 4b, the Owner's decision made structural: a run started here belongs to NO chat,
+      // and `params.conversationId` is not read — not defaulted, not forwarded. A terminal
+      // session has no conversation to speak for, so accepting an id off the wire would let
+      // this shell file its work under a chat it was never part of. Written as an explicit
+      // `null` rather than left to the default so that deleting this line is a visible act.
+      conversationId: null,
     }),
     'workspace.simulate': ({ params, actor }) => workspaceActions.simulate({ runId: params?.runId, actor, nowUnix: nowUnix() }),
     'workspace.approve': ({ params, actor }) => workspaceActions.approve({ runId: params?.runId, approverId: actor, nowUnix: nowUnix() }),
     'workspace.reject': ({ params, actor }) => workspaceActions.reject({ runId: params?.runId, approverId: actor, reason: params?.reason ?? null, nowUnix: nowUnix() }),
     'workspace.restore': ({ params, actor }) => workspaceActions.restore({ runId: params?.runId, actor, nowUnix: nowUnix() }),
+    // Point 4b. Same orchestrator instance the browser reads (see this function's own doc
+    // comment), so both shells group one set of runs — not two lists that agree by luck.
+    'workspace.runs': ({ params }) => workspaceActions.runsFor({
+      scope: params?.scope ?? 'all', conversationId: params?.conversationId ?? null,
+    }),
     'workspace.get': ({ params }) => {
       const run = workspaceActions.get(params?.runId);
       if (!run) throw new ProtocolError('NOT_FOUND', `no run \`${params?.runId}\``);

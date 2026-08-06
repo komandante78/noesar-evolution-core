@@ -639,3 +639,118 @@ test('status declares the routing and the cross-process limit of simulate', asyn
   // another process cannot read a path it has no mount onto, and that is the honest state.
   assert.match(status.simulationCrossProcessLimit, /PATH/);
 });
+
+// --- point 4b · the chat owns the run (Owner decision, 2026-08-06) ----------------------
+// A run started from a conversation carries its id for life; a run started from anywhere else
+// carries `null` and is grouped as unattached. What these assert is the property the decision
+// bought: nothing in the product ever GUESSES which chat a run belongs to.
+
+test('a run started from a chat carries that conversation, read off the stored run', async () => {
+  const fx = fixture();
+  try {
+    const planned = await fx.orch.plan({
+      request: 'write', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      conversationId: 'conv-1',
+    });
+    // On the answer, so a shell never has to stitch back the id it sent.
+    assert.equal(planned.conversationId, 'conv-1');
+    // And on the run itself, which is what every later reader sees.
+    assert.equal(fx.orch.get(planned.runId).conversationId, 'conv-1');
+  } finally { cleanup(fx); }
+});
+
+test('a run started with no conversation carries null, not the last one seen', async () => {
+  const fx = fixture();
+  try {
+    await fx.orch.plan({
+      request: 'first', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      conversationId: 'conv-1',
+    });
+    const second = await fx.orch.plan({
+      request: 'second', files: [{ path: 'b.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+    });
+    assert.equal(second.conversationId, null);
+    assert.equal(fx.orch.get(second.runId).conversationId, null);
+  } finally { cleanup(fx); }
+});
+
+test('a conversationId that is not a usable string is refused, never stored as a dead link', async () => {
+  const fx = fixture();
+  try {
+    for (const bad of ['', '   ', 42, {}, []]) {
+      await assert.rejects(
+        () => fx.orch.plan({
+          request: 'write', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+          conversationId: bad,
+        }),
+        (error) => error instanceof WorkspaceActionError && error.kind === 'INVALID_CONVERSATION',
+        `\`${JSON.stringify(bad)}\` should not reach a run`,
+      );
+    }
+  } finally { cleanup(fx); }
+});
+
+test('runsFor separates one chat, the unattached group, and everything', async () => {
+  const fx = fixture();
+  try {
+    const mine = await fx.orch.plan({
+      request: 'mine', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      conversationId: 'conv-1',
+    });
+    const theirs = await fx.orch.plan({
+      request: 'theirs', files: [{ path: 'b.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+      conversationId: 'conv-2',
+    });
+    const terminal = await fx.orch.plan({
+      request: 'terminal', files: [{ path: 'c.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
+    });
+
+    const one = fx.orch.runsFor({ scope: 'conversation', conversationId: 'conv-1' });
+    assert.deepEqual(one.runs.map((run) => run.runId), [mine.runId]);
+    // The other chat's work is not in this chat's list — the whole point of the relation.
+    assert.ok(!one.runs.some((run) => run.runId === theirs.runId));
+    assert.ok(!one.runs.some((run) => run.runId === terminal.runId));
+
+    const unattached = fx.orch.runsFor({ scope: 'unattached' });
+    assert.deepEqual(unattached.runs.map((run) => run.runId), [terminal.runId]);
+
+    const all = fx.orch.runsFor();
+    assert.equal(all.runs.length, 3);
+    assert.deepEqual(all.counts, { total: 3, attached: 2, unattached: 1 });
+  } finally { cleanup(fx); }
+});
+
+test('runsFor summarises: never the bytes of the workspace, always the declared persistence', async () => {
+  const fx = fixture();
+  try {
+    await fx.orch.plan({
+      request: 'write', files: [{ path: 'a.txt', contents: 'SECRET-CONTENTS' }], actor: 'owner', nowUnix: NOW,
+      conversationId: 'conv-1',
+    });
+    const listing = fx.orch.runsFor({ scope: 'conversation', conversationId: 'conv-1' });
+    const [row] = listing.runs;
+    assert.deepEqual(row.filePaths, ['a.txt']);
+    assert.equal(row.fileCount, 1);
+    // A side panel has no business holding file contents. Asserted on the serialised list, so
+    // a field added later that happens to carry them fails here rather than shipping.
+    assert.ok(!JSON.stringify(listing).includes('SECRET-CONTENTS'));
+    // The list says out loud that it is not history — the runs are in memory for this process.
+    assert.equal(listing.persistence.durable, false);
+  } finally { cleanup(fx); }
+});
+
+test('runsFor refuses a scope it does not have, and a conversation scope with no conversation', async () => {
+  const fx = fixture();
+  try {
+    assert.throws(
+      () => fx.orch.runsFor({ scope: 'everything' }),
+      (error) => error instanceof WorkspaceActionError && error.kind === 'INVALID_SCOPE',
+    );
+    // Fail-closed rather than quietly widening to `all`: a caller asking for one chat's work
+    // and silently receiving everyone's is the disclosure this scope exists to prevent.
+    assert.throws(
+      () => fx.orch.runsFor({ scope: 'conversation' }),
+      (error) => error instanceof WorkspaceActionError && error.kind === 'INVALID_CONVERSATION',
+    );
+  } finally { cleanup(fx); }
+});

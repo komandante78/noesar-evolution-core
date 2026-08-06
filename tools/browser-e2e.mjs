@@ -1666,7 +1666,11 @@ try {
       blocks: panel?.querySelectorAll('.work-block').length ?? 0,
       // An empty list must SAY it is empty. Blank and broken must not look the same.
       sourcesDeclared: (document.querySelector('#chatSources')?.textContent ?? '').trim(),
-      planDeclared: (document.querySelector('#chatPlanDeclared')?.textContent ?? '').trim(),
+      // s327: the block now RENDERS the runs this chat owns. A chat nobody has worked from
+      // still has to say so — "no work yet" and "the list could not be read" are two facts and
+      // must not look alike, which is what this reads back.
+      planDeclared: (document.querySelector('#chatPlan')?.textContent ?? '').trim(),
+      attachGesture: Boolean(document.querySelector('#startWorkFromChat')),
       contextKept: Boolean(document.querySelector('#contextInspector')),
     };
   });
@@ -1674,8 +1678,35 @@ try {
     workColumn.onScreen && workColumn.blocks === 3 && workColumn.contextKept, JSON.stringify(workColumn));
   check('s326/4b — an uncited chat says so instead of showing a blank list',
     /No source has been cited/.test(workColumn.sourcesDeclared), workColumn.sourcesDeclared);
-  check('s326/4b — the plan block declares the missing link rather than an empty box',
-    /not attached to a conversation/i.test(workColumn.planDeclared), workColumn.planDeclared);
+  // s327 REPLACES the s326 assertion here. That one required the panel to declare that a run
+  // is not attached to a conversation — true when written, false since the Owner settled the
+  // relation on 2026-08-06 and the engine grew it. Driven in a real browser, so a renderer that
+  // throws on the fetch fails here; the unit guards read app.js as text and would not notice.
+  check('s327/4b — the plan block renders this chat\'s work, and an empty one says so',
+    /No work has been started from this chat yet/.test(workColumn.planDeclared)
+      && !/not attached to a conversation/i.test(workColumn.planDeclared)
+      && workColumn.attachGesture,
+    workColumn.planDeclared);
+
+  // s327/4b: the gesture that CREATES the link, driven rather than read. It carries the chat to
+  // the Plan form that already exists — the form must then name that chat, because an
+  // attachment the operator cannot see is how work gets filed under a conversation nobody meant.
+  const attachment = await page.evaluate(async () => {
+    const before = (document.querySelector('#planAttachment')?.textContent ?? '').trim();
+    document.querySelector('#startWorkFromChat')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return {
+      before,
+      after: (document.querySelector('#planAttachment')?.textContent ?? '').trim(),
+      detachable: Boolean(document.querySelector('#planAttachmentClear')),
+      landedOnPlan: Boolean(document.querySelector('#planPanel')?.classList.contains('active')),
+    };
+  });
+  check('s327/4b — before any gesture, the plan form says a run belongs to no chat',
+    /belong to no chat/i.test(attachment.before), attachment.before);
+  check('s327/4b — starting work from a chat names that chat on the form, and can be undone',
+    /will belong to the chat/i.test(attachment.after) && attachment.detachable && attachment.landedOnPlan,
+    JSON.stringify(attachment));
 
   // Leave the data as it was found: cancel rather than archive.
   await page.keyboard.press('Escape');
@@ -1856,6 +1887,28 @@ try {
   resetObservations();
   await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#bench', { timeout: 15000 });
+  // s327 — WHY THESE TWO CHECKS CHANGED. They failed for phases, unattributed, and the first
+  // guess (that the regions were measured before the view was on screen) was wrong: waiting for
+  // `#view-coden.active` AND a laid-out `.bench-main` times out, because at a bare `#/coden`
+  // the bench genuinely has no box. That is the design, stated in the stylesheet it lives in:
+  // `#view-coden:not([data-panel-open]) .bench{display:none}` — phase 3c, `16` §4b.3, "the
+  // panels stop being riquadri sempre presenti" — and `.bench{grid-template-columns:minmax(0,1fr)}`,
+  // "One column, not two … there is no second column left for it to sit in".
+  //
+  // So the old assertion (`main > 200 && agent > 100`, both regions standing open at once) was
+  // asserting the two-column bench `D-0319` deliberately removed. A red against a product that
+  // is behaving as designed teaches people to ignore the suite. Rewritten to the design that
+  // exists: a bare address opens NO bench, and an address that names a panel opens exactly one
+  // region with a real width.
+  const bareBench = await page.evaluate(() => ({
+    viewActive: document.querySelector('#view-coden')?.classList.contains('active') ?? false,
+    panelOpen: document.querySelector('#view-coden')?.hasAttribute('data-panel-open') ?? false,
+    benchWidth: document.querySelector('.bench')?.getBoundingClientRect().width ?? 0,
+  }));
+  check('UI-030 a bare #/coden opens no panel, and the bench has no box until one is addressed',
+    bareBench.viewActive && !bareBench.panelOpen && bareBench.benchWidth === 0, JSON.stringify(bareBench));
+
+  await jump('coden/bench/shadow', 'shadow');
   const bench = await page.evaluate(() => {
     const box = (selector) => document.querySelector(selector)?.getBoundingClientRect() ?? { width: 0, height: 0 };
     return {
@@ -1869,8 +1922,8 @@ try {
       terminal: box('#benchTerminal').height,
     };
   });
-  check('UI-030 the two regions left are both on screen with a width of their own',
-    bench.main > 200 && bench.agent > 100, JSON.stringify(bench));
+  check('UI-030 an addressed panel opens its region with a width of its own, and the terminal stays',
+    bench.main > 200 && bench.terminal > 40, JSON.stringify(bench));
   check('UI-032/UI-035 twenty bench surfaces and a twelve-field status line that declares its sources',
     bench.panels === 20 && bench.statusFields === 12 && /of 12 fields have a source/.test(bench.sourced),
     `panels=${bench.panels} fields=${bench.statusFields} "${bench.sourced}"`);
@@ -1928,7 +1981,20 @@ try {
   // the Plan/Shadow run/Diff panels used to describe it as backbone work with no
   // execution surface, which had stopped being true.
   resetObservations();
-  await jump('coden/bench/shadow', 'shadow');
+  // s327: this used to open `coden/bench/shadow` and then click the Plan form — which lives in
+  // the AGENT region. Since phase 3c (`D-0319`) exactly ONE panel is open across BOTH regions,
+  // so opening a bench panel closes Plan, and its submit button is legitimately 0x0. The step
+  // died there ("collapsed to 0x0") on a product that was behaving correctly: a false red, and
+  // an expensive one — everything after the click in this step never ran. The plan is now
+  // created from the Plan panel's own address, and the shadow is opened after it exists.
+  await page.evaluate(() => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = '/coden/agent/plan';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.focus();
+  });
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
   await page.type('#planGoal', 'add a short note file for this e2e run');
   await page.type('.plan-file-path', 'e2e-notes/browser-e2e-note.txt');
   await page.type('.plan-file-contents', 'written by the browser E2E suite');
@@ -1945,6 +2011,19 @@ try {
   check('a plan created through the Plan panel is pending approval, not a declared-empty placeholder',
     /pending approval/.test(planned.badge) && /runId:/.test(planned.result) && planned.actionsHidden === false,
     JSON.stringify(planned));
+
+  // s327/4b: a plan created from the Plan panel itself, with nothing attached, must belong to
+  // no chat — and must be listed as such rather than filed under whichever conversation the
+  // session last opened. This is the negative half of the Owner's decision, driven for real.
+  const unattached = await page.evaluate(() => ({
+    declared: (document.querySelector('#planAttachment')?.textContent ?? '').trim(),
+    listed: (document.querySelector('#unattachedRuns')?.textContent ?? '').trim(),
+    count: (document.querySelector('#unattachedRunCount')?.textContent ?? '').trim(),
+  }));
+  check('s327/4b — a plan created with no chat attached is listed as belonging to none',
+    /belong to no chat/i.test(unattached.declared) && unattached.count === '1'
+      && /add a short note file for this e2e run/.test(unattached.listed),
+    JSON.stringify(unattached).slice(0, 300));
 
   await clickOrExplain(page, '#planSimulateBtn');
   await page.waitForFunction(
@@ -2041,7 +2120,17 @@ try {
   check('the Terminal tab\'s `get` reaches the SAME run the Plan panel created — one live session, not two',
     terminalGet.includes(planRunId) && terminalGet.includes('PROMOTED'), terminalGet.slice(-300));
 
-  await jump('coden/bench/shadow', 'shadow');
+  // s327, same false red as the plan submit above and the same fix: `#planRestoreBtn` lives in
+  // the Plan panel (agent region), so opening a BENCH panel first closes it and leaves the
+  // button legitimately 0x0. Open the panel that owns the button.
+  await page.evaluate(() => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = '/coden/agent/plan';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.focus();
+  });
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(
     () => /restored/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),
