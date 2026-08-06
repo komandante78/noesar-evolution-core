@@ -1091,113 +1091,6 @@ try {
   const paletteErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('the box produced no console errors', paletteErrors.length === 0, paletteErrors.join(' | '));
 
-  // ---- s326: the chat list in the sidebar --------------------------------------------
-  //
-  // Placed HERE, before the first step that aborts, and not beside the sessions step it
-  // belongs with — because that step does not currently run (see `soft`). It creates its
-  // own chats rather than borrowing that step's: when the tail is revived, the sessions
-  // step will therefore see these in addition to the seven it makes itself. That is
-  // deliberate and declared, not an accident to be discovered later.
-  at('chat-sidebar');
-  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#chatConversation', { timeout: 15000 });
-  const sidebarSeed = await page.evaluate(async () => {
-    const csrf = document.cookie.split('; ').find((part) => part.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
-    let made = 0;
-    for (let index = 0; index < 7; index += 1) {
-      const response = await fetch('/api/v1/conversations', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'content-type': 'application/json', 'x-noesar-csrf': decodeURIComponent(csrf) },
-        body: JSON.stringify({ title: `Sidebar chat ${index + 1}` }),
-      });
-      if ((await response.json()).conversation?.id) made += 1;
-    }
-    return made;
-  });
-  check('s326 — seven chats exist, so the fifth/sixth boundary is real', sidebarSeed === 7, `made=${sidebarSeed}`);
-  // ---- s326: the chat list in the sidebar -------------------------------------------
-  //
-  // DRIVEN, not read. `npm test` reads app.js as text and would pass on a list that throws
-  // at render; the markup guard proves only that the source SAYS it reuses the sessions
-  // surface. What follows proves the rows exist, open a chat, and raise the ONE shared
-  // confirmation — the property the whole design rests on.
-  // The seven above were made with a raw fetch, so nothing in the page has reloaded the
-  // sidebar yet — the list refreshes inside refreshWorkspace(), which a bare fetch never
-  // calls. Reloading is the honest way to reach the state a user would actually see;
-  // waiting on a list nothing asked to update would be waiting for a bug that is not there.
-  // `page.goto` to a URL that differs only in its HASH does not reload the document, so the
-  // sidebar kept the state it had before those seven existed and reported an honest zero.
-  // Measured, not guessed: the same page's own fetch answered 200 with seven while the list
-  // showed none. `reload()` is the difference between navigating and starting again.
-  await page.reload({ waitUntil: 'networkidle2' });
-  await soft('s326 — the sidebar chat list renders at all',
-    () => page.waitForSelector('#chatNav .chat-nav-row', { timeout: 15000 }));
-  const sidebarChats = await page.evaluate(async () => {
-    // Diagnosis carried IN the check: when this failed, "rows: 0" alone could not tell an
-    // empty answer from a renderer that never ran from a route that refused.
-    let probe = null;
-    try {
-      const response = await fetch('/api/v1/sessions?place=active&page=1&pageSize=50', { credentials: 'same-origin' });
-      const body = await response.json().catch(() => ({}));
-      probe = { status: response.status, total: body.total ?? null, items: body.items?.length ?? null };
-    } catch (error) { probe = { error: error.message }; }
-    const rows = [...document.querySelectorAll('#chatNav .chat-nav-row')];
-    return {
-      apiSaysActive: probe,
-      // Both, and for different reasons: the hidden class says whether the renderer ever
-      // ran, and the text says whether it ran on an empty answer or on a failed call —
-      // loadChatNav rewrites this line to "Chats unavailable: …" when the call throws.
-      emptyShown: document.querySelector('#chatNavEmpty')?.classList.contains('hidden') === false,
-      emptyText: document.querySelector('#chatNavEmpty')?.textContent ?? '',
-      rows: rows.length,
-      laidOut: document.querySelectorAll('#chatNavRecent .chat-nav-row').length,
-      titled: rows.length > 0 && rows.every((row) => (row.querySelector('.chat-nav-title')?.textContent ?? '').trim().length > 0),
-      hasArchiveLink: Boolean(document.querySelector('#chatNavArchive')),
-    };
-  });
-  check('s326 — the sidebar renders the chat list, every row named, with a way into the archive',
-    sidebarChats.rows > 0 && sidebarChats.titled && sidebarChats.hasArchiveLink, JSON.stringify(sidebarChats));
-  // UI-001: never more than five laid out, whatever the total is.
-  check('s326 — at most five are laid out, the rest go to the scroller',
-    sidebarChats.laidOut <= 5, JSON.stringify(sidebarChats));
-
-  // Clicking a row opens THAT chat — the gesture the list exists for. A list you cannot act
-  // from is decoration.
-  const openedFromSidebar = await page.evaluate(async () => {
-    const first = document.querySelector('#chatNav [data-chat-open]');
-    const wanted = first?.dataset.chatOpen ?? null;
-    first?.click();
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return {
-      wanted,
-      view: document.querySelector('.view.active')?.id ?? null,
-      current: document.querySelector('#chatNav .chat-nav-row.current')?.dataset.chatNavId ?? null,
-    };
-  });
-  check('s326 — clicking a chat in the sidebar opens that chat',
-    openedFromSidebar.view === 'view-chat' && openedFromSidebar.current === openedFromSidebar.wanted,
-    JSON.stringify(openedFromSidebar));
-
-  // Archive raises the SHARED confirmation. If someone later gives the sidebar a quiet path
-  // of its own, this fails — which is the point.
-  const asked = await page.evaluate(async () => {
-    document.querySelector('#chatNav [data-session-archive]')?.click();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const scrim = document.querySelector('#confirmScrim');
-    return {
-      visible: Boolean(scrim && !scrim.classList.contains('hidden')),
-      title: document.querySelector('#confirmTitle')?.textContent ?? '',
-      // UI-010: nothing dangerous is preselected — focus is on the dialog, not a button.
-      focusIsButton: document.activeElement?.tagName === 'BUTTON',
-    };
-  });
-  check('s326 — archiving from the sidebar asks first, with the one shared confirmation',
-    asked.visible && /archive/i.test(asked.title), JSON.stringify(asked));
-  check('s326 — and that confirmation still preselects nothing',
-    asked.visible && asked.focusIsButton === false, JSON.stringify(asked));
-  // Leave the data as it was found: cancel rather than archive.
-  await page.keyboard.press('Escape');
-  await new Promise((resolve) => setTimeout(resolve, 300));
 
   at('workflows');
   // --- WP-2: a workflow, its approval gate, the strip, and the decision ----
@@ -1590,20 +1483,41 @@ try {
   check('no module sidebar entry before any Owner module is installed', beforeInstall === null);
 
   await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('[data-owner-module-card="debug-evolution"]', { timeout: 15000 });
-  const notInstalledBadge = await page.$eval('[data-owner-module-card="debug-evolution"] .badge', (node) => node.textContent);
+  await page.waitForSelector('#section-modules [data-owner-module-card="debug-evolution"]', { timeout: 15000 });
+  const notInstalledBadge = await page.$eval('#section-modules [data-owner-module-card="debug-evolution"] .badge', (node) => node.textContent);
   check('debug-evolution starts Not installed', /Not installed/.test(notInstalledBadge), notInstalledBadge);
 
-  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="install"]');
+  // Diagnosis carried in the check, because this tail had not run in sequence for many
+  // sessions (D-0330) and its assumptions about WHO is signed in are therefore unproven.
+  // `.settings-section` is display:none until `.active`, and `activateSection()` refuses to
+  // activate one the account may not open — which renders a present button as 0x0.
+  const modulesReachable = await page.evaluate(() => ({
+    sectionActive: document.querySelector('.settings-section[data-section="modules"]')?.classList.contains('active') ?? null,
+    denied: document.querySelector('#settingsDenied')?.classList.contains('hidden') === false,
+    deniedText: (document.querySelector('#settingsDenied')?.textContent ?? '').slice(0, 120),
+    navHidden: document.querySelector('.settings-nav[data-section="modules"]')?.hidden ?? null,
+    // How many cards carry this id, and where each one lives. The catalogue is rendered in
+    // more than one place ("Installable catalogues — same catalogue as Settings › Modules"),
+    // so an unqualified selector can pick the copy inside a view that is not on screen.
+    cards: [...document.querySelectorAll('[data-owner-module-card="debug-evolution"]')].map((node) => {
+      const rect = node.getBoundingClientRect();
+      const view = node.closest('.view, .settings-section');
+      return { in: view?.id || view?.dataset?.section || 'unknown', w: Math.round(rect.width), h: Math.round(rect.height) };
+    }),
+  }));
+  check('the modules section is actually open for this account before it is driven',
+    modulesReachable.sectionActive === true, JSON.stringify(modulesReachable));
+
+  await clickOrExplain(page, '#section-modules [data-owner-module-card="debug-evolution"] [data-module-action="install"]');
   await page.waitForFunction(
-    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
+    () => document.querySelector('#section-modules [data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
     { timeout: 15000 },
   );
   check('debug-evolution is Installed after a single click, no reauthentication prompt (D-0278)', true);
 
-  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="activate"]');
+  await clickOrExplain(page, '#section-modules [data-owner-module-card="debug-evolution"] [data-module-action="activate"]');
   await page.waitForFunction(
-    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent === 'Active',
+    () => document.querySelector('#section-modules [data-owner-module-card="debug-evolution"] .badge')?.textContent === 'Active',
     { timeout: 15000 },
   );
   check('debug-evolution is Active after a single click', true);
@@ -1619,10 +1533,10 @@ try {
   check('the sidebar entry names the module', /Debug Evolution/.test(afterActivate.text), afterActivate.text);
 
   await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('[data-owner-module-card="debug-evolution"]', { timeout: 15000 });
-  await clickOrExplain(page, '[data-owner-module-card="debug-evolution"] [data-module-action="deactivate"]');
+  await page.waitForSelector('#section-modules [data-owner-module-card="debug-evolution"]', { timeout: 15000 });
+  await clickOrExplain(page, '#section-modules [data-owner-module-card="debug-evolution"] [data-module-action="deactivate"]');
   await page.waitForFunction(
-    () => document.querySelector('[data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
+    () => document.querySelector('#section-modules [data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
     { timeout: 15000 },
   );
   await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
@@ -1660,6 +1574,90 @@ try {
     return ids.filter(Boolean).length;
   });
   check('seven work sessions exist to exercise the surface', created === 7, `created=${created}`);
+
+  // ---- s326: the chat list in the sidebar --------------------------------------------
+  //
+  // Placed beside the sessions step, reusing the seven it has just created rather than
+  // making seven of its own. It briefly did the latter — while the tail of this suite was
+  // dead, this had to run earlier to run at all (D-0330) — and fourteen sessions then broke
+  // that step's own count-based wait. Two fixtures for one fact is the same duplication
+  // defect as two renderers for one list, one directory down.
+  at('chat-sidebar');
+  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  // `page.goto` to a URL that differs only in its HASH does not reload the document, so the
+  // sidebar kept the state it had before those seven existed and reported an honest zero.
+  // Measured, not guessed: the same page's own fetch answered 200 with seven while the list
+  // showed none. `reload()` is the difference between navigating and starting again.
+  await page.reload({ waitUntil: 'networkidle2' });
+  await soft('s326 — the sidebar chat list renders at all',
+    () => page.waitForSelector('#chatNav .chat-nav-row', { timeout: 15000 }));
+  const sidebarChats = await page.evaluate(async () => {
+    // Diagnosis carried IN the check: when this failed, "rows: 0" alone could not tell an
+    // empty answer from a renderer that never ran from a route that refused.
+    let probe = null;
+    try {
+      const response = await fetch('/api/v1/sessions?place=active&page=1&pageSize=50', { credentials: 'same-origin' });
+      const body = await response.json().catch(() => ({}));
+      probe = { status: response.status, total: body.total ?? null, items: body.items?.length ?? null };
+    } catch (error) { probe = { error: error.message }; }
+    const rows = [...document.querySelectorAll('#chatNav .chat-nav-row')];
+    return {
+      apiSaysActive: probe,
+      // Both, and for different reasons: the hidden class says whether the renderer ever
+      // ran, and the text says whether it ran on an empty answer or on a failed call —
+      // loadChatNav rewrites this line to "Chats unavailable: …" when the call throws.
+      emptyShown: document.querySelector('#chatNavEmpty')?.classList.contains('hidden') === false,
+      emptyText: document.querySelector('#chatNavEmpty')?.textContent ?? '',
+      rows: rows.length,
+      laidOut: document.querySelectorAll('#chatNavRecent .chat-nav-row').length,
+      titled: rows.length > 0 && rows.every((row) => (row.querySelector('.chat-nav-title')?.textContent ?? '').trim().length > 0),
+      hasArchiveLink: Boolean(document.querySelector('#chatNavArchive')),
+    };
+  });
+  check('s326 — the sidebar renders the chat list, every row named, with a way into the archive',
+    sidebarChats.rows > 0 && sidebarChats.titled && sidebarChats.hasArchiveLink, JSON.stringify(sidebarChats));
+  // UI-001: never more than five laid out, whatever the total is.
+  check('s326 — at most five are laid out, the rest go to the scroller',
+    sidebarChats.laidOut <= 5, JSON.stringify(sidebarChats));
+
+  // Clicking a row opens THAT chat — the gesture the list exists for. A list you cannot act
+  // from is decoration.
+  const openedFromSidebar = await page.evaluate(async () => {
+    const first = document.querySelector('#chatNav [data-chat-open]');
+    const wanted = first?.dataset.chatOpen ?? null;
+    first?.click();
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return {
+      wanted,
+      view: document.querySelector('.view.active')?.id ?? null,
+      current: document.querySelector('#chatNav .chat-nav-row.current')?.dataset.chatNavId ?? null,
+    };
+  });
+  check('s326 — clicking a chat in the sidebar opens that chat',
+    openedFromSidebar.view === 'view-chat' && openedFromSidebar.current === openedFromSidebar.wanted,
+    JSON.stringify(openedFromSidebar));
+
+  // Archive raises the SHARED confirmation. If someone later gives the sidebar a quiet path
+  // of its own, this fails — which is the point.
+  const asked = await page.evaluate(async () => {
+    document.querySelector('#chatNav [data-session-archive]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const scrim = document.querySelector('#confirmScrim');
+    return {
+      visible: Boolean(scrim && !scrim.classList.contains('hidden')),
+      title: document.querySelector('#confirmTitle')?.textContent ?? '',
+      // UI-010: nothing dangerous is preselected — focus is on the dialog, not a button.
+      focusIsButton: document.activeElement?.tagName === 'BUTTON',
+    };
+  });
+  check('s326 — archiving from the sidebar asks first, with the one shared confirmation',
+    asked.visible && /archive/i.test(asked.title), JSON.stringify(asked));
+  check('s326 — and that confirmation still preselects nothing',
+    asked.visible && asked.focusIsButton === false, JSON.stringify(asked));
+  // Leave the data as it was found: cancel rather than archive.
+  await page.keyboard.press('Escape');
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
 
 
   await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });

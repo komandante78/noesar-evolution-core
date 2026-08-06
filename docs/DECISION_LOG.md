@@ -7017,3 +7017,42 @@ sessions, is genuinely exercised again.
 **collapsed to 0x0** (`display=block, visibility=visible`) — the "clicking does nothing" shape
 that `clickOrExplain` exists to name. It is a different surface from the chat work this session
 authorised, and it is written down rather than repaired in passing while the rest is green.
+
+## D-0331 — the revived tail, measured: 266 → 346 checks, and what is actually red (2026-08-06)
+
+Follow-through on `D-0330`. With the probe base built from source and step isolation in
+place, the suite runs **346** checks where it ran 266, and the picture is honest for the first
+time in several sessions.
+
+**Two more defects found and fixed, both in the harness, both invisible until the tail ran:**
+
+1. **An ambiguous selector was driving an invisible copy.**
+   `[data-owner-module-card="debug-evolution"]` matches **two** cards — measured:
+   `[{in:"view-coden", 0×0}, {in:"section-modules", 451×265}]`. `querySelector` returns the
+   first in document order, which is the one inside a view that is off screen, so the click
+   reported `collapsed to 0x0` and read like a broken button. Every reference is now scoped to
+   `#section-modules`. The duplication itself is a PRODUCT fact, not a test artefact: the
+   catalogue is rendered twice, which is one of the things the Owner's point 2 is about.
+2. **Two fixtures for one fact.** While the tail was dead, the new chat-sidebar checks had to
+   run early to run at all, so they created seven chats of their own. Once the tail came back,
+   the sessions step made seven more and its own count-based wait broke on fourteen. The block
+   now sits beside the sessions step and reuses the seven that already exist — two fixtures for
+   one fact is the same duplication defect as two renderers for one list, one directory down.
+
+**Still red, three of them, all in the part of the suite that had not run for sessions.** They
+share one signature — a width of zero inside `view-coden` — which is the same shape the two
+harness defects above turned out to have, and is therefore NOT yet attributable to the product:
+
+- `UI-030 the two regions left are both on screen with a width of their own` — `main:0,
+  agent:0, terminal:0`
+- `UI-032/UI-035 twenty bench surfaces and a twelve-field status line` — `panels=20 fields=12`
+- abort at `workspace-actions`: `#planForm button.primary: collapsed to 0x0`
+
+Whether these are stale assumptions in never-run steps or real regressions from the CodeN
+phases is **not decided here, and must not be assumed**: the two cases resolved today both
+looked exactly like product defects and were not. They are named with their evidence for a
+session that can give them a clean start.
+
+**Verified:** unit **1834/1835**, ESLint **334 files 0/0/0**, browser **343/346**, and the six
+chat-sidebar checks green — seven chats, five laid out and two scrolled, a click opening that
+same conversation, and `Archive 1 session?` raised by the shared dialog.
