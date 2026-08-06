@@ -66,6 +66,12 @@ test('a malformed chat stream request does not take the service down', async () 
       NOESAR_SETUP_TOKEN_FILE: join(workspace, 'config', 'setup.token'),
       NOESAR_LOG_LEVEL: 'ERROR',
       NOESAR_WATCHDOG_INTERVAL_MS: '600000',
+      // Inside this test's own temp workspace, like every other path here. Without it the
+      // spawned server binds the PRODUCTION default (/run/codev-peer.sock) on the machine
+      // running the suite — measured in s326, inode 588147 → 588957 on this host. Harmless
+      // in a container, where /run is private; on a native install that path is the running
+      // product's terminal transport. Guarded by socket-path-isolation.test.mjs.
+      NOESAR_CODEV_PEER_SOCKET_PATH: join(workspace, 'codev-peer.sock'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

@@ -13,7 +13,11 @@ const port = Number(process.env.NOESAR_SMOKE_PORT ?? 18984);
 const setupToken = 'test-setup-token-value';
 const child = spawn(process.execPath, ['services/reference-control-plane/src/server.mjs'], {
   cwd:root,
-  env:{ ...process.env, NOESAR_WORKSPACE:workspace, NOESAR_HOST:'127.0.0.1', NOESAR_PORT:String(port), NOESAR_SETUP_TOKEN:setupToken, NOESAR_ALLOWED_HOSTS:'127.0.0.1,localhost' },
+  // NOESAR_CODEV_PEER_SOCKET_PATH inside this run's own temp workspace: without it the
+  // spawned server binds the PRODUCTION default (/run/codev-peer.sock) on whatever machine
+  // runs this smoke test, and unlinks whatever was there. Guarded by
+  // socket-path-isolation.test.mjs.
+  env:{ ...process.env, NOESAR_WORKSPACE:workspace, NOESAR_HOST:'127.0.0.1', NOESAR_PORT:String(port), NOESAR_SETUP_TOKEN:setupToken, NOESAR_ALLOWED_HOSTS:'127.0.0.1,localhost', NOESAR_CODEV_PEER_SOCKET_PATH:join(workspace,'codev-peer.sock') },
   stdio:['ignore','pipe','pipe'],
 });
 

@@ -32,6 +32,32 @@
 > `TOKEN`/`SECRET`/`PASS` redatti. Il file vecchio **non è stato riscritto** (nessuna
 > autorizzazione a toccare la storia git per questo deploy).
 >
+> ### 🔧 `D-0328` — riparato dopo il deploy, NON deployato
+>
+> **Trovato verificando una risposta, non cercandolo.** L Owner ha chiesto come si raggiunge la
+> TUI via `ssh`; provandolo sul vivo invece di recitarlo è saltato fuori `/run/codev-peer.sock`
+> **sull host**, `root:root`, senza nessuno in ascolto. **Riprodotto**: `npm test` muoveva inode
+> e data di nascita a ogni giro (`588147` → `588957`). Bisezionato a `stream-crash-survival` e
+> `lan-exposure` — i due che avviano `server.mjs` come processo **figlio** (gli altri 28 lo
+> importano in-process, che il guard lascia passare di proposito).
+>
+> **La causa non era «due test hanno scordato una variabile»**: `startUnixSocketServer` faceva
+> `if (existsSync(p)) unlinkSync(p)` — cancella prima, chiedi mai — giusto per un cadavere e
+> catastrofico per un peer vivo, perché il codice **non guardava**. Su questa installazione è
+> invisibile (`/run` è tmpfs privata del container); su un installazione **nativa**, che la
+> legge di piattaforma impone di supportare, quel percorso **è** il trasporto terminale vivo.
+>
+> **Tre livelli:** l invariante (`reclaimSocketPath` sonda connettendosi: vivo → rifiuta, morto →
+> recupera), l isolamento nei 3 punti che lo mancavano, e una guardia derivata dal sorgente che
+> prende il prossimo. **Stesso difetto riparato in `codev-child.mjs`** sul percorso *esterno*,
+> che è persistente e quindi peggiore. `ce-020`/`ce-021` lo facevano già giusto: il modello
+> c era, era stato solo mancato.
+>
+> **Verificato:** unit **1829/1830**, ESLint **334 0/0/0**, `CE-020`/`CE-021` 0 fail, **2
+> mutazioni → 2**, e soprattutto **l inode del socket sull host NON si muove più** su una suite
+> intera (`589028`, invariato) dove prima cambiava sempre. **Non deployato**: il vivo non può
+> essere morso da questo difetto.
+>
 > ### Fatto — **fase 6** (`D-0323`), **frequenza** (`D-0324`), **fase 7** (`D-0326`)
 >
 > **Fase 6 — se ATOM cade, il prodotto continua E LO DICE.** La regola nell intestazione del

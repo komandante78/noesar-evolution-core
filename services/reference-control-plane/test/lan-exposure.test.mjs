@@ -219,6 +219,12 @@ function startServer(env) {
       NOESAR_SETUP_TOKEN: 'test-only-setup-token-not-a-real-secret',
       NOESAR_DATA_PLANE: 'reference-json',
       NOESAR_RELEASE_CHANNEL: 'development',
+      // Inside this test's own temp workspace, like every other path here. Without it the
+      // spawned server binds the PRODUCTION default (/run/codev-peer.sock) on the machine
+      // running the suite — measured in s326. Harmless in a container, where /run is
+      // private; on a native install that path is the running product's terminal transport.
+      // Guarded by socket-path-isolation.test.mjs.
+      NOESAR_CODEV_PEER_SOCKET_PATH: join(workspace, 'codev-peer.sock'),
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],

@@ -19,11 +19,73 @@
 // comment on the same point): the unix socket transport is framed by hand, one JSON object
 // per newline, instead of pulling in a message-framing library.
 
-import { createServer } from 'node:net';
+import { createServer, connect } from 'node:net';
 import { profileChange as defaultProfileChange } from './divergence-profile.mjs';
 import { existsSync, unlinkSync, chmodSync } from 'node:fs';
 
 export const PROTOCOL_VERSION = 'noesar-tui/1';
+
+/**
+ * Is something ALIVE at this socket path, or is the file only a corpse?
+ *
+ * The distinction is the whole point. A unix socket file outlives the process that made it:
+ * a crash leaves a path that looks occupied and answers nobody. Telling the two apart has
+ * exactly one portable test — try to connect. A live listener accepts; a stale file refuses
+ * with ECONNREFUSED. Reading /proc/net/unix would answer the same question on Linux and
+ * nowhere else, which the platform law forbids as a foundation.
+ *
+ * The probe connects and hangs up without sending a byte. The peer sees a client that
+ * dropped, which `startUnixSocketServer`'s own socket error handler already treats as a
+ * non-event ("a dropped client is not a server fault").
+ */
+export function socketPathIsLive(socketPath, { timeoutMs = 1000 } = {}) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const probe = connect(socketPath);
+    const finish = (answer) => {
+      if (settled) return;
+      settled = true;
+      probe.destroy();
+      resolve(answer);
+    };
+    probe.once('connect', () => finish(true));
+    // ECONNREFUSED (nobody listening) and ENOENT (already gone) both mean "no owner".
+    probe.once('error', () => finish(false));
+    // A path that neither accepts nor refuses is not provably dead, and this function must
+    // never say "dead" on an unproven guess — the caller deletes what it is told is dead.
+    setTimeout(() => finish(true), timeoutMs).unref?.();
+  });
+}
+
+/**
+ * Take ownership of a socket path, but NEVER take it from someone who is still using it.
+ *
+ * The rule this enforces, and why it is not merely hygiene: binding a unix socket used to
+ * begin `if (existsSync(path)) unlinkSync(path)` — delete first, ask never. That is correct
+ * for a corpse and catastrophic for a live peer, and the code could not tell the difference
+ * because it never looked. On this host the damage was invisible: the product runs in a
+ * container whose /run is private, so the only thing that ever collided was a test against
+ * an empty path. On a native install — which the platform law says must be supported — that
+ * same path IS the running product's terminal transport, and any second process starting up
+ * would silently unlink it, cut every attached terminal, and leave a dead file behind with
+ * nothing logged to say why.
+ *
+ * Measured, s326: `npm test` recreated /run/codev-peer.sock on the host (inode 588147 →
+ * 588957) because two suites spawn the real server.mjs and isolated every input except this
+ * one. The suites are fixed too, but a rule that only holds while every caller remembers it
+ * is not a rule — this is the half that cannot be forgotten.
+ *
+ * @throws {ProtocolError} SOCKET_PATH_IN_USE — a live listener owns the path; refuse to steal it.
+ */
+export async function reclaimSocketPath(socketPath, { probeTimeoutMs } = {}) {
+  if (!existsSync(socketPath)) return 'free';
+  if (await socketPathIsLive(socketPath, { timeoutMs: probeTimeoutMs })) {
+    throw new ProtocolError('SOCKET_PATH_IN_USE',
+      `another process is already listening on ${socketPath}; refusing to unlink a live socket`);
+  }
+  unlinkSync(socketPath);
+  return 'reclaimed';
+}
 
 export class ProtocolError extends Error {
   constructor(kind, reason) {
@@ -358,12 +420,21 @@ export function createSessionDispatch({
  * the identical two calls server.mjs's HTTP login route makes) rather than trusting a
  * cookie, since a socket connection has none. One JSON object per newline in both
  * directions; the first line the server sends is the protocol handshake.
+ *
+ * Async since s326, and the promise means something: it resolves when the socket is
+ * ACTUALLY accepting connections. It used to return a server that was merely on its way to
+ * listening, which is why server.mjs logged `tui.socket-listening` for a socket that was not
+ * yet listening — a line that was true a millisecond later and false when printed.
+ *
+ * @throws {ProtocolError} SOCKET_PATH_IN_USE — see reclaimSocketPath.
  */
-export function startUnixSocketServer({ socketPath, dispatch, auth, ledger }) {
+export async function startUnixSocketServer({ socketPath, dispatch, auth, ledger }) {
   // A socket file left by a previous, uncleanly-stopped process is stale state at a path
-  // this component owns exclusively — removing it is not the destructive-file rule (§4)
-  // reaching into something else's data, it is clearing our own litter before relisting.
-  if (existsSync(socketPath)) unlinkSync(socketPath);
+  // this component owns exclusively — clearing it is our own litter, not the destructive-file
+  // rule (§4) reaching into someone else's data. What makes that sentence true is the
+  // liveness probe: without it, "our own litter" was an assumption about a path this process
+  // does not in fact own exclusively on a native install.
+  await reclaimSocketPath(socketPath);
 
   const server = createServer((socket) => {
     let authenticated = null;
@@ -420,10 +491,21 @@ export function startUnixSocketServer({ socketPath, dispatch, auth, ledger }) {
     socket.on('error', () => { /* a dropped client is not a server fault */ });
   });
 
-  server.listen(socketPath, () => {
-    // 0600: matches the same single-uid posture already documented for the product's own
-    // PostgreSQL unix socket (docs/POSTGRESQL_18_PGVECTOR_IMPLEMENTATION.md).
-    try { chmodSync(socketPath, 0o600); } catch { /* best-effort on filesystems that ignore it */ }
+  // A bind that loses a race (someone claimed the path between the probe and here) must
+  // reject rather than leave the caller holding a server that never listens. Both listeners
+  // are removed on settle so the returned server carries no leftover one-shot handlers.
+  await new Promise((resolve, reject) => {
+    const onError = (error) => { server.off('listening', onListening); reject(error); };
+    const onListening = () => {
+      server.off('error', onError);
+      // 0600: matches the same single-uid posture already documented for the product's own
+      // PostgreSQL unix socket (docs/POSTGRESQL_18_PGVECTOR_IMPLEMENTATION.md).
+      try { chmodSync(socketPath, 0o600); } catch { /* best-effort on filesystems that ignore it */ }
+      resolve();
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(socketPath);
   });
   return server;
 }

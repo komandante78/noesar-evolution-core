@@ -75,8 +75,10 @@ before(async () => {
     }) },
   });
   socketPath = join(ws, 'tui-test.sock');
-  server = startUnixSocketServer({ socketPath, dispatch, auth, ledger });
-  if (!server.listening) await new Promise((resolve) => server.once('listening', resolve));
+  // The await IS the readiness wait since s326: the promise resolves only once the socket
+  // accepts connections, so the `if (!server.listening)` line that used to follow was
+  // removed rather than left as a condition that can no longer be true.
+  server = await startUnixSocketServer({ socketPath, dispatch, auth, ledger });
 
   // One connection, one login, reused by every test below that needs to be authenticated —
   // matching how a real terminal session behaves (one socket, many commands), and avoiding

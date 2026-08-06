@@ -4035,3 +4035,23 @@ lifecycles, both untouched.
 
 **Backup.** `BACKUPS/runtime_pre_phase7_deploy_20260806T011004Z.tar.gz` (13 MB), taken after the
 clean `postgres.stopped clean:true` shutdown and before the recreate.
+
+## 2026-08-06 — `D-0328`: NO installation change
+
+Recorded rather than skipped, because a step that cannot be performed is declared.
+
+**Nothing was installed, deployed, or restarted.** `noesar-evolution` still serves
+`noesar-evolution:phase7-divergence-profile` (deployed earlier the same day, `D-0327`), healthy
+throughout — `/livez` `/readyz` `/healthz` all 200 after the work. `atomd` was never touched.
+No image was built, no container was created, no network or volume was changed.
+
+**Why this repair is not urgent to deploy.** The defect (`D-0328`: a blind `unlinkSync` on a
+unix socket path, plus two suites binding the production path) cannot bite this installation:
+the product runs in a container whose `/run` is a private tmpfs, so nothing outside can collide
+with the socket. It bites a NATIVE install, which the platform law requires the product to
+support. Deploying is a runtime action and remains the Owner's decision.
+
+**One artefact was left on the host and NOT removed:** the stale `/run/codev-peer.sock`
+(`root:root`, no listener) created by earlier test runs. Deleting files is forbidden by standing
+rule and the path is outside `PROJECT_ROOT`; `/run` is a tmpfs, so it does not survive a reboot.
+It is inert — nothing listens on it, and after this repair nothing recreates it.

@@ -6817,3 +6817,88 @@ render them as four signals with their level.
 slowest thing in `plan()`. A conventions cache keyed by `HEAD` would make it free for every plan
 between two commits. Cost: one invalidation rule; benefit: the profile stops being a reason to
 skip profiling.
+
+## D-0328 — a live unix socket is never unlinked, and no test binds the production path (2026-08-06)
+
+**Found while answering a question, not while looking for it.** The Owner asked how to reach
+the TUI over `ssh`. Verifying the answer on the live container instead of reciting it turned up
+`/run/codev-peer.sock` **on the host** — `root:root`, no listener, born four seconds after the
+previous commit. The Owner's standing instruction («risolvi sempre i problemi che riscontri»)
+made the repair part of the same session rather than a proposal for the next one.
+
+**Reproduced before it was explained.** Birth time and inode were recorded, `npm test` was run,
+and both moved: inode `588147` → `588957`. Bisecting the 30 suites that mention `server.mjs`
+(15 + 15, then individually) named two: `stream-crash-survival` and `lan-exposure`. Both spawn
+the real `server.mjs` as a CHILD PROCESS, which makes `process.argv[1]` the server and therefore
+fires its entrypoint guard — unlike the 28 that `await import()` it in-process, which the guard
+deliberately lets through. `remote-target-http` was accused by the first draft of the guard and
+is innocent: it spawns `/usr/sbin/sshd` and imports the server in-process.
+
+**The root cause is not "two tests forgot a variable".** Both suites isolate workspace, port and
+token file into temp directories; the socket path is the one input that has a fixed absolute
+production default and no isolation. And `startUnixSocketServer` began with
+`if (existsSync(p)) unlinkSync(p)` — delete first, ask never — which is correct for a corpse and
+catastrophic for a live peer, because the code could not tell them apart. It never looked.
+
+**Why it was invisible here and serious elsewhere.** This installation runs in a container whose
+`/run` is a private tmpfs, so the suite's path and the product's path are two files that share a
+name. The platform law is what makes it a defect: on a NATIVE install — explicitly supported —
+`/run/codev-peer.sock` IS the running product's terminal transport, and every `npm test` would
+have unlinked it, cut every attached terminal, and left a dead file with nothing logged.
+
+**Repaired in three layers, because any one alone is insufficient:**
+
+1. **The invariant** (`reclaimSocketPath`, `socketPathIsLive` in `session-protocol.mjs`): a path
+   is probed by connecting to it. A live listener accepts → refuse with `SOCKET_PATH_IN_USE` and
+   leave it untouched. ECONNREFUSED → a corpse → unlink. Reading `/proc/net/unix` would answer
+   the same question on Linux and nowhere else, which the platform law forbids as a foundation.
+   A probe that neither accepts nor refuses within the timeout is reported **live**, never dead:
+   this function's answer is acted on by deleting the file, so an unproven guess must fail safe.
+2. **The isolation**: the three spawners that lacked it now pass a socket path inside their own
+   temp workspace — `stream-crash-survival`, `lan-exposure`, `tools/auth-http-smoke.mjs`.
+   `ce-020`/`ce-021` already did this correctly, which is what proved the pattern was known and
+   simply missed.
+3. **The guard** (`socket-path-isolation.test.mjs`, 9 tests): derives the spawner set from
+   source and fails if any leaves the socket on its production default, so a spawner written
+   next month is caught the day it appears.
+
+**The same defect existed on the worse path, and was fixed with the same rule.**
+`bin/codev-child.mjs` unlinked `externalSocketPath` blindly — the EXTERNALLY reachable socket,
+defaulting under the bind-mounted workspace, so unlike the tmpfs path it survives a restart.
+It now calls the same shared `reclaimSocketPath` rather than a second copy of the reasoning.
+
+**Two honesty fixes that came with it.** `startUnixSocketServer` and `createRelay` are now async
+and resolve when the socket is ACTUALLY accepting; `server.mjs` logged `tui.socket-listening`
+before listening had completed — true a millisecond later, false when printed. And a refusal is
+declared: the product still serves HTTP and logs `tui.socket-unavailable` naming the reason,
+rather than coming up looking healthy with a terminal that merely "does not work".
+
+**Guard against the guard.** The source half strips comments before reading, and a test proves
+the stripping works — every fixed file now MENTIONS `NOESAR_CODEV_PEER_SOCKET_PATH` in prose
+explaining the bug, so a scanner counting those would have passed on the explanation while the
+defect returned (the s322 lesson, three stumbles from guards reading comments as code). The
+first draft of the derivation matched mere co-occurrence of `spawn(` and `server.mjs` anywhere
+in a file and produced two false positives, including accusing itself; it now parses each
+`spawn(...)` call's actual argument list.
+
+**Verified:** unit **1829/1830** (0 fail, 1 pre-existing skip; +9 from the new guard), ESLint
+**334 files 0/0/0**, `CE-020` 0 fail, `CE-021` 0 fail. **The measurement that matters:** the
+host's `/run/codev-peer.sock` inode and birth time are **unchanged across a full `npm test`**
+(`589028`, `03:34:14`), where before they moved every single run. **2 mutations → 2 killed**:
+removing the isolation from `lan-exposure` fails the guard by name; restoring the blind
+`unlinkSync` fails the invariant suite.
+
+**NOT deployed.** The live container runs `noesar-evolution:phase7-divergence-profile`, which
+does not contain this fix — and does not need it urgently: the defect cannot bite an
+installation whose `/run` is a private tmpfs. Deploying is a runtime action and remains the
+Owner's call.
+
+**Not removed, deliberately:** the stale `/run/codev-peer.sock` left on the host by earlier runs.
+Deleting files is forbidden by standing rule, it is outside `PROJECT_ROOT`, and it is harmless —
+`/run` is a tmpfs and it will not survive a host reboot.
+
+**Improvement proposed, not executed:** `NOESAR_CODEV_PEER_SOCKET_PATH` is the last runtime path
+with a fixed absolute default. Deriving it from `NOESAR_RUNTIME_ROOT` would make isolation
+automatic for every future caller instead of a rule each one must remember — but the live
+container sets no such variable and relies on the current default, so changing it is a deploy,
+not a fix, and it is recorded here rather than smuggled into this repair.

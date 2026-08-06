@@ -34,8 +34,9 @@
 // socket file it did not ask for and would have to clean up.
 
 import { createServer, connect } from 'node:net';
-import { existsSync, unlinkSync, chmodSync } from 'node:fs';
+import { chmodSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { reclaimSocketPath } from '../src/session-protocol.mjs';
 
 function defaultLog(level, event, detail = {}) {
   const line = JSON.stringify({ ts: new Date().toISOString(), level, event, component: 'codev-relay', ...detail });
@@ -43,12 +44,18 @@ function defaultLog(level, event, detail = {}) {
 }
 
 /**
- * Starts the relay. Returns the listening `net.Server` — callers own its lifecycle
+ * Starts the relay. Resolves to the listening `net.Server` — callers own its lifecycle
  * (`server.close()`), matching `startUnixSocketServer`'s own return convention in
- * session-protocol.mjs.
+ * session-protocol.mjs, which is also where the shared path-reclaim rule lives.
+ *
+ * The external path matters MORE than the internal one, not less: it is the externally
+ * reachable socket (`NOESAR_TUI_SOCKET_PATH`, defaulting under the workspace, which is
+ * bind-mounted and therefore persistent), so blindly unlinking it took a live terminal
+ * transport away from a running peer AND survived the restart that would have healed a
+ * tmpfs path. Same defect as session-protocol.mjs had, on the worse of the two paths.
  */
-export function createRelay({ externalSocketPath, internalSocketPath, connectTimeoutMs = 10000, log = defaultLog }) {
-  if (existsSync(externalSocketPath)) unlinkSync(externalSocketPath);
+export async function createRelay({ externalSocketPath, internalSocketPath, connectTimeoutMs = 10000, log = defaultLog }) {
+  await reclaimSocketPath(externalSocketPath);
 
   const server = createServer((external) => {
     // Nothing the client sends before the internal leg is up should be lost — the
@@ -87,11 +94,25 @@ export function createRelay({ externalSocketPath, internalSocketPath, connectTim
     log('error', 'relay.listen_failed', { message: error.message });
   });
 
-  server.listen(externalSocketPath, () => {
-    // 0600: the same single-uid posture session-protocol.mjs's own listener already
-    // applied to this path before this phase moved the listener here.
-    try { chmodSync(externalSocketPath, 0o600); } catch { /* best-effort on filesystems that ignore it */ }
-    log('info', 'relay.listening', { externalSocketPath, internalSocketPath });
+  await new Promise((resolve, reject) => {
+    const onError = (error) => { server.off('listening', onListening); reject(error); };
+    const onListening = () => {
+      server.off('error', onError);
+      // 0600: the same single-uid posture session-protocol.mjs's own listener already
+      // applied to this path before this phase moved the listener here.
+      try { chmodSync(externalSocketPath, 0o600); } catch { /* best-effort on filesystems that ignore it */ }
+      log('info', 'relay.listening', { externalSocketPath, internalSocketPath });
+      resolve();
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(externalSocketPath);
+  });
+
+  // Only for failures AFTER a successful bind — the bind's own failure is the rejection
+  // above, and a second handler for it would log the same fault twice.
+  server.on('error', (error) => {
+    log('error', 'relay.listen_failed', { message: error.message });
   });
 
   return server;
@@ -99,15 +120,19 @@ export function createRelay({ externalSocketPath, internalSocketPath, connectTim
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const workspace = process.env.NOESAR_WORKSPACE ?? '/workspace';
-  const server = createRelay({
+  // A failure to even bind the external socket (path unwritable, or — since s326 — already
+  // held by a LIVE peer rather than blindly stolen from it) is fatal for this peer's whole
+  // purpose. Exit so noesar-supervisord's restart-with-backoff applies, rather than staying
+  // up doing nothing. The reason is logged first: a supervisor restarting a process that
+  // said nothing about why it died is the shape of an outage nobody can diagnose.
+  const server = await createRelay({
     externalSocketPath: process.env.NOESAR_TUI_SOCKET_PATH ?? `${workspace}/tui.sock`,
     internalSocketPath: process.env.NOESAR_CODEV_PEER_SOCKET_PATH ?? '/run/codev-peer.sock',
     connectTimeoutMs: Number(process.env.NOESAR_CODEV_CONNECT_TIMEOUT_MS ?? 10000),
+  }).catch((error) => {
+    defaultLog('error', 'relay.listen_failed', { message: error.message, kind: error.kind ?? 'ERROR' });
+    process.exit(1);
   });
-  // A failure to even bind the external socket (path unwritable, already held by a
-  // process not cleaned up) is fatal for this peer's whole purpose — exit so
-  // noesar-supervisord's restart-with-backoff applies, rather than staying up doing
-  // nothing.
   server.on('error', () => process.exit(1));
 
   let stopping = false;

@@ -3852,8 +3852,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // tmpfs INST-004 restores): container-local, never bind-mounted, invisible outside the
   // container, gone on restart — a peer socket has no reason to survive one.
   const codevPeerSocketPath = process.env.NOESAR_CODEV_PEER_SOCKET_PATH ?? '/run/codev-peer.sock';
-  startUnixSocketServer({ socketPath: codevPeerSocketPath, dispatch: sessionDispatch, auth, ledger });
-  logger.info('tui.socket-listening', { component:'session-protocol', path: codevPeerSocketPath });
+  try {
+    // Awaited since s326, so the line below is a fact rather than a forecast: it used to be
+    // logged while the socket was still on its way to listening.
+    await startUnixSocketServer({ socketPath: codevPeerSocketPath, dispatch: sessionDispatch, auth, ledger });
+    logger.info('tui.socket-listening', { component:'session-protocol', path: codevPeerSocketPath });
+  } catch (error) {
+    // A live peer already owns this path. Refusing to steal it is the point (see
+    // reclaimSocketPath), but this process still serves HTTP, so it comes up WITHOUT the
+    // terminal transport and says exactly that — the product's standing posture on
+    // degradation: continue, and declare it. Silence here would look like a healthy
+    // installation whose `ssh` terminal merely "does not work".
+    logger.error('tui.socket-unavailable', {
+      component:'session-protocol', path: codevPeerSocketPath,
+      kind: error.kind ?? 'ERROR', error: error.message,
+      note:'HTTP is served; the terminal transport is not, because another process holds this socket',
+    });
+  }
 
   // D-0283: the port opens here only if the module is active right now; from then on the
   // lifecycle routes open and close it. Nothing listens for a module that is not installed.

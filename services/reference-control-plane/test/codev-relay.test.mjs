@@ -51,8 +51,9 @@ describe('codev relay — byte-transparent, not a second dispatch', () => {
     });
     await new Promise((resolve) => fakeInternalPeer.listen(internalSocketPath, resolve));
 
-    const relay = createRelay({ externalSocketPath, internalSocketPath, log: () => {} });
-    if (!relay.listening) await new Promise((resolve) => relay.once('listening', resolve));
+    // Awaited since s326: the promise resolves only once the relay is accepting, so the
+    // `if (!relay.listening)` readiness dance that used to follow can no longer be true.
+    const relay = await createRelay({ externalSocketPath, internalSocketPath, log: () => {} });
 
     const client = connect(externalSocketPath);
     try {
@@ -76,8 +77,7 @@ describe('codev relay — byte-transparent, not a second dispatch', () => {
     // No fake internal peer listening this time — internalSocketPath names a socket
     // nothing has bound.
     const unreachablePath = join(dir, 'nobody-listens-here.sock');
-    const relay = createRelay({ externalSocketPath: join(dir, 'external2.sock'), internalSocketPath: unreachablePath, connectTimeoutMs: 500, log: () => {} });
-    if (!relay.listening) await new Promise((resolve) => relay.once('listening', resolve));
+    const relay = await createRelay({ externalSocketPath: join(dir, 'external2.sock'), internalSocketPath: unreachablePath, connectTimeoutMs: 500, log: () => {} });
 
     const client = connect(join(dir, 'external2.sock'));
     try {
@@ -100,17 +100,15 @@ describe('codev relay — byte-transparent, not a second dispatch', () => {
     const fakeInternalPeer = createServer(() => {});
     const internalPath = join(dir, 'internal3.sock');
     await new Promise((resolve) => fakeInternalPeer.listen(internalPath, resolve));
-    // `server.listening` flips true synchronously for a unix socket, before the listen
-    // callback (which does the chmod) has actually run — waiting on the flag races the
-    // chmod. Waiting on the relay's own "it is now listening" log line does not, since that
-    // line is logged from inside the same callback, after the chmod call.
-    const listeningLogged = new Promise((resolve) => {
-      const relay = createRelay({
-        externalSocketPath: path, internalSocketPath: internalPath,
-        log: (level, event, detail) => { if (event === 'relay.listening') resolve(relay); },
-      });
+    // This used to wait on the relay's own `relay.listening` LOG LINE, because
+    // `server.listening` flips true synchronously for a unix socket — before the listen
+    // callback that does the chmod has run — so waiting on the flag raced the chmod.
+    // Since s326 the awaited promise resolves from inside that same callback, after the
+    // chmod, so awaiting the call IS the wait. (The old shape would now also fail outright:
+    // it closed over `relay` from a callback that fires before the binding is assigned.)
+    const relay = await createRelay({
+      externalSocketPath: path, internalSocketPath: internalPath, log: () => {},
     });
-    const relay = await listeningLogged;
 
     try {
       const { statSync } = await import('node:fs');
