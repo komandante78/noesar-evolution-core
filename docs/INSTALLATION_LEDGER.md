@@ -4055,3 +4055,41 @@ support. Deploying is a runtime action and remains the Owner's decision.
 (`root:root`, no listener) created by earlier test runs. Deleting files is forbidden by standing
 rule and the path is outside `PROJECT_ROOT`; `/run` is a tmpfs, so it does not survive a reboot.
 It is inert — nothing listens on it, and after this repair nothing recreates it.
+
+---
+## s327 — deploy del punto 4b (`a73fef6`) — 2026-08-06
+
+**Autorizzazione Owner:** esplicita, in sessione (*«allora fai rebuild altrimenti che vedo?»*).
+
+**Build.** `docker build --pull=false -f oci/Dockerfile -t noesar-evolution:point4b-chat-owns-run .`
+
+⚠️ **Il build ha stampato `CACHED` su ogni layer ed è durato 1,7 s.** Non è una prova che i byte
+siano vecchi e non è una prova che siano nuovi: l'output del builder non è la misura. Misurati
+gli sha **dentro l'immagine** prima di scambiare qualsiasi cosa —
+`apps/webui-static/app.js` `06e100b7…` (nuova) contro `67e66474…` (`phase7-divergence-profile`),
+più `workspace-actions.mjs`, `server.mjs`, `session-protocol.mjs` tutti identici al repo.
+
+**Ricreazione.** Comando generato da `docker inspect` del container vivo e **provato su un
+container usa-e-getta prima di fermare** (`docker create` con nome diverso, senza porte e senza
+IP: quelli sarebbero andati in conflitto). La prova ha confermato 30 variabili, `readonly=true`,
+`user=10001:10001`, `tmpfs /run` con `mode=1777`, e soprattutto la **forma `CMD-SHELL`** con la
+stringa di healthcheck **byte-identica** a quella viva (stesso sha `1ec451e1…`) — che è
+esattamente ciò che in s320 era andato storto costando ~80 s.
+
+**Downtime: ~1 s** (stop → rename → run, senza nulla da generare o decidere nel mezzo).
+
+**Verifica a tre livelli, tutti identici `06e100b7989d7c25`:** repo HEAD `a73fef6` ↔
+`/opt/noesar/apps/webui-static/app.js` nel container ↔ corpo servito da `192.168.178.100:8100`.
+Le sei funzioni nuove sono presenti nel corpo servito (`loadChatNav`, `renderChatPlan`,
+`workRunRows`, `renderUnattachedRuns`, `chatSourceRollup`, `renderPlanAttachment`).
+`/livez` 200, container `healthy`, socket `/run/codev-peer.sock` presente, client TUI spedito.
+
+**Limite dichiarato della verifica:** una sonda HTTP anonima **non distingue** una rotta che
+esiste da una che non esiste — l'autenticazione precede l'instradamento e **anche un percorso
+inventato risponde 401**. L'esistenza della rotta `GET /api/v1/workspace-actions/runs` è provata
+dai test sul sorgente il cui sha è verificato identico dentro il container (15/15 HTTP, incluso
+«la rotta `runs` non viene mangiata dal matcher `:id`») e dalla e2e che la guida nel browser.
+
+**Rollback:** container fermo `noesar-evolution-old-phase7-divergence-profile`, immagine
+`noesar-evolution:phase7-divergence-profile`. Il rollback precedente (`phase6-declared-fallback`)
+è stato rimosso: §5a vuole che ne sopravviva **uno solo**.
