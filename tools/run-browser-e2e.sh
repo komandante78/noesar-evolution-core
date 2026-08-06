@@ -26,7 +26,22 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_ROOT="${NOESAR_ARTIFACT_ROOT:-/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
-BASE_IMAGE="${NOESAR_E2E_BASE_IMAGE:-noesar-evolution:phase4-complete-lan}"
+# The base is BUILT FROM SOURCE by default, no longer pinned to a tag.
+#
+# It used to default to `noesar-evolution:phase4-complete-lan`, an image many phases old,
+# with only `apps/webui-static/` and `services/.../src/` overlaid on top. Everything else in
+# that image — `database/` above all — stayed as it was when that tag was cut. So the suite
+# ran NEW application code against an OLD schema, and `/api/v1/approvals` answered 500 on a
+# missing `noesar_knowledge.memory_records` (created by migration 0017, absent from that base).
+#
+# It read exactly like a product defect and was not one: a cold start from `oci/Dockerfile`
+# applies all 19 migrations and reports `production_ready:true` — measured in s326 on a
+# throwaway container. Worse, that 500 timed out a wait, and the harness's single `try` turned
+# one timeout into FOURTEEN skipped steps. A stale pin was quietly deleting most of the suite
+# while the run still printed a plausible number.
+#
+# `NOESAR_E2E_BASE_IMAGE` still overrides, for deliberately testing against an older base.
+BASE_IMAGE="${NOESAR_E2E_BASE_IMAGE:-}"
 PROBE_IMAGE="noesar-evolution:webui-e2e-${STAMP}"
 PROBE_NAME="noesar-evolution.e2e-probe-${STAMP}"
 RUNNER_NAME="noesar-evolution.e2e-runner-${STAMP}"
@@ -39,6 +54,15 @@ RUNNER_NAME="noesar-evolution.e2e-runner-${STAMP}"
 NETWORK="noesar-e2e-net"
 WORKSPACE="${ARTIFACT_ROOT}/e2e/${STAMP}/workspace"
 PUPPETEER_IMAGE="ghcr.io/puppeteer/puppeteer@sha256:9665f5b57abc5cc7080a641878964018de219055a4d2c9d8d050ceb1161778ba"
+
+if [ -z "${BASE_IMAGE}" ]; then
+  BASE_IMAGE="noesar-evolution:e2e-base-${STAMP}"
+  BASE_IMAGE_BUILT=1
+  echo "BASE_BUILD=from-source"
+  # NOT --network=none: this recipe installs PostgreSQL from apt. The overlay below stays
+  # offline, which is where the "must not re-resolve anything" rule actually bites.
+  docker build --pull=false -f "${PROJECT_ROOT}/oci/Dockerfile" -t "${BASE_IMAGE}" "${PROJECT_ROOT}" >/dev/null
+fi
 
 echo "PROBE_IMAGE=${PROBE_IMAGE}"
 echo "BASE_IMAGE=${BASE_IMAGE}"
@@ -115,6 +139,12 @@ cleanup() {
   echo "--- removing probe, runner and probe image ---"
   docker rm "${PROBE_NAME}" "${RUNNER_NAME}" >/dev/null 2>&1 || true
   docker rmi "${PROBE_IMAGE}" >/dev/null 2>&1 || true
+  # The per-run base, when this script built it. A stamped tag left behind every run is
+  # litter of exactly the kind §13 names — and a GB of it, not a stopped container. Never
+  # removed when the base came from NOESAR_E2E_BASE_IMAGE: that one belongs to the caller.
+  if [ "${BASE_IMAGE_BUILT:-0}" = "1" ]; then
+    docker rmi "${BASE_IMAGE}" >/dev/null 2>&1 || true
+  fi
   # The workspace holds this run's throwaway PostgreSQL cluster. On failure it is the
   # only forensic artifact left, so it is kept and its path reported; it is only deleted
   # when the run passed. The guard is insurance against ARTIFACT_ROOT being overridden

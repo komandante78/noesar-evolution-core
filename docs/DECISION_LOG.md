@@ -6972,3 +6972,48 @@ and archiving raises the shared dialog reading `Archive 1 session?` — the shar
 which is what proves the reuse rather than asserting it.
 
 **NOT deployed.** The live container runs `phase7-divergence-profile`.
+
+## D-0330 — the browser e2e was testing new code against an old schema (2026-08-06)
+
+**Found by refusing to accept a failure at face value.** `D-0329` recorded thirteen failures
+that `soft()` had made visible, and named one of them — `/api/v1/approvals` answering 500 on a
+missing `noesar_knowledge.memory_records` — as a real product defect. **It was not.**
+
+**What the measurement actually showed.** Production is clean: `migrations:19`, zero "does not
+exist" in its log. A cold start from `oci/Dockerfile` on a throwaway container applies all
+nineteen migrations, `0017_memory_cubes.sql` among them, and reports `production_ready:true`.
+So the schema is fine everywhere except the probe.
+
+**The cause.** `tools/run-browser-e2e.sh` built the probe `FROM noesar-evolution:phase4-complete-lan`
+— an image many phases old — and overlaid **only** `apps/webui-static/` and
+`services/reference-control-plane/src/`. `database/` was never overlaid, so migrations came
+from whatever that tag carried when it was cut, which predates `0017`. The suite therefore ran
+**new application code against an old schema**, and the resulting 500 read exactly like a
+product defect.
+
+**Why it mattered far beyond one 500.** That 500 timed out a wait; the harness's single `try`
+turned one timeout into fourteen skipped steps (`D-0329`); and the run still printed a
+plausible «257/266, 9 failures» that three sessions treated as a known baseline.
+
+**Fixed at the cause:** the base is now BUILT FROM SOURCE per run (`oci/Dockerfile`), so the
+probe cannot drift from the tree it is testing. `NOESAR_E2E_BASE_IMAGE` still overrides for
+deliberately testing an older base. The per-run base image is removed in the same cleanup that
+already removed the probe image — a stamped multi-hundred-megabyte tag left behind every run is
+exactly the litter §13 names.
+
+**Measured, before and after:**
+
+| | checks run | failures |
+|---|---|---|
+| pinned base, single `try` | 266 | «9» — one abort plus a tail that never ran |
+| pinned base, with `soft()` | 298 | 13 |
+| **built from source** | **318** | **1** |
+
+Twelve of the thirteen were artefacts of the stale pin. `UI-001…UI-012`, believed covered for
+sessions, is genuinely exercised again.
+
+**The one real failure that remains, recorded and NOT fixed here:** at `#/settings/modules`,
+`[data-owner-module-card="debug-evolution"] [data-module-action="install"]` is present but
+**collapsed to 0x0** (`display=block, visibility=visible`) — the "clicking does nothing" shape
+that `clickOrExplain` exists to name. It is a different surface from the chat work this session
+authorised, and it is written down rather than repaired in passing while the rest is green.
