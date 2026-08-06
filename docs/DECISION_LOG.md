@@ -6902,3 +6902,73 @@ with a fixed absolute default. Deriving it from `NOESAR_RUNTIME_ROOT` would make
 automatic for every future caller instead of a rule each one must remember — but the live
 container sets no such variable and relies on the current default, so changing it is a deploy,
 not a fix, and it is recorded here rather than smuggled into this repair.
+
+## D-0329 — the chat list moves to the sidebar, and the e2e turns out to have been stopping early (2026-08-06)
+
+**Owner's request (point 4a of the s326 change list).** Chats in the sidebar: the five most
+recent, a scroller past the fifth, archive and delete with a confirmation popup, and an
+archive on its own page with select-all, restore and delete.
+
+**The measurement that changed the job.** `docs/WEBUI_DESIGN_V3.md:505` said session
+management was *«non costruita»*, and I repeated that to the Owner twice before reading the
+code. It is built, and tested: five laid out plus a scroller, per-row `Archive…`/`Delete…`,
+three places with a visible return, `pageSize` 10 for archive and bin, restore, per-row
+checkboxes, a danger-class `Delete for good…`, and the bin retention stated. The stale line
+is corrected. So this was never «build it» — it was **where it lives and what it is called**:
+`Settings › Sessions`, under a word the code itself flags as overloaded, as an operator's
+management view rather than the list you work from.
+
+**Built: one implementation, rendered where the work happens.** The sidebar rows call the same
+`sessionAction()` — therefore the same `confirmAction()`, the same `SESSION_WORDS`, the same
+rule about which button is dangerous — and the archive link goes to the page that already
+exists rather than a second one. Two renderers of one list is the divergence `D-0300` already
+cost this project (`PANEL_NAMES` said 14 where the markup had 25), so what is shared is the
+BEHAVIOUR, not copied markup. Guarded by five assertions that fail if a private confirmation,
+a private paginator or a bootstrap-fed list ever appears.
+
+Source is `GET /api/v1/sessions?place=active`, not `state.conversations` from the bootstrap:
+only the former knows what has been archived, and a sidebar fed from the latter would keep
+offering archived chats — the same divergence by another route.
+
+**Ordering is load-bearing.** `loadChatNav()` runs BEFORE `selectConversation()` inside
+`refreshWorkspace()`. Placed after it, a conversation the server will not return throws and
+every later line is skipped, leaving the sidebar showing whatever it held. The test asserts
+the order, not merely the presence of the call.
+
+### The defect found while trying to prove the above
+
+**The browser e2e had been stopping early, and reporting a plausible number while doing it.**
+The whole harness is a single `try`, so the first throw ends the run. A `waitForFunction` in
+the `workflows` step was timing out, and that one timeout was silently killing **fourteen
+later steps** — privacy indicator, deep-link, mfa-replacement, settings, home, **sessions**,
+reading-controls, workbench, workspace-actions, closure, metric, initial-screen, invitation,
+sign-out. The stable «257/266, 9 failures» that three sessions treated as a known baseline was
+one abort plus a tail that never executed. `UI-001…UI-012`, believed covered by this suite,
+had not been exercised for sessions.
+
+`soft()` records such a failure with the weight it always had and lets the run continue. With
+it, the suite went from 266 checks to **298**, and **13** failures became visible that were
+never nine: console errors on `route memory`, failed requests on `route settings/audit`, the
+approval strip, and more. None are new; all were hidden.
+
+**The root cause of the original timeout is a real product defect, recorded not fixed:**
+`/api/v1/approvals` answers **500** because `noesar_knowledge.memory_records` does not exist,
+so the approval strip never reaches its pending count. The comment above that wait had
+predicted exactly this in advance — *«a real failure once one of its four sources (memory
+candidates, `D-0265`) became a genuine network round trip»*. It is out of the scope the Owner
+authorised (the chat sidebar) and is written down rather than repaired in passing.
+
+**Two defects in my own probe, both found by running it rather than reading it:** it first
+asserted on seven chats at a point in the run where none had been created yet (the s324
+lesson — a test that invents its own input), and then reloaded with `page.goto` to a URL
+differing only in its **hash**, which does not reload the document, so the sidebar honestly
+reported the state from before those chats existed while the same page's own fetch answered
+200 with seven. `reload()` is the difference between navigating and starting again.
+
+**Verified:** unit **1834/1835** (0 fail, 1 pre-existing skip), ESLint **334 files 0/0/0**,
+and the six new browser checks **all passing against a real browser**: seven chats, **five
+laid out and two in the scroller**, clicking a row opens that same conversation (ids match),
+and archiving raises the shared dialog reading `Archive 1 session?` — the shared vocabulary,
+which is what proves the reuse rather than asserting it.
+
+**NOT deployed.** The live container runs `phase7-divergence-profile`.

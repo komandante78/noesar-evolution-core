@@ -350,6 +350,58 @@ describe('the missing interface parts', () => {
     assert.equal((section.match(/data-place="/g) ?? []).length, 3, 'three places: working list, archive, bin');
   });
 
+  // The chat list in the sidebar, added in s326 on the Owner's request. What is guarded is
+  // not that the markup exists — it is that it did NOT become a second implementation of the
+  // surface in Settings › Sessions. Two renderers of one list is the divergence `D-0300`
+  // already cost this project, so the assertions below are about the SHARING.
+  describe('the sidebar chat list reuses the sessions surface rather than copying it', () => {
+    const nav = html.slice(html.indexOf('id="chatNav"'), html.indexOf('data-view="coden"'));
+
+    test('UI-001/UI-002 · five laid out, and a scroller with its count above it', () => {
+      for (const id of ['chatNavRecent', 'chatNavOverflowBox', 'chatNavOverflowCount', 'chatNavOverflow']) {
+        assert.ok(nav.includes(`id="${id}"`), `the sidebar chat list is missing "${id}"`);
+      }
+      assert.match(app, /const first=items\.slice\(0,5\);const rest=items\.slice\(5\)/,
+        'the sidebar must lay out five and scroll the rest');
+      assert.match(app, /\$\('#chatNavOverflowCount'\)\.textContent=rest\.length\?/,
+        'the overflow count must be stated, not left to be discovered by scrolling');
+    });
+
+    test('UI-004 · the archive link goes to the page that already exists', () => {
+      assert.ok(nav.includes('id="chatNavArchive"'), 'no way into the archive from the sidebar');
+      assert.match(app, /navigate\('settings\/sessions\/archived'\)/,
+        'the sidebar must reach the existing archive page, not a second one');
+      assert.equal(/chatNavRange|chatNavSelectPage|chatNavDeleteSelected/.test(app), false,
+        'pagination and select-all belong to the archive page; a second copy here is the duplication this guards against');
+    });
+
+    test('UI-008 · the row actions raise the ONE confirmation, not a second one', () => {
+      assert.match(app, /\$\$\('#chatNav \[data-session-archive\]'\)[\s\S]{0,160}sessionAction\('archive'/,
+        'archive in the sidebar must go through sessionAction');
+      assert.match(app, /\$\$\('#chatNav \[data-session-bin\]'\)[\s\S]{0,160}sessionAction\('bin'/,
+        'delete in the sidebar must go through sessionAction');
+      const block = app.slice(app.indexOf('function chatNavRowHtml'), app.indexOf('function initChatNav'));
+      assert.equal(/confirmAction\(|window\.confirm/.test(block), false,
+        'the sidebar must not raise a confirmation of its own');
+    });
+
+    test('the sidebar reads the sessions route, not the bootstrap list', () => {
+      // `state.conversations` from the bootstrap does not know what has been archived, so a
+      // sidebar fed from it would keep offering archived chats — the same divergence by
+      // another route.
+      assert.match(app, /place:'active'[\s\S]{0,120}\/api\/v1\/sessions/,
+        'the sidebar must ask the sessions route for the active place');
+    });
+
+    test('an action refreshes the sidebar, so the two views cannot disagree', () => {
+      // BEFORE `selectConversation`, not after: that call can throw on a conversation the
+      // server will not return, and everything after it in `refreshWorkspace` would then be
+      // skipped — leaving the sidebar showing whatever it held. Ordering is the assertion.
+      assert.match(app, /renderAll\(\);await loadChatNav\(\);if\(state\.activeConversationId\)await selectConversation/,
+        'refreshWorkspace must reload the sidebar before the call that can throw');
+    });
+  });
+
   test('UI-008…UI-010 · one confirmation exists and nothing preselects the dangerous button', () => {
     assert.match(html, /id="confirmScrim"/);
     assert.match(html, /role="alertdialog"[^>]*aria-modal="true"/, 'the confirmation must be a modal dialog');

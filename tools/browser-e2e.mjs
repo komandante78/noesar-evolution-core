@@ -157,6 +157,35 @@ function resetObservations() {
 let step = 'start';
 function at(name) { step = name; }
 
+/**
+ * Run something that may throw, record the outcome, and CARRY ON.
+ *
+ * Why this exists, measured in s326: the whole harness is one `try`, so the first throw ends
+ * the run. A `waitForFunction` in the `workflows` step had been timing out — the approval
+ * strip never reaches "Approvals: 1" because `/api/v1/approvals` answers 500 on a missing
+ * `noesar_knowledge.memory_records` relation — and that single timeout was quietly killing
+ * FOURTEEN later steps: privacy indicator, deep-link, mfa-replacement, settings, home,
+ * sessions, reading-controls, workbench, workspace-actions, closure, metric, initial-screen,
+ * invitation, sign-out.
+ *
+ * Nothing said so. The run printed a stable "9 failures", which reads like nine known
+ * problems and was in fact one abort plus a tail that never executed — so `UI-001…UI-012`,
+ * believed covered by this suite, had not been exercised for sessions. A suite that stops
+ * early while reporting a plausible number is worse than one that fails loudly.
+ *
+ * The failure is still a failure, recorded through `check` with the weight it always had.
+ * What changes is that it no longer decides whether the rest of the product gets tested.
+ */
+async function soft(name, run) {
+  try {
+    await run();
+    return true;
+  } catch (error) {
+    check(name, false, `${error.message} [step: ${step}] — recorded, and the run continues`);
+    return false;
+  }
+}
+
 try {
   at('bootstrap');
   // --- bootstrap the throwaway Owner through the real forms ----------------
@@ -880,6 +909,7 @@ try {
     viaTyping.addresses >= 15, JSON.stringify(viaTyping));
   check('and the open panel still names itself', viaPrompt.where === 'Diff', JSON.stringify(viaPrompt));
 
+
   // Driven end to end: type an address at the prompt, press Enter, land on the panel. This is
   // the gesture that has to work for the removal above to be honest.
   await page.evaluate(() => {
@@ -1061,6 +1091,114 @@ try {
   const paletteErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('the box produced no console errors', paletteErrors.length === 0, paletteErrors.join(' | '));
 
+  // ---- s326: the chat list in the sidebar --------------------------------------------
+  //
+  // Placed HERE, before the first step that aborts, and not beside the sessions step it
+  // belongs with — because that step does not currently run (see `soft`). It creates its
+  // own chats rather than borrowing that step's: when the tail is revived, the sessions
+  // step will therefore see these in addition to the seven it makes itself. That is
+  // deliberate and declared, not an accident to be discovered later.
+  at('chat-sidebar');
+  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#chatConversation', { timeout: 15000 });
+  const sidebarSeed = await page.evaluate(async () => {
+    const csrf = document.cookie.split('; ').find((part) => part.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
+    let made = 0;
+    for (let index = 0; index < 7; index += 1) {
+      const response = await fetch('/api/v1/conversations', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', 'x-noesar-csrf': decodeURIComponent(csrf) },
+        body: JSON.stringify({ title: `Sidebar chat ${index + 1}` }),
+      });
+      if ((await response.json()).conversation?.id) made += 1;
+    }
+    return made;
+  });
+  check('s326 — seven chats exist, so the fifth/sixth boundary is real', sidebarSeed === 7, `made=${sidebarSeed}`);
+  // ---- s326: the chat list in the sidebar -------------------------------------------
+  //
+  // DRIVEN, not read. `npm test` reads app.js as text and would pass on a list that throws
+  // at render; the markup guard proves only that the source SAYS it reuses the sessions
+  // surface. What follows proves the rows exist, open a chat, and raise the ONE shared
+  // confirmation — the property the whole design rests on.
+  // The seven above were made with a raw fetch, so nothing in the page has reloaded the
+  // sidebar yet — the list refreshes inside refreshWorkspace(), which a bare fetch never
+  // calls. Reloading is the honest way to reach the state a user would actually see;
+  // waiting on a list nothing asked to update would be waiting for a bug that is not there.
+  // `page.goto` to a URL that differs only in its HASH does not reload the document, so the
+  // sidebar kept the state it had before those seven existed and reported an honest zero.
+  // Measured, not guessed: the same page's own fetch answered 200 with seven while the list
+  // showed none. `reload()` is the difference between navigating and starting again.
+  await page.reload({ waitUntil: 'networkidle2' });
+  await soft('s326 — the sidebar chat list renders at all',
+    () => page.waitForSelector('#chatNav .chat-nav-row', { timeout: 15000 }));
+  const sidebarChats = await page.evaluate(async () => {
+    // Diagnosis carried IN the check: when this failed, "rows: 0" alone could not tell an
+    // empty answer from a renderer that never ran from a route that refused.
+    let probe = null;
+    try {
+      const response = await fetch('/api/v1/sessions?place=active&page=1&pageSize=50', { credentials: 'same-origin' });
+      const body = await response.json().catch(() => ({}));
+      probe = { status: response.status, total: body.total ?? null, items: body.items?.length ?? null };
+    } catch (error) { probe = { error: error.message }; }
+    const rows = [...document.querySelectorAll('#chatNav .chat-nav-row')];
+    return {
+      apiSaysActive: probe,
+      // Both, and for different reasons: the hidden class says whether the renderer ever
+      // ran, and the text says whether it ran on an empty answer or on a failed call —
+      // loadChatNav rewrites this line to "Chats unavailable: …" when the call throws.
+      emptyShown: document.querySelector('#chatNavEmpty')?.classList.contains('hidden') === false,
+      emptyText: document.querySelector('#chatNavEmpty')?.textContent ?? '',
+      rows: rows.length,
+      laidOut: document.querySelectorAll('#chatNavRecent .chat-nav-row').length,
+      titled: rows.length > 0 && rows.every((row) => (row.querySelector('.chat-nav-title')?.textContent ?? '').trim().length > 0),
+      hasArchiveLink: Boolean(document.querySelector('#chatNavArchive')),
+    };
+  });
+  check('s326 — the sidebar renders the chat list, every row named, with a way into the archive',
+    sidebarChats.rows > 0 && sidebarChats.titled && sidebarChats.hasArchiveLink, JSON.stringify(sidebarChats));
+  // UI-001: never more than five laid out, whatever the total is.
+  check('s326 — at most five are laid out, the rest go to the scroller',
+    sidebarChats.laidOut <= 5, JSON.stringify(sidebarChats));
+
+  // Clicking a row opens THAT chat — the gesture the list exists for. A list you cannot act
+  // from is decoration.
+  const openedFromSidebar = await page.evaluate(async () => {
+    const first = document.querySelector('#chatNav [data-chat-open]');
+    const wanted = first?.dataset.chatOpen ?? null;
+    first?.click();
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return {
+      wanted,
+      view: document.querySelector('.view.active')?.id ?? null,
+      current: document.querySelector('#chatNav .chat-nav-row.current')?.dataset.chatNavId ?? null,
+    };
+  });
+  check('s326 — clicking a chat in the sidebar opens that chat',
+    openedFromSidebar.view === 'view-chat' && openedFromSidebar.current === openedFromSidebar.wanted,
+    JSON.stringify(openedFromSidebar));
+
+  // Archive raises the SHARED confirmation. If someone later gives the sidebar a quiet path
+  // of its own, this fails — which is the point.
+  const asked = await page.evaluate(async () => {
+    document.querySelector('#chatNav [data-session-archive]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const scrim = document.querySelector('#confirmScrim');
+    return {
+      visible: Boolean(scrim && !scrim.classList.contains('hidden')),
+      title: document.querySelector('#confirmTitle')?.textContent ?? '',
+      // UI-010: nothing dangerous is preselected — focus is on the dialog, not a button.
+      focusIsButton: document.activeElement?.tagName === 'BUTTON',
+    };
+  });
+  check('s326 — archiving from the sidebar asks first, with the one shared confirmation',
+    asked.visible && /archive/i.test(asked.title), JSON.stringify(asked));
+  check('s326 — and that confirmation still preselects nothing',
+    asked.visible && asked.focusIsButton === false, JSON.stringify(asked));
+  // Leave the data as it was found: cancel rather than archive.
+  await page.keyboard.press('Escape');
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   at('workflows');
   // --- WP-2: a workflow, its approval gate, the strip, and the decision ----
   // Driven the way an operator drives it: define a workflow in the form, start it, watch
@@ -1121,9 +1259,13 @@ try {
   // network round trip instead of an instant in-memory read. Waiting for the strip's own
   // text is the fix, not a longer fixed delay — it is exact regardless of how long the
   // fetch actually takes.
-  await page.waitForFunction(
+  // Softened in s326, not weakened: this wait was aborting the whole run. It fails for a
+  // REAL reason — `/api/v1/approvals` answers 500 because `noesar_knowledge.memory_records`
+  // does not exist — and that reason is worth one loud failure, not the silent loss of every
+  // step after it. See `soft`.
+  await soft('the approval strip reaches the pending count', () => page.waitForFunction(
     () => /Approvals: 1/.test(document.querySelector('#approvalStripState')?.textContent ?? ''),
-    { timeout: 15000 });
+    { timeout: 15000 }));
 
   // The bottom approval strip. 01_PRODUCT/11 names it as binding; this is the check that
   // it is a real, visible box carrying a real count, not markup that exists in the DOM.
@@ -1518,6 +1660,7 @@ try {
     return ids.filter(Boolean).length;
   });
   check('seven work sessions exist to exercise the surface', created === 7, `created=${created}`);
+
 
   await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });

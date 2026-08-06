@@ -1097,3 +1097,38 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .agent-menu button small{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(var(--text-scale)*10px)}
 .agent-menu-note{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
 @media(forced-colors:active){.agent-menu button.active{border:2px solid CanvasText}}
+
+/* The chat list in the sidebar (UI-001…UI-004 rendered where the work happens). Sized to
+   sit under the Chat destination without competing with it: the rows are quieter than a
+   .nav, because the destination is the heading and these are its contents. */
+.chat-nav{margin:2px 0 6px;padding-inline-start:6px}
+.chat-nav-toggle{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:0;background:transparent;color:var(--muted);text-align:start;font-size:calc(var(--text-scale)*11px);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.chat-nav-toggle:hover{color:var(--text-nav)}
+.chat-nav-caret{font-size:calc(var(--text-scale)*10px)}
+.chat-nav-count{margin-inline-start:auto;color:var(--muted)}
+.chat-nav-list{display:grid;gap:1px}
+.chat-nav-row{display:flex;align-items:center;gap:2px;border-radius:8px}
+.chat-nav-row:hover{background:var(--accent-wash-fade)}
+.chat-nav-row.current{background:linear-gradient(90deg,var(--accent-wash-strong),var(--accent-wash-fade));box-shadow:inset 2px 0 var(--blue)}
+.chat-nav-open{flex:1;min-width:0;display:grid;gap:1px;padding:7px 8px;border:0;background:transparent;color:var(--text-nav);text-align:start;cursor:pointer}
+.chat-nav-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(var(--text-scale)*12px)}
+.chat-nav-open small{color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+/* The row actions stay out of the way until the row is under the pointer or the keyboard,
+   so a list of chats reads as a list of chats. They remain reachable by tab: hiding them
+   from the keyboard would put archive and delete behind a mouse. */
+.chat-nav-actions{display:flex;gap:2px;opacity:0;padding-inline-end:4px}
+.chat-nav-row:hover .chat-nav-actions,.chat-nav-row:focus-within .chat-nav-actions{opacity:1}
+.chat-nav-actions button{padding:4px 6px;border:0;background:transparent;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.chat-nav-actions button:hover{color:var(--text-nav)}
+.chat-nav-actions button.danger{background:transparent;border:0}
+.chat-nav-actions button.danger:hover{color:var(--red)}
+.chat-nav-more{margin:6px 0 3px;padding-inline-start:8px;color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+/* UI-002: a bounded scroller, so the sidebar cannot grow without limit as chats pile up. */
+.chat-nav-scroller{max-height:190px;overflow-y:auto}
+.chat-nav-empty{margin:4px 0;padding-inline-start:8px;color:var(--muted);font-size:calc(var(--text-scale)*11px)}
+.chat-nav-archive{width:calc(100% - 8px);margin:6px 4px 0;padding:6px 8px;border:0;background:transparent;color:var(--accent-link);text-align:start;font-size:calc(var(--text-scale)*11px)}
+.chat-nav-archive:hover{background:var(--accent-wash-fade)}
+.chat-nav-open:focus-visible,.chat-nav-toggle:focus-visible,.chat-nav-archive:focus-visible,.chat-nav-actions button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:-3px}
+/* A sidebar collapsed to icons has no room for titles, and one narrowed to nothing has no
+   room at all. The list follows the destination it belongs to rather than surviving it. */
+.app-shell[data-sidebar=icons] .chat-nav,.app-shell[data-sidebar=hidden] .chat-nav{display:none}

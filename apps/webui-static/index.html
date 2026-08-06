@@ -64,6 +64,35 @@
       <nav aria-label="Primary">
         <button class="nav active" data-view="home">⌂ <span>Home</span></button>
         <button class="nav" data-view="chat">◗ <span>Chat</span></button>
+        <!-- The chat list, in the sidebar — `UI-001…UI-012` rendered where the work happens.
+             It is NOT a second implementation of the management surface in Settings ›
+             Sessions: the rows call the same `sessionAction()`, which raises the same
+             confirmation, and the archive link goes to the page that already exists. Two
+             renderers of one list is exactly the divergence `D-0300` cost this project
+             (`PANEL_NAMES` said 14 where the markup had 25), so the shared thing here is
+             the BEHAVIOUR, not a copied block of markup.
+
+             Source is `GET /api/v1/sessions?place=active`, not `state.conversations` from
+             the bootstrap: only the former knows what has been archived, and a sidebar that
+             kept showing archived chats would be the same divergence by another route. -->
+        <div class="chat-nav" id="chatNav">
+          <button class="chat-nav-toggle" type="button" id="chatNavToggle" aria-expanded="true" aria-controls="chatNavBody">
+            <span class="chat-nav-caret" aria-hidden="true">▾</span> Recent chats <span class="chat-nav-count" id="chatNavCount"></span>
+          </button>
+          <div class="chat-nav-body" id="chatNavBody">
+            <!-- UI-001: the five most recent, laid out. -->
+            <div class="chat-nav-list" id="chatNavRecent"></div>
+            <!-- UI-002: from the sixth on, a scroller whose count is stated ABOVE it. -->
+            <div class="chat-nav-overflow hidden" id="chatNavOverflowBox">
+              <p class="chat-nav-more" id="chatNavOverflowCount"></p>
+              <div class="chat-nav-list chat-nav-scroller" id="chatNavOverflow" tabindex="0"></div>
+            </div>
+            <p class="chat-nav-empty hidden" id="chatNavEmpty">No chats yet.</p>
+            <!-- UI-004: the archive is its own page, and this is the way in. It goes to the
+                 surface that already paginates at ten with select-all, restore and delete. -->
+            <button class="chat-nav-archive" type="button" id="chatNavArchive">Archive →</button>
+          </div>
+        </div>
         <button class="nav" data-view="coden">⌁ <span>CodeN Evolution</span></button>
         <!-- No "not built" flag. The destination's own page carries SESSION PROTOCOL BUILT
              and it is right: tools/tui-client.mjs is a real client, src/session-protocol.mjs

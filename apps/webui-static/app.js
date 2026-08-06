@@ -859,7 +859,7 @@ function renderPrivacyDisclosures(disclosures,telemetry){
     list.append(card);
   }
 }
-async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
+async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
 function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;applyTranslations();}
 function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
@@ -3299,6 +3299,10 @@ async function sessionAction(action,ids){
   announceEvent(`${words.verb}: ${result.applied?.length??0} session${(result.applied?.length??0)===1?'':'s'}${refused?`, ${refused} refused`:''}`);
   if(refused)toast({title:'Some sessions were not moved',body:result.refused.map((item)=>item.reason).join(' · '),kind:'warning'});
   await loadWorkSessions();
+  // The sidebar reads the same records, so it has to be refreshed by the same action that
+  // changed them — otherwise archiving a chat in Settings leaves the sidebar still offering
+  // it. That refresh rides on `refreshWorkspace()` below, which every mutation already
+  // calls, rather than a second fetch here.
   await refreshWorkspace();
 }
 async function loadWorkSessions(place=workSessions.place,page=workSessions.page){
@@ -3314,6 +3318,97 @@ function focusSessionRow(index){
   workSessions.focus=Math.min(Math.max(index,0),rows.length-1);
   rows.forEach((row,position)=>row.classList.toggle('focused',position===workSessions.focus));
   rows[workSessions.focus].focus();
+}
+
+// ---------------------------------------------------------------------------
+// The chat list in the sidebar — the same records as Settings › Sessions, rendered where
+// the work actually happens.
+//
+// What is SHARED with the management surface, deliberately: `sessionAction()` and therefore
+// `confirmAction()` (so `UI-008`/`UI-009`/`UI-010` cannot drift apart — one popup, one set of
+// words, one rule about which button is dangerous), the `/api/v1/sessions` route, and the
+// archive page itself, which this only links to.
+//
+// What is its OWN, and why that is not a duplicate: this list is always the ACTIVE place,
+// while Settings can be looking at the archive or the bin. Sharing `workSessions.place`
+// would empty the sidebar the moment someone opened the archive in Settings. So the state
+// here is a page of data and nothing else — no second notion of what archiving means.
+const chatNav={data:null,open:true};
+
+function chatNavRowHtml(item){
+  const when=instantHtml(item.lastActivityAt);
+  const current=item.id===state.activeConversationId;
+  return `<div class="chat-nav-row${current?' current':''}" data-chat-nav-id="${item.id}">
+    <button class="chat-nav-open" type="button" data-chat-open="${item.id}" ${current?'aria-current="true"':''}>
+      <span class="chat-nav-title">${escapeHtml(item.title)}</span>
+      <small>${item.messageCount} message${item.messageCount===1?'':'s'} · ${when}</small>
+    </button>
+    <span class="chat-nav-actions">
+      <button type="button" title="Archive" aria-label="Archive ${escapeHtml(item.title)}" data-session-archive="${item.id}">⊟</button>
+      <button type="button" class="danger" title="Delete" aria-label="Delete ${escapeHtml(item.title)}" data-session-bin="${item.id}">✕</button>
+    </span>
+  </div>`;
+}
+
+function renderChatNav(){
+  const host=$('#chatNavRecent');
+  if(!host)return;
+  const items=chatNav.data?.items??[];
+  const total=chatNav.data?.total??0;
+  $('#chatNavCount').textContent=total?String(total):'';
+  $('#chatNavEmpty').classList.toggle('hidden',items.length>0);
+  // UI-001 and UI-002: five laid out, the rest behind a scroller whose count is stated above
+  // it — the same split the management surface makes, from the same numbers.
+  const first=items.slice(0,5);const rest=items.slice(5);
+  host.innerHTML=first.map(chatNavRowHtml).join('');
+  $('#chatNavOverflowBox').classList.toggle('hidden',rest.length===0);
+  $('#chatNavOverflowCount').textContent=rest.length?`${rest.length} more${total>items.length?` of ${total}`:''}`:'';
+  $('#chatNavOverflow').innerHTML=rest.map(chatNavRowHtml).join('');
+  bindChatNavRows();
+}
+
+function bindChatNavRows(){
+  $$('#chatNav [data-chat-open]').forEach((button)=>button.addEventListener('click',async()=>{
+    activate('chat');
+    await selectConversation(button.dataset.chatOpen);
+    renderChatNav();
+  }));
+  // The row actions are NOT reimplemented here: they call the one function that asks first.
+  $$('#chatNav [data-session-archive]').forEach((button)=>button.addEventListener('click',()=>sessionAction('archive',[button.dataset.sessionArchive])));
+  $$('#chatNav [data-session-bin]').forEach((button)=>button.addEventListener('click',()=>sessionAction('bin',[button.dataset.sessionBin])));
+}
+
+async function loadChatNav(){
+  const host=$('#chatNavRecent');
+  if(!host)return;
+  try{
+    // Always the active place. `pageSize` is the working list's own size, so "more" here
+    // means the same thing it means in Settings rather than a second, quieter cap.
+    const query=new URLSearchParams({place:'active',page:'1',pageSize:'50'});
+    chatNav.data=await api(`/api/v1/sessions?${query}`);
+  }catch(error){
+    // A sidebar that silently shows nothing is indistinguishable from having no chats.
+    chatNav.data={items:[],total:0};
+    $('#chatNavEmpty').textContent=`Chats unavailable: ${error.message}`;
+  }
+  renderChatNav();
+}
+
+function initChatNav(){
+  const toggle=$('#chatNavToggle');
+  toggle?.addEventListener('click',()=>{
+    chatNav.open=!chatNav.open;
+    toggle.setAttribute('aria-expanded',String(chatNav.open));
+    $('#chatNavBody').classList.toggle('hidden',!chatNav.open);
+    $('.chat-nav-caret').textContent=chatNav.open?'▾':'▸';
+  });
+  // UI-004: the archive is a page, and it is the page that already exists — ten per page,
+  // select-all, restore and delete, every one of them asking first.
+  $('#chatNavArchive')?.addEventListener('click',()=>{
+    workSessions.selected.clear();
+    navigate('settings/sessions/archived');
+    loadWorkSessions('archived',1);
+  });
 }
 function initSessions(){
   $$('#section-sessions .place').forEach((button)=>button.addEventListener('click',()=>{
@@ -4132,6 +4227,7 @@ initAppearance();
 initReadingControls();
 initConfirm();
 initSessions();
+initChatNav();
 initBench();
 initVoiceControlUI();
 initRouter();
