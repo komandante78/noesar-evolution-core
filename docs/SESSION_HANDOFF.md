@@ -1,6 +1,7 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-05, fine **Fase 7** (`D-0326`, `34d497b`). **NON deployata.**
+> ## ⏭ STATO CORRENTE — 2026-08-06. **Fase 7 (`D-0326`) DEPLOYATA (`D-0327`).** Owner ha chiesto
+> esplicitamente il deploy prima di aprire la fase 8; poi ha chiesto di FERMARSI per un controllo.
 >
 > **Programma attivo: CodeN Evolution.** Due file soli, in quest ordine:
 > `MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md` (§0 = cosa deve fare) e
@@ -9,18 +10,27 @@
 > nome**: si legge da `/mnt/cachec/NOESAR_EVOLUTION/.claude/skills/noesar-evolution/SKILL.md`.
 > Il contratto a 6 righe si scrive PRIMA di toccare un file.
 >
-> ### 🟢 IN PRODUZIONE ADESSO — la catena, deployata come una unità
+> ### 🟢 IN PRODUZIONE ADESSO — fase 7 inclusa
 >
 > ```text
-> noesar-evolution   noesar-evolution:phase6-declared-fallback   (repo edfaaa3)   ~7 s downtime
-> atomd              atom-evolution:atomd-a0025-authoring                          ~6 s downtime
+> noesar-evolution   noesar-evolution:phase7-divergence-profile   (repo fbfe6a4/34d497b)   ~26 s downtime
+> atomd              atom-evolution:atomd-a0025-authoring                                    invariato
 > + NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420   (il modello, sulla rete dei container)
 > ```
 >
-> Provato **sull artefatto deployato**: sha256 identico su tre livelli, `/v1/author` risponde
-> 400 e non 404, la catena gira (`checkedBy: atom`, 2 file, promosso, 2,6 s) e — con l `atomd`
-> **vero** fermato ~20 s — il prodotto ha continuato in 1,8 s dichiarando `provider=reference`.
-> **La fase 7 NON è in produzione**: il profilo di divergenza non è nell immagine viva.
+> Provato **sull artefatto deployato**: sha256 dei 4 file toccati dalla fase 7 identico fra
+> container e repo HEAD, `/livez` `/readyz` `/healthz` 200, boot pulito (19 migrazioni/18
+> rls_tables invariate, zero error/warn), `atomd` raggiungibile (`401`, non timeout). **Non
+> esercitato dal vivo**: una vera chiamata `plan()` che mostri la divergenza su due repository
+> reali — nessun harness di accettazione per questo è nell immagine; dichiarato, non inventato.
+> Dettagli completi: `docs/INSTALLATION_LEDGER.md` § *"Phase 7 DEPLOYED"* (`D-0327`).
+>
+> **Difetto trovato deployando, riparato per questa volta:** l `EVIDENCE/` di `D-0325` (il
+> deploy precedente) ha i token in chiaro nonostante `B-011` dichiarasse il fix di redazione già
+> in vigore — dichiarato ma non applicato al proprio stesso deploy. Questa volta il dump grezzo
+> è restato solo nello scratchpad di sessione; il file in `EVIDENCE/` ha i valori
+> `TOKEN`/`SECRET`/`PASS` redatti. Il file vecchio **non è stato riscritto** (nessuna
+> autorizzazione a toccare la storia git per questo deploy).
 >
 > ### Fatto — **fase 6** (`D-0323`), **frequenza** (`D-0324`), **fase 7** (`D-0326`)
 >

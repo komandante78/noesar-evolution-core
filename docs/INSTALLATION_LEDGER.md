@@ -3965,3 +3965,73 @@ survives. Twelve stale rollback containers were removed by name, none of them `U
 left on disk so every documented rollback path still works. No `prune` of any kind was used.
 The `debug-evolution*` containers belong to a **separate product** and were not touched; 36
 containers outside this project are unchanged, and all 10 networks are unchanged.
+
+## 2026-08-06 — Phase 7 DEPLOYED, the divergence profile is live (`D-0327`)
+
+**Owner decision (explicit, asked directly):** deploy Phase 7 now rather than stay on Phase 6.
+Unlike `a0025` alone (provably a no-op when measured in isolation, `D-0325`), Phase 7 changes what
+the Author receives before it writes — a real behavioural change, not a dormant addition.
+
+| Container | From | To | Downtime | Rollback kept |
+|---|---|---|---|---|
+| `noesar-evolution` | `phase6-declared-fallback` (repo `edfaaa3`) | `phase7-divergence-profile` (repo `fbfe6a4`, includes `34d497b`) | **~26 s** (`docker stop` 01:10:04 → `healthy` 01:10:30) | `noesar-evolution-old-phase7-divergence-profile` |
+
+`atomd` untouched — this deploy is NOESAR-side only, no daemon swap needed.
+
+**Build.** `docker build --pull=false -f oci/Dockerfile -t noesar-evolution:phase7-divergence-profile .`
+— `--network=none` (used for earlier `FROM :phase4-*` overlay builds) fails on this single-file
+recipe because `apt-get` needs real resolution; only `cargo` runs offline/vendored. Mostly cached
+(only the `services/reference-control-plane/` layer re-copied); real build work ~4 s.
+
+**The recreate was generated and validated BEFORE anything was stopped**, same discipline as
+`D-0325`: a one-off Node script read the live `docker inspect` snapshot
+(`EVIDENCE/live_config_pre_phase7_deploy_20260806T010501Z.json`, env values redacted in the
+committed copy — see below) and re-serialized every flag — user `10001:10001`, network
+`noesar-evolution-net`, fixed `--ip 172.22.0.5`, `--read-only`, `--cap-drop ALL`, both tmpfs
+(`/run:mode=1777` + `/tmp`), `--restart unless-stopped`, both port bindings on
+`192.168.178.100`, both volume mounts, all **30** environment variables, and the healthcheck in
+its live `CMD-SHELL` form with matching interval/timeout/start-period/retries — changing only the
+image tag. Reviewed structurally (every flag diffed against the live `HostConfig`/`Config`) before
+execution; not re-validated by a live dry run because the source data (postgres data directory)
+cannot be safely opened by two concurrent containers.
+
+**Process fix applied, not just declared.** The previous `EVIDENCE/live_config_pre_phase6_deploy_*`
+file committed in `D-0325` has the raw `NOESAR_DEBUG_EVOLUTION_TOKEN` and
+`NOESAR_RUST_REASONING_TOKEN` values in cleartext, despite `B-011`'s "process fix already in
+effect for future phases: never write a raw docker inspect env dump into `EVIDENCE/` without
+redacting secret-shaped values first." That fix was declared but not applied to the very deploy
+that declared it. This time the raw inspect stayed in the session scratchpad only (used to
+generate the recreate command); the file committed to `EVIDENCE/` has every `TOKEN`/`SECRET`/
+`PASS`-shaped env value replaced with `<REDACTED>`. The pre-existing cleartext tokens in
+`d0def34`'s `EVIDENCE/` file are **not rewritten** here — no history rewrite was authorised for
+this deploy, and `B-011`'s rotation is still deliberately deferred to project completion by the
+Owner's own prior instruction. Flagged to the Owner as a new instance of the same defect class,
+not treated as a blocker.
+
+**Verified on the DEPLOYED artifact, not the repo:**
+- `sha256sum` of the four files this phase touches (`server.mjs`, `session-protocol.mjs`,
+  `workspace-actions.mjs`, `divergence-profile.mjs`) is **identical inside the running container
+  and at repo HEAD** — the deployed binary is provably the tested source, not merely assumed to be.
+- `/livez` `/readyz` `/healthz` all **200** via `docker exec` (no host-publish reliance).
+- Boot log: `data-plane.ready migrations:19 rls_tables:18 production_ready:true`, unchanged; zero
+  `ERROR`/`WARN` lines, no import failure (an import error would have crashed Node before the
+  healthcheck could ever pass).
+- `atomd` (`atom-evolution:atomd-a0025-authoring`) reachable from the new container —
+  `GET http://atomd:8410/healthz` → `401` (endpoint exists, needs auth), not a timeout —
+  untouched by this deploy.
+- **Not exercised live**: a real `plan()` call against two repositories with opposite
+  conventions, to see the profile diverge on the deployed artifact rather than in the pre-deploy
+  test suite (`14 mutations → 14` at close of `D-0326`). No acceptance harness for this ships in
+  the image (`tools/acceptance/` has no divergence-specific script), and standing up an
+  authenticated owner session solely to exercise the socket was judged disproportionate given the
+  sha256-identity evidence above. Declared, not fabricated.
+
+**Cleanup (§13).** Exactly two containers of this project run and exactly one rollback survives —
+the stale `noesar-evolution-old-phase6-declared-fallback` (`coden-prose-grounding-v2`) was removed
+by name, `Exited`, image left on disk. Pre-deploy inventory:
+`EVIDENCE/docker_inventory_pre_phase7_deploy_20260806T010501Z.txt`. No image was left dangling, no
+network created, no `prune` of any kind used. `atomd` and `debug-evolution*` — separate
+lifecycles, both untouched.
+
+**Backup.** `BACKUPS/runtime_pre_phase7_deploy_20260806T011004Z.tar.gz` (13 MB), taken after the
+clean `postgres.stopped clean:true` shutdown and before the recreate.

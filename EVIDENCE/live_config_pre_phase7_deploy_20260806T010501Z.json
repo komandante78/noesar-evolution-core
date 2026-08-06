@@ -1,0 +1,282 @@
+[
+  {
+    "Name": "/noesar-evolution",
+    "Image": "noesar-evolution:phase6-declared-fallback",
+    "Config": {
+      "Hostname": "e711883fd9b4",
+      "Domainname": "",
+      "User": "10001:10001",
+      "AttachStdin": false,
+      "AttachStdout": false,
+      "AttachStderr": false,
+      "ExposedPorts": {
+        "8088/tcp": {},
+        "8089/tcp": {}
+      },
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "NOESAR_SETUP_TOKEN_FILE=<REDACTED>",
+        "NOESAR_EXECUTE_SANDBOX=disabled",
+        "NOESAR_SHADOWS_ROOT=/shadows",
+        "NODE_ENV=production",
+        "NOESAR_RUNTIME_ROOT=/opt/noesar",
+        "NOESAR_PORT=8088",
+        "NOESAR_DEBUG_EVOLUTION_TOKEN=<REDACTED>",
+        "NOESAR_REASONING_MODE=rust-external",
+        "NOESAR_HOST=0.0.0.0",
+        "NOESAR_DEBUG_EVOLUTION_URL=http://debug-evolution:8787",
+        "NOESAR_AUTHORITY_MODE=reference-node",
+        "NOESAR_BIND_SCOPE=lan",
+        "NOESAR_RUST_REASONING_ENDPOINT=http://atomd:8410",
+        "NOESAR_RUST_REASONING_TOKEN=<REDACTED>",
+        "NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420",
+        "YARN_VERSION=1.22.22",
+        "NOESAR_RELEASE_CHANNEL=complete",
+        "NOESAR_LOCAL_MODEL_RUNTIME=disabled",
+        "NOESAR_EXTERNAL_SURFACES=interpret,hypothesize,plan,decompose,expect,constrain,classify,confidence,evidence,cancel,fixtures,simulate",
+        "NOESAR_SECURE_COOKIES=false",
+        "NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1,192.168.178.100,noesar-evolution",
+        "NOESAR_MIGRATIONS_DIR=/opt/noesar/database/postgres",
+        "NOESAR_BIND_ADDRESS=192.168.178.100",
+        "NODE_VERSION=22.23.1",
+        "NOESAR_POSTGRES_ROOT=/workspace/postgresql",
+        "NOESAR_WORKSPACE=/workspace",
+        "NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin",
+        "NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock",
+        "NOESAR_DATA_PLANE=postgresql",
+        "PATH=/usr/lib/postgresql/18/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Cmd": null,
+      "Healthcheck": {
+        "Test": [
+          "CMD-SHELL",
+          "node -e \"const h=require('node:http'),s=require('node:https');function t(m,o){return new Promise((res,rej)=>{const r=m.get(o,(x)=>{x.resume();res(x.statusCode)});r.on('error',rej);r.setTimeout(4000,()=>r.destroy(new Error('timeout')))})}(async()=>{try{process.exit((await t(h,'http://127.0.0.1:8088/livez'))===200?0:1)}catch(e){try{process.exit((await t(s,{hostname:'127.0.0.1',port:8088,path:'/livez',rejectUnauthorized:false}))===200?0:1)}catch(e2){process.exit(1)}}})()\""
+        ],
+        "Interval": 30000000000,
+        "Timeout": 5000000000,
+        "StartPeriod": 10000000000,
+        "Retries": 3
+      },
+      "Image": "noesar-evolution:phase6-declared-fallback",
+      "Volumes": {
+        "/workspace": {}
+      },
+      "WorkingDir": "/opt/noesar",
+      "Entrypoint": [
+        "/opt/noesar/bin/noesar-supervisord"
+      ],
+      "Labels": {
+        "org.noesar.arch-001": "complete-3-of-3-peers",
+        "org.noesar.arch-005": "six-adapters-audited-individually",
+        "org.noesar.arch-008": "closed-both-language-sides",
+        "org.noesar.authority": "reference-node",
+        "org.noesar.authority-protocol": "reference-hmac-v1.1",
+        "org.noesar.block-c": "c6-final",
+        "org.noesar.block-d": "d3c-voice-control",
+        "org.noesar.block-e": "update-manager-channel-key-route",
+        "org.noesar.cube-004": "typed-views",
+        "org.noesar.cube-c1": "schema-only",
+        "org.noesar.data-plane": "postgresql",
+        "org.noesar.exposure.default": "loopback",
+        "org.noesar.feature": "api-targets-registry-and-probe-credentials-stay-in-the-vault-and-are-injected-per-probe",
+        "org.noesar.lineage": "single-file-reconciliation-of-77-overlays",
+        "org.noesar.modules": "debug-evolution-external-link",
+        "org.noesar.pgvector.version": "0.8.5-1.pgdg12+1",
+        "org.noesar.phase": "4-debug-evolution-api-targets",
+        "org.noesar.phase4.lan-remediations": "F4L-001",
+        "org.noesar.phase4.remediations": "F4-002 F4-004 F4-005 F4-006 F4-007 F4-008",
+        "org.noesar.postgres-baseline": "0.5.0",
+        "org.noesar.postgresql.version": "18.4-1.pgdg12+1",
+        "org.noesar.production-ready": "pending-target-validation",
+        "org.noesar.release.channel": "complete",
+        "org.noesar.sess-001": "built",
+        "org.noesar.sess-002": "built",
+        "org.noesar.sess-003": "built",
+        "org.opencontainers.image.description": "V4 complete self-hosted implementation runtime",
+        "org.opencontainers.image.licenses": "AGPL-3.0-or-later",
+        "org.opencontainers.image.title": "NOESAR Evolution",
+        "org.opencontainers.image.version": "1.0.0-ai-workspace-phase4-complete-lan"
+      }
+    },
+    "HostConfig": {
+      "Binds": [
+        "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME:/workspace",
+        "/mnt/cachec/NOESAR_EVOLUTION_SHADOWS:/shadows"
+      ],
+      "ContainerIDFile": "",
+      "LogConfig": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "1",
+          "max-size": "50m"
+        }
+      },
+      "NetworkMode": "noesar-evolution-net",
+      "PortBindings": {
+        "8088/tcp": [
+          {
+            "HostIp": "192.168.178.100",
+            "HostPort": "8100"
+          }
+        ],
+        "8089/tcp": [
+          {
+            "HostIp": "192.168.178.100",
+            "HostPort": "8089"
+          }
+        ]
+      },
+      "RestartPolicy": {
+        "Name": "unless-stopped",
+        "MaximumRetryCount": 0
+      },
+      "AutoRemove": false,
+      "VolumeDriver": "",
+      "VolumesFrom": null,
+      "ConsoleSize": [
+        0,
+        0
+      ],
+      "CapAdd": null,
+      "CapDrop": [
+        "ALL"
+      ],
+      "CgroupnsMode": "private",
+      "Dns": null,
+      "DnsOptions": [],
+      "DnsSearch": [],
+      "ExtraHosts": null,
+      "GroupAdd": null,
+      "IpcMode": "private",
+      "Cgroup": "",
+      "Links": null,
+      "OomScoreAdj": 0,
+      "PidMode": "",
+      "Privileged": false,
+      "PublishAllPorts": false,
+      "ReadonlyRootfs": true,
+      "SecurityOpt": null,
+      "Tmpfs": {
+        "/run": "rw,nosuid,nodev,noexec,mode=1777",
+        "/tmp": "rw,nosuid,nodev,noexec"
+      },
+      "UTSMode": "",
+      "UsernsMode": "",
+      "ShmSize": 67108864,
+      "Runtime": "runc",
+      "Isolation": "",
+      "CpuShares": 0,
+      "Memory": 0,
+      "NanoCpus": 0,
+      "CgroupParent": "",
+      "BlkioWeight": 0,
+      "BlkioWeightDevice": [],
+      "BlkioDeviceReadBps": [],
+      "BlkioDeviceWriteBps": [],
+      "BlkioDeviceReadIOps": [],
+      "BlkioDeviceWriteIOps": [],
+      "CpuPeriod": 0,
+      "CpuQuota": 0,
+      "CpuRealtimePeriod": 0,
+      "CpuRealtimeRuntime": 0,
+      "CpusetCpus": "",
+      "CpusetMems": "",
+      "Devices": [],
+      "DeviceCgroupRules": null,
+      "DeviceRequests": null,
+      "MemoryReservation": 0,
+      "MemorySwap": 0,
+      "MemorySwappiness": null,
+      "OomKillDisable": null,
+      "PidsLimit": null,
+      "Ulimits": [],
+      "CpuCount": 0,
+      "CpuPercent": 0,
+      "IOMaximumIOps": 0,
+      "IOMaximumBandwidth": 0,
+      "MaskedPaths": [
+        "/proc/acpi",
+        "/proc/asound",
+        "/proc/interrupts",
+        "/proc/kcore",
+        "/proc/keys",
+        "/proc/latency_stats",
+        "/proc/sched_debug",
+        "/proc/scsi",
+        "/proc/timer_list",
+        "/proc/timer_stats",
+        "/sys/devices/virtual/powercap",
+        "/sys/firmware"
+      ],
+      "ReadonlyPaths": [
+        "/proc/bus",
+        "/proc/fs",
+        "/proc/irq",
+        "/proc/sys",
+        "/proc/sysrq-trigger"
+      ]
+    },
+    "NetworkSettings": {
+      "SandboxID": "038e97982d455ce9d1a29ce4949833b69d6e49de0cf2711b7646cefe7aae41db",
+      "SandboxKey": "/var/run/docker/netns/038e97982d45",
+      "Ports": {
+        "8088/tcp": [
+          {
+            "HostIp": "192.168.178.100",
+            "HostPort": "8100"
+          }
+        ],
+        "8089/tcp": [
+          {
+            "HostIp": "192.168.178.100",
+            "HostPort": "8089"
+          }
+        ]
+      },
+      "Networks": {
+        "noesar-evolution-net": {
+          "IPAMConfig": {
+            "IPv4Address": "172.22.0.5"
+          },
+          "Links": null,
+          "Aliases": null,
+          "DriverOpts": null,
+          "GwPriority": 0,
+          "NetworkID": "f55f74343e471638659807132d57cf997a61f20a41f0b16af621b1ea3a47483f",
+          "EndpointID": "c852fcb09f8770efbffb1b9052216083d406680c16775e8311f9e66c496a5ca2",
+          "Gateway": "172.22.0.1",
+          "IPAddress": "172.22.0.5",
+          "MacAddress": "12:be:37:f4:b8:36",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "DNSNames": [
+            "noesar-evolution",
+            "e711883fd9b4"
+          ]
+        }
+      }
+    },
+    "Mounts": [
+      {
+        "Type": "bind",
+        "Source": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
+        "Destination": "/workspace",
+        "Mode": "",
+        "RW": true,
+        "Propagation": "rprivate"
+      },
+      {
+        "Type": "bind",
+        "Source": "/mnt/cachec/NOESAR_EVOLUTION_SHADOWS",
+        "Destination": "/shadows",
+        "Mode": "",
+        "RW": true,
+        "Propagation": "rprivate"
+      }
+    ]
+  }
+]
