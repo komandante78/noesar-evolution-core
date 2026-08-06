@@ -241,13 +241,29 @@ try {
   input.press('/');
   await settle();
   const menu = lastFrame(out);
-  check(menu.includes('/plan') && menu.includes('/approve'),
-    'typing / in the prompt opens the command menu');
+  // POINT 3 — a bare `/` opens on the GROUPS. This check used to look for `/plan` and
+  // `/approve` here and it was right to: it was written after a phase in which `/approve` — the
+  // third thing this shell is for — fell off the menu at a real terminal height, because a flat
+  // list of thirty entries does not fit. The progressive menu is that defect's actual repair,
+  // so the check follows the property rather than the old picture: the groups are on screen,
+  // and `/approve` is one keystroke away instead of off the bottom.
+  check(menu.includes('WORK') && menu.includes('DESTINATIONS') && menu.includes('APPROVALS'),
+    'typing / in the prompt opens the command menu, on its groups');
+  check(!menu.includes('/plan'), 'a bare / lists no entries — the groups are the level');
   check(menu.includes('▸'), 'the menu marks its selection with a glyph, not colour alone');
+  check(menu.includes('⏎ enter'), 'the menu says which key enters a group');
 
-  // 4 — typing filters it, and Tab completes WITHOUT running. Choosing and committing are two
-  //     acts: a keystroke must never become an action nobody selected.
-  for (const character of 'map') input.press(character);
+  // 3b — a key ENTERS a group, and everything the shell is for is inside the first one.
+  input.press('w');
+  await settle();
+  const inWork = lastFrame(out);
+  check(inWork.includes('/plan') && inWork.includes('/approve'),
+    'a group key opens that group, with the commands this shell is for');
+
+  // 4 — typing filters INSIDE the open group (`/w map`), and Tab completes WITHOUT running.
+  //     Choosing and committing are two acts: a keystroke must never become an action nobody
+  //     selected.
+  for (const character of ' map') input.press(character);
   await settle();
   check(lastFrame(out).includes('/map'), 'typing filters the menu to the command typed');
 

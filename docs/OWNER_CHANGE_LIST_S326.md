@@ -1,17 +1,46 @@
 # Lista modifiche richieste dall'Owner — aperta in s326 (2026-08-06)
 
-> **STATO: 4a e 4b CONSEGNATI · 1, 2, 3 ANCORA DA FARE.**
+> **STATO: 2, 3, 4a e 4b CONSEGNATI · resta il PUNTO 1.**
 >
-> Aggiornato a fine s326. L'Owner ha autorizzato l'esecuzione («PROCEDI E INIZIA DA 4»,
-> «PROCEDI CON 4B») dopo che i punti 1-4 erano stati raccolti. Cosa è vero adesso:
+> Aggiornato a fine s328. Cosa è vero adesso:
 >
 > | Punto | Stato |
 > |---|---|
 > | **1** Autenticazione unica TUI ↔ NOESAR | **non iniziato** — resta la domanda A |
-> | **2** WebUI stile terminale, sezioni fuori dalla pagina | **non iniziato** |
-> | **3** `/` progressivo, una porta sola | **approvato come disegno, non costruito** |
+> | **2a** WebUI in forma di terminale | ✅ **consegnato** (`D-0336`) |
+> | **2b** la pila esce dalla pagina | ✅ **consegnato** (`D-0336`) |
+> | **3** `/` progressivo, una porta sola | ✅ **consegnato** (`D-0335`) |
 > | **4a** chat nella sidebar | ✅ **consegnato e provato nel browser** (`D-0329`) |
 > | **4b** unire lavoro e ricerca | ✅ **completo**: fonti (`D-0332`) **e** piano (`D-0333`, s327) |
+>
+> ### ✅ COSTRUITO in s328 — punti 2 e 3, insieme (`D-0335`, `D-0336`)
+>
+> **`/` non è più una lista piatta.** Un `/` nudo elenca i **gruppi**; una lettera sola ne apre
+> uno; una lettera più testo filtra dentro (`/t mcp`). Due velocità, un meccanismo. La lista dei
+> gruppi la costruisce `menuFrame` nel modello **condiviso**: le due shell la dipingono e basta.
+>
+> **Perché è una riparazione, non un restyling.** Il menu piatto era già stato **misurato** come
+> rotto due volte, e due volte era stato *dichiarato* invece che riparato: il terminale stampa
+> `WORK 5 of 15` perché trenta voci non ci stanno, e `menuEntriesFor` teneva i **53 indirizzi
+> fuori dal `/` nudo** perché affogavano il menu (`CE-020` rosso per due fasi). Adesso gli
+> indirizzi costano **un numero sulla riga DESTINATIONS**, e aprendo il gruppo hanno tutto lo
+> spazio.
+>
+> **La pila è uscita dalla pagina.** Misura che *non* era nella lista dell'Owner: la superficie
+> `Strumenti` **non aveva alcun indirizzo** — era un `work-block` dentro `view-coden`, quindi né
+> bottone di nav, né sezione, né pannello di banco: il terminale non poteva raggiungerla. Ora è
+> `tools`, raggiungibile da `/` e **non** da un tredicesimo bottone nella sidebar.
+> `Installable catalogues` è **cancellato**, non spostato: era una seconda resa di
+> Settings › Modules. `/approvals` è **nuovo** — la striscia in fondo si poteva cliccare e non
+> digitare.
+>
+> **Correzione onesta alla lista:** due delle sei voci che l'Owner ha nominato — `LOCAL ONLY
+> VERIFIED` e `Approvals: 0 / Open queue` — **non sono di quella pagina**: sono la striscia di
+> stato **globale** del prodotto, presente su ogni destinazione. Trattarle come parte della pila
+> avrebbe tolto una barra di stato a tutto il prodotto.
+>
+> Verifiche: unit **1865/1866**, ESLint **334 0/0/0**, **18 mutazioni → 18**, `CE-020` 20/20,
+> `CE-021` 13/13, browser e2e (vedi ledger). **Non deployato.**
 >
 > **Il fatto che bloccava la seconda metà di 4b, e che era una decisione dell'Owner:** un lavoro
 > **non è legato a una chat**. `sessionId` in `workspace-actions.mjs` è l'id della run stessa,
@@ -98,11 +127,18 @@ neanche una chat»*. Non un tema scuro sopra una chat: la forma del terminale.
 - il riquadro `LOCAL ONLY VERIFIED` / *«NOESAR runs locally on your device»*
 - `Approvals: 0` / `Open queue`
 
-**Stato:** raccolto. La forma di destinazione è decisa dal punto 3.
+**Stato:** ✅ **CONSEGNATO in s328** (`D-0336`). 2a: forma di terminale su `#view-coden` soltanto —
+un solo carattere monospaziato, angoli vivi, le quattro regioni a filo, e la riga di stato che
+dice **cosa fa il prossimo tasto**. 2b: `Strumenti` e `Strumenti installati` sono usciti come
+destinazione `tools` (prima **non avevano alcun indirizzo**); `Installable catalogues` è
+**cancellato** perché era una seconda resa di Settings › Modules.
+
+**Due delle sei voci non erano di questa pagina:** `LOCAL ONLY VERIFIED` e `Approvals: 0 /
+Open queue` sono la striscia di stato **globale** (`#approvalStrip`), su ogni destinazione.
 
 ---
 
-## 3 · ✅ AUTORIZZATO — una porta sola: `/` progressivo e auto-rivelante
+## 3 · ✅ CONSEGNATO in s328 (`D-0335`) — una porta sola: `/` progressivo e auto-rivelante
 
 **Come ci siamo arrivati.** La prima formulazione dell'Owner era: menu a scomparsa sulla voce
 *CodeN Evolution* della sidebar, le **pagine** lì dentro, e in `/` **solo** i comandi che servono

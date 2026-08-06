@@ -7180,3 +7180,111 @@ addressed panel opens its region with a real width.
 **Result: 403/403, zero failures** — the first fully green run of this suite. A red that stands
 against correct behaviour is worse than no check at all, because it teaches people to re-run
 rather than believe.
+
+---
+
+## D-0335 — point 3: `/` stops being a flat list (2026-08-06)
+
+**Owner's list, point 3, approved as a design in s326 and built here.** `/` gains exactly one
+level: a bare `/` lists the GROUPS, a single letter opens one, and a letter plus text filters
+inside it (`/t mcp`). Two speeds, one mechanism — whoever does not know browses, whoever knows
+types and skips the level.
+
+**The measure that made this a repair rather than a restyle.** The flat menu had already been
+measured as failing, twice, and both times the finding was *declared* instead of fixed:
+
+- `commandMenuRows` splits an eight-row budget across the groups and prints `WORK  5 of 15`,
+  because thirty entries under four headings do not fit at a terminal height;
+- `menuEntriesFor` deliberately keeps the **fifty-three addresses out of a bare `/`**, because
+  folding them in took APPLICATIONS from eleven entries to sixty-four and pushed `/approve` —
+  the third thing the shell is for — off the menu. `CE-020` failed for two phases over it.
+
+Both are one fact: a flat menu does not scale. At level zero the addresses now cost the menu
+**one number on the DESTINATIONS row** instead of fifty-three rows, and opening that group gives
+them the entire budget. The exclusion stays exactly where it still applies — the flat-filter
+branch is unchanged and still calls `menuEntriesFor`.
+
+**Where it lives.** `MENU_GROUPS` gains a `key`; `groupFor` resolves an exact single character;
+`menuFrame` (shared model) decides the level and both shells only paint it. `promptKeys` is one
+list for the key legend, rendered by the browser into the status line under the prompt and by
+the terminal as the menu's last row — each shell's own idiom, one fact.
+
+**The cost, stated rather than hidden.** A key is one character, so `/w` opens WORK instead of
+filtering for `workflows`; two letters filter as before. That no key can shadow a command is
+asserted (`menu-group-keys`), not assumed.
+
+**Rule 4 of the design — declare what you do not show, AND why.** `menuFor` now records the
+requirement each hidden entry needed, and `hiddenNote` is the one sentence both shells print.
+Before, each shell worded it separately off the same two fields, and they had already drifted:
+the terminal printed **nothing at all** in the `accessFiltered:false` case the browser disclosed.
+
+**A defect this change created and repaired in the same phase.** With four groups the renderer's
+"every group gets at least one entry" floor never fired; with seven it does, and it overran the
+budget by two rows — so the selection could be moved by the arrow keys onto a row that was never
+drawn, and the note saying *why the menu is short* was the row that got dropped. Two fixes: the
+group window follows the selection (with `⋯ N groups above` declared), and the reserved note row
+is honoured by the loop instead of being subtracted from a budget nobody enforced.
+
+**Improvement proposed, not executed:** the group hint is the first three entry names, derived.
+A hint that named the most-used entries would teach more, but it needs usage data the product
+does not keep, and inventing a static "important three" would be the hand-written list this
+change exists to remove.
+
+---
+
+## D-0336 — point 2: the stack leaves the CodeN page, and the shell takes the form of a terminal (2026-08-06)
+
+**2b — the pile at the bottom of `#/coden`.** The owner named it item by item. Two of the six he
+named are **not that page**: `LOCAL ONLY VERIFIED` and `Approvals: 0 / Open queue` are the
+product-wide footer (`#approvalStrip`), present on every destination. Recorded because acting on
+the list as written would have moved a global status bar out of every page in the product.
+
+The four that *were* the page:
+
+| Item | What happened |
+|---|---|
+| `Strumenti` (the registration form) | left the page with the Tools surface |
+| `Strumenti installati` | same surface |
+| `Installable catalogues` | **deleted** — one catalogue, at `settings/modules` |
+| `CodeN Evolution view` | a title `app.js` produced; nothing to move |
+
+**The measurement that mattered, and it was not in the owner's list.** The Tools surface **had
+no address at all.** It was a `work-block` nested inside `view-coden`, so it was not a nav
+button, not a settings section and not a bench panel — the three shapes
+`coden-address-book.mjs` reads — and the only way to a registered tool was to scroll the CodeN
+page past its four regions. A destination with no address is a destination the terminal cannot
+have. It is `tools` now, reached through `/` and **not** through a thirteenth sidebar button:
+point 3's "una porta sola" is the reason the stack is leaving the page at all, and replacing a
+scroll with a permanent widget would be the fourth navigation widget `D-0299` removed three of.
+
+**`Installable catalogues` is gone rather than moved.** It was a second window onto Settings ›
+Modules — `renderCodenModuleCatalog` and `renderOwnerModules` were the same function with a
+different container — so the catalogue was rendered twice in one product. Proven reachable at
+`settings/modules` **before** the panel was deleted (skill rule 4), and guarded so a third
+container fails a test.
+
+Three groups carry them: `t TOOLS`, `m MODULES`, `a APPROVALS`. `/approvals` is new — the footer
+strip could always be *clicked* (`Open queue` → `settings/audit`) and never typed, so the one
+thing the product interrupts you about was the one thing the menu could not reach.
+
+**2a — the form of a terminal.** Scoped to `#view-coden` and nothing else, because the owner's
+own distinction is that CodeN Evolution takes the terminal's form while **the NOESAR chat stays
+a chat** (point 4: *"non diventare un terminale come CodeN Evolution"*), and the two share the
+`.agent-*` classes. Three changes, none of them "dark": one monospace typeface, square corners,
+and the regions flush into one surface. Plus the functional half the design asks for — the
+status line says **what the next key does**, and it changes with the context.
+
+**Declared, not delivered:** this shapes the four regions of the session. The bench panels and
+the forms inside them keep the product's own controls — a terminal-shaped input that still
+behaves like a web form is a costume, not a form.
+
+**A defect found by mutation and repaired at the root.** The hint line is rebuilt on every
+keystroke now, so the `/` control inside it is destroyed and recreated; a listener bound to the
+button worked exactly until the first character was typed. Re-binding per repaint left every
+test green when disabled. The listener is **delegated** onto `#codenShell` instead, so the
+failure mode does not exist rather than being watched for.
+
+**Improvement proposed, not executed:** `#statusSourced` renders `—` while five requests are in
+flight, which is the same glyph it uses for "this field has no source in this build" — a reader
+cannot tell loading from unsourceable. Out of scope here; it is the honesty rule this product
+applies everywhere else, applied to its own latency.

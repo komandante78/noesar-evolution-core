@@ -8,14 +8,14 @@ import { initVoiceControl } from './voice-control.js';
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
   AGENT_COMMANDS, matchCommands, parseCommandPrompt, resolveCommand,
-  menuFor, groupMenu, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
+  menuFor, groupMenu, hiddenNote, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
 } from './agent-commands.js';
 // What a session LOOKS like, and what a typed line MEANS — phase 2 put it where both shells
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
 import {
   createView, say, planTurn, detailLines, reasoningSummary, frequencySummary,
-  divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuEntriesFor,
+  divergenceLines, divergenceSummary, CLEARED_NOTE, addressEntries, matchAddresses, menuFrame, promptKeys,
 } from './coden-view-model.js';
 const $=(selector)=>document.querySelector(selector);const $$=(selector)=>[...document.querySelectorAll(selector)];
 // Phase 6 (`D-0312`): the reasoning chip of the `.coden-bar` status row. One writer, so a
@@ -222,7 +222,7 @@ function authError(message=''){$('#authError').textContent=message;}
 // to; everything else is a section you arrive at. The fifteen entries that used to sit in
 // the sidebar did not disappear — they changed rank and live inside the single Settings
 // destination, or inside the working surface that actually uses them.
-const ROUTES=new Set(['home','chat','coden','coden-tui','projects','documents','knowledge','memory','agents','workflows','models','research','settings']);
+const ROUTES=new Set(['home','chat','coden','coden-tui','tools','projects','documents','knowledge','memory','agents','workflows','models','research','settings']);
 // The Settings destination's own menu: menu inside the menu, in three groups. The order
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
@@ -1208,21 +1208,67 @@ function renderCodenTranscript(){
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
+// What the menu SHOWS for what is typed — one call, the same one the terminal makes, on the
+// same two lists. Nothing about levels, scoping or filtering is decided in this file.
+function codenFrame(parsed){return menuFrame(parsed,{commands:codenMenu().entries,addresses:addressBook()});}
+// POINT 2a, THE FUNCTIONAL HALF — the status line says what the NEXT key does, and it changes
+// with the context. `promptKeys` is shared with the terminal, so the legend cannot promise a key
+// in one shell that means something else in the other. Terminal idiom: the same list, rendered
+// as the menu's last row, because that shell's footer is already spent on git/model/reasoning.
+function openCodenMenu(){
+  const box=$('#codenPrompt');
+  if(!box)return;
+  if(!box.value.startsWith('/'))box.value=`/${box.value}`;
+  box.focus();
+  box.setSelectionRange(box.value.length,box.value.length);
+  codenMenuIndex=0;renderCodenMenu();
+}
+function renderCodenPromptKeys(frame){
+  const hint=$('#codenPromptHint');if(!hint)return;
+  const keys=promptKeys(frame);
+  // The `/` stays a real control when the menu is closed — a keyboard shortcut is the fast path
+  // and never the only path, which is why `D-0299` could remove the widgets in the first place.
+  hint.innerHTML=frame
+    ?keys.map((key)=>escapeHtml(key)).join(' · ')
+    :`Enter sends · <button type="button" class="hint-key" id="codenPromptOpenMenu" aria-controls="codenMenu" title="Open the menu — the same thing typing / does">/</button> opens the menu · Tab completes without sending`;
+  // No listener is attached here on purpose. The control is destroyed and rebuilt on every
+  // keystroke now, and re-binding per repaint is a rule that has to keep being remembered —
+  // mutation proved it: disabling the re-bind left every test green and the mouse path working
+  // exactly until the first character was typed. The listener is DELEGATED once, on the region
+  // that survives the repaint, so the failure mode does not exist rather than being watched for.
+}
 function renderCodenMenu(){
   const box=$('#codenMenu');if(!box)return;
   const parsed=parseCommandPrompt($('#codenPrompt')?.value??'');
-  if(!parsed){box.classList.add('hidden');box.innerHTML='';return;}
+  if(!parsed){box.classList.add('hidden');box.innerHTML='';renderCodenPromptKeys(null);return;}
   const menu=codenMenu();
-  const hits=matchCommands(parsed.word,menuEntriesFor(parsed.word,codenMenu().entries,addressBook()));
-  if(codenMenuIndex>=hits.length)codenMenuIndex=0;
+  const frame=codenFrame(parsed);
+  renderCodenPromptKeys(frame);
   box.classList.remove('hidden');
-  if(!hits.length){box.innerHTML='<p class="agent-menu-note">No entry matches that.</p>';return;}
+  // The note's words come from the shared registry. This used to be a second wording of the
+  // terminal's, off the same two fields, and the two had already drifted: the terminal printed
+  // nothing at all in the `accessFiltered:false` case that this shell disclosed.
+  const note=`<p class="agent-menu-note">${escapeHtml(hiddenNote(menu))}</p>`;
+  // LEVEL ZERO — the product as groups you can enter. Point 3 of the owner's list, and the
+  // "una porta sola" property: this is `/` rendered, not a second navigation widget beside it,
+  // which is what `D-0299` spent a phase removing three of.
+  if(frame.level==='groups'){
+    const rows=frame.groups;
+    if(codenMenuIndex>=rows.length)codenMenuIndex=0;
+    box.innerHTML=rows.map((row,index)=>
+      `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="agent-menu-group-row${index===codenMenuIndex?' active':''}" data-coden-group="${escapeHtml(row.key)}"><b>${escapeHtml(row.key)}</b><span>${escapeHtml(row.title)}</span><small>${row.count} ${row.count===1?'entry':'entries'}${row.hint?` · ${escapeHtml(row.hint)}`:''}</small></button>`).join('')
+      +note;
+    box.querySelectorAll('[data-coden-group]').forEach((button)=>
+      button.addEventListener('click',()=>enterCodenGroup(button.dataset.codenGroup)));
+    return;
+  }
+  const hits=frame.hits;
+  if(codenMenuIndex>=hits.length)codenMenuIndex=0;
+  if(!hits.length){box.innerHTML=`<p class="agent-menu-note">No entry matches that.</p>${note}`;return;}
   // Grouped by the SAME `groupMenu` the terminal renders with, so the two menus cannot end up
   // in different orders or under different headings — `CE-036` says same entries, same names,
-  // same order.
-  const note=menu.accessFiltered
-    ?`<p class="agent-menu-note">${menu.hidden?`${menu.hidden} hidden — this account may not use them`:'Filtered for this account'}</p>`
-    :'<p class="agent-menu-note">Not filtered — this shell does not know what this account may use</p>';
+  // same order. Inside an open group there is exactly one heading, which is the breadcrumb: it
+  // says where you are without a second widget to say it.
   box.innerHTML=groupMenu(hits).map((group)=>
     `<p class="agent-menu-group">${escapeHtml(group.title)}</p>${group.entries.map((entry)=>{
       const index=hits.indexOf(entry);
@@ -1230,6 +1276,12 @@ function renderCodenMenu(){
     }).join('')}`).join('')+note;
   box.querySelectorAll('[data-coden-command]').forEach((button)=>
     button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
+}
+// Entering a group is a COMPLETION, never a command: the prompt becomes `/t ` and nothing runs.
+// Same act as Tab on an entry, same reason — choosing and committing stay two gestures.
+function enterCodenGroup(key){
+  const box=$('#codenPrompt');if(!box)return;
+  box.value=`/${key} `;box.focus();codenMenuIndex=0;renderCodenMenu();
 }
 function completeCodenCommand(name){
   const entry=codenOffered().find((candidate)=>candidate.name===name);
@@ -1304,14 +1356,23 @@ function wireCodenShell(){
   box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();});
   box.addEventListener('keydown',(event)=>{
     const parsed=parseCommandPrompt(box.value);
-    const hits=parsed?matchCommands(parsed.word,menuEntriesFor(parsed.word,codenMenu().entries,addressBook())):[];
-    if(hits.length){
+    const frame=parsed?codenFrame(parsed):null;
+    // Whichever list is ON SCREEN, read off the level — not "whichever array is non-empty",
+    // which works until a level has both and then moves a highlight nobody can see.
+    const groups=frame?.level==='groups';
+    const walking=frame?(groups?frame.groups:frame.hits):[];
+    if(walking.length){
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
-        codenMenuIndex=(codenMenuIndex+(event.key==='ArrowDown'?1:-1)+hits.length)%hits.length;
+        codenMenuIndex=(codenMenuIndex+(event.key==='ArrowDown'?1:-1)+walking.length)%walking.length;
         return renderCodenMenu();
       }
-      if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(hits[codenMenuIndex].name);}
+      // `⏎ entra` — the approved mockup's own key, and only at level zero. Below it Enter goes
+      // on submitting, because that is what it has always done at a prompt with a word in it.
+      if(groups&&(event.key==='Enter'||event.key==='Tab')&&!event.shiftKey){
+        event.preventDefault();return enterCodenGroup(walking[codenMenuIndex].key);
+      }
+      if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(walking[codenMenuIndex].name);}
       if(event.key==='Escape'){event.preventDefault();$('#codenMenu')?.classList.add('hidden');return undefined;}
     }
     if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void submitCodenPrompt();}
@@ -2223,7 +2284,6 @@ function renderModuleCatalog(containerId,modules){
   list.querySelectorAll('[data-debug-evolution-triage]').forEach((button)=>button.addEventListener('click',()=>runDebugEvolutionTriage(button)));
 }
 function renderOwnerModules(modules){renderModuleCatalog('#ownerModulesList',modules);}
-function renderCodenModuleCatalog(modules){renderModuleCatalog('#codenModulesList',modules);}
 // D-0284: Phase 2, first slice (discovery+skeptic) — manual trigger, same posture as the
 // module lifecycle actions above: cost/latency per finding not yet measured on this
 // deployment, so this stays a deliberate click rather than something that fires on its own.
@@ -2351,7 +2411,6 @@ async function loadOwnerModules(){
     reportError(error,'load module catalogue');
   }
   renderOwnerModules(modules);
-  renderCodenModuleCatalog(modules);
   renderModulesNav(modules);
 }
 // D-0283: uninstall is the one module action that takes capability AWAY from a running
@@ -3894,13 +3953,13 @@ function initBench(){
   // So the mouse path moves to where the one `/` now lives, WITHOUT adding a widget: the hint
   // under the prompt already reads "`/` opens the menu", and that `/` is made operable. It was
   // on screen either way; what changed is that clicking it does what it already said.
-  $('#codenPromptOpenMenu')?.addEventListener('click',()=>{
-    const box=$('#codenPrompt');
-    if(!box)return;
-    if(!box.value.startsWith('/'))box.value=`/${box.value}`;
-    box.focus();
-    box.setSelectionRange(box.value.length,box.value.length);
-    codenMenuIndex=0;renderCodenMenu();
+  //
+  // DELEGATED onto the shell, which outlives every repaint of the hint line, rather than bound
+  // to the button — point 2a rebuilds that button on every keystroke (the legend changes with
+  // the context), so a direct listener is thrown away by the first character typed. Found by
+  // mutation: disabling the per-repaint re-bind broke nothing that any test could see.
+  $('#codenShell')?.addEventListener('click',(event)=>{
+    if(event.target.closest('#codenPromptOpenMenu'))openCodenMenu();
   });
   // One delegated listener for the nine list panels, because their rows are re-rendered
   // whenever the workspace refreshes and per-row listeners would be re-attached, or lost,

@@ -709,24 +709,76 @@ try {
   check('the transcript opens with its note rather than empty',
     regions.opening.includes('CodeN Evolution'), regions.opening.slice(0, 80));
 
-  // `/` opens the ONE menu, in four groups.
+  // POINT 3 — `/` opens the ONE menu, and it opens on the GROUPS rather than on thirty entries.
   await page.click('#codenPrompt');
   await page.keyboard.type('/');
   await page.waitForSelector('#codenMenu:not(.hidden)', { timeout: 15000 });
-  const menu = await page.evaluate(() => ({
-    groups: [...document.querySelectorAll('#codenMenu .agent-menu-group')].map((node) => node.textContent.trim()),
-    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
-    note: document.querySelector('#codenMenu .agent-menu-note')?.textContent?.trim() ?? '',
+  const top = await page.evaluate(() => ({
+    rows: [...document.querySelectorAll('#codenMenu [data-coden-group]')].map((node) => ({
+      key: node.dataset.codenGroup,
+      title: node.querySelector('span')?.textContent?.trim() ?? '',
+      tail: node.querySelector('small')?.textContent?.trim() ?? '',
+    })),
+    entries: document.querySelectorAll('#codenMenu [data-coden-command]').length,
+    notes: [...document.querySelectorAll('#codenMenu .agent-menu-note')].map((node) => node.textContent.trim()),
+    // The key legend lives on the status line under the prompt, not inside the menu — point 2a
+    // makes that line say what the NEXT key does, and it changes with the context. The terminal
+    // renders the same list as the menu's last row, because its footer is already spent.
+    keys: document.querySelector('#codenPromptHint')?.textContent?.trim() ?? '',
     selected: document.querySelectorAll('#codenMenu button.active').length,
   }));
-  check('CE-036 · the menu opens with the four groups, in order',
-    JSON.stringify(menu.groups) === JSON.stringify(['WORK', 'APPLICATIONS', 'CONFIGURE', 'SESSION']),
-    JSON.stringify(menu.groups));
-  check('CE-036 · the menu carries work, destinations, configuration and the session',
-    ['plan', 'chat', 'settings', 'logout'].every((name) => menu.entries.includes(name)),
-    menu.entries.join(' '));
-  check('CE-036 · the menu declares whether it was filtered', menu.note.length > 0, menu.note);
+  check('point 3 · a bare / opens on the groups, in order',
+    JSON.stringify(top.rows.map((row) => row.title))
+      === JSON.stringify(['WORK', 'DESTINATIONS', 'TOOLS', 'MODULES', 'APPROVALS', 'CONFIGURE', 'SESSION']),
+    JSON.stringify(top.rows.map((row) => row.title)));
+  check('point 3 · a bare / lists no entries at all — that is the whole point',
+    top.entries === 0, String(top.entries));
+  check('point 3 · every group row carries its key, its count and a hint',
+    top.rows.length > 0 && top.rows.every((row) => row.key.length === 1 && /\d+ entr/.test(row.tail) && row.tail.includes('·')),
+    JSON.stringify(top.rows));
+  check('point 2a · the status line says what the NEXT key does, and it changed with the context',
+    top.keys.includes('⏎ enter') && top.keys.includes('type to filter') && !top.keys.includes('Enter sends'),
+    top.keys);
+  check('CE-036 · the menu declares whether it was filtered',
+    top.notes.some((note) => note.length > 0), JSON.stringify(top.notes));
+  check('exactly one group row is highlighted', top.selected === 1, String(top.selected));
+
+  // …and a key ENTERS that group: `/t` is TOOLS, and only TOOLS.
+  await page.keyboard.type('t');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const openedGroup = await page.evaluate(() => ({
+    groups: [...document.querySelectorAll('#codenMenu .agent-menu-group')].map((node) => node.textContent.trim()),
+    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
+  }));
+  check('point 3 · a key opens exactly one group',
+    JSON.stringify(openedGroup.groups) === JSON.stringify(['TOOLS']), JSON.stringify(openedGroup.groups));
+  check('point 2b · the tools surface is in it, and it is a real destination now',
+    openedGroup.entries.includes('tools'), openedGroup.entries.join(' '));
+
+  // Two letters still filter across the whole product, unchanged — the second speed.
+  await page.evaluate(() => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = '/pl';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const menu = await page.evaluate(() => ({
+    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
+    selected: document.querySelectorAll('#codenMenu button.active').length,
+  }));
+  check('point 3 · two letters still filter across the whole product',
+    menu.entries.includes('plan'), menu.entries.join(' '));
   check('exactly one menu entry is highlighted', menu.selected === 1, String(menu.selected));
+  // Left as `/` for the Tab check below, which types `pl` on top of it. The caret is moved to
+  // the END explicitly rather than by clicking: a click lands the caret where the pointer is,
+  // and `pl` typed into the middle of the box is `p/l`.
+  await page.evaluate(() => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = '/';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  });
 
   // Tab completes WITHOUT running — the rule both shells follow, and the one that stops a
   // keystroke becoming an action nobody chose.
@@ -881,18 +933,22 @@ try {
       prompt: document.querySelector('#codenPrompt').value,
       focused: document.activeElement?.id === 'codenPrompt',
       count: options.length,
+      groups: document.querySelectorAll('#codenMenu [data-coden-group]').length,
       addresses: options.filter((node) => (node.dataset.codenCommand ?? '').startsWith('coden/')).length,
       where: document.querySelector('#benchWhereName')?.textContent ?? '',
     };
   });
-  // Thirty commands plus the whole address space. A floor, so adding an entry does not fail a
-  // check that is not about counting — but losing the address space in a later move does.
-  // A BARE `/` is the product menu — four groups, the things you do and the places you go.
-  // Folding all fifty-three addresses in unconditionally made this list useless: the renderer
-  // divides its rows across the groups, so WORK shrank until `/approve` fell off it. Measured,
-  // and the rule is in the shared model so both shells list the same thing.
+  // The MOUSE path to the one menu, and it lands on the level the keyboard lands on.
+  //
+  // This used to require `count >= 25` — thirty commands with the address space held back —
+  // because a flat list of everything was useless and the model excluded the fifty-three
+  // addresses from a bare `/` to keep `/approve` on screen. Point 3 replaces that compromise
+  // rather than tuning it: the bare `/` IS the groups, so zero entries here is the design, and
+  // the address space is one number on the DESTINATIONS row instead of being dropped. What the
+  // old assertion protected — that this gesture reaches the whole product — is measured by the
+  // group rows here and by opening one below.
   check('phase 3c — clicking the hint opens the ONE menu, and a bare / is the product menu',
-    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count >= 25 && viaPrompt.addresses === 0,
+    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count === 0 && viaPrompt.groups >= 5,
     JSON.stringify(viaPrompt));
 
   // Type, and the address space joins in — the case where you are looking for a panel by name.
@@ -1909,6 +1965,15 @@ try {
     bareBench.viewActive && !bareBench.panelOpen && bareBench.benchWidth === 0, JSON.stringify(bareBench));
 
   await jump('coden/bench/shadow', 'shadow');
+  // WAITED FOR, not sampled. `renderBenchStatus()` is fired unawaited by the view loader and
+  // makes five requests before it can write this line, so reading it the instant a panel opens
+  // measures the network rather than the product — and it did: the field read its own initial
+  // "—" and the check called it an unsourced status line. Waiting converts the question into a
+  // real one: if the text never arrives, the line genuinely is not being written.
+  await page.waitForFunction(
+    () => /of 12 fields have a source/.test(document.querySelector('#statusSourced')?.textContent ?? ''),
+    { timeout: 15000 },
+  ).catch(() => {});
   const bench = await page.evaluate(() => {
     const box = (selector) => document.querySelector(selector)?.getBoundingClientRect() ?? { width: 0, height: 0 };
     return {

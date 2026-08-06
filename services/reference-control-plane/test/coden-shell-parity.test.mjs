@@ -23,9 +23,9 @@ import { dirname, join } from 'node:path';
 
 import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
-  accessRuleFor, accountFromUser, SECTION_ACCESS,
+  accessRuleFor, accountFromUser, SECTION_ACCESS, groupFor, hiddenNote,
 } from '../../../apps/webui-static/agent-commands.js';
-import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuGroupRows, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../tools/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
@@ -44,8 +44,14 @@ const TERMINAL_CLIENT = read('tools/tui-client.mjs');
 
 // --- CE-036 · the menu is one list, in four groups, filtered and declared -------------------
 
-test('CE-036 — the menu has exactly the four groups the design fixes, in order', () => {
-  assert.deepEqual(MENU_GROUPS.map((group) => group.id), ['work', 'applications', 'configure', 'session']);
+test('CE-036 — the menu has exactly the groups the design fixes, in order', () => {
+  // Four until point 2b. The stack the owner named at the bottom of the CodeN page (Strumenti ·
+  // Strumenti installati · Installable catalogues · Approvals) left the page and became keys of
+  // its own, which is what "le sezioni escono dalla pagina principale" has to mean once there
+  // is only one door. Asserted exactly rather than as a floor, for the reason the original note
+  // gives: a floor cannot notice a group quietly reappearing.
+  assert.deepEqual(MENU_GROUPS.map((group) => group.id),
+    ['work', 'applications', 'tools', 'modules', 'approvals', 'configure', 'session']);
   // Every entry belongs to one of them. An entry with a group nobody renders would be present
   // in the list and absent from both menus, which is the failure mode a flat list hides.
   const known = new Set(MENU_GROUPS.map((group) => group.id));
@@ -547,13 +553,242 @@ test('CE-033 — the browser renders the four regions the terminal does', () => 
 
 test('CE-033 — neither shell has a region the other has not', () => {
   // The terminal's four, from the pure renderer's own output rather than from its source.
+  //
+  // The note is built with `hiddenNote`, not typed here. This assertion used to hand-assemble
+  // `{ accessFiltered: true, hidden: 3 }` and expect the renderer to word the sentence itself,
+  // which is what kept a SECOND wording alive in `tui-screen.mjs` beside the browser's — and
+  // the two had already drifted, the terminal printing nothing where the browser disclosed
+  // "not filtered". A test that supplies a hand-built shape is a test that keeps passing after
+  // the shells stop agreeing (`M-11`).
+  const filtered = { accessFiltered: true, hidden: 3, hiddenBy: { 'workspace.write': 3 } };
   const menuRows = commandMenuRows(
-    { hits: [...AGENT_COMMANDS].slice(0, 4), selected: 0, rowLimit: 12, groups: groupMenu, accessFiltered: true, hidden: 3 },
+    {
+      hits: [...AGENT_COMMANDS].slice(0, 4), selected: 0, rowLimit: 12, groups: groupMenu,
+      note: hiddenNote(filtered),
+    },
     80,
   );
   assert.ok(menuRows.length > 0, 'the terminal renders no menu');
   assert.ok(menuRows.some((row) => row.includes('WORK')), 'the terminal menu has no group headings');
   assert.ok(menuRows.some((row) => row.includes('hidden')), 'the terminal menu does not declare it was filtered');
+  // …and it NAMES the requirement, which is rule 4 of the approved design: "dichiara ciò che
+  // non mostra, E PERCHÉ". A bare count leaves a reader to guess whether the short menu is
+  // policy or breakage.
+  assert.ok(menuRows.some((row) => row.includes('workspace.write')), 'the terminal hides entries without saying what they need');
+});
+
+test('point 3 — the group keys can never shadow a command, and are unique', () => {
+  // The whole progressive mechanism rests on one character meaning one thing. Two groups
+  // sharing a key, or a command named as short as a key, would make `/t` ambiguous — and
+  // `MENU_GROUPS` is exactly the kind of hand-kept table that drifts, so it is asserted rather
+  // than trusted.
+  const keys = MENU_GROUPS.map((group) => group.key);
+  assert.equal(new Set(keys).size, keys.length, 'two groups share a key');
+  for (const key of keys) assert.equal(String(key).length, 1, `group key ${key} is not one character`);
+  for (const command of AGENT_COMMANDS) {
+    assert.ok(command.name.length > 1, `command /${command.name} is as short as a group key`);
+  }
+  for (const group of MENU_GROUPS) assert.equal(groupFor(group.key)?.id, group.id);
+  // A prefix is NOT a key: `/mo` must go on filtering for models/modules/memory.
+  assert.equal(groupFor('mo'), null);
+  assert.equal(groupFor(''), null);
+  assert.equal(groupFor('z'), null);
+});
+
+test('point 3 — `/` lists groups, a key opens one, and the addresses come back', () => {
+  const commands = [...AGENT_COMMANDS];
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  assert.ok(addresses.length > 20, 'the address book is too small for this to measure anything');
+
+  // Level zero: one row per group, never one row per entry. The count is the number that made
+  // a flat menu impossible — `menuEntriesFor` keeps the addresses out of a bare `/` precisely
+  // because they did not fit.
+  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
+  assert.equal(top.level, 'groups');
+  assert.equal(top.groups.length, groupMenu([...commands, ...addressEntries(addresses)]).length);
+  assert.ok(top.groups.length < 10, 'level zero is not a short list');
+
+  // …and the addresses are COUNTED there rather than dropped: the row says how many places the
+  // group holds, not how many a renderer felt like painting.
+  const destinations = top.groups.find((row) => row.id === 'applications');
+  assert.ok(destinations.count > addresses.length, 'the destinations row does not include the address space');
+  assert.ok(destinations.hint.length > 0, 'a group row carries no hint');
+  // The hint is DERIVED from the entries, never written beside them.
+  assert.equal(destinations.hint, [...commands, ...addressEntries(addresses)]
+    .filter((entry) => entry.group === 'applications').slice(0, 3).map((entry) => entry.name)
+    .join(' · '));
+
+  // A key opens exactly one group, and everything in it — including the addresses a bare `/`
+  // could not afford to list.
+  const opened = menuFrame({ word: 'd', argument: '' }, { commands, addresses });
+  assert.equal(opened.level, 'entries');
+  assert.equal(opened.group.id, 'applications');
+  assert.equal(opened.hits.length, destinations.count);
+  assert.ok(opened.hits.every((entry) => entry.group === 'applications'));
+
+  // A key plus text filters INSIDE the group — `/d diff` — and never leaves it.
+  const filtered = menuFrame({ word: 'd', argument: 'diff' }, { commands, addresses });
+  assert.ok(filtered.hits.length > 0, 'nothing matched inside the group');
+  assert.ok(filtered.hits.length < opened.hits.length, 'the argument did not filter');
+  assert.ok(filtered.hits.every((entry) => entry.group === 'applications'));
+
+  // Anything longer than a key is the flat filter, unchanged.
+  const flat = menuFrame({ word: 'appro', argument: '' }, { commands, addresses });
+  assert.equal(flat.level, 'entries');
+  assert.equal(flat.group, null);
+  assert.deepEqual(flat.hits, matchCommands('appro', menuEntriesFor('appro', commands, addresses)));
+});
+
+test('point 3 — menuFor records WHY it hid an entry, and the note reads it', () => {
+  // Written against a REAL `menuFor` result rather than a hand-built `{hidden, hiddenBy}`.
+  // Found by mutation: emptying `hiddenBy` at the source left every assertion green, because
+  // the only test that looked at the reasons supplied them itself. That is `M-11` again — a
+  // hand-assembled shape is a hand-assembled shape twice — one level deeper than the last time.
+  const reader = menuFor({ permissions: ['workspace.read'], role: 'reader' });
+  assert.ok(reader.hidden > 0, 'the reader lost nothing — this would prove nothing');
+  assert.ok(Object.keys(reader.hiddenBy).length > 0, 'menuFor hides entries without recording why');
+  // The counts add up to the total: a reason recorded for some but not all is a note that
+  // understates what it is not showing.
+  assert.equal(Object.values(reader.hiddenBy).reduce((sum, count) => sum + count, 0), reader.hidden);
+  assert.ok(reader.hiddenBy['workspace.write'] > 0, 'the write commands are hidden for another reason than needing write');
+  const note = hiddenNote(reader);
+  assert.ok(note.includes('workspace.write'), `the note does not name the requirement: ${note}`);
+  assert.ok(note.startsWith(String(reader.hidden)), `the note does not lead with the count: ${note}`);
+  // And an unfiltered menu records nothing to explain, because nothing was checked.
+  assert.deepEqual(menuFor(null).hiddenBy, {});
+  assert.match(hiddenNote(menuFor(null)), /^Not filtered/);
+});
+
+test('point 3 — a reserved note row is a row that gets printed', () => {
+  // The renderer reserves one row for the filter note. That reservation used to be gated on
+  // `accessFiltered` while the note itself comes from `menu.note`, so a caller that filtered and
+  // supplied no note lost a row of menu to a sentence nobody printed. Measured both ways.
+  const hits = [...AGENT_COMMANDS];
+  const withNote = commandMenuRows({ hits, selected: 0, rowLimit: 12, groups: groupMenu, note: 'two hidden' }, 100);
+  assert.ok(withNote.some((row) => row.includes('two hidden')), 'a supplied note is not printed');
+  const without = commandMenuRows({ hits, selected: 0, rowLimit: 12, groups: groupMenu, accessFiltered: true, note: null }, 100);
+  assert.ok(!without.some((row) => row.includes('hidden')), 'a note appears with none supplied');
+
+  // THE CASE THE PRODUCT ACTUALLY PRODUCES, and the one the first version of this test missed:
+  // the shell always supplies a note, and `accessFiltered` can be FALSE — a shell that was never
+  // told who is asking still discloses "nobody checked". Reserving against `accessFiltered`
+  // instead of against the note drops that disclaimer at EVERY terminal height, which is the
+  // single sentence this menu can least afford to lose. Found by an equivalence scan after the
+  // mutation survived: the first draft asserted one lucky row limit, so it saw nothing.
+  const unchecked = hiddenNote({ accessFiltered: false });
+  for (const rowLimit of [6, 8, 10, 12, 16, 20]) {
+    const rows = commandMenuRows({ hits, selected: 0, rowLimit, groups: groupMenu, accessFiltered: false, note: unchecked }, 100);
+    assert.ok(rows.some((row) => row.includes('Not filtered')),
+      `at ${rowLimit} rows an unfiltered menu does not say nobody checked`);
+    assert.ok(rows.length <= rowLimit + 1, `${rows.length} rows against a budget of ${rowLimit}`);
+  }
+  // The row the note did NOT need goes back to the menu rather than staying empty.
+  const entryRows = (rows) => rows.filter((row) => /\s\/[a-z]/.test(row.replace(/\[[0-9;]*m/g, ''))).length;
+  assert.ok(entryRows(without) > entryRows(withNote),
+    `a menu with no note painted ${entryRows(without)} entries, one with a note painted ${entryRows(withNote)}`);
+});
+
+test('point 2b — every address the menu offers is one the router knows', () => {
+  // A menu entry whose address the router has never heard of is a door onto the not-found page,
+  // and nothing measured that: `tools` was added to the menu and to `ROUTES` in the same change,
+  // so removing it from `ROUTES` alone broke no test at all (found by mutation). The router's own
+  // table is read out of the browser's source, so this cannot be satisfied by a second list.
+  const routes = BROWSER.match(/const ROUTES=new Set\(\[([^\]]+)\]\)/)?.[1];
+  assert.ok(routes, 'the router table is gone or renamed');
+  const known = new Set([...routes.matchAll(/'([^']+)'/g)].map((match) => match[1]));
+  const sections = new Set([...MARKUP.matchAll(/data-section="([^"]+)"/g)].map((match) => match[1]));
+  for (const entry of AGENT_COMMANDS.filter((candidate) => candidate.kind === 'address')) {
+    const [view, section] = entry.address.split('/');
+    assert.ok(known.has(view), `\`/${entry.name}\` goes to \`${entry.address}\`, and the router has no \`${view}\``);
+    if (section) {
+      assert.ok(sections.has(section), `\`/${entry.name}\` names section \`${section}\`, which the markup does not have`);
+    }
+    // …and the destination really exists in the markup, so the address does not open a blank.
+    assert.match(MARKUP, new RegExp(`id="view-${view}"`), `\`${entry.address}\` has no #view-${view}`);
+  }
+});
+
+test('point 2b — the module catalogue is rendered in exactly ONE place', () => {
+  // The owner spotted this from the outside: the catalogue appeared twice, once in Settings and
+  // once at the bottom of the CodeN page. It was never two implementations — one function, two
+  // containers — which is precisely why nothing failed. Counted at the call site, because that
+  // is where a third container would be added.
+  const containers = [...BROWSER.matchAll(/renderModuleCatalog\('#([a-zA-Z]+)'/g)].map((match) => match[1]);
+  assert.deepEqual(containers, ['ownerModulesList'],
+    `the module catalogue is rendered into ${containers.length} containers: ${containers.join(', ')}`);
+  assert.ok(!MARKUP.includes('codenModulesList'), 'the CodeN page has a module list container again');
+});
+
+test('point 3 — the browser really branches on the level, and does not just import the frame', () => {
+  // A source guard that only looks for `menuFrame(` is satisfied by a page that calls it and
+  // then ignores the answer — mutation proved it: replacing the level-zero branch with `if(false)`
+  // left this file green and only the browser suite noticed. The branch itself is asserted now,
+  // and the browser suite still drives the real thing.
+  assert.match(BROWSER, /frame\.level==='groups'/, 'the browser does not branch on the menu level');
+  assert.match(BROWSER, /data-coden-group="/, 'the browser paints no group rows');
+  assert.match(BROWSER, /promptKeys\(/, 'the browser writes its own key legend');
+});
+
+test('point 3 — both shells paint level zero, off the same frame', () => {
+  const commands = [...AGENT_COMMANDS];
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
+
+  // The terminal. Group rows carry the key, the title and the count — the three things you
+  // cannot work out from anything else on the screen.
+  const rows = commandMenuRows({ level: 'groups', groupRows: top.groups, selected: 0, rowLimit: 12, note: null, keys: promptKeys(top) }, 90);
+  for (const group of top.groups) {
+    assert.ok(rows.some((row) => row.includes(group.title)), `the terminal drops the ${group.title} row`);
+  }
+  assert.ok(rows.some((row) => row.includes('⏎ enter')), 'the terminal does not say which key enters a group');
+
+  // The browser paints the same rows from the same frame — asserted on its source, since this
+  // markup is written by `app.js` rather than shipped in `index.html`.
+  const app = readFileSync(join(ROOT, 'apps/webui-static/app.js'), 'utf8');
+  assert.match(app, /menuFrame\(/, 'the browser does not use the shared frame');
+  assert.match(app, /data-coden-group=/, 'the browser has no group row to click');
+  assert.match(app, /hiddenNote\(/, 'the browser words the filter note itself');
+});
+
+test('point 3 — the terminal menu still cannot outgrow its height at level zero', () => {
+  const commands = [...AGENT_COMMANDS];
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
+  for (const limit of [1, 2, 3, 7, 12]) {
+    const rows = commandMenuRows(
+      {
+        level: 'groups', groupRows: top.groups, selected: 0, rowLimit: limit,
+        note: hiddenNote({ accessFiltered: true, hidden: 2, hiddenBy: { 'workspace.write': 2 } }),
+      },
+      80,
+    );
+    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows at level zero`);
+  }
+
+  // …and the note survives the squeeze here too. At a height that cannot hold every group row,
+  // the row reserved for the disclosure has to be the one that is kept — the group rows are
+  // recoverable by scrolling, "nobody checked what this account may use" is not recoverable at
+  // all. Measured at limits BELOW the group count, which is where the two forms diverge; the
+  // first draft only tested comfortable heights and the mutation walked through it.
+  const note = hiddenNote({ accessFiltered: false });
+  for (const limit of [3, 4, 5, 6, 7]) {
+    const rows = commandMenuRows(
+      { level: 'groups', groupRows: top.groups, selected: 0, rowLimit: limit, note, keys: promptKeys(top) },
+      80,
+    );
+    assert.ok(rows.some((row) => row.includes('Not filtered')),
+      `at ${limit} rows level zero drops the disclosure: ${JSON.stringify(rows)}`);
+    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows at level zero`);
+  }
+});
+
+test('point 3 — menuGroupRows drops a group with nothing in it', () => {
+  // A heading over nothing is a door with no room behind it — the rule `groupMenu` already
+  // applies one level down.
+  const rows = menuGroupRows([{ name: 'plan', group: 'work' }]);
+  assert.deepEqual(rows.map((row) => row.id), ['work']);
+  assert.equal(rows[0].count, 1);
+  assert.deepEqual(menuGroupRows([]), []);
 });
 
 test('CE-033 — the terminal menu cannot outgrow the height it was given', () => {
@@ -575,14 +810,31 @@ test('CE-036 — every group is reachable at a real terminal height', () => {
   // took all ten and APPLICATIONS, CONFIGURE and SESSION never rendered. "Una casella, tutto
   // il prodotto" is false if three quarters of the product only appears once you already know
   // what to type. No unit test failed; the menu simply showed one group.
-  const hits = [...AGENT_COMMANDS];
+  // POINT 3 MOVED THIS PROPERTY, it did not weaken it. "Every group is reachable" was a claim
+  // about the BARE `/`, and the bare `/` is no longer a flat list of every entry — it is one row
+  // per group, so the guarantee now lives at level zero and is stronger there: it holds by
+  // construction (one row each) instead of by an arithmetic that happened to fit four groups
+  // and stopped fitting seven. What the flat branch below still owes is a different and true
+  // thing — it is the FILTERED view, so it must show the matches and never lose the selection.
+  const commands = [...AGENT_COMMANDS];
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
   for (const rowLimit of [10, 12, 16]) {
-    const rows = commandMenuRows({ hits, selected: 0, rowLimit, groups: groupMenu, accessFiltered: true, hidden: 0 }, 100);
+    const rows = commandMenuRows({ level: 'groups', groupRows: top.groups, selected: 0, rowLimit, note: null }, 100);
     for (const group of MENU_GROUPS) {
       assert.ok(rows.some((row) => row.includes(group.title)),
-        `at ${rowLimit} rows the menu never shows ${group.title}: ${JSON.stringify(rows)}`);
+        `at ${rowLimit} rows level zero never shows ${group.title}: ${JSON.stringify(rows)}`);
     }
+    assert.ok(rows.length <= rowLimit, `${rows.length} rows against a budget of ${rowLimit}`);
+  }
+
+  // And the filtered branch keeps its own half of the old guarantee: whatever it can afford to
+  // paint, it paints — no group heading over an empty share, no unspent rows.
+  const hits = [...AGENT_COMMANDS];
+  for (const rowLimit of [10, 12, 16]) {
+    const rows = commandMenuRows({ hits, selected: 0, rowLimit, groups: groupMenu, note: null }, 100);
     assert.ok(rows.length <= rowLimit + 1, `${rows.length} rows against a budget of ${rowLimit}`);
+    assert.ok(rows.length >= Math.min(rowLimit, hits.length), `${rows.length} rows left a budget of ${rowLimit} unspent`);
   }
 });
 
@@ -633,11 +885,14 @@ test('phase 3c — the menu SPENDS its budget, instead of one entry per group', 
   assert.ok(showing > Math.floor(20 / MENU_GROUPS.length),
     `WORK got ${showing}, no more than an equal share would have given it`);
 
-  // 3a's property still holds: every group is reachable, even when the budget is tight.
+  // 3a's property still holds where it can: every group the budget REACHES is reachable, and
+  // what it cannot reach is declared rather than dropped. Seven groups do not fit under twelve
+  // rows with entries beneath each; the honest answer is the `⋯ N groups above` marker plus the
+  // level-zero list, not a heading over nothing.
   for (const limit of [4, 8, 12, 20]) {
     const tight = commandMenuRows({ hits, selected: 0, rowLimit: limit, groups: groupMenu }, 100);
     assert.ok(tight.length <= limit + 1, `rowLimit ${limit} produced ${tight.length} rows`);
-    if (limit >= 8) {
+    if (limit >= 20) {
       for (const group of MENU_GROUPS) {
         assert.ok(tight.some((row) => row.includes(group.title)), `at ${limit} rows ${group.title} is missing`);
       }

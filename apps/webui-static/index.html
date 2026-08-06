@@ -192,7 +192,7 @@
              are different facts and only one of them is about the product. -->
         <div class="three-col home-inventory">
           <section class="panel" aria-labelledby="homeServicesTitle"><div class="panel-title"><h2 id="homeServicesTitle">Service health</h2><span class="badge badge-off" id="homeServicesStatus">—</span></div><div id="homeServices" class="empty-state">Loading…</div></section>
-          <section class="panel" aria-labelledby="homeToolsTitle"><div class="panel-title"><h2 id="homeToolsTitle">Installed tools</h2><button class="text-button" data-view-link="coden">Manage</button></div><div id="homeTools" class="empty-state">Loading…</div></section>
+          <section class="panel" aria-labelledby="homeToolsTitle"><div class="panel-title"><h2 id="homeToolsTitle">Installed tools</h2><button class="text-button" data-view-link="tools">Manage</button></div><div id="homeTools" class="empty-state">Loading…</div></section>
           <section class="panel" aria-labelledby="homeModelsTitle"><div class="panel-title"><h2 id="homeModelsTitle">Models</h2><button class="text-button" data-view-link="models">Manage</button></div><div id="homeModels" class="empty-state">Loading…</div></section>
         </div>
       </section>
@@ -507,17 +507,36 @@
           </aside>
         </div>
       
-        <section class="work-block" id="view-tools">
-        <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h2 class="page-title">Tools</h2><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
+      </section>
+
+      <!-- POINT 2b OF THE OWNER'S LIST — this stack used to be INSIDE `view-coden`.
+           Measured before moving it: the Tools surface had no address at all. It is not a nav
+           button, not a settings section and not a bench panel, so `coden-address-book.mjs`
+           never saw it — the only way to a registered tool was to scroll the CodeN page past
+           the four regions to the bottom. A destination with no address is a destination the
+           terminal cannot have, which is the divergence this programme keeps paying for.
+
+           So it is a destination now, reached through `/` (group TOOLS) and NOT through a
+           thirteenth sidebar button: point 3's "una porta sola" is the whole reason the stack
+           is leaving the page, and replacing a scroll with a permanent widget would be the
+           fourth navigation widget `D-0299` spent a phase removing three of.
+
+           GONE FROM HERE, not moved: the `Installable catalogues` panel. It was a second
+           window onto Settings › Modules — `renderCodenModuleCatalog` and `renderOwnerModules`
+           were the same function with a different container — so the catalogue was rendered
+           twice in one product. One render, at `settings/modules`, which `/modules` has always
+           opened. Proven reachable BEFORE this panel was deleted, which is rule 4 of the skill
+           and the order this project has got wrong before. -->
+      <section class="view" id="view-tools">
+        <div class="section-header"><div><p class="eyebrow">LOCAL · MCP · OPENAPI</p><h1 class="page-title">Tools</h1><p>A registered tool stays disabled by policy until it is granted consent. Mutative tools are marked as such.</p></div></div>
         <div class="two-col"><form class="panel form-stack" id="toolForm"><h2>Register tool</h2><label>Name<input id="toolName" required></label><label>Description<textarea id="toolDescription"></textarea></label><label>Transport<select id="toolTransport"><option value="local-http">Local HTTP</option><option value="mcp-stdio">MCP stdio</option><option value="mcp-http">MCP Streamable HTTP</option><option value="openapi">OpenAPI HTTP</option></select></label><label>Endpoint or executable<input id="toolEndpoint" placeholder="http://127.0.0.1:8099/api or executable for stdio"></label><label>Remote tool name<input id="toolRemoteName" placeholder="Optional MCP tool name"></label><label class="check"><input id="toolExternal" type="checkbox"> External network tool</label><label class="check"><input id="toolMutative" type="checkbox"> Mutative</label><button class="primary">Register disabled-by-policy tool</button></form><section class="panel"><div class="panel-title"><h2>Installed tools</h2><span>Local · MCP · OpenAPI</span></div><div id="toolList" class="card-list empty-state">No tools.</div></section></div>
         <!-- Card C, s313/s317 addendum: CE-016 ("at rest the program has zero tools loaded")
              plus the sector-modules framework already validated live for Debug Evolution
-             (D-0283) — this panel is a second window onto that SAME catalogue (Settings ›
-             Modules), not a CodeN-specific list invented in parallel. The user installs and
-             activates from here exactly as from Settings; renderCodenModuleCatalog() shares
-             every line of render logic with renderOwnerModules(), only the container differs. -->
-        <section class="panel"><div class="panel-title"><h2>Installable catalogues</h2><span>Same catalogue as Settings › Modules</span></div><div id="codenModulesList" class="card-list empty-state">Loading…</div></section>
-      </section>
+             (D-0283). The catalogue that used to sit here is NOT re-rendered on this page: it
+             is one catalogue, at `settings/modules`, and `/modules` is how you reach it from
+             either shell. The claim this comment used to make — "only the container differs" —
+             was true and was exactly the problem. -->
+        <p class="hint">Installable catalogues live in one place: <button class="text-button" data-view-link="settings/modules">Settings › Modules</button>, or <code class="cmd">/modules</code> from either shell.</p>
       </section>
 
       <section class="view" id="view-coden-tui">

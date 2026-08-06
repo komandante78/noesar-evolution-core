@@ -26,6 +26,16 @@
 // `tools/tui-screen.mjs` stays where it is. It renders character rows clipped to a width,
 // which is correct for a TTY and would be throwing away the medium in a browser. The shells
 // share the STATE, not the pixels — `16` §4b.2.
+//
+// # The one import, and why it is not an injection
+//
+// `menuFrame` needs the group table and the matcher. Both live in `agent-commands.js`, the
+// other file both shells already import, and the dependency runs one way only — that file
+// imports nothing. `planTurn` injects its registry instead, and that was right for a function a
+// test must drive with a made-up command list; a menu that assembled its own groups per shell
+// would be the hand-built object `accountFromUser` exists to have stopped (`M-11`: one shell
+// passed `null` and its menu went unfiltered with nothing failing).
+import { MENU_GROUPS, groupFor, matchCommands } from './agent-commands.js';
 
 /** How each command turns into an engine call. The method names come from the shared registry
  *  (`agent-commands.js`); this decides only what to send with them. */
@@ -335,6 +345,92 @@ export function addressEntries(addresses) {
  */
 export function menuEntriesFor(word, commands, addresses) {
   return String(word ?? '').trim() ? [...commands, ...addressEntries(addresses)] : [...commands];
+}
+
+/**
+ * The GROUP rows of a bare `/` — one per group that holds something, with its count and a
+ * hint made of what is actually inside it.
+ *
+ * The hint is derived, never written down. A hand-written "diff · piano · sessioni" beside a
+ * group whose entries change is a second copy of the group's contents, and this repository has
+ * paid for that shape twice already (`PANEL_NAMES` at fourteen against a markup of twenty-five;
+ * `DECLARED_EMPTY_PANELS` as a second derivation of a list it already had). Three names is what
+ * fits beside a count at a terminal width, and being wrong is impossible because they are the
+ * first three.
+ *
+ * A group with nothing in it does not get a row — the same rule `groupMenu` already applies to
+ * headings, and for the same reason: a heading over nothing is a door with no room behind it.
+ */
+export function menuGroupRows(entries) {
+  return MENU_GROUPS
+    .map((group) => {
+      const own = (entries ?? []).filter((entry) => entry.group === group.id);
+      return { ...group, count: own.length, hint: own.slice(0, 3).map((entry) => entry.name).join(' · ') };
+    })
+    .filter((row) => row.count > 0);
+}
+
+/**
+ * What the menu shows for what has been typed — ONE function, both shells, three levels deep
+ * at most. This is the whole of point 3 of the owner's list; the shells only paint it.
+ *
+ *   `/`         → { level: 'groups' }   the product, as groups you can enter
+ *   `/t`        → { level: 'entries', group }   that group, with the WHOLE row budget
+ *   `/t mcp`    → { level: 'entries', group }   filtered inside it
+ *   `/appr`     → { level: 'entries', group: null }   the flat filter, exactly as before
+ *
+ * # Why the addresses come back
+ *
+ * `menuEntriesFor` keeps the fifty-three addresses out of a bare `/` because a flat menu could
+ * not hold them — measured, and `CE-020` failed for a phase over it. That constraint is gone at
+ * the group level: the bare `/` now paints one row per group, so the addresses cost the menu
+ * one number on the DESTINATIONS row instead of fifty-three rows, and opening that group gives
+ * them the entire budget. The exclusion stays exactly where it still applies — the flat filter
+ * branch below is unchanged and still calls `menuEntriesFor`.
+ *
+ * The group's count therefore includes the addresses, which is the honest number: the row says
+ * how many places that group holds, not how many of them a renderer felt like listing.
+ */
+export function menuFrame(parsed, { commands = [], addresses = [] } = {}) {
+  const word = String(parsed?.word ?? '');
+  const argument = String(parsed?.argument ?? '');
+  const group = groupFor(word);
+
+  if (group) {
+    // Scoped to the group, and the ARGUMENT is the filter — which is why `/t mcp` works
+    // without a second parser: `parseCommandPrompt` already splits a command word from its
+    // argument, and a group key occupies the word.
+    const scoped = [...commands, ...addressEntries(addresses)].filter((entry) => entry.group === group.id);
+    return { level: 'entries', group, hits: matchCommands(argument, scoped) };
+  }
+
+  if (!word.trim() && !argument.trim()) {
+    return { level: 'groups', group: null, hits: [], groups: menuGroupRows([...commands, ...addressEntries(addresses)]) };
+  }
+
+  return { level: 'entries', group: null, hits: matchCommands(word, menuEntriesFor(word, commands, addresses)) };
+}
+
+/**
+ * WHAT THE NEXT KEY DOES, right now — property 6 of the approved design, and the half of
+ * "terminal style" that is functional rather than decorative.
+ *
+ * The research the owner's point 3 rests on names this exactly: Zellij's bar changes with the
+ * context and shows the keys that are valid *at this moment*, which is why its command set
+ * scales; a static legend is furniture. From the CIDER note in the same passage — the only
+ * reliable place to teach a function is inside the flow, at the moment of hesitation.
+ *
+ * One list, both shells, because a prompt that claims `⏎ enter` in the browser and does
+ * something else in the terminal is worse than no legend at all. Each shell renders it in its
+ * own idiom — the browser into the hint line under the prompt, the terminal as the menu's last
+ * row — which is the same split `.coden-bar` and the terminal footer already are.
+ */
+export function promptKeys(frame) {
+  if (!frame) return ['Enter sends', '/ opens the menu', 'Tab completes without sending'];
+  if (frame.level === 'groups') return ['↑↓ move', '⏎ enter', 'esc close', '…or type to filter'];
+  return frame.group
+    ? [`↑↓ move`, 'Tab completes', '⏎ sends', 'esc close', `in ${frame.group.title} — backspace leaves it`]
+    : ['↑↓ move', 'Tab completes', '⏎ sends', 'esc close'];
 }
 
 /**

@@ -36,14 +36,79 @@
 // navigation widgets because the problem was *how many there are*. This menu absorbs what was
 // left; it does not become a fourth.
 
-/** The four groups, in display order. The heading text lives here so neither shell writes
- *  its own — the same reason the entries do. */
+/** The groups, in display order. The heading text lives here so neither shell writes its own
+ *  — the same reason the entries do.
+ *
+ * # Points 2 and 3 of the owner's list — the key is what you TYPE, and it IS the mechanism
+ *
+ * `/` was a flat list of thirty entries under four headings, and both shells had already
+ * MEASURED what a flat list costs without either of them calling it a defect:
+ *
+ *  - `commandMenuRows` divides an eight-row budget across the groups and prints
+ *    `WORK  5 of 15`, because the list does not fit at a terminal height;
+ *  - `menuEntriesFor` deliberately keeps the fifty-three addresses OUT of the bare `/`,
+ *    because folding them in took APPLICATIONS from eleven entries to sixty-four and pushed
+ *    `/approve` off the menu entirely (`CE-020` caught that one).
+ *
+ * Both are the same fact — a flat menu does not scale — and both were *declared* rather than
+ * repaired. So `/` gains exactly one level: a bare `/` lists the GROUPS, a single letter opens
+ * one, and a letter followed by text filters inside it (`/t mcp`). Two speeds, one mechanism:
+ * whoever does not know browses, whoever knows types and skips the level.
+ *
+ * The key is not a shortcut sitting beside the list. It is the group's address, the same way
+ * `coden/bench/diff` is a panel's — which is why the same `/` reaches both and why neither
+ * shell needs a second gesture.
+ *
+ * **The cost, stated rather than hidden:** a key is one character and every command name is
+ * longer than one, so a key can never shadow a command — but `/w` opens WORK instead of
+ * filtering for `workflows`. Typing a second letter filters as it always did. That the keys
+ * are unique, single, and shorter than every command name is asserted rather than assumed
+ * (`menu-group-keys`), because this file is exactly where a hand-kept list drifts.
+ */
 export const MENU_GROUPS = Object.freeze([
-  { id: 'work', title: 'WORK' },
-  { id: 'applications', title: 'APPLICATIONS' },
-  { id: 'configure', title: 'CONFIGURE' },
-  { id: 'session', title: 'SESSION' },
+  { id: 'work', key: 'w', title: 'WORK' },
+  // Renamed from APPLICATIONS with the key. `a` belongs to APPROVALS and a group whose key is
+  // `d` cannot go on calling itself APPLICATIONS; the group's own criterion in `16` §4b.4 has
+  // always been "le destinazioni del prodotto — è un posto dove si va", so the heading now says
+  // what the criterion says. The `id` is untouched: entries carry it, and renaming a heading is
+  // not a reason to rewrite thirty `group:` fields.
+  { id: 'applications', key: 'd', title: 'DESTINATIONS' },
+  // POINT 2b — the stack that used to be scrolled to at the bottom of the CodeN page. The
+  // owner named it item by item (Strumenti · Strumenti installati · Installable catalogues ·
+  // LOCAL ONLY VERIFIED · Approvals) and the approved mockup gives those items keys of their
+  // own rather than a heading on a page. They are groups instead of three more rows in
+  // DESTINATIONS for the reason the whole point exists: sixty-four destinations under one
+  // heading is the flat list again, one level down.
+  //
+  // A group holding one entry is not a defect and is not padded to look fuller — the row says
+  // `1 entry` and means it. What would be a defect is a NAMED place in the owner's model with
+  // nowhere to go, which is what these three were.
+  { id: 'tools', key: 't', title: 'TOOLS' },
+  { id: 'modules', key: 'm', title: 'MODULES' },
+  { id: 'approvals', key: 'a', title: 'APPROVALS' },
+  { id: 'configure', key: 'c', title: 'CONFIGURE' },
+  { id: 'session', key: 's', title: 'SESSION' },
 ]);
+
+/**
+ * The group a typed word opens, or `null` — an EXACT single-character key, nothing else.
+ *
+ * Deliberately not a prefix match: `/mo` must go on filtering for `models`/`modules`/`memory`
+ * the way it always has, and a lookup that accepted prefixes would turn every second keystroke
+ * into a level change. One character means one thing, and the guard above proves no command
+ * name is one character long, so this can never intercept a command.
+ */
+export function groupFor(word) {
+  const wanted = String(word ?? '').trim().toLowerCase();
+  if (!wanted) return null;
+  // Exact, not a prefix, and that is the whole rule. A length check used to stand here as well
+  // and it was DEAD: an equality against a one-character key already rejects every longer word,
+  // so no input could reach it and no mutation could kill it. A guard that cannot fail is a
+  // guard nobody can trust — the invariant it was defending (every key is one character, every
+  // command name is longer) is asserted where it can actually be measured, in
+  // `menu-group-keys`.
+  return MENU_GROUPS.find((group) => group.key === wanted) ?? null;
+}
 
 /**
  * What a page needs before it is worth offering at all — moved here from `app.js` in phase 3a.
@@ -138,8 +203,27 @@ export const AGENT_COMMANDS = Object.freeze([
   // section, no such route). An entry that appears and then has nowhere to go is the failure
   // rule 3 of §4b.4 names, and drawing one to match a mockup is the worse half of it.
   { name: 'models', argument: '', summary: 'Models — which model answers, and on what hardware', group: 'configure', kind: 'address', address: 'models' },
-  { name: 'modules', argument: '', summary: 'Sector modules — install, activate, remove', group: 'configure', kind: 'address', address: 'settings/modules' },
   { name: 'settings', argument: '', summary: 'Everything else about how this installation behaves', group: 'configure', kind: 'address', address: 'settings' },
+
+  // TOOLS · MODULES · APPROVALS — point 2b. What the CodeN page used to hold at the bottom of
+  // its own scroll, as places with addresses.
+  //
+  // `/tools` is NEW, and the measurement that produced it is the point of the whole item: the
+  // Tools surface had no address at ALL. It was a `work-block` nested inside `view-coden`, so
+  // it was not a nav button, not a settings section and not a bench panel — the three shapes
+  // `coden-address-book.mjs` reads — and therefore existed for the browser's scrollbar and for
+  // nothing else. The terminal could not reach a registered tool, and no test could say so,
+  // because you cannot assert a gap in a list nobody keeps.
+  { name: 'tools', argument: '', summary: 'Registered tools — local, MCP and OpenAPI, and what each is allowed to do', group: 'tools', kind: 'address', address: 'tools' },
+  // Moved out of CONFIGURE rather than copied: `/modules` is one entry and stays one entry.
+  // Its page is also the ONLY render of the catalogue now — the CodeN page used to draw the
+  // same list a second time through a second container, which is the divergence `D-0300` named
+  // and the owner spotted from the outside.
+  { name: 'modules', argument: '', summary: 'Sector modules — the one catalogue: install, activate, remove', group: 'modules', kind: 'address', address: 'settings/modules' },
+  // The queue the permanent footer strip counts. The strip could always be CLICKED and never
+  // typed: `Open queue` went to `settings/audit` while no command named it, so the one thing
+  // the product interrupts you about was the one thing the menu could not reach.
+  { name: 'approvals', argument: '', summary: 'Everything waiting for a human decision, whichever subsystem raised it', group: 'approvals', kind: 'address', address: 'settings/audit' },
 
   // SESSION — changes who you are. `/logout` needs a second, TYPED word rather than a key:
   // `15` §13, "in un terminale `y` è a un incollaggio di distanza dall'essere digitato da
@@ -204,17 +288,53 @@ export function accountFromUser(user) {
 }
 
 export function menuFor(account) {
-  if (!account) return { entries: [...AGENT_COMMANDS], accessFiltered: false, hidden: 0 };
+  if (!account) return { entries: [...AGENT_COMMANDS], accessFiltered: false, hidden: 0, hiddenBy: {} };
   const held = new Set(account.permissions ?? []);
   const role = account.role ?? null;
+  // WHY an entry is not offered, counted per requirement — rule 4 of the approved design:
+  // "dichiara ciò che non mostra, E PERCHÉ". `N hidden` alone tells a reader the menu is
+  // shorter than the product and leaves them to guess whether that is policy or breakage,
+  // which is the same ambiguity `accessFiltered:false` exists to remove one level up.
+  //
+  // Counted here rather than recomputed by a renderer: the reason is known exactly once, at
+  // the moment the entry is rejected, and any later attempt to work it out again would be a
+  // second copy of this filter written in a shell.
+  const hiddenBy = {};
+  const deny = (requirement) => {
+    hiddenBy[requirement] = (hiddenBy[requirement] ?? 0) + 1;
+    return false;
+  };
   const entries = AGENT_COMMANDS.filter((entry) => {
-    if (entry.kind === 'call' && entry.permission && !held.has(entry.permission)) return false;
+    if (entry.kind === 'call' && entry.permission && !held.has(entry.permission)) return deny(entry.permission);
     const rule = entry.kind === 'address' ? accessRuleFor(entry.address) : null;
-    if (rule?.role && rule.role !== role) return false;
-    if (rule?.permission && !held.has(rule.permission)) return false;
+    if (rule?.role && rule.role !== role) return deny(`the ${rule.role} role`);
+    if (rule?.permission && !held.has(rule.permission)) return deny(rule.permission);
     return true;
   });
-  return { entries, accessFiltered: true, hidden: AGENT_COMMANDS.length - entries.length };
+  return { entries, accessFiltered: true, hidden: AGENT_COMMANDS.length - entries.length, hiddenBy };
+}
+
+/**
+ * The one sentence the menu says about what it is not showing — written HERE because both
+ * shells were writing their own, in different words, off the same two fields.
+ *
+ * Three states, and the third is the one that matters: filtered and complete, filtered and
+ * short (with the requirement named), or *not filtered at all* — a shell that was never told
+ * who is asking says so rather than implying the list is everything this account may use.
+ * Same posture `coden.addresses` takes with `accessFiltered:false`.
+ */
+export function hiddenNote(menu) {
+  if (!menu?.accessFiltered) return 'Not filtered — this shell does not know what this account may use';
+  const hidden = menu.hidden ?? 0;
+  if (!hidden) return 'Filtered for this account';
+  // Most-blocking requirement first, then alphabetically so the sentence is stable between
+  // renders: a note whose wording changes on every repaint reads as a fault.
+  const reasons = Object.entries(menu.hiddenBy ?? {})
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([requirement]) => requirement);
+  return reasons.length
+    ? `${hidden} hidden — they need ${reasons.join(', ')}`
+    : `${hidden} hidden — this account may not use them`;
 }
 
 /** The groups that have at least one entry, in display order — so a group emptied entirely by

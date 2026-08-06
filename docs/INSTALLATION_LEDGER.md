@@ -4093,3 +4093,62 @@ dai test sul sorgente il cui sha è verificato identico dentro il container (15/
 **Rollback:** container fermo `noesar-evolution-old-phase7-divergence-profile`, immagine
 `noesar-evolution:phase7-divergence-profile`. Il rollback precedente (`phase6-declared-fallback`)
 è stato rimosso: §5a vuole che ne sopravviva **uno solo**.
+
+---
+
+## s328 — punti 2 e 3 della lista Owner: costruiti, verificati, NON deployati
+
+**Cosa cambia, in una riga:** `/` smette di essere una lista piatta e diventa progressivo
+(`D-0335`), e la pila in fondo a `#/coden` esce dalla pagina diventando gruppi di quel menu,
+mentre la shell prende la forma di un terminale (`D-0336`).
+
+**File toccati:** `apps/webui-static/agent-commands.js` · `coden-view-model.js` · `app.js` ·
+`index.html` · `styles.css` · `tools/tui-screen.mjs` · `tui-fullscreen.mjs` ·
+`tools/browser-e2e.mjs` · `tools/acceptance/ce-020-tui-fullscreen.mjs` · 3 file di test.
+
+**Misura PRIMA (non stimata):**
+
+| Fatto | Valore misurato |
+|---|---|
+| voci del menu, piatte | 30 in 4 gruppi |
+| il terminale dichiara di non farcele stare | `WORK  5 of 15` |
+| indirizzi tenuti FUORI dal `/` nudo | **53**, per scelta documentata in `menuEntriesFor` |
+| indirizzo della superficie `Strumenti` | **nessuno** — `work-block` dentro `view-coden` |
+| rese del catalogo moduli | **2** (`#codenModulesList` + `#ownerModulesList`) |
+| comando per la coda approvazioni | **nessuno** — solo un bottone nella striscia |
+
+**Misura DOPO:** livello 0 = 7 righe di gruppo con conteggio e suggerimento **derivato**; ogni
+gruppo aperto ha l'intero budget; i 53 indirizzi rientrano come **un numero** sulla riga
+DESTINATIONS; `tools` è una destinazione con indirizzo; il catalogo è reso **una volta**;
+`/approvals` esiste.
+
+**Verifiche eseguite in questa sessione, con l'output prodotto qui:**
+
+```text
+npm test              1865 / 1866  (1 skipped)   0 fail
+tools/run-eslint.sh   334 file     0 errori      0 warning     0 no-undef
+mutazioni             18 → 18 uccise
+CE-020                20 / 20      CE020_FAIL=0
+CE-021                13 / 13      CE021_FAIL=0
+browser-e2e           vedi sotto
+```
+
+**Due difetti veri trovati misurando, riparati qui:**
+
+1. **La selezione poteva finire su una riga mai disegnata.** Con quattro gruppi il budget del
+   menu arrivava sempre all'ultimo; con sette no, e le frecce spostavano l'evidenziazione su una
+   voce fuori dal budget. Riparato con una finestra sui gruppi che **segue la selezione** e
+   dichiara `⋯ N gruppi sopra`.
+2. **La riga riservata alla nota veniva mangiata dalle voci.** La riserva era sottratta al
+   `budget` ma il ciclo si fermava a `limit`, quindi la frase che spiega **perché** il menu è
+   corto era la prima a sparire. Con `accessFiltered:false` il disclaimer *«nobody checked»*
+   spariva a **ogni** altezza — trovato con una scansione di equivalenza dopo che la mutazione
+   era sopravvissuta.
+
+**Una trappola di metodo, registrata perché costa tempo ogni volta:** `String.replace` sostituisce
+**solo la prima occorrenza**. `noteRow` è dichiarato due volte in `tui-screen.mjs`, quindi
+l'harness di mutazione stava mutando il ramo sbagliato e riportava «sopravvissuta» su una riga
+che non aveva toccato. Un controllo deliberatamente assurdo (`noteRow = 4`) **non è scattato**:
+è così che si è visto che il rilevatore era rotto, non il codice.
+
+**NON deployato.** Nessun container creato, fermato o ricreato in questa sessione.

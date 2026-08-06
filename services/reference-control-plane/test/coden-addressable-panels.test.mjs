@@ -151,9 +151,30 @@ describe('phase 3: the switchers are gone and nothing they reached went with the
     const control = html.match(/<button[^>]*id="codenPromptOpenMenu"[^>]*>/)?.[0];
     assert.ok(control, 'no mouse path to the menu — `/` would be the only way to change panel');
     assert.match(control, /aria-controls="codenMenu"/, 'the control must name the ONE menu');
-    const handler = app.slice(app.indexOf("$('#codenPromptOpenMenu')"), app.indexOf("$('#terminalAdd')"));
-    assert.match(handler, /renderCodenMenu\(\)/, 'the control does not open the menu it names');
-    assert.doesNotMatch(handler, /openPalette\(/, 'it opens the address box the phase removed');
+    // Read off the NAMED function, not off a window between two selector strings.
+    //
+    // The window used to start at the first `$('#codenPromptOpenMenu')` in the file and run to
+    // `$('#terminalAdd')`, which was the handler exactly as long as the first mention of that id
+    // WAS the handler. Point 2a made the hint line re-render on every keystroke — so the control
+    // is rebuilt constantly and the handler had to become a named function bound on each
+    // repaint. The first mention moved into the renderer, the window opened across three
+    // thousand lines, and this guard failed on an `openPalette(` belonging to something else
+    // entirely. The property is about one function; that is what is read now.
+    const opener = app.slice(app.indexOf('function openCodenMenu(){'), app.indexOf('function renderCodenPromptKeys('));
+    assert.ok(opener.length > 0 && opener.length < 800, 'openCodenMenu is not a small named function');
+    assert.match(opener, /renderCodenMenu\(\)/, 'the control does not open the menu it names');
+    assert.doesNotMatch(opener, /openPalette\(/, 'it opens the address box the phase removed');
+    // …and the control is actually wired to it, by DELEGATION onto a node that outlives the
+    // repaint. Point 2a rebuilds the hint line on every keystroke, so a listener bound to the
+    // button itself works exactly until the first character is typed — mutation proved no test
+    // could see that, so the repair was to remove the failure mode rather than to watch for it.
+    assert.match(app, /\$\('#codenShell'\)\?\.addEventListener\('click',\(event\)=>\{[\s\S]{0,160}?#codenPromptOpenMenu/,
+      'the mouse control is not delegated onto a node that survives a repaint');
+    // And the renderer does NOT bind it: a second, direct binding would re-introduce exactly
+    // the lifetime the delegation exists to remove, and would leak a listener per keystroke.
+    const painter = app.slice(app.indexOf('function renderCodenPromptKeys('), app.indexOf('function renderCodenMenu('));
+    assert.doesNotMatch(painter, /addEventListener/,
+      'the hint renderer binds a listener to a control it is about to destroy');
 
     // And the widgets it replaces are really gone, in both directions: the breadcrumb is no
     // longer a control, and the top box is not shown on this destination. Asserted on the

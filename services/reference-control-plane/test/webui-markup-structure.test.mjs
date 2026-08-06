@@ -27,13 +27,22 @@ const html = readFileSync(INDEX, 'utf8');
 /** Elements that must nest. Void elements are excluded by construction. */
 const PAIRED = ['section', 'form', 'main', 'aside', 'nav', 'article', 'header', 'footer'];
 
-/** The thirteen destinations, in sidebar order (Memory joined since D-0265,
- *  14_MEMORIA_A_CUBI.md CUBE-009). A destination is a place you decide to go
- *  to; everything else is a section you arrive at. */
+/** The fourteen destinations (Memory joined since D-0265, 14_MEMORIA_A_CUBI.md CUBE-009).
+ *  A destination is a place you decide to go to; everything else is a section you arrive at.
+ *
+ *  `tools` joined with point 2b of the owner's list, and it is the one entry here that is NOT
+ *  in sidebar order — because it is not in the sidebar. It used to be a `work-block` nested
+ *  inside `view-coden`, which meant the Tools surface had no address of any kind: not a nav
+ *  button, not a settings section, not a bench panel, so `coden-address-book.mjs` could not see
+ *  it and the terminal could not reach it. It is a destination now, reached through `/` alone —
+ *  point 3's "una porta sola" is why it did not become a thirteenth sidebar button. */
 const DESTINATIONS = [
-  'home', 'chat', 'coden', 'coden-tui', 'projects', 'documents', 'knowledge', 'memory',
+  'home', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge', 'memory',
   'agents', 'workflows', 'models', 'research', 'settings',
 ];
+/** The sidebar, in its own order — the destinations that also have a permanent button.
+ *  Deliberately NOT the same list: `tools` is reached through `/` alone. */
+const SIDEBAR = DESTINATIONS.filter((destination) => destination !== 'tools');
 /** The single Settings destination's own menu — menu inside the menu, in three groups.
  *  'modules' rejoined in D-0277 (owner catalog: one-click install/activate through the
  *  real D-0274/D-0275 framework) after D-0273's ad-hoc version of it was retired in
@@ -118,11 +127,21 @@ describe('webui markup structure', () => {
     assert.deepEqual([...duplicates], [], 'duplicate element ids');
   });
 
-  test('every nav target has a matching view section', () => {
+  test('every nav target has a matching view section, and the sidebar is a SUBSET of them', () => {
     const targets = [...html.matchAll(/data-view="([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(targets, DESTINATIONS, 'the sidebar is not the twelve declared destinations');
+    // These used to be one list, and point 3 is the reason they are two. A destination reached
+    // only through `/` is the approved design — "una porta sola" — so "in the sidebar" and
+    // "exists as a place" stopped being the same statement. What must still hold, and is what
+    // this check is actually for, is that nothing in the sidebar points at nothing.
+    assert.deepEqual(targets, SIDEBAR, 'the sidebar is not the declared sidebar');
     for (const target of targets) {
       assert.ok(html.includes(`id="view-${target}"`), `nav entry "${target}" has no #view-${target}`);
+      assert.ok(DESTINATIONS.includes(target), `sidebar entry "${target}" is not a declared destination`);
+    }
+    // …and the other direction: a destination with no section is an address that answers with a
+    // blank page, which is worse than one that does not exist.
+    for (const destination of DESTINATIONS) {
+      assert.ok(html.includes(`id="view-${destination}"`), `destination "${destination}" has no #view-${destination}`);
     }
   });
 

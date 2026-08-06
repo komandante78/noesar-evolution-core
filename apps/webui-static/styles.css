@@ -1098,6 +1098,46 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .agent-menu-note{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
 @media(forced-colors:active){.agent-menu button.active{border:2px solid CanvasText}}
 
+/* ── POINT 2a OF THE OWNER'S LIST · the shell takes the FORM of a terminal ──────────────────
+   The owner's words: it must have the style of the TUI / `ssh`, so that it "non sembra neanche
+   una chat". The distinction that scopes every rule below is the owner's own, made in the same
+   breath: CodeN Evolution takes the terminal's form, and the NOESAR chat STAYS A CHAT (point 4,
+   "non diventare un terminale come CodeN Evolution"). So all of this hangs off `#view-coden`
+   and none of it can reach the chat, which shares the `.agent-*` classes.
+
+   Three things separate a terminal from a chat, and none of them is "dark":
+
+     1. ONE TYPEFACE, monospace. A proportional font is the strongest single signal that
+        something is prose between people rather than a machine's output — the transcript
+        already carries `›`/`⏺`/`⎿` glyphs and they do not line up in a proportional face.
+     2. SQUARE. A terminal has no rounded card; the rounding is what makes the shell read as a
+        message surface placed on a page.
+     3. THE REGIONS ARE FLUSH. Status row, transcript, prompt and menu are one continuous
+        surface divided by rules, not four cards with gaps between them.
+
+   Declared rather than left to be found: this shapes the four regions of the SESSION. It does
+   not restyle the bench panels or the forms inside them — those are the product's own controls,
+   and a terminal-shaped text field that still behaves like a web form is a costume. */
+#view-coden{--font-terminal:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono",monospace}
+#view-coden .coden-bar,#view-coden .agent-shell{border-radius:0}
+/* The status row and the shell become ONE surface, the way a terminal's status line sits
+   directly on its buffer rather than floating above it. */
+#view-coden .coden-bar{margin-bottom:0;border-bottom:0;font-family:var(--font-terminal)}
+#view-coden .agent-transcript,#view-coden .agent-prompt textarea,
+#view-coden .agent-hint,#view-coden .agent-menu{font-family:var(--font-terminal)}
+#view-coden .agent-caret{font-family:var(--font-terminal);font-weight:400}
+/* Inside a monospace transcript a rounded box around monospace text frames nothing; the rule on
+   the leading edge is what a terminal uses to mark quoted output. */
+#view-coden .t-entry pre{border-radius:0;border-inline-start:2px solid var(--line)}
+/* The key column is where the progressive gesture is learned, so it is the one thing given
+   weight: `b` is the group KEY at level zero and the command name one level down. */
+#view-coden .agent-menu-group-row b{color:var(--accent-brand);font-family:var(--font-terminal);font-weight:700}
+#view-coden .agent-menu-group-row span{color:var(--text-popover);text-transform:uppercase;letter-spacing:.06em}
+#view-coden .agent-menu-group-row.active span{color:inherit}
+/* The line under the prompt is the key legend now, and it changes with the context — so it is
+   drawn as a status bar rather than as a caption. */
+#view-coden .agent-hint{border-top:1px solid var(--line);padding-block:6px;letter-spacing:.02em}
+
 /* The chat list in the sidebar (UI-001…UI-004 rendered where the work happens). Sized to
    sit under the Chat destination without competing with it: the rows are quieter than a
    .nav, because the destination is the heading and these are its contents. */
