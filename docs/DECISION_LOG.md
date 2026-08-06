@@ -7056,3 +7056,50 @@ session that can give them a clean start.
 **Verified:** unit **1834/1835**, ESLint **334 files 0/0/0**, browser **343/346**, and the six
 chat-sidebar checks green — seven chats, five laid out and two scrolled, a click opening that
 same conversation, and `Archive 1 session?` raised by the shared dialog.
+
+## D-0332 — point 4b: research gathered where it stays put, and the relation the rest of it needs (2026-08-06)
+
+**The Owner's request** was a chat that unites work and research. Measured before building —
+twice today a document was believed over the code and was wrong — and the measurement split
+the request cleanly in two.
+
+**What already existed:** the chat is ALREADY two columns (`.chat-grid`, `minmax(0,1fr) 310px`).
+The right one held a single `<pre>` dump of the included context. Messages ALREADY carry
+`citations` with `sourceId`, `evidenceStatus` and `claimStatus`, rendered under each message —
+and therefore scrolling out of sight the moment a conversation is twenty turns long.
+
+**What does NOT exist, and is the finding:** a piece of work is **not attached to a chat**.
+`sessionId` in `workspace-actions.mjs` is the run's OWN id (`const runId = randomUUID()`, line
+392), and `conversationId` appears **zero times** in that file. `GET /api/v1/workspace-actions`
+returns a capability declaration, not a list of runs. So «the plan for this chat» is not a
+thing the product can answer, and a panel showing one would have had to invent the link in the
+browser — a second source of truth about which run belongs where. This is the same shape as
+`s321`: the gap is in the model, not in the wiring.
+
+**Built (needs no new relation, invents nothing):** the right column becomes the work, in three
+blocks. **Sources** gathers every citation the conversation has made, deduplicated by source
+with the turn count kept, printed with the message's own `evidenceStatus`/`claimStatus` and the
+identical `verified ? retrieved : attached` fallback — reusing the wording rather than
+restating it, because two phrasings of one fact is how two parts of a product start disagreeing
+about what "verified" means. **Plan** declares the missing relation in words the reader sees.
+**Included context** survives as a block instead of being the whole panel.
+
+**Declared, not deployed, not done:** the work half of 4b waits on a decision that is the
+Owner's, not a detail — does a run belong to exactly one conversation, and what happens to runs
+begun from the terminal, which has no conversation at all.
+
+**Also spotted, recorded, NOT fixed:** `workspaceActionsStatus()` still declares
+`filesSuppliedBy: 'caller'` with the reason *«the reference reasoning provider … cannot derive
+a file target from a request written in prose»*. `D-0303` superseded that — `request-grounding`
+derives candidates from the repository. The product may be declaring a limitation it no longer
+has; it needs checking against the code before it is either corrected or confirmed.
+
+**Verified:** unit **1838/1839** (0 fail, 1 pre-existing skip), ESLint **334 files 0/0/0**, and
+in a real browser: the column is a real box of three blocks with the context inspector kept,
+an uncited chat SAYS it is uncited, and the plan block states the missing link. Browser total
+**349, 346 pass** — the three failures are the pre-existing `view-coden` width-zero group from
+`D-0331`, untouched by this work.
+
+**Honestly labelled:** the deduplication itself is covered by source-scanning assertions, not
+by execution — `npm test` reads `app.js` as text, and the e2e chats carry no citations to
+exercise it with. Proving the rollup on real citations needs a fixture that produces them.

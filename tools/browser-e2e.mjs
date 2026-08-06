@@ -1654,6 +1654,29 @@ try {
     asked.visible && /archive/i.test(asked.title), JSON.stringify(asked));
   check('s326 — and that confirmation still preselects nothing',
     asked.visible && asked.focusIsButton === false, JSON.stringify(asked));
+  // 4b: the work column beside the conversation. Driven, so the render path really runs —
+  // the unit guards for this read app.js as text and would pass on a renderer that throws.
+  const workColumn = await page.evaluate(async () => {
+    document.querySelector('#chatNav [data-chat-open]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const panel = document.querySelector('#chatWorkPanel');
+    const rect = panel?.getBoundingClientRect();
+    return {
+      onScreen: (rect?.width ?? 0) > 0 && (rect?.height ?? 0) > 0,
+      blocks: panel?.querySelectorAll('.work-block').length ?? 0,
+      // An empty list must SAY it is empty. Blank and broken must not look the same.
+      sourcesDeclared: (document.querySelector('#chatSources')?.textContent ?? '').trim(),
+      planDeclared: (document.querySelector('#chatPlanDeclared')?.textContent ?? '').trim(),
+      contextKept: Boolean(document.querySelector('#contextInspector')),
+    };
+  });
+  check('s326/4b — the work column is a real box beside the conversation, in blocks',
+    workColumn.onScreen && workColumn.blocks === 3 && workColumn.contextKept, JSON.stringify(workColumn));
+  check('s326/4b — an uncited chat says so instead of showing a blank list',
+    /No source has been cited/.test(workColumn.sourcesDeclared), workColumn.sourcesDeclared);
+  check('s326/4b — the plan block declares the missing link rather than an empty box',
+    /not attached to a conversation/i.test(workColumn.planDeclared), workColumn.planDeclared);
+
   // Leave the data as it was found: cancel rather than archive.
   await page.keyboard.press('Escape');
   await new Promise((resolve) => setTimeout(resolve, 300));

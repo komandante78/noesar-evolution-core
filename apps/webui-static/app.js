@@ -871,7 +871,55 @@ async function selectConversation(id,rerender=true){if(!id){state.activeConversa
 $('#newConversation').addEventListener('click',async()=>{if(!state.activeProjectId)return setStatus('Create or select a project first.',true);const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);renderMessages(data.messages);await inspectContext();}
-function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);}
+function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}
+/**
+ * Every source this conversation has cited, gathered where it stays put.
+ *
+ * The citations were already on the messages and already rendered under each one — which
+ * means that once a conversation is twenty turns long, what the research turned up has
+ * scrolled away. This is the Owner's point 4b («a chat that unites work and research») in
+ * the half that needs nothing invented: same records, same wording, gathered into the
+ * column that does not scroll.
+ *
+ * Deduplicated by source, because the same source cited in four turns is one source and a
+ * list counting it four times would overstate how much was consulted. The turn count is
+ * kept and shown, so the collapsing loses nothing.
+ *
+ * The wording is NOT re-derived: `evidenceStatus` and `claimStatus` print exactly as the
+ * message carries them, with the same `verified ? retrieved : attached` fallback the
+ * per-message line uses. A second phrasing of one fact is how two parts of a product start
+ * disagreeing about what "verified" means.
+ */
+function chatSourceRollup(messages){
+  const bySource=new Map();
+  for(const message of messages??[]){
+    for(const citation of message.citations??[]){
+      const id=citation.sourceId??'—';
+      const evidence=citation.evidenceStatus??(citation.verified?'retrieved':'attached');
+      const claim=citation.claimStatus??'unverified';
+      const seen=bySource.get(id);
+      if(seen){seen.turns+=1;if(!seen.evidence.includes(evidence))seen.evidence.push(evidence);if(!seen.claim.includes(claim))seen.claim.push(claim);}
+      else bySource.set(id,{id,turns:1,evidence:[evidence],claim:[claim]});
+    }
+  }
+  return [...bySource.values()];
+}
+function renderChatSources(messages){
+  const host=$('#chatSources');
+  if(!host)return;
+  const sources=chatSourceRollup(messages);
+  $('#chatSourceCount').textContent=sources.length?String(sources.length):'';
+  if(!sources.length){
+    // Declared, not blank: "nothing has been cited" and "this panel is broken" must not look
+    // the same, which is the posture the rest of this product already takes.
+    host.innerHTML='<p class="declared-empty">No source has been cited in this chat yet.</p>';
+    return;
+  }
+  host.innerHTML=sources.map((source)=>`<div class="work-source">
+    <span class="work-source-id">${escapeHtml(source.id)}</span>
+    <small>${escapeHtml(source.evidence.join(' · '))} · claim ${escapeHtml(source.claim.join(' · '))}${source.turns>1?` · cited in ${source.turns} turns`:''}</small>
+  </div>`).join('');
+}
 function bindMessageActions(messages){$$('[data-edit-message]').forEach((button)=>button.addEventListener('click',async()=>{const message=messages.find((item)=>item.id===button.dataset.editMessage);const content=prompt('Edit message',message.content);if(content===null)return;await api(`/api/v1/messages/${message.id}`,{method:'PATCH',body:JSON.stringify({branchId:state.activeBranchId,content})});await refreshMessages();}));$$('[data-fork-message]').forEach((button)=>button.addEventListener('click',()=>forkAt(button.dataset.forkMessage)));$$('[data-exclude-message]').forEach((button)=>button.addEventListener('click',async()=>{await api(`/api/v1/messages/${button.dataset.excludeMessage}/exclude`,{method:'POST',body:JSON.stringify({branchId:state.activeBranchId,excluded:true})});await refreshMessages();}));$$('[data-retry-message]').forEach((button)=>button.addEventListener('click',async()=>{const index=messages.findIndex((item)=>item.id===button.dataset.retryMessage);const previous=[...messages.slice(0,index)].reverse().find((item)=>item.role==='user');if(previous){$('#chatInput').value=previous.content;await sendChat();}}));}
 async function forkAt(messageId){const name=prompt('Branch name','alternative');if(!name)return;const branch=await api(`/api/v1/conversations/${state.activeConversationId}/fork`,{method:'POST',body:JSON.stringify({fromMessageId:messageId,name})});state.activeBranchId=branch.id;await selectConversation(state.activeConversationId);}
 $('#forkBranch').addEventListener('click',async()=>{const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);const head=data.messages.at(-1);if(head)await forkAt(head.id);});

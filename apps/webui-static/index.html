@@ -219,7 +219,34 @@
             </div>
             <p class="hint chat-disclaimer">NOESAR EVOLUTION is an AI and can make mistakes.</p>
           </section>
-          <aside class="panel context-panel"><div class="panel-title"><h2>Included context</h2><span id="tokenEstimate">0 tokens</span></div><pre id="contextInspector">Select a conversation.</pre></aside>
+          <!-- The work beside the conversation, s326 (Owner's point 4b: a chat that unites
+               work and research). The column already existed and held one thing — a JSON dump
+               of the included context. What research turns up used to scroll away with the
+               messages; here it stays put, which is the whole point of the pattern.
+
+               WHAT IS DELIBERATELY ABSENT, AND SAYS SO: the plan and the files a change
+               touches. A workspace-action run is NOT attached to a conversation anywhere in
+               this build — measured, s326: `sessionId` in workspace-actions.mjs is the run's
+               OWN id (`const runId = randomUUID()`), and `conversationId` appears zero times
+               in that file. Showing "the work for this chat" therefore needs a relation the
+               product does not have, and inventing one in the browser would be a second
+               source of truth about which run belongs where. The panel declares the gap
+               instead of rendering an empty box. -->
+          <aside class="panel context-panel" id="chatWorkPanel">
+            <div class="panel-title"><h2>Work</h2><span id="tokenEstimate">0 tokens</span></div>
+            <section class="work-block">
+              <h3>Sources <span class="work-count" id="chatSourceCount"></span></h3>
+              <div id="chatSources" class="work-sources"></div>
+            </section>
+            <section class="work-block">
+              <h3>Plan</h3>
+              <p class="declared-empty" id="chatPlanDeclared">No plan is linked to this chat. A run is not attached to a conversation in this build, so none can be shown here without inventing the link.</p>
+            </section>
+            <section class="work-block">
+              <h3>Included context</h3>
+              <pre id="contextInspector">Select a conversation.</pre>
+            </section>
+          </aside>
         </div>
       </section>
 

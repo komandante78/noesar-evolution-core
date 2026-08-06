@@ -1132,3 +1132,15 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* A sidebar collapsed to icons has no room for titles, and one narrowed to nothing has no
    room at all. The list follows the destination it belongs to rather than surviving it. */
 .app-shell[data-sidebar=icons] .chat-nav,.app-shell[data-sidebar=hidden] .chat-nav{display:none}
+
+/* The work column beside the conversation (s326, Owner's point 4b). Blocks, not one dump:
+   what the research found stays put while the messages scroll past it. */
+.work-block{padding-top:12px;margin-top:12px;border-top:1px solid var(--line)}
+.work-block:first-of-type{padding-top:0;margin-top:8px;border-top:0}
+.work-block h3{margin:0 0 8px;font-size:calc(var(--text-scale)*12px);letter-spacing:.06em;text-transform:uppercase;color:var(--text-label)}
+.work-count{margin-inline-start:6px;color:var(--muted)}
+.work-sources{display:grid;gap:8px}
+.work-source{padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--surface-card)}
+.work-source-id{display:block;overflow-wrap:anywhere;font-size:calc(var(--text-scale)*12px)}
+.work-source small{display:block;margin-top:3px;color:var(--muted);font-size:calc(var(--text-scale)*10px)}
+.context-panel pre{margin:0}

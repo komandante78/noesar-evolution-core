@@ -402,6 +402,42 @@ describe('the missing interface parts', () => {
     });
   });
 
+  // The work column beside the conversation — the Owner's point 4b, in the half that needed
+  // nothing invented. What is guarded here is mostly what it must NOT claim.
+  describe('the chat carries the work beside the conversation', () => {
+    test('the column has blocks, and sources are one of them', () => {
+      for (const id of ['chatWorkPanel', 'chatSources', 'chatSourceCount', 'contextInspector']) {
+        assert.ok(html.includes(`id="${id}"`), `the work column is missing "${id}"`);
+      }
+      // The context inspector survives as a block rather than being the whole panel.
+      assert.match(html, /<h3>Included context<\/h3>\s*<pre id="contextInspector">/);
+    });
+
+    test('the plan block DECLARES that no run is attached to a chat, instead of showing an empty box', () => {
+      assert.ok(html.includes('id="chatPlanDeclared"'), 'the plan block must exist to declare its own gap');
+      const panel = html.slice(html.indexOf('id="chatWorkPanel"'), html.indexOf('</aside>', html.indexOf('id="chatWorkPanel"')));
+      assert.match(panel, /not attached to a conversation/i,
+        'the gap must be stated in words the reader sees, not left as an empty region');
+    });
+
+    test('the rollup does not invent a second vocabulary for evidence', () => {
+      // The same fallback the per-message citation line uses. Two phrasings of one fact is
+      // how two parts of a product start disagreeing about what "verified" means.
+      assert.match(app, /citation\.evidenceStatus\?\?\(citation\.verified\?'retrieved':'attached'\)/,
+        'the rollup must reuse the per-message wording, not restate it');
+    });
+
+    test('sources are deduplicated by source, and the turn count survives it', () => {
+      assert.match(app, /const bySource=new Map\(\)/, 'sources must collapse by id');
+      assert.match(app, /seen\.turns\+=1/, 'collapsing must keep how many turns cited it');
+    });
+
+    test('an empty source list is declared, not blank', () => {
+      assert.match(app, /No source has been cited in this chat yet/,
+        '"nothing cited" and "this panel is broken" must not look the same');
+    });
+  });
+
   test('UI-008…UI-010 · one confirmation exists and nothing preselects the dangerous button', () => {
     assert.match(html, /id="confirmScrim"/);
     assert.match(html, /role="alertdialog"[^>]*aria-modal="true"/, 'the confirmation must be a modal dialog');
