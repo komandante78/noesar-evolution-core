@@ -7658,3 +7658,59 @@ a SECOND machine on the network. That was not performed: it requires applying th
 to this host — creating a system user and editing `sshd_config` — which is exactly the
 host-level change the platform law forbids the product from making. It is the Owner's to run,
 and the recipe is what it needs.
+
+---
+
+## D-0341 — the phase 8 deploy, and CE-035 proved from a second node (2026-08-07)
+
+**Deployed on the Owner's explicit instruction**, immediately after `D-0340`.
+
+`noesar-evolution:d0340-coden-evolution-launcher`, **421 ms** of downtime, three levels
+identical (`tools/coden-evolution` = `5f086c52…` in repo, in image and — via the extracted
+host copy — on the host; `app.js` unchanged at `7510689f…`, correct, this phase never touched
+the browser). 30 environment variables, fixed IP `172.22.0.5`, both sockets served, `/livez`
+and `/readyz` 200. The run command was **generated from the live container's own config and
+validated on a throwaway before anything was stopped** — and that caught a generator bug (a
+`sed` that put `'no'` where the image name belonged) at zero cost, which is the entire reason
+the step exists.
+
+**Then the recipe was applied for real, and it was wrong in three ways.** None of the three is
+visible by reading it; all three were found by running it. `08_INSTALLAZIONE.md` §12 is
+corrected, and each correction carries the symptom it produces:
+
+1. **`--shell /usr/sbin/nologin` breaks the whole thing.** `sshd` runs `ForceCommand` *through
+   the user's login shell*, so `nologin` refuses the login and nothing starts. A real shell is
+   required; the account still never gets one, because `ForceCommand` replaces it.
+2. **The sudoers rule needs THREE lines, not one.** The launcher *probes* the engine before
+   using it and asks for a TTY *only when it has one*, so it emits `docker version`,
+   `docker exec -i …` and `docker exec -i -t …`. With a single line, entry over `ssh` (which
+   has a TTY) fails while a scripted entry works — a fault that reads as intermittent.
+3. **A host that restricts logins makes the `Match` block dead.** This one had
+   `AllowUsers root`, and the failure is a bare `Permission denied` that never names the
+   cause.
+
+Also missing and now present: the `authorized_keys` step (the first of the two authentication
+levels), and reading the host's real `Port` / `ListenAddress` instead of assuming 22 — here
+they were `2223` and a single interface.
+
+**CE-031 proved.** `coden` is uid 999, in no group but its own, and **not** in the docker
+group: launcher → `sudo -n` against the three pinned argv → `docker exec` → the in-container
+launcher → the socket → the real client → `protocol noesar-tui/1` → the product's own sign-in
+prompt.
+
+**CE-035 proved from a second node.** From a container at `172.17.0.3` with no docker socket
+and no host credential, `ssh coden@192.168.178.100 -p 2223` and **no other argument** starts
+the session and reaches the product's authentication. Declared honestly: a separate network
+node with its own stack, **not** a second physical machine — it exercises the real network
+path, sshd, the forced command and the elevation, and carries nothing of the host.
+
+**Trap 3 is no longer hypothetical, it is measured.** This host keeps `/etc` on a RAM-based
+root filesystem, so the user, the sudoers file, the sshd block and the extracted launcher are
+**all gone after a reboot**. The recipe now says so for that family of systems, and says to
+reboot and retry before calling an installation done.
+
+**Left in place, and it is the Owner's call:** the `coden` account, the sudoers file, the
+`sshd_config` block (with `AllowUsers root coden`) and a test key at
+`/home/coden/.ssh/authorized_keys`. `sshd` was **reloaded, never restarted**, so no existing
+session was dropped, and `/etc/ssh/sshd_config.bak.d0340-<UTC>` is the backup taken before the
+first edit. Reverting is four removals and one `sed`.

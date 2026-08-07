@@ -4397,3 +4397,41 @@ all'inventario pre-pulizia; reti invariate (`noesar-evolution-net`, `noesar-e2e-
 dei container prima↔dopo: gli **unici** assenti sono i due probe, nessuno aggiunto. Nessun
 comando `prune`, mai. Prodotto ancora vivo dopo la pulizia: `running healthy`, `/livez` **200**,
 `/readyz` **200**, e il socket del terminale ancora servito (`srw------- /run/codev-tui.sock`).
+
+---
+
+## Deploy fase 8 + prova `CE-035` (`D-0341`, 2026-08-07)
+
+**Deployato** `noesar-evolution:d0340-coden-evolution-launcher` su istruzione esplicita
+dell'Owner. **421 ms** di downtime (comando generato dalla configurazione viva e **validato su
+un usa-e-getta prima di fermare** — e la validazione ha preso un bug del generatore a costo
+zero). Tre livelli identici: `tools/coden-evolution` `5f086c52…` in repo, nell'immagine e nella
+copia estratta sull'host; `app.js` `7510689f…` invariato. 30 variabili, IP fisso `172.22.0.5`,
+entrambi i socket serviti, `/livez` e `/readyz` **200**. Rollback: `noesar-evolution-old-d0338`
+(unico, come vuole §5a; il precedente rimosso, immagine conservata).
+
+**La parola funziona sull'installazione viva:** `coden_evolution` → `attaching via socket
+(/run/codev-tui.sock)` → `Connected — protocol noesar-tui/1` → prompt di autenticazione del
+prodotto.
+
+**`CE-031` ✅** — `coden`, uid 999, **fuori dal gruppo docker**, raggiunge la sessione tramite
+le tre righe `sudoers` a argv fisso.
+
+**`CE-035` ✅** — da un **secondo nodo di rete** (container a `172.17.0.3`, senza socket docker
+e senza credenziali dell'host): `ssh coden@192.168.178.100 -p 2223` e **nessun altro
+argomento** → la sessione parte. **Dichiarato:** nodo di rete separato, **non** una seconda
+macchina fisica.
+
+**La ricetta §12 era sbagliata in tre punti, trovati applicandola** — `nologin` rompe
+`ForceCommand`; le righe `sudoers` sono **tre**, non una; `AllowUsers` rende morto il blocco
+`Match`. Più due passi che mancavano (`authorized_keys`, e leggere `Port`/`ListenAddress`
+reali: qui `2223` e una sola interfaccia). Tutto corretto nel documento.
+
+**Trappola 3 ora misurata:** qui `/etc` sta su un filesystem di radice in RAM — utente,
+`sudoers`, blocco `sshd` e avviatore estratto **spariscono al riavvio**.
+
+**Modifiche all'host lasciate in piedi (decisione dell'Owner):** utente `coden`,
+`/etc/sudoers.d/coden-evolution`, il blocco `Match` e `AllowUsers root coden` in
+`/etc/ssh/sshd_config`, chiave di prova in `/home/coden/.ssh/authorized_keys`. `sshd`
+**ricaricato con SIGHUP, mai riavviato** — nessuna sessione esistente caduta. Backup:
+`/etc/ssh/sshd_config.bak.d0340-20260807T085444Z`.

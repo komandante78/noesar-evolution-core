@@ -267,72 +267,128 @@ remote_launcher=/opt/noesar/tools/coden-evolution
 
 ### 12.3 La ricetta, per famiglia di sistema
 
-**Passo comune — prendere l'avviatore.** Su una macchina che ha solo l'immagine e nessun
-repository, l'avviatore si estrae dall'immagine, che è il motivo per cui è spedito:
+> **Questa sezione è stata corretta applicandola davvero** (2026-08-07, `D-0340`). La prima
+> stesura era sbagliata in **tre** punti, e nessuno dei tre si vedeva leggendola. Sono segnati
+> ⚠️ qui sotto, perché sono esattamente i punti dove un'installazione fallisce in silenzio.
+
+**Passo 0 — i due valori dell'host che non si presumono.** Prima di tutto si leggono dal
+`sshd_config` dell'host la **porta** e l'**indirizzo di ascolto**: non sono necessariamente
+`22` e «tutte le interfacce». Sull'installazione di riferimento erano `Port 2223` e
+`ListenAddress` su una sola interfaccia, e ogni comando qui sotto li usa.
+
+**Passo 1 — prendere l'avviatore.** Su una macchina che ha solo l'immagine e nessun
+repository, l'avviatore si estrae dall'immagine — è il motivo per cui viene spedito:
 
 ```sh
-docker cp "$(docker create --name coden-extract noesar-evolution:<tag>):/opt/noesar/tools/coden-evolution" /usr/local/bin/coden_evolution
-docker rm coden-extract
+CID=$(docker create noesar-evolution:<tag>)
+docker cp "$CID:/opt/noesar/tools/coden-evolution" /usr/local/bin/coden_evolution
+docker rm "$CID"
 chmod 0755 /usr/local/bin/coden_evolution
 ```
 
-**Linux con systemd** (Debian, Ubuntu, Fedora, RHEL, Arch, SUSE):
+**Passo 2 — l'utente di sistema.**
 
 ```sh
-useradd --system --create-home --shell /usr/sbin/nologin coden
+useradd --system --create-home --shell /bin/sh coden
+```
+
+> ⚠️ **La shell deve essere una shell vera.** `sshd` esegue `ForceCommand` **tramite la login
+> shell dell'utente** (`$SHELL -c comando`): con `/usr/sbin/nologin` l'accesso viene rifiutato
+> e non parte nulla. L'utente **non ottiene comunque una shell**, perché `ForceCommand` la
+> sostituisce — la sicurezza sta lì, non nel campo shell.
+
+**Passo 3 — la chiave per arrivare alla macchina.** È il primo dei due livelli di
+autenticazione (il secondo è quello del prodotto, dopo l'ingresso):
+
+```sh
+install -d -m 0700 -o coden -g coden /home/coden/.ssh
+install -m 0600 -o coden -g coden /percorso/della/chiave.pub /home/coden/.ssh/authorized_keys
+```
+
+**Passo 4 — la configurazione dell'avviatore.**
+
+```sh
 install -d -m 0755 /etc/noesar-evolution
-printf 'engine=docker\ncontainer=noesar-evolution\n' > /etc/noesar-evolution/launcher.conf
-cat > /etc/ssh/sshd_config.d/60-coden-evolution.conf <<'CONF'
+printf 'engine=docker\ncontainer=noesar-evolution\nelevate=sudo\n' > /etc/noesar-evolution/launcher.conf
+```
+
+**Passo 5 — la regola del demone `ssh`.**
+
+```text
 Match User coden
     ForceCommand /usr/local/bin/coden_evolution
     PermitTTY yes
     AllowTcpForwarding no
     X11Forwarding no
-CONF
-systemctl reload sshd
+    PermitTunnel no
 ```
 
-**Linux senza systemd** (Alpine, Void, Devuan, e le distribuzioni minimali): identica, ma
-`sshd_config.d/` può non essere incluso — si verifica che `/etc/ssh/sshd_config` contenga
-`Include /etc/ssh/sshd_config.d/*.conf`, e se non c'è si scrive il blocco `Match` in fondo a
-`sshd_config`. Il reload è `rc-service sshd reload` o `service sshd reload`.
+Su **Linux con systemd** (Debian, Ubuntu, Fedora, RHEL, Arch, SUSE) va in
+`/etc/ssh/sshd_config.d/60-coden-evolution.conf`, purché `sshd_config` contenga
+`Include /etc/ssh/sshd_config.d/*.conf`. Su **Linux senza systemd** e sulle distribuzioni
+minimali quella directory spesso **non esiste**: il blocco si scrive in fondo a
+`/etc/ssh/sshd_config`. Su **macOS** l'accesso remoto si abilita da *Impostazioni › Generali ›
+Condivisione › Accesso remoto* e il file è `/etc/ssh/sshd_config`.
 
-**macOS:** l'accesso remoto si abilita da *Impostazioni › Generali › Condivisione › Accesso
-remoto*; `sshd_config` sta in `/etc/ssh/sshd_config` e il blocco `Match` è lo stesso. Il
-percorso dell'avviatore può contenere spazi ed è previsto.
+> ⚠️ **Se l'host limita gli accessi, il blocco `Match` è morto finché non si aggiunge
+> l'utente.** Molte installazioni hanno `AllowUsers` o `AllowGroups`: sull'host di riferimento
+> c'era `AllowUsers root`, e il risultato era un `Permission denied` che **non nomina** la
+> causa. Si controlla, e se c'è si aggiunge `coden` a quella riga.
 
-**Windows:** si installa `OpenSSH Server` da *Impostazioni › App › Funzionalità
-facoltative*; la configurazione sta in `%ProgramData%\ssh\sshd_config` e il file di
-configurazione dell'avviatore in `%ProgramData%\noesar-evolution\launcher.conf`. Il comando
-forzato è `powershell -NoProfile -File C:\Program Files\noesar-evolution\coden-evolution.ps1`.
+**Passo 6 — validare PRIMA di ricaricare, e ricaricare senza riavviare.**
+
+```sh
+sshd -t                 # una configurazione rotta qui chiude fuori l'amministratore
+kill -HUP "$(pgrep -f 'sshd.*listener')"   # oppure: systemctl reload sshd / rc-service sshd reload
+```
+
+`reload`/`SIGHUP` e **mai** `restart`: le sessioni già aperte non devono cadere.
+
+**Windows.** Si installa `OpenSSH Server` da *Impostazioni › App › Funzionalità facoltative*;
+la configurazione sta in `%ProgramData%\ssh\sshd_config` e quella dell'avviatore in
+`%ProgramData%\noesar-evolution\launcher.conf`. Il comando forzato è
+`powershell -NoProfile -File "C:\Program Files\noesar-evolution\coden-evolution.ps1"`.
 **Dichiarato:** il gemello PowerShell **non è mai stato eseguito** — non c'è PowerShell sulla
-macchina su cui è stato scritto, ed è coperto da sole asserzioni strutturali. Il livello di
-verifica per un'installazione Windows è **UNVERIFIED** finché qualcuno non lo esegue su un
-host Windows vero.
+macchina su cui è stato scritto — ed è coperto da sole asserzioni strutturali. Il livello di
+verifica per un'installazione Windows è **UNVERIFIED** finché qualcuno non lo esegue su un host
+Windows vero.
 
-### 12.4 L'elevazione — una regola sola, senza jolly
+### 12.4 L'elevazione — tre righe fisse, nessun jolly
 
 > **L'utente dedicato NON entra nel gruppo del motore di contenitori.** Quel gruppo equivale
 > all'amministrazione della macchina: si otterrebbe una shell del prodotto regalando l'host
 > (`16` §4.3, trappola 2).
 
-Dove serve, si concede **una riga**, con l'argv intero e nessun carattere jolly — possibile
-solo perché motore e contenitore vengono dal file di configurazione, di proprietà di root:
+> ⚠️ **Servono TRE righe, non una.** L'avviatore **interroga** il motore prima di usarlo, e
+> chiede un terminale **solo se ne ha uno**: produce quindi esattamente tre righe di comando e
+> nessun'altra. Misurate, non dedotte. Una regola sola fa fallire l'ingresso da `ssh`
+> (che *ha* un terminale) mentre quello da script funziona — il tipo di guasto che sembra
+> intermittente.
 
 ```text
-# /etc/sudoers.d/coden-evolution — 0440, visudo -c prima di installarlo
+# /etc/sudoers.d/coden-evolution — modo 0440, validare con `visudo -c -f` prima di installarlo
+coden ALL=(root) NOPASSWD: /usr/bin/docker version
 coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i noesar-evolution /opt/noesar/tools/coden-evolution
+coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i -t noesar-evolution /opt/noesar/tools/coden-evolution
 ```
 
-e nel file di configurazione si aggiunge `elevate=sudo`. L'avviatore usa `sudo -n`: sotto un
-comando forzato non c'è nessuno a cui chiedere una password, e un avviatore che si blocca su
-un prompt invisibile è indistinguibile da uno rotto.
+Nessuna delle tre contiene un carattere jolly, ed è possibile **solo** perché motore e
+contenitore vengono dal file di configurazione di proprietà di root: l'avviatore non può
+produrre un argv diverso da questi. Se qualcuno punta `NOESAR_EVOLUTION_LAUNCHER_CONF` a un
+file suo, l'argv smette di combaciare e `sudo` rifiuta. **La regola è l'autorità, non
+l'avviatore.** L'avviatore usa `sudo -n`: sotto un comando forzato non c'è nessuno a cui
+chiedere una password, e uno che si blocca su un prompt invisibile è indistinguibile da uno
+rotto.
 
 ### 12.5 Le due trappole che restano
 
 1. **Il socket non si pubblica sull'host.** È la porta del motore senza alcuno strato HTTP
    davanti; a limitarlo è il permesso `0600` dentro lo spazio dei nomi del contenitore.
    L'avviatore **va al socket, non lo sposta**: nessun passo di questa ricetta lo espone.
-2. **Su alcuni sistemi la configurazione del demone non sopravvive al riavvio.** Dopo aver
-   applicato la ricetta si **riavvia la macchina e si riprova**, prima di considerarla fatta.
-   Un'installazione che si scopre rotta al primo riavvio è la stessa cosa di una non fatta.
+2. **Su alcuni sistemi la configurazione del demone non sopravvive al riavvio — e questo è
+   ora misurato, non ipotizzato.** Sull'installazione di riferimento (un NAS appliance) la
+   radice del filesystem è in RAM: utente, `sudoers`, `sshd_config` e avviatore **spariscono
+   tutti al riavvio**. Su questa famiglia di sistemi la ricetta va riapplicata all'avvio dal
+   meccanismo che l'host offre per la persistenza. **Dopo aver applicato la ricetta si riavvia
+   la macchina e si riprova**, prima di considerarla fatta: un'installazione che si scopre
+   rotta al primo riavvio è la stessa cosa di una non fatta.
