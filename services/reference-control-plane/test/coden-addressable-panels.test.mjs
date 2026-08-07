@@ -384,7 +384,24 @@ describe('phase 4: the terminal keeps no list of its own', () => {
     // fallback (`<repo>/.workspace/tui.sock`) is the wrong path, because the repo root there
     // is /opt/noesar while the socket lives on the /run tmpfs. Measured by running the
     // shipped client in a container built from this file.
-    assert.match(dockerfile, /NOESAR_TUI_SOCKET_PATH=\/run\/codev-peer\.sock/,
-      'the image does not tell the client where the socket is, so the printed command needs an argument the page does not print');
+    const tuiSocket = dockerfile.match(/^\s*NOESAR_TUI_SOCKET_PATH=(\S+?)\s*\\?$/m);
+    assert.ok(tuiSocket, 'the image does not tell the client where the socket is, so the printed command needs an argument the page does not print');
+    assert.match(tuiSocket[1], /^\/run\//,
+      `the client socket must live on the /run tmpfs, not at ${tuiSocket[1]} — a socket under the workspace is published onto a host bind mount`);
+
+    // D-0338. This used to assert the LITERAL `/run/codev-peer.sock`, which was the defect
+    // rather than the requirement: that is the supervisor's INTERNAL path, hard-coded in
+    // `noesar-supervisor/src/lib.rs` for both `api` and `codev`. Pointing the external path at
+    // it made the relay bind the socket `api` was about to listen on, so the terminal
+    // transport was never served in production — and this guard held that configuration in
+    // place, because it asserted a value instead of a rule.
+    //
+    // Read from the supervisor rather than repeated here: a constant copied into a test is a
+    // second source of truth, and that drift is what produced the defect in the first place.
+    const supervisor = readFileSync(join(root, 'rust/crates/noesar-supervisor/src/lib.rs'), 'utf8');
+    const internal = supervisor.match(/CODEV_PEER_SOCKET_PATH:\s*&str\s*=\s*"([^"]+)"/);
+    assert.ok(internal, 'the supervisor no longer declares its internal socket path; find where it moved');
+    assert.notEqual(tuiSocket[1], internal[1],
+      `the image points the client at ${tuiSocket[1]}, which is the supervisor's INTERNAL socket — the relay would bind the path \`api\` listens on, and the terminal transport would not be served`);
   });
 });

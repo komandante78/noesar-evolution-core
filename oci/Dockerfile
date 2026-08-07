@@ -187,12 +187,29 @@ ENV NODE_ENV=production \
     NOESAR_DATA_PLANE=postgresql \
     NOESAR_SETUP_TOKEN_FILE=/workspace/config/first-owner-setup.token \
     NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1 \
-    # Where the terminal shell looks for the socket the server opens. The client's own
-    # fallback is `<repo>/.workspace/tui.sock`, which is right for a from-source install and
-    # wrong here — in the image the repo root is /opt/noesar while the socket lives on the
-    # /run tmpfs. Without this, the command the WebUI prints would need an argument the
-    # WebUI does not print. Measured in phase 5 by running the shipped client in the image.
-    NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock \
+    # Where the terminal shell looks for the socket. The client's own fallback is
+    # `<repo>/.workspace/tui.sock`, which is right for a from-source install and wrong here —
+    # in the image the repo root is /opt/noesar while the socket lives on the /run tmpfs.
+    # Without this, the command the WebUI prints would need an argument it does not print.
+    #
+    # It must NOT be `/run/codev-peer.sock`, and it WAS, from phase 5 until D-0338. That is
+    # the supervisor's INTERNAL path: `noesar-supervisor/src/lib.rs` hard-codes
+    # `NOESAR_CODEV_PEER_SOCKET_PATH=/run/codev-peer.sock` for both `api` and `codev` on
+    # purpose, so the two children agree without either being told the other's variable name.
+    # Pointing the EXTERNAL path at that same value made the relay bind the socket `api` was
+    # about to listen on: `session-protocol.mjs` then correctly refused to steal a live socket
+    # (D-0328) and logged `tui.socket-unavailable`, and a client reaching the relay would have
+    # been relayed to the relay.
+    #
+    # Measured on the live installation, and true for every deployment since phase 5: the
+    # terminal transport was never served in production. The socket file existed, the
+    # container reported healthy, every status agreed, and the only trace was a single ERROR
+    # line at startup. `createRelay` now refuses this configuration outright.
+    #
+    # `/run` and not `/workspace`: container-local tmpfs, so the socket is never published
+    # onto a host bind mount — the first of the three traps in `16` §4.3, and §2.3 of
+    # docs/CODEN_EVOLUTION_TERMINAL_ACCESS.md.
+    NOESAR_TUI_SOCKET_PATH=/run/codev-tui.sock \
     NOESAR_SECURE_COOKIES=false \
     NOESAR_POSTGRES_BINDIR=/usr/lib/postgresql/18/bin \
     NOESAR_POSTGRES_ROOT=/workspace/postgresql \

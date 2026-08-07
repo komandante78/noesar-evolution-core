@@ -38,12 +38,18 @@ docker exec -it -u 10001 noesar-evolution node /opt/noesar/tools/tui-client.mjs
 
 Measured facts behind that one line:
 
-- the socket is at **`/run/codev-peer.sock`**, mode `srw-------`, owner `noesar` (uid 10001),
-  on the `/run` **tmpfs** — so it exists only for the life of the container;
+- the socket clients connect to is at **`/run/codev-tui.sock`**, mode `srw-------`, owner
+  `noesar` (uid 10001), on the `/run` **tmpfs** — so it exists only for the life of the
+  container. `/run/codev-peer.sock` is a DIFFERENT socket: the internal one `api` listens on
+  and `codev` relays to. The two must never be the same path (D-0338);
 - `-u 10001` is not decoration: mode `0600` means the product's own uid is the only one that
   can open it. `docker exec` without `-u` runs as root, which also works, and is a bigger
   hammer than the job needs;
-- no socket path argument is needed: the image sets `NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock`.
+- no socket path argument is needed: the image sets `NOESAR_TUI_SOCKET_PATH=/run/codev-tui.sock`.
+  *Corrected 2026-08-07 (D-0338).* It said `/run/codev-peer.sock`, which is the supervisor's
+  INTERNAL path — so the relay bound the socket `api` was about to listen on, and **the
+  terminal transport was never served in production**. Measured on the live installation;
+  `createRelay` now refuses two identical paths instead of starting anyway.
   Without it the client's own fallback is `<repo>/.workspace/tui.sock`, which is correct for a
   from-source install and wrong inside the image, where the repo root is `/opt/noesar`;
 - sign-in is the same account as the WebUI, by either of the two paths in §2.4. The socket

@@ -120,3 +120,25 @@ describe('codev relay — byte-transparent, not a second dispatch', () => {
     }
   });
 });
+
+test('D-0338 · the relay refuses when its two socket paths are the same', async () => {
+  // Not a hypothetical. On the live installation `NOESAR_TUI_SOCKET_PATH` was set to
+  // `/run/codev-peer.sock` and `NOESAR_CODEV_PEER_SOCKET_PATH` was left unset, so it defaulted
+  // to that same path: the relay bound it, session-protocol correctly refused to steal a live
+  // socket, and the terminal transport was never served — in a container reporting healthy,
+  // with the socket file present, and every status agreeing.
+  //
+  // Fatal rather than warned, because the failure it replaces was silent.
+  const directory = mkdtempSync(join(tmpdir(), 'noesar-relay-same-'));
+  const path = join(directory, 'peer.sock');
+  await assert.rejects(
+    createRelay({ externalSocketPath: path, internalSocketPath: path }),
+    (error) => error.kind === 'SOCKET_PATHS_IDENTICAL' && /must differ/.test(error.message),
+  );
+  // And the same path expressed differently is still the same path.
+  await assert.rejects(
+    createRelay({ externalSocketPath: path, internalSocketPath: join(directory, '.', 'peer.sock') }),
+    (error) => error.kind === 'SOCKET_PATHS_IDENTICAL',
+  );
+  rmSync(directory, { recursive: true, force: true });
+});

@@ -7495,3 +7495,58 @@ than a default to invent here.
 `state/auth.json` and `audit/events.jsonl` remain visible to the scanner, and have been since
 before this session. The same exclusion mechanism now exists to close it; whether the product's
 whole state directory should be invisible to its own planning is a decision, not a cleanup.
+
+## D-0339 — the terminal transport was never served in production (2026-08-07)
+
+Found while validating the D-0338 deploy on a throwaway container, in a log line that had been
+printed at every start since phase 5 and read by nobody twice:
+
+```
+ERROR tui.socket-unavailable  kind=SOCKET_PATH_IN_USE
+      "another process is already listening on /run/codev-peer.sock;
+       refusing to unlink a live socket"
+      note: "HTTP is served; the terminal transport is not"
+```
+
+**Two variables pointing at one path.** `noesar-supervisor/src/lib.rs` hard-codes
+`NOESAR_CODEV_PEER_SOCKET_PATH=/run/codev-peer.sock` for both the `api` and `codev` children
+**on purpose** — "so both children agree on its path without either one having to be told the
+other's env var name". The relay's EXTERNAL path is a different variable,
+`NOESAR_TUI_SOCKET_PATH`, and `oci/Dockerfile` set it to **the same value**. So `codev` bound
+the socket `api` was about to listen on; `session-protocol.mjs` then did exactly the right
+thing and refused to steal a live socket (`D-0328`); and a client connecting to the external
+path reached the relay, which would have dialled itself.
+
+**What that meant, stated plainly: `docker exec … node tools/tui-client.mjs` could not work on
+any deployment since phase 5.** The socket file existed, the container reported healthy, and
+every status agreed. `D-0301` shipped the client into the image and set the variable in the
+same change — the fix and the defect arrived together, and the acceptance that proved the
+client works ran against a container where the supervisor was not arbitrating the same path.
+
+It also means this morning's `D-0337` attach code — the whole point of which is reaching the
+terminal — would have been unreachable on the deployed product.
+
+**Three repairs, because one would have left the trap armed.**
+
+1. **The value.** `NOESAR_TUI_SOCKET_PATH=/run/codev-tui.sock`, still on the `/run` tmpfs so
+   the socket is never published onto a host bind mount (`16` §4.3, first trap).
+2. **The refusal.** `createRelay` now throws `SOCKET_PATHS_IDENTICAL` when its two paths
+   resolve to the same file, naming both variables. Fatal rather than warned: the failure it
+   replaces was a whole transport silently absent behind a healthy container, which is worse
+   than a container that refuses to start and says why.
+3. **The guard that had been holding the defect in place.** `coden-addressable-panels.test.mjs`
+   asserted the literal string `NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock` — it was pinning
+   the broken value as though it were the requirement. It now reads the supervisor's own
+   constant and asserts the RULE: the client path must be under `/run`, and must not equal the
+   internal one. A constant copied into a test is a second source of truth, and that drift is
+   what produced this in the first place.
+
+**Proved, not inferred.** In a container built from the corrected Dockerfile: two distinct
+sockets on `/run`, `relay.listening external=/run/codev-tui.sock internal=/run/codev-peer.sock`,
+`tui.socket-listening` from `session-protocol`, and a real client connecting to
+`$NOESAR_TUI_SOCKET_PATH` receiving `{"protocol":"noesar-tui/1"}`. Then the same on the live
+installation after the deploy.
+
+**The lesson worth keeping, because it is not about sockets.** A test that asserts the value a
+system currently has, rather than the property it must hold, converts a defect into a
+requirement. This one did that for five phases, and every suite stayed green the whole time.

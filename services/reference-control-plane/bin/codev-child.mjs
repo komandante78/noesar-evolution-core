@@ -35,6 +35,7 @@
 
 import { createServer, connect } from 'node:net';
 import { chmodSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { reclaimSocketPath } from '../src/session-protocol.mjs';
 
@@ -55,6 +56,27 @@ function defaultLog(level, event, detail = {}) {
  * tmpfs path. Same defect as session-protocol.mjs had, on the worse of the two paths.
  */
 export async function createRelay({ externalSocketPath, internalSocketPath, connectTimeoutMs = 10000, log = defaultLog }) {
+  // The two paths must differ, and this refuses LOUDLY rather than starting something that
+  // cannot possibly work (D-0338).
+  //
+  // Measured on the live installation, where it had been true since that deployment was
+  // built: the run command set `NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock` and left
+  // `NOESAR_CODEV_PEER_SOCKET_PATH` unset, so it fell to its default — the SAME path. This
+  // relay bound it first; `session-protocol.mjs` then correctly refused to steal a live
+  // socket (D-0328) and logged `tui.socket-unavailable`; and a client connecting to the
+  // external path reached this relay, which would have dialled itself.
+  //
+  // The visible symptom was one ERROR line in a startup log nobody reads twice. The actual
+  // state was that the terminal transport had never been served in production at all — while
+  // the socket file existed, the container reported healthy, and every status agreed. That is
+  // why this is fatal rather than a warning: a whole transport silently absent is worse than
+  // a container that refuses to start and names the two variables that collide.
+  if (resolve(externalSocketPath) === resolve(internalSocketPath)) {
+    throw Object.assign(
+      new Error(`the relay's external and internal socket paths are identical (${externalSocketPath}); NOESAR_TUI_SOCKET_PATH and NOESAR_CODEV_PEER_SOCKET_PATH must differ, or the terminal transport cannot be served`),
+      { kind: 'SOCKET_PATHS_IDENTICAL' },
+    );
+  }
   await reclaimSocketPath(externalSocketPath);
 
   const server = createServer((external) => {
