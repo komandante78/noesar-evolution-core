@@ -69,6 +69,20 @@ function hostSnapshot() {
   };
 }
 
+// Discovery by label is the thing under test, so this harness cannot run while anything
+// else on the host wears the product label. That is not hypothetical: the browser E2E probe
+// container carries it, and a run overlapping one made the installer refuse with exit 4 and
+// name both — correct behaviour, meaningless as a measurement. Said up front rather than
+// diagnosed from six confusing failures further down.
+const running = sh("docker ps --filter 'label=org.noesar.authority=reference-node' --filter 'status=running' --format '{{.Names}}'");
+const installations = running.out.split('\n').map((s) => s.trim()).filter(Boolean);
+if (installations.length !== 1) {
+  console.log(`  SKIP  this host is running ${installations.length} labelled installations: ${installations.join(', ')}`);
+  console.log('        discovery by label cannot be measured against more than one. Re-run when only one is up.');
+  console.log('\nCE036_CHECKS=0\nCE036_FAILURES=0\nCE036_SKIPPED=1');
+  process.exit(0);
+}
+
 const before = hostSnapshot();
 const home = mkdtempSync(join(tmpdir(), 'ce036-home-'));
 const binDir = join(home, '.local', 'bin');
@@ -112,7 +126,10 @@ const second = sh(`sh ${JSON.stringify(INSTALLER)} --bin-dir ${JSON.stringify(bi
   env: { ...process.env, HOME: home },
 });
 check(second.ok, `a reinstall must succeed, exit ${second.status}`);
-check(readdirSync(binDir).length === 1, `only one file must be left in the bin dir, found ${readdirSync(binDir).join(',')}`);
+// Guarded: if the install never happened, this must report that, not throw a stack trace
+// on top of the failures that already explained why.
+const leftBehind = existsSync(binDir) ? readdirSync(binDir) : [];
+check(leftBehind.length === 1, `only one file must be left in the bin dir, found [${leftBehind.join(',')}]`);
 
 // --- 4. it refuses a default destination outside the home -------------------------------
 const outside = sh(`sh ${JSON.stringify(INSTALLER)} --no-path`, {
