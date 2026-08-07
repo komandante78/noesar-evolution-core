@@ -224,20 +224,63 @@ Severità: **C**ritica / **A**lta / **M**edia.
 
 ## 12. `coden_evolution` — l'accesso in una parola
 
-**Il gesto, fissato dall'Owner** (`16` §4.2b): si apre `ssh` dalla stessa rete, si scrive
-`coden_evolution`, parte la sessione. Nient'altro. L'autenticazione **resta e sta dentro**:
-è una domanda dopo essere entrati, con lo stesso secondo fattore del browser, non un
-ostacolo da superare per arrivare al programma.
+**Il gesto, fissato dall'Owner** (`16` §4.2b): si scrive `coden_evolution` e parte la
+sessione. Nient'altro. L'autenticazione **resta e sta dentro**: è una domanda dopo essere
+entrati, con lo stesso secondo fattore del browser, non un ostacolo da superare per
+arrivare al programma.
+
+### Le tre vie d'ingresso, in ordine di costo
+
+> **Corretto il 2026-08-07, e la correzione è il punto.** Fino a quella data questa sezione
+> descriveva **una sola** via — `ssh` con un utente di sistema dedicato — e la descriveva
+> come *la* ricetta. Quella via costa: `root`, `useradd`, una regola `sudoers`, una modifica
+> a `sshd_config`, la porta e l'indirizzo di ascolto reali dell'host, e su host con la radice
+> in RAM anche un meccanismo di persistenza all'avvio. Sei passi e tre trappole. Su Windows
+> è dichiarata **UNVERIFIED**; su macOS richiede un interruttore nelle Impostazioni.
+>
+> Un prodotto self-hosted deve aprirsi su quello che la persona **ha già**. Le due vie che
+> non costano nulla di tutto questo esistevano da prima e non erano nominate qui.
+
+| # | Via | Cosa serve | Su quali sistemi |
+|---|---|---|---|
+| **1** | **Il browser** — `http://<macchina>:8100/` | **niente** | tutti, telefono compreso; sopravvive al riavvio da sé perché il container è `--restart unless-stopped` |
+| **2** | **`coden_evolution` nel proprio terminale** | un account che sa già parlare col proprio motore di container — cioè chi ha messo su il container | Linux, macOS, BSD, WSL, Windows |
+| **3** | **`ssh` come utente dedicato non-amministratore** (§12.3) | `root` sull'host, `sudoers`, `sshd` | famiglia per famiglia, **facoltativa** |
+
+**La via 2 in un comando, senza `root`.** L'installatore trova il motore, trova
+l'installazione **per label**, estrae l'avviatore e lo mette in `~/.local/bin`:
+
+```sh
+curl -fsSLO http://<macchina>:8100/cli/install.sh
+curl -fsSL  http://<macchina>:8100/cli/install.sh.sha256   # confrontare, poi:
+sh install.sh
+```
+
+Su Windows lo stesso con `Install-CodenCli.ps1` da `/cli/install.ps1`. Chi ha il
+repository può saltare lo scaricamento: i due file sono `deployment/container/`. Entrambi
+si disfano con `--uninstall`, e **nessuno dei due tocca `sshd`, `sudoers` o un gruppo**.
+
+> **Perché la rotta `/cli` esiste.** Senza di essa l'unico modo documentato di *procurarsi*
+> l'installatore era il passo 1 della §12.3 — `docker create`, `docker cp`, `docker rm`,
+> `chmod`, più il tag dell'immagine — cioè quattro comandi e un dato da ricordare: la stessa
+> forma di problema che l'avviatore esiste per abolire, spostata di un piano. La porta era
+> già aperta e già serviva la pagina, quindi serve anche i byte. La rotta è **una tabella
+> fissa di quattro file sorgente AGPL più le loro impronte**: nessun frammento della
+> richiesta raggiunge mai un percorso, non perché sia filtrato ma perché non esiste un
+> cammino di codice in cui possa arrivarci (`src/cli-downloads.mjs`).
 
 **Cosa dà il prodotto, e cosa dà l'installazione.** Il confine non si attraversa: il prodotto
 fornisce un avviatore che trova la sessione da solo e **non modifica mai la configurazione
 dell'host**; l'installazione fornisce l'utente di sistema e la regola del demone `ssh`, che
-un essere umano applica. Il prodotto non possiede la macchina su cui gira.
+un essere umano applica — e serve **solo** per la via 3. Il prodotto non possiede la macchina
+su cui gira.
 
 | Livello | File | Chi lo mette |
 |---|---|---|
 | Prodotto | `tools/coden-evolution` (POSIX), `tools/coden-evolution.ps1` (Windows) | spediti nell'immagine |
-| Installazione | l'utente `coden`, la regola `sshd`, l'eventuale regola di elevazione | **questa ricetta** |
+| Prodotto | `deployment/container/install-coden-cli.sh` e `Install-CodenCli.ps1` | spediti nell'immagine, serviti su `/cli` |
+| Installazione da sorgenti | `coden_evolution` accanto a `noesar-evolution` | `deployment/{linux,macos,windows}/` |
+| Installazione (solo via 3) | l'utente `coden`, la regola `sshd`, l'eventuale regola di elevazione | **§12.3** |
 
 ### 12.1 Come l'avviatore trova la sessione
 
@@ -265,7 +308,17 @@ elevate=sudo                       # solo dove serve la regola di §12.4
 remote_launcher=/opt/noesar/tools/coden-evolution
 ```
 
-### 12.3 La ricetta, per famiglia di sistema
+### 12.3 La ricetta `ssh`, per famiglia di sistema — **FACOLTATIVA**
+
+> **Non serve per accedere.** Questa sezione costruisce la **via 3**: un account di sistema
+> dedicato, **non amministratore**, che entra da `ssh` e non può fare altro che aprire la
+> sessione. È un irrobustimento per chi vuole dare l'accesso al programma **senza** dare un
+> account della macchina — non il modo di entrare. Per entrare bastano la via 1 (il browser,
+> zero installazione) o la via 2 (`install-coden-cli.sh`, zero `root`), entrambe sopra.
+>
+> Quello che segue **modifica l'host**: crea un utente, scrive in `/etc/sudoers.d`, modifica
+> `sshd_config`. Va applicato da un essere umano che amministra quella macchina, e su alcune
+> famiglie di sistemi va **riapplicato a ogni avvio** (§12.5).
 
 > **Questa sezione è stata corretta applicandola davvero** (2026-08-07, `D-0340`). La prima
 > stesura era sbagliata in **tre** punti, e nessuno dei tre si vedeva leggendola. Sono segnati

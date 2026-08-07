@@ -500,6 +500,39 @@ describe('the launcher is shipped — the class of defect phase 5 paid for three
     assert.match(instructions, /chmod 0755 \/opt\/noesar\/tools\/coden-evolution/);
   });
 
+  // These three exist because the guards above were all green on 2026-08-07 while the image
+  // shipped the POSIX launcher ALONE. `coden-evolution.ps1` was absent, so the operating
+  // system with the longest section in the installation recipe had nothing to extract and
+  // step 1 of that recipe could not be carried out on it at all. The tests above could not
+  // see it: every one of them names the POSIX file, and a list that only mentions one
+  // dialect cannot report the other one missing.
+  //
+  // So the path is DERIVED from the file that will go looking for it, never written here a
+  // second time. A hand-kept copy of the path in a test proves the test agrees with itself.
+  const windowsInstaller = readFileSync(
+    join(repoRoot, 'deployment', 'container', 'Install-CodenCli.ps1'),
+    'utf8',
+  );
+
+  test('the image contains the dialect the Windows installer goes looking for', () => {
+    const [, remote] = windowsInstaller.match(/\$RemoteLauncher\s*=\s*'([^']+)'/) ?? [];
+    assert.ok(remote, 'the Windows installer must declare the path it extracts');
+    assert.match(instructions, new RegExp(`^COPY .*${remote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+  });
+
+  test('the image contains both installers, so a machine with no repository can obtain them', () => {
+    for (const shipped of [
+      '/opt/noesar/tools/install-coden-cli.sh',
+      '/opt/noesar/tools/Install-CodenCli.ps1',
+    ]) {
+      assert.match(instructions, new RegExp(`^COPY .*${shipped}$`, 'm'), `${shipped} must be shipped`);
+    }
+  });
+
+  test('the shipped POSIX installer is executable', () => {
+    assert.match(instructions, /chmod 0755 [^\n]*\/opt\/noesar\/tools\/install-coden-cli\.sh/);
+  });
+
   test('the path the host launcher re-enters is the path the image ships it at', () => {
     // The two halves of rung 2 are written in different files; nothing but this ties them.
     const source = readFileSync(launcher, 'utf8');

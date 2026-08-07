@@ -151,7 +151,18 @@ foreach ($engineCandidate in $engineCandidates) {
 function Stop-NoSession {
     Write-Note 'no session found.'
     foreach ($attempt in $attempts) { [Console]::Error.WriteLine("  - $attempt") }
-    Write-Note 'see MASTER_PROJECT/08_INSTALLAZIONE.md §12 for the recipe for this operating system'
+    # The browser is named FIRST and unconditionally — see the POSIX twin's
+    # `no_session_help` for why the single line that used to be here was wrong twice over:
+    # it named a file the reader may not have, and it made the specialist ssh recipe look
+    # like the only way in.
+    Write-Note ''
+    Write-Note 'the session is also reachable in a browser, with nothing installed, from any'
+    Write-Note 'device on this network:    http://<the-machine-running-it>:8100/'
+    Write-Note ''
+    Write-Note 'if the installation is not running yet, start it first. To put this launcher on'
+    Write-Note 'another machine: deployment/container/install-coden-cli.sh (POSIX) or'
+    Write-Note 'Install-CodenCli.ps1 (Windows) — neither needs root.'
+    Write-Note 'The optional ssh recipe for a dedicated account is 08_INSTALLAZIONE.md §12.'
     exit $ExitNoSession
 }
 

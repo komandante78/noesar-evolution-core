@@ -27,7 +27,7 @@
 // here should be read as "macOS is verified" or "Podman is verified" — what is verified is
 // that the script does what it claims when its external commands are observed.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, statSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -271,6 +271,68 @@ for (const [script, describe] of [
     const target = body.match(/exec node "([^"]+)"/)?.[1];
     check(Boolean(target) && existsSync(target),
       `${script}: the launcher must point at a file that exists (${target ?? 'no target parsed'})`);
+  }
+
+  // The session, in one word. This block exists because every check above it was green
+  // while a from-source installation had NO `coden_evolution` at all: the word worked on a
+  // container installation and simply did not exist here, and nothing said so. Checking
+  // "the server was installed" cannot report "the way in was not".
+  const sessionLauncher = describe === 'linux'
+    ? join(home, 'bin', 'coden_evolution')
+    : join(destination, 'coden_evolution');
+  check(existsSync(sessionLauncher), `${script}: coden_evolution must be installed`);
+  if (existsSync(sessionLauncher)) {
+    const sessionMode = statSync(sessionLauncher).mode & 0o777;
+    check(sessionMode === 0o755, `${script}: coden_evolution must be 0755, is 0${sessionMode.toString(8)}`);
+
+    let sessionSyntaxOk = true;
+    try { execFileSync('sh', ['-n', sessionLauncher], { stdio: 'pipe' }); } catch { sessionSyntaxOk = false; }
+    check(sessionSyntaxOk, `${script}: coden_evolution must be valid shell`);
+
+    const sessionBody = readFileSync(sessionLauncher, 'utf8');
+    check(/NOESAR_WORKSPACE="/.test(sessionBody),
+      `${script}: coden_evolution must quote NOESAR_WORKSPACE`);
+
+    // It must point at a launcher that is really there. A wrapper exec'ing a missing file
+    // is the exact shape of phase 5's defect: a word that exists and cannot work.
+    const sessionTarget = sessionBody.match(/exec "([^"]+)"/)?.[1];
+    check(Boolean(sessionTarget) && existsSync(sessionTarget),
+      `${script}: coden_evolution must point at a file that exists (${sessionTarget ?? 'no target parsed'})`);
+
+    // And the terminal client the launcher's first rung needs must have come with it —
+    // the file that was missing from the image for the whole of phase 5.
+    check(existsSync(join(appRoot, 'tools', 'tui-client.mjs')),
+      `${script}: the terminal client must be installed beside the launcher`);
+
+    // Run it for real, against a workspace with no socket in it and a PATH with no
+    // container engine on it: it must REPORT no session (the launcher's exit 3), never
+    // die as a broken script. `run()` is deliberately not used here — it resolves paths
+    // against the repository root, and this file is installed outside it.
+    // The PATH is an EMPTY directory, not the host's. Measured the hard way: with
+    // /usr/bin on it this probe found the real `docker`, found the real installation by
+    // label, attached to it, and sat waiting on stdin until the suite timed out. A test
+    // that reaches the live installation is not testing the installer.
+    // It holds exactly one program: `sh`, because `#!/usr/bin/env sh` resolves through
+    // PATH and a genuinely empty one makes the kernel fail the shebang — which looks like
+    // a broken launcher and is really a broken test.
+    const enginelessPath = join(root, 'no-engine-here');
+    mkdirSync(enginelessPath, { recursive: true });
+    symlinkSync(realpathSync('/bin/sh'), join(enginelessPath, 'sh'));
+
+    let probeStatus = 0;
+    let probeErr = '';
+    try {
+      execFileSync(sessionLauncher, [], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 20_000,
+        env: { PATH: enginelessPath, HOME: home },
+      });
+    } catch (error) {
+      probeStatus = error.status ?? -1;
+      probeErr = String(error.stderr ?? '');
+    }
+    check(probeStatus === 3,
+      `${script}: coden_evolution must report "no session" (exit 3), got ${probeStatus}: ${probeErr.trim().slice(0, 160)}`);
   }
 
   // Reinstalling over a live installation must not destroy the operator's data. Both

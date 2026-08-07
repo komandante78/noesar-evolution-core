@@ -107,6 +107,7 @@ import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
+import { resolveCliDownload, readCliArtifact, renderCliIndex } from './cli-downloads.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
@@ -1037,6 +1038,31 @@ const requestListener = async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/readyz') {
       const readiness = buildReadiness({ watchdog, auth, dataPlane });
       return json(res, readiness.ready ? 200 : 503, readiness);
+    }
+    // --- how another machine obtains the launcher ------------------------------
+    // Unauthenticated on purpose, and narrowly: a fixed table of four AGPL source files
+    // plus their digests. Requiring a session to download the thing you sign in WITH is a
+    // loop, and the caller this route exists for has no credentials yet. Nothing derived
+    // from this installation is served, and no fragment of the request ever reaches a
+    // path — see src/cli-downloads.mjs for why that is unrepresentable rather than
+    // defended against.
+    if (req.method === 'GET' && (url.pathname === '/cli' || url.pathname === '/cli/')) {
+      return text(res, 200, renderCliIndex(`${url.protocol}//${req.headers.host}`));
+    }
+    if (req.method === 'GET') {
+      const wanted = resolveCliDownload(url.pathname);
+      if (wanted) {
+        const artifact = readCliArtifact(repoRoot, wanted);
+        if (!artifact) {
+          // A real state, not an error: an image built before these files were shipped
+          // does not contain them, and saying so beats a stack trace or a blank 200.
+          return text(res, 404, `${wanted.basename} is not shipped by this installation\n`);
+        }
+        if (wanted.digestOnly) {
+          return text(res, 200, `${artifact.sha256}  ${wanted.basename}\n`);
+        }
+        return text(res, 200, artifact.bytes.toString('utf8'), wanted.contentType);
+      }
     }
     if (req.method === 'GET' && url.pathname === '/healthz') {
       // Never 401, never 403: the container healthcheck, three platform installers and

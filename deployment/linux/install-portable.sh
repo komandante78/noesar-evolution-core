@@ -31,5 +31,34 @@ export NOESAR_WORKSPACE="$DESTINATION/workspace"
 exec node "$DESTINATION/noesar/services/reference-control-plane/src/server.mjs" "\$@"
 EOF
 chmod 0755 "$BIN_DIR/noesar-evolution"
+
+# The session, in one word — for a from-source installation too.
+#
+# Until this was added, `coden_evolution` worked on a CONTAINER installation and did not
+# exist on a from-source one: this installer wrote the server launcher and stopped there.
+# The access is not a container feature, so the gap was in the installer, not the design.
+#
+# The whole of tools/*.mjs is copied rather than the four files the terminal client
+# actually imports. `tui-import-closure.test.mjs` exists because a hand-kept copy list
+# cannot track an import graph, and this project has already shipped a broken one twice;
+# a glob cannot go stale the way a list does.
+#
+# The wrapper exports the two variables the launcher's FIRST rung reads. Without them a
+# fresh shell has no NOESAR_WORKSPACE, rung 1 finds no socket, and the launcher falls
+# through to hunting for a container that a from-source installation does not have.
+mkdir -p "$DESTINATION/noesar/tools"
+cp "$ROOT"/tools/*.mjs "$DESTINATION/noesar/tools/"
+cp "$ROOT/tools/coden-evolution" "$DESTINATION/noesar/tools/coden-evolution"
+chmod 0755 "$DESTINATION/noesar/tools/coden-evolution"
+
+cat > "$BIN_DIR/coden_evolution" <<EOF
+#!/usr/bin/env sh
+export NOESAR_RUNTIME_ROOT="$DESTINATION/noesar"
+export NOESAR_WORKSPACE="$DESTINATION/workspace"
+exec "$DESTINATION/noesar/tools/coden-evolution" "\$@"
+EOF
+chmod 0755 "$BIN_DIR/coden_evolution"
+
 echo "Installed launcher: $BIN_DIR/noesar-evolution"
+echo "Installed session:  $BIN_DIR/coden_evolution   (type that one word to open it)"
 echo "Persistent workspace: $DESTINATION/workspace"

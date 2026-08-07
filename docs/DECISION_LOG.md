@@ -7822,3 +7822,66 @@ Ed25519 key and a signature that does not verify.
 number are real and measured, but nothing in the product yet composes an adopted skill into a
 Plan before the Author writes. That wiring is the next step, named here rather than left to be
 discovered.
+
+---
+
+## D-0344 — the access stops being a host ritual (2026-08-07)
+
+**The measurement that started it.** `08_INSTALLAZIONE.md` §12 documented exactly one way into
+the session: `ssh` as a dedicated system user. That way costs `root`, `useradd`, a `sudoers`
+rule, an edit to `sshd_config`, the host's real `Port` and `ListenAddress`, and — on hosts
+whose root filesystem lives in RAM — a boot-persistence mechanism as well. Six steps and three
+traps. Its Windows half is declared UNVERIFIED; its macOS half needs a toggle in System
+Settings. For a product whose platform law says *self-hosted on any PC, server or OS*, that is
+the maintainer's entrance being sold as the front door.
+
+**What was already true and was never written down.** `elevate` is EMPTY by default in the
+launcher. An account that can already talk to its own container engine — which is every
+account that just deployed the container — needs no `sudoers` rule and no `sshd` rule to reach
+the session. Two ways in existed the whole time and §12 named neither:
+
+1. the browser, which costs nothing on every operating system and survives a reboot by itself;
+2. `coden_evolution` run by the person who owns the machine.
+
+The only thing missing from (2) was that **nothing put the launcher on the host**. §12's own
+step 1 made a human run `docker create`, `docker cp`, `docker rm` and `chmod`, plus know the
+image tag — four commands and a fact to memorise, which is the same three-concepts problem
+`D-0340` abolished, moved up one floor.
+
+**What was built.** `deployment/container/install-coden-cli.sh` and its PowerShell twin: one
+command, never root, never a group change, never an edit to `sshd`, `sudoers` or anything
+outside the running account's home. They reuse the launcher's discovery LAW rather than its
+code — engine because it *answers*, container by LABEL, two matches named and never resolved —
+because the installer runs at a moment when the launcher does not yet exist.
+
+**The bootstrap problem, and the route that answers it.** An installer cannot solve getting
+hold of itself. The port was already open and already serving the page, so it serves the bytes
+too: `/cli`, four artifacts and a digest each. The invariant is mechanical rather than
+defended — a request pathname is only ever a KEY into a frozen table, so no code path exists
+in which caller input reaches `join()`. Same shape as the `/skills` projection (`D-0343`), and
+chosen for the same reason: a projection and a filter behave identically today and diverge
+under change. The page teaches download-verify-run and deliberately never teaches `curl | sh`.
+
+**Two gaps found by building, not by reading.** `tools/coden-evolution.ps1` was **not in the
+image** — measured, not assumed — so the operating system with the longest section in the
+recipe had nothing to extract and its step 1 could not be carried out at all. And the
+from-source installers (`deployment/{linux,macos,windows}`) installed the server and stopped:
+`coden_evolution` simply did not exist on a from-source installation. Both guarded now, and
+the shipping guard was **proved by mutation** (36 → 35 when the `COPY` is deleted).
+
+**Declared, and not papered over.** On the reference host a non-root account cannot talk to the
+container engine at all (measured). That is not a defect in the installer — it is precisely why
+§12.3 still exists, now demoted in writing to an OPTIONAL third way in for giving access to the
+program without giving an account on the machine. `CE-036` therefore proves the installer
+succeeds for an account that can reach the engine and **refuses legibly** for one that cannot,
+and it compares `/etc/sudoers.d`, `/usr/local/bin`, `/etc/noesar-evolution`, `sshd_config` and
+`/etc/passwd` before and after: the sentence "the product does not own the host it runs on" is
+now a measurement.
+
+**Verified:** unit 1999 (1998 pass, 1 skip, 0 fail), ESLint 0/0, cross-platform installers
+73 → 87 checks 0 failures, `CE-036` 23/23 against the live installation, three levels identical
+(`ed396b5e…` on repo, image and served body), deploy **149 ms** of downtime.
+
+**The Owner's three chores are no longer chores.** The ssh key, the reboot and the `/boot`
+refresh all belong to §12.3, which is now optional: access no longer depends on any of them.
+The reboot remains untested here because rebooting the Owner's server is the Owner's call.

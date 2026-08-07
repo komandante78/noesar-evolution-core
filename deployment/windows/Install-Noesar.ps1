@@ -42,4 +42,27 @@ Install-Tree -Source (Join-Path $Root "services\reference-control-plane") `
 Install-Tree -Source (Join-Path $Root "apps\webui-static") `
   -Target (Join-Path $NoesarRoot "apps\webui-static") -Guard $NoesarRoot
 Copy-Item -Force (Join-Path $Root "deployment\windows\Start-Noesar.ps1") $Destination
+
+# The session, in one word — for a from-source installation on this platform too. Until
+# this was added the word existed only on a container installation, and only in its POSIX
+# dialect; a person who installed from source on Windows had the server and no way into
+# the session but the browser.
+#
+# The whole of tools\*.mjs is copied for the reason `tui-import-closure.test.mjs` was
+# written: a hand-kept list of the terminal client's imports cannot track the import graph.
+$ToolsRoot = Join-Path $NoesarRoot "tools"
+New-Item -ItemType Directory -Force -Path $ToolsRoot | Out-Null
+Copy-Item -Force (Join-Path $Root "tools\*.mjs") $ToolsRoot
+Copy-Item -Force (Join-Path $Root "tools\coden-evolution.ps1") (Join-Path $ToolsRoot "coden-evolution.ps1")
+
+# The wrapper exports the two variables the launcher's first rung reads; without them a
+# fresh shell has no NOESAR_WORKSPACE and rung 1 finds no socket to attach to.
+@"
+`$env:NOESAR_RUNTIME_ROOT = '$NoesarRoot'
+`$env:NOESAR_WORKSPACE    = '$(Join-Path $Destination "workspace")'
+& '$(Join-Path $ToolsRoot "coden-evolution.ps1")' @args
+"@ | Set-Content -Path (Join-Path $Destination "coden_evolution.ps1") -Encoding UTF8
+
 Write-Host "Installed to $Destination"
+Write-Host "Open the session with: $(Join-Path $Destination 'coden_evolution.ps1')"
+Write-Host "Or in a browser, with nothing installed: http://localhost:8100/"

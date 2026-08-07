@@ -91,6 +91,29 @@ esac
 
 say() { printf '%s: %s\n' "$PROGRAM_NAME" "$1" >&2; }
 
+# What to say when there is no session to attach to.
+#
+# It used to be one line, and that line pointed at MASTER_PROJECT/08_INSTALLAZIONE.md §12.
+# Two things were wrong with it. The first is that a person who reaches this message may
+# have no repository at all — they have a launcher and a machine — so it named a file they
+# cannot open. The second is worse: §12 is the recipe for a dedicated non-administrator
+# account reached over ssh, which needs root, a sudoers rule and an edit to sshd_config,
+# and is UNVERIFIED on Windows. Sending everyone there made the specialist path look like
+# the only path, when the two cheapest ways in were never mentioned.
+#
+# So the browser is named FIRST and unconditionally. It costs nothing, it works on every
+# operating system including the ones this file cannot run on, and it is the same session.
+no_session_help() {
+  say ""
+  say "the session is also reachable in a browser, with nothing installed, from any"
+  say "device on this network:    http://<the-machine-running-it>:8100/"
+  say ""
+  say "if the installation is not running yet, start it first. To put this launcher on"
+  say "another machine: deployment/container/install-coden-cli.sh (POSIX) or"
+  say "Install-CodenCli.ps1 (Windows) — neither needs root."
+  say "The optional ssh recipe for a dedicated account is 08_INSTALLAZIONE.md §12."
+}
+
 usage() {
   cat >&2 <<USAGE
 $PROGRAM_NAME — open the CodeN Evolution session.
@@ -253,7 +276,7 @@ done
 if [ -z "$engine" ]; then
   say "no session found."
   printf '%s\n' "$attempts" >&2
-  say "see MASTER_PROJECT/08_INSTALLAZIONE.md §12 for the recipe for this operating system"
+  no_session_help
   exit "$EXIT_NO_SESSION"
 fi
 
@@ -273,7 +296,7 @@ if [ -z "$container" ]; then
   say "no session found."
   note_attempt "container: '$engine' answered, but no running container carries label org.noesar.authority=reference-node"
   printf '%s\n' "$attempts" >&2
-  say "see MASTER_PROJECT/08_INSTALLAZIONE.md §12 for the recipe for this operating system"
+  no_session_help
   exit "$EXIT_NO_SESSION"
 fi
 

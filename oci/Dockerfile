@@ -174,6 +174,15 @@ COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui
 # `launcher-portability.test.mjs` ties this line to the launcher, so the fourth occurrence
 # of that class fails before a container is built.
 COPY --chown=10001:10001 tools/coden-evolution /opt/noesar/tools/coden-evolution
+# The Windows dialect, and the two installers. Measured absent on 2026-08-07: the image
+# shipped the POSIX launcher alone, so a Windows account had nothing to extract and the
+# recipe's own step 1 could not be carried out on the operating system whose section of
+# that recipe is the longest. The installers ship for the same reason the launcher does —
+# a machine that has only the image and no repository has to be able to obtain them — and
+# because the route that serves them over the already-open port reads these exact paths.
+COPY --chown=10001:10001 tools/coden-evolution.ps1 /opt/noesar/tools/coden-evolution.ps1
+COPY --chown=10001:10001 deployment/container/install-coden-cli.sh /opt/noesar/tools/install-coden-cli.sh
+COPY --chown=10001:10001 deployment/container/Install-CodenCli.ps1 /opt/noesar/tools/Install-CodenCli.ps1
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
@@ -193,7 +202,7 @@ RUN chmod 0755 /opt/noesar/bin/noesar-supervisord /opt/noesar/bin/noesar-sandbox
 # can drift from the other. Executable bit set explicitly rather than inherited: a COPY
 # preserves the source mode, and a repository checked out on a filesystem that does not
 # carry the bit (a Windows build host) would otherwise ship a launcher nobody can run.
-RUN chmod 0755 /opt/noesar/tools/coden-evolution \
+RUN chmod 0755 /opt/noesar/tools/coden-evolution /opt/noesar/tools/install-coden-cli.sh \
  && ln -sf /opt/noesar/tools/coden-evolution /usr/local/bin/coden_evolution
 
 ENV NODE_ENV=production \
