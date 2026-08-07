@@ -25,6 +25,19 @@ COPY --chown=10001:10001 package.json /opt/noesar/
 COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
 COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
 
+# The terminal, and the way onto it. Measured absent 2026-08-07: this file shipped three
+# COPY lines and none of them carried a single thing out of tools/, so an installation built
+# with Podman had no terminal client, no launcher, and nothing for the /cli route to serve.
+# The same drift the HEALTHCHECK comment below records, in a second place — the Docker path
+# gained all of this across phases 5 and 8 and none of it was ever propagated here.
+COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs /opt/noesar/tools/
+COPY --chown=10001:10001 tools/coden-evolution /opt/noesar/tools/coden-evolution
+COPY --chown=10001:10001 tools/coden-evolution.ps1 /opt/noesar/tools/coden-evolution.ps1
+COPY --chown=10001:10001 deployment/container/install-coden-cli.sh /opt/noesar/tools/install-coden-cli.sh
+COPY --chown=10001:10001 deployment/container/Install-CodenCli.ps1 /opt/noesar/tools/Install-CodenCli.ps1
+RUN chmod 0755 /opt/noesar/tools/coden-evolution /opt/noesar/tools/install-coden-cli.sh \
+ && ln -sf /opt/noesar/tools/coden-evolution /usr/local/bin/coden_evolution
+
 ENV NODE_ENV=production \
     NOESAR_RUNTIME_ROOT=/opt/noesar \
     NOESAR_WORKSPACE=/workspace \

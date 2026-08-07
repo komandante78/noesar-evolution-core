@@ -243,8 +243,16 @@ export function skillCatalogStatus(adoptedRegistry) {
     denylist: false,
     adoptRunsCode: false,
     adoptRunsCodeReason: 'Adopting records that a set of instructions is in scope for a session. It does not fetch, unpack or execute anything — that would be EXECUTE, which stays permanently refused.',
-    enforced: false,
-    reason: 'The registry and its projection are real and measured, but nothing in the product yet composes an adopted skill into a Plan before the Author writes — that wiring is the next step, named here rather than implied.',
+    enforced: true,
+    reason: 'An adopted skill is composed into the authoring prompt before the Author writes: workspace-actions.mjs resolves what is in scope and hands it to Author.author(), and buildAuthoringPrompt() places it above the untrusted-contents fence and below the three lines that fix the shape of the answer. Every run reports which skills reached the writer as `skillComposition`, by id and size and never by body.',
+    enforcementSite: 'workspace-actions.mjs plan() -> author.mjs buildAuthoringPrompt()',
+    // Stated because the honest question about composing third-party instructions into a
+    // prompt is what happens when they contradict the call's own contract. Nothing here
+    // depends on the model choosing correctly: `extractBody` requires a fenced block and
+    // strips any path directive whatever the prompt asked for, so a skill cannot widen the
+    // file set or change the answer's shape. Asserted by composing a hostile skill.
+    skillCanOverrideAnswerShape: false,
+    skillCanOverrideAnswerShapeReason: 'extractBody() enforces the fenced-block contract after generation, so a skill that instructed otherwise is overruled by the parser and not by persuasion.',
     rustTwin: false,
     rustTwinReason: 'Same posture as the tool catalogue: proposes and narrows, and never itself decides what a caller may reach — capability.mjs makes the actual grant.',
   };

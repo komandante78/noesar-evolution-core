@@ -180,6 +180,62 @@ export class RunStore {
   }
 
   /**
+   * Keep the newest `keep` run files and remove the rest — `D-0346`.
+   *
+   * WHY IT EXISTS. `save()` has written one file per run since durability was built
+   * (`D-0338`) and nothing has ever removed one. On a self-hosted installation that runs
+   * for months that is a disk filling up in silence, which is the worst way for a disk to
+   * fill: the product keeps working until the moment it cannot write anything at all,
+   * including the audit ledger.
+   *
+   * WHAT IT WILL NOT DO. It never removes a run the caller named as protected. The caller
+   * is the one that knows which runs are still live — a `PENDING_APPROVAL` run is somebody
+   * waiting for a decision, and deleting it because it is old would answer the decision by
+   * losing the question. Protection wins over both limits, always, and a protected run is
+   * counted separately rather than silently occupying the budget.
+   *
+   * WHAT IT REMOVES IS NOT THE AUDIT TRAIL. Runs are working state; the event ledger is a
+   * separate, append-only surface and nothing here touches it. Pruning a run loses the
+   * ability to replay it, not the record that it happened.
+   *
+   * Ordering is by `savedAtUnix` from inside each file, not by filesystem mtime: a restore
+   * from backup, a `cp -r`, or a container rebuild all rewrite mtimes, and pruning by them
+   * would throw away the oldest RESTORED files rather than the oldest runs.
+   */
+  prune({ keep = 500, protectedRunIds = new Set() } = {}) {
+    const result = { removed: [], kept: 0, protectedCount: 0, damagedSkipped: 0 };
+    if (!this.#directory || !existsSync(this.#directory)) return result;
+    if (!Number.isInteger(keep) || keep < 0) {
+      throw new RunStoreError('INVALID_RETENTION', `keep must be a non-negative integer, got ${keep}`);
+    }
+
+    const candidates = [];
+    for (const name of readdirSync(this.#directory)) {
+      if (!name.endsWith('.json')) continue;
+      let document;
+      try {
+        document = JSON.parse(readFileSync(join(this.#directory, name), 'utf8'));
+      } catch {
+        // A file this store cannot read is a file it will not delete. `loadAll()` already
+        // reports it as damaged; guessing that unreadable means disposable is how evidence
+        // disappears exactly when something has gone wrong.
+        result.damagedSkipped += 1;
+        continue;
+      }
+      if (protectedRunIds.has(document.runId)) { result.protectedCount += 1; continue; }
+      candidates.push({ name, runId: document.runId, savedAtUnix: Number(document.savedAtUnix) || 0 });
+    }
+
+    candidates.sort((a, b) => b.savedAtUnix - a.savedAtUnix || (a.name < b.name ? 1 : -1));
+    result.kept = Math.min(candidates.length, keep);
+    for (const victim of candidates.slice(keep)) {
+      rmSync(join(this.#directory, victim.name), { force: true });
+      result.removed.push(victim.runId);
+    }
+    return result;
+  }
+
+  /**
    * Every stored run, plus what could not be read.
    *
    * A damaged file is REPORTED, never dropped in silence and never allowed to stop the rest

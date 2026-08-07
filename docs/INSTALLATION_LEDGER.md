@@ -4314,6 +4314,19 @@ nessuna run — crearne una richiede le credenziali dell'Owner, che questa sessi
 durabilità è provata contro il server vero da `tools/restart-durability-smoke.mjs`, non contro
 i dati dell'Owner.
 
+**Ritenzione (`D-0346`, 2026-08-07).** Quella directory ora è **limitata**: sopravvivono le
+**500** run più recenti (`runRetention`, validato all'avvio), e la potatura avviene dentro
+`#saveRun` — l'unico punto che fa crescere la directory, quindi l'unico che deve limitarla.
+Due cose non vengono **mai** rimosse: una run in `PENDING_APPROVAL` (è una persona che aspetta
+una decisione; cancellarla per anzianità risponderebbe alla decisione perdendo la domanda) e un
+file che lo store **non riesce a leggere** (`loadAll()` lo segnala già come danneggiato;
+dedurre che illeggibile significhi eliminabile è il modo in cui le prove spariscono proprio
+quando qualcosa è andato storto). L'ordinamento è per `savedAtUnix` **dentro il file**, non per
+`mtime`: un ripristino da backup o una ricostruzione del container riscrivono gli `mtime` e
+farebbero buttare le run ripristinate più vecchie invece delle run più vecchie. **Non è il
+giornale di audit**: quello è una superficie separata in sola aggiunta e nulla qui la tocca —
+potare una run perde la possibilità di rieseguirla, non la registrazione che è avvenuta.
+
 ---
 
 ## Fase 8 — `coden_evolution`, l'accesso in una parola (`D-0340`, 2026-08-07)

@@ -7885,3 +7885,119 @@ now a measurement.
 **The Owner's three chores are no longer chores.** The ssh key, the reboot and the `/boot`
 refresh all belong to §12.3, which is now optional: access no longer depends on any of them.
 The reboot remains untested here because rebooting the Owner's server is the Owner's call.
+
+---
+
+## D-0345 — `/skills` stops declaring a gap and closes it (2026-08-07)
+
+**The gap, in the surface's own words.** From the day the skill catalogue was built
+(`D-0343`) its status route answered `enforced: false`, with the reason written out: *"the
+registry and its projection are real and measured, but nothing in the product yet composes an
+adopted skill into a Plan before the Author writes."* Honest, and useless to an operator: a
+skill is **instructions** — it tells the writer HOW — so a skill that never reaches the writer
+is a catalogue of text nobody reads.
+
+**What was wired.** `workspace-actions.plan()` resolves what is in scope before calling the
+Author and hands it over; `buildAuthoringPrompt()` places it **above** the untrusted-contents
+fence — an operator adopted it deliberately through an authenticated surface, it is not
+repository text — and **below** the three lines that fix the shape of the answer. Every run
+now carries `skillComposition`: which skills reached the writer, by id and size, **never by
+body**, so what `searchCatalog` refuses to return cannot enter the ledger by the back door.
+
+**The honest question, answered mechanically.** What happens when composed third-party
+instructions contradict the call's own contract? Nothing here rests on the model behaving:
+`extractBody` requires a fenced block and strips any path directive whatever the prompt asked
+for. A hostile skill is composed in the test suite and proved unable to change the answer's
+shape or widen the file set — overruled by the parser, not by persuasion.
+
+**The mutation that survived, and what it exposed.** Deleting `skills: composedSkills` from
+`plan()` left **55 tests passing**. Fourteen prompt-side tests proved composition worked and
+none of them proved anything ever reached the prompt — the same shape as `remote-targets`
+being unreachable for three months behind two green guards. `plan-composes-adopted-skills.test.mjs`
+exists for that line alone; the same mutation now kills 5 of its 7.
+
+**A test that had pinned the defect as a requirement.** `skill-catalog.test.mjs` asserted
+`status.enforced === false` — the VALUE the surface had, not the PROPERTY it must hold — so
+closing the gap turned the suite red for having fixed it. Rewritten as a **biconditional**
+against `buildAuthoringPrompt` itself: the flag must agree with reality in both directions.
+This is the third occurrence of that class (`CE-034`, `D-0339`, here), and the first where the
+lesson was already written down when it happened.
+
+---
+
+## D-0346 — the run directory stops growing without limit (2026-08-07)
+
+**Carried across four sessions as "registered and NOT done, for scope".** Since durability was
+built (`D-0338`) `save()` has written one file per run and nothing has ever removed one. On a
+self-hosted installation that runs for months that is a disk filling in silence — and in the
+worst way, because the product keeps working right up to the moment it cannot write anything
+at all, the audit ledger included.
+
+**Bounded by count, pruned where the growth happens.** `RunStore.prune()` keeps the newest N
+and is called from `#saveRun` — the only place that makes the directory grow, and therefore
+the only place that needs to bound it. A product that owns no scheduler should not acquire one
+in order to delete files.
+
+**Two refusals are the actual design.** A **protected** run is never removed: `PENDING_APPROVAL`
+is the only non-terminal state, and deleting one because it is old would answer somebody's
+decision by losing the question. Protected runs are counted separately rather than silently
+eating the budget. And a file the store **cannot read** is never removed — `loadAll()` already
+reports it as damaged, and guessing that unreadable means disposable is how evidence disappears
+exactly when something has already gone wrong.
+
+**Ordering is by `savedAtUnix` from inside the file, not by filesystem mtime.** A restore from
+backup, a `cp -r` or a container rebuild all rewrite mtimes; pruning by them would throw away
+the oldest restored files rather than the oldest runs.
+
+**Not the audit trail.** Runs are working state; the event ledger is a separate append-only
+surface and nothing here touches it. Pruning a run loses the ability to replay it, not the
+record that it happened.
+
+**Verified:** unit 2033 (0 fail), ESLint 0/0, and the end-to-end property asserted against the
+directory itself — eight plans leave eight files while all eight are pending, and fall to three
+the moment they are decided. Deleting the `prune()` call kills a test, which is the check the
+prompt-side-only version of this work would have failed.
+
+---
+
+## D-0347 — the engine's own state stops being readable by its own scanner (2026-08-07)
+
+**Carried as "registered and NOT done" since s326.** `D-0338` excluded `state/runs` and
+`state/engine-events.jsonl` from the repository scanner because their absence had produced a
+visible symptom: two shells derived different file sets and disagreed. It stopped at the two
+paths that had a symptom, and `state/auth.json` and `audit/events.jsonl` were written down as
+open and left there for four sessions.
+
+**The derivation found far more than the two that were registered.** Reading every
+`join(workspace, '<literal>')` out of the source turned up about fifteen paths the engine
+writes into the tree it scans, of which two were excluded. Among the thirteen:
+`config/provider-credentials.key`, `state/scim-tokens.json` and `module-credentials/` —
+credential material, walkable by a repository map. Measured on the live installation first:
+`state/auth.json` 3127 bytes, `audit/events.jsonl` 78889 bytes, both readable. The mode bits
+are `0600`, which stops another UID and does nothing whatever about the product reading its
+own files on behalf of whoever asked it to search.
+
+**Two lists, and the second one is the honest half.** `ENGINE_STATE_PATHS` hides; the new
+`DELIBERATELY_SCANNED_PATHS` records what the engine writes and the scanner still shows, each
+with the reason — `logs/`, `backups/`, `files/`, the installed module manifests, and `state/`
+as a container. Hiding an operator's `backups/` because the engine also writes one is a worse
+failure than showing one of ours, and that judgment is now visible to the next reader instead
+of looking like the same oversight this change repaired.
+
+**The shorter version was tried and a test caught it.** Excluding `state/` outright is one
+line instead of seven; `durability.test.mjs` asserts that an operator's own top-level `state/`
+stays fully visible and it is right — this scanner does not get to decide that part of
+somebody's repository belongs to us. So the engine's files under `state/` are named one by one
+and the directory itself is declared visible.
+
+**The guard derives, because a hand-kept list is precisely what failed here.**
+`engine-state-exclusions.test.mjs` reads the source, finds every workspace path the engine
+joins, and requires each to appear in one list or the other — so a path added beside these
+fails the suite rather than quietly becoming readable. It strips comments first, and that is
+not a precaution: the first run failed on a path called `<literal>`, matched inside the very
+comment in `repo-map.mjs` that explains the derivation. The guard also drives a real scan with
+canaries in `state/auth.json` and `audit/events.jsonl`, because a list the walker does not
+consult is the same defect one level up.
+
+**Verified:** unit 2041 (0 fail), ESLint 0/0, and `src/state/reducer.mjs` plus a top-level
+`state/machine.mjs` still scanned while both canaries are absent from the map.

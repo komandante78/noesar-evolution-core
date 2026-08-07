@@ -126,7 +126,89 @@ const EMPTY_EXCLUSIONS = new Set();
  * and `shadows` are in the list above for the same reason — so this is consistent with the
  * module's existing posture rather than a new kind of knowledge in it.
  */
-export const ENGINE_STATE_PATHS = Object.freeze(['state/runs', 'state/engine-events.jsonl']);
+/*
+ * COMPLETED 2026-08-07 (`D-0347`). The list above covered exactly the two paths whose
+ * absence had produced a visible symptom — the two shells disagreeing — and stopped there.
+ * Everything else the engine writes into the same tree stayed readable, and it had been
+ * carried as "registered and NOT done, for scope" ever since. Measured on the live
+ * installation before changing anything:
+ *
+ *     /workspace/state/auth.json        3127 bytes   the authentication state
+ *     /workspace/state/watchdog.json    2158 bytes
+ *     /workspace/state/state.json        362 bytes
+ *     /workspace/state/ai-workspace.json  24984 bytes
+ *     /workspace/audit/events.jsonl    78889 bytes   the audit chain
+ *
+ * A repository map or a literal search over the workspace could read all five. The mode
+ * bits are `0600`, which stops another UID and does nothing at all about the product
+ * reading its own files on behalf of whoever asked it to search.
+ *
+ * The reasoning that justified excluding the run store justifies these identically: a
+ * scanner that can see the audit chain can propose a write to the record of what it did,
+ * and a grounding pass that can read `auth.json` can put it in front of a model. That the
+ * first two were the ones with a symptom is not a reason the other five are different.
+ *
+ * `engine-state-exclusions.test.mjs` DERIVES the set by reading every workspace path the
+ * engine joins out of the source, and requires each one to appear in EITHER list below. A
+ * hand-kept list is what left this incomplete for four sessions; a derivation with an
+ * explicit escape hatch is what stops the escape hatch from being silence.
+ *
+ * WHAT THE DERIVATION FOUND, and it was more than the two files that had been registered:
+ * the engine writes about fifteen paths into this tree and two were excluded. Among the
+ * thirteen were `config/provider-credentials.key`, `state/scim-tokens.json` and
+ * `module-credentials/` — credential material, readable by a repository map.
+ */
+export const ENGINE_STATE_PATHS = Object.freeze([
+  // Durable decision state, FILE BY FILE and never the whole `state/` directory.
+  //
+  // Tried the shorter way first and a test caught it: `durability.test.mjs` asserts that an
+  // operator's own top-level `state/` stays fully visible, and it is right — this scanner
+  // does not get to decide that part of somebody's repository belongs to us. Excluding the
+  // directory would have hidden `state/machine.mjs`. So the cost of naming each file is
+  // accepted, and the derivation guard below is what keeps the naming honest.
+  'state/runs',
+  'state/engine-events.jsonl',
+  'state/auth.json',
+  'state/state.json',
+  'state/watchdog.json',
+  'state/ai-workspace.json',
+  'state/scim-tokens.json',
+  // The audit chain. A scanner that can read it can propose a write to the record of what
+  // it did — the defect `D-0338` names, and this is the other half of it.
+  'audit',
+  // Credential material, all of it. `config/` holds the provider credential key and the
+  // data plane's secrets; the other two are credentials by name. Mode bits are `0600`,
+  // which stops another UID and does nothing about the product reading its own files on
+  // behalf of whoever asked it to search. Whole directories here, unlike `state/`, because
+  // an engine that grows a second secret in one of them must not need this list edited.
+  'config',
+  'module-credentials',
+  'publishers',
+  // The data plane's own directory and the update staging area: engine-managed, and large.
+  'postgresql',
+  'updates',
+]);
+
+/**
+ * Written by the engine and DELIBERATELY still scanned, each with the reason.
+ *
+ * This list is the honest half. Every path here is one the engine creates, so the argument
+ * that produced ENGINE_STATE_PATHS applies to it too — and is answered rather than ignored:
+ * an operator searching their own workspace has a real claim on these, and hiding a `logs/`
+ * or `backups/` directory that turned out to be theirs is a worse failure than showing one
+ * that turned out to be ours. Recorded so the choice is visible to the next reader instead
+ * of looking like the same oversight this file just finished repairing.
+ *
+ * `shadows` and `.workspace` are absent on purpose: `IGNORED_DIRS` above already covers them.
+ */
+export const DELIBERATELY_SCANNED_PATHS = Object.freeze({
+  state: 'the CONTAINER stays visible while every engine file inside it is excluded by name — `durability.test.mjs` requires that an operator\'s own top-level `state/` and its `state/machine.mjs` still appear, and this scanner does not get to decide that part of somebody\'s repository belongs to us',
+  logs: 'an operator debugging their own installation looks here first; the product\'s logs are not secret and redaction is the logger\'s job, not the scanner\'s',
+  backups: 'may contain the operator\'s own material — hiding their backup because the engine wrote it is the worse failure',
+  files: 'the blob store for content the operator themselves uploaded',
+  'sector-modules': 'installed module manifests: the operator chose them and may legitimately search them',
+  'compliance-packs': 'same posture as sector-modules: installed by an explicit operator decision, and searchable for the same reason',
+});
 
 /** Resolve exclusions to absolute paths, once, so the walk compares strings and nothing else. */
 export function resolveExclusions(rootDir, paths = []) {

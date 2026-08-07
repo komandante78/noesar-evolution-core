@@ -111,7 +111,11 @@ export class WorkspaceActionOrchestrator {
   #author;
   #profileChange;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null }) {
+  #skillsFor;
+
+  #runRetention;
+
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500 }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -137,6 +141,20 @@ export class WorkspaceActionOrchestrator {
     // the refusals, and «this workspace is not a git repository» is not reachable in a test
     // without building one.
     this.#profileChange = profileChange;
+    // `D-0345`. What closes the `enforced:false` the skill catalogue has declared about
+    // itself since it was built: the bridge from "an operator adopted these instructions"
+    // to "the Author had them in hand before it wrote". A seam like the two above, and
+    // defaulting to a function that returns nothing — an installation that has adopted no
+    // skill composes no skills and its prompt is byte-identical to before.
+    this.#skillsFor = skillsFor;
+    // `D-0346`. How many run files survive. Validated here rather than at the first prune,
+    // so a bad value is a startup failure and not a silent one discovered after months of
+    // a directory quietly growing — which is the failure this whole feature exists to stop.
+    if (!Number.isInteger(runRetention) || runRetention < 1) {
+      throw new WorkspaceActionError('INVALID_RETENTION',
+        `runRetention must be a positive integer, got \`${runRetention}\``);
+    }
+    this.#runRetention = runRetention;
     // Stage 9b (`16` §3.3): the component that writes the contents. Optional and absent by
     // default — an installation with no model configured plans exactly as it did before and
     // says so, rather than presenting empty contents as a result. It is deliberately NOT
@@ -344,6 +362,24 @@ export class WorkspaceActionOrchestrator {
       this.#runStore.save(runId, this.#runs.get(runId));
     } catch (error) {
       this.#damagedRuns.push({ file: `${runId}.json`, reason: `could not be written: ${error.message}` });
+    }
+    // `D-0346`. Pruned here rather than on a timer: this is the only place that makes the
+    // directory grow, so it is the only place that needs to bound it, and a product that
+    // owns no scheduler should not acquire one to delete files.
+    //
+    // A pruning failure is swallowed the same way a write failure is: running out of old
+    // runs to delete must never be what takes down a run that has already promoted files
+    // into the workspace. The reason lands on `damagedRuns`, where the operator sees it.
+    try {
+      const protectedRunIds = new Set();
+      for (const [id, run] of this.#runs) {
+        // The only non-terminal state. A run in it is a person waiting for a decision, and
+        // deleting it because it is old would answer the decision by losing the question.
+        if (run.status === 'PENDING_APPROVAL') protectedRunIds.add(id);
+      }
+      this.#runStore.prune({ keep: this.#runRetention, protectedRunIds });
+    } catch (error) {
+      this.#damagedRuns.push({ file: 'retention', reason: `could not prune old runs: ${error.message}` });
     }
   }
 
@@ -591,6 +627,31 @@ export class WorkspaceActionOrchestrator {
       divergence = { available: false, reason: error.reason ?? error.message, signals: [], basis: null };
     }
 
+    // `D-0345`. The adopted skills, resolved BEFORE the Author is called, because a skill
+    // that arrives after the writing is a skill that did nothing. Never fatal: a resolver
+    // that throws must not cost the operator their plan, so it degrades to "no skills" and
+    // says why on the run — the same posture the divergence profile takes just above.
+    let composedSkills = [];
+    let skillComposition = { composed: 0, skills: [], reason: null };
+    try {
+      const resolved = this.#skillsFor({ actor, conversationId }) ?? [];
+      composedSkills = Array.isArray(resolved) ? resolved : [];
+      skillComposition = {
+        composed: composedSkills.length,
+        skills: composedSkills.map((skill) => ({
+          id: skill.id,
+          name: skill.name ?? skill.id,
+          // The size, never the body. A run record that carried instructions would put the
+          // thing `searchCatalog` refuses to return into the event ledger by the back door.
+          instructionBytes: Buffer.byteLength(String(skill.instructions ?? ''), 'utf8'),
+        })),
+        reason: null,
+      };
+    } catch (error) {
+      composedSkills = [];
+      skillComposition = { composed: 0, skills: [], reason: error?.reason ?? error?.message ?? String(error) };
+    }
+
     let authoring = { available: false, reason: Author.NO_MODEL_REASON, authored: 0 };
     let authoringEvent = null;
     const authoredContents = new Map();
@@ -603,6 +664,8 @@ export class WorkspaceActionOrchestrator {
           // Rule 6 of `16` §3.2, and the reason the profile is computed above rather than
           // beside the diff: the Author writes WITH the repository's conventions in hand.
           profile: divergence.signals,
+          // And, from `D-0345`, with the operator's adopted skills in hand as well.
+          skills: composedSkills,
         });
         for (const [path, body] of result.contents) authoredContents.set(path, body);
         authoring = {
@@ -673,6 +736,10 @@ export class WorkspaceActionOrchestrator {
       // after the router that made these records has gone out of scope.
       reasoningDegradations,
       divergence,
+      // `D-0345`. Which adopted skills reached the Author for THIS run, by id and size.
+      // Always present, `composed: 0` included: a field that appears only when something
+      // happened is a field a shell learns to stop reading.
+      skillComposition,
       createdAtUnix: nowUnix, planEventId: rootEventId, actor,
       // SESS-001 fixture material: the exact inputs to the decision layer. `files` above
       // already carries full contents, which is why it is not duplicated here.
@@ -713,7 +780,7 @@ export class WorkspaceActionOrchestrator {
     // `conversationId` is read off the stored run for the same reason `status` is: a shell that
     // stitches the link it just sent onto the answer would show its own input as the engine's
     // word, and the day the engine declines to keep it the shell would go on displaying it.
-    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence };
+    return { runId, status: this.#runs.get(runId).status, conversationId: this.#runs.get(runId).conversationId, plan, intent, expectation, risk, confidence, claims, provenance, grounding, authoring, reasoning, divergence, skillComposition };
   }
 
   /**

@@ -130,7 +130,7 @@ function normaliseAuthored(structured, path) {
  * material (rule 3): they come from a repository, which is somebody else's text, and the
  * instruction that governs this call sits outside that fence and is not negotiable by it.
  */
-export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [] }) {
+export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [], skills = [] }) {
   const lines = [
     'You are rewriting exactly one file. Answer with one fenced code block and nothing else.',
     'The block is the COMPLETE new contents of that file, not a patch and not an excerpt.',
@@ -140,6 +140,27 @@ export function buildAuthoringPrompt({ goal, step, path, contents, profile = [],
     `Step: ${step}`,
     `File: ${path}`,
   ];
+  // Adopted skills — the wiring `skillCatalogStatus` reported as `enforced:false` from the
+  // day the registry was built (`D-0343`) until this line existed. A skill is instructions:
+  // it tells the writer HOW, which is only worth anything if it arrives BEFORE the writing.
+  //
+  // They sit here, and the position is the design. ABOVE the untrusted fence, because an
+  // operator adopted them deliberately through an authenticated surface and they are not
+  // repository text. BELOW the three lines that state the shape of the answer, because
+  // those are this call's contract and a skill must not be able to renegotiate it.
+  //
+  // And the contract does not rest on the model agreeing: `extractBody` requires a fenced
+  // block and strips any path directive whatever the prompt said, so a skill that tried to
+  // change the answer's shape would be overruled by the parser rather than by persuasion.
+  // That is the difference between a rule callers follow and one they cannot break, and it
+  // is asserted in `author-skill-composition.test.mjs` by composing a hostile skill.
+  if (skills.length) {
+    lines.push('', 'Adopted skills — guidance the operator put in scope for this task:');
+    for (const skill of skills) {
+      lines.push(`--- skill: ${skill.name ?? skill.id} ---`, String(skill.instructions ?? '').trim());
+    }
+    lines.push('--- end of adopted skills ---');
+  }
   if (profile.length) {
     lines.push('', 'Conventions induced from this repository\'s own history — match them:');
     // Four signals with their level, never a score. `divergence-profile.mjs` refuses to
@@ -201,7 +222,7 @@ export class Author {
    *   novelty         'novel' | 'repeat' — `15` §5 counts novelty, not calls
    *   attemptDigest   what novelty is judged on: the produced content set, not the prompt
    */
-  async author({ goal, step, files, profile = [], attempts = [], previousAttemptDigests = [] }) {
+  async author({ goal, step, files, profile = [], attempts = [], previousAttemptDigests = [], skills = [] }) {
     if (!this.available) throw new AuthoringUnavailable(Author.NO_MODEL_REASON);
     if (!Array.isArray(files) || !files.length) {
       throw new AuthoringRefused('NO_FILES', 'authoring needs the closed set of files the Plan settled on, and it was empty');
@@ -214,7 +235,7 @@ export class Author {
     const refusals = [];
 
     for (const file of files) {
-      const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts });
+      const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts, skills });
       let answer;
       try {
         answer = await this.#generate({
@@ -222,7 +243,7 @@ export class Author {
           // The structured form a provider that does its own checking needs. A generator that
           // ignores these and answers from `prompt` alone is still correct — that is the
           // installation with no ATOM under it, and `CE-022` requires it to keep working.
-          goal, step, contents: file.contents, profile, attempts,
+          goal, step, contents: file.contents, profile, attempts, skills,
         });
       } catch (error) {
         // FOUND BY EXECUTING, phase 6. This call used to sit OUTSIDE the try below, so a

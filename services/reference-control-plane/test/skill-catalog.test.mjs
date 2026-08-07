@@ -24,6 +24,9 @@ import {
   searchCatalog, validateSkillEntry, loadSkillCatalogSchema,
   AdoptedSkillRegistry, skillCatalogStatus, SkillCatalogError,
 } from '../src/skill-catalog.mjs';
+// Imported so the `enforced` claim can be checked against the thing it is a claim ABOUT,
+// rather than against a copy of itself.
+import { buildAuthoringPrompt } from '../src/author.mjs';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { parseCodenAddressBook } from '../src/coden-address-book.mjs';
 
@@ -132,9 +135,33 @@ describe('zero at rest — computed from the registry, never asserted', () => {
     assert.equal(status.adoptRunsCode, false);
     assert.equal(status.searchReturnsInstructions, false);
     assert.equal(status.denylist, false);
-    // The honesty flags this project requires of every surface that is not finished.
-    assert.equal(status.enforced, false);
-    assert.match(status.reason, /nothing in the product yet composes an adopted skill/);
+  });
+
+  // Rewritten for `D-0345`, and the rewrite is the point. This used to read:
+  //
+  //     assert.equal(status.enforced, false);
+  //     assert.match(status.reason, /nothing in the product yet composes an adopted skill/);
+  //
+  // which asserted the VALUE the surface happened to have rather than the PROPERTY it must
+  // hold — so the day the gap was actually closed, the suite went red for having fixed it.
+  // That is the same defect-as-requirement shape `CE-034` was rewritten out of, and it is
+  // worth noticing that it survived here for two sessions after the lesson was written down.
+  //
+  // The property is a BICONDITIONAL: the flag must agree with reality. `enforced` may claim
+  // true only while composing a skill really does put it in front of the Author, and must
+  // claim false the moment that stops being so.
+  test('`enforced` says what is true of the product, not what was true when it was written', () => {
+    const status = skillCatalogStatus(new AdoptedSkillRegistry());
+    const prompt = buildAuthoringPrompt({
+      goal: 'g', step: 's', path: 'f.mjs', contents: 'x\n',
+      skills: [{ id: 'probe', name: 'Probe', instructions: 'PROBE_INSTRUCTIONS' }],
+    });
+    const composes = prompt.includes('PROBE_INSTRUCTIONS');
+    assert.equal(status.enforced, composes,
+      composes
+        ? '`enforced` must be true: the Author is handed adopted skills before it writes'
+        : '`enforced` must be false: nothing composes an adopted skill into the prompt');
+    if (!composes) assert.match(status.reason, /nothing in the product yet composes an adopted skill/);
   });
 
   test('a malformed key is refused, and the registry is untouched', () => {

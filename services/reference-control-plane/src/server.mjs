@@ -273,6 +273,15 @@ const workspaceActions = new WorkspaceActionOrchestrator({
   minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
   privacyStateFor: () => currentPrivacy(null),
   author: buildAuthor(),
+  // `D-0345` — the wiring `/skills` declared missing about itself from the day it was built.
+  // The registry holds bodies; this hands the Author the ones in scope, and nothing else in
+  // the product reads `instructionsFor`. Resolved per call rather than captured once, so a
+  // skill dropped mid-task is genuinely out of scope for the next plan.
+  skillsFor: () => adoptedSkillRegistry.list().map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    instructions: adoptedSkillRegistry.instructionsFor(entry.id),
+  })).filter((skill) => typeof skill.instructions === 'string' && skill.instructions.length > 0),
   // Under `state/`, beside auth.json and ai-workspace.json, because that is already this
   // product's own state directory — not scattered into the tree the operator is editing.
   runStoreDirectory: join(workspace, 'state/runs'),
