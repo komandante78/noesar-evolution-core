@@ -1,90 +1,85 @@
 # NOESAR Evolution — Session Handoff
 
-> ## ⏭ STATO CORRENTE — 2026-08-07 (s330). **LISTA OWNER CHIUSA: anche il punto 1 è consegnato**
-> (`D-0337`). **Non deployato.**
+> ## ⏭ STATO CORRENTE — 2026-08-07 (s330). **Lista Owner CHIUSA · durabilità CONSEGNATA e
+> DEPLOYATA** (`D-0337`, `D-0338`, `D-0339`). Repo, immagine e corpo servito **allineati**.
 >
-> **Leggere per primo:** `docs/OWNER_CHANGE_LIST_S326.md` — è il documento vivo e dice cosa è
-> vero adesso. Stato della lista: **1 ✅ · 2a ✅ · 2b ✅ · 3 ✅ · 4a ✅ · 4b ✅ — completa.**
+> | Livello | Valore |
+> |---|---|
+> | repo HEAD e `origin/main` | **`cadb0ac`** |
+> | container | `noesar-evolution:d0338-restart-durable` |
+> | `app.js` servito da `:8100` | `7510689f…` — **identico** a repo e immagine |
 >
 > ### Cosa è vero adesso che prima non lo era
 >
-> **Una autenticazione sola.** Chi è già dentro NOESAR conia un codice breve sulla pagina
-> `#/coden-tui` e lo digita al primo prompt del terminale: apre una sessione per **lo stesso
-> account**, con gli stessi permessi, senza ridigitare utente, password e secondo fattore.
+> **1. Una autenticazione sola (`D-0337`).** Chi è già dentro NOESAR conia un codice breve su
+> `#/coden-tui` e lo digita al primo prompt del terminale. Il codice **non è autorità, è un
+> buono da riscuotere**: nessun permesso proprio, apre la sessione di chi l'ha coniato, 60 s,
+> un colpo solo. Il conio è HTTP, la **riscossione no** — `/api/v1/auth/attach` non esiste.
 >
-> **La domanda era di autorità e si è sciolta prima di scrivere codice.** Non «come si salta il
-> secondo login» ma **cosa si presenta al socket al posto del cookie, e chi può fabbricarlo**.
-> Una risposta possibile — *che sia il sistema operativo a dire chi sei* — è stata **eliminata
-> misurando**: il socket è `chmod 0600`, quindi solo l'uid proprietario lo apre e quell'uid è
-> **uno**; l'identità del SO sa dire «il container», non **quale account NOESAR**. E Node non
-> espone `SO_PEERCRED` (`'getpeercred' in socket` → `false`).
+> **2. Il prodotto resiste al riavvio (`D-0338`).** Run ed eventi sopravvivono. Misurato prima:
+> il container aveva **già** `RestartPolicy=unless-stopped`, quindi non sopravvivevano due cose
+> sole, ed erano il motore. La premessa che le teneva in memoria è stata **verificata prima di
+> rimuoverla**: il token è una variabile locale di `approve()`, non vive quanto la run.
 >
-> **La frase che governa ogni riga: il codice non è autorità, è un buono da riscuotere.** Non
-> porta permessi propri, apre la sessione di chi l'ha coniato e mai di un altro, e spenderlo lo
-> distrugge. Scartato il passaggio del **token di sessione stesso**: sarebbe costato quasi zero
-> codice e vale 8 ore di autorità piena passando per gli occhi di una persona — cronologia della
-> shell, `ps`, scrollback. Un cookie è `HttpOnly` proprio per non essere copiabile.
+> **3. Il terminale è servito in produzione, per la prima volta (`D-0339`).** Vedi sotto: non
+> lo era mai stato.
 >
-> **Perché 60 secondi.** La sfida di login HTTP è legata all'indirizzo del chiamante; il codice
-> **non può esserlo**, perché nasce da un browser e si spende su un socket. La provenienza non è
-> disponibile come vincolo: **tempo e uso singolo sono l'intero perimetro**, non un rinforzo
-> sopra un confine che c'è già. Per la stessa ragione il «una volta sola» è la **forma di una
-> sola `store.update`**: trovare e cancellare nello stesso mutatore, perché `read()` seguito da
-> `update()` lascerebbe una finestra in cui due chiamanti vedono lo stesso codice vivo.
+> ### Tre difetti veri, tutti trovati misurando
 >
-> **L'assenza che è il disegno:** il conio è una rotta HTTP (`POST /api/v1/auth/attach-code`,
-> sessione + CSRF); la **riscossione no**. `/api/v1/auth/attach` **non esiste** — lo smoke
-> asserisce 404. Un biglietto senza vincolo di indirizzo non può permettersi un endpoint di rete
-> su cui chiunque macini.
+> 1. **Il codec ha rifiutato un `Buffer`** — `run.backups[].beforeContent`, cioè ciò che
+>    `restore()` riscrive. Non supportato, **l'annullamento dell'operatore non sopravviveva**;
+>    salvato come testo, il backup di un PNG sarebbe tornato corrotto e il restore avrebbe
+>    scritto quel danno sopra l'originale. Ora base64, byte-esatto.
+> 2. **La persistenza ha rotto il determinismo del grounding** (`ce-021` rosso): pianificare
+>    scriveva nell'albero che lo scanner legge, quindi due richieste identiche derivavano liste
+>    diverse — e il prodotto poteva derivare **il proprio giornale degli eventi** come bersaglio.
+>    Escluso per **percorso relativo esatto**, mai per nome.
+> 3. **`D-0339`: il trasporto del terminale non era MAI stato servito in produzione.**
+>    `oci/Dockerfile` puntava `NOESAR_TUI_SOCKET_PATH` al percorso **interno** del supervisore,
+>    quindi il relay si legava al socket su cui `api` stava per mettersi in ascolto. Vero per
+>    **ogni deployment dalla fase 5**, dietro un container healthy e **una sola riga di ERROR**.
+>    Tre riparazioni, perché una sola avrebbe lasciato la trappola armata: il valore, un
+>    **rifiuto fatale** in `createRelay`, e **la guardia che teneva fermo il difetto** — un test
+>    che asseriva il valore rotto *come se fosse il requisito*.
 >
-> **L'altra shell, dichiarata:** il login utente/password/secondo fattore del terminale
-> **resta**. L'aggancio si offre per primo e una riga vuota ricade sulle credenziali, così
-> un'installazione senza browser aperto entra come prima. Il pannello del browser **non ha né
-> può avere** un gemello nel terminale: un terminale non può coniarsi un biglietto il cui
-> significato è «qualche sessione si è già autenticata altrove».
+> **La lezione da non perdere, e non parla di socket:** *un test che asserisce il valore che un
+> sistema ha, invece della proprietà che deve tenere, trasforma un difetto in un requisito.*
+> Questo lo ha fatto per cinque fasi, con tutte le suite verdi.
 >
-> ### Due difetti veri, trovati misurando e riparati
+> ### Verifiche
 >
-> 1. **Un test che passava per il motivo sbagliato.** «una sessione morta non può coniare»
->    toccava solo il ramo «sessione assente», perché `logout` **rimuove** il record. Tolto il
->    confronto sulla scadenza, tutto restava verde — e il ramo è raggiungibile: l'array delle
->    sessioni viene potato **solo** quando ne nasce una nuova. Coperto ora su `expiresAt` e
->    `idleExpiresAt`.
-> 2. **Nulla eseguiva `login()` del client.** I test unitari importano `dispatchCommand` e
->    vicini; `ce-020`/`ce-021` parlano al socket direttamente. Il flusso di accesso — la prima
->    cosa che tocca un operatore — non aveva **alcuna misura**, e stavo per metterci davanti un
->    prompt nuovo. Ora esportato e coperto da `tui-client-login.test.mjs`.
+> unit **1915/1916**, ESLint **339 file 0/0/0**, browser e2e **413/413**, `CE-020` **20/20**,
+> `CE-021` **13/13**, **21/21 mutazioni** (più 19/19 su `D-0337`), `HTTP_SMOKE` /
+> `AUTH_HTTP_SMOKE` / **`RESTART_DURABILITY_SMOKE`** tutti **PASS**.
 >
-> **E due mutazioni «sopravvissute» erano guasti dell'harness**, non difetti: una ancora
-> corrispondeva a 2 punti (mai applicata), l'altra inseriva una riga che non cambiava
-> comportamento. L'harness ora prova che il file sia cambiato prima di credere al verdetto.
+> **La prova che conta**, e non si può falsificare: `tools/restart-durability-smoke.mjs` avvia
+> il server vero, pianifica su HTTP vero, manda **SIGTERM**, aspetta che la porta smetta di
+> rispondere (o il «riavviato» sarebbe il vecchio), avvia un processo nuovo sullo stesso disco,
+> e ritrova la run — legame con la chat intatto, catena riverificata da GENESIS, e la run
+> ricaricata **approvata e promossa davvero**.
 >
-> ### Verifiche di questa sessione
+> ### Deploy
 >
-> unit **1890/1891** (+25), ESLint **336 file 0/0/0**, browser e2e **413/413** (+4, erano 409),
-> `CE-020` **20/20**, `CE-021` **13/13**, mutazioni **19/19**, `tools/auth-http-smoke.mjs`
-> **PASS** — quest'ultimo è quello che conta di più: conia su **HTTP vero** contro un server
-> avviato e riscuote sul **socket vero dello stesso server**, che è la sola prova che i due
-> trasporti condividano un unico `AuthService` nel prodotto assemblato.
+> `noesar-evolution:d0338-restart-durable`, **355 ms** di downtime (comando generato e
+> **validato su un container usa-e-getta PRIMA** di fermare quello vivo). Container riavviato
+> come controllo: healthy, 200/200/200, terminale ancora servito. Sopravvive **un solo**
+> rollback: `noesar-evolution-old-point4b`.
 >
-> `SECRET_SCAN=FAIL` con **6 reperti, tutti preesistenti** (commit dal 30/07 al 05/08, in
-> `EVIDENCE/` e un file di test): è il noto `B-011`, rotazione rimandata a fine progetto per
-> istruzione dell'Owner. Verificato che **non vengano da questo lavoro** scansionando i soli
-> file toccati: **zero reperti**.
+> **Limite dichiarato:** sul vivo `state/runs/` è **vuota** — creare una run reale richiede le
+> credenziali dell'Owner, che questa sessione non ha. La durabilità è provata contro il server
+> vero dallo smoke, non contro l'installazione dell'Owner.
 >
-> ### ⛔ LA PROSSIMA AZIONE — è dell'Owner, e sono due
+> ### ⛔ LA PROSSIMA AZIONE — è dell'Owner
 >
-> 1. **Deploy.** Il prodotto che gira è ancora `a73fef6` (s327). I punti 2 e 3 (s328) e il
->    punto 1 (s330) sono su `origin/main` ma **non sulla WebUI che l'Owner vede**. La
->    ricreazione del container richiede autorizzazione: generare e **validare il comando prima**
->    di fermare (healthcheck `CMD-SHELL`, IP fisso, 30 variabili, `--tmpfs /run:mode=1777`).
-> 2. **Fase 8** di `MASTER_PROJECT/17` resta ferma su istruzione dell'Owner. Ora che la lista è
->    chiusa, riaprirla richiede una **nuova istruzione esplicita**.
+> 1. **Fase 8** di `MASTER_PROJECT/17` resta ferma: serve una **nuova istruzione esplicita**.
+> 2. **`/skills` non esiste** (zero superfici, rimisurato s322/s326/s328) — da solo può valere
+>    una fase.
 >
-> **Ancora aperto, e non toccato qui:** `/skills` non esiste (zero superfici skill in
-> `services/reference-control-plane/src/`, rimisurato in s322, s326 e s328) — va costruito e da
-> solo può valere una fase. E `#runs` è una `Map`: la persistenza di run e relazione, proposta
-> in `D-0333`, non è stata fatta.
+> **Registrato e NON fatto, per scelta di scope:** i file delle run **crescono senza limite** —
+> una politica di ritenzione va decisa insieme a quella dell'audit; e `state/auth.json` più
+> `audit/events.jsonl` restano visibili allo scanner (**precede questa sessione**): il
+> meccanismo per chiuderlo ora esiste, ma se l'intera cartella di stato debba essere invisibile
+> alla pianificazione del prodotto è una **decisione**, non una pulizia.
 ---
 
 > ### Fatto — **fase 6** (`D-0323`), **frequenza** (`D-0324`), **fase 7** (`D-0326`)

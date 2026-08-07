@@ -4277,3 +4277,39 @@ run — legame con la chat intatto, catena riverificata da GENESIS, e la run ric
 `CE-020` **20/20**, `CE-021` **13/13** (prima rosso — è così che è emerso il difetto del
 grounding), **21/21 mutazioni**, `HTTP_SMOKE` / `AUTH_HTTP_SMOKE` / `RESTART_DURABILITY_SMOKE`
 tutti **PASS**.
+
+## s330 — DEPLOY di `D-0338` + `D-0339` (il terminale non era mai stato servito)
+
+**Deployato** `noesar-evolution:d0338-restart-durable` su autorizzazione dell'Owner
+(*«fai tutto in modo da resistere al riavvio»*). **Downtime 355 ms** — comando generato dalla
+configurazione del container vivo e **validato su un usa-e-getta PRIMA** di fermare quello in
+produzione, come impone la tabella container.
+
+**Verifica a tre livelli, identici:** repo HEAD `cadb0ac` = `origin/main`; `app.js`
+`7510689f…` nel repo, **nell'immagine** e nel **corpo servito** da `:8100/app.js`;
+`index.html` `ec5e85da…` repo = servito.
+
+**`D-0339`, trovato validando il deploy e non prima:** il trasporto del terminale **non era mai
+stato servito in produzione**. `oci/Dockerfile` impostava `NOESAR_TUI_SOCKET_PATH` a
+`/run/codev-peer.sock`, che è il percorso **interno** fissato dal supervisore per `api` e
+`codev`; il relay si legava quindi al socket su cui `api` stava per mettersi in ascolto,
+`session-protocol` rifiutava giustamente di rubare un socket vivo (`D-0328`), e un client
+sarebbe stato inoltrato al relay stesso. Vero per **ogni deployment dalla fase 5**, dietro un
+container healthy e **una sola riga di ERROR** allo startup. Significa anche che il codice di
+aggancio di stamattina (`D-0337`) sarebbe stato **irraggiungibile** sul prodotto deployato.
+
+**Provato, non dedotto:** in un container costruito dal Dockerfile corretto — due socket
+distinti su `/run`, `relay.listening external=/run/codev-tui.sock
+internal=/run/codev-peer.sock`, `tui.socket-listening` da `session-protocol`, e un client vero
+che riceve **`{"protocol":"noesar-tui/1"}`**. Poi lo stesso sull'installazione viva dopo il
+deploy, e ancora dopo un `docker restart` di controllo (healthy, 200/200/200).
+
+**Pulizia (§5a):** sopravvivono esattamente due container — `noesar-evolution` in esecuzione e
+**un solo** rollback, `noesar-evolution-old-point4b`. Il rollback precedente
+(`noesar-evolution-old-phase7-divergence-profile`) è stato rimosso, la sua immagine conservata.
+Nessuna immagine di prova, nessuna rete nuova, container usa-e-getta di validazione rimosso.
+
+**Limite dichiarato:** su `/workspace/state/runs/` dell'installazione viva non c'è ancora
+nessuna run — crearne una richiede le credenziali dell'Owner, che questa sessione non ha. La
+durabilità è provata contro il server vero da `tools/restart-durability-smoke.mjs`, non contro
+i dati dell'Owner.
