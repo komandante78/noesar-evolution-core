@@ -69,6 +69,12 @@ import {
   ToolCatalogError, loadToolCatalogSchema, validateToolEntry, searchCatalog,
   ActiveToolRegistry, toolCatalogStatus,
 } from './tool-catalog.mjs';
+// `/skills` — the sibling catalogue. Same discipline, different payload: a tool does
+// something, a skill tells the agent HOW, so its danger is context load rather than effect.
+import {
+  SkillCatalogError, searchCatalog as searchSkillCatalogEntries,
+  AdoptedSkillRegistry, skillCatalogStatus,
+} from './skill-catalog.mjs';
 import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from './workspace-actions.mjs';
 import { Author, openAiChatGenerator, atomAuthoringGenerator, declaredFallbackGenerator } from './author.mjs';
 import { profileChange } from './divergence-profile.mjs';
@@ -119,6 +125,12 @@ const compliancePacksRoot = resolve(process.env.NOESAR_COMPLIANCE_PACKS ?? join(
 const technologyRadarRoot = resolve(process.env.NOESAR_TECHNOLOGY_RADAR ?? join(repoRoot, '.technology-radar'));
 const toolCatalogRoot = resolve(process.env.NOESAR_TOOL_CATALOG ?? join(repoRoot, '.tool-catalog'));
 const activeToolRegistry = new ActiveToolRegistry();
+// A runtime location, never baked into the image — the same posture as `.tool-catalog`,
+// `.sector-modules` and `.compliance-packs`.
+const skillCatalogRoot = resolve(process.env.NOESAR_SKILL_CATALOG ?? join(repoRoot, '.skill-catalog'));
+// ONE registry for the whole process. Both transports read this object; a second one would
+// give the terminal its own adopted skills and make the at-rest number a per-shell opinion.
+const adoptedSkillRegistry = new AdoptedSkillRegistry();
 const port = Number(process.env.NOESAR_PORT ?? 8088);
 const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // A half-configured NOESAR_TLS_CERT_FILE/NOESAR_TLS_KEY_FILE pair throws here, at module
@@ -313,6 +325,10 @@ const auth = new AuthService({
 // terminal a run history the workbench cannot see, which is the "second client with its
 // own state" the design explicitly rejects.
 const sessionDispatch = createSessionDispatch({
+  // The SAME registry the HTTP routes above read, and the same catalogue root. Two shells,
+  // one surface: that is §4b.4 rule 4, made structural instead of asserted.
+  skillCatalogStatus: () => skillCatalogStatus(adoptedSkillRegistry),
+  searchSkillCatalog: (query) => searchSkillCatalogEntries(repoRoot, skillCatalogRoot, query),
   workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
   workspaceRoot: workspace, engineEvents, workspaceActionsStatus,
   getShadowSnapshot: () => shadowSnapshot, capabilityStatus, capabilityMinter,
@@ -2577,6 +2593,29 @@ const requestListener = async (req, res) => {
     // Searchable, never a load: /search returns metadata, never a tool's payload. Install
     // registers a provenance-verified entry as active for this process (in memory, same
     // posture as capability.mjs's TokenMinter) — it does not fetch or run anything.
+    // ---- `/skills`: the zero-load skill catalogue ------------------------------------
+    // Searchable, never a load. `/search` returns metadata and cannot return a skill's
+    // instructions — not because this route strips them, but because searchCatalog() builds
+    // its result from a field list that has no such member.
+    if (req.method === 'GET' && url.pathname === '/api/v1/skill-catalog') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      return json(res, 200, skillCatalogStatus(adoptedSkillRegistry));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/skill-catalog/search') {
+      const authenticated = requireSession(req, res); if (!authenticated) return;
+      if (!auth.hasPermission(authenticated.user, 'workspace.read')) {
+        return json(res, 403, { error:'forbidden', requiredPermission:'workspace.read' });
+      }
+      try {
+        return json(res, 200, searchSkillCatalogEntries(repoRoot, skillCatalogRoot, {
+          name: url.searchParams.get('name') ?? undefined,
+          operation: url.searchParams.get('operation') ?? undefined,
+        }));
+      } catch (error) {
+        if (error instanceof SkillCatalogError) return json(res, 422, { error:'skill_catalog_refused', kind:error.kind, reason:error.reason });
+        throw error;
+      }
+    }
     if (req.method === 'GET' && url.pathname === '/api/v1/tool-catalog') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       return json(res, 200, toolCatalogStatus(activeToolRegistry));

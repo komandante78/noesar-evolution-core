@@ -202,11 +202,29 @@ test('CE-034 — a destination entry names an address, and the address book is w
   }
 });
 
-test('CE-034 — /skills is absent, because the product has no skills surface', () => {
-  // `16` §4b.4 draws `/skills` in its mockup. Drawing it here would be an entry that opens
-  // nothing — rule 3 of §4b.4 forbids exactly that, and matching a mockup is not a reason.
-  assert.ok(!AGENT_COMMANDS.some((entry) => entry.name === 'skills'));
-  assert.ok(!/data-section="skills"/.test(MARKUP), 'a skills section now exists — add the entry');
+test('CE-034 — /skills exists exactly while its surface does', () => {
+  // REWRITTEN (D-0343). This used to assert `/skills` is ABSENT. That was true and right on
+  // the day it was written, and it became the wrong SHAPE of test the moment the surface was
+  // built: it had pinned yesterday's value as a requirement. It is the failure this repository
+  // already paid five phases for in `D-0339`, and the lesson was to assert the property the
+  // system must hold rather than the value it happens to have.
+  //
+  // What rule 3 of §4b.4 actually states is a biconditional, not an absence: an entry exists
+  // exactly when there is something for it to open. Written this way the test does its job in
+  // both directions — it fails on an entry that opens nothing, and on a surface no entry
+  // reaches — and it will not need editing again when the answer changes.
+  const hasEntry = AGENT_COMMANDS.some((entry) => entry.name === 'skills');
+  const hasSection = /data-section="skills"/.test(MARKUP);
+  assert.equal(hasEntry, hasSection,
+    hasEntry
+      ? '`/skills` is in the menu and the page has no skills section for it to open'
+      : 'a skills section exists and no menu entry reaches it');
+
+  if (hasEntry) {
+    const entry = AGENT_COMMANDS.find((item) => item.name === 'skills');
+    assert.equal(entry.group, 'configure', '§4b.4 puts skills in CONFIGURE');
+    assert.equal(entry.address, 'settings/skills');
+  }
 });
 
 // --- phase 3b · every address answers, and none of them answers "no source" -----------------

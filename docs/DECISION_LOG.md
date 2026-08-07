@@ -7759,3 +7759,66 @@ the proof was destroyed, and reusing an existing key was not possible: root on t
 authenticates by password and has no `authorized_keys`. Inventing a credential for the Owner
 would have been worse than leaving a door that does not open. One line enables it, and it is
 the Owner's key that goes in.
+
+---
+
+## D-0343 — `/skills`: the surface §4b.4 drew and nobody had built (2026-08-07)
+
+**Owner's instruction: build it.** It had been open since s322 and re-measured absent three
+times; `agent-commands.js` carried a comment explaining that the menu entry was deliberately
+withheld because there was nowhere for it to go, and that comment was right.
+
+**What a skill is here, and why this is not a second tool catalogue.** `15` §3.V puts tools
+and skills under one rule — *"a riposo: zero strumenti, zero skill, zero plugin, zero
+connettori"* — and gives the reason in the sentence above it: tool schemas eat up to 72% of the
+context before the work starts. So the two share a discipline and differ in payload. A **tool**
+*does* something, so its danger is effect, and `scopeRequestToTool()` makes an undeclared effect
+impossible rather than forbidden. A **skill** *tells the agent how*, so its payload is
+instructions and its danger is **context load**.
+
+That difference is the whole design, and it is mechanical rather than stated:
+`searchCatalog()` builds its result from a **named field list with no `instructions` member**,
+so a body cannot travel with a search result even if a caller asks. Written as a projection and
+not as a `delete`, because the two differ exactly under change — a delete leaks every field
+added later, a projection leaks none. Both are asserted, the second by adding a field the
+catalogue has never heard of and proving it does not travel. The catalogue reports
+`instructionBytes` instead: the one honest thing to say about a body you are withholding, and
+it lets a caller see what adopting would cost before it costs it.
+
+**Built in the order that keeps the menu honest.** The surface first, the entry last: a real
+module, a `settings/skills` section **derived** from the markup by `coden-address-book.mjs`
+rather than written down twice (53 addresses → 54), twin HTTP routes, `skills.status` /
+`skills.search` in the one `SESSION_METHOD_POLICY` table with **both bridged** so neither shell
+gets a method the other lacks, one registry shared by both transports, and a loader that
+renders the at-rest posture from the live registry. Only then the `/skills` entry in CONFIGURE.
+The entry followed the surface; it did not summon it.
+
+**A test that had pinned the defect as a requirement, rewritten.** `CE-034` asserted
+`/skills` is ABSENT — correct the day it was written, and the wrong SHAPE of test from that day
+onward. It is the failure this repository already paid five phases for in `D-0339`. Rule 3 of
+§4b.4 is a **biconditional**, not an absence: an entry exists exactly when there is something
+for it to open. Written that way it fails in both directions and will not need editing again.
+
+**A real, shipped defect found on the way, and repaired.** `app.js` declares
+`SETTINGS_SECTIONS` as *"the source of truth for which section a hash may name"*, and
+`activateSection()` falls back to the default for anything not in it. **`remote-targets`
+(`D-0291`, s305) was never added** — so the Remote targets button had a nav entry, a section
+and a menu row, and clicking it silently landed on Sessions. The existing guards compared the
+markup only against a list in the *test file*, never against the one that decides routing: two
+lists that should have been one, the same shape as `PANEL_NAMES` saying 14 against 25. Fixed at
+the instance **and at the rule** — a new guard requires the sections a page offers and the
+sections the router accepts to be the same set, and it was proved by restoring the defect and
+watching it name `remote-targets` exactly.
+
+**Verified.** unit **1967 (1966 pass, 0 fail, 1 pre-existing skip)**, ESLint **342 files 0/0**,
+**16 mutations against a baseline proved green first, 16 killed**. One of those sixteen is worth
+naming: deleting the `BAD_SIGNATURE` refusal **survived** at first, because the provenance test
+handed in a malformed key, which makes the verifier *throw* — every run took the
+`PROVENANCE_REFUSED` path and the branch under test was never reached. An assertion on a case
+the real input never produces; only the mutation showed it. A second test now signs with a real
+Ed25519 key and a signature that does not verify.
+
+**Declared, not implied:** `enforced: false`. The registry, the projection and the at-rest
+number are real and measured, but nothing in the product yet composes an adopted skill into a
+Plan before the Author writes. That wiring is the next step, named here rather than left to be
+discovered.

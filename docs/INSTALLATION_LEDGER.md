@@ -4435,3 +4435,60 @@ reali: qui `2223` e una sola interfaccia). Tutto corretto nel documento.
 `/etc/ssh/sshd_config`, chiave di prova in `/home/coden/.ssh/authorized_keys`. `sshd`
 **ricaricato con SIGHUP, mai riavviato** — nessuna sessione esistente caduta. Backup:
 `/etc/ssh/sshd_config.bak.d0340-20260807T085444Z`.
+
+---
+
+## `/skills` — la superficie che il menu disegnava e nessuno aveva costruito (`D-0343`, 2026-08-07)
+
+**Su istruzione dell'Owner.** Aperto da s322, rimisurato assente tre volte.
+
+**Misura PRIMA:** zero superfici skill in `services/reference-control-plane/src/`; in
+`agent-commands.js` un commento spiegava che la voce di menu era **volutamente** assente
+perché non c'era nulla da aprire — e aveva ragione.
+
+**Misura DOPO:** `/skills` è nel gruppo CONFIGURA, risolve a `settings/skills`, e a riposo la
+pagina dichiara **zero skill e 0 byte di contesto**, letti dal registro vivo.
+
+**La differenza che rende questo non un secondo catalogo strumenti.** Uno **strumento** *fa*
+qualcosa — il suo pericolo è l'effetto. Una **skill** *dice all'agente come* — il suo carico
+sono istruzioni, quindi il suo pericolo è il **contesto**, che è esattamente il costo che `15`
+§3.V apre nominando (fino al 72% prima che il lavoro cominci). Reso meccanico:
+`searchCatalog()` costruisce il risultato da un **elenco di campi nominati senza
+`instructions`**, quindi un corpo non può viaggiare con una ricerca nemmeno se qualcuno lo
+chiede. Proiezione, **non** una `delete`: le due differiscono solo sotto cambiamento — una
+delete lascia esposto ogni campo futuro. Al posto del corpo, `instructionBytes`: l'unica cosa
+onesta da dire di un contenuto che si sta trattenendo.
+
+**Costruito nell'ordine che tiene onesto il menu:** prima la superficie
+(`src/skill-catalog.mjs`, schema, rotte gemelle, `skills.status`/`skills.search` **entrambi
+bridged** nell'unica tabella `SESSION_METHOD_POLICY`, un registro solo per i due trasporti,
+sezione + bottone da cui l'address book **deriva** l'indirizzo — 53 → **54**, e un loader che
+rende la postura reale), **poi** la voce di menu. La voce ha seguito la superficie, non l'ha
+evocata.
+
+**Un test che aveva fissato il difetto come requisito, riscritto.** `CE-034` asseriva che
+`/skills` è **assente**: vero il giorno in cui fu scritto, e dalla forma sbagliata da quel
+giorno in poi. È il guasto già pagato per cinque fasi in `D-0339`. La regola 3 di §4b.4 è un
+**bicondizionale**: una voce esiste esattamente quando c'è qualcosa da aprire.
+
+**Difetto vero e già rilasciato, trovato per strada e riparato.** `app.js` dichiara
+`SETTINGS_SECTIONS` come «la fonte di verità per quale sezione un hash può nominare», e
+`activateSection()` ripiega sul default per tutto ciò che non c'è: **`remote-targets`
+(`D-0291`, s305) non era mai stato aggiunto**, quindi il bottone «Remote targets» aveva voce,
+sezione e riga di menu e **atterrava in silenzio su Sessions**. Le guardie esistenti
+confrontavano il markup solo con una lista nel *file di test*, mai con quella che decide la
+navigazione. Riparato all'istanza **e alla regola**: una guardia nuova impone che le sezioni
+offerte dalla pagina e quelle accettate dal router siano lo stesso insieme, **provata
+ripristinando il difetto** e vedendola nominare `remote-targets`.
+
+**Verifiche:** unit **1967 (1966 pass, 0 fail, 1 skip preesistente)**, ESLint **342 file 0/0**,
+**16 mutazioni su baseline provata verde, 16 uccise**. Una merita il nome: cancellare il
+rifiuto `BAD_SIGNATURE` **sopravvisse**, perché il test di provenienza passava una chiave
+malformata — che fa **sollevare** il verificatore, quindi ogni giro prendeva il ramo
+`PROVENANCE_REFUSED` e quello sotto esame non veniva mai raggiunto. Un'asserzione su un caso
+che l'input reale non produce mai; solo la mutazione l'ha mostrato. Ora un secondo test firma
+con una chiave Ed25519 vera e una firma che non verifica.
+
+**Dichiarato:** `enforced:false` — registro, proiezione e numero a riposo sono reali e
+misurati, ma **nulla nel prodotto compone ancora una skill adottata dentro un Piano** prima
+che l'Autore scriva. È il passo successivo, nominato invece che lasciato da scoprire.

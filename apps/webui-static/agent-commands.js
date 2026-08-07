@@ -198,10 +198,17 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'workflows', argument: '', summary: 'Work that runs on a schedule or on a trigger', group: 'applications', kind: 'address', address: 'workflows' },
   { name: 'research', argument: '', summary: 'Search across the sources this installation can reach', group: 'applications', kind: 'address', address: 'research' },
 
-  // CONFIGURE — changes how the product behaves. `/skills` is in §4b.4's drawing and is NOT
-  // here: this product has no skills surface (measured — no such destination, no such
-  // section, no such route). An entry that appears and then has nowhere to go is the failure
-  // rule 3 of §4b.4 names, and drawing one to match a mockup is the worse half of it.
+  // CONFIGURE — changes how the product behaves.
+  //
+  // `/skills` was absent here for three sessions, and the comment that stood in its place was
+  // right to refuse it: there was no destination, no section and no route, and an entry that
+  // appears and then has nowhere to go is the failure rule 3 of §4b.4 names. It is here now
+  // because all three exist — `settings/skills` is DERIVED from the markup by
+  // `coden-address-book.mjs` rather than written down a second time, `skill-catalog.mjs` is
+  // the surface behind it, and `skills.status`/`skills.search` carry it to the terminal so
+  // both shells reach the same object. The order of those facts is the whole point: the entry
+  // followed the surface, it did not summon it.
+  { name: 'skills', argument: '', summary: 'Skills — what the agent knows how to do, and what adopting one costs in context', group: 'configure', kind: 'address', address: 'settings/skills' },
   { name: 'models', argument: '', summary: 'Models — which model answers, and on what hardware', group: 'configure', kind: 'address', address: 'models' },
   { name: 'settings', argument: '', summary: 'Everything else about how this installation behaves', group: 'configure', kind: 'address', address: 'settings' },
 

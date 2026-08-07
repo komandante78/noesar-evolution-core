@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NOESAR Skill Catalog Entry",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "publisher",
+    "instructions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "declaredEffects": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "signature": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -49,7 +49,10 @@ const SIDEBAR = DESTINATIONS.filter((destination) => destination !== 'tools');
  *  D-0276 — same section id, entirely different backend underneath. */
 const SETTINGS_SECTIONS = [
   'sessions', 'appearance', 'language', 'about', 'licence', 'privacy', 'people',
-  'security', 'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
+  'security',
+  // `/skills` — the surface 16 §4b.4 drew and nobody had built (D-0343).
+  'skills',
+  'models-hardware', 'storage', 'audit', 'health', 'updates', 'modules',
   // D-0286, Debug Evolution Phase 3: remote scan targets over SSH.
   'remote-targets',
 ];
@@ -228,6 +231,33 @@ describe('webui markup structure', () => {
     }
     assert.deepEqual(escaped, [],
       `sections outside #view-settings, which would render on a page that does not contain them: ${escaped.join(', ')}`);
+  });
+
+  test('app.js can NAME every section the markup offers — the list that decides navigation', () => {
+    // Added after finding a real, shipped defect these guards could not see (D-0343). `app.js`
+    // declares SETTINGS_SECTIONS as "the source of truth for which section a hash may name",
+    // and `activateSection()` falls back to DEFAULT_SECTION for anything not in it. The guards
+    // here compare the markup against the list in THIS file and never against that one — so
+    // `remote-targets` (D-0291, s305) shipped with a nav button, a section and a menu entry,
+    // and clicking it silently landed on Sessions. Two lists that should have been one, the
+    // same shape as `PANEL_NAMES` saying 14 against 25.
+    //
+    // This is the rule-level repair rather than the instance: the sections a page offers and
+    // the sections the router will accept must be the same set, so the next one cannot ship
+    // silent.
+    const app = readFileSync(join(here, '../../../apps/webui-static/app.js'), 'utf8');
+    const declared = (app.match(/const SETTINGS_SECTIONS=\[([^\]]+)\]/)?.[1] ?? '')
+      .split(',').map((entry) => entry.trim().replace(/^'|'$/g, '')).filter(Boolean);
+    assert.ok(declared.length > 0, 'app.js declares no settings section list');
+    const inMarkup = [...html.matchAll(/class="settings-nav[^"]*"[^>]*data-section="([^"]+)"/g)].map((m) => m[1]);
+
+    const unroutable = inMarkup.filter((section) => !declared.includes(section));
+    assert.deepEqual(unroutable, [],
+      `the page offers these sections and app.js will not route to them — each click lands on the default section instead: ${unroutable.join(', ')}`);
+
+    const phantom = declared.filter((section) => !inMarkup.includes(section));
+    assert.deepEqual(phantom, [],
+      `app.js routes to sections the page does not offer: ${phantom.join(', ')}`);
   });
 
   test('every Settings section has a menu entry and every entry a section', () => {

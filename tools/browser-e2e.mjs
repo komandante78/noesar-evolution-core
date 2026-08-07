@@ -341,8 +341,20 @@ try {
   // had been asserting fourteen ever since and was simply not being run — the count and the
   // name below are corrected here rather than in the phase that added the section, because
   // this is the run that surfaced it.
-  check('Settings is one destination holding fifteen sections',
-    shell.sections.length === 15 && shell.menu.length === 15,
+  // SIXTEEN since D-0343 — and the literal is gone, because this line has now been wrong twice
+  // for the same reason. It asserted fourteen for a whole phase after `remote-targets` landed
+  // (the comment above records it), and would have asserted fifteen after `skills`. A count
+  // that every phase adding a section must hand-edit is a check that fails for the one reason
+  // it was never meant to catch, and its failures teach the next reader to edit the number
+  // rather than to look.
+  //
+  // What is left is the property that cannot go stale: Settings is ONE destination, and it is
+  // not empty. The bijection is the line below, and the count itself is pinned where it
+  // belongs — `webui-markup-structure.test.mjs` holds the declared set and, since D-0343,
+  // requires it to equal the list `app.js` will actually route to. That is the guard that
+  // would have caught `remote-targets` shipping unreachable, which this one did not.
+  check('Settings is one destination, and it holds sections',
+    shell.sections.length > 0 && shell.menu.length === shell.sections.length,
     `menu=${shell.menu.length} sections=${shell.sections.length}`);
   check('every Settings menu entry has a section behind it and every section an entry',
     shell.menu.every((key) => shell.sections.includes(key)) && shell.sections.every((key) => shell.menu.includes(key)),

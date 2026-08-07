@@ -157,6 +157,18 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // reads the HISTORY of the repository, which is what a plan is entitled to, and widening it
   // to `workspace.read` for the convenience of a panel is not a trade.
   'coden.divergence': { permission: 'coden.plan', bridged: false },
+  // `/skills`. Both `bridged: true` on purpose: this surface is new, so there is no
+  // established asymmetry to preserve, and the menu entry that reaches it is required to be
+  // identical in the two shells (§4b.4 rule 4). Giving one transport a method the other lacks
+  // would rebuild by omission exactly what `D-0302` closed — on the very first day of the
+  // surface, which is the cheapest possible moment not to.
+  //
+  // Status carries no catalogue content, only counts and posture flags, so it needs no
+  // permission — the same reading as `status` and `product.invariants`. Search reads a
+  // catalogue from disk and is therefore `workspace.read`, matching the tool catalogue's own
+  // HTTP route rather than inventing a second answer to the same question.
+  'skills.status': { permission: null, bridged: true },
+  'skills.search': { permission: 'workspace.read', bridged: true },
   // Phase 3b. The bench's list panels — Projects, Recent, Sessions, Tasks, Agents, Tools,
   // History — answered "no source over this transport" in the terminal, because the browser
   // fills all seven from ONE route (`GET /api/v1/ai/bootstrap`, via `refreshWorkspace`) and
@@ -205,6 +217,11 @@ export function createSessionDispatch({
   // closure register after it. A direct reference to the later one would read an uninitialised
   // binding at construction time.
   aiWorkspace, getClosureRegister,
+  // `/skills`. Passed in for the same reason as everything above: a registry constructed here
+  // would be a SECOND set of adopted skills — in scope for the terminal, invisible to the
+  // browser — the "second client with its own state" this design rejects, and it would
+  // quietly falsify the at-rest number both shells display.
+  skillCatalogStatus, searchSkillCatalog,
   // The policy the gate below reads. A parameter, not a direct reference, for one reason:
   // "a method with no policy entry is refused" is the fail-closed branch that matters most and
   // the one the real configuration can never reach, since every implemented method is listed.
@@ -299,6 +316,28 @@ export function createSessionDispatch({
     // second hardcoded list that can drift from it (see path-auth.mjs's own comment on
     // exactly that drift, once real).
     'product.invariants': () => ({ invariants: invariantEnforcement }),
+    // `/skills`. Both refuse with UNAVAILABLE when a deployment did not wire them, the same
+    // shape `coden.addresses` uses — a shell that asks must be told the surface is absent
+    // here, never handed an empty catalogue that reads as "there are no skills".
+    'skills.status': () => {
+      if (typeof skillCatalogStatus !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a skill catalogue');
+      }
+      return skillCatalogStatus();
+    },
+    'skills.search': ({ params }) => {
+      if (typeof searchSkillCatalog !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire a skill catalogue');
+      }
+      // `name` and `operation` only — the same two the HTTP route accepts. Nothing here can
+      // ask for a skill's instructions, because `searchCatalog()` has no field that carries
+      // them; the body is reached by adopting, which is a different act with a different
+      // record.
+      return searchSkillCatalog({
+        name: params?.name ?? undefined,
+        operation: params?.operation ?? undefined,
+      });
+    },
     // Phase 4 (D-0300): the address space itself, so `/` means the same thing in a terminal
     // as it does in the browser. The browser builds its list by reading its own DOM; a
     // terminal has none, and the alternative — a list written out inside tui-client.mjs —

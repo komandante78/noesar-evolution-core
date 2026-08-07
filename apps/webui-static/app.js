@@ -226,7 +226,7 @@ const ROUTES=new Set(['home','chat','coden','coden-tui','tools','projects','docu
 // The Settings destination's own menu: menu inside the menu, in three groups. The order
 // here is the order rendered, and it is the source of truth for which section a hash may
 // name — the markup is checked against it at boot rather than being trusted.
-const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','models-hardware','storage','audit','health','updates','modules'];
+const SETTINGS_SECTIONS=['sessions','appearance','language','about','licence','privacy','people','security','skills','models-hardware','storage','audit','health','updates','modules','remote-targets'];
 // Which section a bare "#/settings" lands on. It is the menu's first entry again: the
 // exception existed only because Sessions was ranked and not built, and a landing surface
 // saying "not built" reads as a broken product. Sessions is built, so the reason is gone
@@ -4492,7 +4492,28 @@ Object.assign(VIEW_LOADERS,{
 // The loaders of the demoted pages, keyed by the section that now owns them. "Health and
 // logs" is one section holding two former pages, so it runs both: merging two entries in
 // the menu must not silently drop one of their fetches.
+// `/skills`. Renders the at-rest posture from the live registry rather than a claim: the
+// count, what a session is carrying in context right now, and — when something is adopted —
+// what each one costs. Never a skill body: the route it reads has no field that carries one.
+async function loadSkillCatalog(){
+  const target=$('#skillCatalogStatus');
+  if(!target)return;
+  try{
+    const status=await api('/api/v1/skill-catalog');
+    const rows=(status.adoptedSkills??[]).map((skill)=>`<li><strong>${escapeHtml(skill.name)}</strong> &middot; ${skill.instructionBytes} bytes of context${skill.permanent?' &middot; permanent':''}</li>`).join('');
+    target.classList.toggle('empty-state',status.atRest);
+    target.innerHTML=status.atRest
+      ? '<p>Nothing adopted. This installation carries <strong>no skills at rest</strong> and spends <strong>0 bytes</strong> of context on them. Searching the catalogue returns what a skill is and what adopting it would cost &mdash; never its instructions.</p>'
+      : `<p><strong>${status.adoptedSkillCount}</strong> adopted, costing <strong>${status.contextBytes}</strong> bytes of context.</p><ul>${rows}</ul>`;
+  }catch(error){
+    // Declared, never blank: a section that fails silently reads as "there are no skills",
+    // which is the one thing this surface must not say when it does not know.
+    target.classList.add('empty-state');
+    target.textContent=`The skill catalogue could not be read: ${error.message}`;
+  }
+}
 Object.assign(SECTION_LOADERS,{
+  skills:loadSkillCatalog,
   sessions:()=>loadWorkSessions(sessionPlaceFromHash(),1),
   appearance:renderAppearance,
   language:loadSettings,
