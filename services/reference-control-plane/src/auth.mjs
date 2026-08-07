@@ -126,7 +126,45 @@ function consumeTotp(secret, code, user) {
 const RECOVERY_CODE_COUNT = 10;
 // Crockford-style alphabet: no I, L, O or U, so a code read off a screen and typed back
 // cannot become a DIFFERENT valid code through an ordinary transcription slip.
+// Exactly 32 symbols, which also makes `byte % length` uniform over 0..255 — no modulo
+// bias, so the entropy claimed below is the entropy delivered.
 const RECOVERY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+// --- Terminal attach codes (D-0337) -----------------------------------------------------
+//
+// One authentication, not two: a browser session that is already inside NOESAR mints a
+// short code, and the terminal spends it at the socket instead of asking for username,
+// password and second factor a second time.
+//
+// The code is NOT authority. It is a claim ticket: it carries no permission of its own,
+// it opens a session for the account that minted it and never for another, and spending
+// it destroys it. That distinction is the whole design — `16` §4.3's first trap is that
+// "access conveniences are not paid for with authority", and a bearer credential with an
+// eight-hour life handed to a human to retype would have been exactly that payment.
+//
+// Why the window is this short. The HTTP login challenge is pinned to the caller's IP
+// (`completeLogin`: `item.ip !== ip`), and an attach code CANNOT be — it is born at a
+// browser and spent on a unix socket, which reports itself as `unix-socket`. Provenance
+// is therefore unavailable as a bound, and the only two bounds left are time and single
+// use. They are not decoration; they are the entire perimeter, which is why the window is
+// sixty seconds rather than a comfortable ten minutes.
+const ATTACH_CODE_TTL_MS = 60_000;
+// 8 symbols over a 32-symbol alphabet = 40 bits, printed as two groups of four. Against a
+// 60-second window and the shared login rate limiter (8 failures per 15 minutes), guessing
+// is not a threat model this size has to survive on entropy alone — but it costs nothing to
+// make brute force absurd rather than merely impractical.
+const ATTACH_CODE_SYMBOLS = 8;
+// Failed redemptions tolerated in the limiter's 15-minute window, counted separately from
+// password failures because the key is distinct.
+//
+// Why this is not the login limiter's 8. Against 40 bits inside a 60-second window, a
+// grinder managing a thousand guesses a second gets 6e4 attempts against 1.1e12
+// possibilities — about five chances in a hundred million. The rate limit is therefore not
+// what makes guessing hopeless; entropy and the window already did that. Its remaining job
+// is to stop a client burning the process on a loop. Set at 8, the real effect would have
+// been to lock a human out of their terminal after a few typos on an eight-character code
+// read off another screen — a limit paid for entirely by the legitimate operator.
+const ATTACH_FAILURE_BUDGET = 20;
 
 /**
  * Mint recovery codes. The plaintext is returned ONCE to the caller and never stored:
@@ -140,6 +178,18 @@ function buildRecoveryCodes(count = RECOVERY_CODE_COUNT) {
     codes.push(`${text.slice(0, 5)}-${text.slice(5, 10)}`);
   }
   return { codes, digests: codes.map((code) => ({ digest: tokenDigest(code), usedAt: null })) };
+}
+
+/** Mint the plaintext of one attach code. Never stored in this form — only its digest is. */
+function buildAttachCode() {
+  let text = '';
+  for (const byte of randomBytes(ATTACH_CODE_SYMBOLS)) text += RECOVERY_ALPHABET[byte % RECOVERY_ALPHABET.length];
+  return `${text.slice(0, 4)}-${text.slice(4)}`;
+}
+
+/** The one place that decides what a typed attach code means, so both ends agree. */
+export function normalizeAttachCode(value) {
+  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');
 }
 
 export class AuthService {
@@ -414,6 +464,117 @@ export class AuthService {
       session: record,
       user: publicUser(user),
     };
+  }
+
+  /**
+   * Mint a terminal attach code on behalf of a session that is ALREADY authenticated.
+   *
+   * Who may mint, and it is deliberately not a new permission: any live, MFA-backed
+   * session, for its own account only. Adding a `terminal.attach` permission was
+   * considered and rejected — the code grants nothing the minting session cannot already
+   * do through the browser, so gating it would create a role that can drive the product
+   * but not reach its own terminal, which is a support burden rather than a boundary.
+   *
+   * Three refusals, all fail-closed:
+   *  - the session must exist and be live (a revoked session cannot mint on its way out);
+   *  - it must belong to the account it claims (`userId` is never taken on trust);
+   *  - it must be MFA-backed, so a code can never be a way to launder a weaker session
+   *    into a terminal one.
+   *
+   * Minting also drops this session's previous unspent code. One outstanding code per
+   * session, so a user who clicks twice cannot leave a live credential behind on screen.
+   */
+  mintAttachCode({ userId, sessionId }) {
+    const now = Date.now();
+    const state = this.store.read();
+    const session = state.sessions.find((item) => item.id === sessionId);
+    if (!session || session.expiresAt < now || session.idleExpiresAt < now || session.userId !== userId) {
+      throw Object.assign(new Error('No live session to attach from.'), { status:401 });
+    }
+    if (!session.mfa) {
+      this.ledger.append({ actor:userId, action:'auth.attach-code-denied', result:'denied', details:{ reason:'session-not-mfa' } });
+      throw Object.assign(new Error('This session cannot mint a terminal attach code.'), { status:403 });
+    }
+    const user = state.users.find((item) => item.id === userId);
+    if (!user || !isActive(user)) throw Object.assign(new Error('No live session to attach from.'), { status:401 });
+
+    const code = buildAttachCode();
+    const record = {
+      id: randomUUID(),
+      codeDigest: tokenDigest(code),
+      userId,
+      sessionId,
+      createdAt: now,
+      expiresAt: now + ATTACH_CODE_TTL_MS,
+    };
+    this.store.update((next) => {
+      next.attachCodes = (next.attachCodes ?? [])
+        .filter((item) => item.expiresAt > now && item.sessionId !== sessionId);
+      next.attachCodes.push(record);
+    });
+    this.ledger.append({ actor:userId, action:'auth.attach-code-minted', result:'success', details:{ expiresInMs:ATTACH_CODE_TTL_MS } });
+    return { code, expiresAt:new Date(record.expiresAt).toISOString(), expiresInMs:ATTACH_CODE_TTL_MS };
+  }
+
+  /**
+   * Spend an attach code and get the session it was a ticket for.
+   *
+   * The single-use guarantee lives in the shape of ONE `store.update` call, not in two.
+   * `AuthStore.update` is a synchronous read-modify-write, so a find and a delete inside
+   * the same mutator cannot be interleaved by anything; a `read()` followed by a separate
+   * `update()` — the idiom the rest of this file uses, safely, because nothing awaits in
+   * between — would leave a window where two callers both saw the same live code. Here
+   * that window would be the whole property, so it is closed structurally.
+   *
+   * The code is burned by the ATTEMPT, not by the success. A code whose account was
+   * disabled between minting and spending is consumed and refused, because the alternative
+   * leaves a live code lying around after it has already been sent over a wire.
+   *
+   * @param {string} code   the typed code, in any casing or spacing
+   * @param {string} ip     the transport's own name for the caller — `unix-socket` in practice
+   */
+  redeemAttachCode({ code, ip }) {
+    const limiter = this.#rateState(ip, '@attach-code');
+    if (limiter.entries.length >= ATTACH_FAILURE_BUDGET) throw Object.assign(new Error('Too many attach attempts. Try again later.'), { status:429 });
+
+    const normalized = normalizeAttachCode(code);
+    const digest = tokenDigest(normalized);
+    const now = Date.now();
+
+    const claimed = this.store.update((next) => {
+      next.attachCodes = (next.attachCodes ?? []).filter((item) => item.expiresAt > now);
+      const index = next.attachCodes.findIndex((item) => item.codeDigest === digest);
+      if (index === -1) return null;
+      const [found] = next.attachCodes.splice(index, 1);
+      // A code outlives its minting session only in the sense that it is a separate record.
+      // If that session was revoked or logged out inside the window, the intent behind the
+      // code is gone with it, and the code goes too.
+      const minting = next.sessions.find((item) => item.id === found.sessionId);
+      if (!minting || minting.expiresAt < now || minting.idleExpiresAt < now) return { found, reason:'minting-session-gone' };
+      return { found, reason:null };
+    });
+
+    if (!claimed) {
+      this.#recordFailure(ip, '@attach-code');
+      this.ledger.append({ actor:'anonymous', action:'auth.attach-failed', result:'denied', details:{ reason:'unknown-or-expired', transport:ip } });
+      throw Object.assign(new Error('Invalid or expired attach code.'), { status:401 });
+    }
+    if (claimed.reason) {
+      this.ledger.append({ actor:claimed.found.userId, action:'auth.attach-failed', result:'denied', details:{ reason:claimed.reason, transport:ip } });
+      throw Object.assign(new Error('Invalid or expired attach code.'), { status:401 });
+    }
+
+    const user = this.store.read().users.find((item) => item.id === claimed.found.userId);
+    if (!user || !isActive(user)) {
+      this.ledger.append({ actor:claimed.found.userId, action:'auth.attach-failed', result:'denied', details:{ reason:'account-not-active', transport:ip } });
+      throw Object.assign(new Error('Invalid or expired attach code.'), { status:401 });
+    }
+    // `mfa:true` is carried, not assumed: minting already refused any session that lacked
+    // it, so the second factor this session rests on is the one the browser really passed.
+    // `elevatedUntil` is deliberately NOT carried — elevation is re-earned, never inherited.
+    const issued = this.createSession(user, { mfa:true });
+    this.ledger.append({ actor:user.id, action:'auth.attach-succeeded', result:'success', details:{ transport:ip, fromSessionId:claimed.found.sessionId } });
+    return issued;
   }
 
   authenticate(token) {

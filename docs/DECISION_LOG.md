@@ -7288,3 +7288,111 @@ failure mode does not exist rather than being watched for.
 flight, which is the same glyph it uses for "this field has no source in this build" — a reader
 cannot tell loading from unsourceable. Out of scope here; it is the honesty rule this product
 applies everywhere else, applied to its own latency.
+
+## D-0337 — point 1: one authentication, not two (2026-08-07)
+
+The last item on the owner's change list. If you are already inside NOESAR, the terminal
+recognises you: one authentication, not two.
+
+**The question was of authority, and it was answered before a file was touched.** The socket
+asks for username, password and second factor **on its own account**, and `session-protocol.mjs`
+declared that in its header as a deliberate choice (*"rather than trusting a cookie, since a
+socket connection has none"*). So the decision was not "how do we skip the second login" but
+**what is presented to the socket in the cookie's place, and who may fabricate it** — the first
+of the three traps in `16` §4.3: *access conveniences are not paid for with authority*.
+
+**One candidate answer was eliminated by measurement, not by taste.** "Let the operating system
+say who you are" cannot work here: the socket is `chmod 0600` (`session-protocol.mjs`), so only
+the owning uid may open it and that uid is one — the OS therefore carries **no information about
+which NOESAR account is calling**, only that it is the product's own user. And Node exposes no
+`SO_PEERCRED` (measured: `'getpeercred' in socket` → `false`, no affine method on the prototype);
+reading it would need a native addon, against this module's zero-dependency policy.
+
+**Owner's decision (2026-08-07): a single-use attach code, mintable by any live session.**
+
+**What it is, and the sentence that governs every line of it: the code is not authority, it is a
+claim ticket.** It carries no permission of its own; it opens a session for the account that
+minted it and never another; spending it destroys it. The alternative considered and rejected was
+to hand the terminal the session token itself — `authenticate(token)` already exists and is
+transport-agnostic, so it would have cost almost no code. It was refused because that token is
+worth eight hours and the account's full authority, and reaching a terminal means passing through
+a human's eyes into shell history, `ps` and scrollback. A cookie is `HttpOnly` precisely so it
+cannot be copied; that design would have made it copyable **by construction**.
+
+**Why the window is sixty seconds and not a comfortable ten minutes.** The HTTP login challenge is
+pinned to the caller's address (`completeLogin`: `item.ip !== ip`). An attach code **cannot** be:
+it is born at a browser and spent on a socket that calls itself `unix-socket`. Provenance is
+therefore unavailable as a bound, and the only two left — **time** and **single use** — are the
+entire perimeter. They are not hardening on top of a boundary; they are the boundary.
+
+**Three refusals on minting, all fail-closed:** the session must be live, must belong to the
+account it claims (`userId` is never taken on trust), and must be MFA-backed — so a code can never
+launder a weaker session into a terminal one. `createSession`'s `mfa` parameter *defaults to
+false*, which is what makes the third check load-bearing rather than decorative.
+
+**Where each half lives, and the absence that is the design.** Minting is an HTTP route
+(`POST /api/v1/auth/attach-code`, session + CSRF); **spending is not, and there is no
+`/api/v1/auth/attach`**. A ticket with no address binding cannot afford a network endpoint for
+anyone to grind against; on the socket the filesystem has already answered *who may knock* before
+the first byte. Proved by the smoke harness, which asserts both paths answer 404.
+
+**Structural, not incidental: the single-use guarantee is the shape of ONE `store.update` call.**
+`AuthStore.update` is a synchronous read-modify-write, so a find and a delete inside the same
+mutator cannot be interleaved. The idiom used elsewhere in `auth.mjs` — `read()` then a separate
+`update()` — is safe there because nothing awaits between them, but here it would leave a window
+where two callers both saw one live code. That window would be the whole property.
+
+**Two smaller decisions, both stated rather than left to be discovered.** The code is burned by the
+**attempt**, not by success: a code whose account was disabled mid-window is consumed and refused,
+because the alternative leaves a live code lying around after it has already crossed a wire. And
+the failure budget is **20 per 15 minutes**, not the login path's 8: against 40 bits inside a
+sixty-second window a grinder at a thousand guesses a second gets about five chances in a hundred
+million, so the limiter is not what makes guessing hopeless — entropy and the window already did
+that. At 8 the only real effect would have been locking a human out of their own terminal after a
+few typos on an eight-character code read off another screen.
+
+**The other shell, declared as skill rule 3 requires.** The credential path in `tools/tui-client.mjs`
+**stays**: an installation with no browser open, a fresh machine, or an operator who prefers it
+signs in exactly as before. The attach prompt is offered first and an empty line falls through.
+The browser panel has **no terminal counterpart and cannot have one** — a terminal cannot mint
+itself a ticket that means "some session already authenticated elsewhere". That asymmetry is
+named in the markup rather than left for a future reader to find.
+
+**A defect found by mutation, in the tests rather than the product.** `AUTHORITY · a dead session
+cannot mint` passed for a reason it did not intend: `logout` **removes** the record, so the test
+only ever exercised "no such session", and deleting the expiry comparison from `mintAttachCode`
+left every test green. The branch is reachable — `next.sessions` is pruned of expired records only
+when a new session is created — so an expired record sits in the store until someone logs in
+again. Covered now by both `expiresAt` and `idleExpiresAt`. *(In the assembled server
+`requireSession` rejects such a caller first, which makes this defence in depth — and defence in
+depth that nothing measures is a comment, not a defence.)*
+
+**A second defect, found by asking what actually executes `login()`: nothing did.** The unit suites
+import `dispatchCommand` and its neighbours; `ce-020` and `ce-021` speak to the socket directly and
+never drive the client's own prompts. So the sign-in flow — the first thing a real operator touches
+— had **no measurement at all**, and a new prompt was about to be added in front of it. That is the
+shape this project has already paid for once (`D-0301`: a page telling operators to run a client
+that was not in the image). `login()` is now exported and covered by `tui-client-login.test.mjs`:
+the code path, the empty-line fallthrough, the retry, the fallthrough to credentials after three
+failures, and `CE-036`'s unfiltered-menu disclosure on **both** paths.
+
+**Two mutations that "survived" and were harness faults, investigated before being believed.** One
+anchor matched twice, so the mutation never applied; the other inserted a statement that changed no
+behaviour, and a mutation that does not mutate cannot be killed. The harness now proves the file
+actually changed before trusting a verdict. Final: **19/19 killed** — 14 on the engine, 5 on the
+client's sign-in.
+
+**Verified in this session:** unit **1890/1891** (+25), ESLint **336 files 0/0/0**, browser e2e
+**413/413** (+4, from 409), `CE-020` **20/20**, `CE-021` **13/13**, mutations **19/19**, and
+`tools/auth-http-smoke.mjs` **PASS** — which is the one that matters most: it mints over real HTTP
+against a spawned server and **redeems on that same server's real unix socket**, proving the two
+transports share one `AuthService` in the assembled product. That could have been true in
+`auth.mjs` and false in `server.mjs`.
+
+**Improvement proposed, not executed:** the code is typed. On an installation where the operator
+has the browser and the terminal on the same machine, the browser could write it to the clipboard
+on mint — one keystroke instead of eight characters, with the same lifetime and the same single
+use. It is out of scope here because the clipboard API is permission-gated per browser and the
+failure must degrade to the typed path, which is a behaviour to design rather than a line to add.
+
+**NOT deployed.** No container created, stopped or recreated.

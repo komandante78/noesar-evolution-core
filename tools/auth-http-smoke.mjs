@@ -5,6 +5,7 @@ import os from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { connect } from 'node:net';
 import { totpCode } from '../services/reference-control-plane/src/auth-crypto.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -20,6 +21,40 @@ const child = spawn(process.execPath, ['services/reference-control-plane/src/ser
   env:{ ...process.env, NOESAR_WORKSPACE:workspace, NOESAR_HOST:'127.0.0.1', NOESAR_PORT:String(port), NOESAR_SETUP_TOKEN:setupToken, NOESAR_ALLOWED_HOSTS:'127.0.0.1,localhost', NOESAR_CODEV_PEER_SOCKET_PATH:join(workspace,'codev-peer.sock') },
   stdio:['ignore','pipe','pipe'],
 });
+
+/**
+ * One request/response over the product's unix socket, framed the way the real client
+ * frames it: one JSON object per newline, and the server's first line is its handshake.
+ * Resolves the raw frame — a refusal is an ANSWER here, not a throw, because the checks
+ * below assert on refusals as much as on successes.
+ */
+function socketCall(path, method, params) {
+  return new Promise((resolveFrame, reject) => {
+    const socket = connect(path);
+    let buffer = '';
+    let greeted = false;
+    socket.on('error', reject);
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString('utf8');
+      let index = buffer.indexOf('\n');
+      while (index !== -1) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        index = buffer.indexOf('\n');
+        if (!line) continue;
+        const frame = JSON.parse(line);
+        if (!greeted) {
+          greeted = true;
+          if (!frame.protocol) return reject(new Error('the socket did not open with a protocol handshake'));
+          socket.write(`${JSON.stringify({ id:'smoke', method, params })}\n`);
+          continue;
+        }
+        socket.end();
+        return resolveFrame(frame);
+      }
+    });
+  });
+}
 
 let cookie = '';
 let csrf = '';
@@ -210,6 +245,43 @@ try {
   if (events.data.replacesAuditLedger !== false) throw new Error('the engine ledger does not replace the audit trail');
   const verified = await request('/api/v1/events/verify');
   if (verified.status !== 200 || verified.data.valid !== true) throw new Error(JSON.stringify(verified));
+
+  // D-0337 — one authentication, not two, proved END TO END against the running product:
+  // minted over real HTTP by the session this smoke test has been using all along, then
+  // spent on the real unix socket this same server is listening on. The unit tests prove
+  // the arithmetic; only this proves the two transports are wired to the same AuthService
+  // in the assembled server — the thing that can be true in auth.mjs and false in server.mjs.
+  const socketPath = join(workspace, 'codev-peer.sock');
+  const attachMint = await request('/api/v1/auth/attach-code', { method:'POST', value:{} });
+  if (attachMint.status !== 201) throw new Error(JSON.stringify(attachMint));
+  if (!/^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/.test(attachMint.data.code ?? '')) {
+    throw new Error(`attach code is not in the transcription-safe alphabet: ${attachMint.data.code}`);
+  }
+  if (readFileSync(join(workspace, 'state/auth.json'), 'utf8').includes(attachMint.data.code)) {
+    throw new Error('plaintext attach code detected in the state file');
+  }
+
+  const attached = await socketCall(socketPath, 'auth.attach', { code:attachMint.data.code });
+  if (!attached.ok) throw new Error(`attach over the socket failed: ${JSON.stringify(attached)}`);
+  if (attached.result.user.username !== 'owner') throw new Error('the code opened a session for the wrong account');
+  if (!Array.isArray(attached.result.permissions)) throw new Error('the attached terminal was told no permission set');
+
+  const attachedTwice = await socketCall(socketPath, 'auth.attach', { code:attachMint.data.code });
+  if (attachedTwice.ok) throw new Error('a single-use attach code was spent twice');
+
+  // The absence that IS the design: minting is an HTTP route, spending is not. A network
+  // endpoint that redeemed codes would hand an unauthenticated caller something to grind
+  // against, which a ticket with no address binding cannot afford.
+  for (const path of ['/api/v1/auth/attach', '/api/v1/auth/attach-code/redeem']) {
+    const spendOverHttp = await request(path, { method:'POST', value:{ code:attachMint.data.code } });
+    if (spendOverHttp.status !== 404) throw new Error(`${path} answered ${spendOverHttp.status}; redemption must not exist over HTTP`);
+  }
+
+  // Minting mutates, so it is CSRF-guarded like every other write on this surface.
+  const keepCsrf = csrf; csrf = '';
+  const attachNoCsrf = await request('/api/v1/auth/attach-code', { method:'POST', value:{} });
+  if (attachNoCsrf.status !== 403) throw new Error(`minting without CSRF expected 403, got ${attachNoCsrf.status}`);
+  csrf = keepCsrf;
 
   const authFile = readFileSync(join(workspace, 'state/auth.json'), 'utf8');
   if (authFile.includes('correct horse battery staple')) throw new Error('plaintext password detected');

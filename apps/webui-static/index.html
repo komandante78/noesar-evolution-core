@@ -553,7 +553,7 @@
                above needs no argument there, and the container form is named here instead of
                being left for the reader to work out. -->
           <p>On a container installation, attach to the container the product runs in — there is no SSH daemon inside it, and there should not be: <code>ssh</code> to the host, then <code>docker exec -it -u 10001 noesar-evolution node /opt/noesar/tools/tui-client.mjs</code>. The socket lives at <code>/run/codev-peer.sock</code>, mode <code>0600</code>, owned by the product's own uid; <code>docs/CODEN_EVOLUTION_TERMINAL_ACCESS.md</code> records the measurements, the <code>CE-021</code> evidence and what the two shells deliberately do not share.</p>
-          <p>From a source installation, run it from a real terminal on this host (or over SSH into it). <code>socketPath</code> defaults to <code>$NOESAR_TUI_SOCKET_PATH</code>, then the product's own <code>tui.sock</code> inside its workspace. The client signs in with the same account and MFA as the WebUI, then accepts: <code class="cmd">plan</code>, <code class="cmd">simulate</code>, <code class="cmd">approve</code>, <code class="cmd">reject</code>, <code class="cmd">restore</code>, <code class="cmd">get</code>, <code class="cmd">events</code>, <code class="cmd">map</code>, <code class="cmd">search</code>, <code class="cmd">status</code>, <code class="cmd">panel &lt;name&gt;</code> (a workbench panel as text, <kbd>F1</kbd>…<kbd>F9</kbd> for the first nine bench panels) and the <code class="cmd">sessions</code> / <code class="cmd">session-show</code> / <code class="cmd">session-archive</code> / <code class="cmd">session-delete</code> / <code class="cmd">session-restore</code> family.</p>
+          <p>From a source installation, run it from a real terminal on this host (or over SSH into it). <code>socketPath</code> defaults to <code>$NOESAR_TUI_SOCKET_PATH</code>, then the product's own <code>tui.sock</code> inside its workspace. The client signs in with the same account as the WebUI — either with an attach code minted below, or with username, password and second factor — then accepts: <code class="cmd">plan</code>, <code class="cmd">simulate</code>, <code class="cmd">approve</code>, <code class="cmd">reject</code>, <code class="cmd">restore</code>, <code class="cmd">get</code>, <code class="cmd">events</code>, <code class="cmd">map</code>, <code class="cmd">search</code>, <code class="cmd">status</code>, <code class="cmd">panel &lt;name&gt;</code> (a workbench panel as text, <kbd>F1</kbd>…<kbd>F9</kbd> for the first nine bench panels) and the <code class="cmd">sessions</code> / <code class="cmd">session-show</code> / <code class="cmd">session-archive</code> / <code class="cmd">session-delete</code> / <code class="cmd">session-restore</code> family.</p>
           <!-- Phase 4 (D-0300). The claim worth making here is not "the terminal has a jump
                too" but that it is the SAME jump: both shells answer out of one list, and
                this file is that list. The example address below is asserted by test to be a
@@ -562,6 +562,22 @@
                "not built" for as long as it had been working. -->
           <p>Navigating it is this page's own mechanism: <code class="cmd">/</code> lists every address in the product, and <code class="cmd">/coden/bench/diff</code> — or just <code class="cmd">/diff</code> — jumps to one. The terminal keeps no list of its own; it asks this server, which reads the addresses off the interface you are looking at, so an address typed in one shell means the same thing in the other. What differs is disclosed rather than smoothed over: the browser hides destinations this account cannot open and the socket cannot, and a panel the terminal has no method for says so instead of printing an empty result.</p>
           <p class="hint">What this is not: a way to run an arbitrary shell command. Every one of those verbs is one of the product's own already-guarded operations — <code>workspace-actions.mjs</code> refuses EXECUTE and DELETE permanently and on purpose, on both shells alike.</p>
+        </section>
+        <!-- One authentication, not two (D-0337). This panel exists in the browser and has no
+             terminal counterpart BY CONSTRUCTION, which is the one asymmetry worth stating
+             out loud given "the two shells do not diverge at any point": a terminal cannot
+             mint itself a code, because a code is only meaningful as proof that a session
+             already authenticated somewhere else. The terminal's half of this feature is the
+             prompt it now offers before asking for a username. -->
+        <section class="panel" id="attachCodePanel">
+          <div class="panel-title"><h3>Sign in once</h3><span class="badge badge-on">SINGLE SIGN-IN</span></div>
+          <p>You are already signed in here. Rather than proving it again to the terminal, mint a short code and type it at the client's first prompt — it opens a session for <b>this same account</b>, with the same permissions.</p>
+          <div class="attach-code-row">
+            <button class="primary" type="button" id="attachCodeMint">Mint an attach code</button>
+            <code class="attach-code-value hidden" id="attachCodeValue" aria-live="polite"></code>
+            <span class="hint" id="attachCodeStatus" aria-live="polite"></span>
+          </div>
+          <p class="hint">The code is a claim ticket, not a credential: it carries no permission of its own, it expires in <b>60 seconds</b>, and spending it destroys it. It can only be redeemed at the terminal socket — no network endpoint accepts it — and minting a second code cancels the first. If it expires while you are typing, mint another; the terminal also still accepts username, password and second factor as before.</p>
         </section>
       </section>
 

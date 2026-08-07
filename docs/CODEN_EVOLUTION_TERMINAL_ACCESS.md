@@ -46,8 +46,8 @@ Measured facts behind that one line:
 - no socket path argument is needed: the image sets `NOESAR_TUI_SOCKET_PATH=/run/codev-peer.sock`.
   Without it the client's own fallback is `<repo>/.workspace/tui.sock`, which is correct for a
   from-source install and wrong inside the image, where the repo root is `/opt/noesar`;
-- sign-in is the same account and the same second factor as the WebUI. The socket authenticates
-  its own session (`auth.login` then `auth.mfa`); a cookie means nothing here.
+- sign-in is the same account as the WebUI, by either of the two paths in §2.4. The socket
+  authenticates its own session; a cookie means nothing here.
 
 ### 2.2 A from-source installation
 
@@ -63,9 +63,41 @@ path `NOESAR_CODEV_PEER_SOCKET_PATH` tells the server to listen on.
 **Do not bind-mount the socket onto the host to make SSH more convenient.** The socket is the
 engine's front door with no HTTP layer in front of it: mode `0600` inside a container namespace
 is what currently limits it to the product's own uid. Publishing it to a host directory makes it
-reachable by anything that can read that directory, and the transport applies **no per-method
-permission check** of its own (§5). If a deployment genuinely needs it, decide the permission
-question first.
+reachable by anything that can read that directory.
+
+*Corrected 2026-08-07 (s330).* This paragraph used to add "and the transport applies **no
+per-method permission check** of its own (§5)", which stopped being true with `D-0302` — §5 of
+this same file describes the one `SESSION_METHOD_POLICY` table enforced inside the dispatch, so
+the document contradicted itself and understated the product on the security-relevant side.
+Still: reaching the socket is reaching an authenticated session's full method surface, so if a
+deployment genuinely needs it, decide the exposure question first.
+
+### 2.4 Signing in — two paths, one account
+
+**Credentials.** `auth.login` then `auth.mfa` — the identical two calls the WebUI's own HTTP
+login route makes. Needs no browser, and is what a fresh machine or a headless host uses.
+
+**An attach code (`D-0337`).** If you already have NOESAR open, mint a code on the
+`#/coden-tui` page and type it at the client's first prompt. One authentication, not two.
+
+The code is a **claim ticket, not a credential**: it carries no permission of its own, it opens a
+session for the account that minted it and never another, it expires in **60 seconds**, and
+spending it destroys it. Those two bounds are the whole perimeter, and the reason is structural
+rather than cautious — the HTTP login challenge is pinned to the caller's address, and a code
+**cannot** be: it is born at a browser and spent on a socket that reports itself as
+`unix-socket`. Provenance is unavailable as a bound, so time and single use are what remain.
+
+Two consequences worth knowing before deploying:
+
+- **Redemption exists only on the socket.** There is no `/api/v1/auth/attach` and there will not
+  be one: a ticket with no address binding cannot afford a network endpoint for anyone to grind
+  against. Minting is HTTP (session + CSRF); spending is not.
+- **Minting refuses a session that is not live, not the account it claims, or not MFA-backed.**
+  A code can never launder a weaker session into a terminal one, and minting again cancels the
+  previous unspent code so a live credential is not left on screen.
+
+The browser panel has no terminal counterpart and cannot have one — a terminal cannot mint itself
+a ticket whose whole meaning is "some session already authenticated elsewhere".
 
 ---
 

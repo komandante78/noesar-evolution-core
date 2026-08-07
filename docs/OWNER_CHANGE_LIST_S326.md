@@ -1,17 +1,49 @@
 # Lista modifiche richieste dall'Owner — aperta in s326 (2026-08-06)
 
-> **STATO: 2, 3, 4a e 4b CONSEGNATI · resta il PUNTO 1.**
+> **STATO: LISTA CHIUSA — tutti e sei i punti consegnati.**
 >
-> Aggiornato a fine s328. Cosa è vero adesso:
+> Aggiornato a fine s330. Cosa è vero adesso:
 >
 > | Punto | Stato |
 > |---|---|
-> | **1** Autenticazione unica TUI ↔ NOESAR | **non iniziato** — resta la domanda A |
+> | **1** Autenticazione unica TUI ↔ NOESAR | ✅ **consegnato** (`D-0337`, s330) |
 > | **2a** WebUI in forma di terminale | ✅ **consegnato** (`D-0336`) |
 > | **2b** la pila esce dalla pagina | ✅ **consegnato** (`D-0336`) |
 > | **3** `/` progressivo, una porta sola | ✅ **consegnato** (`D-0335`) |
 > | **4a** chat nella sidebar | ✅ **consegnato e provato nel browser** (`D-0329`) |
 > | **4b** unire lavoro e ricerca | ✅ **completo**: fonti (`D-0332`) **e** piano (`D-0333`, s327) |
+>
+> ### ✅ COSTRUITO in s330 — punto 1, l'ultimo (`D-0337`)
+>
+> **La domanda A è sciolta, e la decisione è dell'Owner (2026-08-07): un codice di aggancio a
+> un colpo, coniabile da qualunque sessione viva.** Chi è già dentro NOESAR conia un codice
+> breve dalla pagina `#/coden-tui` e lo digita al primo prompt del terminale.
+>
+> **Una risposta possibile è stata eliminata misurando, non discutendo.** *«Che sia il sistema
+> operativo a dire chi sei»*: il socket è `chmod 0600`, quindi solo l'uid proprietario lo apre
+> e quell'uid è **uno** — l'identità del SO sa dire «il container», non **quale account
+> NOESAR**. E Node non espone `SO_PEERCRED` (`'getpeercred' in socket` → `false`): leggerlo
+> davvero richiederebbe un addon nativo, contro la politica zero-dipendenze del modulo.
+>
+> **La frase che governa ogni riga: il codice non è autorità, è un buono da riscuotere.** Non
+> porta permessi propri, apre la sessione di **chi l'ha coniato** e mai di un altro, e spenderlo
+> lo distrugge. L'alternativa scartata era passare al terminale il **token di sessione stesso**
+> — sarebbe costata quasi zero codice, e vale 8 ore di autorità piena passando per gli occhi di
+> una persona: cronologia della shell, `ps`, scrollback. Un cookie è `HttpOnly` proprio per non
+> essere copiabile; quel disegno lo avrebbe reso copiabile **per costruzione**.
+>
+> **Perché 60 secondi, e perché non sono un dettaglio.** La sfida di login HTTP è legata
+> all'indirizzo del chiamante; il codice **non può esserlo**, perché nasce da un browser e si
+> spende su un socket. La provenienza non è disponibile come vincolo: **tempo e uso singolo
+> sono l'intero perimetro**, non un rinforzo sopra un confine che c'è già.
+>
+> **L'assenza che è il disegno:** il conio è una rotta HTTP, la **riscossione no**.
+> `/api/v1/auth/attach` **non esiste** — lo smoke asserisce 404. Un biglietto senza vincolo di
+> indirizzo non può permettersi un endpoint di rete su cui chiunque macini.
+>
+> **L'altra shell, dichiarata:** il login utente/password/secondo fattore del terminale
+> **resta**. L'aggancio si aggiunge e si offre per primo; una riga vuota ricade sulle
+> credenziali, così un'installazione senza browser aperto entra come prima.
 >
 > ### ✅ COSTRUITO in s328 — punti 2 e 3, insieme (`D-0335`, `D-0336`)
 >

@@ -2251,6 +2251,56 @@ try {
       && /counted, not excluded/.test(metric.rejectedLabel),
     JSON.stringify(metric).slice(0, 260));
 
+  at('attach-code');
+  // --- one authentication, not two · D-0337 --------------------------------
+  // The browser half of the feature, and the half no unit test can reach: `npm test` reads
+  // app.js as TEXT and never executes it, so a wiring mistake here would sit behind 1884
+  // green tests. What is asserted is what an operator would see — a code on screen, in the
+  // transcription-safe alphabet, with a countdown that names the seconds left. The
+  // countdown is not cosmetic: time and single use ARE this credential's whole perimeter,
+  // so a code displayed with no visible clock is the design quietly not holding.
+  await page.goto(`${BASE}/#/coden-tui`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#attachCodeMint', { timeout: 15000 });
+  await clickOrExplain(page, '#attachCodeMint');
+  await page.waitForFunction(
+    () => (document.querySelector('#attachCodeValue')?.textContent ?? '').length > 0,
+    { timeout: 15000 },
+  );
+  const attachUi = await page.evaluate(() => ({
+    code: document.querySelector('#attachCodeValue')?.textContent ?? '',
+    hidden: document.querySelector('#attachCodeValue')?.classList.contains('hidden') ?? true,
+    status: document.querySelector('#attachCodeStatus')?.textContent ?? '',
+    panelText: document.querySelector('#attachCodePanel')?.textContent ?? '',
+  }));
+  check('D-0337 the browser mints a readable attach code',
+    /^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/.test(attachUi.code) && attachUi.hidden === false,
+    JSON.stringify(attachUi).slice(0, 260));
+  check('D-0337 the code is shown with the time it has left, not on its own',
+    /within \d+s/.test(attachUi.status),
+    JSON.stringify(attachUi.status).slice(0, 200));
+  // The panel must SAY what the thing is. A code with no statement of its limits invites
+  // being treated as a password and kept.
+  check('D-0337 the panel states that the code expires and is single use',
+    /60 seconds/.test(attachUi.panelText) && /spending it destroys it/.test(attachUi.panelText),
+    attachUi.panelText.slice(0, 260));
+
+  // Minting again must replace what is on screen, because minting again cancels the
+  // previous code server-side. A stale code left visible would be a code that no longer
+  // works, which reads to the operator as the feature being broken.
+  const attachFirst = attachUi.code;
+  await clickOrExplain(page, '#attachCodeMint');
+  await page.waitForFunction(
+    (previous) => {
+      const shown = document.querySelector('#attachCodeValue')?.textContent ?? '';
+      return shown.length > 0 && shown !== previous;
+    },
+    { timeout: 15000 }, attachFirst,
+  );
+  const attachSecond = await page.evaluate(() => document.querySelector('#attachCodeValue')?.textContent ?? '');
+  check('D-0337 minting again replaces the code on screen',
+    attachSecond.length > 0 && attachSecond !== attachFirst,
+    `${attachFirst} -> ${attachSecond}`);
+
   at('initial-screen');
   // --- the initial screen · UI-060…UI-063 ----------------------------------
   // Driven rather than read, because every one of these is a claim about what a person

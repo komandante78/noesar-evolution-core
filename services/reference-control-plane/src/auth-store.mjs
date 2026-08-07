@@ -12,6 +12,12 @@ function emptyState() {
     users: [],
     sessions: [],
     loginChallenges: [],
+    // Terminal attach codes (D-0337). Defaulted here rather than migrated: `read()` spreads
+    // this object UNDER the parsed file, so a state file written before this field existed
+    // gets an empty array instead of `undefined` — which is what every `.filter` on it
+    // depends on. No schemaVersion bump, because there is no migration to perform: a
+    // version number that moves without a migration behind it is a claim, not a fact.
+    attachCodes: [],
   };
 }
 

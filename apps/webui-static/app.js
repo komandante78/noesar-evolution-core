@@ -3400,6 +3400,59 @@ function confirmAction({title,body,names=[],consequence='',confirmLabel='Confirm
   card.tabIndex=-1;card.focus();
   return new Promise((resolve)=>{confirmResolve=resolve;});
 }
+// ---------------------------------------------------------------------------
+// Terminal attach code · D-0337
+//
+// The browser's half of "one authentication, not two". The terminal's half is a prompt in
+// tools/tui-client.mjs; there is no terminal counterpart to THIS, and cannot be — a code
+// only means anything as evidence that some session authenticated elsewhere.
+//
+// The countdown is not decoration. This credential's entire perimeter is time and single
+// use (it cannot be bound to the caller's address: it is born here and spent on a unix
+// socket), so a code sitting on screen with no visible clock would be the one thing the
+// design refuses — an access convenience that quietly turns into standing authority. When
+// it runs out the value is removed from the DOM, not merely greyed out.
+// ---------------------------------------------------------------------------
+let attachCodeTimer=null;
+function clearAttachCode(message){
+  if(attachCodeTimer){clearInterval(attachCodeTimer);attachCodeTimer=null;}
+  const value=$('#attachCodeValue');
+  if(value){value.textContent='';value.classList.add('hidden');}
+  const status=$('#attachCodeStatus');
+  if(status)status.textContent=message??'';
+}
+async function mintAttachCode(){
+  const button=$('#attachCodeMint');
+  const value=$('#attachCodeValue');
+  const status=$('#attachCodeStatus');
+  if(!button||!value||!status)return;
+  clearAttachCode('');
+  button.disabled=true;
+  status.textContent='Minting…';
+  try{
+    const minted=await api('/api/v1/auth/attach-code',{method:'POST'});
+    value.textContent=minted.code;
+    value.classList.remove('hidden');
+    // Counted down from the server's own expiry rather than from a local start time, so a
+    // slow response shortens the displayed window instead of overstating it.
+    const expiresAt=Date.parse(minted.expiresAt);
+    const tick=()=>{
+      const left=Math.max(0,Math.round((expiresAt-Date.now())/1000));
+      if(left===0){clearAttachCode('That code expired. Mint another.');return;}
+      status.textContent=`Type it at the terminal within ${left}s`;
+    };
+    tick();
+    attachCodeTimer=setInterval(tick,1000);
+  }catch(error){
+    clearAttachCode(error.message??'Could not mint a code.');
+  }finally{
+    button.disabled=false;
+  }
+}
+function initAttachCode(){
+  $('#attachCodeMint')?.addEventListener('click',()=>{mintAttachCode();});
+}
+
 function initConfirm(){
   $('#confirmCancel')?.addEventListener('click',()=>closeConfirm(false));
   $('#confirmAccept')?.addEventListener('click',()=>closeConfirm(true));
@@ -4460,6 +4513,7 @@ initAppearance();
 // person who needs larger type does not need to see twice.
 initReadingControls();
 initConfirm();
+initAttachCode();
 initSessions();
 initChatNav();
 initBench();

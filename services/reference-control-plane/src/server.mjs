@@ -761,6 +761,9 @@ metrics.setGauge('noesar_data_plane_up', 1);
 const SAFE_MODE_WRITE_ALLOWLIST = new Set([
   '/api/v1/auth/login', '/api/v1/auth/login/mfa', '/api/v1/auth/login/passkey/options',
   '/api/v1/auth/login/passkey', '/api/v1/auth/logout', '/api/v1/auth/reauth',
+  // A login path, in the same class as the four above: safe mode exists to stop the product
+  // working badly, not to lock the operator out of the terminal they need in order to look.
+  '/api/v1/auth/attach-code',
   '/api/v1/debug/enable', '/api/v1/debug/disable',
   '/api/v1/watchdog/safe-mode/leave', '/api/v1/updates/rollback',
 ]);
@@ -1108,6 +1111,23 @@ const requestListener = async (req, res) => {
       const authenticated = requireSession(req, res, 'coden.owner-bypass');
       if (!authenticated || !requireCsrf(req, res, authenticated)) return;
       return json(res, 200, auth.reauthenticate({ sessionId:authenticated.session.id, ...(await body(req)) }));
+    }
+    // One authentication, not two (D-0337). The browser is already inside; this hands it a
+    // short single-use code to type at a terminal, instead of making the same operator prove
+    // themselves a second time to the unix socket.
+    //
+    // Minting is here; SPENDING is not, and its absence is the design. There is no
+    // `/api/v1/auth/attach` — a code is redeemable only over the unix socket
+    // (`session-protocol.mjs`, `auth.attach`), where the filesystem has already decided who
+    // may knock. Exposing redemption over HTTP would have handed the network an
+    // unauthenticated endpoint to grind against, which is the one thing a bearer ticket
+    // with no IP binding cannot afford.
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/attach-code') {
+      const authenticated = requireSession(req, res);
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      return json(res, 201, auth.mintAttachCode({
+        userId:authenticated.user.id, sessionId:authenticated.session.id,
+      }));
     }
     // --- account security ----------------------------------------------------
     // Every route here acts on the CALLER's own account. There is deliberately no

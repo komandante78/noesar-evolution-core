@@ -159,7 +159,32 @@ async function readMultiline(reader, label) {
   }
 }
 
-async function login(reader, session) {
+/**
+ * Sign in — by attach code if the operator already has NOESAR open, by credentials otherwise.
+ *
+ * The code path is offered FIRST because it is the one that makes this a single
+ * authentication (D-0337), but it is offered, never imposed: an empty line falls through to
+ * username/password/second factor, which stays the way in for an installation with no browser
+ * open, a fresh machine, or an operator who simply prefers it. Removing the credential path
+ * would have traded two authentications for one that sometimes cannot happen at all.
+ */
+export async function login(reader, session) {
+  // A mistyped code does NOT burn the real one — a code that does not match is never found,
+  // so nothing is consumed and the one on screen is still live for the rest of its window.
+  // That is what makes retrying here worth offering, and it is the opposite of the password
+  // path, where a second attempt is a second attempt at the same secret. After three tries
+  // this falls through to credentials rather than exiting, so a terminal is never left with
+  // no way in because a code expired mid-typing.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = await question(reader, 'Attach code (from NOESAR in your browser), or Enter to sign in here: ');
+    if (!code.trim()) break;
+    try {
+      const attached = await session.call('auth.attach', { code });
+      return { ...attached.user, permissions: attached.permissions ?? null };
+    } catch (error) {
+      console.error(`Attach failed: ${error.message}`);
+    }
+  }
   const username = await question(reader, 'Username: ');
   // Not masked: doing that correctly needs raw mode, which only exists on a real TTY and
   // would have to be a no-op on anything else (a pipe, a test harness, some SSH clients'

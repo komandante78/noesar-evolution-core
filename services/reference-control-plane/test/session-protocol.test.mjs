@@ -144,6 +144,41 @@ describe('session protocol — unix socket transport', () => {
     assert.deepEqual(handshake.permissions, authService.permissionsFor(handshake.user.role));
   });
 
+  // D-0337 — the second way in. These use their own throwaway connections because the point
+  // is what an UNAUTHENTICATED socket can do with a code, which the shared authenticated
+  // connection cannot demonstrate.
+  test('D-0337 · an attach code signs a terminal in without asking for credentials again', async () => {
+    const live = authService.store.read().sessions.find((item) => item.userId === handshake.user.id);
+    assert.ok(live, 'the browser-side fixture has no live session to mint from');
+    const minted = authService.mintAttachCode({ userId: handshake.user.id, sessionId: live.id });
+
+    const socket = connect(socketPath);
+    await new Promise((resolve) => socket.once('data', resolve));
+    const attached = await call(socket, 'auth.attach', { code: minted.code });
+
+    assert.equal(attached.user.id, handshake.user.id, 'the code opened a session for a different account');
+    // The two ways in must be indistinguishable AFTER the door: a caller that arrived by
+    // code gets the same permission set from the same derivation, so nothing downstream has
+    // to learn that a session can arrive two ways.
+    assert.deepEqual(attached.permissions, authService.permissionsFor(attached.user.role));
+    // And it is really authenticated — a method that would have been refused a moment ago,
+    // and one the dispatch gates on a permission, so this proves the `can` closure was wired
+    // too and not just that the connection stopped saying UNAUTHENTICATED.
+    const invariants = await call(socket, 'product.invariants', {});
+    assert.ok(invariants, 'the attached session could not call an authenticated method');
+    socket.end();
+  });
+
+  test('D-0337 · a socket that presents a bad code stays unauthenticated', async () => {
+    const socket = connect(socketPath);
+    await new Promise((resolve) => socket.once('data', resolve));
+    await assert.rejects(call(socket, 'auth.attach', { code: 'ZZZZ-ZZZZ' }), /Invalid or expired attach code/);
+    // The refusal must leave the connection where it was, not half-open. A failed attach
+    // that left `authenticated` set would be the whole feature inverted.
+    await assert.rejects(call(socket, 'product.invariants', {}), /auth\.login/);
+    socket.end();
+  });
+
   test('phase 3b · coden.benchLists caps at six and says how many there really are', async () => {
     // The cap is not a transport preference: `renderBenchNavigator` slices to six in the
     // browser, so a terminal printing all nine would be the two shells disagreeing about what

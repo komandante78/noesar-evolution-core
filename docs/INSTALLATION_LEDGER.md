@@ -4152,3 +4152,62 @@ che non aveva toccato. Un controllo deliberatamente assurdo (`noteRow = 4`) **no
 è così che si è visto che il rilevatore era rotto, non il codice.
 
 **NON deployato.** Nessun container creato, fermato o ricreato in questa sessione.
+
+## s330 — punto 1 della lista Owner: una autenticazione sola (`D-0337`)
+
+**Chiuso l'ultimo punto della lista.** Chi è già dentro NOESAR conia un codice breve e lo
+digita al primo prompt del terminale: apre una sessione per **lo stesso account**, con gli
+stessi permessi, senza chiedere di nuovo utente, password e secondo fattore.
+
+**La domanda era di autorità e si è sciolta prima di toccare un file.** Non «come si salta il
+secondo login» ma **cosa si presenta al socket al posto del cookie, e chi può fabbricarlo**.
+Una risposta possibile — *che sia il sistema operativo a dire chi sei* — è stata **eliminata
+misurando**: il socket è `chmod 0600`, quindi solo l'uid proprietario lo apre e quell'uid è
+uno; l'identità del SO non porta nessuna informazione su **quale** account NOESAR stia
+chiamando. E Node non espone `SO_PEERCRED` (verificato: `'getpeercred' in socket` → `false`).
+
+**La frase che governa tutto il resto: il codice non è autorità, è un buono da riscuotere.**
+Non porta permessi propri, apre la sessione di chi l'ha coniato e mai di un altro, e spenderlo
+lo distrugge. L'alternativa scartata era passare al terminale **il token di sessione stesso**
+(`authenticate(token)` esisteva già): sarebbe costata quasi zero codice e valeva 8 ore di
+autorità piena, passando per gli occhi di una persona — quindi cronologia della shell, `ps`,
+scrollback. Un cookie è `HttpOnly` proprio per non essere copiabile.
+
+**Perché 60 secondi.** La sfida di login HTTP è legata all'indirizzo del chiamante
+(`item.ip !== ip`); il codice di aggancio **non può esserlo** — nasce da un browser e si spende
+su un socket che si chiama `unix-socket`. La provenienza non è disponibile come vincolo, e i
+due che restano — **tempo** e **uso singolo** — sono l'intero perimetro, non un rinforzo sopra
+un confine.
+
+**Dove vivono le due metà, e l'assenza che è il disegno.** Il conio è una rotta HTTP
+(`POST /api/v1/auth/attach-code`, sessione + CSRF); **la riscossione no, e
+`/api/v1/auth/attach` non esiste**. Un biglietto senza vincolo di indirizzo non può permettersi
+un endpoint di rete su cui chiunque macini: sul socket il filesystem ha già risposto *chi può
+bussare*. Lo smoke asserisce che entrambi i percorsi rispondono 404.
+
+**Difetto vero trovato con la mutazione, ed era nei test.** «una sessione morta non può
+coniare» passava per un motivo che non intendeva: `logout` **rimuove** il record, quindi il
+test toccava solo il ramo «sessione assente». Tolto il confronto sulla scadenza, tutto restava
+verde — e il ramo è raggiungibile, perché l'array delle sessioni viene potato **solo** quando
+ne nasce una nuova. Ora coperto su `expiresAt` e `idleExpiresAt`.
+
+**Secondo difetto: nulla eseguiva `login()` del client.** I test unitari importano `dispatchCommand` e vicini; `ce-020`/`ce-021` parlano al socket direttamente e non guidano mai i prompt del client. Quindi il flusso di accesso — la prima cosa che tocca un operatore vero — non aveva **alcuna misura**, e stavo per metterci davanti un prompt nuovo. `login()` ora è esportato e coperto da `tui-client-login.test.mjs`.
+
+**Due mutazioni «sopravvissute» erano guasti dell'harness**, non difetti: una ancora
+corrispondeva a 2 punti (mai applicata), l'altra inseriva una riga che non cambiava
+comportamento. L'harness ora prova che il file sia davvero cambiato prima di credere al
+verdetto. Finale: **14/14 uccise**.
+
+**File toccati:** `src/auth.mjs`, `src/auth-store.mjs`, `src/session-protocol.mjs`,
+`src/server.mjs`, `tools/tui-client.mjs`, `apps/webui-static/{index.html,app.js,styles.css}`,
+`tools/auth-http-smoke.mjs`, `tools/browser-e2e.mjs`,
+`test/attach-code.test.mjs` (nuovo), `test/tui-client-login.test.mjs` (nuovo),
+`test/session-protocol.test.mjs`.
+
+**Verifiche di questa sessione:** unit **1890/1891** (+25), ESLint **336 file 0/0/0**, browser
+e2e **413/413** (+4, erano 409), `CE-020` **20/20**, `CE-021` **13/13**, mutazioni **19/19**,
+`tools/auth-http-smoke.mjs` **PASS** — quest'ultimo conia su HTTP vero e riscuote sul socket
+vero **dello stesso server**, che è la sola prova che i due trasporti condividono un unico
+`AuthService` nel prodotto assemblato.
+
+**NON deployato.** Nessun container creato, fermato o ricreato in questa sessione.

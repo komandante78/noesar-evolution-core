@@ -432,10 +432,17 @@ export function createSessionDispatch({
 
 /**
  * The unix socket transport — for a real terminal (TTY / SSH), never for the browser.
- * Authenticates its own session over the wire (auth.beginLogin then auth.completeLogin,
- * the identical two calls server.mjs's HTTP login route makes) rather than trusting a
- * cookie, since a socket connection has none. One JSON object per newline in both
- * directions; the first line the server sends is the protocol handshake.
+ * Authenticates its own session over the wire rather than trusting a cookie, since a socket
+ * connection has none. One JSON object per newline in both directions; the first line the
+ * server sends is the protocol handshake.
+ *
+ * Two ways in, and both end at the same `createSession`:
+ *  - `auth.login` then `auth.mfa` — the identical two calls server.mjs's HTTP login route
+ *    makes. Needs no browser, and is what an installation with nothing else open uses.
+ *  - `auth.attach` — a short single-use code minted by a browser session already inside
+ *    NOESAR (D-0337), so the operator authenticates once rather than twice. The code is a
+ *    claim ticket and not a credential: see `AuthService.mintAttachCode` for why the
+ *    perimeter is time and single use, and why it cannot be provenance.
  *
  * Async since s326, and the promise means something: it resolves when the socket is
  * ACTUALLY accepting connections. It used to return a server that was merely on its way to
@@ -490,7 +497,27 @@ export async function startUnixSocketServer({ socketPath, dispatch, auth, ledger
             respond(id, true, { user: value.user, permissions: auth.permissionsFor(value.user.role) });
             continue;
           }
-          if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa` before any other method');
+          // The second way in, and the ONLY one that does not ask for credentials again
+          // (D-0337): a code minted by a browser session that is already inside NOESAR.
+          //
+          // This method exists here and nowhere else on purpose. Minting is an HTTP route,
+          // because only an authenticated browser can mint; spending is a socket method,
+          // because the ticket should only be redeemable at the door it was cut for. Had
+          // redemption also been exposed over HTTP, an unauthenticated caller anywhere on
+          // the network could grind at it; on the socket the filesystem has already
+          // answered "who may even knock" (0600, one uid) before the first byte arrives.
+          //
+          // It grants exactly what `auth.mfa` grants — same `createSession`, same account,
+          // same permission set from the same `permissionsFor` — so no branch below has to
+          // learn that a session can arrive two ways.
+          if (method === 'auth.attach') {
+            const value = auth.redeemAttachCode({ code: params?.code, ip: 'unix-socket' });
+            authenticated = { user: value.user };
+            ledger.append({ actor: value.user.id, action: 'tui.session-started', result: 'success', details: { transport: 'unix-socket', via: 'attach-code' } });
+            respond(id, true, { user: value.user, permissions: auth.permissionsFor(value.user.role) });
+            continue;
+          }
+          if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa`, or `auth.attach` with a code minted in the browser, before any other method');
           // The caller's authority, from the same AuthService the HTTP surface asks. Before
           // `D-0302` this transport passed none and the dispatch asked for none: a terminal
           // session could call anything its account could authenticate into, including
