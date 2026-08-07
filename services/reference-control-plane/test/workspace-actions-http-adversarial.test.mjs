@@ -277,7 +277,12 @@ describe('point 4b · attaching a run to a chat', () => {
     const listing = await authed('/api/v1/workspace-actions/runs');
     assert.equal(listing.status, 200);
     assert.ok(Array.isArray(listing.json.runs));
-    assert.equal(listing.json.persistence.durable, false);
+    // Flipped deliberately in D-0338, not worked around: this asserted `false`, and was honest
+    // when it was written. The ASSEMBLED server now wires a run store, so `false` here would
+    // mean that wiring had been lost — which is what makes the line worth keeping.
+    assert.equal(listing.json.persistence.durable, true);
+    assert.equal(listing.json.persistence.rebuiltFromDisk, true);
+    assert.deepEqual(listing.json.persistence.damaged, [], 'the server started with unreadable run files');
   });
 
   test('a plan naming a real conversation is attached, and shows up in that chat only', async () => {

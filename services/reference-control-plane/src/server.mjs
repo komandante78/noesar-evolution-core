@@ -181,16 +181,25 @@ const sandboxCeiling = executeSandboxConfig.enabled
 // consequence -- a restart invalidates every outstanding token -- is reported by
 // capabilityStatus rather than left to be discovered.
 const capabilityMinter = new TokenMinter(randomBytes(32), { ceiling: sandboxCeiling });
-// The engine causal record. In memory, like the capability registry, and eventsStatus()
-// says so; it does not replace the product audit trail, which is a different question
-// (who did what) with a different lifetime.
-const engineEvents = new EventLedger();
+// The engine causal record. DURABLE since D-0338: appended to a journal as each event is
+// accepted, and rebuilt at startup by `loadFrom`, which hands the records to `restore()` and
+// therefore recomputes every digest rather than trusting the ones on disk. It does not
+// replace the product audit trail, which is a different question (who did what) with a
+// different lifetime.
+const engineEvents = EventLedger.loadFrom(join(workspace, 'state/engine-events.jsonl'));
 // D-0190: the first product surface that spends a capability token and changes a real file.
 // Shares the same minter and event ledger the phase-1 routes below already report — a
 // second minter here would let a token minted through one door be unaccountable to the
-// other. Pending and decided runs live in memory too, for the same reason: a restart that
-// clears outstanding tokens must clear the runs that reference them, not leave a promoted
-// run pointing at a token nobody can spend or verify any more.
+// other.
+//
+// Runs are DURABLE since D-0338, and the sentence that used to stand here was the reason
+// they were not: *"a restart that clears outstanding tokens must clear the runs that
+// reference them, not leave a promoted run pointing at a token nobody can spend or verify
+// any more."* Measured before changing it, and the premise does not hold — `token` is a
+// LOCAL in `approve()`, minted and spent inside one call, and never stored on the run. What
+// reaches a run is the event payload's `tokenId`, which is a name in the causal record, not
+// a spendable grant. The token's lifetime is a function call; the run's is the operator's
+// attention span, and tying the second to the first cost them their work on every restart.
 //
 // The shadow root is OUTSIDE the workspace on purpose, found by trying the wrong thing
 // first: `join(workspace, 'shadows')` — the directory the read-only /api/v1/shadow status
@@ -251,6 +260,9 @@ const workspaceActions = new WorkspaceActionOrchestrator({
   minter: capabilityMinter, events: engineEvents, executeSandbox: executeSandboxConfig,
   privacyStateFor: () => currentPrivacy(null),
   author: buildAuthor(),
+  // Under `state/`, beside auth.json and ai-workspace.json, because that is already this
+  // product's own state directory — not scattered into the tree the operator is editing.
+  runStoreDirectory: join(workspace, 'state/runs'),
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
 // (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,

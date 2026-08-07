@@ -11,10 +11,18 @@
 // a cause must exist and belong to the same run, and every digest covers the previous one so
 // removing or reordering a middle event breaks every digest after it.
 //
-// The ledger lives in memory, like the capability registry, and eventsStatus() says so. It
-// is not the product's audit trail and does not replace it.
+// Durable since D-0338, and the shape of the durability matters. The chain is append-only,
+// so the file is append-only too: one JSON object per line, appended as each event is
+// recorded — the idiom AuditLedger already uses. Nothing ever rewrites a line, which is what
+// makes a torn write at the tail recoverable instead of fatal (see `loadFrom`).
+//
+// It is not the product's audit trail and does not replace it.
 
 import { createHash } from 'node:crypto';
+import {
+  appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync,
+} from 'node:fs';
+import { dirname } from 'node:path';
 
 export const GENESIS = 'GENESIS';
 
@@ -54,8 +62,26 @@ function digestOf(draft, previousDigest) {
 export class EventLedger {
   #events = [];
   #index = new Map();
+  // Where each accepted event is appended, or `null` for a ledger that lives only as long as
+  // the process. Null keeps every existing embedder (and the unit suites) working unchanged,
+  // and `eventsStatus()` reports which of the two this ledger is rather than assuming.
+  #journalPath = null;
+  // What loading had to skip, carried so `eventsStatus()` can SAY it. A ledger that quietly
+  // discarded a line would be a chain claiming completeness it does not have.
+  #recovered = null;
+
+  constructor({ journalPath = null } = {}) {
+    if (journalPath) {
+      mkdirSync(dirname(journalPath), { recursive:true, mode:0o700 });
+      this.#journalPath = journalPath;
+    }
+  }
 
   get length() { return this.#events.length; }
+
+  get durable() { return this.#journalPath !== null; }
+
+  get recovered() { return this.#recovered; }
 
   events() { return this.#events.map((event) => ({ ...event })); }
 
@@ -109,6 +135,14 @@ export class EventLedger {
     };
     this.#index.set(event.id, this.#events.length);
     this.#events.push(event);
+    // Written AFTER every refusal above has had its chance, so the journal only ever holds
+    // events the ledger accepted. Written BEFORE returning, so a caller that has been told an
+    // event exists cannot be contradicted by a restart a moment later.
+    if (this.#journalPath) {
+      const fresh = !existsSync(this.#journalPath);
+      appendFileSync(this.#journalPath, `${JSON.stringify(event)}\n`, { encoding:'utf8', mode:0o600 });
+      if (fresh) chmodSync(this.#journalPath, 0o600);
+    }
     return { ...event };
   }
 
@@ -148,6 +182,58 @@ export class EventLedger {
     return ledger;
   }
 
+  /**
+   * Rebuild a ledger from its journal, then keep appending to that same journal.
+   *
+   * Verification is not optional here and is not re-derived by a second code path: this hands
+   * the records to `restore()`, which recomputes every digest from the event's own fields and
+   * refuses with `CHAIN_BROKEN` rather than repairing. A ledger that loaded a tampered file
+   * and carried on would destroy the single property the chain exists for.
+   *
+   * **The one thing it does forgive, and why.** The last line can be short: a process killed
+   * mid-append leaves a partial JSON object. Because the file is only ever APPENDED to, a
+   * torn write can exist nowhere but the tail — every earlier line was complete before the
+   * next began. So a final unparseable line is dropped and RECORDED in `recovered`, where
+   * `eventsStatus()` reports it. An unparseable line anywhere else is corruption of a
+   * different kind and is refused.
+   */
+  static loadFrom(journalPath) {
+    if (!existsSync(journalPath)) return new EventLedger({ journalPath });
+    const lines = readFileSync(journalPath, 'utf8').split('\n').filter((line) => line.trim());
+    const records = [];
+    let truncatedTail = null;
+    for (let position = 0; position < lines.length; position += 1) {
+      try {
+        records.push(JSON.parse(lines[position]));
+      } catch (error) {
+        if (position !== lines.length - 1) {
+          fail('JOURNAL_CORRUPT',
+            `the event journal is unreadable at line ${position + 1} of ${lines.length}, which is not the tail: ${error.message}`);
+        }
+        truncatedTail = { line: position + 1, reason: 'the final line was written only in part' };
+      }
+    }
+    const ledger = EventLedger.restore(records);
+    ledger.#journalPath = journalPath;
+    ledger.#recovered = truncatedTail;
+    // The torn bytes are removed, and the distinction that makes this legitimate: a partial
+    // write was NEVER a record. Dropping it returns the file to its last consistent state; it
+    // is not this module editing its own history.
+    //
+    // It also has to be done. The first version of this simply appended a newline to close
+    // the fragment off — which would have worked exactly once: on the NEXT load that fragment
+    // is a complete line that does not parse and is no longer the tail, so the ledger would
+    // have refused with JOURNAL_CORRUPT forever after. Recovery that breaks the second time
+    // is worse than no recovery, because it succeeds where anyone would look.
+    if (truncatedTail) {
+      const temporary = `${journalPath}.${process.pid}.tmp`;
+      writeFileSync(temporary, records.map((record) => `${JSON.stringify(record)}\n`).join(''), { encoding:'utf8', mode:0o600 });
+      chmodSync(temporary, 0o600);
+      renameSync(temporary, journalPath);
+    }
+    return ledger;
+  }
+
   correlation(correlationId) {
     return this.#events.filter((event) => event.correlationId === correlationId)
       .map((event) => ({ ...event }));
@@ -173,8 +259,14 @@ export function eventsStatus(ledger) {
     chainValid: verified.valid,
     correlationTracked: true,
     causationTracked: true,
-    // Stated, not implied.
-    persistsAcrossRestart: false,
+    // Stated, not implied — and READ off the ledger rather than asserted, so an embedder that
+    // built an in-memory ledger is reported as in-memory instead of inheriting a claim that
+    // happens to be true for the assembled server. This was hard-coded `false` until D-0338;
+    // hard-coding it `true` would have reintroduced the same lie in the opposite direction.
+    persistsAcrossRestart: ledger.durable,
+    // What loading had to skip, or `null`. A chain that silently dropped a torn tail would be
+    // claiming a completeness it does not have.
+    recoveredOnLoad: ledger.recovered,
     replacesAuditLedger: false,
     reason: 'Every event names the run it belongs to and the single event that caused it, and each digest covers the previous one. This is the engine causal record; the product audit trail is separate and unchanged.',
   };

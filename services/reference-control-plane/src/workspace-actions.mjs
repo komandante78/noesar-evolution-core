@@ -60,6 +60,7 @@ import { execute } from './executor.mjs';
 import { verifyClaims, projectionCoverage } from './verification.mjs';
 import { assembleSessionProof } from './session-proof.mjs';
 import { compareDecisions, comparePolicyOutcome, callAtomReplay as defaultCallAtomReplay, DECISION_SURFACES } from './session-replay.mjs';
+import { RunStore } from './run-store.mjs';
 
 export const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
@@ -86,9 +87,13 @@ function readTextIfSmall(path) {
 }
 
 /**
- * One orchestrator per server process, mirroring capability.mjs's TokenMinter: state lives in
- * memory and a restart clears every pending or promoted run, which is stated in status()
- * rather than left to be discovered.
+ * One orchestrator per server process.
+ *
+ * `#runs` is the read path and stays a Map — every lookup in this file goes through it. What
+ * changed in D-0338 is that it is no longer the ONLY copy: a `RunStore` is written through on
+ * each of the four points a run changes, and rehydrated at construction, so an operator who
+ * planned a change does not lose it to a restart. Given no store, the behaviour is exactly
+ * what it was, and `status()` reports which of the two this instance is rather than assuming.
  */
 export class WorkspaceActionOrchestrator {
   #workspaceRoot;
@@ -96,6 +101,8 @@ export class WorkspaceActionOrchestrator {
   #minter;
   #events;
   #runs = new Map();
+  #runStore;
+  #damagedRuns = [];
   #reasoningFor;
   #executeSandbox;
   #privacyStateFor;
@@ -104,7 +111,7 @@ export class WorkspaceActionOrchestrator {
   #author;
   #profileChange;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -143,6 +150,14 @@ export class WorkspaceActionOrchestrator {
     // config that could change mid-run would make "the token's limits were checked against
     // the installed ceiling at mint time" stale by the time execute() spends it.
     this.#executeSandbox = executeSandbox;
+    // D-0338. Rehydrated here, at construction, so nothing downstream ever has to ask whether
+    // the runs it can see are all of them. A damaged file is kept in `#damagedRuns` and
+    // reported by `status()` — losing one run to a full disk must not stop the others coming
+    // back, and must not be silent either.
+    this.#runStore = new RunStore(runStoreDirectory);
+    const loaded = this.#runStore.loadAll();
+    for (const { runId, run } of loaded.runs) this.#runs.set(runId, run);
+    this.#damagedRuns = loaded.damaged;
     // SESS-001: the egress state sampled at points in the run's own timeline, not read once
     // at the end — a run that went local-only and then, mid-way, had a connector enabled must
     // show both, not overwrite the first with the second. `null` is honest: sessionProof()
@@ -293,12 +308,43 @@ export class WorkspaceActionOrchestrator {
         attached: all.filter((run) => run.conversationId !== null).length,
         unattached: all.filter((run) => run.conversationId === null).length,
       },
-      // Declared, not discovered later by an operator whose plan vanished. `#runs` is a Map on
-      // this instance: the relation a chat now owns lives exactly as long as the process does.
-      // Making it outlive a restart is a store, not a field, and it is not what point 4b asked
-      // for — so it is stated here rather than implied by a list that looks permanent.
-      persistence: { durable: false, reason: 'runs are held in memory for the life of this process' },
+      // Declared, not discovered later by an operator whose plan vanished — and now READ off
+      // the store rather than asserted. It said a flat `false` until D-0338, which was true;
+      // replacing it with a flat `true` would have been the same mistake pointing the other
+      // way, because an embedder that builds this orchestrator without a store still holds
+      // runs only in memory and must still be told so.
+      persistence: this.#runStore.durable
+        ? {
+          durable: true,
+          reason: 'runs are written through to disk as they change and reloaded at startup',
+          // Named, not implied: a plan survives, and the shadow it would be promoted from does
+          // not. `restore()` reads `run.backups`, which are real files in the workspace, so a
+          // reloaded run can still be restored — but a run left PENDING_APPROVAL across a
+          // restart is approved against the workspace as it is NOW.
+          rebuiltFromDisk: true,
+          damaged: this.#damagedRuns,
+        }
+        : { durable: false, reason: 'runs are held in memory for the life of this process', damaged: [] },
     };
+  }
+
+  /**
+   * Write one run through to disk (D-0338). Called at the four points a run changes — created,
+   * approved, rejected, restored — and nowhere else, because those are the only four.
+   *
+   * A failure here is REPORTED, never swallowed and never fatal. Losing durability is a real
+   * degradation and the operator must be told; but a full disk taking down a run that has
+   * already promoted files into the workspace would turn a storage problem into a product
+   * failure, and the in-memory Map is still correct. The same posture the reasoning router
+   * takes about ATOM: continue, and say so.
+   */
+  #saveRun(runId) {
+    if (!this.#runStore.durable) return;
+    try {
+      this.#runStore.save(runId, this.#runs.get(runId));
+    } catch (error) {
+      this.#damagedRuns.push({ file: `${runId}.json`, reason: `could not be written: ${error.message}` });
+    }
   }
 
   /** SESS-001: the ten-field Session Proof, assembled from this run and its causal events. */
@@ -660,6 +706,9 @@ export class WorkspaceActionOrchestrator {
     // would be a second question, and the two shells would ask it at different moments and show
     // different numbers for one session. Computed after the ledger line above, so a run that
     // degraded counts itself.
+    // D-0338: written through the moment the run exists, BEFORE the answer goes back. A
+    // caller told a run was created must not be contradicted by a restart a second later.
+    this.#saveRun(runId);
     const reasoning = Object.freeze({ ...runDegradation, frequency: this.degradationFrequency() });
     // `conversationId` is read off the stored run for the same reason `status` is: a shell that
     // stitches the link it just sent onto the answer would show its own input as the engine's
@@ -814,6 +863,7 @@ export class WorkspaceActionOrchestrator {
       run.coverage = coverage;
       run.backups = backups;
       run.decidedAtUnix = nowUnix;
+      this.#saveRun(runId);
       return { runId, result, diff, promoted, coverage };
     } finally {
       shadow.discard();
@@ -827,6 +877,7 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, run.planEventId, approverId, 'workspace_action.rejected', { reason: reason ?? null }, nowUnix);
     run.status = 'REJECTED';
     run.decidedAtUnix = nowUnix;
+    this.#saveRun(runId);
     return { runId, status: 'REJECTED' };
   }
 
@@ -886,6 +937,7 @@ export class WorkspaceActionOrchestrator {
       { files: (run.backups ?? []).map((b) => b.path) }, nowUnix);
     run.status = 'RESTORED';
     run.restoredAtUnix = nowUnix;
+    this.#saveRun(runId);
     return { runId, status: 'RESTORED' };
   }
 }

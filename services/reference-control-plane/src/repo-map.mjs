@@ -102,13 +102,45 @@ const SYMBOL_PATTERNS = Object.freeze({
   ],
 });
 
+const EMPTY_EXCLUSIONS = new Set();
+
+/**
+ * The engine's OWN durable state, named by exact path relative to the scanned root (D-0338).
+ *
+ * Why this exists. The engine gained a durable run store and event journal under the
+ * workspace, so PLANNING now writes into the tree this scanner reads.
+ * `request-grounding.mjs` opens by declaring "DETERMINISM IS A REQUIREMENT, NOT A STYLE" —
+ * the same sentence must reach the same files every time — and a workspace that grows a file
+ * on every plan breaks precisely that. Measured by `ce-021-two-shells.mjs`, which is how it
+ * was found: the terminal planned, which created `state/runs/<id>.json`, and the browser's
+ * identical request then derived one file more and the two shells disagreed.
+ *
+ * The noise was the symptom. The defect underneath is that the product could derive its own
+ * event journal as a target and plan a write into the chain that records what it did.
+ *
+ * By RELATIVE PATH, not by name, and that distinction is the whole care taken here.
+ * `IGNORED_DIRS` above is a list of bare names, which is right for `node_modules` and wrong
+ * for this: an operator's repository is allowed to contain a directory called `state`, and
+ * `src/state/` must stay fully visible. Only these exact paths directly under the scanned
+ * root are skipped. The file already carries this class of product convention — `.workspace`
+ * and `shadows` are in the list above for the same reason — so this is consistent with the
+ * module's existing posture rather than a new kind of knowledge in it.
+ */
+export const ENGINE_STATE_PATHS = Object.freeze(['state/runs', 'state/engine-events.jsonl']);
+
+/** Resolve exclusions to absolute paths, once, so the walk compares strings and nothing else. */
+export function resolveExclusions(rootDir, paths = []) {
+  const root = resolve(rootDir);
+  return new Set([...ENGINE_STATE_PATHS, ...paths].map((entry) => resolve(root, entry)));
+}
+
 /**
  * Walks the tree once, breadth of files only -- no content is read here. Symlinked
  * directories are listed but never entered: following one could walk outside `rootDir`
  * silently, which is exactly the escape path-auth.mjs already refuses for writes and this
  * read-only walk refuses for the same reason.
  */
-function walk(rootDir, maxFiles) {
+function walk(rootDir, maxFiles, excludedPaths = EMPTY_EXCLUSIONS) {
   const files = [];
   const skippedSymlinks = [];
   let truncated = false;
@@ -120,6 +152,11 @@ function walk(rootDir, maxFiles) {
     for (const entry of entries) {
       const full = join(dir, entry.name);
       if (entry.isSymbolicLink()) { skippedSymlinks.push(relative(rootDir, full)); continue; }
+      // Excluded by ABSOLUTE path, never by name (D-0338). `IGNORED_DIRS` is a list of names,
+      // which is right for `node_modules` and wrong for the product's own state: an operator's
+      // repository is allowed to contain a directory called `state`, and hiding it by name
+      // would be this scanner deciding part of their source tree belongs to us.
+      if (excludedPaths.has(full)) continue;
       if (entry.isDirectory()) {
         if (IGNORED_DIRS.has(entry.name)) continue;
         stack.push(full);
@@ -370,7 +407,7 @@ export function buildRepositoryMap(rootDir, options = {}) {
   const maxSymbols = options.maxSymbols ?? 5000;
   const maxImportEntries = options.maxImportEntries ?? 5000;
 
-  const { files, skippedSymlinks, truncated:filesTruncated } = walk(root, maxFiles);
+  const { files, skippedSymlinks, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
   const languages = detectLanguages(files);
   const manifests = detectManifests(root, files);
   const entryPoints = detectEntryPoints(root, manifests);
@@ -410,7 +447,7 @@ export function literalSearch(rootDir, query, options = {}) {
   const caseSensitive = options.caseSensitive !== false;
   const needle = caseSensitive ? text : text.toLowerCase();
 
-  const { files, truncated:filesTruncated } = walk(root, maxFiles);
+  const { files, truncated:filesTruncated } = walk(root, maxFiles, resolveExclusions(root, options.excludePaths));
   const matches = [];
   let truncated = filesTruncated;
   for (const file of files) {

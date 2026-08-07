@@ -241,7 +241,12 @@ try {
   const events = await request('/api/v1/events');
   if (events.status !== 200) throw new Error(JSON.stringify(events));
   if (events.data.chainValid !== true) throw new Error('the engine event chain must verify');
-  if (events.data.persistsAcrossRestart !== false) throw new Error('the status must not claim persistence it does not have');
+  // Flipped in D-0338, deliberately. It asserted `false` and was right to: the ledger lived in
+  // memory. The assembled server now journals it, so `false` here would mean the wiring had
+  // been lost — and `tools/restart-durability-smoke.mjs` proves the claim by actually killing
+  // the process and starting it again, which is the only way this line earns its `true`.
+  if (events.data.persistsAcrossRestart !== true) throw new Error('the engine ledger must survive a restart, and the status must say so');
+  if (events.data.recoveredOnLoad !== null) throw new Error(`the ledger recovered a torn line on a fresh workspace: ${JSON.stringify(events.data.recoveredOnLoad)}`);
   if (events.data.replacesAuditLedger !== false) throw new Error('the engine ledger does not replace the audit trail');
   const verified = await request('/api/v1/events/verify');
   if (verified.status !== 200 || verified.data.valid !== true) throw new Error(JSON.stringify(verified));

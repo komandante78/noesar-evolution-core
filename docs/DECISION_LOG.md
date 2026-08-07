@@ -7396,3 +7396,102 @@ use. It is out of scope here because the clipboard API is permission-gated per b
 failure must degrade to the typed path, which is a behaviour to design rather than a line to add.
 
 **NOT deployed.** No container created, stopped or recreated.
+
+## D-0338 — the product survives a restart (2026-08-07)
+
+Owner, this session: *"voglio che fai tutto in modo da resistere al riavvio"*. Measured first
+rather than assumed, and the measurement narrowed it: the container already carries
+`RestartPolicy=unless-stopped`, so it comes back after a host reboot, and `/workspace` is
+already a writable bind mount. Exactly two things did not survive, and both are the engine:
+`WorkspaceActionOrchestrator.#runs` (a Map) and `EventLedger.#events`.
+
+**What that cost an operator.** Plan a change, walk away, come back to a restarted container:
+the plan is gone, while the shadow and the events describing it are still on disk. The
+evidence of a decision outliving the decision.
+
+**The premise that had kept runs in memory does not hold, and was checked before being
+removed.** `server.mjs` justified it: *"a restart that clears outstanding tokens must clear the
+runs that reference them, not leave a promoted run pointing at a token nobody can spend."*
+Measured: `token` is a **local** in `approve()`, minted and spent inside one call, never stored
+on the run. What reaches a run is the event payload's `tokenId` — a name in the causal record,
+not a spendable grant. The token's lifetime is a function call; the run's is the operator's
+attention span, and tying the second to the first cost them their work on every restart.
+
+**Runs: one file each, written through at the four points a run changes.** Per-run rather than
+one document, because a run record is fat (`files[].contents` in full, plus `authoredContents`)
+and rewriting every run on every approve would cost the total size of all of them. The Map
+stays as the read path; it is simply no longer the only copy.
+
+**The codec refuses instead of degrading, and that is the whole of `run-store.mjs`.**
+`authoredContents` is a **Map**, and `approve()` reads it with `run.authoredContents?.get(path)`
+falling back to the file's ORIGINAL contents on a miss. `JSON.stringify(new Map([['a','b']]))`
+is `'{}'` — silently. A naive round trip would have produced a run that reloaded, looked
+complete, passed a shallow test, and made the product **discard its own generated code and
+report success**. So the codec names every type it can carry and throws on anything else,
+naming the path.
+
+**That refusal immediately found something nobody had thought about.** Every approved run
+failed to save with *"run.backups[0].beforeContent is a Buffer instance"* — the backup of the
+file's previous bytes, which is what `restore()` writes back. Two silent failures avoided at
+once: unsupported, the operator's undo did not survive a restart (what actually happened, and
+what a test caught); stored as text, a backup of a PNG would come back corrupted and the
+restore would write that damage over the original. Carried as base64 now, byte-exact.
+
+**Events: append-only file for an append-only chain**, and the loader was already correct.
+`EventLedger.restore()` existed and recomputes every digest from the event's own fields rather
+than trusting the ones on disk, refusing with `CHAIN_BROKEN`. `loadFrom` hands it the records
+and adds one forgiveness with a reason: because the file is only ever appended to, a torn write
+can exist nowhere but the tail, so a final unparseable line is dropped and **declared** in
+`recoveredOnLoad`. Corruption anywhere else is refused.
+
+**A self-inflicted defect, caught and repaired before it shipped.** The first version of that
+recovery merely appended a newline to close the fragment — which works exactly once: on the
+next load the fragment is a complete line that does not parse and is no longer the tail, so the
+ledger would refuse forever after. Recovery that breaks the second time is worse than none,
+because it succeeds wherever anyone would think to look. The bytes are removed instead, and the
+distinction that makes that legitimate is that a partial write was never a record.
+
+**The defect this change introduced, found by `ce-021-two-shells.mjs` and fixed at the root.**
+Durable state under the workspace meant **planning now wrote into the tree the scanner reads**.
+The terminal planned, which created `state/runs/<id>.json`, and the browser's identical request
+then derived one file more — the two shells disagreed. `request-grounding.mjs` opens by
+declaring *"DETERMINISM IS A REQUIREMENT, NOT A STYLE"*, and that is exactly what broke. The
+noise was the symptom; underneath, the product could derive **its own event journal** as a
+target and plan a write into the chain that records what it did. Excluded from the walk by
+**exact relative path**, never by name — an operator's repository is allowed to contain a
+directory called `state`, and hiding it by name would be the scanner deciding part of their
+source tree belongs to us. `repo-map.mjs` already carried this class of convention
+(`.workspace`, `shadows`), so the posture is consistent rather than new.
+
+**Both declarations are now READ rather than asserted.** `persistsAcrossRestart` was hard-coded
+`false`; hard-coding it `true` would have been the same lie pointing the other way, because an
+embedder that builds an in-memory ledger must still be told so. Same for
+`runsFor().persistence`, which additionally reports `damaged` — a run lost to a full disk must
+not stop the others loading, and must not be silent either.
+
+**Proved by killing the process.** `tools/restart-durability-smoke.mjs` spawns the real server,
+plans real work over real HTTP, sends SIGTERM, **waits for the port to stop answering** so the
+successor cannot be the predecessor, starts a new server over the same workspace, and finds the
+run — with its chat link intact, the chain reverifying from GENESIS, and the reloaded run then
+**approved and promoted for real**. Every other check in this repository asks the product to
+describe itself; this one does not.
+
+**Verified in this session:** unit **1914/1915** (+29), ESLint **339 files 0/0/0**, browser e2e
+**413/413**, `CE-020` **20/20**, `CE-021` **13/13** (it went red first — that is how the
+grounding defect was found), mutations **21/21** on this change, `HTTP_SMOKE`,
+`AUTH_HTTP_SMOKE` and `RESTART_DURABILITY_SMOKE` all **PASS**.
+
+**A mutation survivor that was a real gap, not a bad mutation.** *"the promotion is not written
+through"* survived, because the test read the same instance's Map rather than a reload. The
+consequence is not cosmetic: an unpersisted promotion comes back as `PENDING_APPROVAL`, and the
+same plan can be approved and **promoted a second time**. Covered now.
+
+**Improvement proposed, not executed:** run files grow without bound. A retention policy —
+decided runs older than N days compacted to their summary, keeping the causal chain intact —
+belongs with the same decision that sets audit retention, and is the Owner's to make rather
+than a default to invent here.
+
+**Also recorded, NOT fixed, because it is outside this change and is the Owner's call:**
+`state/auth.json` and `audit/events.jsonl` remain visible to the scanner, and have been since
+before this session. The same exclusion mechanism now exists to close it; whether the product's
+whole state directory should be invisible to its own planning is a decision, not a cleanup.

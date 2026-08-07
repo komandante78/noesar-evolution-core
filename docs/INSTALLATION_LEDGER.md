@@ -4211,3 +4211,69 @@ vero **dello stesso server**, che è la sola prova che i due trasporti condivido
 `AuthService` nel prodotto assemblato.
 
 **NON deployato.** Nessun container creato, fermato o ricreato in questa sessione.
+
+## s330 (seconda metà) — il prodotto resiste al riavvio (`D-0338`)
+
+**Richiesta dell'Owner:** *«voglio che fai tutto in modo da resistere al riavvio»*. **Misurato
+prima**, e la misura ha ristretto il lavoro: il container ha già `RestartPolicy=unless-stopped`
+(torna su dopo un riavvio dell'host) e `/workspace` è già un bind scrivibile. Non sopravvivevano
+**due cose sole**, ed erano il motore: `#runs` (una `Map`) e `EventLedger.#events`.
+
+**Cosa costava a un operatore:** pianifichi, ti allontani, torni a container riavviato — il
+piano non c'è più, mentre l'ombra e gli eventi che lo descrivono sono ancora su disco.
+
+**La premessa che teneva le run in memoria non regge, ed è stata verificata prima di
+rimuoverla.** `server.mjs` la dichiarava: *«un riavvio che azzera i token deve azzerare le run
+che li referenziano»*. Misurato: `token` è una **variabile locale** di `approve()`, coniata e
+spesa nella stessa chiamata, **mai messa sulla run**. Il token vive una chiamata di funzione,
+la run vive quanto l'attenzione dell'operatore.
+
+**Il codec rifiuta invece di degradare, ed è l'intera ragione di `run-store.mjs`.**
+`authoredContents` è una **`Map`**, e `approve()` la legge con `.get()` ripiegando sui contenuti
+**originali** del file quando manca. `JSON.stringify(new Map(...))` è `'{}'` — in silenzio. Un
+giro ingenuo avrebbe prodotto una run che si ricarica, sembra completa, passa un test
+superficiale, e fa **buttare al prodotto il codice che ha generato dichiarando successo**.
+
+**Quel rifiuto ha trovato subito una cosa a cui non avevo pensato:** ogni run approvata falliva
+il salvataggio con *«run.backups[0].beforeContent is a Buffer»* — il backup dei byte precedenti
+del file, cioè ciò che serve a `restore()`. Due fallimenti silenziosi evitati insieme: non
+supportato, l'annullamento dell'operatore non sopravviveva al riavvio (ed è successo davvero,
+l'ha preso un test); salvato come testo, il backup di un PNG sarebbe tornato corrotto e il
+restore avrebbe scritto quel danno sopra l'originale. Ora base64, byte-esatto.
+
+**Eventi: file append-only per una catena append-only**, e il caricatore c'era già.
+`EventLedger.restore()` ricalcola ogni digest dai campi dell'evento invece di fidarsi di quelli
+su disco. `loadFrom` gli passa i record e aggiunge **una sola** indulgenza, con la sua ragione:
+il file si scrive solo in coda, quindi una scrittura troncata può stare **solo** in fondo — la
+riga finale illeggibile si scarta e si **dichiara** (`recoveredOnLoad`). Corruzione altrove:
+rifiutata.
+
+**Un difetto mio, trovato e riparato prima di spedirlo:** la prima versione di quella ripresa
+chiudeva il frammento con un `\n`. Funziona **una volta sola**: al caricamento successivo quel
+frammento è una riga completa che non parsa e non è più in coda, quindi il ledger rifiuterebbe
+per sempre. Una ripresa che si rompe la seconda volta è peggio di nessuna ripresa.
+
+**E il difetto che questa modifica ha introdotto, trovato da `ce-021` e riparato alla radice.**
+Stato durevole dentro il workspace significa che **pianificare scrive nell'albero che lo scanner
+legge**: il terminale pianifica → nasce `state/runs/<id>.json` → la richiesta identica del
+browser deriva un file in più, e le due shell divergono. `request-grounding.mjs` dichiara in
+testa *«DETERMINISM IS A REQUIREMENT, NOT A STYLE»*. Il rumore era il sintomo; sotto, il
+prodotto poteva derivare **il proprio giornale degli eventi** come bersaglio e pianificare una
+scrittura sulla catena che registra ciò che fa. Escluso dal walk per **percorso relativo
+esatto**, mai per nome: una cartella `state/` dell'utente resta visibile.
+
+**Provato ammazzando il processo.** `tools/restart-durability-smoke.mjs` avvia il server vero,
+pianifica su HTTP vero, manda SIGTERM, **aspetta che la porta smetta di rispondere** (o il
+«riavviato» sarebbe il vecchio), avvia un processo nuovo sullo stesso workspace e ritrova la
+run — legame con la chat intatto, catena riverificata da GENESIS, e la run ricaricata poi
+**approvata e promossa davvero**.
+
+**File toccati:** `src/run-store.mjs` (nuovo), `src/events.mjs`, `src/workspace-actions.mjs`,
+`src/repo-map.mjs`, `src/server.mjs`, `tools/restart-durability-smoke.mjs` (nuovo),
+`tools/auth-http-smoke.mjs`, `test/durability.test.mjs` (nuovo),
+`test/workspace-actions-http-adversarial.test.mjs`.
+
+**Verifiche:** unit **1914/1915** (+29), ESLint **339 file 0/0/0**, browser e2e **413/413**,
+`CE-020` **20/20**, `CE-021` **13/13** (prima rosso — è così che è emerso il difetto del
+grounding), **21/21 mutazioni**, `HTTP_SMOKE` / `AUTH_HTTP_SMOKE` / `RESTART_DURABILITY_SMOKE`
+tutti **PASS**.
