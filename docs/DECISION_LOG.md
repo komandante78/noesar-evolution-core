@@ -7714,3 +7714,48 @@ reboot and retry before calling an installation done.
 `/home/coden/.ssh/authorized_keys`. `sshd` was **reloaded, never restarted**, so no existing
 session was dropped, and `/etc/ssh/sshd_config.bak.d0340-<UTC>` is the backup taken before the
 first edit. Reverting is four removals and one `sed`.
+
+---
+
+## D-0342 — the access recipe survives a reboot, and the product still does not own the host (2026-08-07)
+
+**Owner's decision, asked and answered:** make the `CE-035` installation persistent rather
+than keep it until the next reboot or revert it.
+
+**The line that is not crossed.** This is an *installation* acting on *its own host*, and it
+lives **outside the repository** — `/boot/config/noesar-evolution/apply-coden-access.sh`, wired
+into this host's existing boot script. Nothing about it enters `MASTER_PROJECT/`, `tools/` or
+the image: the product still detects at runtime and still presumes no operating system.
+`08_INSTALLAZIONE.md` §12.5 states the *principle* ("reapply at boot from whatever mechanism
+the host offers") and names no host. That separation is the platform law, and it is the reason
+this was safe to do at all.
+
+**What the script does, and what it refuses to do.** Idempotent by construction: the system
+user (with a **real** shell — `nologin` refuses `ForceCommand`), the launcher installed from a
+copy on the boot medium (so it needs no Docker and therefore no waiting for the array), the
+config file, the **three** fixed-argv sudoers lines, the key, and the `sshd` block plus the
+`AllowUsers` amendment. Then the only step that matters for safety: `sshd -t`, and **on
+failure the original configuration is restored and sshd is never reloaded**. A broken
+`sshd_config` here would lock the administrator out of the machine, so that path is written
+before the happy one. `|| true` in the boot script: this must never be able to stop a boot.
+
+**Proved, not assumed.** The whole manual state was **torn down first** — user deleted,
+sudoers removed, launcher removed, `sshd_config` restored from its pre-change backup, verified
+back to `AllowUsers root` with zero `Match User coden` blocks — and then the boot script
+rebuilt all of it and the session opened again from a separate network node. Run three times:
+one `Match` block, `AllowUsers root coden` once, `sshd -t` OK. That is the test that matters,
+because reapplying cleanly is the only thing a boot ever does.
+
+**The one thing NOT proved, and it cannot be from here: an actual reboot.** Rebooting the
+Owner's server is not this session's to do. If this host regenerates `sshd_config` *after* the
+boot script runs, the block would be lost — the ordering is inferred from the fact that sshd
+was already up when the script ran, not from a boot. §12.5 already says the recipe is not done
+until the machine has been rebooted and retried; that sentence now applies to this
+installation too.
+
+**Left inert on purpose.** `/boot/config/noesar-evolution/authorized_keys` is **empty**, so
+nobody can log in as `coden` — the plumbing is present and unusable. The test key generated for
+the proof was destroyed, and reusing an existing key was not possible: root on this host
+authenticates by password and has no `authorized_keys`. Inventing a credential for the Owner
+would have been worse than leaving a door that does not open. One line enables it, and it is
+the Owner's key that goes in.
