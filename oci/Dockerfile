@@ -164,7 +164,11 @@ COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # Third time, and the guard did its job: phase 3c moved the address views into
 # `coden-address-views.mjs` so both terminal shells could render them, and the closure test
 # failed on this line before any container was built.
-COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs /opt/noesar/tools/
+# Fourth time, same guard, same job: `D-0348` added `terminal-credential.mjs` — the file that
+# decides where a remembered terminal keeps its token — and the closure test failed here
+# before anything was built. Shipping without it would have been `D-0301`'s defect exactly: a
+# shell in the image that throws on its first import.
+COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs tools/terminal-credential.mjs /opt/noesar/tools/
 # The launcher (phase 8). Shipped for a reason the import-closure guard above cannot see,
 # because it is not a module and nothing imports it: on a container installation this is the
 # file the HOST-side launcher re-enters the container to run, so an image without it turns

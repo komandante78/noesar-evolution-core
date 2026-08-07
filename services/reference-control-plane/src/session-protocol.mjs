@@ -523,7 +523,7 @@ export async function startUnixSocketServer({ socketPath, dispatch, auth, ledger
           if (method === 'auth.login') { respond(id, true, auth.beginLogin({ username: params?.username, password: params?.password, ip: 'unix-socket' })); continue; }
           if (method === 'auth.mfa') {
             const value = auth.completeLogin({ challenge: params?.challenge, totpCode: params?.totpCode, ip: 'unix-socket' });
-            authenticated = { user: value.user };
+            authenticated = { user: value.user, sessionId: value.session.id };
             ledger.append({ actor: value.user.id, action: 'tui.session-started', result: 'success', details: { transport: 'unix-socket' } });
             // The permission set comes back with the user, exactly as `GET /api/v1/auth/me`
             // gives it to the browser — from `permissionsFor`, derived from the one
@@ -551,12 +551,36 @@ export async function startUnixSocketServer({ socketPath, dispatch, auth, ledger
           // learn that a session can arrive two ways.
           if (method === 'auth.attach') {
             const value = auth.redeemAttachCode({ code: params?.code, ip: 'unix-socket' });
-            authenticated = { user: value.user };
+            authenticated = { user: value.user, sessionId: value.session.id };
             ledger.append({ actor: value.user.id, action: 'tui.session-started', result: 'success', details: { transport: 'unix-socket', via: 'attach-code' } });
             respond(id, true, { user: value.user, permissions: auth.permissionsFor(value.user.role) });
             continue;
           }
-          if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa`, or `auth.attach` with a code minted in the browser, before any other method');
+          // The third way in, and the one that costs no gesture at all (D-0348): a token this
+          // terminal was issued the first time it signed in, and has held at 0600 ever since.
+          //
+          // Here and not on HTTP, for the reason `auth.attach` states and one more: a bearer
+          // token with a ninety-day life must never be presentable from the network. On the
+          // socket the filesystem has already answered "who may knock" before the first byte.
+          if (method === 'auth.resume') {
+            const value = auth.resumeTerminal({ token: params?.token, ip: 'unix-socket' });
+            authenticated = { user: value.user, sessionId: value.session.id };
+            ledger.append({ actor: value.user.id, action: 'tui.session-started', result: 'success', details: { transport: 'unix-socket', via: 'remembered-terminal' } });
+            respond(id, true, { user: value.user, permissions: auth.permissionsFor(value.user.role) });
+            continue;
+          }
+          // Forgetting is answerable BEFORE authentication on purpose: the claim being made is
+          // possession of the token, and a terminal whose account was disabled must still be
+          // able to undo itself. It reveals nothing — the reply is identical either way.
+          if (method === 'auth.forget') { respond(id, true, auth.forgetTerminalToken({ token: params?.token })); continue; }
+          if (!authenticated) throw new ProtocolError('UNAUTHENTICATED', 'call `auth.login` then `auth.mfa`, `auth.attach` with a code minted in the browser, or `auth.resume` with a remembered terminal token, before any other method');
+          // Remembering happens AFTER a session exists, and asks the AuthService to check that
+          // session again rather than trusting this connection's say-so. The socket knows which
+          // session it holds; it does not get to assert that the session was MFA-backed.
+          if (method === 'auth.remember') {
+            respond(id, true, auth.rememberTerminal({ userId: authenticated.user.id, sessionId: authenticated.sessionId, label: params?.label }));
+            continue;
+          }
           // The caller's authority, from the same AuthService the HTTP surface asks. Before
           // `D-0302` this transport passed none and the dispatch asked for none: a terminal
           // session could call anything its account could authenticate into, including

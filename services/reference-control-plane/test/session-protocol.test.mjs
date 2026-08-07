@@ -169,6 +169,48 @@ describe('session protocol — unix socket transport', () => {
     socket.end();
   });
 
+  // D-0348 — the socket half of "one word is enough". These drive the real transport rather
+  // than the AuthService, because what is being claimed is about a CONNECTION: that a fresh
+  // socket presenting a stored token ends up in exactly the state a signed-in one is in, and
+  // that a socket which only forgets is left exactly where it started. Neither of those is
+  // visible from the service's own unit tests.
+  test('D-0348 · a remembered terminal opens a fresh socket with nothing typed', async () => {
+    const remembered = await call(authenticatedSocket, 'auth.remember', { label: 'owner@test' });
+    assert.ok(remembered.token, 'the socket did not issue a terminal token');
+
+    const socket = connect(socketPath);
+    await new Promise((resolve) => socket.once('data', resolve));
+    const resumed = await call(socket, 'auth.resume', { token: remembered.token });
+
+    assert.equal(resumed.user.id, handshake.user.id, 'the token opened a session for a different account');
+    assert.deepEqual(resumed.permissions, authService.permissionsFor(resumed.user.role));
+    // Really authenticated, proved by a method the dispatch gates — the same standard the
+    // attach-code test above holds itself to.
+    assert.ok(await call(socket, 'product.invariants', {}), 'the resumed session could not call an authenticated method');
+    socket.end();
+  });
+
+  test('D-0348 · remembering is refused BEFORE a session exists', async () => {
+    const socket = connect(socketPath);
+    await new Promise((resolve) => socket.once('data', resolve));
+    // The order matters: `auth.remember` sits after the UNAUTHENTICATED gate, so an anonymous
+    // caller must not be able to mint itself a ninety-day credential at the door.
+    await assert.rejects(call(socket, 'auth.remember', { label: 'nobody' }), /auth\.login/);
+    socket.end();
+  });
+
+  test('D-0348 · a forgotten terminal stops opening, and forgetting authenticates nobody', async () => {
+    const remembered = await call(authenticatedSocket, 'auth.remember', { label: 'to-be-forgotten' });
+    // Answerable without authenticating: the claim being made is possession of the token.
+    const anonymous = connect(socketPath);
+    await new Promise((resolve) => anonymous.once('data', resolve));
+    assert.deepEqual(await call(anonymous, 'auth.forget', { token: remembered.token }), { forgotten: true });
+    await assert.rejects(call(anonymous, 'product.invariants', {}), /auth\.login/,
+      'forgetting a terminal left the connection authenticated');
+    await assert.rejects(call(anonymous, 'auth.resume', { token: remembered.token }), /not remembered here/);
+    anonymous.end();
+  });
+
   test('D-0337 · a socket that presents a bad code stays unauthenticated', async () => {
     const socket = connect(socketPath);
     await new Promise((resolve) => socket.once('data', resolve));

@@ -149,21 +149,38 @@ describe('CE-035 — the gesture is one word', () => {
     assert.equal(statSync(launcher).mode & 0o111, 0o111, 'tools/coden-evolution must carry the executable bit');
   });
 
-  test('it takes no arguments: a path or a container name is refused, not ignored', () => {
+  // The property, not the sentence. This used to assert the literal words "takes no arguments
+  // on purpose", and `D-0348` had to add two — `--forget` and `--no-remember`, the undo of
+  // being remembered. Asserting the message pinned a design instead of a behaviour, so it went
+  // red against a product that was still correct. What must hold is narrower and does not
+  // change: the two concepts this launcher exists to remove — a client PATH and a container
+  // NAME — are refused, not quietly accepted.
+  test('a path or a container name is refused, not ignored', () => {
     const w = world({ engines: { docker: { answers: true, names: ['noesar-evolution'] } } });
-    const refused = run(w, { args: ['/opt/noesar/tools/tui-client.mjs'] });
-    assert.equal(refused.status, 2);
-    assert.match(refused.stderr, /takes no arguments/);
-    // Refused means refused: it must not have gone on to attach anyway.
-    assert.deepEqual(readLog(w.logs.docker), []);
+    for (const argument of ['/opt/noesar/tools/tui-client.mjs', 'noesar-evolution', '--socket=/run/x.sock']) {
+      const refused = run(w, { args: [argument] });
+      assert.equal(refused.status, 2, `'${argument}' was not refused`);
+      // Refused means refused: it must not have gone on to attach anyway.
+      assert.deepEqual(readLog(w.logs.docker), [], `'${argument}' was refused but the engine was called anyway`);
+    }
     assertHostUntouched(w);
   });
 
-  test('--help is the only accepted word, and it says the arguments are absent on purpose', () => {
+  test('--help names every word the launcher accepts, and there are no others', () => {
     const w = world();
     const help = run(w, { args: ['--help'] });
     assert.equal(help.status, 0);
-    assert.match(help.stderr, /takes no arguments on purpose/);
+    // Derived from the launcher's own argument parser rather than retyped here. A flag added
+    // to that `case` without a line in the usage text is a word the product accepts and never
+    // tells anyone about — the shape of defect that left `remote-targets` unreachable for
+    // three months behind two green guards (s331).
+    const accepted = [...readFileSync(launcher, 'utf8').matchAll(/^\s+(--[a-z|-]+)\)/gm)]
+      .flatMap((match) => match[1].split('|'))
+      .filter((flag) => flag !== '--help');
+    assert.ok(accepted.length > 0, 'the parser accepts no flags at all — this guard would be measuring nothing');
+    for (const flag of accepted) {
+      assert.ok(help.stderr.includes(flag), `${flag} is accepted by the launcher but absent from --help`);
+    }
   });
 
   test('with zero arguments it finds the container by LABEL — the name is never typed', () => {

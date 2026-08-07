@@ -423,7 +423,21 @@ Windows vero.
 coden ALL=(root) NOPASSWD: /usr/bin/docker version
 coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i noesar-evolution /opt/noesar/tools/coden-evolution
 coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i -t noesar-evolution /opt/noesar/tools/coden-evolution
+# Facoltative — solo se si vuole poter dire `coden_evolution --forget` da questo account
+# (D-0348). Sono argv diversi, e una regola senza jolly è appunto una regola per argv.
+# Senza queste due righe l'accesso funziona identico: cambia solo che l'annullamento va fatto
+# dalla lista dei terminali ricordati, nel browser.
+coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i noesar-evolution /opt/noesar/tools/coden-evolution --forget
+coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i -t noesar-evolution /opt/noesar/tools/coden-evolution --forget
 ```
+
+> **`D-0348` — dopo il primo ingresso non si digita più nulla.** L'avviatore **ricorda** il
+> terminale: la prima volta si entra con un codice di aggancio o con le credenziali, da lì in
+> poi `coden_evolution` da solo apre la sessione. Il gettone vive sulla macchina che lo usa, a
+> `0600`; su un'installazione a contenitore vive **dentro il contenitore**, quindi chiunque
+> possa eseguire l'avviatore apre la sessione iscritta. Su questa via è esattamente ciò che si
+> vuole — l'autorità è **l'account `ssh`**, e la chiave che lo apre è il confine vero. Chi non
+> lo vuole usa `--no-remember`.
 
 Nessuna delle tre contiene un carattere jolly, ed è possibile **solo** perché motore e
 contenitore vengono dal file di configurazione di proprietà di root: l'avviatore non può

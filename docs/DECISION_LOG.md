@@ -8001,3 +8001,89 @@ consult is the same defect one level up.
 
 **Verified:** unit 2041 (0 fail), ESLint 0/0, and `src/state/reducer.mjs` plus a top-level
 `state/machine.mjs` still scanned while both canaries are absent from the map.
+
+## D-0348 — the second gesture disappears: one word, and you are in (2026-08-07)
+
+**The Owner's requirement, in their words:** *«per primo devi mettere 1 solo comando per
+accedere su CodeN Evolution TUI. Esempio: apro ssh e digito solo `coden_evolution` e si apre»*
+(s333, point 1 of `docs/OWNER_CHANGE_LIST_S333.md`).
+
+**What was actually in the way, and it was not authentication.** `D-0337` had already removed
+the second AUTHENTICATION — an attach code minted in the browser replaced a second username,
+password and second factor. What it left was a second GESTURE: a code read off one screen and
+retyped at another. One word plus one code is two things to do, and the requirement is one.
+
+**The thing that cannot be done, measured rather than assumed.** The obvious answer — let the
+operating system say who is calling — was closed in s330: a unix socket at `0600` answers *may
+this uid knock*, never *who are you*, and Node exposes no `SO_PEERCRED`. So a terminal that
+opens with nothing typed must present SOMETHING, and the only honest something is a secret the
+operator's machine already holds. Trusting the transport to name the caller would have been
+the alternative, and it is exactly the thing that is not available.
+
+**Hence enrolment, the shape `ssh` keys and `gh auth login` already use.** The FIRST run
+authenticates exactly as before and is issued a token it stores itself at `0600`; every later
+run presents it and opens. The one-time cost is stated out loud rather than engineered away.
+
+**What the token is, and what it is deliberately not.** It is a possession factor, never
+displayed and never retyped. It carries no permission of its own — it opens a session for the
+account that enrolled it and no other. It does NOT carry elevation: `elevatedUntil` is
+re-earned, so a remembered terminal still faces step-up on a sensitive action. It is revocable
+from both ends (`--forget` at the terminal, `revokeRememberedTerminal` for the browser's list),
+every use is dated, and it dies with the account. Its life is ninety days SLIDING: a terminal
+in daily use never expires, one abandoned for ninety days stops on its own. Where an attach
+code's perimeter is time and single use — because it is read aloud and retyped — this object's
+perimeter is the filesystem permission and the ability to revoke, so a sixty-second life would
+have defeated the requirement instead of protecting anything.
+
+**All four refusals answer with the same sentence.** Unknown, expired, revoked, account
+disabled: four different messages would turn `auth.resume` into an oracle for probing which
+tokens once existed.
+
+**Where the file goes, and why the last candidate is not a convenience.** `$NOESAR_TERMINAL_
+CREDENTIAL`, then `$XDG_CONFIG_HOME`, then `$HOME` — **only when `$HOME` is a directory that
+exists** — then `$NOESAR_WORKSPACE`. That last one is the container case, measured on the live
+installation: the product's own container runs with `HOME=/nonexistent` and a read-only
+rootfs. A resolver that merely checked whether `HOME` was SET would have written to
+`/nonexistent/.config`, and the terminal would have asked for a code every single time while
+reporting that it had remembered. When nothing resolves, the client says so instead of
+guessing: a ninety-day bearer token does not get written to a path nobody was told about.
+
+**A file another account can read is refused, not used.** `readCredential` checks the mode and
+declines a group- or world-readable file. The token IS the authentication once enrolment is
+done, so accepting one would make the permission decorative.
+
+**Two defects found by EXECUTING the gesture, neither visible from the code.**
+
+1. **The image would not have shipped the new module.** `tui-import-closure.test.mjs` — the
+   guard built after `D-0301` shipped a client the image did not contain — failed on
+   `tools/terminal-credential.mjs` before anything was built. Fourth time that guard has
+   earned its keep.
+2. **The client HUNG when stdin ended.** `LineReader.next()` had no `close` handling, so any
+   prompt asked after the last line of a piped script waited forever, silently. A human at a
+   TTY never sees it — a terminal's stdin does not end — which is why it survived: every path
+   that reaches it is a piped one, and piped ones are where the harnesses live. Now EOF
+   resolves to `null`, kept distinct from an empty line (which means *ask me for credentials*),
+   and every prompt that cannot proceed says `input ended` instead of hanging. Pre-existing,
+   repaired here.
+
+**A guard that was asserting the previous design.** `CE-035`'s launcher test pinned the literal
+sentence *"takes no arguments on purpose"*, and this change adds two — `--forget` and
+`--no-remember`. It now asserts the property that does not change (a client PATH and a
+container NAME are refused) and, separately, DERIVES the accepted flags from the launcher's own
+parser and requires each to appear in `--help`: a flag the product accepts and never mentions
+is how `remote-targets` stayed unreachable for three months behind two green guards.
+
+**Declared, not hidden.** On a container installation the sudoers rule of `08_INSTALLAZIONE.md`
+§12.3 pins the FULL argv — that is what makes the elevation narrow — so `--forget` through the
+elevated path needs a second rule. The launcher says this before it runs rather than leaving a
+sudo refusal to be puzzled over. And on that topology the token necessarily lives inside the
+container: whoever can run the launcher opens the enrolled session, which is the ssh account
+the recipe creates, and is exactly what the Owner asked for.
+
+**Verified:** unit **2073** (0 fail, 1 skip), ESLint 0/0, and a new acceptance harness
+`tools/acceptance/ce-037-one-word.mjs` — **15 checks, 0 failures** — that starts the product
+from source and drives the REAL launcher five times: sign in and be remembered, open with
+NOTHING typed, `--forget`, be asked again, and prove the forgotten token is dead server-side and
+not merely deleted locally. Driving the launcher rather than the client is deliberate: phase 8
+already paid for that distinction once, when `$0` resolved to the symlink and the shipped
+gesture was broken while every test of the client passed.

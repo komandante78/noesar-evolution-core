@@ -25,8 +25,9 @@
 // file-content reader, is built on the one shared `question()` helper for exactly that
 // reason.
 //
-// Usage: node tools/tui-client.mjs [socketPath]
+// Usage: node tools/tui-client.mjs [socketPath] [--forget]
 //   socketPath defaults to $NOESAR_TUI_SOCKET_PATH, then <repo>/.workspace/tui.sock.
+//   --forget   revoke this terminal's remembered token and delete the local copy (D-0348).
 
 import { connect } from 'node:net';
 import { createInterface, emitKeypressEvents } from 'node:readline';
@@ -36,10 +37,16 @@ import { runFullScreen } from './tui-fullscreen.mjs';
 import { accountFromUser } from '../apps/webui-static/agent-commands.js';
 import { matchAddresses } from '../apps/webui-static/coden-view-model.js';
 import { printJson, runSessionsList, showAddress } from './coden-address-views.mjs';
+import { clearCredential, credentialPath, readCredential, terminalLabel, writeCredential } from './terminal-credential.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultSocketPath = resolve(here, '..', '.workspace', 'tui.sock');
-const socketPath = process.argv[2] ?? process.env.NOESAR_TUI_SOCKET_PATH ?? defaultSocketPath;
+// Flags are removed BEFORE the positional is read. Without this, `tui-client.mjs --forget`
+// takes the flag as the socket path and fails with a connection error about a file named
+// `--forget` — a message that sends whoever reads it looking in the wrong place entirely.
+const argv = process.argv.slice(2).filter((value) => !value.startsWith('--'));
+const flags = new Set(process.argv.slice(2).filter((value) => value.startsWith('--')));
+const socketPath = argv[0] ?? process.env.NOESAR_TUI_SOCKET_PATH ?? defaultSocketPath;
 
 const HELP = `Commands:
   plan <what you want> plan it — say it in prose; the repository finds the files
@@ -127,19 +134,43 @@ class Session {
 // how this file's own tests and any future CI use of this client would drive it — does.
 // The fix: one persistent 'line' listener for the whole process, queuing what arrives ahead
 // of whoever asks for it, so a prompt asked for late still gets the line it was owed.
-class LineReader {
+// End of input is a real answer, and it used to be no answer at all. Found by EXECUTING the
+// gesture, not by reading this file: `CE-037` drives the launcher with a scripted stdin, and a
+// run whose script was one line short of what the prompts asked for HUNG — forever, with no
+// output, on a `next()` whose promise nothing would ever settle. A human at a TTY never sees
+// it (a terminal's stdin does not end), which is exactly why it survived: every path that
+// could reach it is a piped one, and piped ones were where the test harnesses lived.
+//
+// `null` rather than `''`, because the two are genuinely different: an empty line is an
+// operator pressing Enter — which `login()` reads as "no code, ask me for credentials" — and
+// EOF is nobody there to ask. Collapsing them would make a closed pipe look like consent.
+export class LineReader {
   constructor(iface) {
     this.queue = [];
     this.waiters = [];
+    this.ended = false;
     iface.on('line', (line) => {
       const waiter = this.waiters.shift();
       if (waiter) waiter(line); else this.queue.push(line);
     });
+    iface.on('close', () => {
+      this.ended = true;
+      // Everyone still waiting is answered, not abandoned. A waiter left pending here is the
+      // hang this comment exists to describe.
+      while (this.waiters.length) this.waiters.shift()(null);
+    });
   }
   next() {
     if (this.queue.length) return Promise.resolve(this.queue.shift());
+    if (this.ended) return Promise.resolve(null);
     return new Promise((resolvePromise) => this.waiters.push(resolvePromise));
   }
+}
+
+/** What a prompt does when there is nobody left to answer it: say so, rather than wait. */
+function required(value, what) {
+  if (value === null) throw Object.assign(new Error(`input ended before ${what} was given`), { kind: 'NO_INPUT' });
+  return value;
 }
 
 function question(reader, prompt) {
@@ -154,7 +185,9 @@ async function readMultiline(reader, label) {
   const lines = [];
   for (;;) {
     const line = await reader.next();
-    if (line === '.') return lines.join('\n');
+    // A closed stdin ends the content, exactly as the terminating '.' would. Looping on null
+    // instead would append "nothing" forever — the same hang, one function further down.
+    if (line === null || line === '.') return lines.join('\n');
     lines.push(line);
   }
 }
@@ -177,6 +210,10 @@ export async function login(reader, session) {
   // no way in because a code expired mid-typing.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const code = await question(reader, 'Attach code (from NOESAR in your browser), or Enter to sign in here: ');
+    // EOF is not an empty line: an empty line means "ask me for credentials instead", and a
+    // closed stdin means there is nobody to ask. Falling through here would walk the whole
+    // credential path against input that has already ended.
+    if (code === null) throw Object.assign(new Error('input ended before sign-in completed'), { kind: 'NO_INPUT' });
     if (!code.trim()) break;
     try {
       const attached = await session.call('auth.attach', { code });
@@ -185,20 +222,65 @@ export async function login(reader, session) {
       console.error(`Attach failed: ${error.message}`);
     }
   }
-  const username = await question(reader, 'Username: ');
+  const username = required(await question(reader, 'Username: '), 'a username');
   // Not masked: doing that correctly needs raw mode, which only exists on a real TTY and
   // would have to be a no-op on anything else (a pipe, a test harness, some SSH clients'
   // non-interactive mode) — worth doing properly later, not as an undocumented readline
   // internal hooked in without knowing it holds across Node versions.
-  const password = await question(reader, 'Password: ');
+  const password = required(await question(reader, 'Password: '), 'a password');
   const begun = await session.call('auth.login', { username, password });
-  const totpCode = await question(reader, 'Authenticator code: ');
+  const totpCode = required(await question(reader, 'Authenticator code: '), 'a second factor');
   const confirmed = await session.call('auth.mfa', { challenge: begun.challenge, totpCode });
   // The permission set travels with the user since phase 3a, so this shell can hide the menu
   // entries the account cannot use — `CE-036`, in BOTH shells rather than only the browser.
   // A deployment that predates the field leaves `permissions` undefined, and `menuFor(null)`
   // then declares the list UNFILTERED rather than quietly showing everything as if checked.
   return { ...confirmed.user, permissions: confirmed.permissions ?? null };
+}
+
+/**
+ * The whole way in, in the order the Owner asked for (D-0348): *"apro ssh e digito solo
+ * `coden_evolution` e si apre"*.
+ *
+ *  1. A token this terminal was already issued — nothing typed, nothing displayed.
+ *  2. Failing that, `login()` exactly as before: attach code, or credentials.
+ *  3. And then, having signed in once, ask to be remembered so step 1 works next time.
+ *
+ * `credentials` is injected rather than read from the filesystem here, and that is the
+ * point: every branch below — resumed, refused-then-signed-in, signed-in-and-remembered,
+ * remembering-failed — is reachable from a test without a socket, a home directory, or a
+ * terminal. The version of this that lived inside `main()` would have had none.
+ *
+ * A stored token that the session refuses is DELETED before falling through. Leaving it
+ * would mean every future run pays a doomed round trip and prints the same failure, which is
+ * how a one-off refusal becomes a permanent error message nobody can explain.
+ */
+export async function attachSession(reader, session, credentials, { remember = true } = {}) {
+  const stored = credentials?.read ? credentials.read() : null;
+  if (stored?.token) {
+    try {
+      const resumed = await session.call('auth.resume', { token: stored.token });
+      return { user: { ...resumed.user, permissions: resumed.permissions ?? null }, via: 'remembered', remembered: true };
+    } catch (error) {
+      credentials.clear?.();
+      console.error(`This terminal was remembered, but the session refused it: ${error.message}`);
+      console.error('Signing in once will remember it again.');
+    }
+  }
+
+  const user = await login(reader, session);
+  if (!remember || !credentials?.write) return { user, via: 'signed-in', remembered: false };
+  try {
+    const issued = await session.call('auth.remember', { label: credentials.label });
+    credentials.write(issued.token);
+    return { user, via: 'signed-in', remembered: true };
+  } catch (error) {
+    // Not fatal, and deliberately not silent. The operator is already inside; what they lose
+    // is the next run being free, and a failure that says nothing here would be discovered
+    // tomorrow as "it asked me again" with nothing to look at.
+    console.error(`Could not remember this terminal: ${error.message}`);
+    return { user, via: 'signed-in', remembered: false };
+  }
 }
 
 // `plan <prose>` — the request is the sentence, and which files it touches is the engine's
@@ -546,22 +628,68 @@ function wireFunctionKeys(iface, session, state) {
   });
 }
 
+/**
+ * The local half of a remembered terminal, or null when there is nowhere to keep one.
+ *
+ * Null is a real answer and is reported to the operator rather than papered over: it means
+ * this machine gave no writable place to put a 0600 file, so the terminal will keep asking.
+ * Inventing a path here — /tmp, the current directory — would put a ninety-day bearer token
+ * somewhere nobody was told about.
+ */
+function localCredentials(env, endpoint) {
+  const located = credentialPath(env);
+  if (!located) return null;
+  return {
+    path: located.path,
+    source: located.source,
+    label: terminalLabel(),
+    read: () => readCredential(located.path, endpoint),
+    write: (token) => writeCredential(located.path, endpoint, token),
+    clear: () => clearCredential(located.path, endpoint),
+  };
+}
+
 async function main() {
   const socket = await connectSocket();
   const session = new Session(socket);
+  const credentials = localCredentials(process.env, socketPath);
+
+  // `--forget` is answered before anything asks who you are: revoking a token is a claim of
+  // possession, not of identity, and a terminal whose account was disabled must still be able
+  // to undo itself.
+  if (flags.has('--forget')) {
+    const stored = credentials?.read?.() ?? null;
+    if (stored?.token) await session.call('auth.forget', { token: stored.token }).catch(() => null);
+    const removed = credentials?.clear?.() ?? false;
+    console.log(removed || stored
+      ? 'This terminal is no longer remembered. The next run will ask you to sign in.'
+      : 'This terminal was not remembered here — nothing to forget.');
+    socket.end();
+    return;
+  }
+
   const iface = createInterface({ input: process.stdin, output: process.stdout });
   iface.setPrompt(PROMPT);
   const reader = new LineReader(iface);
 
   let user;
+  let attached;
   try {
-    user = await login(reader, session);
+    attached = await attachSession(reader, session, credentials, { remember: !flags.has('--no-remember') });
+    user = attached.user;
   } catch (error) {
     console.error(`Sign-in failed${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
     iface.close();
     socket.end();
     process.exitCode = 1;
     return;
+  }
+  if (attached.via === 'remembered') {
+    console.log('Opened from this remembered terminal — nothing to type. `coden_evolution --forget` undoes it.');
+  } else if (attached.remembered) {
+    console.log(`This terminal is now remembered (${credentials.path}). Next time \`coden_evolution\` opens straight in.`);
+  } else if (!credentials) {
+    console.log('This terminal cannot be remembered: no writable place for a private file. Set NOESAR_TERMINAL_CREDENTIAL to choose one.');
   }
   console.log(`Signed in as ${user.username} (${user.role}). Type \`help\` for commands, or \`/\` for every address in the product.\n`);
 
@@ -601,6 +729,9 @@ async function main() {
   wireFunctionKeys(iface, session, state);
   for (;;) {
     const line = await question(reader, PROMPT);
+    // Input ended — a piped session that ran out of script, or a closed pipe. Leaving is what
+    // a shell does there; waiting is what this one used to do.
+    if (line === null) break;
     let keepGoing = true;
     try { keepGoing = await dispatchCommand(reader, session, line, state); }
     catch (error) { console.error(`Error${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`); }

@@ -166,6 +166,49 @@ const ATTACH_CODE_SYMBOLS = 8;
 // read off another screen — a limit paid for entirely by the legitimate operator.
 const ATTACH_FAILURE_BUDGET = 20;
 
+// --- Remembered terminals (D-0348) ------------------------------------------------------
+//
+// The Owner's requirement, in their words: *"apro ssh e digito solo `coden_evolution` e si
+// apre"*. `D-0337` had already removed the second AUTHENTICATION; what it left behind was a
+// second GESTURE — the attach code, read off a browser and retyped at the socket. One word
+// plus one code is two things to do, and the requirement is one.
+//
+// What is NOT possible, measured in s330 rather than assumed: the session cannot ask the
+// operating system who is calling. A unix socket at 0600 answers "may this uid knock", never
+// "who are you", and Node exposes no `SO_PEERCRED`. So a terminal that opens with nothing
+// typed must present SOMETHING, and the only honest something is a secret the operator's
+// machine already holds.
+//
+// Hence enrolment, the same shape ssh keys and `gh auth login` use: the FIRST run
+// authenticates exactly as today and, on success, the terminal is issued a token it stores
+// itself. Every later run presents that token and opens. The one-time cost is stated out
+// loud instead of engineered away, because engineering it away means trusting the transport
+// to name the caller — the thing that cannot be done.
+//
+// What the token is, and what it deliberately is not:
+//  - it is a POSSESSION factor, held at 0600 by the account that will spend it;
+//  - it carries no permission of its own — it opens a session for the account that enrolled
+//    it and never for another, exactly like an attach code;
+//  - it does NOT carry elevation. `elevatedUntil` is re-earned, never inherited, so a
+//    remembered terminal still faces step-up on a sensitive action;
+//  - it is revocable by the account that owns it, and every use is dated, so "which
+//    terminals can open my session" is a question with an answer.
+//
+// Why the life is long where an attach code's is sixty seconds. They are opposite objects.
+// An attach code is read aloud off a screen and retyped, so its perimeter must be time and
+// single use. A terminal token is never displayed, never retyped, and never leaves the file
+// it was written to; its perimeter is the filesystem permission and the operator's ability
+// to revoke it. Making it expire in a minute would defeat the entire requirement.
+const TERMINAL_TOKEN_BYTES = 32;
+// Sliding, not fixed: a terminal in daily use never expires, and one abandoned for ninety
+// days stops working on its own. A fixed life would log the operator out on a date they
+// cannot predict — the exact failure this requirement exists to remove.
+const TERMINAL_ENROLMENT_IDLE_MS = 90 * 24 * 60 * 60_000;
+// Same reasoning as `ATTACH_FAILURE_BUDGET`, and the same number: against a 256-bit token
+// the limiter is not what makes guessing hopeless, so its only job is to stop a broken
+// client spinning. Set low, it would lock out the legitimate operator instead.
+const TERMINAL_FAILURE_BUDGET = 20;
+
 /**
  * Mint recovery codes. The plaintext is returned ONCE to the caller and never stored:
  * only digests are persisted, so a copy of the state file yields no working codes.
@@ -575,6 +618,153 @@ export class AuthService {
     const issued = this.createSession(user, { mfa:true });
     this.ledger.append({ actor:user.id, action:'auth.attach-succeeded', result:'success', details:{ transport:ip, fromSessionId:claimed.found.sessionId } });
     return issued;
+  }
+
+  /**
+   * Remember this terminal, so the next run opens with nothing typed (D-0348).
+   *
+   * Who may ask: a session that is ALREADY live and MFA-backed — the same three refusals as
+   * `mintAttachCode`, and for the same reason. A remembered terminal must never be a way to
+   * launder a weaker session into a durable one, so the strength of what is being persisted
+   * is checked against the session doing the persisting, not against the caller's word.
+   *
+   * The plaintext is returned ONCE and never stored. A copy of `auth.json` therefore yields
+   * no working terminal, exactly as it yields no working recovery code.
+   *
+   * @param {string} userId     the account the terminal will open
+   * @param {string} sessionId  the live session vouching for it
+   * @param {string} [label]    free text for the browser's list, never authority
+   */
+  rememberTerminal({ userId, sessionId, label }) {
+    const now = Date.now();
+    const state = this.store.read();
+    const session = state.sessions.find((item) => item.id === sessionId);
+    if (!session || session.expiresAt < now || session.idleExpiresAt < now || session.userId !== userId) {
+      throw Object.assign(new Error('No live session to remember this terminal from.'), { status:401 });
+    }
+    if (!session.mfa) {
+      this.ledger.append({ actor:userId, action:'auth.terminal-remember-denied', result:'denied', details:{ reason:'session-not-mfa' } });
+      throw Object.assign(new Error('This session cannot remember a terminal.'), { status:403 });
+    }
+    const user = state.users.find((item) => item.id === userId);
+    if (!user || !isActive(user)) throw Object.assign(new Error('No live session to remember this terminal from.'), { status:401 });
+
+    const token = randomBytes(TERMINAL_TOKEN_BYTES).toString('base64url');
+    const record = {
+      id: randomUUID(),
+      tokenDigest: tokenDigest(token),
+      userId,
+      // Trimmed and capped: this string is written by a client and displayed in the browser's
+      // list, so it is treated as data from the start rather than after someone reports it.
+      label: String(label ?? 'terminal').trim().slice(0, 64) || 'terminal',
+      createdAt: now,
+      lastUsedAt: null,
+      expiresAt: now + TERMINAL_ENROLMENT_IDLE_MS,
+      revokedAt: null,
+    };
+    this.store.update((next) => {
+      next.terminals = (next.terminals ?? []).filter((item) => !item.revokedAt && item.expiresAt > now);
+      next.terminals.push(record);
+    });
+    this.ledger.append({ actor:userId, action:'auth.terminal-remembered', result:'success', details:{ id:record.id, label:record.label } });
+    return { token, id:record.id, expiresAt:new Date(record.expiresAt).toISOString() };
+  }
+
+  /**
+   * Open a session from a remembered terminal — the call that makes the one word enough.
+   *
+   * Every refusal returns the SAME message. A caller holding a wrong token learns only that
+   * it did not work, never whether it was unknown, expired, revoked, or attached to a
+   * disabled account: four different sentences would turn this into an oracle for probing
+   * which tokens once existed.
+   *
+   * The expiry slides on use, in the same `store.update` that reads the record, so a
+   * terminal opened every day never expires and one left for ninety days stops on its own.
+   */
+  resumeTerminal({ token, ip }) {
+    const limiter = this.#rateState(ip, '@terminal-token');
+    if (limiter.entries.length >= TERMINAL_FAILURE_BUDGET) throw Object.assign(new Error('Too many attempts. Try again later.'), { status:429 });
+
+    const now = Date.now();
+    const digest = tokenDigest(String(token ?? ''));
+    const refuse = (reason, actor = 'anonymous') => {
+      this.#recordFailure(ip, '@terminal-token');
+      this.ledger.append({ actor, action:'auth.terminal-resume-failed', result:'denied', details:{ reason, transport:ip } });
+      return Object.assign(new Error('This terminal is not remembered here. Sign in once to remember it again.'), { status:401 });
+    };
+
+    // One `store.update` for find-and-slide, the shape `redeemAttachCode` documents: a
+    // `read()` then a separate `update()` would leave a window where a revocation landing in
+    // between is read as still-valid.
+    const claimed = this.store.update((next) => {
+      const found = (next.terminals ?? []).find((item) => item.tokenDigest === digest);
+      if (!found) return null;
+      if (found.revokedAt) return { found, reason:'revoked' };
+      if (found.expiresAt <= now) return { found, reason:'expired' };
+      found.lastUsedAt = now;
+      found.expiresAt = now + TERMINAL_ENROLMENT_IDLE_MS;
+      return { found, reason:null };
+    });
+
+    if (!claimed) throw refuse('unknown');
+    if (claimed.reason) throw refuse(claimed.reason, claimed.found.userId);
+
+    const user = this.store.read().users.find((item) => item.id === claimed.found.userId);
+    if (!user || !isActive(user)) throw refuse('account-not-active', claimed.found.userId);
+
+    // `mfa:true` is carried for the same reason `redeemAttachCode` carries it: remembering
+    // already refused any session that lacked a second factor, so the factor this session
+    // rests on is one the operator really passed. `elevatedUntil` is NOT carried — a
+    // remembered terminal still has to step up for a sensitive action.
+    const issued = this.createSession(user, { mfa:true });
+    this.ledger.append({ actor:user.id, action:'auth.terminal-resumed', result:'success', details:{ id:claimed.found.id, transport:ip } });
+    return issued;
+  }
+
+  /** The remembered terminals of ONE account — what the browser needs to be able to revoke. */
+  listRememberedTerminals(userId) {
+    const now = Date.now();
+    return (this.store.read().terminals ?? [])
+      .filter((item) => item.userId === userId && !item.revokedAt && item.expiresAt > now)
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        createdAt: new Date(item.createdAt).toISOString(),
+        lastUsedAt: item.lastUsedAt ? new Date(item.lastUsedAt).toISOString() : null,
+        expiresAt: new Date(item.expiresAt).toISOString(),
+      }));
+  }
+
+  /** Revoke by id, from the browser. Never crosses accounts: `userId` is part of the match. */
+  revokeRememberedTerminal({ userId, id }) {
+    const revoked = this.store.update((next) => {
+      const found = (next.terminals ?? []).find((item) => item.id === id && item.userId === userId && !item.revokedAt);
+      if (!found) return false;
+      found.revokedAt = Date.now();
+      return true;
+    });
+    if (!revoked) throw Object.assign(new Error('No such remembered terminal.'), { status:404 });
+    this.ledger.append({ actor:userId, action:'auth.terminal-revoked', result:'success', details:{ id } });
+    return { id };
+  }
+
+  /**
+   * Forget the terminal holding THIS token — the undo, spendable by whoever possesses it.
+   *
+   * Deliberately answers the same way whether or not the token matched. Possession is the
+   * only claim being made, and a truthful "there was nothing to forget" would confirm to a
+   * caller that some other token they hold is still live.
+   */
+  forgetTerminalToken({ token }) {
+    const digest = tokenDigest(String(token ?? ''));
+    const found = this.store.update((next) => {
+      const record = (next.terminals ?? []).find((item) => item.tokenDigest === digest && !item.revokedAt);
+      if (!record) return null;
+      record.revokedAt = Date.now();
+      return { id:record.id, userId:record.userId };
+    });
+    if (found) this.ledger.append({ actor:found.userId, action:'auth.terminal-forgotten', result:'success', details:{ id:found.id } });
+    return { forgotten:true };
   }
 
   authenticate(token) {

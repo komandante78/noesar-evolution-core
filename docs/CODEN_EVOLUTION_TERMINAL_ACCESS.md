@@ -78,7 +78,46 @@ the document contradicted itself and understated the product on the security-rel
 Still: reaching the socket is reaching an authenticated session's full method surface, so if a
 deployment genuinely needs it, decide the exposure question first.
 
-### 2.4 Signing in — two paths, one account
+### 2.4 Signing in — three paths, one account
+
+**A remembered terminal (`D-0348`) — the one that needs no gesture at all.** After you have
+signed in once on this machine, `coden_evolution` opens the session with **nothing typed**.
+That is the Owner's requirement for s333 point 1: *open ssh, type one word, be in*.
+
+```
+$ coden_evolution
+coden_evolution: attaching via socket (/run/codev-tui.sock)
+Connected — protocol noesar-tui/1
+Opened from this remembered terminal — nothing to type. `coden_evolution --forget` undoes it.
+Signed in as owner (owner).
+```
+
+How it works, and what it is not:
+
+- The first run signs in normally (a code, or credentials) and is then issued a **token this
+  machine stores itself**, at `0600`, under `$XDG_CONFIG_HOME` or `$HOME/.config/coden-evolution/`
+  — or, inside the product's own container where `HOME=/nonexistent`, under the workspace. If
+  no writable place resolves, the client **says so** rather than putting a bearer token
+  somewhere nobody was told about.
+- It is a **possession factor**, never displayed and never retyped. It carries no permission of
+  its own, opens a session only for the account that enrolled it, and **does not carry
+  elevation** — a sensitive action still asks you to step up.
+- Its life is **ninety days, sliding**: used daily it never expires, abandoned it dies on its
+  own. Revoke with `coden_evolution --forget`, which kills **both** the local copy and the
+  token in the store — a revocation that only deleted the local file would leave a live
+  credential behind for anyone holding a copy.
+- `coden_evolution --no-remember` opens once without enrolling.
+- A file another account on the machine could read is **refused, not used**. Once you are
+  remembered, that token *is* the authentication, so its permission is the perimeter.
+
+**Why the first sign-in cannot be skipped too.** The obvious idea — let the operating system
+say who is calling — is not available: a unix socket at `0600` answers *may this uid knock*,
+never *who are you*, and Node exposes no `SO_PEERCRED` (measured, s330). So the first run has
+to prove something; every run after it does not.
+
+**On a container installation** the sudoers rule of `08_INSTALLAZIONE.md` §12.3 pins the full
+command, so `--forget` through the elevated path needs a second rule for that argv. The
+launcher warns before it runs rather than leaving a sudo refusal to be puzzled over.
 
 **Credentials.** `auth.login` then `auth.mfa` — the identical two calls the WebUI's own HTTP
 login route makes. Needs no browser, and is what a fresh machine or a headless host uses.

@@ -118,25 +118,35 @@ usage() {
   cat >&2 <<USAGE
 $PROGRAM_NAME — open the CodeN Evolution session.
 
-  $PROGRAM_NAME          attach to this installation's session
+  $PROGRAM_NAME                attach to this installation's session
+  $PROGRAM_NAME --forget       stop this terminal being remembered; sign in again next time
+  $PROGRAM_NAME --no-remember  open once, without being remembered
 
-It takes no arguments on purpose: the container name and the client path are what this
-launcher exists to stop you from having to know. Authentication happens after you are in,
-at the session's own prompt, exactly as it does in the browser.
+It takes no OTHER arguments on purpose: the container name and the client path are what
+this launcher exists to stop you from having to know.
+
+The first run asks you to sign in — an attach code from the browser, or your credentials.
+From then on this terminal is remembered and the word alone is enough (D-0348).
 USAGE
 }
 
 # ---------------------------------------------------------------------------------------
-# Arguments: there are none. Accepting a path or a container name would put back the two
-# concepts this file was written to remove, so an unknown argument is refused rather than
-# quietly ignored.
+# Arguments — the two that undo the remembering, and nothing else.
+#
+# A path or a container name is still refused: accepting either would put back the concepts
+# this file exists to remove. `--forget` had to be sayable HERE rather than only at the
+# client, because on a container installation the operator never invokes the client — this
+# launcher is the whole product as far as they are concerned, and an undo you cannot reach
+# is not an undo.
 # ---------------------------------------------------------------------------------------
-if [ "$#" -gt 0 ]; then
+passthrough=
+while [ "$#" -gt 0 ]; do
   case $1 in
     -h|--help|help) usage; exit 0 ;;
-    *) say "takes no arguments (got '$1')"; usage; exit "$EXIT_USAGE" ;;
+    --forget|--no-remember) passthrough="$passthrough $1"; shift ;;
+    *) say "takes no arguments except --forget and --no-remember (got '$1')"; usage; exit "$EXIT_USAGE" ;;
   esac
-fi
+done
 
 # ---------------------------------------------------------------------------------------
 # Configuration — optional, written by the installation, never by the product.
@@ -230,7 +240,8 @@ if [ -n "$found_socket" ]; then
     exit "$EXIT_NO_SESSION"
   fi
   say "attaching via socket ($found_socket)"
-  exec "$node_bin" "$client" "$found_socket"
+  # shellcheck disable=SC2086 # passthrough is a word list built above, on purpose
+  exec "$node_bin" "$client" "$found_socket" $passthrough
 fi
 note_attempt "socket: none of the candidate paths is a live socket for this process"
 
@@ -340,6 +351,16 @@ else
   tty_flags="-i"
 fi
 
+# The sudoers rule the recipe installs pins a FULL argv with no wildcard — that is what makes
+# the elevation narrow enough to be worth having (§12.3). An extra word therefore produces an
+# argv the rule does not match, and sudo refuses. Said here, once, rather than left to be
+# discovered as an unexplained "sorry, user coden is not allowed to execute".
+if [ -n "$passthrough" ] && [ -n "$elevate_prefix" ]; then
+  say "note: this installation elevates through sudo, and the rule pins the exact command."
+  say "If the next line is a sudo refusal, add the '$passthrough' form as a second rule"
+  say "in /etc/sudoers.d/coden-evolution (08_INSTALLAZIONE.md §12.3)."
+fi
+
 say "attaching via $engine ($container)"
-# shellcheck disable=SC2086 # tty_flags and elevate_prefix are word lists built above, on purpose
-exec $elevate_prefix "$engine" exec $tty_flags "$container" "$remote_launcher"
+# shellcheck disable=SC2086 # tty_flags, elevate_prefix and passthrough are word lists built above, on purpose
+exec $elevate_prefix "$engine" exec $tty_flags "$container" "$remote_launcher" $passthrough
