@@ -33,6 +33,11 @@ const required = [
   'tools/emit-conformance-report.mjs',
   'tools/run-secret-scan.sh',
   'tools/test-powershell-installers.ps1',
+  // The access gesture (phase 8). Both spellings are required together on purpose: a
+  // repository that carries only the POSIX launcher would satisfy every test on this host
+  // and still leave a Windows installation with no entrance at all.
+  'tools/coden-evolution',
+  'tools/coden-evolution.ps1',
   '.gitleaks.toml',
   'rust/crates/noesar-reasoning/src/lib.rs',
   'rust/crates/noesar-reasoning-reference/src/lib.rs',

@@ -219,3 +219,120 @@ Severità: **C**ritica / **A**lta / **M**edia.
 | `INST-008` | Aggiornamento: rifiuta rollback e mix-and-match, verifica firma/digest, diff dei permessi, richiede autorizzazione esplicita | **A** | `tools/cbom.mjs`, `generate-mlbom.mjs`, `sign/verify-release-artifact.mjs` — firma Ed25519 verificata `D-0208`; diff dei permessi in `tools/generate-permission-surface.mjs`+`verify-permission-diff.mjs`, `D-0245` | ⚠ **quasi completo**: firma, provenienza e diff dei permessi tutti costruiti e provati; resta da collegare il diff dei permessi allo stesso passo che verifica firma/digest in un'unica pipeline di aggiornamento — oggi sono due strumenti CLI distinti, non un solo comando |
 | `INST-009` | Igiene container: a fine fase sopravvivono esattamente due container di progetto (installazione + un rollback) | **A** | conteggio `docker ps -a` a chiusura fase | ✅ osservato e mantenuto per ogni fase di questa sessione |
 | `INST-010` | Installer multipiattaforma: hardening e filtri di packaging non regrediscono | **A** | `tools/test-installer-hardening.mjs`, `tools/test-cross-platform-installers.mjs`, `tools/test-packaging-filters.mjs` | ✅ 100/100 + 73/73 (windows non eseguito) — misurato `2026-07-27` |
+
+---
+
+## 12. `coden_evolution` — l'accesso in una parola
+
+**Il gesto, fissato dall'Owner** (`16` §4.2b): si apre `ssh` dalla stessa rete, si scrive
+`coden_evolution`, parte la sessione. Nient'altro. L'autenticazione **resta e sta dentro**:
+è una domanda dopo essere entrati, con lo stesso secondo fattore del browser, non un
+ostacolo da superare per arrivare al programma.
+
+**Cosa dà il prodotto, e cosa dà l'installazione.** Il confine non si attraversa: il prodotto
+fornisce un avviatore che trova la sessione da solo e **non modifica mai la configurazione
+dell'host**; l'installazione fornisce l'utente di sistema e la regola del demone `ssh`, che
+un essere umano applica. Il prodotto non possiede la macchina su cui gira.
+
+| Livello | File | Chi lo mette |
+|---|---|---|
+| Prodotto | `tools/coden-evolution` (POSIX), `tools/coden-evolution.ps1` (Windows) | spediti nell'immagine |
+| Installazione | l'utente `coden`, la regola `sshd`, l'eventuale regola di elevazione | **questa ricetta** |
+
+### 12.1 Come l'avviatore trova la sessione
+
+Non presume nulla e prova tre gradini in ordine, **dichiarando su `stderr` quale ha usato**:
+
+| Gradino | Quando vince | Cosa fa |
+|---|---|---|
+| `socket` | esiste un socket che questo processo può già raggiungere | avvia il client del terminale su quel socket |
+| `engine` | no socket: la sessione è dentro un contenitore | trova il motore (`docker`, `podman`, `nerdctl` — il primo che **risponde**, non il primo installato), trova il contenitore dalla **label** `org.noesar.authority=reference-node`, e rientra in sé stesso lì dentro |
+| dichiarazione | niente ha funzionato | elenca cosa ha provato e cosa ha risposto, e rimanda a questa sezione |
+
+Codici d'uscita: `2` argomento rifiutato · `3` nessuna sessione · `4` più di una installazione
+(le nomina, **non ne sceglie una**).
+
+### 12.2 Configurazione (facoltativa, dell'installazione)
+
+`/etc/noesar-evolution/launcher.conf` — cinque chiavi, lette una a una. Il file **non viene
+mai eseguito né incluso**: una riga che non è una di queste chiavi è ignorata.
+
+```text
+socket=/percorso/del/socket        # solo per installazioni da sorgenti
+engine=docker                      # salta la scoperta
+container=noesar-evolution         # obbligatorio se sull'host gira più di una installazione
+elevate=sudo                       # solo dove serve la regola di §12.4
+remote_launcher=/opt/noesar/tools/coden-evolution
+```
+
+### 12.3 La ricetta, per famiglia di sistema
+
+**Passo comune — prendere l'avviatore.** Su una macchina che ha solo l'immagine e nessun
+repository, l'avviatore si estrae dall'immagine, che è il motivo per cui è spedito:
+
+```sh
+docker cp "$(docker create --name coden-extract noesar-evolution:<tag>):/opt/noesar/tools/coden-evolution" /usr/local/bin/coden_evolution
+docker rm coden-extract
+chmod 0755 /usr/local/bin/coden_evolution
+```
+
+**Linux con systemd** (Debian, Ubuntu, Fedora, RHEL, Arch, SUSE):
+
+```sh
+useradd --system --create-home --shell /usr/sbin/nologin coden
+install -d -m 0755 /etc/noesar-evolution
+printf 'engine=docker\ncontainer=noesar-evolution\n' > /etc/noesar-evolution/launcher.conf
+cat > /etc/ssh/sshd_config.d/60-coden-evolution.conf <<'CONF'
+Match User coden
+    ForceCommand /usr/local/bin/coden_evolution
+    PermitTTY yes
+    AllowTcpForwarding no
+    X11Forwarding no
+CONF
+systemctl reload sshd
+```
+
+**Linux senza systemd** (Alpine, Void, Devuan, e le distribuzioni minimali): identica, ma
+`sshd_config.d/` può non essere incluso — si verifica che `/etc/ssh/sshd_config` contenga
+`Include /etc/ssh/sshd_config.d/*.conf`, e se non c'è si scrive il blocco `Match` in fondo a
+`sshd_config`. Il reload è `rc-service sshd reload` o `service sshd reload`.
+
+**macOS:** l'accesso remoto si abilita da *Impostazioni › Generali › Condivisione › Accesso
+remoto*; `sshd_config` sta in `/etc/ssh/sshd_config` e il blocco `Match` è lo stesso. Il
+percorso dell'avviatore può contenere spazi ed è previsto.
+
+**Windows:** si installa `OpenSSH Server` da *Impostazioni › App › Funzionalità
+facoltative*; la configurazione sta in `%ProgramData%\ssh\sshd_config` e il file di
+configurazione dell'avviatore in `%ProgramData%\noesar-evolution\launcher.conf`. Il comando
+forzato è `powershell -NoProfile -File C:\Program Files\noesar-evolution\coden-evolution.ps1`.
+**Dichiarato:** il gemello PowerShell **non è mai stato eseguito** — non c'è PowerShell sulla
+macchina su cui è stato scritto, ed è coperto da sole asserzioni strutturali. Il livello di
+verifica per un'installazione Windows è **UNVERIFIED** finché qualcuno non lo esegue su un
+host Windows vero.
+
+### 12.4 L'elevazione — una regola sola, senza jolly
+
+> **L'utente dedicato NON entra nel gruppo del motore di contenitori.** Quel gruppo equivale
+> all'amministrazione della macchina: si otterrebbe una shell del prodotto regalando l'host
+> (`16` §4.3, trappola 2).
+
+Dove serve, si concede **una riga**, con l'argv intero e nessun carattere jolly — possibile
+solo perché motore e contenitore vengono dal file di configurazione, di proprietà di root:
+
+```text
+# /etc/sudoers.d/coden-evolution — 0440, visudo -c prima di installarlo
+coden ALL=(root) NOPASSWD: /usr/bin/docker exec -i noesar-evolution /opt/noesar/tools/coden-evolution
+```
+
+e nel file di configurazione si aggiunge `elevate=sudo`. L'avviatore usa `sudo -n`: sotto un
+comando forzato non c'è nessuno a cui chiedere una password, e un avviatore che si blocca su
+un prompt invisibile è indistinguibile da uno rotto.
+
+### 12.5 Le due trappole che restano
+
+1. **Il socket non si pubblica sull'host.** È la porta del motore senza alcuno strato HTTP
+   davanti; a limitarlo è il permesso `0600` dentro lo spazio dei nomi del contenitore.
+   L'avviatore **va al socket, non lo sposta**: nessun passo di questa ricetta lo espone.
+2. **Su alcuni sistemi la configurazione del demone non sopravvive al riavvio.** Dopo aver
+   applicato la ricetta si **riavvia la macchina e si riprova**, prima di considerarla fatta.
+   Un'installazione che si scopre rotta al primo riavvio è la stessa cosa di una non fatta.

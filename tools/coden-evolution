@@ -1,0 +1,322 @@
+#!/usr/bin/env sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# coden_evolution — the whole access gesture, in one word.
+#
+# Measured before this file existed (2026-08-07, on the live installation): reaching the
+# session required three concepts at once — being able to talk to the container engine,
+# knowing the container is called `noesar-evolution`, and knowing the client lives at
+# /opt/noesar/tools/tui-client.mjs. Both sockets are `srw-------` on the container's own
+# tmpfs, so nothing on the host points at them. That is a maintainer's entrance, not a
+# product's (16 §4.1). This launcher replaces all three with typing one word.
+#
+# WHAT THIS FILE IS NOT ALLOWED TO DO — the platform law, and 16 §4.3, in code:
+#
+#   * It never publishes the socket on the host. It goes to the socket; it does not move it.
+#   * It never adds anyone to the group that controls the container engine. That group is
+#     administration of the machine; a shell of the product is not worth the host.
+#   * It never edits sshd, sudoers, a unit file, a group, or anything else outside itself.
+#     Those belong to the INSTALLATION recipe (MASTER_PROJECT/08_INSTALLAZIONE.md §12),
+#     which a human applies. The product does not own the host it runs on.
+#   * It never `eval`s or dot-sources its configuration file. A launcher that sources a
+#     config runs whatever is in that file as the ssh user, which would make the config a
+#     second, undeclared authority. Values are read with `case`, one key at a time.
+#
+# HOW IT FINDS THE SESSION — detect at runtime, never presume (platform law, points 1-4).
+# The rungs are tried in order and the one that succeeded is DECLARED on stderr, because
+# "which level is active" is per-installation and must never be left to be inferred:
+#
+#   1. socket   a live socket this process can already reach. True inside the container,
+#               and true for a from-source installation where the product runs as a host
+#               process. Needs `node` and the client next to this file.
+#   2. engine   no reachable socket, so the session is inside a container: find an engine
+#               (docker, podman, nerdctl — whichever answers), find the container by its
+#               product LABEL rather than by a name anybody had to memorise, and re-enter
+#               this same launcher inside it, where rung 1 then succeeds.
+#   3. declare  nothing worked: say what was tried and what each attempt returned, name
+#               the recipe, and exit non-zero. Never a stack trace, never a guess.
+#
+# The elevation question, answered once. On a container installation the ssh user is NOT
+# in the engine's group (trap 2 above), so the engine call needs one narrow elevation. The
+# authority for that is the sudoers rule the recipe installs, NOT this file: the rule pins
+# a FULL argv with no wildcard, and this launcher can only ever produce that exact argv
+# because the engine path and the container name come from the root-owned config file. If
+# someone points $NOESAR_EVOLUTION_LAUNCHER_CONF at a config of their own, the argv stops
+# matching the rule and sudo refuses. `sudo -n` is deliberate: under a forced command there
+# is no one to type a password to, and a launcher that hangs on a hidden prompt looks
+# exactly like a launcher that is broken.
+set -u
+
+PROGRAM_NAME=coden_evolution
+EXIT_USAGE=2
+EXIT_NO_SESSION=3
+EXIT_AMBIGUOUS=4
+
+# Where this file actually is — which is not the same question as what it was invoked as.
+#
+# Found by running it, not by reading it: the image installs /usr/local/bin/coden_evolution
+# as a symlink so the one word works inside the container, and the first version of this
+# resolution took `$0` at face value. It therefore looked for the terminal client next to the
+# LINK and reported it missing — the identical failure to phase 5's unshipped client, reached
+# from the other direction, and invisible to a suite that only ever invoked the file directly.
+#
+# `readlink` is used opportunistically, never depended on: where it is absent (or where the
+# path is not a link at all) the loop simply does not run and the unresolved path is used,
+# which is correct for every direct invocation. The hop limit is there because a symlink
+# cycle is a hang otherwise, and a launcher that hangs looks exactly like one that is broken.
+# There was a `command -v "$0"` branch here for the bare-word-off-PATH case, and it was
+# removed after measuring rather than kept for comfort: for a `#!` script the KERNEL discards
+# the caller's argv[0] and substitutes the path it was exec'd with, so `$0` is never the bare
+# word — proved by forcing argv[0] to a bare name and reading `$0` back (it came out as the
+# full path), and by the contrast case of a non-shebang binary, where the forced name DOES
+# survive. A branch nothing can reach is a branch no test can tell from its absence, which is
+# exactly how the mutation that deleted it survived.
+launcher_path=$0
+
+link_hops=0
+while [ -L "$launcher_path" ] && [ "$link_hops" -lt 32 ]; do
+  link_target=$(readlink -- "$launcher_path" 2>/dev/null) || break
+  [ -n "$link_target" ] || break
+  case $link_target in
+    /*) launcher_path=$link_target ;;
+    *)  launcher_path=${launcher_path%/*}/$link_target ;;
+  esac
+  link_hops=$((link_hops + 1))
+done
+
+case $launcher_path in
+  */*) launcher_dir=$(CDPATH= cd -- "${launcher_path%/*}" && pwd) ;;
+  *)   launcher_dir=$(CDPATH= cd -- . && pwd) ;;
+esac
+
+say() { printf '%s: %s\n' "$PROGRAM_NAME" "$1" >&2; }
+
+usage() {
+  cat >&2 <<USAGE
+$PROGRAM_NAME — open the CodeN Evolution session.
+
+  $PROGRAM_NAME          attach to this installation's session
+
+It takes no arguments on purpose: the container name and the client path are what this
+launcher exists to stop you from having to know. Authentication happens after you are in,
+at the session's own prompt, exactly as it does in the browser.
+USAGE
+}
+
+# ---------------------------------------------------------------------------------------
+# Arguments: there are none. Accepting a path or a container name would put back the two
+# concepts this file was written to remove, so an unknown argument is refused rather than
+# quietly ignored.
+# ---------------------------------------------------------------------------------------
+if [ "$#" -gt 0 ]; then
+  case $1 in
+    -h|--help|help) usage; exit 0 ;;
+    *) say "takes no arguments (got '$1')"; usage; exit "$EXIT_USAGE" ;;
+  esac
+fi
+
+# ---------------------------------------------------------------------------------------
+# Configuration — optional, written by the installation, never by the product.
+# Parsed without eval: only these five keys are recognised, anything else is ignored, and
+# a value is a literal string. `#` starts a comment, blank lines are skipped.
+# ---------------------------------------------------------------------------------------
+conf_socket=
+conf_engine=
+conf_container=
+conf_elevate=
+conf_remote_launcher=
+
+conf_file=${NOESAR_EVOLUTION_LAUNCHER_CONF:-/etc/noesar-evolution/launcher.conf}
+if [ -f "$conf_file" ] && [ -r "$conf_file" ]; then
+  while IFS= read -r conf_line || [ -n "$conf_line" ]; do
+    case $conf_line in
+      ''|'#'*) continue ;;
+      socket=*)          conf_socket=${conf_line#socket=} ;;
+      engine=*)          conf_engine=${conf_line#engine=} ;;
+      container=*)       conf_container=${conf_line#container=} ;;
+      elevate=*)         conf_elevate=${conf_line#elevate=} ;;
+      remote_launcher=*) conf_remote_launcher=${conf_line#remote_launcher=} ;;
+      *) ;;
+    esac
+  done < "$conf_file"
+fi
+
+# ---------------------------------------------------------------------------------------
+# Rung 1 — a socket this process can already reach.
+#
+# The candidate list is the product's own resolution order, not a new vocabulary:
+# NOESAR_TUI_SOCKET_PATH is the variable codev-child.mjs and tui-client.mjs already read,
+# and `<workspace>/tui.sock` is what codev-child.mjs falls back to. /run/codev-tui.sock is
+# last because it is only ever reachable from inside the container — which is precisely
+# where rung 2 lands.
+# ---------------------------------------------------------------------------------------
+attempts=
+
+note_attempt() {
+  if [ -z "$attempts" ]; then attempts="  - $1"; else attempts="$attempts
+  - $1"; fi
+}
+
+# Newline-separated, and read back a whole line at a time: a candidate is a filesystem
+# path and paths contain spaces. This project's own cross-platform installer test exists
+# because the macOS destination path has a space in it, so splitting on whitespace here
+# would have been a defect that only ever shows up on one operating system.
+socket_candidates=
+add_candidate() {
+  [ -n "${1:-}" ] || return 0
+  if [ -z "$socket_candidates" ]; then socket_candidates=$1; else socket_candidates="$socket_candidates
+$1"; fi
+}
+
+add_candidate "${NOESAR_TUI_SOCKET_PATH:-}"
+add_candidate "$conf_socket"
+if [ -n "${NOESAR_WORKSPACE:-}" ]; then add_candidate "${NOESAR_WORKSPACE}/tui.sock"; fi
+add_candidate "$launcher_dir/../.workspace/tui.sock"
+add_candidate "/run/codev-tui.sock"
+
+found_socket=
+while IFS= read -r candidate; do
+  [ -n "$candidate" ] || continue
+  if [ -S "$candidate" ]; then
+    found_socket=$candidate
+    break
+  fi
+done <<CANDIDATES
+$socket_candidates
+CANDIDATES
+
+if [ -n "$found_socket" ]; then
+  # Beside this file first; then, only if that fails, the runtime root the product declares
+  # for itself. The second candidate is not a hard-coded path — NOESAR_RUNTIME_ROOT is the
+  # image's own variable, so a repackaged installation that moves /opt/noesar moves this with
+  # it, and an installation that does not set it never reaches this line.
+  client=$launcher_dir/tui-client.mjs
+  if [ ! -f "$client" ] && [ -n "${NOESAR_RUNTIME_ROOT:-}" ] && [ -f "${NOESAR_RUNTIME_ROOT}/tools/tui-client.mjs" ]; then
+    client=${NOESAR_RUNTIME_ROOT}/tools/tui-client.mjs
+  fi
+  if [ ! -f "$client" ]; then
+    # This is not hypothetical: until phase 5 the image shipped no client at all, so the
+    # socket sat listening with nothing able to speak to it. Refusing loudly here is the
+    # guard against that class returning.
+    say "found the session socket at $found_socket but the client is missing: $client"
+    exit "$EXIT_NO_SESSION"
+  fi
+  node_bin=$(command -v node 2>/dev/null || true)
+  if [ -z "$node_bin" ]; then
+    say "found the session socket at $found_socket but no 'node' on PATH to reach it with"
+    exit "$EXIT_NO_SESSION"
+  fi
+  say "attaching via socket ($found_socket)"
+  exec "$node_bin" "$client" "$found_socket"
+fi
+note_attempt "socket: none of the candidate paths is a live socket for this process"
+
+# ---------------------------------------------------------------------------------------
+# Rung 2 — the session is inside a container.
+#
+# The engine is discovered, never presumed: three are tried in a fixed order and the first
+# one that actually ANSWERS is used. Being on PATH is not enough — a `docker` shim that
+# cannot reach a daemon is common on hosts where the engine was removed or is rootless and
+# not running, and treating it as present would turn a clear failure into a confusing one.
+# ---------------------------------------------------------------------------------------
+elevate_prefix=
+case $conf_elevate in
+  sudo)
+    sudo_bin=$(command -v sudo 2>/dev/null || true)
+    if [ -z "$sudo_bin" ]; then
+      say "configuration asks for elevate=sudo but no 'sudo' is on PATH"
+      exit "$EXIT_NO_SESSION"
+    fi
+    elevate_prefix="$sudo_bin -n"
+    ;;
+  ''|none) ;;
+  *) say "unknown elevate='$conf_elevate' in $conf_file (expected 'sudo' or 'none')"; exit "$EXIT_USAGE" ;;
+esac
+
+engine=
+if [ -n "$conf_engine" ]; then
+  engine_candidates=$conf_engine
+else
+  engine_candidates="docker podman nerdctl"
+fi
+
+for engine_candidate in $engine_candidates; do
+  engine_bin=$(command -v "$engine_candidate" 2>/dev/null || printf '%s' "$engine_candidate")
+  [ -x "$engine_bin" ] || { note_attempt "engine: '$engine_candidate' is not on PATH"; continue; }
+  if $elevate_prefix "$engine_bin" version >/dev/null 2>&1; then
+    engine=$engine_bin
+    break
+  fi
+  note_attempt "engine: '$engine_candidate' is installed but did not answer (daemon down, or this account may not talk to it)"
+done
+
+if [ -z "$engine" ]; then
+  say "no session found."
+  printf '%s\n' "$attempts" >&2
+  say "see MASTER_PROJECT/08_INSTALLAZIONE.md §12 for the recipe for this operating system"
+  exit "$EXIT_NO_SESSION"
+fi
+
+# The container is found by the product label the image already carries, so nobody has to
+# know or type its name. A name is still accepted from the configuration, because an
+# installation that runs two instances must be able to say which one this account opens.
+if [ -n "$conf_container" ]; then
+  container=$conf_container
+else
+  container=$($elevate_prefix "$engine" ps \
+    --filter 'label=org.noesar.authority=reference-node' \
+    --filter 'status=running' \
+    --format '{{.Names}}' 2>/dev/null || true)
+fi
+
+if [ -z "$container" ]; then
+  say "no session found."
+  note_attempt "container: '$engine' answered, but no running container carries label org.noesar.authority=reference-node"
+  printf '%s\n' "$attempts" >&2
+  say "see MASTER_PROJECT/08_INSTALLAZIONE.md §12 for the recipe for this operating system"
+  exit "$EXIT_NO_SESSION"
+fi
+
+# More than one match is not resolved by picking the first. Guessing which installation an
+# operator meant is the kind of silent choice this project keeps finding in postmortems.
+#
+# Counted and printed with shell builtins rather than `grep -c` and `sed`. Not style: this
+# launcher is the FIRST thing that runs on an installation, and the fewer external programs
+# it needs the fewer ways it has to fail on a host that is smaller than the one it was
+# written on. `sh` and `cat` are all that is left.
+container_count=0
+container_first=
+while IFS= read -r container_line; do
+  [ -n "$container_line" ] || continue
+  container_count=$((container_count + 1))
+  [ -n "$container_first" ] || container_first=$container_line
+done <<MATCHES
+$container
+MATCHES
+
+if [ "$container_count" -gt 1 ]; then
+  say "more than one running installation matched:"
+  while IFS= read -r container_line; do
+    [ -n "$container_line" ] || continue
+    printf '  - %s\n' "$container_line" >&2
+  done <<MATCHES
+$container
+MATCHES
+  say "name the one this account opens with container=<name> in $conf_file"
+  exit "$EXIT_AMBIGUOUS"
+fi
+container=$container_first
+
+remote_launcher=${conf_remote_launcher:-/opt/noesar/tools/coden-evolution}
+
+# -t only when there is a terminal to allocate. Under `ssh` with PermitTTY there is; under
+# a pipe (an installation check, a test) there is not, and asking for one there fails.
+if [ -t 0 ]; then
+  tty_flags="-i -t"
+else
+  tty_flags="-i"
+fi
+
+say "attaching via $engine ($container)"
+# shellcheck disable=SC2086 # tty_flags and elevate_prefix are word lists built above, on purpose
+exec $elevate_prefix "$engine" exec $tty_flags "$container" "$remote_launcher"

@@ -4313,3 +4313,87 @@ Nessuna immagine di prova, nessuna rete nuova, container usa-e-getta di validazi
 nessuna run — crearne una richiede le credenziali dell'Owner, che questa sessione non ha. La
 durabilità è provata contro il server vero da `tools/restart-durability-smoke.mjs`, non contro
 i dati dell'Owner.
+
+---
+
+## Fase 8 — `coden_evolution`, l'accesso in una parola (`D-0340`, 2026-08-07)
+
+**L'ultima fase di `MASTER_PROJECT/17`.** Riaperta su istruzione esplicita dell'Owner.
+
+**Misura PRIMA, presa sull'installazione viva e non ricordata:** entrambi i socket sono
+`srw-------` sul tmpfs `/run` **del container**, quindi sull'host non c'è nulla che li indichi;
+per arrivare alla sessione servivano tre concetti insieme — poter parlare col motore di
+contenitori, sapere che il container si chiama `noesar-evolution`, sapere che il client sta in
+`/opt/noesar/tools/tui-client.mjs`.
+
+**Misura DOPO:** una parola, e l'avviatore **dichiara** su `stderr` quale gradino ha usato.
+
+**Consegnato (6 file, +1152 righe, nessuna riga rimossa da altro):**
+
+| File | Cosa |
+|---|---|
+| `tools/coden-evolution` | l'avviatore, POSIX `sh`, tre gradini, tre sole dipendenze esterne (`sh`, `cat`, e `readlink` solo se il proprio percorso è un link) |
+| `tools/coden-evolution.ps1` | il gemello Windows — **mai eseguito**, vedi sotto |
+| `MASTER_PROJECT/08_INSTALLAZIONE.md` §12 | la ricetta, per famiglia di sistema, più la regola `sudoers` a argv fisso |
+| `oci/Dockerfile` | l'avviatore è **spedito**, `chmod 0755`, e collegato a `/usr/local/bin/coden_evolution` |
+| `services/reference-control-plane/test/launcher-portability.test.mjs` | 33 casi, `CE-031`/`CE-032`/`CE-035` |
+| `tools/verify-source.mjs` | entrambe le grafie fra le fonti richieste |
+
+**Verifiche eseguite in questa sessione:** unit **1949 (1948 pass, 0 fail, 1 skip
+preesistente)**; ESLint **340 file, 0 errori 0 avvisi**; `verify-source` **PASS**;
+`shellcheck` v0.10.0 da container usa-e-getta → **solo `SC1007`**, due volte, entrambe
+sull'idioma corretto `CDPATH= cd` che `scripts/test.sh` già usa (**dismesso con motivo**);
+**20 mutazioni contro una baseline provata verde prima, 19 uccise**, l'unica sopravvissuta
+irraggiungibile per costruzione e documentata; scansione segreti su **322 commit → 6 reperti,
+tutti preesistenti** (`B-011`, EVIDENCE di `D-0325` e precedenti), **zero** nei file di questa
+fase — verificato per file, non assunto.
+
+**Prova reale, non simulata.** Immagine usa-e-getta costruita **dall'immagine viva** con le
+due righe di spedizione aggiunte: `sha256` dell'avviatore **identico repo↔immagine**
+(`c65215c5…`), la parola risolve su `PATH` dentro il container, e attraverso il symlink
+l'avviatore raggiunge il **client vero**, che si connette (`protocol noesar-tui/1`) e arriva al
+prompt di autenticazione del prodotto — cioè l'autorizzazione «che sta dentro» di `16` §4.2b.
+Poi il gradino host→container sull'host reale, **compresa la guardia dell'ambiguità che ha
+sparato davvero** quando due container portavano la stessa label.
+
+**Difetto vero trovato eseguendo, non leggendo, e riparato qui.** Invocato tramite il symlink
+`/usr/local/bin/coden_evolution`, `$0` è il **link**: l'avviatore cercava il client accanto al
+link e lo dichiarava mancante — la stessa identica avaria della fase 5, raggiunta dal lato
+opposto. **La suite era verde**, perché ogni test invocava il file direttamente e nessuno
+attraverso un link. Riparata la causa (risoluzione portabile dei symlink; più il fallback sul
+`NOESAR_RUNTIME_ROOT` che il prodotto dichiara da sé) e aggiunto il test di regressione che
+mancava.
+
+**Codice morto rimosso invece che coperto.** Un ramo `command -v "$0"` per l'invocazione a
+parola nuda: misurato che il kernel, per uno script con shebang, **scarta `argv[0]`** e
+sostituisce il percorso dell'exec, quindi quel caso non può accadere. Tolto.
+
+**NON FATTO, e detto chiaramente:**
+
+1. **La riga di verifica di `CE-035` chiede un accesso reale da una SECONDA macchina della
+   rete. Non è stato eseguito.** Richiede di applicare la ricetta §12 a questo host — creare
+   un utente di sistema e modificare `sshd_config` — cioè esattamente la modifica all'host che
+   la legge di piattaforma vieta al prodotto. **È dell'Owner**, e la ricetta è ciò che gli
+   serve. Finché non avviene, `CE-031` e `CE-035` restano **provati per costruzione e per
+   container, non per accesso remoto**.
+2. **Windows è `UNVERIFIED`.** Non c'è PowerShell su questa macchina (misurato) e la regola 45
+   vieta di installarlo: il gemello è coperto da sole asserzioni strutturali, con i commenti
+   rimossi da entrambi i dialetti prima del confronto, ed è **riportato come STATIC, mai come
+   passato**.
+3. **Nessun deploy.** L'immagine in produzione non contiene ancora l'avviatore: è una decisione
+   dell'Owner, non un passo di questa fase.
+
+**Pulizia (§5a), eseguita e misurata.** Rimossi: `noesar-evolution-phase8-probe`,
+`noesar-evolution:phase8-launcher-probe`, `koalaman/shellcheck:v0.10.0` — e un container
+**auto-nominato** (`quizzical_thompson`) nato dal `docker run --rm` della prova end-to-end:
+`--rm` scatta **all'uscita**, e quella prova era stata interrotta uccidendo il client `docker`,
+non il container. È esattamente il motivo per cui l'inventario si scrive prima e i
+sopravvissuti si contano dopo, invece di fidarsi di `--rm`.
+
+Sopravvivono **esattamente due** container di progetto: `noesar-evolution` (in esecuzione,
+`healthy`) e **un solo** rollback, `noesar-evolution-old-point4b`. Volumi **identici**
+all'inventario pre-pulizia; reti invariate (`noesar-evolution-net`, `noesar-e2e-net`, e
+`noesar-local` che **non appartiene a questo progetto** e non è stata toccata). Diff dei nomi
+dei container prima↔dopo: gli **unici** assenti sono i due probe, nessuno aggiunto. Nessun
+comando `prune`, mai. Prodotto ancora vivo dopo la pulizia: `running healthy`, `/livez` **200**,
+`/readyz` **200**, e il socket del terminale ancora servito (`srw------- /run/codev-tui.sock`).

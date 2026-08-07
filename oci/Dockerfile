@@ -165,6 +165,15 @@ COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # `coden-address-views.mjs` so both terminal shells could render them, and the closure test
 # failed on this line before any container was built.
 COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs /opt/noesar/tools/
+# The launcher (phase 8). Shipped for a reason the import-closure guard above cannot see,
+# because it is not a module and nothing imports it: on a container installation this is the
+# file the HOST-side launcher re-enters the container to run, so an image without it turns
+# rung 2 into `exec: no such file or directory` — which is precisely what phase 5's missing
+# client looked like from outside the container. It is also how the recipe OBTAINS the
+# host-side copy on a machine that has no repository, only the image.
+# `launcher-portability.test.mjs` ties this line to the launcher, so the fourth occurrence
+# of that class fails before a container is built.
+COPY --chown=10001:10001 tools/coden-evolution /opt/noesar/tools/coden-evolution
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
@@ -176,6 +185,16 @@ COPY --chown=10001:10001 docs/governance/technology-radar-seed.json /opt/noesar/
 COPY --from=rust-builder /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord
 COPY --from=rust-builder /build/rust/target/release/noesar-sandbox /opt/noesar/bin/noesar-sandbox
 RUN chmod 0755 /opt/noesar/bin/noesar-supervisord /opt/noesar/bin/noesar-sandbox
+
+# The gesture, inside the container too. `docker exec <c> coden_evolution` and a terminal
+# opened into the container both get the same one word the host gets — the underscore is the
+# Owner's, fixed in `16` §4.2b, while the repository file keeps the hyphen every other tool
+# in tools/ uses. Two spellings of one file, and the symlink is where they meet, so no copy
+# can drift from the other. Executable bit set explicitly rather than inherited: a COPY
+# preserves the source mode, and a repository checked out on a filesystem that does not
+# carry the bit (a Windows build host) would otherwise ship a launcher nobody can run.
+RUN chmod 0755 /opt/noesar/tools/coden-evolution \
+ && ln -sf /opt/noesar/tools/coden-evolution /usr/local/bin/coden_evolution
 
 ENV NODE_ENV=production \
     NOESAR_RUNTIME_ROOT=/opt/noesar \

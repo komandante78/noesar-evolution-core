@@ -7550,3 +7550,111 @@ installation after the deploy.
 **The lesson worth keeping, because it is not about sockets.** A test that asserts the value a
 system currently has, rather than the property it must hold, converts a defect into a
 requirement. This one did that for five phases, and every suite stayed green the whole time.
+
+---
+
+## D-0340 — `coden_evolution`: the access gesture becomes one word (2026-08-07)
+
+**Phase 8 of `MASTER_PROJECT/17`, the last one.** Reopened on an explicit Owner instruction;
+it had been stopped since s326.
+
+**What was measured first, on the live installation, before a line was written.** Both
+sockets are `srw-------` on the container's own `/run` tmpfs — nothing on the host points at
+them. Reaching the session therefore needed three concepts at once: permission to talk to the
+container engine, the container's name, and the client's path inside it. `D-0301` had proved
+the socket works and the client is shipped; it had never proved that anyone who is not an
+administrator of the host can get to either, and no matrix row asked.
+
+**The decision: what the product owns, and what the installation owns.** The product ships a
+launcher that FINDS the session and attaches to it, and never touches the host. The recipe —
+the system user, the `sshd` rule, the one elevation rule — is applied by a human and lives in
+`MASTER_PROJECT/08_INSTALLAZIONE.md` §12. This is the platform law, not a preference: the
+product does not own the machine it runs on, in any installation.
+
+**The launcher detects, it does not presume** (platform law, points 1–4). Three rungs, in
+order, and the one that won is declared on stderr because "which level is active" is a
+per-installation fact:
+
+| Rung | Wins when | What it does |
+|---|---|---|
+| `socket` | a socket this process can already reach | runs the terminal client on it |
+| `engine` | no socket, so the session is in a container | finds the engine that *answers* (not the first installed), finds the container by the **label** the image already carries, and re-enters itself inside it |
+| declaration | nothing worked | lists what was tried and what each returned, names the recipe, exits 3 |
+
+Exit codes: `2` argument refused, `3` no session, `4` more than one installation — **named,
+never chosen between**.
+
+**The elevation question, answered once.** The dedicated user does not join the engine's group
+(`16` §4.3, trap 2): that group is administration of the machine. Instead one sudoers rule
+pins a FULL argv with no wildcard — which is only writable because engine and container come
+from the root-owned config file, so the launcher can only ever produce that exact line. If
+someone points `NOESAR_EVOLUTION_LAUNCHER_CONF` at a config of their own the argv stops
+matching and sudo refuses. **The rule is the authority, not the launcher.** `sudo -n` is
+deliberate: a forced command has nobody to prompt, and a launcher that hangs on an invisible
+prompt is indistinguishable from one that is broken. The config file is read key by key and
+**never sourced** — a sourced config would be a second, undeclared authority; a test puts a
+command in the file and proves the stub it would have called was never invoked.
+
+**A real defect, found by running the launcher inside a container rather than by reading it.**
+The image installs `/usr/local/bin/coden_evolution` as a symlink so the one word works in
+there too. The first resolution took `$0` at face value, so it looked for the terminal client
+next to the LINK and reported it missing — the identical failure to phase 5's unshipped
+client, reached from the opposite direction. **The suite was green throughout**, because every
+test invoked the file directly and none through a link. Repaired at the cause (portable
+symlink resolution with a hop limit, `readlink` used opportunistically and degrading without
+it; plus `command -v` for a bare-word invocation off PATH, where `$0` carries no directory at
+all), and two regression tests now drive the launcher through a symlink and as a bare word.
+
+**Proved, not asserted.** 33 cases execute the launcher against stub programs on a hermetic
+PATH — the first version of that harness put the stubs in FRONT of `/usr/bin` and three cases
+went green for the wrong reason, because the host's real docker answered and found the real
+installation. A synthetic world that can see the machine it runs on is not one. Then, on the
+real host: a disposable container built from the live image with the two shipping lines
+added, `sha256` identical repo↔image, the one word resolving through the symlink, and the
+**real** client connecting and reaching the product's own sign-in prompt. And the host→
+container rung end to end, including the ambiguity guard firing for real when two containers
+carried the label.
+
+**20 mutations against a baseline proved green first, 19 killed, none unplaced** — and the two
+that first survived are worth more than the nineteen that died, because neither was a missing
+test:
+
+- A mutation deleting a `command -v "$0"` branch survived. Measuring said why: for a `#!`
+  script the KERNEL discards the caller's `argv[0]` and substitutes the path it was exec'd
+  with, so the bare-word case cannot occur. Confirmed by forcing `argv[0]` to a bare name and
+  reading `$0` back as the full path, and by the contrast case of a non-shebang binary, where
+  the forced name *does* survive. **The branch was removed**, not covered — a branch nothing
+  can reach is one no test can tell from its own absence.
+- A mutation removing the symlink hop limit survived, and stays surviving on purpose: the
+  kernel resolves the chain before exec, so a looping path fails `ELOOP` and the launcher is
+  never entered. The guard is unreachable by construction on any path that got as far as
+  running. It is kept and **recorded as unreachable**, with a case that pins the reason so the
+  next person to see it survive does not rediscover it.
+
+The mutation harness itself gained a green-baseline gate first, after an earlier run reported
+`21/21 killed` while the suite was red — against a red baseline every mutation looks killed.
+
+**Declared, not hidden: Windows is UNVERIFIED.** `tools/coden-evolution.ps1` exists because
+CE-032 says the launcher must not presume an operating system, and a POSIX `sh` file presumes
+one. There is no PowerShell on this host and rule 45 forbids installing one, so the twin is
+covered by structural assertions with comments stripped from both dialects first — this
+repository has already been bitten by a guard a comment could satisfy — and is reported as
+STATIC, never as passing. It needs a real Windows host.
+
+**Dismissed with reason.** `shellcheck` (v0.10.0, disposable container, removed in the same
+phase) reports only `SC1007` twice, both on the correct `CDPATH= cd` idiom that
+`scripts/test.sh` already uses. Not a defect.
+
+**Improvement proposal, recorded and NOT executed** (standing rule: generate always, execute
+only on the Owner's word). The launcher discovers the installation by label, which means an
+operator running two installations must edit a config file to say which one an account opens.
+A better form: the sshd rule already knows which ACCOUNT connected, so the launcher could read
+`coden`/`coden-staging` from its own invocation name and map account → installation with no
+config file at all. Benefit: two installations become two `ssh` targets instead of a file to
+maintain. Cost: one more resolution rung and a matrix row; roughly half a phase.
+
+**Still open, and said plainly.** `CE-035`'s own verification line asks for a real access from
+a SECOND machine on the network. That was not performed: it requires applying the §12 recipe
+to this host — creating a system user and editing `sshd_config` — which is exactly the
+host-level change the platform law forbids the product from making. It is the Owner's to run,
+and the recipe is what it needs.
