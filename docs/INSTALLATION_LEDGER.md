@@ -4492,3 +4492,13 @@ con una chiave Ed25519 vera e una firma che non verifica.
 **Dichiarato:** `enforced:false` — registro, proiezione e numero a riposo sono reali e
 misurati, ma **nulla nel prodotto compone ancora una skill adottata dentro un Piano** prima
 che l'Autore scriva. È il passo successivo, nominato invece che lasciato da scoprire.
+
+**Deploy `/skills` (`D-0343`, 2026-08-07).** `noesar-evolution:d0343-skills`, **417 ms** di
+downtime, comando generato dalla configurazione viva e validato su un usa-e-getta prima di
+fermare. Tre livelli identici (`app.js` `982fdae9…` in repo, immagine e **corpo servito**).
+Verificato sul vivo: `/api/v1/skill-catalog` e `/search` rispondono **401** (una rotta
+inesistente risponde 404 — è la forma della prova, non l'assenza di errore); `data-section=
+"skills"` e la voce `/skills` sono nei **byte serviti**; e la fase 8 non è regredita — la parola
+raggiunge ancora la sessione viva. Rollback unico: `noesar-evolution-old-d0340`. L'avviatore
+**non** è cambiato in questa build: `5f086c52…` identico su repo, immagine e copia su `/boot`,
+quindi la copia persistente non va rinfrescata.
