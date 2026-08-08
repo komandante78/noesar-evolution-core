@@ -80,6 +80,11 @@ test('permissions narrow as the role narrows', () => {
   assert.equal(can('service_account', 'workspace.read'), true);
   assert.equal(can('service_account', 'workspace.write'), true);
   assert.equal(can('service_account', 'provider.use'), true);
+  // s336, Owner s335: «anche i moduli devono vedere il modello caricato». The pair is the
+  // point — reading which model is loaded is not authority over it, so `model.manage` is on
+  // the negative side below and must stay there.
+  assert.equal(can('service_account', 'model.read'), true);
+  assert.equal(can('service_account', 'model.manage'), false);
   assert.equal(can('service_account', 'provider.manage'), false);
   assert.equal(can('service_account', 'agent.manage'), false);
   assert.equal(can('service_account', 'memory.manage'), false);

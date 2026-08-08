@@ -116,6 +116,47 @@ test('a bearer service token authenticates over HTTP and carries its role permis
   });
 });
 
+// s336. Owner, s335: «anche i moduli devono vedere il modello caricato».
+//
+// Stage 1 gated `/api/v1/models/active` on `model.read` on the stated grounds that a module
+// must be able to ask — and `service_account`, the role a module authenticates as, was the one
+// role in the table without it. The module got 403.
+//
+// This test lives at the HTTP layer for the same reason the ones above do: the table assertion
+// in user-directory.test.mjs is true of the table, and the defect was that the table and the
+// route disagreed. Gated exactly as the route gates itself, so it can fail in BOTH directions —
+// `model.read` must be served, `model.manage` must still be refused. A one-sided assertion here
+// would go green again the day someone "fixes" it by widening the role to everything.
+test('a module can read which model is loaded, and still cannot manage it', async () => {
+  const { auth, userDirectory, owner } = setup();
+  const created = userDirectory.createServiceAccount({
+    actorId:owner.id, username:'debug-evolution', displayName:'Debug Evolution',
+  });
+  const { resolveAuthenticated } = makeHarness({ auth, userDirectory });
+
+  // The shape of `requireSession(req, res, permission)` in server.mjs: authenticate, then
+  // authorise. 401 and 403 stay distinct because that distinction is what named the defect.
+  const gate = (permission) => (req, res) => {
+    const authenticated = resolveAuthenticated(req);
+    if (!authenticated) { res.writeHead(401).end('{}'); return; }
+    if (!auth.hasPermission(authenticated.user, permission)) {
+      res.writeHead(403, { 'content-type':'application/json' }).end(JSON.stringify({ permission }));
+      return;
+    }
+    res.writeHead(200, { 'content-type':'application/json' }).end(JSON.stringify({ ok:true }));
+  };
+
+  await withServer(gate('model.read'), async (base) => {
+    const answered = await fetch(base, { headers:{ authorization:`Bearer ${created.token}` } });
+    assert.equal(answered.status, 200, 'a module asking which model is loaded must be served');
+  });
+
+  await withServer(gate('model.manage'), async (base) => {
+    const denied = await fetch(base, { headers:{ authorization:`Bearer ${created.token}` } });
+    assert.equal(denied.status, 403, 'reading the model must not have carried authority over it');
+  });
+});
+
 test('a revoked service token stops working immediately', async () => {
   const { auth, userDirectory, owner } = setup();
   const created = userDirectory.createServiceAccount({

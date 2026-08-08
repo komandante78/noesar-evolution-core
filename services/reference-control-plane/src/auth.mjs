@@ -56,7 +56,18 @@ const ROLE_PERMISSIONS = Object.freeze({
   developer: new Set(['user.read','hardware.read','model.read','runtime.plan','coden.plan','coden.authorize',...AI_ADMIN]),
   user: new Set(['user.read','hardware.read','model.read','runtime.plan',...AI_USER]),
   client_restricted: new Set(['user.read','model.read',...AI_CLIENT_RESTRICTED]),
-  service_account: new Set(['user.read',...AI_SERVICE_ACCOUNT]),
+  // `model.read` — s336. Owner, s335: «1 modello che viene caricato lo vedano tutti, anche i
+  // moduli devono vedere il modello caricato». Stage 1 built `/api/v1/models/active` and chose
+  // `model.read` for it precisely so a module could ask; the permission table was never widened
+  // to match, and `service_account` was the ONE role in this object without it. So the single
+  // caller the requirement names was the single caller refused — 403, not 401: the module's
+  // token authenticated and then failed authorisation, which is why nothing about it looked
+  // like a credential problem. Found by asking as a module, not by reading the table.
+  //
+  // It is a read of an identity, not authority over it: `model.manage` stays where it was, and
+  // an installation's answer to "which model is loaded" is the same answer for everyone who can
+  // already run a turn on that model — which this role can.
+  service_account: new Set(['user.read','model.read',...AI_SERVICE_ACCOUNT]),
 });
 
 export const RolePermissions = ROLE_PERMISSIONS;
