@@ -40,11 +40,11 @@ PC/server/OS — mai progettare per l'hardware che si ha sotto mano.)*
 
 | # | Punto (parole dell'Owner) | Stato |
 |---|---|---|
-| **1** | «**1 solo comando per accedere su CodeN Evolution TUI**. Esempio: apro ssh e digito solo `coden_evolution` e si apre» | ✅ **fatto e provato** (`D-0348`) — nel repo, **non ancora deployato** |
-| **2** | Su `http://192.168.178.100:8100/#/coden`: «**allarga la chat** così non si capisce che è una chat; inoltre **i comandi `/` non so se funzionano**, non vedo cambiamenti e non si capisce» | registrato, non autorizzato |
-| **3** | «**Controllare tutte le pagine della WebUI**, capire cosa fanno e come funzionano, ed eventualmente **migliorarle in modo avanzato** — come da nome *Evolution* — perché **mi sembrano tutte pagine statiche**. Inoltre vanno messi i **tasti `i` di informazione** che cliccando danno suggerimenti. **Tutto in inglese principale con traduzione multilingua**» | registrato, non autorizzato |
-| **4** | «**Controllare se tutto il sistema è in lingua inglese** e se **in tutte le pagine funziona la traduzione**». Precisazione: «**ho visto un mix** — quando clicco sulla traduzione **rimane in inglese o viceversa**, quindi va fatto un **controllo approfondito**» | registrato, non autorizzato |
-| **5** | «Avevo detto **alcune sessioni fa** che su `http://192.168.178.100:8100/#/models` **deve esserci un menu con i modelli**, e i **modelli scaricati e installati devono sempre visualizzarsi per primi**» | registrato, non autorizzato — **richiesta già a verbale, mai implementata** |
+| **1** | «**1 solo comando per accedere su CodeN Evolution TUI**. Esempio: apro ssh e digito solo `coden_evolution` e si apre» | ✅ **chiuso e deployato** (`D-0348`) |
+| **2** | Su `http://192.168.178.100:8100/#/coden`: «**allarga la chat** così non si capisce che è una chat; inoltre **i comandi `/` non so se funzionano**, non vedo cambiamenti e non si capisce» | ✅ **chiuso e deployato** (`D-0350`) |
+| **3** | ✅ **chiuso e deployato** (`D-0352` censimento+vive, `D-0353` tasti `i`, `D-0349` lingua) — «**Controllare tutte le pagine della WebUI**, capire cosa fanno e come funzionano, ed eventualmente **migliorarle in modo avanzato** — come da nome *Evolution* — perché **mi sembrano tutte pagine statiche**. Inoltre vanno messi i **tasti `i` di informazione** che cliccando danno suggerimenti. **Tutto in inglese principale con traduzione multilingua**» | registrato, non autorizzato |
+| **4** | ✅ **chiuso e deployato** (`D-0349`), con divario runtime **dichiarato e misurato** — «**Controllare se tutto il sistema è in lingua inglese** e se **in tutte le pagine funziona la traduzione**». Precisazione: «**ho visto un mix** — quando clicco sulla traduzione **rimane in inglese o viceversa**, quindi va fatto un **controllo approfondito**» | registrato, non autorizzato |
+| **5** | ✅ **chiuso e deployato** (`D-0351`) — «Avevo detto **alcune sessioni fa** che su `http://192.168.178.100:8100/#/models` **deve esserci un menu con i modelli**, e i **modelli scaricati e installati devono sempre visualizzarsi per primi**» | registrato, non autorizzato — **richiesta già a verbale, mai implementata** |
 | **6** | «Nella **barra in alto** c'è il pulsante **Voice** che **non deve esserci**, va **spostato**, e va messo **sulla chat accanto alla barra del prompt**. E **ancora non funziona** — penso non ci siano **voci**, penso che **vada costruito da 0**» | registrato, non autorizzato |
 | **7** | In chat (`#/chat`) deve esserci il **multimodale**: **trascino il file** e in base al tipo **lo elabora**, come fanno **claude.ai e ChatGPT**; **anche audio e video** devono essere elaborati e letti. I **documenti dei clienti o personali**, quando si inseriscono, **devono essere anonimizzati**; e se chiedo la **modifica del documento** posso **scegliere di riscriverlo con i dati che avevo nascosto prima** — esempio: **riscrivere una lettera, una mail, una fattura** | registrato, non autorizzato |
 
@@ -382,3 +382,41 @@ dopo è una ragione d'esistere, non una funzione in più.
   interpretazione, la interpretazione è scritta sotto la voce e marcata come mia, così resta
   distinguibile dalla richiesta.
 - Nessun punto passa da «registrato» a «in lavorazione» senza autorizzazione esplicita.
+
+
+---
+
+## Stato a fine s333 — misurato, non ricordato
+
+**Repo `f2e70c3` = `origin/main`. Immagine `noesar-evolution:d0353-owner-list-s333`.
+Deploy: 339 ms di downtime. Tre livelli identici** (repo, container, corpo servito sulla LAN:
+`app.js` = `3152366a…`). `/api/v1/models/catalog` risponde **401**, non 404 — la rotta è viva.
+5/5 container healthy. Un solo rollback conservato: `noesar-evolution-old-d0353`.
+
+| Punto | Esito | Decisione |
+|---|---|---|
+| 1 un solo comando | chiuso, ora **deployato** | `D-0348` |
+| 2 chat e comandi `/` | chiuso | `D-0350` |
+| 3a censimento | chiuso | `D-0352` |
+| 3b pagine vive | chiuso — 19→29 vive, 7→0 stantie | `D-0352` |
+| 3c tasti `i` | chiuso — 34 pagine, 73 stringhe tradotte | `D-0353` |
+| 3d + 4 lingua | chiuso sul markup (793/793); divario runtime **dichiarato** a 607 | `D-0349` |
+| 5 catalogo modelli | chiuso — `MC-001`…`MC-006` come test | `D-0351` |
+| 6 Voice | **non iniziato** |  |
+| 7 multimodale + anonimizzazione | **non iniziato** |  |
+
+**Verifiche finali:** unit **2143** (0 fail), ESLint 362 file **0/0/0**, browser e2e **460/460**,
+copertura lingua statica exit 0.
+
+### L'unica cosa che resta aperta dentro i punti 2-5, e non è nascosta
+
+Il divario di traduzione **a runtime**: 607 stringhe che un catalogo può chiudere, dipinte da
+JavaScript. Non è silenzioso — è **misurato a ogni esecuzione della suite** (`I18N-RUNTIME`) e
+un ratchet impedisce che cresca. Il markup statico è invece **completo, 793 su 793**, e il
+controllo fallisce su una sola lacuna.
+
+⚠️ **Scritto nel controllo stesso:** un ratchet **non sa distinguere «il prodotto è peggiorato»
+da «la misura si è allargata»**. Durante s333 il numero è salito 598 → 607 per il *secondo*
+motivo (le pagine rese vive ridisegnano dentro la finestra misurata, rendendo visibili 42
+stringhe da sempre non tradotte, di cui 33 poi tradotte). Perciò la soglia si può ritoccare
+**solo dopo aver letto il diff** dell'insieme non tradotto.
