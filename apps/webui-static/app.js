@@ -863,7 +863,17 @@ function renderPrivacyDisclosures(disclosures,telemetry){
     list.append(card);
   }
 }
-async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
+// s333 point 3b. The Owner: «mi sembrano tutte pagine statiche». Measured with
+// `tools/measure-page-liveness.mjs`: seven destinations painted REAL data that was fetched
+// exactly once, at sign-in, and never looked at again — full of true values and stale from the
+// second minute onwards. That is how a page can be alive and read as dead, and it is a worse
+// failure than an empty one, because a stale number looks like a current number.
+//
+// Split so opening a page can ask for fresh data WITHOUT the chat's side effects: dragging
+// `selectConversation()` along would mean opening #/projects quietly changed which conversation
+// you were in. One fetch, two callers, no second copy of the assignment.
+async function refreshWorkspaceData(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;renderAll();return data;}
+async function refreshWorkspace(){await refreshWorkspaceData();if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
 function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;}
 function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
@@ -4620,6 +4630,15 @@ Object.assign(VIEW_LOADERS,{
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
   home:loadHome,
   models:loadModelCatalogue,
+  // s333 point 3b — the seven that were painted once at sign-in and never again. They all read
+  // the SAME fetch, so they share the one loader: seven copies would be seven places to forget
+  // one, which is the shape D-0300 and D-0302 were both about.
+  chat:refreshWorkspaceData,
+  tools:refreshWorkspaceData,
+  projects:refreshWorkspaceData,
+  documents:refreshWorkspaceData,
+  knowledge:refreshWorkspaceData,
+  agents:refreshWorkspaceData,
 });
 // The loaders of the demoted pages, keyed by the section that now owns them. "Health and
 // logs" is one section holding two former pages, so it runs both: merging two entries in
@@ -4657,6 +4676,13 @@ Object.assign(SECTION_LOADERS,{
   about:loadAbout,
   audit:refreshApprovals,
   modules:loadOwnerModules,
+  // s333 point 3b. Both of these already had a working loader and no way to reach it by
+  // arriving: the hardware probe ran only if you pressed Refresh, and the remote-target list
+  // only after you acted on it. A page whose content appears solely after you press something
+  // is indistinguishable from a page with no content.
+  'models-hardware':refreshHardware,
+  'remote-targets':loadRemoteTargets,
+  privacy:refreshWorkspaceData,
 });
 
 wireModelCatalogue();
