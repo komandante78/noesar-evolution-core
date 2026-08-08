@@ -78,3 +78,61 @@ Generate it from the **live** container and validate it on a throwaway with a di
 IP **before** stopping production. Read the healthcheck back as `CMD-SHELL` from the running
 container rather than reconstructing it: a generator that reads its own output has produced the
 wrong form before (s320).
+
+---
+
+# Backup — dove sono, e cosa NON copre (s334)
+
+**Prima di s334 NOESAR EVOLUTION non era in alcun backup.** Né il repo né lo stato vivo
+comparivano fra le sorgenti: lo script si chiama `BACKUP_NOESAR` e salva `/mnt/cachec/NOESAR/`,
+che è la cartella della memoria, non il prodotto. Tutto viveva su un solo NVMe (`/mnt/cachec`,
+XFS su `nvme1n1p1`, pool cache **senza parità**) e non esisteva altrove.
+
+## Come funziona
+
+`/mnt/cachec/NOESAR/SCRIPTS/backup_auto.sh <componente>` — tar → `openssl enc -aes-256-cbc
+-pbkdf2 -iter 100000` → `scp` verso `root@5.189.167.44:/root/backups/<componente>/` → rotazione
+remota `find -mtime +7 -delete`.
+
+Le pianificazioni stanno in **`/boot/config/plugins/dynamix/noesar-backup.cron`**, non nel
+crontab di root: quello si perde al riavvio, il file su flash viene ricaricato da `update_cron`.
+
+## Il database non si copia, si estrae
+
+`noesar_evolution` prende un **`pg_dump` dal server VIVO** ed **esclude** `postgresql/` dal tar.
+Copiare la data dir di un Postgres in esecuzione produce una copia strappata a metà di un
+checkpoint — è esattamente il guasto di s334 (`PANIC: could not locate a valid checkpoint
+record`), che ha tenuto il prodotto giù mentre il container si dichiarava sano. Il dump viene
+**riletto con `pg_restore -l` prima di essere spedito**: un dump che non si rilegge non è un
+backup, e la verifica costa un secondo.
+
+**Provato end-to-end in s334**, non assunto: archivio riscaricato dal VPS, decifrato, `tar`
+integro, `auth.json` e `app.js` presenti, `postgresql/` assente (0 file), e il dump
+**ripristinato su un Postgres usa-e-getta → 0 errori, 35 tabelle, 19 migrazioni, 2 utenti**.
+
+⚠️ La prima prova di ripristino diede **32 errori** e non era un problema del backup: il
+bersaglio era `postgres:18` **senza pgvector**, quindi le tre tabelle con colonne vettoriali non
+si creavano. Ripetuta sull'immagine del prodotto: zero errori. **Un ripristino va provato sul
+motore vero, o misura il bersaglio invece del backup.**
+
+## Cosa è escluso, e perché
+
+| Escluso | Motivo |
+|---|---|
+| `ATOM_EVOLUTION/model_store`, `ATOM_MODEL/base` | 34 GB dei 39 sono `.gguf`/`.safetensors` **pubblici e riscaricabili**. Spedirli ogni notte riempirebbe il VPS. I **checkpoint** (4,2 GB) sono invece inclusi: sono addestramento dell'Owner e non esistono altrove. |
+| `NOESAR_EVOLUTION_RUNTIME/postgresql` | Sostituito dal `pg_dump`. Includerlo darebbe l'**illusione** di poter ripristinare. |
+| `node_modules`, `rust/target`, `vendor` | Rigenerabili da lockfile. |
+
+## Cosa resta scoperto — dichiarato, non nascosto
+
+- **`coden_tui`**: insieme **vuoto dal 27 giugno**, e non ha **nessuna** voce cron. Non è un
+  backup che fallisce, è un backup che non è mai stato pianificato.
+- **Nessun file `sha256` accanto agli archivi sul VPS.** Il log registra l'impronta alla
+  creazione, ma sul disco non c'è nulla con cui riverificare un archivio mesi dopo.
+- **La passphrase è dentro lo script, sulla stessa macchina che genera i backup.** Protegge il
+  trasporto e il furto del solo file, non la compromissione dell'origine.
+- **Una sola destinazione.** VPS Contabo, singolo. Nessuna seconda copia altrove.
+
+**Non è un difetto:** «Archivi conservati: 9 (max 7)» — `find -mtime +7` cancella ciò che ha
+*più di* 7 giorni, quindi 8-9 file sono il risultato corretto. È il messaggio a essere
+fuorviante. E `nous_model` è **settimanale di domenica**, non fermo.
