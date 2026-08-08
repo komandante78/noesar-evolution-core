@@ -393,6 +393,13 @@ Deploy: 339 ms di downtime. Tre livelli identici** (repo, container, corpo servi
 `app.js` = `3152366a…`). `/api/v1/models/catalog` risponde **401**, non 404 — la rotta è viva.
 5/5 container healthy. Un solo rollback conservato: `noesar-evolution-old-d0353`.
 
+> ⚠️ **Superato in s335, e non da uno di questi sette punti.** Quel che gira ora è
+> **`noesar-evolution:d0354-tui-input-flow`** (repo **`abfef5b`** = `origin/main`), rollback unico
+> `noesar-evolution-old-d0354`. Il corpo servito è **invariato** (`app.js` = `3152366a…`): il
+> deploy di s335 non cambia una riga della WebUI. Cambia il terminale — `D-0354`, che **non
+> accettava un solo tasto** su un terminale vero da quando esiste. Questa tabella dei sette punti
+> resta valida com'è.
+
 | Punto | Esito | Decisione |
 |---|---|---|
 | 1 un solo comando | chiuso, ora **deployato** | `D-0348` |
