@@ -17,7 +17,7 @@ import {
 } from '../../../apps/webui-static/agent-commands.js';
 import {
   RUN, createView, say, planTurn, detailLines, gitSummary,
-  TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES, FORMS,
+  TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES, FORMS, addressEntries, requiresArgument, panelOwning,
 } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -138,5 +138,85 @@ describe('no shell keeps a description of its own (phase 2)', () => {
     // the second copy this phase exists to remove. `agent-commands.js` set the precedent.
     assert.ok(read('apps/webui-static/agent-commands.js').length > 0);
     assert.match(fullscreen, /from '\.\.\/apps\/webui-static\/agent-commands\.js'/);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// s333 point 2 — a required argument that was not given.
+//
+// Owner: «i comandi / non so se funzionano, non vedo cambiamenti e non si capisce». Measured
+// in the browser: `/diff` fired `workspace.get()` with no run and came back "diff refused: no
+// run" — a server sentence about a call nobody asked to make, with nothing on screen moving.
+// Nine of the thirty-three commands take a required argument and every one behaved this way.
+describe('a command that needs a subject it was not given', () => {
+  const addresses = [
+    { address: 'coden/bench/diff', label: 'Diff' },
+    { address: 'coden/agent/plan', label: 'Plan' },
+    { address: 'projects', label: 'Projects' },
+  ];
+  const offered = [...AGENT_COMMANDS, ...addressEntries(addresses)];
+  const turn = (text) => planTurn(text, {
+    resolve: (line) => resolveCommand(line, offered),
+    parse: parseCommandPrompt,
+    commands: offered,
+  });
+
+  test('the required/optional distinction is read from the catalogue, not a second list', () => {
+    assert.equal(requiresArgument({ argument: '<run>' }), true);
+    assert.equal(requiresArgument({ argument: '[path]' }), false, 'square brackets mean optional');
+    assert.equal(requiresArgument({ argument: '' }), false);
+    assert.equal(requiresArgument({}), false);
+  });
+
+  test('it goes to the panel that shows the thing, rather than making a doomed call', () => {
+    const result = turn('/diff');
+    assert.equal(result.kind, 'navigate', 'this used to be kind "call" and was always refused');
+    assert.equal(result.address, 'coden/bench/diff');
+    assert.match(result.because, /needs <run>/, 'the move must state why it happened');
+  });
+
+  test('the agent column is the same rule, not a second one', () => {
+    const result = turn('/plan');
+    assert.equal(result.kind, 'navigate');
+    assert.equal(result.address, 'coden/agent/plan');
+  });
+
+  test('with the subject supplied it runs, exactly as before', () => {
+    const result = turn('/diff run-7');
+    assert.equal(result.kind, 'call', 'giving the argument must not be diverted to a panel');
+    assert.equal(result.argument, 'run-7');
+  });
+
+  test('an optional argument is still optional — nothing is diverted', () => {
+    const result = turn('/map');
+    assert.equal(result.kind, 'call', '[path] is optional, so /map runs');
+  });
+
+  test('a command with no panel of its own says what is missing and runs nothing', () => {
+    const result = turn('/approve');
+    assert.equal(result.kind, 'needs-argument');
+    assert.match(result.message, /<run>/);
+    assert.ok(!('method' in result), 'no transport may be named: naming one is how it got called');
+  });
+
+  test('the panel offered is a panel of THIS bench, never a destination that merely matches', () => {
+    // `panelOwning` is restricted to `coden/`. Without that, a command could be answered by
+    // jumping out of the page to something that happens to end in the same word — a different
+    // promise from "here is the panel that shows this".
+    assert.equal(panelOwning('projects', addressEntries(addresses)), null,
+      'the bare `projects` destination must not be offered as a bench panel');
+    assert.equal(panelOwning('diff', addressEntries(addresses))?.address, 'coden/bench/diff');
+  });
+
+  test('every command declaring a required argument is covered by the rule', () => {
+    // Not a sample. If a tenth command is added tomorrow with `<something>`, it is covered the
+    // moment it is declared — and this fails if the rule ever stops applying to one of them.
+    const required = AGENT_COMMANDS.filter((c) => requiresArgument(c) && c.kind !== 'address');
+    assert.ok(required.length >= 9, `expected the measured nine or more, saw ${required.length}`);
+    for (const command of required) {
+      const result = turn(`/${command.name}`);
+      assert.ok(['navigate', 'needs-argument'].includes(result.kind),
+        `/${command.name} still resolves to ${result.kind} with no argument`);
+    }
   });
 });

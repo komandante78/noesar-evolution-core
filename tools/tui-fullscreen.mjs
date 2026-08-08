@@ -173,6 +173,9 @@ export async function runFullScreen({
     if (turn.kind === 'clear') { view.transcript = [{ kind: 'note', text: CLEARED_NOTE }]; return draw(); }
     if (turn.kind === 'unknown') { record('error', turn.message); return draw(); }
     if (turn.kind === 'confirm') { record('note', turn.message); return draw(); }
+    // s333 point 2, and it must be the SAME answer the browser gives: a command needing a
+    // subject it was not given runs nothing and says so.
+    if (turn.kind === 'needs-argument') { record('note', turn.message); return draw(); }
     // A form: this shell walks its fields at the prompt. The browser opens the panel that
     // already holds the same form — one capability, two renditions.
     if (turn.kind === 'form') {
@@ -201,6 +204,7 @@ export async function runFullScreen({
     // this project twice: a list compared only with itself always agrees.
     if (turn.kind === 'navigate') {
       record('tool', `→ /${turn.command}`);
+      if (turn.because) record('note', turn.because);
       draw();
       const known = await addressEntry(turn.address);
       if (!known) {

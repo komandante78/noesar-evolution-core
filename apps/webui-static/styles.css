@@ -1191,3 +1191,42 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    a different valid string. */
 .attach-code-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:10px 0}
 .attach-code-value{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono",monospace;font-size:calc(var(--text-scale)*22px);letter-spacing:.18em;padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-card);user-select:all}
+
+/* ── POINT 2a OF THE OWNER'S s333 LIST · the terminal takes the WHOLE width ─────────────────
+   «allarga la chat così non si capisce che è una chat»
+
+   That sentence reads two opposite ways in Italian — "it IS too wide, so it does not read as a
+   chat" (a complaint) or "widen it FURTHER so it stops reading as a chat" (an instruction) —
+   and the two produce opposite work. The living change list had recorded the first, which
+   would have undone what s328 built. The Owner was asked directly and chose the second: more
+   terminal, full width, no bubbles. The note is here because the next person to read
+   `OWNER_CHANGE_LIST_S333.md` will find the correction there and the reason here.
+
+   What was actually measured, rather than assumed: the session region already spanned its
+   column, but that column is what is left of the window after a 230px sidebar, a 285px context
+   panel and 24px of padding on each side — and the transcript was capped at `min(46vh,420px)`,
+   which is under half the height. A terminal fills what it is given; a card that stops at 46%
+   of the screen with margins around it is the shape of a message surface placed on a page,
+   which is exactly the thing the Owner keeps saying he does not want here.
+
+   Scoped to `#view-coden` and to a `.main` that CONTAINS it. The chat destination shares the
+   `.agent-*` classes and must stay a chat — that is the Owner's own distinction, made in the
+   same breath in s328, and none of this can reach it. */
+.main:has(#view-coden.active){padding-inline:0;padding-block-start:0}
+/* The bench keeps the page's own margins: those are the product's controls and forms, and a
+   form pinned to the window edge is not a terminal, it is a form with its margin deleted. */
+#view-coden .bench{padding-inline:24px;padding-block-end:80px}
+#view-coden #codenDivergence{margin-inline:24px}
+/* One continuous surface from the status row to the key legend, with no border on the outside
+   edges — a terminal has no card around it. */
+#view-coden .agent-shell{margin-block-end:0;border-inline:0;border-block-start:0}
+#view-coden .coden-bar{padding-inline:24px}
+/* Height is the other half of "widen": a terminal is tall. This leaves room for the status row,
+   the prompt, the legend and the bench heading below, and grows with the window instead of
+   stopping at a fixed 420px. */
+#view-coden .agent-transcript{max-height:min(68vh,900px);min-height:min(38vh,320px);padding-inline:24px}
+#view-coden .agent-prompt,#view-coden .agent-hint{padding-inline:24px}
+@media(max-width:850px){
+  #view-coden .bench,#view-coden .coden-bar,#view-coden .agent-transcript,
+  #view-coden .agent-prompt,#view-coden .agent-hint,#view-coden #codenDivergence{padding-inline:14px;margin-inline:0}
+}

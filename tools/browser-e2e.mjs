@@ -2464,6 +2464,92 @@ try {
   check('UI-062 and it appears in exactly one group',
     !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
 
+  at('coden-slash-feedback');
+  // --- POINT 2b: what a person actually SEES when a `/` command lands ------------------
+  //
+  // Owner, s333 point 2: «i comandi / non so se funzionano, non vedo cambiamenti e non si
+  // capisce». s328's precedent forbids assuming this is styling: a menu entry was found with
+  // no address at all. So the question is asked in the order that can distinguish them —
+  // first "did it route", then "was anything visible about it" — and both answers are
+  // recorded even when the first is yes.
+  await soft('POINT-2B-MEASURE', async () => {
+    await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#codenPrompt', { timeout: 15000 });
+    const before = await page.evaluate(() => ({
+      hash: location.hash,
+      benchOpen: document.querySelector('#view-coden')?.getAttribute('data-panel-open') ?? null,
+      whereVisible: (document.querySelector('#benchWhere')?.getBoundingClientRect().height ?? 0) > 0,
+      whereText: document.querySelector('#benchWhereName')?.textContent ?? '',
+      transcript: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().length,
+    }));
+    await page.click('#codenPrompt');
+    await page.type('#codenPrompt', '/diff');
+    await page.keyboard.press('Enter');
+    await new Promise((resolve) => { setTimeout(resolve, 600); });
+    const after = await page.evaluate(() => {
+      const active = document.querySelector('#view-coden [data-bench-panel].active');
+      const where = document.querySelector('#benchWhere');
+      return {
+        hash: location.hash,
+        activePanel: active?.getAttribute('data-bench-panel') ?? null,
+        activeVisible: (active?.getBoundingClientRect().height ?? 0) > 0,
+        whereVisible: (where?.getBoundingClientRect().height ?? 0) > 0,
+        whereText: document.querySelector('#benchWhereName')?.textContent ?? '',
+        transcriptTail: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().slice(-80),
+        title: document.title,
+      };
+    });
+    check('POINT-2B the slash command routes — the address moves to the panel',
+      after.hash === '#/coden/bench/diff', `${before.hash} -> ${after.hash}`);
+    check('POINT-2B the panel it names is the one on screen',
+      after.activePanel === 'diff' && after.activeVisible, JSON.stringify(after));
+    check('POINT-2B something VISIBLE says where the command landed',
+      after.whereVisible && /Diff/i.test(after.whereText),
+      `benchWhere visible=${after.whereVisible} text=${JSON.stringify(after.whereText)} title=${JSON.stringify(after.title)}`);
+    check('POINT-2B the transcript acknowledges the command',
+      /diff/i.test(after.transcriptTail), JSON.stringify(after.transcriptTail));
+
+    // The transcript must SAY why it moved rather than running. A move for an unstated reason
+    // is the same «non si capisce» seen from the other side.
+    check('POINT-2B it states why it went to the panel instead of running',
+      /needs/i.test(after.transcriptTail) || /needs/i.test(await page.evaluate(() =>
+        (document.querySelector('#codenTranscript')?.textContent ?? ''))),
+      JSON.stringify(after.transcriptTail));
+
+    // The agent column, which is the other half of the same defect: `/plan` needs `<goal>`
+    // and fired `workspace.plan()` without one. Both failures had one cause, so both are
+    // asserted — a fix that repaired only the bench would look complete from here.
+    await page.click('#codenPrompt');
+    await page.type('#codenPrompt', '/plan');
+    await page.keyboard.press('Enter');
+    await new Promise((resolve) => { setTimeout(resolve, 600); });
+    const agent = await page.evaluate(() => {
+      const active = document.querySelector('#view-coden [data-agent-panel].active');
+      return {
+        hash: location.hash,
+        activeAgent: active?.getAttribute('data-agent-panel') ?? null,
+        agentVisible: (active?.getBoundingClientRect().height ?? 0) > 0,
+      };
+    });
+    check('POINT-2B an agent-column command routes too, and lands visibly',
+      agent.hash === '#/coden/agent/plan' && agent.activeAgent === 'plan' && agent.agentVisible,
+      JSON.stringify(agent));
+
+    // A command that needs a subject AND has no panel of its own must run nothing and say what
+    // is missing — never surface a server refusal for a call the person did not ask to make.
+    await page.click('#codenPrompt');
+    await page.type('#codenPrompt', '/approve');
+    await page.keyboard.press('Enter');
+    await new Promise((resolve) => { setTimeout(resolve, 600); });
+    const approve = await page.evaluate(() => ({
+      tail: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().slice(-160),
+      hash: location.hash,
+    }));
+    check('POINT-2B a command with no panel of its own states what it needs, and runs nothing',
+      /needs/i.test(approve.tail) && !/refused/i.test(approve.tail.slice(-90)),
+      JSON.stringify(approve.tail));
+  });
+
   at('i18n-runtime');
   // --- I18N-RUNTIME: the half of the language measurement that markup cannot see ------
   //

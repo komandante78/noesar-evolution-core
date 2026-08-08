@@ -1307,6 +1307,9 @@ async function submitCodenPrompt(){
   if(turn.kind==='clear'){codenView.transcript=[{kind:'note',text:CLEARED_NOTE}];return renderCodenTranscript();}
   if(turn.kind==='unknown'){say(codenView,'error',turn.message);return renderCodenTranscript();}
   if(turn.kind==='confirm'){say(codenView,'note',turn.message);return renderCodenTranscript();}
+  // s333 point 2: a command that needs a subject and was given none states what is missing
+  // and runs nothing. It used to fire the call anyway and surface the server's refusal.
+  if(turn.kind==='needs-argument'){say(codenView,'note',turn.message);return renderCodenTranscript();}
   if(turn.kind==='form'){
     // The same capability, in this shell's idiom. The closure panel already IS this form, so
     // `/closure` opens it and puts the run into it rather than re-asking three questions one
@@ -1336,7 +1339,11 @@ async function submitCodenPrompt(){
     // every activation — measured the moment the prompt became the only way in, because until
     // then the box was doing it correctly and the prompt only ever left the page: 28 → 32
     // requests for a move that should cost none. One function that knows how to go somewhere.
-    say(codenView,'tool',`→ /${turn.command}`);renderCodenTranscript();
+    say(codenView,'tool',`→ /${turn.command}`);
+    // Why it moved, when it moved for a reason the person did not state. Silence here is
+    // the same complaint from the other side.
+    if(turn.because)say(codenView,'note',turn.because);
+    renderCodenTranscript();
     jumpTo(turn.address);
     return undefined;
   }

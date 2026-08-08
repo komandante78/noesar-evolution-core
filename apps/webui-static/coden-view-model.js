@@ -310,6 +310,34 @@ export function matchAddresses(addresses, query) {
  * short names — `/diff` stays the work command — and an address is reached by its full
  * address, which is the only spelling that cannot collide with one.
  */
+/**
+ * Does this command need a subject before it can run?
+ *
+ * The distinction is already written in the catalogue and was simply never read: `<run>` is
+ * required, `[path]` is optional. Reading it here rather than keeping a second list of
+ * "commands that need things" is deliberate — a second list agrees with the first only until
+ * one of them is edited.
+ */
+export function requiresArgument(command) {
+  return /^</.test(String(command?.argument ?? '').trim());
+}
+
+/**
+ * The coden panel that shows what a command is about, if there is one.
+ *
+ * Matched on the LAST segment of the address, because that is where a panel's own name lives
+ * (`coden/bench/diff`, `coden/agent/plan`). Restricted to `coden/` on purpose: `/search`
+ * must not be answered by wandering off to some unrelated destination that happens to end in
+ * the same word — the offer is "here is the panel of this bench that shows this", and a jump
+ * out of the page would be a different promise.
+ */
+export function panelOwning(name, entries) {
+  return (entries ?? []).find((entry) => entry.kind === 'address'
+    && typeof entry.address === 'string'
+    && entry.address.startsWith('coden/')
+    && entry.address.endsWith(`/${name}`)) ?? null;
+}
+
 export function addressEntries(addresses) {
   return (addresses ?? [])
     .filter((entry) => entry.address)
@@ -495,6 +523,48 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
   }
 
   const { command, argument } = resolved;
+
+  // A required argument that was not given — s333 point 2.
+  //
+  // Owner: «i comandi / non so se funzionano, non vedo cambiamenti e non si capisce».
+  // Measured in the browser rather than assumed, because s328's precedent forbids treating
+  // this as styling: typing `/diff` fired `workspace.get()` with no run and came back
+  // "diff refused: no run" — a server sentence, in a transcript, about a call the person never
+  // asked to make, with nothing on screen moving. Nine of the thirty-three commands take a
+  // required argument and every one behaved this way. So the honest answer to "do the slash
+  // commands work" was that the most obvious one produced an error and no visible movement.
+  //
+  // The convention was already in the data and simply never read: `<run>` is required,
+  // `[path]` is optional. A command given no subject has not been asked to RUN — it has been
+  // NAMED. Naming goes to the panel that shows that thing where one exists, which is both the
+  // useful answer and a visible one; where none exists it says what is missing and still runs
+  // nothing. Either way no doomed call is made.
+  //
+  // Deciding it here rather than in each shell is this file's whole reason to exist: two
+  // shells that each decide when a call is safe will disagree, and the disagreement surfaces
+  // in whichever one is used less.
+  if (command.kind !== 'address' && requiresArgument(command) && !String(argument ?? '').trim()) {
+    const needed = String(command.argument ?? '').trim();
+    const panel = panelOwning(command.name, commands);
+    if (panel) {
+      return {
+        kind: 'navigate',
+        command: command.name,
+        address: panel.address,
+        label: panel.summary,
+        argument: '',
+        // Carried so the shell can SAY why it moved instead of running. A move for an unstated
+        // reason is the same «non si capisce», seen from the other side.
+        because: `\`/${command.name}\` needs ${needed} to run, so this is the panel that shows it. \`/${command.name} ${needed}\` runs it.`,
+      };
+    }
+    return {
+      kind: 'needs-argument',
+      command: command.name,
+      needed,
+      message: `\`/${command.name}\` needs ${needed}. Nothing was run, and no panel shows this on its own.`,
+    };
+  }
 
   // A destination. The shell performs it with whatever "going somewhere" means for it — a
   // route change in a browser, a rendered address in a terminal — and this module names the

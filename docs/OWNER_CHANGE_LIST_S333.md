@@ -106,9 +106,16 @@ dimenticato non apre più nemmeno se ne sopravvive una copia.
 **Nota mia (scomposizione, marcata come mia — le parole sopra restano quelle dell'Owner):**
 ci sono **due lamentele distinte**, e la seconda ne contiene due.
 
-- **2a — la chat non si legge come una chat.** Su `#/coden` la chat è larga quanto la pagina e
-  perde la forma di conversazione. Consegnata in s326/s328 come «chat nella sidebar»
-  (`D-0329`) + forma di terminale su `#view-coden` (`D-0336`): l'esito visivo non regge.
+- **2a — ⚠️ LA MIA PRIMA LETTURA ERA SBAGLIATA, corretta dall'Owner.**
+  Avevo registrato: *«la chat è larga quanto la pagina e perde la forma di conversazione»*,
+  cioè letto la frase come una **lamentela** e dedotto che andasse **ristretta**. Chiesto
+  esplicitamente all'Owner, la risposta è l'**opposto**: *«allargala ANCORA: deve sembrare un
+  terminale»*. La frase italiana regge entrambe le letture — «allarga … così non si capisce che
+  è una chat» è un **imperativo**, non una descrizione — e le due producono lavoro contrario.
+  La lettura giusta **conferma ed estende** s328 (`D-0336`), non lo annulla.
+  **Regola che ne esce:** quando una frase dell'Owner ha due letture che portano a lavori
+  opposti, si **chiede**. Costruire sulla lettura sbagliata qui avrebbe distrutto `D-0336`,
+  che era stato chiesto dall'Owner con le parole *«non sembra neanche una chat»*.
 - **2b — i comandi `/` non si capisce se funzionano.** *«Non vedo cambiamenti»* qui è
   **diverso** da s316 e s329 (là era un deploy mancante; oggi i tre livelli sono allineati,
   `6f09d06`): quindi è **assenza di riscontro visibile**, non codice non deployato. Da capire
