@@ -15,6 +15,7 @@ import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition } from './model-catalog.mjs';
+import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -523,6 +524,52 @@ const MODEL_ARTEFACT_DIR = join(workspace, 'models', 'artefacts');
 // not a grant, it is permission to fill the disk.
 const MODEL_ACQUIRE_MAX_BYTES = 64 * 1024 * 1024 * 1024;
 
+// ── The one answer to "which model is loaded" — Owner, s335 ─────────────────────────────────
+//
+// Everything the catalogue needs for the `in-use` lane was already built; what it had was a
+// source that is `null` whenever the LOCAL runtime is disabled, which is the default. So an
+// installation with a model resident and answering both the Author and ATOM reported no model
+// in use at all. This snapshot is the truthful source, and the SAME object answers
+// `/api/v1/models/active`, so a module and the page an operator is reading cannot disagree.
+//
+// Held as a snapshot rather than probed per request for one reason worth writing down: the
+// catalogue route is a page render, and a page must not wait on a third party. A stale answer
+// carries `at`; a hanging page carries nothing.
+let activeModelSnapshot = {
+  state: ActiveModelState.NOT_CONFIGURED, source: null, id: null, served: null,
+  endpoint: null, reason: 'not resolved yet', at: new Date(0).toISOString(),
+};
+let activeModelRefreshing = null;
+const ACTIVE_MODEL_TTL_MS = 15_000;
+// Who consumes the model on THIS installation, read from how it is actually wired rather than
+// asserted: a module told "ATOM uses it" on an installation without ATOM would be told a lie.
+function activeModelConsumers() {
+  const consumers = [];
+  if (String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim()) consumers.push('noesar-authoring');
+  if (String(process.env.NOESAR_RUST_REASONING_ENDPOINT ?? '').trim()) consumers.push('atom');
+  return consumers;
+}
+async function refreshActiveModel({ force = false } = {}) {
+  const age = Date.now() - Date.parse(activeModelSnapshot.at || 0);
+  if (!force && Number.isFinite(age) && age < ACTIVE_MODEL_TTL_MS) return activeModelSnapshot;
+  // One refresh in flight at a time. Without this, a page opened in three tabs makes three
+  // probes of a model server that is busy generating.
+  if (activeModelRefreshing) return activeModelRefreshing;
+  activeModelRefreshing = resolveActiveModel({
+    localRuntimeModel: localModels.config().model ?? null,
+    endpoint: String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim() || null,
+    fetchImpl: typeof fetch === 'function' ? fetch : undefined,
+  }).then((resolved) => {
+    activeModelSnapshot = resolved;
+    return resolved;
+  }).catch(() => activeModelSnapshot).finally(() => { activeModelRefreshing = null; });
+  return activeModelRefreshing;
+}
+/** The id the catalogue keys on, from whichever source spoke. Never a guess: `null` if neither. */
+function activeModelId() {
+  return localModels.config().model ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
+}
+
 function readModelDescriptors() {
   const descriptors = [];
   try {
@@ -540,7 +587,10 @@ function readModelDescriptors() {
   // is hidden by ALL of them at once. It is synthesised with its id and NOTHING else, so every
   // other field reads `undeclared`: that is the honest statement, and inventing a type here to
   // make the card look complete is precisely what MC-003 forbids.
-  const running = localModels.config().model;
+  // s335: `activeModelId()` and not `localModels.config().model` — the local runtime is one of
+  // two sources and is disabled by default, so keying MC-002 on it alone hid every model this
+  // installation did not start itself, which on a sidecar installation is all of them.
+  const running = activeModelId();
   if (running && !descriptors.some((entry) => entry.id === running)) {
     descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [] });
   }
@@ -560,7 +610,7 @@ function readPresentModels(descriptors) {
       // The configured model is running from somewhere this product did not put it — a
       // sidecar, a mounted volume, an endpoint. It is in use, which is a fact; claiming a
       // verified local artefact for it would not be.
-      if (descriptor.id === localModels.config().model) present.set(descriptor.id, { verified: true, external: true });
+      if (descriptor.id === activeModelId()) present.set(descriptor.id, { verified: true, external: true });
       continue;
     }
     const expected = descriptor.hashes?.sha256 ?? null;
@@ -1410,9 +1460,25 @@ const requestListener = async (req, res) => {
     // for thirteen sessions. The lanes, the grouping and the refusals live in
     // `model-catalog.mjs`; this route supplies the three facts only the server knows: what is
     // on disk, what is running, and whether the runtime is allowed to start anything.
+    // Owner, s335: «1 modello che viene caricato lo vedano tutti, anche i moduli».
+    //
+    // One route, one answer, and deliberately the SAME snapshot the catalogue renders from —
+    // two routes computing "the active model" separately is how a module and the operator's own
+    // page come to disagree about the installation they are both looking at. A module reaches
+    // this through the module proxy with its service token, which is why the permission is
+    // `model.read` and not an owner-only one: reading which model is loaded is not authority
+    // over it, and a module that cannot see the model cannot use it.
+    if (req.method === 'GET' && url.pathname === '/api/v1/models/active') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      await refreshActiveModel({ force: url.searchParams.get('refresh') === '1' });
+      return json(res, 200, activeModelReport(activeModelSnapshot, { usedBy: activeModelConsumers() }));
+    }
     if (req.method === 'GET' && url.pathname === '/api/v1/models/catalog') {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
       const runtimeConfig = localModels.config();
+      // Awaited, but bounded: `refreshActiveModel` returns the held snapshot inside the TTL and
+      // the probe underneath carries its own timeout, so this cannot become the page that hangs.
+      await refreshActiveModel();
       const descriptors = readModelDescriptors();
       // Presence is read HERE and not in the catalogue module, which is what keeps MC-005
       // true by construction: a module that never imports `node:fs` cannot make a request.
@@ -1424,7 +1490,7 @@ const requestListener = async (req, res) => {
       const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
       try {
         return json(res, 200, buildCatalog({
-          descriptors, present, activeModelId: runtimeConfig.model ?? null,
+          descriptors, present, activeModelId: activeModelId(),
           filter: Object.values(filter).some(Boolean) ? filter : null,
           page: Number.isInteger(page) && page > 0 ? page : 1,
           runtime: runtimeConfig,
