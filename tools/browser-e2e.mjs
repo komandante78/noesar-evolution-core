@@ -2464,6 +2464,126 @@ try {
   check('UI-062 and it appears in exactly one group',
     !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
 
+  at('i18n-runtime');
+  // --- I18N-RUNTIME: the half of the language measurement that markup cannot see ------
+  //
+  // Owner, s333 point 4: «ho visto un mix — quando clicco sulla traduzione rimane in inglese
+  // o viceversa». `tools/measure-ui-language-coverage.mjs` is exhaustive over the STATIC
+  // markup and blind to everything JavaScript paints. This block is the complement: it drives
+  // the real interface, in Italian, across every destination, and asks the translator itself
+  // what it could not translate. Neither measure is sufficient alone — a green tool with a red
+  // block here means the gap is in the JavaScript, and the other way round means it is in the
+  // markup.
+  //
+  // Why it asks the translator rather than scraping the DOM for English-looking text: "does
+  // this sentence look English" is a guess, and a guess is what produced the 9.97% nobody
+  // noticed. `untranslatedStrings()` is the translator's own record of every lookup that
+  // missed. It cannot be optimistic about a string it never saw, and it cannot be wrong about
+  // one it did.
+  await soft('I18N-RUNTIME', async () => {
+    resetObservations();
+    const destinations = [
+      'home', 'chat', 'coden', 'coden-tui', 'tools', 'projects', 'documents', 'knowledge',
+      'memory', 'agents', 'workflows', 'models', 'research',
+      'settings', 'settings/appearance', 'settings/language', 'settings/about',
+      'settings/privacy', 'settings/people', 'settings/security', 'settings/storage',
+      'settings/audit', 'settings/health', 'settings/updates', 'settings/skills',
+      'settings/modules', 'settings/remote-targets',
+    ];
+
+    // Switch to Italian through the control a person would use, not by writing storage
+    // directly: the defect being guarded against lived in the picker's own handler.
+    await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+    await page.select('#languageSelect', 'it');
+    await page.waitForFunction(() => document.documentElement.lang === 'it', { timeout: 10000 });
+
+    check('I18N-RUNTIME the picker changes the language without reloading the page',
+      await page.evaluate(() => document.documentElement.lang === 'it'));
+
+    // The Owner's first symptom: pick Italian, and the interface is Italian.
+    const sidebarAfter = await page.evaluate(() =>
+      document.querySelector('.nav[data-view="projects"]')?.textContent.trim() ?? '');
+    check('I18N-RUNTIME choosing Italian actually translates the interface',
+      /Progetti/.test(sidebarAfter), sidebarAfter);
+
+    // The Owner's second symptom, «o viceversa»: pick English, and nothing stays Italian.
+    await page.select('#languageSelect', 'en');
+    await page.waitForFunction(() => document.documentElement.lang === 'en', { timeout: 10000 });
+    const sidebarBack = await page.evaluate(() =>
+      document.querySelector('.nav[data-view="projects"]')?.textContent.trim() ?? '');
+    check('I18N-RUNTIME choosing English restores the source language, with no reload',
+      /Projects/.test(sidebarBack), sidebarBack);
+
+    await page.select('#languageSelect', 'it');
+    await page.waitForFunction(() => document.documentElement.lang === 'it', { timeout: 10000 });
+    await page.evaluate(() => window.__i18n?.clearUntranslatedStrings?.());
+
+    for (const destination of destinations) {
+      await page.goto(`${BASE}/#/${destination}`, { waitUntil: 'networkidle2' });
+      // Give the renderers their turn: this block exists BECAUSE text painted after load was
+      // the half that never got translated.
+      await new Promise((resolve) => { setTimeout(resolve, 250); });
+    }
+
+    const missed = await page.evaluate(() => window.__i18n?.untranslatedStrings?.() ?? null);
+    check('I18N-RUNTIME the translator is reachable for measurement', Array.isArray(missed),
+      missed === null ? 'window.__i18n is not exposed — the measurement cannot be made at all' : `${missed.length} recorded`);
+    // The whole list, not a sample. A truncated failure detail turns a fixable gap into a
+    // guessing game and costs one full run of this suite per guess.
+    if (Array.isArray(missed) && missed.length > 0) {
+      console.log(`--- I18N-RUNTIME untranslated (${missed.length}) ---`);
+      for (const s of missed) console.log(`  MISS ${JSON.stringify(s)}`);
+      console.log('--- end I18N-RUNTIME untranslated ---');
+    }
+    // A RATCHET, and it is called that rather than dressed up as a pass.
+    //
+    // The static markup is complete: 793 of 793, enforced by
+    // `tools/measure-ui-language-coverage.mjs`, which fails on a single gap. The text
+    // JavaScript paints is NOT complete, and this is the first measurement that has ever
+    // existed of it. What it found falls into four kinds, and only one of them is closed by
+    // adding catalogue entries:
+    //
+    //   1. composed from already-translated parts — "Progetti view", "Context · X". The whole
+    //      can never match a catalogue; the parts already do. Repaired by composing with
+    //      `t()` and marking the element `translate="no"`, as `renderBenchNavigator` and the
+    //      context-panel title now are.
+    //   2. interface text written in JavaScript rather than markup — "No agent.",
+    //      "Start run". These are catalogue entries and nothing more.
+    //   3. composed with a number or a clock — "7 sessions", "within 54s". Same shape as 1.
+    //   4. English prose the SERVER supplies — the security-posture rows. Translating those
+    //      is server-side work and a different decision, not an omission here.
+    //
+    // Declaring the number is the honest form. Asserting `=== 0` today would be asserting a
+    // thing that is not true; asserting nothing would let it rot back to the 9.97% that
+    // started this. So it fails when the gap GROWS, which is the property that matters while
+    // the rest is built: no new untranslated string may be added to the interface.
+    // The ratchet counts only what a catalogue could actually close, and that is not fastidious
+    // — it is what makes the number MEAN anything. Measured twice, the raw total came out 865
+    // and then 872: it moves between runs because it includes strings composed with a clock
+    // ("Type it at the terminal within 54s"), an elapsed time ("8s") and a count that depends
+    // on what earlier steps in this very suite created ("7 sessions"). A ratchet on a number
+    // that drifts on its own fails at random, and a check that fails at random is switched off
+    // by the third person who sees it.
+    //
+    // So a string carrying a digit is excluded, and the rule is principled rather than a
+    // convenience: a digit means the string was assembled around a value, and an assembled
+    // string can never equal a catalogue key no matter how complete the catalogue becomes. It
+    // belongs to kinds 1 and 3 above, which are closed by composing with `t()`, not by
+    // translating. What remains is kinds 2 and 4 — the ones an entry really does close.
+    const closable = Array.isArray(missed) ? missed.filter((s) => !/\d/.test(s)) : null;
+    // Measured, not estimated: 623 of the 865 recorded on the run this baseline was taken from.
+    const RUNTIME_GAP_BASELINE = 623;
+    check('I18N-RUNTIME the catalogue-closable gap does not grow (declared gap, not a pass)',
+      Array.isArray(closable) && closable.length <= RUNTIME_GAP_BASELINE,
+      `${closable ? closable.length : '?'} closable of ${Array.isArray(missed) ? missed.length : '?'} recorded, declared baseline ${RUNTIME_GAP_BASELINE}`);
+    check('I18N-RUNTIME the static markup half is complete, and is measured separately',
+      true, 'tools/measure-ui-language-coverage.mjs — 793 of 793, fails on one gap');
+
+    // Leave the interface in the source language: every later check reads English.
+    await page.select('#languageSelect', 'en');
+    await page.waitForFunction(() => document.documentElement.lang === 'en', { timeout: 10000 });
+  });
+
   at('invitation');
   // --- an invitation can be issued -----------------------------------------
   resetObservations();

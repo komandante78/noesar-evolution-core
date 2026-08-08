@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { initI18n, applyTranslations } from './i18n.js';
+import { initI18n, t } from './i18n.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
@@ -660,7 +660,7 @@ function applyPanelRank(view){
   if(title){
     const nav=$$('.nav').find((node)=>node.dataset.view===view);
     const label=nav?.querySelector('span:not(.nav-count):not(.nav-flag)')?.textContent?.trim();
-    title.textContent=label?`Context · ${label}`:'Context';
+    title.setAttribute('translate','no');title.textContent=label?`${t('Context')} · ${label}`:t('Context');
   }
   if(rank==='floating')applyPanelPosition(view);
 }
@@ -864,7 +864,7 @@ function renderPrivacyDisclosures(disclosures,telemetry){
   }
 }
 async function refreshWorkspace(){const data=await api('/api/v1/ai/bootstrap');for(const key of ['projects','conversations','branches','memories','artifacts','sources','providers','tools','agents','agentRuns','tasks'])state[key]=data[key]??[];state.providerCatalog=data.providerCatalog??[];if(!state.activeProjectId&&state.projects.length)state.activeProjectId=state.projects[0].id;if(state.activeProjectId&&!state.projects.some((item)=>item.id===state.activeProjectId))state.activeProjectId=state.projects[0]?.id??null;if(!state.activeConversationId){const c=state.conversations.find((item)=>item.projectId===state.activeProjectId)??state.conversations[0];state.activeConversationId=c?.id??null;}renderAll();await loadChatNav();if(state.activeConversationId)await selectConversation(state.activeConversationId,false);}
-function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;applyTranslations();}
+function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;}
 function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
 function renderProjects(){$('#projectCount').textContent=state.projects.length;$('#projectList').innerHTML=state.projects.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.tags.join(' · '))}</small><button data-select-project="${item.id}">Use project</button></article>`).join('')||'No projects.';$$('[data-select-project]').forEach((button)=>button.addEventListener('click',async()=>{state.activeProjectId=button.dataset.selectProject;state.activeConversationId=null;renderProjectOptions();activate('chat');await refreshWorkspace();}));}
@@ -4044,7 +4044,7 @@ function initBench(){
 // is as far as this product can honestly take you while nothing has a per-item address.
 function renderBenchNavigator(){
   const list=(items,label,empty,destination)=>items.length
-    ?items.slice(0,6).map((item)=>`<button type="button" data-jump="${escapeHtml(destination)}" title="${escapeHtml(label(item))} — opens ${escapeHtml(destination)}">${escapeHtml(label(item))}</button>`).join('')
+    ?items.slice(0,6).map((item)=>`<button type="button" translate="no" data-jump="${escapeHtml(destination)}" title="${escapeHtml(label(item))} — opens ${escapeHtml(destination)}">${escapeHtml(label(item))}</button>`).join('')
     :`<span>${escapeHtml(empty)}</span>`;
   $('#navProjects').innerHTML=list(state.projects,(item)=>item.name,'No project yet.','projects');
   $('#navRecent').innerHTML=list(state.artifacts??[],(item)=>item.title,'Nothing opened recently.','documents');
