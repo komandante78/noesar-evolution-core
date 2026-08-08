@@ -644,7 +644,36 @@
       </section>
 
       <section class="view" id="view-models">
-        <div class="section-header"><div><p class="eyebrow">SIDE BY SIDE</p><h1>Models & External APIs</h1><p>Run the same prompt through several enabled providers and compare the answers before you trust one.</p></div></div>
+        <div class="section-header"><div><p class="eyebrow">WHAT YOU HAVE, FIRST</p><h1>Models</h1><p>Every model of a registered publisher. What is running and what is already on disk stays at the top and never paginates &mdash; the answer to &ldquo;what do I have&rdquo; must not cost a search.</p></div></div>
+        <!-- The catalogue verifies the PUBLISHER, never the model. &laquo;Qualunque modello&raquo; and
+             &laquo;solo fonti verificate&raquo; contradict each other only while a "source" means a list of
+             models; an approved list of models IS the fixed list the first requirement forbids. So
+             what is checked is the origin, using publisher-registry.mjs and not a second registry
+             of its own: two places to revoke is worse than one, because revoking in one of them
+             looks like it worked. -->
+        <section class="panel" id="modelCatalogPanel">
+          <div class="panel-title"><h2>Catalogue</h2><span class="badge badge-off" id="modelAcquireState">Checking…</span></div>
+          <!-- Type and function are DECLARED by the publisher and reported. Nothing here is
+               inferred from a model name, and nothing is discovered by interrogating a model:
+               a guess rendered on a card looks exactly like a fact. What a publisher did not
+               declare is counted under "undeclared", which is a visible row and never a bin. -->
+          <div class="inline-form">
+            <label>Type<select id="modelFilterType"><option value="">Any type</option></select></label>
+            <label>Function<select id="modelFilterFunction"><option value="">Any function</option></select></label>
+            <label>Search<input id="modelFilterText" placeholder="Model, publisher or declared workload"></label>
+            <button id="modelFilterClear" type="button">Clear filters</button>
+          </div>
+          <p class="hint" id="modelAcquireReason">Checking whether this installation can start a model…</p>
+        </section>
+        <section class="panel" id="modelForeground">
+          <div class="panel-title"><h2>On this installation</h2><span class="chip" id="modelForegroundCount">—</span></div>
+          <div id="modelForegroundLanes" class="empty-state">Loading…</div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><h2>Available from registered publishers</h2><span class="chip" id="modelAvailableCount">—</span></div>
+          <div id="modelAvailableList" class="empty-state">Loading…</div>
+          <div class="inline-form" id="modelPager"><button id="modelPagePrev" type="button">Previous page</button><span id="modelPageLabel">—</span><button id="modelPageNext" type="button">Next page</button></div>
+        </section>
         <section class="panel"><div class="panel-title"><h2>Parallel comparison</h2><button class="text-button" data-view-link="providers">Manage providers</button></div><label>Providers<select id="comparisonProviders" multiple></select></label><pre id="comparisonResults">Select at least two enabled providers and use “Compare models” in chat.</pre></section>
       </section>
 

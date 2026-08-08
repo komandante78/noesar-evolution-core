@@ -58,6 +58,34 @@ export const RUNTIME_ONLY = Object.freeze([
   'Voice: on',
   'Voice: unavailable',
   'Voice control is not available: this browser has no SpeechRecognition/speechSynthesis support.',
+  // The models catalogue, s333 point 5: every string below is painted by the renderer in
+  // app.js and appears in no markup, so the static tool reports them as matching no screen.
+  // They are measured where they are real — I18N-RUNTIME drives the live page and reads the
+  // translator own record, and  reports a miss exactly as a walked node does.
+  'In use',
+  'Downloaded',
+  'On disk, not verified',
+  'Replace',
+  'Use',
+  'Cannot start',
+  'What is answering right now.',
+  'Present on disk and matching the digest its publisher declared.',
+  'Present on disk and NOT matching the declared digest, so it cannot be started. A file that was downloaded and not verified is not a model you have.',
+  'No model is running and none is on disk. Nothing is hidden here — this installation has none.',
+  'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.',
+  'Acquire available',
+  'Acquire unavailable',
+  'This installation can fetch and start a model of a registered publisher. Acquiring is egress, and each acquisition is authorised on its own.',
+  'Acquiring is switched off:',
+  'The catalogue could not be read:',
+  'on this installation',
+  'known',
+  'Page',
+  'of',
+  'Action:',
+  'This is not the same as having no models.',
+  'view',
+  'panel',
 ]);
 
 const it = {
@@ -477,9 +505,6 @@ const it = {
   'Evidence per attempt': 'Evidenza per tentativo',
 
   // ——— Models ———
-  'SIDE BY SIDE': 'FIANCO A FIANCO',
-  'Models & External APIs': 'Modelli e API esterne',
-  'Run the same prompt through several enabled providers and compare the answers before you trust one.': 'Manda lo stesso prompt a più fornitori abilitati e confronta le risposte prima di fidarti di una.',
   'Parallel comparison': 'Confronto in parallelo',
   'Manage providers': 'Gestisci i fornitori',
   'Providers': 'Fornitori',
@@ -804,6 +829,45 @@ const it = {
 
   'ZERO AT REST · SEARCHABLE · NEVER A LOAD': 'ZERO A RIPOSO · CERCABILI · MAI UN CARICAMENTO',
   'A skill tells the agent how to do something. Its payload is instructions, so its cost is context — which is why nothing here is loaded until a session adopts it. Searching the catalogue returns what a skill is and what adopting it would cost in bytes, never the instructions themselves. At rest this installation carries none, and the count below is read from the live registry rather than claimed.': 'Una competenza dice all’agente come fare qualcosa. Il suo carico sono istruzioni, quindi il suo costo è contesto — ed è per questo che qui nulla viene caricato finché una sessione non l’adotta. Cercare nel catalogo restituisce che cos’è una competenza e quanto costerebbe adottarla in byte, mai le istruzioni stesse. A riposo questa installazione non ne porta nessuna, e il conteggio qui sotto è letto dal registro vivo invece che affermato.',
+  // ——— Models · the catalogue, s333 point 5 ———
+  'WHAT YOU HAVE, FIRST': 'PRIMA QUELLO CHE HAI',
+  'Every model of a registered publisher. What is running and what is already on disk stays at the top and never paginates — the answer to “what do I have” must not cost a search.': 'Ogni modello di un pubblicatore registrato. Ciò che è in esecuzione e ciò che è già su disco resta in cima e non si impagina mai — la risposta a «che cosa ho» non deve costare una ricerca.',
+  'Catalogue': 'Catalogo',
+  'Any type': 'Qualsiasi tipo',
+  'Function': 'Funzione',
+  'Any function': 'Qualsiasi funzione',
+  'Clear filters': 'Azzera i filtri',
+  'Checking whether this installation can start a model…': 'Verifica se questa installazione può avviare un modello…',
+  'On this installation': 'Su questa installazione',
+  'Available from registered publishers': 'Disponibili dai pubblicatori registrati',
+  'Model, publisher or declared workload': 'Modello, pubblicatore o carico di lavoro dichiarato',
+  // Painted by the models renderer in app.js rather than written in the markup, so the static
+  // tool cannot see them — I18N-RUNTIME can, and did: adding this panel moved its count from
+  // 623 to 629 before these entries existed. That is the ratchet working as intended.
+  'In use': 'In uso',
+  'Downloaded': 'Scaricati',
+  'On disk, not verified': 'Su disco, non verificati',
+  'Replace': 'Sostituisci',
+  'Use': 'Usa',
+  'Cannot start': 'Non avviabile',
+  'What is answering right now.': 'Ciò che sta rispondendo adesso.',
+  'Present on disk and matching the digest its publisher declared.': 'Presente su disco e corrispondente all’impronta dichiarata dal suo pubblicatore.',
+  'Present on disk and NOT matching the declared digest, so it cannot be started. A file that was downloaded and not verified is not a model you have.': 'Presente su disco e NON corrispondente all’impronta dichiarata, quindi non può essere avviato. Un file scaricato e non verificato non è un modello che hai.',
+  'No model is running and none is on disk. Nothing is hidden here — this installation has none.': 'Nessun modello è in esecuzione e nessuno è su disco. Qui non è nascosto nulla — questa installazione non ne ha.',
+  'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.': 'Nessun pubblicatore registrato su questa installazione ha dichiarato un modello che non sia già qui. Questo è il registro vivo, non una lista vuota che ne fa le veci.',
+  'Acquire available': 'Acquisizione disponibile',
+  'Acquire unavailable': 'Acquisizione non disponibile',
+  'This installation can fetch and start a model of a registered publisher. Acquiring is egress, and each acquisition is authorised on its own.': 'Questa installazione può prelevare e avviare un modello di un pubblicatore registrato. Acquisire è uscita verso l’esterno, e ogni acquisizione è autorizzata per conto proprio.',
+  'Acquiring is switched off:': 'L’acquisizione è spenta:',
+  'The catalogue could not be read:': 'Non è stato possibile leggere il catalogo:',
+  'on this installation': 'su questa installazione',
+  'known': 'conosciuti',
+  'Page': 'Pagina',
+  'of': 'di',
+  'Action:': 'Azione:',
+  'This is not the same as having no models.': 'Non è la stessa cosa che non avere modelli.',
+  'view': 'vista',
+  'panel': 'pannello',
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT
   // entry says nothing and cannot be told apart from an oversight.

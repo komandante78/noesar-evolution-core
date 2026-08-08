@@ -216,7 +216,14 @@ function observe() {
  * ever close. Compose from translated parts instead, and mark the element `translate="no"` so
  * the walker leaves the finished string alone.
  */
-export function t(text) { return translateString(text, current).text; }
+export function t(text) {
+  const result = translateString(text, current);
+  // Recorded exactly as a walked node is. A string translated from code is still a string the
+  // interface showed, and a `t()` with no catalogue entry would otherwise be the one gap the
+  // measurement could not see — which is the whole failure this work exists to end.
+  if (result.missing) misses.add(result.missing);
+  return result.text;
+}
 
 /** Strings this session rendered without a translation. Read by `I18N-RUNTIME`. */
 export function untranslatedStrings() { return [...misses]; }

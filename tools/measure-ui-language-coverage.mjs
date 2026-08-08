@@ -139,7 +139,11 @@ const html = readFileSync(HTML, 'utf8');
 const pages = pagesOf(html).map((page) => ({ ...page, strings: visibleStrings(page.body) }));
 const targets = Object.keys(CATALOGS).filter((code) => code !== SOURCE_LANGUAGE);
 
-const report = { sourceLanguage: SOURCE_LANGUAGE, languages: {} };
+// Published so a test can ask the SAME question this file asks, instead of approximating it
+// with a substring search over the raw markup — where "Replace" is found inside "Replace
+// authenticator" and a declared runtime-only string is reported as visible when it is not.
+const allVisible = [...new Set(pages.flatMap((page) => [...page.strings]))].sort();
+const report = { sourceLanguage: SOURCE_LANGUAGE, visible: allVisible, languages: {} };
 for (const code of targets) {
   const dictionary = CATALOGS[code];
   const perPage = [];

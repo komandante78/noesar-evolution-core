@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, chownSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey } from 'node:crypto';
+import { randomBytes, randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey, createHash } from 'node:crypto';
 import { AuditLedger } from './audit.mjs';
 import { authorityStatus, assertReferenceRuntimeAllowed } from './authority.mjs';
 import {
@@ -14,6 +14,7 @@ import {
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime } from './local-model-runtime.mjs';
+import { buildCatalog, planAcquisition } from './model-catalog.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -507,6 +508,71 @@ const updateManager = new UpdateManager({
 });
 // D-0275: the trusted publisher registry sector-modules.mjs's activateSectorModule()
 // consults for a high-risk manifest's signing key -- see publisher-registry.mjs.
+
+// ── The model catalogue's three server-only facts · s333 point 5 ─────────────────────────
+//
+// `model-catalog.mjs` never imports `node:fs`, and MC-005 is a test on its import list rather
+// than a count taken at one moment. That only stays true if the disk is read HERE.
+//
+// A descriptor is DECLARED by a publisher — this product does not write one on a publisher's
+// behalf and does not infer its fields. Descriptors live in the workspace so that an operator
+// can place them without a rebuild, which is also how a future transport will deliver them.
+const MODEL_CATALOG_DIR = join(workspace, 'models', 'catalog');
+const MODEL_ARTEFACT_DIR = join(workspace, 'models', 'artefacts');
+// The ceiling written into the acquisition grant. A model is large; a grant with no ceiling is
+// not a grant, it is permission to fill the disk.
+const MODEL_ACQUIRE_MAX_BYTES = 64 * 1024 * 1024 * 1024;
+
+function readModelDescriptors() {
+  const descriptors = [];
+  try {
+    for (const name of readdirSync(MODEL_CATALOG_DIR)) {
+      if (!name.endsWith('.json')) continue;
+      try {
+        const parsed = JSON.parse(readFileSync(join(MODEL_CATALOG_DIR, name), 'utf8'));
+        if (parsed?.id) descriptors.push(parsed);
+      } catch { /* a malformed descriptor is skipped, never guessed at */ }
+    }
+  } catch { /* no catalogue directory yet: an empty catalogue is a true answer */ }
+
+  // The model actually running must appear even when no publisher has described it — MC-002
+  // says the in-use model is visible under every filter, and a model absent from the catalogue
+  // is hidden by ALL of them at once. It is synthesised with its id and NOTHING else, so every
+  // other field reads `undeclared`: that is the honest statement, and inventing a type here to
+  // make the card look complete is precisely what MC-003 forbids.
+  const running = localModels.config().model;
+  if (running && !descriptors.some((entry) => entry.id === running)) {
+    descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [] });
+  }
+  return descriptors;
+}
+
+// Which artefacts are on disk, and whether each matches the digest its publisher declared.
+// `verified:false` is not an error state to be hidden — it is the `unverified` lane, and
+// nothing starts from there (MC-004).
+function readPresentModels(descriptors) {
+  const present = new Map();
+  for (const descriptor of descriptors) {
+    const file = join(MODEL_ARTEFACT_DIR, `${descriptor.id}.bin`);
+    let stat = null;
+    try { stat = statSync(file); } catch { stat = null; }
+    if (!stat?.isFile?.()) {
+      // The configured model is running from somewhere this product did not put it — a
+      // sidecar, a mounted volume, an endpoint. It is in use, which is a fact; claiming a
+      // verified local artefact for it would not be.
+      if (descriptor.id === localModels.config().model) present.set(descriptor.id, { verified: true, external: true });
+      continue;
+    }
+    const expected = descriptor.hashes?.sha256 ?? null;
+    if (!expected) { present.set(descriptor.id, { verified: false }); continue; }
+    try {
+      const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
+      present.set(descriptor.id, { verified: digest === String(expected).toLowerCase() });
+    } catch { present.set(descriptor.id, { verified: false }); }
+  }
+  return present;
+}
+
 const publisherRegistry = new PublisherRegistry({ root: join(workspace, 'publishers'), ledger });
 
 // D-0277: "moduli owner" (a fixed NOESAR-built catalog, OWNER_MODULE_CATALOG) get a
@@ -1336,6 +1402,70 @@ const requestListener = async (req, res) => {
       const after = currentPrivacy();
       ledger.append({ actor:authenticated.user.id, action:'privacy.revoke', result:'success', details:{ ...revoked, from:before.state, to:after.state } });
       return json(res, 200, { revoked, state:after.state, disclosures:after.disclosures, banner:privacyBanner(after.state) });
+    }
+    // ── The model catalogue · s333 point 5 ─────────────────────────────────────────────
+    // Owner, s318 and again s333: «su #/models deve esserci un menu con i modelli e i modelli
+    // scaricati e installati devono sempre visualizzarsi per primi». Designed in s320, and the
+    // design said in its own first line that nothing in it was implemented — which stayed true
+    // for thirteen sessions. The lanes, the grouping and the refusals live in
+    // `model-catalog.mjs`; this route supplies the three facts only the server knows: what is
+    // on disk, what is running, and whether the runtime is allowed to start anything.
+    if (req.method === 'GET' && url.pathname === '/api/v1/models/catalog') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      const runtimeConfig = localModels.config();
+      const descriptors = readModelDescriptors();
+      // Presence is read HERE and not in the catalogue module, which is what keeps MC-005
+      // true by construction: a module that never imports `node:fs` cannot make a request.
+      const present = readPresentModels(descriptors);
+      const filter = {
+        type: url.searchParams.get('type'), fn: url.searchParams.get('fn'),
+        text: url.searchParams.get('q'), publisherId: url.searchParams.get('publisher'),
+      };
+      const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+      try {
+        return json(res, 200, buildCatalog({
+          descriptors, present, activeModelId: runtimeConfig.model ?? null,
+          filter: Object.values(filter).some(Boolean) ? filter : null,
+          page: Number.isInteger(page) && page > 0 ? page : 1,
+          runtime: runtimeConfig,
+        }));
+      } catch (error) {
+        return json(res, 400, { error: error.reason ?? error.message, kind: error.kind ?? 'INVALID_REQUEST' });
+      }
+    }
+    // The only mutating verb of this panel, and the only one that spends authority. It PLANS
+    // and refuses; it does not download here. Acquisition is egress plus a write to disk plus
+    // an execution, and each of those already has a gate in this product — what was missing
+    // was the decision that says which gates a model acquisition must pass, in what order.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/acquire') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const descriptor = readModelDescriptors().find((entry) => entry.id === request?.id) ?? null;
+      if (!descriptor) return json(res, 404, { error: 'no descriptor with that id is known to this installation' });
+      const privacy = currentPrivacy(authenticated.user);
+      const plan = planAcquisition({
+        descriptor,
+        registry: publisherRegistry,
+        runtime: localModels.config(),
+        // Egress consent is the product's own state, not a parameter of the request: a caller
+        // must not be able to assert its own consent.
+        egressAllowed: privacy.state === 'external',
+        maxBytes: MODEL_ACQUIRE_MAX_BYTES,
+      });
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.acquire',
+        result: plan.allowed ? 'planned' : 'refused',
+        details: { id: descriptor.id, publisher: descriptor.publisher, kind: plan.kind ?? null },
+      });
+      if (!plan.allowed) return json(res, 403, { error: plan.reason, kind: plan.kind });
+      // Declared rather than pretended: the transport that fetches the bytes is not built on
+      // this installation. Answering 202 with an invented job id would be the false
+      // declaration this product exists to remove.
+      return json(res, 501, {
+        error: 'this installation has no model transport configured, so the artefact cannot be fetched yet',
+        kind: 'NO_TRANSPORT', grant: plan.grant,
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/hardware') {
       const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;

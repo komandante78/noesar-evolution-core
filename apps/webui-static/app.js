@@ -328,7 +328,7 @@ function announceCodenPanel(region,name){
   const heading=panel?.querySelector('h3')?.textContent?.trim();
   if(!heading)return;
   document.title=`${heading} · NOESAR Evolution`;
-  const live=$('#routeAnnouncer');if(live)live.textContent=`${heading} panel`;
+  const live=$('#routeAnnouncer');if(live){live.setAttribute('translate','no');live.textContent=`${heading} ${t('panel')}`;}
 }
 // What a page needs before it is worth offering at all. `ROUTE_ACCESS` and `SECTION_ACCESS`
 // are IMPORTED from `agent-commands.js` since phase 3a, not defined here. They were this
@@ -453,7 +453,7 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   const heading=(scope&&scope.querySelector('h1,h2.page-title'))||document.querySelector(`#view-${target} h1`);
   document.title=heading?`${heading.textContent.trim()} · NOESAR Evolution`:'NOESAR Evolution';
   // Announce the change for assistive technology, which does not observe a class flip.
-  const live=$('#routeAnnouncer');if(live)live.textContent=`${heading?heading.textContent.trim():target} view`;
+  const live=$('#routeAnnouncer');if(live){live.setAttribute('translate','no');live.textContent=`${heading?heading.textContent.trim():target} ${t('view')}`;}
   // An address that names a panel is announced as that panel, not as the page containing
   // it: "Diff panel", not "CodeN Evolution view" for eleven different addresses.
   if(codenAddress)announceCodenPanel(section,codenAddress.split('/')[1]);
@@ -4489,12 +4489,137 @@ async function loadResearchDestination(){
   if(reportId)await renderResearchReport(reportId);
 }
 
+
+// ── The model catalogue · s333 point 5 ────────────────────────────────────────────────────
+//
+// Owner, s318 and again in s333: «su #/models deve esserci un menu con i modelli e i modelli
+// scaricati e installati devono sempre visualizzarsi per primi». Designed in s320 in
+// `docs/MODEL_CATALOG_DESIGN.md`, whose first line said nothing in it was implemented — and
+// that stayed true for thirteen sessions while this destination showed one panel about
+// comparing providers.
+//
+// Every decision about lanes, grouping, filtering and refusal is made in `model-catalog.mjs`
+// on the server and simply rendered here. That is not tidiness: the terminal shell reaches the
+// same route, and a browser that computed its own lanes would be a second answer to the same
+// question — which is the shape this project has paid for twice (`D-0300`, `D-0302`).
+let modelCatalogPage=1;
+function modelFilterQuery(){
+  const params=new URLSearchParams();
+  const type=$('#modelFilterType')?.value??'';
+  const fn=$('#modelFilterFunction')?.value??'';
+  const text=($('#modelFilterText')?.value??'').trim();
+  if(type)params.set('type',type);
+  if(fn)params.set('fn',fn);
+  if(text)params.set('q',text);
+  params.set('page',String(modelCatalogPage));
+  return params.toString();
+}
+const MODEL_LANE_TITLE={'in-use':'In use','downloaded':'Downloaded','unverified':'On disk, not verified'};
+// The verb differs per lane, and that is the whole reason they are lanes: replace costs a
+// runtime restart, use costs seconds and no network, acquire costs network, disk and time.
+const MODEL_LANE_VERB={'in-use':'Replace','downloaded':'Use','unverified':'Cannot start'};
+const MODEL_LANE_NOTE={
+  'in-use':'What is answering right now.',
+  'downloaded':'Present on disk and matching the digest its publisher declared.',
+  'unverified':'Present on disk and NOT matching the declared digest, so it cannot be started. A file that was downloaded and not verified is not a model you have.',
+};
+function modelCard(item){
+  const declared=(value)=>value==='undeclared'||value===null||value===undefined
+    ?'<em>undeclared</em>':escapeHtml(String(value));
+  const outside=item.outsideFilter
+    ?'<small>in use &middot; outside the current filter, and shown anyway — a product that hides what it is executing is one you cannot stop</small>':'';
+  return `<article class="entity-card" translate="no"><h3>${escapeHtml(item.id)}</h3></article>`
+    .replace('</article>',
+      `<small>${declared(item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}</small>`
+      +`<p>Type ${declared(item.type)} &middot; function ${item.functions.map(declared).join(', ')}`
+      +`${item.contextWindow?` &middot; context ${item.contextWindow}`:' &middot; context <em>undeclared</em>'}</p>`
+      +outside+'</article>');
+}
+function renderModelLanes(catalog){
+  const foreground=$('#modelForegroundLanes');
+  if(foreground){
+    const total=catalog.foreground.reduce((sum,entry)=>sum+entry.items.length,0);
+    $('#modelForegroundCount').setAttribute('translate','no');$('#modelForegroundCount').textContent=`${total} ${t('on this installation')}`;
+    foreground.classList.toggle('empty-state',total===0);
+    foreground.innerHTML=total===0
+      ?'No model is running and none is on disk. Nothing is hidden here — this installation has none.'
+      :catalog.foreground.filter((entry)=>entry.items.length>0).map((entry)=>
+        `<h4 translate="no">${escapeHtml(t(MODEL_LANE_TITLE[entry.lane]??entry.lane))} &middot; ${entry.items.length}</h4>`
+        +`<p class="hint" translate="no">${escapeHtml(t(MODEL_LANE_NOTE[entry.lane]??''))} ${escapeHtml(t('Action:'))} ${escapeHtml(t(MODEL_LANE_VERB[entry.lane]??''))}.</p>`
+        +`<div class="card-list">${entry.items.map(modelCard).join('')}</div>`).join('');
+  }
+  const list=$('#modelAvailableList');
+  if(list){
+    $('#modelAvailableCount').setAttribute('translate','no');$('#modelAvailableCount').textContent=`${catalog.available.total} ${t('known')}`;
+    list.classList.toggle('empty-state',catalog.available.items.length===0);
+    list.innerHTML=catalog.available.items.length===0
+      ?'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.'
+      :`<div class="card-list">${catalog.available.items.map(modelCard).join('')}</div>`;
+    $('#modelPageLabel').setAttribute('translate','no');$('#modelPageLabel').textContent=`${t('Page')} ${catalog.available.page} ${t('of')} ${catalog.available.pages}`;
+    $('#modelPagePrev').disabled=catalog.available.page<=1;
+    $('#modelPageNext').disabled=catalog.available.page>=catalog.available.pages;
+  }
+  // MC-006. The gesture is drawn and switched OFF with its reason, never removed: a missing
+  // button teaches nothing, a stopped one teaches where it starts.
+  const badge=$('#modelAcquireState');
+  if(badge){
+    badge.textContent=catalog.acquisition.offered?'Acquire available':'Acquire unavailable';
+    badge.className=catalog.acquisition.offered?'badge badge-on':'badge badge-off';
+  }
+  const reason=$('#modelAcquireReason');
+  if(reason)reason.setAttribute('translate','no');
+  if(reason)reason.textContent=catalog.acquisition.offered
+    ?t('This installation can fetch and start a model of a registered publisher. Acquiring is egress, and each acquisition is authorised on its own.')
+    :`${t('Acquiring is switched off:')} ${catalog.acquisition.reason}`;
+  // The declared-grouping counts, `undeclared` included as a row rather than dropped. Rebuilt
+  // from the live catalogue so a type nobody publishes stops being offered as a filter.
+  for(const [id,counts] of [['#modelFilterType',catalog.grouping.byType],['#modelFilterFunction',catalog.grouping.byFunction]]){
+    const select=$(id);if(!select)continue;
+    const chosen=select.value;
+    const any=id==='#modelFilterType'?t('Any type'):t('Any function');
+    select.setAttribute('translate','no');
+    select.innerHTML=`<option value="">${escapeHtml(any)}</option>`
+      +Object.entries(counts).sort(([a],[b])=>a.localeCompare(b))
+        .map(([key,count])=>`<option value="${escapeHtml(key)}">${escapeHtml(key)} (${count})</option>`).join('');
+    select.value=chosen;
+  }
+}
+async function loadModelCatalogue(){
+  const foreground=$('#modelForegroundLanes');
+  if(!foreground)return;
+  try{
+    renderModelLanes(await api(`/api/v1/models/catalog?${modelFilterQuery()}`));
+  }catch(error){
+    // Declared, not blank: an unreadable catalogue is a different statement from an empty one,
+    // and rendering the second when the first happened is how a page lies quietly.
+    foreground.classList.add('empty-state');
+    foreground.setAttribute('translate','no');
+    foreground.textContent=`${t('The catalogue could not be read:')} ${error.value?.error??error.message}. ${t('This is not the same as having no models.')}`;
+  }
+}
+function wireModelCatalogue(){
+  for(const id of ['#modelFilterType','#modelFilterFunction']){
+    $(id)?.addEventListener('change',()=>{modelCatalogPage=1;loadModelCatalogue();});
+  }
+  let typing;
+  $('#modelFilterText')?.addEventListener('input',()=>{
+    clearTimeout(typing);typing=setTimeout(()=>{modelCatalogPage=1;loadModelCatalogue();},250);
+  });
+  $('#modelFilterClear')?.addEventListener('click',()=>{
+    for(const id of ['#modelFilterType','#modelFilterFunction','#modelFilterText']){const node=$(id);if(node)node.value='';}
+    modelCatalogPage=1;loadModelCatalogue();
+  });
+  $('#modelPagePrev')?.addEventListener('click',()=>{modelCatalogPage=Math.max(1,modelCatalogPage-1);loadModelCatalogue();});
+  $('#modelPageNext')?.addEventListener('click',()=>{modelCatalogPage+=1;loadModelCatalogue();});
+}
+
 Object.assign(VIEW_LOADERS,{
   memory:loadMemoryDestination,
   research:loadResearchDestination,
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
   home:loadHome,
+  models:loadModelCatalogue,
 });
 // The loaders of the demoted pages, keyed by the section that now owns them. "Health and
 // logs" is one section holding two former pages, so it runs both: merging two entries in
@@ -4534,6 +4659,7 @@ Object.assign(SECTION_LOADERS,{
   modules:loadOwnerModules,
 });
 
+wireModelCatalogue();
 initI18n();
 initAppearance();
 // Reading preferences are applied BEFORE the router paints anything: applying them after

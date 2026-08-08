@@ -187,6 +187,12 @@ export const ENGINE_STATE_PATHS = Object.freeze([
   // The data plane's own directory and the update staging area: engine-managed, and large.
   'postgresql',
   'updates',
+  // The model catalogue, s333 point 5. Engine-managed, and large in a way none of the others
+  // are: one artefact is measured in gigabytes, so a scan that walked it would not be slightly
+  // slower, it would be unusable. The descriptors beside them are engine state for the same
+  // reason 'config' is — they are what the catalogue decides from, and a scanner that can read
+  // them can propose a write to the record of which origins this installation trusts.
+  'models',
 ]);
 
 /**

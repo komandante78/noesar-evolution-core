@@ -117,10 +117,14 @@ describe('the catalogue cannot translate twice or contradict itself', () => {
   });
 
   test('runtime-only entries are declared, and each one really is absent from the markup', () => {
-    const html = readFileSync(join(repoRoot, 'apps/webui-static/index.html'), 'utf8');
+    // Asked of the extractor, not of the raw file. A substring search says "Replace" is in the
+    // markup because "Replace authenticator" is — and would have forced a real runtime string
+    // out of the declared list to silence a false alarm, which is how an exemption list stops
+    // meaning anything.
+    const visible = new Set(coverageReport().visible);
     for (const entry of RUNTIME_ONLY) {
-      assert.ok(!html.includes(entry),
-        `${JSON.stringify(entry)} is declared runtime-only but appears in the markup — the exemption is hiding a real measurement`);
+      assert.ok(!visible.has(entry),
+        `${JSON.stringify(entry)} is declared runtime-only but IS a visible string in the markup — the exemption is hiding a real measurement`);
     }
   });
 });

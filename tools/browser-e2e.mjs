@@ -2464,6 +2464,66 @@ try {
   check('UI-062 and it appears in exactly one group',
     !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
 
+  at('model-catalogue');
+  // --- POINT 5: the model catalogue, on the real page -----------------------------------
+  //
+  // Owner, s318 and again s333: «su #/models deve esserci un menu con i modelli e i modelli
+  // scaricati e installati devono sempre visualizzarsi per primi». Designed in s320 with
+  // "nothing here is implemented" at the top of the design, which stayed true for thirteen
+  // sessions. `npm test` reads app.js as TEXT and never runs it, so a catalogue that renders
+  // only in a unit test is a catalogue nobody has ever seen.
+  await soft('POINT-5', async () => {
+    resetObservations();
+    await page.goto(`${BASE}/#/models`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#modelForegroundLanes', { timeout: 15000 });
+    await page.waitForFunction(
+      () => !/Loading/.test(document.querySelector('#modelForegroundLanes')?.textContent ?? 'Loading'),
+      { timeout: 15000 });
+
+    const view = await page.evaluate(() => ({
+      foreground: (document.querySelector('#modelForegroundLanes')?.textContent ?? '').trim(),
+      foregroundCount: document.querySelector('#modelForegroundCount')?.textContent ?? '',
+      available: (document.querySelector('#modelAvailableList')?.textContent ?? '').trim(),
+      badge: document.querySelector('#modelAcquireState')?.textContent ?? '',
+      reason: document.querySelector('#modelAcquireReason')?.textContent ?? '',
+      pager: document.querySelector('#modelPageLabel')?.textContent ?? '',
+      // The order on the page IS the requirement: what you have must come before what you could get.
+      foregroundBeforeAvailable:
+        (document.querySelector('#modelForeground')?.getBoundingClientRect().top ?? 0)
+        < (document.querySelector('#modelAvailableList')?.getBoundingClientRect().top ?? 0),
+      filtersDrawn: document.querySelectorAll('#modelFilterType option').length,
+    }));
+
+    check('POINT-5 the catalogue renders instead of staying on Loading',
+      view.foreground.length > 0 && !/Loading/.test(view.foreground), view.foreground.slice(0, 160));
+    check('POINT-5 what you have is drawn ABOVE what you could get — the Owner\'s «sempre per primi»',
+      view.foregroundBeforeAvailable, JSON.stringify({ order: view.foregroundBeforeAvailable }));
+    check('POINT-5 the pager belongs to the available lane only', /Page \d+ of \d+/.test(view.pager), view.pager);
+    // MC-006 on the live page: the runtime is disabled on this installation, so the gesture
+    // must be present, off, and carrying the sentence that says where it turns on.
+    check('POINT-5 MC-006 a disabled runtime is declared rather than hidden',
+      /unavailable/i.test(view.badge) && /switched off/i.test(view.reason), `${view.badge} :: ${view.reason}`);
+    check('POINT-5 an empty lane says it is empty rather than showing nothing',
+      view.foreground.length > 0 && view.available.length > 0,
+      `${view.foreground.slice(0, 80)} | ${view.available.slice(0, 80)}`);
+    check('POINT-5 the declared groupings are offered as filters, built from the live catalogue',
+      view.filtersDrawn >= 1, `${view.filtersDrawn} type options`);
+    check('POINT-5 the page made no failed request', failedRequests.length === 0, failedRequests.join(' | '));
+
+    // The route refuses what it should refuse, on the real server: acquiring is egress plus a
+    // write plus an execution, and this installation consents to none of them.
+    const refusal = await page.evaluate(async () => {
+      const csrf = document.cookie.split('; ').find((c) => c.startsWith('noesar_csrf='))?.split('=')[1] ?? '';
+      const response = await fetch('/api/v1/models/acquire', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-csrf-token': decodeURIComponent(csrf) },
+        body: JSON.stringify({ id: 'anything-at-all' }),
+      });
+      return { status: response.status, body: await response.text() };
+    });
+    check('POINT-5 MC-001 acquiring an unknown descriptor is refused, not attempted',
+      [403, 404].includes(refusal.status), `${refusal.status} ${refusal.body.slice(0, 140)}`);
+  });
+
   at('coden-slash-feedback');
   // --- POINT 2b: what a person actually SEES when a `/` command lands ------------------
   //
@@ -2657,8 +2717,11 @@ try {
     // belongs to kinds 1 and 3 above, which are closed by composing with `t()`, not by
     // translating. What remains is kinds 2 and 4 — the ones an entry really does close.
     const closable = Array.isArray(missed) ? missed.filter((s) => !/\d/.test(s)) : null;
-    // Measured, not estimated: 623 of the 865 recorded on the run this baseline was taken from.
-    const RUNTIME_GAP_BASELINE = 623;
+    // Measured, not estimated, and TIGHTENED every time it falls — that is what makes it a
+    // ratchet rather than a floor. It has moved 623 -> 598: repairing the route announcer,
+    // which composed an already-translated heading with the word "view", closed twenty-five
+    // at once across every page. One composed string can be worth dozens of entries.
+    const RUNTIME_GAP_BASELINE = 598;
     check('I18N-RUNTIME the catalogue-closable gap does not grow (declared gap, not a pass)',
       Array.isArray(closable) && closable.length <= RUNTIME_GAP_BASELINE,
       `${closable ? closable.length : '?'} closable of ${Array.isArray(missed) ? missed.length : '?'} recorded, declared baseline ${RUNTIME_GAP_BASELINE}`);

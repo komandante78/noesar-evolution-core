@@ -51,11 +51,11 @@ export const MFA_REQUIRED_ROLES = Object.freeze(new Set(['owner', 'admin']));
 export const NON_INTERACTIVE_ROLES = Object.freeze(new Set(['service_account']));
 
 const ROLE_PERMISSIONS = Object.freeze({
-  owner: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','coden.owner-bypass','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
-  admin: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
-  developer: new Set(['user.read','hardware.read','runtime.plan','coden.plan','coden.authorize',...AI_ADMIN]),
-  user: new Set(['user.read','hardware.read','runtime.plan',...AI_USER]),
-  client_restricted: new Set(['user.read',...AI_CLIENT_RESTRICTED]),
+  owner: new Set(['user.read','hardware.read','model.read','runtime.plan','coden.plan','coden.authorize','coden.owner-bypass','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
+  admin: new Set(['user.read','hardware.read','model.read','runtime.plan','coden.plan','coden.authorize','audit.read','auth.manage','user.manage','model.manage',...AI_ADMIN]),
+  developer: new Set(['user.read','hardware.read','model.read','runtime.plan','coden.plan','coden.authorize',...AI_ADMIN]),
+  user: new Set(['user.read','hardware.read','model.read','runtime.plan',...AI_USER]),
+  client_restricted: new Set(['user.read','model.read',...AI_CLIENT_RESTRICTED]),
   service_account: new Set(['user.read',...AI_SERVICE_ACCOUNT]),
 });
 
