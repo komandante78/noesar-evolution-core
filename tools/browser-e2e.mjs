@@ -2464,6 +2464,51 @@ try {
   check('UI-062 and it appears in exactly one group',
     !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
 
+  at('page-help');
+  // --- POINT 3c: the information buttons, on the real page ------------------------------
+  //
+  // Owner: «vanno messi i tasti `i` di informazione che cliccando danno suggerimenti». The unit
+  // test proves every page HAS an entry; only the browser proves the button is placed, opens,
+  // says something, and closes. A help button that renders behind the header or never opens is
+  // perfectly correct to a source reader.
+  await soft('POINT-3C', async () => {
+    const destinations = ['home', 'models', 'projects', 'settings/security', 'not-found'];
+    for (const destination of destinations) {
+      await page.goto(`${BASE}/#/${destination}`, { waitUntil: 'networkidle2' });
+      await new Promise((resolve) => { setTimeout(resolve, 300); });
+      const seen = await page.evaluate(() => {
+        // The INNERMOST active thing, not the first match in document order. On a settings
+        // section both the Settings shell and the section itself are active and both carry a
+        // button — reading the shell's while claiming to read the section's would be a check
+        // that passes while measuring something else.
+        const active = document.querySelector('.settings-section.active') ?? document.querySelector('.view.active');
+        const button = active?.querySelector(':scope > .section-header > .help-button, :scope > .hero > .help-button');
+        if (!button) return { present: false, text: '', opened: false, expanded: false, visible: false, installError: document.body.dataset.helpError ?? null };
+        button.click();
+        const panel = document.querySelector('#pageHelp');
+        return {
+          present: true,
+          installError: document.body.dataset.helpError ?? null,
+          visible: (button.getBoundingClientRect().height ?? 0) > 0,
+          opened: panel && !panel.classList.contains('hidden'),
+          text: (panel?.textContent ?? '').trim(),
+          expanded: button.getAttribute('aria-expanded') === 'true',
+        };
+      });
+      check(`POINT-3C #/${destination} has an information button, on screen`,
+        seen.present && seen.visible, JSON.stringify(seen).slice(0, 120));
+      check(`POINT-3C clicking it says both what the page is and what to do here`,
+        seen.opened && /What this is/i.test(seen.text) && /worth doing/i.test(seen.text) && seen.text.length > 150,
+        `${destination}: ${seen.text.slice(0, 120)}`);
+      check(`POINT-3C and it reports its state to assistive technology`, seen.expanded === true);
+      // Escape closes it: a panel that can only be dismissed with the mouse is a trap for
+      // anyone driving this from the keyboard.
+      await page.keyboard.press('Escape');
+      const closed = await page.evaluate(() => document.querySelector('#pageHelp')?.classList.contains('hidden'));
+      check(`POINT-3C Escape closes it`, closed === true);
+    }
+  });
+
   at('page-liveness');
   // --- POINT 3b: opening a page actually goes and asks --------------------------------
   //
@@ -2948,6 +2993,9 @@ try {
       timezoneOptions: document.querySelectorAll('#settingsTimezone option').length,
       timezoneSummary: (document.querySelector('#settingsTimezoneSummary')?.textContent ?? '').slice(0, 160),
     })));
+    // What the BROWSER said. Without this a module that fails to load looks identical to a
+    // selector that was never going to match, and the two need opposite repairs.
+    context += ` :: console: ${consoleErrors.slice(0, 5).join(' | ').slice(0, 600)}`;
   } catch { context = '(page state unavailable)'; }
   check(`harness completed without throwing [step: ${step}]`, false, `${error.message} :: ${(error.stack ?? '').split('\n').slice(0, 6).join(' | ')} :: ${context}`);
 } finally {

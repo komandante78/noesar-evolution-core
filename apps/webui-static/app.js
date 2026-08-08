@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { initI18n, t } from './i18n.js';
+import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
@@ -4623,6 +4624,101 @@ function wireModelCatalogue(){
   $('#modelPageNext')?.addEventListener('click',()=>{modelCatalogPage+=1;loadModelCatalogue();});
 }
 
+
+// ── The information buttons · s333 point 3c ───────────────────────────────────────────────
+//
+// Owner: «vanno messi i tasti `i` di informazione che cliccando danno suggerimenti».
+//
+// One mechanism, not thirty-three edits to the markup. A missing help button is invisible —
+// the panel simply looks like every other panel — so the way to make "every page has one" true
+// is to derive it rather than to remember it. The button is placed into each page's own
+// header, from the same address the router uses, and `page-help.test.mjs` fails when a page
+// has no entry AND when an entry names a page that does not exist. Neither half can rot alone.
+//
+// The panel is one element reused, not one per page: thirty-three popovers would be
+// thirty-three things to keep in sync with the language, the theme and the focus ring.
+function helpAddressOf(section){
+  const id=section.id??'';
+  if(id.startsWith('view-')&&!section.dataset.section)return id.slice(5);
+  const owner=section.dataset.section??id.replace(/^(view|section)-/,'');
+  return section.classList.contains('view')?id.slice(5):`settings/${owner}`;
+}
+function closeHelp(){
+  const panel=$('#pageHelp');
+  if(!panel)return;
+  panel.classList.add('hidden');
+  $$('.help-button[aria-expanded="true"]').forEach((node)=>node.setAttribute('aria-expanded','false'));
+}
+function openHelp(button,address){
+  const entry=PAGE_HELP[address];
+  const panel=$('#pageHelp');
+  if(!panel)return;
+  // A page with no entry says so rather than opening an empty box. An empty explanation reads
+  // as "there is nothing to know here", which is a claim, and a false one.
+  panel.innerHTML=entry
+    ?`<h3>${escapeHtml(t('What this is'))}</h3><p>${escapeHtml(t(entry.what))}</p><h3>${escapeHtml(t('What is worth doing here'))}</h3><p>${escapeHtml(t(entry.howto))}</p><p class="hint">${escapeHtml(t('Press Escape to close.'))}</p>`
+    :`<p>${escapeHtml(t('No help has been written for this page yet.'))}</p>`;
+  panel.setAttribute('translate','no');
+  panel.classList.remove('hidden');
+  button.setAttribute('aria-expanded','true');
+  panel.focus();
+}
+function installHelpButtons(){
+  try{installHelpButtonsUnsafely();}catch(error){
+    // Reported, not swallowed: an information button that silently fails to appear is exactly
+    // the invisible omission this whole mechanism exists to prevent.
+    console.error('help buttons could not be installed',error);
+    document.body.dataset.helpError=String(error?.message??error);
+  }
+}
+function installHelpButtonsUnsafely(){
+  if(!$('#pageHelp')){
+    const panel=document.createElement('div');
+    panel.id='pageHelp';
+    panel.className='help-panel hidden';
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-label','Page information');
+    panel.tabIndex=-1;
+    document.body.append(panel);
+  }
+  // Anchored on the SECTION and not on `.section-header`, because four pages do not have one:
+  // Home opens with a `.hero`, and chat, coden and models-hardware have neither. Anchoring on
+  // the header would have shipped those four without a button, looking exactly like the pages
+  // that have one — which is the invisible omission this whole mechanism exists to prevent,
+  // reproduced by the mechanism itself. A page with no header gets a strip that holds only this.
+  for(const section of $$('.view,.settings-section,.settings-sub')){
+    let header=section.querySelector(':scope > .section-header, :scope > .hero');
+    if(!header){
+      header=document.createElement('div');
+      header.className='section-header help-anchor';
+      section.prepend(header);
+    }
+    if(header.querySelector('.help-button'))continue;
+    const address=helpAddressOf(section);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='help-button';
+    button.dataset.help=address;
+    button.setAttribute('aria-expanded','false');
+    button.setAttribute('aria-controls','pageHelp');
+    // The label carries the page, so a screen reader is not read "i" thirty-three times.
+    button.setAttribute('aria-label',`Information about ${address}`);
+    button.textContent='i';
+    header.append(button);
+  }
+}
+document.addEventListener('click',(event)=>{
+  const button=event.target.closest?.('.help-button');
+  if(button){
+    const open=button.getAttribute('aria-expanded')==='true';
+    closeHelp();
+    if(!open)openHelp(button,button.dataset.help);
+    return;
+  }
+  if(!event.target.closest?.('#pageHelp'))closeHelp();
+});
+document.addEventListener('keydown',(event)=>{if(event.key==='Escape')closeHelp();});
+
 Object.assign(VIEW_LOADERS,{
   memory:loadMemoryDestination,
   research:loadResearchDestination,
@@ -4686,6 +4782,7 @@ Object.assign(SECTION_LOADERS,{
 });
 
 wireModelCatalogue();
+installHelpButtons();
 initI18n();
 initAppearance();
 // Reading preferences are applied BEFORE the router paints anything: applying them after

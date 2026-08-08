@@ -1230,3 +1230,33 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   #view-coden .bench,#view-coden .coden-bar,#view-coden .agent-transcript,
   #view-coden .agent-prompt,#view-coden .agent-hint,#view-coden #codenDivergence{padding-inline:14px;margin-inline:0}
 }
+
+/* ── The information buttons · s333 point 3c ────────────────────────────────────────────────
+   Owner: «vanno messi i tasti `i` di informazione che cliccando danno suggerimenti».
+
+   One panel reused, not one per page: thirty-three popovers would be thirty-three things to
+   keep in step with the language, the theme and the focus ring. The button sits in the page's
+   own header, which is why it needs no space of its own — `.section-header` is already a flex
+   row with the title at one end and nothing at the other. */
+.help-button{flex:0 0 auto;width:26px;height:26px;padding:0;border:1px solid var(--line);border-radius:50%;
+  background:var(--surface-raised);color:var(--accent-brand);font-family:inherit;font-style:italic;
+  font-size:calc(var(--text-scale)*13px);line-height:1;cursor:pointer}
+.help-button:hover{border-color:var(--border-accent-hover)}
+/* Pressed state carries a fill AND the border, never colour alone — `07_INTERFACCIA.md` §6,
+   and `aria-expanded` carries the same fact to a screen reader. */
+.help-button[aria-expanded="true"]{background:var(--surface-selected);color:var(--text-on-accent)}
+/* Declared here with a default rather than only written from JavaScript: the stylesheet
+   guard requires every token a var() reads to be defined, and it is right — a token that
+   exists only because some code happens to set it renders as nothing the one time that code
+   does not run. */
+.help-panel{position:fixed;inset-inline-end:24px;top:92px;z-index:50;
+  width:min(420px,calc(100vw - 48px));max-height:60vh;overflow-y:auto;padding:16px 18px;
+  border:1px solid var(--line);border-radius:12px;background:var(--surface-popover);
+  color:var(--text-popover);box-shadow:0 24px 80px var(--shadow-overlay)}
+.help-panel h3{margin:0 0 6px;font-size:calc(var(--text-scale)*12px);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-faint)}
+.help-panel h3+p{margin:0 0 14px;line-height:1.55}
+.help-panel .hint{margin:0;color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
+.help-panel:focus{outline:none;box-shadow:0 0 0 2px var(--focus-ring),0 24px 80px var(--shadow-overlay)}
+@media(max-width:850px){.help-panel{inset-inline:14px;width:auto}}
+@media(forced-colors:active){.help-button[aria-expanded="true"]{border:2px solid CanvasText}}
