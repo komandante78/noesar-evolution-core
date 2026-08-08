@@ -8087,3 +8087,127 @@ NOTHING typed, `--forget`, be asked again, and prove the forgotten token is dead
 not merely deleted locally. Driving the launcher rather than the client is deliberate: phase 8
 already paid for that distinction once, when `$0` resolved to the symlink and the shipped
 gesture was broken while every test of the client passed.
+
+## D-0349 — the mix stops being silent (2026-08-08)
+
+**The Owner's words:** *«ho visto un mix — quando clicco sulla traduzione rimane in inglese o
+viceversa, quindi va fatto un controllo approfondito»* (s333, point 4).
+
+**Three defects produced one symptom.** Coverage was **9.97%** — 72 of 722 visible strings had
+an entry, and a missing entry renders in English and says nothing at all. **48 of the 58 render
+functions were never translated**: `applyTranslations()` was called from one place, `renderAll()`,
+which covers ten. And the picker showed the *preference*, never the language in effect — with
+`auto` on an Italian browser the interface came up Italian while the control read "Auto", so
+choosing Italian changed nothing observable.
+
+**The repair for the second is deliberately NOT a call in the other forty-eight.** That is 58
+copies of a rule, the shape `D-0300` and `D-0302` were both about. Translation became a property
+of the document, held by a MutationObserver; a test fails if a call site reappears in `app.js`.
+Source strings are preserved in a WeakMap, so translation is idempotent AND reversible — changing
+language no longer reloads the page.
+
+**The «o viceversa» half was measured and NOT found:** zero Italian source strings in markup,
+webui JavaScript or server source. What the Owner saw as Italian-under-English is the same
+missing coverage from the other side.
+
+**Two measurements, because neither is sufficient alone.**
+`tools/measure-ui-language-coverage.mjs` is exhaustive over static markup, per page, and exits
+non-zero on one gap — a test removes an entry and requires the red. `I18N-RUNTIME` drives every
+destination in the browser and asks the translator itself what it could not translate; that
+measurement had never existed.
+
+**Declared, not dressed up:** the runtime half is incomplete. 607 catalogue-closable strings
+remain and the check ratchets on that number. It counts digit-free strings only, because the raw
+total drifts between runs (865, 869) and *a check that fails at random is switched off by the
+third person who sees it*.
+
+**Four defects found in my own instruments before trusting them:** an Italian detector that
+reported six English strings as Italian (`per`); stripping excluded elements glued neighbouring
+text into keys no node can equal; HTML entities deleted instead of decoded; `--json` printing
+prose onto the same stream.
+
+## D-0350 — a slash command that needs a subject stops guessing (2026-08-08)
+
+**The Owner's words:** *«i comandi `/` non so se funzionano, non vedo cambiamenti e non si
+capisce»* (s333, point 2).
+
+**Measured in the browser before touching anything**, because s328's precedent forbids treating
+this as styling — a menu entry had been found with no address at all. Typing `/diff` fired
+`workspace.get()` with no run and came back *"diff refused: no run"*: a server sentence, in a
+transcript, about a call nobody asked to make, with the address bar unmoved. `/plan` did the
+same. **Nine of the thirty-three commands take a required argument and every one behaved this
+way.**
+
+**The convention was already in the catalogue and had never been read:** `<run>` is required,
+`[path]` is optional. A command given no subject has not been asked to RUN — it has been NAMED.
+It now goes to the panel that shows that thing where one exists and says why it went; where none
+exists it states what is missing. No doomed call is made either way.
+
+Decided in `coden-view-model.js`, the one place both shells share: two shells that each decide
+when a call is safe will disagree, and the disagreement surfaces in whichever is used less.
+
+**Point 2a — the Owner corrected me, and the living document had it backwards.** *«allarga la
+chat così non si capisce che è una chat»* reads two opposite ways in Italian.
+`OWNER_CHANGE_LIST_S333.md` had recorded it as a complaint that the chat is too wide, which
+would have meant undoing `D-0336` — work the Owner asked for in s328 with the words *«non sembra
+neanche una chat»*. Asked directly, the answer was the opposite. **The rule that comes out of
+it: when a sentence has two readings that produce opposite work, ask.**
+
+## D-0351 — the model catalogue exists (2026-08-08)
+
+**The Owner's words:** *«su `#/models` deve esserci un menu con i modelli e i modelli scaricati e
+installati devono sempre visualizzarsi per primi»* (s318, repeated as s333 point 5).
+
+`docs/MODEL_CATALOG_DESIGN.md` was written in s320 and its first line said nothing in it was
+implemented. **That stayed true for thirteen sessions.**
+
+**The tension, resolved in code:** *«qualunque modello»* and *«solo fonti verificate»* contradict
+each other only while a "source" means a list of models — an approved list of models IS the fixed
+list the first requirement forbids. So the **publisher** is verified, not the model, using
+`publisher-registry.mjs` (`D-0275`) and not a second registry. Two places to revoke is worse than
+one, because revoking in one of them looks like it worked.
+
+**Three lanes because they have three different verbs** — replace (a runtime restart), use
+(seconds, no network), acquire (network, disk, time). The first two never paginate: that is the
+Owner's *«sempre per primi»*, encoded rather than described.
+
+`MC-001`…`MC-006` are tests, not prose. Acquisition **plans and refuses**; it does not fetch —
+answering 202 with an invented job id would be the false declaration this product exists to
+remove, so it answers 501 and names what is missing.
+
+## D-0352 — the pages stop being stale, and the census is derived (2026-08-08)
+
+**The Owner's words:** *«mi sembrano tutte pagine statiche»* (s333, point 3a and 3b).
+
+He was right, and it is now a number: **live 19→29, boot-only 7→0, static 9→6**. The seven were
+the worst of the three — not empty, but full of **true values frozen at sign-in**. A stale number
+looks exactly like a current number, so those pages were alive, wrong and confident. Two more had
+a working loader that opening the page never reached.
+
+**Three defects in the measuring tool itself**, all found because it reported a page as static
+that the very same edit had just made live — a measurement wrong in the reassuring direction is
+worse than no measurement: the entry regex refused any value containing a comma; it took the
+first identifier out of an arrow; and **it read comments**, this repository's own known trap,
+biting a scanner instead of a guard.
+
+Six pages remain static **on purpose**, each with its reason in `page-liveness.test.mjs`.
+`#/not-found` should be static. What is a defect is a page going quiet without anyone noticing.
+
+## D-0353 — every page can explain itself (2026-08-08)
+
+**The Owner's words:** *«vanno messi i tasti `i` di informazione che cliccando danno
+suggerimenti (tutto in inglese principale con traduzione multi lingua)»* (s333, point 3c).
+
+One mechanism, not thirty-three edits to the markup: **a missing help button is invisible**, so
+"every page has one" is derived from the census and held in BOTH directions — a page with no
+entry fails, and an entry naming a page that does not exist fails too.
+
+**The rule the texts are written under: they have to be TRUE.** An information button is the one
+place a person arrives having already decided to trust the answer. A page the census calls static
+says so in its own help, asserted mechanically rather than left to good intentions.
+
+**Four defects found by running it**, none visible to a source reader. The worst: `$$` written as
+`$` in two places, so `.forEach` on a single element threw on **every click anywhere in the
+application** — a help button took the whole product down. The installer also anchored on
+`.section-header`, which four pages do not have, and would have shipped them without a button:
+the invisible omission this mechanism exists to prevent, reproduced by the mechanism itself.
