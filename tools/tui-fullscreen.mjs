@@ -263,6 +263,15 @@ export async function runFullScreen({
   emitKeypressEvents(input);
   const wasRaw = input.isRaw;
   if (input.isTTY) input.setRawMode(true);
+  // Raw mode and FLOW are two different things, and taking only the first is exactly why this
+  // screen could be painted on a real terminal and still never see a keystroke. `tui-client`
+  // calls `iface.pause()` before handing over, which sets `readableFlowing = false` ON
+  // PURPOSE; `emitKeypressEvents` then attaches with `.on('data')`, and Node resumes on that
+  // listener only `if (state.flowing !== false)`. So a deliberately paused stdin stays paused,
+  // no byte is ever decoded, and `keypress` never fires — while the frame, the cursor and the
+  // alternate screen all look right. This file owns raw mode and the keypress loop, so it owns
+  // the flow too, and hands both back on the way out.
+  const wasFlowing = input.readableFlowing;
 
   await refreshFooter();
   // Before the first keystroke, not on it. The menu and the prompt resolve against the same
@@ -277,6 +286,11 @@ export async function runFullScreen({
       input.off('keypress', onKey);
       out.off('resize', onResize);
       if (input.isTTY) input.setRawMode(Boolean(wasRaw));
+      // Symmetric with the resume beside the listener. `readableFlowing` is `null` before
+      // anything has ever read the stream, and `null` is not `false`: only a caller that had
+      // EXPLICITLY paused stdin gets it back paused, so this never invents a pause nobody
+      // asked for.
+      if (wasFlowing === false && typeof input.pause === 'function') input.pause();
       out.write(SCREEN.leave);
       resolve();
     };
@@ -323,6 +337,12 @@ export async function runFullScreen({
     }
     input.on('keypress', onKey);
     out.on('resize', onResize);
+    // Resumed HERE, beside the listener, and not up with `setRawMode`: everything between the
+    // two is awaited network work (`refreshFooter`, `loadAddresses`). A stream flowing during
+    // it would decode keys into an event with no listener yet — keystrokes dropped on open,
+    // which looks from the outside exactly like the bug this line exists to fix.
+    // Guarded by `typeof`: the acceptance harnesses inject a bare EventEmitter as `input`.
+    if (typeof input.resume === 'function') input.resume();
   });
 
   // Reported rather than acted on here: ending the session is the caller's, because the caller

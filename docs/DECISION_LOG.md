@@ -8211,3 +8211,73 @@ says so in its own help, asserted mechanically rather than left to good intentio
 application** — a help button took the whole product down. The installer also anchored on
 `.section-header`, which four pages do not have, and would have shipped them without a button:
 the invisible omission this mechanism exists to prevent, reproduced by the mechanism itself.
+
+## D-0354 — raw mode is not the same thing as flow (2026-08-08)
+
+**The Owner's words:** *«coden tui non scrive comandi e non funziona»*.
+
+Reproduced on a real pty before touching anything: the screen paints once, the prompt box stays
+`> ` forever, and keys sent **eight seconds after** the frame is drawn produce no redraw at all —
+so it was never a race with raw mode being set late. The same client driven with a **piped**
+stdin answers `status` correctly, which located the fault precisely: not the socket, not the
+engine, not authentication, not the protocol. The interactive input path, and only that.
+
+**Root cause, one line in the caller.** `tui-client.mjs` does `iface.pause()` before handing the
+terminal to `runFullScreen`. That sets `readableFlowing = false` on stdin **on purpose**.
+`runFullScreen` then attaches with `emitKeypressEvents(input)`, which subscribes via
+`.on('data')` — and Node resumes a stream on that listener only `if (state.flowing !== false)`.
+An explicitly paused stdin therefore stays paused: no byte is decoded, `keypress` never fires
+once. `grep -c "resume("` over both files returned **0**. Nothing in the product ever put the
+stream back in motion.
+
+**Measured, not reasoned.** The same three-step sequence in isolation, keys `abc`:
+
+| variant | `readableFlowing` | keys received |
+|---|---|---|
+| `iface.pause()` — as shipped | `false` | **0** |
+| `iface.pause()` + `input.resume()` | `true` | 4 |
+| `iface.close()` + `input.resume()` | `true` | 4 |
+
+`setRawMode(true)` succeeds either way, and that is why this looked healthy from every angle a
+reader has: the terminal really is in raw mode, the alternate screen really is entered, the frame
+really is drawn. Everything is right except that no byte moves.
+
+**Where the fix goes, and why not in the caller.** `tui-fullscreen.mjs` declares in its own header
+that it owns *«raw mode, keypresses, the frame»*. Whoever takes the input takes it **whole** —
+mode **and** flow — and gives both back on the way out. Putting a `resume()` in the caller would
+leave the next caller free to make the identical mistake. The resume sits **beside the keypress
+listener**, not up with `setRawMode`: between the two there are two awaited network calls
+(`refreshFooter`, `loadAddresses`), and a stream flowing across them would decode keys into an
+event with no listener yet — dropped keystrokes on open, indistinguishable from the bug itself.
+The restore is `wasFlowing === false`, not `!wasFlowing`: `readableFlowing` is `null` before
+anything ever read the stream, and only an explicit pause is worth handing back.
+
+**How four green suites missed a terminal that accepted no input, and this is the real finding.**
+Every existing caller of `runFullScreen` in the tests injects a bare `EventEmitter` as `input` and
+emits `keypress` on it by hand — `ce-020`'s `fakeTerminal().press`, `coden-shell-parity`'s
+`input.emit('keypress', …)`. Those drive the **last** link of the chain. The broken link is the
+one before it: carrying bytes from a real stream as far as `emitKeypressEvents`. An `EventEmitter`
+has no `readableFlowing`, no `pause`, no `resume` — **the state that breaks the product cannot be
+represented in the double**, so no assertion over it could ever have failed. `CE-020` 23/23 and
+e2e 460/460 were both true and both blind. Same shape as `D-0338` (the terminal transport had
+never been served) and as the s334 outage (`/livez` reporting `healthy` with the data plane dead):
+the signal being watched said the opposite of the truth.
+
+**The regression row is written against a real paused stream**, a `PassThrough` paused exactly the
+way the caller pauses it — because a double that cannot hold the faulty state cannot guard against
+it. Four rows: a key arrives on a paused stream; leaving hands a paused stream back paused; a
+stream nobody paused is **not** handed back paused; and the injected `EventEmitter` still works,
+so the acceptance harnesses keep passing for their own reasons.
+
+**A defect in the first draft of that test, fixed before it shipped.** `runFullScreen` resolves
+only when the shell is LEFT, and the only way to leave is a keystroke — so against the broken code
+the first row failed honestly and the other two were reported `cancelledByParent`: the suite did
+not fail, it **stopped**. Three broken-looking rows for one real fault, with the diagnostic
+assertion buried. Every wait now runs against a deadline and every row tears down in a `finally`
+through the hand-emitted path, which no pause can stop. Against the shipped code it now reports
+**2 honest failures, 2 honest passes, 0 cancelled**.
+
+**Age:** `git log -S "iface.pause()"` gives `7f0f541`, 2026-08-04 — the same commit that added the
+`runFullScreen` call. They were born together. The full-screen terminal had therefore **never
+accepted a keystroke on a real terminal** in its entire existence; this is not a regression from
+s333 or s334, and no version of it ever worked.
