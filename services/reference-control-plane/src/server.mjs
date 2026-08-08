@@ -16,6 +16,7 @@ import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition } from './model-catalog.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
+import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -989,6 +990,24 @@ async function body(req) {
   catch { throw Object.assign(new Error('Invalid JSON request body.'), { status:400 }); }
 }
 
+/**
+ * The body as BYTES — for audio, which is not text and must not be round-tripped through one.
+ *
+ * A separate limit from `body()`'s 64 MiB, and a much smaller one: this is a spoken phrase, not
+ * a file upload. A microphone that is left running is the ordinary way this route gets abused,
+ * and it is abused by an authenticated user, so the ceiling is the control, not the credential.
+ */
+async function bytesBody(req, { limitBytes = 16 * 1024 * 1024 } = {}) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > limitBytes) throw Object.assign(new Error('Audio too large.'), { status:413 });
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 function serveStatic(pathname, res) {
   const requested = pathname === '/' ? '/index.html' : pathname;
   const target = normalize(resolve(webRoot, `.${requested}`));
@@ -1497,6 +1516,67 @@ const requestListener = async (req, res) => {
         }));
       } catch (error) {
         return json(res, 400, { error: error.reason ?? error.message, kind: error.kind ?? 'INVALID_REQUEST' });
+      }
+    }
+    // ---- Voice. Owner, s336: «fai un motore reale interno con voce naturale». ----------------
+    //
+    // `model.read` for the state and `provider.use` for the two verbs — the same permissions the
+    // rest of the product uses for "which model is there" and "run a turn on it". Every role
+    // holds `provider.use`, so voice is available to anyone who can hold a conversation at all,
+    // which is the only posture that makes sense for a microphone.
+    if (req.method === 'GET' && url.pathname === '/api/v1/voice/state') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      return json(res, 200, await voiceReadiness({
+        routing: voiceRoutingFrom(process.env),
+        fetchImpl: typeof fetch === 'function' ? fetch : undefined,
+      }));
+    }
+    // Raw audio in, text out. The bytes arrive as the body with `content-type` naming the format
+    // the browser recorded — the multipart assembly the model server expects happens in
+    // `voice-engine.mjs`, once, rather than being a shape the client has to get right.
+    if (req.method === 'POST' && url.pathname === '/api/v1/voice/transcribe') {
+      const authenticated = requireSession(req, res, 'provider.use');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const audio = await bytesBody(req);
+      try {
+        const heard = await transcribe({
+          audio: new Uint8Array(audio),
+          mimeType: String(req.headers['content-type'] ?? 'audio/webm').split(';')[0].trim(),
+          routing: voiceRoutingFrom(process.env),
+          fetchImpl: typeof fetch === 'function' ? fetch : undefined,
+        });
+        return json(res, 200, heard);
+      } catch (error) {
+        if (!(error instanceof VoiceEngineError)) throw error;
+        return json(res, error.status, { error: error.reason, kind: error.kind });
+      }
+    }
+    // Text in, AUDIO out — the bytes themselves, in the response. Not a URL: audio generated from
+    // a conversation this product holds must not become a second address that outlives the
+    // request and can be fetched by anyone who guesses it.
+    if (req.method === 'POST' && url.pathname === '/api/v1/voice/speak') {
+      const authenticated = requireSession(req, res, 'provider.use');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      try {
+        const said = await speak({
+          text: request?.text,
+          voice: request?.voice ?? null,
+          routing: voiceRoutingFrom(process.env),
+          fetchImpl: typeof fetch === 'function' ? fetch : undefined,
+        });
+        res.writeHead(200, {
+          ...securityHeaders({ secureTransport:secureCookies }),
+          'content-type': said.contentType,
+          'content-length': said.audio.length,
+          // Spoken answers are about a live conversation. A cached one is yesterday's answer
+          // read aloud in today's voice.
+          'cache-control': 'no-store',
+        });
+        return res.end(Buffer.from(said.audio));
+      } catch (error) {
+        if (!(error instanceof VoiceEngineError)) throw error;
+        return json(res, error.status, { error: error.reason, kind: error.kind });
       }
     }
     // The only mutating verb of this panel, and the only one that spends authority. It PLANS

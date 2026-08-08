@@ -57,8 +57,23 @@ export const FOREGROUND_LANES = Object.freeze([Lane.IN_USE, Lane.DOWNLOADED, Lan
 /** The category for anything the publisher did not declare. Visible, counted, never a bin. */
 export const UNDECLARED = 'undeclared';
 
-/** Declared vocabularies. A value outside these is not corrected or guessed — it is undeclared. */
-export const TYPES = Object.freeze(['text', 'vision', 'embedding', 'rerank', 'speech']);
+/**
+ * Declared vocabularies. A value outside these is not corrected or guessed — it is undeclared.
+ *
+ * `transcription` and `speech` are the two DIRECTIONS of audio, and they are separate words on
+ * purpose (s336). One word for both would make the catalogue unable to tell a model that HEARS
+ * from a model that SPEAKS — opposite jobs that happen to share a subject — and the voice engine
+ * would have to guess from the id, which this file refuses to do for type and function already.
+ *
+ *   transcription  audio  -> text   (what the microphone needs)
+ *   speech         text   -> audio  (what the answer is read aloud with)
+ *
+ * A publisher that declares only `speech` is declaring synthesis. That is a choice with a cost —
+ * "speech recognition" is a common enough phrase that some publisher will mean the other one —
+ * and the cost is paid the way this file pays every such cost: the model is simply not offered
+ * for the job it did not declare, and says so, rather than being routed on a hunch.
+ */
+export const TYPES = Object.freeze(['text', 'vision', 'embedding', 'rerank', 'speech', 'transcription']);
 export const FUNCTIONS = Object.freeze(['code', 'reasoning', 'summarisation', 'translation', 'tool-use']);
 
 export class ModelCatalogError extends Error {
