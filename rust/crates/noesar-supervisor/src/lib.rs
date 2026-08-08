@@ -76,8 +76,24 @@ pub fn log_line(level: &str, event: &str, child: Option<&str>, detail: serde_jso
 /// either one having to be told the other's env var name.
 const CODEV_PEER_SOCKET_PATH: &str = "/run/codev-peer.sock";
 
-/// The declared child table — all three ARCH-001 peers.
-pub fn supervised_children(workspace_root: &str) -> Vec<ChildSpec> {
+/// Where the image puts ATOM, and the address it is told to listen on.
+///
+/// **Loopback, not `0.0.0.0`.** As its own container ATOM had to listen on the network for
+/// `api` to reach it, which also made it reachable by every other container on that network.
+/// Inside, the only caller is a sibling process, so the listener stops being reachable from
+/// anywhere at all. That is a narrowing, and it is the reason this address is written here
+/// rather than left to the environment: an operator cannot widen it by accident.
+pub const ATOM_BINARY_PATH: &str = "/opt/noesar/bin/atomd";
+pub const ATOM_BIND: &str = "127.0.0.1:8410";
+pub const ATOM_LOCAL_ENDPOINT: &str = "http://127.0.0.1:8410";
+
+/// The three ARCH-001 peers, and only those.
+///
+/// Kept as its own function because `ARCH-001` is an invariant about THESE three and a test
+/// asserts it by name. ATOM is supervised beside them (s335) but it is not a fourth peer: the
+/// peers are the product's own halves, and ATOM is a provider the installation may or may not
+/// carry. Merging the two lists would have made the ARCH-001 row unable to fail.
+pub fn arch001_peers(workspace_root: &str) -> Vec<ChildSpec> {
     vec![
         ChildSpec {
             name: "postgres",
@@ -120,6 +136,72 @@ pub fn supervised_children(workspace_root: &str) -> Vec<ChildSpec> {
     ]
 }
 
+/// ATOM, when this image carries it — Owner, s335: *«fai in modo che sia dentro NOESAR
+/// EVOLUTION, quando installano deve esserci tutto»*.
+///
+/// `binary_present` is passed in rather than probed here so this stays a pure decision that a
+/// test can drive both ways. The caller probes the filesystem once.
+///
+/// **Nothing is set that the environment already says.** `ChildSpec.env` is layered ON TOP of
+/// the supervisor's environment, so writing the endpoint unconditionally would override an
+/// operator who deliberately pointed this installation at an ATOM somewhere else — turning a
+/// deployment choice into a value this file silently wins. Hence `Option` on every input: the
+/// caller passes `None` for anything the environment already answered.
+pub fn atom_child(
+    binary_present: bool,
+    token: Option<&str>,
+    model_endpoint: Option<&str>,
+) -> Option<ChildSpec> {
+    if !binary_present {
+        return None;
+    }
+    let mut env = vec![("ATOM_BIND".to_string(), ATOM_BIND.to_string())];
+    if let Some(token) = token {
+        env.push(("ATOM_TOKEN".to_string(), token.to_string()));
+    }
+    // A-0026: the one place the installation says where the model is. Absent here means the
+    // environment did not name one, and ATOM keeps its own default rather than being handed
+    // an empty string that would parse to nothing.
+    if let Some(endpoint) = model_endpoint {
+        env.push(("ATOM_MODEL_ENDPOINT".to_string(), endpoint.to_string()));
+    }
+    Some(ChildSpec {
+        name: "atom",
+        program: ATOM_BINARY_PATH.to_string(),
+        args: vec![],
+        env,
+        // Lower than the peers' 5 on purpose: ATOM falling is a DECLARED condition this product
+        // already handles (`D-0312` — the product carries on and says so), so a provider that
+        // cannot start must reach that declared state promptly instead of holding the
+        // installation in a restart storm pretending it is about to work.
+        max_restarts: 3,
+    })
+}
+
+/// Everything this supervisor runs: the three peers, and ATOM when the image carries it.
+pub fn supervised_children(workspace_root: &str) -> Vec<ChildSpec> {
+    supervised_children_with(
+        workspace_root,
+        std::path::Path::new(ATOM_BINARY_PATH).exists(),
+        None,
+        None,
+    )
+}
+
+/// The table, with every environment-dependent input passed in — the form the tests drive.
+pub fn supervised_children_with(
+    workspace_root: &str,
+    atom_binary_present: bool,
+    atom_token: Option<&str>,
+    atom_model_endpoint: Option<&str>,
+) -> Vec<ChildSpec> {
+    let mut children = arch001_peers(workspace_root);
+    if let Some(atom) = atom_child(atom_binary_present, atom_token, atom_model_endpoint) {
+        children.push(atom);
+    }
+    children
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,9 +225,54 @@ mod tests {
 
     #[test]
     fn exactly_three_peers_declared() {
-        let children = supervised_children("/workspace");
-        let names: Vec<&str> = children.iter().map(|c| c.name).collect();
+        // Read from `arch001_peers` and not from the whole table: ATOM is supervised beside the
+        // peers since s335, and asserting this invariant against a list that ATOM may join
+        // would make the ARCH-001 row unable to fail for the reason it exists.
+        let names: Vec<&str> = arch001_peers("/workspace").iter().map(|c| c.name).collect();
         assert_eq!(names, vec!["postgres", "api", "codev"], "ARCH-001 wants exactly three peers");
+    }
+
+    #[test]
+    fn an_image_without_atom_supervises_the_three_peers_and_nothing_else() {
+        let names: Vec<&str> = supervised_children_with("/workspace", false, None, None)
+            .iter().map(|c| c.name).collect();
+        assert_eq!(names, vec!["postgres", "api", "codev"]);
+        assert!(atom_child(false, Some("t"), Some("http://m:8420")).is_none(),
+            "a token and an endpoint must not conjure a child out of a binary that is not there");
+    }
+
+    #[test]
+    fn an_image_carrying_atom_supervises_it_beside_the_peers_on_loopback() {
+        let children = supervised_children_with("/workspace", true, Some("secret"), Some("http://m:8420"));
+        let names: Vec<&str> = children.iter().map(|c| c.name).collect();
+        assert_eq!(names, vec!["postgres", "api", "codev", "atom"]);
+        let atom = children.last().expect("atom child");
+        assert_eq!(atom.program, ATOM_BINARY_PATH);
+        let bind = atom.env.iter().find(|(k, _)| k == "ATOM_BIND").map(|(_, v)| v.as_str());
+        // The narrowing this move buys. `0.0.0.0` here would hand back the reachability that
+        // running inside the product took away, and nothing else in the image would notice.
+        assert_eq!(bind, Some("127.0.0.1:8410"));
+        assert!(!bind.unwrap().starts_with("0.0.0.0"));
+    }
+
+    #[test]
+    fn nothing_the_environment_already_answered_is_written_over() {
+        // `ChildSpec.env` layers ON TOP of the supervisor's environment, so a value written
+        // here wins over the container's. An operator pointing this installation at an ATOM or
+        // a model elsewhere must not be silently overridden — absent in, absent out.
+        let atom = atom_child(true, None, None).expect("atom child");
+        assert!(atom.env.iter().all(|(k, _)| k != "ATOM_TOKEN"));
+        assert!(atom.env.iter().all(|(k, _)| k != "ATOM_MODEL_ENDPOINT"));
+        // The bind address is the one thing this file does insist on, and says why.
+        assert!(atom.env.iter().any(|(k, _)| k == "ATOM_BIND"));
+    }
+
+    #[test]
+    fn atom_reaches_its_declared_down_state_sooner_than_a_peer() {
+        let atom = atom_child(true, Some("t"), None).expect("atom child");
+        let api = arch001_peers("/workspace").into_iter().find(|c| c.name == "api").expect("api");
+        assert!(atom.max_restarts < api.max_restarts,
+            "ATOM falling is a declared condition the product handles; a storm delays that declaration");
     }
 
     #[test]

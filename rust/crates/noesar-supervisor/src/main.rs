@@ -12,7 +12,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use noesar_supervisor::{backoff_delay_ms, log_line, supervised_children, ChildSpec};
+use noesar_supervisor::{backoff_delay_ms, log_line, ChildSpec};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::watch;
@@ -242,7 +242,46 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let workspace = workspace_root();
-    let children = supervised_children(&workspace);
+
+    // s335 — ATOM runs inside this image now, and ONE variable says where the model is.
+    //
+    // NOESAR reads `NOESAR_AUTHORING_ENDPOINT`; ATOM reads `ATOM_MODEL_ENDPOINT` (A-0026).
+    // Deriving the second from the first here is what stops them being two values an operator
+    // has to keep equal by hand — precisely the state s335 found this installation in, with
+    // ATOM's address compiled into its binary and neither process able to notice a divergence.
+    //
+    // `ATOM_MODEL_ENDPOINT` set explicitly WINS: an operator who pointed ATOM at a different
+    // model server meant it, and a supervisor that overrode them would make the variable a lie.
+    let atom_binary_present = std::path::Path::new(noesar_supervisor::ATOM_BINARY_PATH).exists();
+    let atom_model_endpoint = if std::env::var_os("ATOM_MODEL_ENDPOINT").is_some() {
+        None
+    } else {
+        std::env::var("NOESAR_AUTHORING_ENDPOINT")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+    };
+    println!(
+        "{}",
+        log_line(
+            "info",
+            "supervisor.atom",
+            None,
+            serde_json::json!({
+                "present": atom_binary_present,
+                "binary": noesar_supervisor::ATOM_BINARY_PATH,
+                // Said out loud at every boot. An installation that carries ATOM and one that
+                // does not are different products, and which one this is must not have to be
+                // inferred from the absence of a log line.
+                "modelEndpointFrom": if atom_model_endpoint.is_some() { "NOESAR_AUTHORING_ENDPOINT" } else { "environment" },
+            })
+        )
+    );
+    let children = noesar_supervisor::supervised_children_with(
+        &workspace,
+        atom_binary_present,
+        None,
+        atom_model_endpoint.as_deref(),
+    );
     let tracked_pids: Arc<std::sync::Mutex<std::collections::HashSet<i32>>> =
         Arc::new(std::sync::Mutex::new(std::collections::HashSet::new()));
 
