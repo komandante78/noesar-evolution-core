@@ -8721,3 +8721,52 @@ blaming a plain port that does not exist would send an operator to the wrong pla
 `docs/OWNER_BOOTSTRAP.md` now opens on the https address, tells the reader to fetch `/ca` first,
 and carries the measured table above. **The five gate entries remain `AWAITING_OWNER`** — this
 changes what the Owner will find when they perform them, and nothing about who may close them.
+
+---
+
+## D-0366 — the bookmark that was already open (2026-08-09)
+
+🛑 **`D-0365` shipped a warning on the sign-in screen, and the Owner never saw it.** Reported
+minutes later: *«non funziona nulla e nemmeno il login normale … metto autenticazione ma non fa
+nulla, non entra»*.
+
+**The request log settled it without asking.** The failing sequence carries
+`202 /api/v1/auth/login`, `200 /api/v1/auth/login/mfa` and then every subsequent call **401** —
+the exact signature `D-0365` describes. And it contains **no `GET /` and no
+`/api/v1/auth/status`**, both of which a page load produces. So the page was never re-fetched:
+the browser held a tab opened *before* the deploy. The container carrying the warning started at
+15:57:30; the attempt was at 16:31:13 — 34 minutes later, against markup 34 minutes old.
+
+**A warning only reaches somebody who reloads. A bookmark is not refreshed by a deploy.** That
+is the whole lesson, and it is why the fix moved from telling to doing: a plain-listener page
+load is now answered with **302** to the declared encrypted address.
+
+**Why this is now safe when `D-0365` rejected it.** That entry rejected a redirect because the
+process knows the port it LISTENS on, not the port it was PUBLISHED as, and a guessed port
+strands a browser on an address that does not answer. `NOESAR_PUBLIC_TLS_URL` — introduced by
+that same entry — is what removes the guess. With no declaration, nothing moves and the warning
+alone remains, which is exactly the earlier behaviour.
+
+Each condition is load-bearing, and the tests fail if any is dropped:
+
+| condition | what it protects |
+|---|---|
+| destination declared, and `https` | never invent a destination; a plain-http declaration is refused |
+| `GET`/`HEAD` with `Accept: text/html` | an API client is not confused about where it is |
+| not `/api/…` | **Debug Evolution calls this port over plaintext with a service token BY DESIGN** — redirecting it would detach the module, the exact breakage `NOESAR_TLS_PORT` exists to avoid |
+| never `/ca`, `/ca.crt`, `/ca.crt.sha256` | they are how a device comes to TRUST the destination; redirecting them into it is the loop `D-0364` exists to break |
+
+**302 and not 301**, deliberately: a permanent redirect is cached by the browser and would
+outlive the operator turning TLS off, leaving a bookmark pointing at a port that no longer
+answers — the same failure, in the other direction.
+
+⚠️ **Two corrections to myself from this diagnosis.** First, my browser probe reported that
+*https* also failed; it did not — the TOTP code had been generated 31 seconds before it was
+used and had expired. A stale input in the harness read exactly like a product defect, and the
+second run with a fresh code entered the application and kept both cookies. Second, the `/ca`
+requests visible in the production log at 15:57 and 15:59 were **my own verification curls**,
+not the Owner's — evidence of my activity, briefly mistaken for evidence of theirs.
+
+**What was NOT changed:** the plain listener still serves the page, the health routes and the
+certificate routes, and an installation with no TLS is untouched — there the cookie has no
+`Secure` attribute, a browser keeps it, and sign-in works, so nothing should move.

@@ -9,7 +9,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { browserSignIn, normaliseHttpsUrl } from '../src/secure-address.mjs';
+import { browserSignIn, normaliseHttpsUrl, shouldRedirectToSecure } from '../src/secure-address.mjs';
 
 const HTTPS = 'https://192.168.178.100:8443';
 const overPlaintext = (extra = {}) => browserSignIn({
@@ -93,5 +93,44 @@ describe('the declared address is a promise, so a wrong one is refused', () => {
 
   test('the default https port is not printed back, because a browser does not need it', () => {
     assert.equal(normaliseHttpsUrl('https://noesar.local:443'), 'https://noesar.local');
+  });
+});
+
+describe('the bookmark that was already open', () => {
+  // A warning on the sign-in screen only reaches somebody who reloads. The Owner's browser held
+  // a tab opened before that warning shipped, so every attempt kept failing against a page that
+  // predated the explanation — visible in the request log as a login sequence with no `GET /`
+  // and no `/api/v1/auth/status`, both of which a page load produces. Hence the redirect.
+  const pageLoad = (extra = {}) => shouldRedirectToSecure({
+    encrypted: false, method: 'GET', accept: 'text/html,application/xhtml+xml',
+    pathname: '/', publicTlsUrl: HTTPS, secureCookies: true, ...extra,
+  });
+
+  test('a browser opening a page is sent to the declared encrypted address', () => {
+    assert.equal(pageLoad(), HTTPS);
+  });
+
+  test('nothing moves when the destination was never declared', () => {
+    // The reason a redirect was rejected first: a guessed port strands the browser on an
+    // address that does not answer, having left one that did.
+    assert.equal(pageLoad({ publicTlsUrl: null }), null);
+    assert.equal(pageLoad({ publicTlsUrl: 'http://192.168.178.100:8443' }), null);
+  });
+
+  test('an API client is left alone — Debug Evolution calls this port with a token by design', () => {
+    assert.equal(pageLoad({ accept: 'application/json' }), null);
+    assert.equal(pageLoad({ pathname: '/api/v1/auth/login', accept: 'text/html' }), null);
+    assert.equal(pageLoad({ method: 'POST' }), null);
+  });
+
+  test('the certificate routes never move, because they are how you come to trust the destination', () => {
+    for (const pathname of ['/ca', '/ca/', '/ca.crt', '/ca.crt.sha256']) {
+      assert.equal(pageLoad({ pathname }), null, `${pathname} must stay on the plain listener`);
+    }
+  });
+
+  test('an encrypted request, and a plaintext installation, are both left alone', () => {
+    assert.equal(pageLoad({ encrypted: true }), null);
+    assert.equal(pageLoad({ secureCookies: false }), null);
   });
 });

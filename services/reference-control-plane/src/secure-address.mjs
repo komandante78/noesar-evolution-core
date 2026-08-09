@@ -65,6 +65,35 @@ export function browserSignIn({ encrypted, secureCookies, tlsListenerExists, pub
 }
 
 /**
+ * Whether this request is a browser opening a PAGE on the plain listener that should be sent to
+ * the encrypted one instead.
+ *
+ * A warning on the sign-in screen was the first answer (D-0365) and it was not enough: it only
+ * reaches somebody who reloads. The Owner's browser held a tab opened before that shipped, so
+ * every attempt went on failing against a page that predated the explanation — measured in the
+ * request log, where the whole sequence carries no `GET /` and no `/api/v1/auth/status`, which
+ * a page load would both produce. A bookmark is not refreshed by a deploy.
+ *
+ * Narrow on purpose, and each condition is load-bearing:
+ *   - only when the destination is DECLARED, never guessed. The reason a redirect was rejected
+ *     in D-0365 still holds — this process knows the port it listens on, not the one it was
+ *     published as — and `NOESAR_PUBLIC_TLS_URL` is what removes the guess.
+ *   - only page loads. An API client is not confused about where it is, and Debug Evolution
+ *     calls this control plane over plaintext with a service token BY DESIGN: redirecting it
+ *     would detach the module, which is the exact breakage NOESAR_TLS_PORT exists to avoid.
+ *   - never the certificate routes. They are how a device comes to trust the destination, so
+ *     redirecting them into that destination is the loop this whole page exists to break.
+ */
+export function shouldRedirectToSecure({ encrypted, method, accept, pathname, publicTlsUrl, secureCookies }) {
+  if (encrypted || !secureCookies) return null;
+  if (method !== 'GET' && method !== 'HEAD') return null;
+  if (!String(accept ?? '').includes('text/html')) return null;
+  if (pathname === '/ca' || pathname === '/ca/' || pathname.startsWith('/ca.crt')) return null;
+  if (pathname.startsWith('/api/')) return null;
+  return normaliseHttpsUrl(publicTlsUrl);
+}
+
+/**
  * Accept only an absolute https URL, and hand back its origin.
  *
  * A malformed or plain-http declaration becomes `null` rather than being passed through: this

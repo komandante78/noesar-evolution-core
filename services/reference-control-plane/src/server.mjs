@@ -112,7 +112,7 @@ import { resolveTls } from './tls.mjs';
 import {
   resolveTrustAnchor, renderTrustAnchorIndex, TRUST_ANCHOR_BASENAME, TRUST_ANCHOR_CONTENT_TYPE,
 } from './trust-anchor.mjs';
-import { browserSignIn } from './secure-address.mjs';
+import { browserSignIn, shouldRedirectToSecure } from './secure-address.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 // The SAME registry both shells resolve typing against. Imported here so the candidate list the
@@ -1237,6 +1237,22 @@ const requestListener = async (req, res) => {
   }
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   try {
+    // --- a browser opening a page on the plain listener ------------------------
+    // Structural, ahead of the route table, for the reason the safe-mode gate below is:
+    // a page added later cannot forget it. Only page loads move, only when the encrypted
+    // address is declared, and never the certificate routes — see shouldRedirectToSecure.
+    const secureDestination = shouldRedirectToSecure({
+      encrypted:Boolean(req.socket?.encrypted), method:req.method,
+      accept:req.headers.accept, pathname:url.pathname,
+      publicTlsUrl:process.env.NOESAR_PUBLIC_TLS_URL, secureCookies,
+    });
+    if (secureDestination) {
+      // 302, not 301: a permanent redirect is cached by the browser and would survive the
+      // operator turning TLS back off, leaving a bookmark pointing at a port that no longer
+      // answers — the failure this exists to remove, in the other direction.
+      res.writeHead(302, { location:`${secureDestination}${req.url}`, 'cache-control':'no-store' });
+      return res.end();
+    }
     // --- liveness, readiness, health, metrics --------------------------------
     // /livez performs no dependency check on purpose: a slow data plane must
     // never cause a live process to be killed and restarted.
