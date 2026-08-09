@@ -247,6 +247,13 @@ With the variable set, the sign-in screen says so and links to the working addre
 run command mapped it to. A non-https or malformed value is refused rather than shown — the
 warning still appears, without a destination.
 
+**It also drives the redirect (`D-0366`).** A **page** load on the plain port answers **302** to
+this address, because a warning only reaches somebody who reloads and a bookmark is not refreshed
+by a deploy. Never redirected: `/api/…` (Debug Evolution calls this port in plaintext with a
+service token **by design**), `/ca*` (how a device comes to trust the destination), and
+`/livez` `/readyz` `/healthz` `/metrics` (a probe that does not follow redirects would read a
+302 as an outage). Unset the variable and nothing moves.
+
 ⚠️ **Pre-existing, found while verifying this and NOT caused by it:**
 `NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1` does not include `noesar-evolution`, so a request
 carrying that Host is answered **421** whatever the transport. The same URL with an allowed Host
