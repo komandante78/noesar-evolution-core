@@ -109,6 +109,9 @@ import { TimezoneService, formatInZone, toUtcIso } from './timezone.mjs';
 import { buildHealth, buildReadiness, publicHealth, registerWatchdogSubjects } from './observability.mjs';
 import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
+import {
+  resolveTrustAnchor, renderTrustAnchorIndex, TRUST_ANCHOR_BASENAME, TRUST_ANCHOR_CONTENT_TYPE,
+} from './trust-anchor.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 // The SAME registry both shells resolve typing against. Imported here so the candidate list the
@@ -147,6 +150,12 @@ const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // load, and crashes startup the same way an invalid authority declaration does two lines
 // below — fail closed and loudly, not a fallback to plaintext nobody asked for.
 const tls = resolveTls({});
+// The certificate a device must be told to trust, resolved once here and served at /ca.
+// Unlike resolveTls this never throws: a certificate authority file that does not match is an
+// operator mistake in a convenience route, and taking down a healthy TLS listener over it
+// would be out of proportion. It is reported at start-up instead — see the `trust_anchor`
+// field of the listening log line, which carries the fingerprint an operator must compare.
+const trustAnchor = resolveTrustAnchor({ tls });
 /**
  * An ADDITIONAL TLS listener, alongside the plain one — s336, and the reason is a browser rule
  * rather than a preference.
@@ -1240,6 +1249,25 @@ const requestListener = async (req, res) => {
         }
         return text(res, 200, artifact.bytes.toString('utf8'), wanted.contentType);
       }
+    }
+    // --- how a device comes to trust this installation -------------------------
+    // Unauthenticated for the reason /cli states one floor up, sharpened: the session is
+    // carried by a cookie the browser only sends over a connection it trusts, and this is
+    // the file that makes it trust the connection. A CA certificate is a public key and a
+    // name; `ca.key` is never read by this process and cannot be named by a request.
+    if (req.method === 'GET' && (url.pathname === '/ca' || url.pathname === '/ca/')) {
+      return text(res, trustAnchor.available ? 200 : 404, renderTrustAnchorIndex(trustAnchor, `${url.protocol}//${req.headers.host}`));
+    }
+    if (req.method === 'GET' && url.pathname === `/${TRUST_ANCHOR_BASENAME}`) {
+      // 404 rather than 500: "this installation has no anchor to hand out" is a real,
+      // supported state (plaintext, or a publicly-issued certificate), not a fault.
+      if (!trustAnchor.available) return text(res, 404, `${trustAnchor.reason}\n`);
+      res.setHeader('Content-Disposition', `attachment; filename="${TRUST_ANCHOR_BASENAME}"`);
+      return text(res, 200, trustAnchor.pem, TRUST_ANCHOR_CONTENT_TYPE);
+    }
+    if (req.method === 'GET' && url.pathname === `/${TRUST_ANCHOR_BASENAME}.sha256`) {
+      if (!trustAnchor.available) return text(res, 404, `${trustAnchor.reason}\n`);
+      return text(res, 200, `${trustAnchor.fileSha256}  ${TRUST_ANCHOR_BASENAME}\n`);
     }
     if (req.method === 'GET' && url.pathname === '/healthz') {
       // Never 401, never 403: the container healthcheck, three platform installers and
@@ -4411,7 +4439,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       safe_mode:watchdog.safeMode.active,
       tls_active:tls.active,
       secure_cookies:secureCookies,
+      trust_anchor:trustAnchor.available ? 'published' : 'none',
     });
+    // The fingerprint gets its own line, at a level that survives a busy log, because it is
+    // one half of a comparison a person has to make by eye on a different device. /ca serves
+    // the other half over a connection nothing has authenticated yet — a line an operator
+    // reads here, from the process itself, is what makes that comparison worth making.
+    if (trustAnchor.available) {
+      logger.log('INFO', 'trust-anchor.published', {
+        component:'control-plane', source:trustAnchor.source, subject:trustAnchor.subject,
+        fingerprint_sha256:trustAnchor.fingerprintSha256, not_after:trustAnchor.notAfter,
+        note:'served at /ca — compare this fingerprint on the device before installing',
+      });
+    } else if (tls.active) {
+      // Only worth saying when TLS is on: on a plaintext installation "no anchor" is not a
+      // finding, it is the configuration. With TLS on it means devices cannot be given the
+      // one file that lets them reach this listener without a warning.
+      logger.warn('trust-anchor.unavailable', { component:'control-plane', reason:trustAnchor.reason });
+    }
     if (setupTokenState.source === 'file') {
       // Path and fingerprint only. The token itself is never written to a log.
       logger.warn('setup-token.available', {

@@ -56,12 +56,12 @@ checkpoint is killed mid-write, and the cluster comes back with an unreadable ch
 so 10s was not the binding constraint for an ordinary stop, and this flag is **not** proven to be
 what corrupted the cluster. It closes a real and measurable hazard; it is not a diagnosis.
 
-## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 42 environment variables
+## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 43 environment variables
 
 **18 come from the image and must not be repeated** — in particular
 **`NOESAR_TUI_SOCKET_PATH`**, which comes from the image as `/run/codev-tui.sock`. Setting it
 explicitly to the supervisor's internal path left the terminal transport unserved (`D-0339`).
-The other **24 are explicit** and exist nowhere but the run command.
+The other **25 are explicit** and exist nowhere but the run command.
 
 **Count them with `grep -c .`, never `wc -l`** — a trailing blank line made an earlier session
 report one variable too many and call a correct note wrong.
@@ -193,6 +193,7 @@ well its voice engine is configured.
 ```
 -e NOESAR_TLS_CERT_FILE=/workspace/tls/leaf.crt
 -e NOESAR_TLS_KEY_FILE=/workspace/tls/leaf.key
+-e NOESAR_TLS_CA_FILE=/workspace/tls/ca.crt
 -e NOESAR_TLS_PORT=8443
 -p 192.168.178.100:8443:8443
 ```
@@ -217,6 +218,22 @@ The certificate lives in `/workspace/tls/` (host: `NOESAR_EVOLUTION_RUNTIME/tls/
 plus a leaf with SANs for `192.168.178.100`, `127.0.0.1`, `172.22.0.5`, `localhost`,
 `noesar-evolution`, `noesar.local`. Install **`ca.crt`** once per device and no browser warns
 again, including after the leaf is re-issued. `ca.key` and `leaf.key` are `0600`, owned by 10001.
+
+**`NOESAR_TLS_CA_FILE` is what makes that installable without `docker cp` (`D-0364`).** With it the
+product serves **`http://192.168.178.100:8100/ca`** — a plain-text page with per-device instructions —
+plus `/ca.crt` and `/ca.crt.sha256`. Unauthenticated on purpose: the session cookie only travels over
+a connection the browser already trusts, and this is the file that earns that trust.
+
+⚠️ **Point the variable at the CA, never at the leaf.** The product refuses a file that did not sign
+`leaf.crt` and answers 404 instead — but naming `leaf.crt` here would be accepted only while the leaf
+is self-signed, which this installation's is not. On the day the leaf is re-issued, devices trusting
+the CA keep working and devices trusting a leaf stop.
+
+⚠️ **The fingerprint shown on `/ca` arrives over a connection nothing has authenticated.** Read the
+real one from the container's own start-up line `trust-anchor.published`, or with
+`docker exec noesar-evolution openssl x509 -in /workspace/tls/ca.crt -noout -fingerprint -sha256`,
+and compare it on the device before installing. Note that `sha256sum ca.crt` gives a **different**
+number — that one is over the file, the fingerprint is over the certificate.
 
 ⚠️ **Pre-existing, found while verifying this and NOT caused by it:**
 `NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1` does not include `noesar-evolution`, so a request

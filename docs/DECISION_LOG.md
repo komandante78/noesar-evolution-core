@@ -8589,3 +8589,77 @@ than their `id` field — `if_sara` and `im_nicola` had been there all along. An
 reported both directions `unreachable` when called without a `fetchImpl`: `probeModelEndpoint`
 takes one explicitly and does **not** fall back to a global `fetch`, which the real route supplies.
 Twice the measurement was broken and the product was not.
+
+---
+
+## D-0364 — the certificate that makes the microphone possible can be fetched from the product (2026-08-09)
+
+**The open item this closes, in the Owner's own list, was one line: «`ca.crt` sui dispositivi».** It
+had sat there since `D-0360` shipped TLS, and it was never a coding task — TLS was working, the
+certificate was correct, and `openssl s_client -CAfile` verified the chain with return code 0. What
+was missing was that the file reached a phone. The only documented way to get it was to be logged
+into the host with the right to talk to the container engine and run `docker cp`, which is exactly
+the shape of problem `/cli` (`D-0344`) was written to abolish, one floor down.
+
+So the port that already serves the page serves the bytes: **`/ca`** (a plain-text page), **`/ca.crt`**
+(the certificate) and **`/ca.crt.sha256`** (the digest of the file). New module
+`src/trust-anchor.mjs`, unauthenticated for the reason `/cli` states and one that is stronger here:
+the session is carried by a cookie the browser only sends over a connection it trusts, and this file
+is what makes it trust the connection. A CA certificate is a public key and a name; `ca.key` is
+never read by this process and cannot be named by a request.
+
+**What is served is the trust anchor, not "the CA".** A certificate issued by a local authority
+needs that authority; a self-signed certificate IS its own anchor and has no second file to point
+at. Both are resolved. Anything else — a certificate from an authority the product was not given —
+is reported as such and the route answers 404, rather than the leaf being served as a stand-in,
+which would look correct on the day it was installed and break at the first re-issue.
+
+**The check that makes it safe to point a device at, and the measurement that shaped it.** Publishing
+the wrong file makes every device trust an authority unrelated to this installation — a durable,
+silent, device-side change that is tedious to undo. Two conditions are required, and **each catches
+exactly what the other misses**, which was established by building the counterexamples rather than
+by reasoning:
+
+| certificate offered | `checkIssued` | `verify` | published? |
+|---|---|---|---|
+| the real authority | ✅ | ✅ | yes |
+| an unrelated authority | ❌ | ❌ | no |
+| **a forgery copying the subject name *and* the key identifier** | **✅ fooled** | ❌ | no |
+| **the real key under a different name** | ❌ | **✅ fooled** | no |
+
+The third row is why the signature check exists: a subject name and a `subjectKeyIdentifier` are
+fields whoever builds a certificate simply writes, so copying them costs an attacker nothing — and
+OpenSSL's issued-by check compares precisely those. The fourth is why the name check stays: devices
+chain by name, so the real key under a wrong name would validate here and never validate there.
+Both fixtures are in the suite; deleting either condition turns the suite red.
+
+🛑 **What serving this file does NOT solve, stated rather than glossed.** It is fetched over
+plaintext by a device that by definition cannot yet verify who answered. Anyone on the network can
+answer instead, with their own authority, and a device that installs it trusts their certificates
+for every name inside — strictly worse than no TLS, because it looks like TLS. No cryptography at
+this layer can fix it: the anchor is the thing being fetched. The only defence is an out-of-band
+comparison, so the SHA-256 fingerprint is put in front of the operator in three places that do not
+share a failure — the start-up log line `trust-anchor.published`, the `/ca` page, and the dialog the
+device's own operating system shows at install time. The page states the comparison as a required
+step, not as advice.
+
+⚠️ **Two digests over one certificate, and the trap that creates.** `sha256sum ca.crt` and the
+fingerprint a phone displays are different numbers — the first is over the file, the second over the
+DER. An operator comparing one against the other sees a mismatch indistinguishable from an attack.
+Both are served, and the page names which tool produces which.
+
+**A bad `NOESAR_TLS_CA_FILE` degrades this route and nothing else.** `resolveTls` crashes startup on
+a half-configured pair because the alternative there is silent plaintext; here the listener is
+already correct, so taking it down over a convenience route would be out of proportion. The reason
+is logged at start-up (`trust-anchor.unavailable`) and shown on the page.
+
+**A mutation that survived, and was not papered over.** Deleting `verify` from the *self-signed*
+branch leaves the suite green. No certificate could be built that satisfies `checkIssued(itself)`
+without also being signed by its own key — three constructions were tried (CA:FALSE, CA:TRUE, and
+with the key identifiers forced to match) and OpenSSL rejects all three. So the branch is
+unreachable rather than untested. The line stays as belt-and-braces, the comment says so instead of
+claiming a test it does not have, and the *premise* is pinned by assertions that fail the day
+OpenSSL's behaviour changes and the branch becomes reachable.
+
+`NOESAR_TLS_CA_FILE=/workspace/tls/ca.crt` is the 25th explicit variable — see
+`deployment/container/RUN_FLAGS.md` §5.
