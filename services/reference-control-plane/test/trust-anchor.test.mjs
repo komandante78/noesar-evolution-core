@@ -180,6 +180,13 @@ describe('the two digests are different numbers, and are labelled as such', () =
     const page = renderTrustAnchorIndex(anchor, 'https://192.168.178.100:8443');
     assert.ok(page.includes(anchor.fingerprintSha256), 'the fingerprint must appear literally, not summarised');
     assert.match(page, /not optional/);
+    // The comparison must name a source that is NOT the downloaded file. Reading that file
+    // back confirms whatever was sent, which is exactly the substitution this step exists to
+    // catch — the first revision of this page said `openssl x509 -in <the file>` and was
+    // circular in precisely that way. It shipped, and it was found by reading the page as a
+    // person would rather than by any assertion, which is why one exists now.
+    assert.match(page, /\/workspace\/tls\/ca\.crt/, 'the verification command must read the server\'s own copy');
+    assert.match(page, /trust-anchor\.published/, 'the start-up log is the other out-of-band source and must be named');
     // iOS installs and trusts in two separate places and the second is easy to miss; a page
     // that stops after "Install" leaves the reader believing they are done.
     assert.match(page, /Certificate Trust Settings/);
