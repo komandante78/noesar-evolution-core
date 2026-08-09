@@ -233,6 +233,7 @@ export const RUNTIME_ONLY = Object.freeze([
   'This installation cannot hear.',
   'This installation cannot speak.',
   'The microphone is not available:',
+  'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.',
   'The reply could not be read aloud',
   // What the product says back to speech — `voice-intent.js`, never in the markup.
   'I did not catch that.',
@@ -1250,6 +1251,7 @@ const it = {
   'This installation cannot hear.': 'Questa installazione non può sentire.',
   'This installation cannot speak.': 'Questa installazione non può parlare.',
   'The microphone is not available:': 'Il microfono non è disponibile:',
+  'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.': 'Questa pagina non può aprire un microfono: il browser lo consente solo via HTTPS, oppure da localhost. Questa installazione, di suo, è pronta.',
   'The reply could not be read aloud': 'La risposta non è stata letta ad alta voce',
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT

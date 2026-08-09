@@ -2949,7 +2949,12 @@ async function refreshVoiceState(){
   }catch(error){
     voiceState={canHear:false,canSpeak:false,transcribe:{reason:error.message},speak:{reason:error.message}};
   }
-  if(dictate)dictate.disabled=!voiceState.canHear;
+  // Two independent conditions, and the button is only usable when BOTH hold: the installation
+  // must have a transcription model, and this page must be allowed to open a microphone. Reading
+  // aloud needs only the first — audio playback works over plain HTTP — so the two controls are
+  // deliberately not gated on the same thing.
+  const pageCanRecord=microphoneReachable();
+  if(dictate)dictate.disabled=!voiceState.canHear||!pageCanRecord;
   if(aloud)aloud.disabled=!voiceState.canSpeak;
   // The REASON goes in the note line, not on the buttons — measured in the browser, where the
   // first version put it in `title` and the sentence vanished. `title` is one of the three
@@ -2958,10 +2963,14 @@ async function refreshVoiceState(){
   // markup's own the next time anything on the page changes. The note line is `translate="no"`
   // and is already where every other sentence about voice goes, so it is the honest home for
   // this one — and the check that caught it asserts the reason is READABLE, not where it lives.
-  if(!voiceState.canHear||!voiceState.canSpeak){
-    voiceNote(!voiceState.canHear
-      ?(voiceState.transcribe?.reason??t('This installation cannot hear.'))
-      :(voiceState.speak?.reason??t('This installation cannot speak.')));
+  // Most specific first. "No model configured" is the operator's to fix; "this page is not a
+  // secure context" is the deployment's; and saying the wrong one sends someone to the wrong file.
+  if(!voiceState.canHear){
+    voiceNote(voiceState.transcribe?.reason??t('This installation cannot hear.'));
+  }else if(!pageCanRecord){
+    voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
+  }else if(!voiceState.canSpeak){
+    voiceNote(voiceState.speak?.reason??t('This installation cannot speak.'));
   }
 }
 
@@ -3015,9 +3024,32 @@ function applyHeardText(text){
   return undefined;
 }
 
+/**
+ * Can this PAGE reach a microphone at all — a question about the page, not about the installation.
+ *
+ * Found by the pre-deploy check, not by a browser: this product is served over plain HTTP on a
+ * LAN address, and browsers do not expose `navigator.mediaDevices` outside a secure context.
+ * `localhost` counts as secure; `http://192.168.x.x:8100` does not. So on the address the Owner
+ * actually uses, the object is UNDEFINED and the first version of this function would have
+ * thrown a TypeError and shown "Cannot read properties of undefined" under the composer.
+ *
+ * Stated as its own condition rather than folded into the catch, because it is a different fact
+ * with a different remedy: the installation is configured correctly and can hear perfectly well;
+ * it is the BROWSER that will not hand over the audio until the page arrives over TLS. Telling
+ * someone to check their voice model when they need a certificate is the kind of wrong answer
+ * that costs an afternoon.
+ */
+function microphoneReachable(){
+  return typeof navigator!=='undefined'&&Boolean(navigator.mediaDevices?.getUserMedia);
+}
+
 async function toggleDictation(){
   const button=$('#chatDictate');const label=$('#chatDictateLabel');
   if(voiceRecorderChat?.state==='recording'){voiceRecorderChat.stop();return;}
+  if(!microphoneReachable()){
+    voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
+    return;
+  }
   try{
     voiceRecorderStream=await navigator.mediaDevices.getUserMedia({audio:true});
   }catch(error){
