@@ -40,12 +40,53 @@
         <label>Username<input id="loginUsername" autocomplete="username" required></label>
         <label>Passphrase<input id="loginPassword" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">Continue</button>
+        <button class="text-button" type="button" id="forgotCredentials">I cannot sign in</button>
       </form>
       <form id="loginMfaForm" class="auth-form hidden">
         <label>Authenticator code<input id="loginTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
         <button class="primary" type="submit">Sign in</button>
         <button class="text-button" type="button" id="loginPasskeyButton">Use a passkey instead</button>
       </form>
+      <!-- Stage 1 of getting back in (D-0369). Two ways to be believed and no third: a recovery
+           code issued at setup, or proof of controlling the installation. There is no email
+           path, because a product whose argument is that no vendor sees your data does not
+           acquire a mail server in order to let you back in. -->
+      <form id="recoveryStartForm" class="auth-form hidden">
+        <p>Recovering replaces your passphrase and your authenticator. Nothing else about this installation changes.</p>
+        <label>Username<input id="recoveryUsername" autocomplete="username" required></label>
+        <label>Recovery code<input id="recoveryCode" placeholder="XXXXX-XXXXX" autocomplete="one-time-code"></label>
+        <details id="recoveryProofDetails">
+          <summary>I do not have my recovery codes</summary>
+          <p>Then prove you control this installation — the same thing that let the first account be created here. Press the button, and read the file it names on the machine running NOESAR.</p>
+          <button class="text-button" type="button" id="recoveryMintProof">Create a proof on the host</button>
+          <p class="hint" id="recoveryProofPath" translate="no"></p>
+          <label>Proof from the host<input id="recoveryProof" autocomplete="off"></label>
+        </details>
+        <button class="primary" type="submit">Continue</button>
+        <button class="text-button" type="button" id="recoveryCancel">Back to sign in</button>
+      </form>
+      <!-- Stage 2: the new passphrase, proved against a NEW authenticator. Recovering a
+           passphrase while leaving the old authenticator in place would hand back half a
+           credential to whoever the person is recovering from. -->
+      <form id="recoveryFinishForm" class="auth-form hidden">
+        <div class="notice">
+          <b>Add this to your authenticator app first</b>
+          <p>Delete any older NOESAR entry: the previous one stops working the moment you finish here.</p>
+          <div id="recoveryQr"></div>
+          <code id="recoveryTotpSecret" translate="no"></code>
+        </div>
+        <label>New passphrase<input id="recoveryNewPassword" type="password" autocomplete="new-password" minlength="16" required></label>
+        <label>Authenticator code<input id="recoveryTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+        <button class="primary" type="submit">Set the new passphrase</button>
+      </form>
+      <!-- Shown once, after setup or a recovery. They are the only way back in that needs
+           nothing from the host, and the installation cannot show them again. -->
+      <div class="notice hidden" id="recoveryCodesPanel">
+        <b>Save these recovery codes now</b>
+        <p>Each one gets you back in once, without the machine and without the authenticator. They are shown this one time and cannot be shown again.</p>
+        <code id="recoveryCodesList" translate="no"></code>
+        <button class="primary" type="button" id="recoveryCodesAcknowledge">I have saved them</button>
+      </div>
       <p class="auth-error" id="authError" role="alert"></p>
     </section>
   </div>

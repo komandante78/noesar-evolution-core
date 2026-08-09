@@ -215,7 +215,7 @@ async function api(path,options={}){
   }
   return value;
 }
-function showOnly(form){['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));}
+function showOnly(form){['#setupForm','#setupMfaForm','#loginForm','#loginMfaForm','#recoveryStartForm','#recoveryFinishForm'].forEach((selector)=>$(selector).classList.toggle('hidden',selector!==form));}
 function authError(message=''){$('#authError').textContent=message;}
 // --- routing ---------------------------------------------------------------
 // Views used to be toggled by a click handler alone, so the URL never changed: a
@@ -740,9 +740,55 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
   await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
-$('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
+$('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];showFirstRunRecoveryCodes(result.recoveryCodes);await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
 $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login/mfa',{method:'POST',body:JSON.stringify({challenge:loginChallenge,totpCode:$('#loginTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
+/* Recupero (D-0369). Prima del recupero il prodotto aveva la FORMA di un recupero e nessuna
+ * via d ingresso: i codici non li emetteva il setup, e nessuna rotta ne consumava uno. */
+let recoveryChallenge=null;
+function showFirstRunRecoveryCodes(codes){
+  if(!Array.isArray(codes)||!codes.length)return;
+  const panel=$('#recoveryCodesPanel');const list=$('#recoveryCodesList');
+  if(!panel||!list)return;
+  list.textContent=codes.join('  ');
+  panel.classList.remove('hidden');
+}
+$('#recoveryCodesAcknowledge')?.addEventListener('click',()=>{$('#recoveryCodesPanel').classList.add('hidden');});
+$('#forgotCredentials')?.addEventListener('click',()=>{authError('');$('#recoveryUsername').value=$('#loginUsername').value;showOnly('#recoveryStartForm');});
+$('#recoveryCancel')?.addEventListener('click',()=>{authError('');showOnly('#loginForm');});
+$('#recoveryMintProof')?.addEventListener('click',async()=>{
+  try{
+    const minted=await api('/api/v1/auth/recovery/proof',{method:'POST',body:'{}'});
+    // Il percorso e l impronta, mai il gettone: quello vive solo sul disco dell installazione.
+    $('#recoveryProofPath').textContent=`${minted.path}  (${minted.fingerprint})`;
+  }catch(error){authError(error.message);}
+});
+$('#recoveryStartForm')?.addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  try{
+    const started=await api('/api/v1/auth/recovery/begin',{method:'POST',body:JSON.stringify({
+      username:$('#recoveryUsername').value,
+      recoveryCode:$('#recoveryCode').value||undefined,
+      proof:$('#recoveryProof').value||undefined,
+    })});
+    recoveryChallenge=started.challenge;
+    const target=$('#recoveryQr');
+    if(target){try{target.innerHTML=qrSvg(started.otpauthUri,{title:t('Authenticator setup code')});}catch{target.textContent=started.otpauthUri;}}
+    $('#recoveryTotpSecret').textContent=started.totpSecret;
+    authError('');showOnly('#recoveryFinishForm');
+  }catch(error){authError(error.message);}
+});
+$('#recoveryFinishForm')?.addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  try{
+    const result=await api('/api/v1/auth/recovery/complete',{method:'POST',body:JSON.stringify({
+      challenge:recoveryChallenge,password:$('#recoveryNewPassword').value,totpCode:$('#recoveryTotpCode').value,
+    })});
+    csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];
+    showFirstRunRecoveryCodes(result.recoveryCodes);
+    await enterApplication();
+  }catch(error){authError(error.message);}
+});
 $('#loginPasskeyButton').addEventListener('click',()=>withBusy($('#loginPasskeyButton'),async()=>{
   try{
     const options=await api('/api/v1/auth/login/passkey/options',{method:'POST',body:JSON.stringify({challenge:loginChallenge})});

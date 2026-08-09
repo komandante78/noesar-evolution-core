@@ -114,6 +114,7 @@ import {
 } from './trust-anchor.mjs';
 import { browserSignIn, shouldRedirectToSecure, normaliseHttpsUrl } from './secure-address.mjs';
 import { voiceAccess } from './voice-access.mjs';
+import { mintProof, verifyProof } from './owner-recovery.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 // The SAME registry both shells resolve typing against. Imported here so the candidate list the
@@ -963,6 +964,10 @@ const SAFE_MODE_WRITE_ALLOWLIST = new Set([
   // A login path, in the same class as the four above: safe mode exists to stop the product
   // working badly, not to lock the operator out of the terminal they need in order to look.
   '/api/v1/auth/attach-code',
+  // Recovery, for the same reason and more sharply: safe mode is a state an operator has to
+  // sign in to investigate, so locking the way back in behind it would make a degraded
+  // installation unrecoverable by exactly the person it is degraded for.
+  '/api/v1/auth/recovery/proof', '/api/v1/auth/recovery/begin', '/api/v1/auth/recovery/complete',
   '/api/v1/debug/enable', '/api/v1/debug/disable',
   '/api/v1/watchdog/safe-mode/leave', '/api/v1/updates/rollback',
 ]);
@@ -1384,6 +1389,44 @@ const requestListener = async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/mfa') {
       const value = auth.completeLogin({ ...(await body(req)), ip:clientIp(req) });
       return sessionResponse(req, res, value);
+    }
+    // --- getting back in without the passphrase (D-0369) --------------------------
+    // Unauthenticated by necessity: every caller here is somebody who cannot sign in, which is
+    // the same loop `/cli` and `/ca` describe one floor up. What each route grants is narrow,
+    // and `auth.beginRecovery` refuses everything with one sentence so this cannot become the
+    // account oracle the sign-in form already declines to be.
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/recovery/proof') {
+      // Mints a file on the host and answers with a FINGERPRINT ONLY. An anonymous caller
+      // therefore causes one fixed-name file to be written and learns nothing; the token is
+      // useful only to somebody who can already read the installation's config directory,
+      // which is the same authority the first owner was created with.
+      const minted = mintProof({ workspace });
+      logger.warn('owner-recovery.proof-minted', {
+        component:'auth', path:minted.path, proof_fingerprint:minted.fingerprint,
+        note:'account recovery proof; read it from this file on the host',
+      });
+      ledger.append({ actor:'anonymous', action:'auth.recovery-proof-minted', result:'success', details:{ fingerprint:minted.fingerprint } });
+      return json(res, 201, minted);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/recovery/begin') {
+      const payload = await body(req);
+      // The proof is checked HERE rather than inside AuthService: the filesystem is this
+      // layer's business, and keeping it out means one method serves both ways in.
+      const viaProof = payload.proof ? verifyProof({ workspace, presented:payload.proof }).accepted : false;
+      if (payload.proof && !viaProof) {
+        ledger.append({ actor:'anonymous', action:'auth.recovery-denied', result:'denied', details:{ viaProof:true } });
+        return json(res, 401, { error:'That recovery attempt was not accepted.', requestId });
+      }
+      return json(res, 201, auth.beginRecovery({
+        username:payload.username, recoveryCode:payload.recoveryCode, viaProof, ip:clientIp(req),
+      }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/recovery/complete') {
+      const value = auth.completeRecovery(await body(req));
+      // Signed in on the way out, like setup: having just proved possession of a fresh
+      // authenticator and chosen a passphrase, being returned to the sign-in form to type both
+      // again would be ceremony rather than security.
+      return sessionResponse(req, res, value, 201);
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/passkey/options') {
       const payload = await body(req);

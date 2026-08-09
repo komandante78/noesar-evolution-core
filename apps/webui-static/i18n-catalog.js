@@ -64,6 +64,7 @@ export const RUNTIME_ONLY = Object.freeze([
   "This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.",
   "On this machine, open",
   "Certificate page",
+  "Authenticator setup code",
   // The models catalogue, s333 point 5: every string below is painted by the renderer in
   // app.js and appears in no markup, so the static tool reports them as matching no screen.
   // They are measured where they are real — I18N-RUNTIME drives the live page and reads the
@@ -265,6 +266,23 @@ const it = {
   'This installation protects its session cookie, and a browser will not keep a protected cookie from an unencrypted page. Signing in here looks like it succeeds and leaves you signed out, with nothing to explain why.': 'Questa installazione protegge il proprio cookie di sessione, e un browser non conserva un cookie protetto arrivato da una pagina non cifrata. Qui l’accesso sembra riuscire e ti lascia disconnesso, senza nulla che spieghi perché.',
   'Install this installation\'s certificate first, then reopen NOESAR at its encrypted address.': 'Installa prima il certificato di questa installazione, poi riapri NOESAR al suo indirizzo cifrato.',
   'Get the certificate, and how to check it': 'Ottieni il certificato, e come verificarlo',
+  // Recupero dell’accesso (D-0369): i due modi per essere creduti, e i codici mostrati una volta sola.
+  "I cannot sign in": "Non riesco ad accedere",
+  "Recovering replaces your passphrase and your authenticator. Nothing else about this installation changes.": "Il recupero sostituisce la passphrase e l’autenticatore. Nient’altro di questa installazione cambia.",
+  "Recovery code": "Codice di recupero",
+  "XXXXX-XXXXX": "XXXXX-XXXXX",
+  "I do not have my recovery codes": "Non ho i codici di recupero",
+  "Then prove you control this installation — the same thing that let the first account be created here. Press the button, and read the file it names on the machine running NOESAR.": "Allora dimostra di controllare questa installazione — la stessa cosa che ha permesso di creare qui il primo account. Premi il bottone, e leggi il file che nomina sulla macchina che fa girare NOESAR.",
+  "Create a proof on the host": "Crea una prova sull’host",
+  "Proof from the host": "Prova letta dall’host",
+  "Back to sign in": "Torna all’accesso",
+  "Add this to your authenticator app first": "Aggiungi prima questo alla tua app di autenticazione",
+  "Delete any older NOESAR entry: the previous one stops working the moment you finish here.": "Cancella la vecchia voce NOESAR: la precedente smette di funzionare nel momento in cui finisci qui.",
+  "New passphrase": "Nuova passphrase",
+  "Set the new passphrase": "Imposta la nuova passphrase",
+  "Save these recovery codes now": "Salva adesso questi codici di recupero",
+  "Each one gets you back in once, without the machine and without the authenticator. They are shown this one time and cannot be shown again.": "Ognuno ti fa rientrare una volta, senza la macchina e senza l’autenticatore. Si vedono questa sola volta e non si possono rivedere.",
+  "I have saved them": "Li ho salvati",
   // Le due strade gratuite prima di quella che costa (D-0367): la macchina stessa non ha
   // bisogno di alcun certificato, ed e' la risposta che il prodotto non nominava mai.
   'To speak from a phone or another device': 'Per parlare da un telefono o da un altro dispositivo',
@@ -274,6 +292,7 @@ const it = {
   'This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.': 'Questa pagina non puo\' aprire un microfono: un browser lo consente solo su HTTPS, o dalla macchina stessa.',
   'On this machine, open': 'Su questa macchina, apri',
   'Certificate page': 'Pagina del certificato',
+  'Authenticator setup code': 'Codice di configurazione dell’autenticatore',
   'One-time setup token': 'Token di configurazione monouso',
   'Owner username': 'Nome utente del proprietario',
   'Display name': 'Nome visualizzato',

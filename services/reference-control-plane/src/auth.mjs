@@ -334,14 +334,27 @@ export class AuthService {
     const secret = decryptSecret(pending.user.totp, this.masterKey);
     const consumed = consumeTotp(secret, totpCode, pending.user);
     if (!consumed.accepted) throw Object.assign(new Error(consumed.reason === 'replayed' ? 'This authentication code has already been used.' : 'Invalid TOTP code.'), { status:403 });
-    const user = { ...pending.user, lastTotpStep: consumed.step };
+    // Issued HERE, and that is the whole of D-0369's first half: before it, the first owner
+    // finished setup with NO recovery codes, and `regenerateRecoveryCodes` — the only thing
+    // that made any — demands the password and a TOTP code, which is precisely what somebody
+    // locked out does not have. The product carried the shape of a recovery mechanism with no
+    // way in, and the Owner met that on 2026-08-09.
+    const { codes, digests } = buildRecoveryCodes();
+    const user = {
+      ...pending.user, lastTotpStep: consumed.step,
+      recoveryCodes: digests, recoveryCodesGeneratedAt: Date.now(),
+    };
     this.store.update((next) => {
-      next.users = [user];
+      // Non-owner accounts survive first-run. On a genuinely fresh installation there are none,
+      // so this is a no-op; on one an operator has returned to first-run it preserves the
+      // service account a module authenticates with, which `next.users = [user]` deleted
+      // silently — detaching the module through an act nobody would connect to it.
+      next.users = [...(next.users ?? []).filter((item) => item.role !== 'owner'), user];
       next.pendingOwner = null;
       next.initialized = true;
     });
-    this.ledger.append({ actor:user.id, action:'auth.setup-completed', result:'success', details:{ username:user.username } });
-    return this.createSession(user, { mfa:true });
+    this.ledger.append({ actor:user.id, action:'auth.setup-completed', result:'success', details:{ username:user.username, recoveryCodesIssued:codes.length } });
+    return { ...this.createSession(user, { mfa:true }), recoveryCodes: codes };
   }
 
   #attemptKey(ip, username) { return `${ip}|${username}`; }
@@ -1184,6 +1197,120 @@ export class AuthService {
     });
     this.ledger.append({ actor:userId, action:'auth.recovery-codes-regenerated', result:'success', details:{ issued:codes.length } });
     return { codes };
+  }
+
+  /**
+   * Stage 1 of getting back in without the passphrase (`D-0369`).
+   *
+   * Two ways to be believed, and no third: a recovery code issued at setup, or proof that the
+   * caller controls the installation's filesystem — the same authority the FIRST owner was
+   * created with, so this adds no root of trust the product did not already have. There is no
+   * email path, because a product whose argument is that no vendor sees your data does not
+   * acquire a mail server in order to let you back in.
+   *
+   * `viaProof` is decided by the caller, which is what owns the file. Keeping the filesystem out
+   * of this class is why the same method serves both routes.
+   *
+   * What it grants is deliberately NARROW: not a session, but permission to set a new passphrase
+   * and enrol a new authenticator. A recovery code that opened a session would make one leaked
+   * code equal to full access, which is a worse bargain than the lockout it fixes.
+   */
+  beginRecovery({ username, recoveryCode, viaProof = false, ip = 'unknown' }) {
+    let normalized;
+    try { normalized = normalizeUsername(username); } catch { normalized = ''; }
+    const limiter = this.#rateState(ip, `recovery|${normalized}`);
+    if (limiter.entries.length >= 5) throw Object.assign(new Error('Too many recovery attempts. Try again later.'), { status:429 });
+
+    const state = this.store.read();
+    const user = state.users.find((item) => item.username === normalized && item.role === 'owner');
+    // One sentence for every failure — unknown account, wrong code, spent code, no proof. The
+    // sign-in form already refuses to be an account oracle (see beginLogin); a recovery form
+    // that answered "no such user" would be the same oracle with a friendlier name.
+    const refuse = () => {
+      this.#recordFailure(ip, `recovery|${normalized}`);
+      this.ledger.append({ actor:user?.id ?? 'anonymous', action:'auth.recovery-denied', result:'denied', details:{ viaProof } });
+      return Object.assign(new Error('That recovery attempt was not accepted.'), { status:401 });
+    };
+    if (!user) throw refuse();
+
+    if (!viaProof) {
+      const supplied = String(recoveryCode ?? '').trim().toUpperCase();
+      const digest = tokenDigest(supplied);
+      const match = (user.recoveryCodes ?? []).find((item) => item.digest === digest && !item.usedAt);
+      if (!supplied || !match) throw refuse();
+    }
+
+    // A fresh authenticator secret is minted now and only committed if stage 2 proves the person
+    // holds it. Recovering a passphrase while leaving the old TOTP in place would leave half the
+    // credential in the hands of whoever the person is recovering FROM.
+    const secret = createTotpSecret();
+    const challenge = randomToken(24);
+    const pending = {
+      challengeDigest: tokenDigest(challenge),
+      userId: user.id,
+      viaProof,
+      recoveryDigest: viaProof ? null : tokenDigest(String(recoveryCode ?? '').trim().toUpperCase()),
+      totp: encryptSecret(secret, this.masterKey),
+      expiresAt: Date.now() + 10 * 60_000,
+    };
+    this.store.update((next) => { next.pendingRecovery = pending; });
+    this.ledger.append({ actor:user.id, action:'auth.recovery-started', result:'pending', details:{ viaProof } });
+    return {
+      challenge,
+      username: normalized,
+      totpSecret: secret,
+      otpauthUri: `otpauth://totp/NOESAR%20Evolution:${encodeURIComponent(normalized)}?secret=${secret}&issuer=NOESAR%20Evolution&algorithm=SHA1&digits=6&period=30`,
+      expiresAt: new Date(pending.expiresAt).toISOString(),
+    };
+  }
+
+  /**
+   * Stage 2: the new passphrase, proved against the new authenticator.
+   *
+   * Everything the old credential could reach is cut at the same moment — every session is
+   * revoked and a fresh set of recovery codes replaces the old ones, spent or not. A recovery
+   * that left the previous holder signed in somewhere would not be a recovery.
+   */
+  completeRecovery({ challenge, password, totpCode }) {
+    const state = this.store.read();
+    const pending = state.pendingRecovery;
+    if (!pending || pending.expiresAt < Date.now()) throw Object.assign(new Error('Recovery challenge expired.'), { status:400 });
+    if (tokenDigest(String(challenge ?? '')) !== pending.challengeDigest) throw Object.assign(new Error('Invalid recovery challenge.'), { status:403 });
+    const user = state.users.find((item) => item.id === pending.userId);
+    if (!user) throw Object.assign(new Error('Recovery challenge expired.'), { status:400 });
+
+    const policy = passwordPolicy(password);
+    if (!policy.valid) throw Object.assign(new Error(policy.reasons.join(' ')), { status:400 });
+
+    const secret = decryptSecret(pending.totp, this.masterKey);
+    const consumed = consumeTotp(secret, totpCode, { lastTotpStep: 0 });
+    if (!consumed.accepted) {
+      throw Object.assign(new Error(consumed.reason === 'replayed' ? 'This authentication code has already been used.' : 'Invalid TOTP code.'), { status:403 });
+    }
+
+    const { codes, digests } = buildRecoveryCodes();
+    let updated;
+    this.store.update((next) => {
+      const target = next.users.find((item) => item.id === pending.userId);
+      target.password = hashPassword(password);
+      target.totp = pending.totp;
+      target.lastTotpStep = consumed.step;
+      target.failedLoginCount = 0;
+      target.lockedUntil = 0;
+      target.recoveryCodes = digests;
+      target.recoveryCodesGeneratedAt = Date.now();
+      next.pendingRecovery = null;
+      // Every session, not only this user's: on a single-owner installation they are the same
+      // set, and on any other the safe reading of "the owner had to recover" is that nothing
+      // currently signed in should be trusted.
+      next.sessions = [];
+      updated = target;
+    });
+    this.ledger.append({
+      actor:pending.userId, action:'auth.recovery-completed', result:'success',
+      details:{ viaProof:pending.viaProof, recoveryCodesIssued:codes.length },
+    });
+    return { ...this.createSession(updated, { mfa:true }), recoveryCodes: codes };
   }
 
   revokeSession({ userId, sessionId, targetSessionId }) {

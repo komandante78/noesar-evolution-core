@@ -8869,3 +8869,71 @@ failed for a reason that had nothing to do with the product. A double that canno
 the branch needs cannot guard it — the same lesson as `D-0354`, met again in a new shape. The
 test now builds a real service against a temporary workspace. Guided backwards: restoring the
 unmarked throw fails 9 of 12; making the sign-in branch disclose the rule fails 2.
+
+---
+
+## D-0369 — recovering the account from the sign-in screen, as it should have been (2026-08-09)
+
+**Owner, s339:** *«devi fare modo che posso recuperare le credenziali dalla schermata di login
+come giusto sia»* — said after being locked out with a forgotten passphrase, and he was right
+twice: about the need, and about it being obvious.
+
+🛑 **The product had the SHAPE of a recovery mechanism and no way in.** Measured, not assumed:
+
+- `confirmSetup` never issued recovery codes — `recovery` does not appear in it at all. So the
+  first owner finished setup holding **none**;
+- **nothing consumed one.** `recoveryCodes` was written by `regenerateRecoveryCodes`, counted by
+  the security page, and read by no login path anywhere in the tree;
+- and `regenerateRecoveryCodes` — the only thing that minted any — demands the password **and** a
+  TOTP code, which is precisely what somebody locked out does not have.
+
+A feature that can only be used by people who do not need it.
+
+**Two ways to be believed, and no third.**
+
+| | who it is for | what it costs |
+|---|---|---|
+| a **recovery code** issued at setup | anybody, from any device | keeping the codes |
+| **proof of controlling the installation** | the person who installed it | reading one file on the host |
+
+There is **no email path**, and that is a decision rather than an omission: a product whose whole
+argument is that no vendor sees your data does not acquire a mail server in order to let you back
+in. The proof route adds no root of trust either — it names the one the product already had, the
+same authority `first-owner-setup.token` gives the FIRST owner. `POST /auth/recovery/proof`
+writes one fixed-name file at `0600` and answers with a **fingerprint only**, so an anonymous
+caller learns nothing; the token is useful solely to somebody who can already read the config
+directory. It is single-use, consumed on success, and expires in 30 minutes.
+
+**What a recovery grants is deliberately narrow: not a session, but permission to set a new
+passphrase and enrol a new authenticator.** A code that opened a session would make one leaked
+code equal to full access — a worse bargain than the lockout it fixes. The old authenticator is
+replaced in the same act, because recovering a passphrase while leaving the previous TOTP in
+place hands back half a credential to whoever the person is recovering *from*. Every session is
+revoked, and a fresh set of codes replaces the old set, spent or not.
+
+**Every refusal is one sentence** — unknown account, wrong code, spent code, bad proof — because
+a recovery form that answered "no such user" would be the account oracle the sign-in form already
+declines to be (`D-0368`). Rate limited at five attempts, since ten ten-character codes are
+guessable if nothing counts the guesses. All three routes are in the safe-mode allowlist: safe
+mode is a state an operator must sign in to investigate, so locking the way back in behind it
+would make a degraded installation unrecoverable by exactly the person it is degraded for.
+
+⚠️ **A second defect fixed in passing, found by reading `confirmSetup`:** it ended with
+`next.users = [user]`, deleting **every other account** — including the service account a module
+authenticates with. On a genuinely fresh installation there are none, so it never showed; on one
+an operator has returned to first-run it silently detaches the module. Non-owner accounts now
+survive.
+
+🛑 **Three of my own mistakes, each caught by measuring rather than by reasoning.** A test asserted
+`assert.throws(() => auth.completeMfa(...))` — a method that **does not exist**, so the TypeError
+satisfied it and the assertion never touched the product; the real name is `completeLogin`. Then
+the corrected test failed claiming the old authenticator still worked: it did not — a probe showed
+the refusal was **401**, not the 403 I had assumed from the neighbouring method. Then it failed
+again on a replayed TOTP step, because `completeRecovery` had just consumed the current one. And
+the id `recoveryPassword` collided with the settings page's existing field: the markup guard
+caught the duplicate, my rename of the markup succeeded while the rename in `app.js` **threw
+before writing**, and the suite stayed green because nothing exercises that handler. Fixed, and
+the ids the new code touches are now checked against the markup.
+
+Guided backwards: not replacing the TOTP, not replacing the codes, not cutting the sessions,
+accepting any code, and setup issuing none — five mutations, five reds.
