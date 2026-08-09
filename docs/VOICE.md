@@ -79,6 +79,39 @@ The list of voices belongs to whatever model the operator installed.
 
 ---
 
+## What THIS installation runs (s337 — stage 4, and it is an example, not the design)
+
+The Owner asked for the choice to be made and installed. It was. Everything below is
+configuration, and every value is a variable — swapping any of it changes no code.
+
+| | hearing | speaking |
+|---|---|---|
+| container | `noesar-voice-hear` | `noesar-voice-speak` |
+| image | `ghcr.io/speaches-ai/speaches:latest-cuda` | `ghcr.io/remsky/kokoro-fastapi-cpu:latest` |
+| model | `Systran/faster-whisper-small` | Kokoro-82M |
+| device | GPU, 412 MiB | **CPU, deliberately** |
+| measured | 1.8 s for a short utterance | ~60 KB of MP3 per sentence |
+
+**Rune is `im_nicola`, Estrela is `if_sara`** — the two Italian voices Kokoro ships. This is
+exactly the binding the two names exist for: those strings mean nothing outside Kokoro, and the
+day the speech model changes, two variables change and nothing else does.
+
+**Why speech is on the CPU.** phi-4 holds 10 353 MiB of a 12 288 MiB card. Putting the voice on
+the GPU would make it compete with the model that answers, and a card is a fact about this
+machine rather than a fact about the product.
+
+**Proved by round trip, not by two green health checks.** Kokoro was asked to say *«Apri la
+memoria e mostrami lo stato del motore»*, and the resulting audio was handed to Whisper, which
+returned *«Apri la memoria e mostramelo stato del motore»*.
+
+**That last word is the honest limit, and it is written down rather than rounded off.** `small`
+runs "mostrami lo" together. The resolver ranks against the product's own entries so a near miss
+often still lands, but a transcription error is a transcription error. `faster-whisper-medium`
+was tried for that reason and **hangs without ever loading on this card** — VRAM never moves —
+so `small` is what is configured, and the upgrade is one string on a machine with more headroom.
+
+---
+
 ## What an unconfigured installation does
 
 It says so. Both controls beside the composer are disabled and the line under them reads:

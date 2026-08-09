@@ -10,8 +10,8 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "b19dbf7",
-  "last_updated_utc": "2026-08-09T12:13:02Z",
-  "last_commit_note": "A-0027 (the Warrant) ships inside the product (D-0362). Deployed as noesar-evolution:d0362-atom-warrant, carrying atomd built from ATOM 7ebec54.",
+  "last_updated_utc": "2026-08-09T13:39:55Z",
+  "last_commit_note": "Voice stage 4: the installation is given ears and a voice (D-0363). Whisper small + Kokoro beside noesar-evolution:d0362-atom-warrant.",
   "blockers": [
     {
       "id": "B-001",

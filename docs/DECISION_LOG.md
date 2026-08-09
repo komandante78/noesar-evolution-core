@@ -8540,3 +8540,52 @@ Seven decisions had been **deployed under image tags naming them** while the log
 commit `aaea1ae` (s334) exists precisely to write `D-0349…D-0353` into the log "not only into
 commit messages", and the gap reopened in the very next session. An image tag that names a decision
 nobody wrote is a reference to a document that does not exist.
+
+## D-0363 — the installation is given ears and a voice (2026-08-09, voice stage 4)
+
+**Owner, s337:** asked to choose the two models and install them, rather than be handed a list.
+
+Stage 4 was the only part of `docs/VOICE.md` that could not be built, because it is not
+construction — it is a choice plus a runtime. Both are now made, and the record of what was
+chosen lives in `VOICE.md` and `deployment/container/RUN_FLAGS.md`, not here.
+
+| | hearing | speaking |
+|---|---|---|
+| engine | `speaches` (faster-whisper), GPU | Kokoro-82M, **CPU** |
+| model | `Systran/faster-whisper-small` | `kokoro`, voices `im_nicola` / `if_sara` |
+
+**Rune is `im_nicola` and Estrela is `if_sara`.** This is the first time the two names invented in
+`D-0359` have been bound to anything, and it is the case they were invented for: those strings are
+Kokoro's private vocabulary, and the day the speech model is replaced two variables change and no
+code does.
+
+**Speech is on the CPU on purpose.** phi-4 holds 10 353 MiB of a 12 288 MiB card. A voice competing
+for VRAM with the model that answers would trade the thing the product is for the thing it just
+gained. Whisper `small` fits in what is left: 412 MiB, 1.8 s for a short utterance.
+
+**Proved by round trip rather than by two health checks agreeing.** Kokoro was asked to say *«Apri
+la memoria e mostrami lo stato del motore»* and the audio was handed to Whisper, which returned
+*«Apri la memoria e mostramelo stato del motore»*. Two `ready` states prove two servers are up;
+only sending real audio through both proves the wire shapes match.
+
+**The limit is written down instead of rounded off.** `small` runs "mostrami lo" together.
+`faster-whisper-medium` was tried for exactly that reason and **hangs without ever loading on this
+card** — VRAM never moves, no error is raised, the request simply never returns. So `small` is what
+is configured and the upgrade is one string, not a rebuild.
+
+🛑 **A defect in the chosen engine, fixed before wiring it in: it phoned home.** The first run of
+`speaches` opened connections to `huggingface.co` and `api.gradio.app` at startup. For a product
+whose argument is that no vendor sees what you say, a voice server calling out on boot is not a
+detail — `HF_HUB_DISABLE_TELEMETRY=1`, `GRADIO_ANALYTICS_ENABLED=False` and `DO_NOT_TRACK=1` are
+set for that reason.
+
+⚠️ **`speaches` serves no model it was not told to install.** A fresh cache answers `404` to every
+transcription until `POST /v1/models/{id}` has been called once. It is a first-run step, it is not
+discoverable from the failure, and it is in `RUN_FLAGS.md`.
+
+**Two corrections to myself, both from reading a result instead of the thing that produced it.**
+The voice roster came back empty of Italian because I matched `if_`/`im_` against objects rather
+than their `id` field — `if_sara` and `im_nicola` had been there all along. And `voiceReadiness`
+reported both directions `unreachable` when called without a `fetchImpl`: `probeModelEndpoint`
+takes one explicitly and does **not** fall back to a global `fetch`, which the real route supplies.
+Twice the measurement was broken and the product was not.
