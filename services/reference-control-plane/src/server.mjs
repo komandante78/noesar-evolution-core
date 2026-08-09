@@ -1213,6 +1213,12 @@ function sessionResponse(req, res, value, status = 200) {
     // reaches this point has already been told "signed in" by the status code, and for a
     // browser on the plain listener that is the exact moment the claim stops being true.
     ...(advice.browserSignInPossible ? {} : { transport:advice }),
+    // Setup and recovery are the only two moments recovery codes can EVER be shown, and this
+    // function builds its own body — so a field the service returned is dropped here unless it
+    // is named. It was, silently: `confirmSetup` handed over ten codes and the browser received
+    // none. The unit tests could not see it because they exercise the service and the loss
+    // happens one floor up; running the flow end to end is what found it.
+    ...(value.recoveryCodes ? { recoveryCodes:value.recoveryCodes } : {}),
     // Sent here as well as on /auth/me: the interface enters the application straight
     // from this response and must know which sections to offer before its first fetch.
     permissions:auth.permissionsFor(value.user.role),

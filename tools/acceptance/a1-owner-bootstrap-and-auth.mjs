@@ -96,9 +96,16 @@ await r.check('AUTH-08', 'setup confirm with the correct TOTP creates the owner 
   const res = await c.post('/api/v1/auth/setup/confirm', { challenge, totpCode: await freshCode() });
   const cookieNames = (res.headers['set-cookie'] ?? []).map((v) => String(v).split('=')[0]);
   const httpOnly = (res.headers['set-cookie'] ?? []).some((v) => /noesar_session=/.test(v) && /HttpOnly/i.test(v) && /SameSite=Strict/i.test(v));
+  // Setup is one of only two moments recovery codes can EVER be shown, so the assertion belongs
+  // where the browser sees them and not where the service returns them. `confirmSetup` handed
+  // over ten and `sessionResponse` — which builds its own body — dropped them silently; the unit
+  // tests stayed green throughout, because the loss happens a floor above what they exercise
+  // (D-0369). Checked here, over HTTP, which is the only place it was ever visible.
+  const codes = res.json?.recoveryCodes ?? [];
+  const shaped = codes.length === 10 && codes.every((code) => /^[0-9A-HJ-NP-TV-Z]{5}-[0-9A-HJ-NP-TV-Z]{5}$/.test(code));
   return {
-    verdict: res.status === 201 && res.json?.user?.role === 'owner' && httpOnly ? 'PASS' : 'FAIL',
-    evidence: `-> ${res.status}; role ${res.json?.user?.role}; mfaEnabled ${res.json?.user?.mfaEnabled}; cookies ${cookieNames}; session cookie HttpOnly+SameSite=Strict ${httpOnly}`,
+    verdict: res.status === 201 && res.json?.user?.role === 'owner' && httpOnly && shaped ? 'PASS' : 'FAIL',
+    evidence: `-> ${res.status}; role ${res.json?.user?.role}; mfaEnabled ${res.json?.user?.mfaEnabled}; cookies ${cookieNames}; session cookie HttpOnly+SameSite=Strict ${httpOnly}; recovery codes delivered ${codes.length}, well-formed ${shaped}`,
   };
 });
 
