@@ -1104,6 +1104,70 @@ try {
   check('`/` typed into a message stays in the message and opens nothing',
     !slashWhileTyping.open && slashWhileTyping.typed === 'and/or', JSON.stringify(slashWhileTyping));
 
+  // ——— VOICE, s336 stage 3 ————————————————————————————————————————————————————————————
+  //
+  // What is checked here is HONESTY, and it can only be checked in a browser. This installation
+  // has no transcription or speech model configured — stage 4 is the stage that changes that —
+  // so the only correct behaviour for the two controls is to be present, refuse, and say which
+  // piece is missing. A control that looked available and then did nothing would be the s316
+  // complaint again: a feature indistinguishable from a broken one.
+  //
+  // It also catches what `npm test` structurally cannot. That suite reads `app.js` as TEXT and
+  // never executes it, so a bad import — or a leftover reference to the chip just deleted from
+  // the top bar — would pass every unit test and blank the page. If `#chatDictate` carries a
+  // title at all, `app.js` ran all the way through its wiring.
+  const voiceFace = await page.evaluate(async () => {
+    const dictate = document.querySelector('#chatDictate');
+    const aloud = document.querySelector('#chatReadAloud');
+    const state = await fetch('/api/v1/voice/state', { credentials: 'same-origin' })
+      .then((response) => response.json()).catch(() => null);
+    return {
+      dictatePresent: Boolean(dictate),
+      aloudPresent: Boolean(aloud),
+      dictateDisabled: dictate?.disabled ?? null,
+      aloudDisabled: aloud?.disabled ?? null,
+      // The reason is read off the note line, not off `title`: `title` is translated from a
+      // cached source, so a reason written there is overwritten by the markup's own the next
+      // time anything changes. Found here, by this check, against the first build of it.
+      note: document.querySelector('#voiceNote')?.textContent ?? '',
+      noteHidden: document.querySelector('#voiceNote')?.classList.contains('hidden') ?? null,
+      towerGone: !document.querySelector('#voiceToggle') && !document.querySelector('#voicePopover'),
+      canHear: state?.canHear ?? null,
+      canSpeak: state?.canSpeak ?? null,
+    };
+  });
+  check('the microphone and the read-aloud control are beside the composer',
+    voiceFace.dictatePresent && voiceFace.aloudPresent, JSON.stringify(voiceFace));
+  check('the five-word control tower is gone from the top bar (point 6a)',
+    voiceFace.towerGone, JSON.stringify(voiceFace));
+  check('the server, not the browser, decides whether this installation can hear',
+    voiceFace.canHear === false && voiceFace.canSpeak === false, JSON.stringify(voiceFace));
+  check('with no model configured the controls refuse, and say which piece is missing',
+    voiceFace.dictateDisabled === true && voiceFace.aloudDisabled === true
+      && voiceFace.noteHidden === false && /cannot hear|transcription/i.test(voiceFace.note),
+    JSON.stringify(voiceFace));
+
+  // The resolver is the same module the unit suite drives — but this asserts it is the one the
+  // PAGE loaded. A build that shipped a stale copy of it would pass every test in that suite.
+  const voiceHeard = await page.evaluate(async () => {
+    const intent = await import('/voice-intent.js');
+    const commands = await import('/agent-commands.js');
+    const entries = [...commands.AGENT_COMMANDS];
+    const groupTitles = Object.fromEntries(commands.MENU_GROUPS.map((group) => [group.id, group.title]));
+    const say = (text) => intent.resolveUtterance(text, { entries, groupTitles });
+    return {
+      navigate: say('memory'),
+      run: say('plan fix the login'),
+      prose: say('spiegami come funziona il login'),
+    };
+  });
+  check('in the page, a destination navigates and a capability only waits to be sent',
+    voiceHeard.navigate.disposition === 'navigate' && voiceHeard.run.disposition === 'run'
+      && voiceHeard.run.line === '/plan fix the login',
+    JSON.stringify(voiceHeard));
+  check('in the page, prose that names nothing stays prose — that is the dictation path',
+    voiceHeard.prose.kind === 'nothing', JSON.stringify(voiceHeard.prose));
+
   // Ctrl K is not taken away because a better key arrived.
   await page.keyboard.down('Control');
   await page.keyboard.press('KeyK');

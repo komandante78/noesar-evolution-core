@@ -4,11 +4,15 @@ import { PAGE_HELP } from './page-help.js';
 import { qrSvg } from './qr.js';
 import { parseHex, contrast, deriveReadable, formatRatio } from './colour.js';
 import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedule.js';
-import { initVoiceControl } from './voice-control.js';
+// What an utterance MEANS — resolved against the same entries typing resolves against, so the
+// microphone reaches everything the prompt reaches and nothing else (s336, voice stage 2).
+import {
+  resolveUtterance, utteranceReply, VoiceIntent, VoiceDisposition,
+} from './voice-intent.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
-  AGENT_COMMANDS, matchCommands, parseCommandPrompt, resolveCommand,
+  AGENT_COMMANDS, MENU_GROUPS, matchCommands, parseCommandPrompt, resolveCommand,
   menuFor, groupMenu, hiddenNote, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
 } from './agent-commands.js';
 // What a session LOOKS like, and what a typed line MEANS — phase 2 put it where both shells
@@ -1104,6 +1108,9 @@ async function sendChat(){
     setStatus('Response completed.');
     // One summary, once, when the event is over.
     announceEvent(`Reply complete, ${assistantText.length} characters`);
+    // …and the reply itself, if the person asked for it. Here for the same reason the live
+    // region is here: once, when the answer has settled. Reading per delta would read it twice.
+    await speakReply(assistantText);
   }catch(error){
     setStatus(error.message,true);
   }finally{
@@ -2899,47 +2906,188 @@ async function runWorkspaceAction(kind,opts={}){
   }
 }
 
-// D-0123/D-0270: voice as a control tower, not an assistant. voice-control.js carries the
-// whole reducer/vocabulary/state machine, tested there without a browser; everything here
-// is thin wiring — the same `currentWorkspaceRun`/`runWorkspaceAction` the visible
-// Approve/Reject buttons already use, never a second way into the product.
-function voiceStatusSnapshot(){
-  if(!currentWorkspaceRun)return{};
-  return{status:currentWorkspaceRun.status,risk:currentWorkspaceRun.risk?.overall,confidence:currentWorkspaceRun.confidence?.value,fileCount:currentWorkspaceRunFiles.length};
+// ——— VOICE, s336 stage 3: the microphone beside the prompt ————————————————————————————
+//
+// What was here until now was `initVoiceControlUI` — the wiring for `D-0123`'s control tower:
+// a chip in the top bar that turned on the BROWSER's SpeechRecognition and listened for five
+// fixed words. The Owner's requirement retires it in two independent ways at once, so it is
+// gone from the interface rather than moved: «non deve essere statico» (five words), and «fai
+// un motore reale interno» (the browser did the hearing, which means the audio left the
+// installation for whoever built the browser).
+//
+// `voice-control.js` and its tests stay in the repository, headed as superseded. Deleting a
+// file is not something this session may decide on its own, and the module is still the clearest
+// statement of the one rule worth carrying forward — never guess between two outcomes.
+//
+// Everything below is thin wiring. The engine is `voice-engine.mjs` (server side, stage 1) and
+// the decision of what an utterance MEANS is `voice-intent.js` (stage 2), which resolves it
+// against the very arrays the `/` menu resolves typing against — `codenOffered()` and the served
+// address book, not a copy and not a vocabulary.
+let voiceState={canHear:false,canSpeak:false};
+let voiceRecorderChat=null;
+let voiceRecorderStream=null;
+let readAloud=false;
+let spokenAudio=null;
+
+/** One line under the composer saying what the microphone just did. `translate="no"` because
+ *  every sentence it can hold is composed around an address or a command name. */
+function voiceNote(text){
+  const note=$('#voiceNote');
+  if(!note)return;
+  note.textContent=text??'';
+  note.classList.toggle('hidden',!text);
 }
-function renderVoiceTranscript(entry){
-  const box=$('#voiceTranscript');if(!box)return;
-  const heard=entry.matched?entry.heard:`${entry.heard} (not recognised)`;
-  box.insertAdjacentHTML('afterbegin',`<div class="voice-line"><b>${escapeHtml(heard)}</b> → ${escapeHtml(entry.utterance??'')}</div>`);
-  while(box.children.length>10)box.removeChild(box.lastChild);
+
+/** What each direction can do, asked once and asked of the SERVER — the browser's own opinion
+ *  about microphones is not the question. A direction that cannot work says why on the control
+ *  itself, which is the whole of stage 4's honesty until stage 4 exists: an installation with no
+ *  transcription model configured declares that it cannot hear, and that is true. */
+async function refreshVoiceState(){
+  const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');
+  try{
+    voiceState=await api('/api/v1/voice/state');
+  }catch(error){
+    voiceState={canHear:false,canSpeak:false,transcribe:{reason:error.message},speak:{reason:error.message}};
+  }
+  if(dictate)dictate.disabled=!voiceState.canHear;
+  if(aloud)aloud.disabled=!voiceState.canSpeak;
+  // The REASON goes in the note line, not on the buttons — measured in the browser, where the
+  // first version put it in `title` and the sentence vanished. `title` is one of the three
+  // attributes `i18n.js` translates, and the translator caches each element's ORIGINAL value as
+  // the source it re-applies from; a title written by code is therefore overwritten by the
+  // markup's own the next time anything on the page changes. The note line is `translate="no"`
+  // and is already where every other sentence about voice goes, so it is the honest home for
+  // this one — and the check that caught it asserts the reason is READABLE, not where it lives.
+  if(!voiceState.canHear||!voiceState.canSpeak){
+    voiceNote(!voiceState.canHear
+      ?(voiceState.transcribe?.reason??t('This installation cannot hear.'))
+      :(voiceState.speak?.reason??t('This installation cannot speak.')));
+  }
 }
-let voiceControl=null;
-function initVoiceControlUI(){
-  voiceControl=initVoiceControl({
-    hasPendingRun:()=>currentWorkspaceRun?.status==='PENDING_APPROVAL',
-    statusSnapshot:voiceStatusSnapshot,
-    // 'reason' in opts: see runWorkspaceAction's own comment — a voice reject must not
-    // pop a blocking native prompt(), which would defeat the entire "mani libere" point.
-    runAction:(kind)=>runWorkspaceAction(kind,kind==='reject'?{reason:'Rejected via voice control (D-0123).'}:{}),
-    onTranscript:renderVoiceTranscript,
+
+async function transcribeRecording(blob){
+  if(!csrfToken)csrfToken=readCsrfCookie();
+  const response=await fetch('/api/v1/voice/transcribe',{
+    method:'POST',credentials:'same-origin',
+    headers:{'content-type':blob.type||'audio/webm',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
+    body:blob,
   });
-  const toggle=$('#voiceToggle');
-  if(!toggle||!voiceControl.available){
-    if(toggle){toggle.disabled=true;$('#voiceToggleLabel').textContent='Voice: unavailable';}
+  const heard=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(heard.error??`Transcription failed (${response.status})`);
+  return heard;
+}
+
+/**
+ * What to do with what was heard.
+ *
+ * The four outcomes of `resolveUtterance`, each answered in the way that keeps the microphone
+ * from being able to do something a keyboard could not:
+ *
+ *   navigate → go. A destination is reversible by going back, and this is the gesture the Owner
+ *              asked for: say where you want to be and be there.
+ *   run      → the line goes INTO the box and stops. A microphone has no Enter key, so the click
+ *              stands in for the moment a person commits — `D-0123`'s rule that voice may not
+ *              mint authority, kept where it is visible rather than asserted in a comment.
+ *   several  → the question, naming them. Never a pick.
+ *   nothing  → it was not a command, so it was DICTATION. The words go into the box as a message.
+ *              This is the case that makes the feature worth having: everything the product can
+ *              be asked in prose is now sayable, and nothing had to be listed for it to be.
+ */
+function applyHeardText(text){
+  const box=$('#chatInput');
+  // `codenOffered()` — literally the array the `/` menu is built from, permission filter and
+  // served address book included. Not a copy assembled for voice: the same call.
+  const result=resolveUtterance(text,{
+    entries:codenOffered(),translate:t,
+    groupTitles:Object.fromEntries(MENU_GROUPS.map((group)=>[group.id,group.title])),
+  });
+  voiceNote(utteranceReply(result,t));
+  if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.NAVIGATE){
+    return jumpTo(result.entry.address??result.entry.name);
+  }
+  if(!box)return undefined;
+  if(result.kind===VoiceIntent.INTENT){box.value=result.line;box.focus();return undefined;}
+  if(result.kind===VoiceIntent.NOTHING){
+    // Dictation accumulates: a second sentence continues the first rather than replacing it.
+    box.value=box.value.trim()?`${box.value.trim()} ${result.heard}`:result.heard;
+    box.focus();
+  }
+  return undefined;
+}
+
+async function toggleDictation(){
+  const button=$('#chatDictate');const label=$('#chatDictateLabel');
+  if(voiceRecorderChat?.state==='recording'){voiceRecorderChat.stop();return;}
+  try{
+    voiceRecorderStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(error){
+    // A refused microphone is the person's decision, not a fault. Said plainly and once.
+    voiceNote(`${t('The microphone is not available:')} ${error.message}`);
     return;
   }
-  let listening=false;
-  // Some engines end a 'continuous' session on a silence timeout regardless of the flag;
-  // restarting on 'onend' while the toggle is still on is the documented workaround, not
-  // a guess — it only fires when the product's own state still says "should be listening".
-  voiceControl.recognition.onend=()=>{if(listening)voiceControl.recognition.start();};
-  toggle.addEventListener('click',()=>{
-    listening=!listening;
-    toggle.setAttribute('aria-pressed',String(listening));
-    $('#voiceToggleLabel').textContent=listening?'Voice: on':'Voice: off';
-    $('#voicePopover')?.classList.toggle('hidden',!listening);
-    if(listening)voiceControl.recognition.start();else voiceControl.recognition.stop();
+  const chunks=[];
+  voiceRecorderChat=new MediaRecorder(voiceRecorderStream);
+  voiceRecorderChat.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data);};
+  voiceRecorderChat.onstop=async()=>{
+    voiceRecorderStream?.getTracks().forEach((track)=>track.stop());
+    voiceRecorderStream=null;
+    button?.setAttribute('aria-pressed','false');
+    if(label)label.textContent=t('Speak');
+    try{
+      const heard=await transcribeRecording(new Blob(chunks,{type:voiceRecorderChat.mimeType}));
+      // Silence is a RESULT, not a failure — the engine says so and this must not turn it into
+      // an error that suggests the microphone is broken.
+      if(!heard.heardSomething){voiceNote(t('I did not catch that.'));return;}
+      applyHeardText(heard.text);
+    }catch(error){
+      voiceNote(error.message);
+    }
+  };
+  voiceRecorderChat.start();
+  button?.setAttribute('aria-pressed','true');
+  if(label)label.textContent=t('Stop');
+  voiceNote(t('Listening…'));
+}
+
+/** Read one finished reply aloud. Called once, when the stream is over — never per delta, for
+ *  the same reason `UI-043` gives about the live region: an answer read as it arrives is read
+ *  twice. The blob URL is revoked when playback ends, so a spoken answer does not outlive the
+ *  turn it belongs to as a second address anybody could fetch. */
+async function speakReply(text){
+  if(!readAloud||!voiceState.canSpeak||!String(text??'').trim())return;
+  try{
+    if(!csrfToken)csrfToken=readCsrfCookie();
+    const response=await fetch('/api/v1/voice/speak',{
+      method:'POST',credentials:'same-origin',
+      headers:{'content-type':'application/json',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
+      body:JSON.stringify({text}),
+    });
+    if(!response.ok){
+      const failure=await response.json().catch(()=>({}));
+      voiceNote(failure.error??`${t('The reply could not be read aloud')} (${response.status})`);
+      return;
+    }
+    const url=URL.createObjectURL(await response.blob());
+    spokenAudio?.pause();
+    spokenAudio=new Audio(url);
+    spokenAudio.addEventListener('ended',()=>URL.revokeObjectURL(url),{once:true});
+    await spokenAudio.play();
+  }catch(error){
+    voiceNote(error.message);
+  }
+}
+
+function initChatVoice(){
+  $('#chatDictate')?.addEventListener('click',toggleDictation);
+  const aloud=$('#chatReadAloud');
+  aloud?.addEventListener('click',()=>{
+    readAloud=!readAloud;
+    aloud.setAttribute('aria-pressed',String(readAloud));
+    const label=$('#chatReadAloudLabel');
+    if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
+    if(!readAloud)spokenAudio?.pause();
   });
+  refreshVoiceState();
 }
 function initWorkspaceActions(){
   addPlanFileRow();
@@ -4807,7 +4955,7 @@ initAttachCode();
 initSessions();
 initChatNav();
 initBench();
-initVoiceControlUI();
+initChatVoice();
 initRouter();
 initializeAuth()
   .then(()=>loadEffectiveZone())

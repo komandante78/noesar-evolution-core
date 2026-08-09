@@ -1,5 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
+// ⚠️ SUPERSEDED, s336 voice stage 3. Nothing imports this module any more.
+//
+// The Owner's requirement retired it in two independent ways at once, and it is worth recording
+// both because only one of them is about this file being small:
+//
+//   «non deve essere statico» — five hand-written words could never reach the product. That is
+//   fixable by growing the vocabulary, and growing it is exactly the trap: every row would be a
+//   second name for something the product already names, drifting from the day it was written.
+//   `voice-intent.js` resolves against the product's own entries instead, so there is no list.
+//
+//   «fai un motore reale interno» — the hearing happened in the BROWSER. An installation's
+//   ability to hear depended on which browser was pointed at it, and the audio left the machine
+//   for whoever built that browser. No amount of vocabulary would have fixed that; it is why the
+//   engine moved server-side in stage 1 (`voice-engine.mjs`) rather than being extended here.
+//
+// Kept rather than deleted: deleting a file is not this session's decision to take alone, and
+// the rule at the centre of this one is the rule the replacement inherited — on anything it did
+// not clearly hear, ask again rather than guess which of two outcomes to run. Its tests still
+// run, so it cannot rot silently while it sits here.
+//
 // D-0123: voice as a control tower, not an assistant. Two things only — say the status
 // without looking, and approve/reject an ALREADY-COMPUTED plan hands-free — never a
 // conversation, and never a way to widen what the product will do. The 2026 voice market

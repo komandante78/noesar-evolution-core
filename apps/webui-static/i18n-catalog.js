@@ -58,10 +58,6 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
-  // voice-control.js writes these into the top-bar chip as the recogniser changes state.
-  'Voice: on',
-  'Voice: unavailable',
-  'Voice control is not available: this browser has no SpeechRecognition/speechSynthesis support.',
   // The models catalogue, s333 point 5: every string below is painted by the renderer in
   // app.js and appears in no markup, so the static tool reports them as matching no screen.
   // They are measured where they are real — I18N-RUNTIME drives the live page and reads the
@@ -231,6 +227,13 @@ export const RUNTIME_ONLY = Object.freeze([
   '…or type to filter',
   'in',
   'backspace leaves it',
+  // The microphone beside the composer, s336 stage 3 — written by app.js, never in the markup.
+  'Read aloud: on',
+  'Listening…',
+  'This installation cannot hear.',
+  'This installation cannot speak.',
+  'The microphone is not available:',
+  'The reply could not be read aloud',
   // What the product says back to speech — `voice-intent.js`, never in the markup.
   'I did not catch that.',
   'Nothing here is called that:',
@@ -266,9 +269,6 @@ const it = {
   'Coverage: —': 'Copertura: —',
   '● Local-first': '● Prima il locale',
   'Panel: hidden': 'Pannello: nascosto',
-  'Voice: off': 'Voce: spenta',
-  'Voice: on': 'Voce: accesa',
-  'Voice: unavailable': 'Voce: non disponibile',
   'Sign out': 'Esci',
   'Home': 'Inizio',
   'Chat': 'Chat',
@@ -294,11 +294,8 @@ const it = {
   'Instants are stored in UTC and shown in this IANA zone': 'Gli istanti sono memorizzati in UTC e mostrati in questo fuso IANA',
   'Verification coverage: how much of an answer was recalculated rather than inferred. Nothing recalculates in this build, so there is no figure to show.': 'Copertura di verifica: quanta parte di una risposta è stata ricalcolata invece che dedotta. In questa build nulla ricalcola, quindi non c’è alcun valore da mostrare.',
   'Context panel: docked · floating · hidden — remembered for each destination': 'Pannello di contesto: agganciato · fluttuante · nascosto — ricordato per ogni destinazione',
-  'Voice control tower (D-0123): say status, approve, or reject a pending plan hands-free. Fixed vocabulary only — it never widens what the plan already computed, and repeats rather than guesses on anything else.': 'Torre di controllo vocale (D-0123): di’ status, approve o reject per un piano in attesa, a mani libere. Solo vocabolario fisso — non allarga mai ciò che il piano ha già calcolato, e su tutto il resto ripete invece di indovinare.',
-  'Voice control is not available: this browser has no SpeechRecognition/speechSynthesis support.': 'Il controllo vocale non è disponibile: questo browser non ha supporto SpeechRecognition/speechSynthesis.',
   'Go to a page, or search chats, files, memory, tools and tasks': 'Vai a una pagina, oppure cerca fra chat, file, memoria, strumenti e attività',
   'Places and results': 'Luoghi e risultati',
-  'Voice control transcript': 'Trascrizione del controllo vocale',
   'Primary': 'Principale',
 
   // ——— Home ———
@@ -1239,6 +1236,21 @@ const it = {
   'That matches several — say which:': 'Corrisponde a più cose — dimmi quale:',
   'Going to': 'Vado a',
   'Ready to send:': 'Pronto da mandare:',
+  //
+  // The microphone beside the composer, s336 stage 3. Note what the two "cannot" sentences are
+  // for: until a transcription or a speech model is configured, this installation declares that
+  // it cannot hear or cannot speak — and that is TRUE, which is the only reason these controls
+  // are allowed to exist before stage 4 does.
+  'Speak': 'Parla',
+  'Speak instead of typing — heard by this installation, never by the browser.': 'Parla invece di scrivere — ti sente questa installazione, mai il browser.',
+  'Read each reply aloud when it is complete.': 'Leggi ad alta voce ogni risposta quando è completa.',
+  'Read aloud: off': 'Lettura: spenta',
+  'Read aloud: on': 'Lettura: accesa',
+  'Listening…': 'Ti ascolto…',
+  'This installation cannot hear.': 'Questa installazione non può sentire.',
+  'This installation cannot speak.': 'Questa installazione non può parlare.',
+  'The microphone is not available:': 'Il microfono non è disponibile:',
+  'The reply could not be read aloud': 'La risposta non è stata letta ad alta voce',
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT
   // entry says nothing and cannot be told apart from an oversight.
