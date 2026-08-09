@@ -34,6 +34,10 @@
 // it stays" is a decision, while an ABSENT entry says nothing at all and is indistinguishable
 // from an oversight. That distinction is the entire point of this file.
 
+// Imported so the runtime-only list can be DERIVED from the registries that own those strings
+// instead of restating them. `agent-commands.js` imports nothing, so there is no cycle.
+import { AGENT_COMMANDS, MENU_GROUPS } from './agent-commands.js';
+
 /** The language the interface is WRITTEN in. Never a lookup — the markup is already this. */
 export const SOURCE_LANGUAGE = 'en';
 
@@ -194,6 +198,45 @@ export const RUNTIME_ONLY = Object.freeze([
   'Press Escape to close.',
   'No help has been written for this page yet.',
   'Information about',
+  // ——— the `/` menu, s336 voice stage 2 ———
+  //
+  // The menu is composed entirely at render time, so the tool that reads `index.html` cannot
+  // see one row of it. That is why it went untranslated with `VERDICT=COVERED` on the board.
+  //
+  // The command and group strings are DERIVED from the registries that own them rather than
+  // copied here. A copied list would be a second list, and this repository has paid for that
+  // shape twice (`PANEL_NAMES` at fourteen against twenty-five; `DECLARED_EMPTY_PANELS`).
+  // Derivation also splits the two questions cleanly: this list answers "does it appear in the
+  // markup?" — no, it is written by JavaScript — while `ui-language-coverage.test.mjs` answers
+  // "is it translated?", which derivation must never be allowed to silence.
+  ...AGENT_COMMANDS.map((command) => command.summary),
+  ...AGENT_COMMANDS.map((command) => command.argument).filter(Boolean),
+  ...MENU_GROUPS.map((group) => group.title),
+  // Written here because they are literals in the shells, not entries in a registry.
+  'No command matches that.',
+  'No entry matches that.',
+  'Not filtered — this shell does not know what this account may use',
+  'Filtered for this account',
+  'hidden — they need',
+  'hidden — this account may not use them',
+  'Enter sends',
+  '/ opens the menu',
+  'opens the menu',
+  'Tab completes without sending',
+  'Tab completes',
+  '↑↓ move',
+  '⏎ enter',
+  '⏎ sends',
+  'esc close',
+  '…or type to filter',
+  'in',
+  'backspace leaves it',
+  // What the product says back to speech — `voice-intent.js`, never in the markup.
+  'I did not catch that.',
+  'Nothing here is called that:',
+  'That matches several — say which:',
+  'Going to',
+  'Ready to send:',
 ]);
 
 const it = {
@@ -1089,6 +1132,113 @@ const it = {
   'Press Escape to close.': 'Premi Esc per chiudere.',
   'No help has been written for this page yet.': 'Per questa pagina non è ancora stato scritto alcun aiuto.',
   'Information about': 'Informazioni su',
+  // ——— the `/` menu's own rows, s336 voice stage 2 ———
+  //
+  // The thirty-three command summaries. They are the one part of the interface the coverage tool
+  // is structurally unable to see: `measure-ui-language-coverage.mjs` reads the static markup,
+  // and these are composed at render time out of `AGENT_COMMANDS` — so the tool said COVERED
+  // while every row of the menu a person opens by pressing `/` was still in English. Nothing was
+  // lying; the measurement simply never visited the place with the gap, which is the same shape
+  // as `PANEL_NAMES` agreeing with itself at fourteen. The runtime check `I18N-RUNTIME` visits
+  // pages, and the menu is not a page. So the guard for these lives in the unit suite, next to
+  // the list itself (`ui-language-coverage.test.mjs`), where adding a command without its
+  // translation turns something red before it can reach an operator.
+  //
+  // Voice stage 2 is what made the gap load-bearing rather than merely untidy: an utterance is
+  // resolved against these same summaries, so a summary with no Italian is a command Italian
+  // speech cannot reach by describing it.
+  'Start a plan from a goal — the repository decides which files it may touch': 'Avvia un piano da un obiettivo — è il repository a decidere quali file può toccare',
+  'Ask what a pending plan would do, executing nothing': 'Chiedi che cosa farebbe un piano in attesa, senza eseguire nulla',
+  'Approve a plan — runs in the shadow, promotes only if clean': 'Approva un piano — gira nell\'ombra, promuove solo se è pulito',
+  'Reject a pending plan': 'Rifiuta un piano in attesa',
+  'Undo a promoted run': 'Annulla un\'esecuzione promossa',
+  'What a run changed, against the shadow': 'Che cosa ha cambiato un\'esecuzione, a confronto con l\'ombra',
+  'Scan the workspace: languages, entry points, symbols': 'Scansiona lo spazio di lavoro: linguaggi, punti di ingresso, simboli',
+  'Literal search across the workspace': 'Ricerca letterale in tutto lo spazio di lavoro',
+  'The causal event trail of a piece of work': 'La traccia causale degli eventi di un lavoro',
+  'Engine status, authority, shadow': 'Stato del motore, autorità, ombra',
+  'List sessions': 'Elenca le sessioni',
+  'Branch and divergence of the workspace': 'Ramo e divergenza dello spazio di lavoro',
+  'Close a piece of work — what was done, what was NOT, and the residual risk': 'Chiudi un lavoro — che cosa è stato fatto, che cosa NON lo è stato, e il rischio residuo',
+  'These commands': 'Questi comandi',
+  'Clear the transcript on screen (the session keeps its state)': 'Pulisci la trascrizione a schermo (la sessione mantiene il suo stato)',
+  'The overview — what is running and what is waiting': 'Il quadro d\'insieme — che cosa sta girando e che cosa è in attesa',
+  'Talk to the model in the same session this shell is attached to': 'Parla con il modello nella stessa sessione a cui è agganciata questa shell',
+  'The coding workbench — plans, diffs, shadow runs': 'Il banco di lavoro del codice — piani, differenze, esecuzioni nell\'ombra',
+  'The terminal shell, and how to reach it over ssh': 'La shell da terminale, e come raggiungerla via ssh',
+  'The workspaces this installation knows about': 'Gli spazi di lavoro che questa installazione conosce',
+  'Files ingested for the model to read': 'File acquisiti perché il modello li legga',
+  'What has been indexed, and what it was drawn from': 'Che cosa è stato indicizzato, e da dove è stato tratto',
+  'What the product remembers between sessions': 'Che cosa il prodotto ricorda fra una sessione e l\'altra',
+  'The agents defined here, and the authority each holds': 'Gli agenti definiti qui, e l\'autorità che ciascuno detiene',
+  'Work that runs on a schedule or on a trigger': 'Lavori che partono a orario o su un innesco',
+  'Search across the sources this installation can reach': 'Cerca fra le fonti che questa installazione può raggiungere',
+  'Skills — what the agent knows how to do, and what adopting one costs in context': 'Competenze — che cosa l\'agente sa fare, e quanto costa in contesto adottarne una',
+  'Models — which model answers, and on what hardware': 'Modelli — quale modello risponde, e su quale hardware',
+  'Everything else about how this installation behaves': 'Tutto il resto su come si comporta questa installazione',
+  'Registered tools — local, MCP and OpenAPI, and what each is allowed to do': 'Strumenti registrati — locali, MCP e OpenAPI, e che cosa è permesso a ciascuno',
+  'Sector modules — the one catalogue: install, activate, remove': 'Moduli di settore — l\'unico catalogo: installa, attiva, rimuovi',
+  'Everything waiting for a human decision, whichever subsystem raised it': 'Tutto ciò che attende una decisione umana, qualunque sottosistema l\'abbia sollevata',
+  'End this session — asks for `logout confirm`': 'Chiudi questa sessione — richiede `logout confirm`',
+  //
+  // The argument placeholders. `<goal>` describes what to type, so it is translated; `[confirm]`
+  // and `[active|archived|bin]` ARE what to type, so they are not — translating a literal token
+  // would print an instruction to type a word the parser does not accept. The distinction is the
+  // whole reason these are listed one by one instead of exempted as a group.
+  '<goal>': '<obiettivo>',
+  '<run>': '<esecuzione>',
+  // `<run> [why]` is one argument string, not two: `/reject` takes both. There is deliberately
+  // no entry for `[why]` on its own — no command shows it alone, and an entry matching no screen
+  // is a claim of coverage nothing can honour, which the measurement tool refuses by name.
+  '<run> [why]': '<esecuzione> [perché]',
+  '[path]': '[percorso]',
+  '<text>': '<testo>',
+  //
+  // The seven group headings — the first thing a bare `/` paints, and therefore the first
+  // thing an Italian operator saw in English.
+  'WORK': 'LAVORO',
+  'DESTINATIONS': 'DESTINAZIONI',
+  'TOOLS': 'STRUMENTI',
+  'MODULES': 'MODULI',
+  'APPROVALS': 'APPROVAZIONI',
+  'CONFIGURE': 'CONFIGURA',
+  'SESSION': 'SESSIONE',
+  //
+  // What the menu says when it has nothing to show, and what it says about what it is hiding.
+  // The last two are FRAGMENTS on purpose: `hiddenNote` composes them around a count and a list
+  // of permission names, which are tokens the server matches and must stay as they are.
+  'No command matches that.': 'Nessun comando corrisponde.',
+  'No entry matches that.': 'Nessuna voce corrisponde.',
+  'Not filtered — this shell does not know what this account may use': 'Non filtrato — questa shell non sa che cosa possa usare questo account',
+  'Filtered for this account': 'Filtrato per questo account',
+  'hidden — they need': 'nascosti — richiedono',
+  'hidden — this account may not use them': 'nascosti — questo account non può usarli',
+  //
+  // The legend under the prompt. Fragments again: the shells join them with ` · ` into one line.
+  'Enter sends': 'Invio manda',
+  '/ opens the menu': '/ apre il menu',
+  'opens the menu': 'apre il menu',
+  // No entry here for the open-menu button's `title`: that string is in the markup too, so it
+  // is already in this catalogue further up. A second one written during s336 overwrote the
+  // first without a sound — which is why there is now a duplicate-key guard in the suite.
+  'Tab completes without sending': 'Tab completa senza mandare',
+  'Tab completes': 'Tab completa',
+  '↑↓ move': '↑↓ muovono',
+  '⏎ enter': '⏎ entra',
+  '⏎ sends': '⏎ manda',
+  'esc close': 'esc chiude',
+  '…or type to filter': '…oppure scrivi per filtrare',
+  'backspace leaves it': 'backspace ne esce',
+  //
+  // What the product says back to something it heard (`voice-intent.js`). Fragments again where
+  // a name follows: what follows is an address or a command name, and a translated one names
+  // nothing. Every one of these is a case where voice DID NOT act — three of the four are the
+  // product declining to guess, which is the behaviour worth being clear in.
+  'I did not catch that.': 'Non ho capito.',
+  'Nothing here is called that:': 'Qui non si chiama così niente:',
+  'That matches several — say which:': 'Corrisponde a più cose — dimmi quale:',
+  'Going to': 'Vado a',
+  'Ready to send:': 'Pronto da mandare:',
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT
   // entry says nothing and cannot be told apart from an oversight.
@@ -1125,6 +1275,10 @@ const it = {
   'en-GB': 'en-GB',                           // an example locale tag
   'deploy': 'deploy',                         // example SSH username
   '/srv/app': '/srv/app',                     // example path
+  'in': 'in',                                 // the preposition is the same word in Italian
+  '<id>': '<id>',                             // an identifier is not a word
+  '[confirm]': '[confirm]',                   // literal: `logout confirm` is what the parser reads
+  '[active|archived|bin]': '[active|archived|bin]',  // literal values, matched against the wire
 };
 
 export const CATALOGS = Object.freeze({ en: Object.freeze({}), it: Object.freeze(it) });

@@ -329,19 +329,36 @@ export function menuFor(account) {
  * short (with the requirement named), or *not filtered at all* — a shell that was never told
  * who is asking says so rather than implying the list is everything this account may use.
  * Same posture `coden.addresses` takes with `accessFiltered:false`.
+ *
+ * # Why the translator is INJECTED and not imported (s336, voice stage 2)
+ *
+ * Two of these three sentences are COMPOSED — a count and a list of permission names sit inside
+ * them — so the finished string can never be a catalogue key: `5 hidden — they need
+ * workspace.write` would miss in every language forever and be reported as a coverage gap no
+ * catalogue could close. `i18n.js` states the rule for this case: compose from translated parts.
+ *
+ * The parts therefore have to be translated HERE, where the composing happens, and that means
+ * this module needs a translator. Importing one would have been wrong twice over: the terminal
+ * imports this same file and has no `i18n.js` at all, and a shared registry that reaches for
+ * browser state is a shared registry only by accident. Injected with an identity default, the
+ * terminal keeps today's English by doing nothing and the browser passes `t` — the same shape
+ * `planTurn` already uses for `resolve` and `parse`, and for the same stated reason.
+ *
+ * The permission names are NOT passed through the translator. `workspace.write` is a token the
+ * server matches against; a translated one would name a permission that does not exist.
  */
-export function hiddenNote(menu) {
-  if (!menu?.accessFiltered) return 'Not filtered — this shell does not know what this account may use';
+export function hiddenNote(menu, translate = (text) => text) {
+  if (!menu?.accessFiltered) return translate('Not filtered — this shell does not know what this account may use');
   const hidden = menu.hidden ?? 0;
-  if (!hidden) return 'Filtered for this account';
+  if (!hidden) return translate('Filtered for this account');
   // Most-blocking requirement first, then alphabetically so the sentence is stable between
   // renders: a note whose wording changes on every repaint reads as a fault.
   const reasons = Object.entries(menu.hiddenBy ?? {})
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([requirement]) => requirement);
   return reasons.length
-    ? `${hidden} hidden — they need ${reasons.join(', ')}`
-    : `${hidden} hidden — this account may not use them`;
+    ? `${hidden} ${translate('hidden — they need')} ${reasons.join(', ')}`
+    : `${hidden} ${translate('hidden — this account may not use them')}`;
 }
 
 /** The groups that have at least one entry, in display order — so a group emptied entirely by

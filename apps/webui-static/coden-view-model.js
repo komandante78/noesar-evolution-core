@@ -452,13 +452,23 @@ export function menuFrame(parsed, { commands = [], addresses = [] } = {}) {
  * something else in the terminal is worse than no legend at all. Each shell renders it in its
  * own idiom — the browser into the hint line under the prompt, the terminal as the menu's last
  * row — which is the same split `.coden-bar` and the terminal footer already are.
+ *
+ * The translator is injected for the same reason `hiddenNote`'s is (s336, voice stage 2): the
+ * browser joins these into ONE line, and the last one has a group's name inside it, so neither
+ * the joined line nor that entry can ever be a catalogue key. The terminal passes nothing and
+ * keeps English, which is what it shows everywhere else.
  */
-export function promptKeys(frame) {
-  if (!frame) return ['Enter sends', '/ opens the menu', 'Tab completes without sending'];
-  if (frame.level === 'groups') return ['↑↓ move', '⏎ enter', 'esc close', '…or type to filter'];
+export function promptKeys(frame, translate = (text) => text) {
+  const say = (text) => translate(text);
+  if (!frame) return [say('Enter sends'), say('/ opens the menu'), say('Tab completes without sending')];
+  if (frame.level === 'groups') return [say('↑↓ move'), say('⏎ enter'), say('esc close'), say('…or type to filter')];
+  const common = [say('↑↓ move'), say('Tab completes'), say('⏎ sends'), say('esc close')];
   return frame.group
-    ? [`↑↓ move`, 'Tab completes', '⏎ sends', 'esc close', `in ${frame.group.title} — backspace leaves it`]
-    : ['↑↓ move', 'Tab completes', '⏎ sends', 'esc close'];
+    // The group's TITLE goes through the translator too — it is the same heading the menu paints
+    // above the rows, and a legend naming it in English above rows headed in Italian would be
+    // pointing at something the person cannot see.
+    ? [...common, `${say('in')} ${say(frame.group.title)} — ${say('backspace leaves it')}`]
+    : common;
 }
 
 /**

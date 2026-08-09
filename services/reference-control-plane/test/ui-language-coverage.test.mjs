@@ -23,6 +23,8 @@ import {
   CATALOGS, SOURCE_LANGUAGE, RUNTIME_ONLY, LANGUAGE_NAMES, UNTRANSLATED_TAGS,
 } from '../../../apps/webui-static/i18n-catalog.js';
 import { resolveLanguage, translateString, applyToTextNode } from '../../../apps/webui-static/i18n.js';
+import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/webui-static/agent-commands.js';
+import { promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '../../..');
@@ -192,5 +194,123 @@ describe('the translator and the measurement tool cannot drift apart', () => {
     const app = readFileSync(join(repoRoot, 'apps/webui-static/app.js'), 'utf8');
     assert.ok(!app.includes('applyTranslations'),
       'app.js calls applyTranslations directly; translation is a property of the document, held by the MutationObserver in i18n.js');
+  });
+});
+
+// ——— the `/` menu, s336 voice stage 2 ———
+//
+// The gap this block closes was invisible to BOTH existing measurements at once, which is why it
+// survived s333 point 3's «controllo approfondito» and shipped reading `VERDICT=COVERED`:
+//
+//   - `measure-ui-language-coverage.mjs` reads `index.html`. Every row of the `/` menu is
+//     composed at render time out of `AGENT_COMMANDS`, so there is nothing in that file to read.
+//   - `I18N-RUNTIME` reads the translator's own record of misses after visiting every VIEW. The
+//     menu is not a view; it is a box that opens over one. Nothing in the run ever opened it.
+//
+// Two measurements, each sound, each agreeing with itself, and between them a surface the Owner
+// uses for every navigation in the product — thirty-three command descriptions, seven group
+// headings and the whole prompt legend — rendering in English whatever language was chosen.
+//
+// So the guard goes HERE, in the unit suite, beside the registry that owns the strings. It reads
+// the registry rather than a list of its own: adding a thirty-fourth command with no translation
+// has to turn something red, and it can only do that if nobody has to remember to add it.
+describe('the `/` menu is translated — the surface neither measurement could see', () => {
+  const languages = Object.keys(CATALOGS).filter((code) => code !== SOURCE_LANGUAGE);
+
+  test('every command summary has an entry in every catalogue', () => {
+    for (const code of languages) {
+      const missing = AGENT_COMMANDS.filter((command) => !CATALOGS[code][command.summary])
+        .map((command) => `/${command.name}`);
+      assert.deepEqual(missing, [],
+        `${code}: ${missing.length} of ${AGENT_COMMANDS.length} command descriptions render in English in the one menu this product navigates by`);
+    }
+  });
+
+  test('every argument placeholder has an entry in every catalogue', () => {
+    const placeholders = [...new Set(AGENT_COMMANDS.map((command) => command.argument).filter(Boolean))];
+    for (const code of languages) {
+      const missing = placeholders.filter((placeholder) => !CATALOGS[code][placeholder]);
+      assert.deepEqual(missing, [], `${code}: untranslated argument placeholders`);
+    }
+  });
+
+  test('every group heading has an entry in every catalogue', () => {
+    for (const code of languages) {
+      const missing = MENU_GROUPS.filter((group) => !CATALOGS[code][group.title]).map((group) => group.title);
+      assert.deepEqual(missing, [], `${code}: the bare / paints these headings in English`);
+    }
+  });
+
+  // The two composed sentences. Asserted as PROPERTIES rather than as their finished text — the
+  // s330 rule: pinning `2 nascosti — richiedono workspace.write` would make today's wording the
+  // requirement, and the wording is not what matters. What matters is that the translated parts
+  // arrive, the count survives, and the permission name is NOT translated: `workspace.write` is
+  // a token the server matches, and a localised one names a permission that does not exist.
+  test('the filter note is composed from translated parts, and permission names are not among them', () => {
+    const translate = (text) => CATALOGS.it[text] ?? text;
+    const note = hiddenNote({ accessFiltered: true, hidden: 2, hiddenBy: { 'workspace.write': 2 } }, translate);
+    assert.match(note, /^2 /, 'the count is lost');
+    assert.ok(note.includes(CATALOGS.it['hidden — they need']), 'the sentence was not translated');
+    assert.ok(note.includes('workspace.write'), 'the permission token was translated — it names nothing then');
+    assert.ok(!note.includes('hidden — they need'), 'the English fragment survived alongside the Italian one');
+  });
+
+  test('the note and the legend keep English when no translator is passed — the terminal path', () => {
+    // The default argument is what the terminal relies on, and a default that quietly became
+    // browser-shaped would change a shell nobody was looking at. Exercised, not assumed.
+    assert.match(hiddenNote({ accessFiltered: false }), /^Not filtered/);
+    assert.deepEqual(promptKeys(null), ['Enter sends', '/ opens the menu', 'Tab completes without sending']);
+  });
+
+  test('every legend fragment either has an entry or carries no language', () => {
+    // Driven through all four frames the function can produce rather than through a written list
+    // of fragments, so a fifth frame added later is covered by construction.
+    const frames = [null, { level: 'groups' }, { level: 'entries' }, { level: 'entries', group: { title: 'WORK' } }];
+    for (const code of languages) {
+      const translate = (text) => CATALOGS[code][text] ?? text;
+      for (const frame of frames) {
+        const english = promptKeys(frame);
+        const localised = promptKeys(frame, translate);
+        assert.equal(localised.length, english.length, 'a frame lost or gained a key under translation');
+        for (const [index, key] of english.entries()) {
+          // A fragment with no letter in it carries no language — the same rule `translateString`
+          // applies — so it is allowed to come back unchanged. Anything with a word in it is not.
+          if (!/\p{L}/u.test(key)) continue;
+          assert.notEqual(localised[index], key, `${code}: the legend fragment ${JSON.stringify(key)} has no translation`);
+        }
+      }
+    }
+  });
+
+  // Written after making the mistake, not before: adding the `/` menu's strings put a SECOND
+  // entry for a sentence the catalogue already had, and the later one silently replaced the
+  // earlier. Nothing could have caught it at runtime — a duplicate key in an object literal is
+  // gone by the time anything can look — so this reads the source. The failure it prevents is
+  // the nastiest kind available here: two translations of one sentence, one of them dead, and
+  // the interface showing whichever came last with every check still green.
+  test('no sentence is translated twice', () => {
+    const source = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
+    const body = source.slice(source.indexOf('const it = {'));
+    const seen = new Map();
+    for (const match of body.matchAll(/^ {2}('(?:[^'\\]|\\.)*')\s*:/gm)) {
+      seen.set(match[1], (seen.get(match[1]) ?? 0) + 1);
+    }
+    assert.ok(seen.size > 500, 'the key scanner matched almost nothing — it has stopped measuring');
+    const duplicated = [...seen].filter(([, count]) => count > 1).map(([key]) => key);
+    assert.deepEqual(duplicated, [], 'these sentences have two entries; the second one wins and the first is dead');
+  });
+
+  // The derivation is load-bearing and quiet: if it were replaced by a copied list, this suite
+  // would keep passing while the tool started reporting every command description as a dead
+  // entry — or, worse, someone would silence the tool by adding a blanket exemption.
+  test('the runtime-only list is derived from the registries, not copied', () => {
+    for (const command of AGENT_COMMANDS) {
+      assert.ok(RUNTIME_ONLY.includes(command.summary),
+        `/${command.name}'s description is not declared runtime-only, so the tool will report it as matching no screen`);
+    }
+    for (const group of MENU_GROUPS) assert.ok(RUNTIME_ONLY.includes(group.title));
+    const catalogueSource = readFileSync(join(repoRoot, 'apps/webui-static/i18n-catalog.js'), 'utf8');
+    assert.match(catalogueSource, /\.\.\.AGENT_COMMANDS\.map/,
+      'the runtime-only list restates the command strings instead of deriving them — that is a second list, and a second list is what PANEL_NAMES was');
   });
 });

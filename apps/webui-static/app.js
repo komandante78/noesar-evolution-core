@@ -1133,7 +1133,10 @@ function renderCommandMenu(){
   if(commandMenuIndex>=menu.hits.length)commandMenuIndex=0;
   box.classList.remove('hidden');
   box.innerHTML=menu.hits.length
-    ?menu.hits.map((command,index)=>`<button type="button" data-command="${escapeHtml(command.name)}" class="${index===commandMenuIndex?'active':''}"><b>/${escapeHtml(command.name)}</b><span>${escapeHtml(command.summary)}</span><small>${escapeHtml(command.argument)}</small></button>`).join('')
+    // The name carries `translate="no"`: `/plan` is the token the parser reads, so a dictionary
+    // that reached it would print an instruction to type a word the product does not accept. The
+    // summary beside it IS prose and is translated — by the observer, from the one catalogue.
+    ?menu.hits.map((command,index)=>`<button type="button" data-command="${escapeHtml(command.name)}" class="${index===commandMenuIndex?'active':''}"><b translate="no">/${escapeHtml(command.name)}</b><span>${escapeHtml(command.summary)}</span><small>${escapeHtml(command.argument)}</small></button>`).join('')
     :'<p>No command matches that.</p>';
   // Bound within the menu, not through a page-wide selector: a second container rendering the
   // same markup would otherwise double-bind and fire each click twice.
@@ -1236,12 +1239,15 @@ function openCodenMenu(){
 }
 function renderCodenPromptKeys(frame){
   const hint=$('#codenPromptHint');if(!hint)return;
-  const keys=promptKeys(frame);
+  // Translated here, part by part, and the line marked `translate="no"`: the parts are joined
+  // into a single text node, and one lookup of the joined line would miss in every language.
+  const keys=promptKeys(frame,t);
+  hint.setAttribute('translate','no');
   // The `/` stays a real control when the menu is closed — a keyboard shortcut is the fast path
   // and never the only path, which is why `D-0299` could remove the widgets in the first place.
   hint.innerHTML=frame
     ?keys.map((key)=>escapeHtml(key)).join(' · ')
-    :`Enter sends · <button type="button" class="hint-key" id="codenPromptOpenMenu" aria-controls="codenMenu" title="Open the menu — the same thing typing / does">/</button> opens the menu · Tab completes without sending`;
+    :`${escapeHtml(t('Enter sends'))} · <button type="button" class="hint-key" id="codenPromptOpenMenu" aria-controls="codenMenu" title="${escapeHtml(t('Open the menu — the same thing typing / does'))}">/</button> ${escapeHtml(t('opens the menu'))} · ${escapeHtml(t('Tab completes without sending'))}`;
   // No listener is attached here on purpose. The control is destroyed and rebuilt on every
   // keystroke now, and re-binding per repaint is a rule that has to keep being remembered —
   // mutation proved it: disabling the re-bind left every test green and the mouse path working
@@ -1259,7 +1265,11 @@ function renderCodenMenu(){
   // The note's words come from the shared registry. This used to be a second wording of the
   // terminal's, off the same two fields, and the two had already drifted: the terminal printed
   // nothing at all in the `accessFiltered:false` case that this shell disclosed.
-  const note=`<p class="agent-menu-note">${escapeHtml(hiddenNote(menu))}</p>`;
+  // `t` is handed in because the sentence is composed around a count and a list of permission
+  // names, so the finished string can never be a catalogue key. `translate="no"` then keeps the
+  // observer off the result: it is already translated, and a second lookup of the whole
+  // composed sentence would be recorded as a coverage gap nothing could ever close.
+  const note=`<p class="agent-menu-note" translate="no">${escapeHtml(hiddenNote(menu,t))}</p>`;
   // LEVEL ZERO — the product as groups you can enter. Point 3 of the owner's list, and the
   // "una porta sola" property: this is `/` rendered, not a second navigation widget beside it,
   // which is what `D-0299` spent a phase removing three of.
@@ -1283,7 +1293,10 @@ function renderCodenMenu(){
   box.innerHTML=groupMenu(hits).map((group)=>
     `<p class="agent-menu-group">${escapeHtml(group.title)}</p>${group.entries.map((entry)=>{
       const index=hits.indexOf(entry);
-      return `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b>/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`;
+      // `translate="no"` for the same reason as the chat menu, and with one more case: half of
+      // these entries are ADDRESSES (`coden/bench/diff`), and an address translated word by word
+      // is an address that resolves to nothing.
+      return `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b translate="no">/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`;
     }).join('')}`).join('')+note;
   box.querySelectorAll('[data-coden-command]').forEach((button)=>
     button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
