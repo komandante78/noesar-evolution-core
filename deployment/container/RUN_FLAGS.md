@@ -136,3 +136,45 @@ motore vero, o misura il bersaglio invece del backup.**
 **Non è un difetto:** «Archivi conservati: 9 (max 7)» — `find -mtime +7` cancella ciò che ha
 *più di* 7 giorni, quindi 8-9 file sono il risultato corretto. È il messaggio a essere
 fuorviante. E `nous_model` è **settimanale di domenica**, non fermo.
+
+---
+
+# 5. TLS — `NOESAR_TLS_PORT`, and the two things it would break without it (s336)
+
+The microphone is the reason this exists, not hardening: `navigator.mediaDevices` does not exist
+outside a secure context, so a product on `http://192.168.178.100:8100` cannot open one however
+well its voice engine is configured.
+
+```
+-e NOESAR_TLS_CERT_FILE=/workspace/tls/leaf.crt
+-e NOESAR_TLS_KEY_FILE=/workspace/tls/leaf.key
+-e NOESAR_TLS_PORT=8443
+-p 192.168.178.100:8443:8443
+```
+
+**`NOESAR_TLS_PORT` is what keeps the module attached.** With it, TLS faces the LAN and the main
+port stays plain for the private container network. Without it, the historical behaviour applies
+and the MAIN listener becomes TLS — which breaks two things that were measured before the change:
+
+- **Debug Evolution calls this control plane at `http://noesar-evolution:8088`** with a service
+  token. A TLS main port detaches it unless the module's own trust store learns this certificate,
+  and that is another product's container.
+- **The module console proxy on 8089 is reached by a browser.** Its scheme now follows the main
+  listener automatically. Left plaintext while cookies became `Secure`, it would answer the
+  sign-in page to somebody demonstrably signed in one tab over — and nothing would have said
+  "your cookie was not sent".
+
+**`secure_cookies` becomes true and cannot be forced back** while this process holds the private
+key. So the plain port can no longer sign a browser in; that is correct, and it is why the LAN
+address to use is the **https** one.
+
+The certificate lives in `/workspace/tls/` (host: `NOESAR_EVOLUTION_RUNTIME/tls/`) — a local CA
+plus a leaf with SANs for `192.168.178.100`, `127.0.0.1`, `172.22.0.5`, `localhost`,
+`noesar-evolution`, `noesar.local`. Install **`ca.crt`** once per device and no browser warns
+again, including after the leaf is re-issued. `ca.key` and `leaf.key` are `0600`, owned by 10001.
+
+⚠️ **Pre-existing, found while verifying this and NOT caused by it:**
+`NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1` does not include `noesar-evolution`, so a request
+carrying that Host is answered **421** whatever the transport. The same URL with an allowed Host
+answers 200. If the module is ever meant to call back on its service name, that variable is what
+needs it — not TLS.
