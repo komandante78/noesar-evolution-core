@@ -8281,3 +8281,262 @@ through the hand-emitted path, which no pause can stop. Against the shipped code
 `runFullScreen` call. They were born together. The full-screen terminal had therefore **never
 accepted a keystroke on a real terminal** in its entire existence; this is not a regression from
 s333 or s334, and no version of it ever worked.
+
+
+## D-0355 — ATOM ships inside the product, and one answer to which model is loaded (2026-08-08)
+
+**Owner, s335:** *«fai in modo che sia dentro NOESAR EVOLUTION, quando installano deve esserci
+tutto»*.
+
+**Measured, and the measurement is the whole justification.** `oci/Dockerfile` contained the
+string `atom` **zero times**, and `MASTER_PROJECT/08_INSTALLAZIONE.md` mentioned it once, in
+passing, as an example of a non-root pattern. So the chain this product is distinguished by —
+*model → ATOM checks and regenerates → answer* — **did not exist for anybody who installed it**.
+It existed only on this machine, because somebody here had created a second container by hand.
+
+A source-control boundary is not a delivery boundary. ATOM keeps its own repository; what ships
+here is its **built artefact with a recorded origin**, `oci/vendor/atom/atomd` beside
+`atomd.provenance.json` and `REFRESH.md`. Building ATOM's sources inside this repository would
+put a second repository's code in this one, which is the thing that must not happen.
+
+**What guards the artefact.** `vendored-atom.test.mjs` fails if the binary and its provenance
+disagree, so a binary swapped without its provenance — or a provenance edited without its binary —
+is a red test rather than a silent ship. The image build asserts the **same digest again after the
+`COPY`**, because a test proves what is in the repository and only the build proves what is in the
+layer, and this project has already been bitten by a build reporting `CACHED` while carrying
+different bytes.
+
+**ARCH-001 is intact.** ATOM does not become a fourth peer: it is a supervised sibling process,
+and it now listens on **127.0.0.1**, which makes it unreachable from any other container — a
+narrowing, not a feature, and the opposite of what a separate container gave.
+
+**The single truth about the loaded model (`c1e3746`).** The catalogue reported `null` while phi-4
+was demonstrably serving, because `activeModelId` came **only** from the local model runtime, which
+is `disabled` by default. *Unreachable is not the same as absent*, and a product that answers
+"no model" while answering with a model teaches its operator to stop believing it.
+
+## D-0356 — the one caller the requirement named was the one caller refused (2026-08-08)
+
+**Requirement:** modules must be able to see which model is loaded.
+
+**The defect was found by asking as a module, with Debug Evolution's real credential — not by
+reading the table.** `GET /api/v1/models/active` answered **403, and not 401**. The token
+authenticated; the permission was missing. `service_account` was the **only** role in
+`ROLE_PERMISSIONS` without `model.read` — while stage 1 had chosen `model.read` for that route
+*precisely so that a module could ask*, which is written in its own comment.
+
+So the single caller the requirement actually names was the single caller refused, and **the 403
+is why it did not look like a credentials problem**: a 401 would have shouted. A permission table
+can be perfectly consistent with itself and still contradict the sentence it was written for.
+
+**Where the guard went.** Not in the table — the table agreed with itself. At the **HTTP layer**,
+where the route and the table meet, and failing in **both directions**: a route requiring
+`model.read` that no service account may reach is as much a defect as a service account holding a
+permission no route needs. Driven backwards first: two red tests with the defect present, green
+without it.
+
+**Verified live after deploy on real routes**, because a 404 dressed as a refusal proves nothing:
+read **200**, `models/acquire` **403**, `runtime/local-model/release` **403**.
+
+## D-0357 — the product hears and speaks for itself (2026-08-08, voice stage 1)
+
+**Owner, s336:** *«il voice deve fare tutto non deve essere statico … voglio voce reale non
+robotica quindi fai un motore reale interno con voce naturale»*.
+
+**Under one word there were two different defects.** *Static* — five hand-written words. And *not
+ours* — the hearing happened in the **browser**, so the audio left the installation and whether
+the product could hear at all depended on which browser was pointed at it. No vocabulary would
+have fixed the second.
+
+**Three measurements changed the work before it started, and one of them was a correction to
+myself:**
+
+- `voice-control.js` (158 lines) is **not dictation**: it is a control tower of five fixed words
+  for approving a plan.
+- **`#recordAudio` already existed** in `app.js` — a `MediaRecorder` attaching a `.webm` to a
+  message. It recorded and **nobody transcribed it**. This was written down nowhere.
+- ⚠️ I had said the catalogue knew no modalities, having measured
+  `schemas/model-descriptor.schema.json`. **The module is not the schema**: `model-catalog.mjs`
+  already knew `vision` and `speech`, and the correction made stage 1 smaller.
+
+`voice-engine.mjs` hears and speaks in the **OpenAI audio shape** (`/v1/audio/transcriptions`,
+`/v1/audio/speech`) — what whisper.cpp and the common self-hosted synthesis servers already
+expose — so *any model* stays true without this product carrying a vendor table. `transcription`
+enters the catalogue **separately from `speech`**: they are the two opposite directions of audio,
+one hears and one talks.
+
+**It never falls back to the browser.** It names the piece that is missing. Silence is a
+**result**, not an error, and `speak` returns **bytes**, never a URL.
+
+Three routes proved **inside the image** — 401 on all three and **404** on a nonexistent sibling,
+so the 401 is not a generic answer. 10 tests on real sockets, **5 of 5 mutations killed**; the
+first round killed 4, and the survivor was real — the *reason* on the error was untested, and that
+is the sentence a person reads.
+
+## D-0358 — what is heard resolves on the product's own list, and the microphone moves beside the prompt (2026-08-08, voice stages 2 and 3)
+
+`voice-intent.js` turns an utterance into the line the prompt already accepts, resolved against
+**the same array `planTurn` resolves typing against** — 33 commands and 54 addresses, and no voice
+vocabulary anywhere. Speech therefore cannot reach anything typing cannot, and no path skips a
+confirmation (`D-0123`). It **never picks**: several candidates come back as a question naming
+them. On the real address space, 127 of 130 spoken names resolve uniquely.
+
+🛑 **The `/` menu was entirely untranslated at runtime** — 33 command descriptions, 7 group
+headings, the whole legend. It shipped reading `VERDICT=COVERED` because it was **invisible to two
+sound measurements at once**: `measure-ui-language-coverage.mjs` reads `index.html` and the menu is
+composed at render time; `I18N-RUNTIME` visits views and **the menu is not a view**. Two
+measurements each agreeing with itself, and between them a surface the Owner navigates by. It was
+load-bearing for voice: an untranslated description is a command Italian speech cannot ask for.
+
+**Three defects found by running against the real list, not by reading it:** "stato del motore" ran
+`/closure motore`, a command assembled out of a substring of somebody else's prose; the most direct
+words a person can say (`plan`, `diff`, `projects`) came back as questions because a derived
+address outvoted a real name; and "Ricerca" resolved to `/search` on a description that merely
+begins with the word.
+
+**Stage 3 — where voice lives.** The five-word tower leaves the top bar; the composer gets a
+microphone and a read-aloud control. Four outcomes, and the fourth is what makes it worth having:
+navigate → go; run → **the line goes into the composer and stops**, because a microphone has no
+Enter key; several → the question; **nothing → it was dictation**, so the words become a message.
+
+**A defect findable only in a browser:** the "why you cannot use this" sentence was put in the
+button's `title`, and it vanished — `i18n.js` caches each element's *original* attribute as the
+source it re-applies from. `npm test` could not have seen it: it reads `app.js` as **text** and
+never runs it.
+
+## D-0359 — the model helps with any language, and the voice has a name (2026-08-08)
+
+**Voice does not go through ATOM, and the measurement decided that rather than confirming it.**
+Driven live against the deployed `atomd`:
+
+    interpret("apri la memoria")           -> "Open the memory."                     correct
+    interpret("sblindarifico quantistico") -> "Create a quantum circuit that
+                                              implements the Sblindarifico gate."    invented
+
+Two things are wrong and only one is the invention. `interpret` answers what **work** to do; voice
+needs a **destination**. And it never declines — the fabricated answer is exactly as confident as
+the correct one (`project_atom_interpret_hallucinates_on_nonsense_input`, s320, still true on
+phi-4). A surface that always answers cannot sit in front of something that then acts.
+
+**Instead the model is never asked what a sentence means — it is asked which of a fixed list it
+is, or NONE.** The list is built **server-side** from the session's identity; the client sends the
+sentence and nothing else. The answer is accepted only if it names a member of that list, so a
+model that invents can only pick the wrong door **of this product's own doors**. And it returns a
+**name**, re-resolved through the deterministic resolver: it points, the product writes the line.
+A model that could return a line could run anything.
+
+Ladder: deterministic → model → dictation, in that order, at temperature 0. A navigation gesture
+that lands somewhere else on a second try is worse than one that fails.
+
+**Rune and Estrela** (Owner: *«dai un nome alla voce, chiamalo RUNE in maschile e femminile metti
+ESTRELA»*). A synthesis model calls its voices whatever its author called them, and those names
+stop existing when the model is replaced — so the product owns **two stable names** and the
+operator binds each to the model's own. An unbound voice is offered **disabled** with the variable
+to set, and asking for it fails **409**; it is never answered in the other voice, because doing
+that silently would teach the person that the choice does nothing.
+
+## D-0360 — TLS faces the network so the microphone can exist (2026-08-08)
+
+**Owner:** *«per HTTPS si, fai modo di mettere HTTPS»*. This is **not** a hardening exercise:
+`navigator.mediaDevices` does not exist outside a secure context, so a product served on
+`http://192.168.178.100:8100` **cannot open a microphone** however well its voice engine is
+configured. TLS is what makes the feature exist at all.
+
+TLS has been supported since `D-0055`. Turning it on naively would have broken the module in **two
+directions, both measured before touching anything**:
+
+- Debug Evolution calls this control plane at `http://noesar-evolution:8088` on the private
+  network. Making that port TLS detaches the module unless *another product's container* learns
+  this certificate — which this session may not reconfigure.
+- The module console proxy is reached by a **browser** over `http`. Once the control plane holds a
+  certificate its cookies are `Secure`, and a `Secure` cookie is never sent to an `http://` origin
+  — so that port would have answered the sign-in page to somebody demonstrably signed in one tab
+  over, and **nothing would have said "your cookie was not sent"**.
+
+So `NOESAR_TLS_PORT` adds a LAN-facing TLS listener and **leaves the main port plain** for the
+private network. Unset, the historical behaviour is unchanged. The TLS listener opens **before**
+the plain one reports ready, so an installation meant to be reached over TLS is never briefly
+reachable only in plaintext.
+
+🛑 **Found on the way:** `NOESAR_ALLOWED_HOSTS` did not name the service name, so every request
+Debug Evolution made to `noesar-evolution:8088` was answered **421** — broken before this session,
+and invisible because the browser path worked.
+
+## D-0361 — two accepted findings closed: the address reached, and the bytes (2026-08-08)
+
+Both were `OPEN`/`ACCEPTED` since phase 4, and neither is closed by writing a comment.
+
+**`F4-010` — SSRF.** The hostname **string** was checked, never the address reached, so
+`https://internal.example.test/v1` registered as an external tool and was dialled: a name resolving
+to `10.0.0.5` turned this product into a proxy into its own network. A literal blocklist defends
+only against an attacker who writes the address down. `address-guard.mjs` resolves the name,
+refuses if **any** returned address is internal (one public + one private is the shape of the
+attack), and **pins** the vetted address through a `node:https` `lookup` so the socket layer cannot
+resolve it a second time — *checking without pinning is the partial mitigation the finding itself
+warned about*.
+
+🛑 **My own defect, recorded because it is worse than what it fixed:** the first build routed the
+**provider gateway** through `node:https` too, which walks past the stubbed `globalThis.fetch` that
+isolates that path — and **`npm test` placed a real request to api.openai.com**. A test suite that
+reaches the internet is a worse defect than the rebinding window it closed. Providers are now
+checked and **not** pinned; pinning stays in `tool-executor`, the surface SEC-15 actually names.
+
+**`F4-011` — extraction routed by filename and declared MIME, with no content sniffing.**
+`sniffContentType()` reads the magic bytes and rewrites the two inputs the dispatch routes on, so
+every branch is untouched — a fix, not a rebuild. Bytes win where they speak; the declaration keeps
+its say where they are silent; a disagreement is recorded as `metadata.typeMismatch` rather than
+silently resolved; an ELF or PE is refused whatever it was called. A zip named `.docx` still takes
+the Office path: **the container is not the contents**, and a sniffer that forgot that would lose
+the text of every document while claiming to protect it.
+
+## D-0362 — the Warrant ships inside the product (2026-08-09)
+
+**What was deployed:** `noesar-evolution:d0362-atom-warrant`, carrying `atomd` built from ATOM
+`7ebec54` (`A-0027`), digest `efc05eff…`, asserted inside the image by the `D-0355` guard.
+
+**A-0027 is the Warrant:** every answer carries the grade of its own guarantee, and the grade can
+only fall. Proved live on the throwaway and again in production:
+
+| request | answer |
+|---|---|
+| `17*23+5` | `396`, `COMPUTED`, with the working shown |
+| `(3/4)+(5/6)` | `19/12` — **exact rationals**, not `1.5833…` |
+| `1/0` | `REFUSED`: a lane exists and there is no value |
+| `why is the sky blue` | `UNSUPPORTED`: the strongest available warrant is `RESTATED` and `COMPUTED` was required |
+
+`UNSUPPORTED` and `REFUSED` are deliberately different answers; collapsing them would send somebody
+hunting for a broken evaluator when what they wrote simply has no value.
+
+**The state this closed.** `A-0027` had been committed on 2026-08-08 and **never pushed** —
+`origin/main` stood at `e3ea843`, so by the standard this project already recorded
+(`feedback_delivered_work_invisible_until_pushed_and_deployed`, s329) the work did not exist.
+Pushed, built, vendored, deployed.
+
+**The s336 invariants were re-proved rather than assumed** after the swap: `8410` **refused** from
+another container while `8088` from the same container **succeeded** (so the refusal is the
+narrowing and not a broken network), `atomd` listening on `0100007F`, and the model still
+`{"status":"ok"}`.
+
+**`ATOM_TOKEN` was rotated**, because an earlier revision of the deploy script carried a `set -x`
+that printed it in cleartext into the session log. Both sides of that token live inside this
+container, so rotation is one new value written twice. Verified afterwards that the new value works
+and that a wrong one is still refused **401** — a rotation nobody checks can also be a rotation
+into an unenforced check.
+
+🛑 **A real fault in my own deploy script, caught by its own guard, with production already
+stopped.** The script read the secrets from the container named `noesar-evolution`, and the
+production swap **renames that container out of the way first**. The reads returned empty, the
+guard refused to create a container with empty secrets — correctly — and the product stayed down
+until the script was fixed to take the source name as a parameter. The guard is the only reason
+this was a short outage instead of a running container silently authenticating with nothing.
+Downtime: `221 ms` for the stop, and a second gap while the fault was diagnosed and corrected.
+
+**Also carried into production by this image, having never been deployed before:** the
+self-hosted search provider (`4d6ccc6`) and the benchmark harness (`79f63ae`).
+
+**Written at the same time, and the reason this entry exists at all:** `D-0355`…`D-0361` above.
+Seven decisions had been **deployed under image tags naming them** while the log stopped at
+`D-0354` — the whole of s335, s336 and s337 lived only in commit messages. This is the second time:
+commit `aaea1ae` (s334) exists precisely to write `D-0349…D-0353` into the log "not only into
+commit messages", and the gap reopened in the very next session. An image tag that names a decision
+nobody wrote is a reference to a document that does not exist.
