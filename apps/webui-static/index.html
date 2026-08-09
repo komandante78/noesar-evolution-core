@@ -32,7 +32,16 @@
         <button class="primary" type="submit">Initialize Owner</button>
       </form>
       <form id="setupMfaForm" class="auth-form hidden">
-        <div class="notice"><b>Store this TOTP secret securely</b><code id="setupTotpSecret"></code></div>
+        <!-- The QR was missing here and only here — the one screen every installation passes
+             through — while `qrSvg` already drew one for the MFA-replacement flow and
+             `beginSetup` already returned the `otpauthUri` it needs. Reported by the Owner
+             mid-setup: «non mostra nessun qrcode». -->
+        <div class="notice">
+          <b>Scan this with your authenticator app</b>
+          <div id="setupQr"></div>
+          <p>No camera on this device? Type this secret into the app by hand instead:</p>
+          <code id="setupTotpSecret" translate="no"></code>
+        </div>
         <label>Authenticator code<input id="setupTotpCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
         <button class="primary" type="submit">Confirm Owner and sign in</button>
       </form>

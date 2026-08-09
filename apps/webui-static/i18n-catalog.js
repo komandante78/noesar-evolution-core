@@ -283,6 +283,8 @@ const it = {
   "Save these recovery codes now": "Salva adesso questi codici di recupero",
   "Each one gets you back in once, without the machine and without the authenticator. They are shown this one time and cannot be shown again.": "Ognuno ti fa rientrare una volta, senza la macchina e senza l’autenticatore. Si vedono questa sola volta e non si possono rivedere.",
   "I have saved them": "Li ho salvati",
+  "Scan this with your authenticator app": "Inquadra questo con la tua app di autenticazione",
+  "No camera on this device? Type this secret into the app by hand instead:": "Nessuna fotocamera su questo dispositivo? Allora scrivi a mano questo segreto nell’app:",
   // Le due strade gratuite prima di quella che costa (D-0367): la macchina stessa non ha
   // bisogno di alcun certificato, ed e' la risposta che il prodotto non nominava mai.
   'To speak from a phone or another device': 'Per parlare da un telefono o da un altro dispositivo',
@@ -298,7 +300,6 @@ const it = {
   'Display name': 'Nome visualizzato',
   'Strong passphrase': 'Passphrase robusta',
   'Initialize Owner': 'Inizializza il proprietario',
-  'Store this TOTP secret securely': 'Conserva questo segreto TOTP in modo sicuro',
   'Authenticator code': 'Codice dell’autenticatore',
   'Confirm Owner and sign in': 'Conferma il proprietario e accedi',
   'Username': 'Nome utente',

@@ -739,12 +739,21 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // reachable from the sidebar on sign-in, not only after visiting Settings.
   // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
   await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
-$('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
+$('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;renderSetupQr(result.otpauthUri);showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];showFirstRunRecoveryCodes(result.recoveryCodes);await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
 $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login/mfa',{method:'POST',body:JSON.stringify({challenge:loginChallenge,totpCode:$('#loginTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];await enterApplication();}catch(error){authError(error.message);}});
 /* Recupero (D-0369). Prima del recupero il prodotto aveva la FORMA di un recupero e nessuna
  * via d ingresso: i codici non li emetteva il setup, e nessuna rotta ne consumava uno. */
+/* Il QR mancava nella schermata del setup, e solo li: qrSvg disegnava gia quello del
+ * ricambio MFA, e beginSetup restituiva gia otpauthUri. Segnalato dall Owner in corso di
+ * installazione. Il segreto in chiaro resta sotto: un dispositivo senza fotocamera esiste. */
+function renderSetupQr(otpauthUri){
+  const target=$('#setupQr');
+  if(!target||!otpauthUri)return;
+  try{target.innerHTML=qrSvg(otpauthUri,{title:t('Authenticator setup code')});}
+  catch{target.textContent='';}
+}
 let recoveryChallenge=null;
 function showFirstRunRecoveryCodes(codes){
   if(!Array.isArray(codes)||!codes.length)return;
