@@ -720,7 +720,12 @@ function initSettingsMenu(){
   $$('.settings-nav').forEach((button)=>button.addEventListener('click',()=>activate('settings',{section:button.dataset.section})));
 }
 function optionList(items,{empty='None',label=(item)=>item.name,value=(item)=>item.id,selected=null}={}){return `<option value="">${escapeHtml(empty)}</option>${items.map((item)=>`<option value="${escapeHtml(value(item))}" ${value(item)===selected?'selected':''}>${escapeHtml(label(item))}</option>`).join('')}`;}
-async function initializeAuth(){const status=await api('/api/v1/auth/status');if(!status.initialized){$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';showOnly('#setupForm');return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
+// The server tells us whether a sign-in started on THIS connection can complete. It can: the
+// two listeners share one request handler, so the answer is per-connection and cannot be
+// guessed from the page alone -- `location.protocol` would be right here only by coincidence,
+// and wrong the moment TLS is terminated in front of the product.
+function showTransportWarning(status){const box=$('#authTransportWarning');if(!box)return;if(status?.browserSignInPossible===false){box.classList.remove('hidden');const link=$('#authSecureLink');if(link&&status.secureAddress){link.href=status.secureAddress;link.textContent=status.secureAddress;link.classList.remove('hidden');}}else{box.classList.add('hidden');}}
+async function initializeAuth(){const status=await api('/api/v1/auth/status');showTransportWarning(status);if(!status.initialized){$('#authTitle').textContent=status.pendingSetup?'Complete Owner setup':'Initialize NOESAR securely';showOnly('#setupForm');return;}try{const me=await api('/api/v1/auth/me');currentUser=me.user;currentPermissions=me.permissions??[];await enterApplication();}catch{showOnly('#loginForm');}}
 async function enterApplication(){$('#authGate').classList.add('hidden');$('#userAvatar').textContent=(currentUser?.displayName??currentUser?.username??'U').slice(0,1).toUpperCase();if(currentUser?.role!=='owner'){const bypass=$('[data-mode="OWNER_BYPASS"]');bypass.disabled=true;}
   // The router runs at boot, before the role is known, so every gated route resolved to
   // access-denied on a cold deep link — including for the Owner. Re-apply the nav and

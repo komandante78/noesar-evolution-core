@@ -56,12 +56,12 @@ checkpoint is killed mid-write, and the cluster comes back with an unreadable ch
 so 10s was not the binding constraint for an ordinary stop, and this flag is **not** proven to be
 what corrupted the cluster. It closes a real and measurable hazard; it is not a diagnosis.
 
-## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 43 environment variables
+## 3. `--ip 172.22.0.5` on `noesar-evolution-net`, and 44 environment variables
 
 **18 come from the image and must not be repeated** — in particular
 **`NOESAR_TUI_SOCKET_PATH`**, which comes from the image as `/run/codev-tui.sock`. Setting it
 explicitly to the supervisor's internal path left the terminal transport unserved (`D-0339`).
-The other **25 are explicit** and exist nowhere but the run command.
+The other **26 are explicit** and exist nowhere but the run command.
 
 **Count them with `grep -c .`, never `wc -l`** — a trailing blank line made an earlier session
 report one variable too many and call a correct note wrong.
@@ -195,6 +195,7 @@ well its voice engine is configured.
 -e NOESAR_TLS_KEY_FILE=/workspace/tls/leaf.key
 -e NOESAR_TLS_CA_FILE=/workspace/tls/ca.crt
 -e NOESAR_TLS_PORT=8443
+-e NOESAR_PUBLIC_TLS_URL=https://192.168.178.100:8443
 -p 192.168.178.100:8443:8443
 ```
 
@@ -234,6 +235,17 @@ real one from the container's own start-up line `trust-anchor.published`, or wit
 `docker exec noesar-evolution openssl x509 -in /workspace/tls/ca.crt -noout -fingerprint -sha256`,
 and compare it on the device before installing. Note that `sha256sum ca.crt` gives a **different**
 number — that one is over the file, the fingerprint is over the certificate.
+
+🛑 **`NOESAR_PUBLIC_TLS_URL` is not decoration — without it the product cannot name the address
+that works (`D-0365`).** The plain port **cannot sign a browser in**: the session cookie is
+`Secure`, and a browser will not keep a `Secure` cookie from an `http://` page. The server still
+answers **200** and issues it, so the failure is silent — `curl` keeps that cookie and works,
+which is why every automated check passed on an address where a person fails.
+
+With the variable set, the sign-in screen says so and links to the working address. Set it to the
+**published** URL, not the container's port: the product knows what it listens on, never what the
+run command mapped it to. A non-https or malformed value is refused rather than shown — the
+warning still appears, without a destination.
 
 ⚠️ **Pre-existing, found while verifying this and NOT caused by it:**
 `NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1` does not include `noesar-evolution`, so a request

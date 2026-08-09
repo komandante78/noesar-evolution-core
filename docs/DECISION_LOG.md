@@ -8663,3 +8663,61 @@ OpenSSL's behaviour changes and the branch becomes reachable.
 
 `NOESAR_TLS_CA_FILE=/workspace/tls/ca.crt` is the 25th explicit variable — see
 `deployment/container/RUN_FLAGS.md` §5.
+
+---
+
+## D-0365 — the address that cannot sign you in says so (2026-08-09)
+
+**Found while removing the obstacles in front of the five `AWAITING_OWNER` gate entries**, which
+`PROJECT_STATE.json` says may be closed by nobody but the Owner completing the flow in
+`docs/OWNER_BOOTSTRAP.md`. That document sent the Owner to `http://192.168.178.100:8100` and
+stated, in a quoted box, *«There is no TLS»*. Both had been false since `D-0360`.
+
+🛑 **The flow the gate depends on could not have succeeded, and would not have said why.** Since
+TLS was configured, `secureCookies` is true and cannot be forced back while this process holds
+the private key — correct, and the reason it exists. The consequence is on the far side of the
+wire: **a browser refuses to store a `Secure` cookie that arrived over `http://`.** Measured on a
+real browser against a throwaway installation, not deduced:
+
+| address | the server's answer | cookies the browser kept | the next authenticated call |
+|---|---|---|---|
+| `http://…:8088` | **200, a user object** | **none** | **401** |
+| `https://…:8443` | 200 | `noesar_session`, `noesar_csrf` | 200 `proprietario` |
+
+The Owner would have performed every step correctly, been told each one succeeded, and landed
+back on the sign-in screen.
+
+⚠️ **Why every existing check was blind to it, and a correction to myself.** `curl` keeps that
+cookie and sends it back over plaintext — measured: `/api/v1/auth/me` answers **200** over `http`
+with a real session, while the same request with no cookie is 401 and with a forged one is 401,
+so the 200 is genuine authentication. Every automated exercise of sign-in in this repository runs
+in something that is not a browser, so all of them pass on the address where a person fails. My
+own first reading of this was wrong in the other direction: I saw an empty `curl` cookie jar and
+concluded the transport had rejected the cookie, when `grep -v '^#'` had simply hidden the
+`#HttpOnly_` line. The finding survived being measured properly; the first explanation did not.
+
+**What the product does about it now.** `/api/v1/auth/status` and every session-issuing response
+carry `browserSignInPossible` and, when one is declared, `secureAddress`. The sign-in screen shows
+a notice built from markup — so the existing translation mechanism covers it — that says what the
+failure LOOKS like, not merely "use https", and links to `/ca` first, because trusting the
+certificate is the step before the encrypted address is usable at all.
+
+**Why a fact and not a redirect.** Redirecting the plain listener was the obvious fix and was
+rejected: this process knows the port it LISTENS on, not the port the operator PUBLISHED it as.
+A redirect built from a guessed port strands a browser on an address that does not answer, having
+left one that did. So the encrypted address is a declaration — **`NOESAR_PUBLIC_TLS_URL`**, the
+26th explicit variable — and an absent or non-https one produces the warning **without** inventing
+a destination, which is the rule `D-0055` applies to the bind address and `tls.mjs` to the
+certificate pair. A declared address is reduced to its origin, and a plain-http or malformed one
+is refused rather than displayed: this string is put in front of a person as the address that
+*will* work, and a wrong one moves the failure somewhere they cannot diagnose.
+
+**A plaintext installation is not warned**, because nothing is wrong with it: with no TLS the
+cookie has no `Secure` attribute, a browser keeps it, and sign-in works. Warning there would tell
+every plaintext installation it is broken. An unencrypted request arriving while the *main*
+listener is encrypted gets a different sentence naming TLS termination in front of the product —
+blaming a plain port that does not exist would send an operator to the wrong place.
+
+`docs/OWNER_BOOTSTRAP.md` now opens on the https address, tells the reader to fetch `/ca` first,
+and carries the measured table above. **The five gate entries remain `AWAITING_OWNER`** — this
+changes what the Owner will find when they perform them, and nothing about who may close them.

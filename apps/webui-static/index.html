@@ -13,6 +13,17 @@
       <div class="auth-brand"><span class="brand-mark">N</span><b>NOESAR Evolution</b></div>
       <h1 id="authTitle">Secure initialization</h1>
       <p id="authDescription">Authenticate to access the local AI workspace.</p>
+      <!-- Shown only when the server says a browser cannot complete a sign-in on the address
+           this page was loaded from. The sentence lives here rather than being taken from the
+           server's reply so that the existing translation mechanism covers it; the reply only
+           decides whether to show it, and supplies the address. -->
+      <div id="authTransportWarning" class="notice hidden">
+        <b>Signing in from this address will not work.</b>
+        <p>This installation protects its session cookie, and a browser will not keep a protected cookie from an unencrypted page. Signing in here looks like it succeeds and leaves you signed out, with nothing to explain why.</p>
+        <p>Install this installation's certificate first, then reopen NOESAR at its encrypted address.</p>
+        <p><a id="authCaLink" href="/ca">Get the certificate, and how to check it</a></p>
+        <p><a id="authSecureLink" class="hidden" href="#"></a></p>
+      </div>
       <form id="setupForm" class="auth-form hidden">
         <label>One-time setup token<input id="setupToken" type="password" autocomplete="one-time-code" required></label>
         <label>Owner username<input id="setupUsername" autocomplete="username" value="owner" required></label>

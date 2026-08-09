@@ -253,6 +253,12 @@ const it = {
   'NOESAR Evolution': 'NOESAR Evolution',
   'Secure initialization': 'Inizializzazione sicura',
   'Authenticate to access the local AI workspace.': 'Autenticati per accedere allo spazio di lavoro IA locale.',
+  // Shown only when the server says a sign-in started on this connection cannot complete
+  // (D-0364). The failure it describes is silent, so the wording says what it LOOKS like.
+  'Signing in from this address will not work.': 'Da questo indirizzo l’accesso non funziona.',
+  'This installation protects its session cookie, and a browser will not keep a protected cookie from an unencrypted page. Signing in here looks like it succeeds and leaves you signed out, with nothing to explain why.': 'Questa installazione protegge il proprio cookie di sessione, e un browser non conserva un cookie protetto arrivato da una pagina non cifrata. Qui l’accesso sembra riuscire e ti lascia disconnesso, senza nulla che spieghi perché.',
+  'Install this installation\'s certificate first, then reopen NOESAR at its encrypted address.': 'Installa prima il certificato di questa installazione, poi riapri NOESAR al suo indirizzo cifrato.',
+  'Get the certificate, and how to check it': 'Ottieni il certificato, e come verificarlo',
   'One-time setup token': 'Token di configurazione monouso',
   'Owner username': 'Nome utente del proprietario',
   'Display name': 'Nome visualizzato',

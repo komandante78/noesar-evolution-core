@@ -112,6 +112,7 @@ import { resolveTls } from './tls.mjs';
 import {
   resolveTrustAnchor, renderTrustAnchorIndex, TRUST_ANCHOR_BASENAME, TRUST_ANCHOR_CONTENT_TYPE,
 } from './trust-anchor.mjs';
+import { browserSignIn } from './secure-address.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 // The SAME registry both shells resolve typing against. Imported here so the candidate list the
@@ -1181,10 +1182,31 @@ function text(res, status, body, contentType = 'text/plain; charset=utf-8') {
   res.end(bytes);
 }
 
-function sessionResponse(res, value, status = 200) {
+/**
+ * Whether the connection this request arrived on can complete a browser sign-in.
+ *
+ * `req.socket.encrypted` is set by Node's TLS socket and by nothing else, so it reports the
+ * transport that actually carried THIS request — the two listeners share one handler, and a
+ * process-level flag could not tell them apart.
+ */
+function browserSignInAdvice(req) {
+  return browserSignIn({
+    encrypted: Boolean(req.socket?.encrypted),
+    secureCookies,
+    tlsListenerExists: Boolean(tlsPort && tls.active),
+    publicTlsUrl: process.env.NOESAR_PUBLIC_TLS_URL,
+  });
+}
+
+function sessionResponse(req, res, value, status = 200) {
+  const advice = browserSignInAdvice(req);
   json(res, status, {
     user:value.user,
     csrfToken:value.csrf,
+    // Carried on the response that ISSUES the cookie, not only on /auth/status: a client that
+    // reaches this point has already been told "signed in" by the status code, and for a
+    // browser on the plain listener that is the exact moment the claim stops being true.
+    ...(advice.browserSignInPossible ? {} : { transport:advice }),
     // Sent here as well as on /auth/me: the interface enters the application straight
     // from this response and must know which sections to offer before its first fetch.
     permissions:auth.permissionsFor(value.user.role),
@@ -1330,19 +1352,21 @@ const requestListener = async (req, res) => {
       });
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/v1/auth/status') return json(res, 200, auth.status());
+    if (req.method === 'GET' && url.pathname === '/api/v1/auth/status') {
+      return json(res, 200, { ...auth.status(), ...browserSignInAdvice(req) });
+    }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/setup') {
       const request = await body(req);
       return json(res, 201, auth.beginSetup({ ...request, suppliedSetupToken:req.headers['x-noesar-setup-token'] }));
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/setup/confirm') {
       const value = auth.confirmSetup(await body(req));
-      return sessionResponse(res, value, 201);
+      return sessionResponse(req, res, value, 201);
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login') return json(res, 202, auth.beginLogin({ ...(await body(req)), ip:clientIp(req) }));
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/mfa') {
       const value = auth.completeLogin({ ...(await body(req)), ip:clientIp(req) });
-      return sessionResponse(res, value);
+      return sessionResponse(req, res, value);
     }
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/login/passkey/options') {
       const payload = await body(req);
@@ -1355,7 +1379,7 @@ const requestListener = async (req, res) => {
         clientDataJSON:payload.clientDataJSON, authenticatorData:payload.authenticatorData, signature:payload.signature,
         ip:clientIp(req), rpId:webauthnRpId(req), origin:webauthnOrigin(req),
       });
-      return sessionResponse(res, value);
+      return sessionResponse(req, res, value);
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/auth/me') {
       const authenticated = requireSession(req, res);
@@ -4114,7 +4138,7 @@ const requestListener = async (req, res) => {
       // making them log in again immediately afterwards adds a step without adding a
       // check.
       const record = userDirectory.find(confirmed.user.id);
-      return sessionResponse(res, auth.createSession(record, { mfa:true }), 201);
+      return sessionResponse(req, res, auth.createSession(record, { mfa:true }), 201);
     }
     {
       const match = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})(\/[a-z-]+)?$/);
