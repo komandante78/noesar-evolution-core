@@ -1,0 +1,4 @@
+{"benchmark":"mmlu","n":570,"correct":465,"accuracy":0.8158,"latencyMsMedian":209,"latencyMsP95":251,"perSubject":10}
+{"benchmark":"mmlu-permuted","n":570,"correct":458,"accuracy":0.8035,"latencyMsMedian":217,"latencyMsP95":265,"perSubject":10}
+{"benchmark":"gsm8k","n":150,"correct":141,"accuracy":0.94,"latencyMsMedian":6255,"latencyMsP95":11388}
+{"benchmark":"truthfulqa-mc1-constructed","n":663,"correct":515,"accuracy":0.7768,"latencyMsMedian":238,"latencyMsP95":257}
