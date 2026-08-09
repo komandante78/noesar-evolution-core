@@ -91,7 +91,14 @@ export function mayReadHealthDetail(user) {
 
 export function normalizeUsername(value) {
   const username = String(value ?? '').trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username)) throw new Error('Username must contain 3-64 lowercase-safe characters.');
+  if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username)) {
+    // 400, not a bare Error. Without the status the request handler falls back to 500, and a
+    // 5xx also has its message REPLACED by "Internal request failure." — so a rejected input
+    // was reported to the person as a broken product, with the reason removed on the way out.
+    // Found in production (D-0368): the Owner typed an email address into the sign-in form and
+    // got a 500 and a blank screen.
+    throw Object.assign(new Error('Username must contain 3-64 lowercase-safe characters.'), { status:400 });
+  }
   return username;
 }
 
@@ -354,7 +361,28 @@ export class AuthService {
   }
 
   beginLogin({ username, password, ip }) {
-    const normalized = normalizeUsername(username);
+    let normalized;
+    try {
+      normalized = normalizeUsername(username);
+    } catch {
+      // A string this product could never have issued as a username cannot name an account, so
+      // it is a failed credential and not a bad request: it leaves down the SAME branch as a
+      // wrong password, with the same status and the same sentence. Answering 400 "your
+      // username is malformed" here would confirm to an unauthenticated caller which strings
+      // are candidate accounts and which are not — the sign-in form is the one place the
+      // format rule is not theirs to learn. Setup answers 400 WITH the rule, because there the
+      // caller holds the setup token and is choosing the name.
+      //
+      // The attempt still counts against the rate limiter, keyed on the raw string so that
+      // hammering the form with junk cannot dodge the count. The value is deliberately NOT
+      // written to the ledger: what arrives here is whatever somebody typed, and in the case
+      // that produced this fix it was an email address.
+      this.#recordFailure(ip, String(username ?? '').trim().toLowerCase().slice(0, 64));
+      this.ledger.append({
+        actor:'anonymous', action:'auth.login-failed', result:'denied', details:{ reason:'malformed-username' },
+      });
+      throw Object.assign(new Error('Invalid credentials or account temporarily locked.'), { status:401 });
+    }
     const limiter = this.#rateState(ip, normalized);
     if (limiter.entries.length >= 8) throw Object.assign(new Error('Too many login attempts. Try again later.'), { status:429 });
     const state = this.store.read();

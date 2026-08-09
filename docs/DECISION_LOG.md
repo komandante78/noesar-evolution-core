@@ -8823,3 +8823,49 @@ presenting the expensive path as the only one.
 **What is deliberately NOT offered:** a certificate step on an installation with no TLS, and a
 same-machine address when the `Host` carries no port. Half an instruction is worse than none — it
 ends with somebody having installed something and still having nowhere to go.
+
+---
+
+## D-0368 — a rejected username was reported as a broken server (2026-08-09)
+
+**Owner, s339, from the sign-in screen:** an email address in the username box, *«NON FA
+ENTRARE»*. The production log named it in one line:
+
+```
+"error":"Username must contain 3-64 lowercase-safe characters."   status: 500
+```
+
+**Two defects, and the second is what made it undiagnosable.** `normalizeUsername` threw a bare
+`Error`, so the request handler applied its default — **500**. And a 5xx has its message
+**replaced** on the way out (`status >= 500 ? 'Internal request failure.' : error.message`), by
+design, so nothing about the real reason ever reached the browser. The person saw a form that
+did nothing. An input the caller can fix is not a server fault, and a status code chosen by
+omission is not a status code.
+
+**The two entry points want opposite answers, and now give them:**
+
+| | answer | why |
+|---|---|---|
+| `/api/v1/auth/setup` | **400 with the rule** | the caller holds the setup token and is CHOOSING the name; refusing without saying why is unusable |
+| `/api/v1/auth/login` | **401, the standard sentence** | an unauthenticated caller must not learn which strings can name an account |
+
+Neither is ever 500. The sign-in branch leaves down the same path as a wrong password — same
+status, same sentence — which is the property the surrounding code already protects for disabled,
+revoked and service accounts, and the test asserts the three are **indistinguishable**.
+
+⚠️ **The attempted value is deliberately not written to the ledger.** What arrives in that box is
+whatever somebody typed, and in the case that produced this fix it was an email address. The
+attempt is recorded as `reason: malformed-username`; the string is not. The rate limiter still
+counts it, keyed on the raw input, so hammering the form with junk cannot dodge the count.
+
+⚠️ **A timing difference is accepted and stated:** the malformed branch returns without a
+password verify. It reveals only that the string is malformed, which the caller already knows,
+because they typed it — no account-existence signal is added.
+
+🛑 **My first test could not have caught this.** It built a stand-in with
+`Object.create(AuthService.prototype)`; private methods are installed on instances by the
+constructor, so `this.#recordFailure` threw before the branch under test ran, and every case
+failed for a reason that had nothing to do with the product. A double that cannot hold the state
+the branch needs cannot guard it — the same lesson as `D-0354`, met again in a new shape. The
+test now builds a real service against a temporary workspace. Guided backwards: restoring the
+unmarked throw fails 9 of 12; making the sign-in branch disclose the rule fails 2.
