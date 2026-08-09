@@ -30,8 +30,16 @@ today:
 IMAGE          = noesar-evolution:phase4-complete-lan
 BIND           = 192.168.178.100:8100  ->  container 8088
 DATA PLANE     = PostgreSQL 18.4 + pgvector 0.8.5, inside the same container
-URL            = http://192.168.178.100:8100
+URL            = http://192.168.178.100:8100   (health, /ca, /cli)
+SIGN IN        = https://192.168.178.100:8443    <- this one, in a browser
 ```
+
+🛑 **Since TLS was added, a browser can only SIGN IN on the https address (`D-0365`).** The
+plain port still serves the page, the health routes and `/ca`, but the session cookie it issues
+is `Secure` and a browser will not keep one from an unencrypted page — sign-in appears to
+succeed and leaves you signed out. The product now says this on its own sign-in screen. Install
+the certificate from `http://192.168.178.100:8100/ca` first, or the https address shows a
+warning and the microphone will not work either.
 
 **Port 8100, not the product default 8088.** 8088 is already claimed twice on this host
 (`fridayn-model-factory`, `nova-ai`). Found by enumerating `docker inspect` bindings — a

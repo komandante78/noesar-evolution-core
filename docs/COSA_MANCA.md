@@ -25,7 +25,7 @@ scrivere codice** — sono controlli.
 
 | # | Cosa provare | Come | Cosa deve succedere |
 |---|---|---|---|
-| 1 | **Browser** | apri `http://192.168.178.100:8100/` da qualunque dispositivo | la pagina carica, `200` |
+| 1 | **Browser** | apri `https://192.168.178.100:8443/` da qualunque dispositivo (prima `http://192.168.178.100:8100/ca` per il certificato) | la pagina carica, `200`, e **si riesce ad accedere**. Sulla porta in chiaro l'accesso NON si completa e il prodotto lo dice — `D-0365` |
 | 2 | **La pagina di installazione della CLI** | `http://192.168.178.100:8100/cli` | testo che nomina **prima** il browser, poi i comandi con l'impronta |
 | 3 | **L'installatore, dall'URL** | vedi blocco sotto | installa `coden_evolution` in `~/.local/bin`, senza `root` |
 | 4 | **La parola** | `coden_evolution` | `attaching via …` → `Connected — protocol noesar-tui/1` → chiede il codice di aggancio |
