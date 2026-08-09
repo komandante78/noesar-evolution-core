@@ -147,6 +147,30 @@ const host = process.env.NOESAR_HOST ?? '127.0.0.1';
 // load, and crashes startup the same way an invalid authority declaration does two lines
 // below — fail closed and loudly, not a fallback to plaintext nobody asked for.
 const tls = resolveTls({});
+/**
+ * An ADDITIONAL TLS listener, alongside the plain one — s336, and the reason is a browser rule
+ * rather than a preference.
+ *
+ * `navigator.mediaDevices` does not exist outside a secure context, so a product served on
+ * `http://192.168.178.100:8100` cannot open a microphone however well its voice engine is
+ * configured. TLS is not a hardening exercise here; it is the thing that makes the feature exist.
+ *
+ * Why a SECOND listener instead of simply putting TLS on the main one, which this file has
+ * supported since `D-0055`. Measured before touching anything, and both would have broken:
+ *
+ *   - Debug Evolution calls this control plane at `http://noesar-evolution:8088`, on the private
+ *     container network, with a service token. Turning that port into TLS detaches the module
+ *     unless its own trust store learns this installation's certificate — and that is another
+ *     product's container, which this session may not reconfigure.
+ *   - The module console proxy is reached by a browser and would have gone on serving plaintext
+ *     while the cookies it depends on became `Secure`. Fixed in the same change.
+ *
+ * So: TLS faces the LAN, plaintext stays on the private network for the module that needs it and
+ * is not published. Set `NOESAR_TLS_PORT` and the main port stays plain; leave it unset and the
+ * historical behaviour is exactly what it was — the main listener becomes TLS.
+ */
+const tlsPort = Number(process.env.NOESAR_TLS_PORT ?? 0) || null;
+const mainListenerIsTls = tls.active && !tlsPort;
 // TLS active implies secure cookies: serving a non-Secure cookie over a connection this
 // process itself just encrypted would be the misconfiguration this default exists to
 // prevent. The environment variable can still force it true when TLS terminates in front
@@ -848,8 +872,11 @@ function ensureModuleConsoleProxyServer() {
     targetBaseUrl: process.env.NOESAR_DEBUG_EVOLUTION_URL,
     // D-0291: where `/noesar-api/...` goes back to. Loopback, not the LAN address: this is
     // this same process answering itself, and it must not depend on how NOESAR is published.
-    noesarBaseUrl: `http://127.0.0.1:${port}`,
+    noesarBaseUrl: `${mainListenerIsTls ? 'https' : 'http'}://127.0.0.1:${port}`,
     moduleName: 'Debug Evolution',
+    // The browser reaches THIS listener, so its scheme follows the main one — see the factory's
+    // own comment for what happens if it does not.
+    tls: tls.active ? { cert: tls.cert, key: tls.key } : null,
     isAuthorized: (req) => {
       const session = optionalSession(req);
       return Boolean(session && auth.hasPermission(session.user, 'workspace.read'));
@@ -4271,9 +4298,16 @@ const requestListener = async (req, res) => {
   }
 };
 
-const server = tls.active
+const server = mainListenerIsTls
   ? createHttpsServer({ cert: tls.cert, key: tls.key }, requestListener)
   : createServer(requestListener);
+
+/** The LAN-facing TLS listener, when one is configured. Same request handler, same everything —
+ *  only the transport differs, so there is no second product behind it and no second set of
+ *  rules to keep in step. */
+const tlsServer = tlsPort && tls.active
+  ? createHttpsServer({ cert: tls.cert, key: tls.key }, requestListener)
+  : null;
 
 // Last resort, not a substitute for handling errors where they happen.
 //
@@ -4335,6 +4369,25 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // D-0283: the port opens here only if the module is active right now; from then on the
   // lifecycle routes open and close it. Nothing listens for a module that is not installed.
   startModuleConsoleProxy();
+
+  // Opened BEFORE the plain listener reports ready, so an installation that is meant to be
+  // reached over TLS is never briefly reachable only in plaintext. A failure here is logged and
+  // does not take the process down: the product's standing posture is continue-and-declare, and
+  // an installation that lost its TLS port but kept serving the module is still doing work.
+  if (tlsServer) {
+    tlsServer.on('error', (error) => {
+      logger.error('tls-listener.failed', {
+        component:'control-plane', port:tlsPort, error:error.message,
+        note:'the LAN-facing TLS listener did not open; a browser cannot open a microphone against this installation',
+      });
+    });
+    tlsServer.listen(tlsPort, host, () => {
+      logger.info('tls-listener.started', {
+        component:'control-plane', port:tlsPort,
+        note:'TLS faces the network; the plain listener stays for the private container network',
+      });
+    });
+  }
 
   server.listen(port, host, async () => {
     logger.info('runtime.started', {
@@ -4424,6 +4477,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         logger.warn('runtime.stopping', { component:'control-plane', signal });
         watchdog.stop();
         moduleConsoleProxyServer?.close();
+        // Closed alongside the others, not left for the process exit: a listener still
+        // accepting connections while PostgreSQL is being stopped answers requests against a
+        // data plane that is going away, which is the shape of the s334 outage seen from the
+        // other end.
+        tlsServer?.close();
         server.close(async () => {
           try {
             await localModels.release();

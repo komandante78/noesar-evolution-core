@@ -18,6 +18,7 @@
 // own markup changes.
 
 import http from 'node:http';
+import https from 'node:https';
 
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
@@ -46,11 +47,29 @@ const NOESAR_API_PREFIX = '/noesar-api/';
  * @param {string} opts.noesarBaseUrl - this control plane's own listener, e.g. http://127.0.0.1:8088
  * @param {(req: import('node:http').IncomingMessage) => boolean} opts.isAuthorized
  * @param {string} [opts.moduleName]
+ * @param {{cert: string, key: string}|null} [opts.tls]
+ *
+ * # Why this listener has to follow the main one onto TLS (s336)
+ *
+ * This proxy is reached by a BROWSER, and once the control plane holds a certificate its cookies
+ * are `Secure` — which means the browser stops sending them to an `http://` origin. Left as
+ * plaintext, this port would answer every request with the sign-in page while the person is
+ * demonstrably signed in one tab over, and `/noesar-api/` — the prefix that exists so an SSH key
+ * never travels through the module — would fail for the same invisible reason.
+ *
+ * So the scheme of this listener is not an independent choice: it is whatever the main listener
+ * is. Measured before it could be discovered in production; nothing in the module would have said
+ * "your cookie was not sent".
  */
-export function createModuleConsoleProxyServer({ targetBaseUrl, noesarBaseUrl, isAuthorized, moduleName = 'this module' }) {
+export function createModuleConsoleProxyServer({
+  targetBaseUrl, noesarBaseUrl, isAuthorized, moduleName = 'this module', tls = null,
+}) {
   const target = new URL(targetBaseUrl);
   const noesar = noesarBaseUrl ? new URL(noesarBaseUrl) : null;
-  return http.createServer((req, res) => {
+  const listen = tls?.cert && tls?.key
+    ? (handler) => https.createServer({ cert: tls.cert, key: tls.key }, handler)
+    : (handler) => http.createServer(handler);
+  return listen((req, res) => {
     if (!isAuthorized(req)) {
       res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
       res.end(`<!doctype html><meta charset="utf-8"><title>Sign in required</title><p>Sign in to NOESAR, then open ${moduleName} again.</p>`);

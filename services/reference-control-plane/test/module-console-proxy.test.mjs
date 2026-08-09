@@ -8,7 +8,24 @@
 import test, { describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createModuleConsoleProxyServer } from '../src/module-console-proxy.mjs';
+
+/** A throwaway self-signed pair. Generated with openssl because node has no certificate
+ *  issuer of its own, and a fixture checked into the repository would be a private key in
+ *  version control — which the pre-commit hook refuses, correctly. */
+function selfSignedPair() {
+  const dir = mkdtempSync(join(tmpdir(), 'proxy-tls-'));
+  try {
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+      '-subj', '/CN=proxy-test', '-keyout', join(dir, 'k.pem'), '-out', join(dir, 'c.pem')],
+      { stdio: 'ignore' });
+    return { cert: readFileSync(join(dir, 'c.pem'), 'utf8'), key: readFileSync(join(dir, 'k.pem'), 'utf8') };
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
 
 const upstream = createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/styles.css') {
@@ -145,4 +162,52 @@ describe('D-0291 — /noesar-api/ is answered by NOESAR, not forwarded to the mo
     await new Promise((r) => moduleUp.close(r));
     await new Promise((r) => noesarUp.close(r));
   });
+});
+
+// ——— the scheme is not this listener's own choice, s336 ————————————————————————————————
+//
+// A browser reaches this port. Once the control plane holds a certificate its cookies are
+// `Secure`, and a `Secure` cookie is never sent to an `http://` origin — so a plaintext proxy
+// would answer the sign-in page to somebody demonstrably signed in one tab over, and
+// `/noesar-api/` (the prefix that exists so an SSH key never travels through the module) would
+// fail for the same invisible reason. Nothing in the module would say "your cookie was not sent".
+//
+// This is checked by looking at what KIND of server comes back rather than by driving a
+// handshake: the property is "it followed the main listener", and a real TLS conversation would
+// test node's `https` module instead of this decision.
+describe('the module console follows the main listener onto TLS', () => {
+  const plain = createModuleConsoleProxyServer({
+    targetBaseUrl: upstreamUrl, moduleName: 'Stub', isAuthorized: () => true,
+  });
+  // A self-signed pair, generated here rather than read from disk: this asserts a branch, and a
+  // test that needed a certificate file would be a test that can be skipped by deleting one.
+  const { cert, key } = selfSignedPair();
+  const secured = createModuleConsoleProxyServer({
+    targetBaseUrl: upstreamUrl, moduleName: 'Stub', isAuthorized: () => true, tls: { cert, key },
+  });
+
+  test('with no certificate it stays plaintext, exactly as before', () => {
+    assert.equal(plain.constructor.name, 'Server');
+    assert.equal(typeof plain.setSecureContext, 'undefined');
+  });
+
+  test('with a certificate it serves TLS', () => {
+    // `setSecureContext` exists only on an https server — the narrowest observable difference,
+    // and one that cannot be satisfied by an http server that merely looks similar.
+    assert.equal(typeof secured.setSecureContext, 'function');
+  });
+
+  test('a half-supplied pair is treated as no certificate, never as a broken one', () => {
+    // `resolveTls` already refuses a half-configured pair at startup; this is the second line,
+    // for a caller that constructs the object itself. Falling into an https server with no key
+    // would throw on the first connection instead of at wiring time.
+    for (const half of [{ cert }, { key }, {}]) {
+      const server = createModuleConsoleProxyServer({
+        targetBaseUrl: upstreamUrl, moduleName: 'Stub', isAuthorized: () => true, tls: half,
+      });
+      assert.equal(typeof server.setSecureContext, 'undefined', JSON.stringify(Object.keys(half)));
+    }
+  });
+
+  test('teardown', () => { plain.close(); secured.close(); });
 });
