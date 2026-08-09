@@ -89,6 +89,24 @@ export function mayReadHealthDetail(user) {
   return user?.role === 'owner' && Boolean(ROLE_PERMISSIONS[user.role]?.has('audit.read'));
 }
 
+/**
+ * The enrolment URI a QR encodes, kept SHORT on purpose.
+ *
+ * `algorithm=SHA1&digits=6&period=30` are the RFC 6238 defaults that every authenticator
+ * assumes, and spelling them out cost 38 bytes; the issuer was written twice, in full, for
+ * another 20. That mattered because this product ships its own encoder, verified only for QR
+ * versions 1-6 — 106 bytes at level M (`F4W-005`). The old string was **140 bytes**, so the QR
+ * on the setup screen never drew at all, on any installation, and the client swallowed the
+ * error. Reported by the Owner mid-setup: «non mostra nessun qrcode».
+ *
+ * At 82 bytes for a short username this leaves room for about 24 more characters. A username
+ * longer than that still overflows, and the interface says so rather than showing an empty box:
+ * a limit that is stated is a limit; one that is silent is a defect.
+ */
+export function otpauthUriFor(username, secret) {
+  return `otpauth://totp/NOESAR:${encodeURIComponent(username)}?secret=${secret}&issuer=NOESAR`;
+}
+
 export function normalizeUsername(value) {
   const username = String(value ?? '').trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username)) {
@@ -321,7 +339,7 @@ export class AuthService {
       challenge,
       username: normalized,
       totpSecret: secret,
-      otpauthUri: `otpauth://totp/NOESAR%20Evolution:${encodeURIComponent(normalized)}?secret=${secret}&issuer=NOESAR%20Evolution&algorithm=SHA1&digits=6&period=30`,
+      otpauthUri: otpauthUriFor(normalized, secret),
       expiresAt: new Date(pending.expiresAt).toISOString(),
     };
   }
@@ -1259,7 +1277,7 @@ export class AuthService {
       challenge,
       username: normalized,
       totpSecret: secret,
-      otpauthUri: `otpauth://totp/NOESAR%20Evolution:${encodeURIComponent(normalized)}?secret=${secret}&issuer=NOESAR%20Evolution&algorithm=SHA1&digits=6&period=30`,
+      otpauthUri: otpauthUriFor(normalized, secret),
       expiresAt: new Date(pending.expiresAt).toISOString(),
     };
   }

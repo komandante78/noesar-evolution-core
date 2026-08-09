@@ -751,8 +751,10 @@ $('#loginMfaForm').addEventListener('submit',async(event)=>{event.preventDefault
 function renderSetupQr(otpauthUri){
   const target=$('#setupQr');
   if(!target||!otpauthUri)return;
+  // Un riquadro vuoto e indistinguibile da un guasto. Se l URI non entra nell encoder
+  // (nomi utente molto lunghi, F4W-005) lo si DICE, e il segreto sotto resta la via.
   try{target.innerHTML=qrSvg(otpauthUri,{title:t('Authenticator setup code')});}
-  catch{target.textContent='';}
+  catch{target.textContent=t('No QR for this username — type the secret below into your app instead.');}
 }
 let recoveryChallenge=null;
 function showFirstRunRecoveryCodes(codes){
@@ -782,7 +784,7 @@ $('#recoveryStartForm')?.addEventListener('submit',async(event)=>{
     })});
     recoveryChallenge=started.challenge;
     const target=$('#recoveryQr');
-    if(target){try{target.innerHTML=qrSvg(started.otpauthUri,{title:t('Authenticator setup code')});}catch{target.textContent=started.otpauthUri;}}
+    if(target){try{target.innerHTML=qrSvg(started.otpauthUri,{title:t('Authenticator setup code')});}catch{target.textContent=t('No QR for this username — type the secret below into your app instead.');}}
     $('#recoveryTotpSecret').textContent=started.totpSecret;
     authError('');showOnly('#recoveryFinishForm');
   }catch(error){authError(error.message);}

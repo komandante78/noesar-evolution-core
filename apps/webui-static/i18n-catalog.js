@@ -65,6 +65,7 @@ export const RUNTIME_ONLY = Object.freeze([
   "On this machine, open",
   "Certificate page",
   "Authenticator setup code",
+  "No QR for this username — type the secret below into your app instead.",
   // The models catalogue, s333 point 5: every string below is painted by the renderer in
   // app.js and appears in no markup, so the static tool reports them as matching no screen.
   // They are measured where they are real — I18N-RUNTIME drives the live page and reads the
@@ -295,6 +296,7 @@ const it = {
   'On this machine, open': 'Su questa macchina, apri',
   'Certificate page': 'Pagina del certificato',
   'Authenticator setup code': 'Codice di configurazione dell’autenticatore',
+  "No QR for this username — type the secret below into your app instead.": "Nessun QR per questo nome utente — scrivi a mano il segreto qui sotto nell’app.",
   'One-time setup token': 'Token di configurazione monouso',
   'Owner username': 'Nome utente del proprietario',
   'Display name': 'Nome visualizzato',
