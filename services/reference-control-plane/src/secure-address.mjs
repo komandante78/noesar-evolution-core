@@ -90,8 +90,16 @@ export function shouldRedirectToSecure({ encrypted, method, accept, pathname, pu
   if (!String(accept ?? '').includes('text/html')) return null;
   if (pathname === '/ca' || pathname === '/ca/' || pathname.startsWith('/ca.crt')) return null;
   if (pathname.startsWith('/api/')) return null;
+  // Operational routes are not pages, whatever a caller puts in Accept. A container probe, an
+  // uptime checker or an installer's post-start poll that does not follow redirects would read
+  // a 302 as "the service is down" — inventing an outage out of a convenience. This
+  // installation's own healthcheck sends no Accept header and so was never affected, which is
+  // exactly why the exemption is written here rather than left to that fact.
+  if (OPERATIONAL_ROUTES.has(pathname)) return null;
   return normaliseHttpsUrl(publicTlsUrl);
 }
+
+const OPERATIONAL_ROUTES = new Set(['/livez', '/readyz', '/healthz', '/metrics']);
 
 /**
  * Accept only an absolute https URL, and hand back its origin.

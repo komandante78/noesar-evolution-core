@@ -133,4 +133,13 @@ describe('the bookmark that was already open', () => {
     assert.equal(pageLoad({ encrypted: true }), null);
     assert.equal(pageLoad({ secureCookies: false }), null);
   });
+
+  test('operational routes never move, whatever the caller puts in Accept', () => {
+    // A probe that does not follow redirects reads a 302 as an outage. This installation's own
+    // healthcheck sends no Accept header and so could not have been affected — which is the
+    // reason to assert it here instead of relying on that.
+    for (const pathname of ['/livez', '/readyz', '/healthz', '/metrics']) {
+      assert.equal(pageLoad({ pathname }), null, `${pathname} must answer, not redirect`);
+    }
+  });
 });
