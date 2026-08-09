@@ -17,6 +17,7 @@ import { LocalModelRuntime } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition } from './model-catalog.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
+import { chooseDestination, VoiceChoice } from './voice-interpreter.mjs';
 import { AuthService, parseCookies, ROLES, MFA_REQUIRED_ROLES, mayReadHealthDetail } from './auth.mjs';
 import { AuthStore } from './auth-store.mjs';
 import { resolveSetupToken } from './setup-token.mjs';
@@ -110,6 +111,11 @@ import { buildHomeOverview } from './home-overview.mjs';
 import { resolveTls } from './tls.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
+// The SAME registry both shells resolve typing against. Imported here so the candidate list the
+// model is allowed to choose from is built from this session's identity rather than proposed by
+// whoever is calling — see `/api/v1/voice/interpret`. It imports nothing itself, so a server-side
+// import of a file that also runs in the browser costs nothing and buys one list instead of two.
+import { menuFor, accountFromUser } from '../../../apps/webui-static/agent-commands.js';
 import { resolveCliDownload, readCliArtifact, renderCliIndex } from './cli-downloads.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -1578,6 +1584,44 @@ const requestListener = async (req, res) => {
         if (!(error instanceof VoiceEngineError)) throw error;
         return json(res, error.status, { error: error.reason, kind: error.kind });
       }
+    }
+    // Asked ONLY when the deterministic resolver could not place what was heard. The model is
+    // given the product's own entries and told to name one of them or NONE; the reply is
+    // accepted only if it names one, so a model that invents can only ever pick the wrong door
+    // of this product's own doors, never a door that does not exist.
+    //
+    // THE CLIENT DOES NOT PROPOSE THE LIST. It sends the sentence and nothing else; the
+    // candidates are built here, from this session's own identity — the commands this account
+    // may use plus the addresses this installation serves. A first draft took the list from the
+    // request body and intersected it, which is weaker for no benefit: a client that can name
+    // the candidates is a client that decides what the model is allowed to pick, and the whole
+    // guarantee of this route is that voice cannot reach past what this account could type.
+    if (req.method === 'POST' && url.pathname === '/api/v1/voice/interpret') {
+      const authenticated = requireSession(req, res, 'provider.use');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      // `permissionsFor` takes a ROLE, not a user — the same matrix `/api/v1/auth/me` hands the
+      // browser, so the list the model chooses from is exactly the menu that account sees.
+      const account = accountFromUser({
+        permissions: auth.permissionsFor(authenticated.user?.role),
+        role: authenticated.user?.role ?? null,
+      });
+      const candidates = [
+        ...menuFor(account).entries.map((entry) => ({ name: entry.name, summary: entry.summary ?? '' })),
+        ...buildCodenAddressBook(webRoot).map((entry) => ({ name: entry.address, summary: entry.label ?? entry.address })),
+      ];
+      const decision = await chooseDestination({
+        utterance: request?.text,
+        entries: candidates,
+        endpoint: process.env.NOESAR_AUTHORING_ENDPOINT ?? null,
+        model: process.env.NOESAR_AUTHORING_MODEL ?? null,
+        fetchImpl: typeof fetch === 'function' ? fetch : undefined,
+      });
+      // 200 in every case: "the model found nothing that fits" is an ANSWER, and a 4xx would make
+      // the surface treat an honest refusal as a fault it should complain about.
+      return json(res, 200, decision.kind === VoiceChoice.CHOSEN
+        ? { chosen: decision.name }
+        : { chosen: null, kind: decision.kind, reason: decision.reason });
     }
     // The only mutating verb of this panel, and the only one that spends authority. It PLANS
     // and refuses; it does not download here. Acquisition is egress plus a write to disk plus

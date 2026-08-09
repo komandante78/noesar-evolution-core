@@ -38,6 +38,37 @@
 
 import { probeModelEndpoint, ActiveModelState } from './active-model.mjs';
 
+/**
+ * The two voices this product has, by name. Owner, s336: *«dai un nome alla voce, chiamalo RUNE
+ * in maschile e femminile metti ESTRELA»*.
+ *
+ * # Why the product names its own voices
+ *
+ * A synthesis model calls its voices whatever its author called them — `am_michael`, `voice_3`,
+ * `it-IT-DiegoNeural` — and those names stop existing the moment the operator changes models. An
+ * interface that offered them would be offering a choice that quietly evaporates on the next
+ * model swap, with everything that referenced it falling back to a default nobody picked. So the
+ * product has two names of its OWN, which are stable, and the operator binds each to whatever
+ * their model calls the voice they want behind it. It is the only way the promise in
+ * `docs/VOICE.md` — any model — survives a feature that lets somebody choose a voice.
+ *
+ * # What is deliberately absent
+ *
+ * No default mapping, and no guess at which of a model's voices is masculine. A voice that has
+ * not been bound is reported as unbound, and asking for it fails saying so. Falling back to the
+ * other one would answer in a woman's voice to somebody who asked for a man's and say nothing
+ * about it — the same silent substitution this file already refuses when it will not hand
+ * transcription back to the browser.
+ */
+export const VOICES = Object.freeze({
+  RUNE: Object.freeze({ id: 'rune', label: 'Rune', gender: 'masculine', variable: 'NOESAR_VOICE_RUNE' }),
+  ESTRELA: Object.freeze({ id: 'estrela', label: 'Estrela', gender: 'feminine', variable: 'NOESAR_VOICE_ESTRELA' }),
+});
+
+/** The names in the order they are offered. Frozen so nothing can reorder the interface by
+ *  mutating a shared array — the same reason every other registry here is frozen. */
+export const VOICE_NAMES = Object.freeze(Object.values(VOICES).map((voice) => voice.id));
+
 /** What the engine can be asked to do. Two directions, never merged. */
 export const VoiceJob = Object.freeze({
   /** audio -> text. The microphone. */
@@ -77,11 +108,18 @@ const stripSlash = (value) => trimmed(value).replace(/\/+$/, '');
  * and an installation that happens to serve both from one address simply writes the same value
  * twice, which is a fact about that installation rather than something this file should assume.
  *
- * `voice` is the named voice of the synthesis model. It is passed through, never validated
- * against a list: the list of voices belongs to whatever model the operator installed, and a
- * table of voice names here would be out of date the first time they change models.
+ * `voice` is the fallback voice: whatever the operator wrote, passed straight through and never
+ * validated against a list, because the list belongs to the model they installed.
+ *
+ * `voices` is the product's own two names bound to that model's. `NOESAR_VOICE_SPEAK_VOICE` still
+ * works for an installation that wants one voice and no choosing — it becomes the default when
+ * neither name is asked for.
  */
 export function voiceRoutingFrom(env = process.env) {
+  const bound = {};
+  for (const voice of Object.values(VOICES)) {
+    bound[voice.id] = trimmed(env[voice.variable]) || null;
+  }
   return Object.freeze({
     [VoiceJob.TRANSCRIBE]: Object.freeze({
       endpoint: stripSlash(env.NOESAR_VOICE_TRANSCRIBE_ENDPOINT) || null,
@@ -92,8 +130,56 @@ export function voiceRoutingFrom(env = process.env) {
       endpoint: stripSlash(env.NOESAR_VOICE_SPEAK_ENDPOINT) || null,
       model: trimmed(env.NOESAR_VOICE_SPEAK_MODEL) || null,
       voice: trimmed(env.NOESAR_VOICE_SPEAK_VOICE) || null,
+      voices: Object.freeze(bound),
     }),
   });
+}
+
+/**
+ * The product's voices, each with whether this installation can actually produce it.
+ *
+ * Rendered by the interface, so a voice nobody bound appears as a name that is not available yet
+ * rather than not appearing at all — an absent option looks like a product that does not have the
+ * feature, while an unavailable one looks like a setting somebody has not filled in, and only the
+ * second is true.
+ */
+export function voiceRoster(routing = voiceRoutingFrom()) {
+  const bound = routing?.[VoiceJob.SPEAK]?.voices ?? {};
+  return Object.values(VOICES).map((voice) => ({
+    id: voice.id,
+    label: voice.label,
+    gender: voice.gender,
+    available: Boolean(bound[voice.id]),
+    reason: bound[voice.id] ? null : `${voice.label} is not bound to a voice of the speech model — set ${voice.variable}`,
+  }));
+}
+
+/**
+ * Which string to send the synthesis model for a requested voice.
+ *
+ * Throws rather than substituting. Asking for Rune on an installation where only Estrela is bound
+ * has to be an error the person sees: answering in the other voice, silently, is a worse outcome
+ * than not answering — they would conclude the choice does nothing.
+ */
+export function resolveVoice(requested, routing = voiceRoutingFrom()) {
+  const configured = routing?.[VoiceJob.SPEAK] ?? {};
+  const asked = trimmed(requested).toLowerCase();
+  if (!asked) return configured.voice ?? null;
+  const known = Object.values(VOICES).find((voice) => voice.id === asked);
+  if (!known) {
+    // A raw model voice name still works — an installation that never adopted the two names is
+    // not broken by their arrival. Only a name that LOOKS like one of ours and is not gets refused.
+    return trimmed(requested);
+  }
+  const bound = configured.voices?.[known.id] ?? null;
+  if (!bound) {
+    throw new VoiceEngineError(
+      'VOICE_NOT_BOUND',
+      `${known.label} is not bound to a voice of the speech model on this installation — set ${known.variable}`,
+      { status: 409 },
+    );
+  }
+  return bound;
 }
 
 /**
@@ -133,6 +219,10 @@ export async function voiceReadiness({ routing, fetchImpl, timeoutMs = 2000, now
   // One boolean per direction, so a status line does not have to derive it.
   report.canHear = report[VoiceJob.TRANSCRIBE].state === VoiceState.READY;
   report.canSpeak = report[VoiceJob.SPEAK].state === VoiceState.READY;
+  // The product's own two voices and whether each is bound on this installation. Carried in the
+  // same snapshot as everything else about voice, so an interface never has to ask twice and
+  // cannot show a roster that disagrees with the readiness beside it.
+  report.voices = voiceRoster(table);
   return report;
 }
 
@@ -241,6 +331,9 @@ export async function speak({
   const said = trimmed(text);
   if (!said) throw new VoiceEngineError('INVALID_REQUEST', 'there is nothing to say');
   const impl = requireFetch(fetchImpl);
+  // Resolved BEFORE the request, so asking for a voice this installation has not bound fails
+  // here — with the name of the variable to set — instead of being answered in the other voice.
+  const speaking = resolveVoice(voice, table);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -252,7 +345,7 @@ export async function speak({
         model: configured.model ?? undefined,
         // The caller's voice wins over the configured default, so one installation can read a
         // notification and a conversation in different voices without being reconfigured.
-        voice: trimmed(voice) || configured.voice || undefined,
+        voice: speaking || undefined,
         input: said,
         response_format: format,
       }),
@@ -272,7 +365,11 @@ export async function speak({
     return {
       audio: buffer,
       contentType: trimmed(response.headers?.get?.('content-type')) || `audio/${format}`,
+      // What was ASKED for, not what was sent to the model: the caller chose "estrela", and
+      // telling them back the model's own `af_bella` would leak an implementation detail they
+      // did not choose and cannot use.
       voice: trimmed(voice) || configured.voice || null,
+      spokenBy: speaking || null,
     };
   } catch (error) {
     if (error instanceof VoiceEngineError) throw error;

@@ -235,6 +235,11 @@ export const RUNTIME_ONLY = Object.freeze([
   'The microphone is not available:',
   'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.',
   'The reply could not be read aloud',
+  'Asking the model…',
+  '(understood by the model)',
+  // The two voice names are written by `renderVoicePicker` into <option> elements.
+  'Rune',
+  'Estrela',
   // What the product says back to speech — `voice-intent.js`, never in the markup.
   'I did not catch that.',
   'Nothing here is called that:',
@@ -1253,6 +1258,14 @@ const it = {
   'The microphone is not available:': 'Il microfono non è disponibile:',
   'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.': 'Questa pagina non può aprire un microfono: il browser lo consente solo via HTTPS, oppure da localhost. Questa installazione, di suo, è pronta.',
   'The reply could not be read aloud': 'La risposta non è stata letta ad alta voce',
+  //
+  // Choosing a voice, and the model-assisted step. `Rune` and `Estrela` are NOT here: they are
+  // names, and a name is the same word in every language — they sit under "deliberately
+  // unchanged" below, where an entry that says "we looked at this and it stays" is a decision.
+  'Voice': 'Voce',
+  'Which voice reads the replies. Rune and Estrela are this product\'s own names, bound to voices of whatever speech model is installed.': 'Quale voce legge le risposte. Rune ed Estrela sono nomi propri di questo prodotto, legati alle voci di qualunque modello di sintesi sia installato.',
+  'Asking the model…': 'Sto chiedendo al modello…',
+  '(understood by the model)': '(capito dal modello)',
   // ——— deliberately unchanged ———
   // Each of these was looked at and kept. An entry that says so is a decision; an ABSENT
   // entry says nothing and cannot be told apart from an oversight.
@@ -1289,6 +1302,8 @@ const it = {
   'en-GB': 'en-GB',                           // an example locale tag
   'deploy': 'deploy',                         // example SSH username
   '/srv/app': '/srv/app',                     // example path
+  'Rune': 'Rune',                             // the product's masculine voice — a name, s336
+  'Estrela': 'Estrela',                       // the product's feminine voice — a name, s336
   'in': 'in',                                 // the preposition is the same word in Italian
   '<id>': '<id>',                             // an identifier is not a word
   '[confirm]': '[confirm]',                   // literal: `logout confirm` is what the parser reads

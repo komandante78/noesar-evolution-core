@@ -68,8 +68,9 @@ function check(ok, name, detail) {
 // rather than merely getting an answer back. A model server that ignored the request entirely
 // would still return text, and the check would still pass — which is how a wire test becomes
 // decoration.
-const received = { transcriptions: null, speech: null };
+const received = { transcriptions: null, speech: null, chat: null };
 let refuseNext = false;
+let chatReply = 'NONE';
 
 const modelServer = createServer((req, res) => {
   const chunks = [];
@@ -94,6 +95,14 @@ const modelServer = createServer((req, res) => {
       received.speech = JSON.parse(body.toString('utf8') || '{}');
       res.writeHead(200, { 'content-type': 'audio/wav' });
       return res.end(SPOKEN_AUDIO);
+    }
+    // The same listener also plays the installation's CHAT model, so the probe can drive the
+    // model-assisted step of the ladder. `chatReply` is set by each case: the point of these
+    // checks is what the product does with an answer, including a fabricated one.
+    if (req.url === '/v1/chat/completions') {
+      received.chat = JSON.parse(body.toString('utf8') || '{}');
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ choices: [{ message: { content: chatReply } }] }));
     }
     res.writeHead(404).end();
   });
@@ -173,6 +182,13 @@ const server = spawn('node', [join(repoRoot, 'services/reference-control-plane/s
     NOESAR_VOICE_SPEAK_ENDPOINT: modelBase,
     NOESAR_VOICE_SPEAK_MODEL: 'natural-voice',
     NOESAR_VOICE_SPEAK_VOICE: 'chiara',
+    // The product's two voices, bound to what this "model" calls them. Only ESTRELA is bound:
+    // the probe needs an installation where one voice works and the other does not, because the
+    // refusal is the property worth proving and it cannot be proved on a complete setup.
+    NOESAR_VOICE_ESTRELA: 'af_bella',
+    // The installation's own chat model — where the model-assisted step of the ladder goes.
+    NOESAR_AUTHORING_ENDPOINT: modelBase,
+    NOESAR_AUTHORING_MODEL: 'probe-chat-model',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -297,6 +313,67 @@ try {
   const empty = await http('POST', '/api/v1/voice/speak', { text: '   ' });
   check(empty.status === 400, 'there is nothing to say is a request error, not a crash',
     JSON.stringify(empty.json));
+
+  // --- 6. RUNE and ESTRELA — the product's own two voices -----------------------------------
+  const roster = state.json?.voices ?? [];
+  check(roster.length === 2 && roster.map((voice) => voice.id).join(',') === 'rune,estrela',
+    'the installation reports exactly two voices, by name', JSON.stringify(roster.map((v) => v.id)));
+  check(roster.find((voice) => voice.id === 'estrela')?.available === true
+    && roster.find((voice) => voice.id === 'rune')?.available === false,
+    'and which of them this installation can actually produce', JSON.stringify(roster));
+  check(/NOESAR_VOICE_RUNE/.test(roster.find((voice) => voice.id === 'rune')?.reason ?? ''),
+    'an unbound voice names the variable that would bind it, not just "unavailable"',
+    roster.find((voice) => voice.id === 'rune')?.reason ?? '');
+
+  const asEstrela = await http('POST', '/api/v1/voice/speak', { text: 'Ciao.', voice: 'estrela' }, {}, true);
+  check(asEstrela.status === 200 && received.speech?.voice === 'af_bella',
+    'asking for Estrela sends the model the string IT knows that voice by',
+    JSON.stringify({ status: asEstrela.status, sent: received.speech?.voice }));
+
+  const asRune = await http('POST', '/api/v1/voice/speak', { text: 'Ciao.', voice: 'rune' });
+  check(asRune.status === 409 && /Rune/.test(asRune.json?.error ?? ''),
+    'asking for a voice this installation has not bound REFUSES — it is never answered in the other one',
+    JSON.stringify(asRune.json));
+
+  // --- 7. the model as a chooser, for a language nothing here has a catalogue for ------------
+  //
+  // Portuguese: not a language this product ships a translation of, so the deterministic
+  // resolver cannot place it and this is exactly the case the Owner asked the model to cover.
+  chatReply = 'memory';
+  const chosen = await http('POST', '/api/v1/voice/interpret', { text: 'abre a memória' });
+  check(chosen.status === 200 && chosen.json?.chosen === 'memory',
+    'a sentence in a language this product does not ship is placed by the model',
+    JSON.stringify(chosen.json));
+  const offered = String(received.chat?.messages?.[0]?.content ?? '');
+  check(offered.includes('memory') && offered.includes('coden/bench/diff'),
+    'and the list it chose from was built HERE, from the session — commands and addresses both',
+    JSON.stringify({ length: offered.length }));
+  check(received.chat?.temperature === 0 && received.chat?.model === 'probe-chat-model',
+    'asked as a lookup: temperature zero, and the configured model',
+    JSON.stringify({ temperature: received.chat?.temperature, model: received.chat?.model }));
+
+  // THE ONE THAT MATTERS. A model that invents — measured live on `atomd` in this very session —
+  // must change nothing at all.
+  chatReply = 'quantum-circuit-editor';
+  const invented = await http('POST', '/api/v1/voice/interpret', { text: 'sblindarifico quantistico' });
+  check(invented.status === 200 && invented.json?.chosen === null
+    && /does not have/.test(invented.json?.reason ?? ''),
+    'a model that invents a destination is refused, and the answer says what it named',
+    JSON.stringify(invented.json));
+
+  chatReply = 'NONE';
+  const declined = await http('POST', '/api/v1/voice/interpret', { text: 'what is the weather like' });
+  check(declined.status === 200 && declined.json?.chosen === null,
+    'and a model that honestly declines is an answer, not an error', JSON.stringify(declined.json));
+
+  // The client cannot widen the list. Sending candidates of its own must not put them in play.
+  chatReply = 'root-shell';
+  const smuggled = await http('POST', '/api/v1/voice/interpret',
+    { text: 'anything', entries: [{ name: 'root-shell', summary: 'not a thing this product has' }] });
+  const smuggledList = String(received.chat?.messages?.[0]?.content ?? '');
+  check(smuggled.json?.chosen === null && !smuggledList.includes('root-shell'),
+    'a client cannot smuggle a candidate into the list — the server builds it from the session',
+    JSON.stringify(smuggled.json));
 
   process.stdout.write(`\nVOICE_CHAIN_TOTAL=${checks}\nVOICE_CHAIN_FAIL=${failures}\n`);
   stop();

@@ -2928,6 +2928,9 @@ let voiceRecorderChat=null;
 let voiceRecorderStream=null;
 let readAloud=false;
 let spokenAudio=null;
+// Which of the product's two voices reads. Named, not the synthesis model's own string — see
+// `VOICES` in `voice-engine.mjs` for why the product owns these names.
+let chosenVoice=null;
 
 /** One line under the composer saying what the microphone just did. `translate="no"` because
  *  every sentence it can hold is composed around an address or a command name. */
@@ -2936,6 +2939,29 @@ function voiceNote(text){
   if(!note)return;
   note.textContent=text??'';
   note.classList.toggle('hidden',!text);
+}
+
+/**
+ * The two voices the product has, offered by NAME.
+ *
+ * A voice this installation has not bound is shown and DISABLED, with the reason on it, rather
+ * than left out of the list. An absent option reads as a product that does not have the feature;
+ * a disabled one reads as a setting somebody has not filled in — and only the second is true.
+ * The same distinction `declared-empty` makes everywhere else in this interface.
+ */
+function renderVoicePicker(){
+  const picker=$('#chatVoice');
+  if(!picker)return;
+  const roster=Array.isArray(voiceState.voices)?voiceState.voices:[];
+  picker.innerHTML=roster.map((voice)=>
+    `<option value="${escapeHtml(voice.id)}"${voice.available?'':' disabled'}>${escapeHtml(voice.label)}</option>`).join('');
+  const usable=roster.find((voice)=>voice.available)??null;
+  // Never leave a disabled voice selected: the request would be refused at the moment somebody
+  // finally turned reading on, which is the least useful time to discover a missing setting.
+  if(!chosenVoice||!roster.some((voice)=>voice.id===chosenVoice&&voice.available))chosenVoice=usable?.id??null;
+  if(chosenVoice)picker.value=chosenVoice;
+  picker.disabled=!usable;
+  picker.setAttribute('translate','no'); // Rune and Estrela are names, in every language.
 }
 
 /** What each direction can do, asked once and asked of the SERVER — the browser's own opinion
@@ -2956,6 +2982,7 @@ async function refreshVoiceState(){
   const pageCanRecord=microphoneReachable();
   if(dictate)dictate.disabled=!voiceState.canHear||!pageCanRecord;
   if(aloud)aloud.disabled=!voiceState.canSpeak;
+  renderVoicePicker();
   // The REASON goes in the note line, not on the buttons — measured in the browser, where the
   // first version put it in `title` and the sentence vanished. `title` is one of the three
   // attributes `i18n.js` translates, and the translator caches each element's ORIGINAL value as
@@ -3002,15 +3029,22 @@ async function transcribeRecording(blob){
  *              This is the case that makes the feature worth having: everything the product can
  *              be asked in prose is now sayable, and nothing had to be listed for it to be.
  */
-function applyHeardText(text){
-  const box=$('#chatInput');
+function heardResult(text){
   // `codenOffered()` — literally the array the `/` menu is built from, permission filter and
   // served address book included. Not a copy assembled for voice: the same call.
-  const result=resolveUtterance(text,{
+  return resolveUtterance(text,{
     entries:codenOffered(),translate:t,
     groupTitles:Object.fromEntries(MENU_GROUPS.map((group)=>[group.id,group.title])),
   });
-  voiceNote(utteranceReply(result,t));
+}
+
+/**
+ * Perform a resolved utterance. Split out from the resolving so the model-assisted path can
+ * reach the SAME performance — the model names an entry, and the line is still written here by
+ * the product. A model that could return a line would be a model that can run anything.
+ */
+function performHeard(result){
+  const box=$('#chatInput');
   if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.NAVIGATE){
     return jumpTo(result.entry.address??result.entry.name);
   }
@@ -3022,6 +3056,56 @@ function applyHeardText(text){
     box.focus();
   }
   return undefined;
+}
+
+/**
+ * What to do with what was heard — the ladder, in this order and for these reasons.
+ *
+ *   1. THE DETERMINISTIC RESOLVER. Free, instant, and incapable of being wrong about a name it
+ *      matched exactly. Everything the interface paints, in English and in the language it is
+ *      displayed in, lands here.
+ *   2. THE MODEL, asked to CHOOSE. Only when step 1 placed nothing, and only ever to name one of
+ *      the product's own entries. This is where a third language is understood without the
+ *      product carrying a dictionary for it — Owner, s336: «altre lingue, qui dovrebbe aiutare
+ *      il modello». What comes back is a NAME, which is then re-resolved through step 1, so the
+ *      line that ends up in front of the person was written by the product either way.
+ *   3. DICTATION. Not a fallback — the largest case. Prose that names nothing is a message.
+ *
+ * The order is the safety property. A model asked first would answer for utterances the product
+ * already understands exactly, slower and occasionally differently, and a navigation gesture that
+ * lands somewhere else on a second try is worse than one that fails.
+ */
+async function applyHeardText(text){
+  const direct=heardResult(text);
+  if(direct.kind!==VoiceIntent.NOTHING){
+    voiceNote(utteranceReply(direct,t));
+    return performHeard(direct);
+  }
+  // Step 2. The sentence goes up alone: the candidate list is built server-side from this
+  // session's identity, so nothing here decides what the model is allowed to pick.
+  let chosen=null;
+  try{
+    voiceNote(t('Asking the model…'));
+    const answer=await api('/api/v1/voice/interpret',{method:'POST',body:JSON.stringify({text})});
+    chosen=answer?.chosen??null;
+  }catch{
+    // A model that cannot be reached is not an error the person needs: the sentence is still
+    // perfectly good dictation, and saying "the model is down" about a message they meant to
+    // type would be noise about a failure that changed nothing for them.
+    chosen=null;
+  }
+  if(chosen){
+    // Re-resolved through the SAME resolver, by name. If the name no longer resolves — a stale
+    // model answer, an entry withdrawn between the two calls — this falls through to dictation
+    // rather than acting on a name nothing can place.
+    const viaModel=heardResult(chosen);
+    if(viaModel.kind===VoiceIntent.INTENT){
+      voiceNote(`${utteranceReply(viaModel,t)} ${t('(understood by the model)')}`);
+      return performHeard(viaModel);
+    }
+  }
+  voiceNote(utteranceReply(direct,t));
+  return performHeard(direct);
 }
 
 /**
@@ -3070,7 +3154,7 @@ async function toggleDictation(){
       // Silence is a RESULT, not a failure — the engine says so and this must not turn it into
       // an error that suggests the microphone is broken.
       if(!heard.heardSomething){voiceNote(t('I did not catch that.'));return;}
-      applyHeardText(heard.text);
+      await applyHeardText(heard.text);
     }catch(error){
       voiceNote(error.message);
     }
@@ -3092,7 +3176,9 @@ async function speakReply(text){
     const response=await fetch('/api/v1/voice/speak',{
       method:'POST',credentials:'same-origin',
       headers:{'content-type':'application/json',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
-      body:JSON.stringify({text}),
+      // The product's own voice name — `rune` or `estrela` — never the synthesis model's. The
+      // server resolves it, and refuses saying so if that voice is not bound here.
+      body:JSON.stringify({text,voice:chosenVoice}),
     });
     if(!response.ok){
       const failure=await response.json().catch(()=>({}));
@@ -3111,6 +3197,7 @@ async function speakReply(text){
 
 function initChatVoice(){
   $('#chatDictate')?.addEventListener('click',toggleDictation);
+  $('#chatVoice')?.addEventListener('change',(event)=>{chosenVoice=event.target.value||null;});
   const aloud=$('#chatReadAloud');
   aloud?.addEventListener('click',()=>{
     readAloud=!readAloud;

@@ -11,8 +11,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import {
-  VoiceJob, VoiceState, VoiceEngineError,
-  voiceRoutingFrom, voiceReadiness, transcribe, speak,
+  VoiceJob, VoiceState, VoiceEngineError, VOICES, VOICE_NAMES,
+  voiceRoutingFrom, voiceReadiness, voiceRoster, resolveVoice, transcribe, speak,
 } from '../src/voice-engine.mjs';
 
 async function withServer(handler, run) {
@@ -201,4 +201,98 @@ test('an unconfigured installation REFUSES rather than falling back to anything'
       return true;
     });
   }
+});
+
+// ——— RUNE and ESTRELA, s336 ————————————————————————————————————————————————————————————
+//
+// Owner: «dai un nome alla voce, chiamalo RUNE in maschile e femminile metti ESTRELA».
+//
+// The product owns the two names; the operator binds each to whatever their synthesis model
+// calls the voice they want behind it. What is defended here is the REFUSAL — a voice that has
+// not been bound must fail loudly, naming the variable to set. Answering in the other voice
+// would be a substitution nobody asked for and nobody would be told about, and the person would
+// conclude the choice does nothing rather than that a setting is missing.
+
+const withVoices = (base) => voiceRoutingFrom({
+  NOESAR_VOICE_SPEAK_ENDPOINT: base,
+  NOESAR_VOICE_SPEAK_MODEL: 'natural-voice',
+  NOESAR_VOICE_RUNE: 'am_michael',
+  NOESAR_VOICE_ESTRELA: 'af_bella',
+});
+
+test('the product has exactly two named voices, and they are Rune and Estrela', () => {
+  assert.deepEqual(VOICE_NAMES, ['rune', 'estrela']);
+  assert.equal(VOICES.RUNE.gender, 'masculine');
+  assert.equal(VOICES.ESTRELA.gender, 'feminine');
+});
+
+test('the roster says which voices this installation can produce, and names what is missing', () => {
+  const halfBound = voiceRoster(voiceRoutingFrom({ NOESAR_VOICE_ESTRELA: 'af_bella' }));
+  const rune = halfBound.find((voice) => voice.id === 'rune');
+  const estrela = halfBound.find((voice) => voice.id === 'estrela');
+  assert.equal(estrela.available, true);
+  assert.equal(estrela.reason, null);
+  assert.equal(rune.available, false);
+  // The reason names the VARIABLE. An operator told only "not available" has to go and find it.
+  assert.match(rune.reason, /NOESAR_VOICE_RUNE/);
+  // And it is still LISTED. An absent option reads as a product that does not have the feature;
+  // a listed-but-unavailable one reads as a setting nobody filled in, and only the second is true.
+  assert.equal(halfBound.length, 2);
+});
+
+test('a name resolves to what the MODEL calls that voice, never to the product name', () => {
+  const routing = withVoices('http://voice:9000');
+  assert.equal(resolveVoice('rune', routing), 'am_michael');
+  assert.equal(resolveVoice('ESTRELA', routing), 'af_bella');
+});
+
+test('asking for an unbound voice FAILS — it is never answered in the other one', async () => {
+  const onlyEstrela = voiceRoutingFrom({
+    NOESAR_VOICE_SPEAK_ENDPOINT: 'http://voice:9000', NOESAR_VOICE_ESTRELA: 'af_bella',
+  });
+  assert.throws(() => resolveVoice('rune', onlyEstrela), (error) => {
+    assert.equal(error.kind, 'VOICE_NOT_BOUND');
+    assert.equal(error.status, 409);
+    assert.match(error.reason, /Rune/);
+    assert.match(error.reason, /NOESAR_VOICE_RUNE/);
+    return true;
+  });
+  // And the refusal reaches `speak` rather than being lost on the way: that is the path which
+  // actually runs, and a guard the caller never hits guards nothing.
+  await assert.rejects(
+    () => speak({ text: 'ciao', voice: 'rune', routing: onlyEstrela, fetchImpl: fetch }),
+    (error) => error.kind === 'VOICE_NOT_BOUND',
+  );
+});
+
+test('an installation that never adopted the names is not broken by their arrival', () => {
+  // A raw model voice string still passes through untouched. Only a name that LOOKS like one of
+  // ours and is not bound gets refused — two new names must not invalidate the single-voice
+  // configuration `docs/VOICE.md` documented before they existed.
+  const legacy = voiceRoutingFrom({ NOESAR_VOICE_SPEAK_VOICE: 'it-IT-DiegoNeural' });
+  assert.equal(resolveVoice(null, legacy), 'it-IT-DiegoNeural');
+  assert.equal(resolveVoice('af_sky', legacy), 'af_sky');
+});
+
+test('the model is sent the bound string, and the caller is told the name they asked for', async () => {
+  await withServer((req, res) => {
+    readBody(req).then(() => {
+      res.writeHead(200, { 'content-type': 'audio/wav' });
+      res.end(Buffer.from('audio'));
+    });
+  }, async (base) => {
+    const said = await speak({ text: 'ciao', voice: 'estrela', routing: withVoices(base), fetchImpl: fetch });
+    // What the model was sent…
+    assert.equal(said.spokenBy, 'af_bella');
+    // …and what the caller is told back. Returning `af_bella` here would leak an implementation
+    // detail the person did not choose and cannot use.
+    assert.equal(said.voice, 'estrela');
+  });
+});
+
+test('readiness carries the roster, so an interface never has to ask twice', async () => {
+  const report = await voiceReadiness({ routing: voiceRoutingFrom({ NOESAR_VOICE_RUNE: 'am_michael' }), fetchImpl: fetch });
+  assert.equal(report.voices.length, 2);
+  assert.equal(report.voices.find((voice) => voice.id === 'rune').available, true);
+  assert.equal(report.voices.find((voice) => voice.id === 'estrela').available, false);
 });
