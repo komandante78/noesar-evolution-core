@@ -112,7 +112,8 @@ import { resolveTls } from './tls.mjs';
 import {
   resolveTrustAnchor, renderTrustAnchorIndex, TRUST_ANCHOR_BASENAME, TRUST_ANCHOR_CONTENT_TYPE,
 } from './trust-anchor.mjs';
-import { browserSignIn, shouldRedirectToSecure } from './secure-address.mjs';
+import { browserSignIn, shouldRedirectToSecure, normaliseHttpsUrl } from './secure-address.mjs';
+import { voiceAccess } from './voice-access.mjs';
 import { createSessionDispatch, startUnixSocketServer, ProtocolError, bridgedMethodPermissions } from './session-protocol.mjs';
 import { buildCodenAddressBook } from './coden-address-book.mjs';
 // The SAME registry both shells resolve typing against. Imported here so the candidate list the
@@ -1627,10 +1628,23 @@ const requestListener = async (req, res) => {
     // which is the only posture that makes sense for a microphone.
     if (req.method === 'GET' && url.pathname === '/api/v1/voice/state') {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
-      return json(res, 200, await voiceReadiness({
+      const readiness = await voiceReadiness({
         routing: voiceRoutingFrom(process.env),
         fetchImpl: typeof fetch === 'function' ? fetch : undefined,
-      }));
+      });
+      // Readiness is about this host; `access` is about the person asking. The first can say
+      // READY while the second says the browser has no microphone at all, and reporting only
+      // the first is how the interface came to offer a button that cannot work.
+      return json(res, 200, {
+        ...readiness,
+        access: voiceAccess({
+          encrypted: Boolean(req.socket?.encrypted), host: req.headers.host,
+          // Read straight from the declaration rather than from browserSignInAdvice(), whose
+          // secureAddress is deliberately null on an already-encrypted connection: here the
+          // address is wanted for a DIFFERENT device, so it is needed on both transports.
+          trustAnchor, secureAddress: normaliseHttpsUrl(process.env.NOESAR_PUBLIC_TLS_URL),
+        }),
+      });
     }
     // Raw audio in, text out. The bytes arrive as the body with `content-type` naming the format
     // the browser recorded — the multipart assembly the model server expects happens in

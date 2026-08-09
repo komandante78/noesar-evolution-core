@@ -227,6 +227,19 @@
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
               <textarea id="chatInput" placeholder="Ask, or type / for commands…" aria-describedby="chatCommands"></textarea>
               <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary">Context</button><button id="undoHead" class="secondary">Undo</button><button id="stopGeneration" class="danger hidden">Stop</button><button id="chatDictate" class="secondary" type="button" aria-pressed="false" title="Speak instead of typing — heard by this installation, never by the browser.">🎙 <span id="chatDictateLabel">Speak</span></button><label class="voice-pick"><span>Voice</span><select id="chatVoice" title="Which voice reads the replies. Rune and Estrela are this product's own names, bound to voices of whatever speech model is installed."></select></label><button id="chatReadAloud" class="secondary" type="button" aria-pressed="false" title="Read each reply aloud when it is complete.">🔊 <span id="chatReadAloudLabel">Read aloud: off</span></button><button id="sendMessage" class="primary">Send</button></div><p class="hint hidden" id="voiceNote" role="status" aria-live="polite" translate="no"></p>
+              <!-- Shown only when this connection cannot open a microphone AND this installation
+                   has a certificate to hand out. The fingerprint is delivered here, inside an
+                   authenticated session, which is what makes comparing it on the phone worth
+                   anything — the /ca page can only ask the reader to check the server's log. -->
+              <div class="notice hidden" id="voiceAccessHelp">
+                <b>To speak from a phone or another device</b>
+                <p>Scan this with that device. It opens this installation's certificate page.</p>
+                <div id="voiceAccessQr"></div>
+                <p>Before you install it, the device shows a SHA-256. It must match this one, which you are reading over your own signed-in session:</p>
+                <code id="voiceAccessFingerprint" translate="no"></code>
+                <p>Then open NOESAR on that device at:</p>
+                <a id="voiceAccessSecure" href="#" translate="no"></a>
+              </div>
             </div>
             <p class="hint chat-disclaimer">NOESAR EVOLUTION is an AI and can make mistakes.</p>
           </section>

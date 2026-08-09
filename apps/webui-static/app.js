@@ -3000,7 +3000,10 @@ async function refreshVoiceState(){
   if(!voiceState.canHear){
     voiceNote(voiceState.transcribe?.reason??t('This installation cannot hear.'));
   }else if(!pageCanRecord){
-    voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
+    // The installation is ready and the browser is not, so the useful sentence is not "voice is
+    // unavailable" — it is which address to use. The server works both out, because only it
+    // knows whether a certificate exists to hand out and what the client actually connected to.
+    renderVoiceAccess(voiceState.access);
   }else if(!voiceState.canSpeak){
     voiceNote(voiceState.speak?.reason??t('This installation cannot speak.'));
   }
@@ -3128,6 +3131,32 @@ async function applyHeardText(text){
  * someone to check their voice model when they need a certificate is the kind of wrong answer
  * that costs an afternoon.
  */
+/* The two free answers first, the one that costs something last — see src/voice-access.mjs.
+ * Until this existed the product named only the expensive one, so every person met a
+ * certificate before learning that the machine running the engine needs none. */
+function renderVoiceAccess(access){
+  const help=$('#voiceAccessHelp');
+  const sameMachine=access?.alternatives?.find((a)=>a.kind==='SAME_MACHINE');
+  const certificate=access?.alternatives?.find((a)=>a.kind==='INSTALL_CERTIFICATE');
+  voiceNote(sameMachine
+    ? `${t('This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.')} ${t('On this machine, open')} ${sameMachine.url}`
+    : t('This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.'));
+  if(!help)return;
+  if(!certificate){help.classList.add('hidden');return;}
+  const target=$('#voiceAccessQr');
+  // qrSvg throws on input it cannot encode rather than drawing something unscannable; a failed
+  // QR must not take the addresses down with it, so the text stays and only the picture goes.
+  if(target){
+    try{target.innerHTML=qrSvg(certificate.certificateUrl,{title:t('Certificate page')});}
+    catch{target.textContent=certificate.certificateUrl;}
+  }
+  const fingerprint=$('#voiceAccessFingerprint');
+  if(fingerprint)fingerprint.textContent=certificate.fingerprintSha256??'';
+  const secure=$('#voiceAccessSecure');
+  if(secure){secure.href=certificate.secureUrl;secure.textContent=certificate.secureUrl;}
+  help.classList.remove('hidden');
+}
+
 function microphoneReachable(){
   return typeof navigator!=='undefined'&&Boolean(navigator.mediaDevices?.getUserMedia);
 }

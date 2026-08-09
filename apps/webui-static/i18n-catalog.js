@@ -58,6 +58,12 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // Painted by renderVoiceAccess() in app.js when this connection cannot open a microphone
+  // (D-0367). They appear in no markup because the addresses come from the server, which is
+  // the only side that knows what the client connected to and whether a certificate exists.
+  "This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.",
+  "On this machine, open",
+  "Certificate page",
   // The models catalogue, s333 point 5: every string below is painted by the renderer in
   // app.js and appears in no markup, so the static tool reports them as matching no screen.
   // They are measured where they are real — I18N-RUNTIME drives the live page and reads the
@@ -259,6 +265,15 @@ const it = {
   'This installation protects its session cookie, and a browser will not keep a protected cookie from an unencrypted page. Signing in here looks like it succeeds and leaves you signed out, with nothing to explain why.': 'Questa installazione protegge il proprio cookie di sessione, e un browser non conserva un cookie protetto arrivato da una pagina non cifrata. Qui l’accesso sembra riuscire e ti lascia disconnesso, senza nulla che spieghi perché.',
   'Install this installation\'s certificate first, then reopen NOESAR at its encrypted address.': 'Installa prima il certificato di questa installazione, poi riapri NOESAR al suo indirizzo cifrato.',
   'Get the certificate, and how to check it': 'Ottieni il certificato, e come verificarlo',
+  // Le due strade gratuite prima di quella che costa (D-0367): la macchina stessa non ha
+  // bisogno di alcun certificato, ed e' la risposta che il prodotto non nominava mai.
+  'To speak from a phone or another device': 'Per parlare da un telefono o da un altro dispositivo',
+  'Scan this with that device. It opens this installation\'s certificate page.': 'Inquadra questo con quel dispositivo. Apre la pagina del certificato di questa installazione.',
+  'Before you install it, the device shows a SHA-256. It must match this one, which you are reading over your own signed-in session:': 'Prima di installarlo, il dispositivo mostra un SHA-256. Deve coincidere con questo, che stai leggendo dalla tua sessione autenticata:',
+  'Then open NOESAR on that device at:': 'Poi apri NOESAR su quel dispositivo a:',
+  'This page cannot open a microphone: a browser only allows it over HTTPS, or from the machine itself.': 'Questa pagina non puo\' aprire un microfono: un browser lo consente solo su HTTPS, o dalla macchina stessa.',
+  'On this machine, open': 'Su questa macchina, apri',
+  'Certificate page': 'Pagina del certificato',
   'One-time setup token': 'Token di configurazione monouso',
   'Owner username': 'Nome utente del proprietario',
   'Display name': 'Nome visualizzato',

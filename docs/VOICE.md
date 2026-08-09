@@ -6,6 +6,37 @@ non robotica quindi fai un motore reale interno con voce naturale»*.
 Three things follow from that sentence, and each is a decision this document records rather than
 a detail of how it was built.
 
+## Three ways to have a microphone, cheapest first (`D-0367`)
+
+Owner, s339: *«ma un cliente deve fare tutti questi passaggi? non c'è modo di fare più semplice?»*
+No, and the complexity was self-inflicted: TLS was turned on for voice, that made the session
+cookie `Secure`, that broke sign-in on the plain port, and from there **every** person met a
+certificate — including the ones who never wanted a microphone.
+
+A microphone is gated by the browser's secure-context rule. There are three ways to satisfy it,
+and until `D-0367` the product named only the third:
+
+| | where | what it costs |
+|---|---|---|
+| 1 | **the machine running the engine** — `http://localhost:<port>` | **nothing.** No TLS, no certificate, no configuration |
+| 2 | any device, over the encrypted address | one certificate, installed once per device |
+| 3 | another device, installation with no TLS | not possible — and the product says so rather than offering a dead button |
+
+Row 1 is a browser rule, not a claim: `localhost` and `127.0.0.1` are *potentially trustworthy
+origins*. **Measured** — a plain HTTP server answered `isSecureContext: true` with
+`getUserMedia` present on both names, and `false`/absent on its LAN address, same server, same
+browser, same moment.
+
+**So TLS is not the price of admission.** It stays what it always was: an opt-in
+(`NOESAR_TLS_PORT`). An installation that never sets it is complete, signs people in over
+`http`, and has voice on the machine itself. The certificate buys exactly one thing — voice from
+a *different* device — and `/api/v1/voice/state` now says which of the three you are in, and
+hands over the fingerprint **inside the authenticated session**, which is the only channel where
+comparing it means anything (`/ca` is fetched over a connection nothing authenticated, so there
+it can only point at the server's log).
+
+---
+
 **The browser never hears.** Until s336 the product's voice was `SpeechRecognition`, which means
 the audio left the installation for whoever built the browser, and whether an installation could
 hear at all depended on which browser was pointed at it. Hearing and speaking are now served by

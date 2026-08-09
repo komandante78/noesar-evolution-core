@@ -8770,3 +8770,56 @@ not the Owner's — evidence of my activity, briefly mistaken for evidence of th
 **What was NOT changed:** the plain listener still serves the page, the health routes and the
 certificate routes, and an installation with no TLS is untouched — there the cookie has no
 `Secure` attribute, a browser keeps it, and sign-in works, so nothing should move.
+
+---
+
+## D-0367 — the certificate is the price of voice on ANOTHER device, not the price of admission (2026-08-09)
+
+**Owner, s339:** *«ma un cliente deve fare tutti questi passaggi? non c'è modo di fare più
+semplice, non complesso così?»* — asked after `D-0366`, and the answer is that the complexity was
+self-inflicted and traceable in one line:
+
+```
+TLS turned on for the microphone  ->  session cookie becomes Secure  ->  sign-in breaks on the
+plain port  ->  the plain port has to redirect  ->  EVERY person now meets a certificate warning,
+including the ones who never wanted a microphone
+```
+
+A capability wanted by one feature had been made mandatory for everyone.
+
+**A microphone is gated by the browser's secure-context rule, and there are three ways to satisfy
+it. The product named only the most expensive.** `src/voice-access.mjs` now answers with all
+three, cheapest first, on `/api/v1/voice/state`:
+
+| | where | cost |
+|---|---|---|
+| 1 | **the machine running the engine**, `http://localhost:<port>` | **nothing at all** |
+| 2 | any device, over the encrypted address | one certificate, once per device |
+| 3 | another device, installation with no TLS | not possible, and it says so |
+
+**Row 1 is measured, not quoted.** A plain HTTP server answered `isSecureContext: true` with
+`getUserMedia` present on `http://localhost` and `http://127.0.0.1`, and `false`/absent on its LAN
+address — same server, same browser, same moment. That answer had been available since before any
+of this and the product never mentioned it.
+
+**The port comes from the request, never from the listener.** `Host` carries the port the client
+actually reached, so `http://localhost:8100` is derived rather than guessed — the same discipline
+`D-0366` needed for the redirect, and for the same reason: an installation published on 9000 must
+not be told to open 8088.
+
+**Why the fingerprint moved.** `/ca` publishes it, but that page is fetched over a connection
+nothing has authenticated, so it can only ask the reader to compare against the server's own log
+(`D-0364`). `/api/v1/voice/state` answers on an authenticated session, over a transport that is
+already encrypted or loopback. That makes it the one place the product can hand the number over
+and have it mean something: the phone's dialog is compared against a screen the person is already
+trusted on, and the log-reading ceremony disappears. The interface shows it beside a **QR code**
+of the certificate page, so nothing is typed into a phone.
+
+**TLS remains opt-in and that is now stated rather than implied.** An installation that never sets
+`NOESAR_TLS_PORT` is complete: it signs people in over `http`, and it has voice on the machine
+itself. Nothing in this entry changes that default — what changed is that the product stops
+presenting the expensive path as the only one.
+
+**What is deliberately NOT offered:** a certificate step on an installation with no TLS, and a
+same-machine address when the `Host` carries no port. Half an instruction is worse than none — it
+ends with somebody having installed something and still having nowhere to go.
