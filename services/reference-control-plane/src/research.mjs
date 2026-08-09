@@ -165,12 +165,30 @@ export class RefusalRegistry {
   }
 }
 
-function resolveResearchTool(tools, toolId) {
+/**
+ * The provider a search goes to — s336, and the change is which providers are eligible.
+ *
+ * Until now this demanded `tool.external === true`. That is why a SELF-HOSTED search engine
+ * could not be the research provider: `endpoint()` refuses an external tool pointing at a
+ * private address, so a metasearch running on this installation's own network was rejected by
+ * one rule for satisfying the other. The product shipped no built-in vendor by design, and the
+ * only kind of provider it would accept was one you had to buy.
+ *
+ * What has NOT been relaxed is consent, and this is the part worth being precise about. A
+ * self-hosted aggregator does not keep the query inside the installation — it forwards it to
+ * public engines. What running it ourselves buys is that no vendor sees the query beside an
+ * account, an API key or a billing identity; it does not make the search local. So consent stays
+ * mandatory for both kinds, and the report says which kind answered.
+ */
+export function resolveResearchTool(tools, toolId) {
   if (!toolId) throw err('No research provider is configured for this installation.', 503, { kind:'UNCONFIGURED' });
   const tool = tools.find((item) => item.id === toolId);
   if (!tool) throw err('The configured research provider no longer exists.', 503, { kind:'UNCONFIGURED' });
-  if (!tool.external || !tool.consent?.granted) {
+  if (!tool.consent?.granted) {
     throw err('The configured research provider is not consented — nothing can be sent to it.', 503, { kind:'UNCONSENTED' });
+  }
+  if (tool.disabled) {
+    throw err('The configured research provider is disabled.', 503, { kind:'UNCONFIGURED' });
   }
   return tool;
 }

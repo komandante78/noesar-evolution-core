@@ -6,8 +6,9 @@
 // logic that sits between them.
 
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { describe } from 'node:test';
 import {
+  resolveResearchTool,
   runResearchReport, validateCandidate, validateReportPayload,
   ResearchReportStore, RefusalRegistry, buildQueryEcho, REPORT_TTL_MS,
 } from '../src/research.mjs';
@@ -191,4 +192,37 @@ test('RefusalRegistry: a contest can only be filed by the person the refusal was
   const contested = registry.contest(refusal.id, { note: 'this was legitimate', actorId: 'user-1' });
   assert.equal(contested.contested, true);
   assert.throws(() => registry.contest('missing', { actorId: 'user-1' }), /No such refusal/);
+});
+
+// ——— s336: a self-hosted search engine may be the provider, and consent still applies ———
+//
+// The product shipped no search vendor by design, and until now the only provider it would
+// accept was `external: true` — which `endpoint()` then refuses when it points at a private
+// address. A metasearch running on this installation's own network was therefore rejected by one
+// rule for satisfying the other, and the only eligible provider was one you had to buy.
+//
+// What is NOT relaxed is consent. A self-hosted aggregator forwards the query to public engines,
+// so the query still leaves; what running it ourselves buys is that no vendor sees it beside an
+// account or a billing identity. These two tests are the pair: local is allowed, unconsented is
+// not, and the second is what stops the first from becoming a hole.
+describe('a self-hosted research provider', () => {
+  const provider = (over = {}) => ({
+    id: 'searxng', name: 'NOESAR search', external: false, disabled: false,
+    consent: { granted: true }, ...over,
+  });
+
+  test('a LOCAL consented provider is accepted', () => {
+    const store = { read: () => ({ tools: [provider()], researchToolId: 'searxng' }) };
+    assert.doesNotThrow(() => resolveResearchTool(store.read().tools, 'searxng'));
+  });
+
+  test('consent is still mandatory, local or not', () => {
+    for (const tool of [provider({ consent: { granted: false } }), provider({ external: true, consent: null })]) {
+      assert.throws(() => resolveResearchTool([tool], tool.id), /not consented/);
+    }
+  });
+
+  test('a disabled provider is refused rather than dialled', () => {
+    assert.throws(() => resolveResearchTool([provider({ disabled: true })], 'searxng'), /disabled/);
+  });
 });
