@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { redactMessages } from './privacy-redaction.mjs';
+import { resolvePublicAddresses } from './address-guard.mjs';
 
 const STYLES = new Set(['openai-responses','openai-chat','anthropic-messages']);
 const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1','host.docker.internal']);
@@ -26,11 +27,43 @@ function isStaleConnection(error){
   const message=String(error?.cause?.message??'');
   return code==='UND_ERR_SOCKET'||code==='ECONNRESET'||code==='EPIPE'||/other side closed|socket hang up/i.test(message);
 }
-async function fetchOnceRetryingStaleSocket(url,init){
-  try { return await fetch(url,init); }
+/**
+ * F4-010, closed s336 — one choke point, so a provider path cannot be added without the check.
+ *
+ * `validateBaseUrl` below refuses forbidden LITERALS at registration. This refuses a NAME that
+ * resolves inward, at the moment of the call, which is the half the register recorded as open:
+ * `https://internal.example.test/v1` passed every string test and was dialled anyway.
+ *
+ * WHAT IS AND IS NOT IN FORCE HERE, stated rather than implied. Provider calls are CHECKED and
+ * not PINNED: the name is resolved and refused if it points inward, but the socket layer resolves
+ * it again, so a resolver that answers differently the second time is not stopped on this path.
+ * Pinning is in force in `tool-executor.mjs`, which is the surface SEC-15 actually names.
+ *
+ * That split is not a preference. Pinning needs `node:https` (see `address-guard.mjs` on why not
+ * `fetch`), and node:https walks past a stubbed `globalThis.fetch` — which is exactly how this
+ * product's suite isolates the provider path. The first build of this change made `npm test`
+ * place a REAL request to api.openai.com, which is a worse defect than the rebinding window it
+ * would have closed. Checked-and-not-pinned is still strictly better than the unchecked state it
+ * replaces, and naming which of the two is in force is the difference between a declared residual
+ * risk and a surprise.
+ */
+async function assertReachableAddress(url, external, lookup) {
+  if (!external) return; // a local provider is SUPPOSED to be on a private address
+  await resolvePublicAddresses(new URL(String(url)).hostname, lookup ? { lookup } : {});
+}
+async function fetchOnceRetryingStaleSocket(url,init,{external=false,lookup=null}={}){
+  await assertReachableAddress(url,external,lookup);
+  // The TRANSPORT stays `fetch` here, deliberately. `guardedFetch` would also pin the address,
+  // but it speaks node:https and so walks past a stubbed `globalThis.fetch` -- which is how this
+  // suite isolates the provider path, and the first build of this change made a REAL call to
+  // api.openai.com from `npm test`. A test suite that reaches the internet is a worse defect
+  // than the rebinding window it would have closed. Pinning is in force where it costs nothing:
+  // `tool-executor.mjs`, which is the surface SEC-15 actually names.
+  const send=fetch;
+  try { return await send(url,init); }
   catch(error){
     if(!isStaleConnection(error)||init?.signal?.aborted)throw error;
-    return await fetch(url,init);
+    return await send(url,init);
   }
 }
 function describeFetchFailure(error){
@@ -135,7 +168,10 @@ export class ProviderGateway {
   // what that state is for. A refused egress *plan* deliberately does not feed it: a plan
   // is a question, and letting any caller's question repaint the indicator is the defect
   // `D-0087` removed.
-  constructor({ store, vault, ledger, onEgressBlocked = null }) { this.store = store; this.vault = vault; this.ledger = ledger; this.onEgressBlocked = onEgressBlocked; }
+  // `lookup` is injected for the same reason every other seam in this file is: the address check
+  // performs a DNS query, and a unit suite that depends on name resolution is a unit suite that
+  // fails on an offline machine for a reason that has nothing to do with the code.
+  constructor({ store, vault, ledger, onEgressBlocked = null, lookup = null }) { this.store = store; this.vault = vault; this.ledger = ledger; this.onEgressBlocked = onEgressBlocked; this.lookup = lookup; }
   catalog() { return DEFAULT_CATALOG; }
   ensureDefaults() {
     const existing=new Set(this.store.read().providerProfiles.map((item)=>item.type));const created=[];
@@ -286,7 +322,7 @@ export class ProviderGateway {
     // Same stale-socket treatment as the other two call sites: a health probe that reports
     // a reachable provider as unhealthy because a pooled connection had been closed is a
     // false negative, and false negatives on a health check get acted on.
-    const response=await fetchOnceRetryingStaleSocket(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined});
+    const response=await fetchOnceRetryingStaleSocket(`${profile.baseUrl}/models`,{headers:this.#headers(profile,credential),signal:combined}, { external: Boolean(profile.external), lookup: this.lookup });
     const value=await response.json().catch(()=>({}));if(!response.ok)throw statusError(`Provider health check failed (${response.status}).`,502);
     // `providerId` was never declared here, so this line threw a ReferenceError on the
     // success path: a reachable, healthy provider answered 500 while an unreachable one
@@ -298,7 +334,7 @@ export class ProviderGateway {
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:false});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined })
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:this.#headers(profile, credential), body:JSON.stringify(descriptor.body), signal:combined }, { external: Boolean(profile.external), lookup: this.lookup })
       .catch((error)=>{throw statusError(`Provider request failed: ${describeFetchFailure(error)}`,502);});
     const value = await response.json().catch(() => ({}));
     if (!response.ok) throw statusError(`Provider request failed (${response.status}): ${value.error?.message ?? value.error ?? 'unknown error'}`, 502);
@@ -329,7 +365,7 @@ export class ProviderGateway {
     const {credential,descriptor,redaction}=this.#prepared(profile,{...request,stream:true});
     const timeout = AbortSignal.timeout(profile.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined })
+    const response = await fetchOnceRetryingStaleSocket(descriptor.url, { method:'POST', headers:{ ...this.#headers(profile, credential), accept:'text/event-stream' }, body:JSON.stringify(descriptor.body), signal:combined }, { external: Boolean(profile.external), lookup: this.lookup })
       .catch((error)=>{throw statusError(`Provider stream failed: ${describeFetchFailure(error)}`,502);});
     if (!response.ok) {
       const value = await response.json().catch(() => ({}));

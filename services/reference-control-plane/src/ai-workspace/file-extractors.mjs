@@ -23,6 +23,88 @@ function cleanXml(value){return String(value).replace(/<w:tab\/?\s*>/g,'\t').rep
 function safeEntry(name){return name && !name.startsWith('/') && !name.includes('\\') && !name.split('/').includes('..') && !name.includes('\0');}
 function sha256(bytes){return createHash('sha256').update(bytes).digest('hex');}
 
+/**
+ * What the BYTES say this is — closing `F4-011`, open and accepted since phase 4.
+ *
+ * > extraction is routed by filename extension and declared MIME type, with no content sniffing
+ * > SEC-24: PDF bytes declared text/plain are stored as text; text declared application/pdf
+ * >         reaches pdftotext and fails extraction
+ *
+ * Both halves of that evidence are a CLIENT deciding what this product does with a file. The
+ * register called it a correctness limitation and not an execution risk, which is true and is why
+ * it could wait — extractors run `shell:false` on a temp path and nothing is executed. It is
+ * still a lie told to whoever reads the source back: they asked for a PDF, and the product stored
+ * its raw bytes as though they were prose.
+ *
+ * Deliberately SHORT. Every signature is a fixed prefix at a fixed offset — no parser, nothing to
+ * overflow, nothing to keep up to date. A file this cannot identify comes back `unknown` and the
+ * declared type still decides: sniffing narrows what a client can misdeclare, it does not become
+ * a second and worse guesser for everything else.
+ */
+export function sniffContentType(bytes){
+  const head=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes??[]);
+  if(head.length<4)return 'unknown';
+  const starts=(...signature)=>signature.every((byte,index)=>head[index]===byte);
+  const at=(from,to)=>head.subarray(from,to).toString('latin1');
+  if(starts(0x25,0x50,0x44,0x46))return 'pdf'; // %PDF
+  // A zip is ALSO every Office and OpenDocument file and every epub — same container, different
+  // contents — so this reports the container and the caller keeps using the name to choose
+  // between the two zip paths. Sniffing tells you what a thing is, not what it is for.
+  if(starts(0x50,0x4b,0x03,0x04)||starts(0x50,0x4b,0x05,0x06)||starts(0x50,0x4b,0x07,0x08))return 'zip';
+  if(starts(0x1f,0x8b))return 'gzip';
+  if(starts(0x89,0x50,0x4e,0x47))return 'png';
+  if(starts(0xff,0xd8,0xff))return 'jpeg';
+  if(starts(0x47,0x49,0x46,0x38))return 'gif';
+  if(head.length>=12&&starts(0x52,0x49,0x46,0x46)&&at(8,12)==='WEBP')return 'webp';
+  if(head.length>=12&&starts(0x52,0x49,0x46,0x46)&&at(8,12)==='WAVE')return 'wav';
+  if(head.length>=12&&at(4,8)==='ftyp')return 'mp4';
+  if(starts(0x1a,0x45,0xdf,0xa3))return 'matroska'; // mkv and webm share it
+  if(starts(0x4f,0x67,0x67,0x53))return 'ogg';
+  if(starts(0x66,0x4c,0x61,0x43))return 'flac';
+  if(starts(0x49,0x44,0x33))return 'mp3';
+  if(starts(0x7f,0x45,0x4c,0x46))return 'elf'; // an executable, and worth naming as one
+  if(starts(0x4d,0x5a))return 'pe'; // likewise
+  return 'unknown';
+}
+
+/** Are these bytes text at all? A NUL says no, and so does anything that does not survive a round
+ *  trip through UTF-8. Storing binary as prose is how the first half of SEC-24 ends up in a
+ *  knowledge base as gibberish nobody can account for. */
+export function looksLikeText(bytes){
+  const head=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes??[]);
+  const sample=head.subarray(0,4096);
+  if(sample.includes(0))return false;
+  return Buffer.compare(Buffer.from(sample.toString('utf8'),'utf8'),sample)===0;
+}
+
+/** How a sniffed type is expressed in the two things the dispatch below routes on. `null` means
+ *  "the bytes have no opinion", and the declared type keeps its say. */
+const SNIFFED_ROUTE={
+  pdf:{extension:'.pdf',mimeType:'application/pdf',family:'pdf'},
+  zip:{extension:'.zip',mimeType:'application/zip',family:'zip'},
+  png:{extension:'.png',mimeType:'image/png',family:'image'},
+  jpeg:{extension:'.jpg',mimeType:'image/jpeg',family:'image'},
+  gif:{extension:'.gif',mimeType:'image/gif',family:'image'},
+  webp:{extension:'.webp',mimeType:'image/webp',family:'image'},
+  mp4:{extension:'.mp4',mimeType:'video/mp4',family:'media'},
+  matroska:{extension:'.mkv',mimeType:'video/x-matroska',family:'media'},
+  ogg:{extension:'.ogg',mimeType:'audio/ogg',family:'media'},
+  flac:{extension:'.flac',mimeType:'audio/flac',family:'media'},
+  wav:{extension:'.wav',mimeType:'audio/wav',family:'media'},
+  mp3:{extension:'.mp3',mimeType:'audio/mpeg',family:'media'},
+};
+
+/** The family a DECLARED mime type belongs to, so a disagreement can be named. */
+function declaredFamilyOf(mimeType,extension){
+  if(mimeType==='application/pdf'||extension==='.pdf')return 'pdf';
+  if(OFFICE_EXTENSIONS.has(extension)||mimeType.includes('officedocument')||mimeType.includes('opendocument'))return 'zip';
+  if(extension==='.zip'||mimeType==='application/zip'||mimeType==='application/x-zip-compressed')return 'zip';
+  if(IMAGE_EXTENSIONS.has(extension)||mimeType.startsWith('image/'))return 'image';
+  if(MEDIA_EXTENSIONS.has(extension)||mimeType.startsWith('audio/')||mimeType.startsWith('video/'))return 'media';
+  if(TEXT_EXTENSIONS.has(extension)||mimeType.startsWith('text/')||['application/json','application/xml','application/yaml'].includes(mimeType))return 'text';
+  return null;
+}
+
 export function extractorCapabilities(){
   const command=(name)=>run('sh',['-c',`command -v ${name}`],{maxBuffer:4096}).ok;
   return{
@@ -41,9 +123,55 @@ export class FileExtractor{
     if(bytes.length>MAX_INPUT)throw Object.assign(new Error(`File exceeds ${MAX_INPUT} byte ingestion limit.`),{status:413});
     const safeName=basename(String(name??'upload.bin')).replace(/[^a-zA-Z0-9._-]+/g,'_').slice(0,180)||'upload.bin';
     const id=randomUUID();const dir=join(this.blobRoot,id);mkdirSync(dir,{recursive:true,mode:0o700});const path=join(dir,safeName);writeFileSync(path,bytes,{mode:0o600});
-    const extension=extname(safeName).toLowerCase();
+    const declaredExtension=extname(safeName).toLowerCase();
+    const declaredMime=mimeType;
     let text='';let status='complete';let extractor='utf8';let metadata={};let warning=null;
-    if(TEXT_EXTENSIONS.has(extension)||mimeType.startsWith('text/')||['application/json','application/xml','application/yaml'].includes(mimeType)){
+
+    // ——— F4-011, closed s336: the bytes decide, and a disagreement is said out loud ————
+    //
+    // The dispatch below is UNCHANGED. What changed is what it dispatches ON: the two inputs are
+    // rewritten from the signature before the chain runs, so every branch keeps working exactly
+    // as it did and none of them has to learn about sniffing. Rewriting the inputs rather than
+    // rewriting the chain is the difference between a fix and a rebuild — the chain is dense and
+    // load-bearing, and a mistake inside it is a mistake in ingestion.
+    //
+    // Where the bytes say nothing (`unknown`), the declared type keeps its say. Sniffing narrows
+    // what a client can misdeclare; it does not become a second guesser for everything else.
+    const detected=sniffContentType(bytes);
+    const route=SNIFFED_ROUTE[detected]??null;
+    const declaredFamily=declaredFamilyOf(declaredMime,declaredExtension);
+    const detectedFamily=route?.family??(detected==='unknown'&&looksLikeText(bytes)?'text':null);
+    let extension=declaredExtension;
+    if(route){extension=route.extension;mimeType=route.mimeType;}
+    // The one case the table cannot express: a zip that the NAME says is an Office document is an
+    // Office document. Same container, different contents — so the declared type is kept where it
+    // is more specific than the signature rather than less.
+    if(detected==='zip'&&(OFFICE_EXTENSIONS.has(declaredExtension)||declaredMime.includes('officedocument')||declaredMime.includes('opendocument'))){
+      extension=declaredExtension;mimeType=declaredMime;
+    }
+    // The second half of SEC-24: "text declared application/pdf reaches pdftotext and fails".
+    // No signature says "this is text" — text has none — so it is recognised by what it is NOT:
+    // no NUL bytes and a clean UTF-8 round trip. That is only allowed to OVERRIDE a declared
+    // binary type, never to claim a file whose signature was recognised: a PDF is valid UTF-8 for
+    // its first few bytes too, and letting this rule outrank a real signature would undo the
+    // first half of the same finding.
+    if(!route&&detectedFamily==='text'&&declaredFamily&&declaredFamily!=='text'){
+      extension='.txt';mimeType='text/plain';
+    }
+    metadata.detectedType=detected;
+    if(declaredFamily&&detectedFamily&&declaredFamily!==detectedFamily){
+      // Recorded, not merely acted on. An operator who uploaded something labelled one way and
+      // got the other back has to be able to find out which the product believed and why.
+      metadata.typeMismatch={declared:declaredMime,detected};
+      warning=`declared ${declaredMime}, but the bytes are ${detected} — routed by the bytes`;
+    }
+    // An executable is never extracted from, whatever it was called. Nothing here runs it, but
+    // treating an ELF as prose puts its bytes into a knowledge base and treating it as an archive
+    // hands it to unzip. Naming it and stopping is the only honest answer.
+    if(detected==='elf'||detected==='pe'){
+      status='unsupported';extractor='none';
+      warning=`refused: the bytes are a ${detected==='elf'?'Linux ELF':'Windows PE'} executable, whatever ${declaredMime} claimed`;
+    }else if(TEXT_EXTENSIONS.has(extension)||mimeType.startsWith('text/')||['application/json','application/xml','application/yaml'].includes(mimeType)){
       text=bytes.toString('utf8').replace(/\0/g,'');
     }else if(extension==='.pdf'||mimeType==='application/pdf'){
       extractor='pdftotext';const result=run('pdftotext',['-layout',path,'-']);if(result.ok)text=result.stdout;else{status=result.available?'extraction_failed':'extractor_unavailable';warning=result.error;}
@@ -68,6 +196,9 @@ export class FileExtractor{
       extractor='ffprobe';const result=run('ffprobe',['-v','error','-show_format','-show_streams','-of','json',path]);if(result.ok){metadata.media=JSON.parse(result.stdout);status='transcription_required';warning='Media metadata indexed. Configure a local speech tool or explicitly approved multimodal provider for transcription.';}else{status=result.available?'metadata_failed':'extractor_unavailable';warning=result.error;}
     }else{status='extractor_required';warning='No extractor is registered for this file type.';}
     if(Buffer.byteLength(text)>MAX_TEXT)text=Buffer.from(text).subarray(0,MAX_TEXT).toString('utf8');
-    return{blobId:id,blobPath:path,storedName:safeName,byteLength:bytes.length,sha256:sha256(bytes),mimeType,extension,text,status,extractor,metadata,warning};
+    // The DECLARED type is what is reported back, with the detected one beside it in metadata:
+    // the caller said something, and rewriting their statement in the record would hide the very
+    // disagreement `typeMismatch` exists to surface.
+    return{blobId:id,blobPath:path,storedName:safeName,byteLength:bytes.length,sha256:sha256(bytes),mimeType:declaredMime,extension:declaredExtension,detectedType:detected,text,status,extractor,metadata,warning};
   }
 }

@@ -11,7 +11,7 @@ import { ProviderGateway } from '../src/ai-workspace/provider-gateway.mjs';
 
 function listen(server){return new Promise((resolve)=>server.listen(0,'127.0.0.1',()=>resolve(server.address().port)));}
 function close(server){return new Promise((resolve,reject)=>server.close((e)=>e?reject(e):resolve()));}
-function fixture(){const dir=mkdtempSync(join(tmpdir(),'noesar-provider-'));const store=new AtomicJsonStore(join(dir,'state.json'));const vault=new CredentialVault({keyPath:join(dir,'provider.key')});return{dir,store,gateway:new ProviderGateway({store,vault})};}
+function fixture(){const dir=mkdtempSync(join(tmpdir(),'noesar-provider-'));const store=new AtomicJsonStore(join(dir,'state.json'));const vault=new CredentialVault({keyPath:join(dir,'provider.key')});return{dir,store,gateway:new ProviderGateway({store,vault, lookup: async () => [{ address: '93.184.216.34', family: 4 }] })};}
 
 test('local OpenAI-compatible provider completes and streams without external consent',async()=>{
   const server=createServer(async(req,res)=>{

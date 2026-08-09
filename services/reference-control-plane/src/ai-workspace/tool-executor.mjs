@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
+import { guardedFetch } from './address-guard.mjs';
 
 const LOCAL_HOSTS=new Set(['localhost','127.0.0.1','::1','host.docker.internal']);
 function err(message,status=400){return Object.assign(new Error(message),{status});}
@@ -42,7 +43,14 @@ export class ToolExecutor{
       if(tool.transport==='mcp-http')payload={jsonrpc:'2.0',id:randomUUID(),method:'tools/call',params:{name:tool.config?.remoteToolName??tool.name,arguments:input??{}}};
       else payload=input??{};
       const timeout=AbortSignal.timeout(Math.min(tool.timeoutMs??60_000,120_000));const combined=signal?AbortSignal.any([signal,timeout]):timeout;
-      const response=await fetch(url,{method:tool.config?.method??'POST',headers,body:['GET','HEAD'].includes(tool.config?.method)?undefined:JSON.stringify(payload),signal:combined});
+      // F4-010, closed s336. `endpoint()` above checked the hostname STRING; this checks the
+      // address that is actually reached and pins it for the life of the call — so a name
+      // resolving inward is refused, and a resolver cannot change its answer between the check
+      // and the connection. EXTERNAL tools only: a local tool is supposed to reach a private
+      // address, and sending it through a guard whose job is to refuse those would break the
+      // one case that is meant to work.
+      const send=tool.external?guardedFetch:fetch;
+      const response=await send(url,{method:tool.config?.method??'POST',headers,body:['GET','HEAD'].includes(tool.config?.method)?undefined:JSON.stringify(payload),signal:combined});
       const value=await readJson(response);if(!response.ok)throw err(`Tool request failed (${response.status}): ${value.error?.message??value.error??value.text??'unknown error'}`,502);
       if(tool.transport==='mcp-http'&&value.error)throw err(value.error.message??'MCP tool error',502);result=tool.transport==='mcp-http'?value.result:value;
     }
