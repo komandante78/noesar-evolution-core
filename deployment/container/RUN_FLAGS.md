@@ -178,3 +178,30 @@ again, including after the leaf is re-issued. `ca.key` and `leaf.key` are `0600`
 carrying that Host is answered **421** whatever the transport. The same URL with an allowed Host
 answers 200. If the module is ever meant to call back on its service name, that variable is what
 needs it — not TLS.
+
+---
+
+# 6. `NOESAR_ALLOWED_HOSTS` must name the SERVICE name too (s336)
+
+```
+-e NOESAR_ALLOWED_HOSTS=localhost,127.0.0.1,::1,192.168.178.100,172.22.0.5,noesar-evolution
+```
+
+**Found by measuring, and it was broken before this session touched anything.** The live value
+was `localhost,127.0.0.1,::1`. The published LAN address passes by another route, so a browser
+was fine — but Debug Evolution is configured to call this control plane at
+`http://noesar-evolution:8088`, and every such request was answered **421 Misdirected Request**:
+
+| Host header | before | after |
+|---|---|---|
+| `192.168.178.100:8100` | 200 | 200 |
+| `noesar-evolution:8088` | **421** | 200 |
+| `172.22.0.5:8088` | **421** | 200 |
+| `attacker.example:8088` | 421 | **421** |
+
+The last row is the point: the control still refuses a Host nobody published. Adding the service
+name and the fixed container IP widens the allowlist only for clients that can resolve them,
+which is containers on the private network — the module itself. A browser on the LAN cannot.
+
+⚠️ Not caused by TLS, and not fixed by it. It presents as "the module is fine" because the module
+is healthy and simply never gets an answer on that path.
