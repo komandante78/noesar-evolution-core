@@ -17,6 +17,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { PostgresSupervisor, PostgresSupervisorInternals } from '../../services/reference-control-plane/src/postgres-supervisor.mjs';
 import { PgConnection } from '../../services/reference-control-plane/src/pg-client.mjs';
+import { UserDirectory } from '../../services/reference-control-plane/src/user-directory.mjs';
 
 const results = [];
 let failures = 0;
@@ -395,6 +396,70 @@ async function main() {
   check('DB-44', 'the product security_acceptance view reports user isolation verified',
     row.user_isolation_verified === true && row.user_isolation_restrictive === true,
     `user_isolation_verified=${row.user_isolation_verified} restrictive=${row.user_isolation_restrictive}`);
+
+  // ---- DB-45 : the identity projection converges (D-0371) -----------------------------
+  //
+  // This lives here, against a real cluster, and cannot live in the unit suite: the defect
+  // is a UNIQUE constraint. A test double has no constraints, so it cannot hold the state
+  // that breaks the product — the lesson `D-0354` paid for, in a new place.
+  //
+  // What broke: `projectToDataPlane` handled `ON CONFLICT (id)` and the table has two unique
+  // keys. After the s339 owner reset the authoritative store held `koma78` under a new id
+  // while this table still held the old one, so the projection raised
+  // `users_username_key`, the data plane refused to serve, and the product would not start
+  // at all. It was found by a deploy, seven minutes of outage, not by a check.
+  //
+  // The real method is called, not a copy of its SQL — a copy would have been green while
+  // the product stayed broken.
+  {
+    const stale = crypto.randomUUID();
+    const fresh = crypto.randomUUID();
+    const name = `owner-${fresh.slice(0, 8)}`;
+    await supervisor.withAdmin(async (admin) => {
+      await admin.query(
+        `INSERT INTO noesar_identity.users
+           (id, username, display_name, role, password_scheme, password_salt, password_hash,
+            password_parameters, created_at, mfa_required)
+         VALUES ($1,$2,'Superseded owner','owner','external-auth-store','\\x00'::bytea,
+                 '\\x00'::bytea,'{}'::jsonb, now(), true)`,
+        [stale, name],
+      );
+    });
+    // The authoritative store now says the name belongs to a DIFFERENT account.
+    const directory = new UserDirectory({
+      auth: { store: { read: () => ({ users: [{
+        id: fresh, username: name, displayName: 'Current owner', role: 'owner',
+        status: 'active', createdAt: new Date().toISOString(),
+      }] }) } },
+      ledger: { append() {} },
+      dataPlane: () => supervisor,
+    });
+
+    let projectionError = null;
+    try { await directory.projectToDataPlane(); } catch (error) { projectionError = error; }
+    check('DB-45', 'the identity projection survives a username that moved to another account',
+      projectionError === null, projectionError?.message ?? 'projected');
+
+    const after = await supervisor.withAdmin((admin) => admin.query(
+      'SELECT id, username FROM noesar_identity.users WHERE id = $1 OR id = $2', [stale, fresh],
+    ));
+    const byId = new Map(after.rows.map((r) => [r.id, r.username]));
+    check('DB-46', 'the name now belongs to the current account and the stale row is kept, renamed',
+      byId.get(fresh) === name && byId.get(stale) === `superseded-${stale.slice(0, 8)}`,
+      JSON.stringify([...byId]));
+
+    // It runs at every start, so running it twice must change nothing.
+    let secondError = null;
+    try { await directory.projectToDataPlane(); } catch (error) { secondError = error; }
+    const again = await supervisor.withAdmin((admin) => admin.query(
+      'SELECT id, username FROM noesar_identity.users WHERE id = $1 OR id = $2', [stale, fresh],
+    ));
+    const byIdAgain = new Map(again.rows.map((r) => [r.id, r.username]));
+    check('DB-47', 'projecting a second time is idempotent',
+      secondError === null && byIdAgain.get(fresh) === name
+      && byIdAgain.get(stale) === `superseded-${stale.slice(0, 8)}`,
+      secondError?.message ?? JSON.stringify([...byIdAgain]));
+  }
 
   // ---- CUBE04-01..CUBE04-08 : CUBE-004, the typed views 0018 puts in front of
   // memory_records --------------------------------------------------------------------

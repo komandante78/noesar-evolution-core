@@ -8999,3 +8999,52 @@ before the fix, most of them the legitimate `initializeAuth → enterApplication
 its false positives was the comment written for this very entry — `enterApplication()` named
 inside a `//` line and read as a call, the s322 trap. A guard that must be suppressed teaches
 people to suppress guards.
+
+## D-0371 — the identity projection converges, and the product survives a restart (2026-08-10)
+
+🛑 **Found by taking production down.** Deploying `D-0370` stopped and recreated the container;
+the new one refused to serve and stayed unhealthy. The cause was not in the deployed change —
+`D-0370` touches browser code only — it was a **landmine armed since s339 that nothing had
+stepped on**, because nothing had restarted the product since.
+
+```
+ERROR: duplicate key value violates unique constraint "users_username_key"
+DETAIL: Key (username)=(koma78) already exists.
+data-plane.failed … the declared PostgreSQL data plane did not start;
+                    refusing to serve against a substitute
+```
+
+`projectToDataPlane()` mirrors the account list from `state/auth.json` — the authoritative store
+— into `noesar_identity.users`, so Row Level Security has a subject to join against. It handled
+`ON CONFLICT (id)`. The table has **two** unique keys, and it did not handle the other one.
+
+The s339 owner reset emptied `state/auth.json` and left this table untouched. The Owner then
+created `koma78` again at first boot, receiving a **new** id. From that moment the authoritative
+store said `koma78 = 87de25e1…` and the projection target said `koma78 = 49d45b59…`. Every
+subsequent start would fail on the insert, and **the product would not come up at all**. The
+running process never noticed: it had projected before the reset, and a projection only runs at
+start. This is `F4W-006` — two identity stores — with a consequence sharper than the one recorded
+against it: not «the login path was never exercised», but «the product cannot restart».
+
+**The stale row is renamed, not deleted.** Many tables reference `users(id)`, several `NOT NULL`
+and without `ON DELETE CASCADE`, so a delete either fails or cascades through the audit ledger.
+`superseded-<first 8 of id>` keeps every reference valid and keeps the record of who did what,
+which is the one thing an identity table must not lose. Lower case, because the column checks it.
+Only `username` and `updated_at` are touched — not `status`, whose constraints arrived in later
+migrations and are not this repair's business.
+
+**Proven against a real PostgreSQL with the real constraints**, on the throwaway probe, before
+production was touched a second time: the old projection reproduces
+`duplicate key value violates unique constraint "users_username_key"` exactly; the new one gives
+`UPDATE 1`, `INSERT 0 1`, both rows present with the name on the right id; and a second run gives
+`UPDATE 0`, unchanged — idempotent, which a repair that runs at every start must be.
+
+Verified in production after the deploy: `data-plane.ready … production_ready:true`, and the
+table now carries `koma78 = 87de25e1…` beside `superseded-49d45b59 = 49d45b59…`, matching
+`state/auth.json` exactly.
+
+⚠️ **The outage was real and is not being written down as a near miss:** roughly seven minutes,
+from the first stop to `data-plane.ready`. A validation run on a throwaway with a **fresh**
+workspace cannot catch this class by construction — the collision lives in the workspace state a
+throwaway does not have. What would have caught it is a restart of the real installation after
+the s339 reset, which is the check this repair now makes unnecessary.

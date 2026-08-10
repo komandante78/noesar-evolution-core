@@ -639,6 +639,28 @@ export class UserDirectory {
     // by definition acts for all of them.
     return supervisor.withAdmin(async (admin) => {
       for (const user of users) {
+        // A projection must CONVERGE, and this one could not.
+        //
+        // `ON CONFLICT (id)` below handles the same account projected twice. It does not handle
+        // the other unique key this table has: `username`. So a row carrying a name that now
+        // belongs to a DIFFERENT account raised `users_username_key`, the projection threw, the
+        // data plane refused to serve against a substitute, and the product would not start —
+        // measured in s340 on the real installation, where the s339 owner reset emptied
+        // `state/auth.json` while this table kept the old `koma78` row. The authoritative store
+        // had one owner, this table had another with the same name, and every restart from then
+        // on failed. Nothing said so until a restart actually happened.
+        //
+        // The stale row is RENAMED, never deleted: many tables reference `users(id)`, several
+        // `NOT NULL` and without `ON DELETE CASCADE`, so deleting either fails or cascades
+        // through the audit ledger. Renaming keeps every reference valid and keeps the record of
+        // who did what, which is the one thing an identity table must not lose. Lower case
+        // because the column checks it.
+        await admin.query(
+          `UPDATE noesar_identity.users
+              SET username = 'superseded-' || left(id::text, 8), updated_at = now()
+            WHERE username = $2 AND id <> $1`,
+          [user.id, user.username],
+        );
         await admin.query(
         `INSERT INTO noesar_identity.users
            (id, username, display_name, role, password_scheme, password_salt,
