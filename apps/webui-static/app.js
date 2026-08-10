@@ -738,7 +738,15 @@ async function enterApplication(){$('#authGate').classList.add('hidden');$('#use
   // Owner modules join the same permanent-strip reasoning: an ACTIVE module must be
   // reachable from the sidebar on sign-in, not only after visiting Settings.
   // GET /api/v1/sector-modules/catalog is workspace.read, open to every account.
-  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets()]);}
+  // The voice state joins this list for a reason measured, not guessed: `initChatVoice()` runs
+  // at module boot — two statements BEFORE `initializeAuth()`, so not a race but an order — and
+  // `/api/v1/voice/state` therefore answered 401 on every cold load. The catch turned that into
+  // `{canHear:false,canSpeak:false}`, which disables the microphone and the read-aloud button
+  // and makes `speakReply` return before it asks for anything. Nothing ever fetched it again,
+  // so the whole of voice was dead from sign-in until a manual reload. Same shape as `D-0353`
+  // («pagine con dati veri ma ferme al login»); the page census could not see it because voice
+  // is a widget inside the chat page, not a page with a loader.
+  await Promise.all([refreshPrivacy(),refreshHardware(),refreshWorkspace(),loadExtractorCapabilities(),refreshApprovals(),loadOwnerModules(),loadRemoteTargets(),refreshVoiceState()]);}
 $('#setupForm').addEventListener('submit',async(event)=>{event.preventDefault();authError();try{const result=await api('/api/v1/auth/setup',{method:'POST',headers:{'x-noesar-setup-token':$('#setupToken').value},body:JSON.stringify({username:$('#setupUsername').value,displayName:$('#setupDisplayName').value,password:$('#setupPassword').value})});setupChallenge=result.challenge;$('#setupTotpSecret').textContent=result.totpSecret;renderSetupQr(result.otpauthUri);showOnly('#setupMfaForm');}catch(error){authError(error.message);}});
 $('#setupMfaForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/setup/confirm',{method:'POST',body:JSON.stringify({challenge:setupChallenge,totpCode:$('#setupTotpCode').value})});csrfToken=result.csrfToken;currentUser=result.user;currentPermissions=result.permissions??[];showFirstRunRecoveryCodes(result.recoveryCodes);await enterApplication();}catch(error){authError(error.message);}});
 $('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const result=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:$('#loginUsername').value,password:$('#loginPassword').value})});loginChallenge=result.challenge;showOnly('#loginMfaForm');}catch(error){authError(error.message);}});
@@ -821,7 +829,7 @@ $('#loginPasskeyButton').addEventListener('click',()=>withBusy($('#loginPasskeyB
     await enterApplication();
   }catch(error){authError(error.message==='The operation either timed out or was not allowed.'?'Passkey sign-in was cancelled.':error.message);}
 },{busyLabel:'Waiting for passkey…'}));
-$('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
+$('#logoutButton').addEventListener('click',async()=>{try{await api('/api/v1/auth/logout',{method:'POST',body:'{}'});}catch{}csrfToken='';currentUser=null;forgetVoiceState();$('#authGate').classList.remove('hidden');showOnly('#loginForm');});
 // One entry point for every in-app link, so a link written as "settings/audit" and a link
 // written with a name that has since been demoted both land in the same place. In-page
 // links were the easiest thing to leave pointing at a page that no longer exists.
@@ -1789,7 +1797,7 @@ window.addEventListener('unhandledrejection',(event)=>{
   if(error?.status===401){
     // The session ended underneath us. Say so instead of failing mutely.
     toast('Your session ended. Please sign in again.',{kind:'error'});
-    currentUser=null;csrfToken='';$('#authGate').classList.remove('hidden');showOnly('#loginForm');
+    currentUser=null;csrfToken='';forgetVoiceState();$('#authGate').classList.remove('hidden');showOnly('#loginForm');
     event.preventDefault();return;
   }
   reportError(error,'Unexpected error');
@@ -3297,7 +3305,24 @@ function initChatVoice(){
     if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
     if(!readAloud)spokenAudio?.pause();
   });
-  refreshVoiceState();
+  // Wiring only. Asking the server what this installation can do is `enterApplication()`'s job,
+  // because this function runs before anybody is signed in and the answer would be 401. The
+  // controls stay disabled until that answer arrives — which is what the markup already says.
+}
+/** Sign-out must forget what the installation could do, not just hide the page. Leaving
+ *  `canSpeak` true across a sign-out would let the next person's first reply be read aloud on a
+ *  session that no longer exists, and the request would fail somewhere further away from the
+ *  cause. Cheap to reset, and it puts the controls back exactly where a cold load leaves them. */
+function forgetVoiceState(){
+  voiceState={canHear:false,canSpeak:false};
+  readAloud=false;
+  chosenVoice=null;
+  const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');
+  if(dictate)dictate.disabled=true;
+  if(aloud){aloud.disabled=true;aloud.setAttribute('aria-pressed','false');}
+  const label=$('#chatReadAloudLabel');
+  if(label)label.textContent=t('Read aloud: off');
+  spokenAudio?.pause();
 }
 function initWorkspaceActions(){
   addPlanFileRow();

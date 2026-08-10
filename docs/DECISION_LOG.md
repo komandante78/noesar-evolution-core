@@ -8937,3 +8937,65 @@ the ids the new code touches are now checked against the markup.
 
 Guided backwards: not replacing the TOTP, not replacing the codes, not cutting the sessions,
 accepting any code, and setup issuing none — five mutations, five reds.
+
+## D-0370 — what this installation can hear and say is asked after sign-in (2026-08-10)
+
+**Owner, s340, first thing after completing the first boot:** *«per la voce su server e computer
+non funziona nulla se clicco su voce o se clicco send per un messaggio»*.
+
+Three symptoms, one cause. `initChatVoice()` runs at module boot — **two statements before**
+`initializeAuth()`, so an order and not a race — and asks `/api/v1/voice/state` while the
+authentication gate is still on screen. It is answered **401** on every cold load. The `catch`
+turns that into `{canHear:false,canSpeak:false}`, and from there:
+
+- `#chatDictate` is `disabled`, so the microphone button does nothing when clicked;
+- `#chatReadAloud` is `disabled`, so read-aloud cannot even be switched on;
+- `speakReply` returns at its first condition, so a reply is never spoken.
+
+`refreshVoiceState()` had **exactly one caller**. Nothing asked again, ever — so voice was dead
+from sign-in until a manual page reload, and a reload made it work. That is why it never looked
+reproducible: the state that breaks it only exists on the first load after signing in.
+
+**Measured on the live installation before touching anything**, which is what turned a plausible
+story into a fact: three requests to `/api/v1/voice/state` in the container's entire life, all
+**401**, all before the sign-in at 23:30, **none after it**.
+
+This is the shape of `D-0353` — «pagine con dati veri ma ferme al login» — in a place the census
+built for `D-0353` structurally cannot look. `tools/measure-page-liveness.mjs` walks pages and
+their loaders; voice is a **widget inside** the chat page, so it has no loader to be missing.
+
+**The repair is where every other post-sign-in refresh already lives.** `enterApplication()` is
+the single funnel for all five ways into the application (session restore, setup, password+TOTP,
+passkey, recovery), so one line there covers every entry. `initChatVoice()` keeps its wiring and
+stops asking. `forgetVoiceState()` puts the controls back on both sign-out paths — the button and
+the expired-session handler — because leaving `canSpeak` true across a sign-out would let the
+next person's first reply be read aloud on a session that no longer exists.
+
+**The guard is in the browser harness, and it asserts the request, not the buttons.**
+
+It is not a unit test because the defect is not visible outside a browser after a sign-in — the
+same reason `D-0369`'s recovery codes were only visible over HTTP. And it asserts that the
+installation was **asked**, because the obvious assertion is vacuous: on a probe with no speech
+model bound, `#chatReadAloud.disabled === !canSpeak` is `true === true` **with the defect fully
+present**. It passed in both directions and would have pinned the defect as a requirement. Being
+asked is not vacuous.
+
+Driven backwards on a disposable probe built from source, twice: defect restored → the request
+assertion **RED**, 468/469; fix in place → **GREEN**, 469/469.
+
+🛑 **Recorded because it is the more useful half:** the voice check shipped in s337 — «the
+microphone and the read-aloud control are beside the composer» — **passed while voice was
+completely dead**. It asserts presence, and presence survives this defect intact.
+
+⚠️ **ESLint caught a real defect in the first version of the guard.** The helper was named
+`asked`, and a `const asked` already exists later in the same top-level `try` block; `const` is
+block-scoped, so the call site sat in that binding's **temporal dead zone** and would have thrown
+a `ReferenceError` rather than measuring anything. A guard that throws where it should assert is
+worse than no guard, and only the linter stood between the two.
+
+⚠️ **A broader guard was measured and NOT shipped.** «Nothing executed at module boot may reach
+the server» is the general form of this defect, and it is **false on the shipped tree**: 32 paths
+before the fix, most of them the legitimate `initializeAuth → enterApplication → …` chain. One of
+its false positives was the comment written for this very entry — `enterApplication()` named
+inside a `//` line and read as a call, the s322 trap. A guard that must be suppressed teaches
+people to suppress guards.

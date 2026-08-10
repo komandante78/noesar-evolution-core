@@ -146,9 +146,19 @@ page.on('response', (response) => {
   }
 });
 
+// Every request the page makes, not only the ones that failed. A defect can be an ABSENCE:
+// the voice failure repaired in s340 was a request the product stopped making after sign-in,
+// and a recorder that only keeps failures cannot see a call that was never attempted.
+const requestLog = [];
+page.on('request', (request) => { requestLog.push(`${request.method()} ${request.url()}`); });
+function requestWasMade(pathFragment) {
+  return requestLog.some((entry) => entry.includes(pathFragment));
+}
+
 function resetObservations() {
   consoleErrors.length = 0;
   failedRequests.length = 0;
+  requestLog.length = 0;
 }
 
 // Which block is running. A bare "Waiting failed: 15000ms exceeded" names neither the
@@ -207,9 +217,47 @@ try {
   const firstCode = await freshCode(totpSecret, used);
   used.add(firstCode);
   await page.type('#setupTotpCode', firstCode);
+  // From here on, only what the product does BECAUSE somebody signed in. Everything the page
+  // did while the gate was up is deliberately discarded, because the defect below is precisely
+  // a question asked once at boot — signed out — and never asked again.
+  resetObservations();
   await page.click('#setupMfaForm button[type="submit"]');
   await page.waitForSelector('#authGate.hidden', { timeout: 25000 });
   check('owner bootstrap signs the browser in', true);
+
+  at('voice-after-sign-in');
+  // --- what this installation can hear and say is asked AFTER sign-in ------
+  //
+  // s340, reported by the Owner as «per la voce non funziona nulla»: `initChatVoice()` ran at
+  // module boot, two statements before `initializeAuth()` — an order, not a race — so
+  // `/api/v1/voice/state` was answered 401 every cold load. The catch turned that into
+  // `{canHear:false,canSpeak:false}`, which disables the microphone and the read-aloud button
+  // and makes `speakReply` return before it asks for anything. Nothing refetched it, so voice
+  // was dead from sign-in until a manual reload — and a reload made it work, which is why it
+  // never looked reproducible.
+  //
+  // The assertion is on the REQUEST, not on the buttons. Asserting `#chatReadAloud.disabled`
+  // agrees with `canSpeak` would pass vacuously on any installation with no speech model
+  // bound: false === false, defect intact. That an installation was ASKED is not vacuous.
+  await page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => {});
+  check('signing in asks what this installation can hear and say',
+    requestWasMade('/api/v1/voice/state'),
+    `requests after sign-in: ${requestLog.length}`);
+  // The complementary direction: it must not be asked while nobody is signed in, which is what
+  // produced a 401 on every load. Together these pin WHEN the question is asked, from both sides.
+  const voiceWhileSignedOut = failedRequests.filter((entry) => entry.includes('/api/v1/voice/state'));
+  check('the voice state is never requested from a signed-out page',
+    voiceWhileSignedOut.length === 0, voiceWhileSignedOut.join(' | '));
+  // And the answer must reach the controls: asked-and-ignored is the other way to be dead.
+  const voiceControls = await page.evaluate(async () => {
+    const state = await fetch('/api/v1/voice/state', { credentials: 'same-origin' }).then((r) => r.json());
+    return {
+      canSpeak: state.canSpeak === true,
+      aloudDisabled: document.querySelector('#chatReadAloud')?.disabled ?? null,
+    };
+  });
+  check('the read-aloud control agrees with what the installation says it can do',
+    voiceControls.aloudDisabled === !voiceControls.canSpeak, JSON.stringify(voiceControls));
 
   at('csrf');
   // --- the CSRF regression, which is the reason any of this is here --------
