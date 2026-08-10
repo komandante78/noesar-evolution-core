@@ -1179,6 +1179,28 @@
       <span id="statusMessage">Ready</span>
     </footer>
   </div>
+  <!-- The voice window, s340 (D-0372). Owner: «meglio creare un popup quando si attiva il
+       microfono con la finestrina che possiamo spostare e mettere dove vogliamo con immagine
+       interattiva che quando riceve il comando e parla si muove».
+       Outside the shell on purpose: it is positioned against the viewport and must survive
+       changing destination, which a child of the active view would not. The mouth and the ring
+       are driven by the MEASURED amplitude — of your microphone while listening, of the reply
+       while speaking — so a still face means silence, not a stopped animation. -->
+  <section id="voiceFace" class="voice-face hidden" data-state="idle" aria-label="Voice">
+    <header id="voiceFaceHandle" class="voice-face-handle">
+      <span id="voiceFaceName" translate="no">Voice</span>
+      <span id="voiceFaceState" class="voice-face-status">Ready</span>
+      <button id="voiceFaceClose" class="voice-face-close" type="button" aria-label="Close the voice window">×</button>
+    </header>
+    <svg class="voice-face-art" viewBox="0 0 120 120" role="img" aria-hidden="true" focusable="false">
+      <circle id="voiceFaceRing" cx="60" cy="60" r="46" class="voice-face-ring" />
+      <circle cx="60" cy="60" r="38" class="voice-face-head" />
+      <circle cx="47" cy="52" r="5" class="voice-face-eye" />
+      <circle cx="73" cy="52" r="5" class="voice-face-eye" />
+      <ellipse id="voiceFaceMouth" cx="60" cy="78" rx="16" ry="1" class="voice-face-mouth" />
+    </svg>
+    <p id="voiceFaceCaption" class="voice-face-caption" translate="no" aria-live="polite"></p>
+  </section>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

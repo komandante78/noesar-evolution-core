@@ -9051,3 +9051,74 @@ from the first stop to `data-plane.ready`. A validation run on a throwaway with 
 workspace cannot catch this class by construction — the collision lives in the workspace state a
 throwaway does not have. What would have caught it is a restart of the real installation after
 the s339 reset, which is the check this repair now makes unnecessary.
+
+## D-0372 — the microphone knows when you stopped, and the engine's own verdict is honoured (2026-08-10)
+
+**Owner, s340, first real use of the repaired voice:** he said «rune buongiorno» and was shown
+**«No, no, no,»** about a hundred and ten times. Then: *«devo chiudere microfono per inviare
+messaggio? dovrebbe essere tutto automatico»*, and *«meglio creare un popup quando si attiva il
+microfono con la finestrina che possiamo spostare e mettere dove vogliamo con immagine interattiva
+che quando riceve il comando e parla si muove»*.
+
+Three requests, and the first two are **one defect**.
+
+**What the log said, and nobody was reading it.** The transcription container printed its own
+verdict on its own output:
+
+```
+Processing audio with duration 00:22.920
+Compression ratio threshold is not met with temperature 0.0 (26.235294 > 2.400000)
+```
+
+Two facts in two lines. **Twenty-three seconds** of audio for two words, because the microphone is
+a toggle and stays open until pressed again. And a compression ratio of **26.2** against a
+threshold of **2.4** — the textbook signature of a decoder stuck in a repetition loop, computed by
+the decoder, compared by the decoder against its own limit, logged by the decoder, and then
+returned as if it were speech.
+
+**Reproduced from nothing**, which is the version that settles it: twenty seconds of *pure
+silence* posted to the configured engine came back as
+`"Felly, mae'n gweithio'n gweithio'n gweithio…"` — invented Welsh, repeated, at
+`compression_ratio 7.9` and `no_speech_prob 0.86`.
+
+**Why the product could not see any of it.** `transcribe()` asked for `response_format: 'json'`,
+which returns `{text}` alone. Every number the decoder computed to judge itself was discarded one
+layer below, and the invention arrived indistinguishable from a sentence.
+
+**Three repairs, in the order the failure happens.**
+
+1. **Do not hand the engine silence to invent over.** The recording now ends when speech ends.
+   The room is measured for 400 ms and the threshold is a multiple of *that*, because a laptop
+   fan, a street outside and a padded study are three different silences and one fixed number is
+   wrong in at least two of them. 1200 ms of quiet after speech closes the turn; 6 s with no
+   speech at all gives up **without sending anything**; a 30 s ceiling holds even in a browser
+   with no Web Audio, so the old unbounded recording cannot return through the back door.
+2. **Honour the verdict the engine already reached.** `response_format: 'verbose_json'`, and
+   `assessTranscription()` drops segments the decoder flagged, using the decoder's own constants
+   (2.4, -1.0, 0.6) rather than numbers invented here. Segments are judged one at a time: a real
+   sentence with a hallucinated tail is the common shape, and rejecting the whole answer would
+   trade one wrong result for another. Low confidence **alone** does not reject — quiet speech is
+   still speech, and silently discarding it would be the worse failure because it is invisible.
+   Everything dropped is reported as `reason`, so "you said nothing" and "the engine looped on
+   noise" reach the person as different sentences; they send you to different places.
+3. **The window the Owner asked for**, and it is driven by the measurement rather than beside it.
+   `level` — the RMS of the live microphone — decides when you stopped **and** moves the mouth.
+   While the reply plays, the same measure is taken from the reply's own audio. So a still face
+   means silence, never a stopped animation, and the states are told apart by **colour**, because
+   motion here already means amplitude. Dragged with the existing `clampPanelPosition`, position
+   remembered, closable — and closing it stops the recording rather than hiding a live microphone.
+
+**Verified.** Six unit cases on real recorded engine shapes, driven backwards with four
+mutations — ignore the segments (4 red), disable the repetition threshold (3 red), ask for `json`
+again (1 red), reject quiet speech (1 red) — and green at baseline. In the browser: the window is
+present, starts closed, is dragged **through real pointer events on the real handle** (120×90 px,
+not by assigning `style.left`, which would pass with no wiring at all) and its position is stored.
+
+⚠️ **Stated rather than faked:** the probe has no audio device and no speech model bound, so the
+microphone loop itself is not exercised there. A check driving a synthetic stream would assert
+this harness's idea of a microphone. That half is the Owner's to confirm.
+
+⚠️ ESLint caught two real collisions on the way: `Ready` and `Voice` already existed in the
+catalogue, and `Ready` is `Pronto` for the status bar while the window's subject is *la voce*. One
+key cannot carry two meanings, so the window says `Ready to listen` — clearer than `Ready` anyway.
+`PointerEvent` was missing from the browser globals and is now declared rather than suppressed.

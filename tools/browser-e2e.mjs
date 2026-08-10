@@ -259,6 +259,53 @@ try {
   check('the read-aloud control agrees with what the installation says it can do',
     voiceControls.aloudDisabled === !voiceControls.canSpeak, JSON.stringify(voiceControls));
 
+  at('voice-window');
+  // --- the voice window: present, closed, movable, remembered (D-0372) ----
+  //
+  // Owner: «meglio creare un popup … con la finestrina che possiamo spostare e mettere dove
+  // vogliamo». What this probe CAN exercise is the window itself; what it cannot is the
+  // microphone, because there is no audio device here and no speech model bound. That half is
+  // stated rather than faked — a check driving a synthetic stream would assert this harness's
+  // idea of a microphone, not a microphone.
+  const windowBefore = await page.evaluate(() => {
+    const face = document.querySelector('#voiceFace');
+    return {
+      exists: Boolean(face),
+      hidden: face?.classList.contains('hidden') ?? null,
+      hasHandle: Boolean(document.querySelector('#voiceFaceHandle')),
+      hasMouth: Boolean(document.querySelector('#voiceFaceMouth')),
+    };
+  });
+  check('the voice window exists and stays closed until the microphone is used',
+    windowBefore.exists && windowBefore.hidden === true
+    && windowBefore.hasHandle && windowBefore.hasMouth, JSON.stringify(windowBefore));
+
+  // Dragged through real pointer events on the real handle, not by assigning style.left: the
+  // thing being checked is the drag wiring, and setting the position directly would pass with
+  // no wiring at all.
+  const dragged = await page.evaluate(async () => {
+    const face = document.querySelector('#voiceFace');
+    const handle = document.querySelector('#voiceFaceHandle');
+    face.classList.remove('hidden');
+    const start = face.getBoundingClientRect();
+    const send = (type, x, y) => handle.dispatchEvent(new PointerEvent(type, {
+      pointerId: 1, clientX: x, clientY: y, bubbles: true,
+    }));
+    send('pointerdown', start.left + 10, start.top + 6);
+    send('pointermove', start.left + 10 - 120, start.top + 6 - 90);
+    send('pointerup', start.left + 10 - 120, start.top + 6 - 90);
+    const moved = face.getBoundingClientRect();
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem('noesar.voiceFace.position') ?? 'null'); } catch { /* none */ }
+    face.classList.add('hidden');
+    return { movedX: Math.round(start.left - moved.left), movedY: Math.round(start.top - moved.top), stored };
+  });
+  check('the voice window can be dragged where the person wants it',
+    dragged.movedX > 60 && dragged.movedY > 40, JSON.stringify(dragged));
+  check('where it was put is remembered, not reset on the next use',
+    Boolean(dragged.stored) && Number.isFinite(dragged.stored.left)
+    && Number.isFinite(dragged.stored.top), JSON.stringify(dragged.stored));
+
   at('csrf');
   // --- the CSRF regression, which is the reason any of this is here --------
   // A write immediately after login always worked. The defect only appeared after a

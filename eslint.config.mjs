@@ -106,6 +106,7 @@ const BROWSER_GLOBALS = {
   Image: 'readonly',
   DataTransfer: 'readonly',
   MediaRecorder: 'readonly',
+  PointerEvent: 'readonly',
   MediaStream: 'readonly',
   Audio: 'readonly',
   TextDecoder: 'readonly',

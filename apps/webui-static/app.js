@@ -3226,6 +3226,157 @@ function microphoneReachable(){
   return typeof navigator!=='undefined'&&Boolean(navigator.mediaDevices?.getUserMedia);
 }
 
+/* ——— The face, and knowing when you stopped talking — s340, `D-0372` ————————————————————
+ *
+ * Owner: «devo chiudere microfono per inviare messaggio? dovrebbe essere tutto automatico», and
+ * «meglio creare un popup quando si attiva il microfono con la finestrina che possiamo spostare
+ * … con immagine interattiva che quando riceve il comando e parla si muove».
+ *
+ * The two are one mechanism. A microphone that stays open until you press it again recorded
+ * **23 seconds** for two words, and Whisper on twenty seconds of silence invents text and repeats
+ * it — measured, and it is what the Owner was shown. Knowing when speech ended is therefore not
+ * a convenience: it is what stops the engine being handed silence to hallucinate over. The
+ * server-side refusal (`assessTranscription`) is the second line, for what still gets through.
+ *
+ * The same number does both jobs. `level` is the RMS of the live microphone, sampled here; it
+ * decides when you stopped, AND it is what moves the mouth. So the face is showing the sound in
+ * the room, not playing an animation next to it — which is the difference between an interactive
+ * image and a decoration.
+ */
+const VOICE_FACE_POS_KEY='noesar.voiceFace.position';
+/* Chosen so a normal pause inside a sentence does not end the turn. Below ~800ms it cuts people
+ * off mid-thought; above ~2s the wait reads as a hang. */
+const SILENCE_AFTER_SPEECH_MS=1200;
+const NO_SPEECH_GIVE_UP_MS=6000;
+const MAX_UTTERANCE_MS=30000;
+/* A floor, so a dead-silent room cannot make its own noise look like speech: the adaptive
+ * threshold is a multiple of the measured room, and a multiple of nearly zero is nearly zero. */
+const MIN_SPEECH_LEVEL=0.02;
+
+let voiceMeter=null;      // {ctx, analyser, data, source}
+let voiceFacePaint=0;     // requestAnimationFrame handle
+let voiceFaceLevel=0;
+let voiceFacePositions=(()=>{try{return JSON.parse(localStorage.getItem(VOICE_FACE_POS_KEY)??'null');}catch{return null;}})();
+
+/** Which of the four things the product is doing, said in one word and drawn as one shape. */
+function voiceFaceState(state,caption){
+  const face=$('#voiceFace');if(!face)return;
+  face.dataset.state=state;
+  const said=$('#voiceFaceState');
+  if(said)said.textContent=({
+    listening:t('Listening'), thinking:t('Thinking'), speaking:t('Speaking'), idle:t('Ready to listen'),
+  })[state]??'';
+  const line=$('#voiceFaceCaption');
+  if(line)line.textContent=caption??'';
+}
+
+function voiceFaceShow(on){
+  const face=$('#voiceFace');if(!face)return;
+  face.classList.toggle('hidden',!on);
+  if(on){
+    // The product's own name for the voice that answers, never the synthesis model's string.
+    const name=$('#voiceFaceName');
+    const chosen=(voiceState.voices??[]).find((voice)=>voice.id===chosenVoice);
+    if(name)name.textContent=chosen?.label??t('Voice');
+    applyVoiceFacePosition();
+    if(!voiceFacePaint)voiceFacePaint=requestAnimationFrame(paintVoiceFace);
+  }else{
+    cancelAnimationFrame(voiceFacePaint);voiceFacePaint=0;
+    voiceFaceLevel=0;
+  }
+}
+
+/** The mouth is the level. Nothing else on the face is animated on a timer, so a still face
+ *  means silence rather than "the animation stopped". */
+function paintVoiceFace(){
+  const mouth=$('#voiceFaceMouth');
+  if(mouth){
+    // Rounded so identical frames do not rewrite the attribute forty times a second.
+    const open=Math.round(Math.min(1,voiceFaceLevel*6)*100)/100;
+    const height=2+open*16;
+    mouth.setAttribute('ry',String(height/2));
+    mouth.setAttribute('cy',String(78+height/4));
+  }
+  const ring=$('#voiceFaceRing');
+  if(ring)ring.setAttribute('r',String(Math.round((46+Math.min(1,voiceFaceLevel*6)*6)*10)/10));
+  voiceFacePaint=requestAnimationFrame(paintVoiceFace);
+}
+
+function applyVoiceFacePosition(){
+  const face=$('#voiceFace');if(!face)return;
+  const saved=voiceFacePositions;
+  if(saved&&Number.isFinite(saved.left)&&Number.isFinite(saved.top)){
+    // Same order as the context panel (`applyPanelPosition`): the logical properties are cleared
+    // FIRST, because assigning both forms to one inline style silently keeps whichever was last.
+    const {left,top}=clampPanelPosition(face,saved.left,saved.top);
+    face.style.insetInlineEnd='auto';face.style.insetBlockStart='auto';
+    face.style.left=`${left}px`;face.style.top=`${top}px`;
+  }else{
+    face.style.left='';face.style.top='';face.style.insetInlineEnd='';face.style.insetBlockStart='';
+  }
+}
+
+function initVoiceFaceDrag(){
+  const face=$('#voiceFace');const handle=$('#voiceFaceHandle');
+  if(!face||!handle)return;
+  let dragging=null;
+  handle.addEventListener('pointerdown',(event)=>{
+    if(event.target.closest('button'))return; // the close button is a button, not a grip
+    const rect=face.getBoundingClientRect();
+    dragging={startX:event.clientX,startY:event.clientY,startLeft:rect.left,startTop:rect.top};
+    handle.setPointerCapture(event.pointerId);handle.classList.add('dragging');
+  });
+  handle.addEventListener('pointermove',(event)=>{
+    if(!dragging)return;
+    const {left,top}=clampPanelPosition(face,dragging.startLeft+(event.clientX-dragging.startX),dragging.startTop+(event.clientY-dragging.startY));
+    face.style.insetInlineEnd='auto';face.style.insetBlockStart='auto';
+    face.style.left=`${left}px`;face.style.top=`${top}px`;
+  });
+  const stop=(event)=>{
+    if(!dragging)return;
+    handle.classList.remove('dragging');
+    try{handle.releasePointerCapture(event.pointerId);}catch{}
+    const rect=face.getBoundingClientRect();
+    voiceFacePositions={left:rect.left,top:rect.top};
+    try{localStorage.setItem(VOICE_FACE_POS_KEY,JSON.stringify(voiceFacePositions));}catch{}
+    dragging=null;
+  };
+  handle.addEventListener('pointerup',stop);
+  handle.addEventListener('pointercancel',stop);
+  $('#voiceFaceClose')?.addEventListener('click',()=>{
+    if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();
+    voiceFaceShow(false);
+  });
+  window.addEventListener('resize',()=>{if(!$('#voiceFace')?.classList.contains('hidden'))applyVoiceFacePosition();});
+}
+
+/** Open a meter on a live stream. Returns null when the browser has no Web Audio: the recording
+ *  then behaves exactly as it did before — a missing meter must not cost you the microphone. */
+function openVoiceMeter(stream){
+  const Ctx=window.AudioContext??window.webkitAudioContext;
+  if(!Ctx)return null;
+  try{
+    const ctx=new Ctx();
+    const source=ctx.createMediaStreamSource(stream);
+    const analyser=ctx.createAnalyser();
+    analyser.fftSize=1024;
+    source.connect(analyser); // NOT to destination: monitoring your own microphone is feedback
+    return {ctx,analyser,source,data:new Uint8Array(analyser.fftSize)};
+  }catch{return null;}
+}
+function meterLevel(meter){
+  meter.analyser.getByteTimeDomainData(meter.data);
+  let sum=0;
+  for(const sample of meter.data){const centred=(sample-128)/128;sum+=centred*centred;}
+  return Math.sqrt(sum/meter.data.length);
+}
+function closeVoiceMeter(){
+  if(!voiceMeter)return;
+  try{voiceMeter.source.disconnect();}catch{}
+  try{voiceMeter.ctx.close();}catch{}
+  voiceMeter=null;
+}
+
 async function toggleDictation(){
   const button=$('#chatDictate');const label=$('#chatDictateLabel');
   if(voiceRecorderChat?.state==='recording'){voiceRecorderChat.stop();return;}
@@ -3243,24 +3394,85 @@ async function toggleDictation(){
   const chunks=[];
   voiceRecorderChat=new MediaRecorder(voiceRecorderStream);
   voiceRecorderChat.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data);};
+
+  voiceMeter=openVoiceMeter(voiceRecorderStream);
+  let watching=0;
+  let spoke=false;
+  let nothingHeard=false;
+  const startedAt=Date.now();
+  let quietSince=0;
+  // The room is measured, not assumed: a laptop fan, a street outside and a padded study are three
+  // different silences, and one fixed threshold is wrong in at least two of them.
+  let floor=null;const floorSamples=[];
+  const stopRecording=()=>{if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();};
+  if(voiceMeter){
+    watching=setInterval(()=>{
+      const level=meterLevel(voiceMeter);
+      voiceFaceLevel=level;
+      const elapsed=Date.now()-startedAt;
+      if(floor===null){
+        // First 400ms is the room, not you. Nothing is judged during it.
+        floorSamples.push(level);
+        if(elapsed>=400){floor=floorSamples.reduce((a,b)=>a+b,0)/floorSamples.length;}
+        return;
+      }
+      const threshold=Math.max(floor*3,MIN_SPEECH_LEVEL);
+      if(level>threshold){spoke=true;quietSince=0;return;}
+      if(!spoke){
+        // Nobody started. Give up rather than record a minute of room tone for the engine to
+        // invent over — which is the exact input that produced the Owner's "No, no, no…".
+        if(elapsed>NO_SPEECH_GIVE_UP_MS){nothingHeard=true;stopRecording();}
+        return;
+      }
+      if(!quietSince)quietSince=Date.now();
+      if(Date.now()-quietSince>=SILENCE_AFTER_SPEECH_MS)stopRecording();
+    },50);
+  }
+  // A cap that holds even with no meter at all, so the old unbounded recording cannot come back
+  // through a browser without Web Audio.
+  const ceiling=setTimeout(stopRecording,MAX_UTTERANCE_MS);
+
   voiceRecorderChat.onstop=async()=>{
+    clearInterval(watching);clearTimeout(ceiling);
+    closeVoiceMeter();
     voiceRecorderStream?.getTracks().forEach((track)=>track.stop());
     voiceRecorderStream=null;
     button?.setAttribute('aria-pressed','false');
     if(label)label.textContent=t('Speak');
+    voiceFaceLevel=0;
+    if(nothingHeard){
+      // Never sent. The microphone worked and there was nothing in it, and saying so is more
+      // honest than an invented sentence — and cheaper than a round trip.
+      voiceFaceState('idle',t('I did not hear anything.'));
+      voiceNote(t('I did not hear anything.'));
+      return;
+    }
+    voiceFaceState('thinking',t('Thinking'));
     try{
       const heard=await transcribeRecording(new Blob(chunks,{type:voiceRecorderChat.mimeType}));
       // Silence is a RESULT, not a failure — the engine says so and this must not turn it into
-      // an error that suggests the microphone is broken.
-      if(!heard.heardSomething){voiceNote(t('I did not catch that.'));return;}
+      // an error that suggests the microphone is broken. `reason` separates "you said nothing"
+      // from "the engine looped on noise": the first is yours to fix, the second is not, and
+      // telling someone to speak up when the model hallucinated sends them the wrong way.
+      if(!heard.heardSomething){
+        const said=heard.reason==='repetition'
+          ? t('I only heard noise, so I ignored it.')
+          : t('I did not catch that.');
+        voiceFaceState('idle',said);voiceNote(said);
+        return;
+      }
+      voiceFaceState('idle',heard.text);
       await applyHeardText(heard.text);
     }catch(error){
+      voiceFaceState('idle',error.message);
       voiceNote(error.message);
     }
   };
   voiceRecorderChat.start();
   button?.setAttribute('aria-pressed','true');
   if(label)label.textContent=t('Stop');
+  voiceFaceShow(true);
+  voiceFaceState('listening',t('Speak now — I will stop on my own when you finish.'));
   voiceNote(t('Listening…'));
 }
 
@@ -3288,6 +3500,30 @@ async function speakReply(text){
     spokenAudio?.pause();
     spokenAudio=new Audio(url);
     spokenAudio.addEventListener('ended',()=>URL.revokeObjectURL(url),{once:true});
+    // The mouth moves on the REPLY's own amplitude — the same measure the microphone used — so
+    // the face is reading the audio rather than running a loop beside it (`D-0372`). Without Web
+    // Audio the reply still plays and the face simply stays still, which is the truth.
+    const Ctx=window.AudioContext??window.webkitAudioContext;
+    if(Ctx&&!$('#voiceFace')?.classList.contains('hidden')){
+      try{
+        const ctx=new Ctx();
+        const source=ctx.createMediaElementSource(spokenAudio);
+        const analyser=ctx.createAnalyser();analyser.fftSize=1024;
+        // Through the analyser AND on to the speakers: a graph that stops at the analyser is a
+        // reply nobody hears.
+        source.connect(analyser);analyser.connect(ctx.destination);
+        const data=new Uint8Array(analyser.fftSize);
+        voiceFaceState('speaking',String(text).slice(0,140));
+        const follow=setInterval(()=>{
+          analyser.getByteTimeDomainData(data);
+          let sum=0;for(const sample of data){const centred=(sample-128)/128;sum+=centred*centred;}
+          voiceFaceLevel=Math.sqrt(sum/data.length);
+        },50);
+        const done=()=>{clearInterval(follow);voiceFaceLevel=0;voiceFaceState('idle','');try{ctx.close();}catch{}};
+        spokenAudio.addEventListener('ended',done,{once:true});
+        spokenAudio.addEventListener('pause',done,{once:true});
+      }catch{ /* no graph available: play it plainly */ }
+    }
     await spokenAudio.play();
   }catch(error){
     voiceNote(error.message);
@@ -3305,6 +3541,7 @@ function initChatVoice(){
     if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
     if(!readAloud)spokenAudio?.pause();
   });
+  initVoiceFaceDrag();
   // Wiring only. Asking the server what this installation can do is `enterApplication()`'s job,
   // because this function runs before anybody is signed in and the answer would be 401. The
   // controls stay disabled until that answer arrives — which is what the markup already says.

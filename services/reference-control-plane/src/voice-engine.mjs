@@ -234,6 +234,77 @@ function requireFetch(fetchImpl) {
   return impl;
 }
 
+/* Whisper's OWN thresholds, not invented here. The decoder computes these three numbers for every
+ * segment and uses exactly these values to decide a decode has gone wrong; `faster-whisper` even
+ * logs `Compression ratio threshold is not met with temperature 0.0 (26.235294 > 2.400000)` and
+ * then returns the text anyway, because the API contract is "give the caller what was decoded".
+ * Reusing the engine's numbers means this product is not second-guessing the engine — it is
+ * refusing to hide a verdict the engine already reached. */
+const DEGENERATE_COMPRESSION_RATIO = 2.4;  // above: the text is a repetition loop
+const LOW_CONFIDENCE_AVG_LOGPROB = -1.0;   // below: the decoder had no idea
+const NO_SPEECH_PROBABILITY = 0.6;         // above: there was nothing being said
+
+/**
+ * Decide what a transcription response actually heard.
+ *
+ * Exported and pure so it can be tested against recorded engine answers rather than against a
+ * live model — the numbers below are the whole of the decision, and a test that cannot vary them
+ * would be testing nothing.
+ *
+ * Measured in s340 (`D-0372`), which is why this exists: twenty seconds of **pure silence** sent
+ * to the configured engine came back as `"Felly, mae'n gweithio'n gweithio'n gweithio…"` — Welsh,
+ * invented, repeated — with `compression_ratio 7.9` and `no_speech_prob 0.86`. With
+ * `response_format: 'json'` the product received only `{text}`: every signal that said "this is
+ * not speech" was discarded before it could be read, and the invention was shown to the Owner as
+ * if he had said it.
+ *
+ * Segments are judged one at a time and the bad ones dropped, rather than the whole answer
+ * rejected: a real sentence followed by a hallucinated tail is the common shape, and throwing the
+ * sentence away with the tail would trade one wrong answer for another.
+ */
+export function assessTranscription(body) {
+  const whole = trimmed(body?.text);
+  const segments = Array.isArray(body?.segments) ? body.segments : null;
+  // An engine that does not report segments cannot be second-guessed, and pretending otherwise
+  // would silently disable this check on such an engine. Take it at its word and say so.
+  if (!segments) {
+    return { text: whole, heardSomething: whole.length > 0, judged: false, dropped: 0, reason: null };
+  }
+  const kept = [];
+  const reasons = [];
+  for (const segment of segments) {
+    const text = trimmed(segment?.text);
+    if (!text) continue;
+    const ratio = Number(segment?.compression_ratio);
+    const logprob = Number(segment?.avg_logprob);
+    const noSpeech = Number(segment?.no_speech_prob);
+    if (Number.isFinite(ratio) && ratio > DEGENERATE_COMPRESSION_RATIO) {
+      reasons.push('repetition'); continue;
+    }
+    // Low confidence AND probably-not-speech together. Either alone is ordinary: a quiet but
+    // clear word scores badly on one of them, and rejecting on one signal would throw away real
+    // speech — which is a worse failure than showing one bad line, because it is invisible.
+    if (Number.isFinite(logprob) && logprob < LOW_CONFIDENCE_AVG_LOGPROB
+        && Number.isFinite(noSpeech) && noSpeech > NO_SPEECH_PROBABILITY) {
+      reasons.push('no-speech'); continue;
+    }
+    kept.push(text);
+  }
+  const text = kept.join(' ').replace(/\s+/g, ' ').trim();
+  const dropped = reasons.length;
+  return {
+    text,
+    heardSomething: text.length > 0,
+    judged: true,
+    dropped,
+    // Only when everything was thrown away: that is the case a person must be told about, because
+    // the microphone worked, the engine answered, and there is still nothing to show.
+    reason: text.length === 0 && dropped > 0
+      ? (reasons.includes('repetition') ? 'repetition' : 'no-speech')
+      : null,
+  };
+}
+
 /**
  * Hear: audio in, text out.
  *
@@ -269,7 +340,11 @@ export async function transcribe({
   if (configured.language) form.append('language', configured.language);
   // Asked for explicitly rather than left to the server's default: a server that answers SRT
   // when we expected JSON is a parse failure at the surface, blamed on the microphone.
-  form.append('response_format', 'json');
+  //
+  // `verbose_json` and not `json`: the plain form returns `{text}` alone, which throws away the
+  // three numbers the decoder computed to judge its own output. `assessTranscription` above needs
+  // them, and an engine that does not send them is handled there rather than here.
+  form.append('response_format', 'verbose_json');
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -285,11 +360,18 @@ export async function transcribe({
       );
     }
     const body = await response.json();
-    const text = trimmed(body?.text);
+    const assessed = assessTranscription(body);
     // An empty transcript is a RESULT, not a failure: silence, or speech the model could not
     // make out. Reported as itself so the surface can say "I did not catch that" instead of
-    // showing an error that suggests the engine is broken.
-    return { text, heardSomething: text.length > 0, model: configured.model ?? null };
+    // showing an error that suggests the engine is broken. `reason` distinguishes the two ways
+    // of hearing nothing, because "you were not speaking" and "the engine looped on noise" send
+    // a person to two different places.
+    return {
+      text: assessed.text,
+      heardSomething: assessed.heardSomething,
+      reason: assessed.reason,
+      model: configured.model ?? null,
+    };
   } catch (error) {
     if (error instanceof VoiceEngineError) throw error;
     throw new VoiceEngineError(

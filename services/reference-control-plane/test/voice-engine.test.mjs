@@ -13,6 +13,7 @@ import { createServer } from 'node:http';
 import {
   VoiceJob, VoiceState, VoiceEngineError, VOICES, VOICE_NAMES,
   voiceRoutingFrom, voiceReadiness, voiceRoster, resolveVoice, transcribe, speak,
+  assessTranscription,
 } from '../src/voice-engine.mjs';
 
 async function withServer(handler, run) {
@@ -295,4 +296,99 @@ test('readiness carries the roster, so an interface never has to ask twice', asy
   assert.equal(report.voices.length, 2);
   assert.equal(report.voices.find((voice) => voice.id === 'rune').available, true);
   assert.equal(report.voices.find((voice) => voice.id === 'estrela').available, false);
+});
+
+// ---------------------------------------------------------------------------------------------
+// D-0372 — a transcription the engine itself judged degenerate must not be handed on as speech.
+//
+// The engine answers 200 and gives back what it decoded; deciding whether that is speech is the
+// caller's job, and this product was not doing it. The Owner said «rune buongiorno» into a
+// microphone that stayed open for 23 seconds and was shown "No, no, no…" a hundred times over.
+//
+// The bodies below are not invented. They are the SHAPE of what the configured engine really
+// returned in s340, including the measured numbers: twenty seconds of pure silence produced
+// invented Welsh at compression_ratio 7.9 and no_speech_prob 0.86.
+// ---------------------------------------------------------------------------------------------
+
+const GOOD_SEGMENT = {
+  id: 0, text: ' Rune, buongiorno.', compression_ratio: 1.05,
+  avg_logprob: -0.21, no_speech_prob: 0.02,
+};
+const LOOPING_SEGMENT = {
+  id: 0, text: " Felly, mae'n gweithio'n gweithio'n gweithio'n gweithio'n gweithio",
+  compression_ratio: 7.90625, avg_logprob: -0.2875, no_speech_prob: 0.859375,
+};
+const SILENT_SEGMENT = {
+  id: 0, text: ' you', compression_ratio: 0.6, avg_logprob: -1.8, no_speech_prob: 0.94,
+};
+
+test('a looping segment is refused however confident the decoder sounds', () => {
+  const assessed = assessTranscription({ text: LOOPING_SEGMENT.text, segments: [LOOPING_SEGMENT] });
+  assert.equal(assessed.heardSomething, false);
+  assert.equal(assessed.text, '');
+  assert.equal(assessed.reason, 'repetition');
+  // The point of the case: avg_logprob is -0.29, which reads as a CONFIDENT decode. Judging on
+  // confidence alone would have let this through, and that is what reached the Owner.
+  assert.ok(LOOPING_SEGMENT.avg_logprob > -1.0);
+});
+
+test('real speech survives, and is not judged into silence', () => {
+  const assessed = assessTranscription({ text: GOOD_SEGMENT.text, segments: [GOOD_SEGMENT] });
+  assert.equal(assessed.heardSomething, true);
+  assert.equal(assessed.text, 'Rune, buongiorno.');
+  assert.equal(assessed.dropped, 0);
+  assert.equal(assessed.reason, null);
+});
+
+test('a hallucinated tail is dropped and the sentence in front of it is kept', () => {
+  const assessed = assessTranscription({
+    text: `${GOOD_SEGMENT.text}${LOOPING_SEGMENT.text}`,
+    segments: [GOOD_SEGMENT, { ...LOOPING_SEGMENT, id: 1 }],
+  });
+  // Rejecting the whole answer would trade one wrong result for another: the sentence was real.
+  assert.equal(assessed.text, 'Rune, buongiorno.');
+  assert.equal(assessed.heardSomething, true);
+  assert.equal(assessed.dropped, 1);
+  assert.equal(assessed.reason, null);
+});
+
+test('low confidence ALONE does not reject, because quiet speech is still speech', () => {
+  const quiet = { ...GOOD_SEGMENT, avg_logprob: -1.4, no_speech_prob: 0.05 };
+  assert.equal(assessTranscription({ segments: [quiet] }).heardSomething, true);
+  const noisy = { ...GOOD_SEGMENT, avg_logprob: -0.3, no_speech_prob: 0.95 };
+  assert.equal(assessTranscription({ segments: [noisy] }).heardSomething, true);
+  // Only both together mean nobody was speaking.
+  assert.equal(assessTranscription({ segments: [SILENT_SEGMENT] }).heardSomething, false);
+  assert.equal(assessTranscription({ segments: [SILENT_SEGMENT] }).reason, 'no-speech');
+});
+
+test('an engine that reports no segments is taken at its word rather than silently unguarded', () => {
+  const assessed = assessTranscription({ text: 'buongiorno' });
+  assert.equal(assessed.heardSomething, true);
+  assert.equal(assessed.judged, false);
+  assert.equal(assessed.text, 'buongiorno');
+});
+
+test('transcribe asks for the verbose form, and refuses the loop over a real socket', async () => {
+  let requestedFormat = null;
+  await withServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString('utf8');
+    requestedFormat = /name="response_format"\r?\n\r?\n([a-z_]+)/.exec(body)?.[1] ?? null;
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ text: LOOPING_SEGMENT.text, segments: [LOOPING_SEGMENT] }));
+  }, async (endpoint) => {
+    const heard = await transcribe({
+      audio: new Uint8Array([1, 2, 3]),
+      routing: voiceRoutingFrom({ NOESAR_VOICE_TRANSCRIBE_ENDPOINT: endpoint, NOESAR_VOICE_TRANSCRIBE_MODEL: 'whisper' }),
+      fetchImpl: fetch,
+    });
+    // Asking for `json` would make the check above unreachable, so the wire form is asserted
+    // here and not only the decision it enables.
+    assert.equal(requestedFormat, 'verbose_json');
+    assert.equal(heard.heardSomething, false);
+    assert.equal(heard.reason, 'repetition');
+    assert.equal(heard.text, '');
+  });
 });

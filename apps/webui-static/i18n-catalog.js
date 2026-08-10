@@ -244,6 +244,14 @@ export const RUNTIME_ONLY = Object.freeze([
   'This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.',
   'The reply could not be read aloud',
   'Asking the model…',
+  // The voice window and the automatic end of speech, s340 (D-0372) — all written by app.js.
+  'Listening',
+  'Thinking',
+  'Speaking',
+  'Ready to listen',
+  'Speak now — I will stop on my own when you finish.',
+  'I did not hear anything.',
+  'I only heard noise, so I ignored it.',
   '(understood by the model)',
   // The two voice names are written by `renderVoicePicker` into <option> elements.
   'Rune',
@@ -1296,6 +1304,18 @@ const it = {
   'Read aloud: off': 'Lettura: spenta',
   'Read aloud: on': 'Lettura: accesa',
   'Listening…': 'Ti ascolto…',
+  //
+  // La finestra della voce e la chiusura automatica, s340 (D-0372). 'Ready' qui è lo stato della
+  // faccia, non lo stato del prodotto in basso: 'Pronta' concorda con 'la voce', che è ciò che
+  // quella finestra è.
+  'Listening': 'Ti ascolto',
+  'Thinking': 'Sto pensando',
+  'Speaking': 'Sto parlando',
+  'Ready to listen': 'Pronta ad ascoltare',
+  'Speak now — I will stop on my own when you finish.': 'Parla pure — mi fermo da solo quando hai finito.',
+  'I did not hear anything.': 'Non ho sentito niente.',
+  'I only heard noise, so I ignored it.': 'Ho sentito solo rumore, quindi l\'ho ignorato.',
+  'Close the voice window': 'Chiudi la finestra della voce',
   'This installation cannot hear.': 'Questa installazione non può sentire.',
   'This installation cannot speak.': 'Questa installazione non può parlare.',
   'The microphone is not available:': 'Il microfono non è disponibile:',
