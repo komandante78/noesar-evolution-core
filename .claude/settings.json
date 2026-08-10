@@ -1,0 +1,51 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/session-context.sh",
+            "timeout": 15,
+            "statusMessage": "Reading NOESAR EVOLUTION state digest..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/session-close-guard.sh",
+            "timeout": 15,
+            "statusMessage": "Checking session close state..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Grep|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/destructive-command-guard.sh",
+            "timeout": 10,
+            "statusMessage": "Checking command safety..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(docker system prune*)",
+      "Bash(docker volume prune*)",
+      "Bash(docker compose down -v*)",
+      "Bash(git push --force*)"
+    ]
+  }
+}

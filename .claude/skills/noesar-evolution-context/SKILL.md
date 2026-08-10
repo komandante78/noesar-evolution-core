@@ -11,25 +11,31 @@ meglio senza spendere sessioni di 1 ora e passa di token"*.
 
 ## The measurement this skill exists for
 
-**Re-measured 2026-07-30** (previous figures were from 2026-07-27 and every row had drifted —
-`docs/DECISION_LOG.md` had more than **doubled**):
+**Re-measured 2026-08-10** (previous figures were from 2026-07-30; `docs/DECISION_LOG.md` has
+**more than doubled again**, and `docs/SESSION_HANDOFF.md` is back under its cap after a
+governance session cut it from 382 lines to 91):
 
-| File | Size | Lines | 07-27 | May it be read whole? |
+| File | Size | Lines | 07-30 | May it be read whole? |
 |---|---|---|---|---|
-| `MANIFEST.sha256` | **688 KB** | 5,845 | 675 KB | **NO — grep/count only** |
-| `docs/DECISION_LOG.md` | **367 KB** | 4,815 | 160 KB ⚠ **+129%** | **NO — tail/grep only** |
-| `docs/INSTALLATION_LEDGER.md` | **182 KB** | 3,057 | 116 KB | **NO — last entry only** |
-| `MASTER_PROJECT/*.md` | **217 KB** | **16** documents | 204 KB / 14 | **NO — named document only** |
-| `PROJECT_STATE.json` | **102 KB** | 1,361 | 80 KB | **NO — jq only** |
-| `docs/SESSION_HANDOFF.md` | **26 KB** | **382** | 19 KB / 293 | yes — but it is **over its 150-line cap** |
-| `docs/WORK_PLAN_V5_REWRITE.md` | 14 KB | 202 | = | yes, when the phase needs the plan |
-| `MASTER_PROJECT/09_PIANO.md` | 10 KB | 169 | = | yes, when the phase needs the plan |
-| `CLAUDE10.md` | 20 KB | 320 | 17 KB | yes — it is the authority |
+| `MANIFEST.sha256` | **678 KB** | 5,898 | 688 KB | **NO — grep/count only** |
+| `docs/DECISION_LOG.md` | **846 KB** | 9,179 | 367 KB ⚠ **+131%** | **NO — tail/grep only** |
+| `docs/INSTALLATION_LEDGER.md` | **278 KB** | 4,517 | 182 KB | **NO — last entry only** |
+| `MASTER_PROJECT/*.md` | **305 KB** | **18** documents | 217 KB / 16 | **NO — named document only** |
+| `PROJECT_STATE.json` | **138 KB** | 1,412 | 102 KB | **NO — jq only** |
+| `docs/SESSION_HANDOFF.md` | **5 KB** | **91** | 26 KB / 382 | yes — **back under its 150-line cap** |
+| `docs/WORK_PLAN_V5_REWRITE.md` | 14 KB | 213 | 14 KB / 202 | yes, when the phase needs the plan |
+| `MASTER_PROJECT/09_PIANO.md` | 9.5 KB | 169 | = | yes, when the phase needs the plan |
+| `CLAUDE10.md` | 23 KB | 373 | 20 KB | yes — it is the authority |
 
-**Executing the mandated read order literally now costs well over 700 KB** — `DECISION_LOG.md`
-alone is 367 KB. The old figure of "~400 KB ≈ 100k tokens" **understated** it. It is the
-largest avoidable cost in this project, paid every session, and almost all of it is history no
-phase needs.
+**Executing the mandated read order literally now costs well over 1 MB** — `DECISION_LOG.md`
+alone is 846 KB. The old figure of "~700 KB" **understated** it again. It is the largest
+avoidable cost in this project, paid every session, and almost all of it is history no phase
+needs.
+
+> **`python3` re-checked 2026-08-10, unchanged**: still absent on this host (`command -v
+> python3` finds nothing; `node v22.18.0` and `docker 29.5.3` are present). The verify skill's
+> guidance to go through `scripts/test.sh` rather than calling the `.py` files directly still
+> holds.
 
 `state-digest.sh` returns the same operative facts in **10.3 KB**, measured 2026-07-30 after
 the repair below.
