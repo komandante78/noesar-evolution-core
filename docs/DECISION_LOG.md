@@ -9018,8 +9018,11 @@ data-plane.failed … the declared PostgreSQL data plane did not start;
 — into `noesar_identity.users`, so Row Level Security has a subject to join against. It handled
 `ON CONFLICT (id)`. The table has **two** unique keys, and it did not handle the other one.
 
-The s339 owner reset emptied `state/auth.json` and left this table untouched. The Owner then
-created `koma78` again at first boot, receiving a **new** id. From that moment the authoritative
+The s339 owner reset — a script written here, run here — emptied `state/auth.json` and left this
+table untouched. Reconciling the two halves of the identity was that reset's job and it did not do
+it. The setup flow then minted a **new** id for the recreated account, which is correct behaviour
+and not an action anybody took: the Owner filled in a form and the code did the rest. Every link
+in this chain is on the code side; nothing the Owner did caused it. From that moment the authoritative
 store said `koma78 = 87de25e1…` and the projection target said `koma78 = 49d45b59…`. Every
 subsequent start would fail on the insert, and **the product would not come up at all**. The
 running process never noticed: it had projected before the reset, and a projection only runs at
