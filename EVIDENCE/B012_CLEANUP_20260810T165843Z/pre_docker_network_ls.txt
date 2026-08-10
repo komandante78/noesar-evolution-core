@@ -1,0 +1,11 @@
+NETWORK ID     NAME                   DRIVER    SCOPE
+c06d787e975c   br0                    macvlan   local
+b77b4fe2593a   bridge                 bridge    local
+f6241d9ccde6   coden-bridge           bridge    local
+7175c4af2fec   coden-local            bridge    local
+40f4ceaab3ec   deploy_default         bridge    local
+112b7d278067   host                   host      local
+8ab2ca15b91e   noesar-e2e-net         bridge    local
+f55f74343e47   noesar-evolution-net   bridge    local
+f4b140b767f9   noesar-local           bridge    local
+8528d96f624f   none                   null      local
