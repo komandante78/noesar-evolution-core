@@ -9122,3 +9122,50 @@ this harness's idea of a microphone. That half is the Owner's to confirm.
 catalogue, and `Ready` is `Pronto` for the status bar while the window's subject is *la voce*. One
 key cannot carry two meanings, so the window says `Ready to listen` — clearer than `Ready` anyway.
 `PointerEvent` was missing from the browser globals and is now declared rather than suppressed.
+
+## D-0373 — the voice talks to the model, and the face shows the product's voice (2026-08-10)
+
+**Owner, s340, on the first version:** *«l'animazione interattiva così è bruttissima, inoltre
+l'animazione non deve riprendere la mia voce ma quella del programma, poi non deve crearmi il
+prompt per scrivere non mi serve a nulla ma deve parlare ed essere connesso con il modello»*.
+
+Three corrections, and the third is the one that changes what the feature IS.
+
+**1. Speech is a turn, not dictation.** `applyHeardText` ended by writing the sentence into the
+composer and stopping — the person then had to press Send. That is a transcription tool with a
+microphone on it. Now anything that is not a navigation command goes straight to the model through
+`sendChat(spoken)` and comes back **spoken**, and the composer is never touched. A spoken reply is
+read aloud regardless of the read-aloud toggle: the toggle governs typed turns, which is what it
+was made for, and in a spoken conversation a reply that is not read is a reply that never arrived.
+
+The loop closes: heard → model → spoken → listening again. A voice assistant that answers once and
+then waits to be clicked is a button with extra steps. `voiceConversation` is what makes it
+stoppable — pressing the microphone, closing the window or signing out ends it, and nothing
+restarts by itself after that. A loop that cannot be stopped is not a feature.
+
+**2. The face shows the product, never the person.** The first version drove the mouth from the
+microphone's amplitude. It is still measured — it is how the turn knows it ended — but it is a
+**control** signal and is now never drawn, and no variable holds it beyond the loop that uses it,
+so nothing can quietly start drawing it again. While listening there is deliberately no amplitude
+on screen at all; a slow breath on the ring says "open" without pretending to report a level.
+
+**3. «Bruttissima» was a real defect, and the defect was aiming low.** One pulsing circle can only
+say "loud or quiet", which is why it read as decoration. It is now twelve bands of the reply's
+**spectrum**, in logarithmic bins — linear FFT bins put nearly everything a voice does into the
+first eighth of the display, which is why linear meters always look dead — rising fast and falling
+slowly, because speech onsets are what the eye reads and a symmetric filter blurs them. The figure
+has shape: vowels sit low and wide, consonants flick the high bars. Colour carries state, because
+motion here already means amplitude and a second meaning for motion would make both unreadable.
+
+Nothing is animated on a timer except that one listening breath. A still figure means silence,
+never "the animation stopped", and that is the only reason it can be trusted to report anything.
+
+🛑 **Recorded as the general lesson, because it is not about a face:** the first version was the
+minimum that satisfied the words. The project is called NOESAR **EVOLUTION**, and the standard is
+the thing built ten steps ahead, not the first thing that works. The skills were rewritten in this
+session to make that a required check rather than a good intention.
+
+⚠️ `voiceFaceLevel` was removed rather than left assigned-and-unread — ESLint caught it, and a dead
+variable that used to mean "the microphone" is exactly the one that gets quietly re-wired later.
+The browser check moved from asserting the mouth to asserting the bars: the old assertion was
+about a shape that no longer exists, and would have gone on passing on the wrong thing.

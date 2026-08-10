@@ -1193,11 +1193,30 @@
       <button id="voiceFaceClose" class="voice-face-close" type="button" aria-label="Close the voice window">×</button>
     </header>
     <svg class="voice-face-art" viewBox="0 0 120 120" role="img" aria-hidden="true" focusable="false">
-      <circle id="voiceFaceRing" cx="60" cy="60" r="46" class="voice-face-ring" />
-      <circle cx="60" cy="60" r="38" class="voice-face-head" />
-      <circle cx="47" cy="52" r="5" class="voice-face-eye" />
-      <circle cx="73" cy="52" r="5" class="voice-face-eye" />
-      <ellipse id="voiceFaceMouth" cx="60" cy="78" rx="16" ry="1" class="voice-face-mouth" />
+      <defs>
+        <linearGradient id="voiceFaceGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" class="voice-face-grad-from" />
+          <stop offset="100%" class="voice-face-grad-to" />
+        </linearGradient>
+        <radialGradient id="voiceFaceHaloGrad">
+          <stop offset="55%" stop-color="currentColor" stop-opacity="0" />
+          <stop offset="100%" stop-color="currentColor" stop-opacity="0.55" />
+        </radialGradient>
+      </defs>
+      <circle id="voiceFaceHalo" cx="60" cy="60" r="52" class="voice-face-halo" opacity="0.18" />
+      <circle cx="60" cy="60" r="44" class="voice-face-disc" />
+      <g class="voice-face-bars">
+        <rect class="voice-face-bar" x="24" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="32" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="40" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="48" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="56" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="64" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="72" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="80" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="88" y="57" width="4" height="6" rx="2" />
+      </g>
+      <circle id="voiceFacePulse" cx="60" cy="60" r="44" class="voice-face-pulse" />
     </svg>
     <p id="voiceFaceCaption" class="voice-face-caption" translate="no" aria-live="polite"></p>
   </section>

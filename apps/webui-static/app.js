@@ -1111,12 +1111,21 @@ $('#startWorkFromChat')?.addEventListener('click',()=>{
   renderPlanAttachment();
   jumpTo('coden/agent/plan');
 });
-async function sendChat(){
+/**
+ * Send one turn.
+ *
+ * `spoken` is set when the turn came from the microphone (`D-0373`). Owner: «non deve crearmi
+ * il prompt per scrivere non mi serve a nulla ma deve parlare ed essere connesso con il modello».
+ * A spoken turn therefore never touches the composer — it is not dictation waiting to be sent,
+ * it IS the message — and its reply is always spoken back, whatever the read-aloud toggle says,
+ * because in a spoken conversation the reply not being read is the reply not arriving.
+ */
+async function sendChat(spoken=null){
   if(!state.activeConversationId)return setStatus('Create a conversation first.',true);
-  const content=$('#chatInput').value.trim();
+  const content=typeof spoken==='string'&&spoken.trim()?spoken.trim():$('#chatInput').value.trim();
   if(!content)return;
   const providerId=$('#chatProvider').value||null;
-  $('#chatInput').value='';
+  if(!spoken)$('#chatInput').value='';
   $('#stopGeneration').classList.remove('hidden');
   $('#sendMessage').disabled=true;
   let assistantText='';
@@ -1180,7 +1189,7 @@ async function sendChat(){
     announceEvent(`Reply complete, ${assistantText.length} characters`);
     // …and the reply itself, if the person asked for it. Here for the same reason the live
     // region is here: once, when the answer has settled. Reading per delta would read it twice.
-    await speakReply(assistantText);
+    await speakReply(assistantText,{force:Boolean(spoken)});
   }catch(error){
     setStatus(error.message,true);
   }finally{
@@ -1189,7 +1198,7 @@ async function sendChat(){
     $('#sendMessage').disabled=false;
   }
 }
-$('#sendMessage').addEventListener('click',sendChat);$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
+$('#sendMessage').addEventListener('click',()=>sendChat());$('#stopGeneration').addEventListener('click',async()=>{if(activeRunId)await api(`/api/v1/chat/runs/${activeRunId}/stop`,{method:'POST',body:'{}'});});
 
 // The slash commands, in the composer — the same gesture as the terminal shell, off the same
 // list (`agent-commands.js`, imported by both). This is NOT the address box in the top bar:
@@ -3177,8 +3186,41 @@ async function applyHeardText(text){
       return performHeard(viaModel);
     }
   }
-  voiceNote(utteranceReply(direct,t));
-  return performHeard(direct);
+  // Not a command: it is something said TO the product, so it goes to the model and comes back
+  // spoken. Owner, s340: «non deve crearmi il prompt per scrivere non mi serve a nulla ma deve
+  // parlare ed essere connesso con il modello» (`D-0373`).
+  //
+  // The composer is deliberately not touched. Dictation-into-a-box was the old behaviour and it
+  // made the person do the last step by hand, which is exactly the step they asked to remove.
+  return speakWithModel(text);
+}
+
+/**
+ * One spoken turn, end to end: heard → model → spoken → listening again.
+ *
+ * The loop closes on purpose. A voice assistant that answers once and then waits to be clicked is
+ * a button with extra steps; the turn ends when the person stops talking, and the next one starts
+ * when the answer has finished being said. `voiceConversation` is what makes it stoppable: closing
+ * the window or pressing the microphone ends it, and nothing restarts by itself after that.
+ */
+async function speakWithModel(text){
+  if(!state.activeConversationId){
+    const said=t('Open or create a chat first — I need somewhere to put the answer.');
+    voiceFaceState('idle',said);voiceNote(said);return undefined;
+  }
+  voiceFaceState('thinking',text);
+  voiceNote(text);
+  try{
+    await sendChat(text);
+  }catch(error){
+    voiceFaceState('idle',error.message);voiceNote(error.message);return undefined;
+  }
+  // Listen again only if this is still a conversation: `speakReply` has already finished by the
+  // time we get here, so the microphone never opens over the product's own voice.
+  if(voiceConversation&&!$('#voiceFace')?.classList.contains('hidden')){
+    await toggleDictation();
+  }
+  return undefined;
 }
 
 /**
@@ -3255,7 +3297,16 @@ const MIN_SPEECH_LEVEL=0.02;
 
 let voiceMeter=null;      // {ctx, analyser, data, source}
 let voiceFacePaint=0;     // requestAnimationFrame handle
-let voiceFaceLevel=0;
+/* What the face is drawn from: the spectrum of the REPLY, and nothing else.
+ *
+ * Owner, s340: «l'animazione non deve riprendere la mia voce ma quella del programma». The
+ * microphone's amplitude is still measured — it is how the turn knows it ended — but it is a
+ * CONTROL signal and is never drawn. There is deliberately no variable holding it beyond the loop
+ * that uses it, so nothing can quietly start drawing your voice again. */
+let voiceFaceSpectrum=null;
+/* True while a spoken conversation is running. Closing the window or pressing the microphone ends
+ * it, and nothing restarts by itself afterwards — a loop that cannot be stopped is not a feature. */
+let voiceConversation=false;
 let voiceFacePositions=(()=>{try{return JSON.parse(localStorage.getItem(VOICE_FACE_POS_KEY)??'null');}catch{return null;}})();
 
 /** Which of the four things the product is doing, said in one word and drawn as one shape. */
@@ -3282,23 +3333,57 @@ function voiceFaceShow(on){
     if(!voiceFacePaint)voiceFacePaint=requestAnimationFrame(paintVoiceFace);
   }else{
     cancelAnimationFrame(voiceFacePaint);voiceFacePaint=0;
-    voiceFaceLevel=0;
+    voiceFaceSpectrum=null;voiceConversation=false;
   }
 }
 
-/** The mouth is the level. Nothing else on the face is animated on a timer, so a still face
- *  means silence rather than "the animation stopped". */
+/**
+ * Draw the product's voice.
+ *
+ * Twelve bars across a spectrum, not one pulsing circle: a single amplitude tells you only "loud
+ * or quiet", which is why the first version read as decoration. A spectrum has SHAPE — vowels sit
+ * low and wide, consonants flick the high bars — so the thing on screen is recognisably the voice
+ * that is speaking rather than a meter that happens to move.
+ *
+ * Bars are mirrored around the centre so the figure reads as one object instead of a chart, and
+ * they settle back with a fall-off rather than snapping, because audio frames are noisy and an
+ * unsmoothed bar jitters in a way that looks broken.
+ *
+ * Nothing here is animated on a timer. A still figure means silence — never "the animation
+ * stopped" — which is the only reason it can be trusted to report anything at all.
+ */
+const VOICE_FACE_BARS=12;
+const voiceBarHeights=new Float32Array(VOICE_FACE_BARS);
 function paintVoiceFace(){
-  const mouth=$('#voiceFaceMouth');
-  if(mouth){
-    // Rounded so identical frames do not rewrite the attribute forty times a second.
-    const open=Math.round(Math.min(1,voiceFaceLevel*6)*100)/100;
-    const height=2+open*16;
-    mouth.setAttribute('ry',String(height/2));
-    mouth.setAttribute('cy',String(78+height/4));
+  const spectrum=voiceFaceSpectrum;
+  for(let index=0;index<VOICE_FACE_BARS;index+=1){
+    let target=0;
+    if(spectrum&&spectrum.length){
+      // Logarithmic bands: linear FFT bins put almost everything a voice does into the first
+      // eighth of the display, which is why linear spectrum displays always look dead.
+      const from=Math.floor((spectrum.length/2)*((index/VOICE_FACE_BARS)**2));
+      const to=Math.max(from+1,Math.floor((spectrum.length/2)*(((index+1)/VOICE_FACE_BARS)**2)));
+      let sum=0;for(let bin=from;bin<to;bin+=1)sum+=spectrum[bin];
+      target=Math.min(1,(sum/(to-from))/170);
+    }
+    // Rise fast, fall slow: speech onsets are what the eye reads, and a symmetric filter blurs them.
+    const previous=voiceBarHeights[index];
+    voiceBarHeights[index]=target>previous?target:previous*0.86+target*0.14;
   }
-  const ring=$('#voiceFaceRing');
-  if(ring)ring.setAttribute('r',String(Math.round((46+Math.min(1,voiceFaceLevel*6)*6)*10)/10));
+  const bars=$$('.voice-face-bar');
+  bars.forEach((bar,index)=>{
+    const value=voiceBarHeights[index%VOICE_FACE_BARS]??0;
+    const height=Math.max(3,Math.round(value*46));
+    // Rounded to whole pixels so identical frames do not rewrite attributes sixty times a second.
+    bar.setAttribute('height',String(height));
+    bar.setAttribute('y',String(Math.round(60-height/2)));
+  });
+  const halo=$('#voiceFaceHalo');
+  if(halo){
+    const loudest=voiceBarHeights.reduce((a,b)=>a>b?a:b,0);
+    halo.setAttribute('r',String(Math.round((52+loudest*8)*10)/10));
+    halo.setAttribute('opacity',String(Math.round((0.18+loudest*0.5)*100)/100));
+  }
   voiceFacePaint=requestAnimationFrame(paintVoiceFace);
 }
 
@@ -3344,6 +3429,7 @@ function initVoiceFaceDrag(){
   handle.addEventListener('pointerup',stop);
   handle.addEventListener('pointercancel',stop);
   $('#voiceFaceClose')?.addEventListener('click',()=>{
+    voiceConversation=false;
     if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();
     voiceFaceShow(false);
   });
@@ -3379,7 +3465,7 @@ function closeVoiceMeter(){
 
 async function toggleDictation(){
   const button=$('#chatDictate');const label=$('#chatDictateLabel');
-  if(voiceRecorderChat?.state==='recording'){voiceRecorderChat.stop();return;}
+  if(voiceRecorderChat?.state==='recording'){voiceConversation=false;voiceRecorderChat.stop();return;}
   if(!microphoneReachable()){
     voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
     return;
@@ -3407,8 +3493,9 @@ async function toggleDictation(){
   const stopRecording=()=>{if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();};
   if(voiceMeter){
     watching=setInterval(()=>{
+      // Never drawn: this number decides when you stopped
+      // talking and nothing else. The face follows the product's voice, never yours.
       const level=meterLevel(voiceMeter);
-      voiceFaceLevel=level;
       const elapsed=Date.now()-startedAt;
       if(floor===null){
         // First 400ms is the room, not you. Nothing is judged during it.
@@ -3439,7 +3526,6 @@ async function toggleDictation(){
     voiceRecorderStream=null;
     button?.setAttribute('aria-pressed','false');
     if(label)label.textContent=t('Speak');
-    voiceFaceLevel=0;
     if(nothingHeard){
       // Never sent. The microphone worked and there was nothing in it, and saying so is more
       // honest than an invented sentence — and cheaper than a round trip.
@@ -3469,6 +3555,7 @@ async function toggleDictation(){
     }
   };
   voiceRecorderChat.start();
+  voiceConversation=true;
   button?.setAttribute('aria-pressed','true');
   if(label)label.textContent=t('Stop');
   voiceFaceShow(true);
@@ -3480,8 +3567,10 @@ async function toggleDictation(){
  *  the same reason `UI-043` gives about the live region: an answer read as it arrives is read
  *  twice. The blob URL is revoked when playback ends, so a spoken answer does not outlive the
  *  turn it belongs to as a second address anybody could fetch. */
-async function speakReply(text){
-  if(!readAloud||!voiceState.canSpeak||!String(text??'').trim())return;
+async function speakReply(text,{force=false}={}){
+  // `force` is a spoken turn: the reply is the answer to something said out loud, so it is read
+  // whatever the toggle says. The toggle governs TYPED turns, which is what it was made for.
+  if((!readAloud&&!force)||!voiceState.canSpeak||!String(text??'').trim())return;
   try{
     if(!csrfToken)csrfToken=readCsrfCookie();
     const response=await fetch('/api/v1/voice/speak',{
@@ -3504,7 +3593,7 @@ async function speakReply(text){
     // the face is reading the audio rather than running a loop beside it (`D-0372`). Without Web
     // Audio the reply still plays and the face simply stays still, which is the truth.
     const Ctx=window.AudioContext??window.webkitAudioContext;
-    if(Ctx&&!$('#voiceFace')?.classList.contains('hidden')){
+    if(Ctx&&$('#voiceFace')){
       try{
         const ctx=new Ctx();
         const source=ctx.createMediaElementSource(spokenAudio);
@@ -3512,14 +3601,20 @@ async function speakReply(text){
         // Through the analyser AND on to the speakers: a graph that stops at the analyser is a
         // reply nobody hears.
         source.connect(analyser);analyser.connect(ctx.destination);
-        const data=new Uint8Array(analyser.fftSize);
-        voiceFaceState('speaking',String(text).slice(0,140));
+        const spectrum=new Uint8Array(analyser.frequencyBinCount);
+        voiceFaceShow(true);
+        voiceFaceState('speaking',String(text).slice(0,240));
+        // 25ms: fast enough that consonants are visible, slow enough not to compete with the
+        // paint loop for the main thread. The paint loop reads whatever the last frame left.
         const follow=setInterval(()=>{
-          analyser.getByteTimeDomainData(data);
-          let sum=0;for(const sample of data){const centred=(sample-128)/128;sum+=centred*centred;}
-          voiceFaceLevel=Math.sqrt(sum/data.length);
-        },50);
-        const done=()=>{clearInterval(follow);voiceFaceLevel=0;voiceFaceState('idle','');try{ctx.close();}catch{}};
+          analyser.getByteFrequencyData(spectrum);
+          voiceFaceSpectrum=spectrum;
+        },25);
+        const done=()=>{
+          clearInterval(follow);voiceFaceSpectrum=null;
+          voiceFaceState(voiceConversation?'listening':'idle','');
+          try{ctx.close();}catch{}
+        };
         spokenAudio.addEventListener('ended',done,{once:true});
         spokenAudio.addEventListener('pause',done,{once:true});
       }catch{ /* no graph available: play it plainly */ }
@@ -3552,6 +3647,7 @@ function initChatVoice(){
  *  cause. Cheap to reset, and it puts the controls back exactly where a cold load leaves them. */
 function forgetVoiceState(){
   voiceState={canHear:false,canSpeak:false};
+  voiceConversation=false;voiceFaceSpectrum=null;voiceFaceShow(false);
   readAloud=false;
   chosenVoice=null;
   const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');

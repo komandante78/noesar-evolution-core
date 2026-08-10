@@ -273,12 +273,12 @@ try {
       exists: Boolean(face),
       hidden: face?.classList.contains('hidden') ?? null,
       hasHandle: Boolean(document.querySelector('#voiceFaceHandle')),
-      hasMouth: Boolean(document.querySelector('#voiceFaceMouth')),
+      bars: document.querySelectorAll('.voice-face-bar').length,
     };
   });
   check('the voice window exists and stays closed until the microphone is used',
     windowBefore.exists && windowBefore.hidden === true
-    && windowBefore.hasHandle && windowBefore.hasMouth, JSON.stringify(windowBefore));
+    && windowBefore.hasHandle && windowBefore.bars > 0, JSON.stringify(windowBefore));
 
   // Dragged through real pointer events on the real handle, not by assigning style.left: the
   // thing being checked is the drag wiring, and setting the position directly would pass with
