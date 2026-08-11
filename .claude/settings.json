@@ -13,6 +13,18 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/engineering-orchestrator.sh",
+            "timeout": 10,
+            "statusMessage": "Applying the engineering orchestrator standard..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -21,6 +33,18 @@
             "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/session-close-guard.sh",
             "timeout": 15,
             "statusMessage": "Checking session close state..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/cachec/NOESAR_EVOLUTION/.claude/hooks/session-end-cleanup.sh",
+            "timeout": 5,
+            "statusMessage": "Releasing session runtime state..."
           }
         ]
       }

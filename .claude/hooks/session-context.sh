@@ -21,15 +21,28 @@ ROOT="/mnt/cachec/NOESAR_EVOLUTION"
 STATE="$ROOT/PROJECT_STATE.json"
 BASELINE_LIB="$ROOT/.claude/hooks/lib/container-baseline.sh"
 MAX_BYTES=6144
-
 INPUT="$(cat 2>/dev/null || true)"
 SESSION_ID="$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)"
 
 # --- job 2: container baseline (best-effort, never fails the hook) ---
+# The baseline is a trust anchor: the Stop hook blocks a close by comparing against it. It
+# is therefore written into a PRIVATE per-uid directory (0700) as a 0600 file, atomically,
+# and never through a symlink. Before this (D-0383) it was a plain redirect into /tmp,
+# which produced a world-writable 0666 anchor any local user could rewrite.
 if [ -n "$SESSION_ID" ] && [ -f "$BASELINE_LIB" ]; then
   # shellcheck source=lib/container-baseline.sh
   . "$BASELINE_LIB"
-  cbl_fetch_all_containers > "/tmp/noesar-evolution-container-baseline-${SESSION_ID}.json" 2>/dev/null || true
+  BASELINE_DIR="$(cbl_runtime_dir)"
+  if cbl_ensure_runtime_dir "$BASELINE_DIR" >/dev/null 2>&1; then
+    cbl_write_baseline "$BASELINE_DIR" "$SESSION_ID" "$(cbl_fetch_all_containers)" >/dev/null 2>&1 || true
+    # Who owns this session, so a later SessionStart can tell "idle" from "dead" instead of
+    # guessing from a timestamp (F-HOOK-004). Best-effort: where process identity is not
+    # verifiable, no sidecar is written and the residue is simply never pruned.
+    cbl_write_owner_meta "$BASELINE_DIR" "$SESSION_ID" >/dev/null 2>&1 || true
+    # Crash recovery: SessionEnd cannot run after a crash, a kill -9 or a host reset, so
+    # cold residues are collected here — conservatively, and never the current session's.
+    cbl_prune_stale_baselines "$BASELINE_DIR" "$SESSION_ID" >/dev/null 2>&1 || true
+  fi
 fi
 
 # --- job 1: compact digest ---
@@ -85,6 +98,14 @@ current_phase: $CURRENT_PHASE
 next_action: $NEXT_ACTION
 
 open blockers (non-resolved): $BLOCKERS_LINE
+
+orchestrator: the Automatic Advanced Engineering Orchestrator is ACTIVE (CLAUDE10.md section 18).
+Every new substantive Owner request gets an ENGINEERING CONTRACT written by you - ROLE / TASK /
+CONTEXT / REASONING & VERIFICATION / STOP CONDITIONS / OUTPUT - with measurable acceptance
+criteria, target maturity L4 and an architecture ready for L5, delivered as a whole end-to-end
+vertical slice: never a button, a mock, a placeholder or an unreachable endpoint. A continuation,
+an answer, an authorization or a control word (procedi / continua / si / no) opens no contract and
+is never refused. Detail: .claude/skills/noesar-evolution-engineering-depth/SKILL.md
 
 Full detail on demand, never loaded whole: .claude/skills/noesar-evolution-context/state-digest.sh"
 

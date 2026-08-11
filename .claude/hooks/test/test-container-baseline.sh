@@ -192,6 +192,212 @@ else
 fi
 
 echo
+echo "############################################################"
+echo "# session-close-guard.sh LIFECYCLE — end to end, real script"
+echo "############################################################"
+# Why this section exists (D-0381): everything above tests cbl_check_containers, the pure
+# function. Nothing tested session-close-guard.sh ITSELF, so nothing tested the one thing
+# that mutates — cleanup_container_baseline(). The suite was 17/17 green on the very day
+# the guard deleted a live session's baseline and blocked its own Stop. A pure-function
+# test cannot catch a side effect nobody exercises.
+#
+# No real container, no real session baseline and no real project root is touched here:
+# NOESAR_GUARD_ROOT points at a synthetic tree, NOESAR_GUARD_BASELINE_DIR at this run's
+# own scratch dir, and NOESAR_GUARD_FAKE_DOCKER_JSON replaces the docker daemon.
+
+GUARD="$HERE/../session-close-guard.sh"
+
+mkroot() { # mkroot DIR — a synthetic project root that passes checks 1-5.
+  mkdir -p "$1/docs"
+  printf '{"last_commit":"deadbeef","next_action":"do the next thing"}' > "$1/PROJECT_STATE.json"
+  printf '# HANDOFF\n\nPROSSIMA: something\n' > "$1/docs/SESSION_HANDOFF.md"
+}
+
+run_guard() { # run_guard ROOT BDIR SESSION_ID FAKE_DOCKER DRY STOP_ACTIVE
+  printf '{"session_id":"%s","hook_event_name":"Stop","stop_hook_active":%s}' "$3" "${6:-false}" \
+    | NOESAR_GUARD_ROOT="$1" NOESAR_GUARD_BASELINE_DIR="$2" \
+      NOESAR_GUARD_FAKE_DOCKER_JSON="$4" NOESAR_GUARD_DRY_RUN="$5" \
+      NOESAR_GUARD_BOOTSTRAP_MARKER="$2/bootstrap-marker.txt" \
+      bash "$GUARD" 2>/dev/null
+}
+
+assert_jq() { # assert_jq JSON EXPR DESC
+  if printf '%s' "$1" | jq -e "$2" >/dev/null 2>&1; then
+    echo "  ok   - $3"; PASS=$((PASS+1))
+  else
+    echo "  FAIL - $3"; echo "         expr: $2"; echo "         got: $1"; FAIL=$((FAIL+1))
+  fi
+}
+assert_file() { # assert_file PATH DESC
+  if [ -f "$1" ]; then echo "  ok   - $2"; PASS=$((PASS+1))
+  else echo "  FAIL - $2 (file absent: $1)"; FAIL=$((FAIL+1)); fi
+}
+assert_no_file() { # assert_no_file PATH DESC
+  if [ -f "$1" ]; then echo "  FAIL - $2 (file still present: $1)"; FAIL=$((FAIL+1))
+  else echo "  ok   - $2"; PASS=$((PASS+1)); fi
+}
+
+G="$TMPDIR/guard"; mkdir -p "$G/bl"; mkroot "$G/root"
+CLEAN_FIXTURE="$G/docker-clean.json"
+printf '[%s]' "$(entry idA noesar-evolution)" > "$CLEAN_FIXTURE"
+NEWCT_FIXTURE="$G/docker-newct.json"
+printf '[%s, %s]' "$(entry idA noesar-evolution)" "$(entry idZ noesar-evolution-e2e-probe)" > "$NEWCT_FIXTURE"
+mkbaseline() { printf '[%s]' "$(entry idA noesar-evolution)" > "$G/bl/noesar-evolution-container-baseline-$1.json"; }
+
+echo "=== L1. DRY_RUN, valid baseline: PASS verdict and the baseline SURVIVES ==="
+mkbaseline s1
+OUT="$(run_guard "$G/root" "$G/bl" s1 "$CLEAN_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="PASS" and .dryRun==true' "dry run on a clean session reports verdict PASS"
+assert_jq "$OUT" '.systemMessage|test("DRY_RUN")' "the dry run declares itself in the message"
+assert_file "$G/bl/noesar-evolution-container-baseline-s1.json" "DRY_RUN did NOT delete the baseline (the regression this suite exists for)"
+assert_jq "$OUT" '.systemMessage|test("nothing was deleted")' "the dry run names what a real Stop would have removed"
+
+echo "=== L2. DRY_RUN, baseline missing: BLOCK, and nothing is recreated ==="
+OUT="$(run_guard "$G/root" "$G/bl" s2-missing "$CLEAN_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="BLOCK" and .decision=="block" and .dryRun==true' "dry run keeps the blocking verdict — it never downgrades a block to a report"
+assert_no_file "$G/bl/noesar-evolution-container-baseline-s2-missing.json" "dry run does not fabricate the missing baseline"
+
+echo "=== L3. DRY_RUN, corrupted baseline: BLOCK, file left byte-identical ==="
+printf 'not { valid json' > "$G/bl/noesar-evolution-container-baseline-s3.json"
+BEFORE_SUM="$(cksum < "$G/bl/noesar-evolution-container-baseline-s3.json")"
+OUT="$(run_guard "$G/root" "$G/bl" s3 "$CLEAN_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="BLOCK"' "a corrupted baseline blocks in dry run too"
+if [ "$BEFORE_SUM" = "$(cksum < "$G/bl/noesar-evolution-container-baseline-s3.json")" ]; then
+  echo "  ok   - the corrupted baseline was neither deleted nor rewritten"; PASS=$((PASS+1))
+else
+  echo "  FAIL - dry run altered the corrupted baseline"; FAIL=$((FAIL+1))
+fi
+
+echo "=== L4. DRY_RUN, container created this session: BLOCK, baseline SURVIVES ==="
+mkbaseline s4
+OUT="$(run_guard "$G/root" "$G/bl" s4 "$NEWCT_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="BLOCK" and (.systemMessage|test("noesar-evolution-e2e-probe"))' "an uncleaned session container blocks in dry run"
+assert_file "$G/bl/noesar-evolution-container-baseline-s4.json" "a blocking dry run still preserves the baseline"
+
+# --- D-0383 lifecycle helpers -------------------------------------------------------------
+# Stop no longer deletes anything, so "did the real Stop act on this file" can no longer be
+# answered by the file's absence. It is answered by the HEARTBEAT instead: a real Stop
+# refreshes the mtime, a dry run must not. Backdating first makes the comparison exact
+# rather than racing the one-second granularity of touch.
+age_file()  { touch -t 202001010000 "$1" 2>/dev/null || true; }
+mtime_of()  { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
+assert_touched() { # assert_touched PATH DESC
+  if [ "$(mtime_of "$1")" -gt 1600000000 ] 2>/dev/null; then echo "  ok   - $2"; PASS=$((PASS+1))
+  else echo "  FAIL - $2 (mtime was NOT refreshed: $1)"; FAIL=$((FAIL+1)); fi
+}
+assert_untouched() { # assert_untouched PATH DESC
+  if [ "$(mtime_of "$1")" -lt 1600000000 ] 2>/dev/null; then echo "  ok   - $2"; PASS=$((PASS+1))
+  else echo "  FAIL - $2 (mtime WAS refreshed: $1)"; FAIL=$((FAIL+1)); fi
+}
+
+echo "=== L5. NORMAL stop, all green: the baseline SURVIVES the turn (F-HOOK-003, D-0383) ==="
+mkbaseline s5
+OUT="$(run_guard "$G/root" "$G/bl" s5 "$CLEAN_FIXTURE" "")"
+assert_jq "$OUT" '.verdict=="PASS" and .dryRun==false' "a normal green stop reports PASS and is not a dry run"
+# This assertion is the INVERSE of what it was before D-0383, deliberately. Stop fires at the
+# end of every TURN: consuming the anchor here blinded check 6 for the rest of the session and
+# blocked every later close on a gap that never existed. SessionEnd consumes it now.
+assert_file "$G/bl/noesar-evolution-container-baseline-s5.json" "a green stop KEEPS the baseline — Stop is per-turn, not per-session"
+
+echo "=== L6. NORMAL stop, failing: fail-closed AND the baseline is preserved for the retry ==="
+mkbaseline s6
+OUT="$(run_guard "$G/root" "$G/bl" s6 "$NEWCT_FIXTURE" "")"
+assert_jq "$OUT" '.decision=="block" and .continue==false' "a failing normal stop still blocks — fail-closed preserved"
+assert_file "$G/bl/noesar-evolution-container-baseline-s6.json" "a blocking normal stop keeps the baseline, so the session can be re-checked"
+
+echo "=== L7. stop_hook_active=true: anti-loop allows, does not emit a block ==="
+mkbaseline s7
+OUT="$(run_guard "$G/root" "$G/bl" s7 "$NEWCT_FIXTURE" "" true)"
+assert_jq "$OUT" '.verdict=="ALLOW_ANTILOOP" and (has("decision")|not)' "the second stop allows through instead of blocking twice"
+assert_file "$G/bl/noesar-evolution-container-baseline-s7.json" "the anti-loop path lets the stop happen and still keeps the baseline"
+
+echo "=== L7b. stop_hook_active=true under DRY_RUN: allows, but deletes nothing ==="
+mkbaseline s7b
+OUT="$(run_guard "$G/root" "$G/bl" s7b "$NEWCT_FIXTURE" 1 true)"
+assert_jq "$OUT" '.verdict=="ALLOW_ANTILOOP" and .dryRun==true' "anti-loop path is reachable in dry run"
+assert_file "$G/bl/noesar-evolution-container-baseline-s7b.json" "the anti-loop path in dry run deletes nothing either"
+
+echo "=== L8. bootstrap marker matching the session: debt, not FAIL; marker OUTLIVES the turn ==="
+printf 's8' > "$G/bl/bootstrap-marker.txt"
+OUT="$(run_guard "$G/root" "$G/bl" s8 "$CLEAN_FIXTURE" "")"
+assert_jq "$OUT" '.verdict=="PASS" and (.systemMessage|test("BASELINE_UNAVAILABLE_PREINSTALL"))' "the named bootstrap session passes with an explicit declared debt"
+# Also inverted by D-0383: consuming the exemption on the first turn meant every later turn
+# of that same session lost it and blocked. SessionEnd retires it, once.
+assert_file "$G/bl/bootstrap-marker.txt" "the bootstrap exemption survives the turn — SessionEnd retires it, not Stop"
+
+echo "=== L9. bootstrap marker naming a DIFFERENT session: fail closed ==="
+printf 'some-other-session' > "$G/bl/bootstrap-marker.txt"
+OUT="$(run_guard "$G/root" "$G/bl" s9 "$CLEAN_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="BLOCK"' "a bootstrap marker for another session does not exempt this one"
+assert_file "$G/bl/bootstrap-marker.txt" "a blocking dry run leaves the other session's marker alone"
+rm -f "$G/bl/bootstrap-marker.txt"
+
+echo "=== L10. a green stop touches ONLY its own session's baseline ==="
+mkbaseline s10-self
+mkbaseline s10-other
+age_file "$G/bl/noesar-evolution-container-baseline-s10-self.json"
+age_file "$G/bl/noesar-evolution-container-baseline-s10-other.json"
+OUT="$(run_guard "$G/root" "$G/bl" s10-self "$CLEAN_FIXTURE" "")"
+assert_file "$G/bl/noesar-evolution-container-baseline-s10-self.json" "the stopping session keeps its own baseline"
+assert_touched "$G/bl/noesar-evolution-container-baseline-s10-self.json" "the stopping session's own baseline gets the heartbeat"
+assert_file "$G/bl/noesar-evolution-container-baseline-s10-other.json" "another live session's baseline is never touched"
+assert_untouched "$G/bl/noesar-evolution-container-baseline-s10-other.json" "another live session's baseline is not even re-stamped — cross-session isolation"
+
+echo "=== L11. the baseline directory override is honoured on BOTH sides ==="
+mkdir -p "$G/bl2"
+printf '[%s]' "$(entry idA noesar-evolution)" > "$G/bl2/noesar-evolution-container-baseline-s11.json"
+mkbaseline s11   # a decoy of the same name in the OTHER directory
+age_file "$G/bl2/noesar-evolution-container-baseline-s11.json"
+age_file "$G/bl/noesar-evolution-container-baseline-s11.json"
+OUT="$(run_guard "$G/root" "$G/bl2" s11 "$CLEAN_FIXTURE" "")"
+# With nothing deleted, "which directory did it resolve?" is answered by the heartbeat.
+assert_touched   "$G/bl2/noesar-evolution-container-baseline-s11.json" "the guard resolves inside the CONFIGURED directory"
+assert_untouched "$G/bl/noesar-evolution-container-baseline-s11.json" "a same-named baseline outside the configured directory is never reached"
+
+echo "=== L12. malformed payload under DRY_RUN fails closed, and claims no verdict ==="
+OUT="$(printf 'not json at all' | NOESAR_GUARD_ROOT="$G/root" NOESAR_GUARD_BASELINE_DIR="$G/bl" \
+        NOESAR_GUARD_DRY_RUN=1 bash "$GUARD" 2>/dev/null)"
+assert_jq "$OUT" '.decision=="block" and .verdict=="BLOCK" and .dryRun==true' "an unparseable payload blocks the dry run instead of printing a verdict"
+OUT="$(printf '' | NOESAR_GUARD_ROOT="$G/root" NOESAR_GUARD_BASELINE_DIR="$G/bl" \
+        NOESAR_GUARD_DRY_RUN=1 bash "$GUARD" 2>/dev/null)"
+assert_jq "$OUT" '.decision=="block"' "empty stdin blocks the dry run too"
+
+echo "=== L13. DRY_RUN is opt-in: an unset variable is a REAL stop, and it still mutates ==="
+mkbaseline s13
+age_file "$G/bl/noesar-evolution-container-baseline-s13.json"
+OUT="$(printf '{"session_id":"s13","stop_hook_active":false}' \
+        | NOESAR_GUARD_ROOT="$G/root" NOESAR_GUARD_BASELINE_DIR="$G/bl" \
+          NOESAR_GUARD_FAKE_DOCKER_JSON="$CLEAN_FIXTURE" bash "$GUARD" 2>/dev/null)"
+assert_jq "$OUT" '.dryRun==false' "with no NOESAR_GUARD_DRY_RUN set, the guard is in real mode"
+# After D-0383 the only mutation a real Stop performs is the heartbeat, so that is what
+# separates the two modes now. The distinction must stay OBSERVABLE, or "dry run" would
+# become a word rather than a property.
+assert_touched "$G/bl/noesar-evolution-container-baseline-s13.json" "real mode still mutates (heartbeat) — the default did not silently become read-only"
+mkbaseline s13b
+age_file "$G/bl/noesar-evolution-container-baseline-s13b.json"
+OUT="$(run_guard "$G/root" "$G/bl" s13b "$CLEAN_FIXTURE" 1)"
+assert_untouched "$G/bl/noesar-evolution-container-baseline-s13b.json" "a dry run does not even refresh the mtime — it mutates nothing at all"
+
+echo "=== L14. neither the guard nor the library issues a mutating docker command ==="
+if grep -nE '\bdocker[[:space:]]+(rm|rmi|stop|start|kill|restart|prune|create|run|exec|network|volume|system)\b' \
+     "$GUARD" "$LIB" >/dev/null 2>&1; then
+  echo "  FAIL - a mutating docker command appears in the guard or the library"
+  grep -nE '\bdocker[[:space:]]+(rm|rmi|stop|start|kill|restart|prune|create|run|exec|network|volume|system)\b' "$GUARD" "$LIB"
+  FAIL=$((FAIL+1))
+else
+  echo "  ok   - only read-only docker calls (ps/inspect) appear in either file"; PASS=$((PASS+1))
+fi
+
+echo "=== L15. SessionStart write -> Stop read round-trip through the overridden directory ==="
+mkdir -p "$G/bl3"
+printf '{"session_id":"s15","source":"startup"}' \
+  | NOESAR_GUARD_BASELINE_DIR="$G/bl3" NOESAR_GUARD_FAKE_DOCKER_JSON="$CLEAN_FIXTURE" \
+    bash "$HERE/../session-context.sh" >/dev/null 2>&1
+assert_file "$G/bl3/noesar-evolution-container-baseline-s15.json" "SessionStart writes into the configured baseline directory"
+OUT="$(run_guard "$G/root" "$G/bl3" s15 "$CLEAN_FIXTURE" 1)"
+assert_jq "$OUT" '.verdict=="PASS"' "the Stop hook reads back exactly what SessionStart wrote — the two sides cannot drift"
+
+echo
 echo "================================================================"
 echo "container-baseline fixture tests: $PASS passed, $FAIL failed"
 echo "================================================================"

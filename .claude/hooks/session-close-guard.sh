@@ -11,13 +11,51 @@
 #
 # Fails OPEN on any internal error (missing jq/git, unreadable file): a broken guard must
 # not silently trap the session, and must not silently pass either — it says so.
+#
+# DRY RUN (added 2026-08-11, D-0381 — after this hook destroyed a live session's baseline).
+# Running this file by hand to "just look at the verdict" is NOT read-only: on a green
+# verdict it reaches cleanup_container_baseline() and deletes the real SessionStart
+# baseline, after which the genuine Stop of that same session blocks on a governance gap
+# that never existed. That is exactly what happened to session 9898143a — the probe was
+# described as read-only and was not.
+#
+#   NOESAR_GUARD_DRY_RUN=1   run every check, emit the SAME verdict, delete NOTHING.
+#
+# The dry run differs from a normal Stop in exactly one respect: it never mutates. It still
+# emits decision:"block" when the checks fail — deliberately, so that the env var being set
+# by accident during a real Stop can only ever cost a stale /tmp file, never a fail-open.
+# Reducing the block to a report would have turned a stray variable into a bypass.
+#
+#   NOESAR_GUARD_BASELINE_DIR=<dir>   where baselines live (default /tmp). Point probes and
+#                                     fixtures at a scratch dir so a manual run can never
+#                                     resolve to a real session's baseline path.
 set -u
 
 ROOT="${NOESAR_GUARD_ROOT:-/mnt/cachec/NOESAR_EVOLUTION}"
 STATE="$ROOT/PROJECT_STATE.json"
 HANDOFF="$ROOT/docs/SESSION_HANDOFF.md"
+# Resolved from the shared library once it is sourced (check 6), so the write side
+# (SessionStart) and this read side can never resolve two different directories.
+BASELINE_DIR=""
+
+DRY_RUN=false
+case "${NOESAR_GUARD_DRY_RUN:-}" in
+  1|true|TRUE|True|yes|YES) DRY_RUN=true ;;
+esac
 
 INPUT="$(cat 2>/dev/null || true)"
+
+# A dry run is a deliberate act by an operator, so it holds itself to a stricter input
+# contract than the real hook: unparseable input is a broken probe, and a broken probe must
+# not print a verdict anyone could quote. It fails CLOSED. The real Stop path below keeps
+# its own long-standing fail-open-on-broken-environment behaviour, unchanged.
+# `jq empty` succeeds on EMPTY input, so emptiness must be tested separately — otherwise a
+# probe piping nothing at all gets a confident verdict computed from no session at all.
+if [ "$DRY_RUN" = true ] && { [ -z "$INPUT" ] || ! printf '%s' "$INPUT" | jq empty >/dev/null 2>&1; }; then
+  printf '{"decision":"block","continue":false,"dryRun":true,"verdict":"BLOCK","systemMessage":"session-close-guard DRY_RUN: hook payload is absent or not valid JSON - failing closed, no verdict is claimed and nothing was deleted."}\n'
+  exit 0
+fi
+
 STOP_ACTIVE="$(printf '%s' "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)"
 SESSION_ID="$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)"
 
@@ -135,11 +173,28 @@ fi
 # every other session with no baseline blocks.
 BASELINE_FILE=""
 BOOTSTRAP_MARKER="${NOESAR_GUARD_BOOTSTRAP_MARKER:-/tmp/noesar-evolution-governance-bootstrap-session-id.txt}"
-BASELINE_LIB="$ROOT/.claude/hooks/lib/container-baseline.sh"
-if command -v docker >/dev/null 2>&1 && [ -f "$BASELINE_LIB" ]; then
+# Resolved from THIS script's own directory, not from NOESAR_GUARD_ROOT. The library is a
+# sibling of this file and always travels with it; deriving it from the root meant that
+# overriding the root silently disabled check 6 altogether — a fail-open reached by setting
+# a variable that has nothing to do with containers. Found by the L1-L15 lifecycle tests.
+GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "$ROOT/.claude/hooks")"
+BASELINE_LIB="$GUARD_DIR/lib/container-baseline.sh"
+# The fixture override counts as a docker source. Without this, check 6 is unreachable on
+# any host with no docker binary — which is most of the hosts this product ships to, and
+# every CI runner — so the whole baseline mechanism would be untestable off this machine
+# (platform law, CLAUDE10.md §60-64). Behaviour on a real docker-less host is unchanged:
+# NOESAR_GUARD_FAKE_DOCKER_JSON is never set there.
+if { command -v docker >/dev/null 2>&1 || [ -n "${NOESAR_GUARD_FAKE_DOCKER_JSON:-}" ]; } && [ -f "$BASELINE_LIB" ]; then
   # shellcheck source=lib/container-baseline.sh
   . "$BASELINE_LIB"
-  [ -n "$SESSION_ID" ] && BASELINE_FILE="/tmp/noesar-evolution-container-baseline-${SESSION_ID}.json"
+  BASELINE_DIR="$(cbl_runtime_dir)"
+  [ -n "$SESSION_ID" ] && BASELINE_FILE="$(cbl_baseline_path "$BASELINE_DIR" "$SESSION_ID" 2>/dev/null || true)"
+  # Heartbeat, before any verdict is computed, so a BLOCKED turn marks this session alive
+  # exactly as a passing one does. A dry run is exempt: changing an mtime is a mutation,
+  # and the dry run's one promise is that it makes none.
+  if [ "$DRY_RUN" != true ] && [ -n "$BASELINE_FILE" ]; then
+    cbl_touch_baseline "$BASELINE_FILE" || true
+  fi
   CURRENT_JSON="$(cbl_fetch_all_containers)"
   while IFS= read -r finding; do
     [ -z "$finding" ] && continue
@@ -150,16 +205,36 @@ if command -v docker >/dev/null 2>&1 && [ -f "$BASELINE_LIB" ]; then
   done <<< "$(cbl_check_containers "$BASELINE_FILE" "$CURRENT_JSON" "$SESSION_ID" "$BOOTSTRAP_MARKER")"
 fi
 
-# The baseline (and the one-time bootstrap exemption, once its named session closes) are
-# deleted only when this hook is actually about to let the stop happen — not while it is
-# still blocking, since the session continues and a later check in the same session still
-# needs them.
+# THIS HOOK DELETES NOTHING (F-HOOK-003, D-0383).
+#
+# It used to remove the baseline whenever it was about to let the stop through. That was
+# wrong for a reason no test covered: Stop fires at the end of every assistant TURN, not
+# once per session. The first green turn destroyed the trust anchor, so every later turn
+# blocked on "baseline missing" — a governance gap that had never existed — and, worse,
+# check 6 went blind to any container created during the rest of the session.
+#
+# Deletion now belongs to SessionEnd (session-end-cleanup.sh), which fires once, at real
+# session termination, and receives the same session_id. What remains here is the
+# heartbeat: refreshing the mtime is what marks this session as alive, so the crash-recovery
+# prune in SessionStart can tell a cold residue from a session still working.
+CLEANUP_NOTE=""
 cleanup_container_baseline() {
-  [ -n "$BASELINE_FILE" ] && rm -f "$BASELINE_FILE" 2>/dev/null
-  if [ -n "$SESSION_ID" ] && [ -f "$BOOTSTRAP_MARKER" ] && [ "$(cat "$BOOTSTRAP_MARKER" 2>/dev/null)" = "$SESSION_ID" ]; then
-    rm -f "$BOOTSTRAP_MARKER" 2>/dev/null
+  if [ "$DRY_RUN" = true ]; then
+    CLEANUP_NOTE="
+[dry-run] nothing was deleted — and a real Stop would not have deleted anything either.
+The baseline is removed by the SessionEnd hook, not by Stop (D-0383)."
+    return 0
+  fi
+  # The heartbeat already ran in check 6, for every verdict. Nothing to do here but say so.
+  if [ -n "$BASELINE_FILE" ]; then
+    CLEANUP_NOTE="
+[baseline] kept for the rest of the session; SessionEnd removes it (D-0383)."
   fi
 }
+
+# Prefix every message so a dry run can never be mistaken for a real close in a transcript.
+MODE_TAG=""
+[ "$DRY_RUN" = true ] && MODE_TAG="DRY_RUN "
 
 DEBT_TEXT=""
 for d in "${DEBTS[@]:-}"; do
@@ -169,7 +244,8 @@ done
 
 if [ ${#FAILS[@]} -eq 0 ]; then
   cleanup_container_baseline
-  jq -n --arg d "$DEBT_TEXT" '{systemMessage:("session-close-guard: all blocking checks passed (state JSON valid, last_commit consistent with HEAD, handoff<=150 lines, next action present, no unregistered diff, no session-created container litter)." + $d)}'
+  jq -n --arg d "$DEBT_TEXT" --arg m "$MODE_TAG" --arg c "$CLEANUP_NOTE" --argjson dry "$DRY_RUN" \
+    '{dryRun:$dry,verdict:"PASS",systemMessage:("session-close-guard " + $m + "PASS: all blocking checks passed (state JSON valid, last_commit consistent with HEAD, handoff<=150 lines, next action present, no unregistered diff, no session-created container litter)." + $d + $c)}'
   exit 0
 fi
 
@@ -181,8 +257,13 @@ done
 
 if [ "$STOP_ACTIVE" = "true" ]; then
   cleanup_container_baseline
-  jq -n --arg r "$REASON" --arg d "$DEBT_TEXT" '{systemMessage:("session-close-guard: checks still failing but allowing the stop (stop_hook_active, avoiding a loop). Unresolved:\n" + $r + $d)}'
+  jq -n --arg r "$REASON" --arg d "$DEBT_TEXT" --arg m "$MODE_TAG" --arg c "$CLEANUP_NOTE" --argjson dry "$DRY_RUN" \
+    '{dryRun:$dry,verdict:"ALLOW_ANTILOOP",systemMessage:("session-close-guard " + $m + "checks still failing but allowing the stop (stop_hook_active, avoiding a loop). Unresolved:\n" + $r + $d + $c)}'
   exit 0
 fi
 
-jq -n --arg r "$REASON" --arg d "$DEBT_TEXT" '{decision:"block",reason:$r,continue:false,stopReason:$r,systemMessage:("session-close-guard BLOCKED this stop:\n" + $r + $d)}'
+# The blocking verdict is emitted in BOTH modes, identically. A dry run that downgraded a
+# block to a report would mean a stray NOESAR_GUARD_DRY_RUN in the environment silently
+# disabled the guard — the fail-open this whole file exists to prevent.
+jq -n --arg r "$REASON" --arg d "$DEBT_TEXT" --arg m "$MODE_TAG" --arg c "$CLEANUP_NOTE" --argjson dry "$DRY_RUN" \
+  '{decision:"block",reason:$r,continue:false,stopReason:$r,dryRun:$dry,verdict:"BLOCK",systemMessage:("session-close-guard " + $m + "BLOCKED this stop:\n" + $r + $d + $c)}'
