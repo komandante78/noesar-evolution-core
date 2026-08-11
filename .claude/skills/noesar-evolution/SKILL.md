@@ -108,6 +108,38 @@ obbligatorio; eseguirla nella stessa fase è una decisione dell'Owner.
 letture mirate, verifica a livelli, niente narrazione — la qualità non sta nella lunghezza
 della risposta ma in ciò che è stato **misurato**.
 
+## 🧭 ORCHESTRATORE — richiamo OBBLIGATORIO prima di qualunque richiesta sostanziale
+
+**Ordine dell'Owner, 2026-08-11** (`CLAUDE10.md` §18): ogni nuova richiesta sostanziale — per
+quanto breve o detta di passaggio — si affronta con l'**Automatic Advanced Engineering
+Orchestrator**, e la skill che lo impone si legge **prima** di questo ciclo, non dopo:
+
+> `.claude/skills/noesar-evolution-engineering-depth/SKILL.md`
+
+**Non è una funzione del prodotto e non c'entra con la voce.** È il metodo, e vale per chat,
+WebUI, memoria, agenti, workflow, voce, ricerca, strumenti, sicurezza, identità, modelli,
+API/SDK, installazione, aggiornamenti, osservabilità, deployment e ogni modulo futuro.
+
+**In quattro righe, il resto sta nella skill:**
+
+1. **Classifica il messaggio prima di agire.** Solo una *nuova richiesta sostanziale* apre un
+   contratto. Continuazione, risposta a una tua domanda, autorizzazione dell'Owner, parola di
+   controllo (*procedi · continua · sì · no*) e domanda di sola lettura non ne aprono nessuno,
+   e **non si rifiutano, non si rinviano, non si ri-scopano** mai.
+2. **Il contratto lo scrivi tu**, in sei sezioni (`ROLE`, `TASK`, `CONTEXT`,
+   `REASONING & VERIFICATION`, `STOP CONDITIONS`, `OUTPUT`), **prima** della prima modifica.
+   L'Owner non deve compilare niente.
+3. **Si progetta una capacità, non un elemento.** Un bottone, una pagina statica, un endpoint
+   che nessuno raggiunge, un mock, un placeholder, un'interfaccia senza backend vero o una
+   funzione che opera una volta sola **non sono "fatto"**.
+4. **Bersaglio L4 (`PRODUCTION_GRADE`), architettura pronta per L5.** Se lo scope non lo
+   consente, si dichiara il livello davvero raggiungibile **prima** di costruire. `L0`…`L3` non
+   si presenta mai come prodotto completo — sarebbe un falso PASS (regola 38).
+
+Il contratto a sei sezioni **non sostituisce** il contratto a sei righe di
+`noesar-evolution-budget` §1: quello dimensiona la fase (FILES/TIER/READ/BUDGET/STOP), questo
+dimensiona la **capacità**. Si scrivono entrambi, ed entrambi stanno dentro i tetti di lunghezza.
+
 ## 🛑 ATOM EVOLUTION — progetto nuovo, in un repository separato, MAI copiare dal vecchio
 
 **Ordine esplicito dell'Owner, 2026-07-28** (dato con forza, dopo che una sessione ha

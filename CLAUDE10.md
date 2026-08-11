@@ -365,9 +365,76 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
     defect that §40a HUNT AND FIX must repair. A portability breach (§60–64) is a **defect**,
     not an improvement, and is fixed, not proposed.
 
+## 18. Automatic Advanced Engineering Orchestrator — the standing method
+
+> Owner instruction, 2026-08-11. This is **not** a product feature and has nothing to do with
+> voice. It is the method by which every future task on NOESAR EVOLUTION is analysed,
+> designed, implemented, verified and closed — chat, WebUI, memory, agents, workflows, voice,
+> search, tools, security, identity, models, API/SDK, install, updates, observability,
+> deployment, and every module present and future.
+
+70. **A new substantive request from the Owner activates the orchestrator automatically**,
+    however short or casual its wording. *"Controlla e rielabora la sezione Chat"* is a full
+    engineering task, never a cosmetic or local edit.
+71. **Claude writes the ENGINEERING CONTRACT; the Owner never fills it in.** Six sections,
+    before the first edit: `ROLE`, `TASK`, `CONTEXT`, `REASONING & VERIFICATION`,
+    `STOP CONDITIONS`, `OUTPUT`. `REASONING & VERIFICATION` carries assumptions, evidence,
+    risks, alternatives, trade-offs, tests and results — never a transcript of reasoning.
+72. **A message is classified before it is acted on.** Only a new substantive request opens a
+    contract. A continuation, an answer to a question Claude asked, an Owner authorization, a
+    control word (*procedi · continua · si · no*) and a read-only question open **none**, and
+    are **never refused, deferred or re-scoped**.
+73. **Design capability, not elements.** A function is not complete when what exists is only a
+    button, a static page, an unreachable endpoint, a demo script, a mock, a placeholder, a
+    component without error handling, an interface without a real backend, a backend without a
+    user path, something that works once and then stops, or something not integrated with what
+    already ships.
+74. **Maturity is declared on the scale `L0 PLACEHOLDER · L1 PROTOTYPE ·
+    L2 FUNCTIONAL_ISOLATED · L3 INTEGRATED · L4 PRODUCTION_GRADE · L5 EVOLUTION_READY`.** The
+    default target of authorized implementation work is **at least L4**, with the architecture
+    prepared for L5 (versioned contracts, real modularity, verifiable extension points — never
+    invented technology). Where the scope cannot reach L4, the reachable level is declared
+    before building. **L0–L3 is never presented as a finished product** — that is rule 38.
+75. **"Advanced" is not "everything at once."** It is: define the complete professional
+    objective, then ship the smallest end-to-end vertical slice that is useful, testable,
+    integrated and coherent with it. Extension **points**, not extensions.
+76. **Graphics, user experience and accessibility are first-class**, not polish: visual
+    hierarchy, consistent components, the operational states (loading, empty, processing,
+    success, warning, error), action feedback, navigation, responsive layout, perceived
+    performance — and no decorative element that hides an unfinished function.
+77. **Autonomy inside an agreed scope is the default.** `READ STATE → ANALYZE → CONTRACT →
+    PLAN → IMPLEMENT → TEST → FIX → REGRESSION → CLEAN → UPDATE STATE → HANDOFF → STOP` runs
+    without asking permission for reversible technical decisions already inside the scope.
+    Work stops for: Owner decisions that change product or architecture, destructive
+    operations, credential material, work outside scope, ATOM, containers and runtime,
+    databases, deployment, commit, push, and unverifiable dependencies or technologies.
+78. **Every claim carries its epistemic status**: `VERIFIED` (measured this session),
+    `INFERRED`, `UNVERIFIED`, `BLOCKED` (with the reason). This narrows nothing in rules 36–40.
+
+79. **The mechanical half activates only for a session whose workspace root is
+    `/mnt/cachec/NOESAR_EVOLUTION`.** All four hooks — `SessionStart`, `UserPromptSubmit`,
+    `PreToolUse`, `Stop` — are registered in this project's `.claude/settings.json`, which
+    Claude Code loads for a session opened **at this repository** and not for one opened from
+    the umbrella directory `/mnt/cachec/NOESAR`, from a parent path, or from elsewhere. Opened
+    wrongly, the session silently loses the orchestrator reminder, the state digest, the
+    destructive-command guard and the close guard. **Open the session here, or the mechanical
+    half is not running** — and it is not running quietly, so it is never assumed.
+80. **The hook is reinjection, not quality.** It guarantees the contract is *asked for* on
+    every prompt of such a session; it guarantees nothing about the result. The four layers
+    are distinct and are never reported as one: `HOOK` = mechanical reinjection ·
+    `SKILL + CLAUDE10` = instructed engineering behaviour · `TEST` = verification of the
+    governance itself · **product evidence** = the only proof of the maturity level actually
+    reached. No `L4`/`L5` claim rests on a hook (rule 38).
+
+Governing detail: `.claude/skills/noesar-evolution-engineering-depth/SKILL.md`. Its mechanical
+half is `.claude/hooks/engineering-orchestrator.sh` (`UserPromptSubmit`), which injects the
+rule and **never blocks anything** — the semantics live in this file and in the skill, never
+in a keyword list.
+
 ---
 
 @.claude/skills/noesar-evolution/SKILL.md
+@.claude/skills/noesar-evolution-engineering-depth/SKILL.md
 @.claude/skills/noesar-evolution-context/SKILL.md
 @.claude/skills/noesar-evolution-verify/SKILL.md
 @.claude/skills/noesar-evolution-budget/SKILL.md
