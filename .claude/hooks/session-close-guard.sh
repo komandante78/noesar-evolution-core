@@ -75,12 +75,27 @@ fi
 is_closure_path() {
   case "$1" in
     PROJECT_STATE.json|docs/SESSION_HANDOFF.md|docs/DECISION_LOG.md|docs/INSTALLATION_LEDGER.md) return 0 ;;
+    CLAUDE10.md|CLAUDE.md) return 0 ;;
     .claude/settings.json) return 0 ;;
     .claude/hooks/*) return 0 ;;
     .claude/skills/*/SKILL.md) return 0 ;;
     *) return 1 ;;
   esac
 }
+# CLAUDE10.md and CLAUDE.md were MISSING from this set until 2026-08-11 (F-CLOSURE-001,
+# D-0387), and the omission was invisible until a commit tripped it. Every other governance
+# artifact was already here — the state files, settings.json, the hooks, the skills — while
+# the authority text those four are subordinate to was classified as product work. The
+# consequence was not theoretical: commit d4ad08a changed CLAUDE10.md, and check 2 would
+# then have blocked EVERY later session close until last_commit was manually advanced past
+# it. A guard that blocks because the project edited its own governance is a guard people
+# learn to route around, which costs more than it buys.
+#
+# The two are exempt for the same reason the skills are: they are authority prose, they
+# carry no product behaviour, and changing them does not make PROJECT_STATE.json's
+# last_commit a stale description of what the product IS. The exemption is anchored at the
+# repository root and matches the exact names only — `vendor/CLAUDE10.md` and
+# `CLAUDE10.md.bak` are deliberately outside it (asserted in test-session-lifecycle.sh §29).
 # BACKUPS/* is deliberately NOT in this set (Owner instruction, 2026-08-10). A backup can
 # contain real sources/config/substantial content, so it must never be treated as a
 # closure-only change by construction — a commit that touches BACKUPS/* is judged on its

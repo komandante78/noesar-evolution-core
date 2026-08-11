@@ -266,6 +266,70 @@ else
 fi
 
 echo
+echo "=== 29. the CLOSURE SET covers the governance authority text (F-CLOSURE-001) ==="
+# Found on 2026-08-11 while committing the orchestrator: is_closure_path() listed the state
+# files, settings.json, .claude/hooks/* and .claude/skills/*/SKILL.md — but NOT CLAUDE10.md,
+# the authority every one of those files is subordinate to. So a commit that changes the
+# governance text itself read as product work, and check 2 blocked EVERY later session close
+# until last_commit was advanced past it. A guard that blocks on the project's own governance
+# being edited is a guard people learn to route around.
+#
+# Direction 1 — the classifier, extracted from the guard so the case list is tested directly.
+eval "$(sed -n '/^is_closure_path()/,/^}/p' "$GUARD")"
+closure_is() { # closure_is PATH yes|no DESC
+  if is_closure_path "$1"; then local got=yes; else local got=no; fi
+  if [ "$got" = "$2" ]; then ok "$3"; else bad "$3" "wanted $2, got $got — for: $1"; fi
+}
+closure_is 'CLAUDE10.md'                            yes "CLAUDE10.md — the authority itself — is a closure path"
+closure_is 'CLAUDE.md'                              yes "CLAUDE.md, the entry point that imports it, likewise"
+closure_is 'PROJECT_STATE.json'                     yes "the state file is unchanged in the set"
+closure_is 'docs/DECISION_LOG.md'                   yes "the decision log is unchanged in the set"
+closure_is '.claude/hooks/session-close-guard.sh'   yes "the hooks are unchanged in the set"
+closure_is '.claude/skills/noesar-evolution/SKILL.md' yes "a skill document is unchanged in the set"
+# Direction 2 — the set must not have widened. Product work is still product work.
+closure_is 'services/reference-control-plane/x.mjs' no  "product source is NOT a closure path"
+closure_is 'BACKUPS/hooks_2026/session-close-guard.sh' no "BACKUPS/* stays out (Owner instruction, 2026-08-10)"
+closure_is 'docs/WORK_PLAN_V5_REWRITE.md'           no  "an ordinary doc is NOT a closure path"
+closure_is 'CLAUDE10.md.bak'                        no  "a lookalike filename does not inherit the exemption"
+closure_is 'vendor/CLAUDE10.md'                     no  "the exemption is anchored at the repository root"
+
+# Direction 3 — end to end, through the real guard, against a throwaway git repository.
+# This is the decisive one: the classifier could be right and check 2 still wrong.
+CR="$G/closure-repo"; mkdir -p "$CR/docs" "$CR/.claude/hooks"
+GIT="git -C $CR -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false"
+$GIT init -q 2>/dev/null || git init -q "$CR" 2>/dev/null
+printf '# authority\n' > "$CR/CLAUDE10.md"
+printf '# HANDOFF\n\nPROSSIMA: something\n' > "$CR/docs/SESSION_HANDOFF.md"
+printf '{"last_commit":"HEAD","next_action":"do the next thing"}' > "$CR/PROJECT_STATE.json"
+$GIT add -A >/dev/null 2>&1; $GIT commit -qm base >/dev/null 2>&1
+C1="$($GIT rev-parse HEAD 2>/dev/null)"
+printf '# authority\n\n## 19. a new rule\n' > "$CR/CLAUDE10.md"
+$GIT add CLAUDE10.md >/dev/null 2>&1; $GIT commit -qm 'governance edit' >/dev/null 2>&1
+C2="$($GIT rev-parse HEAD 2>/dev/null)"
+# last_commit names C1 while HEAD is C2, ahead by a CLAUDE10.md-only commit. Left
+# uncommitted deliberately: PROJECT_STATE.json is itself a closure path, so check 5 skips it.
+printf '{"last_commit":"%s","next_action":"do the next thing"}' "$C1" > "$CR/PROJECT_STATE.json"
+DC="$G/closure-baseline"
+if [ -n "$C1" ] && [ -n "$C2" ] && [ "$C1" != "$C2" ]; then
+  start_session "$DC" sessclosure "$CLEAN"
+  OUT="$(printf '{"session_id":"sessclosure","hook_event_name":"Stop","stop_hook_active":false}' \
+    | NOESAR_GUARD_ROOT="$CR" NOESAR_GUARD_BASELINE_DIR="$DC" NOESAR_GUARD_FAKE_DOCKER_JSON="$CLEAN" \
+      NOESAR_GUARD_DRY_RUN=1 NOESAR_GUARD_BOOTSTRAP_MARKER="$DC/bootstrap-marker.txt" bash "$GUARD" 2>/dev/null)"
+  assert_jq "$OUT" '.verdict=="PASS"' "HEAD ahead by a CLAUDE10.md-only commit does NOT block the close"
+  # And the converse, so the tolerance cannot have been widened into a hole: a real code
+  # file in the same range must still block.
+  mkdir -p "$CR/services"; printf 'export const x = 1;\n' > "$CR/services/app.mjs"
+  $GIT add services/app.mjs >/dev/null 2>&1; $GIT commit -qm 'product change' >/dev/null 2>&1
+  OUT="$(printf '{"session_id":"sessclosure","hook_event_name":"Stop","stop_hook_active":false}' \
+    | NOESAR_GUARD_ROOT="$CR" NOESAR_GUARD_BASELINE_DIR="$DC" NOESAR_GUARD_FAKE_DOCKER_JSON="$CLEAN" \
+      NOESAR_GUARD_DRY_RUN=1 NOESAR_GUARD_BOOTSTRAP_MARKER="$DC/bootstrap-marker.txt" bash "$GUARD" 2>/dev/null)"
+  assert_jq "$OUT" '.decision=="block"' "a product file in the same range STILL blocks — the tolerance did not widen"
+  assert_jq "$OUT" '.reason|test("services/app.mjs")' "and the block names the product file, not the governance one"
+else
+  ok "[SKIPPED, declared] git is unavailable here — the end-to-end closure-set case did not run"
+fi
+
+echo
 echo "================================================================"
 echo "session-lifecycle fixture tests: $PASS passed, $FAIL failed"
 echo "================================================================"

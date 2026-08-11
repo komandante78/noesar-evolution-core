@@ -131,6 +131,28 @@ Bash)
     CMD_NAMES_ATOM=true
   fi
 
+  # Does this command open a FILE for writing? (F-ATOM-001, D-0387.)
+  # The ATOM tier used to mark a segment mutating on `grep -qE '>{1,2}'` — any '>' at all.
+  # So a read-only inspection of the separate repository was denied for carrying `2>&1`:
+  #   git -C /mnt/cachec/ATOM_EVOLUTION status --porcelain 2>&1 | head -3   -> DENIED
+  # `2>&1` duplicates a descriptor and `2>/dev/null` discards; neither can modify a byte.
+  # This is F-HOOK-001's mistake surviving at the one tier D-0382 did not re-derive from
+  # operands: a SHAPE was matched without asking what it does.
+  #
+  # The probe erases exactly the three forms that write no file — fd duplication, the
+  # null/std device sinks, and arrows in prose — and then asks whether any '>' is left.
+  # Everything else still counts, including `2> real.log`: stderr sent to a real file IS a
+  # write. Whole-command rather than per-segment, deliberately, matching how the repository
+  # name is already recognised: `cd ATOM && cmd > f` puts the two in different segments.
+  CMD_WRITES_FILE=false
+  if printf '%s' "$CMD" \
+       | sed -E 's/[0-9]*>&[0-9-]+//g' \
+       | sed -E 's/[0-9]*&?>>?[[:space:]]*\/dev\/(null|stdout|stderr|fd\/[0-9]+)//g' \
+       | sed -E 's/[-=]>|>=//g' \
+       | grep -q '>'; then
+    CMD_WRITES_FILE=true
+  fi
+
   # Split into simple-command segments. `&&` and `||` collapse into empty segments, which
   # are skipped. Redirections are NOT separators: `cat x > y` stays one segment.
   while IFS= read -r SEG; do
@@ -219,12 +241,19 @@ $TOK"
     # in segment 2. Scoping the name to the segment let exactly that form through.
     if [ "$CMD_NAMES_ATOM" = true ]; then
       MUTATES=false
+      # Widened 2026-08-11 (D-0387). The differential that built the redirection fix showed
+      # six commands that really do mutate ATOM and were allowed by the pre-repair guard too:
+      # tee, touch, ln, chmod, install, patch. They were invisible because the blanket '>'
+      # rule caught the COMMON write forms by accident, so nobody looked at the verb list.
+      # Fixing only the redirection would have left the gap open and looked like a repair.
       case "$CMDWORD" in
         rm|rmdir|shred|unlink|mv|cp|dd|truncate) MUTATES=true ;;
+        tee|touch|ln|chmod|chown|chgrp|install|patch|mkdir) MUTATES=true ;;
+        tar|unzip|rsync) MUTATES=true ;;
         sed) printf '%s' "$FLAGS" | grep -qE '(^| )-i' && MUTATES=true ;;
         git) printf '%s' "$OPERANDS" | grep -qE '^(commit|push|add|reset|checkout|clean)$' && MUTATES=true ;;
       esac
-      printf '%s' "$SEG" | grep -qE '>{1,2}' && MUTATES=true
+      [ "$CMD_WRITES_FILE" = true ] && MUTATES=true
       if [ "$MUTATES" = true ]; then
         deny "mutating command targets /mnt/cachec/ATOM_EVOLUTION (separate repo, not authorised this session) in: $CMD"
       fi

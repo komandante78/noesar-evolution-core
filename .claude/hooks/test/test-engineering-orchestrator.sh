@@ -347,6 +347,77 @@ assert_decision 'V=.env; wc -l $V'                  ask   "a sensitive path held
 # them to a question is deliberate; downgrading them to silence would not be.
 
 echo
+echo "=== 22 · F-ATOM-001 · a redirection that writes NO file is not a mutation ==="
+# Found live on 2026-08-11, during the commit pass that followed D-0386. The ATOM tier
+# marked a segment mutating on `grep -qE '>{1,2}'` — ANY '>' anywhere. So a read-only
+# inspection of the separate ATOM repository was denied for carrying `2>&1`:
+#
+#   git -C /mnt/cachec/ATOM_EVOLUTION status --porcelain 2>&1 | head -3   -> DENIED
+#
+# `2>&1` duplicates a file descriptor and `2>/dev/null` discards; neither can modify a
+# byte of ATOM. This is the same class as F-HOOK-001 — a shape matched without asking what
+# it actually does — surviving at the one tier D-0382 did not re-derive from operands.
+#
+# Both directions are asserted. The false positives must stop, and every redirection that
+# really does write a file must still DENY.
+ATOM=/mnt/cachec/ATOM_EVOLUTION
+
+# --- direction 1: read-only inspection of ATOM is allowed again ---
+assert_decision "git -C $ATOM status --porcelain 2>&1 | head -3" allow \
+  "the exact command denied live: 2>&1 is an fd dup, not a write"
+assert_decision "ls -d $ATOM 2>/dev/null"                        allow \
+  "2>/dev/null discards stderr — it writes nothing into ATOM"
+assert_decision "git -C $ATOM log --oneline -1 2>/dev/null"      allow \
+  "reading ATOM's log with stderr discarded is not a mutation"
+assert_decision "cat $ATOM/README.md >&2"                        allow \
+  ">&2 duplicates a descriptor — no file is opened for writing"
+assert_decision "git -C $ATOM status >/dev/null 2>&1"            allow \
+  "both streams discarded at once is still no file write"
+assert_decision "echo 'SessionStart -> Stop' && ls $ATOM"        allow \
+  "an arrow in prose is not a redirection operator"
+
+# --- direction 2: NOT ONE true positive may become a silent allow ---
+assert_decision "echo x > $ATOM/f.txt"                           deny \
+  "writing a file inside ATOM is still denied"
+assert_decision "echo x >> $ATOM/f.txt"                          deny \
+  "appending to a file inside ATOM is still denied"
+assert_decision "cat foo 2> $ATOM/err.log"                       deny \
+  "stderr sent to a REAL file is a write — still denied"
+assert_decision "rm $ATOM/x"                                     deny \
+  "removing a file in ATOM is still denied"
+assert_decision "sed -i s/a/b/ $ATOM/x"                          deny \
+  "an in-place edit of an ATOM file is still denied"
+assert_decision "mv a $ATOM/b"                                   deny \
+  "moving a file into ATOM is still denied"
+assert_decision "cd $ATOM && git push"                           deny \
+  "pushing the ATOM repository is still denied"
+
+# --- direction 3: write paths the verb list never covered (found by the D-0387 differential) ---
+# Building the redirection fix meant running old and new guards over the same ATOM matrix.
+# That differential also showed six commands that MUTATE ATOM and were allowed by BOTH —
+# a pre-existing gap, invisible because the '>' rule was catching the common cases by
+# accident. Fixing the instance without fixing the verb list would have left it open.
+assert_decision "tee $ATOM/x"                                    deny \
+  "tee writes its operand — denied inside ATOM"
+assert_decision "touch $ATOM/x"                                  deny \
+  "touch creates or restamps a file — denied inside ATOM"
+assert_decision "ln -s /etc/passwd $ATOM/x"                      deny \
+  "a symlink planted inside ATOM is a mutation"
+assert_decision "chmod 777 $ATOM/x"                              deny \
+  "changing a mode inside ATOM is a mutation"
+assert_decision "install -m0644 a $ATOM/x"                       deny \
+  "install copies a file into place — denied inside ATOM"
+assert_decision "patch -p1 -d $ATOM"                             deny \
+  "patch rewrites files in the directory it is pointed at"
+# The reads must stay reads: widening the verb list must not deny inspection.
+assert_decision "git -C $ATOM log --oneline"                     allow \
+  "reading ATOM's log is still allowed after the verb list widened"
+assert_decision "tail -20 $ATOM/README.md"                       allow \
+  "reading a file in ATOM is still allowed"
+assert_decision "ls -la $ATOM"                                   allow \
+  "listing ATOM is still allowed"
+
+echo
 echo "================================================================"
 echo "engineering-orchestrator fixture tests: $PASS passed, $FAIL failed"
 echo "================================================================"
