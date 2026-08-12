@@ -9,9 +9,9 @@
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "67369cfb30fdfe4f2db77e5b97ef38e916665434",
-  "last_updated_utc": "2026-08-12T14:05:00Z",
-  "last_commit_note": "67369cfb30fdfe4f2db77e5b97ef38e916665434 = \"fix(governance): the close guard learns that a section 3a replacement is not litter\" (D-0392, 2026-08-12). Check 6 of session-close-guard.sh compares container identity against the SessionStart baseline, so the ATOM_TOKEN rotation - which gave noesar-evolution a new id under CLAUDE10 section 3a - blocked the close of the very session that performed an authorised deployment. Narrow exemption: the name must be exactly noesar-evolution, an installation must have existed in the baseline, and the container it replaced must still be present with an id that came from that baseline; reported as a DEBT, never silently exempted. Four cases, R1 seen red first. Suites 58/58, 68/68, 122/122. The commit also carries the section 21e pre-cleanup inventory. Preceded by 20ed5b9 (Voice V1, D-0388) and b3037ac (its documentary closure, D-0389).",
+  "last_commit": "771b6464ab5753e3fc3520bb93de8bd996b570a6",
+  "last_updated_utc": "2026-08-12T14:20:00Z",
+  "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
       "id": "B-001",
