@@ -9392,3 +9392,20 @@ Oracle: the same fixture against a copy with the incident's defect reintroduced 
 Real `--check` against the live installation: PASS, non-mutation verified externally.
 **Reversal cost.** None: new files, nothing rewired. The old manual path still exists.
 **Status.** Applied, committed, NOT used for any deployment. No container was touched.
+
+## D-0394 · session closed on A2, and a self-referential value that a recreate makes stale — 2026-08-12
+**Decision.** The session closes with **A2** as the single next action: one signed-in turn whose
+reasoning indicator must read `atom`. `F-ROT-001` is recorded, not fixed.
+**Why.** A2 is the only end-to-end proof that both consumers carry the rotated value, and it needs
+a credential no automation here holds. Recording it as the sole next action stops it being lost
+behind the three larger things that follow it.
+**Rejected.** Declaring the rotation accepted on the strength of A1 alone — healthy, four children,
+zero auth-failure lines is strong evidence and is not the proof.
+**Evidence.** Baseline captured for the verdict: `/readyz` 200 `ready:true`, container log at
+**118 lines** (`EVIDENCE/a2_log_marker.txt`), **0** degradation or auth-failure lines, `atom`
+announced `provider=atom version=0.1.0 contract=1.0.0`. `F-ROT-001`: `NOESAR_ALLOWED_HOSTS` still
+names `172.22.0.5`, the IP the container had before the rotation; the replacement is `172.22.0.3`.
+Nothing observed is broken — `localhost`, `127.0.0.1` and `192.168.178.100` all answer 200 — but
+the class matters: any recreate makes a self-referential value stale and nothing detects it.
+**Reversal cost.** None.
+**Status.** Session closed. A2 pending. `F-ROT-001` open, with a candidate fix named in the entry.

@@ -1,25 +1,43 @@
 # SESSION HANDOFF — NOESAR EVOLUTION
 
-Last updated: 2026-08-12 · `phase_status = DEPLOY_TOOL_LANDED`
-**`origin/main` = `57f803e`. The local branch is 5 ahead and NOT pushed.**
+Last updated: 2026-08-12 · `phase_status = SESSION_CLOSED_AWAITING_A2`
+**`origin/main` = `57f803e`. The local branch is 7 ahead and NOT pushed.**
 
 ---
 
-## ➜ LA PROSSIMA AZIONE
+## ➜ LA PROSSIMA AZIONE — **A2**, e nient'altro
 
-Nothing is blocking. Four independent things remain, **none implying the others**:
+**A2 is the only end-to-end proof that the rotated `ATOM_TOKEN` is carried by BOTH consumers.**
+It needs a signed-in session, so it is an Owner action: no automation here can hold a credential.
 
-1. **A2 — the only end-to-end proof of the rotation.** Sign in and run one turn that uses
-   reasoning: the indicator must read **`atom`**, not `reference`. Until then the evidence is
-   strong but indirect — ATOM started and nothing logged an authentication failure.
-2. **Deploy Voice V1.** It is committed (`20ed5b9`) and **not installed**: the running image is
-   still `d0373-voice-conversation`, which predates it. `tools/deploy/redeploy.sh --image` is now
-   the way to do it, and its fixture is green.
-3. **`git push origin main`** — 5 commits, never forced.
-4. **OCI phase O1** — prove the repository rebuilds the running product. Prerequisite of
-   internalising the four external containers that breach `MASTER_PROJECT/08_INSTALLAZIONE.md` §1.
+```text
+1. open   https://192.168.178.100:8443        (or http://192.168.178.100:8100)
+2. sign in
+3. run ONE turn that uses reasoning — a chat message is enough
+4. read the reasoning indicator: it must say  atom   and NOT  reference
+```
 
-Push is a separate authorisation and was not given. **5 commits ahead.**
+**What the verdict means.** The two sides of the token live inside the same container: the
+supervisor hands `ATOM_TOKEN` to the `atom` child, and the api sends
+`NOESAR_RUST_REASONING_TOKEN` as the `x-atom-token` header. If the rotation had written them
+differently, atomd would refuse and the product would **declare** the fallback (`D-0312`):
+`degradationSummary()` returns `provider: 'reference'` the moment any degradation event exists,
+and `atom` only while none does. So `atom` is the pair matching, observed end to end.
+
+**Baseline captured for the verdict** (2026-08-12T13:44Z, before any A2 turn):
+
+| | |
+|---|---|
+| `/readyz` | `200`, `ready: true`, `setupPending: false` |
+| container log | **118 lines** — the marker, in `EVIDENCE/a2_log_marker.txt` |
+| degradation / auth-failure lines | **0** |
+| `atom` child | spawned, announced `provider=atom version=0.1.0 contract=1.0.0` |
+
+After the turn, anything new past line 118 mentioning degradation or `x-atom-token` is the
+counter-evidence; its absence plus an `atom` indicator is the pass.
+
+**Then, in order:** deploy Voice V1 (`tools/deploy/redeploy.sh --image`, committed but not
+installed) · `git push origin main` (7 commits, never forced) · OCI phase O1.
 
 ---
 
@@ -31,7 +49,9 @@ Push is a separate authorisation and was not given. **5 commits ahead.**
 | `b3037ac` | its documentary closure (`D-0389`) |
 | `67369cf` | **the close guard learns that a §3a replacement is not litter** (`D-0392`) + §21e inventory |
 | `0ba49a6` | the rotation's documentary closure (`D-0390`, `D-0391`) |
-| *(this commit)* | **the §3a sequence becomes a tool**: `tools/deploy/redeploy.sh` + fixture + `docs/DEPLOYMENT.md` (`D-0393`) |
+| `771b646` | **the §3a sequence becomes a tool**: `tools/deploy/redeploy.sh` + fixture + `docs/DEPLOYMENT.md` (`D-0393`) |
+| `a6f00ab` | advance `last_commit` past it, so check 2 passes for the right reason |
+| *(this commit)* | session closure: A2 as the single next action, and `F-ROT-001` recorded |
 
 **`ATOM_TOKEN` is rotated and live** (`D-0391`). Downtime **0.8 s**; container
 `3575d67aac1f…` → **`9ef797fa521a…`**; same image, no build, no pull, no product change.
@@ -63,7 +83,7 @@ touched. It is written down because it happened, not because it is comfortable.
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
-- **Nothing was pushed.** 5 commits ahead of `origin/main`.
+- **Nothing was pushed.** 7 commits ahead of `origin/main`.
 - **Voice V1 is not deployed.** Committed only.
 - **`OLD_TOKEN_REFUSED = UNVERIFIED`** — `atomd` listens on loopback inside the container, so
   proving a 401 needs `docker exec` or a disposable container, neither authorised. Not claimed.
@@ -73,6 +93,12 @@ touched. It is written down because it happened, not because it is comfortable.
 - **The sensitive backups of both rotation attempts are kept**, `0700`/`0600`:
   `BACKUPS/atom_token_rotation_20260812T121329Z/` and `…T130147Z/`. They contain the workspace
   config directory. To be handled in a later closure — not deleted here.
+- **A2 was NOT performed** — it needs a signed-in session and no automation here holds a
+  credential. The recipe and the baseline for its verdict are at the top of this file.
+- **`F-ROT-001` recorded, not fixed**: `NOESAR_ALLOWED_HOSTS` still names the container IP from
+  *before* the rotation. Nothing observed is broken — every host clients actually use answers
+  200 — but a self-referential value went stale the moment the container was replaced, and
+  nothing detects that class.
 - **The new tool has deployed nothing.** It landed with its fixture green and its `--check` run
   against the live installation; no container was touched by it.
 
