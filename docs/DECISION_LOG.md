@@ -9374,3 +9374,21 @@ anchor to make a guard pass.
 58/58 · 68/68 · 122/122; the real guard's dry run now reports the replacement instead of blocking.
 **Reversal cost.** None — one function, one test file.
 **Status.** Applied in `67369cfb30fdfe4f2db77e5b97ef38e916665434`.
+
+## D-0393 · the §3a deployment sequence becomes a tool the repository owns — 2026-08-12
+**Decision.** `tools/deploy/redeploy.sh` (+ fixture, + `docs/DEPLOYMENT.md`, + `npm run
+test:redeploy`) replaces the prose that was performed by hand. Two modes, the only two §3a has:
+`--rotate-secret VAR[,VAR…]` and `--image TAG`. It never builds, pulls or pushes.
+**Why.** One session proved both halves: the sequence is subtle enough to defeat an expert —
+43.8 s of downtime from one read placed after the rename (`D-0390`) — and testable enough that a
+fake-Docker fixture caught two further defects before production, one of which would have rolled
+back a perfectly successful deployment.
+**Rejected.** Leaving it in the session scratchpad: it depended on this host's paths and would
+have died with the session, so the next deployment would have been prose again.
+**Evidence.** Fixture **70/70** over 9 scenarios (read-only check, both refusals, two-variable
+rotation, image change, absent image refused without a pull, three failures before the rename,
+four after it each rolling back, no secret in stdout/stderr/argv, temp files gone on every path).
+Oracle: the same fixture against a copy with the incident's defect reintroduced fails **26**.
+Real `--check` against the live installation: PASS, non-mutation verified externally.
+**Reversal cost.** None: new files, nothing rewired. The old manual path still exists.
+**Status.** Applied, committed, NOT used for any deployment. No container was touched.

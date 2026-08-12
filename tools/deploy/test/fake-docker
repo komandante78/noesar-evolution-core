@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# A FAKE docker. It never touches a real daemon: there is no socket, no client, no network.
+# Everything is symbolic state under $FAKE_ROOT, and every invocation is appended to the journal
+# so the test can prove afterwards what was called and that no secret ever travelled in argv.
+set -uo pipefail
+
+: "${FAKE_ROOT:?FAKE_ROOT must be set}"
+C="$FAKE_ROOT/c"; IMG="$FAKE_ROOT/img"; NET="$FAKE_ROOT/net"
+mkdir -p "$C" "$IMG" "$NET"
+printf '%s\n' "$*" >> "$FAKE_ROOT/journal"
+
+die() { printf 'error: %s\n' "$1" >&2; exit 1; }
+alive() { [ -d "$C/$1" ]; }
+get()  { cat "$C/$1/$2" 2>/dev/null; }
+set_() { printf '%s' "$3" > "$C/$1/$2"; }
+
+# ── inspect ───────────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "image" ] && [ "${2:-}" = "inspect" ]; then
+  shift 2; name=""; for a in "$@"; do case "$a" in --format) ;; --format=*) ;; -*) ;; *) name="$a" ;; esac; done
+  [ -f "$IMG/$(printf '%s' "$name" | tr '/:' '__')" ] || die "No such image: $name"
+  exit 0
+fi
+if [ "${1:-}" = "network" ] && [ "${2:-}" = "inspect" ]; then
+  shift 2; name="${1:-}"; [ -f "$NET/$name" ] || die "network $name not found"; exit 0
+fi
+
+if [ "${1:-}" = "inspect" ]; then
+  shift; fmt=""; name=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --format) fmt="${2:-}"; shift 2 ;;
+      --format=*) fmt="${1#--format=}"; shift ;;
+      *) name="$1"; shift ;;
+    esac
+  done
+  alive "$name" || die "No such object: $name"
+  [ -z "$fmt" ] && { echo "[{}]"; exit 0; }
+  case "$fmt" in
+    *".Config.Image"*)                     get "$name" image ;;
+    *"NetworkMode"*)                       echo "fake-net" ;;
+    *"RestartPolicy.Name"*)                echo "unless-stopped" ;;
+    *"ReadonlyRootfs"*)                    echo "true" ;;
+    *"State.Status"*"exit="*)              echo "$(get "$name" status) exit=$(get "$name" exit)" ;;
+    *"State.Health"*)
+        # The health faults apply ONLY to a container this fixture CREATED with `run`. Applying
+        # them to the pre-existing source made the preflight refuse, so the rename was never
+        # reached and the rollback path was never actually exercised — the test looked green for
+        # the wrong reason. A fault injected in the wrong place tests nothing.
+        h="$(get "$name" health)"
+        if [ -f "$C/$name/born-of-run" ]; then
+          if   [ "${FAKE_HEALTH_NEVER:-0}" = "1" ]; then echo "starting"
+          elif [ "${FAKE_UNHEALTHY:-0}"    = "1" ]; then echo "unhealthy"
+          else echo "${h:-none}"; fi
+        else echo "${h:-none}"; fi ;;
+    *"State.Status"*)                      get "$name" status ;;
+    *'eq .Destination "/workspace"'*)      echo "${FAKE_WORKSPACE:?}" ;;
+    *"range .Mounts"*"println .Source"*)   printf '%s\n' "${FAKE_WORKSPACE:?}" "${FAKE_SHADOWS:-$FAKE_ROOT/shadows}" ;;
+    *"len .Config.Env"*)                   wc -l < "$C/$name/env" ;;
+    *"len .HostConfig.PortBindings"*)      echo 3 ;;
+    *"len .HostConfig.Binds"*)             echo 2 ;;
+    *"len .HostConfig.Tmpfs"*)             echo 2 ;;
+    *"range .Config.Env"*)                 cat "$C/$name/env" ;;
+    *"PortBindings"*)
+        # FAKE_EMPTY_PORT_FLAGS exercises the completeness guard specifically: the COUNT still
+        # says 3 (so preflight passes) while the flags come back empty (so the recipe is
+        # incomplete). That is the shape of a config read that half-works, which is the class of
+        # fault the guard exists for.
+        [ "${FAKE_EMPTY_PORT_FLAGS:-0}" = "1" ] && exit 0
+        printf -- '-p\n127.0.0.1:18089:8089\n-p\n127.0.0.1:18443:8443\n-p\n127.0.0.1:18100:8088\n' ;;
+    *"HostConfig.Tmpfs"*)                  printf -- '--tmpfs\n/run:mode=1777\n--tmpfs\n/tmp\n' ;;
+    *"HostConfig.Binds"*)                  printf -- '-v\n%s:/workspace\n-v\n%s:/shadows\n' "${FAKE_WORKSPACE:?}" "${FAKE_SHADOWS:-$FAKE_ROOT/shadows}" ;;
+    *"Config.StopTimeout"*)                echo 60 ;;
+    *"LogConfig.Config"*)                  printf -- '--log-opt\nmax-file=1\n--log-opt\nmax-size=50m\n' ;;
+    *"LogConfig.Type"*)                    echo "json-file" ;;
+    *) echo "" ;;
+  esac
+  exit 0
+fi
+
+# ── ps ────────────────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "ps" ]; then
+  for d in "$C"/*; do [ -d "$d" ] && basename "$d"; done
+  exit 0
+fi
+
+# ── stop ──────────────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "stop" ]; then
+  shift; while [ "${1:-}" = "--timeout" ]; do shift 2; done
+  name="${1:?}"; alive "$name" || die "No such container: $name"
+  [ "${FAKE_FAIL_STOP:-0}" = "1" ] && die "stop refused (injected)"
+  set_ "$name" status exited
+  set_ "$name" exit "${FAKE_STOP_EXIT:-0}"
+  set_ "$name" health none
+  exit 0
+fi
+
+# ── rename ────────────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "rename" ]; then
+  shift; from="${1:?}"; to="${2:?}"
+  alive "$from" || die "No such object: $from"
+  [ "${FAKE_FAIL_RENAME:-0}" = "1" ] && die "rename refused (injected)"
+  mv "$C/$from" "$C/$to"; exit 0
+fi
+
+# ── run ───────────────────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "run" ]; then
+  ALL_ARGS="$*"   # captured before the parser shifts it away
+  shift; name=""; envfile=""; image=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -d|--read-only) shift ;;
+      --name) name="$2"; shift 2 ;;
+      --env-file) envfile="$2"; shift 2 ;;
+      --network|--restart|--stop-timeout|--log-driver|--log-opt|-p|-v|--tmpfs) shift 2 ;;
+      *) image="$1"; shift ;;
+    esac
+  done
+  [ "${FAKE_FAIL_RUN:-0}" = "1" ] && die "run refused (injected)"
+  alive "$name" && die "Conflict: name $name already in use"
+  [ -f "$IMG/$(printf '%s' "$image" | tr '/:' '__')" ] || die "No such image: $image (no pull attempted)"
+  mkdir -p "$C/$name"
+  set_ "$name" image "$image"
+  set_ "$name" status running
+  set_ "$name" exit 0
+  set_ "$name" health healthy
+  : > "$C/$name/born-of-run"   # marks a container this fixture created, so health faults hit only it
+  cp "$envfile" "$C/$name/env"
+  # The recipe as it was actually passed — recorded so the test can assert nothing was lost.
+  printf '%s\n' "$ALL_ARGS" > "$C/$name/recipe" 2>/dev/null || true
+  echo "fakecontainerid$(date +%s)"
+  exit 0
+fi
+
+# ── start / rm / logs ─────────────────────────────────────────────────────────────────────────
+if [ "${1:-}" = "start" ]; then
+  name="${2:?}"; alive "$name" || die "No such container: $name"
+  set_ "$name" status running; set_ "$name" health healthy; exit 0
+fi
+if [ "${1:-}" = "rm" ]; then
+  name="${2:?}"; alive "$name" || die "No such container: $name"
+  rm -rf "${C:?}/${name:?}"; exit 0
+fi
+if [ "${1:-}" = "logs" ]; then
+  shift; while [ "${1:-}" = "--tail" ]; do shift 2; done
+  name="${1:?}"; alive "$name" || die "No such container: $name"
+  echo '{"event":"shutdown","line":"database system is shut down"}'
+  for ch in postgres api codev atom; do
+    [ "${FAKE_MISSING_CHILD:-}" = "$ch" ] && continue
+    printf '{"event":"child.spawned","child":"%s"}\n' "$ch"
+  done
+  exit 0
+fi
+
+die "fake docker: unsupported command: $*"
