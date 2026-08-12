@@ -414,17 +414,51 @@ cbl_check_containers() {
   fi
 
   if [ "$baseline_ok" = true ]; then
-    local new_json entry name idshort
+    local new_json entry name idshort had_installation preserved_predecessor
     new_json="$(jq -c --argjson base "$baseline_json" '
       ($base | map(.id)) as $baseids
       | map(select(.id as $i | ($baseids | index($i)) == null))
     ' <<<"$current_json" 2>/dev/null)"
+
+    # THE ONE CASE A REPLACEMENT IS NOT LITTER (added 2026-08-12, after it blocked the close of
+    # the session that performed an authorised deployment).
+    #
+    # CLAUDE10.md §3a authorises replacing the installation container — stop with grace, preserve
+    # the predecessor under a timestamped name, start the replacement — and §21b says exactly two
+    # containers may exist at phase close: the running installation and one rollback. Performing
+    # that gives `noesar-evolution` a NEW id, which this check could not tell apart from litter.
+    # The rule and the instance were both wrong: the rule had no idea the product's own
+    # deployment sequence exists.
+    #
+    # The exemption is deliberately narrow, and each clause carries its own weight:
+    #   - the name is EXACTLY `noesar-evolution` — never a probe, a runner or a sonda;
+    #   - an installation existed in the baseline, so something was there to replace;
+    #   - the container it replaced is STILL PRESENT and ITS ID CAME FROM THE BASELINE.
+    # The last clause is what distinguishes a replacement from a container conjured out of
+    # nothing: the parachute §3a requires must actually be on the host. Miss any one of them and
+    # the container blocks exactly as before.
+    had_installation="$(jq -r '[.[] | select(.name=="noesar-evolution")] | length' <<<"$baseline_json" 2>/dev/null || echo 0)"
+    preserved_predecessor="$(jq -r --argjson base "$baseline_json" '
+      ($base | map(.id)) as $baseids
+      | [ .[]
+          | select(.name | test("^noesar-evolution-(pre|old)-"))
+          | select(.id as $i | ($baseids | index($i)) != null) ]
+      | length' <<<"$current_json" 2>/dev/null || echo 0)"
+
     while IFS= read -r entry; do
       [ -z "$entry" ] && continue
       name="$(jq -r '.name' <<<"$entry" 2>/dev/null)"
       idshort="$(jq -r '.id[0:12]' <<<"$entry" 2>/dev/null)"
       if printf '%s' "$entry" | cbl_is_noesar_scoped; then
-        echo "FAIL:container created this session and not cleaned up (id absent from the SessionStart baseline): $name ($idshort)"
+        if [ "$name" = "noesar-evolution" ] \
+           && [ "${had_installation:-0}" -gt 0 ] 2>/dev/null \
+           && [ "${preserved_predecessor:-0}" -gt 0 ] 2>/dev/null; then
+          # Reported, never silent: a replacement is a fact the close must carry, not an
+          # exemption that hides it.
+          echo "DEBT:the installation container was REPLACED this session under CLAUDE10.md §3a and its predecessor is preserved as required: $name ($idshort)"
+        else
+          echo "FAIL:container created this session and not cleaned up (id absent from the SessionStart baseline): $name ($idshort)"
+        fi
       else
         echo "DEBT:external container appeared during this session, out of NOESAR-evolution scope, not this project's litter: $name ($idshort)"
       fi

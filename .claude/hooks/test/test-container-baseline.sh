@@ -397,6 +397,43 @@ assert_file "$G/bl3/noesar-evolution-container-baseline-s15.json" "SessionStart 
 OUT="$(run_guard "$G/root" "$G/bl3" s15 "$CLEAN_FIXTURE" 1)"
 assert_jq "$OUT" '.verdict=="PASS"' "the Stop hook reads back exactly what SessionStart wrote — the two sides cannot drift"
 
+echo "=== R1. the §3a installation replacement is NOT litter, when its predecessor is preserved ==="
+# CLAUDE10 §3a authorises replacing the installation container: stop, preserve the predecessor
+# under a timestamped name, start the replacement. That gives \`noesar-evolution\` a NEW id, which
+# check 6 could not tell apart from litter — it blocked the close of the very session that
+# performed an authorised deployment (measured 2026-08-12, after the ATOM_TOKEN rotation).
+# The exemption is deliberately narrow: the name must be EXACTLY the installation, an
+# installation must have existed in the baseline, and the container it replaced must still be
+# present AND come from the baseline. That last clause is what makes it a replacement rather
+# than a container conjured from nothing.
+BASE="[$(entry idOLD noesar-evolution)]"
+CUR="[$(entry idNEW noesar-evolution), $(entry idOLD noesar-evolution-pre-token-rotation-20260812T130147Z)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR1.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR1.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_no_fail "$OUT" "an authorised replacement whose predecessor is preserved does not block"
+assert_contains "$OUT" "DEBT:" "noesar-evolution" "the replacement is still REPORTED, never silent"
+
+echo "=== R2. a replacement with NO preserved predecessor still blocks ==="
+BASE="[$(entry idOLD noesar-evolution)]"
+CUR="[$(entry idNEW noesar-evolution)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR2.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR2.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution (idNEW" "without a preserved predecessor it is not a sanctioned replacement, and blocks"
+
+echo "=== R3. a 'predecessor' that was never in the baseline does not buy the exemption ==="
+BASE="[$(entry idOLD noesar-evolution)]"
+CUR="[$(entry idNEW noesar-evolution), $(entry idFAKE noesar-evolution-pre-token-rotation-forged)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR3.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR3.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution (idNEW" "a predecessor absent from the baseline cannot sanction a replacement"
+
+echo "=== R4. any OTHER new noesar-evolution-* container is still litter ==="
+BASE="[$(entry idOLD noesar-evolution)]"
+CUR="[$(entry idOLD noesar-evolution), $(entry idPROBE noesar-evolution-e2e-probe-1)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR4.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR4.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution-e2e-probe-1 (idPROBE" "the exemption covers the installation only, never a probe or a runner"
+
 echo
 echo "================================================================"
 echo "container-baseline fixture tests: $PASS passed, $FAIL failed"
