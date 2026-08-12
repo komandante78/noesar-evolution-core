@@ -249,6 +249,16 @@ export const RUNTIME_ONLY = Object.freeze([
   'Thinking',
   'Speaking',
   'Ready to listen',
+  // The states the window gained with the turn state machine (V1) — `endpointing` and
+  // `transcribing` used to be drawn as "Listening", which told the person to keep talking after
+  // the product had stopped hearing, and every failure was drawn as "Ready to listen".
+  'Got it',
+  'Transcribing',
+  'Stopping',
+  'Something went wrong',
+  // The Stop control's own label and title are written by the MARKUP, not by JavaScript, so they
+  // are covered by the ordinary extractor and must NOT be declared runtime-only — declaring them
+  // would exempt from measurement two strings the measurement can actually see.
   'Open or create a chat first — I need somewhere to put the answer.',
   'Speak now — I will stop on my own when you finish.',
   'I did not hear anything.',
@@ -1313,6 +1323,12 @@ const it = {
   'Thinking': 'Sto pensando',
   'Speaking': 'Sto parlando',
   'Ready to listen': 'Pronta ad ascoltare',
+  'Got it': 'Ho capito',
+  'Transcribing': 'Sto trascrivendo',
+  'Stopping': 'Mi sto fermando',
+  'Something went wrong': 'Qualcosa non ha funzionato',
+  'Stop the reply and speak now (Escape)': 'Ferma la risposta e parla adesso (Esc)',
+  'Stop the reply and speak now — Escape does the same': 'Ferma la risposta e parla adesso — anche Esc fa lo stesso',
   'Open or create a chat first — I need somewhere to put the answer.': 'Apri o crea prima una chat — mi serve un posto dove mettere la risposta.',
   'Speak now — I will stop on my own when you finish.': 'Parla pure — mi fermo da solo quando hai finito.',
   'I did not hear anything.': 'Non ho sentito niente.',

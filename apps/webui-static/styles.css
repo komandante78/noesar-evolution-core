@@ -1293,5 +1293,27 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .voice-face[data-state=speaking]{border-color:var(--green)}
 .voice-face[data-state=speaking] .voice-face-art{color:var(--green)}
 .voice-face[data-state=speaking] .voice-face-bar{fill:var(--green)}
+/* The states the window could not previously say. `endpointing` and `transcribing` were drawn as
+   "listening", which told the person to keep talking after the product had already stopped
+   hearing; `error` was drawn as "ready", which left them waiting for an answer that was never
+   coming. Same colour language as everything else in this file: blue open, amber working, green
+   speaking, red wrong. */
+.voice-face[data-state=endpointing]{border-color:var(--amber)}
+.voice-face[data-state=endpointing] .voice-face-art{color:var(--amber)}
+.voice-face[data-state=endpointing] .voice-face-bar{fill:var(--amber);opacity:.35}
+.voice-face[data-state=transcribing]{border-color:var(--amber)}
+.voice-face[data-state=transcribing] .voice-face-art{color:var(--amber)}
+.voice-face[data-state=transcribing] .voice-face-bar{fill:var(--amber);opacity:.45}
+.voice-face[data-state=interrupting],.voice-face[data-state=cancelling]{border-color:var(--muted)}
+.voice-face[data-state=interrupting] .voice-face-bar,.voice-face[data-state=cancelling] .voice-face-bar{fill:var(--muted);opacity:.3}
+.voice-face[data-state=error]{border-color:var(--red)}
+.voice-face[data-state=error] .voice-face-art{color:var(--red)}
+.voice-face[data-state=error] .voice-face-bar{fill:var(--red);opacity:.5}
+/* Stop is a real control, not decoration: it is the one way to cut in that cannot mishear. It is
+   disabled — visibly — whenever there is nothing to stop, because a control that does nothing is
+   indistinguishable from a broken one. */
+.voice-face-stop{margin-inline-start:6px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:2px 9px;line-height:1.4;font-size:calc(var(--text-scale)*10px);cursor:pointer}
+.voice-face-stop:disabled{opacity:.4;cursor:default}
+.voice-face-stop:not(:disabled):hover{border-color:var(--red);color:var(--red)}
 @keyframes voice-breathe{0%,100%{opacity:.15;r:42}50%{opacity:.7;r:47}}
 @media(prefers-reduced-motion:reduce){.voice-face-pulse{animation:none!important}}

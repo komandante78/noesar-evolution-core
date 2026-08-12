@@ -9,6 +9,10 @@ import { isZonelessInstant, splitTasks, zonedWallClockToUtcIso } from './schedul
 import {
   resolveUtterance, utteranceReply, VoiceIntent, VoiceDisposition,
 } from './voice-intent.js';
+// The lifecycle of a spoken turn — states, generations, cancellation. Everything below this
+// import is an ADAPTER: the browser parts the machine deliberately does not know about, so the
+// ordering that used to live tangled through three callbacks can be proven without a microphone.
+import { VoiceSession, VoiceTurn } from './voice-session.js';
 // The coding agent's slash commands. The SAME file the terminal shell imports off disk — one
 // registry, two shells, so the two vocabularies cannot drift the way `PANEL_NAMES` did.
 import {
@@ -1120,10 +1124,19 @@ $('#startWorkFromChat')?.addEventListener('click',()=>{
  * it IS the message — and its reply is always spoken back, whatever the read-aloud toggle says,
  * because in a spoken conversation the reply not being read is the reply not arriving.
  */
-async function sendChat(spoken=null){
-  if(!state.activeConversationId)return setStatus('Create a conversation first.',true);
+/**
+ * One chat turn. Returns the assistant's text so a caller that has its own plans for it — the
+ * voice session, which synthesises and plays it under a cancellable generation — does not have
+ * to scrape it back out of the DOM.
+ *
+ * `signal` is the turn's own, from `VoiceSession`. It reaches the `fetch` AND, on abort, the
+ * server-side run: a stream the browser stopped reading is not a run the model stopped
+ * producing, and leaving it going would burn a GPU on an answer nobody will ever hear.
+ */
+async function sendChat(spoken=null,{signal=null}={}){
+  if(!state.activeConversationId){setStatus('Create a conversation first.',true);return '';}
   const content=typeof spoken==='string'&&spoken.trim()?spoken.trim():$('#chatInput').value.trim();
-  if(!content)return;
+  if(!content)return '';
   const providerId=$('#chatProvider').value||null;
   if(!spoken)$('#chatInput').value='';
   $('#stopGeneration').classList.remove('hidden');
@@ -1134,6 +1147,7 @@ async function sendChat(spoken=null){
     const response=await fetch('/api/v1/chat/stream',{
       method:'POST',
       credentials:'same-origin',
+      signal,
       headers:{'content-type':'application/json','x-noesar-csrf':csrfToken},
       body:JSON.stringify({
         conversationId:state.activeConversationId,
@@ -1189,9 +1203,22 @@ async function sendChat(spoken=null){
     announceEvent(`Reply complete, ${assistantText.length} characters`);
     // …and the reply itself, if the person asked for it. Here for the same reason the live
     // region is here: once, when the answer has settled. Reading per delta would read it twice.
-    await speakReply(assistantText,{force:Boolean(spoken)});
+    //
+    // A SPOKEN turn is deliberately not read here: its playback belongs to the voice session,
+    // which owns the generation that can cancel it. Reading it in both places was how one
+    // interruption could leave a second voice still talking.
+    if(!spoken)await speakReply(assistantText);
+    return assistantText;
   }catch(error){
+    if(error?.name==='AbortError'){
+      // The person cut in. Stop the RUN as well, best effort and unsignalled — the whole point
+      // is that this request survives the abort that caused it.
+      const abandoned=activeRunId;
+      if(abandoned)void api(`/api/v1/chat/runs/${abandoned}/stop`,{method:'POST',body:'{}'}).catch(()=>{});
+      throw error;
+    }
     setStatus(error.message,true);
+    return assistantText;
   }finally{
     activeRunId=null;
     $('#stopGeneration').classList.add('hidden');
@@ -3004,9 +3031,21 @@ async function runWorkspaceAction(kind,opts={}){
 // address book, not a copy and not a vocabulary.
 let voiceState={canHear:false,canSpeak:false};
 let voiceRecorderChat=null;
-let voiceRecorderStream=null;
 let readAloud=false;
-let spokenAudio=null;
+/* The lifecycle owner. Everything about ordering, generations and cancellation lives in
+ * `voice-session.js`; what remains on this side is adapters and rendering. */
+let voiceSession=null;
+/* The microphone, held for the whole session rather than per turn — see `openVoiceStream`. */
+let voiceStream=null;
+/* What is playing, and the ONE function that undoes everything playback allocated. */
+let voiceAudio=null;
+let voiceAudioRelease=null;
+/* The barge-in watch: a second meter on the same stream, alive only while the product speaks. */
+let voiceBargeWatch=0;
+let voiceBargeMeter=null;
+/* A typed reply being read aloud has its own controller: it is not part of a spoken turn, and
+ * the toggle that turns it off must be able to stop it mid-sentence. */
+let readAloudController=null;
 // Which of the product's two voices reads. Named, not the synthesis model's own string — see
 // `VOICES` in `voice-engine.mjs` for why the product owns these names.
 let chosenVoice=null;
@@ -3083,16 +3122,35 @@ async function refreshVoiceState(){
   }
 }
 
-async function transcribeRecording(blob){
+async function transcribeRecording(blob,{signal=null}={}){
   if(!csrfToken)csrfToken=readCsrfCookie();
   const response=await fetch('/api/v1/voice/transcribe',{
-    method:'POST',credentials:'same-origin',
+    method:'POST',credentials:'same-origin',signal,
     headers:{'content-type':blob.type||'audio/webm',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
     body:blob,
   });
   const heard=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(heard.error??`Transcription failed (${response.status})`);
   return heard;
+}
+
+/** Text in, audio bytes out. Split from playback so the two can be cancelled independently and
+ *  so a synthesis that is still in flight when somebody cuts in never becomes a second voice. */
+async function synthesizeReply(text,{signal=null}={}){
+  if(!csrfToken)csrfToken=readCsrfCookie();
+  const response=await fetch('/api/v1/voice/speak',{
+    method:'POST',credentials:'same-origin',signal,
+    headers:{'content-type':'application/json',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
+    // The product's own voice name — `rune` or `estrela` — never the synthesis model's. The
+    // server resolves it, and refuses saying so if that voice is not bound here.
+    body:JSON.stringify({text,voice:chosenVoice}),
+  });
+  if(!response.ok){
+    const failure=await response.json().catch(()=>({}));
+    throw new Error(failure.error??`${t('The reply could not be read aloud')} (${response.status})`);
+  }
+  const bytes=new Uint8Array(await response.arrayBuffer());
+  return {audio:bytes,contentType:response.headers.get('content-type')||'audio/wav'};
 }
 
 /**
@@ -3157,20 +3215,25 @@ function performHeard(result){
  * already understands exactly, slower and occasionally differently, and a navigation gesture that
  * lands somewhere else on a second try is worse than one that fails.
  */
-async function applyHeardText(text){
+async function applyHeardText(text,{signal=null}={}){
   const direct=heardResult(text);
   if(direct.kind!==VoiceIntent.NOTHING){
     voiceNote(utteranceReply(direct,t));
-    return performHeard(direct);
+    await performHeard(direct);
+    // Nothing to say: a destination was reached, or a line is waiting for the person to commit
+    // to it. Reported as a REASON rather than as an empty answer, so the session ends the turn
+    // deliberately instead of treating it as a model that produced nothing.
+    return {reply:'',reason:direct.kind===VoiceIntent.INTENT?'performed':'not-a-command'};
   }
   // Step 2. The sentence goes up alone: the candidate list is built server-side from this
   // session's identity, so nothing here decides what the model is allowed to pick.
   let chosen=null;
   try{
     voiceNote(t('Asking the model…'));
-    const answer=await api('/api/v1/voice/interpret',{method:'POST',body:JSON.stringify({text})});
+    const answer=await api('/api/v1/voice/interpret',{method:'POST',signal,body:JSON.stringify({text})});
     chosen=answer?.chosen??null;
-  }catch{
+  }catch(error){
+    if(error?.name==='AbortError')throw error;
     // A model that cannot be reached is not an error the person needs: the sentence is still
     // perfectly good dictation, and saying "the model is down" about a message they meant to
     // type would be noise about a failure that changed nothing for them.
@@ -3183,7 +3246,8 @@ async function applyHeardText(text){
     const viaModel=heardResult(chosen);
     if(viaModel.kind===VoiceIntent.INTENT){
       voiceNote(`${utteranceReply(viaModel,t)} ${t('(understood by the model)')}`);
-      return performHeard(viaModel);
+      await performHeard(viaModel);
+      return {reply:'',reason:'performed'};
     }
   }
   // Not a command: it is something said TO the product, so it goes to the model and comes back
@@ -3192,35 +3256,18 @@ async function applyHeardText(text){
   //
   // The composer is deliberately not touched. Dictation-into-a-box was the old behaviour and it
   // made the person do the last step by hand, which is exactly the step they asked to remove.
-  return speakWithModel(text);
-}
-
-/**
- * One spoken turn, end to end: heard → model → spoken → listening again.
- *
- * The loop closes on purpose. A voice assistant that answers once and then waits to be clicked is
- * a button with extra steps; the turn ends when the person stops talking, and the next one starts
- * when the answer has finished being said. `voiceConversation` is what makes it stoppable: closing
- * the window or pressing the microphone ends it, and nothing restarts by itself after that.
- */
-async function speakWithModel(text){
+  // Not a command: it is something said TO the product, so it goes to the model. The ANSWER is
+  // returned rather than spoken here — `VoiceSession` owns synthesis and playback, under the
+  // generation that can cancel both. Speaking it in two places is how one interruption used to
+  // leave a second voice still talking.
   if(!state.activeConversationId){
     const said=t('Open or create a chat first — I need somewhere to put the answer.');
-    voiceFaceState('idle',said);voiceNote(said);return undefined;
+    voiceNote(said);
+    return {reply:'',reason:'no-conversation'};
   }
-  voiceFaceState('thinking',text);
   voiceNote(text);
-  try{
-    await sendChat(text);
-  }catch(error){
-    voiceFaceState('idle',error.message);voiceNote(error.message);return undefined;
-  }
-  // Listen again only if this is still a conversation: `speakReply` has already finished by the
-  // time we get here, so the microphone never opens over the product's own voice.
-  if(voiceConversation&&!$('#voiceFace')?.classList.contains('hidden')){
-    await toggleDictation();
-  }
-  return undefined;
+  const reply=await sendChat(text,{signal});
+  return {reply:String(reply??'')};
 }
 
 /**
@@ -3304,21 +3351,39 @@ let voiceFacePaint=0;     // requestAnimationFrame handle
  * CONTROL signal and is never drawn. There is deliberately no variable holding it beyond the loop
  * that uses it, so nothing can quietly start drawing your voice again. */
 let voiceFaceSpectrum=null;
-/* True while a spoken conversation is running. Closing the window or pressing the microphone ends
- * it, and nothing restarts by itself afterwards — a loop that cannot be stopped is not a feature. */
-let voiceConversation=false;
 let voiceFacePositions=(()=>{try{return JSON.parse(localStorage.getItem(VOICE_FACE_POS_KEY)??'null');}catch{return null;}})();
 
-/** Which of the four things the product is doing, said in one word and drawn as one shape. */
+/**
+ * Every state the machine can be in, said in one word and drawn as one shape.
+ *
+ * The four words it used to have described four of the ten states the turn actually passed
+ * through, so `ENDPOINTING` was drawn as "Listening" (it is not — you have stopped and the
+ * product knows) and every failure was drawn as "Ready to listen" (it is not — nothing is ready).
+ * A window that cannot say "something went wrong" leaves the person waiting for an answer that
+ * is never coming.
+ */
+const VOICE_FACE_WORDS={
+  [VoiceTurn.IDLE]:'Ready to listen',
+  [VoiceTurn.LISTENING]:'Listening',
+  [VoiceTurn.ENDPOINTING]:'Got it',
+  [VoiceTurn.TRANSCRIBING]:'Transcribing',
+  [VoiceTurn.THINKING]:'Thinking',
+  [VoiceTurn.SPEAKING]:'Speaking',
+  [VoiceTurn.INTERRUPTING]:'Stopping',
+  [VoiceTurn.CANCELLING]:'Stopping',
+  [VoiceTurn.ERROR]:'Something went wrong',
+  // `CLOSED` deliberately has no word: the window is hidden by then, and the catalogue already
+  // uses "Closed" for something else on another screen. Translating one word into two meanings
+  // is how a catalogue starts lying — the repository's own language check caught it here.
+};
 function voiceFaceState(state,caption){
   const face=$('#voiceFace');if(!face)return;
   face.dataset.state=state;
   const said=$('#voiceFaceState');
-  if(said)said.textContent=({
-    listening:t('Listening'), thinking:t('Thinking'), speaking:t('Speaking'), idle:t('Ready to listen'),
-  })[state]??'';
+  const word=VOICE_FACE_WORDS[state];
+  if(said)said.textContent=word?t(word):'';
   const line=$('#voiceFaceCaption');
-  if(line)line.textContent=caption??'';
+  if(line&&caption!==undefined)line.textContent=caption??'';
 }
 
 function voiceFaceShow(on){
@@ -3333,7 +3398,7 @@ function voiceFaceShow(on){
     if(!voiceFacePaint)voiceFacePaint=requestAnimationFrame(paintVoiceFace);
   }else{
     cancelAnimationFrame(voiceFacePaint);voiceFacePaint=0;
-    voiceFaceSpectrum=null;voiceConversation=false;
+    voiceFaceSpectrum=null;
   }
 }
 
@@ -3428,10 +3493,22 @@ function initVoiceFaceDrag(){
   };
   handle.addEventListener('pointerup',stop);
   handle.addEventListener('pointercancel',stop);
+  // Closing the window ENDS the session: every request in flight is aborted, playback stops, the
+  // microphone is handed back. It used to set a flag and stop the recorder, which left the
+  // transcription, the chat run and the synthesis running — and the answer still spoke, into a
+  // window that was no longer there.
   $('#voiceFaceClose')?.addEventListener('click',()=>{
-    voiceConversation=false;
-    if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();
+    voiceSession?.close('window closed');
     voiceFaceShow(false);
+  });
+  // The guaranteed way to cut in, because it cannot mishear anything. Acoustic barge-in is best
+  // effort by nature; a key and a button are not.
+  $('#voiceFaceStop')?.addEventListener('click',()=>{voiceSession?.interrupt('stop control');});
+  document.addEventListener('keydown',(event)=>{
+    if(event.key!=='Escape')return;
+    if(!voiceSession||!voiceSession.busy)return;
+    if($('#voiceFace')?.classList.contains('hidden'))return;
+    voiceSession.interrupt('escape');
   });
   window.addEventListener('resize',()=>{if(!$('#voiceFace')?.classList.contains('hidden'))applyVoiceFacePosition();});
 }
@@ -3463,168 +3540,367 @@ function closeVoiceMeter(){
   voiceMeter=null;
 }
 
-async function toggleDictation(){
+/** An abort that looks exactly like the one `fetch` raises, so every consumer has ONE shape to
+ *  recognise instead of a special case per source. */
+function voiceAbortError(){
+  const error=new Error('the voice turn was interrupted');
+  error.name='AbortError';
+  return error;
+}
+
+/**
+ * The microphone, opened ONCE per session and kept until the session closes.
+ *
+ * It used to be opened and torn down per turn. Keeping it has three consequences, and the third
+ * is the one this phase needs: no repeated device acquisition between turns, no `AudioContext`
+ * churn, and — the point — an analyser that is still alive WHILE the product speaks, which is
+ * what makes local barge-in possible at all.
+ *
+ * The three constraints are asked for explicitly rather than left to the browser's defaults:
+ * with the microphone open during playback, echo cancellation stops being a nicety and becomes
+ * the thing that keeps the product from interrupting itself.
+ */
+async function openVoiceStream(){
+  if(voiceStream)return voiceStream;
+  if(!microphoneReachable()){
+    throw new Error(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
+  }
+  try{
+    voiceStream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},
+    });
+  }catch(error){
+    // A refused microphone is the person's decision, not a fault. Said plainly and once.
+    throw new Error(`${t('The microphone is not available:')} ${error.message}`);
+  }
+  return voiceStream;
+}
+
+/**
+ * Capture one utterance. Resolves with the audio, or with `{spoke:false}` when the room stayed
+ * quiet — silence is a result, not an error, and sending it to the engine is what made the
+ * product invent Welsh at the Owner (`D-0372`).
+ *
+ * The endpointing is unchanged from what shipped and is deliberately so: the measured floor over
+ * the first 400 ms, a threshold of three times it with a hard minimum, 1 200 ms of quiet to end
+ * the turn, 6 s of nothing to give up, and a 30 s ceiling that holds even where Web Audio does
+ * not exist. What is NEW is that it is abortable and that it reports the moment it decides you
+ * have stopped, so the interface can say `ENDPOINTING` instead of pretending it is still hearing.
+ */
+function captureUtterance({signal=null,onSpeechEnd=null}={}){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(voiceAbortError());return;}
+    openVoiceStream().then((stream)=>{
+      if(signal?.aborted){reject(voiceAbortError());return;}
+      const chunks=[];
+      const recorder=new MediaRecorder(stream);
+      voiceRecorderChat=recorder;
+      recorder.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data);};
+      voiceMeter=openVoiceMeter(stream);
+      let watching=0;
+      let spoke=false;
+      let nothingHeard=false;
+      let settled=false;
+      let quietSince=0;
+      const startedAt=Date.now();
+      // The room is measured, not assumed: a laptop fan, a street outside and a padded study are
+      // three different silences, and one fixed threshold is wrong in at least two of them.
+      let floor=null;const floorSamples=[];
+      const stopRecording=()=>{
+        if(recorder.state!=='recording')return;
+        if(spoke)onSpeechEnd?.();
+        recorder.stop();
+      };
+      const release=()=>{
+        clearInterval(watching);clearTimeout(ceiling);
+        closeVoiceMeter();
+        signal?.removeEventListener('abort',onAbort);
+        // The STREAM is deliberately NOT stopped here: it belongs to the session, not to the
+        // turn, and stopping it would close the microphone the barge-in monitor is about to use.
+        if(voiceRecorderChat===recorder)voiceRecorderChat=null;
+      };
+      const onAbort=()=>{
+        if(settled)return;settled=true;
+        try{if(recorder.state==='recording')recorder.stop();}catch{ /* already stopped */ }
+        release();
+        reject(voiceAbortError());
+      };
+      if(voiceMeter){
+        watching=setInterval(()=>{
+          // Never drawn: this number decides when you stopped talking and nothing else. The face
+          // follows the product's voice, never yours.
+          const level=meterLevel(voiceMeter);
+          const elapsed=Date.now()-startedAt;
+          if(floor===null){
+            // First 400ms is the room, not you. Nothing is judged during it.
+            floorSamples.push(level);
+            if(elapsed>=400){floor=floorSamples.reduce((a,b)=>a+b,0)/floorSamples.length;}
+            return;
+          }
+          const threshold=Math.max(floor*3,MIN_SPEECH_LEVEL);
+          if(level>threshold){spoke=true;quietSince=0;return;}
+          if(!spoke){
+            // Nobody started. Give up rather than record a minute of room tone for the engine to
+            // invent over — which is the exact input that produced the Owner's "No, no, no…".
+            if(elapsed>NO_SPEECH_GIVE_UP_MS){nothingHeard=true;stopRecording();}
+            return;
+          }
+          if(!quietSince)quietSince=Date.now();
+          if(Date.now()-quietSince>=SILENCE_AFTER_SPEECH_MS)stopRecording();
+        },50);
+      }
+      // A cap that holds even with no meter at all, so the old unbounded recording cannot come
+      // back through a browser without Web Audio.
+      const ceiling=setTimeout(stopRecording,MAX_UTTERANCE_MS);
+      recorder.onstop=()=>{
+        if(settled)return;settled=true;
+        release();
+        if(nothingHeard||!chunks.length){resolve({spoke:false});return;}
+        const type=recorder.mimeType||'audio/webm';
+        resolve({audio:new Blob(chunks,{type}),mimeType:type,spoke:true});
+      };
+      recorder.onerror=(event)=>{
+        if(settled)return;settled=true;
+        release();
+        reject(new Error(event?.error?.message??'the recorder failed'));
+      };
+      signal?.addEventListener('abort',onAbort,{once:true});
+      recorder.start();
+    }).catch(reject);
+  });
+}
+
+/**
+ * Play one reply, and resolve WHEN IT HAS ENDED.
+ *
+ * This contract is the whole of the V-001 repair. `HTMLMediaElement.play()` resolves when
+ * playback BEGINS; the shipped code awaited that and reopened the microphone, so the product
+ * listened to itself and calibrated its own noise floor on its own voice. Here the promise
+ * settles on `ended`, on `error`, or on the turn's abort — never on the start.
+ *
+ * Everything allocated is undone by ONE function, called exactly once whichever way playback
+ * finishes: the element, its listeners, the object URL, and the analyser graph. A blob URL that
+ * survives is a second address for a private answer; an `AudioContext` that survives is a device
+ * handle the browser will eventually refuse to give again.
+ */
+function playSpokenAudio({audio,contentType,signal=null,onPlaybackStart=null}={}){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(voiceAbortError());return;}
+    const url=URL.createObjectURL(new Blob([audio],{type:contentType||'audio/wav'}));
+    const element=new Audio(url);
+    let settled=false;
+    let follow=0;
+    let graph=null;
+    const release=()=>{
+      clearInterval(follow);
+      stopBargeInWatch();
+      element.removeEventListener('ended',onEnded);
+      element.removeEventListener('error',onFailed);
+      signal?.removeEventListener('abort',onAbort);
+      try{element.pause();}catch{ /* pausing a finished element is not an error */ }
+      // Detach the source before revoking: an element still pointing at a revoked URL is what
+      // makes some browsers log a network error for audio that played perfectly.
+      try{element.removeAttribute('src');element.load();}catch{ /* nothing to detach */ }
+      try{URL.revokeObjectURL(url);}catch{ /* already revoked */ }
+      try{graph?.close();}catch{ /* already closed */ }
+      voiceFaceSpectrum=null;
+      if(voiceAudio===element)voiceAudio=null;
+      voiceAudioRelease=null;
+    };
+    const onEnded=()=>{if(settled)return;settled=true;release();resolve({ended:true});};
+    const onFailed=()=>{if(settled)return;settled=true;release();reject(new Error(t('The reply could not be read aloud')));};
+    const onAbort=()=>{if(settled)return;settled=true;release();reject(voiceAbortError());};
+    element.addEventListener('ended',onEnded,{once:true});
+    element.addEventListener('error',onFailed,{once:true});
+    signal?.addEventListener('abort',onAbort,{once:true});
+    voiceAudio=element;
+    voiceAudioRelease=()=>{if(!settled){settled=true;release();reject(voiceAbortError());}};
+
+    // The mouth moves on the REPLY's own amplitude (`D-0372`), so the face is reading the audio
+    // rather than running a loop beside it. Without Web Audio the reply still plays and the face
+    // stays still, which is the truth.
+    const Ctx=window.AudioContext??window.webkitAudioContext;
+    if(Ctx&&$('#voiceFace')){
+      try{
+        graph=new Ctx();
+        const source=graph.createMediaElementSource(element);
+        const analyser=graph.createAnalyser();analyser.fftSize=1024;
+        // Through the analyser AND on to the speakers: a graph that stops at the analyser is a
+        // reply nobody hears.
+        source.connect(analyser);analyser.connect(graph.destination);
+        const spectrum=new Uint8Array(analyser.frequencyBinCount);
+        follow=setInterval(()=>{analyser.getByteFrequencyData(spectrum);voiceFaceSpectrum=spectrum;},25);
+      }catch{ graph=null; /* no graph available: play it plainly */ }
+    }
+
+    element.play().then(()=>{
+      if(settled)return;
+      onPlaybackStart?.();
+      startBargeInWatch();
+    }).catch((error)=>{
+      if(settled)return;settled=true;release();
+      // A refused autoplay is a real, common, recoverable condition — the browser wants a
+      // gesture first. It must reach the person as itself, and it must NOT reopen the
+      // microphone: they would be talking to something that cannot answer.
+      reject(error);
+    });
+  });
+}
+
+/* ——— Barge-in, and the honest limits of doing it locally ———————————————————————————————
+ *
+ * The microphone stays open while the product speaks, so cutting in is detected here rather
+ * than waiting for a persistent transport (that is V3). Three guards, because a microphone
+ * beside a speaker hears the speaker:
+ *
+ *   1. `echoCancellation` is requested explicitly when the stream is opened.
+ *   2. A grace period after playback starts, so the first syllable of the product's own reply
+ *      cannot trip it.
+ *   3. A LOUDER threshold than endpointing, sustained — a single frame above it is a door, a
+ *      cough or the product's own consonant.
+ *
+ * Stated plainly rather than claimed away: on a host whose browser does no echo cancellation
+ * this can still self-trigger. That is why the guaranteed way to interrupt is not acoustic at
+ * all — the Stop control and the Escape key are always there and cannot mishear anything.
+ */
+const BARGE_IN_GRACE_MS=700;
+const BARGE_IN_SUSTAIN_MS=300;
+const BARGE_IN_MIN_LEVEL=0.08;
+
+function startBargeInWatch(){
+  stopBargeInWatch();
+  if(!voiceStream)return;
+  const meter=openVoiceMeter(voiceStream);
+  if(!meter)return;
+  const startedAt=Date.now();
+  let above=0;
+  voiceBargeMeter=meter;
+  voiceBargeWatch=setInterval(()=>{
+    if(Date.now()-startedAt<BARGE_IN_GRACE_MS)return;
+    const level=meterLevel(meter);
+    if(level<=BARGE_IN_MIN_LEVEL){above=0;return;}
+    if(!above)above=Date.now();
+    if(Date.now()-above>=BARGE_IN_SUSTAIN_MS){
+      stopBargeInWatch();
+      voiceSession?.interrupt('barge-in');
+    }
+  },50);
+}
+
+function stopBargeInWatch(){
+  if(voiceBargeWatch){clearInterval(voiceBargeWatch);voiceBargeWatch=0;}
+  if(voiceBargeMeter){
+    try{voiceBargeMeter.source.disconnect();}catch{ /* already disconnected */ }
+    try{voiceBargeMeter.ctx.close();}catch{ /* already closed */ }
+    voiceBargeMeter=null;
+  }
+}
+
+/** Everything the SESSION owns, released once when it closes. The turn's own resources are
+ *  released by the turn; this is the microphone and whatever is still playing. */
+function releaseVoiceResources(){
+  stopBargeInWatch();
+  voiceAudioRelease?.();
+  try{voiceRecorderChat?.state==='recording'&&voiceRecorderChat.stop();}catch{ /* already stopped */ }
+  voiceRecorderChat=null;
+  closeVoiceMeter();
+  voiceStream?.getTracks().forEach((track)=>track.stop());
+  voiceStream=null;
+  voiceFaceSpectrum=null;
+}
+
+/** The one session. Rebuilt after a close, because `CLOSED` is terminal by design. */
+function ensureVoiceSession(){
+  if(voiceSession&&voiceSession.state!==VoiceTurn.CLOSED)return voiceSession;
+  voiceSession=new VoiceSession({
+    continuous:true,
+    adapters:{
+      listen:captureUtterance,
+      transcribe:({audio,signal})=>transcribeRecording(audio,{signal}),
+      converse:({text,signal})=>applyHeardText(text,{signal}),
+      synthesize:({text,signal})=>synthesizeReply(text,{signal}),
+      play:playSpokenAudio,
+      release:releaseVoiceResources,
+    },
+    onState:renderVoiceTurn,
+    onNote:renderVoiceNote,
+  });
+  return voiceSession;
+}
+
+/** What each state says and whether it can be interrupted. One table, so the window, the button
+ *  and the stop control cannot disagree about what the product is doing. */
+function renderVoiceTurn(state,detail){
   const button=$('#chatDictate');const label=$('#chatDictateLabel');
-  if(voiceRecorderChat?.state==='recording'){voiceConversation=false;voiceRecorderChat.stop();return;}
+  const stop=$('#voiceFaceStop');
+  const listening=state===VoiceTurn.LISTENING;
+  const speaking=state===VoiceTurn.SPEAKING;
+  const working=[VoiceTurn.ENDPOINTING,VoiceTurn.TRANSCRIBING,VoiceTurn.THINKING].includes(state);
+  voiceFaceState(state,detail?.caption);
+  button?.setAttribute('aria-pressed',String(listening||working||speaking));
+  if(label)label.textContent=listening||working||speaking?t('Stop'):t('Speak');
+  // Interruptible exactly while the product holds the turn. Offering it at other times would be
+  // a control that does nothing, which is indistinguishable from a broken one.
+  if(stop)stop.disabled=!(speaking||working);
+  if(state===VoiceTurn.IDLE&&detail?.reason==='nothing-heard')voiceNote(t('I did not hear anything.'));
+}
+
+/** What the machine reports, in the language in effect. Errors included: a turn that failed
+ *  says so here rather than leaving the window sitting on a stale caption. */
+function renderVoiceNote(note){
+  if(!note)return;
+  if(note.kind==='heard'){voiceFaceState(VoiceTurn.TRANSCRIBING,note.text);voiceNote(note.text);return;}
+  if(note.kind==='nothing-heard'){voiceNote(t('I did not hear anything.'));return;}
+  if(note.kind==='not-understood'){
+    voiceNote(note.reason==='repetition'
+      ? t('I only heard noise, so I ignored it.')
+      : t('I did not catch that.'));
+    return;
+  }
+  if(note.kind==='error')voiceNote(note.message||String(note.error));
+}
+
+/** The microphone button: start a turn, or stop the one running. */
+async function toggleDictation(){
   if(!microphoneReachable()){
     voiceNote(t('This page cannot open a microphone: the browser only allows it over HTTPS, or from localhost. The installation itself is ready.'));
     return;
   }
-  try{
-    voiceRecorderStream=await navigator.mediaDevices.getUserMedia({audio:true});
-  }catch(error){
-    // A refused microphone is the person's decision, not a fault. Said plainly and once.
-    voiceNote(`${t('The microphone is not available:')} ${error.message}`);
-    return;
-  }
-  const chunks=[];
-  voiceRecorderChat=new MediaRecorder(voiceRecorderStream);
-  voiceRecorderChat.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data);};
-
-  voiceMeter=openVoiceMeter(voiceRecorderStream);
-  let watching=0;
-  let spoke=false;
-  let nothingHeard=false;
-  const startedAt=Date.now();
-  let quietSince=0;
-  // The room is measured, not assumed: a laptop fan, a street outside and a padded study are three
-  // different silences, and one fixed threshold is wrong in at least two of them.
-  let floor=null;const floorSamples=[];
-  const stopRecording=()=>{if(voiceRecorderChat?.state==='recording')voiceRecorderChat.stop();};
-  if(voiceMeter){
-    watching=setInterval(()=>{
-      // Never drawn: this number decides when you stopped
-      // talking and nothing else. The face follows the product's voice, never yours.
-      const level=meterLevel(voiceMeter);
-      const elapsed=Date.now()-startedAt;
-      if(floor===null){
-        // First 400ms is the room, not you. Nothing is judged during it.
-        floorSamples.push(level);
-        if(elapsed>=400){floor=floorSamples.reduce((a,b)=>a+b,0)/floorSamples.length;}
-        return;
-      }
-      const threshold=Math.max(floor*3,MIN_SPEECH_LEVEL);
-      if(level>threshold){spoke=true;quietSince=0;return;}
-      if(!spoke){
-        // Nobody started. Give up rather than record a minute of room tone for the engine to
-        // invent over — which is the exact input that produced the Owner's "No, no, no…".
-        if(elapsed>NO_SPEECH_GIVE_UP_MS){nothingHeard=true;stopRecording();}
-        return;
-      }
-      if(!quietSince)quietSince=Date.now();
-      if(Date.now()-quietSince>=SILENCE_AFTER_SPEECH_MS)stopRecording();
-    },50);
-  }
-  // A cap that holds even with no meter at all, so the old unbounded recording cannot come back
-  // through a browser without Web Audio.
-  const ceiling=setTimeout(stopRecording,MAX_UTTERANCE_MS);
-
-  voiceRecorderChat.onstop=async()=>{
-    clearInterval(watching);clearTimeout(ceiling);
-    closeVoiceMeter();
-    voiceRecorderStream?.getTracks().forEach((track)=>track.stop());
-    voiceRecorderStream=null;
-    button?.setAttribute('aria-pressed','false');
-    if(label)label.textContent=t('Speak');
-    if(nothingHeard){
-      // Never sent. The microphone worked and there was nothing in it, and saying so is more
-      // honest than an invented sentence — and cheaper than a round trip.
-      voiceFaceState('idle',t('I did not hear anything.'));
-      voiceNote(t('I did not hear anything.'));
-      return;
-    }
-    voiceFaceState('thinking',t('Thinking'));
-    try{
-      const heard=await transcribeRecording(new Blob(chunks,{type:voiceRecorderChat.mimeType}));
-      // Silence is a RESULT, not a failure — the engine says so and this must not turn it into
-      // an error that suggests the microphone is broken. `reason` separates "you said nothing"
-      // from "the engine looped on noise": the first is yours to fix, the second is not, and
-      // telling someone to speak up when the model hallucinated sends them the wrong way.
-      if(!heard.heardSomething){
-        const said=heard.reason==='repetition'
-          ? t('I only heard noise, so I ignored it.')
-          : t('I did not catch that.');
-        voiceFaceState('idle',said);voiceNote(said);
-        return;
-      }
-      voiceFaceState('idle',heard.text);
-      await applyHeardText(heard.text);
-    }catch(error){
-      voiceFaceState('idle',error.message);
-      voiceNote(error.message);
-    }
-  };
-  voiceRecorderChat.start();
-  voiceConversation=true;
-  button?.setAttribute('aria-pressed','true');
-  if(label)label.textContent=t('Stop');
+  const session=ensureVoiceSession();
+  if(session.busy){session.cancel('owner stopped the turn');return;}
   voiceFaceShow(true);
-  voiceFaceState('listening',t('Speak now — I will stop on my own when you finish.'));
   voiceNote(t('Listening…'));
+  session.start('owner');
 }
 
-/** Read one finished reply aloud. Called once, when the stream is over — never per delta, for
- *  the same reason `UI-043` gives about the live region: an answer read as it arrives is read
- *  twice. The blob URL is revoked when playback ends, so a spoken answer does not outlive the
- *  turn it belongs to as a second address anybody could fetch. */
-async function speakReply(text,{force=false}={}){
-  // `force` is a spoken turn: the reply is the answer to something said out loud, so it is read
-  // whatever the toggle says. The toggle governs TYPED turns, which is what it was made for.
-  if((!readAloud&&!force)||!voiceState.canSpeak||!String(text??'').trim())return;
+/**
+ * Read one TYPED reply aloud, when the toggle asks for it.
+ *
+ * Spoken turns do not come through here: their playback belongs to `VoiceSession`, which owns
+ * the generation that can cancel it. Reading in two places is how one interruption could leave a
+ * second voice still talking.
+ *
+ * It shares the SAME synthesis and playback helpers as a spoken turn — one code path for
+ * allocating and releasing an audio element, one place where an object URL is revoked. Its own
+ * controller means the Stop control can silence a read-aloud too.
+ */
+async function speakReply(text){
+  if(!readAloud||!voiceState.canSpeak||!String(text??'').trim())return;
+  readAloudController?.abort();
+  readAloudController=new AbortController();
+  const {signal}=readAloudController;
   try{
-    if(!csrfToken)csrfToken=readCsrfCookie();
-    const response=await fetch('/api/v1/voice/speak',{
-      method:'POST',credentials:'same-origin',
-      headers:{'content-type':'application/json',...(csrfToken?{'x-noesar-csrf':csrfToken}:{})},
-      // The product's own voice name — `rune` or `estrela` — never the synthesis model's. The
-      // server resolves it, and refuses saying so if that voice is not bound here.
-      body:JSON.stringify({text,voice:chosenVoice}),
-    });
-    if(!response.ok){
-      const failure=await response.json().catch(()=>({}));
-      voiceNote(failure.error??`${t('The reply could not be read aloud')} (${response.status})`);
-      return;
-    }
-    const url=URL.createObjectURL(await response.blob());
-    spokenAudio?.pause();
-    spokenAudio=new Audio(url);
-    spokenAudio.addEventListener('ended',()=>URL.revokeObjectURL(url),{once:true});
-    // The mouth moves on the REPLY's own amplitude — the same measure the microphone used — so
-    // the face is reading the audio rather than running a loop beside it (`D-0372`). Without Web
-    // Audio the reply still plays and the face simply stays still, which is the truth.
-    const Ctx=window.AudioContext??window.webkitAudioContext;
-    if(Ctx&&$('#voiceFace')){
-      try{
-        const ctx=new Ctx();
-        const source=ctx.createMediaElementSource(spokenAudio);
-        const analyser=ctx.createAnalyser();analyser.fftSize=1024;
-        // Through the analyser AND on to the speakers: a graph that stops at the analyser is a
-        // reply nobody hears.
-        source.connect(analyser);analyser.connect(ctx.destination);
-        const spectrum=new Uint8Array(analyser.frequencyBinCount);
-        voiceFaceShow(true);
-        voiceFaceState('speaking',String(text).slice(0,240));
-        // 25ms: fast enough that consonants are visible, slow enough not to compete with the
-        // paint loop for the main thread. The paint loop reads whatever the last frame left.
-        const follow=setInterval(()=>{
-          analyser.getByteFrequencyData(spectrum);
-          voiceFaceSpectrum=spectrum;
-        },25);
-        const done=()=>{
-          clearInterval(follow);voiceFaceSpectrum=null;
-          voiceFaceState(voiceConversation?'listening':'idle','');
-          try{ctx.close();}catch{}
-        };
-        spokenAudio.addEventListener('ended',done,{once:true});
-        spokenAudio.addEventListener('pause',done,{once:true});
-      }catch{ /* no graph available: play it plainly */ }
-    }
-    await spokenAudio.play();
+    const spoken=await synthesizeReply(text,{signal});
+    voiceFaceShow(true);
+    voiceFaceState(VoiceTurn.SPEAKING,String(text).slice(0,240));
+    await playSpokenAudio({...spoken,signal});
+    voiceFaceState(VoiceTurn.IDLE,'');
   }catch(error){
+    if(error?.name==='AbortError')return;
     voiceNote(error.message);
+    voiceFaceState(VoiceTurn.IDLE,'');
   }
 }
-
 function initChatVoice(){
   $('#chatDictate')?.addEventListener('click',toggleDictation);
   $('#chatVoice')?.addEventListener('change',(event)=>{chosenVoice=event.target.value||null;});
@@ -3634,7 +3910,9 @@ function initChatVoice(){
     aloud.setAttribute('aria-pressed',String(readAloud));
     const label=$('#chatReadAloudLabel');
     if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
-    if(!readAloud)spokenAudio?.pause();
+    // Turning it off stops what is being read RIGHT NOW — through the controller, so the
+    // synthesis still in flight is abandoned too rather than arriving and speaking anyway.
+    if(!readAloud){readAloudController?.abort();readAloudController=null;}
   });
   initVoiceFaceDrag();
   // Wiring only. Asking the server what this installation can do is `enterApplication()`'s job,
@@ -3647,7 +3925,13 @@ function initChatVoice(){
  *  cause. Cheap to reset, and it puts the controls back exactly where a cold load leaves them. */
 function forgetVoiceState(){
   voiceState={canHear:false,canSpeak:false};
-  voiceConversation=false;voiceFaceSpectrum=null;voiceFaceShow(false);
+  // Signing out ENDS the session — abort, stop, hand the microphone back. A device left open
+  // across a sign-out is the clearest privacy defect this file could have.
+  voiceSession?.close('signed out');
+  voiceSession=null;
+  readAloudController?.abort();
+  readAloudController=null;
+  voiceFaceSpectrum=null;voiceFaceShow(false);
   readAloud=false;
   chosenVoice=null;
   const dictate=$('#chatDictate');const aloud=$('#chatReadAloud');
@@ -3655,7 +3939,6 @@ function forgetVoiceState(){
   if(aloud){aloud.disabled=true;aloud.setAttribute('aria-pressed','false');}
   const label=$('#chatReadAloudLabel');
   if(label)label.textContent=t('Read aloud: off');
-  spokenAudio?.pause();
 }
 function initWorkspaceActions(){
   addPlanFileRow();

@@ -9296,3 +9296,22 @@ added=0; suites 54/54, 53/53, 100/100, 3/3; `bash -n` 18 files, jq + `diff --che
 **Evidence.** Both defects **seen RED first**: orchestrator §22 six assertions fail against the shipped guard, lifecycle §29 three fail against the shipped closure set (including the end-to-end case through a throwaway git repo where `HEAD` is ahead by a `CLAUDE10.md`-only commit). After the repair: `test-engineering-orchestrator.sh` **122/122** (was 100), `test-session-lifecycle.sh` **68/68** (was 54), `test-container-baseline.sh` **53/53** unchanged, `decision-log-references.test.mjs` **3/3**, all exit 0. An 18-case differential ran the pre-repair and repaired guards side by side: **exactly 5 decisions changed, every one `deny`→`allow` on a read-only form; all 11 true positives unchanged**, and the six new ones moved `allow`→`deny`. `bash -n` clean, `git diff --check` clean. **VERIFIED live through the real harness:** the command denied earlier in this same session now executes, and ATOM is unchanged (clean tree, `HEAD 7ebec54`, 28 commits). The converse is asserted too — a product file in the same commit range still blocks, and the block still names it.
 **Reversal cost.** Low and local: `BACKUPS/hooks_hardening_20260811T164500Z/` holds all four files. Reverting restores both defects, including a guard that blocks a session close because the project edited its own governance.
 **Status.** applied, verified; **not committed, not pushed** — the authorisation covered the hardening, not a commit. Supersedes the `last_commit` workaround recorded in `D-0386`: `HEAD` is now ahead of `e6f24d0` by closure-set paths only, so the workaround is no longer load-bearing (it is left in place because it is already committed and is, independently, accurate). **Declared limits, unchanged:** obfuscation still defeats the guard (`cat $(echo .env)`), and a heredoc containing a literal write-into-ATOM string is denied on its text — observed this session, failing safe.
+
+## D-0388 · the spoken turn becomes a state machine that can be stopped (V1) — 2026-08-12
+**Decision.** `apps/webui-static/voice-session.js` (new) owns the voice lifecycle: ten states, a
+legal-transition table that throws rather than absorbing, one generation and one `AbortController`
+per turn shared by STT, chat and TTS. `app.js` keeps only adapters and rendering.
+**Why.** V-001 (CRITICAL): `play()` resolves when playback BEGINS, so the shipped code reopened the
+microphone over the product's own voice and calibrated the noise floor on it. V-002 (HIGH): no
+abort anywhere, so closing the window left a turn running that still spoke.
+**Rejected.** Patching the two call sites in place — the lifecycle would have stayed untestable
+without a microphone, which is why the defect survived four sessions of "voice work".
+**Evidence.** Red first, reproducibly: `VOICE_SUBJECT=legacy` runs the same 9 scenarios against a
+transcription of the shipped sequencing — 8/9 fail (the 9th passes vacuously: legacy's `interrupt()`
+is a no-op and its listen count is already 2 from the V-001 defect, so idempotence is satisfied by
+coincidence — it bites against `v1`, the oracle does not prove it). `v1`: 22/22 pass. Full unit suite 2394 tests,
+2393 pass / 0 fail / 1 skipped. ESLint 391 files, 0/0. `verify-source` PASS. The oracle stays in
+the green suite so the assertions are proven to bite. Language coverage 841/841.
+**Reversal cost.** None beyond a revert: no schema, no API, no persisted state changed.
+**Status.** Applied, NOT committed, NOT deployed. Real-microphone acceptance is
+`BLOCKED_AWAITING_OWNER`; barge-in by voice is best-effort by nature and declared as such.

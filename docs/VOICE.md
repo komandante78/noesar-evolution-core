@@ -159,6 +159,71 @@ apart: telling an operator to install something they already installed is worse 
 
 ---
 
+## The turn: a state machine that can be stopped (V1, `D-0388`)
+
+`apps/webui-static/voice-session.js` owns the lifecycle. Ten states, one legal-transition table,
+and an illegal transition **throws** instead of being absorbed:
+
+```text
+IDLE → LISTENING → ENDPOINTING → TRANSCRIBING → THINKING → SPEAKING → LISTENING
+                                   ↘ INTERRUPTING ↗      ↘ CANCELLING → IDLE
+                                   ↘ ERROR                ↘ CLOSED (terminal)
+```
+
+**Every turn carries a generation, and every stage of it shares one `AbortController`.** A result
+that outlives its generation is dropped in silence: it does not render, does not speak, does not
+advance the machine. That is what makes a ghost turn structurally impossible rather than unlikely.
+
+**Two repairs this replaced, both measured:**
+
+- **V-001.** `HTMLMediaElement.play()` resolves when playback *begins*. The old code awaited it and
+  reopened the microphone, so the product listened to itself — and, because the recorder measures
+  its noise floor over the first 400 ms it hears, the floor was taken from the product's own voice
+  and the person's reply could land under the threshold and be reported as *"I did not hear
+  anything."* The playback adapter's contract is now **resolve when playback has ENDED**.
+- **V-002.** Nothing carried an `AbortController`. Closing the window left the transcription, the
+  chat run and the synthesis going, and the answer still spoke. Now closing aborts all three, and
+  an aborted chat also asks the server to stop the run — a stream nobody is reading is not a model
+  that stopped generating.
+
+**Three ways to cut in**, deliberately ranked by how reliable each is:
+
+| | how | reliability |
+|---|---|---|
+| the **Stop** control in the voice window | a button | total — it cannot mishear |
+| **Escape** | a key | total |
+| speaking over the reply | the microphone stays open during playback | **best effort** |
+
+The acoustic one is honest about itself: `echoCancellation` is now requested explicitly, there is a
+700 ms grace after playback starts, and the level must stay above a threshold higher than the
+endpointer's for 300 ms. On a host whose browser does no echo cancellation it can still
+self-trigger — which is exactly why the two guaranteed ways exist and are not hidden in a menu.
+
+**This is not full-duplex, and must not be described as such.** The transport is still
+request/response, there is still no partial transcript, and the first audio still waits for the
+whole reply. That is V2 and V3.
+
+### Measuring it
+
+```sh
+node tools/acceptance/voice-latency.mjs          # or --json
+```
+
+Prints what the lifecycle alone decides, labelled `SYNTHETIC`, and prints every measurement that
+needs a real device as `BLOCKED` **with its procedure** — never as an estimate. The seven latencies
+the audit could not take are listed there, and
+**`REAL_MICROPHONE_ACCEPTANCE = BLOCKED_AWAITING_OWNER`**: a microphone, a speaker and a browser
+with permission are Owner-authorised resources, and producing those numbers from Node would be
+fabricating them.
+
+> The line *"1.8 s for a short utterance"* in the table above has **no measurement behind it in
+> this repository**. It is s337 prose. The measured facts, taken from the engines' own logs on
+> 2026-08-12: transcription **102–118 ms** for 3–4 s of audio once the model is warm, **+928 ms**
+> when it has been idle past its 300 s unload, synthesis **635 ms** for 47 characters and
+> **2 260 ms** for a paragraph on CPU.
+
+---
+
 ## Verifying it, before and after choosing a model
 
 ```sh
