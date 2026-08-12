@@ -143,9 +143,8 @@ the largest gap between "works here" and "self-hosted software".
 
 **An agent's test turn should be replayable evidence** (`D-0398`): give the reasoning step the
 same `fixtures(runId)` capture `workspace-actions.mjs:583` already takes, so an answer can be
-replayed and compared instead of read once and lost. *Benefit:* a self-hosted installation can
-ask the question it actually has — *does this agent still answer the same way after a model
-swap?* *Cost:* ~60 lines plus a test. **Owner's call.**
+replayed and compared instead of read once and lost. *Benefit:* the installation can ask the
+question it has — *does this agent answer the same after a model swap?* *Cost:* ~60 lines plus a
+test. **Owner's call.**
 
-*Still standing:* `activeModelReport()` must declare **who** serves the model, not only the
-endpoint (`F-MODEL-001`, `D-0395`).
+*Still standing:* `activeModelReport()` must declare **who** serves the model (`F-MODEL-001`).
