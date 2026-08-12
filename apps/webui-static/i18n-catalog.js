@@ -283,6 +283,7 @@ export const RUNTIME_ONLY = Object.freeze([
   "Runs one turn now: this agent's instructions plus this sentence. No tool is called and nothing is written.",
   'Removes this agent from the list and from Plan run. The record is kept, not destroyed.',
   'Test',
+  'Archive agent',
   'Ask the model',
   'Waiting for the model…',
   'A test needs one sentence to work towards.',
@@ -1411,6 +1412,10 @@ const it = {
   'Runs one turn now: this agent\'s instructions plus this sentence. No tool is called and nothing is written.': 'Esegue subito un turno: le istruzioni di questo agente più questa frase. Non chiama nessuno strumento e non scrive niente.',
   'Removes this agent from the list and from Plan run. The record is kept, not destroyed.': 'Toglie questo agente dalla lista e da Plan run. Il record è conservato, non distrutto.',
   'Test': 'Prova',
+  // NOT the bare key `Archive`: that one is a PLACE — `{active:'Working list', archived:'Archive',
+  // bin:'Bin'}` — and reads correctly as the noun «Archivio». On a button the same word became an
+  // instruction to go somewhere instead of an action to perform, which is what the Owner saw.
+  'Archive agent': 'Archivia agente',
   'Ask the model': 'Chiedi al modello',
   'Waiting for the model…': 'In attesa del modello…',
   'A test needs one sentence to work towards.': 'Una prova ha bisogno di una frase verso cui lavorare.',

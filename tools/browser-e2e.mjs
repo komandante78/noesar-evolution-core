@@ -2696,6 +2696,51 @@ try {
     }
   });
 
+  at('agents-lifecycle');
+  // D-0397/D-0401. The Agents screen was only ever measured EMPTY: the route sweep opens
+  // #/agents against a workspace with no agent, so the card, its two controls and the archive
+  // path were invisible to every suite in this repository. The Owner found that gap by looking
+  // at the running product — the expensive way. A control nothing exercises is a control nobody
+  // can prove exists (rule 5 of `17`).
+  await soft('AGENTS-1', async () => {
+    const name = `Suite agent ${Date.now()}`;
+    await page.goto(`${BASE}/#/agents`, { waitUntil: 'networkidle2' });
+    await page.type('#agentName', name);
+    await page.click('#agentForm button.primary');
+    await page.waitForFunction(() => document.querySelectorAll('#agentList .entity-card').length > 0, { timeout: 10_000 });
+
+    const card = await page.evaluate(() => {
+      const article = document.querySelector('#agentList .entity-card');
+      return {
+        title: article?.querySelector('h3')?.textContent ?? null,
+        test: article?.querySelector('[data-test-agent]')?.textContent ?? null,
+        archive: article?.querySelector('[data-archive-agent]')?.textContent ?? null,
+        goalField: Boolean(article?.querySelector('[data-agent-goal]')),
+      };
+    });
+    check('AGENTS-1 a created agent appears as a card, not only as an option in two selectors',
+      card.title === name, `card title was ${JSON.stringify(card.title)}`);
+    check('AGENTS-1 the card carries both controls and the field the test needs',
+      Boolean(card.test) && Boolean(card.archive) && card.goalField, JSON.stringify(card));
+
+    // The archive path end to end, through the confirmation the operator really sees. Accepting
+    // the dialog is the point: a control that opens a confirm nobody answers proves nothing.
+    const accept = (dialog) => dialog.accept();
+    page.on('dialog', accept);
+    try {
+      await page.click('[data-archive-agent]');
+      await page.waitForFunction(() => document.querySelectorAll('#agentList .entity-card').length === 0, { timeout: 10_000 });
+    } finally {
+      page.off('dialog', accept);
+    }
+    const after = await page.evaluate(() => ({
+      cards: document.querySelectorAll('#agentList .entity-card').length,
+      options: [...document.querySelectorAll('#runAgent option')].map((option) => option.textContent),
+    }));
+    check('AGENTS-1 archiving removes the agent from the list AND from the Plan run selector',
+      after.cards === 0 && !after.options.includes(name), JSON.stringify(after));
+  });
+
   at('model-catalogue');
   // --- POINT 5: the model catalogue, on the real page -----------------------------------
   //

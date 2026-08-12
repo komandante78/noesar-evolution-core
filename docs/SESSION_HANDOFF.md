@@ -58,12 +58,11 @@ single audit run · OCI phase O1. **The deployment is done** — see the ledger.
 The Owner reported that on `#/agents` nothing said what to type, a created agent could not be
 tested, and it could not be removed. All three were real, and one was structural (`D-0397`):
 
-| Measured | |
-|---|---|
-| guidance | `view-agents`: **5 inputs, 0 placeholders, 0 hints** — the barest view in the product |
-| removal | routes were `GET`/`POST` only; `archived` was written at creation and filtered on read, and **nothing could set it** |
-| the dead run | `#runForm` builds `Analyze goal` with no `toolId`; Execute rendered only `if(step.toolId)`; `executeStep` threw `409`. **Every run this screen created was unfinishable** |
-| agents and the model | `grep -c reasoning agent-service.mjs` = **0** — no agent had ever asked a provider anything |
+Measured before the change (full detail in `D-0397`): `view-agents` had **5 inputs, 0
+placeholders, 0 hints**; `archived` was written at creation and filtered on read while **nothing
+could set it**; `#runForm` built `Analyze goal` with no `toolId`, which `executeStep` refused with
+`409`, so **every run this screen created was unfinishable**; and `grep -c reasoning
+agent-service.mjs` was **0**.
 
 **Built:** guidance on all five controls · an agent list with **Test** (one real, non-mutative
 turn) and **Archive** · `PATCH /api/v1/agents/:id` (`agent.manage` + CSRF) · a tool-less step now
@@ -90,12 +89,16 @@ executed by the model through the same `providers.route` → `completeWithFallba
 | **T3 · the live installation serves the new bytes** | `GET /app.js` → `bc4f5fc4e05c…`, the tree's own checksum |
 | **T3 · health after deployment** | `docker inspect` = `running healthy` · `/livez` **200** · `/readyz` **200** · children `postgres api codev atom` · auth-failure lines **0** |
 | **§5a cleanup** | containers **53 → 52**, networks **10 → 10**, volumes **63 → 63**, non-project containers **50 → 50**; two project containers survive, zero `webui-e2e` tags, zero per-run networks |
+| **`D-0401` · browser suite re-run** | `BROWSER_E2E_TOTAL=475 · PASS=475 · FAIL=0` — three new `AGENTS-1` steps create an agent, read the card's controls (`{"test":"Test","archive":"Archive agent","goalField":true}`) and archive it through the confirm, leaving `{"cards":0,"options":["Select agent"]}` |
 
 ---
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
 - **Nothing is pushed.** `origin/main` is behind; see `git status -sb`.
+- **`D-0401` is committed but NOT deployed.** The installation still serves the previous label, so
+  in Italian the button reads «Archivio» (a place) instead of «Archivia agente» (the action).
+  A second deployment of the same §3a sequence is what changes it — Owner's call.
 - **Three WCAG 2.2 AA failures were found and NOT repaired** (`F-A11Y-001..003`, `D-0400`). All
   three are pre-existing — this phase's commits touch those elements **zero** times — and two of
   them change the geometry of the CodeN composer, which is a design decision, not a mechanical

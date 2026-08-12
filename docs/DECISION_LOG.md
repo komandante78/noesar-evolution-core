@@ -9505,3 +9505,22 @@ second audit run; and shipping without saying so, which is rule 38.
 `F-A11Y-003` `#codenPrompt` 1144×21 and `#codenPromptOpenMenu` 21×17, both under 24×24 (2.5.8).
 **Reversal cost.** None — nothing was changed.
 **Status.** OPEN, all three. One short phase fixes them together with a single audit run.
+
+## D-0401 · the Archive button spoke a noun, and the screen was only ever measured empty — 2026-08-12
+**Decision.** The button's label becomes its own key, `Archive agent` → «Archivia agente», and the
+browser suite gains three steps that create an agent, assert the card's two controls, and archive
+it through the confirmation.
+**Why.** Two defects the Owner found by looking at the running product. (1) The bare key `Archive`
+already existed for a PLACE — `{active:'Working list', archived:'Archive', bin:'Bin'}` — where
+«Archivio» is correct; on a button the same word became a destination instead of an action.
+(2) The route sweep opens `#/agents` against a workspace with **no agent**, so the card, its
+controls and the archive path had never been rendered in any browser: had they been missing
+outright, **nothing in this repository would have gone red**.
+**Rejected.** Retranslating the shared `Archive` key — it would have broken the place label that
+is correct today.
+**Evidence.** `BROWSER_E2E_TOTAL=475 PASS=475 FAIL=0` (was 472), the three `AGENTS-1` steps
+reporting `{"test":"Test","archive":"Archive agent","goalField":true}` and, after the archive,
+`{"cards":0,"options":["Select agent"]}`. IT coverage 856/856. ESLint 392 files, 0 errors.
+**Reversal cost.** None.
+**Status.** Applied in the source tree, **not deployed** — the label the Owner sees stays
+«Archivio» until the next deployment.
