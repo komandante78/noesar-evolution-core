@@ -9328,3 +9328,49 @@ carried eight non-closure product paths — the lag `D-0375` already named once.
 manifest CURRENT 19, ESLint 391/0/0). Voice suite 22/22; legacy oracle 8/9 red, the 9th vacuous.
 **Reversal cost.** None: three documentation files.
 **Status.** Applied. Not pushed. `ATOM_TOKEN` still carries the exposed value and is NOT rotated.
+
+## D-0390 · the first ATOM_TOKEN rotation stopped production for 43.8 s — 2026-08-12
+**Decision.** Recorded as a failure, with its cause, before the second attempt was allowed.
+**Why.** A patch added to stop the recreate losing `--stop-timeout` and the log rotation put the
+reads of those two settings AFTER the rename of `$SOURCE`. `docker run` then died with
+`no such object: noesar-evolution` with production already stopped and renamed — `D-0362`'s fault
+reproduced by a patch written to prevent a different loss.
+**Rejected.** Pressing on to complete the rotation: the authorisation named rollback on any error.
+**Evidence.** Rollback executed at once; container restored to the SAME id `3575d67a…`, healthy,
+four children back. Downtime 43.8 s (12:13:29.502Z → 12:14:13.332Z) plus 5.1 s to the first green
+probe. Token NOT rotated. Repository and both Voice commits untouched throughout.
+**Reversal cost.** None — the predecessor was the production container itself, renamed back.
+**Status.** Closed by `D-0391`. The rule it produced: every read of the source belongs in one
+block before the first mutation, and a completeness guard runs before anything is stopped.
+
+## D-0391 · ATOM_TOKEN rotated, at the second and last attempt — 2026-08-12
+**Decision.** The exposed token is replaced on both consumers at once; the procedure was frozen
+(sha256 `e20c7542…`) and validated before being run again.
+**Why.** The value was printed in cleartext into a session transcript. It was never in a tracked
+file, in git history or in the working tree — only in the container environment — so rotation is a
+container recreate under `CLAUDE10.md` §3a, with no image change and no product deployment.
+**Rejected.** A third attempt was pre-emptively excluded: on any failure, rollback and stop.
+**Evidence.** Validated first against a fake Docker with synthetic secrets — 52/52 across 9
+scenarios, including automatic rollback at four failure points; the reconstructed incident version
+fails 32 assertions and leaves the installation down, which is the oracle. Then live: preflight
+PASS, downtime **0.8 s**, new container `9ef797fa521a`, healthy, four children, zero auth-failure
+lines, **18/18 configuration fields identical** (stop timeout 60 and log rotation among them),
+both variables carrying the same NEW value (hashes compared in memory, never shown).
+**Reversal cost.** One container swap: the preserved predecessor carries the old value on both
+sides and is internally consistent. Its image and the workspace backup remain.
+**Status.** Applied and live. `OLD_TOKEN_REFUSED=UNVERIFIED` — atomd listens on loopback inside
+the container and proving a 401 needs `docker exec` or a disposable container, neither authorised.
+
+## D-0392 · a §3a installation replacement is not litter — 2026-08-12
+**Decision.** `cbl_check_containers` exempts exactly one case: the container named
+`noesar-evolution`, when an installation existed in the baseline and the container it replaced is
+still present with an id that came from that baseline. Reported as a DEBT, never silently.
+**Why.** The rotation gave the installation a new id, and the guard blocked the close of the very
+session that had performed an authorised deployment. Fixing the instance alone would have left
+every future §3a deployment blocked.
+**Rejected.** Advancing the baseline by hand — it would have taught the habit of editing the trust
+anchor to make a guard pass.
+**Evidence.** Four cases, R1 seen RED first, R2-R4 already green as guard-rails; suites
+58/58 · 68/68 · 122/122; the real guard's dry run now reports the replacement instead of blocking.
+**Reversal cost.** None — one function, one test file.
+**Status.** Applied in `67369cfb30fdfe4f2db77e5b97ef38e916665434`.

@@ -4515,3 +4515,28 @@ inesistente risponde 404 — è la forma della prova, non l'assenza di errore); 
 raggiunge ancora la sessione viva. Rollback unico: `noesar-evolution-old-d0340`. L'avviatore
 **non** è cambiato in questa build: `5f086c52…` identico su repo, immagine e copia su `/boot`,
 quindi la copia persistente non va rinfrescata.
+
+## `ATOM_TOKEN` rotation — container replaced, image unchanged (`D-0391`, 2026-08-12)
+
+- **What changed:** nothing in the product. The same image `noesar-evolution:d0373-voice-conversation`
+  (`sha256:b5e043fa9029…`) was re-run with `ATOM_TOKEN` and `NOESAR_RUST_REASONING_TOKEN` carrying a
+  new value. No build, no pull, no push, no Voice V1 deployment.
+- **Why a recreate at all:** Docker environment variables are immutable for the life of a container.
+- **Downtime:** **0.8 s** — stop `13:01:47.582Z` → start `13:01:48.425Z`; healthy at the first probe.
+- **Container:** `3575d67aac1f…` → **`9ef797fa521a…`**.
+- **Verification:** healthy · four supervised children (`postgres`, `api`, `codev`, `atom`) · zero
+  auth-failure lines · **18/18 configuration fields identical** to the pre-rotation snapshot,
+  including `stopTimeout=60`, `json-file` with `max-size=50m`/`max-file=1`, 3 port bindings, 2 binds,
+  2 tmpfs, 44 environment keys, `readonly` rootfs, `unless-stopped`.
+- **Preserved predecessor / rollback:** `noesar-evolution-pre-token-rotation-20260812T130147Z`
+  (Exited 0, same image, carries the OLD value on both sides — internally consistent).
+- **Backup:** `BACKUPS/atom_token_rotation_20260812T130147Z/workspace.tar` (dir `0700`, file `0600`,
+  sha256 recorded), taken with the service stopped. Contains the workspace config directory —
+  credential material, never copied out.
+- **Rollback cost:** one container swap; no image rebuild. The `d0372` image remains on disk.
+- **Cleanup (§21b):** `noesar-evolution-old-d0372` removed by exact name after the new live was
+  healthy; its image kept. 53 → 52 containers, the 50 non-project ones unchanged, networks 10 and
+  volumes 63 unchanged. Inventory: `EVIDENCE/docker_inventory_pre_cleanup_20260812T130630Z.txt`.
+- **First attempt failed** (`D-0390`): 43.8 s of downtime, rolled back, no token change.
+- **Not proven:** `OLD_TOKEN_REFUSED=UNVERIFIED`, and the end-to-end reasoning turn (A2) is an
+  Owner action that has not been performed.
