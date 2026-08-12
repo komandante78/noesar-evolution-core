@@ -9315,3 +9315,16 @@ the green suite so the assertions are proven to bite. Language coverage 841/841.
 **Reversal cost.** None beyond a revert: no schema, no API, no persisted state changed.
 **Status.** Applied, NOT committed, NOT deployed. Real-microphone acceptance is
 `BLOCKED_AWAITING_OWNER`; barge-in by voice is best-effort by nature and declared as such.
+
+## D-0389 · the documentary closure of the Voice V1 commit — 2026-08-12
+**Decision.** `PROJECT_STATE.json` and `docs/SESSION_HANDOFF.md` are brought to the state
+`20ed5b9` actually produced: full SHA in `last_commit`, `phase_status = VOICE_V1_COMMITTED_NOT_PUSHED`,
+`next_action = OWNER_AUTHORIZATION_FOR_TOKEN_ROTATION_THEN_PUSH`. `D-0388` is untouched.
+**Why.** The Stop guard refused the close, correctly: `last_commit` still named `514bdce` while HEAD
+carried eight non-closure product paths — the lag `D-0375` already named once.
+**Rejected.** Advancing `last_commit` alone: it satisfies the guard while the handoff still claims
+"nothing was committed", which is the false record the guard exists to prevent.
+**Evidence.** `20ed5b9`, 11 files, +1739/−314, gate run in full with no bypass (unit suite, migration
+manifest CURRENT 19, ESLint 391/0/0). Voice suite 22/22; legacy oracle 8/9 red, the 9th vacuous.
+**Reversal cost.** None: three documentation files.
+**Status.** Applied. Not pushed. `ATOM_TOKEN` still carries the exposed value and is NOT rotated.

@@ -1,28 +1,48 @@
 # SESSION HANDOFF — NOESAR EVOLUTION
 
-Last updated: 2026-08-12 · `phase_status = V1_IMPLEMENTED_VERIFIED_NOT_COMMITTED`
-**`origin/main` = local `HEAD` = `57f803e`.** The five governance commits of 2026-08-11 **were
-pushed** — the previous handoff's "5 ahead, NOT PUSHED" was stale, confirmed by `git ls-remote`.
-Working tree now carries the **uncommitted** V1 change: 4 files modified, 3 new.
+Last updated: 2026-08-12 · `phase_status = VOICE_V1_COMMITTED_NOT_PUSHED`
+**Voice V1 is COMMITTED as `20ed5b9` and NOT pushed.** `origin/main` is still `57f803e`; the
+local branch is **2 ahead** — `20ed5b9` plus the documentation closure carrying this file.
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`OWNER_AUTHORIZATION_FOR_COMMIT`.** Voice phase V1 is implemented and green. Nothing is
-half-done and nothing is blocking. One atomic commit is prepared and deliberately not made:
+**`OWNER_AUTHORIZATION_FOR_TOKEN_ROTATION_THEN_PUSH`.** Three decisions, separate, none implying
+the others:
+
+1. **Rotate `ATOM_TOKEN`.** It was printed in cleartext into a session transcript on 2026-08-12 by
+   a redaction that covered URLs and not generic values. **Verified**: not in any tracked file, not
+   in git history, not in the working tree — it lives only in the container environment. The
+   rotation procedure is **prepared and not executed**, deliberately outside the repository, and
+   its read-only `--check` **passed** on this installation. Rotation recreates the container, so it
+   is the full `CLAUDE10.md` §3a sequence with a real downtime window.
+2. **`git push origin main`** — 2 commits, never forced.
+3. **OCI phase O1** — prove the repository rebuilds the running product. It is the prerequisite of
+   internalising the four external containers that breach `MASTER_PROJECT/08_INSTALLAZIONE.md` §1.
+
+---
+
+## ➜ THE VOICE COMMIT, AS IT LANDED
 
 ```text
-fix(voice): the spoken turn becomes a state machine that can be stopped (D-0388)
-  apps/webui-static/voice-session.js                        (new, 300 lines)
-  apps/webui-static/app.js                                  (adapters + rendering only)
-  apps/webui-static/index.html                              (the Stop control)
-  apps/webui-static/styles.css                              (endpointing/transcribing/error states)
-  apps/webui-static/i18n-catalog.js                         (7 strings, en + it)
-  services/reference-control-plane/test/voice-session.test.mjs  (new, 22 tests + the oracle)
-  tools/acceptance/voice-latency.mjs                        (new, the V0 bench)
+20ed5b9ad015c6a236adb2ae9ff412b1441c70ce
+fix(voice): make spoken turns interruptible and cancellable          (D-0388)
+11 files, +1739 / −314 · author Noesar <noesarkoma@gmail.com>
+  apps/webui-static/voice-session.js                            (new, the state machine)
+  apps/webui-static/app.js                                      (adapters + rendering only)
+  apps/webui-static/index.html                                  (the Stop control)
+  apps/webui-static/styles.css                                  (endpointing/transcribing/error)
+  apps/webui-static/i18n-catalog.js                             (7 strings, en + it)
+  services/reference-control-plane/test/voice-session.test.mjs   (new, 22 tests + the oracle)
+  tools/acceptance/voice-latency.mjs                            (new, the V0 bench)
   docs/VOICE.md · docs/DECISION_LOG.md · docs/SESSION_HANDOFF.md · PROJECT_STATE.json
 ```
+
+**The repository's own gate ran in full, with no bypass**: archive/binary/env refusal · unit suite ·
+migration manifest `CURRENT 19 migrations` · ESLint **391 files, 0 errors, 0 warnings, 0 no-undef**.
+The ESLint container is `docker run --rm` and left nothing: 52 containers before and after, and
+`noesar-evolution` still `healthy` with its `StartedAt` unchanged.
 
 Backup of every mutated file: `BACKUPS/voice_v1_20260812T024121Z/` (4 files).
 
@@ -69,10 +89,16 @@ reproduce.
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
-- **Nothing was committed and nothing was pushed.** Both need a separate Owner authorisation.
+- **Nothing was pushed.** `origin/main` is `57f803e`; the local branch is 2 ahead. Push is its own
+  Owner authorisation and was not given.
+- **`ATOM_TOKEN` is still the compromised value.** It was exposed in cleartext in a session
+  transcript on 2026-08-12; it is **not** in any tracked file, in git history or in the working
+  tree (verified), only in the container environment. **Not rotated.** The procedure is prepared
+  outside the repository and its read-only `--check` passed; rotating recreates the container and
+  therefore needs a separate authorisation and a downtime window.
 - **No container, image, network, volume, runtime, database or ATOM was touched.** No build, no
   deploy, no restart. The installation still runs `d0373-voice-conversation` and does **not**
-  carry this change.
+  carry this change — V1 is committed, not deployed.
 - **T2 and T3 were not run**: `tools/browser-e2e.mjs` and `tools/accessibility-audit.mjs` build a
   product image and drive containers, which the authorisation excluded. The change touches markup,
   so the change map would normally call for both — **declared, not skipped silently.** The one
