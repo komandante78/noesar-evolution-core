@@ -9488,3 +9488,20 @@ red; a manifest nobody checks is a claim of integrity that is not being kept.
 **Evidence.** the three counts above, taken this session.
 **Reversal cost.** None — nothing changed.
 **Status.** `F-MANIFEST-001` OPEN. Needs its own phase, with a checker so it cannot rot again.
+
+## D-0400 · T2 run in full, and three WCAG failures that are not this phase's — 2026-08-12
+**Decision.** T2 executed on the Owner's authorisation: browser suite **472/472 PASS, 0 FAIL**;
+WCAG 2.2 AA audit **24/27**, three failures **recorded as `F-A11Y-001..003`, not repaired here**.
+**Why.** All three are pre-existing and already live: this phase's commits touch those elements
+**zero** times, and `codenPromptOpenMenu` dates to `0c1f93d` (2026-08-05). Two of them change the
+geometry of the CodeN composer — a design decision (§76), not a mechanical fix, and putting it
+inside a deployment the Owner asked to run once is how it would have to be run twice.
+**Rejected.** Fixing them silently before the deploy — it would widen the phase and force a
+second audit run; and shipping without saying so, which is rule 38.
+**Evidence.** `EVIDENCE/t2_browser_e2e_20260812.log` (`BROWSER_E2E_TOTAL=472 PASS=472 FAIL=0`),
+`EVIDENCE/t2_accessibility_20260812.log` (`A11Y_TOTAL=27 PASS=24 FAIL=3`).
+`F-A11Y-001` `remoteTargetName`/`remoteTargetUsername` lack `autocomplete` (1.3.5) ·
+`F-A11Y-002` `#codenPrompt` shows no focus indicator (2.4.7) ·
+`F-A11Y-003` `#codenPrompt` 1144×21 and `#codenPromptOpenMenu` 21×17, both under 24×24 (2.5.8).
+**Reversal cost.** None — nothing was changed.
+**Status.** OPEN, all three. One short phase fixes them together with a single audit run.

@@ -4540,3 +4540,37 @@ quindi la copia persistente non va rinfrescata.
 - **First attempt failed** (`D-0390`): 43.8 s of downtime, rolled back, no token change.
 - **Not proven:** `OLD_TOKEN_REFUSED=UNVERIFIED`, and the end-to-end reasoning turn (A2) is an
   Owner action that has not been performed.
+
+## `d0397-agents-20260812T163057Z` — the Agents surface goes live (`D-0397`, 2026-08-12)
+
+| | |
+|---|---|
+| Image | `noesar-evolution:d0397-agents-20260812T163057Z`, built offline (`--pull=false`) from `oci/Dockerfile` |
+| Replaces | `noesar-evolution:d0373-voice-conversation` (running since 13:01Z) |
+| Carries | `D-0397` (Agents: guidance, a real test turn, archive) **and** Voice V1 `D-0388`, committed on 2026-08-12 and never installed until now |
+| Sequence | `tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image <tag>` — the §3a tool, `PREFLIGHT: PASS`, `DEPLOY_EXIT=0` |
+
+**Verified live, this session:**
+
+- image bytes **equal the tree**: 5 of 5 files identical by `sha256sum` inside the image vs on disk, before any mutation
+- the running installation serves the new bytes: `GET /app.js` → `bc4f5fc4e05c…`, the tree's own checksum
+- `clean exit confirmed` · workspace backed up **with the service stopped**, `0600` in a `0700` directory, checksum written
+- `/livez` **200** · `/readyz` **200** · `docker inspect` = `running healthy`
+- four children spawned: `postgres`, `api`, `codev`, `atom` · auth-failure lines **0**
+- pre-deployment gates: browser suite **472/472**, unit suite **2402 pass / 0 fail**, WCAG audit **24/27** (3 pre-existing failures, `D-0400`)
+
+**Predecessor kept:** `noesar-evolution-pre-20260812T163215Z` — the one rollback §21b permits.
+The older rollback (`…pre-token-rotation-20260812T130147Z`) was removed; **its image stays on
+disk**, so that path still works. Containers 53 → 52, networks 10 → 10, volumes 63 → 63,
+non-project containers 50 → 50.
+
+**Rollback cost:** none beyond ~1 s of downtime — the predecessor carries the configuration that
+was current before this deployment.
+
+```sh
+docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
+  && docker rename noesar-evolution-pre-20260812T163215Z noesar-evolution \
+  && docker start noesar-evolution
+```
+
+**Not proven here:** anything needing a signed-in session — A2 included.

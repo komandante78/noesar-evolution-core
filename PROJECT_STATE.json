@@ -2,8 +2,8 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": "Agents surface (D-0397): view-agents had 5 inputs and zero guidance, an agent could not be removed (archived was written at creation, filtered on read, and settable by nothing), and every run the screen created was unfinishable because Analyze goal carries no toolId and executeStep refused it with 409. Fixed in the source tree: placeholders/hints/titles on all five controls, an agent list with Test and Archive, PATCH /api/v1/agents/:id under agent.manage + CSRF, and a tool-less step now executed by the model through the same providers.route -> completeWithFallback path Chat uses (never through ChatOrchestrator, so a test writes nothing into chat history). Nothing was built, deployed or installed; no container, image, network, volume, database or ATOM was touched.",
-  "phase_status": "SOURCE_COMPLETE_AWAITING_COMMIT_AUTHORISATION — T1 green, T2 not run (declared). Worktree carries this phase plus the previous sitting four dirty files.",
-  "next_phase": "Owner decision: authorise the two commits proposed in the handoff, then A2 (unchanged), then the D-0395 choice, then deploy.",
+  "phase_status": "DEPLOYED_AND_VERIFIED — D-0397 and Voice V1 (D-0388) are live on noesar-evolution:d0397-agents-20260812T163057Z. T2 green (browser 472/472), WCAG 24/27 with 3 pre-existing failures recorded. Awaiting A2 and the D-0395 choice.",
+  "next_phase": "Owner: A2 on the NEW installation, then the D-0395 choice, then git push. A short phase can close F-A11Y-001..003 with a single audit run.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -284,6 +284,24 @@
       "severity": "medium",
       "status": "OPEN - recorded 2026-08-12 (D-0399), not fixed: pre-existing and out of this phase scope",
       "summary": "MANIFEST.sha256 has 5898 entries against 6568 tracked files and contains zero entries for files earlier phases added (apps/webui-static/voice-session.js, tools/deploy/redeploy.sh). Nothing in tools/ or the test suite verifies it, so nothing ever went red. Needs its own phase, with a checker."
+    },
+    {
+      "id": "F-A11Y-001",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing",
+      "summary": "WCAG 1.3.5: remoteTargetName and remoteTargetUsername carry no autocomplete attribute (2 of 13 identity fields)."
+    },
+    {
+      "id": "F-A11Y-002",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing, needs an Owner design call",
+      "summary": "WCAG 2.4.7: #codenPrompt is the only one of 879 controls that changes nothing when focused."
+    },
+    {
+      "id": "F-A11Y-003",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing, needs an Owner design call",
+      "summary": "WCAG 2.5.8: #codenPrompt is 1144x21 and #codenPromptOpenMenu is 21x17 - both under the 24x24 minimum target size. Changes the geometry of the CodeN composer."
     }
   ],
   "resolved_findings": [
@@ -913,7 +931,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "THREE things. (1) Authorise the commits: commit A = the 7 files of D-0397 (agent-service.mjs, server.mjs, index.html, app.js, i18n-catalog.js, ai-agent-service.test.mjs, agents-archive-http.test.mjs); commit B = the state files, which carry BOTH this phase and the previous sitting measurements. (2) A2, still not done and unchanged, but with the CORRECTED recipe: the reasoning indicator is the chip #codenReasoningChip in the CodeN Evolution top bar and it is updated ONLY by the Plan panel at #/coden/agent/plan (app.js:2966) — a chat message does not touch it. Read both the chip (reasoning atom) and the provider: line in the plan result box; measure the container log past line 426. (3) Answer D-0395 on the #/models in-use lane. Deployment of Voice V1 and of D-0397 both still pending.",
+  "next_action": "A2 FIRST, and it is now worth more than before: the installation is new, so the run also proves the deployment. Open https://192.168.178.100:8443, sign in, go to #/coden/agent/plan (NOT #/agents), fill the goal plus at least one file path, press Create plan, and read BOTH the chip reasoning atom in the CodeN top bar AND the provider: line in the plan result box. atom on the chip is only the absence of a degradation event; provider: names who answered. Measure the container log of the NEW container from its own start, not from the old marker at 426. THEN: (2) answer D-0395 on the #/models in-use lane; (3) git push origin main, never forced. Also newly available to try: Agents now has a list with Test and Archive, and the run that was stuck in planned shows Ask the model.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

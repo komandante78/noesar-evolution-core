@@ -1,24 +1,21 @@
 # SESSION HANDOFF — NOESAR EVOLUTION
 
-Last updated: 2026-08-12 · `phase_status = SOURCE_COMPLETE_AWAITING_COMMIT_AUTHORISATION`
+Last updated: 2026-08-12 · `phase_status = DEPLOYED_AND_VERIFIED`
 **`origin/main` is behind and nothing is pushed** — for how far, run `git status -sb`: a number
 written here goes stale on the next commit.
 
+**The installation is NEW**: `noesar-evolution:d0397-agents-20260812T163057Z`, live since
+16:32Z. It carries `D-0397` **and** Voice V1 (`D-0388`), which had been committed and never
+installed. Details in `docs/INSTALLATION_LEDGER.md`, last entry.
+
 ---
 
-## ➜ LA PROSSIMA AZIONE — tre cose, in quest'ordine
+## ➜ LA PROSSIMA AZIONE — due cose, in quest'ordine
 
-### 1. Authorise the commits — nothing from this phase is committed
+### 1. A2 — still not done, and the recipe in the last handoff was WRONG
 
-Two commits, deliberately split. **They cannot be split further**: the state files carry both
-this phase and the previous sitting, and no hunk-level split is available here.
-
-| Commit | Files |
-|---|---|
-| **A** `feat(phase-4): D-0397 …` | `services/reference-control-plane/src/ai-workspace/agent-service.mjs` · `services/reference-control-plane/src/server.mjs` · `apps/webui-static/index.html` · `apps/webui-static/app.js` · `apps/webui-static/i18n-catalog.js` · `services/reference-control-plane/test/ai-agent-service.test.mjs` · `services/reference-control-plane/test/agents-archive-http.test.mjs` (new) |
-| **B** `docs(phase-4): …` | `PROJECT_STATE.json`, `docs/DECISION_LOG.md`, `docs/SESSION_HANDOFF.md`, `EVIDENCE/a2_log_marker_2.txt` (untracked) — **carries the previous sitting's measurements too**, and the message must say so |
-
-### 2. A2 — still not done, and the recipe in the last handoff was WRONG
+**It is now worth more than before**: the installation is new, so the same run also proves the
+deployment end to end.
 
 The old recipe said *"send one chat message and read the reasoning indicator"*. Measured this
 session: **a chat message does not touch that indicator.** `updateReasoningChip()` has exactly
@@ -36,10 +33,14 @@ one caller in the whole product — `app.js:2966`, the answer of `POST /api/v1/w
 
 `atom` on the chip is a **negative** proof (`degradationSummary()` says `atom` when zero
 degradation events exist); `provider:` is the **positive** one — it names who answered. A2 passes
-only if both say `atom`. Then measure the container log **past line 426**
-(`EVIDENCE/a2_log_marker_2.txt`), not 118.
+only if both say `atom`. The container is **new**, so measure its log from **its own start** —
+the old marker at 426 lines (`EVIDENCE/a2_log_marker_2.txt`) belongs to the container that was
+replaced and no longer applies.
 
-### 3. Answer `D-0395` — the `#/models` in-use lane
+*While you are signed in:* `#/agents` now has a list with **Test** and **Archive**, and the run
+that sat in `planned` shows **Ask the model**.
+
+### 2. Answer `D-0395` — the `#/models` in-use lane
 
 `phi-4-q4_k_m` is genuinely resident (10,348 of 12,288 MiB, RTX 3060) served by container
 `atom-evolution-model` at `http://172.22.0.4:8420`. Choose: **(a)** the product must not present
@@ -47,8 +48,8 @@ another deployment's runtime as *"on this installation"* (product change, no run
 **(b)** unload and reload (a container outside this project — explicit authorisation) ·
 **(c)** a different model.
 
-**Then:** deploy — Voice V1 **and** `D-0397` are both committed-only ·
-`git push origin main` (never forced) · OCI phase O1.
+**Then:** `git push origin main` (never forced) · a short phase closing `F-A11Y-001..003` with a
+single audit run · OCI phase O1. **The deployment is done** — see the ledger.
 
 ---
 
@@ -83,19 +84,25 @@ executed by the model through the same `providers.route` → `completeWithFallba
 | `tools/auth-http-smoke.mjs` · `tools/http-smoke.mjs` | `PASS` · `PASS` |
 | IT translation coverage | **856/856 (100%)** — 17 new markup strings, 13 runtime strings declared in `RUNTIME_ONLY` |
 | the archive is honest | proved against `/api/v1/ai/bootstrap`, the payload the screen actually renders — not only against `/api/v1/agents` |
+| **T2 · browser suite** | `BROWSER_E2E_TOTAL=472 · PASS=472 · FAIL=0` — disposable probe built from source, removed by the suite itself |
+| **T2 · WCAG 2.2 AA audit** | `A11Y_TOTAL=27 · PASS=24 · FAIL=3` — all three pre-existing, `D-0400` |
+| **T3 · image bytes = tree** | 5 of 5 files identical by `sha256sum` inside the image vs on disk, **before** any mutation |
+| **T3 · the live installation serves the new bytes** | `GET /app.js` → `bc4f5fc4e05c…`, the tree's own checksum |
+| **T3 · health after deployment** | `docker inspect` = `running healthy` · `/livez` **200** · `/readyz` **200** · children `postgres api codev atom` · auth-failure lines **0** |
+| **§5a cleanup** | containers **53 → 52**, networks **10 → 10**, volumes **63 → 63**, non-project containers **50 → 50**; two project containers survive, zero `webui-e2e` tags, zero per-run networks |
 
 ---
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
-- **Nothing is committed and nothing is pushed.** Eleven files are dirty (7 from this phase,
-  4 from the previous sitting).
-- **Nothing was deployed or installed.** No container, image, network, volume, database, ATOM or
-  host was touched. The running installation still serves the old bytes — Voice V1 **and**
-  `D-0397` are both undeployed.
-- **T2 was NOT run**: `tools/browser-e2e.mjs` and `tools/accessibility-audit.mjs` are owed by the
-  markup change (change map) and were **not executed** — they build an image and drive
-  containers, outside the standing authorisation. Requested, not skipped silently.
+- **Nothing is pushed.** `origin/main` is behind; see `git status -sb`.
+- **Three WCAG 2.2 AA failures were found and NOT repaired** (`F-A11Y-001..003`, `D-0400`). All
+  three are pre-existing — this phase's commits touch those elements **zero** times — and two of
+  them change the geometry of the CodeN composer, which is a design decision, not a mechanical
+  fix. They were already live before this deployment and still are.
+- **`F-MANIFEST-001` still not fixed** (`D-0399`).
+- **A2 was NOT performed** — it needs a signed-in session and no automation here holds a
+  credential. Nothing requiring a session is proven by the deployment.
 - **A2 was NOT performed** — it needs a signed-in session and no automation here holds a
   credential. The corrected recipe is at the top of this file.
 - **`F-MANIFEST-001` recorded, not fixed** (`D-0399`): `MANIFEST.sha256` has **5898** entries

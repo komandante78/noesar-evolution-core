@@ -125,6 +125,15 @@ scratch/
 *.log
 logs/
 
+# Docker inventories taken for the CLAUDE10.md §5a cleanup procedure.
+#
+# The procedure REQUIRES writing `docker ps -a` / `images` / `network ls` / `volume ls` to
+# EVIDENCE/ before removing anything, and that output is host-wide: it names the containers and
+# images of every other project on the developing machine. Keeping the evidence on disk is the
+# duty; committing it is publishing somebody else's infrastructure detail into a repository
+# meant to go public (§29). The file stays where the procedure put it and out of git.
+EVIDENCE/docker_inventory_*.txt
+
 # Editor / OS noise
 .DS_Store
 Thumbs.db
