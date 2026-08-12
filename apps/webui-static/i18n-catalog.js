@@ -273,6 +273,22 @@ export const RUNTIME_ONLY = Object.freeze([
   'That matches several — say which:',
   'Going to',
   'Ready to send:',
+  // D-0397: the Agents list, its two controls and their outcomes. Painted by renderAgents()
+  // and by testAgent()/archiveAgent() in app.js, so they appear in no markup — measured live
+  // by I18N-RUNTIME like every other entry above.
+  'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.',
+  'No tool',
+  'One sentence to test this agent with',
+  'Sent to the model as the goal of a single, non-mutative turn.',
+  "Runs one turn now: this agent's instructions plus this sentence. No tool is called and nothing is written.",
+  'Removes this agent from the list and from Plan run. The record is kept, not destroyed.',
+  'Test',
+  'Ask the model',
+  'Waiting for the model…',
+  'A test needs one sentence to work towards.',
+  'A run needs one sentence to work towards.',
+  'Pick an agent first — create one on the left if the list is empty.',
+  'The step completed without returning any text.',
 ]);
 
 const it = {
@@ -1387,6 +1403,36 @@ const it = {
   'Estrela': 'Estrela',                       // the product's feminine voice — a name, s336
   'in': 'in',                                 // the preposition is the same word in Italian
   '<id>': '<id>',                             // an identifier is not a word
+  // --- D-0397 · Agents, painted by renderAgents() in app.js — declared in RUNTIME_ONLY below ---
+  'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.': 'Nessuna istruzione propria: a questo agente si chiede di rispondere direttamente e di dichiarare ciò che non può sapere.',
+  'No tool': 'Nessuno strumento',
+  'One sentence to test this agent with': 'Una frase con cui provare questo agente',
+  'Sent to the model as the goal of a single, non-mutative turn.': 'Inviata al modello come obiettivo di un singolo turno non mutativo.',
+  'Runs one turn now: this agent\'s instructions plus this sentence. No tool is called and nothing is written.': 'Esegue subito un turno: le istruzioni di questo agente più questa frase. Non chiama nessuno strumento e non scrive niente.',
+  'Removes this agent from the list and from Plan run. The record is kept, not destroyed.': 'Toglie questo agente dalla lista e da Plan run. Il record è conservato, non distrutto.',
+  'Test': 'Prova',
+  'Ask the model': 'Chiedi al modello',
+  'Waiting for the model…': 'In attesa del modello…',
+  'A test needs one sentence to work towards.': 'Una prova ha bisogno di una frase verso cui lavorare.',
+  'A run needs one sentence to work towards.': 'Un run ha bisogno di una frase verso cui lavorare.',
+  'Pick an agent first — create one on the left if the list is empty.': 'Prima scegli un agente: se la lista è vuota, creane uno a sinistra.',
+  'The step completed without returning any text.': 'Il passo si è concluso senza restituire alcun testo.',
+  // --- D-0397 · Agents: the guidance the screen never had, and the two controls it never had ---
+  'How you will recognise this agent below, and in the Plan run selector.': 'Come riconoscerai questo agente qui sotto e nel selettore di Plan run.',
+  'These become the system message of every turn this agent runs. Left empty, the agent is told only to answer directly and declare what it cannot know.': 'Diventano il messaggio di sistema di ogni turno che questo agente esegue. Lasciate vuote, all’agente si chiede soltanto di rispondere direttamente e di dichiarare ciò che non può sapere.',
+  'Optional. Hold Ctrl — Cmd on macOS — for more than one. A tool marked “· mutative” can change something, so a step that uses it always stops for your approval.': 'Facoltativo. Tieni Ctrl — Cmd su macOS — per sceglierne più di uno. Uno strumento marcato “· mutative” può cambiare qualcosa, quindi un passo che lo usa si ferma sempre per la tua approvazione.',
+  'Creates a two-step run: step 1 is answered by the model with this agent\'s instructions, step 2 calls the agent\'s first tool — and waits for your approval when that tool is mutative. Nothing runs until you press Execute.': 'Crea un run in due passi: al passo 1 risponde il modello con le istruzioni di questo agente, il passo 2 chiama il primo strumento dell’agente — e aspetta la tua approvazione quando quello strumento è mutativo. Niente parte finché non premi Execute.',
+  'Your agents': 'I tuoi agenti',
+  'Test one turn · archive': 'Prova un turno · archivia',
+  'No agent yet. Create one on the left — it needs a name and nothing else.': 'Ancora nessun agente. Creane uno a sinistra: serve un nome e nient’altro.',
+  'No run yet. Press Test on an agent for a single turn, or use Plan run for an approval-aware one.': 'Ancora nessun run. Premi Test su un agente per un singolo turno, oppure usa Plan run per uno con approvazione.',
+  'Release reviewer': 'Revisore delle release',
+  'You review release notes. Be concrete, name files, and say plainly what you cannot verify.': 'Revisioni le note di rilascio. Sii concreto, nomina i file e di’ chiaramente ciò che non puoi verificare.',
+  'How you will recognise this agent in the list below and in Plan run.': 'Come riconoscerai questo agente nella lista qui sotto e in Plan run.',
+  'Sent to the model as the system message of every turn this agent runs.': 'Inviate al modello come messaggio di sistema di ogni turno che questo agente esegue.',
+  'Optional. Hold Ctrl — Cmd on macOS — to select more than one, or none at all.': 'Facoltativo. Tieni Ctrl — Cmd su macOS — per selezionarne più di uno, o nessuno.',
+  'Which agent runs this goal. Create one on the left first.': 'Quale agente esegue questo obiettivo. Prima creane uno a sinistra.',
+  'One sentence. It is what the model is asked to work towards.': 'Una frase. È ciò verso cui si chiede al modello di lavorare.',
   '[confirm]': '[confirm]',                   // literal: `logout confirm` is what the parser reads
   '[active|archived|bin]': '[active|archived|bin]',  // literal values, matched against the wire
 };

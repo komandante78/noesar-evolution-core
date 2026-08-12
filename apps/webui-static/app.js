@@ -1638,15 +1638,77 @@ function renderAgents(){
   $('#agentTools').innerHTML=state.tools.map((item)=>`<option value="${item.id}">${escapeHtml(item.name)}${item.mutative?' · mutative':''}</option>`).join('');
   $('#runAgent').innerHTML=optionList(state.agents,{empty:'Select agent'});
   $('#toolList').innerHTML=state.tools.map((tool)=>`<article class="entity-card"><h3>${escapeHtml(tool.name)}</h3><p>${escapeHtml(tool.transport)} · ${escapeHtml(tool.endpoint??tool.config?.command??'not configured')}</p><small>${tool.external?'External':'Local'} · ${tool.mutative?'Mutative':'Read-only'} · consent ${tool.consent?.granted?'granted':'not granted'}</small><div class="inline-form"><input type="password" data-tool-key="${tool.id}" placeholder="Optional API/OAuth token"><button data-save-tool-key="${tool.id}">Save encrypted key</button>${tool.external?`<button data-tool-consent="${tool.id}">${tool.consent?.granted?'Revoke consent':'Grant for active project'}</button>`:''}</div></article>`).join('')||'No tools.';
-  $('#runList').innerHTML=(state.agentRuns??[]).map((run)=>`<article class="entity-card"><h3>${escapeHtml(run.goal)}</h3><small>${escapeHtml(run.status)}</small>${run.steps.map((step)=>`<div class="step"><span>${step.index+1}. ${escapeHtml(step.title)}</span><b>${escapeHtml(step.status)}</b>${step.status==='awaiting_approval'?`<button data-approve-step="${run.id}:${step.id}">Approve</button>`:''}${step.status==='pending'&&step.toolId?`<button data-execute-step="${run.id}:${step.id}">Execute</button>`:''}</div>${step.output?`<pre>${escapeHtml(JSON.stringify(step.output,null,2))}</pre>`:''}${step.error?`<p class="error">${escapeHtml(step.error)}</p>`:''}`).join('')}</article>`).join('')||'No runs.';
+  // The agent list itself. Agents used to exist only as `<option>`s in two selectors: there was
+  // no surface on which one could be looked at, tried or removed, which is exactly how an agent
+  // created by mistake became permanent.
+  $('#agentList').innerHTML=(state.agents??[]).map((agent)=>{
+    const tools=state.tools.filter((tool)=>(agent.toolIds??[]).includes(tool.id));
+    const instructions=(agent.instructions??'').trim();
+    return `<article class="entity-card"><h3>${escapeHtml(agent.name)}</h3><p>${instructions?escapeHtml(instructions.length>240?`${instructions.slice(0,240)}…`:instructions):'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.'}</p><small>${tools.length?tools.map((tool)=>`${escapeHtml(tool.name)}${tool.mutative?' · mutative':''}`).join(' · '):'No tool'}</small><div class="inline-form"><input data-agent-goal="${agent.id}" placeholder="One sentence to test this agent with" aria-label="One sentence to test this agent with" title="Sent to the model as the goal of a single, non-mutative turn."><button data-test-agent="${agent.id}" title="Runs one turn now: this agent's instructions plus this sentence. No tool is called and nothing is written.">Test</button><button data-archive-agent="${agent.id}" title="Removes this agent from the list and from Plan run. The record is kept, not destroyed.">Archive</button></div><div data-agent-answer="${agent.id}"></div></article>`;
+  }).join('')||'No agent yet. Create one on the left — it needs a name and nothing else.';
+  // `step.toolId` is no longer required to offer Execute: a step without a tool is answered by
+  // the model (`D-0397`). While that condition stood, the `Analyze goal` step this very screen
+  // creates had no control at all, and every run it made was unfinishable.
+  $('#runList').innerHTML=(state.agentRuns??[]).map((run)=>`<article class="entity-card"><h3>${escapeHtml(run.goal)}</h3><small>${escapeHtml(run.status)}</small>${run.steps.map((step)=>`<div class="step"><span>${step.index+1}. ${escapeHtml(step.title)}</span><b>${escapeHtml(step.status)}</b>${step.status==='awaiting_approval'?`<button data-approve-step="${run.id}:${step.id}">Approve</button>`:''}${step.status==='pending'?`<button data-execute-step="${run.id}:${step.id}">${step.toolId?'Execute':'Ask the model'}</button>`:''}</div>${step.output?(step.output.kind==='reasoning'?`<pre>${escapeHtml(step.output.text??'')}</pre><small>${escapeHtml(step.output.provider?.name??'provider')}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<pre>${escapeHtml(JSON.stringify(step.output,null,2))}</pre>`):''}${step.error?`<p class="error">${escapeHtml(step.error)}</p>`:''}`).join('')}</article>`).join('')||'No run yet. Press Test on an agent for a single turn, or use Plan run for an approval-aware one.';
+  $$('[data-test-agent]').forEach((button)=>button.addEventListener('click',()=>testAgent(button.dataset.testAgent)));
+  $$('[data-archive-agent]').forEach((button)=>button.addEventListener('click',()=>archiveAgent(button.dataset.archiveAgent)));
   $$('[data-approve-step]').forEach((button)=>button.addEventListener('click',async()=>{const[runId,stepId]=button.dataset.approveStep.split(':');await api(`/api/v1/agent-runs/${runId}/steps/${stepId}/approve`,{method:'POST',body:'{}'});await refreshWorkspace();}));
   $$('[data-execute-step]').forEach((button)=>button.addEventListener('click',async()=>{const[runId,stepId]=button.dataset.executeStep.split(':');try{await api(`/api/v1/agent-runs/${runId}/steps/${stepId}/execute`,{method:'POST',body:JSON.stringify({input:{}})});await refreshWorkspace();}catch(error){setStatus(error.message,true);}}));
   $$('[data-save-tool-key]').forEach((button)=>button.addEventListener('click',async()=>{const id=button.dataset.saveToolKey;const input=$(`[data-tool-key="${id}"]`);await api(`/api/v1/tools/${id}/credential`,{method:'PUT',body:JSON.stringify({apiKey:input.value,persistence:'encrypted'})});input.value='';setStatus('Tool credential encrypted.');}));
   $$('[data-tool-consent]').forEach((button)=>button.addEventListener('click',async()=>{const tool=state.tools.find((item)=>item.id===button.dataset.toolConsent);await api(`/api/v1/tools/${tool.id}/consent`,{method:'PUT',body:JSON.stringify({granted:!tool.consent?.granted,projectIds:state.activeProjectId?[state.activeProjectId]:[]})});await refreshWorkspace();}));
 }
+// A test is a REAL run with one non-mutative step, executed at once — the same object the Runs
+// panel shows, not a private path that would prove nothing about the real one. No tool is
+// called: a step with no toolId is answered by the model, and nothing is written anywhere.
+async function testAgent(agentId){
+  const field=$(`[data-agent-goal="${agentId}"]`);
+  const goal=(field?.value??'').trim();
+  if(!goal){setStatus('A test needs one sentence to work towards.',true);field?.focus();return;}
+  const host=$(`[data-agent-answer="${agentId}"]`);
+  if(host)host.innerHTML='<p class="hint">Waiting for the model…</p>';
+  try{
+    const run=await api('/api/v1/agent-runs',{method:'POST',body:JSON.stringify({agentId,projectId:state.activeProjectId,goal,steps:[{title:'Answer the goal',mutative:false}]})});
+    const executed=await api(`/api/v1/agent-runs/${run.id}/steps/${run.steps[0].id}/execute`,{method:'POST',body:JSON.stringify({input:{}})});
+    const step=executed.steps[0];
+    // The refresh redraws this card, so the answer is written AFTER it, into the new node —
+    // writing it before would put the text into an element about to be replaced.
+    await refreshWorkspace();
+    const redrawn=$(`[data-agent-answer="${agentId}"]`);
+    if(redrawn)redrawn.innerHTML=step.output?.text?`<pre>${escapeHtml(step.output.text)}</pre><small>${escapeHtml(step.output.provider?.name??'provider')}${step.output.model?` · ${escapeHtml(step.output.model)}`:''}</small>`:`<p class="error">${escapeHtml(step.error??'The step completed without returning any text.')}</p>`;
+  }catch(error){
+    await refreshWorkspace();
+    const redrawn=$(`[data-agent-answer="${agentId}"]`);
+    if(redrawn)redrawn.innerHTML=`<p class="error">${escapeHtml(error.message)}</p>`;
+    setStatus(error.message,true);
+  }
+}
+// Archive, not delete: the agent leaves every surface, the record stays. What it removes is
+// stated in the confirmation, so nobody has to guess whether their runs go with it.
+async function archiveAgent(agentId){
+  const agent=state.agents.find((item)=>item.id===agentId);
+  if(!agent)return;
+  if(!confirm(`Archive “${agent.name}”?\n\nIt leaves this list and the Plan run selector. Nothing is destroyed: the record is kept and its runs stay where they are.`))return;
+  try{await api(`/api/v1/agents/${agentId}`,{method:'PATCH',body:JSON.stringify({archived:true})});setStatus(`Agent “${agent.name}” archived.`);await refreshWorkspace();}
+  catch(error){setStatus(error.message,true);}
+}
 $('#toolForm').addEventListener('submit',async(event)=>{event.preventDefault();const transport=$('#toolTransport').value;await api('/api/v1/tools',{method:'POST',body:JSON.stringify({name:$('#toolName').value,description:$('#toolDescription').value,transport,endpoint:transport==='mcp-stdio'?null:$('#toolEndpoint').value,config:transport==='mcp-stdio'?{command:$('#toolEndpoint').value,remoteToolName:$('#toolRemoteName').value}:{remoteToolName:$('#toolRemoteName').value},external:$('#toolExternal').checked,mutative:$('#toolMutative').checked,requiresApproval:true})});event.target.reset();await refreshWorkspace();});
 $('#agentForm').addEventListener('submit',async(event)=>{event.preventDefault();await api('/api/v1/agents',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,name:$('#agentName').value,instructions:$('#agentInstructions').value,toolIds:[...$('#agentTools').selectedOptions].map((o)=>o.value)})});event.target.reset();await refreshWorkspace();});
-$('#runForm').addEventListener('submit',async(event)=>{event.preventDefault();const agent=state.agents.find((item)=>item.id===$('#runAgent').value);const tool=state.tools.find((item)=>agent?.toolIds.includes(item.id));await api('/api/v1/agent-runs',{method:'POST',body:JSON.stringify({agentId:agent.id,projectId:state.activeProjectId,goal:$('#runGoal').value,steps:[{title:'Analyze goal',mutative:false},{title:tool?`Use ${tool.name}`:'Produce result',toolId:tool?.id,mutative:Boolean(tool?.mutative)}]})});event.target.reset();await refreshWorkspace();});
+// The two guards are not decoration: with no agent selected this read `agent.id` off
+// `undefined` and died with a TypeError nothing showed the operator, and an empty goal reached
+// the server only to come back as `Agent goal is required.`
+$('#runForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const agent=state.agents.find((item)=>item.id===$('#runAgent').value);
+  if(!agent){setStatus('Pick an agent first — create one on the left if the list is empty.',true);return;}
+  const goal=$('#runGoal').value.trim();
+  if(!goal){setStatus('A run needs one sentence to work towards.',true);$('#runGoal').focus();return;}
+  const tool=state.tools.find((item)=>agent.toolIds?.includes(item.id));
+  try{
+    await api('/api/v1/agent-runs',{method:'POST',body:JSON.stringify({agentId:agent.id,projectId:state.activeProjectId,goal,steps:[{title:'Analyze goal',mutative:false},{title:tool?`Use ${tool.name}`:'Produce result',toolId:tool?.id??null,mutative:Boolean(tool?.mutative)}]})});
+    event.target.reset();
+    await refreshWorkspace();
+  }catch(error){setStatus(error.message,true);}
+});
 async function exportData(){const bundle=await api('/api/v1/data/export');const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`noesar-export-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);}
 $('#saveRetention').addEventListener('click',async()=>{await api('/api/v1/data/retention',{method:'PUT',body:JSON.stringify({days:Number($('#retentionDays').value)})});await refreshWorkspace();setStatus('Retention policy saved.');});$('#applyRetention').addEventListener('click',async()=>{const result=await api('/api/v1/data/retention/apply',{method:'POST',body:'{}'});await refreshWorkspace();setStatus(`Retention applied: ${JSON.stringify(result.counts)}`);});$('#exportData').addEventListener('click',exportData);$('#rightExportData').addEventListener('click',exportData);$('#purgeProject').addEventListener('click',async()=>{if(!state.activeProjectId||!confirm('Permanently delete the active project data?'))return;await api('/api/v1/data/purge',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId})});state.activeProjectId=null;state.activeConversationId=null;await refreshWorkspace();});
 // --- one box: go to an address, or search what is inside the addresses ------

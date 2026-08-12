@@ -25,3 +25,70 @@ test('approved mutative HTTP tool step executes and records output',async()=>{
   await new Promise((resolve)=>server.listen(0,'127.0.0.1',resolve));const dir=mkdtempSync(join(tmpdir(),'noesar-agent-exec-'));const store=new AtomicJsonStore(join(dir,'state.json'));const vault=new CredentialVault({keyPath:join(dir,'vault.key')});const service=new AgentService({store,vault,executor:new ToolExecutor({vault})});
   try{const tool=service.registerTool({name:'local_write',transport:'local-http',endpoint:`http://127.0.0.1:${server.address().port}/execute`,mutative:true});const agent=service.createAgent({name:'Writer',toolIds:[tool.id]});const run=service.createRun({agentId:agent.id,goal:'write',steps:[{title:'write',toolId:tool.id,mutative:true,input:{value:42}}]});assert.equal(run.steps[0].status,'awaiting_approval');service.approveStep(run.id,run.steps[0].id,'owner');const completed=await service.executeStep(run.id,run.steps[0].id,{},'owner');assert.equal(completed.steps[0].status,'completed');assert.equal(completed.steps[0].output.result.received.value,42);}finally{await new Promise((resolve)=>server.close(resolve));rmSync(dir,{recursive:true,force:true});}
 });
+
+// D-0397. A step with no tool used to be refused with `409 Step has no tool assigned`, which
+// made every run this product's own Agents screen creates permanently unfinishable: the form
+// builds `Analyze goal` without a toolId, so step 1 could never leave `pending` and the run
+// could never reach `completed`. The repair is not a looser refusal — it is the step doing the
+// thing its title always claimed: asking the model.
+const reasonerStub=(text='the answer')=>({
+  calls:[],
+  route({requestedProviderId}={}){return requestedProviderId?[requestedProviderId]:['default-profile'];},
+  async completeWithFallback(profileIds,request){this.calls.push({profileIds,request});return{text,provider:{id:profileIds[0],name:'Stub provider'},raw:{}};},
+});
+
+test('a step with no tool is answered by the model, and the run can finally complete',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'noesar-agent-reason-'));const store=new AtomicJsonStore(join(dir,'state.json'));
+  const reasoner=reasonerStub('Three files matter here.');
+  const service=new AgentService({store,reasoner});
+  try{
+    const agent=service.createAgent({name:'Reviewer',instructions:'You review releases.',providerId:'local-profile'});
+    const run=service.createRun({agentId:agent.id,goal:'Summarise the release',steps:[{title:'Analyze goal',mutative:false}]});
+    assert.equal(run.steps[0].status,'pending');
+    const done=await service.executeStep(run.id,run.steps[0].id,{},'owner');
+    assert.equal(done.steps[0].status,'completed');
+    assert.equal(done.status,'completed','the run itself must reach completed, not sit in running for ever');
+    assert.equal(done.steps[0].output.kind,'reasoning');
+    assert.equal(done.steps[0].output.text,'Three files matter here.');
+    // The agent's own instructions must be what the model was told, and the goal must reach it.
+    const sent=reasoner.calls[0];
+    assert.deepEqual(sent.profileIds,['local-profile'],"the agent's own provider is the one asked");
+    assert.equal(sent.request.messages[0].role,'system');
+    assert.match(sent.request.messages[0].content,/You review releases\./);
+    assert.match(sent.request.messages[1].content,/Summarise the release/);
+    // No tool was executed: this service had no executor at all and still answered.
+    assert.equal(service.executor,null);
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('a reasoning step with no routable provider fails declared, and says why',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'noesar-agent-noprovider-'));const store=new AtomicJsonStore(join(dir,'state.json'));
+  const service=new AgentService({store,reasoner:{route(){return[];},async completeWithFallback(){throw new Error('must not be reached');}}});
+  try{
+    const agent=service.createAgent({name:'Orphan'});
+    const run=service.createRun({agentId:agent.id,goal:'anything',steps:[{title:'Analyze goal',mutative:false}]});
+    await assert.rejects(()=>service.executeStep(run.id,run.steps[0].id,{},'owner'),/No enabled model provider/);
+    const after=store.read().agentRuns[0];
+    assert.equal(after.steps[0].status,'failed','a step that could not run must say failed, not stay pending');
+    assert.match(after.steps[0].error,/No enabled model provider/);
+    assert.equal(after.status,'failed');
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('an agent is archived rather than destroyed, and its editable fields can be corrected',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'noesar-agent-archive-'));const store=new AtomicJsonStore(join(dir,'state.json'));const service=new AgentService({store});
+  try{
+    const tool=service.registerTool({name:'reader'});
+    const agent=service.createAgent({name:'Typo',instructions:'first'});
+    const renamed=service.updateAgent(agent.id,{name:'Release reviewer',instructions:'second',toolIds:[tool.id]},'owner');
+    assert.equal(renamed.name,'Release reviewer');assert.equal(renamed.instructions,'second');assert.deepEqual(renamed.toolIds,[tool.id]);
+    assert.notEqual(renamed.updatedAt,undefined);
+    const archived=service.updateAgent(agent.id,{archived:true},'owner');
+    assert.equal(archived.archived,true);
+    // Non-destructive: the record is still there, which is what makes the archive recoverable.
+    assert.equal(store.read().agents.length,1);
+    assert.equal(store.read().agents[0].id,agent.id);
+    // A tool that does not exist is refused, exactly as it is at creation.
+    assert.throws(()=>service.updateAgent(agent.id,{toolIds:['no-such-tool']},'owner'),/Tool not found/);
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});

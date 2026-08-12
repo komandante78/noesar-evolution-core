@@ -350,7 +350,10 @@ const toolExecutor = new ToolExecutor({ vault:credentialVault, ledger });
 // revoking every live report link is the declared behaviour, not a gap.
 const researchReportStore = new ResearchReportStore();
 const researchRefusalRegistry = new RefusalRegistry();
-const agentService = new AgentService({ store:aiStore, ledger, executor:toolExecutor, vault:credentialVault });
+// `reasoner` is the same ProviderGateway Chat answers through (D-0397). Without it an agent
+// run's first step -- the one with no tool -- had nothing that could execute it, and every run
+// this product's own Agents screen created was unfinishable by construction.
+const agentService = new AgentService({ store:aiStore, ledger, executor:toolExecutor, vault:credentialVault, reasoner:providerGateway });
 // D-0286: the SAME vault every other credential in this product already uses -- one
 // authentication, one encryption-at-rest key, not a second one to manage for SSH keys.
 const remoteTargetRegistry = new RemoteTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
@@ -3836,6 +3839,13 @@ const requestListener = async (req, res) => {
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/agents'){
       const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,agentService.createAgent(await body(req),authenticated.user.id));
+    }
+    // D-0397. Archiving an agent, guarded exactly as creating one is. `GET /api/v1/agents`
+    // already filters `!item.archived`, so this is the whole of "remove it from my screen" --
+    // and the record survives, which is what makes it recoverable.
+    match=url.pathname.match(/^\/api\/v1\/agents\/([^/]+)$/);
+    if(match&&req.method==='PATCH'){
+      const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,200,agentService.updateAgent(match[1],await body(req),authenticated.user.id));
     }
     if(req.method==='POST'&&url.pathname==='/api/v1/agent-runs'){
       const authenticated=requireSession(req,res,'agent.manage');if(!authenticated||!requireCsrf(req,res,authenticated))return;return json(res,201,agentService.createRun(await body(req),authenticated.user.id));

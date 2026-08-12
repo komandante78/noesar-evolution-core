@@ -691,7 +691,27 @@
 
       <section class="view" id="view-agents">
         <div class="section-header"><div><p class="eyebrow">PLAN · APPROVE · EXECUTE · VERIFY</p><h1>Agents</h1><p>Mutative steps remain blocked until a human grants scoped approval.</p></div></div>
-        <div class="two-col"><form class="panel form-stack" id="agentForm"><h2>Create agent</h2><label>Name<input id="agentName" required></label><label>Instructions<textarea id="agentInstructions"></textarea></label><label>Tools<select id="agentTools" multiple></select></label><button class="primary">Create agent</button></form><form class="panel form-stack" id="runForm"><h2>Plan run</h2><label>Agent<select id="runAgent"></select></label><label>Goal<textarea id="runGoal"></textarea></label><button class="primary">Create approval-aware plan</button></form></div><section class="panel"><div class="panel-title"><h2>Runs</h2><span>Intermediate output visible</span></div><div id="runList" class="card-list empty-state">No runs.</div></section>
+        <div class="two-col">
+          <form class="panel form-stack" id="agentForm">
+            <h2>Create agent</h2>
+            <label>Name<input id="agentName" required placeholder="Release reviewer" title="How you will recognise this agent in the list below and in Plan run."></label>
+            <p class="hint">How you will recognise this agent below, and in the Plan run selector.</p>
+            <label>Instructions<textarea id="agentInstructions" placeholder="You review release notes. Be concrete, name files, and say plainly what you cannot verify." title="Sent to the model as the system message of every turn this agent runs."></textarea></label>
+            <p class="hint">These become the system message of every turn this agent runs. Left empty, the agent is told only to answer directly and declare what it cannot know.</p>
+            <label>Tools<select id="agentTools" multiple title="Optional. Hold Ctrl — Cmd on macOS — to select more than one, or none at all."></select></label>
+            <p class="hint">Optional. Hold Ctrl — Cmd on macOS — for more than one. A tool marked “· mutative” can change something, so a step that uses it always stops for your approval.</p>
+            <button class="primary">Create agent</button>
+          </form>
+          <form class="panel form-stack" id="runForm">
+            <h2>Plan run</h2>
+            <label>Agent<select id="runAgent" title="Which agent runs this goal. Create one on the left first."></select></label>
+            <label>Goal<textarea id="runGoal" required placeholder="One sentence: what should become true." title="One sentence. It is what the model is asked to work towards."></textarea></label>
+            <p class="hint">Creates a two-step run: step 1 is answered by the model with this agent's instructions, step 2 calls the agent's first tool — and waits for your approval when that tool is mutative. Nothing runs until you press Execute.</p>
+            <button class="primary">Create approval-aware plan</button>
+          </form>
+        </div>
+        <section class="panel"><div class="panel-title"><h2>Your agents</h2><span>Test one turn · archive</span></div><div id="agentList" class="card-list empty-state">No agent yet. Create one on the left — it needs a name and nothing else.</div></section>
+        <section class="panel"><div class="panel-title"><h2>Runs</h2><span>Intermediate output visible</span></div><div id="runList" class="card-list empty-state">No run yet. Press Test on an agent for a single turn, or use Plan run for an approval-aware one.</div></section>
       </section>
 
       <section class="view" id="view-workflows">
