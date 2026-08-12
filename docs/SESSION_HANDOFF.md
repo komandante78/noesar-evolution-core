@@ -1,7 +1,9 @@
 # SESSION HANDOFF — NOESAR EVOLUTION
 
 Last updated: 2026-08-12 · `phase_status = SESSION_CLOSED_AWAITING_A2`
-**`origin/main` = `57f803e`. The local branch is 8 ahead and NOT pushed.**
+**`origin/main` = `57f803e`. The local branch is ahead of it and NOT pushed** — the exact
+count is `git status -sb`, deliberately not written here: every closure commit changed it, and a
+number that goes stale on the next commit is worse than no number.
 
 ---
 
@@ -37,7 +39,7 @@ After the turn, anything new past line 118 mentioning degradation or `x-atom-tok
 counter-evidence; its absence plus an `atom` indicator is the pass.
 
 **Then, in order:** deploy Voice V1 (`tools/deploy/redeploy.sh --image`, committed but not
-installed) · `git push origin main` (8 commits, never forced) · OCI phase O1.
+installed) · `git push origin main` (never forced) · OCI phase O1.
 
 ---
 
@@ -83,7 +85,7 @@ touched. It is written down because it happened, not because it is comfortable.
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
-- **Nothing was pushed.** 8 commits ahead of `origin/main`.
+- **Nothing was pushed.** See `git status -sb` for how far ahead.
 - **Voice V1 is not deployed.** Committed only.
 - **`OLD_TOKEN_REFUSED = UNVERIFIED`** — `atomd` listens on loopback inside the container, so
   proving a 401 needs `docker exec` or a disposable container, neither authorised. Not claimed.
