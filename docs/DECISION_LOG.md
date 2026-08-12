@@ -9409,3 +9409,82 @@ Nothing observed is broken — `localhost`, `127.0.0.1` and `192.168.178.100` al
 the class matters: any recreate makes a self-referential value stale and nothing detects it.
 **Reversal cost.** None.
 **Status.** Session closed. A2 pending. `F-ROT-001` open, with a candidate fix named in the entry.
+
+## D-0395 · the `#/models` in-use lane is telling the truth, and the question it cannot answer — 2026-08-12
+**Decision.** Nothing changed. The Owner reported `phi-4-q4_k_m` in "On this installation ·
+In use · 1" as something that "must not be there"; measurement contradicts the premise, so the
+work stops at the measurement and the Owner chooses among three readings (see handoff).
+**Why.** `resolveActiveModel()` probes `NOESAR_AUTHORING_ENDPOINT=http://172.22.0.4:8420`
+(container `atom-evolution-model`, `llama.cpp:server-cuda`, healthy) which answers
+`/models/phi-4-q4_k_m.gguf`; `NOESAR_LOCAL_MODEL_RUNTIME=disabled`, so `source=endpoint`. The
+model is genuinely resident: `/app/llama-server` holds **10,348 MiB of 12,288** on the RTX 3060.
+"Load phi-4 into VRAM" was already true; acting on the literal request would have been a no-op
+dressed as work, and unloading it means restarting a container of another deployment (§5 r16).
+**Rejected.** Editing the lane to hide the entry — it would make the page lie to satisfy a
+premise that measurement had already falsified.
+**Evidence.** `GET /v1/models` (14.66B params, Q4_K_M, 8.4 GiB weights, ctx 16384) ·
+`nvidia-smi --query-compute-apps` · `docker inspect` env · `active-model.mjs:115-130`.
+**Reversal cost.** None — nothing was changed.
+**Status.** Open, awaiting the Owner's choice. Improvement proposal: `activeModelReport()`
+carries `endpoint` but never **who serves it**, so a lane titled "on this installation" can
+present another project's runtime as its own. Add a declared (never inferred) `servedBy`.
+
+## D-0396 · the SessionStart container baseline was not written, and the guard was right to block — 2026-08-12
+**Decision.** Recorded as `F-HOOK-005`, repaired by hand for this session, root cause **not**
+found. The baseline and its owner sidecar were written mid-session, which is declared: an anchor
+taken after the fact anchors from that moment, not from session start.
+**Why.** The Stop guard blocked the close because
+`/tmp/noesar-evolution-runtime-0/…-ead57c5b-….json` did not exist. The directory existed with the
+right mode and a 17:14 mtime — so `cbl_ensure_runtime_dir` ran and the write did not survive.
+Run by hand, `cbl_fetch_all_containers` + `cbl_write_baseline` succeed (rc=0, 28,233 bytes), so
+the library is not the fault. Every call in the hook is `|| true`, so a failure leaves no trace.
+**Rejected.** Failing the guard open — the block is the feature (`F-HOOK-003` lineage).
+**Evidence.** empty runtime dir at 17:18 · manual write rc=0 · hook lines 33-46 all `|| true`.
+**Reversal cost.** None.
+**Status.** `F-HOOK-005` OPEN. Next session: have `cbl_write_baseline` record its failure
+somewhere the next SessionStart can read, instead of swallowing it.
+
+## D-0397 · the Agents screen: guidance, a real test turn, and an archive — 2026-08-12
+**Decision.** `view-agents` gets placeholders/hints/titles on all five controls, an agent list
+with **Test** and **Archive**, `PATCH /api/v1/agents/:id` (`agent.manage` + CSRF), and — the
+structural half — a step with **no tool is executed by the model** through the same
+`providers.route`→`completeWithFallback` path Chat uses, never through ChatOrchestrator, so a
+test cannot write itself into the operator's chat history.
+**Why.** The Owner created an agent and could neither understand, test nor remove it. Measured:
+5 inputs / 0 placeholders / 0 hints — the barest view in the product; `archived` was written at
+creation and filtered on read while **nothing could set it**; and `#runForm` fabricated
+`Analyze goal` with no `toolId`, which `executeStep` refused with `409`, so **every run this
+screen ever created was unfinishable by construction**. `grep -c reasoning agent-service.mjs` = 0.
+**Rejected.** Hard delete (loses data for a mistyped name); readiness-check-only "Test" (leaves
+the dead step dead) — both put to the Owner, who chose archive + real turn.
+**Evidence.** 11 new assertions across `ai-agent-service.test.mjs` + `agents-archive-http.test.mjs`
+(3 seen **red first** against the `409`); full suite **2402 pass / 0 fail / 1 skip**; ESLint
+392 files, 0 errors; `SOURCE_VERIFY=PASS`; `AUTH_HTTP_SMOKE=PASS`; `HTTP_SMOKE=PASS`;
+IT translation coverage **856/856 (100%)**, 17 new markup strings + 13 runtime strings declared.
+**Reversal cost.** None beyond `git revert`: no schema change, no migration, nothing installed.
+**Status.** Applied in the source tree, **not deployed**. T2 (browser e2e, accessibility audit)
+not run — it builds an image and drives containers, outside the standing authorisation.
+
+## D-0398 · improvement proposal — an agent's test turn should be replayable evidence — 2026-08-12
+**Decision.** Proposed, not executed: give the reasoning step the same `fixtures(runId)` capture
+`workspace-actions.mjs` already takes, so an agent's answer can be replayed and compared instead
+of being read once and lost.
+**Why.** A test you cannot replay proves the agent answered, never that it answers *the same way*
+after a model swap — which is the question a self-hosted installation actually has.
+**Rejected.** Storing whole transcripts in `agentRuns` — unbounded growth in a file every session
+already pays to read (`noesar-evolution-context` rule 5).
+**Evidence.** `provider.fixtures(runId)` exists and is already used at `workspace-actions.mjs:583`.
+**Reversal cost.** None — nothing built.
+**Status.** Deferred, Owner's call. Cost ~60 lines plus a test.
+
+## D-0399 · `MANIFEST.sha256` is stale by ~670 files, and this phase did not repair it — 2026-08-12
+**Decision.** Recorded as `F-MANIFEST-001`, **not fixed here**: the staleness is pre-existing and
+regenerating a 678 KB tracked artifact is a scope decision, not a detail of this phase.
+**Why.** Measured: `git ls-files` = **6568**, `MANIFEST.sha256` = **5898** lines, and it contains
+**zero** entries for `apps/webui-static/voice-session.js` or `tools/deploy/redeploy.sh` — files
+several earlier phases added. Nothing in `tools/` or the test suite verifies it, so nothing went
+red; a manifest nobody checks is a claim of integrity that is not being kept.
+**Rejected.** Regenerating it inside this phase — it would bury a 7-file diff under 670 lines.
+**Evidence.** the three counts above, taken this session.
+**Reversal cost.** None — nothing changed.
+**Status.** `F-MANIFEST-001` OPEN. Needs its own phase, with a checker so it cannot rot again.

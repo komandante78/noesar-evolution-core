@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "Voice phase V1 (D-0388): the spoken turn is a state machine that can be stopped. apps/webui-static/voice-session.js (new) owns ten states, a legal-transition table that throws, one generation and one AbortController per turn shared by STT, chat and TTS; app.js keeps adapters and rendering only. Closes V-001 (play() resolves at playback START, so the microphone reopened over the product own voice and calibrated its noise floor on it) and V-002 (nothing carried an AbortController, so closing the window left a turn running that still spoke). Adds the Stop control and Escape as the two interruptions that cannot mishear, acoustic barge-in as best effort with echoCancellation requested explicitly, and the UI states the window could not previously say. NOT full-duplex: transport is still request/response, no partial transcript, first audio still waits for the whole reply (V2/V3). No product container, image, network, volume, database, ATOM or runtime was touched; nothing was built or deployed.",
-  "phase_status": "SESSION_CLOSED_AWAITING_A2 - everything committed, worktree clean, nothing pushed. The rotated ATOM_TOKEN is live and the installation is healthy; A2, the one signed-in turn that proves both consumers carry it, is the single next action and is an Owner action.",
-  "next_phase": "Owner decision: authorise the single atomic commit for V1, then choose the next voice phase. V2 = streaming TTS (first audio after the first sentence instead of after the whole reply). V4 = rate limiting, per-user queue, telemetry, reconnection. V5 = TUI voice parity and accessibility. V6 = make the two voice containers reproducible from the repository. V3 (real full-duplex over a persistent transport) needs an architecture decision that is the Owner s.",
+  "current_phase": "Agents surface (D-0397): view-agents had 5 inputs and zero guidance, an agent could not be removed (archived was written at creation, filtered on read, and settable by nothing), and every run the screen created was unfinishable because Analyze goal carries no toolId and executeStep refused it with 409. Fixed in the source tree: placeholders/hints/titles on all five controls, an agent list with Test and Archive, PATCH /api/v1/agents/:id under agent.manage + CSRF, and a tool-less step now executed by the model through the same providers.route -> completeWithFallback path Chat uses (never through ChatOrchestrator, so a test writes nothing into chat history). Nothing was built, deployed or installed; no container, image, network, volume, database or ATOM was touched.",
+  "phase_status": "SOURCE_COMPLETE_AWAITING_COMMIT_AUTHORISATION — T1 green, T2 not run (declared). Worktree carries this phase plus the previous sitting four dirty files.",
+  "next_phase": "Owner decision: authorise the two commits proposed in the handoff, then A2 (unchanged), then the D-0395 choice, then deploy.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "dae3e6b5bb9eb9f6438d71b19d9a57995972a088",
-  "last_updated_utc": "2026-08-12T13:55:00Z",
+  "last_commit": "28d181eb6341acc563ab236e73a88cc0e6a35e86",
+  "last_updated_utc": "2026-08-12T16:10:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -266,6 +266,24 @@
       "severity": "low",
       "status": "OPEN - recorded 2026-08-12, not fixed",
       "summary": "NOESAR_ALLOWED_HOSTS still names 172.22.0.5, the container IP BEFORE the token rotation; the replacement got 172.22.0.3. The environment was carried across verbatim, which is exactly what CLAUDE10 section 3a 11c requires - read the configuration back from the container being replaced - but one of its values referenced that container own address, so a self-reference became stale the moment the container was replaced. Impact is small: the allowlist still carries localhost, 127.0.0.1, ::1, 192.168.178.100 and noesar-evolution, and clients reach the product by the LAN address, so nothing observed is broken (verified: Host localhost, 127.0.0.1 and 192.168.178.100 all answer 200 on /livez). The class is what matters - any recreate makes a self-referential value stale, and nothing detects it. Candidate fix: tools/deploy/redeploy.sh could compare the new container own IP against the allowlist it carried over and declare a mismatch."
+    },
+    {
+      "id": "F-MODEL-001",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-12 (D-0395), awaiting the Owner choice",
+      "summary": "activeModelReport() carries the endpoint but never who serves it, so the #/models lane titled On this installation can present a runtime owned by another deployment (atom-evolution-model) as this installation own. Not a lie about the model - a lie about the ownership. Fix: a declared, never inferred, servedBy field."
+    },
+    {
+      "id": "F-HOOK-005",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-12 (D-0396), repaired by hand for this session only, root cause NOT found",
+      "summary": "SessionStart did not write the container baseline: the runtime directory existed with the right mode and a session-start mtime but was empty, so the Stop guard blocked the close. Run by hand the same library succeeds (rc=0, 28233 bytes), so the fault is not in cbl_write_baseline. Every call in session-context.sh job 2 is || true, so the failure left no trace anywhere. The baseline written mid-session anchors from that moment, not from session start - declared, not implied."
+    },
+    {
+      "id": "F-MANIFEST-001",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-12 (D-0399), not fixed: pre-existing and out of this phase scope",
+      "summary": "MANIFEST.sha256 has 5898 entries against 6568 tracked files and contains zero entries for files earlier phases added (apps/webui-static/voice-session.js, tools/deploy/redeploy.sh). Nothing in tools/ or the test suite verifies it, so nothing ever went red. Needs its own phase, with a checker."
     }
   ],
   "resolved_findings": [
@@ -895,7 +913,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "A2. Open https://192.168.178.100:8443 (or http://192.168.178.100:8100), sign in, run ONE turn that uses reasoning, and read the reasoning indicator: it must say atom and not reference. Baseline for the verdict, captured 2026-08-12T13:44Z before any A2 turn: /readyz 200 ready true, container log at 118 lines (EVIDENCE/a2_log_marker.txt), zero degradation and zero auth-failure lines, atom announced provider=atom version=0.1.0 contract=1.0.0. Anything new past that marker mentioning degradation or x-atom-token is counter-evidence; its absence plus an atom indicator is the pass. Then, in order: deploy Voice V1 with tools/deploy/redeploy.sh --image (committed, NOT installed - the running image d0373-voice-conversation predates it); git push origin main (8 commits, never forced); OCI phase O1.",
+  "next_action": "THREE things. (1) Authorise the commits: commit A = the 7 files of D-0397 (agent-service.mjs, server.mjs, index.html, app.js, i18n-catalog.js, ai-agent-service.test.mjs, agents-archive-http.test.mjs); commit B = the state files, which carry BOTH this phase and the previous sitting measurements. (2) A2, still not done and unchanged, but with the CORRECTED recipe: the reasoning indicator is the chip #codenReasoningChip in the CodeN Evolution top bar and it is updated ONLY by the Plan panel at #/coden/agent/plan (app.js:2966) — a chat message does not touch it. Read both the chip (reasoning atom) and the provider: line in the plan result box; measure the container log past line 426. (3) Answer D-0395 on the #/models in-use lane. Deployment of Voice V1 and of D-0397 both still pending.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

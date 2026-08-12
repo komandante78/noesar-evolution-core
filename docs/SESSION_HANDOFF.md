@@ -1,139 +1,141 @@
 # SESSION HANDOFF — NOESAR EVOLUTION
 
-Last updated: 2026-08-12 · `phase_status = SESSION_CLOSED_AWAITING_A2`
-**`origin/main` = `57f803e`. The local branch is ahead of it and NOT pushed** — the exact
-count is `git status -sb`, deliberately not written here: every closure commit changed it, and a
-number that goes stale on the next commit is worse than no number.
+Last updated: 2026-08-12 · `phase_status = SOURCE_COMPLETE_AWAITING_COMMIT_AUTHORISATION`
+**`origin/main` is behind and nothing is pushed** — for how far, run `git status -sb`: a number
+written here goes stale on the next commit.
 
 ---
 
-## ➜ LA PROSSIMA AZIONE — **A2**, e nient'altro
+## ➜ LA PROSSIMA AZIONE — tre cose, in quest'ordine
 
-**A2 is the only end-to-end proof that the rotated `ATOM_TOKEN` is carried by BOTH consumers.**
-It needs a signed-in session, so it is an Owner action: no automation here can hold a credential.
+### 1. Authorise the commits — nothing from this phase is committed
+
+Two commits, deliberately split. **They cannot be split further**: the state files carry both
+this phase and the previous sitting, and no hunk-level split is available here.
+
+| Commit | Files |
+|---|---|
+| **A** `feat(phase-4): D-0397 …` | `services/reference-control-plane/src/ai-workspace/agent-service.mjs` · `services/reference-control-plane/src/server.mjs` · `apps/webui-static/index.html` · `apps/webui-static/app.js` · `apps/webui-static/i18n-catalog.js` · `services/reference-control-plane/test/ai-agent-service.test.mjs` · `services/reference-control-plane/test/agents-archive-http.test.mjs` (new) |
+| **B** `docs(phase-4): …` | `PROJECT_STATE.json`, `docs/DECISION_LOG.md`, `docs/SESSION_HANDOFF.md`, `EVIDENCE/a2_log_marker_2.txt` (untracked) — **carries the previous sitting's measurements too**, and the message must say so |
+
+### 2. A2 — still not done, and the recipe in the last handoff was WRONG
+
+The old recipe said *"send one chat message and read the reasoning indicator"*. Measured this
+session: **a chat message does not touch that indicator.** `updateReasoningChip()` has exactly
+one caller in the whole product — `app.js:2966`, the answer of `POST /api/v1/workspace-actions/plan`.
 
 ```text
-1. open   https://192.168.178.100:8443        (or http://192.168.178.100:8100)
-2. sign in
-3. run ONE turn that uses reasoning — a chat message is enough
-4. read the reasoning indicator: it must say  atom   and NOT  reference
+1. https://192.168.178.100:8443  →  sign in
+2. go to  #/coden/agent/plan     (panel titled "Plan", badge "No plan yet")
+3. fill the goal + at least ONE file path (+ File), press "Create plan"
+   — NOT the "Plan run" form in #/agents: that one writes two canned steps and asks no provider
+4. read BOTH:
+     chip  reasoning atom | reasoning reference (degraded: …)   (CodeN top bar)
+     line  provider: …                                          (#planResult box)
 ```
 
-**What the verdict means.** The two sides of the token live inside the same container: the
-supervisor hands `ATOM_TOKEN` to the `atom` child, and the api sends
-`NOESAR_RUST_REASONING_TOKEN` as the `x-atom-token` header. If the rotation had written them
-differently, atomd would refuse and the product would **declare** the fallback (`D-0312`):
-`degradationSummary()` returns `provider: 'reference'` the moment any degradation event exists,
-and `atom` only while none does. So `atom` is the pair matching, observed end to end.
+`atom` on the chip is a **negative** proof (`degradationSummary()` says `atom` when zero
+degradation events exist); `provider:` is the **positive** one — it names who answered. A2 passes
+only if both say `atom`. Then measure the container log **past line 426**
+(`EVIDENCE/a2_log_marker_2.txt`), not 118.
 
-**Baseline captured for the verdict** (2026-08-12T13:44Z, before any A2 turn):
+### 3. Answer `D-0395` — the `#/models` in-use lane
 
-| | |
-|---|---|
-| `/readyz` | `200`, `ready: true`, `setupPending: false` |
-| container log | **118 lines** — the marker, in `EVIDENCE/a2_log_marker.txt` |
-| degradation / auth-failure lines | **0** |
-| `atom` child | spawned, announced `provider=atom version=0.1.0 contract=1.0.0` |
+`phi-4-q4_k_m` is genuinely resident (10,348 of 12,288 MiB, RTX 3060) served by container
+`atom-evolution-model` at `http://172.22.0.4:8420`. Choose: **(a)** the product must not present
+another deployment's runtime as *"on this installation"* (product change, no runtime action) ·
+**(b)** unload and reload (a container outside this project — explicit authorisation) ·
+**(c)** a different model.
 
-After the turn, anything new past line 118 mentioning degradation or `x-atom-token` is the
-counter-evidence; its absence plus an `atom` indicator is the pass.
-
-**Then, in order:** deploy Voice V1 (`tools/deploy/redeploy.sh --image`, committed but not
-installed) · `git push origin main` (never forced) · OCI phase O1.
+**Then:** deploy — Voice V1 **and** `D-0397` are both committed-only ·
+`git push origin main` (never forced) · OCI phase O1.
 
 ---
 
-## ➜ WHAT HAPPENED THIS SESSION
+## ➜ WHAT HAPPENED THIS SESSION (2026-08-12, third sitting)
 
-| | |
+The Owner reported that on `#/agents` nothing said what to type, a created agent could not be
+tested, and it could not be removed. All three were real, and one was structural (`D-0397`):
+
+| Measured | |
 |---|---|
-| `20ed5b9` | **Voice V1** — the spoken turn becomes an interruptible, cancellable state machine (`D-0388`) |
-| `b3037ac` | its documentary closure (`D-0389`) |
-| `67369cf` | **the close guard learns that a §3a replacement is not litter** (`D-0392`) + §21e inventory |
-| `0ba49a6` | the rotation's documentary closure (`D-0390`, `D-0391`) |
-| `771b646` | **the §3a sequence becomes a tool**: `tools/deploy/redeploy.sh` + fixture + `docs/DEPLOYMENT.md` (`D-0393`) |
-| `a6f00ab` | advance `last_commit` past it, so check 2 passes for the right reason |
-| *(this commit)* | session closure: A2 as the single next action, and `F-ROT-001` recorded |
+| guidance | `view-agents`: **5 inputs, 0 placeholders, 0 hints** — the barest view in the product |
+| removal | routes were `GET`/`POST` only; `archived` was written at creation and filtered on read, and **nothing could set it** |
+| the dead run | `#runForm` builds `Analyze goal` with no `toolId`; Execute rendered only `if(step.toolId)`; `executeStep` threw `409`. **Every run this screen created was unfinishable** |
+| agents and the model | `grep -c reasoning agent-service.mjs` = **0** — no agent had ever asked a provider anything |
 
-**`ATOM_TOKEN` is rotated and live** (`D-0391`). Downtime **0.8 s**; container
-`3575d67aac1f…` → **`9ef797fa521a…`**; same image, no build, no pull, no product change.
-
-**The first attempt failed and stopped production for 43.8 s** (`D-0390`). Cause: reads of
-`--stop-timeout` and the log options placed *after* the rename — `D-0362`'s fault reproduced by a
-patch written to prevent a different loss. Rolled back at once; no token change; nothing else
-touched. It is written down because it happened, not because it is comfortable.
+**Built:** guidance on all five controls · an agent list with **Test** (one real, non-mutative
+turn) and **Archive** · `PATCH /api/v1/agents/:id` (`agent.manage` + CSRF) · a tool-less step now
+executed by the model through the same `providers.route` → `completeWithFallback` path Chat uses,
+**never** through `ChatOrchestrator`, so a test writes nothing into the operator's chat history.
 
 ---
 
-## ➜ WHAT WAS VERIFIED — evidence produced in this session
+## ➜ WHAT WAS VERIFIED — measured in **this** sitting
 
 | Check | Result |
 |---|---|
-| Voice suite `voice-session.test.mjs` (`v1`) | **22/22**, exit 0 |
-| the same suite, subject `legacy` (the oracle) | **8/9 red** — the 9th passes vacuously, recorded as such |
-| full unit suite | **2394 tests, 2393 pass, 0 fail, 1 skipped** |
-| ESLint | **391 files, 0 errors, 0 warnings, 0 no-undef** |
-| rotation procedure, frozen at `sha256 e20c7542…` | fake-Docker fixture **52/52** over 9 scenarios, automatic rollback proven at four failure points |
-| the reconstructed incident version, same fixture | **32 assertions fail**, installation left down — the oracle bites |
-| live rotation | preflight PASS · healthy · four children · **0** auth-failure lines · **18/18** configuration fields identical |
-| governance suites after the guard fix | **58/58 · 68/68 · 122/122** |
-| deploy fixture `npm run test:redeploy` | **70/70** over 9 scenarios · oracle: **26 failures** on a copy carrying the incident defect |
-| the new tool's `--check` on the LIVE installation | **PASS**, non-mutation verified externally (git, container id, backups, inventory all unchanged) |
-| container hygiene (§21b) | 53 → **52**; the 50 non-project containers, 10 networks and 63 volumes **unchanged** |
+| full unit suite | **2402 pass · 0 fail · 1 skip** (2403 tests, 254 suites) |
+| the 3 repair tests | **seen red first** against the `409`, then green |
+| new assertions | **11** across `ai-agent-service.test.mjs` + `agents-archive-http.test.mjs` |
+| ESLint | **392 files, 0 errors, 0 warnings** |
+| `tools/verify-source.mjs` | `SOURCE_VERIFY=PASS migrations=19 baseline=12/12 intact` |
+| `tools/auth-http-smoke.mjs` · `tools/http-smoke.mjs` | `PASS` · `PASS` |
+| IT translation coverage | **856/856 (100%)** — 17 new markup strings, 13 runtime strings declared in `RUNTIME_ONLY` |
+| the archive is honest | proved against `/api/v1/ai/bootstrap`, the payload the screen actually renders — not only against `/api/v1/agents` |
 
 ---
 
 ## ➜ WHAT WAS **NOT** DONE — declared
 
-- **Nothing was pushed.** See `git status -sb` for how far ahead.
-- **Voice V1 is not deployed.** Committed only.
-- **`OLD_TOKEN_REFUSED = UNVERIFIED`** — `atomd` listens on loopback inside the container, so
-  proving a 401 needs `docker exec` or a disposable container, neither authorised. Not claimed.
-- **A2 not performed** — it needs an Owner action.
-- **T2/T3 were never run for Voice V1** (browser e2e, accessibility audit): they build an image and
-  drive containers, excluded by the authorisation. Declared, not skipped silently.
-- **The sensitive backups of both rotation attempts are kept**, `0700`/`0600`:
-  `BACKUPS/atom_token_rotation_20260812T121329Z/` and `…T130147Z/`. They contain the workspace
-  config directory. To be handled in a later closure — not deleted here.
+- **Nothing is committed and nothing is pushed.** Eleven files are dirty (7 from this phase,
+  4 from the previous sitting).
+- **Nothing was deployed or installed.** No container, image, network, volume, database, ATOM or
+  host was touched. The running installation still serves the old bytes — Voice V1 **and**
+  `D-0397` are both undeployed.
+- **T2 was NOT run**: `tools/browser-e2e.mjs` and `tools/accessibility-audit.mjs` are owed by the
+  markup change (change map) and were **not executed** — they build an image and drive
+  containers, outside the standing authorisation. Requested, not skipped silently.
 - **A2 was NOT performed** — it needs a signed-in session and no automation here holds a
-  credential. The recipe and the baseline for its verdict are at the top of this file.
-- **`F-ROT-001` recorded, not fixed**: `NOESAR_ALLOWED_HOSTS` still names the container IP from
-  *before* the rotation. Nothing observed is broken — every host clients actually use answers
-  200 — but a self-referential value went stale the moment the container was replaced, and
-  nothing detects that class.
-- **The new tool has deployed nothing.** It landed with its fixture green and its `--check` run
-  against the live installation; no container was touched by it.
+  credential. The corrected recipe is at the top of this file.
+- **`F-MANIFEST-001` recorded, not fixed** (`D-0399`): `MANIFEST.sha256` has **5898** entries
+  against **6568** tracked files and zero entries for files earlier phases added. Pre-existing,
+  out of this phase's scope, and nothing verifies it — so nothing ever went red.
+- **`F-MODEL-001` and `F-HOOK-005` remain open**, neither root cause found.
+- **The sensitive rotation backups are kept**, `0700`/`0600`:
+  `BACKUPS/atom_token_rotation_20260812T121329Z/` and `…T130147Z/`.
+- **No restore-from-archive screen.** An archived agent is recoverable through the API, not
+  through the interface.
+- **No streaming and no tool-calling loop** in an agent's turn: the model answers once, and does
+  not call tools by itself. Extension point left in the step schema, not built.
 
 ---
 
 ## ➜ OPEN BLOCKERS
 
-- **B-002** `[stale-premise]` — `gitleaks`/`trufflehog` absent; secret scanning is heuristic and
-  declared heuristic every time (`CLAUDE10.md` rule 45).
+- **B-002** `[stale-premise]` — secret scanning is heuristic, declared heuristic every time (r45).
 - **B-011** `[low-deferred]` — git history rewritten on the Owner's authorisation (`D-0258`).
-- Nothing new was opened.
+- Nothing new was opened; the new item is a **finding**, not a blocker.
 
 ---
 
 ## ➜ RESIDUAL DEBT
 
-`oci/Dockerfile` builds the supervisor, PostgreSQL 18 + pgvector and the Rust peers — it is **not**
-the stale file an old note claimed. What is genuinely missing is the four external containers
-(`atom-evolution-model` = llama.cpp serving phi-4, **not** ATOM; `noesar-voice-hear`;
-`noesar-voice-speak`; `noesar-search`): they exist only in the runtime and in prose, so a third
-party cloning this repository does not get voice, search or a model. That is phase O6, and it is
+`oci/Dockerfile` builds the supervisor, PostgreSQL 18 + pgvector and the Rust peers. Missing are
+the four external containers (`atom-evolution-model` = llama.cpp serving phi-4, **not** ATOM;
+`noesar-voice-hear`; `noesar-voice-speak`; `noesar-search`): they exist only in the runtime and in
+prose, so a third party cloning this repository gets no voice, no search and no model. Phase O6 —
 the largest gap between "works here" and "self-hosted software".
 
 ---
 
 ## ➜ IMPROVEMENT PROPOSAL (recorded, not executed)
 
-*The previous proposal — make the deployment sequence a tool the repository owns — was accepted
-and is `D-0393`, in this commit.*
+**An agent's test turn should be replayable evidence** (`D-0398`): give the reasoning step the
+same `fixtures(runId)` capture `workspace-actions.mjs:583` already takes, so an answer can be
+replayed and compared instead of read once and lost. *Benefit:* a self-hosted installation can
+ask the question it actually has — *does this agent still answer the same way after a model
+swap?* *Cost:* ~60 lines plus a test. **Owner's call.**
 
-Next: **give the fixture a second fake, one that answers Go templates properly.** Today's fake
-matches known format strings by substring, so it proves ordering and recovery but cannot catch a
-template this project writes wrongly — and it has already written two wrongly in one session
-(`$k` expanded by the shell, and `{{range , := …}}`). *Benefit:* the class of defect that reaches
-production as an empty flag becomes visible in the fixture. *Cost:* ~80 lines, or a vendored
-minimal template evaluator. **Owner's call.**
+*Still standing:* `activeModelReport()` must declare **who** serves the model, not only the
+endpoint (`F-MODEL-001`, `D-0395`).
