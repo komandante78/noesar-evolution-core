@@ -9563,3 +9563,53 @@ declare a PASS is how a green result stops meaning anything.
 `getComputedStyle(element)`; no caller walks `parentElement`.
 **Reversal cost.** None — not executed.
 **Status.** Deferred, Owner's call.
+
+## D-0404 · CodeN Evolution becomes one surface: the TUI, rendered in the browser — 2026-08-13
+**Decision.** The two web CodeN destinations collapse into one. The single graphic is the TUI
+already in the repository; the browser renders it with a vendored terminal emulator over a
+WebSocket, filling the **CodeN content region** (not the browser viewport), reached from the
+sidebar entry that exists today. Design: `docs/CODEN_EVOLUTION_TERMINAL_DESIGN.md`.
+**Why.** Owner instruction, 2026-08-13, and `16` §4b's own rule — *la WebUI è la TUI resa in un
+browser* — which was decided on 2026-08-05 and never made true: measured today, `index.html`
+still declares **two** CodeN destinations and **25** panels, and `#/coden-tui` is 42 lines of
+prose about a terminal client rather than a terminal.
+**Rejected.** (a) Textual/Python — `python3` is measured absent and §62 forbids presuming it;
+(b) Bubble Tea/Go and Ink/React — a third toolchain or a React tree against ~2,150 lines of
+working, tested TUI; (c) `node-pty` — a native module per platform, and a PTY behind a socket is
+an arbitrary-command surface. Our renderer emits its own ANSI frames, so the bridge is a stream.
+**Evidence.** Measured this session: TUI 2,150 lines + 7 test files; renderer already
+width-parametric (`clipToWidth`/`padToWidth`/`wrapLines`); zero third-party imports anywhere in
+the control plane; 2 sidebar entries; 20+5 panels.
+**Reversal cost.** Slices 1-3 are additive and reversible. Slice 4 (removal) is not, and runs
+only after criteria C/D/E are green, with a backup — §4 rule 12.
+**Status.** Authorised by the Owner, **not started**. Implementation opens the next session.
+
+## D-0405 · the terminal's two sources live inside the web folder it is about to replace — 2026-08-13
+**Decision.** Before anything is removed, the address declarations and the `/` command set move
+out of `apps/webui-static/` into a shared module the server serves and the TUI imports.
+**Why.** Two traps, both measured today, both invisible until named. (1)
+`parseCodenAddressBook()` builds the terminal's address list by **regex over `index.html`** —
+the panels, their `<h3>`, their `declared-empty` paragraphs. (2) `tui-fullscreen.mjs:26` and
+`tui-client.mjs:37` import `../apps/webui-static/agent-commands.js`. Deleting the web CodeN
+would empty the terminal's own address book and break its command import — the product would
+kill its terminal by editing a web page.
+**Rejected.** Doing the move inside the removal slice: that is the shape of change where the
+regression and its cause land in the same diff and nobody can tell them apart.
+**Evidence.** `services/reference-control-plane/src/coden-address-book.mjs:104-130`;
+`grep -rn agent-commands` → 2 importers under `tools/`, plus tests asserting the import path.
+**Reversal cost.** None — a move with the import paths updated; the tests already assert them.
+**Status.** Slice 1, authorised, not started.
+
+## D-0406 · one `/`, and it belongs to the prompt — 2026-08-13
+**Decision.** Inside CodeN a bare `/` always reaches the prompt; the browser's global bare-`/`
+jump binding gives way to `Ctrl-K`, which the search box already advertises. The menu keeps its
+two levels and its 7 groups.
+**Why.** `16` §4b.4 decided *«nel prompt comanda: c'è una `/` sola»* on 2026-08-05. Measured
+today it is still false: `app.js:1876` binds a bare `/` to the jump box. A decided rule that
+nothing enforces is a rule the product does not have — the same failure `CE-033` exists for.
+**Rejected.** Flattening the menu to one level: folding the groups took DESTINATIONS to 64
+entries once already, and the two-level form was the repair.
+**Evidence.** `app.js:1876` (`event.key!=='/'` guard on the jump box); `agent-commands.js:68-90`
+(7 groups, single-letter keys); `index.html:115` (`Ctrl K opens the same box`).
+**Reversal cost.** None — one binding.
+**Status.** Part of slice 3, authorised, not started.
