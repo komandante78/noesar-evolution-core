@@ -102,9 +102,18 @@ describe('the addresses are read off the interface, not written beside it', () =
 });
 
 describe('the keys', () => {
-  test('`/` is guarded by the same typing check the sidebar keys use', () => {
-    // Not a second implementation of "is the user typing": one guard, one behaviour.
-    assert.match(app, /event\.key!=='\/'.*isTyping\(event\.target\)/);
+  test('`D-0406` — a bare `/` no longer opens this box, and must not come back', () => {
+    // Inverted on 2026-08-13, deliberately. `16` §4b.4 decided «nel prompt comanda: c'è una `/`
+    // sola» on 2026-08-05, and nothing enforced it — this test was in fact enforcing the
+    // OPPOSITE, which is why the ambiguity survived three months of green runs. Two gestures
+    // shared one key: navigation here, and the agent's command menu inside CodeN, which since
+    // `D-0404` is a terminal where every keystroke belongs to the prompt.
+    //
+    // Asserted as an absence, so the binding cannot quietly return. `Ctrl-K` is the box's key
+    // and always was — the placeholder has advertised it all along.
+    assert.doesNotMatch(app, /event\.key!=='\/'[^\n]*isTyping\(event\.target\)/,
+      'the bare `/` palette binding is back: inside CodeN it would fight the prompt for the key');
+    // `isTyping` itself stays — the sidebar keys still use it, and it was never the problem.
     assert.match(app, /function isTyping\(target\)/);
   });
 

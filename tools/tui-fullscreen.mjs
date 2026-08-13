@@ -20,10 +20,10 @@
 // work in the engine — which is what `CE-021` measures.
 
 import { emitKeypressEvents } from 'node:readline';
-import { renderFrame, SCREEN } from './tui-screen.mjs';
+import { renderFrame, SCREEN } from '../apps/shared/coden/tui-screen.mjs';
 import {
   parseCommandPrompt, resolveCommand, menuFor, groupMenu, hiddenNote,
-} from '../apps/webui-static/agent-commands.js';
+} from '../apps/shared/coden/agent-commands.js';
 // What a session looks like — the transcript, the prompt, the menu, and what a typed line
 // MEANS — is `apps/webui-static/coden-view-model.js` since phase 2. It used to be here, which
 // made this file the only place that knew, and left the browser free to invent a second answer
@@ -36,7 +36,7 @@ import {
 // Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
 // `tui-client.mjs` — that file imports this one, and a table two shells share belongs to
 // neither of them.
-import { showAddress } from './coden-address-views.mjs';
+import { showAddress } from '../apps/shared/coden/coden-address-views.mjs';
 
 /**
  * Runs the agent shell until the user leaves it. Resolves when the screen is torn down; the

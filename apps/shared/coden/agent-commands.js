@@ -2,12 +2,19 @@
 //
 // The slash commands of the coding agent — ONE list, imported by both shells.
 //
-// This file lives under the static directory on purpose: the browser fetches it as a module
-// (`app.js` is `type="module"`), and the terminal client imports it off disk. Not a copy in
-// each shell that happens to agree, and not a list served over the protocol either — a
-// literal single file, which is the strongest version of the rule `D-0300` established for
-// addresses after `PANEL_NAMES` had drifted to fourteen entries against a markup of
-// twenty-five.
+// This file lives in `apps/shared/coden/` on purpose: the browser fetches it as a module
+// (`app.js` is `type="module"`, and the server serves this tree at `/shared/coden/`), and the
+// terminal client imports it off disk. Not a copy in each shell that happens to agree, and not
+// a list served over the protocol either — a literal single file, which is the strongest
+// version of the rule `D-0300` established for addresses after `PANEL_NAMES` had drifted to
+// fourteen entries against a markup of twenty-five.
+//
+// It used to live under `apps/webui-static/`, which made the terminal — a shell with no
+// browser — depend on the web folder for its own vocabulary. `D-0405` moved it out before
+// anything is removed, because deleting the web CodeN while the TUI still imported out of it
+// would have taken the TUI's command set with it. The specifier `../shared/coden/…` was chosen
+// because it resolves to the same file from disk (Node) and from `/`-rooted URL (browser); a
+// module both shells import cannot afford two different answers.
 //
 // What a slash command IS here, since the product already has a different `/`:
 //

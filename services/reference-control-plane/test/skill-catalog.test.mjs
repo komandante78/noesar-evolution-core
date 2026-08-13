@@ -247,7 +247,7 @@ describe('one surface, two shells — §4b.4 rule 4', () => {
       'the address book does not derive settings/skills — the menu entry would be a dead end',
     );
 
-    const commands = readFileSync(join(repoRoot, 'apps/webui-static/agent-commands.js'), 'utf8');
+    const commands = readFileSync(join(repoRoot, 'apps/shared/coden/agent-commands.js'), 'utf8');
     const entry = commands.match(/\{ name: 'skills',[^\n]*\}/);
     assert.ok(entry, "there is no `/skills` entry in the one command source");
     assert.match(entry[0], /group: 'configure'/, '§4b.4 puts skills in CONFIGURE');
@@ -257,7 +257,7 @@ describe('one surface, two shells — §4b.4 rule 4', () => {
   test('the entry is written once, in the shared source, and not a second time in a shell', () => {
     // Rule 2 of §4b.4, and the reason `PANEL_NAMES` came to say 14 against 25: a hand-written
     // copy in one shell is a defect, not a shortcut.
-    for (const shell of ['tools/tui-screen.mjs', 'tools/tui-fullscreen.mjs']) {
+    for (const shell of ['apps/shared/coden/tui-screen.mjs', 'tools/tui-fullscreen.mjs']) {
       const source = readFileSync(join(repoRoot, shell), 'utf8');
       assert.doesNotMatch(
         source, /name:\s*'skills'/,

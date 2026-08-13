@@ -18,10 +18,10 @@ import assert from 'node:assert/strict';
 import {
   renderFrame, visibleWidth, clipToWidth, padToWidth, wrapLines, rawIndexAtWidth,
   transcriptRows, promptRows, commandMenuRows, footerText,
-} from '../../../tools/tui-screen.mjs';
+} from '../../../apps/shared/coden/tui-screen.mjs';
 import {
   AGENT_COMMANDS, matchCommands, isCommandPrompt, parseCommandPrompt, resolveCommand,
-} from '../../../apps/webui-static/agent-commands.js';
+} from '../../../apps/shared/coden/agent-commands.js';
 
 const ESC = '';
 const paint = (text) => `${ESC}[38;5;71m${text}${ESC}[0m`;

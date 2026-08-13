@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   AGENT_COMMANDS, parseCommandPrompt, resolveCommand,
-} from '../../../apps/webui-static/agent-commands.js';
+} from '../../../apps/shared/coden/agent-commands.js';
 import {
   RUN, createView, say, planTurn, detailLines, gitSummary,
   TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES, FORMS, addressEntries, requiresArgument, panelOwning,
@@ -136,8 +136,13 @@ describe('no shell keeps a description of its own (phase 2)', () => {
   test('the model lives where BOTH shells can already import it', () => {
     // A copy under tools/ would be unreachable from the browser, and a copy in each would be
     // the second copy this phase exists to remove. `agent-commands.js` set the precedent.
-    assert.ok(read('apps/webui-static/agent-commands.js').length > 0);
-    assert.match(fullscreen, /from '\.\.\/apps\/webui-static\/agent-commands\.js'/);
+    assert.ok(read('apps/shared/coden/agent-commands.js').length > 0);
+    // `D-0405` slice 1: the registry moved OUT of the web folder, so that removing the web
+    // CodeN cannot take the terminal's vocabulary with it. Asserting the new specifier is not
+    // enough — the old one must also be gone, or a stale second import would keep the
+    // dependency alive while this test went green on the new one.
+    assert.match(fullscreen, /from '\.\.\/apps\/shared\/coden\/agent-commands\.js'/);
+    assert.doesNotMatch(fullscreen, /apps\/webui-static\/agent-commands\.js/);
   });
 });
 

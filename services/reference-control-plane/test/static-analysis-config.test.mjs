@@ -48,22 +48,72 @@ test('every first-party JavaScript surface is covered by a rules block', () => {
   assert.ok(joined.includes('apps/webui-static/**/*.js'), 'the WebUI needs its own globals');
 });
 
+// Flat config gives `ignores` two entirely different meanings, and conflating them makes this
+// gate wrong in both directions. In a config object with NO `files`, `ignores` is global: those
+// paths are not linted at all, and that is the list this test exists to police. In an object
+// that also has `files`, `ignores` merely narrows THAT block — the paths are still linted, by
+// whichever other block matches them, and the usual reason to write one is to apply a STRICTER
+// block instead of a laxer one.
+//
+// Measured 2026-08-13 (`D-0405` slice 1): the old version of this test flattened both kinds
+// together and failed on `ignores: ['apps/shared/**']` inside the Node block — an entry whose
+// entire purpose is to STOP shared code inheriting Node's globals, so that `process.env` in a
+// module the browser loads is an error instead of passing. The gate read a tightening as a
+// weakening. Splitting the two meanings is the repair; the second test below is the part that
+// makes the split safe, because a scoped ignore with nothing else covering it would be an
+// unlinted tree wearing a legitimate-looking shape.
+const GLOBAL_IGNORES = config.filter((block) => block.ignores && !block.files)
+  .flatMap((block) => block.ignores);
+const SCOPED_IGNORES = config.filter((block) => block.ignores && block.files)
+  .flatMap((block) => block.ignores);
+
 test('the ignore list excludes only vendored, generated or non-source trees', () => {
-  const ignores = config.flatMap((block) => block.ignores ?? []);
   const allowed = [
     'rust/vendor/**', 'node_modules/**', '**/node_modules/**', 'BACKUPS/**',
     'provenance/**', 'MASTER_REFERENCE/**', 'private-boundary/**',
+    // Vendored third-party bytes, not first-party source. Admitted here deliberately and with
+    // a condition: what replaces linting is `vendor-provenance.test.mjs`, which pins the exact
+    // hashes. An ignored tree with nothing checking it is the hole this list exists to prevent.
+    'apps/webui-static/vendor/**',
   ];
-  for (const entry of ignores) {
+  for (const entry of GLOBAL_IGNORES) {
     assert.ok(
       allowed.includes(entry),
       `unexpected ignore "${entry}": excluding first-party source is how a gate stops finding things`,
     );
   }
   // Specifically: the directories that actually hold product code must NOT be ignored.
-  for (const forbidden of ['services/**', 'tools/**', 'apps/webui-static/**', 'tests/**', 'ai-workspace/**']) {
-    assert.equal(ignores.includes(forbidden), false, `${forbidden} must never be ignored`);
+  for (const forbidden of ['services/**', 'tools/**', 'apps/webui-static/**', 'apps/shared/**',
+    'tests/**', 'ai-workspace/**']) {
+    assert.equal(GLOBAL_IGNORES.includes(forbidden), false, `${forbidden} must never be ignored`);
   }
+});
+
+test('a block-scoped ignore always hands its files to another rules block', () => {
+  // The loophole the split above would otherwise open: `files: ['**/*.js'], ignores: ['x/**']`
+  // with nothing else matching `x/**` leaves that tree linted by no block at all, which looks
+  // exactly like a tightening and behaves exactly like a global ignore. Every scoped ignore
+  // must therefore name a tree some rules block still claims.
+  for (const entry of SCOPED_IGNORES) {
+    const prefix = entry.replace(/\*+.*$/, ''); // 'apps/shared/**' -> 'apps/shared/'
+    assert.ok(prefix, `the scoped ignore "${entry}" has no directory to check coverage against`);
+    const covered = config.some((block) => block.rules
+      && (block.files ?? []).some((pattern) => pattern.startsWith(prefix)));
+    assert.ok(covered,
+      `"${entry}" is excluded from its block and claimed by no other: that tree is unlinted`);
+  }
+});
+
+test('the shared tree gets neither runtime\'s globals, so no-undef enforces the contract', () => {
+  // `apps/shared/` is imported by the browser over HTTP and by the terminal off disk. A global
+  // from either runtime granted here is a reference that lints clean and throws in the other
+  // shell — the failure would be a blank page or a dead terminal, not a lint warning. This
+  // pins the intersection: `console` (specified in both) and nothing else.
+  const shared = config.find((block) => (block.files ?? []).some((p) => p.startsWith('apps/shared/')));
+  assert.ok(shared, 'apps/shared has no rules block of its own');
+  assert.deepEqual(Object.keys(shared.languageOptions?.globals ?? {}), ['console'],
+    'the shared tree was granted a runtime global: it is imported by two runtimes and may have neither');
+  assert.equal(shared.rules['no-undef'], 'error');
 });
 
 test('unused suppression directives are reported rather than accumulating', () => {

@@ -32,6 +32,14 @@
 //    repeating them here would be a second hand-written pair, which is the thing this file
 //    exists to stop. The terminal reaches both with `sessions archived` / `sessions bin`.
 
+// `D-0405`, slice 1. The CodeN panels are no longer read out of the markup at run time — they
+// are DECLARED, in `apps/shared/coden/coden-addresses.js`, because slice 4 deletes those
+// sections from `index.html` and a book that scraped them would empty itself the day the web
+// CodeN goes. The parser below is unchanged and keeps its job: it is now the ORACLE the
+// declaration is checked against (`coden-address-declaration.test.mjs`) for as long as the
+// markup still carries the panels. Pages and settings sections are still parsed and still
+// belong to the markup — those buttons survive the removal.
+import { declaredCodenPanels } from '../../../apps/shared/coden/coden-addresses.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -134,10 +142,22 @@ export function parseCodenAddressBook(html) {
   return addresses;
 }
 
-/** Read from the same directory server.mjs serves the WebUI out of, so the list a terminal
- *  is told about and the list a browser is shipped are the same bytes. Not cached: this is
- *  called once per terminal session, and a cache would answer for a file that changed under
- *  a redeploy the process survived. */
+/**
+ * The address space a shell is told about: the pages and settings sections the markup owns,
+ * then the CodeN panels the declaration owns.
+ *
+ * Two sources, and the split is not arbitrary — each fact is read from whatever still owns it
+ * after `D-0404`. A page and a settings section are buttons in a sidebar that survives; a
+ * CodeN panel is markup that slice 4 deletes. Parsing the first from the file server.mjs
+ * actually serves keeps the old guarantee intact (the list a terminal is told about and the
+ * list a browser is shipped are the same bytes), while the second stops depending on a shell
+ * that is being removed.
+ *
+ * Order is preserved exactly as the single parser produced it — pages, settings, bench, agent
+ * — because callers ship this as a menu. Not cached: called once per terminal session, and a
+ * cache would answer for a file that changed under a redeploy the process survived.
+ */
 export function buildCodenAddressBook(webRoot) {
-  return parseCodenAddressBook(readFileSync(join(webRoot, 'index.html'), 'utf8'));
+  const parsed = parseCodenAddressBook(readFileSync(join(webRoot, 'index.html'), 'utf8'));
+  return [...parsed.filter((entry) => !entry.region), ...declaredCodenPanels()];
 }

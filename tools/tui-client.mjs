@@ -34,9 +34,9 @@ import { createInterface, emitKeypressEvents } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { runFullScreen } from './tui-fullscreen.mjs';
-import { accountFromUser } from '../apps/webui-static/agent-commands.js';
+import { accountFromUser } from '../apps/shared/coden/agent-commands.js';
 import { matchAddresses } from '../apps/webui-static/coden-view-model.js';
-import { printJson, runSessionsList, showAddress } from './coden-address-views.mjs';
+import { printJson, runSessionsList, showAddress } from '../apps/shared/coden/coden-address-views.mjs';
 import { clearCredential, credentialPath, readCredential, terminalLabel, writeCredential } from './terminal-credential.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -432,7 +432,7 @@ export function addressForFunctionKey(addresses, keyName) {
 // Each view labels its own output with the panel's label from the served list, so even the
 // heading a reader sees is the workbench's word for that panel rather than a second one
 // chosen here.
-// The address views moved to `tools/coden-address-views.mjs` in phase 3c — they are
+// The address views moved to `apps/shared/coden/coden-address-views.mjs` in phase 3c — they are
 // rendered by BOTH terminal shells now, so they belong to neither of them.
 /** `/` — the jump. Empty query lists every address, grouped; anything else goes straight to
  *  the best match, which is what typing into the browser's box and pressing Enter does. A
@@ -708,7 +708,7 @@ async function main() {
   // one command at a time.
   if (process.stdout.isTTY && process.stdin.isTTY && process.env.NOESAR_TUI_LINE_MODE !== '1') {
     // `status` only — the agent shell's commands come from the shared registry
-    // (apps/webui-static/agent-commands.js), not from a list the engine has to serve. The
+    // (apps/shared/coden/agent-commands.js), not from a list the engine has to serve. The
     // address book is a different gesture and belongs to the browser's top bar.
     const engineStatus = await session.call('status', {}).catch(() => null);
     iface.pause();

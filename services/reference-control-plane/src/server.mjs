@@ -121,12 +121,22 @@ import { buildCodenAddressBook } from './coden-address-book.mjs';
 // model is allowed to choose from is built from this session's identity rather than proposed by
 // whoever is calling — see `/api/v1/voice/interpret`. It imports nothing itself, so a server-side
 // import of a file that also runs in the browser costs nothing and buys one list instead of two.
-import { menuFor, accountFromUser } from '../../../apps/webui-static/agent-commands.js';
+import { menuFor, accountFromUser } from '../../../apps/shared/coden/agent-commands.js';
 import { resolveCliDownload, readCliArtifact, renderCliIndex } from './cli-downloads.mjs';
+// `D-0404` slice 2: the browser's transport onto the same session the terminal reaches.
+import { createCodenBridge, BRIDGE_PATH } from './coden-bridge.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../../..');
 const webRoot = resolve(repoRoot, 'apps/webui-static');
+// `D-0405` slice 1. The modules BOTH shells import live outside the web folder now, so that
+// removing the web CodeN in slice 4 cannot take the terminal's command set and address space
+// with it. The browser still has to fetch them, so this second root is served read-only at
+// `/shared/`, under the same traversal guard as the first. The URL mirrors the disk layout on
+// purpose: `apps/webui-static/app.js` says `../shared/coden/agent-commands.js`, which resolves
+// to `apps/shared/coden/…` on disk and to `/shared/coden/…` from `/app.js` — one specifier,
+// one file, whichever shell is reading. CSP is unaffected: `script-src 'self'`, same origin.
+const sharedRoot = resolve(repoRoot, 'apps/shared');
 const workspace = resolve(process.env.NOESAR_WORKSPACE ?? join(repoRoot, '.workspace'));
 // D-0277: found running a REAL install against a --read-only production-hardened
 // container (the browser E2E probe, same hardening as the live installation) --
@@ -1062,8 +1072,14 @@ async function bytesBody(req, { limitBytes = 16 * 1024 * 1024 } = {}) {
 
 function serveStatic(pathname, res) {
   const requested = pathname === '/' ? '/index.html' : pathname;
-  const target = normalize(resolve(webRoot, `.${requested}`));
-  if (target !== webRoot && !target.startsWith(`${webRoot}${sep}`)) return false;
+  // Two roots, one guard. `/shared/…` is served out of `apps/shared/`; everything else out of
+  // the web folder. The containment check below runs against whichever root was chosen, so a
+  // `..` in the request cannot climb out of it — the same test the single root always had, not
+  // a weaker one applied twice. Directory listing stays impossible: only `isFile()` answers.
+  const shared = requested === '/shared' || requested.startsWith('/shared/');
+  const root = shared ? sharedRoot : webRoot;
+  const target = normalize(resolve(root, `.${shared ? requested.slice('/shared'.length) : requested}`));
+  if (target !== root && !target.startsWith(`${root}${sep}`)) return false;
   try {
     if (!statSync(target).isFile()) return false;
     const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png' };
@@ -4443,12 +4459,48 @@ const server = mainListenerIsTls
   ? createHttpsServer({ cert: tls.cert, key: tls.key }, requestListener)
   : createServer(requestListener);
 
+/**
+ * `D-0404` slice 2 — the browser's door onto the same session the `ssh` terminal reaches.
+ *
+ * The SAME `sessionDispatch` the unix socket carries, so there is one engine and one policy
+ * rather than a second product behind a second transport. What differs is who answers "may this
+ * caller knock": a 0600 socket file there, a session cookie plus an Origin check here. Detail,
+ * and the reasons the terminal's own auth methods are refused on this transport, live in
+ * `coden-bridge.mjs`.
+ */
+const codenBridge = createCodenBridge({
+  dispatch: sessionDispatch,
+  auth,
+  ledger,
+  logger,
+  resolveAuthenticated,
+  // Reuses the request-derived origin already used for WebAuthn, and for the same reason: this
+  // product is self-hosted under whatever host the Owner reaches it on, so a configured
+  // constant would be wrong on every installation but the one it was written for.
+  expectedOrigin: webauthnOrigin,
+});
+
 /** The LAN-facing TLS listener, when one is configured. Same request handler, same everything —
  *  only the transport differs, so there is no second product behind it and no second set of
  *  rules to keep in step. */
 const tlsServer = tlsPort && tls.active
   ? createHttpsServer({ cert: tls.cert, key: tls.key }, requestListener)
   : null;
+
+/** Attached to BOTH listeners, and declared AFTER both for that reason — the TLS listener is the
+ *  same product, and a bridge on one but not the other would mean the browser works over http
+ *  and silently fails over https, which is the configuration an operator on a LAN is most likely
+ *  to be running. */
+for (const listener of [server, tlsServer]) {
+  listener?.on('upgrade', (req, socket, head) => {
+    // The bridge answers true when it owned the request, refusal included. Anything else
+    // reaching an upgrade is a client asking for a protocol this product does not speak, and
+    // gets told so rather than left holding an open socket.
+    if (codenBridge.handleUpgrade(req, socket, head)) return;
+    try { socket.write('HTTP/1.1 404 Not Found\r\nconnection: close\r\ncontent-length: 0\r\n\r\n'); } catch { /* gone */ }
+    try { socket.destroy(); } catch { /* gone */ }
+  });
+}
 
 // Last resort, not a substitute for handling errors where they happen.
 //
@@ -4488,6 +4540,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // a third, OS-level-isolated transport instead of a second copy of it. Under /run (the
   // tmpfs INST-004 restores): container-local, never bind-mounted, invisible outside the
   // container, gone on restart — a peer socket has no reason to survive one.
+  // `D-0404` slice 2. OUTSIDE the try below, and before it, deliberately: the bridge rides on
+  // the HTTP listener that is already up and shares nothing with the unix socket but the
+  // dispatch. Started inside that try — where it was first written — a host whose
+  // `/run/codev-peer.sock` was held by another process would have come up with the browser's
+  // terminal silently dead too, which is one degradation reported as a different one.
+  // Its heartbeat starts with the product, not at the first connection: a half-open viewport
+  // has to be swept whether or not a second one ever attaches.
+  codenBridge.start();
+  logger.info('coden.bridge-ready', { component:'coden-bridge', path: BRIDGE_PATH });
+
   const codevPeerSocketPath = process.env.NOESAR_CODEV_PEER_SOCKET_PATH ?? '/run/codev-peer.sock';
   try {
     // Awaited since s326, so the line below is a fact rather than a forecast: it used to be

@@ -142,6 +142,13 @@ WORKDIR /opt/noesar
 COPY --chown=10001:10001 package.json /opt/noesar/
 COPY --chown=10001:10001 services/reference-control-plane/ /opt/noesar/services/reference-control-plane/
 COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+# `D-0405` slice 1. The modules BOTH shells import — the slash-command registry and the CodeN
+# address declaration — moved out of the web folder so that removing the web CodeN cannot take
+# the terminal's vocabulary with it. They are needed by the browser (served at `/shared/`) AND
+# by the terminal (imported off disk), so the image must carry them or `tui-client.mjs` throws
+# on its first import — the fourth occurrence of the defect `tui-import-closure.test.mjs` was
+# written to catch, and the first one that test caught before a build rather than after one.
+COPY --chown=10001:10001 apps/shared/ /opt/noesar/apps/shared/
 COPY --chown=10001:10001 database/ /opt/noesar/database/
 COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # The terminal shell itself. The WebUI's CodeN Evolution TUI page names this exact program
@@ -168,7 +175,7 @@ COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # decides where a remembered terminal keeps its token — and the closure test failed here
 # before anything was built. Shipping without it would have been `D-0301`'s defect exactly: a
 # shell in the image that throws on its first import.
-COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/tui-screen.mjs tools/coden-address-views.mjs tools/terminal-credential.mjs /opt/noesar/tools/
+COPY --chown=10001:10001 tools/tui-client.mjs tools/tui-fullscreen.mjs tools/terminal-credential.mjs /opt/noesar/tools/
 # The launcher (phase 8). Shipped for a reason the import-closure guard above cannot see,
 # because it is not a module and nothing imports it: on a container installation this is the
 # file the HOST-side launcher re-enters the container to run, so an image without it turns

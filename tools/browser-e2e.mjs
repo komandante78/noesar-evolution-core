@@ -1246,7 +1246,7 @@ try {
   // PAGE loaded. A build that shipped a stale copy of it would pass every test in that suite.
   const voiceHeard = await page.evaluate(async () => {
     const intent = await import('/voice-intent.js');
-    const commands = await import('/agent-commands.js');
+    const commands = await import('/shared/coden/agent-commands.js');
     const entries = [...commands.AGENT_COMMANDS];
     const groupTitles = Object.fromEntries(commands.MENU_GROUPS.map((group) => [group.id, group.title]));
     const say = (text) => intent.resolveUtterance(text, { entries, groupTitles });

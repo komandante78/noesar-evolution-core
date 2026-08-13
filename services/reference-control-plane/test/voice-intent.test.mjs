@@ -24,7 +24,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
-import { AGENT_COMMANDS, MENU_GROUPS, parseCommandPrompt } from '../../../apps/webui-static/agent-commands.js';
+import { AGENT_COMMANDS, MENU_GROUPS, parseCommandPrompt } from '../../../apps/shared/coden/agent-commands.js';
 import { addressEntries } from '../../../apps/webui-static/coden-view-model.js';
 import { CATALOGS } from '../../../apps/webui-static/i18n-catalog.js';
 import {

@@ -36,7 +36,7 @@ const tui = readFileSync(join(root, 'tools/tui-client.mjs'), 'utf8');
 // Phase 3c: the address VIEWS moved out of the client into a module both terminal shells
 // render — so the guards below read that file too, rather than passing because the table they
 // were watching had simply left the file they were watching it in.
-const views = readFileSync(join(root, 'tools/coden-address-views.mjs'), 'utf8');
+const views = readFileSync(join(root, 'apps/shared/coden/coden-address-views.mjs'), 'utf8');
 const model = readFileSync(join(root, 'apps/webui-static/coden-view-model.js'), 'utf8');
 const css = readFileSync(join(root, 'apps/webui-static/styles.css'), 'utf8');
 // Phase 4: the address space as the server derives it, used below to check the interface's
@@ -352,8 +352,15 @@ describe('phase 4: the terminal keeps no list of its own', () => {
     assert.doesNotMatch(views, /console\.log\(/,
       'a view writes straight to stdout again, which only one of the two shells can render');
     const shell = readFileSync(join(root, 'tools/tui-fullscreen.mjs'), 'utf8');
-    assert.match(shell, /from '\.\/coden-address-views\.mjs'/,
+    // `D-0413` slice 3: the view table moved to `apps/shared/coden/`, because the BROWSER is now
+    // a third consumer of it and cannot import out of `tools/`. Same move, same reason and same
+    // mechanism as `agent-commands.js` in slice 1 — and asserted the same way, as a pair: the
+    // new specifier must be present AND the old one absent, or a stale second import would keep
+    // the `tools/` dependency alive while this line went green on the new one.
+    assert.match(shell, /from '\.\.\/apps\/shared\/coden\/coden-address-views\.mjs'/,
       'the prompt does not render addresses off the shared table');
+    assert.doesNotMatch(shell, /from '\.\/coden-address-views\.mjs'/,
+      'the prompt still reaches into tools/ for the view table the browser also needs');
     assert.doesNotMatch(shell, /no view for it yet/,
       'the prompt still promises a phase that has shipped');
     // And neither shell may grow a table of its own again — the failure mode is not "the

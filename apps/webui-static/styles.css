@@ -1328,3 +1328,67 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .voice-face-stop:not(:disabled):hover{border-color:var(--red);color:var(--red)}
 @keyframes voice-breathe{0%,100%{opacity:.15;r:42}50%{opacity:.7;r:47}}
 @media(prefers-reduced-motion:reduce){.voice-face-pulse{animation:none!important}}
+
+/* --- D-0404 slice 3 · CodeN Evolution, the terminal in its own region ---------------------
+ *
+ * The region fills the CodeN CONTENT AREA and not the browser viewport (design §5). That is a
+ * layout constraint, not a preference: a full-viewport takeover would remove the sidebar and
+ * the top bar, and CodeN would stop being a destination inside the application and start being
+ * a different page wearing its URL.
+ *
+ * `min-height: 0` on the flex child is the line that actually makes this work. A flex item's
+ * default `min-height: auto` refuses to shrink below its content, so the emulator would grow
+ * the region instead of scrolling inside it and the page would gain a second scrollbar. It is
+ * the single most commonly omitted line in a flex layout that hosts a terminal.
+ */
+.coden-terminal-region {
+  display: flex;
+  flex-direction: column;
+  /* Tall enough to be a terminal, bounded so it never pushes the rest of the destination off
+   * the screen. `dvh` follows the mobile browser chrome as it hides and shows, which `vh` does
+   * not — on a phone `vh` leaves the last rows under the address bar. */
+  min-height: 24rem;
+  height: min(70dvh, 48rem);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.coden-terminal-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.coden-terminal-title { margin: 0; font-size: 0.95rem; }
+
+/* Every state carries a WORD, and the colour only reinforces it — `07_INTERFACCIA.md` §6:
+ * "Il colore non è MAI l'unico segnale". A reader who cannot distinguish these hues, or a
+ * high-contrast forced-colours mode that discards them, loses nothing. */
+.coden-terminal-status { margin: 0; font-size: 0.8rem; opacity: 0.85; }
+.coden-terminal-status[data-state="live"] { color: var(--green); }
+.coden-terminal-status[data-state="connecting"],
+.coden-terminal-status[data-state="reconnecting"] { color: var(--amber); }
+.coden-terminal-status[data-state="refused"],
+.coden-terminal-status[data-state="failed"] { color: var(--state-critical-text); }
+
+.coden-terminal-host {
+  flex: 1 1 auto;
+  min-height: 0; /* see the note above — without this the region grows instead of the terminal */
+  padding: 0.25rem;
+}
+
+/* xterm.js measures the cell from the computed style of its own container, so the geometry the
+ * client derives is only right if these agree with what it was constructed with. */
+.coden-terminal-host .xterm { height: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* A blinking cursor is motion, and this is the one piece of motion on the surface. */
+  .coden-terminal-host .xterm-cursor-blink { animation: none !important; }
+}

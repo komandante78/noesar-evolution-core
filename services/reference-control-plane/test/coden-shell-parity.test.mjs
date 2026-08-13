@@ -24,13 +24,13 @@ import { dirname, join } from 'node:path';
 import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
   accessRuleFor, accountFromUser, SECTION_ACCESS, groupFor, hiddenNote,
-} from '../../../apps/webui-static/agent-commands.js';
+} from '../../../apps/shared/coden/agent-commands.js';
 import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuGroupRows, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
-import { commandMenuRows } from '../../../tools/tui-screen.mjs';
+import { commandMenuRows } from '../../../apps/shared/coden/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
 import { buildCodenAddressBook } from '../src/coden-address-book.mjs';
-import { showAddress } from '../../../tools/coden-address-views.mjs';
+import { showAddress } from '../../../apps/shared/coden/coden-address-views.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
@@ -160,8 +160,15 @@ test('CE-034 — neither shell writes an entry of its own', () => {
   // happen to agree today". Proven by reading the shells' source for the import and for the
   // absence of a hand-written list.
   for (const [label, source] of [['the browser', BROWSER], ['the terminal', TERMINAL]]) {
-    assert.match(source, /from '\.{1,2}(\/apps\/webui-static)?\/agent-commands\.js'/,
+    // `D-0405` slice 1: one file, in `apps/shared/coden/`, reached by `../shared/coden/…` from
+    // the browser bundle and `../apps/shared/coden/…` from the terminal — two spellings of one
+    // path, deliberately chosen so the specifier resolves to the same bytes from a URL and
+    // from disk. Neither shell may still reach into the web folder for it: that dependency is
+    // what slice 4 would otherwise sever by deleting the web CodeN.
+    assert.match(source, /from '\.\.\/(apps\/)?shared\/coden\/agent-commands\.js'/,
       `${label} does not import the shared registry`);
+    assert.doesNotMatch(source, /apps\/webui-static\/agent-commands\.js/,
+      `${label} still imports the registry out of the web folder`);
     assert.match(source, /menuFor\(/, `${label} does not build its menu with menuFor`);
     assert.match(source, /groupMenu/, `${label} does not group with the shared grouping`);
   }
@@ -242,7 +249,7 @@ test('CE-034 — no CodeN address is left saying "no source over this transport"
   // Phase 3c: the table moved to `coden-address-views.mjs`, because BOTH terminal shells
   // render it now — 3b had built it inside the client, where only the line shell could reach
   // it, and the prompt answered "no view for it yet" about finished work for all twenty-five.
-  const client = read('tools/coden-address-views.mjs');
+  const client = read('apps/shared/coden/coden-address-views.mjs');
   const viewsBlock = client.slice(client.indexOf('const ADDRESS_VIEWS'), client.indexOf('const TRANSPORT_NOTES'));
   const views = [...viewsBlock.matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);
   const notes = [...client.slice(client.indexOf('const TRANSPORT_NOTES')).matchAll(/^ {2}'([a-z/-]+)':/gm)].map((hit) => hit[1]);

@@ -38,7 +38,7 @@ import { request } from 'node:http';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { totpCode } from '../../services/reference-control-plane/src/auth-crypto.mjs';
-import { AGENT_COMMANDS, MENU_GROUPS } from '../../apps/webui-static/agent-commands.js';
+import { AGENT_COMMANDS, MENU_GROUPS } from '../../apps/shared/coden/agent-commands.js';
 import { CATALOGS } from '../../apps/webui-static/i18n-catalog.js';
 import { addressEntries } from '../../apps/webui-static/coden-view-model.js';
 import { buildCodenAddressBook } from '../../services/reference-control-plane/src/coden-address-book.mjs';

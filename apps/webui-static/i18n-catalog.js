@@ -36,7 +36,7 @@
 
 // Imported so the runtime-only list can be DERIVED from the registries that own those strings
 // instead of restating them. `agent-commands.js` imports nothing, so there is no cycle.
-import { AGENT_COMMANDS, MENU_GROUPS } from './agent-commands.js';
+import { AGENT_COMMANDS, MENU_GROUPS } from '../shared/coden/agent-commands.js';
 
 /** The language the interface is WRITTEN in. Never a lookup — the markup is already this. */
 export const SOURCE_LANGUAGE = 'en';
@@ -58,6 +58,14 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // `D-0404` slice 3. The CodeN terminal's status line after boot: every one of these is
+  // written by `coden-terminal.js` from DEFAULT_STATUS as the socket changes state, so none
+  // appears in `index.html`. Listed rather than tolerated, per this block's own rule.
+  'Connecting to the session…',
+  'Attached.',
+  'Reconnecting…',
+  'Not permitted to attach.',
+  'This terminal could not start.',
   // Painted by renderVoiceAccess() in app.js when this connection cannot open a microphone
   // (D-0367). They appear in no markup because the addresses come from the server, which is
   // the only side that knows what the client connected to and whether a certificate exists.
@@ -395,6 +403,10 @@ const it = {
   'Agent plans, tool steps and approval-gated mutations.': 'Piani dell’agente, passi degli strumenti e modifiche soggette ad approvazione.',
   'Start here': 'Comincia da qui',
   'Loading…': 'Caricamento…',
+  // `D-0404` slice 3 — the CodeN terminal's operational states. In the markup only as the
+  // pre-JavaScript value; every later value is written by `coden-terminal.js`, which is why
+  // the rest of them are listed in RUNTIME_ONLY below rather than here.
+  'Not connected.': 'Non connesso.',
   'Or start from what you want done': 'Oppure parti da ciò che vuoi ottenere',
   'A goal opens a conversation with itself as the opening text. Turning a goal into a Plan is the Intent Frame, which is backbone work and does not exist in this build — so nothing here has been understood yet, only asked.': 'Un obiettivo apre una conversazione usando sé stesso come testo iniziale. Trasformare un obiettivo in un Piano è l’Intent Frame, che è lavoro di dorsale e non esiste in questa build — quindi qui nulla è ancora stato compreso, solo chiesto.',
   'Manage': 'Gestisci',

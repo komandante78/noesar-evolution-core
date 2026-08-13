@@ -171,6 +171,12 @@ export default [
   {
     ignores: [
       'rust/vendor/**',
+      // `D-0413`: `@xterm/xterm` is vendored, minified, third-party and MIT. Linting it produced
+      // 444 errors in code nobody here may edit — a gate that reports what cannot be acted on
+      // is a gate people learn to ignore. Its provenance and hashes are checked instead, by
+      // `vendor-provenance.test.mjs`, which is the verification that actually applies to bytes
+      // we did not write. Same category as `rust/vendor/**` directly above.
+      'apps/webui-static/vendor/**',
       'node_modules/**',
       '**/node_modules/**',
       'BACKUPS/**',
@@ -181,7 +187,16 @@ export default [
   },
   {
     // Node runtime, tooling, tests, workers and Node-based installers.
+    //
+    // `apps/shared/**` is excluded rather than merely overridden below, because flat config
+    // MERGES `languageOptions.globals` across every matching block — it does not replace them.
+    // A later block granting `{ console }` therefore adds `console` to Node's set instead of
+    // narrowing to it, and `process.env` in shared code kept linting clean. Measured, not
+    // assumed: the first attempt at this caught a planted `document.title` and missed the
+    // planted `process.env.HOME` beside it, which is exactly the half-working check that
+    // teaches people to trust a green result.
     files: ['**/*.mjs', '**/*.js', '**/*.cjs'],
+    ignores: ['apps/shared/**'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
@@ -206,6 +221,29 @@ export default [
       sourceType: 'module',
       globals: BROWSER_GLOBALS,
     },
+    rules: CORRECTNESS_RULES,
+  },
+  {
+    // `D-0405` slice 1. `apps/shared/` is the code BOTH shells import: the browser fetches it
+    // over `/shared/`, the terminal imports it off disk. So it gets NEITHER global set — not
+    // the browser's and not Node's — and `no-undef` becomes the enforcement of that contract
+    // rather than a comment asking for it. Under the generic Node block above, a `process.env`
+    // in this tree would have linted clean and then thrown in the browser on first load; under
+    // the browser block, a `document.` would have linted clean and thrown in the terminal.
+    // Only the intersection is safe here, and only the intersection is granted.
+    //
+    // `console` is the one exception, and it is a real one: it is specified in both
+    // environments, and excluding it would push shared code into inventing a logging seam it
+    // does not need. Everything else — `process`, `document`, `window`, `fetch`, `Buffer`,
+    // timers — must be passed in by whichever shell is calling, which is what keeps a module
+    // that two runtimes import from quietly acquiring one runtime's assumptions.
+    files: ['apps/shared/**/*.js', 'apps/shared/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: { console: 'readonly' },
+    },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: CORRECTNESS_RULES,
   },
   {

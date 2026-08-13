@@ -32,7 +32,7 @@ import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { totpCode } from '../../services/reference-control-plane/src/auth-crypto.mjs';
 import { runFullScreen } from '../tui-fullscreen.mjs';
-import { visibleWidth } from '../tui-screen.mjs';
+import { visibleWidth } from '../../apps/shared/coden/tui-screen.mjs';
 
 const repoRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const port = Number(process.argv[2] ?? 8198);

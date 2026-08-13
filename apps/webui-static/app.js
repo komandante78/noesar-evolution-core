@@ -18,7 +18,7 @@ import { VoiceSession, VoiceTurn } from './voice-session.js';
 import {
   AGENT_COMMANDS, MENU_GROUPS, matchCommands, parseCommandPrompt, resolveCommand,
   menuFor, groupMenu, hiddenNote, accountFromUser, ROUTE_ACCESS, SECTION_ACCESS,
-} from './agent-commands.js';
+} from '../shared/coden/agent-commands.js';
 // What a session LOOKS like, and what a typed line MEANS — phase 2 put it where both shells
 // read it. This page drives the same `planTurn` the terminal drives, over its own transport;
 // that is what "la WebUI È la TUI" has to mean in code rather than in prose.
@@ -402,6 +402,12 @@ function activate(view,{updateHash=true,section='',place=''}={}){
   // third the panel inside it. A bare `#/coden` names no region and moves nothing — the
   // panels keep whatever they were showing, which is what makes the sidebar entry a way
   // back to the work rather than a reset of it.
+  // D-0404 slice 3. The terminal attaches when CodeN becomes the visible destination and
+  // detaches when it stops being one. Not at boot: a socket held open by a background view
+  // spends one of the account's viewport slots on a screen nobody is looking at, and the
+  // bridge caps those at eight. Not on every activation either — `mountCodenTerminal` is
+  // idempotent here because `codenTerminal` is only null when nothing is attached.
+  if(target==='coden')attachCodenTerminal();else detachCodenTerminal();
   let codenAddress='';
   if(target==='coden'&&CODEN_REGIONS[section]){
     const shown=activateCodenPanel(section,place);
@@ -1873,9 +1879,11 @@ $('#globalSearch').addEventListener('blur',()=>{setTimeout(()=>{if(document.acti
 document.addEventListener('keydown',(event)=>{
   if(event.isComposing)return;
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openPalette();return;}
-  if(event.key!=='/'||event.ctrlKey||event.metaKey||event.altKey||isTyping(event.target))return;
-  event.preventDefault();
-  openPalette();
+  // D-0406: the bare ` / ` no longer opens the jump box. `16` §4b.4 decided «nel prompt
+  // comanda: c'e una / sola» on 2026-08-05 and nothing enforced it, so two gestures kept the
+  // same key: navigation here, and the agent's command menu inside CodeN. Ctrl-K opens this
+  // box — which the placeholder has advertised all along — and ` / ` now belongs to the prompt
+  // on every destination, including the terminal that lives in one.
 });
 async function refreshHardware(){$('#hardwareOutput').textContent='Running read-only discovery…';try{$('#hardwareOutput').textContent=JSON.stringify(await api('/api/v1/hardware'),null,2);}catch(error){$('#hardwareOutput').textContent=error.message;}}
 $('#refreshHardware').addEventListener('click',refreshHardware);$('#recommendRuntime').addEventListener('click',async()=>{try{$('#runtimeOutput').textContent=JSON.stringify(await api('/api/v1/runtime/recommendation',{method:'POST',body:JSON.stringify({modelBillions:Number($('#modelSize').value),quantizationBits:Number($('#quantBits').value),profile:'Automatic'})}),null,2);}catch(error){setStatus(error.message,true);}});
@@ -5873,3 +5881,41 @@ initRouter();
 initializeAuth()
   .then(()=>loadEffectiveZone())
   .catch((error)=>authError(error.message));
+
+// --- D-0404 slice 3 · attaching the CodeN terminal ------------------------------------------
+//
+// Dynamic import, and the reason is measured rather than stylistic: `xterm.mjs` is 345 KB, and
+// a static import would put it on the critical path of EVERY destination — Chat, Settings,
+// Home — for a surface most loads never open. Imported on first attach, cached by the module
+// system afterwards, so the cost is paid once and only by someone who went to CodeN.
+let codenTerminal=null;
+let codenTerminalLoading=null;
+function attachCodenTerminal(){
+  if(codenTerminal||codenTerminalLoading)return;
+  const host=$('#codenTerminalHost');
+  if(!host)return;
+  const statusEl=$('#codenTerminalStatus');
+  codenTerminalLoading=import('./coden-terminal.js')
+    .then(({mountCodenTerminal})=>{
+      // The destination may have been left again while the module was in flight. Mounting
+      // then would attach a viewport to a screen that is no longer open — the exact waste
+      // this whole function exists to avoid.
+      if(!$('#view-coden')?.classList.contains('active')){codenTerminalLoading=null;return;}
+      codenTerminal=mountCodenTerminal({host,statusEl});
+      codenTerminalLoading=null;
+    })
+    .catch((error)=>{
+      codenTerminalLoading=null;
+      // Said on the surface, not only to the console. A terminal region that stays blank
+      // because a module failed to load is indistinguishable from one that is merely slow.
+      if(statusEl){statusEl.dataset.state='failed';statusEl.textContent=`This terminal could not start: ${error.message}`;}
+      host.dataset.terminalState='failed';
+    });
+}
+function detachCodenTerminal(){
+  if(!codenTerminal)return;
+  // Disposed rather than hidden: the socket, the ResizeObserver and the reconnect timer all
+  // belong to it, and a hidden terminal keeps every one of them alive.
+  codenTerminal.dispose();
+  codenTerminal=null;
+}

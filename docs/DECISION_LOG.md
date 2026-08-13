@@ -9613,3 +9613,152 @@ entries once already, and the two-level form was the repair.
 (7 groups, single-letter keys); `index.html:115` (`Ctrl K opens the same box`).
 **Reversal cost.** None — one binding.
 **Status.** Part of slice 3, authorised, not started.
+
+## D-0407 · slice 1 — the two shared sources leave `apps/webui-static/` — 2026-08-13
+**Decision.** `agent-commands.js` moves to `apps/shared/coden/`, served at `/shared/` by a second
+static root; the 25 CodeN panels become a declaration (`coden-addresses.js`) instead of a regex
+over `index.html`. Both traps of the design §2 are closed before anything is removed.
+**Why.** Slice 4 deletes the 25 panels and the second sidebar entry. With the terminal still
+scraping the markup and importing out of the web folder, that deletion would have emptied the
+surviving shell's own address book and broken its command import.
+**Rejected.** Serving the registry over the protocol — `agent-commands.js`'s own header argues a
+literal single file is strictly stronger, and `D-0300` set that rule after `PANEL_NAMES` drifted.
+Also rejected: a top-level `shared/`, whose specifier stops resolving identically from disk and
+from a `/`-rooted URL. `apps/shared/` keeps `../shared/coden/…` correct for both shells.
+**Evidence.** Address book byte-identical before/after (54 entries, diff clean). 2422 unit tests,
+0 fail. ESLint 395 files, 0 errors. 8 planted-defect proofs, all fired. 3 defects found and
+fixed: image recipes, the lint gate's globals merge, the ignore-list guard (see `D-0408`).
+**Reversal cost.** `git mv` back plus 4 import lines; the declaration can be deleted while the
+markup still exists. Zero after slice 4 — by then it is the only source.
+**Status.** Applied in the working tree. NOT committed, NOT built, NOT installed.
+
+## D-0408 · three defects found by slice 1, and the rules behind them — 2026-08-13
+**Decision.** Fixed in place: (1) `oci/Dockerfile` and `oci/Containerfile` never copied
+`apps/shared/`, so the shipped terminal would have thrown on its first import; (2) the shared
+tree inherited Node's globals, because flat config *merges* `languageOptions.globals` — a later
+block granting `{console}` adds to Node's set rather than narrowing to it; (3)
+`static-analysis-config.test.mjs` flattened block-scoped `ignores` together with global ones and
+so read a tightening as a weakening.
+**Why.** Each is the rule, not the instance (§40c). (1) was caught by the repository's own
+`tui-import-closure.test.mjs` — the fourth occurrence of that defect class and the first caught
+before a build. (2) was found because the planted `process.env` did **not** fire while the
+planted `document.title` did; a half-working check is what teaches people to trust green.
+**Rejected.** Silencing (3) by adding `apps/shared/**` to its allow-list: that would have left
+the gate unable to tell an unlinted tree from a stricter one.
+**Evidence.** Proofs 4-8 in session: each fix planted back and observed to fail, then restored.
+The repaired gate gained a second assertion — a scoped ignore must be claimed by another rules
+block — which fires on a planted `ai-workspace/**`.
+**Reversal cost.** None; all three are additive guards.
+**Status.** Applied, verified, uncommitted.
+
+## D-0409 · improvement proposal — the address declaration wants a schema, not a shape — 2026-08-13
+**Decision.** Proposed, not executed: give `apps/shared/coden/coden-addresses.js` a versioned
+contract (`SCHEMA_VERSION` + a validator both shells run at load) rather than a bare array.
+**Why.** The design targets L5 through "one versioned frame/event contract". The address space is
+the first thing slice 2's bridge will carry, and it is currently a shape agreed by convention:
+a malformed entry becomes a rendering bug in whichever shell reads it second. A validator makes
+a bad address a startup failure with a name, in both shells, for ~40 lines.
+**Rejected.** Doing it inside slice 1 — the budget skill §5 forbids executing an improvement
+uninvited, and the move had to stay byte-identical to be provably lossless.
+**Evidence.** `coden-address-declaration.test.mjs` already asserts well-formedness at test time;
+nothing asserts it at run time, which is where a third consumer will meet it.
+**Reversal cost.** N/A — not built. Cost if taken: ~40 lines, one test file, no behaviour change.
+**Status.** Deferred to slice 2, for the Owner's decision.
+
+## D-0410 · slice 2 — `WS /ws/coden`, a transport that adds no authority — 2026-08-13
+**Decision.** A hand-written RFC 6455 server (`src/websocket.mjs`) and the bridge that uses it
+(`src/coden-bridge.mjs`), wired to BOTH HTTP listeners. It carries the same `noesar-tui/1`
+protocol and the same `sessionDispatch` the unix socket carries; three gates run before a frame
+is read (Origin, handshake budget, session cookie); N viewports per account, each with its own
+geometry, and a `session.changed` push to siblings on a mutating call.
+**Why.** The design's slice 2. Authentication differs from the unix socket by design: there the
+filesystem answers "who may knock" (0600, one uid), which is what makes `auth.resume`'s 90-day
+token safe. On the network it is not, so all six terminal auth methods are refused BY NAME.
+**Rejected.** `node-pty` — a PTY is a general-purpose command surface behind a socket a browser
+can reach; there is no shell here, only a fixed method table. A WebSocket package — the product
+has had zero third-party runtime dependencies since inception (`qr.js` sets the precedent).
+**Evidence.** 2489 unit tests, 0 fail (+67 this slice). ESLint 399 files, 0 errors. 67 new tests:
+36 framing (incl. a 10,000-case fuzz and every truncated prefix of a valid frame), 31 bridge
+against a real listener with a real session cookie. 6 planted defects, all observed to fail.
+**Reversal cost.** Two new files and one `upgrade` handler; nothing else imports them. Removing
+it returns the product to HTTP-only. No data, no schema, no migration.
+**Status.** Applied in the working tree. NOT committed, NOT built, NOT installed.
+
+## D-0411 · two defects in slice 2's own work, both self-inflicted — 2026-08-13
+**Decision.** Fixed: (1) `mutates()` claimed to derive from `SESSION_METHOD_POLICY` and did not —
+it called `auth.methodRequiresWrite?.()`, which `auth.mjs` does not define, and fell back to a
+hand-typed set that already omitted `workspace.plan`; its comment also cited a test that had not
+been written. Now reads the policy directly. (2) The broadcast test was branchy (`if (reply.ok)`)
+over a call that always failed, so the else-branch always ran and the broadcast was never
+exercised — deleting `broadcastChange` left all 30 tests green.
+**Why.** (1) is `PANEL_NAMES` again — a list only ever compared to itself — reintroduced by the
+file whose own header argues against it. (2) is why a green suite is not a verdict.
+**Rejected.** Keeping the fallback "in case `auth` grows the method": a second source of truth
+kept for a hypothetical is exactly how the first one drifted.
+**Evidence.** P13 twice: before the repair, removing the broadcast changed nothing (30 pass);
+after, it fails by name. P14 — broadcasting on every call — also fails. A source-level assertion
+now forbids any hand-written set of engine method names in `coden-bridge.mjs`.
+**Reversal cost.** None; both are corrections.
+**Status.** Applied, verified, uncommitted.
+
+## D-0412 · improvement proposal — the bridge should carry engine events, not just replies — 2026-08-13
+**Decision.** Proposed, not executed: give `engineEvents` a subscription the bridge forwards, so a
+viewport learns what the ENGINE did, not only what a sibling viewport asked for.
+**Why.** `session.changed` covers viewport-initiated change. Work that advances inside the engine
+— a long run finishing, an approval expiring — reaches nobody until someone calls something. On
+`ssh` that is a stale screen; in a browser it is a screen that looks live and is not, which is
+worse. The transport for it already exists: this slice built it.
+**Rejected.** Doing it in slice 2 — it needs an engine change (`engineEvents` has no subscriber
+seam today), which is architecture, and §77 stops for that. Also rejected: polling on a timer,
+which is the thing the push exists to remove.
+**Evidence.** `createSessionDispatch({ engineEvents, ... })` takes the object but exposes no
+subscription; every one of the 34 methods is request/response.
+**Reversal cost.** N/A — not built. Cost if taken: a subscriber seam in the engine, ~60 lines in
+the bridge, one test file.
+**Status.** Deferred, for the Owner's decision.
+
+## D-0413 · slice 3 — the page, and the first vendored dependency — 2026-08-13
+**Decision.** `@xterm/xterm@6.0.0` (MIT) vendored to `apps/webui-static/vendor/xterm/`; the CodeN
+content region hosts the terminal, driven by `coden-terminal.js` over the slice-2 bridge; the
+renderer and address views move to `apps/shared/coden/` (trap 3, unnamed by the design); `D-0406`
+applied — the bare `/` no longer opens the jump box, `Ctrl-K` does.
+**Why.** The design's slice 3. The move was forced: the browser must run the SAME renderer, and
+`tui-screen.mjs` (475 lines, zero imports) lived in `tools/`, which no browser can import from.
+**Rejected.** A CDN — §31 makes offline the baseline, and air-gapped installations are a target.
+Writing a terminal emulator by hand — not a smaller risk than vendoring a reviewed one.
+**Evidence.** Integrity recomputed from the downloaded bytes and compared to the registry's
+published `dist.integrity`: identical (`sha512-TQwDdQ…`). LICENSE read, MIT, verbatim grant.
+2514 unit tests, 0 fail (+18). ESLint 403 files, 0 errors. `vendor-provenance.test.mjs` pins all
+three file hashes and fails if the vendor directory gains a file nobody accounted for.
+**Reversal cost.** Delete the vendor directory, the two new page files and one markup block; the
+`tools/`→`shared/` move reverses with `git mv`. Nothing persistent, no schema.
+**Status.** Applied in the working tree. **T2 NOT RUN.** NOT committed, NOT built, NOT installed.
+
+## D-0414 · no Nerd Font ships, and the reason is a measurement — 2026-08-13
+**Decision.** The design §4.3 authorised vendoring "one Nerd Font weight as `woff2`". It is not
+shipped. A platform monospace stack is used instead.
+**Why.** The renderer's complete non-ASCII repertoire is `§·è—…›⋯⎿⏎⏺─│╭╮╯╰▍▸◈○◐⚑⚠✓✕` — box
+drawing, geometric shapes and dingbats, all standard Unicode blocks, **not one private-use
+codepoint**, which is the only thing a Nerd Font adds. Multiple megabytes of binary with a
+per-face licence to obtain nothing measurable, paid on every first load.
+**Rejected.** Shipping it "because the design said so": the design authorised it on an assumption
+this session was able to test. A named deviation, recorded, beats an unexamined instruction.
+**Evidence.** `grep -oP "[^\x00-\x7F]" apps/shared/coden/tui-screen.mjs | sort -u`, listed above.
+**Reversal cost.** None — add the font and one `font-family` entry the day a glyph needs it.
+**Status.** Applied. The glyph list is in `vendor/xterm/PROVENANCE.md`, so a new glyph is visible.
+
+## D-0415 · what slice 3 does NOT do, stated as a decision so it cannot be forgotten — 2026-08-13
+**Decision.** Three gaps are carried forward explicitly rather than closed: **(a)** T2 was not
+run — no browser e2e, no accessibility audit — so the terminal has **never executed in a
+browser**; **(b)** arrow keys decode but move nothing in the browser shell (`tui-fullscreen.mjs`
+walks the `/` menu with ↑↓; the selection state lives in its keypress loop, not in the shared
+view model); **(c)** the 25 panels are still in the markup, so the region shows the terminal
+ABOVE them rather than instead of them — slice 4 removes them.
+**Why.** (a) is budget, not judgement, and is the one that matters: rule 38 forbids calling this
+surface working on the strength of unit tests. (b) was found by the test that asserts every
+decoded intent is acted on — a decoded key nothing handles is a key that silently does nothing.
+**Rejected.** Presenting slice 3 as complete. `L0-L3` is never shown as a finished product.
+**Evidence.** `coden-terminal-client.test.mjs` covers the three pure decisions only, 18 tests.
+Everything socket-, DOM- and timer-shaped in `coden-terminal.js` is `[UNVERIFIED]`.
+**Reversal cost.** N/A. Closing (a) is the first act of the next session.
+**Status.** Open. Maturity actually reached on this surface: **L2/L3, not L4.**

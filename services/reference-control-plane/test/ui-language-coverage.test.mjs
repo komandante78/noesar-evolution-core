@@ -23,7 +23,7 @@ import {
   CATALOGS, SOURCE_LANGUAGE, RUNTIME_ONLY, LANGUAGE_NAMES, UNTRANSLATED_TAGS,
 } from '../../../apps/webui-static/i18n-catalog.js';
 import { resolveLanguage, translateString, applyToTextNode } from '../../../apps/webui-static/i18n.js';
-import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/webui-static/agent-commands.js';
+import { AGENT_COMMANDS, MENU_GROUPS, hiddenNote } from '../../../apps/shared/coden/agent-commands.js';
 import { promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -23,7 +23,7 @@
 //
 // # What is deliberately NOT here
 //
-// `tools/tui-screen.mjs` stays where it is. It renders character rows clipped to a width,
+// `apps/shared/coden/tui-screen.mjs` stays where it is. It renders character rows clipped to a width,
 // which is correct for a TTY and would be throwing away the medium in a browser. The shells
 // share the STATE, not the pixels — `16` §4b.2.
 //
@@ -35,7 +35,7 @@
 // test must drive with a made-up command list; a menu that assembled its own groups per shell
 // would be the hand-built object `accountFromUser` exists to have stopped (`M-11`: one shell
 // passed `null` and its menu went unfiltered with nothing failing).
-import { MENU_GROUPS, groupFor, matchCommands } from './agent-commands.js';
+import { MENU_GROUPS, groupFor, matchCommands } from '../shared/coden/agent-commands.js';
 
 /** How each command turns into an engine call. The method names come from the shared registry
  *  (`agent-commands.js`); this decides only what to send with them. */

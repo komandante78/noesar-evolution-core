@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>NOESAR Evolution</title>
+  <link rel="stylesheet" href="/vendor/xterm/xterm.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -327,6 +328,44 @@
       </section>
 
       <section class="view" id="view-coden">
+        <!-- D-0404 slice 3: CodeN Evolution IS the TUI, rendered here by a vendored terminal
+             emulator over `WS /ws/coden`. The same renderer draws these frames as draws them
+             over `ssh` (`apps/shared/coden/tui-screen.mjs`) — one surface, two viewports.
+
+             It fills the CodeN CONTENT REGION and not the browser viewport (design §5): the
+             sidebar, the product top bar and the status line all stay, because this is a
+             destination inside the application and not a takeover of the page.
+
+             The 25 panels below are still here and are still the working surface until slice 4
+             removes them. Removal is the LAST act — the design's §7 orders the slices that way
+             precisely so that nothing is deleted before its replacement is shown to work. -->
+        <div class="coden-terminal-region" data-testid="coden-terminal-region">
+          <div class="coden-terminal-bar">
+            <h2 class="coden-terminal-title" id="codenTerminalTitle">CodeN Evolution</h2>
+            <!-- The operational state, in a live region. `76` makes these first-class: a
+                 terminal that is merely blank while connecting cannot be told apart from one
+                 that is broken, and colour is never the only signal — this is a word. -->
+            <p class="coden-terminal-status" id="codenTerminalStatus" role="status" aria-live="polite" data-state="idle">Not connected.</p>
+          </div>
+          <!-- The emulator mounts here. `aria-label` rather than a visually-hidden heading:
+               xterm.js owns the subtree and would not preserve one.
+
+               Honest note, and it is in the design (§9) rather than hidden here: to an
+               accessibility audit this whole surface is ONE element, where the markup it
+               replaces offered hundreds. Screen-reader mode is on and the transcript is
+               exportable, but that is a mitigation and not an equivalence, and the product's
+               WCAG claim is scoped to the surfaces it still covers rather than extended over
+               this one. -->
+          <div class="coden-terminal-host" id="codenTerminalHost"
+               role="application"
+               aria-labelledby="codenTerminalTitle"
+               aria-describedby="codenTerminalStatus"
+               data-terminal-state="idle"></div>
+          <noscript>
+            <p class="declared-empty">CodeN Evolution is a terminal and needs JavaScript. Reach the
+              same session over <code>ssh</code> with <code>coden_evolution</code>.</p>
+          </noscript>
+        </div>
         <!-- s313/s317 addendum §1: the two signals the mockup put in the top bar that had no
              engine behind them anywhere in the product — a repository has a branch state
              whether or not anything reads it, and a conversation fills a context window
