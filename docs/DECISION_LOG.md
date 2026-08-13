@@ -9524,3 +9524,42 @@ reporting `{"test":"Test","archive":"Archive agent","goalField":true}` and, afte
 **Reversal cost.** None.
 **Status.** Applied in the source tree, **not deployed** — the label the Owner sees stays
 «Archivio» until the next deployment.
+
+## D-0402 · the three WCAG 2.2 AA failures are closed, and one of them was structural — 2026-08-13
+**Decision.** `F-A11Y-001..003` repaired in the source tree in one phase with a single audit run:
+`autocomplete` on the two remote-target fields, an own focus indicator on `#codenPrompt`, and a
+24×24 floor on `#codenPrompt` and `.hint-key`.
+**Why.** `D-0400` called two of them a design decision. Only the *shape* of the answer was: the
+composer already showed a ring, but on the WRAPPER (`.agent-prompt:focus-within`) while
+`.agent-prompt textarea:focus{outline:none}` stripped it from the element. `.agent-prompt` holds
+more than one control, so that ring says *something* here has focus and never *which* — a real
+2.4.7 defect, not an artefact of the audit. Geometry is met by floors (`max(24px,1.6em)`,
+`min-width/min-height:24px` on an `inline-flex`), so nothing shrinks when the text scale grows.
+**Rejected.** Widening the audit's inline-link exception to cover `.hint-key` — it would have
+turned a detector into a permission, and every future small target would have passed with it.
+**Evidence.** `A11Y_TOTAL=27 PASS=27 FAIL=0` (was 24/27): `1.3.5` **0 of 13** without
+autocomplete · `2.4.7` **0 of 879** controls change nothing when focused · `2.5.8` **0** targets
+under 24×24. Regression: browser suite **475/475 PASS 0 FAIL**, unit **2402 pass / 0 fail / 1
+skip**, ESLint **392 files 0 errors**, `SOURCE_VERIFY=PASS`. Logs:
+`EVIDENCE/t2_accessibility_20260813.log`, `EVIDENCE/t2_browser_e2e_20260813_a11y.log`.
+**Reversal cost.** None — two attributes and three CSS declarations; `BACKUPS/a11y_20260813T021934Z/`.
+**Status.** Applied in the source tree, **NOT deployed**: the installation still serves the
+pre-`D-0401` bytes, so live it keeps both «Archivio» and the three failures until the Owner
+authorises the next §3a sequence.
+
+## D-0403 · improvement proposal — the audit measures the element, never its ancestors — 2026-08-13
+**Decision.** Proposed, not executed: `focusSignature()` should also record whether an ANCESTOR
+changed on focus, and report the two separately.
+**Why.** The 2.4.7 failure repaired in `D-0402` looked, from the log line alone, like a control
+with no indicator at all; it was in fact a control whose indicator sat one level up. The audit
+cannot tell those two apart, and they need opposite repairs. Reporting both would also catch the
+inverse — a wrapper ring around N controls read as N passes — which no row measures today.
+*Benefit:* the detector stops being ambiguous exactly where a designer is most likely to put the
+ring. *Cost:* ~25 lines in `tools/accessibility-audit.mjs` plus a seeded case in
+`tools/seeded-defect-proof.mjs` proving it fires.
+**Rejected.** Doing it inside `D-0402` — changing the instrument in the same run that uses it to
+declare a PASS is how a green result stops meaning anything.
+**Evidence.** `tools/accessibility-audit.mjs:275` — `focusSignature()` reads only
+`getComputedStyle(element)`; no caller walks `parentElement`.
+**Reversal cost.** None — not executed.
+**Status.** Deferred, Owner's call.

@@ -1075,13 +1075,24 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .t-entry pre{margin:4px 0 0;padding:8px 10px;border-radius:8px;background:var(--surface-code);color:var(--text-code);font-size:calc(var(--text-scale)*12px);overflow-x:auto;white-space:pre}
 .agent-prompt{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-top:1px solid var(--line);background:var(--surface-composer)}
 .agent-caret{color:var(--accent-brand);font-weight:700;line-height:1.6}
-.agent-prompt textarea{flex:1;min-height:1.6em;max-height:8em;resize:vertical;border:0;background:transparent;color:var(--text-field);font:inherit;font-size:calc(var(--text-scale)*13px);line-height:1.6;padding:0}
+/* min-height is max(24px, 1.6em), not 1.6em: at the default scale 1.6em measured 21px, under
+   the 24px floor of WCAG 2.5.8. The em term keeps the box growing with the text scale, so the
+   floor is a floor and never a ceiling (1.4.4). */
+.agent-prompt textarea{flex:1;min-height:max(24px,1.6em);max-height:8em;resize:vertical;border:0;background:transparent;color:var(--text-field);font:inherit;font-size:calc(var(--text-scale)*13px);line-height:1.6;padding:0}
 .agent-prompt textarea:focus{outline:none}
+/* The wrapper ring below is not enough on its own: .agent-prompt holds more than one control,
+   so a ring around the wrapper says "something in here has focus" and not WHICH — which is
+   what 2.4.7 asks. The textarea carries its own indicator, drawn inside so the composer's
+   geometry does not shift when it appears. */
+.agent-prompt textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px;border-radius:4px}
 .agent-prompt:focus-within{box-shadow:inset 0 0 0 2px var(--focus-ring)}
 .agent-hint{margin:0;padding:0 14px 9px;background:var(--surface-composer);color:var(--text-faint);font-size:calc(var(--text-scale)*11px)}
 /* The `/` in the hint is a control, styled as the key it already looked like. It is the
    mouse's way to the one menu, since the breadcrumb and the address bar left in phase 3c. */
-.hint-key{padding:1px 6px;border:1px solid var(--line);border-radius:5px;background:var(--surface-raised);color:var(--accent-brand);font-family:inherit;font-size:inherit;cursor:pointer}
+/* It is a real button, and it measured 21x17 — under the 24x24 of WCAG 2.5.8. inline-flex with
+   a 24px floor gives it the target size without moving the glyph off the baseline of the
+   sentence it sits in. */
+.hint-key{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;vertical-align:middle;padding:1px 6px;border:1px solid var(--line);border-radius:5px;background:var(--surface-raised);color:var(--accent-brand);font-family:inherit;font-size:inherit;line-height:1;cursor:pointer}
 .hint-key:hover{border-color:var(--border-accent-hover)}
 /* Under the prompt, which is where the terminal draws it — a reader who learns one shell does
    not have to relearn where the list appears in the other. */

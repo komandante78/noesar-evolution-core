@@ -1122,12 +1122,12 @@
         <section class="panel form-stack">
           <div class="panel-title"><h2>Register a target</h2></div>
           <div class="inline-form">
-            <label>Name<input id="remoteTargetName" type="text" placeholder="e.g. staging-api"></label>
+            <label>Name<input id="remoteTargetName" type="text" autocomplete="off" placeholder="e.g. staging-api"></label>
             <label>Host<input id="remoteTargetHost" type="text" placeholder="host or IP"></label>
             <label>Port<input id="remoteTargetPort" type="number" value="22" min="1" max="65535"></label>
           </div>
           <div class="inline-form">
-            <label>Username<input id="remoteTargetUsername" type="text" placeholder="deploy"></label>
+            <label>Username<input id="remoteTargetUsername" type="text" autocomplete="username" placeholder="deploy"></label>
             <label>Remote path<input id="remoteTargetPath" type="text" placeholder="/srv/app"></label>
           </div>
           <button class="primary" id="registerRemoteTarget" type="button">Capture host key</button>
