@@ -604,7 +604,7 @@ const it = {
   'Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.': 'Quale fornitore ha risposto in questa sessione: atom quando la catena ha funzionato, reference quando ATOM non è stato raggiungibile.',
   'Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below': 'Bypass del proprietario contro modalità Normale per le operazioni sui percorsi — lo stesso segnale del campo Sandbox nella riga di stato del banco qui sotto',
   'Open the menu — the same thing typing / does': 'Apri il menu — la stessa cosa che fa digitare /',
-  'Session': 'Sessione',
+  'Bench command line': 'Riga di comando del banco',
   'Transcript': 'Trascrizione',
   'Prompt': 'Prompt',
   'Menu': 'Menu',

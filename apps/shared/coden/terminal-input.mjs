@@ -27,6 +27,7 @@ export function decodeInput(data) {
   if (data === '') return { kind: 'interrupt' };   // Ctrl-C
   if (data === '') return { kind: 'clear' };       // Ctrl-L
   if (data === '') return { kind: 'kill-line' };   // Ctrl-U
+  if (data === '\t') return { kind: 'tab' };         // completes the menu highlight, never sends
   if (data === '[A') return { kind: 'up' };
   if (data === '[B') return { kind: 'down' };
   if (data === '[C') return { kind: 'right' };

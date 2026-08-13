@@ -1220,13 +1220,24 @@ try {
         drawn.replace(/\s+/g, ' ').slice(0, 160));
     }
 
-    // The arrows are decoded and DECLARED — `D-0415(b)`. This viewport does not move the menu
-    // with them yet, and the surface says so once rather than doing nothing silently.
-    await page.keyboard.press('ArrowUp');
+    // `D-0415(b)` closed: the arrows now move the highlight through the group list, the same
+    // `▸` marker `tui-fullscreen.mjs` moves over `ssh` — proven here by the marker's own
+    // position in the rendered screen shifting after the keystroke, not merely by a note saying
+    // it does not move yet. `indexOf` rather than a row split: `.xterm-rows`' concatenated
+    // `textContent` carries no line separator between row `<div>`s, so the marker's surrounding
+    // slice is the row it is on regardless of where in the buffer that row landed.
+    const markerContext = (text) => {
+      const at = text.indexOf('▸');
+      return at === -1 ? '' : text.slice(at, at + 24);
+    };
+    const beforeArrow = await screenText();
+    await page.keyboard.press('ArrowDown');
     await new Promise((resolve) => setTimeout(resolve, 300));
     const afterArrow = await screenText();
-    check('D-0415(b) · the arrow-key gap is announced on the surface, not hidden',
-      /Arrow keys do not move the menu/.test(afterArrow), afterArrow.replace(/\s+/g, ' ').slice(0, 160));
+    check('D-0415(b) · the arrow keys move the menu highlight, not just decode it',
+      markerContext(beforeArrow) !== '' && markerContext(afterArrow) !== ''
+        && markerContext(beforeArrow) !== markerContext(afterArrow),
+      `before "${markerContext(beforeArrow)}" after "${markerContext(afterArrow)}"`);
 
     // Escape abandons a `/` prompt, then a real line goes through the SHARED `planTurn` and
     // comes back into the transcript.

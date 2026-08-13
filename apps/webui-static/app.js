@@ -5214,7 +5214,22 @@ async function renderBenchStatus(){
   if(projectChip)projectChip.textContent=`project ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;
   const modelChip=$('#codenModelChip');
   if(modelChip){
-    let label=$('#chatModel')?.value||'none';
+    // The installation's own answer to "which model is loaded" (`/api/v1/models/active`,
+    // `active-model.mjs`) — not `#chatModel`, which is a per-conversation text field that stays
+    // empty on a fresh CodeN session and said `model none` even with a model resident and
+    // answering both the Author and ATOM. Four distinct outcomes, never flattened into one:
+    // a provider-declared free-text override still wins when set, because it names what THIS
+    // conversation will actually use, which can differ from the installation's resident model.
+    let label=$('#chatModel')?.value||'';
+    if(!label){
+      try{
+        const active=await api('/api/v1/models/active');
+        label=active?.state==='loaded'?(active.id||'loaded'):
+          active?.state==='unreachable'?'unreachable':
+          active?.state==='none-served'?'no model served':
+          'none configured';
+      }catch{ label='—'; }
+    }
     try{
       const hardware=await api('/api/v1/hardware');
       const accelerator=hardware?.accelerators?.[0]?.name;

@@ -406,7 +406,14 @@
              by seventeen and turn functions that exist in one shell into functions that exist
              nowhere. 3b gives those seventeen a method and a view; 3c removes this. Removing
              is the last act, never the first. -->
-        <section class="agent-shell" id="codenShell" aria-label="Session">
+        <!-- VISIBLE on purpose, not `visually-hidden`: the confusion this repairs was visual —
+             a reader scrolling past the terminal met a second box with no label of its own,
+             opening on wording that echoes the terminal's own title and status, and read it as
+             a second copy of the same surface rather than as what it is. `.eyebrow` is the
+             product's existing small-label pattern (used for `.hero`/`.section-header`
+             eyebrows), reused rather than a new style invented for one spot. -->
+        <p class="eyebrow" id="codenShellHeading">Bench command line</p>
+        <section class="agent-shell" id="codenShell" aria-labelledby="codenShellHeading">
           <div class="agent-transcript" id="codenTranscript" role="log" aria-live="polite" aria-label="Transcript"></div>
           <div class="agent-prompt">
             <span class="agent-caret" aria-hidden="true">›</span>

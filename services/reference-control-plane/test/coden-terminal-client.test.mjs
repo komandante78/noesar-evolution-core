@@ -69,6 +69,10 @@ describe('decodeInput — bytes to intent, the one place the two shells differ',
     assert.equal(pure.decodeInput('\x1b[D').kind, 'left');
   });
 
+  test('tab completes the menu highlight and is never inserted as a character', () => {
+    assert.equal(pure.decodeInput('\t').kind, 'tab');
+  });
+
   test('an escape sequence with no binding is IGNORED, not inserted', () => {
     // The defect this prevents, and it is a visible one: falling through to `text` would put
     // the raw bytes of Page Up into the prompt, and the terminal starts printing `^[[5~` at

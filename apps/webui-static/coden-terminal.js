@@ -118,8 +118,6 @@ export function mountCodenTerminal({
    *  `menuFrame` handles: a menu that offers no destinations is correct while none are known,
    *  and inventing a local list here is precisely what `D-0300` forbade. */
   let addressBook = [];
-  /** Said once per attachment — see the arrow branch in the input handler. */
-  let arrowsExplained = false;
 
   const setState = (next, detail = '') => {
     if (state === next && !detail) return;
@@ -318,20 +316,41 @@ export function mountCodenTerminal({
     else if (intent.kind === 'escape') view.prompt = prompt.startsWith('/') ? '' : prompt;
     else if (intent.kind === 'interrupt') { view.prompt = ''; record('note', 'Cancelled.'); }
     else if (intent.kind === 'clear') view.transcript = [{ kind: 'note', text: CLEARED_NOTE }];
-    // The arrows are DECODED so they can never be inserted into the prompt as raw bytes — that
-    // safety property is the main reason `decodeInput` knows about them at all — but this shell
-    // does not yet move anything with them. `tui-fullscreen.mjs` uses ↑↓ to walk the `/` menu,
-    // and doing the same here needs the menu's selection state, which the shared view model does
-    // not carry: the terminal shell keeps it in its own keypress loop.
-    //
-    // **Declared, not hidden** (`noesar-evolution` rule 3: if you build for one shell, say what
-    // the other one does). Said ONCE per attachment rather than on every press, because a hint
-    // repeated on every keystroke is noise the reader learns to scroll past.
-    else if (['up', 'down', 'left', 'right'].includes(intent.kind)) {
-      if (!arrowsExplained) {
-        arrowsExplained = true;
-        record('note', 'Arrow keys do not move the menu in this viewport yet — type to filter it. They do move it over `ssh`.');
+    // Menu navigation, mirrored from `tui-fullscreen.mjs`'s keypress loop line for line — the
+    // one honest divergence stays the byte decoder (`decodeInput` above), never what a key DOES
+    // once decoded. `view.menu.selected` is mutated in place and the menu is NOT rebuilt for
+    // these three intents: `refreshMenu()` reconstructs the frame from scratch and would reset
+    // the highlight to its default every press, which is exactly the bug this would reintroduce.
+    else if (['up', 'down'].includes(intent.kind) && view.menu) {
+      const walking = view.menu.level === 'groups' ? (view.menu.groupRows ?? []) : (view.menu.hits ?? []);
+      const count = Math.max(1, walking.length);
+      view.menu.selected = (view.menu.selected + (intent.kind === 'down' ? 1 : -1) + count) % count;
+      draw();
+      return;
+    }
+    // Left/right move nothing in either shell — neither has ever supported moving the cursor
+    // within the prompt text, only appending and killing it. Declared rather than silently
+    // dropped, so a decoder that starts emitting them for a new reason cannot rot unnoticed.
+    else if (intent.kind === 'left' || intent.kind === 'right') { /* no-op, by design */ }
+    // ENTERING A GROUP is `⏎` at level zero, same as `ssh` — a completion, never a command: the
+    // prompt becomes `/key ` and nothing runs. Scoped to level zero deliberately; below it `⏎`
+    // still submits, which is why this branch returns early only when it actually completed.
+    else if (intent.kind === 'submit' && view.menu?.level === 'groups') {
+      const chosen = (view.menu.groupRows ?? [])[view.menu.selected];
+      if (chosen) { view.prompt = `/${chosen.key} `; refreshMenu(); draw(); return; }
+    }
+    // Tab completes the highlighted entry into the prompt WITHOUT sending — choosing and
+    // committing stay two acts, the same rule the terminal shell's click-to-complete follows.
+    else if (intent.kind === 'tab' && view.menu) {
+      const chosen = view.menu.level === 'groups'
+        ? (view.menu.groupRows ?? [])[view.menu.selected]
+        : (view.menu.hits ?? [])[view.menu.selected];
+      if (chosen) {
+        view.prompt = view.menu.level === 'groups' ? `/${chosen.key} ` : `/${chosen.name}${chosen.argument ? ' ' : ''}`;
+        refreshMenu();
+        draw();
       }
+      return;
     }
     else if (intent.kind === 'submit') {
       const line = prompt.trim();
