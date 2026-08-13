@@ -1310,6 +1310,17 @@ $('#chatInput').addEventListener('keydown',(event)=>{
 // the bench. Removing before the replacement is proven is the mistake rule 4 of the skill
 // names, and it has already cost this project a phase.
 const codenView=createView();
+// `OPENING_NOTE` ("CodeN Evolution — attached to the live session...") is the right first line
+// for a shell that IS the session — the terminal above now is that shell, and opens on the
+// same words. Repeated verbatim in the box below it, a screenshot of the real page showed the
+// two reading as one product rendered twice (Owner report, 2026-08-13) — this box's actual job
+// is narrower: the command line that reaches the seventeen bench panels the terminal does not
+// yet cover (`CE-034`, phase 3b). Overridden after construction, not inside `createView` — that
+// factory's default is still correct for every OTHER caller, and `coden-view-model.test.mjs`
+// pins IT, not this one call site. Keeps the literal words "CodeN Evolution" so the page-level
+// check that the transcript opened with a real note and not silence still holds.
+codenView.transcript = [{ kind: 'note', text:
+  'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.' }];
 let codenMenuIndex=0;
 // What this account may use — the same `menuFor` the terminal calls, on the same list, with
 // the permission set the server reported for this session. Rebuilt on demand rather than

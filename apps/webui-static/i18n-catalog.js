@@ -66,6 +66,11 @@ export const RUNTIME_ONLY = Object.freeze([
   'Reconnecting…',
   'Not permitted to attach.',
   'This terminal could not start.',
+  // The bench prompt's opening transcript line, written by app.js after `createView()` rather
+  // than left as the shared `OPENING_NOTE` — see the call site's own comment. Appears in no
+  // markup because it is composed and assigned at runtime, the same reason the status line
+  // above it is listed here rather than found by the scanner.
+  'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.',
   // Painted by renderVoiceAccess() in app.js when this connection cannot open a microphone
   // (D-0367). They appear in no markup because the addresses come from the server, which is
   // the only side that knows what the client connected to and whether a certificate exists.
@@ -605,6 +610,8 @@ const it = {
   'Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below': 'Bypass del proprietario contro modalità Normale per le operazioni sui percorsi — lo stesso segnale del campo Sandbox nella riga di stato del banco qui sotto',
   'Open the menu — the same thing typing / does': 'Apri il menu — la stessa cosa che fa digitare /',
   'Bench command line': 'Riga di comando del banco',
+  'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.':
+    'CodeN Evolution — riga di comando del banco, stessa sessione del terminale sopra. Digita / per saltare a un pannello qui sotto.',
   'Transcript': 'Trascrizione',
   'Prompt': 'Prompt',
   'Menu': 'Menu',
