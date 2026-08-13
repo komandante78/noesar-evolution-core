@@ -9762,3 +9762,140 @@ decoded intent is acted on — a decoded key nothing handles is a key that silen
 Everything socket-, DOM- and timer-shaped in `coden-terminal.js` is `[UNVERIFIED]`.
 **Reversal cost.** N/A. Closing (a) is the first act of the next session.
 **Status.** Open. Maturity actually reached on this surface: **L2/L3, not L4.**
+
+## D-0416 · the WebUI died at boot, and ESLint could not have seen it — 2026-08-13
+**Decision.** The slice-3 terminal block moves ABOVE `initRouter();` in `app.js`, and the
+invariant is pinned by `webui-boot-order.test.mjs` (4 tests): no module-level `let`/`const`/
+`class` may be declared after the line that starts painting. `no-use-before-define` was tried
+and REJECTED.
+**Why.** `let codenTerminal` sat at the end of the file; `detachCodenTerminal` hoists and the
+router calls it on the first tick, so the read threw `Cannot access 'codenTerminal' before
+initialization` — an uncaught module error that killed the WHOLE WebUI. The auth gate never
+rendered. 2514 unit tests were green against exactly that code.
+**Rejected.** ESLint `no-use-before-define`: measured, it produced **54 hits, all correct code,
+and zero on the actual defect** — the reference is textually after the declaration; the CALL
+SITE is what runs early. Same unsound-checker class `D-0034` rejected twice.
+**Evidence.** Browser suite before: 1 check, 0 pass, dead at `bootstrap`. After: 487 checks,
+483 pass. The guard was seen RED first against the committed file (2 of 4 failing).
+**Reversal cost.** None — a declaration order.
+**Status.** Applied, not installed.
+
+## D-0417 · `.mjs` was served as a download, so the terminal never mounted — 2026-08-13
+**Decision.** `serveStatic` maps `.mjs` to `text/javascript` (`server.mjs:1085`), pinned by 3
+tests in `shared-static-serving.test.mjs` that sweep every specifier `app.js` and
+`coden-terminal.js` actually import. The accessibility audit additionally skips fully
+transparent text, declared with a count.
+**Why.** The table had `.js` and no `.mjs`, so every `.mjs` fell through to
+`application/octet-stream`, which a browser REFUSES as a module script — and `nosniff` (rightly)
+forbids guessing. Nothing served to a browser had that extension until slice 3 shipped
+`terminal-input.mjs`, `tui-screen.mjs` and the vendored `xterm.mjs`. Status 200, right bytes,
+import refused. The audit change is the second half of the same finding: xterm's screen-reader
+mirror is text painted in `rgba(0,0,0,0)`, and a contrast ratio on invisible text is not a
+measurement — 1 failure in the default theme, 18 across the nine, all one element.
+**Rejected.** Renaming the shared modules to `.js`: it hides a server defect behind a filename.
+**Evidence.** 3 tests seen RED against the pre-fix server (9/12), 12/12 after. The terminal then
+mounted, attached and re-attached in a real browser for the first time.
+**Reversal cost.** None.
+**Status.** Applied, not installed.
+
+## D-0418 · the emulator cannot paint itself under `style-src 'self'` — OPEN, Owner decision — 2026-08-13
+**Decision.** None taken. Recorded, measured, and the browser suite carries a RED row for it
+(`the emulator paints itself under the product CSP`). Three options, with a recommendation.
+**Why.** xterm.js styles rows, cursor and dimensions with inline styles and injected `<style>`
+elements; the product's CSP refuses all 72 of them. Everything else works — the socket attaches,
+the shared renderer's frames are in the DOM, `/logout` detaches, re-entry re-attaches — and none
+of that is the same as the surface being PAINTED. Two typing checks fail downstream of it.
+**Options.** (1) `style-src 'self' 'unsafe-inline'` product-wide — one line, weakens the whole
+document. (2) **Recommended:** the emulator in its OWN document (`/coden-terminal.html`) inside
+an iframe, with the relaxation confined to a document that contains nothing else. (3) Patch the
+vendored xterm to accept a nonce — breaks `vendor-provenance.test.mjs` by design.
+**Evidence.** 72 refusals with the terminal mounted; **0 on every route that does not mount it**
+(run 2 of the suite, where the MIME defect kept it unmounted).
+**Reversal cost.** Option 2 costs an iframe boundary — postMessage for geometry, and the socket
+moves into the child document.
+**Status.** OPEN. Blocks `L4` on this surface. Also open: the terminal ignores the product's nine
+themes — `span.xterm-dim` at ratio 1.31 in `daylight`, 9 failures, xterm's own palette against a
+light surface. Its repair belongs with whichever option wins.
+
+## D-0419 · two measuring instruments were repaired, and one gap is left open — 2026-08-13
+**Decision.** `webui-markup-structure.test.mjs` now asserts the terminal region carries no
+`data-bench-panel` (UI-033); the browser suite prints a 20-string sample when the i18n ratchet
+rises. The i18n baseline is NOT re-taken.
+**Why.** The seeded-defect oracle reported **18/19 CAUGHT** — the miss was UI-033, whose seed
+adds `data-bench-panel` to the terminal's own tag and survives both positional assertions. A
+check that cannot fail on the defect it names is not a check. The ratchet rose 607 → 638 and its
+own comment forbids re-baselining before the diff is READ, which nothing printed.
+**Rejected.** Raising `RUNTIME_GAP_BASELINE` to 638. That is the move the ratchet exists to stop.
+**Evidence.** Seeded proof 18/19 → **19/19**, the new assertion seen failing on the seed first.
+The printed sample shows most of the 31 are suite FIXTURES ("before reload", "Project: before
+reload"), two are new terminal strings ("Terminal input", "type a command — help for the list").
+**Reversal cost.** None.
+**Status.** Applied. The i18n ratchet stays RED and is a declared gap, not a pass.
+
+## D-0423 · D-0418 RESOLVED — the emulator gets its own document — 2026-08-13
+**Decision.** Option 2 of `D-0418`, taken under the Owner's instruction to decide: the emulator
+now runs in `apps/webui-static/coden-terminal.html`, embedded by `#/coden` in a same-origin
+`sandbox="allow-scripts allow-same-origin"` iframe. That document alone is served with
+`style-src 'self' 'unsafe-inline'`, `frame-ancestors 'self'` and `x-frame-options: SAMEORIGIN`;
+every other document keeps the strict policy unchanged. State crosses OUT by `postMessage`
+(the visible status line, the live region and `data-terminal-state` stay in the main document);
+theme crosses IN. Keystrokes, geometry and the socket never cross.
+**Why.** Measured, not assumed: xterm 6.0.0 injects three `<style>` elements and writes a `style`
+ATTRIBUTE per painted cell (`_addStyle`), the bundle contains the word `nonce` zero times, and no
+hash can cover per-cell values. The relaxation was unavoidable; granting it to the document that
+holds every form, session and piece of operator data was not.
+**Rejected.** (1) `'unsafe-inline'` product-wide — one line, lowers the whole product to what a
+rendering library needs. (3) Patching the vendored emulator — breaks `vendor-provenance.test.mjs`
+by design, and forks a dependency on its first day.
+**Evidence.** Browser suite: **0 inline-style refusals** (72 before), one emulator in the frame
+and **zero in the main document**, dispose on leaving and one — not two — on return. Accessibility
+audit **27/27, 0 failures** (was 1 failing with 9 theme contrast failures) once the palette was
+derived from the product tokens: `--surface-code`, `--text-code`, `--red`/`--green`/`--amber`.
+5 tests pin the scoped policy from both sides.
+**Reversal cost.** Removing the boundary means re-granting `unsafe-inline` to the main document.
+**Status.** Applied, not installed. The theme defect recorded with `D-0418` is closed by it.
+
+## D-0420 · one shaper between `menuFrame` and the renderer — 2026-08-13
+**Decision.** `menuViewModel()` in `coden-view-model.js` is the only translation from a menu frame
+to what `tui-screen.mjs` renders. Both shells call it.
+**Why.** `menuFrame` returns the rows under `groups`; the renderer reads them from `groupRows`
+and keeps the grouping FUNCTION under `groups`. The terminal shell did that translation by hand;
+the browser shell spread the frame straight through. Typing `/` in the browser terminal drew
+**"nothing to show"** — on an owner account holding every permission — while the DOM prompt on
+the same page drew all seven groups. Exactly the divergence `CE-033` forbids, and invisible to
+every unit test because each half was correct on its own.
+**Rejected.** Fixing the spread in `coden-terminal.js` only: the next shell would repeat it.
+**Evidence.** 4 tests, including the drawn frame (`nothing to show` asserted absent, all four
+group titles asserted present) and a source guard that neither shell shapes it by hand. The
+browser row `a typed / draws the menu inside the terminal` went red → green.
+**Reversal cost.** None.
+**Status.** Applied, not installed.
+
+## D-0421 · both shells hand `planTurn` a LIST — 2026-08-13
+**Decision.** `coden-terminal.js` passes the entry ARRAY to `planTurn`, `resolveCommand` and
+`groupMenu`; the helper that returns the menu OBJECT is renamed `offeredMenu()` and the one that
+returns the list `offeredEntries()`.
+**Why.** All three call `.map`/`.find`/`.filter` on what they are given, and this file gave them
+`menuFor()`'s object. Every submitted line threw `entries.filter is not a function` inside an
+unawaited `submit()` — no output, no console error, no command runnable in the browser shell at
+all. Both shells had a local helper named `offered()`; in the terminal one it returned the list,
+in the browser one the object. One name, two types.
+**Rejected.** Making the shared functions accept either shape: a boundary that accepts two types
+is the boundary that produced this.
+**Evidence.** 3 tests, one of which asserts the defect's own signature — `planTurn` with the menu
+object THROWS, with the list answers `/help` — plus a source guard on both shells.
+**Reversal cost.** None.
+**Status.** Applied, not installed. **Not yet closed by it:** the browser row `a submitted line is
+answered in the transcript` is still red — see `F-TERM-001`.
+
+## D-0422 · improvement proposal — the harness must stop assuming network idle — 2026-08-13
+**Decision (proposal, not executed).** Both browser drivers now detach the terminal before every
+idle-waiting navigation (`gotoIdle`, `openSurface`). The proposal is to remove the assumption
+entirely: wait for the CONDITION each step actually needs — a selector, a request, a state —
+instead of for a global quiet period.
+**Why.** An open WebSocket inside an iframe means `networkidle2` may never arrive. It cost 226
+checks in one run, 205 in another, and two whole steps in a third — each time in a different
+place, and each time reading like a product failure. **Benefit:** a suite that cannot be silenced
+by a legitimate long-lived connection, which this product will have more of, not fewer.
+**Cost:** ~68 call sites to convert, one at a time, each needing its real condition named.
+**Status.** Recorded. Not executed — it is a change to the instrument, not to the product.

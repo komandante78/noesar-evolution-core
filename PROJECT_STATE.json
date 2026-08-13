@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "Slices 1, 2 and 3 of the CodeN Evolution design are in the working tree, staged, NOT committed and NOT installed. Slice 3 reached L2/L3 on its own surface, NOT L4: T2 was not run, so the terminal has never executed in a browser (D-0415). Slice 1: the shared sources left apps/webui-static/. Slice 2: WS /ws/coden. Slice 3: xterm.js 6.0.0 vendored with verified integrity, the CodeN region hosts the terminal, the renderer moved to apps/shared/coden/, and D-0406 applied (bare / no longer opens the jump box).",
-  "phase_status": "committed_locally_not_pushed_T2_not_run",
-  "next_phase": "Close D-0415(a) FIRST: run T2 (tools/run-browser-e2e.sh + tools/accessibility-audit.mjs) against the slice-3 tree and drive the terminal in a real browser. Only then slice 4 (removal of the 25 panels, the second sidebar entry, the dead routes) - and only after C, D and E of the design matrix are green, per design section 10.",
+  "current_phase": "T2 for D-0404 slices 1-3 is complete and every defect it found is repaired in the working tree: D-0416 (the WebUI died at boot), D-0417 (.mjs served as a download), D-0418b (the emulator now runs in its own document under a scoped CSP — RESOLVED, option 2), D-0419 (two measuring instruments repaired), D-0420 (one menu shaper for both shells), D-0421 (both shells hand planTurn a list). One row stays red and is not closed: F-TERM-001, a submitted line is not answered in the browser terminal.",
+  "phase_status": "T2_complete_defects_repaired_committed_locally_one_open_finding",
+  "next_phase": "Close F-TERM-001 first — assert the prompt row immediately before and after Enter in the browser terminal, which is the one measurement never taken. Then the Owner decides on installation (nothing is deployed), then slice 4 (removal of the 25 panels), which still requires C, D and E of the design matrix green.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "e28263e81c7bd2accad0f17ac2a4c72b99cfa373",
-  "last_updated_utc": "2026-08-13T09:38:19Z",
+  "last_commit": "b0a6524",
+  "last_updated_utc": "2026-08-13T12:50:28Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -302,6 +302,24 @@
       "severity": "medium",
       "status": "FIXED and DEPLOYED 2026-08-13 (D-0402), live in noesar-evolution:d0402-a11y-20260813T060132Z - floors not fixed sizes: min-height max(24px,1.6em) on #codenPrompt, inline-flex with min-width/min-height 24px on .hint-key; audit 2.5.8 now 0 targets under 24x24",
       "summary": "WCAG 2.5.8: #codenPrompt is 1144x21 and #codenPromptOpenMenu is 21x17 - both under the 24x24 minimum target size. Changes the geometry of the CodeN composer."
+    },
+    {
+      "id": "F-TERM-001",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-13, the one defect this session did not close. The next measurement is named: promptRow() immediately before and after the Enter keypress, which separates \"the keystroke never submitted\" from \"submit() ran and the answer is missing\". The browser suite carries two red rows for it and they must not be relaxed.",
+      "summary": "In the browser terminal a typed / draws the menu (measured, D-0420) and keystrokes reach the emulator through the browser input pipeline (measured, path keydown), but pressing Enter on /help puts nothing in the transcript — neither the listing nor an error. D-0421 removed one cause: planTurn was being handed the menu object and threw entries.filter is not a function inside an unawaited submit()."
+    },
+    {
+      "id": "F-I18N-002",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-13 (D-0419), NOT re-baselined. The harness own rule is that the baseline moves only after the full diff is read; the suite now prints a 20-string sample on a rise so the next session can read it.",
+      "summary": "The runtime catalogue-closable gap rose 607 -> 644 as the browser suite grew past its old abort point and reached surfaces it had never measured. Most of the sample are suite fixtures (\"before reload\", \"Project: before reload\"); two are new terminal strings (\"Terminal input\", \"type a command - help for the list\")."
+    },
+    {
+      "id": "F-CSP-001",
+      "severity": "medium",
+      "status": "CLOSED 2026-08-13 by D-0423 — the emulator runs in its own document (coden-terminal.html) under a scoped CSP. Measured: 0 inline-style refusals (72 before), the main document policy unchanged, 5 tests pin the scope from both sides. The theme half is closed with it: the palette is derived from the product tokens and the accessibility audit is 27/27.",
+      "summary": "xterm.js styles rows, cursor and dimensions with inline styles and injected <style> elements, and style-src self refused all of them, so the terminal attached and received frames but could not paint."
     }
   ],
   "resolved_findings": [
@@ -459,6 +477,8 @@
     }
   ],
   "product_test_suite": {
+    "d0416_d0421_t2_2026_08_13": "VERIFIED this session, evidence produced here. node --test services/reference-control-plane/test/*.test.mjs -> 2533 tests, 2532 pass, 0 fail, 1 skip, 279 suites (+19 over slice 3). tools/run-eslint.sh -> 405 files, 0 errors, 0 warnings, 0 no-undef. scripts/test.sh -> pass=10 fail=0 partial=0 unavailable=0. tools/verify-source.mjs -> PASS migrations=19 baseline 12/12. tools/seeded-defect-proof.mjs -> 19/19 CAUGHT (was 18/19). tools/run-browser-e2e.sh -> 493 checks, 490 pass, 3 FAIL (2 are F-TERM-001, one is the i18n ratchet F-I18N-002); BASELINE: the same suite on the committed tree ran 1 check, 0 pass, dead at bootstrap. tools/accessibility-audit.mjs -> 27 checks, 27 pass, 0 FAIL (was 26/1 with 9 theme-contrast failures on the terminal). Terminal driven in a browser: one embedded document sandboxed to allow-scripts allow-same-origin, zero emulators in the main document, 0 inline-style refusals (72 before), palette from the product tokens, dispose on leave and exactly one on return, keystrokes reach the emulator through the browser input pipeline (path: keydown).",
+    "d0416_d0419_t2_2026_08_13": "VERIFIED this session, evidence produced here. node --test services/reference-control-plane/test/*.test.mjs -> 2521 tests, 2520 pass, 0 fail, 1 skip, 278 suites (+7 over slice 3: webui-boot-order.test.mjs plus 3 media-type tests). tools/run-eslint.sh -> 404 files, 0 errors, 0 warnings, 0 no-undef. scripts/test.sh -> pass=10 fail=0 partial=0 unavailable=0. tools/verify-source.mjs -> PASS, migrations=19, baseline 12/12. tools/seeded-defect-proof.mjs -> 19/19 CAUGHT (was 18/19; the UI-033 miss is repaired). tools/run-browser-e2e.sh -> 487 checks, 483 pass, 4 FAIL (2 terminal typing, downstream of D-0418; the D-0418 CSP row itself; the i18n ratchet 638 vs 607). BASELINE FOR COMPARISON: the same suite on the committed tree ran 1 check, 0 pass, dead at bootstrap. tools/accessibility-audit.mjs -> 27 checks, 26 pass, 1 FAIL (9 theme-contrast failures, all span.xterm-dim/xterm-fg-111 in daylight: the terminal ignores the product themes, recorded under D-0418).",
     "unit": "1477/1478 (1 pre-existing honest skip) (misurato 2026-08-01, D-0286 — +25 su D-0285 1452/1453: remote-target-registry.test.mjs 11, remote-target-fetch.test.mjs 5 contro una sshd reale, remote-target-http.test.mjs 7 end-to-end, ai-state-migration.test.mjs +3 per lo schema 3->4)",
     "eslint": "291 file, 0 errori, 0 warning, 0 no-undef (misurato 2026-08-01, D-0286)",
     "browser_acceptance": "209/217 (misurato 2026-08-01, D-0283). Gli 8 fallimenti sono PRE-ESISTENTI e dell'harness, non del prodotto: misurati identici su un worktree pulito di HEAD prima di attribuirli. Causa: l'immagine E2E copia solo apps/webui-static/ e services/reference-control-plane/src/, quindi schemas/ e capabilities/ mancano dentro il container (GET /api/v1/sector-modules/catalog -> 500 'industry-module-manifest.schema.json is missing or malformed' da quando la rotta esiste, D-0277); e il Postgres E2E non ha noesar_knowledge.memory_records (500 su /api/v1/approvals e /api/v1/memory/recall). Il 340/340 registrato a D-0273 non è confrontabile: harness diversa, 217 casi oggi.",
@@ -934,7 +954,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "STOP AND READ D-0415 BEFORE CLAIMING ANYTHING ABOUT SLICE 3. The terminal surface has never run in a browser: no browser e2e, no accessibility audit. Unit tests cover the three PURE decisions of the client only; everything socket-, DOM- and timer-shaped is UNVERIFIED. Two known gaps besides: arrow keys decode but move nothing in the browser shell, and the 25 panels are still in the markup so the terminal sits ABOVE them. THEN: ask the Owner to authorise the commit (three commits suggested, one per slice; nothing pushed, no container touched, no image built). Note for whoever builds: oci/Dockerfile and oci/Containerfile changed in slices 1 and 3 - they now COPY apps/shared/ and no longer copy tools/tui-screen.mjs or tools/coden-address-views.mjs, which moved. Still open and unchanged: A2 on the live installation and the D-0395 choice on the #/models in-use lane.",
+  "next_action": "F-TERM-001 IS THE ONLY OPEN DEFECT, AND IT IS THE SURFACE'S CORE CAPABILITY: typing works (the menu draws from a typed /, measured), but pressing Enter on /help produces nothing in the transcript. Two candidates remain and one measurement separates them: capture promptRow() immediately BEFORE and AFTER the Enter keypress. If the prompt still holds the line, the submit keystroke never reached the emulator; if it is empty, submit() ran and the answer is missing or off-screen. Everything else measured green this session: unit 2533/2533, ESLint 405 files 0 errors, scripts/test.sh 10/10, seeded 19/19, browser 490 of 493, accessibility 27/27 with the terminal now themed by the product. NOT installed, NOT pushed. Unchanged and untouched: A2 live, the D-0395 #/models choice, F-MANIFEST-001, F-I18N-002 (ratchet at 644 vs baseline 607, deliberately not re-baselined).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

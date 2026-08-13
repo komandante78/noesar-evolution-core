@@ -4610,3 +4610,44 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 
 **Not proven here:** anything needing a signed-in session — A2 included. The three WCAG rows are
 proven on a probe built from these bytes, not on this container.
+
+## 2026-08-13 · T2 for D-0404 slices 1-3 — NOTHING INSTALLED, and that is the entry
+
+**Tag:** none. No image was built for deployment, no container was created, started or stopped,
+and the running installation (`noesar-evolution`, up 4h, healthy) was not touched.
+
+**What ran:** T2 against disposable probes only — 4 browser-suite runs and 4 accessibility runs,
+each on its own throwaway probe built from this tree, removed by the runner. Verified after:
+exactly two containers named `noesar-evolution*` exist (the installation and its one rollback,
+`noesar-evolution-pre-20260813T060219Z`), no probe image or stamped tag survives, and the only
+project networks are the two stable ones. `noesar-local` (another project) untouched.
+
+**Why nothing was installed:** T2 is not green. `D-0418` is open — the emulator cannot paint
+itself under the product CSP — and installing a surface that is not `L4` would be the false PASS
+rule 38 forbids. The three repairs of this phase (`D-0416`, `D-0417`, `D-0419`) are in the tree
+and uncommitted, pending the Owner's authorisation.
+
+**Rollback cost of this entry:** none. Nothing changed on the installation to roll back.
+
+## 2026-08-13 (second entry) · D-0423 — the terminal moves into its own document. STILL NOTHING INSTALLED
+
+**Tag:** none. No image built for deployment, no container created, started or stopped. The
+running installation (`noesar-evolution`, healthy) was not touched at any point.
+
+**What changed that a future installer must know:** `apps/webui-static/coden-terminal.html` and
+`coden-terminal-frame.js` are new files served to the browser, and `serveStatic` gives that ONE
+path a different policy (`style-src 'self' 'unsafe-inline'`, `frame-ancestors 'self'`,
+`x-frame-options: SAMEORIGIN`, no `cross-origin-opener-policy`). A reverse proxy that rewrites
+security headers will break the terminal without breaking anything else — that is the failure to
+look for first if the CodeN region shows a blank frame after deployment.
+
+**Probes:** 12 browser-suite runs and 4 accessibility runs, each on its own throwaway probe built
+from this tree and removed by the runner. Verified after: exactly two containers named
+`noesar-evolution*` (the installation and its one rollback), no probe image or stamped tag left,
+networks are the two stable ones only. `noesar-local` (another project) untouched.
+
+**Why nothing was installed:** `F-TERM-001` is open — a submitted line is not answered in the
+browser terminal — and installing a surface whose core gesture is unproven is the false PASS
+rule 38 forbids. Deployment is the Owner's call, and the rollback path is unchanged.
+
+**Rollback cost of this entry:** none. Nothing changed on the installation to roll back.
