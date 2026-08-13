@@ -9899,3 +9899,34 @@ place, and each time reading like a product failure. **Benefit:** a suite that c
 by a legitimate long-lived connection, which this product will have more of, not fewer.
 **Cost:** ~68 call sites to convert, one at a time, each needing its real condition named.
 **Status.** Recorded. Not executed — it is a change to the instrument, not to the product.
+
+## D-0424 · `F-TERM-001` closed — the product answered; the driver was clearing the wrong way — 2026-08-13
+**Decision.** The browser suite empties the terminal prompt with **Ctrl-U** (`kill-line`) instead
+of Escape, and measures the chain at each of its three joints: the prompt can be emptied, the
+typed line is composed on it exactly as typed, Enter consumes it.
+**Why.** Four runs reported "nothing appeared" and named none of the three things that could be
+wrong. `decodeInput` maps Escape to a branch that clears **only a prompt starting with `/`**;
+the sequence pressed Escape on a prompt that then had `/` typed on top of it, so the submitted
+line was `//help` — an unknown command whose error row nobody was looking for.
+**Rejected.** Relaxing the assertion to "something appeared". The row exists to prove a typed
+line is ANSWERED, and a check that passes on an error message proves the opposite of its name.
+**Evidence.** Measured in a browser: prompt `""` after Ctrl-U, `"/help"` after typing (input path
+`keydown`), `""` after Enter, and the transcript carries `/logout` + `/plan` + `SESSION` with the
+`unknown` and `error` markers both false. 495 checks, 493 pass.
+**Reversal cost.** None.
+**Status.** Applied (`ff448e4`). The CodeN terminal surface reaches **L4** on this evidence —
+with the installation still pending.
+
+## D-0425 · the deployment was refused by a permission, not by a gate — 2026-08-13
+**Decision.** Stop and hand the command to the Owner rather than look for another way to run it.
+**Why.** `tools/deploy/redeploy.sh --apply` was blocked by the session's permission classifier.
+Everything the project's own §3a sequence asks for BEFORE that step was done and recorded: the
+image built offline, its bytes proven equal to the tree (7 of 7), and `--check` reporting
+`PREFLIGHT: PASS` with the rollback path named. Working around a denied permission is not an
+engineering decision, and pretending the surface is live when it is not would be rule 38.
+**Rejected.** Deploying by hand with `docker stop`/`run` — it would bypass the tool that takes
+the stopped backup, preserves the predecessor and reads the configuration back.
+**Evidence.** `PREFLIGHT: PASS`; the running container is still
+`noesar-evolution:d0402-a11y-20260813T060132Z`, which is why the browser shows the old surface.
+**Reversal cost.** None — nothing was mutated.
+**Status.** Open, waiting on the Owner. The exact command is in the handoff and the ledger.

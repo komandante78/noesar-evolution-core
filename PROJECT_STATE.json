@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "T2 for D-0404 slices 1-3 is complete and every defect it found is repaired in the working tree: D-0416 (the WebUI died at boot), D-0417 (.mjs served as a download), D-0418b (the emulator now runs in its own document under a scoped CSP — RESOLVED, option 2), D-0419 (two measuring instruments repaired), D-0420 (one menu shaper for both shells), D-0421 (both shells hand planTurn a list). One row stays red and is not closed: F-TERM-001, a submitted line is not answered in the browser terminal.",
-  "phase_status": "T2_complete_defects_repaired_committed_locally_one_open_finding",
-  "next_phase": "Close F-TERM-001 first — assert the prompt row immediately before and after Enter in the browser terminal, which is the one measurement never taken. Then the Owner decides on installation (nothing is deployed), then slice 4 (removal of the 25 panels), which still requires C, D and E of the design matrix green.",
+  "current_phase": "T2 for D-0404 slices 1-3 is complete and ALL SEVEN defects it found are repaired and committed locally: D-0416, D-0417, D-0419, D-0420, D-0421, D-0423 and F-TERM-001 (closed by the harness repair in ff448e4 — the product was right, the driver emptied the prompt with Escape where only Ctrl-U clears unconditionally). The image noesar-evolution:d0423-terminal-20260813T132120Z is BUILT and byte-verified against the tree, preflight PASS — but NOT deployed: the redeploy command was refused by the permission classifier and needs the Owner.",
+  "phase_status": "T2_green_image_built_and_verified_DEPLOY_BLOCKED_needs_owner_permission",
+  "next_phase": "Deploy noesar-evolution:d0423-terminal-20260813T132120Z (the command is in the handoff), verify live, then slice 4 — which still requires C, D and E of the design matrix green.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "b0a6524",
-  "last_updated_utc": "2026-08-13T12:50:28Z",
+  "last_commit": "ff448e4",
+  "last_updated_utc": "2026-08-13T13:24:21Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -306,8 +306,8 @@
     {
       "id": "F-TERM-001",
       "severity": "medium",
-      "status": "OPEN - recorded 2026-08-13, the one defect this session did not close. The next measurement is named: promptRow() immediately before and after the Enter keypress, which separates \"the keystroke never submitted\" from \"submit() ran and the answer is missing\". The browser suite carries two red rows for it and they must not be relaxed.",
-      "summary": "In the browser terminal a typed / draws the menu (measured, D-0420) and keystrokes reach the emulator through the browser input pipeline (measured, path keydown), but pressing Enter on /help puts nothing in the transcript — neither the listing nor an error. D-0421 removed one cause: planTurn was being handed the menu object and threw entries.filter is not a function inside an unawaited submit()."
+      "status": "CLOSED 2026-08-13 (commit ff448e4). The product was right: the browser terminal composes, submits and answers. The DRIVER was emptying the prompt with Escape, which decodeInput maps to a branch that clears only a prompt starting with /, so the next line was composed on top of the leftover and became an unknown command. Ctrl-U (kill-line) clears unconditionally.",
+      "summary": "Measured at each joint: prompt \"\" after Ctrl-U, \"/help\" after typing (path keydown), \"\" after Enter, and the transcript carries /logout + /plan + SESSION with no error and no unknown marker."
     },
     {
       "id": "F-I18N-002",
@@ -320,6 +320,12 @@
       "severity": "medium",
       "status": "CLOSED 2026-08-13 by D-0423 — the emulator runs in its own document (coden-terminal.html) under a scoped CSP. Measured: 0 inline-style refusals (72 before), the main document policy unchanged, 5 tests pin the scope from both sides. The theme half is closed with it: the palette is derived from the product tokens and the accessibility audit is 27/27.",
       "summary": "xterm.js styles rows, cursor and dimensions with inline styles and injected <style> elements, and style-src self refused all of them, so the terminal attached and received frames but could not paint."
+    },
+    {
+      "id": "F-E2E-001",
+      "severity": "low",
+      "status": "OPEN - observed once 2026-08-13, not reproduced. Green in runs 14, 15 and 16 of the same suite on the same tree; failed in run 17. Recorded rather than repaired: a flake chased without a second observation is a guess.",
+      "summary": "Browser row s327/4b \"a plan created with no chat attached is listed as belonging to none\" read the all-attached empty state instead of the unattached run — declared text correct, listed text the empty state, count empty. Order- or timing-dependent."
     }
   ],
   "resolved_findings": [
@@ -954,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "F-TERM-001 IS THE ONLY OPEN DEFECT, AND IT IS THE SURFACE'S CORE CAPABILITY: typing works (the menu draws from a typed /, measured), but pressing Enter on /help produces nothing in the transcript. Two candidates remain and one measurement separates them: capture promptRow() immediately BEFORE and AFTER the Enter keypress. If the prompt still holds the line, the submit keystroke never reached the emulator; if it is empty, submit() ran and the answer is missing or off-screen. Everything else measured green this session: unit 2533/2533, ESLint 405 files 0 errors, scripts/test.sh 10/10, seeded 19/19, browser 490 of 493, accessibility 27/27 with the terminal now themed by the product. NOT installed, NOT pushed. Unchanged and untouched: A2 live, the D-0395 #/models choice, F-MANIFEST-001, F-I18N-002 (ratchet at 644 vs baseline 607, deliberately not re-baselined).",
+  "next_action": "THE ONLY THING BLOCKING THE INSTALLATION IS A PERMISSION. The image is built offline from oci/Dockerfile, its bytes are proven equal to the tree (7 of 7 files, including the two new ones), and tools/deploy/redeploy.sh --source noesar-evolution --check reports PREFLIGHT: PASS with the rollback path named. The apply command was REFUSED by the permission classifier, not by the tool: tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image noesar-evolution:d0423-terminal-20260813T132120Z. Until it runs, the running container is still noesar-evolution:d0402-a11y-20260813T060132Z and the browser shows the OLD surface — the terminal work is in the tree and in git, not on the installation. Verified this session: unit 2533 (2532 pass), ESLint 405/0, scripts/test.sh 10/10, seeded 19/19, browser 495 checks 493 pass, accessibility 27/27. The two red rows are F-I18N-002 (declared, not re-baselined) and one flaky s327/4b row that was green in the three runs before.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

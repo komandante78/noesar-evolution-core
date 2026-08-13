@@ -4651,3 +4651,34 @@ browser terminal — and installing a surface whose core gesture is unproven is 
 rule 38 forbids. Deployment is the Owner's call, and the rollback path is unchanged.
 
 **Rollback cost of this entry:** none. Nothing changed on the installation to roll back.
+
+## `d0423-terminal-20260813T132120Z` — BUILT, VERIFIED, NOT DEPLOYED (permission refused) — 2026-08-13
+
+| | |
+|---|---|
+| Image | `noesar-evolution:d0423-terminal-20260813T132120Z`, built offline (`--pull=false`) from `oci/Dockerfile` |
+| Would replace | `noesar-evolution:d0402-a11y-20260813T060132Z` (running since 2026-08-13 06:01Z) |
+| Carries | `D-0416`, `D-0417`, `D-0419`, `D-0420`, `D-0421`, `D-0423` and the `F-TERM-001` closure |
+| Status | **NOT DEPLOYED.** `redeploy.sh --apply` was refused by the session's permission classifier — not by the tool, not by a preflight failure. |
+
+**Proven before the attempt:** image bytes **equal the tree**, 7 of 7 —
+`coden-terminal.html` `2687f2923525cec5`, `coden-terminal-frame.js` `b6a46a76c3b0e54e`,
+`coden-terminal.js` `258a54dbc677f948`, `app.js` `adfefe2ee94e9933`, `styles.css`
+`51027806b13a1c98`, `coden-view-model.js` `b763e3ffee220f0a`, `http-security.mjs`
+`dabc80897f8c0df8`. `redeploy.sh --source noesar-evolution --check` → **PREFLIGHT: PASS**
+(state running/healthy, 44 env vars, 3 ports, 2 binds, backup space 246 GiB free, predecessor
+name free, rollback path named). **Nothing was written, generated or touched.**
+
+**The command that remains to be run:**
+
+```sh
+tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner \
+  --image noesar-evolution:d0423-terminal-20260813T132120Z
+```
+
+**Consequence of not running it, stated plainly:** the installation keeps serving
+`d0402-a11y-20260813T060132Z`, which predates every repair of this session — so the browser
+shows the OLD CodeN surface, and the terminal work exists in git and in this image only.
+
+**Rollback cost once deployed:** none beyond ~1 s of downtime; the predecessor container carries
+the configuration that is current now.

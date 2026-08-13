@@ -1,35 +1,40 @@
-# SESSION HANDOFF — 2026-08-13 (T2 for `D-0404` slices 1-3, and the six defects it found)
+# SESSION HANDOFF — 2026-08-13 (T2 for `D-0404`: sette difetti riparati, immagine pronta, deploy fermo)
+
 
 ## ➜ LA PROSSIMA AZIONE
 
-**T2 ran, the terminal was driven in a real browser, and six defects were found and repaired.**
-`D-0415`(a) is closed. One defect is **not** closed and it is the surface's core gesture.
+**Una sola cosa blocca l'installazione, ed è un permesso.** L'immagine `noesar-evolution:d0423-terminal-20260813T132120Z` è costruita
+offline, i suoi byte sono **provati uguali all'albero** (7 file su 7, comprese le due nuove
+superfici) e `redeploy.sh --check` dà **PREFLIGHT: PASS** con il percorso di rollback nominato.
+Il comando di applicazione è stato **rifiutato dal classificatore dei permessi della sessione** —
+non dallo strumento, non da un preflight fallito.
 
-1. **`F-TERM-001` first, and the next measurement is already named.** In the browser terminal a
-   typed `/` draws the menu (measured) and keystrokes reach the emulator through the browser's
-   own input pipeline (measured, path `keydown`) — but pressing **Enter on `/help` puts nothing
-   in the transcript**, neither the listing nor an error. Take the one measurement nobody has
-   taken: `promptRow()` immediately **before** and **after** the Enter keypress. If the line is
-   still on the prompt, the submit keystroke never arrived; if the prompt is empty, `submit()`
-   ran and the answer is missing or off-screen. Two candidates, one measurement, opposite repairs.
-2. **Then the Owner decides on installation.** Nothing is deployed; the rollback path is unchanged.
-3. **Then slice 4** (removal of the 25 panels) — still conditional on C, D and E of the design
-   matrix being green.
+```sh
+tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner \
+  --image noesar-evolution:d0423-terminal-20260813T132120Z
+```
 
-**The surface is `L3`, not `L4`.** It attaches, paints, themes, disposes and re-attaches; it has
-not been shown to answer a submitted line. Calling it done would be a false PASS (rule 38).
+**Finché non gira, l'installazione serve `d0402-a11y-20260813T060132Z`** — precedente a ogni
+riparazione di oggi. È esattamente il motivo per cui nel browser la superficie CodeN è quella di
+prima: il lavoro è in git e in quell'immagine, non sul prodotto in esecuzione.
+
+Dopo il deploy: verifica live (`/livez`, `/readyz`, byte serviti = albero), pulizia §5a
+(il rollback vecchio va rimosso, la sua immagine resta), poi la slice 4 — che resta subordinata
+a C, D ed E della matrice verdi.
 
 ## Blockers and open findings
 
 | Id | State |
 |---|---|
-| `F-TERM-001` | **OPEN — the one open defect.** A submitted line is not answered. 2 red rows in the suite. |
+| `F-TERM-001` | **CLOSED** (`ff448e4`). The product answers; the DRIVER was emptying the prompt with Escape where only Ctrl-U clears unconditionally. |
+| deployment | **BLOCKED — permission refused.** Image built and byte-verified, preflight PASS. |
+| `F-E2E-001` | OPEN, observed once: the `s327/4b` row flaked in run 17, green in runs 14-16. Recorded, not chased. |
 | `F-I18N-002` | OPEN. Ratchet 607 → 644, **deliberately not re-baselined**; the suite now prints its sample. |
 | `F-CSP-001` | **CLOSED** by `D-0423`. |
 | `D-0415`(a) | **CLOSED.** (b) open by design and announced on the surface; (c) is slice 4. |
 | `B-002`, `B-011`, A2 live, `D-0395`, `F-MANIFEST-001` | Unchanged, **not touched**. |
 
-## The six defects, and how each was proved
+## The seven defects, and how each was proved
 
 The first run against the committed tree produced **1 check, 0 pass** — dead at `bootstrap`.
 
@@ -51,7 +56,7 @@ The first run against the committed tree produced **1 check, 0 pass** — dead a
 | `scripts/test.sh` | **pass=10 fail=0 partial=0 unavailable=0** |
 | `tools/verify-source.mjs` | PASS — migrations 19, baseline 12/12 |
 | `tools/seeded-defect-proof.mjs` | **19/19 CAUGHT** (was 18/19 — the UI-033 miss is repaired) |
-| `tools/run-browser-e2e.sh` | **493 checks, 490 pass, 3 FAIL** (2 = `F-TERM-001`, 1 = `F-I18N-002`) |
+| `tools/run-browser-e2e.sh` | **495 checks, 493 pass, 2 FAIL** (`F-I18N-002`, declared; and one flaky `s327/4b` row) |
 | `tools/accessibility-audit.mjs` | **27 checks, 27 pass, 0 FAIL** |
 | Secret scan | **HEURISTIC** — the `gitleaks` image is absent and pulling it needs the network. 0 credential-shaped hits in the diff; no archive, binary or `.env` staged. |
 
@@ -65,7 +70,7 @@ returning attaches exactly one, not two.
 ## State of the tree
 
 11 files changed, 2 new (`coden-terminal.html`, `coden-terminal-frame.js`, `webui-boot-order.test.mjs`).
-Backups in `BACKUPS/`. **Committed locally. Not pushed. Nothing installed, no container touched.**
+Backups in `BACKUPS/`. **Committed locally (`ff448e4`). Not pushed. The image is BUILT and byte-verified; no container was created, started or stopped.**
 After cleanup: exactly two containers — the installation and one rollback — no probe image, no
 stamped tag, only the two stable networks. `noesar-local` (another project) untouched.
 
