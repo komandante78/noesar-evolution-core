@@ -4827,3 +4827,20 @@ chain is unprovable from `docker ps` state alone from the second redeploy onward
 now reports `FAIL: container created this session and not cleaned up` for both `noesar-evolution`
 and its current, legitimate rollback — a false positive against the actual state, not a real
 defect in the installation. Recorded as `D-0433`; not fixed live (see the decision entry for why).
+
+## `d0431c-onechat-20260813T174751Z` — DEPLOYED and verified over TLS — 2026-08-13
+
+**Tag.** `noesar-evolution:d0431c-onechat-20260813T174751Z`, deployed 17:48:05Z. `D-0431`
+resolved on direct Owner instruction after seeing the live page: `#codenShell` (the legacy
+prompt/transcript/menu) is now HIDDEN whenever the terminal reports `live`, restored on
+`failed`/`refused`/`idle` — the fallback the platform law still requires, not deleted (rule 12).
+**Health.** `running`/`healthy`; `https://<host>:8443/readyz` = 200; `app.js` byte-equal to tree.
+**Verification.** Unit 2539/2540 (1 pre-existing skip) · ESLint 407/0 · direct screenshot + DOM
+query on a disposable probe: `terminalState=live, codenShellHidden=true, box height=0`.
+**Browser E2E: NOT green, and not claimed to be.** `jump()` was rewritten (hash navigation,
+`D-0435`), but roughly a dozen further checks still drive `#codenPrompt`/`#codenMenu` directly
+and now fail or hang against a hidden element. Two reveal-based fixes were tried and reverted
+rather than shipped unverified — see `D-0435`.
+**Predecessor preserved.** `noesar-evolution-pre-20260813T174805Z` (`d0431b-transcript-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260813T171114Z` removed; non-project
+containers unchanged at 52.

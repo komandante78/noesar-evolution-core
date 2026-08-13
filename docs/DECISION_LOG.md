@@ -10074,3 +10074,24 @@ R1-R3 cases; confirmed by reading, not guessed.
 `cbl_check_containers` to trust chained attestations, add an `R5`-style adversarial test proving a
 forged attestation still fails. Until then: multiple redeploys in one session will FAIL close and
 require the Owner's explicit acknowledgement that the state is correct.
+
+## D-0435 · `D-0431` resolved on direct instruction — the browser E2E suite now owes a real debt — 2026-08-13
+**Decision.** `#codenShell` hidden whenever the terminal is `live` (not merely labelled).
+`tools/browser-e2e.mjs`'s `jump()` moved to hash navigation. Every OTHER `#codenPrompt`-driving
+check in that file (~12 sites: phase-3a region checks, F-TERM-001 joints, `/diff`/`/plan`/
+`/approve` flows) is now broken against a hidden element and is NOT fixed by this entry.
+**Why.** Owner, having seen the live page, rejected the label-only fix directly: "que4lla sotto
+devi eliminarla — deve restare solo la tui emulata." A concern was raised in the prior turn and
+reaffirmed by the Owner — proceeding with the full instruction, per standing operating rule.
+**Rejected.** A one-shot `classList.remove('hidden')` before each interaction — loses the race
+against the terminal's own async `live` transition, measured (suite got no further than before).
+A `MutationObserver`-based reveal — introduced an unexplained Puppeteer `Runtime.callFunctionOn`
+timeout, reproduced twice; shipping a guess about a security/tooling-adjacent test harness at the
+end of a long session is exactly the failure mode `D-0381`/`D-0383` already cost this project.
+**Evidence.** Screenshot + DOM query on a disposable probe (§3a 11e — never the live install):
+`codenShellHidden=true`, box height 0. Unit 2539/2540, ESLint 407/0.
+**Reversal cost.** Low for the product (one function, additive-only per state); the test debt
+has no reversal cost because nothing was silently marked passing.
+**Status.** applied · installed. Open: a dedicated pass through every remaining `#codenPrompt`
+site in `browser-e2e.mjs` — each one either redirected to drive the terminal (where the terminal
+now covers the same ground) or wrapped to explicitly exercise the fallback path first.
