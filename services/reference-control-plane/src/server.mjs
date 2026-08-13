@@ -1082,10 +1082,22 @@ function serveStatic(pathname, res) {
   if (target !== root && !target.startsWith(`${root}${sep}`)) return false;
   try {
     if (!statSync(target).isFile()) return false;
-    const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png' };
+    // `.mjs` carries the same media type as `.js` — `D-0417`. Without the entry it fell through
+    // to `application/octet-stream`, and a browser REFUSES an `application/octet-stream` module
+    // script outright ("Strict MIME type checking is enforced for module scripts per HTML
+    // spec"). Nothing served to a browser had a `.mjs` extension until slice 3 of `D-0404`
+    // shipped `apps/shared/coden/terminal-input.mjs`, `tui-screen.mjs` and the vendored
+    // `xterm.mjs`; every one of those imports was refused, so the terminal never mounted —
+    // measured in a real browser, where a unit test cannot see a media type at all.
+    const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.mjs':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png' };
     const bytes = readFileSync(target);
+    // `D-0418`: exactly one document gets the emulator's policy, matched on the resolved path
+    // rather than on the request string — so `/./coden-terminal.html` and any other spelling
+    // that resolves here gets the same answer, and nothing else on the site can ask for it by
+    // dressing up its URL.
+    const embeddedTerminal = target === resolve(webRoot, 'coden-terminal.html');
     res.writeHead(200, {
-      ...securityHeaders({ contentSecurityPolicy:true, secureTransport:secureCookies }),
+      ...securityHeaders({ contentSecurityPolicy:true, secureTransport:secureCookies, embeddedTerminal }),
       'content-type':types[extname(target)] ?? 'application/octet-stream',
       'content-length':bytes.length,
     });

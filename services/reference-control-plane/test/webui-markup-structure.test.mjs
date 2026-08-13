@@ -375,6 +375,17 @@ describe('the missing interface parts', () => {
     assert.ok(panelsStart > 0 && lastPanel > panelsStart, 'the tab panels block must exist');
     assert.ok(terminal > lastPanel, 'the terminal must live outside the tab panels, after them');
     assert.match(html, /class="bench-terminal"[^>]*id="benchTerminal"/, 'the terminal region must exist');
+    // The positional checks above are necessary and NOT sufficient, measured rather than
+    // reasoned: `tools/seeded-defect-proof.mjs` plants exactly this defect — `data-bench-panel`
+    // added to the terminal's own tag — and every assertion above went on passing (18/19
+    // caught, this the one MISS, 2026-08-13). The seed survives them because the attribute it
+    // adds becomes the LAST `data-bench-panel` in the document and sits before `id=` on the
+    // same tag, so both position tests still hold. The criterion is not about position: it is
+    // that the terminal is a REGION and not a panel, so that is asserted about the element
+    // itself. A check that cannot fail on the defect it names is not a check.
+    const terminalTag = html.slice(terminal - 200 > 0 ? terminal - 200 : 0, html.indexOf('>', terminal) + 1);
+    assert.doesNotMatch(terminalTag, /data-bench-panel/,
+      'UI-033: the terminal region carries a data-bench-panel attribute — it has become a tab panel like any other');
   });
 
   test('UI-035 · the status line has its twelve fields and declares how many have a source', () => {

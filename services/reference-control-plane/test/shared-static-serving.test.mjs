@@ -148,6 +148,117 @@ describe('the shared modules are reachable over HTTP, as the browser will ask fo
   });
 });
 
+describe('every module the browser imports is served AS a module — D-0417', () => {
+  // The defect this pins shipped in slice 3 of `D-0404` and was found only when the browser
+  // suite finally drove the terminal: `serveStatic`'s media-type table had `.js` and no `.mjs`,
+  // so every `.mjs` fell through to `application/octet-stream`. A browser REFUSES an
+  // `application/octet-stream` module script outright — "Strict MIME type checking is enforced
+  // for module scripts per HTML spec" — and `nosniff` (correctly) forbids it from guessing. The
+  // status was 200, the bytes were right, and the import failed anyway.
+  //
+  // Nothing served to a browser had a `.mjs` extension until that slice, which is why a route
+  // added in slice 1 and tested above still looked complete. The test that existed asserted a
+  // JavaScript media type for ONE `.js` file; what was missing was the sweep, so the sweep is
+  // what is written here rather than a second single case.
+  const BROWSER_ROOT = join(repoRoot, 'apps/webui-static');
+
+  /** Every relative specifier the shipped browser modules actually name — static `from '…'` and
+   *  the dynamic `import('…')` that pulls in the terminal. Read from the source, so a file
+   *  added later is covered without editing this test. */
+  function specifiersOf(file) {
+    const source = readFileSync(join(BROWSER_ROOT, file), 'utf8');
+    return [...source.matchAll(/(?:from|import)\s*\(?\s*'(\.[^']+)'/g)].map((match) => match[1]);
+  }
+
+  test('.mjs is served with a JavaScript media type', async () => {
+    const response = await fetch(`${base}/shared/coden/terminal-input.mjs`);
+    assert.equal(response.status, 200, 'the shared terminal input module is not served at all');
+    assert.match(response.headers.get('content-type') ?? '', /javascript/,
+      'a module script served as anything but JavaScript is REFUSED by the browser, not sniffed — nosniff is set on this route');
+  });
+
+  test('every module the WebUI imports answers 200 with a media type a browser will execute', async () => {
+    // The entry module and the one dynamic import it makes. `coden-terminal.js` is where the
+    // `.mjs` specifiers live, and it is the file whose imports were all refused.
+    const entries = ['app.js', 'coden-terminal.js'];
+    const failures = [];
+    for (const entry of entries) {
+      for (const specifier of specifiersOf(entry)) {
+        const url = new URL(specifier, `${base}/${entry}`);
+        const response = await fetch(url);
+        const type = response.headers.get('content-type') ?? '';
+        if (response.status !== 200 || !/javascript/.test(type)) {
+          failures.push(`${entry} imports ${specifier} → ${response.status} ${type || '(no content-type)'}`);
+        }
+      }
+    }
+    assert.deepEqual(failures, [], `modules the browser will refuse:\n${failures.join('\n')}`);
+  });
+
+  test('the vendored emulator is one of them, and it is 345 KB of module', async () => {
+    // Named explicitly because it is the largest and the newest: `D-0413` vendored it, and a
+    // vendored dependency that 404s or serves as a download is the same class of defect with a
+    // longer diagnosis.
+    const response = await fetch(`${base}/vendor/xterm/xterm.mjs`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /javascript/);
+    assert.ok(Number(response.headers.get('content-length')) > 100_000, 'the emulator served empty');
+  });
+});
+
+describe('the terminal document, and the policy it alone carries — D-0418', () => {
+  // The relaxation is real and it is deliberate, so it is pinned from BOTH sides: this document
+  // may apply inline styles (xterm.js cannot render otherwise — 72 refusals measured in a real
+  // browser, from three injected <style> elements and one `style` attribute per painted cell),
+  // and no other document may. A scoped exception nobody tests is an exception that spreads.
+  test('the terminal document is served, and may apply inline styles', async () => {
+    const response = await fetch(`${base}/coden-terminal.html`);
+    assert.equal(response.status, 200);
+    const csp = response.headers.get('content-security-policy') ?? '';
+    assert.match(csp, /style-src 'self' 'unsafe-inline'/, 'the emulator cannot paint without this');
+    // Everything that is NOT the exception stays exactly as strict, and two things are stricter.
+    assert.match(csp, /script-src 'self'/);
+    assert.doesNotMatch(csp, /unsafe-eval/);
+    assert.match(csp, /form-action 'none'/, 'this document submits nothing and should not be allowed to');
+    assert.match(csp, /object-src 'none'/);
+    assert.match(csp, /base-uri 'none'/);
+  });
+
+  test('it is framable by this origin and by nothing else', async () => {
+    const response = await fetch(`${base}/coden-terminal.html`);
+    assert.match(response.headers.get('content-security-policy') ?? '', /frame-ancestors 'self'/);
+    assert.equal(response.headers.get('x-frame-options'), 'SAMEORIGIN',
+      'a document nothing may frame cannot be embedded by the page that needs it');
+  });
+
+  test('every OTHER document keeps the strict policy, inline styles included', async () => {
+    for (const path of ['/', '/index.html']) {
+      const response = await fetch(`${base}${path}`);
+      const csp = response.headers.get('content-security-policy') ?? '';
+      assert.match(csp, /style-src 'self';/, `${path} inherited the terminal's relaxation`);
+      assert.doesNotMatch(csp, /unsafe-inline/, `${path} inherited the terminal's relaxation`);
+      assert.match(csp, /frame-ancestors 'none'/, `${path} became framable`);
+      assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    }
+  });
+
+  test('the exception is matched on the resolved path, not on the request string', async () => {
+    // `/coden-terminal.html/../index.html` must not carry the relaxed policy just because the
+    // request text contains the magic name. The URL parser normalises this before routing, and
+    // the check is written against the RESOLVED file either way.
+    const response = await fetch(`${base}/coden-terminal.html/../index.html`);
+    assert.doesNotMatch(response.headers.get('content-security-policy') ?? '', /unsafe-inline/);
+  });
+
+  test('the module it loads is served, and so is the emulator it imports', async () => {
+    for (const path of ['/coden-terminal-frame.js', '/coden-terminal.js', '/vendor/xterm/xterm.mjs']) {
+      const response = await fetch(`${base}${path}`);
+      assert.equal(response.status, 200, `${path} is missing — the embedded terminal would be a blank frame`);
+      assert.match(response.headers.get('content-type') ?? '', /javascript/, `${path} would be refused as a module`);
+    }
+  });
+});
+
 describe('the second root is contained as tightly as the first', () => {
   test('it does not become a way to read the repository', async () => {
     // RAW requests, not `fetch`. `fetch` resolves the URL before it sends, so

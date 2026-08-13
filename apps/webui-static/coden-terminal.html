@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+
+     The CodeN Evolution terminal, in a document of its own — D-0418.
+
+     It is embedded by `#/coden` in a same-origin iframe and is never navigated to directly by a
+     person. It exists because xterm.js cannot render under `style-src 'self'`: it injects three
+     <style> elements and writes a `style` attribute per painted cell, and neither a nonce nor a
+     hash can cover the second (the values are per-cell and unbounded). Measured: 72 refusals.
+
+     Rather than lower the whole product's policy to what a rendering library needs, the
+     relaxation is confined to this document — which holds one element, loads one module, submits
+     no form, navigates nowhere and carries no operator data. `services/.../http-security.mjs`
+     states the policy and `server.mjs` applies it to this path alone.
+
+     There is no inline script and no inline style here on purpose: `script-src 'self'` is
+     untouched, and the only thing this document relaxes is the one thing it must. -->
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeN Evolution — terminal</title>
+  <!-- The product's tokens, so the emulator's palette is derived from the SAME nine themes the
+       rest of the interface uses rather than from xterm's built-in defaults. The audit measured
+       what happens without this: `span.xterm-dim` at ratio 1.31 on the light theme. -->
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./vendor/xterm/xterm.css">
+</head>
+<body class="coden-terminal-document">
+  <!-- `role="application"` and the accessible name live on the PARENT's region, which also owns
+       the visible status line. This host is the emulator's mount point and nothing else; giving
+       it a second role would announce the same surface twice. -->
+  <div id="terminalHost" class="coden-terminal-frame-host"></div>
+  <noscript>
+    <p>CodeN Evolution is a terminal and needs JavaScript. Reach the same session over
+      <code>ssh</code> with <code>coden_evolution</code>.</p>
+  </noscript>
+  <script type="module" src="./coden-terminal-frame.js"></script>
+</body>
+</html>

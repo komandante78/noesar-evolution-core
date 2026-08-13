@@ -201,12 +201,28 @@ window.__a11y = (() => {
       const failing = [];
       let unresolved = 0;
       let measured = 0;
+      let transparent = 0;
       for (const element of root.querySelectorAll('*')) {
         const text = ownText(element);
         if (!text || !visible(element)) continue;
         const style = getComputedStyle(element);
         const foreground = parseColor(style.color);
         if (!foreground) continue;
+        // Text painted in a FULLY transparent colour has no visual presentation, and 1.4.3 is
+        // about the visual presentation of text — there is nothing to measure. Every ratio
+        // against rgba(0,0,0,0) comes out as 1, which reads as the worst possible failure
+        // and is in fact the absence of a measurement.
+        //
+        // Found by D-0417, when the terminal first mounted in a real browser: xterm.js's
+        // screen-reader mirror (div.live-region, 1x1, left:-9999px, overflow:hidden) is
+        // exactly this — text that exists for assistive technology and is painted by nothing.
+        // It produced 1 failure in the default theme and 18 across the nine, all one element.
+        //
+        // DECLARED, not silent, like the disabled-control exclusion below: the count is
+        // returned and printed with the result. This cannot exempt readable text — text a
+        // sighted person can read is by definition not painted in a transparent colour — and
+        // an element that becomes opaque later is measured on the pass that sees it opaque.
+        if (foreground.a === 0) { transparent += 1; continue; }
         const backdrop = backdrops(element);
         if (backdrop.unresolved) { unresolved += 1; continue; }
         const resolvedForeground = foreground.a < 1 ? blend(foreground, backdrop.layers[0]) : foreground;
@@ -225,7 +241,7 @@ window.__a11y = (() => {
           });
         }
       }
-      return { failing, unresolved, measured };
+      return { failing, unresolved, measured, transparent };
     },
     // A DISABLED control is not interactive: it is not in the tab order, cannot receive
     // focus and cannot be activated, so 2.4.7 and 2.5.8 do not apply to it. Counting it
@@ -472,6 +488,19 @@ const SURFACES = [
   })),
 ];
 async function openSurface(surface) {
+  // Leave CodeN first, and wait for the embedded terminal document to be gone — `D-0418`. The
+  // terminal holds a WebSocket opened by a document inside an iframe; when a navigation tears
+  // that frame down the request never reports finished, and `networkidle2` then waits for an
+  // idle that cannot arrive. Measured: the audit aborted at `target-size` the first time a
+  // surface after `#/coden` was opened. The product is right — a person navigating away sees a
+  // socket close — so what is fixed is the assumption that idle is always reachable.
+  if (await page.$('#codenTerminalHost iframe')) {
+    await page.evaluate(() => { window.location.hash = '#/home'; });
+    await page.waitForFunction(
+      () => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
+      { timeout: 15000 },
+    ).catch(() => { /* nothing embedded is the state we wanted anyway */ });
+  }
   await page.goto(`${BASE}/${surface.hash}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector(surface.ready, { timeout: 15000 });
 }
@@ -611,6 +640,7 @@ try {
   const contrastFailures = [];
   let contrastMeasured = 0;
   let contrastUnresolved = 0;
+  let contrastTransparent = 0;
   for (const surface of SURFACES) {
     await openSurface(surface);
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -620,6 +650,7 @@ try {
     }, surface);
     contrastMeasured += outcome.measured;
     contrastUnresolved += outcome.unresolved;
+    contrastTransparent += outcome.transparent;
     // One representative per distinct selector+colour, or the list is unreadable.
     for (const failure of outcome.failing) {
       const key = `${failure.selector}|${failure.color}|${failure.fontSize}`;
@@ -633,7 +664,7 @@ try {
   check('text meets the AA contrast minimum (1.4.3)',
     contrastFailures.length === 0 && shellFailures.length === 0,
     `${contrastFailures.length} distinct in views + ${shellFailures.length} in chrome, over ${contrastMeasured} measured: ${JSON.stringify([...contrastFailures, ...shellFailures].slice(0, 6).map(({ key, ...rest }) => rest))}`);
-  note('contrast method', `worst-case across every gradient colour stop; ${contrastUnresolved} elements unresolved (raster background-image) and NOT counted as passing`);
+  note('contrast method', `worst-case across every gradient colour stop; ${contrastUnresolved} elements unresolved (raster background-image) and NOT counted as passing; ${contrastTransparent} skipped as fully transparent text (no visual presentation to measure — D-0417)`);
 
   // --- contrast in EVERY theme ---------------------------------------------
   // A theme that is offered and cannot be read is a false feature, and it is the failure a
@@ -651,6 +682,7 @@ try {
   const THEME_SURFACES = ['home', 'coden', 'workflows', 'settings/security', 'settings/appearance'];
   const themeFailures = [];
   let themeMeasured = 0;
+  let themeTransparent = 0;
   for (const name of THEME_SURFACES) {
     const surface = SURFACES.find((entry) => entry.name === name);
     await openSurface(surface);
@@ -666,6 +698,7 @@ try {
         foot: window.__a11y.contrastFailures('footer'),
       }));
       themeMeasured += outcome.measured + chrome.top.measured + chrome.side.measured + chrome.foot.measured;
+      themeTransparent += outcome.transparent + chrome.top.transparent + chrome.side.transparent + chrome.foot.transparent;
       for (const failure of [...outcome.failing, ...chrome.top.failing, ...chrome.side.failing, ...chrome.foot.failing]) {
         themeFailures.push({ theme, surface: name, selector: failure.selector, ratio: failure.ratio, color: failure.color });
       }
@@ -675,7 +708,7 @@ try {
   const themesAffected = [...new Set(themeFailures.map((entry) => entry.theme))];
   check('every theme meets the AA contrast minimum (1.4.3, UI-020/UI-021)',
     themeFailures.length === 0,
-    `${themeFailures.length} failures over ${themeMeasured} measurements in ${THEME_IDS.length} themes${themesAffected.length ? ` — themes affected: ${themesAffected.join(', ')}` : ''}: ${JSON.stringify(themeFailures.slice(0, 6))}`);
+    `${themeFailures.length} failures over ${themeMeasured} measurements in ${THEME_IDS.length} themes (${themeTransparent} skipped as transparent text, D-0417)${themesAffected.length ? ` — themes affected: ${themesAffected.join(', ')}` : ''}: ${JSON.stringify(themeFailures.slice(0, 6))}`);
   // Distinct (theme, selector) pairs rather than every instance: one wrong token shows up on
   // hundreds of elements, and a list of hundreds hides how many DISTINCT problems there are —
   // which is the number that says whether the fix is one change or twenty.

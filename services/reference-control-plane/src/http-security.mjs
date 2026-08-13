@@ -1,15 +1,45 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-export function securityHeaders({ contentSecurityPolicy = false, secureTransport = false } = {}) {
+
+/**
+ * The policy for the ONE document that hosts the terminal emulator — `D-0418`.
+ *
+ * xterm.js cannot render under `style-src 'self'`. Measured in a real browser: 72 refusals, from
+ * three injected `<style>` elements (viewport, dimensions, theme) and from `_addStyle`, which
+ * writes a `style` ATTRIBUTE per painted cell. A nonce cannot cover style attributes, the values
+ * are per-cell and unbounded so hashes cannot either, and the vendored bundle has no nonce
+ * support at all (0 occurrences of the word). The relaxation is unavoidable; what is avoidable
+ * is granting it to the document where the operator's data, forms and session live.
+ *
+ * So it is granted HERE and only here: a document that contains one element, loads one module,
+ * and has no form, no navigation and no operator data of its own. Everything else stays exactly
+ * as strict as it was — `script-src 'self'`, no `unsafe-eval`, no external origin — and two
+ * things are TIGHTER than the main policy: `form-action 'none'` (this document submits nothing)
+ * and no `media-src` (it plays nothing).
+ *
+ * `frame-ancestors 'self'` and `x-frame-options: SAMEORIGIN` replace `'none'`/`DENY`, because a
+ * document nothing may frame cannot be embedded by the page that needs it. Same-origin only:
+ * another site still cannot frame it.
+ */
+const EMBEDDED_TERMINAL_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+const MAIN_CSP = "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+
+export function securityHeaders({ contentSecurityPolicy = false, secureTransport = false, embeddedTerminal = false } = {}) {
   const headers = {
     'x-content-type-options': 'nosniff',
-    'x-frame-options': 'DENY',
+    'x-frame-options': embeddedTerminal ? 'SAMEORIGIN' : 'DENY',
     'referrer-policy': 'no-referrer',
-    'cross-origin-opener-policy': 'same-origin',
+    // `cross-origin-opener-policy` governs a TOP-LEVEL browsing context's relationship with the
+    // window that opened it. A document that exists only inside a frame has no such window, so
+    // the header does nothing there but produce a console error on every plain-HTTP install
+    // ("the URL's origin was untrustworthy") — noise in exactly the place a real console error
+    // must stand out. Dropped for the embedded document only; every other response keeps it.
+    ...(embeddedTerminal ? {} : { 'cross-origin-opener-policy': 'same-origin' }),
     'cross-origin-resource-policy': 'same-origin',
     'permissions-policy': 'camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()',
     'cache-control': 'no-store',
   };
-  if (contentSecurityPolicy) headers['content-security-policy'] = "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+  if (contentSecurityPolicy) headers['content-security-policy'] = embeddedTerminal ? EMBEDDED_TERMINAL_CSP : MAIN_CSP;
   if (secureTransport) headers['strict-transport-security'] = 'max-age=31536000; includeSubDomains';
   return headers;
 }

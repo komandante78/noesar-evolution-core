@@ -440,6 +440,45 @@ export function menuFrame(parsed, { commands = [], addresses = [] } = {}) {
 }
 
 /**
+ * The menu as the RENDERER wants it — one shaper, both shells (`D-0420`).
+ *
+ * `menuFrame` answers what the menu *is*: a level, a group, the hits, and — at group level —
+ * the rows, under the key `groups`. `tui-screen.mjs` renders from a different shape: it reads
+ * the rows from `groupRows`, because it also carries the grouping FUNCTION under `groups`, and
+ * one field holding a function in one state and an array in another is how a renderer ends up
+ * calling an array. Two shapes, one boundary, and until this function existed each shell did
+ * the translation itself.
+ *
+ * The terminal shell did it (`tui-fullscreen.mjs`). The browser shell spread the frame straight
+ * into the view — `{ ...frame }` — so `groupRows` was never set and `groups` held the row array
+ * where the renderer expected a function. Measured in a real browser: typing `/` in the embedded
+ * terminal drew **"nothing to show"**, on an account holding every permission, while the DOM
+ * prompt three centimetres away drew all seven groups from the same registry. Exactly the
+ * divergence `CE-033` forbids ("le due shell non divergono in nessun punto"), and no unit test
+ * could see it because both halves were correct on their own.
+ *
+ * So the translation lives HERE, is used by both, and is tested for the shape rather than for
+ * the pixels. A third shell gets it right by construction.
+ */
+export function menuViewModel(frame, { grouping, menu = null, note = '', keys = null, selected = 0 } = {}) {
+  if (!frame) return null;
+  return {
+    level: frame.level,
+    group: frame.group,
+    // The rows, under the name the renderer reads.
+    groupRows: frame.groups ?? [],
+    hits: frame.hits ?? [],
+    selected,
+    // The grouping function, under the name the renderer reads for it.
+    groups: grouping,
+    accessFiltered: menu?.accessFiltered ?? false,
+    hidden: menu?.hidden ?? 0,
+    note,
+    keys: keys ?? promptKeys(frame),
+  };
+}
+
+/**
  * WHAT THE NEXT KEY DOES, right now — property 6 of the approved design, and the half of
  * "terminal style" that is functional rather than decorative.
  *

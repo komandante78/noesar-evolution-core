@@ -30,7 +30,7 @@ import { Terminal } from './vendor/xterm/xterm.mjs';
 // The pure decisions live in the shared tree so the suite can import them without a browser.
 import { decodeInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
 import { SCREEN, renderFrame } from '../shared/coden/tui-screen.mjs';
-import { createView, say, planTurn, promptKeys, menuFrame, startForm, CLEARED_NOTE } from './coden-view-model.js';
+import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE } from './coden-view-model.js';
 import {
   accountFromUser, menuFor, groupMenu, hiddenNote, resolveCommand, parseCommandPrompt,
 } from '../shared/coden/agent-commands.js';
@@ -71,8 +71,22 @@ export const TerminalState = Object.freeze({
  * the page only connects when CodeN is the visible destination, because a socket held open by a
  * background view is a viewport slot spent on a screen nobody is looking at.
  */
-export function mountCodenTerminal({ host, statusEl = null, location = window.location, WebSocketImpl = window.WebSocket } = {}) {
+export function mountCodenTerminal({
+  host,
+  statusEl = null,
+  location = window.location,
+  WebSocketImpl = window.WebSocket,
+  /** The emulator's palette, derived by the caller from the product's theme tokens (`D-0418`).
+   *  Null means xterm's built-in colours, which is what the audit caught: its own dark palette
+   *  against the light theme measured 1.31 on `span.xterm-dim`, well under AA. */
+  theme = null,
+  /** Called on every state change, with `(state, detail)`. The embedded document has no status
+   *  line of its own — the visible one belongs to the parent's region — so this is how the state
+   *  crosses the frame boundary without a second writer for it. */
+  onState = null,
+} = {}) {
   const terminal = new Terminal({
+    ...(theme ? { theme } : {}),
     fontFamily: FONT_STACK,
     fontSize: 13,
     lineHeight: 1.2,
@@ -117,6 +131,9 @@ export function mountCodenTerminal({ host, statusEl = null, location = window.lo
       statusEl.textContent = detail || DEFAULT_STATUS[next];
     }
     host.dataset.terminalState = next;
+    // After the local writes, never instead of them: a caller that throws in its callback must
+    // not leave this surface holding a state it has already left.
+    if (onState) { try { onState(next, detail || DEFAULT_STATUS[next]); } catch { /* the caller's problem, not this terminal's */ } }
   };
 
   const draw = () => {
@@ -254,9 +271,23 @@ export function mountCodenTerminal({ host, statusEl = null, location = window.lo
    *  wraps it (`record`), so the two shells put the same shapes into the same transcript. */
   const record = (kind, text, detail) => say(view, kind, text, detail);
 
-  /** The entries this account is offered, from the one registry, filtered and declared filtered
-   *  — the same call the terminal shell makes. A shell that built its own list is `PANEL_NAMES`. */
-  const offered = () => menuFor(account);
+  /** The MENU this account is offered — `{ entries, accessFiltered, hidden, hiddenBy }`, from the
+   *  one registry, filtered and declared filtered. A shell that built its own list is
+   *  `PANEL_NAMES`. */
+  const offeredMenu = () => menuFor(account);
+
+  /** The offered entries as a LIST — commands first, then the address space — which is what
+   *  `planTurn`, `resolveCommand` and `groupMenu` all take (`D-0421`).
+   *
+   * This distinction is not pedantry, it is the defect. This file used to hand the menu OBJECT
+   * to all three, and every one of them does `entries.filter` / `entries.find` / `commands.map`:
+   * `/help` threw `entries.filter is not a function` inside an unawaited `submit()`, so the
+   * screen did nothing at all, and no typed command could be resolved either. The terminal shell
+   * passes `[...menu.entries, ...addressEntries(addressBook)]` and always did — the two shells
+   * had a helper with the SAME NAME (`offered`) returning two different types, which is how the
+   * divergence survived a parity suite that reads both files. Renamed here so the name says
+   * which one it is. */
+  const offeredEntries = () => [...offeredMenu().entries, ...addressEntries(addressBook)];
 
   /** The menu frame under the current prompt. `menuFrame(parsed, {commands, addresses})`, where
    *  `parsed` comes from `parseCommandPrompt` — not a bag of functions, which is what the first
@@ -265,9 +296,13 @@ export function mountCodenTerminal({ host, statusEl = null, location = window.lo
   function refreshMenu() {
     const prompt = String(view.prompt ?? '');
     if (!prompt.startsWith('/')) { view.menu = null; return; }
-    const menu = offered();
+    const menu = offeredMenu();
     const frame = menuFrame(parseCommandPrompt(prompt), { commands: menu.entries, addresses: addressBook });
-    view.menu = frame ? { ...frame, note: hiddenNote(menu), keys: promptKeys(frame) } : null;
+    // `menuViewModel`, not a spread (`D-0420`). `{ ...frame }` left `groupRows` unset and put the
+    // row array under `groups`, where the renderer expects the grouping FUNCTION — so a typed
+    // `/` drew "nothing to show" in this shell while the terminal shell, which did the same
+    // translation by hand, drew all seven groups. One shaper now, shared by both.
+    view.menu = menuViewModel(frame, { grouping: groupMenu, menu, note: hiddenNote(menu) });
   }
 
   terminal.onData((data) => {
@@ -312,11 +347,11 @@ export function mountCodenTerminal({ host, statusEl = null, location = window.lo
    *  same four collaborators. Every branch below mirrors `tui-fullscreen.mjs`'s handling so the
    *  two shells give the same answer to the same line — `CE-033`'s "le due shell non divergono". */
   async function submit(typed) {
-    const menu = offered();
+    const entries = offeredEntries();
     const turn = planTurn(typed, {
-      resolve: (text) => resolveCommand(text, menu),
+      resolve: (text) => resolveCommand(text, entries),
       parse: parseCommandPrompt,
-      commands: menu,
+      commands: entries,
       groups: groupMenu,
     });
 
@@ -391,6 +426,14 @@ export function mountCodenTerminal({ host, statusEl = null, location = window.lo
     state: () => state,
     resize,
     terminal,
+    /** Re-colour in place when the operator changes theme. Not a remount: a remount would drop
+     *  the socket and the transcript to change a palette. */
+    setTheme(palette) {
+      if (!palette) return;
+      terminal.options.theme = palette;
+      draw();
+    },
+    focus() { terminal.focus(); },
     dispose() {
       disposed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);

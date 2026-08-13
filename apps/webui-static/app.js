@@ -95,9 +95,22 @@ const ACCENT_TOKENS=['accent-fill-from','accent-fill-to','accent-link','accent-b
 function readTheme(){try{const value=localStorage.getItem(THEME_KEY);return THEMES.some((theme)=>theme.id===value)?value:'midnight';}catch{return 'midnight';}}
 function readAccent(){try{const value=localStorage.getItem(ACCENT_KEY);return parseHex(value)?value:'';}catch{return '';}}
 function tokenValue(name){return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();}
+// `D-0416`, and it is here rather than beside the functions that use it for exactly the reason
+// that decision exists. `applyTheme()` runs during `initAppearance()`, near the START of the boot
+// sequence, and it now tells the embedded terminal about the change — which reads this binding.
+// A `let` declared further down the file would be in the temporal dead zone at that moment and
+// would throw `Cannot access 'codenTerminal' before initialization`, killing the whole module.
+// That defect shipped once (slice 3) and cost the entire WebUI; `webui-boot-order.test.mjs`
+// pins the invariant so it cannot ship twice.
+let codenTerminal=null;
+const CODEN_TERMINAL_STATUS={idle:'Not connected.',connecting:'Connecting to the session…',live:'Attached.',reconnecting:'Reconnecting…',refused:'Not permitted to attach.',failed:'This terminal could not start.'};
 function applyTheme(id){
   document.documentElement.dataset.theme=id;
   try{localStorage.setItem(THEME_KEY,id);}catch{}
+  // D-0418: the emulator lives in another document and cannot see this attribute change.
+  // Told rather than left to guess — a terminal that keeps the old palette after a theme
+  // change is the divergence this project spends its parity rules on.
+  codenTerminalTheme?.();
 }
 function applyAccent(hex){
   const root=document.documentElement;
@@ -4378,6 +4391,7 @@ function readStep(){const value=Number(localStorage.getItem(TEXT_KEY));return TE
 function applyTextStep(step){
   const index=Math.min(Math.max(Number(step)||1,1),TEXT_STEPS.length);
   document.documentElement.style.setProperty('--text-scale',String(TEXT_STEPS[index-1]));
+  codenTerminalTheme?.();
   $$('[data-text-step]').forEach((button)=>button.setAttribute('aria-pressed',String(Number(button.dataset.textStep)===index)));
   try{localStorage.setItem(TEXT_KEY,String(TEXT_STEPS[index-1]));}catch{}
   return index;
@@ -5877,45 +5891,90 @@ initSessions();
 initChatNav();
 initBench();
 initChatVoice();
-initRouter();
-initializeAuth()
-  .then(()=>loadEffectiveZone())
-  .catch((error)=>authError(error.message));
-
 // --- D-0404 slice 3 · attaching the CodeN terminal ------------------------------------------
 //
 // Dynamic import, and the reason is measured rather than stylistic: `xterm.mjs` is 345 KB, and
 // a static import would put it on the critical path of EVERY destination — Chat, Settings,
 // Home — for a surface most loads never open. Imported on first attach, cached by the module
 // system afterwards, so the cost is paid once and only by someone who went to CodeN.
-let codenTerminal=null;
-let codenTerminalLoading=null;
+//
+// **The binding this comment used to introduce now lives at the TOP of the module** (`D-0416`),
+// because the boot path reaches it earlier than this line: `initAppearance()` calls
+// `applyTheme()`, which tells the embedded terminal about the theme, which reads `codenTerminal`.
+// `attachCodenTerminal`/`detachCodenTerminal` are function declarations and hoist, so they are
+// callable long before their text; a `let` is not, and a read of one before its declaration line
+// throws `Cannot access 'codenTerminal' before initialization` — an uncaught module error that
+// killed the WHOLE WebUI at boot when slice 3 shipped it, auth gate included. Anything the boot
+// sequence can reach is declared above the first line of that sequence.
+initRouter();
+initializeAuth()
+  .then(()=>loadEffectiveZone())
+  .catch((error)=>authError(error.message));
+
+// `D-0418` · the emulator lives in its OWN document, embedded here.
+//
+// It used to be imported straight into this page, and that could not work: xterm.js injects three
+// <style> elements and writes a `style` attribute per painted cell, all refused by
+// `style-src 'self'` — 72 refusals, measured in a browser, with the terminal attached and unable
+// to paint. A nonce cannot cover style attributes and hashes cannot cover per-cell values, so the
+// relaxation is unavoidable; giving it to THIS document, where every form, session and piece of
+// operator data lives, is not. `coden-terminal.html` gets it instead, and it contains one
+// element and one module.
+//
+// What crosses the boundary is deliberately narrow: state OUT (so the visible status line, the
+// live region and `data-terminal-state` stay on this side, where the rest of the interface and
+// the accessibility tree can see them), theme IN. Keystrokes, geometry and the socket never
+// cross — they belong to the document the emulator is in, which is why there is no input
+// protocol here to get wrong.
+function codenTerminalState(state,detail){
+  const host=$('#codenTerminalHost');const statusEl=$('#codenTerminalStatus');
+  if(host)host.dataset.terminalState=state;
+  if(statusEl){statusEl.dataset.state=state;statusEl.textContent=detail||CODEN_TERMINAL_STATUS[state]||state;}
+}
+function codenTerminalTheme(){
+  // Sent on ready and on every appearance change: the child derives its palette from the same
+  // tokens this document uses, so the emulator follows all nine themes instead of being a tenth.
+  const frame=codenTerminal?.contentWindow;
+  if(!frame)return;
+  frame.postMessage({channel:'coden-terminal',type:'theme',
+    theme:document.documentElement.dataset.theme??'midnight',
+    textScale:getComputedStyle(document.documentElement).getPropertyValue('--text-scale').trim()},window.location.origin);
+}
+window.addEventListener('message',(event)=>{
+  // Same origin AND the window we framed. Anything else is dropped: a page that acts on
+  // whatever posts to it has handed its interface to whoever wrote the message.
+  if(event.origin!==window.location.origin)return;
+  if(!codenTerminal||event.source!==codenTerminal.contentWindow)return;
+  const data=event.data;
+  if(!data||data.channel!=='coden-terminal')return;
+  if(data.type==='ready'){codenTerminalTheme();return;}
+  if(data.type==='state')codenTerminalState(data.state,data.detail);
+});
 function attachCodenTerminal(){
-  if(codenTerminal||codenTerminalLoading)return;
+  if(codenTerminal)return;
   const host=$('#codenTerminalHost');
   if(!host)return;
-  const statusEl=$('#codenTerminalStatus');
-  codenTerminalLoading=import('./coden-terminal.js')
-    .then(({mountCodenTerminal})=>{
-      // The destination may have been left again while the module was in flight. Mounting
-      // then would attach a viewport to a screen that is no longer open — the exact waste
-      // this whole function exists to avoid.
-      if(!$('#view-coden')?.classList.contains('active')){codenTerminalLoading=null;return;}
-      codenTerminal=mountCodenTerminal({host,statusEl});
-      codenTerminalLoading=null;
-    })
-    .catch((error)=>{
-      codenTerminalLoading=null;
-      // Said on the surface, not only to the console. A terminal region that stays blank
-      // because a module failed to load is indistinguishable from one that is merely slow.
-      if(statusEl){statusEl.dataset.state='failed';statusEl.textContent=`This terminal could not start: ${error.message}`;}
-      host.dataset.terminalState='failed';
-    });
+  codenTerminalState('connecting');
+  const frame=document.createElement('iframe');
+  frame.className='coden-terminal-embed';
+  frame.src='./coden-terminal.html';
+  // Named for assistive technology and for anyone reading the DOM. The region's own
+  // `role="application"`, name and live-region status stay on the parent element around it.
+  frame.title='CodeN Evolution terminal';
+  // Nothing this document does not already allow: same-origin (the session cookie must reach
+  // `WS /ws/coden`), scripts, and nothing else — no forms, no popups, no top-level navigation.
+  frame.setAttribute('sandbox','allow-scripts allow-same-origin');
+  frame.addEventListener('error',()=>codenTerminalState('failed','This terminal could not start.'));
+  host.appendChild(frame);
+  codenTerminal=frame;
 }
 function detachCodenTerminal(){
   if(!codenTerminal)return;
-  // Disposed rather than hidden: the socket, the ResizeObserver and the reconnect timer all
-  // belong to it, and a hidden terminal keeps every one of them alive.
-  codenTerminal.dispose();
+  // Removing the iframe destroys the document inside it, and with it the socket, the
+  // ResizeObserver and the reconnect timer. That is the whole disposal — there is nothing left
+  // on this side to leak, which is a property of the boundary rather than of remembering to
+  // call `dispose()`.
+  codenTerminal.remove();
   codenTerminal=null;
+  codenTerminalState('idle','Not connected.');
 }

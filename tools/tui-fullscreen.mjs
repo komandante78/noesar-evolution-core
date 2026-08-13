@@ -31,7 +31,7 @@ import {
 import {
   createView, say, planTurn, detailLines, gitSummary, reasoningSummary, frequencySummary,
   divergenceLines, divergenceSummary, CLEARED_NOTE, startForm, fillForm,
-  addressEntries, menuFrame, promptKeys,
+  addressEntries, menuFrame, menuViewModel,
 } from '../apps/webui-static/coden-view-model.js';
 // Phase 3c: the address views, which BOTH terminal shells render. They are not imported from
 // `tui-client.mjs` — that file imports this one, and a table two shells share belongs to
@@ -115,11 +115,10 @@ export async function runFullScreen({
     const parsed = parseCommandPrompt(view.prompt);
     if (!parsed) { view.menu = null; return draw(); }
     const frame = menuFrame(parsed, { commands: menu.entries, addresses: addressBook });
-    view.menu = {
-      level: frame.level, group: frame.group, groupRows: frame.groups, hits: frame.hits, selected: 0,
-      groups: groupMenu, accessFiltered: menu.accessFiltered, hidden: menu.hidden,
-      note: hiddenNote(menu), keys: promptKeys(frame),
-    };
+    // One shaper, both shells (D-0420). This translation used to live here, by hand, and the
+    // browser shell did not have it — which is why a typed / drew nothing there and everything
+    // here. Same call now, so the two cannot drift apart again without the shared test failing.
+    view.menu = menuViewModel(frame, { grouping: groupMenu, menu, note: hiddenNote(menu) });
     return draw();
   };
 

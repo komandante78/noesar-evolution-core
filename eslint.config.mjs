@@ -82,6 +82,10 @@ const BROWSER_GLOBALS = {
   EventSource: 'readonly',
   WebSocket: 'readonly',
   CustomEvent: 'readonly',
+  // `D-0420`: the browser suite dispatches one to prove which input path an embedded emulator
+  // actually accepts. Same category as `CustomEvent` and `Event` above — a real browser global
+  // that was simply never needed until a check needed it.
+  InputEvent: 'readonly',
   Event: 'readonly',
   DOMParser: 'readonly',
   MutationObserver: 'readonly',

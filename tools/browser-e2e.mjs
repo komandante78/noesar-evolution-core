@@ -131,9 +131,21 @@ await page.setViewport({ width: 1440, height: 900 });
 // Everything the page complains about is collected. A console error or a failed request
 // is a finding even when the visible outcome looked correct.
 const consoleErrors = [];
+/** The one known, open, MEASURED defect that would otherwise show up as a failure in every
+ *  generic "no console errors" row on every route that mounts the terminal — `D-0418`: xterm.js
+ *  styles itself with inline styles and injected <style> elements, and `style-src 'self'`
+ *  refuses them. It is not filtered away: the `coden-terminal` step asserts it directly, and
+ *  that row is RED until the Owner decides how the emulator is allowed to paint. What the
+ *  separation buys is that one defect reads as one failure instead of four, so the day a
+ *  SECOND console error appears on those routes it is still visible. Removed the moment
+ *  `D-0418` closes — a filter that outlives its finding is how a suite stops looking. */
+const CSP_INLINE_STYLE = /Applying inline style violates/;
+const cspStyleRefusals = [];
 const failedRequests = [];
 page.on('console', (message) => {
-  if (message.type() === 'error') consoleErrors.push(message.text());
+  if (message.type() !== 'error') return;
+  if (CSP_INLINE_STYLE.test(message.text())) { cspStyleRefusals.push(message.text()); return; }
+  consoleErrors.push(message.text());
 });
 page.on('requestfailed', (request) => {
   failedRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`);
@@ -153,6 +165,46 @@ const requestLog = [];
 page.on('request', (request) => { requestLog.push(`${request.method()} ${request.url()}`); });
 function requestWasMade(pathFragment) {
   return requestLog.some((entry) => entry.includes(pathFragment));
+}
+
+/**
+ * Leave CodeN, and wait for the embedded terminal document to be GONE, before any step that
+ * navigates with `waitUntil: 'networkidle2'`.
+ *
+ * This is a harness obligation, not a product defect, and the distinction is worth writing down
+ * so nobody "fixes" the product for it: an attached terminal holds a WebSocket open, a hash
+ * navigation does not reload the document, and Puppeteer's idle wait then sits behind a
+ * connection that is never going to close. A person navigating with a terminal open notices
+ * nothing — there is nothing to notice. Measured in run 6, where one such wait timed out inside
+ * the harness's single `try` and cost 205 later checks.
+ */
+/**
+ * Navigate and wait for the network to settle — with the embedded terminal detached FIRST.
+ *
+ * Every idle-waiting navigation in this file goes through here, because the hazard is not
+ * specific to any one step: the terminal WebSocket is opened by a document inside an iframe,
+ * and when that iframe is torn down by a navigation the request never reports finished. The
+ * idle counter then never returns to its threshold and the wait times out. Measured across
+ * runs 5-8: it killed 226 checks, then 205, then two whole steps, each time somewhere else —
+ * `#/tools` redirects to `#/coden`, which is how a loop over six unrelated destinations ended
+ * up attached to a terminal.
+ *
+ * The product is not at fault and must not be changed for this: a person navigating away from
+ * an open terminal sees a socket close, not a hung page. What is repaired is the harness
+ * assumption that network idle is always reachable.
+ */
+async function gotoIdle(url) {
+  await leaveCodenTerminal();
+  return page.goto(url, { waitUntil: 'networkidle2' });
+}
+
+async function leaveCodenTerminal() {
+  if (!(await page.$('#codenTerminalHost iframe'))) return;
+  await page.evaluate(() => { window.location.hash = '#/home'; });
+  await page.waitForFunction(
+    () => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
+    { timeout: 15000 },
+  );
 }
 
 function resetObservations() {
@@ -199,7 +251,7 @@ async function soft(name, run) {
 try {
   at('bootstrap');
   // --- bootstrap the throwaway Owner through the real forms ----------------
-  await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await gotoIdle(BASE);
   await page.waitForSelector('#setupForm:not(.hidden)', { timeout: 20000 });
   await page.type('#setupToken', SETUP_TOKEN);
   await page.$eval('#setupUsername', (node) => { node.value = ''; });
@@ -313,7 +365,7 @@ try {
   // session cookie survived. This asserts the fixed behaviour in the order that used
   // to break it.
   resetObservations();
-  await page.goto(`${BASE}/#/projects`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/projects`);
   await page.waitForSelector('#projectForm', { timeout: 15000 });
   await page.type('#projectName', 'before reload');
   await clickOrExplain(page, '#projectForm button.primary');
@@ -363,7 +415,7 @@ try {
   for (const surface of SURFACES) {
     const route = surface.route;
     resetObservations();
-    await page.goto(`${BASE}/#/${route}`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/${route}`);
     await page.waitForSelector(surface.ready, { timeout: 15000 });
     // Give the loader a chance to replace its placeholders.
     await new Promise((resolve) => setTimeout(resolve, 1200));
@@ -416,7 +468,7 @@ try {
   // being reachable, or that a gate travels with a page and arrives as decoration. Both
   // are checked here against the running interface rather than against the markup.
   resetObservations();
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   const shell = await page.evaluate(() => ({
     destinations: [...document.querySelectorAll('.nav')].map((node) => node.dataset.view),
     menu: [...document.querySelectorAll('.settings-nav')].map((node) => node.dataset.section),
@@ -467,7 +519,7 @@ try {
   };
   const redirects = [];
   for (const [from, to] of Object.entries(LEGACY)) {
-    await page.goto(`${BASE}/#/${from}`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/${from}`);
     await new Promise((resolve) => setTimeout(resolve, 500));
     const landed = await page.evaluate((expected) => {
       const [view, section = ''] = expected.split('/');
@@ -498,7 +550,7 @@ try {
   // this section — which passes just as well if the panel is broken for the owner too.
   // Without this the redaction could have emptied the one surface that consumes it and
   // nothing here would have noticed.
-  await page.goto(`${BASE}/#/settings/health`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/health`);
   await new Promise((resolve) => setTimeout(resolve, 900));
   const healthPanel = await page.evaluate(() => {
     const node = document.querySelector('#healthComponents');
@@ -522,7 +574,7 @@ try {
     && healthPanel.version !== '—', JSON.stringify(healthPanel));
 
   // --- the sidebar has three ranks, and they are reachable both ways --------
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   const ranks = [];
   const rankOf = () => page.evaluate(() => ({
     rank: document.querySelector('#appShell')?.dataset.sidebar,
@@ -581,14 +633,14 @@ try {
     onScreen: (document.querySelector('#contextPanel')?.getBoundingClientRect().width ?? 0) > 0,
     floating: getComputedStyle(document.querySelector('#contextPanel')).position === 'fixed',
   }));
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.evaluate(() => document.querySelector('[data-panel-rank="floating"]').click());
   await new Promise((resolve) => setTimeout(resolve, 200));
   const homeFloating = await panelOf();
-  await page.goto(`${BASE}/#/projects`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/projects`);
   await new Promise((resolve) => setTimeout(resolve, 300));
   const projectsDefault = await panelOf();
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await new Promise((resolve) => setTimeout(resolve, 300));
   const homeAgain = await panelOf();
   check('the context panel can be docked, floated or sent away',
@@ -625,7 +677,7 @@ try {
   // separate claim. It is now rendered from the server's own declaration, so the check
   // is that the rendered rows came from the API and each one says where it is enforced.
   resetObservations();
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#invariantList li', { timeout: 15000 });
   await new Promise((resolve) => setTimeout(resolve, 1200));
   const invariants = await page.evaluate(() => {
@@ -673,7 +725,7 @@ try {
   // loaded and never re-runs boot. The first version of this check did exactly that and
   // called it a deep link, which would have left the case that matters (open the address in
   // a new tab) untested while reporting PASS.
-  await page.goto(`${BASE}/#/coden/bench/diff`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden/bench/diff`);
   await page.reload({ waitUntil: 'networkidle2' });
   await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
   const diffPanel = await panelBox('[data-bench-panel="diff"]');
@@ -699,7 +751,7 @@ try {
   // not, since 3c — two regions each holding an open panel is a dashboard however few panels
   // each of them has, and §4b.2 draws no side column at all. An address names ONE place, and
   // now exactly one is open.
-  await page.goto(`${BASE}/#/coden/agent/authority`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden/agent/authority`);
   await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
   const authorityPanel = await panelBox('[data-agent-panel="authority"]');
   const benchClosed = await panelBox('[data-bench-panel="diff"]');
@@ -708,7 +760,7 @@ try {
 
   // An address typed wrong must land somewhere real and then say where it landed — the
   // rule an unknown Settings section already follows.
-  await page.goto(`${BASE}/#/coden/bench/no-such-panel`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden/bench/no-such-panel`);
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
   const fallback = await page.evaluate(() => ({
     hash: location.hash,
@@ -759,7 +811,7 @@ try {
   // va". So a bare address now opens none, stays short because that is honest, and the bench is
   // not on the screen at all. Nothing became unreachable: every one of the twenty-five is an
   // address the prompt opens, measured one by one in 3c-1 before any of this was removed.
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
   const bare = await page.evaluate(() => ({
     hash: location.hash,
@@ -792,7 +844,7 @@ try {
   // this project has already shipped a page telling the user to run a client that was not in
   // the image, and a `plan()` whose `status` both shells invented. Both survived unit tests
   // and died the first time anything drove them.
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#codenPrompt', { timeout: 15000 });
   const regions = await page.evaluate(() => ({
     status: Boolean(document.querySelector('#view-coden .coden-bar')),
@@ -944,12 +996,322 @@ try {
   await page.waitForSelector('#view-memory.active', { timeout: 15000 });
   const navigated = await page.evaluate(() => location.hash);
   check('a destination typed in the prompt goes there', navigated === '#/memory', navigated);
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#codenPrompt', { timeout: 15000 });
 
   const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
   check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
 
+  at('coden-terminal');
+  // --- D-0404 slice 3 · the terminal, DRIVEN rather than merely present -------
+  //
+  // `D-0415(a)` closed here. Slice 3 shipped `coden-terminal.js` with 18 unit tests over its
+  // three PURE decisions and nothing else: everything socket-, DOM- and timer-shaped had never
+  // executed in a browser. The first run of THIS suite against that tree failed at `bootstrap`
+  // — the module threw `Cannot access 'codenTerminal' before initialization` and killed the
+  // whole WebUI at boot (`D-0416`). 2514 unit tests were green against exactly that code.
+  //
+  // So what is checked below is the socket, the frames and the keystrokes: the emulator
+  // mounted, the bridge attached, a typed `/` drew the menu the shared renderer produces, a
+  // submitted line came back through `planTurn`, and leaving and returning re-attaches instead
+  // of stacking a second emulator on the first.
+  const terminalMounted = await soft('the terminal mounts and reaches `live` over the bridge', async () => {
+    await page.waitForFunction(
+      () => document.querySelector('#codenTerminalHost')?.dataset.terminalState === 'live',
+      { timeout: 30000 },
+    );
+  });
+  if (terminalMounted) {
+    // The emulator lives in its OWN document since `D-0418`, so everything below is checked on
+    // the side that owns it. The PARENT owns the region, its role, its accessible name and the
+    // visible status line; the CHILD owns the emulator, the socket and the keystrokes. Both are
+    // asserted, because the split is exactly where a surface like this silently comes apart:
+    // a frame that attaches while the parent's status line still says "Not connected" is two
+    // surfaces disagreeing about one fact.
+    const terminalFrame = () => page.frames().find((frame) => frame.url().includes('coden-terminal.html')) ?? null;
+    /** `textContent`, not `innerText`: `innerText` returns only what is visibly laid out, and
+     *  xterm's rows are painted into a subtree whose layout the harness has no reason to trust
+     *  when the question is "did the shared renderer produce this frame". */
+    const screenText = async () => {
+      const frame = terminalFrame();
+      if (!frame) return '';
+      // `.xterm-rows` and NOT the whole host: the host's `textContent` also carries xterm's
+      // injected <style> element and its screen-reader live region, and the stylesheet alone is
+      // hundreds of characters that pushed the actual screen out of every truncated diagnostic
+      // — the first version of this helper reported CSS where it meant to report the frame.
+      return frame.evaluate(() => {
+        const rows = document.querySelector('#terminalHost .xterm-rows');
+        const live = document.querySelector('#terminalHost .live-region');
+        return `${rows?.textContent ?? ''}\n${live?.textContent ?? ''}`;
+      });
+    };
+    /** Typing into an emulator that lives in a SUBFRAME needs the browser's focus to be in that
+     *  frame, not merely on an element inside it: `element.focus()` from `frame.evaluate` moves
+     *  the frame's own active element and leaves the top document holding the keyboard, so the
+     *  keystrokes land on the page instead. Measured — runs 3, 4 and 5 all typed into nothing.
+     *  Clicking the frame is what actually hands the keyboard over, and it is also what a person
+     *  does. The explicit `focus()` after it is belt and braces for the case where the click
+     *  lands on padding rather than on xterm's screen. */
+    /** What the prompt row currently holds — the only honest way to ask "did that keystroke
+     *  arrive". The renderer draws the prompt as `> <text>▍` inside the box, so a keystroke that
+     *  reached `onData` is visible there and one that did not is not. */
+    const promptRow = async () => {
+      const text = await screenText();
+      const match = text.match(/>\s*([^│\n]*)▍/);
+      return (match ? match[1] : '').trim();
+    };
+
+    /** Type, and REPORT WHICH INPUT PATH the emulator actually accepted.
+     *
+     * Three paths are tried in order of realism, and the one that worked is carried in
+     * `lastInputPath` so the checks below can say so rather than quietly passing on whichever
+     * one happened to land:
+     *
+     *   1. `keyboard.sendCharacter` — CDP `Input.insertText`, the path a real keypress and an
+     *      IME both end on, and the one xterm.js reads for printable characters;
+     *   2. `keyboard.type` — synthesised keydown/keypress/keyup;
+     *   3. a real `InputEvent` dispatched on xterm's own helper textarea, inside the frame.
+     *
+     * Path 3 is NOT a pass. It proves the emulator's wiring is intact while saying that nothing
+     * the browser's own input pipeline produced ever got there — which is a finding about the
+     * harness or about the surface, and either way is reported, never hidden. Runs 5-11 all
+     * failed at paths 1 and 2 with the frame focused and the caret in the textarea, and this is
+     * what distinguishes "the product ignores typing" from "the driver cannot type into it".
+     */
+    let lastInputPath = 'none';
+    const typeIntoTerminal = async (text) => {
+      const frame = terminalFrame();
+      if (!frame) throw new Error('the terminal document is not embedded');
+      const before = await promptRow();
+      const changed = async () => (await promptRow()) !== before;
+
+      await page.click('#codenTerminalHost iframe.coden-terminal-embed');
+      await frame.focus('#terminalHost .xterm-helper-textarea');
+      for (const character of text) await page.keyboard.sendCharacter(character);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (await changed()) { lastInputPath = 'insertText'; return; }
+
+      await page.keyboard.type(text);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (await changed()) { lastInputPath = 'keydown'; return; }
+
+      await frame.evaluate((typed) => {
+        const textarea = document.querySelector('#terminalHost .xterm-helper-textarea');
+        if (!textarea) return;
+        textarea.value = typed;
+        textarea.dispatchEvent(new InputEvent('input', { bubbles: true, data: typed, inputType: 'insertText' }));
+      }, text);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      lastInputPath = (await changed()) ? 'synthetic-input-event' : 'nothing-reached-the-emulator';
+    };
+
+    const embedded = await page.evaluate(() => {
+      const host = document.querySelector('#codenTerminalHost');
+      const frames = host?.querySelectorAll('iframe.coden-terminal-embed') ?? [];
+      const frame = frames[0] ?? null;
+      return {
+        frames: frames.length,
+        src: frame?.getAttribute('src') ?? '',
+        sandbox: frame?.getAttribute('sandbox') ?? '',
+        titled: frame?.getAttribute('title') ?? '',
+        onScreen: frame?.getBoundingClientRect().height > 0,
+        state: host?.dataset.terminalState ?? '',
+        status: document.querySelector('#codenTerminalStatus')?.textContent?.trim() ?? '',
+        statusState: document.querySelector('#codenTerminalStatus')?.dataset.state ?? '',
+        role: host?.getAttribute('role') ?? '',
+        labelled: host?.getAttribute('aria-labelledby') ?? '',
+        emulatorsInParent: document.querySelectorAll('#codenTerminalHost .xterm').length,
+      };
+    });
+    check('D-0418 · exactly one embedded terminal document, on screen and named',
+      embedded.frames === 1 && embedded.onScreen && embedded.titled.length > 0
+        && embedded.src.includes('coden-terminal.html'), JSON.stringify(embedded));
+    check('D-0418 · it is sandboxed to scripts and same-origin, and nothing else',
+      embedded.sandbox === 'allow-scripts allow-same-origin', embedded.sandbox);
+    check('D-0418 · the emulator is NOT in the main document any more',
+      embedded.emulatorsInParent === 0, String(embedded.emulatorsInParent));
+    check('the parent region still carries the state, the role and the name',
+      embedded.state === 'live' && embedded.statusState === 'live' && embedded.status.length > 0
+        && embedded.role === 'application' && embedded.labelled === 'codenTerminalTitle',
+      JSON.stringify(embedded));
+
+    const inFrame = await (terminalFrame()?.evaluate(() => ({
+      emulators: document.querySelectorAll('#terminalHost .xterm').length,
+      state: document.querySelector('#terminalHost')?.dataset.terminalState ?? '',
+    })) ?? Promise.resolve({ emulators: 0, state: 'no frame' }));
+    check('inside that document, exactly one emulator is attached',
+      inFrame.emulators === 1 && inFrame.state === 'live', JSON.stringify(inFrame));
+
+    // The opening frame is the shared renderer's, not a placeholder: the attachment note names
+    // the account the bridge welcomed. Waited for — it arrives over the socket.
+    const drewOpening = await soft('the first frame is drawn and names the attachment', async () => {
+      const frame = terminalFrame();
+      await frame.waitForFunction(
+        () => /Attached as/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        { timeout: 15000 },
+      );
+    });
+    if (drewOpening) {
+      const opening = await screenText();
+      check("the opening frame is the shared renderer's, not a placeholder",
+        /CodeN Evolution/.test(opening) && /Attached as/.test(opening),
+        opening.replace(/\s+/g, ' ').slice(0, 140));
+    }
+
+    // D-0418 · the palette comes from the PRODUCT's tokens, not from xterm's built-in defaults.
+    // The audit measured what the defaults cost: `span.xterm-dim` at ratio 1.31 on the light
+    // theme, because a dark terminal palette was being drawn on a light surface. Checked by
+    // comparing what the emulator resolved against what the parent's stylesheet declares.
+    const palette = await (terminalFrame()?.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      const screen = document.querySelector('#terminalHost .xterm-screen') ?? document.querySelector('#terminalHost .xterm');
+      const rows = document.querySelector('#terminalHost .xterm-rows');
+      return {
+        token: style.getPropertyValue('--surface-code').trim(),
+        theme: document.documentElement.dataset.theme ?? '',
+        background: screen ? getComputedStyle(screen).backgroundColor : '',
+        foreground: rows ? getComputedStyle(rows).color : '',
+      };
+    }) ?? Promise.resolve(null));
+    check('D-0418 · the emulator takes its palette from the product theme',
+      Boolean(palette) && palette.theme.length > 0 && palette.foreground.length > 0
+        && palette.foreground !== 'rgba(0, 0, 0, 0)', JSON.stringify(palette));
+
+    // A typed `/` must draw the ONE menu — the same groups the DOM prompt shows, produced by
+    // the same `agent-commands.js` both shells import.
+    await typeIntoTerminal('/');
+    // Where the keyboard actually IS, printed with the result. Three runs failed this check with
+    // "waiting failed" and nothing else, which says the menu did not appear and not one word
+    // about why — and the two candidate causes (the keystroke never arrived / it arrived and the
+    // renderer did not redraw) need opposite repairs. A check that cannot distinguish them costs
+    // a full run per guess.
+    const focusReport = await page.evaluate(() => ({
+      topActive: document.activeElement?.tagName?.toLowerCase() ?? '',
+      topActiveClass: typeof document.activeElement?.className === 'string' ? document.activeElement.className : '',
+    })).catch(() => ({}));
+    const frameFocus = await (terminalFrame()?.evaluate(() => ({
+      active: document.activeElement?.tagName?.toLowerCase() ?? '',
+      activeClass: typeof document.activeElement?.className === 'string' ? document.activeElement.className : '',
+      hasFocus: document.hasFocus(),
+      textarea: Boolean(document.querySelector('#terminalHost .xterm-helper-textarea')),
+      screen: document.querySelectorAll('#terminalHost .xterm-rows > div').length,
+    })) ?? Promise.resolve({}));
+    // What the screen says AFTER the keystroke. Focus alone cannot tell the two failure modes
+    // apart: if the frame redrew with a `/` on the prompt line the key arrived and the menu is
+    // the problem; if the screen is unchanged the key never reached `onData` at all.
+    // The TAIL of the screen, not its head: the prompt row and the menu are the last things the
+    // renderer draws, so the head shows the transcript — which is identical whether the keystroke
+    // arrived or not, and told four runs in a row nothing at all.
+    const afterTyping = (await screenText()).replace(/\s+/g, ' ').trim().slice(-320);
+    check('the keystroke reached the emulator through the browser\'s own input pipeline',
+      lastInputPath === 'insertText' || lastInputPath === 'keydown',
+      `input path: ${lastInputPath} — focus ${JSON.stringify({ ...focusReport, ...frameFocus })}`);
+    const menuDrawn = await soft(`a typed / draws the menu inside the terminal — path ${lastInputPath}, screen "${afterTyping}"`, async () => {
+      const frame = terminalFrame();
+      await frame.waitForFunction(
+        () => /DESTINATIONS/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        { timeout: 10000 },
+      );
+    });
+    if (menuDrawn) {
+      const drawn = await screenText();
+      check('the terminal menu carries the same groups as the browser prompt',
+        ['WORK', 'DESTINATIONS', 'TOOLS', 'SESSION'].every((group) => drawn.includes(group)),
+        drawn.replace(/\s+/g, ' ').slice(0, 160));
+    }
+
+    // The arrows are decoded and DECLARED — `D-0415(b)`. This viewport does not move the menu
+    // with them yet, and the surface says so once rather than doing nothing silently.
+    await page.keyboard.press('ArrowUp');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const afterArrow = await screenText();
+    check('D-0415(b) · the arrow-key gap is announced on the surface, not hidden',
+      /Arrow keys do not move the menu/.test(afterArrow), afterArrow.replace(/\s+/g, ' ').slice(0, 160));
+
+    // Escape abandons a `/` prompt, then a real line goes through the SHARED `planTurn` and
+    // comes back into the transcript.
+    await page.keyboard.press('Escape');
+    await typeIntoTerminal('/help');
+    await page.keyboard.press('Enter');
+    // Waited for on `/logout`, not on `Commands:` — and the difference is a property of the
+    // renderer, not a detail. The transcript region draws the TAIL of the transcript, and the
+    // help listing is thirty-odd lines, so its heading scrolls off the top the moment it is
+    // printed. Waiting for the heading is waiting for something the screen is correct not to
+    // show. The last group in the listing is SESSION and its last entry is `/logout`.
+    const answered = await soft('a submitted line is answered in the transcript', async () => {
+      const frame = terminalFrame();
+      await frame.waitForFunction(
+        () => /\/logout/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        { timeout: 15000 },
+      );
+    });
+    // Checked whether or not the wait succeeded, and the SCREEN TAIL travels with the result.
+    // A bare "waiting failed" says only that something did not appear; the tail says whether the
+    // prompt still holds the line (the keystroke never submitted), whether an error was recorded
+    // (the line was refused), or whether the listing is there and the wait looked for the wrong
+    // string. Three different repairs, and four runs were spent not knowing which.
+    {
+      const transcript = await screenText();
+      void answered;
+      // The listing itself, not its heading — see the note above on why the heading is off the
+      // screen by the time the last line is drawn. Three entries from three different groups,
+      // so a listing that lost a group fails here rather than passing on one lucky match.
+      check('the answer came from the shared command registry',
+        ['/logout', '/plan', 'SESSION'].every((fragment) => transcript.includes(fragment)),
+        transcript.replace(/\s+/g, ' ').slice(-200));
+    }
+
+    // Leaving the destination destroys the document, and with it the socket, the observer and
+    // the reconnect timer. Returning builds a new one — not a second one beside the first.
+    await gotoIdle(`${BASE}/#/home`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const detached = await page.evaluate(() => ({
+      frames: document.querySelectorAll('#codenTerminalHost iframe').length,
+      state: document.querySelector('#codenTerminalHost')?.dataset.terminalState ?? '',
+    }));
+    check('leaving CodeN destroys the embedded document and says so',
+      detached.frames === 0 && detached.state === 'idle', JSON.stringify(detached));
+    check('and no orphan terminal document is left running',
+      terminalFrame() === null, String(page.frames().length));
+
+    await gotoIdle(`${BASE}/#/coden`);
+    const reattached = await soft('returning to CodeN attaches again', async () => {
+      await page.waitForFunction(
+        () => document.querySelector('#codenTerminalHost')?.dataset.terminalState === 'live'
+          && document.querySelectorAll('#codenTerminalHost iframe.coden-terminal-embed').length === 1,
+        { timeout: 30000 },
+      );
+    });
+    if (reattached) {
+      const again = await page.evaluate(() => ({
+        frames: document.querySelectorAll('#codenTerminalHost iframe.coden-terminal-embed').length,
+        state: document.querySelector('#codenTerminalHost')?.dataset.terminalState ?? '',
+      }));
+      check('the second attachment is one document, not two stacked',
+        again.frames === 1 && again.state === 'live', JSON.stringify(again));
+    }
+
+    // `D-0418` · and now the point of the whole boundary: NOTHING is refused any more. The
+    // emulator paints inside a document whose policy allows it, and the main document — where
+    // every form, session and piece of operator data lives — never granted anything.
+    check('D-0418 · the emulator paints with no policy refusal anywhere',
+      cspStyleRefusals.length === 0,
+      `${cspStyleRefusals.length} inline-style refusals: ${cspStyleRefusals.slice(0, 2).join(' | ').slice(0, 300)}`);
+
+    // Leave the destination before handing the page to the next step, and WAIT for the document
+    // to be gone. Not tidiness: an attached terminal holds a WebSocket, a hash navigation does
+    // not reload the page, and the next block's `waitUntil: 'networkidle2'` therefore never
+    // settles — measured in run 5, where it timed out and cost 226 later checks. The product is
+    // not at fault (a person is not waiting for network idle); the harness has to stop leaving
+    // an open socket behind it.
+    await leaveCodenTerminal();
+
+    const terminalErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
+    check('driving the terminal produced no OTHER console errors',
+      terminalErrors.length === 0, terminalErrors.join(' | '));
+  }
+
+  await leaveCodenTerminal();
   at('coden-no-switchers');
   // --- phase 3: three navigation widgets became none -----------------------
   // The visible half of the programme. What is checked is that they are gone from the
@@ -961,9 +1323,9 @@ try {
   // the default. Reloading on `#/coden` does not help either: the completion has already
   // rewritten the address by then, so the reload lands on the completed panel. The fresh
   // start is taken somewhere the completion cannot reach, and the workbench entered after.
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.reload({ waitUntil: 'networkidle2' });
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#view-coden.active', { timeout: 15000 });
   const switchers = await page.evaluate(() => {
     const boxed = (selector) => [...document.querySelectorAll(selector)]
@@ -997,7 +1359,7 @@ try {
     !switchers.breadcrumbIsControl && switchers.promptMenuKey, JSON.stringify(switchers));
 
   // The Navigator's nine groups: reachable, and carrying the same lists as before.
-  await page.goto(`${BASE}/#/coden/bench/projects`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden/bench/projects`);
   await page.waitForSelector('[data-bench-panel="projects"].active', { timeout: 15000 });
   const navGroup = await page.evaluate(() => {
     const panel = document.querySelector('[data-bench-panel="projects"]');
@@ -1030,7 +1392,7 @@ try {
   // This is the check the phase most needs driven rather than read: the removal is only safe
   // because the prompt reaches all twenty-five, and "the address book declares 25" is not the
   // same claim as opening one.
-  await page.goto(`${BASE}/#/coden/bench/diff`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden/bench/diff`);
   await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
   await clickOrExplain(page, '#codenPromptOpenMenu');
   await page.waitForSelector('#codenMenu:not(.hidden)', { timeout: 15000 });
@@ -1089,6 +1451,7 @@ try {
   check('phase 3c — an address typed at the prompt opens its panel, and closes the other region',
     landed.hash === '#/coden/agent/authority' && landed.benchOpen === 0, JSON.stringify(landed));
 
+  await leaveCodenTerminal();
   at('jump-to-address');
   // --- one box: `/` goes somewhere ----------------------------------------
   // The keyboard, the focus and the ARIA wiring are the whole feature here, and none of the
@@ -1113,7 +1476,7 @@ try {
     };
   });
 
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   // From nowhere in particular, and with the box empty. `/` is a character when something
   // with a caret has focus — which is right, since `coden/bench/diff` has to be typeable —
   // so a block that means to press it as a SHORTCUT has to start outside the box. The step
@@ -1128,15 +1491,33 @@ try {
     // a shortcut — so blurring only this box left the key going to the wrong shell.
     document.activeElement?.blur();
   });
+  // `D-0406` · the bare `/` no longer opens this box, and Ctrl-K is now the only gesture that
+  // does. `16` §4b.4 decided «nel prompt comanda: c'e una / sola» on 2026-08-05 and nothing
+  // enforced it until slice 3: two gestures were bound to the same key — navigation here, the
+  // agent's command menu inside CodeN — and the terminal that now lives on that destination
+  // needs `/` to be a CHARACTER. Both halves are checked, because a decision only one half
+  // measures is a decision that half-reverts unnoticed.
   await page.keyboard.press('/');
-  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const afterSlash = await paletteState();
+  check('D-0406 · a bare / no longer opens the jump box',
+    afterSlash.open === false, JSON.stringify(afterSlash));
+
+  const openPalette = async () => {
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyK');
+    await page.keyboard.up('Control');
+    await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  };
+
+  await openPalette();
   const opened = await paletteState();
   // Thirteen destinations + fifteen Settings sections + the Archive and the Bin + sixteen
   // workbench panels. Asserted as a floor rather than a number, so adding a panel does not
   // fail a test that is not about counting.
-  check('`/` opens the box that already existed, with every address in it',
+  check('Ctrl-K opens the box that already existed, with every address in it',
     opened.open && opened.focused && opened.expanded === 'true' && opened.addresses >= 40, JSON.stringify(opened));
-  check('`/` does not leak into the box as text', opened.value === '', JSON.stringify(opened));
+  check('the shortcut does not leak into the box as text', opened.value === '', JSON.stringify(opened));
 
   await page.keyboard.type('diff');
   await new Promise((resolve) => setTimeout(resolve, 150));
@@ -1163,8 +1544,7 @@ try {
   check('Escape closes the box', !escaped.open, JSON.stringify(escaped));
 
   // Reopened, refiltered, and only THEN the jump that leaves this destination for good.
-  await page.keyboard.press('/');
-  await page.waitForSelector('#globalSearchResults:not(.hidden)', { timeout: 15000 });
+  await openPalette();
   await page.keyboard.type('coden/bench/diff');
   await new Promise((resolve) => setTimeout(resolve, 150));
   await page.keyboard.press('Enter');
@@ -1183,18 +1563,36 @@ try {
   // The guard that matters most: a shortcut that fires while someone is writing is a defect.
   // The same property is already asserted for `[` further up, against the same guard —
   // isTyping() — which is exactly why `/` reuses it instead of bringing its own.
-  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/chat`);
   await page.waitForSelector('#chatInput', { timeout: 15000 });
   // focus(), not clickOrExplain(): that helper dispatches an in-page click event, and a
   // synthetic click does not move focus the way a real one does. Driven that way, the whole
   // phrase went to the body — 'a', 'n', 'd' fell on the floor, '/' opened the box exactly as
   // it should have, and the check failed against correct behaviour. The bracket check above
   // focuses the same way for the same reason.
+  // The precondition, made explicit rather than inherited. This row asks whether `/` OPENS the
+  // box while someone is writing; it cannot answer that starting from a box that is already
+  // open. It was inheriting one — the jump box still held `coden/bench/diff` from the step
+  // above — and reported `open:true` against behaviour that was correct. Closed and asserted
+  // closed first, so a failure below means what the row says it means.
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => {
+    const box = document.querySelector('#globalSearchResults');
+    if (box) box.classList.add('hidden');
+    const field = document.querySelector('#globalSearch');
+    if (field) field.value = '';
+  });
   await page.evaluate(() => { document.querySelector('#chatInput').focus(); });
   await page.keyboard.type('and/or');
   const slashWhileTyping = await page.evaluate(() => ({
     open: !document.querySelector('#globalSearchResults').classList.contains('hidden'),
     typed: document.querySelector('#chatInput').value,
+    // Added when this row failed with `open:true` and no way to tell WHICH box was open or what
+    // put it there. `/` no longer opens anything (D-0406), so an open box here is either state
+    // left behind by an earlier step or a second opener nobody has named.
+    searchValue: document.querySelector('#globalSearch')?.value ?? '',
+    active: document.activeElement?.id ?? '',
+    rows: document.querySelectorAll('#globalSearchResults button').length,
   }));
   check('`/` typed into a message stays in the message and opens nothing',
     !slashWhileTyping.open && slashWhileTyping.typed === 'and/or', JSON.stringify(slashWhileTyping));
@@ -1327,7 +1725,7 @@ try {
   // the interface worked — the assertions are on what is on screen, because a check on
   // `classList` has already passed on a page no user could see (F4W-010).
   resetObservations();
-  await page.goto(`${BASE}/#/workflows`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/workflows`);
   await page.waitForSelector('#workflowForm', { timeout: 15000 });
 
   // The step vocabulary must come from the server, and must say which types this build
@@ -1423,7 +1821,7 @@ try {
   // separate banner element any more, so "footer" and "verified" below now read the SAME
   // node rather than two that are checked against each other.
   at('privacy indicator');
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#footerPrivacy', { timeout: 15000 });
   const privacyLocal = await page.evaluate(() => ({
     verified: document.querySelector('#footerPrivacy .verified')?.textContent?.trim() ?? '',
@@ -1444,7 +1842,7 @@ try {
     privacyLocal.disclosuresHidden === true, JSON.stringify(privacyLocal));
 
   // Consent to, and enable, an external provider through the real controls.
-  await page.goto(`${BASE}/#/providers`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/providers`);
   await page.waitForSelector('[data-provider-consent]', { timeout: 15000 });
   const externalProviderId = await page.evaluate(() => {
     const card = [...document.querySelectorAll('#providerList .provider-card')]
@@ -1476,7 +1874,7 @@ try {
       ?.querySelector('small')?.textContent ?? ''),
     { timeout: 15000 }, externalProviderId);
 
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForFunction(
     () => document.querySelector('#footerPrivacy .verified')?.textContent?.trim() === 'REMOTE MODEL ACTIVE',
     { timeout: 15000 });
@@ -1533,7 +1931,7 @@ try {
 
   // The queue must show the workflow gate, and the decision must resume the run.
   resetObservations();
-  await page.goto(`${BASE}/#/approvals`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/approvals`);
   await page.waitForSelector('[data-approve]', { timeout: 15000 });
   const queued = await page.evaluate(() => {
     const card = document.querySelector('#approvalList article');
@@ -1567,7 +1965,7 @@ try {
 
   // And the run itself must have resumed to completion — the approval is only meaningful
   // if the work it was gating actually proceeded.
-  await page.goto(`${BASE}/#/workflows`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/workflows`);
   await page.waitForFunction(
     () => /completed/.test(document.querySelector('#workflowRunList')?.textContent ?? ''),
     { timeout: 15000 });
@@ -1591,7 +1989,7 @@ try {
   // "#/logs" is an owner-only page that became an owner-only SECTION. The deep link must
   // still resolve for the Owner, and the former page must be on screen inside it — a gate
   // that survives a demotion in name only is a gate that stopped guarding anything.
-  await page.goto(`${BASE}/#/logs`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/logs`);
   await new Promise((resolve) => setTimeout(resolve, 1500));
   const deepLink = await page.evaluate(() => ({
     section: document.querySelector('.settings-section[data-section="health"]')?.classList.contains('active') ?? false,
@@ -1608,7 +2006,7 @@ try {
   // This is the flow the Owner needs in order to retire the enrolment secret that was
   // shown once at bootstrap. It is driven here rather than asserted.
   resetObservations();
-  await page.goto(`${BASE}/#/settings/security`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/security`);
   await page.waitForSelector('#securityOverview .metric', { timeout: 15000 });
   check('security overview renders account metrics', true);
 
@@ -1684,7 +2082,7 @@ try {
   at('settings');
   // --- settings actually persists ------------------------------------------
   resetObservations();
-  await page.goto(`${BASE}/#/settings/language`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/language`);
   await page.waitForSelector('#settingsTimezone option', { timeout: 15000 });
   await page.select('#settingsTimezone', 'Asia/Tokyo');
   await clickOrExplain(page, '#settingsTimezoneSave');
@@ -1705,11 +2103,11 @@ try {
   // (D-0278, removed the step-up reauth prompt entirely) — a click is now just a click.
   at('home');
   resetObservations();
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   const beforeInstall = await page.evaluate(() => document.querySelector('#navModules a.nav'));
   check('no module sidebar entry before any Owner module is installed', beforeInstall === null);
 
-  await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/modules`);
   await page.waitForSelector('#section-modules [data-owner-module-card="debug-evolution"]', { timeout: 15000 });
   const notInstalledBadge = await page.$eval('#section-modules [data-owner-module-card="debug-evolution"] .badge', (node) => node.textContent);
   check('debug-evolution starts Not installed', /Not installed/.test(notInstalledBadge), notInstalledBadge);
@@ -1749,7 +2147,7 @@ try {
   );
   check('debug-evolution is Active after a single click', true);
 
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#navModules a.nav', { timeout: 15000 });
   const afterActivate = await page.evaluate(() => {
     const link = document.querySelector('#navModules a.nav');
@@ -1759,14 +2157,14 @@ try {
     afterActivate.target === '_blank' && /noopener/.test(afterActivate.rel ?? ''), JSON.stringify(afterActivate));
   check('the sidebar entry names the module', /Debug Evolution/.test(afterActivate.text), afterActivate.text);
 
-  await page.goto(`${BASE}/#/settings/modules`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/modules`);
   await page.waitForSelector('#section-modules [data-owner-module-card="debug-evolution"]', { timeout: 15000 });
   await clickOrExplain(page, '#section-modules [data-owner-module-card="debug-evolution"] [data-module-action="deactivate"]');
   await page.waitForFunction(
     () => document.querySelector('#section-modules [data-owner-module-card="debug-evolution"] .badge')?.textContent?.includes('Installed'),
     { timeout: 15000 },
   );
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await new Promise((resolve) => setTimeout(resolve, 800));
   const afterDeactivate = await page.evaluate(() => document.querySelector('#navModules a.nav'));
   check('deactivating withdraws the sidebar entry again', afterDeactivate === null);
@@ -1779,7 +2177,7 @@ try {
   // confirmation on EVERY destructive action, and Delete opening the dialog rather than
   // deleting) are exactly the kind that a refactor removes without any test noticing.
   resetObservations();
-  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/chat`);
   await page.waitForSelector('#chatConversation', { timeout: 15000 });
   // Seven sessions, so that the fifth/sixth boundary of UI-002 is real rather than
   // theoretical, and the archive has enough to page.
@@ -1810,7 +2208,7 @@ try {
   // that step's own count-based wait. Two fixtures for one fact is the same duplication
   // defect as two renderers for one list, one directory down.
   at('chat-sidebar');
-  await page.goto(`${BASE}/#/chat`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/chat`);
   // `page.goto` to a URL that differs only in its HASH does not reload the document, so the
   // sidebar kept the state it had before those seven existed and reported an honest zero.
   // Measured, not guessed: the same page's own fetch answered 200 with seven while the list
@@ -1941,7 +2339,7 @@ try {
 
 
 
-  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/sessions`);
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
   const layout = await page.evaluate(() => ({
     laidOut: document.querySelectorAll('#sessionsRecent .session-row').length,
@@ -1984,7 +2382,7 @@ try {
     () => /of 6/.test(document.querySelector('#sessionsRange')?.textContent ?? ''),
     { timeout: 15000 },
   );
-  await page.goto(`${BASE}/#/settings/sessions/archived`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/sessions/archived`);
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
   const archive = await page.evaluate(() => ({
     rows: document.querySelectorAll('.session-row').length,
@@ -2015,7 +2413,7 @@ try {
       || document.querySelectorAll('.session-row').length === 0,
     { timeout: 15000 },
   );
-  await page.goto(`${BASE}/#/settings/sessions/bin`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/sessions/bin`);
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
   const bin = await page.evaluate(() => ({
     rows: document.querySelectorAll('.session-row').length,
@@ -2031,7 +2429,7 @@ try {
   await clickOrExplain(page, '[data-session-restore]');
   await page.waitForSelector('#confirmScrim:not(.hidden)', { timeout: 15000 });
   await clickOrExplain(page, '#confirmAccept');
-  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/sessions`);
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
   const restoredRange = await page.evaluate(() => document.querySelector('#sessionsRange')?.textContent ?? '');
   check('a restored session returns to the working list', /of 7/.test(restoredRange), restoredRange);
@@ -2063,7 +2461,7 @@ try {
   // UI-040 and UI-041 are only met if the pixels actually move. A setting that stores a
   // preference and changes nothing on screen is the most convincing kind of nothing.
   resetObservations();
-  await page.goto(`${BASE}/#/settings/appearance`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/appearance`);
   await page.waitForSelector('[data-text-step="3"]', { timeout: 15000 });
   // Scoped to the ACTIVE section. A bare '.page-title' resolves to the first one in the
   // document, which belongs to a hidden section: getComputedStyle still answers for it, so
@@ -2112,7 +2510,7 @@ try {
   at('workbench');
   // --- the bench: three regions, eleven tabs, a terminal that stays --------
   resetObservations();
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#bench', { timeout: 15000 });
   // s327 — WHY THESE TWO CHECKS CHANGED. They failed for phases, unattributed, and the first
   // guess (that the regions were measured before the view was on screen) was wrong: waiting for
@@ -2181,7 +2579,7 @@ try {
   // bulk delete button of an empty list are never measured there. They are measured here,
   // where sessions exist and the buttons are live, so the exclusion is covered rather than
   // merely justified.
-  await page.goto(`${BASE}/#/settings/sessions`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/sessions`);
   await page.waitForSelector('#sessionsRecent .session-row', { timeout: 15000 });
   await clickOrExplain(page, '#sessionsSelectPage');
   // Reached with a REAL Tab, not with element.focus(). Chromium grants :focus-visible by
@@ -2207,7 +2605,7 @@ try {
   check('an enabled bulk-delete button does show a focus indicator (2.4.7)',
     focusRing.enabled && focusRing.changed, JSON.stringify(focusRing));
   await clickOrExplain(page, '#sessionsSelectPage');
-  await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#bench', { timeout: 15000 });
 
   at('workspace-actions');
@@ -2410,7 +2808,7 @@ try {
 
   at('metric');
   // --- the product's metric · UI-070…UI-072 -------------------------------
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#metricDefinition', { timeout: 15000 });
   const metric = await page.evaluate(() => ({
     definition: document.querySelector('#metricDefinition')?.textContent ?? '',
@@ -2430,7 +2828,7 @@ try {
   // transcription-safe alphabet, with a countdown that names the seconds left. The
   // countdown is not cosmetic: time and single use ARE this credential's whole perimeter,
   // so a code displayed with no visible clock is the design quietly not holding.
-  await page.goto(`${BASE}/#/coden-tui`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/coden-tui`);
   await page.waitForSelector('#attachCodeMint', { timeout: 15000 });
   await clickOrExplain(page, '#attachCodeMint');
   await page.waitForFunction(
@@ -2478,7 +2876,7 @@ try {
   // sees: six buttons that exist, three of them refusing to act and SAYING why, ten goals
   // that fill the composer without sending anything, and three inventory panels that must
   // never come back as a bare "Loading…".
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#homeEntryActions .entry-action', { timeout: 15000 });
   const entry = await page.evaluate(() => {
     const buttons = [...document.querySelectorAll('#homeEntryActions .entry-action')];
@@ -2538,7 +2936,7 @@ try {
   check('UI-061 and sends nothing by itself',
     afterGoal.messages === beforeGoal, `${beforeGoal} -> ${afterGoal.messages}`);
 
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#homeServices', { timeout: 15000 });
   await new Promise((resolve) => setTimeout(resolve, 1200));
   const inventory = await page.evaluate(() => {
@@ -2609,7 +3007,7 @@ try {
     fieldZone.formNote.includes(scheduled.zone) && fieldZone.panelChip.includes(scheduled.zone),
     JSON.stringify(fieldZone));
 
-  await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/home`);
   await new Promise((resolve) => setTimeout(resolve, 1500));
   const board = await page.evaluate(() => ({
     active: document.querySelector('#taskActiveCount')?.textContent ?? '',
@@ -2623,6 +3021,7 @@ try {
   check('UI-062 and it appears in exactly one group',
     !/e2e scheduled probe/.test(board.activeText), `active: ${board.activeText.slice(0, 120)}`);
 
+  await leaveCodenTerminal();
   at('page-help');
   // --- POINT 3c: the information buttons, on the real page ------------------------------
   //
@@ -2633,7 +3032,7 @@ try {
   await soft('POINT-3C', async () => {
     const destinations = ['home', 'models', 'projects', 'settings/security', 'not-found'];
     for (const destination of destinations) {
-      await page.goto(`${BASE}/#/${destination}`, { waitUntil: 'networkidle2' });
+      await gotoIdle(`${BASE}/#/${destination}`);
       await new Promise((resolve) => { setTimeout(resolve, 300); });
       const seen = await page.evaluate(() => {
         // The INNERMOST active thing, not the first match in document order. On a settings
@@ -2668,6 +3067,7 @@ try {
     }
   });
 
+  await leaveCodenTerminal();
   at('page-liveness');
   // --- POINT 3b: opening a page actually goes and asks --------------------------------
   //
@@ -2683,9 +3083,9 @@ try {
     page.on('request', listener);
     try {
       for (const destination of ['projects', 'documents', 'knowledge', 'agents', 'tools', 'chat']) {
-        await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+        await gotoIdle(`${BASE}/#/home`);
         seen.length = 0;
-        await page.goto(`${BASE}/#/${destination}`, { waitUntil: 'networkidle2' });
+        await gotoIdle(`${BASE}/#/${destination}`);
         await new Promise((resolve) => { setTimeout(resolve, 400); });
         check(`POINT-3B opening #/${destination} asks the server for fresh data`,
           seen.length > 0,
@@ -2696,6 +3096,7 @@ try {
     }
   });
 
+  await leaveCodenTerminal();
   at('agents-lifecycle');
   // D-0397/D-0401. The Agents screen was only ever measured EMPTY: the route sweep opens
   // #/agents against a workspace with no agent, so the card, its two controls and the archive
@@ -2704,7 +3105,7 @@ try {
   // can prove exists (rule 5 of `17`).
   await soft('AGENTS-1', async () => {
     const name = `Suite agent ${Date.now()}`;
-    await page.goto(`${BASE}/#/agents`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/agents`);
     await page.type('#agentName', name);
     await page.click('#agentForm button.primary');
     await page.waitForFunction(() => document.querySelectorAll('#agentList .entity-card').length > 0, { timeout: 10_000 });
@@ -2741,6 +3142,7 @@ try {
       after.cards === 0 && !after.options.includes(name), JSON.stringify(after));
   });
 
+  await leaveCodenTerminal();
   at('model-catalogue');
   // --- POINT 5: the model catalogue, on the real page -----------------------------------
   //
@@ -2751,7 +3153,7 @@ try {
   // only in a unit test is a catalogue nobody has ever seen.
   await soft('POINT-5', async () => {
     resetObservations();
-    await page.goto(`${BASE}/#/models`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/models`);
     await page.waitForSelector('#modelForegroundLanes', { timeout: 15000 });
     await page.waitForFunction(
       () => !/Loading/.test(document.querySelector('#modelForegroundLanes')?.textContent ?? 'Loading'),
@@ -2810,7 +3212,7 @@ try {
   // first "did it route", then "was anything visible about it" — and both answers are
   // recorded even when the first is yes.
   await soft('POINT-2B-MEASURE', async () => {
-    await page.goto(`${BASE}/#/coden`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/coden`);
     await page.waitForSelector('#codenPrompt', { timeout: 15000 });
     const before = await page.evaluate(() => ({
       hash: location.hash,
@@ -2887,6 +3289,7 @@ try {
       JSON.stringify(approve.tail));
   });
 
+  await leaveCodenTerminal();
   at('i18n-runtime');
   // --- I18N-RUNTIME: the half of the language measurement that markup cannot see ------
   //
@@ -2916,7 +3319,7 @@ try {
 
     // Switch to Italian through the control a person would use, not by writing storage
     // directly: the defect being guarded against lived in the picker's own handler.
-    await page.goto(`${BASE}/#/home`, { waitUntil: 'networkidle2' });
+    await gotoIdle(`${BASE}/#/home`);
     await page.select('#languageSelect', 'it');
     await page.waitForFunction(() => document.documentElement.lang === 'it', { timeout: 10000 });
 
@@ -2942,7 +3345,7 @@ try {
     await page.evaluate(() => window.__i18n?.clearUntranslatedStrings?.());
 
     for (const destination of destinations) {
-      await page.goto(`${BASE}/#/${destination}`, { waitUntil: 'networkidle2' });
+      await gotoIdle(`${BASE}/#/${destination}`);
       // Give the renderers their turn: this block exists BECAUSE text painted after load was
       // the half that never got translated.
       await new Promise((resolve) => { setTimeout(resolve, 250); });
@@ -3014,7 +3417,14 @@ try {
     const RUNTIME_GAP_BASELINE = 607;
     check('I18N-RUNTIME the catalogue-closable gap does not grow (declared gap, not a pass)',
       Array.isArray(closable) && closable.length <= RUNTIME_GAP_BASELINE,
-      `${closable ? closable.length : '?'} closable of ${Array.isArray(missed) ? missed.length : '?'} recorded, declared baseline ${RUNTIME_GAP_BASELINE}`);
+      // On a rise, the SAMPLE is printed, not only the count. The paragraph above says the
+      // baseline may be re-taken only after the diff has been read — and until this run the
+      // check printed nothing to read it FROM, so reading it meant editing the harness and
+      // paying for a second full run. Twenty strings are enough to tell "the product got worse"
+      // from "the measurement got wider", which is the only question the number cannot answer.
+      `${closable ? closable.length : '?'} closable of ${Array.isArray(missed) ? missed.length : '?'} recorded, declared baseline ${RUNTIME_GAP_BASELINE}`
+      + (Array.isArray(closable) && closable.length > RUNTIME_GAP_BASELINE
+        ? ` — sample of the untranslated set: ${JSON.stringify(closable.slice(0, 20))}` : ''));
     check('I18N-RUNTIME the static markup half is complete, and is measured separately',
       true, 'tools/measure-ui-language-coverage.mjs — 793 of 793, fails on one gap');
 
@@ -3026,7 +3436,7 @@ try {
   at('invitation');
   // --- an invitation can be issued -----------------------------------------
   resetObservations();
-  await page.goto(`${BASE}/#/users`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/users`);
   await page.waitForSelector('#usersList .entity-card', { timeout: 15000 });
   await page.type('#inviteUsername', 'e2einvitee');
   await page.type('#inviteDisplayName', 'E2E Invitee');
@@ -3068,7 +3478,7 @@ try {
     `status ${unauthenticatedRead.status}`);
 
   // Issued through the interface, as an administrator would.
-  await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await gotoIdle(BASE);
   await page.waitForSelector('#loginForm:not(.hidden)', { timeout: 15000 });
   await page.type('#loginUsername', USERNAME);
   await page.type('#loginPassword', PASSWORD);
@@ -3085,7 +3495,7 @@ try {
   await page.waitForSelector('#authGate.hidden', { timeout: 25000 });
   check('the replacement authenticator signs the owner back in', true);
 
-  await page.goto(`${BASE}/#/users`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/users`);
   await page.waitForSelector('#inviteRole option', { timeout: 15000 });
   await page.type('#inviteUsername', invited);
   await page.type('#inviteDisplayName', 'E2E Restricted');
@@ -3113,7 +3523,7 @@ try {
 
   // Sign in as that account in the browser and look at what it is offered.
   await page.evaluate(() => { document.querySelector('#logoutButton')?.click(); });
-  await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await gotoIdle(BASE);
   await page.waitForSelector('#loginForm:not(.hidden)', { timeout: 20000 });
   await page.type('#loginUsername', invited);
   await page.type('#loginPassword', invitedPassword);
@@ -3150,7 +3560,7 @@ try {
     JSON.stringify(offered));
 
   resetObservations();
-  await page.goto(`${BASE}/#/logs`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/logs`);
   await new Promise((resolve) => setTimeout(resolve, 1200));
   // The refusal moved with the page. It is rendered inside Settings rather than as a
   // full page, so the person keeps the menu they arrived through — but every property the
@@ -3176,7 +3586,7 @@ try {
     failedRequests.join(' | '));
 
   // A page it IS allowed to open must still work for this role.
-  await page.goto(`${BASE}/#/settings/security`, { waitUntil: 'networkidle2' });
+  await gotoIdle(`${BASE}/#/settings/security`);
   await page.waitForSelector('#securityOverview .metric', { timeout: 15000 });
   const restrictedSecurity = await page.evaluate(() => ({
     rendered: (document.querySelector('#view-security')?.getBoundingClientRect().height ?? 0) > 0,

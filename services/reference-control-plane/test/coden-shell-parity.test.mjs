@@ -23,9 +23,9 @@ import { dirname, join } from 'node:path';
 
 import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
-  accessRuleFor, accountFromUser, SECTION_ACCESS, groupFor, hiddenNote,
+  accessRuleFor, accountFromUser, SECTION_ACCESS, groupFor, hiddenNote, parseCommandPrompt,
 } from '../../../apps/shared/coden/agent-commands.js';
-import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuGroupRows, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuViewModel, menuGroupRows, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../apps/shared/coden/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
@@ -1032,3 +1032,110 @@ test('matchCommands ranks and filters within the list it is given', () => {
   assert.ok(!hits.some((entry) => entry.name === 'plan'), 'a hidden entry must not come back through the matcher');
   assert.ok(hits.every((entry) => reader.entries.includes(entry)));
 });
+
+// --- D-0420 · one shaper between menuFrame and the renderer ------------------------------
+//
+// The defect this pins was found in a real browser, not by reading: typing `/` in the embedded
+// terminal drew "nothing to show", on an owner account holding every permission, while the DOM
+// prompt on the same page drew all seven groups from the same registry.
+//
+// The cause is a two-shape boundary. `menuFrame` returns the group rows under `groups`;
+// `tui-screen.mjs` reads them from `groupRows`, because it carries the grouping FUNCTION under
+// `groups`. `tui-fullscreen.mjs` did that translation by hand and `coden-terminal.js` spread the
+// frame straight through — so one shell worked and the other rendered an empty menu. Both halves
+// were individually correct, which is exactly why no test saw it.
+//
+// `menuViewModel` is now the only translation, and these assert the property rather than the
+// call: the rows arrive under the name the renderer reads, and the field it uses for the
+// grouping function holds a function.
+{
+  const commands = [...AGENT_COMMANDS];
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+
+  test('group rows arrive under groupRows, and groups stays the grouping function', () => {
+    const frame = menuFrame({ word: '', argument: '' }, { commands, addresses });
+    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
+    assert.equal(model.level, 'groups');
+    assert.ok(Array.isArray(model.groupRows) && model.groupRows.length > 0,
+      'the renderer reads groupRows and would print "nothing to show" for an empty one');
+    assert.equal(typeof model.groups, 'function',
+      'groups must hold the grouping function — an array here is what the renderer would try to call');
+  });
+
+  test('what the renderer draws from it is the groups, not an empty menu', () => {
+    const frame = menuFrame({ word: '', argument: '' }, { commands, addresses });
+    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
+    const rows = commandMenuRows({ ...model, rowLimit: 12 }, 90).join('\n');
+    assert.doesNotMatch(rows, /nothing to show/, 'this is the exact frame the browser drew');
+    for (const title of ['WORK', 'DESTINATIONS', 'TOOLS', 'SESSION']) {
+      assert.match(rows, new RegExp(title), `the ${title} group is missing from the drawn menu`);
+    }
+  });
+
+  test('both shells build it through the same call, and neither shapes it by hand', () => {
+    // A source guard, because the property above can be satisfied by a helper nobody calls.
+    for (const file of ['apps/webui-static/coden-terminal.js', 'tools/tui-fullscreen.mjs']) {
+      const source = read(file);
+      assert.match(source, /menuViewModel\(frame, \{ grouping: groupMenu/,
+        `${file} does not build its menu through the shared shaper`);
+      assert.doesNotMatch(source, /groupRows: frame\.groups/,
+        `${file} still translates the frame by hand — that is the drift this closes`);
+    }
+  });
+
+  test('an entries-level frame keeps its hits and its selection', () => {
+    const frame = menuFrame({ word: 'd', argument: '' }, { commands, addresses });
+    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
+    assert.equal(model.level, 'entries');
+    assert.ok(Array.isArray(model.hits) && model.hits.length > 0);
+    assert.equal(model.selected, 0, 'a fresh frame starts on its first row in both shells');
+  });
+}
+
+// --- D-0421 · both shells hand planTurn a LIST, because that is what it takes ---------------
+//
+// Found by driving the browser terminal: `/help` did nothing at all. `planTurn`, `resolveCommand`
+// and `groupMenu` all take an ARRAY of entries — they call `.map`, `.find` and `.filter` on it —
+// and `coden-terminal.js` was handing them the MENU OBJECT that `menuFor()` returns. Every
+// submitted line threw `entries.filter is not a function` inside an unawaited `submit()`, so the
+// screen showed nothing and the console said nothing either: no command could be run in the
+// browser shell at all.
+//
+// Both shells had a local helper called `offered()`. In the terminal shell it returned the list;
+// in the browser shell it returned the object. One name, two types, and a parity suite that read
+// both files never noticed — so what is asserted here is the TYPE at the boundary, and the fact
+// that each shell reaches it.
+{
+  const menu = menuFor(null);
+  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
+  const entries = [...menu.entries, ...addressEntries(addresses)];
+
+  test('D-0421 · planTurn answers /help when given the list, and throws when given the menu', () => {
+    const asList = planTurn('/help', {
+      resolve: (text) => resolveCommand(text, entries), parse: parseCommandPrompt, commands: entries, groups: groupMenu,
+    });
+    assert.equal(asList.kind, 'help');
+    assert.ok(asList.lines.length > 0, 'the help listing came back empty');
+    // The defect itself, pinned: passing the menu object is not a quiet degradation, it throws —
+    // which is why the surface went silent instead of showing something wrong.
+    assert.throws(() => planTurn('/help', {
+      resolve: (text) => resolveCommand(text, menu), parse: parseCommandPrompt, commands: menu, groups: groupMenu,
+    }), /is not a function/);
+  });
+
+  test('D-0421 · resolveCommand needs the list too', () => {
+    assert.ok(resolveCommand('/plan something', entries), 'a real command did not resolve from the list');
+    assert.throws(() => resolveCommand('/plan something', menu), /is not a function/);
+  });
+
+  test('D-0421 · neither shell passes the menu object to planTurn', () => {
+    for (const file of ['apps/webui-static/coden-terminal.js', 'tools/tui-fullscreen.mjs']) {
+      const source = read(file);
+      const call = source.slice(source.indexOf('planTurn('), source.indexOf('planTurn(') + 300);
+      assert.doesNotMatch(call, /commands: menu\b/,
+        `${file} passes the menu OBJECT to planTurn — every submitted line will throw`);
+      assert.match(call, /commands: (entries|offered\(\))/,
+        `${file} must pass the entry LIST to planTurn`);
+    }
+  });
+}

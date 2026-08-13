@@ -1388,6 +1388,31 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
  * client derives is only right if these agree with what it was constructed with. */
 .coden-terminal-host .xterm { height: 100%; }
 
+/* D-0418 · the emulator arrives in a document of its own, so what sits here is the frame that
+ * carries it. Sized to fill the region exactly as the emulator used to: the child measures its
+ * OWN box with a ResizeObserver, so this is the element whose height decides the terminal's rows.
+ * `display:block` because an inline-level iframe leaves a text baseline gap under it, which
+ * would be four pixels of the region spent on nothing. */
+.coden-terminal-embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 22rem;
+  border: 0;
+  background: var(--surface-code);
+  border-radius: 0.5rem;
+}
+
+/* The emulator's own document. It holds one element, and that element is the whole page — no
+ * shell, no chrome, no scroll of its own: the region around it in the parent is the frame. */
+.coden-terminal-document { margin: 0; height: 100vh; overflow: hidden; background: var(--surface-code); }
+.coden-terminal-frame-host { height: 100vh; padding: 0.25rem; }
+.coden-terminal-frame-host .xterm { height: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .coden-terminal-frame-host .xterm-cursor-blink { animation: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* A blinking cursor is motion, and this is the one piece of motion on the surface. */
   .coden-terminal-host .xterm-cursor-blink { animation: none !important; }
