@@ -4750,3 +4750,30 @@ tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner
 `https://<host>:8443`, `docker logs noesar-evolution | grep "foreign origin"` must stay empty and
 the terminal must stay attached with no `1006`. Verifying on `http://…:8100` would pass with the
 defect still in place — that is exactly how it shipped.
+
+## `d0426-origin-20260813T140526Z` — DEPLOYED and verified over TLS — 2026-08-13
+
+**Tag.** `noesar-evolution:d0426-origin-20260813T140526Z`, deployed 2026-08-13T14:17:24Z by
+`tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner`.
+**What changed.** The origin the bridge expects is now computed from the listener's real
+transport (`src/request-origin.mjs`, six unified call sites), so an encrypted listener no
+longer expects an `http://` origin and no longer refuses its own page.
+**Health.** `state=running health=healthy`; `http://<host>:8100/livez|/readyz` = 200/200;
+`https://<host>:8443/livez|/readyz` = 200/200; `https://<host>:8443/` = 200, 129,426 bytes.
+**Bytes equal tree.** The image was byte-verified against the tree at build time; the
+running container is that image (`docker inspect .Config.Image`).
+**Live differential (read-only handshake probe, no session, no mutation).**
+On the predecessor `d0423`: **107** `coden bridge refused a foreign origin` lines, every one
+of them the installation's own `https://<host>:8443`. On `d0426`: **0** refusals of its own
+origin — `Origin: https://<host>:8443` reaches `401 Unauthorized` (the session gate, which
+sits *after* the origin gate), while `http://<host>:8443` and `https://evil.example` are
+still `403` and still logged. The gate did not weaken; it stopped rejecting itself.
+**Predecessor preserved.** `noesar-evolution-pre-20260813T141723Z`
+(`d0423-terminal-20260813T132120Z`) — the one rollback §21b allows.
+**Rollback cost.** `docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution
+&& docker rename noesar-evolution-pre-20260813T141723Z noesar-evolution && docker start …` —
+returns the installation to the state where every https handshake is refused.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260813T135635Z` removed (image kept);
+networks and volumes diffed unchanged; non-project containers 53 → 52, none touched.
+**Not proven here.** Anything needing a signed-in session — the Owner's browser opening
+`#/coden` over https is the remaining acceptance step.

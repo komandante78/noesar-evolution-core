@@ -9965,3 +9965,28 @@ headers, and the surface was still broken for the person using it.
 differs by scheme — cookie flags, HSTS behaviour, mixed-content, the WebAuthn origin — is
 unmeasured there. A TLS probe for the browser suite is the next instrument this project needs.
 **Status.** Recorded. The proposal is not executed in this phase.
+
+## D-0428 · the acceptance test for an origin bug is differential, not a health check — 2026-08-13
+**Decision.** `D-0426` is accepted on the installation by a read-only TLS handshake probe that
+sends four origins and compares the refusal log against the predecessor, not by `/livez`.
+**Why.** A health check was green throughout the whole 107-refusal outage — it never touched
+the upgrade path. What distinguishes fixed from broken is *which* origin gets refused:
+own-origin `401` (session gate, downstream of the origin gate) vs foreign `403` + a WARN line.
+**Rejected.** Driving the browser suite against the installation — it mutates data (§3a 11e).
+**Evidence.** Predecessor `d0423`: 107 `refused a foreign origin`, all `https://<host>:8443`.
+Deployed `d0426`: own https origin → `401`, `http://` → `403`, `evil.example` → `403`, 0
+self-refusals. Health 200/200 on both listeners after cleanup.
+**Reversal cost.** None — the probe creates nothing; it is a script, not a fixture.
+**Status.** applied · installed. Open: no repository suite yet drives the *live* product over
+TLS (`D-0427` unchanged); the probe ran from the scratchpad, it is not yet a tool in the tree.
+
+## D-0429 · improvement proposal — make the live TLS probe a first-class post-deploy gate — 2026-08-13
+**Decision.** Proposed, **not executed**: promote the throwaway probe to
+`tools/live-origin-probe.mjs` and have `redeploy.sh` run it against the replacement before it
+declares `DEPLOYED`, failing the deploy when the installation refuses its own origin.
+**Why.** This defect shipped because deployment acceptance measured *liveness*, not *the user's
+first action*. A deploy that cannot accept its own page should not be able to report success.
+**Rejected.** Leaving it to the browser suite — that suite cannot run against a live install.
+**Evidence.** The probe already discriminated correctly on both images today (`D-0428`).
+**Reversal cost.** ~60 lines plus a step in `redeploy.sh`; removable without touching product code.
+**Status.** deferred — awaiting the Owner's decision (§69: generated always, executed on request).
