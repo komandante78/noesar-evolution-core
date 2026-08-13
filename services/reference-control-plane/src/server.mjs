@@ -122,6 +122,7 @@ import { buildCodenAddressBook } from './coden-address-book.mjs';
 // whoever is calling — see `/api/v1/voice/interpret`. It imports nothing itself, so a server-side
 // import of a file that also runs in the browser costs nothing and buys one list instead of two.
 import { menuFor, accountFromUser } from '../../../apps/shared/coden/agent-commands.js';
+import { requestOrigin } from './request-origin.mjs';
 import { resolveCliDownload, readCliArtifact, renderCliIndex } from './cli-downloads.mjs';
 // `D-0404` slice 2: the browser's transport onto the same session the terminal reaches.
 import { createCodenBridge, BRIDGE_PATH } from './coden-bridge.mjs';
@@ -1008,7 +1009,11 @@ function clientIp(req) { return req.socket.remoteAddress ?? 'unknown'; }
 // for SCIM base URLs elsewhere in this file, for the same reason: behind a reverse
 // proxy the socket only knows http.
 function webauthnRpId(req) { return String(req.headers.host ?? '').split(':')[0].toLowerCase(); }
-function webauthnOrigin(req) { return `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`; }
+// D-0426: the scheme comes from the proxy header when there is one and from the SOCKET when
+// there is not. The previous one-liner assumed 'http' whenever no proxy had spoken, which is
+// false on this product's own TLS listener — and it broke the CodeN bridge handshake and
+// WebAuthn over https, both silently, both only on the transport an operator on a LAN uses.
+const webauthnOrigin = requestOrigin;
 
 // Repository understanding is workspace-scoped: `subpath` may name a directory inside the
 // product workspace, never an absolute host path or a `..` escape out of it. Returns null on
@@ -3073,11 +3078,11 @@ const requestListener = async (req, res) => {
     // these calls really create/disable/reinstate/deprovision an account.
     if (req.method === 'GET' && url.pathname === '/scim/v2/ServiceProviderConfig') {
       if (!requireScimAuth(req, res)) return;
-      return json(res, 200, scimServiceProviderConfig(`${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`), { 'content-type':'application/scim+json; charset=utf-8' });
+      return json(res, 200, scimServiceProviderConfig(requestOrigin(req)), { 'content-type':'application/scim+json; charset=utf-8' });
     }
     if (req.method === 'GET' && url.pathname === '/scim/v2/Users') {
       const scim = requireScimAuth(req, res); if (!scim) return;
-      const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+      const baseUrl = requestOrigin(req);
       const list = scimListResponse(userDirectory.list(), {
         startIndex: url.searchParams.get('startIndex'), count: url.searchParams.get('count'),
       }, baseUrl);
@@ -3090,7 +3095,7 @@ const requestListener = async (req, res) => {
         const created = userDirectory.createServiceAccount({
           actorId: scim.sponsorActorId, username: payload?.userName, displayName: payload?.displayName ?? payload?.userName,
         });
-        const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+        const baseUrl = requestOrigin(req);
         return json(res, 201, toScimUser(created.user, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
       } catch (error) {
         return json(res, error.status ?? 400, scimError(error.status ?? 400, error.message), { 'content-type':'application/scim+json; charset=utf-8' });
@@ -3101,7 +3106,7 @@ const requestListener = async (req, res) => {
       const scim = requireScimAuth(req, res); if (!scim) return;
       const account = userDirectory.find(scimUserMatch[1]);
       if (!account) return json(res, 404, scimError(404, 'no such user'), { 'content-type':'application/scim+json; charset=utf-8' });
-      const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+      const baseUrl = requestOrigin(req);
       return json(res, 200, toScimUser(account, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
     }
     if (scimUserMatch && req.method === 'PATCH') {
@@ -3113,7 +3118,7 @@ const requestListener = async (req, res) => {
         if (active === true) userDirectory.reinstateUser({ actorId:scim.sponsorActorId, userId:scimUserMatch[1] });
         const account = userDirectory.find(scimUserMatch[1]);
         if (!account) return json(res, 404, scimError(404, 'no such user'), { 'content-type':'application/scim+json; charset=utf-8' });
-        const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}`;
+        const baseUrl = requestOrigin(req);
         return json(res, 200, toScimUser(account, baseUrl), { 'content-type':'application/scim+json; charset=utf-8' });
       } catch (error) {
         if (error instanceof ScimError) return json(res, error.status, scimError(error.status, error.reason), { 'content-type':'application/scim+json; charset=utf-8' });

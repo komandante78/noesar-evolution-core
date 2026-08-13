@@ -14,6 +14,8 @@
 // HSTS header only appears once TLS is genuinely terminating the connection, and a
 // plain-HTTP client gets nothing coherent back once it has.
 import { once } from 'node:events';
+import { request as httpsRequest } from 'node:https';
+import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -102,6 +104,43 @@ async function bootServer(scenarioEnv, label) {
 
     const plainAttempt = await fetch(`http://127.0.0.1:${port}/livez`).then(() => 'answered', () => 'refused');
     check('tls: a plain-HTTP client no longer gets a coherent HTTP response on the same port', plainAttempt === 'refused');
+
+    // --- D-0426 · the CodeN bridge's handshake, over TLS ---------------------------------
+    //
+    // This check exists because its absence shipped. The bridge refuses a foreign `Origin`
+    // BEFORE it looks at the session, and the expected origin was built as
+    // `${x-forwarded-proto ?? 'http'}://${host}` — which on this listener, where no proxy sets
+    // that header and TLS terminates here, produced `http://host:port` while the browser sent
+    // `https://host:port`. Every handshake over HTTPS was refused 403 and the socket closed
+    // without a close frame, so the terminal reported `1006` and reconnected forever. Found by
+    // the Owner looking at the deployed product; invisible to every suite here, because they
+    // all drive the product over plain HTTP, where the broken fallback happens to be right.
+    //
+    // Unauthenticated on purpose. What is asserted is the ORIGIN gate, and the two refusals are
+    // distinguishable by status: **403** means the origin was rejected (the defect), **401**
+    // means the origin was accepted and the socket then asked for a session (correct). Wiring a
+    // real cookie here would test authentication, which other suites already do.
+    const handshake = await new Promise((resolveStatus) => {
+      const request = httpsRequest({
+        host: '127.0.0.1', port, path: '/ws/coden', method: 'GET', rejectUnauthorized: false,
+        headers: {
+          host: `127.0.0.1:${port}`,
+          origin: `https://127.0.0.1:${port}`,
+          connection: 'Upgrade',
+          upgrade: 'websocket',
+          'sec-websocket-version': '13',
+          'sec-websocket-key': randomBytes(16).toString('base64'),
+        },
+      });
+      request.on('response', (res) => { res.resume(); resolveStatus(res.statusCode); });
+      request.on('upgrade', (res, socket) => { socket.destroy(); resolveStatus(101); });
+      request.on('error', () => resolveStatus(0));
+      request.end();
+    });
+    check('tls: the CodeN bridge does not refuse its own https origin (D-0426)',
+      handshake !== 403, `handshake answered ${handshake} — 403 means the origin gate rejected this installation's own page`);
+    check('tls: an unauthenticated handshake is refused for the RIGHT reason',
+      handshake === 401, `expected 401 (no session), got ${handshake}`);
   } finally {
     server.close();
   }

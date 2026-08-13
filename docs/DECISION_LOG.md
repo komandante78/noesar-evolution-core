@@ -9930,3 +9930,38 @@ the stopped backup, preserves the predecessor and reads the configuration back.
 `noesar-evolution:d0402-a11y-20260813T060132Z`, which is why the browser shows the old surface.
 **Reversal cost.** None — nothing was mutated.
 **Status.** Open, waiting on the Owner. The exact command is in the handoff and the ledger.
+
+## D-0426 · the origin over TLS — the terminal's `1006`, and five more instances of it — 2026-08-13
+**Decision.** `requestOrigin()` / `requestScheme()` move into `src/request-origin.mjs` and take
+the scheme from the proxy header when there is one and **from the socket** when there is not.
+`server.mjs` uses it in all six places that built an origin by hand.
+**Why.** Found by the Owner LOOKING at the deployed product: the terminal attached and then
+looped on `Disconnected: closed (1006)`. The installation's own log said why, twelve times —
+`coden bridge refused a foreign origin`, `origin: https://<host>:8443`. The expected origin was
+`${x-forwarded-proto ?? 'http'}://${host}`, which is right behind a proxy and wrong on this
+product's own TLS listener: it produced `http://host:8443` against the browser's
+`https://host:8443`, so **every handshake over HTTPS was refused 403** and the socket died
+without a close frame. The same line signs WebAuthn (passkeys over HTTPS) and built five SCIM
+base URLs, which advertised `http://` to clients reaching the product over TLS.
+**Rejected.** Fixing the bridge's comparison alone — the helper is shared by two features and
+was already copied five more times; the instance is not the defect.
+**Evidence.** New `tools/tls-smoke.mjs` check driving a **real TLS WebSocket handshake**, seen
+RED first against the old fallback (`403`) and green after (`401` — the origin gate passes and
+the socket asks for a session, which is correct for an unauthenticated probe). 6 unit tests,
+one of which is a source guard that found the five SCIM copies. Unit 2539 (2538 pass, 1 skip),
+ESLint 405/0, HTTP_SMOKE=PASS, AUTH_HTTP_SMOKE=PASS.
+**Reversal cost.** None.
+**Status.** Applied, **not yet installed** — the running image still carries the defect.
+
+## D-0427 · why nothing in this repository could have caught it — 2026-08-13
+**Decision.** Recorded as a gap in the instruments, with the one closed and the other named.
+**Why.** Every suite here drives the product over **plain HTTP** — the browser probe reaches its
+container by name over `http://`, where the broken fallback happens to give the right answer.
+A defect that exists only on the transport nobody tests is a defect that ships, and this one did:
+T2 was green, the accessibility audit was green, the deployment verified served bytes and
+headers, and the surface was still broken for the person using it.
+**Closed by this phase.** `tls-smoke.mjs` now drives a real handshake over TLS.
+**Still open, and named:** the browser suite never runs over HTTPS at all, so anything else that
+differs by scheme — cookie flags, HSTS behaviour, mixed-content, the WebAuthn origin — is
+unmeasured there. A TLS probe for the browser suite is the next instrument this project needs.
+**Status.** Recorded. The proposal is not executed in this phase.
