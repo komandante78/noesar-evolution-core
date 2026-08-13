@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "T2 for D-0404 slices 1-3 is complete and ALL SEVEN defects it found are repaired and committed locally: D-0416, D-0417, D-0419, D-0420, D-0421, D-0423 and F-TERM-001 (closed by the harness repair in ff448e4 — the product was right, the driver emptied the prompt with Escape where only Ctrl-U clears unconditionally). The image noesar-evolution:d0423-terminal-20260813T132120Z is BUILT and byte-verified against the tree, preflight PASS — but NOT deployed: the redeploy command was refused by the permission classifier and needs the Owner.",
-  "phase_status": "T2_green_image_built_and_verified_DEPLOY_BLOCKED_needs_owner_permission",
-  "next_phase": "Deploy noesar-evolution:d0423-terminal-20260813T132120Z (the command is in the handoff), verify live, then slice 4 — which still requires C, D and E of the design matrix green.",
+  "current_phase": "T2 for D-0404 slices 1-3 is complete, all seven defects are repaired, and the result is INSTALLED: noesar-evolution:d0423-terminal-20260813T132120Z is running and healthy since 2026-08-13T13:56:36Z. The CodeN terminal is live in the browser for the first time — served bytes equal the tree (5 of 5), the scoped CSP is real and only on /coden-terminal.html, /shared/coden/*.mjs answers text/javascript.",
+  "phase_status": "deployed_and_verified_live_cleanup_done",
+  "next_phase": "Slice 4 — remove the 25 fixed panels, the second sidebar entry and the dead routes. Criteria C, D and E of the design matrix are now green (E closed by this installation), so it is unblocked. F-I18N-002 travels with it: read the printed sample, translate the two new terminal strings or move the baseline with the reason written.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "ff448e4",
-  "last_updated_utc": "2026-08-13T13:24:21Z",
+  "last_updated_utc": "2026-08-13T13:58:52Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -318,7 +318,7 @@
     {
       "id": "F-CSP-001",
       "severity": "medium",
-      "status": "CLOSED 2026-08-13 by D-0423 — the emulator runs in its own document (coden-terminal.html) under a scoped CSP. Measured: 0 inline-style refusals (72 before), the main document policy unchanged, 5 tests pin the scope from both sides. The theme half is closed with it: the palette is derived from the product tokens and the accessibility audit is 27/27.",
+      "status": "CLOSED 2026-08-13 by D-0423 and INSTALLED (d0423-terminal-20260813T132120Z, verified live) — the emulator runs in its own document (coden-terminal.html) under a scoped CSP. Measured: 0 inline-style refusals (72 before), the main document policy unchanged, 5 tests pin the scope from both sides. The theme half is closed with it: the palette is derived from the product tokens and the accessibility audit is 27/27.",
       "summary": "xterm.js styles rows, cursor and dimensions with inline styles and injected <style> elements, and style-src self refused all of them, so the terminal attached and received frames but could not paint."
     },
     {
@@ -960,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "THE ONLY THING BLOCKING THE INSTALLATION IS A PERMISSION. The image is built offline from oci/Dockerfile, its bytes are proven equal to the tree (7 of 7 files, including the two new ones), and tools/deploy/redeploy.sh --source noesar-evolution --check reports PREFLIGHT: PASS with the rollback path named. The apply command was REFUSED by the permission classifier, not by the tool: tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image noesar-evolution:d0423-terminal-20260813T132120Z. Until it runs, the running container is still noesar-evolution:d0402-a11y-20260813T060132Z and the browser shows the OLD surface — the terminal work is in the tree and in git, not on the installation. Verified this session: unit 2533 (2532 pass), ESLint 405/0, scripts/test.sh 10/10, seeded 19/19, browser 495 checks 493 pass, accessibility 27/27. The two red rows are F-I18N-002 (declared, not re-baselined) and one flaky s327/4b row that was green in the three runs before.",
+  "next_action": "NOTHING IS PENDING ON THE INSTALLATION. Open #/coden on the live product and look at the terminal with your own eyes — that is the one thing no probe can do for you. Then slice 4. What is proven live: served bytes = tree (5/5), /coden-terminal.html carries style-src self unsafe-inline + SAMEORIGIN while /index.html stays strict, .mjs is served as text/javascript, /livez and /readyz 200, four children spawned, 0 auth failures, 0 error lines in the first three minutes. What is NOT proven on this container: anything needing a signed-in session — the terminal behaviour (attach, theme, menu, a submitted line answered) is proven on probes built from these exact bytes, 495 checks 493 pass, accessibility 27/27. Rollback: rename noesar-evolution-pre-20260813T135635Z back and start it.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

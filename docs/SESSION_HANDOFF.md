@@ -1,33 +1,38 @@
-# SESSION HANDOFF — 2026-08-13 (T2 for `D-0404`: sette difetti riparati, immagine pronta, deploy fermo)
-
+# SESSION HANDOFF — 2026-08-13 (T2 per `D-0404`: sette difetti, riparati e INSTALLATI)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Una sola cosa blocca l'installazione, ed è un permesso.** L'immagine `noesar-evolution:d0423-terminal-20260813T132120Z` è costruita
-offline, i suoi byte sono **provati uguali all'albero** (7 file su 7, comprese le due nuove
-superfici) e `redeploy.sh --check` dà **PREFLIGHT: PASS** con il percorso di rollback nominato.
-Il comando di applicazione è stato **rifiutato dal classificatore dei permessi della sessione** —
-non dallo strumento, non da un preflight fallito.
+**L'installazione è aggiornata e verificata.** `noesar-evolution:d0423-terminal-20260813T132120Z`
+gira sana dalle 13:56:36Z: byte serviti **uguali all'albero (5 su 5)**, la policy ristretta esiste
+**solo** su `/coden-terminal.html` (`index.html` resta `style-src 'self'` + `DENY`), `.mjs` servito
+come `text/javascript`, `/livez` e `/readyz` **200**, quattro figli avviati, **0** fallimenti di
+autenticazione e **0** righe di errore nei primi tre minuti.
+
+1. **Apri `#/coden` sul prodotto vero e guarda il terminale.** È l'unica cosa che nessuna sonda
+   può fare al posto tuo: quello che è provato qui sono i byte e le intestazioni, non i tuoi occhi.
+2. **Poi la slice 4** — rimozione dei 25 pannelli fissi, della seconda voce di sidebar e delle
+   rotte morte. C, D ed E della matrice sono verdi (E l'ha chiusa questa installazione), quindi è
+   sbloccata.
+3. **Con lei `F-I18N-002`**: leggere il campione che la suite ora stampa e decidere — tradurre le
+   due stringhe nuove del terminale, o spostare la soglia con la ragione scritta.
+
+**Rollback**, se qualcosa non convince:
 
 ```sh
-tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner \
-  --image noesar-evolution:d0423-terminal-20260813T132120Z
+docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
+  && docker rename noesar-evolution-pre-20260813T135635Z noesar-evolution && docker start noesar-evolution
 ```
 
-**Finché non gira, l'installazione serve `d0402-a11y-20260813T060132Z`** — precedente a ogni
-riparazione di oggi. È esattamente il motivo per cui nel browser la superficie CodeN è quella di
-prima: il lavoro è in git e in quell'immagine, non sul prodotto in esecuzione.
-
-Dopo il deploy: verifica live (`/livez`, `/readyz`, byte serviti = albero), pulizia §5a
-(il rollback vecchio va rimosso, la sua immagine resta), poi la slice 4 — che resta subordinata
-a C, D ed E della matrice verdi.
+**Non provato su QUESTO container:** tutto ciò che richiede una sessione autenticata. Il
+comportamento del terminale (attacco, tema, menu, riga inviata e risposta) è provato su sonde
+costruite da questi byte esatti — 495 check, 493 pass; accessibilità 27/27.
 
 ## Blockers and open findings
 
 | Id | State |
 |---|---|
 | `F-TERM-001` | **CLOSED** (`ff448e4`). The product answers; the DRIVER was emptying the prompt with Escape where only Ctrl-U clears unconditionally. |
-| deployment | **BLOCKED — permission refused.** Image built and byte-verified, preflight PASS. |
+| deployment | **DONE.** `d0423-terminal-20260813T132120Z` running healthy since 13:56:36Z, verified live, cleanup §5a done. |
 | `F-E2E-001` | OPEN, observed once: the `s327/4b` row flaked in run 17, green in runs 14-16. Recorded, not chased. |
 | `F-I18N-002` | OPEN. Ratchet 607 → 644, **deliberately not re-baselined**; the suite now prints its sample. |
 | `F-CSP-001` | **CLOSED** by `D-0423`. |
@@ -70,7 +75,7 @@ returning attaches exactly one, not two.
 ## State of the tree
 
 11 files changed, 2 new (`coden-terminal.html`, `coden-terminal-frame.js`, `webui-boot-order.test.mjs`).
-Backups in `BACKUPS/`. **Committed locally (`ff448e4`). Not pushed. The image is BUILT and byte-verified; no container was created, started or stopped.**
+Backups in `BACKUPS/`. **Committed locally. Not pushed. INSTALLED and verified live; after cleanup exactly two project containers, the installation and one rollback.**
 After cleanup: exactly two containers — the installation and one rollback — no probe image, no
 stamped tag, only the two stable networks. `noesar-local` (another project) untouched.
 

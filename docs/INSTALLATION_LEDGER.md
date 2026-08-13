@@ -4682,3 +4682,47 @@ shows the OLD CodeN surface, and the terminal work exists in git and in this ima
 
 **Rollback cost once deployed:** none beyond ~1 s of downtime; the predecessor container carries
 the configuration that is current now.
+
+## `d0423-terminal-20260813T132120Z` — the CodeN terminal goes live (`D-0423`, 2026-08-13)
+
+| | |
+|---|---|
+| Image | `noesar-evolution:d0423-terminal-20260813T132120Z`, built offline (`--pull=false`) from `oci/Dockerfile` |
+| Replaces | `noesar-evolution:d0402-a11y-20260813T060132Z` (running since 2026-08-13 06:01Z) |
+| Carries | `D-0416`, `D-0417`, `D-0419`, `D-0420`, `D-0421`, `D-0423`, `D-0424` — the whole T2 repair set |
+| Sequence | `tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image <tag>`, run by the Owner: `PREFLIGHT: PASS` → `DEPLOYED` |
+| Started | 2026-08-13T13:56:36Z · `running healthy` |
+
+**Verified live on the installation, after the deployment:**
+
+- **served bytes equal the tree, 5 of 5** — `coden-terminal.html` `2687f2923525cec5`,
+  `coden-terminal-frame.js` `b6a46a76c3b0e54e`, `coden-terminal.js` `258a54dbc677f948`,
+  `app.js` `adfefe2ee94e9933`, `styles.css` `51027806b13a1c98`
+- **the scoped policy is real, and only there**: `GET /coden-terminal.html` answers
+  `style-src 'self' 'unsafe-inline'`, `x-frame-options: SAMEORIGIN`, no
+  `cross-origin-opener-policy`; `GET /index.html` still answers `style-src 'self'` and `DENY`
+- `GET /shared/coden/terminal-input.mjs` → `content-type: text/javascript` (`D-0417` live)
+- `/livez` **200** · `/readyz` **200** · `docker inspect` = `running healthy`, before and after
+  cleanup · four children spawned (`postgres`, `api`, `codev`, `atom`) · auth-failure lines **0**
+  · `"level":"error"` lines in the first three minutes **0**
+- workspace backed up **with the service stopped**, `0600` in a `0700` directory, checksum
+  written. **That archive holds credentials** — it is treated as one, and its retention is a
+  separate decision.
+
+**Cleanup (§5a):** the older rollback `noesar-evolution-pre-20260813T060219Z` removed; **its
+image `noesar-evolution:d0397-agents-20260812T163057Z` stays on disk**, so that path still works.
+Containers 53 → 52, non-project containers **50 → 50**, volumes **63 → 63**, networks **10 → 10**.
+Project containers now exactly two, as §21b requires.
+
+**Rollback cost:** none beyond ~1 s of downtime — the predecessor carries the configuration that
+was current before this deployment.
+
+```sh
+docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
+  && docker rename noesar-evolution-pre-20260813T135635Z noesar-evolution \
+  && docker start noesar-evolution
+```
+
+**Not proven here:** anything needing a signed-in session on THIS container. The terminal's
+behaviour — attach, theme, menu, submitted line answered — is proven on probes built from these
+exact bytes (495 checks, 493 pass; accessibility 27/27), not on this installation.
