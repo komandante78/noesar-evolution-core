@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "Agents surface (D-0397): view-agents had 5 inputs and zero guidance, an agent could not be removed (archived was written at creation, filtered on read, and settable by nothing), and every run the screen created was unfinishable because Analyze goal carries no toolId and executeStep refused it with 409. Fixed in the source tree: placeholders/hints/titles on all five controls, an agent list with Test and Archive, PATCH /api/v1/agents/:id under agent.manage + CSRF, and a tool-less step now executed by the model through the same providers.route -> completeWithFallback path Chat uses (never through ChatOrchestrator, so a test writes nothing into chat history). Nothing was built, deployed or installed; no container, image, network, volume, database or ATOM was touched.",
-  "phase_status": "DEPLOYED — D-0397 and Voice V1 live. D-0401 (Archive agent label + 3 browser steps that finally render the card) is COMMITTED BUT NOT DEPLOYED: the installation still shows the old label.",
-  "next_phase": "Owner: A2 on the NEW installation, then the D-0395 choice, then git push. A short phase can close F-A11Y-001..003 with a single audit run.",
+  "current_phase": "WCAG 2.2 AA closure (D-0402), built and deployed in the same phase per CLAUDE10 3a: the three failures D-0400 found and did not repair are fixed - autocomplete on the two remote-target fields, an own focus indicator on #codenPrompt (the ring was on the wrapper, which holds more than one control and so cannot say WHICH has focus), and a 24x24 floor on #codenPrompt and .hint-key expressed as floors so the targets keep growing with the text scale. Audit 27/27 (was 24/27), browser 475/475, unit 2402/0/1, ESLint 392/0. Deployed with tools/deploy/redeploy.sh; the same image also carries D-0401. No database, no ATOM, no container outside this product: the two e2e probes were removed by the suite itself and the older rollback by the 5a step, its image kept.",
+  "phase_status": "DEPLOYED AND VERIFIED (D-0402). The installation is noesar-evolution:d0402-a11y-20260813T060132Z, live 2026-08-13 06:02Z, carrying the three WCAG repairs AND D-0401 (Archivia agente). Image bytes equal the tree and the installation serves them; /livez /readyz 200; two project containers, one rollback kept.",
+  "next_phase": "Owner: (1) A2 on the live installation, (2) the D-0395 choice. Then OCI phase O6 (the four external containers exist only in the runtime and in prose).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "64c266ab7c00e1af9f845e9353febad8c3ae0e1f",
-  "last_updated_utc": "2026-08-12T16:35:00Z",
+  "last_commit": "25dd78286698c2b6904cb571d34f3700b9d7666e",
+  "last_updated_utc": "2026-08-13T06:05:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -288,19 +288,19 @@
     {
       "id": "F-A11Y-001",
       "severity": "low",
-      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing",
+      "status": "FIXED and DEPLOYED 2026-08-13 (D-0402), live in noesar-evolution:d0402-a11y-20260813T060132Z - autocomplete=off on remoteTargetName (a machine label, not user data) and autocomplete=username on remoteTargetUsername; audit 1.3.5 now 0 of 13 without autocomplete",
       "summary": "WCAG 1.3.5: remoteTargetName and remoteTargetUsername carry no autocomplete attribute (2 of 13 identity fields)."
     },
     {
       "id": "F-A11Y-002",
       "severity": "medium",
-      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing, needs an Owner design call",
+      "status": "FIXED and DEPLOYED 2026-08-13 (D-0402), live in noesar-evolution:d0402-a11y-20260813T060132Z - the ring was on the WRAPPER (.agent-prompt:focus-within) while textarea:focus{outline:none} stripped it from the element; the textarea now carries its own inset indicator; audit 2.4.7 now 0 of 879",
       "summary": "WCAG 2.4.7: #codenPrompt is the only one of 879 controls that changes nothing when focused."
     },
     {
       "id": "F-A11Y-003",
       "severity": "medium",
-      "status": "OPEN - recorded 2026-08-12 (D-0400), pre-existing, needs an Owner design call",
+      "status": "FIXED and DEPLOYED 2026-08-13 (D-0402), live in noesar-evolution:d0402-a11y-20260813T060132Z - floors not fixed sizes: min-height max(24px,1.6em) on #codenPrompt, inline-flex with min-width/min-height 24px on .hint-key; audit 2.5.8 now 0 targets under 24x24",
       "summary": "WCAG 2.5.8: #codenPrompt is 1144x21 and #codenPromptOpenMenu is 21x17 - both under the 24x24 minimum target size. Changes the geometry of the CodeN composer."
     }
   ],
@@ -931,7 +931,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "A2 FIRST, and it is now worth more than before: the installation is new, so the run also proves the deployment. Open https://192.168.178.100:8443, sign in, go to #/coden/agent/plan (NOT #/agents), fill the goal plus at least one file path, press Create plan, and read BOTH the chip reasoning atom in the CodeN top bar AND the provider: line in the plan result box. atom on the chip is only the absence of a degradation event; provider: names who answered. Measure the container log of the NEW container from its own start, not from the old marker at 426. THEN: (2) answer D-0395 on the #/models in-use lane; (3) git push origin main, never forced. Also newly available to try: Agents now has a list with Test and Archive, and the run that was stuck in planned shows Ask the model.",
+  "next_action": "TWO things need the Owner; the deployment and the push are done. (1) A2: open https://192.168.178.100:8443, sign in, go to #/coden/agent/plan (NOT #/agents), fill the goal plus at least one file path, press Create plan, and read BOTH the chip (reasoning atom) in the CodeN top bar AND the provider: line in the plan result box - atom on the chip is only the absence of a degradation event, provider: names who answered. Measure the container log from the NEW container own start (started 2026-08-13 06:02Z), never from an older marker. While signed in, the composer now shows its own focus ring and the Archive button reads Archivia agente. (2) Answer D-0395 on the #/models in-use lane: (a) the product must not present another deployment runtime as on this installation, (b) unload and reload a container outside this project, (c) a different model.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

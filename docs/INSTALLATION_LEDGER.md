@@ -4574,3 +4574,39 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 ```
 
 **Not proven here:** anything needing a signed-in session — A2 included.
+
+## `d0402-a11y-20260813T060132Z` — the WCAG repairs and the Archive label go live (`D-0402`, 2026-08-13)
+
+| | |
+|---|---|
+| Image | `noesar-evolution:d0402-a11y-20260813T060132Z`, built offline (`--pull=false`) from `oci/Dockerfile` |
+| Replaces | `noesar-evolution:d0397-agents-20260812T163057Z` (running since 2026-08-12 16:32Z) |
+| Carries | `D-0402` (WCAG 1.3.5 / 2.4.7 / 2.5.8) **and** `D-0401` (`Archive agent` → «Archivia agente»), committed 2026-08-12 and never installed until now |
+| Sequence | `tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image <tag>` — `PREFLIGHT: PASS`, `DEPLOYED` |
+
+**Verified live, this session:**
+
+- image bytes **equal the tree** before any mutation: `styles.css` `9b28968a23cc…`, `index.html`
+  `c4a4efb4ba0f…`, `app.js` `46dca2b5b189…`, `i18n-catalog.js`, `coden-view-model.js` — 5 of 5
+- the installation **serves** those bytes: `GET /styles.css`, `/index.html`, `/app.js` all MATCH the tree
+- `clean exit confirmed` · workspace backed up **with the service stopped**, `0600` in a `0700` directory
+- `/livez` **200** · `/readyz` **200** · `docker inspect` = `running healthy`, before and after cleanup
+- four children spawned: `postgres`, `api`, `codev`, `atom` · auth-failure lines **0**
+- pre-deployment gates: WCAG audit **27/27**, browser suite **475/475**, unit **2402 pass / 0 fail**, ESLint **392 / 0**
+
+**Predecessor kept:** `noesar-evolution-pre-20260813T060219Z` — the one rollback §21b permits. The
+older rollback (`…pre-20260812T163215Z`) was removed; **its image
+(`noesar-evolution:d0373-voice-conversation`) stays on disk**, so that path still works.
+Containers 53 → 52, networks 10 → 10, volumes 63 → 63, non-project containers 50 → 50.
+
+**Rollback cost:** none beyond ~1 s of downtime — the predecessor carries the configuration that
+was current before this deployment.
+
+```sh
+docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
+  && docker rename noesar-evolution-pre-20260813T060219Z noesar-evolution \
+  && docker start noesar-evolution
+```
+
+**Not proven here:** anything needing a signed-in session — A2 included. The three WCAG rows are
+proven on a probe built from these bytes, not on this container.
