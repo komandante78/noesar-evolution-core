@@ -58,7 +58,7 @@ questa fase è **T3 · LIVE INSTALL**.
   dell'albero. Eseguirla è una decisione dell'Owner (§69).
 - **`D-0427` non è stato chiuso**: continua a non esistere una suite che guidi il prodotto
   installato su TLS.
-- **Nessuna push**: il remote non è stato contattato in questa sessione.
+- **Push fatta**: `a48e7a5..1146a48 main -> main` su `origin`, in questa sessione.
 
 ## Proposta di miglioramento (`D-0429`)
 
