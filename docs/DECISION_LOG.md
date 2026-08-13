@@ -9990,3 +9990,47 @@ first action*. A deploy that cannot accept its own page should not be able to re
 **Evidence.** The probe already discriminated correctly on both images today (`D-0428`).
 **Reversal cost.** ~60 lines plus a step in `redeploy.sh`; removable without touching product code.
 **Status.** deferred — awaiting the Owner's decision (§69: generated always, executed on request).
+
+## D-0430 · the CodeN model chip reads the installation's real answer — 2026-08-13
+**Decision.** `#codenModelChip` now calls `/api/v1/models/active` when `#chatModel` is empty,
+instead of showing `model none` next to a resident, answering model.
+**Why.** `#chatModel` is a per-conversation free-text field, empty on a fresh CodeN session.
+`active-model.mjs` already resolves the real answer for the Author and ATOM; the WebUI never
+called it. Reported directly by the Owner against the running product.
+**Rejected.** Guessing from `NOESAR_LOCAL_MODEL_RUNTIME`/env — `active-model.mjs` exists
+precisely because an endpoint is not an identity; a second guesser would disagree with it.
+**Evidence.** Unit 2539/2540, browser E2E 494/495 (unchanged pass count on this surface).
+**Reversal cost.** None — additive read, falls back to `—` on any fetch failure.
+**Status.** applied · installed (`d0432-menu-20260813T155141Z`).
+
+## D-0431 · the "second page" under the terminal is labelled, not removed — 2026-08-13
+**Decision.** `#codenShell` gets a visible `.eyebrow` label ("Bench command line") naming its
+actual role. Hiding it once the terminal attaches was tried and reverted.
+**Why.** Owner reported it as confusing duplication. It IS the live method for 17 of 25 bench
+panels (`CE-034`) — `tools/browser-e2e.mjs`'s `jump()` types into `#codenPrompt` to reach them,
+and hiding the element broke that navigation, measured (`#/coden/bench/map` timed out).
+**Rejected.** Hiding on terminal-attach (broke real navigation, proven by E2E) · rewording its
+opening transcript note (broke two assertions pinned to the exact `OPENING_NOTE` text).
+**Evidence.** Browser E2E 495→493 on the hide attempt, back to 494/495 after revert+label;
+accessibility 27/27 with the new `aria-labelledby`.
+**Reversal cost.** None — one `<p class="eyebrow">` and one catalogue entry.
+**Status.** applied · installed. Open: the real fix (a single surface) is slice 4 of `17`, not
+this phase — recorded, not built here.
+
+## D-0432 · `D-0415(b)` closed — the terminal `/` menu answers arrows, Tab and Enter — 2026-08-13
+**Decision.** `coden-terminal.js` mirrors `tui-fullscreen.mjs`'s keypress loop: Up/Down move
+`view.menu.selected` in place, Enter completes a group at level zero, Tab completes an entry —
+none of them submit. `terminal-input.mjs` (shared) now decodes Tab (`\t`) as its own intent.
+**Why.** Owner reported clicking/selecting in the `/` menu did nothing. Root cause: arrows were
+decoded but wired to a static "not supported yet" note; Tab fell through to the generic
+ignored-C0-control case and was silently swallowed.
+**Rejected.** Flattening the grouped menu into one scrollable list (evaluated, per the Owner's
+own suggestion) — deferred: `CE-020` already measured that a flat 53-entry list does not fit a
+terminal viewport, and the real defect was non-responsiveness, not the grouping, which this
+closes without touching `tui-screen.mjs`'s tested scroll math.
+**Evidence.** `tools/browser-e2e.mjs`'s own `D-0415(b)` check rewritten and now PASSES with a
+real marker move: `▸ WORK` → `▸ DESTINATIONS` after `ArrowDown`. Unit +1 test (`decodeInput`
+tab). Seeded-defect 19/19.
+**Reversal cost.** Low — isolated to one `onData` handler and one decoder line.
+**Status.** applied · installed. `D-0415(c)` (parity suite asserting both shells never diverge
+on this) remains open, unchanged by this phase.

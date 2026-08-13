@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0426 is INSTALLED. noesar-evolution:d0426-origin-20260813T140526Z deployed 2026-08-13T14:17:24Z; the installation no longer refuses its own https origin. Measured differentially (D-0428): predecessor d0423 logged 107 'refused a foreign origin', all of them https://<host>:8443 (its own page); d0426 logs 0 self-refusals, own https origin reaches 401 (session gate, downstream of the origin gate) while http:// and evil.example still get 403. Health 200/200 on both listeners. Predecessor kept as noesar-evolution-pre-20260813T141723Z; the older rollback was removed, networks and volumes unchanged.",
-  "phase_status": "deployed_and_verified_on_the_encrypted_listener__owner_browser_acceptance_pending",
-  "next_phase": "Slice 4 of the CodeN Evolution plan (MASTER_PROJECT/17). Before it: the Owner opens #/coden over https://<host>:8443 with a real session and confirms the terminal attaches without 1006 — the only part no probe here can prove (401 = no session).",
+  "current_phase": "D-0430..D-0432 INSTALLED on top of D-0426. Three defects the Owner found live on #/coden: (1) model chip said 'model none' with phi-4 resident — now calls /api/v1/models/active; (2) the legacy bench prompt read as a confusing second page under the terminal — labelled '.eyebrow Bench command line' rather than hidden, because it is the live route to 17/25 bench panels (hiding it broke #/coden/bench/map navigation, measured, then reverted); (3) D-0415(b) closed — arrow/Tab/Enter now move and complete the terminal's / menu, mirrored from tui-fullscreen.mjs.",
+  "phase_status": "deployed_and_verified_over_tls__owner_acceptance_of_model_chip_and_menu_pending",
+  "next_phase": "Owner opens https://<host>:8443/#/coden with a real session: confirms 'model phi-4' (or whatever is resident) in the top chip, confirms the bench prompt now reads as clearly distinct from the terminal, and drives the terminal's / menu with arrows+Tab+Enter. If all three hold, D-0430..D-0432 close end to end. Then: the Owner-directed repo-hygiene pass (evidence/ vs EVIDENCE/, MANIFEST drift, the three unreconciled phase plans) — scoped and proposed, not yet started; and slice 4 of MASTER_PROJECT/17 (the real single-surface fix for D-0431, not this phase's label patch).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "1146a48",
-  "last_updated_utc": "2026-08-13T14:21:00Z",
+  "last_updated_utc": "2026-08-13T15:58:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -960,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "OWNER ACCEPTANCE, then slice 4. Open https://<host>:8443/#/coden in the browser and use the terminal; while it is open, docker logs noesar-evolution | grep 'foreign origin' must stay empty (only two lines exist, both from deliberately wrong origins sent by the probe at 14:18:50Z). If it attaches, D-0426 is closed end to end and slice 4 opens. If it does not, capture the close code and the log line — the origin gate is no longer the suspect. D-0427 stands: no repository suite drives the LIVE product over TLS; D-0429 proposes making the handshake probe a post-deploy gate in redeploy.sh.",
+  "next_action": "OWNER ACCEPTANCE of D-0430..D-0432 on the live https path. Three concrete things to look at on #/coden: the model chip text, the '.eyebrow' label above the bottom prompt, and pressing ArrowDown/Tab/Enter after typing / inside the terminal itself (not the bottom box). D-0427 still stands — no repository suite drives the LIVE product over TLS; D-0429 (promote the handshake probe into redeploy.sh) remains proposed, not executed.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

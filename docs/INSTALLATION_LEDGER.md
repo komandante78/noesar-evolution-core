@@ -4777,3 +4777,29 @@ returns the installation to the state where every https handshake is refused.
 networks and volumes diffed unchanged; non-project containers 53 → 52, none touched.
 **Not proven here.** Anything needing a signed-in session — the Owner's browser opening
 `#/coden` over https is the remaining acceptance step.
+
+## `d0432-menu-20260813T155141Z` — DEPLOYED and verified over TLS — 2026-08-13
+
+**Tag.** `noesar-evolution:d0432-menu-20260813T155141Z`, deployed 2026-08-13T15:54:26Z.
+**What changed.** `D-0430` CodeN model chip now reads `/api/v1/models/active` instead of an
+always-empty free-text field. `D-0431` the legacy bench prompt gets a visible `.eyebrow` label
+("Bench command line") instead of opening on wording that duplicated the terminal's own title —
+kept, not hidden: it is the live route to 17 of 25 bench panels (`tools/browser-e2e.mjs`'s own
+`jump()` proved this when hiding it broke `#/coden/bench/map` navigation). `D-0432` closes
+`D-0415(b)`: arrow/Tab/Enter now move and complete the terminal's `/` menu, mirrored from
+`tui-fullscreen.mjs` line for line.
+**Health.** `state=running health=healthy`; `https://<host>:8443/readyz` = 200;
+`https://<host>:8443/` = 200, 130,063 bytes.
+**Bytes equal tree.** Five changed files hashed individually inside the built image against the
+working tree — all five `sha256` match.
+**Verification.** Unit 2539/2540 (1 pre-existing skip) · ESLint 407 files/0 errors · browser E2E
+494/495 (only F-I18N-002, unchanged at 644, not grown) · accessibility 27/27 · seeded-defect
+19/19.
+**Predecessor preserved.** `noesar-evolution-pre-20260813T155426Z` (`d0426-origin-...`).
+**Rollback cost.** `docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution &&
+docker rename noesar-evolution-pre-20260813T155426Z noesar-evolution && docker start …` —
+returns the model chip, the bench prompt and the terminal menu to their prior (broken) state.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260813T141723Z` removed (image kept);
+networks/volumes diffed unchanged; non-project containers unchanged at 52.
+**Not proven here.** A signed-in owner actually reading `model phi-4` and using the terminal's
+arrow-key menu live — the Owner's own next check.
