@@ -1230,9 +1230,30 @@ try {
 
     // Escape abandons a `/` prompt, then a real line goes through the SHARED `planTurn` and
     // comes back into the transcript.
-    await page.keyboard.press('Escape');
+    // `F-TERM-001`. The chain from keystroke to answer is measured at each of its three joints,
+    // because "nothing appeared" was true for four runs and named none of them. Ctrl-U rather
+    // than Escape to empty the prompt: `decodeInput` maps `\x15` to `kill-line`, which clears
+    // unconditionally, while `escape` clears only a prompt that starts with `/` — and a prompt
+    // left holding `/` turns the next line into `//help`, an unknown command whose error nobody
+    // was looking for.
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const promptEmptied = await promptRow();
+    check('F-TERM-001 · the prompt can be emptied before a line is typed',
+      promptEmptied === '', `prompt row after Ctrl-U: "${promptEmptied}"`);
+
     await typeIntoTerminal('/help');
+    const promptComposed = await promptRow();
+    check('F-TERM-001 · the typed line is composed on the prompt, exactly as typed',
+      promptComposed === '/help', `prompt row after typing: "${promptComposed}" (path ${lastInputPath})`);
+
     await page.keyboard.press('Enter');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const promptSubmitted = await promptRow();
+    check('F-TERM-001 · Enter consumes the line — the prompt is empty again',
+      promptSubmitted === '', `prompt row after Enter: "${promptSubmitted}"`);
     // Waited for on `/logout`, not on `Commands:` — and the difference is a property of the
     // renderer, not a detail. The transcript region draws the TAIL of the transcript, and the
     // help listing is thirty-odd lines, so its heading scrolls off the top the moment it is
@@ -1256,9 +1277,19 @@ try {
       // The listing itself, not its heading — see the note above on why the heading is off the
       // screen by the time the last line is drawn. Three entries from three different groups,
       // so a listing that lost a group fails here rather than passing on one lucky match.
+      // Every marker the three possible answers would leave, reported together: the listing
+      // (success), an 'unknown command' line (the line was refused), or an error line (submit
+      // threw). A check that only looks for success cannot say which of the other two happened.
+      const markers = {
+        listing: ['/logout', '/plan', 'SESSION'].filter((f) => transcript.includes(f)).join('+') || 'none',
+        heading: transcript.includes('Commands:'),
+        unknown: /unknown|not a command|non riconosciut/i.test(transcript),
+        error: /error|failed|is not a function/i.test(transcript),
+        length: transcript.replace(/\s+/g, ' ').trim().length,
+      };
       check('the answer came from the shared command registry',
         ['/logout', '/plan', 'SESSION'].every((fragment) => transcript.includes(fragment)),
-        transcript.replace(/\s+/g, ' ').slice(-200));
+        JSON.stringify(markers));
     }
 
     // Leaving the destination destroys the document, and with it the socket, the observer and
