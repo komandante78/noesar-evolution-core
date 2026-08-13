@@ -10034,3 +10034,43 @@ tab). Seeded-defect 19/19.
 **Reversal cost.** Low — isolated to one `onData` handler and one decoder line.
 **Status.** applied · installed. `D-0415(c)` (parity suite asserting both shells never diverge
 on this) remains open, unchanged by this phase.
+
+## D-0434 · the bench-prompt label was real but too weak — corrected, then verified visually — 2026-08-13
+**Decision.** Re-applied the transcript-opening override reverted earlier this phase, with
+wording that keeps the substring `"CodeN Evolution"` (what the loose page-level check requires)
+while leading with what the box actually is, registered in `RUNTIME_ONLY` and the `it` catalogue.
+**Why.** A screenshot of the live page (taken because the Owner reported the box still looked
+unchanged) showed the bench prompt opening on wording nearly identical to the terminal's own
+title/status a few rows above — the `.eyebrow` label did not overcome that stronger signal. The
+original revert was itself a misdiagnosis: only ONE of its two test failures was caused by the
+text change; the other (`D-0415(b)`) was already broken by the unrelated arrow-key fix in the
+same commit and needed rewriting regardless of the transcript text.
+**Rejected.** Leaving the label as the whole fix — direct visual evidence contradicted it.
+**Evidence.** Screenshot via a disposable probe (`EVIDENCE/`, not committed — a live install
+never runs a suite that bootstraps an account, §3a 11e); unit 2539/2540; browser E2E 494/495.
+**Reversal cost.** None — one JS string, one catalogue pair.
+**Status.** applied · installed (`d0431b-transcript-20260813T171059Z`).
+
+## D-0433 · a chained redeploy defeats the §3a container-replacement exemption — found, not fixed — 2026-08-13
+**Decision.** Recorded, not repaired live: `container-baseline.sh`'s replacement exemption
+requires a preserved predecessor's id to be in the SessionStart baseline. This session redeployed
+`noesar-evolution` three times; §5a correctly removes the OLDER rollback after each redeploy, which
+also removes the only evidence that would let a SECOND redeploy prove its own predecessor's
+provenance. The Stop hook now FAILs on both the running container and its (legitimate) rollback.
+**Why not fixed here.** The only sound fix (not weakening the R3 guarantee that a forged
+predecessor name cannot buy the exemption) requires `redeploy.sh` itself to attest each transition
+— e.g. an append-only log in the baseline runtime dir — which means changing the trust boundary of
+an already adversarially-tested deployment tool (`D-0393`, 70/70 fixture scenarios) late in an
+already long session. `CLAUDE10.md` §18 rule 77 lists deployment among the things authorisation
+should not be assumed for; the guard's own history (`D-0381`) is three separate incidents of a
+rushed change to this exact file causing real damage.
+**Rejected.** Weakening `preserved_predecessor` to accept any current `-pre-`/`-old-` named
+container regardless of provenance — this is exactly what test `R3` exists to prevent (a forged
+predecessor name must not launder litter), and defeats the exemption's actual purpose.
+**Evidence.** Root cause traced to `container-baseline.sh` lines ~434-461 and its own test file's
+R1-R3 cases; confirmed by reading, not guessed.
+**Reversal cost.** N/A — nothing changed.
+**Status.** deferred — needs its own phase: extend `redeploy.sh` to attest transitions, extend
+`cbl_check_containers` to trust chained attestations, add an `R5`-style adversarial test proving a
+forged attestation still fails. Until then: multiple redeploys in one session will FAIL close and
+require the Owner's explicit acknowledgement that the state is correct.

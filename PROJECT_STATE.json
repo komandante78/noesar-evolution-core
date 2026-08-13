@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0430..D-0432 INSTALLED on top of D-0426. Three defects the Owner found live on #/coden: (1) model chip said 'model none' with phi-4 resident — now calls /api/v1/models/active; (2) the legacy bench prompt read as a confusing second page under the terminal — labelled '.eyebrow Bench command line' rather than hidden, because it is the live route to 17/25 bench panels (hiding it broke #/coden/bench/map navigation, measured, then reverted); (3) D-0415(b) closed — arrow/Tab/Enter now move and complete the terminal's / menu, mirrored from tui-fullscreen.mjs.",
-  "phase_status": "deployed_and_verified_over_tls__owner_acceptance_of_model_chip_and_menu_pending",
-  "next_phase": "Owner opens https://<host>:8443/#/coden with a real session: confirms 'model phi-4' (or whatever is resident) in the top chip, confirms the bench prompt now reads as clearly distinct from the terminal, and drives the terminal's / menu with arrows+Tab+Enter. If all three hold, D-0430..D-0432 close end to end. Then: the Owner-directed repo-hygiene pass (evidence/ vs EVIDENCE/, MANIFEST drift, the three unreconciled phase plans) — scoped and proposed, not yet started; and slice 4 of MASTER_PROJECT/17 (the real single-surface fix for D-0431, not this phase's label patch).",
+  "current_phase": "D-0430..D-0433. D-0431 corrected twice: label alone was insufficient (confirmed by a live screenshot after the Owner reported no visible change), the bench prompt's opening line now reads distinctly from the terminal's own title/status. Third redeploy this session installed noesar-evolution:d0431b-transcript-20260813T171059Z, healthy, byte-verified. D-0433 opened: chained redeploys in one session defeat the Stop hook's container-replacement exemption (root cause found, fix deferred to its own phase — touches the trusted deploy tool's provenance chain).",
+  "phase_status": "deployed_and_verified__stop_hook_will_FAIL_on_container_check_until_D-0433_is_fixed_or_acknowledged",
+  "next_phase": "Owner opens https://<host>:8443/#/coden with a real session: confirms the bench-prompt box now reads distinctly from the terminal (not 'CodeN Evolution — attached to the live session' twice), confirms the model chip and the terminal / menu navigation from D-0430/D-0432 still hold. Separately: D-0433 needs its own phase — extend redeploy.sh to attest each replacement, extend the guard to trust chained attestations, add an adversarial test.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "d22fe5b",
-  "last_updated_utc": "2026-08-13T15:58:00Z",
+  "last_updated_utc": "2026-08-13T17:15:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -960,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "OWNER ACCEPTANCE of D-0430..D-0432 on the live https path. Three concrete things to look at on #/coden: the model chip text, the '.eyebrow' label above the bottom prompt, and pressing ArrowDown/Tab/Enter after typing / inside the terminal itself (not the bottom box). D-0427 still stands — no repository suite drives the LIVE product over TLS; D-0429 (promote the handshake probe into redeploy.sh) remains proposed, not executed.",
+  "next_action": "OWNER ACCEPTANCE on the live https path (three concrete things: model chip, bench-prompt wording, terminal / menu). D-0433 is a known, documented, non-blocking-to-the-product gap in session-close tooling — the Stop hook will report FAIL on noesar-evolution and its rollback until it is fixed or the Owner acknowledges the state is correct. D-0427/D-0429 unchanged.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

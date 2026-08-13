@@ -4803,3 +4803,27 @@ returns the model chip, the bench prompt and the terminal menu to their prior (b
 networks/volumes diffed unchanged; non-project containers unchanged at 52.
 **Not proven here.** A signed-in owner actually reading `model phi-4` and using the terminal's
 arrow-key menu live — the Owner's own next check.
+
+## `d0431b-transcript-20260813T171059Z` — DEPLOYED and verified over TLS — 2026-08-13
+
+**Tag.** `noesar-evolution:d0431b-transcript-20260813T171059Z`, deployed 17:11:14Z. Corrects
+`D-0431` from earlier this phase: the `.eyebrow` label alone did not overcome the bench prompt
+opening on wording nearly identical to the terminal's own title/status — confirmed with a real
+screenshot of the live page (Owner report), not assumed. The transcript now opens on distinct
+wording while keeping the substring the page-level check requires.
+**Health.** `running`/`healthy`; `https://<host>:8443/readyz` = 200; `app.js` byte-equal to tree.
+**Verification.** Unit 2539/2540 (1 pre-existing skip) · ESLint 407/0 · browser E2E 494/495
+(only F-I18N-002, unchanged at 644 — the new runtime string is registered, not counted as gap)
+· accessibility 27/27 · seeded-defect 19/19.
+**Predecessor preserved.** `noesar-evolution-pre-20260813T171114Z` (`d0432-menu-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260813T155426Z` removed (image kept);
+non-project containers unchanged at 52.
+**Known governance gap, surfaced by this phase.** This is the THIRD redeploy of
+`noesar-evolution` in one session. `.claude/hooks/lib/container-baseline.sh`'s §3a replacement
+exemption proves a predecessor is genuine by requiring its id to trace back to the SessionStart
+baseline — sound for one redeploy, but the intermediate evidence (the first predecessor
+container) is correctly removed by §5a cleanup before a second redeploy can happen, so the
+chain is unprovable from `docker ps` state alone from the second redeploy onward. The Stop hook
+now reports `FAIL: container created this session and not cleaned up` for both `noesar-evolution`
+and its current, legitimate rollback — a false positive against the actual state, not a real
+defect in the installation. Recorded as `D-0433`; not fixed live (see the decision entry for why).
