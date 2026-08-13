@@ -5956,6 +5956,20 @@ function codenTerminalState(state,detail){
   const host=$('#codenTerminalHost');const statusEl=$('#codenTerminalStatus');
   if(host)host.dataset.terminalState=state;
   if(statusEl){statusEl.dataset.state=state;statusEl.textContent=detail||CODEN_TERMINAL_STATUS[state]||state;}
+  // Owner instruction, 2026-08-13: `#/coden` shows ONE chat, the emulated TUI — not the TUI
+  // AND the legacy prompt/transcript/menu stacked under it. The legacy shell (`#codenShell`)
+  // stays in the DOM (rule 12: nothing here is deleted) and stays the fallback for a browser
+  // or a bridge that cannot attach the emulator (`CLAUDE10.md` §63-64: a limitation on one
+  // installation is a fact about a category of host, degraded to, never a reason to remove the
+  // capability everywhere). Hidden the moment the terminal is actually live; restored the
+  // moment it is not.
+  const legacyShell=$('#codenShell');const legacyHeading=$('#codenShellHeading');
+  if(legacyShell){
+    const hide=state==='live';
+    const show=state==='failed'||state==='refused'||state==='idle';
+    if(hide){legacyShell.classList.add('hidden');legacyHeading?.classList.add('hidden');}
+    else if(show){legacyShell.classList.remove('hidden');legacyHeading?.classList.remove('hidden');}
+  }
 }
 function codenTerminalTheme(){
   // Sent on ready and on every appearance change: the child derives its palette from the same

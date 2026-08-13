@@ -718,8 +718,6 @@ try {
     const box = node.getBoundingClientRect();
     return { found: true, height: box.height, width: box.width };
   }, selector);
-  const apiCalls = () => page.evaluate(() => performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/api/v1/')).length);
-
   // A COLD deep link, which needs the reload to be one: page.goto() to a URL differing only
   // in its hash is a same-document navigation — it fires hashchange on the page already
   // loaded and never re-runs boot. The first version of this check did exactly that and
@@ -769,41 +767,27 @@ try {
   check('an unknown panel name falls back to the default and normalises the address',
     fallback.active === 'shadow' && fallback.hash === '#/coden/bench/shadow', JSON.stringify(fallback));
 
-  // Why an in-page move uses pushState instead of assigning location.hash: assigning it
-  // fires hashchange, which re-runs VIEW_LOADERS.coden — a round of requests every time you
-  // change panel. Measured, because it is invisible on screen either way.
+  // Owner instruction, 2026-08-13: `#/coden` shows ONE chat, the emulated TUI. `#codenPrompt`
+  // (the legacy prompt/transcript/menu this jump used to drive) is now hidden whenever the
+  // terminal is live — `app.js`'s `codenTerminalState()`. It still exists in the DOM as the
+  // fallback for a browser that cannot attach the emulator (rule 12: nothing here is deleted),
+  // but it is not the gesture a signed-in owner has anymore, and driving a hidden textarea
+  // through `page.type`/`page.click` is not proof of anything a real session can do.
   //
-  // Driven through the box, because phase 3 removed the tab this used to click. The property
-  // is unchanged and so is its value: moving between panels of the page you are already on
-  // must not refetch that page.
-  // PHASE 3c. This used to press `/` and drive the TOP ADDRESS BOX. That box is gone from this
-  // destination — §4b.4 rule 1, there is one `/` and it is in the prompt — so the helper drives
-  // the prompt, which is the gesture a user now has. Everything it measures below (the address
-  // moves, the page does not refetch, Back returns) is unchanged; only the way in is.
+  // What DOES still work, unconditionally, is the ordinary hash route (`activate()` in
+  // `app.js`) — a bench address has always also been a real, bookmarkable URL. That path was
+  // deliberately NOT the one this check used to drive, because assigning `location.hash` fires
+  // `hashchange` and re-runs `VIEW_LOADERS.coden` — a round of requests the prompt-driven,
+  // pushState-based jump avoided. Hiding the prompt removes that specific efficiency, honestly,
+  // not just this check's old assertion of it: a bench-panel move is a page hashchange now,
+  // same as any other in-page link. `D-0435` records the loss; it is not hidden here.
   const jump = async (address, panel) => {
-    await page.evaluate((typed) => {
-      const box = document.querySelector('#codenPrompt');
-      box.value = `/${typed}`;
-      box.dispatchEvent(new Event('input', { bubbles: true }));
-      box.focus();
-    }, address);
-    await page.keyboard.press('Enter');
+    await page.evaluate((h) => { location.hash = h; }, `#/coden/${address}`);
     await page.waitForSelector(`[data-bench-panel="${panel}"].active`, { timeout: 15000 });
   };
-  // Sampled only once the page has gone quiet. Without this the counter could be read while
-  // requests from the PREVIOUS step were still in flight, and they then landed between the two
-  // samples — reporting "26 → 28" and blaming the jump for two fetches it never made. Seen
-  // intermittently while phase 3b was being verified, and it cost a real investigation: a check
-  // that fails at random is one people learn to re-run rather than believe, which is worse than
-  // not having it. `catch` because a page that is ALREADY idle never fires the event.
-  await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {});
-  const callsBefore = await apiCalls();
-  await jump('coden/bench/map', 'map');
+  await jump('bench/map', 'map');
   const afterJump = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
-  const callsAfter = await apiCalls();
   check('jumping to a panel of this page moves the address', afterJump.hash === '#/coden/bench/map', JSON.stringify(afterJump));
-  check('jumping to a panel of this page does not refetch it',
-    callsAfter === callsBefore, `${callsBefore} → ${callsAfter} requests to /api/v1/`);
 
   // PHASE 3c. A bare `#/coden` used to be COMPLETED to whichever panel happened to be showing,
   // because a panel was always showing — which is exactly what made this page a dashboard.
@@ -826,8 +810,8 @@ try {
   // pushState with no way back would leave the address ahead of the screen: the Back button
   // moving the bar and nothing else. Two jumps, so the entry being returned to is one this
   // check made itself rather than whatever the steps above happened to leave behind.
-  await jump('coden/bench/diff', 'diff');
-  await jump('coden/bench/tests', 'tests');
+  await jump('bench/diff', 'diff');
+  await jump('bench/tests', 'tests');
   await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-bench-panel="diff"].active', { timeout: 15000 });
   const wentBack = await page.evaluate(() => ({
@@ -2575,7 +2559,7 @@ try {
   check('UI-030 a bare #/coden opens no panel, and the bench has no box until one is addressed',
     bareBench.viewActive && !bareBench.panelOpen && bareBench.benchWidth === 0, JSON.stringify(bareBench));
 
-  await jump('coden/bench/shadow', 'shadow');
+  await jump('bench/shadow', 'shadow');
   // WAITED FOR, not sampled. `renderBenchStatus()` is fired unawaited by the view loader and
   // makes five requests before it can write this line, so reading it the instant a panel opens
   // measures the network rather than the product — and it did: the field read its own initial
@@ -2604,7 +2588,7 @@ try {
     bench.panels === 20 && bench.statusFields === 12 && /of 12 fields have a source/.test(bench.sourced),
     `panels=${bench.panels} fields=${bench.statusFields} "${bench.sourced}"`);
 
-  await jump('coden/bench/diff', 'diff');
+  await jump('bench/diff', 'diff');
   const persistentTerminal = await page.evaluate(() => ({
     activePanel: document.querySelector('.bench-panel.active')?.dataset.benchPanel ?? '',
     terminalHeight: document.querySelector('#benchTerminal')?.getBoundingClientRect().height ?? 0,
@@ -2738,7 +2722,7 @@ try {
   check('Problems reports a clean run rather than "nothing has run"',
     /run was clean/.test(secondaryPanels.problems), secondaryPanels.problems);
 
-  await jump('coden/bench/logs', 'logs');
+  await jump('bench/logs', 'logs');
   await page.waitForFunction(
     () => /workspace_action\.promoted/.test(document.querySelector('#workLogsContent')?.textContent ?? ''),
     { timeout: 15000 },
@@ -2748,7 +2732,7 @@ try {
     /workspace_action\.planned/.test(workLogs) && /workspace_action\.promoted/.test(workLogs), workLogs.slice(0, 400));
 
   // --- D-0230: Map — read-only repository understanding, workspace-scoped, not per-run ---
-  await jump('coden/bench/map', 'map');
+  await jump('bench/map', 'map');
   await clickOrExplain(page, '#mapScanBtn');
   await page.waitForFunction(
     () => /Files scanned/.test(document.querySelector('#mapContent')?.textContent ?? ''),
@@ -2770,7 +2754,7 @@ try {
     /browser-e2e-note\.txt/.test(mapSearch) && !/No match/.test(mapSearch), mapSearch.slice(0, 200));
 
   // --- D-0230: the Terminal tab's HTTP bridge (/api/v1/tui/command) ------------------
-  await jump('coden/bench/terminal', 'terminal');
+  await jump('bench/terminal', 'terminal');
   await page.waitForSelector('#terminalCommandInput', { timeout: 15000 });
   await page.type('#terminalCommandInput', 'status');
   await clickOrExplain(page, '#terminalCommandForm button');
@@ -2820,7 +2804,7 @@ try {
   //
   // The rule is that the box cannot be empty WITHOUT SAYING SO. Both halves are
   // exercised: an empty box is refused, and an empty box that is declared is accepted.
-  await jump('coden/bench/closure', 'closure');
+  await jump('bench/closure', 'closure');
   await page.waitForSelector('#closureForm', { timeout: 15000 });
   await page.type('#closureRisk', 'none');
   await clickOrExplain(page, '#closureForm button.primary');
