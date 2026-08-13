@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "T2 for D-0404 slices 1-3 is complete, all seven defects are repaired, and the result is INSTALLED: noesar-evolution:d0423-terminal-20260813T132120Z is running and healthy since 2026-08-13T13:56:36Z. The CodeN terminal is live in the browser for the first time — served bytes equal the tree (5 of 5), the scoped CSP is real and only on /coden-terminal.html, /shared/coden/*.mjs answers text/javascript.",
-  "phase_status": "deployed_and_verified_live_cleanup_done",
-  "next_phase": "Slice 4 — remove the 25 fixed panels, the second sidebar entry and the dead routes. Criteria C, D and E of the design matrix are now green (E closed by this installation), so it is unblocked. F-I18N-002 travels with it: read the printed sample, translate the two new terminal strings or move the baseline with the reason written.",
+  "current_phase": "D-0426 repaired the defect the Owner saw on the deployed product: over TLS the bridge refused its own page (origin computed as http:// on an encrypted listener), so the terminal looped on 1006. Six call sites unified in src/request-origin.mjs, tls-smoke drives a real TLS handshake. The corrected image noesar-evolution:d0426-origin-20260813T140526Z is BUILT and byte-verified. The installation still runs d0423-terminal-20260813T132120Z and therefore still refuses every https handshake — VERIFIED at 14:11:51Z, the refusals continue.",
+  "phase_status": "fix_committed_image_built_INSTALLATION_STILL_CARRIES_THE_DEFECT",
+  "next_phase": "Deploy noesar-evolution:d0426-origin-20260813T140526Z, then verify on the OWNER PATH (https on 8443, not http on 8100): the bridge must stop logging \"refused a foreign origin\" and the terminal must stay attached. Only then slice 4.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "ff448e4",
-  "last_updated_utc": "2026-08-13T13:58:52Z",
+  "last_commit": "e107bd8",
+  "last_updated_utc": "2026-08-13T14:12:28Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -960,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NOTHING IS PENDING ON THE INSTALLATION. Open #/coden on the live product and look at the terminal with your own eyes — that is the one thing no probe can do for you. Then slice 4. What is proven live: served bytes = tree (5/5), /coden-terminal.html carries style-src self unsafe-inline + SAMEORIGIN while /index.html stays strict, .mjs is served as text/javascript, /livez and /readyz 200, four children spawned, 0 auth failures, 0 error lines in the first three minutes. What is NOT proven on this container: anything needing a signed-in session — the terminal behaviour (attach, theme, menu, a submitted line answered) is proven on probes built from these exact bytes, 495 checks 493 pass, accessibility 27/27. Rollback: rename noesar-evolution-pre-20260813T135635Z back and start it.",
+  "next_action": "RUN THE DEPLOY, THEN VERIFY ON THE HTTPS PATH. tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image noesar-evolution:d0426-origin-20260813T140526Z — the command was handed to the Owner; the running container is still d0423-terminal-20260813T132120Z (VERIFIED by docker inspect) and its log kept refusing https handshakes at 14:11:51Z. After the deploy the check is NOT /livez on 8100: it is docker logs | grep \"foreign origin\" staying empty while the Owner has #/coden open over https://<host>:8443, and the terminal reporting attached without a 1006. D-0427 stands: no suite here drives the product over TLS except tls-smoke, which now covers the handshake only.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

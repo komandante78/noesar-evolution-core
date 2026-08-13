@@ -4726,3 +4726,27 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 **Not proven here:** anything needing a signed-in session on THIS container. The terminal's
 behaviour — attach, theme, menu, submitted line answered — is proven on probes built from these
 exact bytes (495 checks, 493 pass; accessibility 27/27), not on this installation.
+
+## `d0426-origin-20260813T140526Z` — BUILT, NOT YET DEPLOYED — 2026-08-13
+
+The installation is **still running `d0423-terminal-20260813T132120Z`** (VERIFIED by
+`docker inspect`, started 13:56:36Z), and it therefore still carries the `D-0426` defect: at
+14:11:51Z its log was still writing `coden bridge refused a foreign origin`,
+`origin: https://<host>:8443`, once per reconnection attempt. The terminal is unusable over
+HTTPS on this container, and that is a fact about the RUNNING product, not about the tree.
+
+| | |
+|---|---|
+| Image | `noesar-evolution:d0426-origin-20260813T140526Z`, built offline from `oci/Dockerfile` |
+| Bytes proven equal to the tree | `request-origin.mjs` `ae110e727820bccb`, `server.mjs` `1887feaf2e31fbf6` |
+| Gates before it | unit 2539 (2538 pass, 1 skip), ESLint 407/0, `HTTP_SMOKE=PASS`, `AUTH_HTTP_SMOKE=PASS`, `TLS_SMOKE=PASS` with the new handshake check seen RED (403) against the old fallback |
+
+```sh
+tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner \
+  --image noesar-evolution:d0426-origin-20260813T140526Z
+```
+
+**What to verify after it, and it is NOT the health endpoint:** with `#/coden` open over
+`https://<host>:8443`, `docker logs noesar-evolution | grep "foreign origin"` must stay empty and
+the terminal must stay attached with no `1006`. Verifying on `http://…:8100` would pass with the
+defect still in place — that is exactly how it shipped.
