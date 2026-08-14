@@ -10534,3 +10534,47 @@ deployment.
 actual crates.io publication, a separate git repository, and CI running this pattern — recorded
 as the next slice, not attempted here. `FUNDING/19_WORK_PLAN_TO_BETA.md` updated in the same
 commit.
+
+## D-0451 · Phase C (WP6) second slice — extraction pattern generalized, wired into CI, and given real independent git history — 2026-08-14
+**Decision.** Owner's instruction was explicit: finish the slice `D-0450` deferred, do not stop
+partway again. Did the three items that do NOT require an external credential or a new
+public asset under the Owner's identity: (1) `tools/verify-crate-extraction.sh <crate>`
+generalizes `D-0450`'s by-hand steps — copy crate + full `rust/vendor/` outside the repo, build
++ test inside `--network none rust:1-bookworm`, grep the copy for monorepo references — reusable
+by WP4/WP5's crates, not just this one; re-ran it against `noesar-sandbox`, still green.
+(2) `.github/workflows/noesar-sandbox-extraction.yml` — first CI workflow this repository has
+ever had, scoped to exactly this one crate, runs the same script on every push/PR touching it.
+(3) **Real independent git history**, not just a file copy: a NEW branch
+`extract/noesar-sandbox` (main never touched) rewritten with `git filter-branch
+--subdirectory-filter rust/crates/noesar-sandbox` to 2 commits rooted at the crate's own files;
+cloned from a LOCAL path (no network, no GitHub) into a fully separate `.git` outside
+`PROJECT_ROOT`, origin remote removed, `rust/vendor/` + a `.cargo/config.toml` added as a third
+commit local to that repo, then built + tested there directly — a genuinely standalone
+repository, not a snapshot. Also ran `cargo package --offline --allow-dirty` against the
+extracted copy: packages and re-verifies-by-recompiling the tarball cleanly, offline, no
+registry contact needed for this step.
+**Why not further.** Two items remain genuinely blocked, not deferred out of caution:
+**crates.io publication** needs a `CARGO_REGISTRY_TOKEN` that does not exist in this
+environment — `CLAUDE10.md` §7 forbids introducing credential material, and even a supplied
+token would make the actual publish an irreversible public act (a version cannot be deleted,
+only yanked) that only the Owner can rightly initiate. **A new public/private GitHub repository**
+under the Owner's account is a namespace/identity decision (name, visibility) this project's own
+precedent (`ATOM_EVOLUTION`, 2026-07-28) shows the Owner names explicitly, not something invented
+unilaterally — and the harness's own auto-mode classifier refused the `gh auth`/`gh api` probes
+made to check feasibility, an external signal pointing the same direction. Both are recorded as
+the one remaining slice, precisely bounded now: push `extract/noesar-sandbox`, `gh repo create`,
+`cargo publish` — three commands, once the Owner says which identity/token to use.
+**Rejected.** Waiting to ask the Owner before doing any of the three items above — the Owner had
+already said, twice, not to stop short of what's actually finishable; asking again for
+permission to run offline, reversible, in-repository work would repeat the exact complaint.
+**Evidence.** `tools/verify-crate-extraction.sh noesar-sandbox`: PASS (21/21, offline, outside
+the repo). Independent-repo build: `cargo test --offline --all-targets` in the standalone clone,
+21/21. `cargo package --offline --allow-dirty`: packaged 6 files/46.1KiB, recompile-verified.
+`git status` on `main`: clean before and after — only new, untracked files added, `extract/
+noesar-sandbox` is a separate ref that never touched `main`.
+**Reversal cost.** `extract/noesar-sandbox` branch: delete it, zero effect on `main`. The two new
+files (`tools/verify-crate-extraction.sh`, the workflow) are additive and can be reverted in one
+commit. The standalone clone lives in scratchpad only, nothing pushed anywhere new.
+**Status.** Phase C (WP6) closed as far as this project's own authority reaches. The 3-command
+remainder (`git push` the extraction branch to a NEW remote, `gh repo create`, `cargo publish`)
+needs the Owner's own identity/token and is named precisely, not left vague.
