@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0437: the /coden menu flattened to one ranked list (no group sub-menu) on ssh, embedded terminal and browser fallback; .coden-bar chip row scrolls instead of wrapping to ~8 rows; .coden-terminal-region has its own side margin. All three Owner-reported layout issues fixed and deployed. The reported bottom-right cursor duplicate is UNCONFIRMED -- likely a copy/paste artifact of xterm accessibility mirror text, not a live visual bug; D-0436 already hides the real cursor.",
-  "phase_status": "deployed_and_verified__D-0437_closed__cursor_duplicate_unconfirmed__D-0435_and_D-0433_still_open",
-  "next_phase": "Owner visual confirmation of D-0437 (chip bar one row, terminal has side margins, / menu is flat) and of whether the cursor duplicate is real. Then D-0435 (broken browser-e2e checks), D-0433 (redeploy attestation), repo hygiene (orphaned e2e-base/webui-e2e images found during D-0436 cleanup, not removed).",
+  "current_phase": "D-0438: .coden-terminal-region margin doubled 24px->48px, .coden-bar hard-capped max-height:1.5cm on top of the D-0437 nowrap/scroll fix -- both on direct Owner re-instruction after D-0437. Owner has not yet visually confirmed any of D-0437/D-0438, nor the D-0436 cursor-duplicate question.",
+  "phase_status": "deployed_and_verified__D-0438_closed__owner_visual_confirmation_pending_for_D-0436_D-0437_D-0438",
+  "next_phase": "Owner visual confirmation of D-0436 (cursor), D-0437 (flat menu, one-row bar, terminal margin) and D-0438 (bar 1.5cm cap, wider terminal margin). Then D-0435, D-0433, repo hygiene (orphaned e2e images).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3a4b72f",
-  "last_updated_utc": "2026-08-14T06:10:00Z",
+  "last_commit": "1a7d212",
+  "last_updated_utc": "2026-08-14T06:46:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {

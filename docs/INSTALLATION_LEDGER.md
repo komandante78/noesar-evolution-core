@@ -4871,3 +4871,15 @@ changed sources, sha256 matched container↔tree.
 containers unchanged at 50, volumes unchanged at 63, networks unchanged.
 **Note.** Sixth redeploy this session — `D-0433` (chained-redeploy stop-hook gap) applies again;
 Owner acknowledged the state as correct after the fifth.
+
+## `d0438-narrower-20260814T064356Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0438-narrower-20260814T064356Z`, deployed 06:44:10Z. `D-0438`:
+`.coden-terminal-region` margin 24px→48px; `.coden-bar` hard-capped `max-height:1.5cm`.
+**Health.** `running`/`healthy`; `/readyz` 200 (in-container).
+**Verification.** Unit 2536/2537 (1 pre-existing skip, unchanged) · ESLint 407/0 · byte-equal
+`styles.css`, sha256 matched container↔tree.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T064410Z` (`d0437-menu-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260814T060748Z` removed; non-project
+containers unchanged at 50, volumes unchanged at 63.
+**Note.** Seventh redeploy this session — `D-0433` gap applies again, same accepted condition.

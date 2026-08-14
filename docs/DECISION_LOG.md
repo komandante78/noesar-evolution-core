@@ -10143,3 +10143,20 @@ gone); `MENU_GROUPS`/`groupMenu` kept, still used by `/help`'s grouped text outp
 Open: Owner's visual confirmation of all four fixes, including whether the reported "double
 cursor" was a real duplicate or an artefact of copying the whole page's text (xterm's
 accessibility mirror sits invisibly over the visible canvas) rather than screenshotting it.
+
+## D-0438 · coden-bar hard-capped at 1.5cm, terminal region margin doubled — 2026-08-14
+**Decision.** `.coden-terminal-region`'s side margin: 24px → 48px (16px under 850px). `.coden-bar`
+gets an explicit `max-height:1.5cm;overflow:hidden`, on top of the existing `flex-wrap:nowrap`.
+**Why.** Owner, after seeing (or re-describing) the D-0437 deploy: the terminal margin was not
+enough — asked again, explicitly narrower — and gave a concrete numeric ceiling for the chip bar
+("o lo usiamo o lo abbassi... massimo 1,5cm") rather than trusting the single-row fix alone to
+stay short. The hard cap is a second, independent guarantee: it holds even if the nowrap/scroll
+mechanism is defeated by something this session has not seen (a CSS specificity conflict, a font
+change) — belt and suspenders rather than one mechanism trusted twice.
+**Rejected.** Nothing — this is a refinement of D-0437's own two fixes, not an alternative design.
+**Evidence.** Unit 2536/2537 (unchanged, CSS-only diff). ESLint 407/0. Deployed and live-verified:
+byte-equal `styles.css`, `/readyz` 200.
+**Reversal cost.** None — two CSS values and one added rule.
+**Status.** applied · installed (`d0438-narrower-20260814T064356Z`). Seventh redeploy of the
+session; `D-0433`'s stop-hook gap fires again on close, unchanged from prior redeploys this
+session — same accepted condition, not a new one.
