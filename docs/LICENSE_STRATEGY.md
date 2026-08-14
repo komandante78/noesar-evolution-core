@@ -51,14 +51,23 @@ released as FOSS is, by definition, outside that scope. See
 
 ## 5. Open questions to resolve before release (Phase 5)
 
-1. AGPL-3.0-or-later confirmed, or a different copyleft/permissive choice.
-2. Contribution mechanism enabling dual licensing (CLA / DCO / assignment).
+1. ~~AGPL-3.0-or-later confirmed, or a different copyleft/permissive choice.~~ **Partly
+   closed, `D-0453` (2026-08-14):** a real `LICENSE` file (verbatim FSF AGPL-3.0-or-later
+   text) and a `NOTICE` file now exist at this repository's root and at
+   `github.com/komandante78/noesar-sandbox`'s. This confirms the open-core text, not the
+   full item — per-file headers already existed (372 `.mjs` files carry
+   `SPDX-License-Identifier: AGPL-3.0-or-later`); this closes the root `LICENSE`/`NOTICE`
+   half of item 7 too.
+2. Contribution mechanism enabling dual licensing (CLA / DCO / assignment). **Still open.**
 3. Full dependency license audit — compatibility of every transitive dependency
-   with AGPL distribution.
-4. Third-party asset and model licensing, where any are bundled.
-5. Trademark and naming policy for "NOESAR" and "ATOM".
-6. Commercial license terms, scope, and exception language.
-7. `LICENSE`, `NOTICE`, and per-file headers — decided and applied consistently.
+   with AGPL distribution. **Still open.**
+4. Third-party asset and model licensing, where any are bundled. **Still open.**
+5. Trademark and naming policy for "NOESAR" and "ATOM". **Still open.**
+6. Commercial license terms, scope, and exception language. **Still open — the `NOTICE`
+   file states plainly that this is planned and undecided, not that it exists.**
+7. `LICENSE`, `NOTICE`, and per-file headers — decided and applied consistently. **Root
+   files done (`D-0453`); consistency across every future spun-off repository (WP4/WP5,
+   `FUNDING/19_WORK_PLAN_TO_BETA.md`) is not yet a checked, repeatable step.**
 
 Until each is closed and recorded here, the project's licensing status remains
 **proposed**.

@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0452: Phase C (WP6) third slice DONE -- noesar-sandbox pushed to a real, independent GitHub repository (github.com/komandante78/noesar-sandbox, private), verified from a fresh clone building against the real crates.io registry (21/21), CI workflow live there. Only cargo publish itself remains, needing CARGO_REGISTRY_TOKEN the Owner sets up out of band.",
-  "phase_status": "D-0452_phaseC_repo_live__only_crates_io_publish_remains",
-  "next_phase": "Owner sets CARGO_REGISTRY_TOKEN out of band (secrets/crates_io_token, referenced by name) when ready to publish, or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4).",
+  "current_phase": "D-0453: root LICENSE (verbatim AGPL-3.0-or-later, fetched via curl from gnu.org, byte-diffed) and NOTICE added to NOESAR-EVOLUTION and noesar-sandbox, Owner-scoped narrowly -- the other 6 open items in docs/LICENSE_STRATEGY.md stay open for Phase 5.",
+  "phase_status": "D-0453_license_notice_added__phase5_items_still_open",
+  "next_phase": "Owner sets CARGO_REGISTRY_TOKEN out of band when ready to cargo publish noesar-sandbox, or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,

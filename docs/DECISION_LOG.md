@@ -10610,3 +10610,28 @@ deleted or emptied by the Owner at any time; it has no dependents yet.
 **Status.** Phase C (WP6) fully closed except `cargo publish` itself, which still needs a
 `CARGO_REGISTRY_TOKEN` the Owner sets up out of band (`D-0451`'s recommended path:
 `secrets/crates_io_token`, referenced by name).
+
+## D-0453 · Root `LICENSE`/`NOTICE` added — minimal, bounded scope, Owner-selected — 2026-08-14
+**Decision.** Owner picked the narrow option when asked: add the verbatim FSF
+AGPL-3.0-or-later text as `LICENSE` plus a short `NOTICE` stating a commercial license is
+planned/undecided, at this repository's root AND at `github.com/komandante78/noesar-sandbox`'s
+— explicitly NOT the other six open items in `docs/LICENSE_STRATEGY.md` §5 (dual-license
+mechanism, dependency audit, trademark policy, commercial terms), which stay open for Phase 5.
+`LICENSE` fetched via `curl` directly from `gnu.org/licenses/agpl-3.0.txt` (not through a
+paraphrasing tool) and diffed byte-identical against the download — 661 lines, correct
+Preamble/TERMS/appendix structure confirmed by inspection, not assumed.
+**Why.** `Cargo.toml` already declared `license = "AGPL-3.0-or-later OR
+LicenseRef-NOESAR-Commercial"` and 372 `.mjs` files already carry
+`SPDX-License-Identifier: AGPL-3.0-or-later` headers — but no `LICENSE` file backed either
+claim anywhere in the project, a gap `D-0452` surfaced while checking `noesar-sandbox`.
+**Rejected.** Closing all seven open items in one pass — dual-licensing needs a contribution
+mechanism (CLA/DCO) that does not exist yet, a full transitive-dependency audit is real,
+separate work, and trademark/commercial terms are the Owner's decisions to make, not mine to
+invent. Owner confirmed this narrow scope explicitly when asked.
+**Evidence.** `diff` between the curl download and the committed `LICENSE`: identical.
+`docs/LICENSE_STRATEGY.md` §5 updated item-by-item, not rewritten wholesale. `node --test`
+2546/2547 (unaffected — no code touched), `verify-source.mjs` PASS. Pushed to both
+repositories: `NOESAR-EVOLUTION` (this commit) and `noesar-sandbox` (`7c93a5b`).
+**Reversal cost.** None — two new files, one doc edited additively.
+**Status.** Applied to both repositories. Six items of `docs/LICENSE_STRATEGY.md` §5 remain
+open, named, for Phase 5 — not silently closed by this narrower fix.
