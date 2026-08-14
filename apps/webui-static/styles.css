@@ -905,11 +905,16 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* The field bar the terminal opens on, in the browser. One row: identity on the left, the
    mode control on the right — the same reading order as the TUI's top bar, so moving between
    the two shells does not mean re-finding the same facts in a different arrangement. */
-/* Owner instruction, 2026-08-14: "o lo usiamo o lo abbassi... massimo 1,5cm" — a hard ceiling,
- * not just an expectation that one row is short enough. `max-height` is enforced here
- * regardless of what `flex-wrap:nowrap` below achieves on its own, so the bar cannot grow past
- * it even if some future chip or a font-size change made a single row taller than this. */
-.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar);max-height:1.5cm;overflow:hidden}
+/* Owner instruction, 2026-08-14: "o lo usiamo o lo abbassi... massimo 1,5cm". A `max-height`
+ * alone was the wrong fix and is REMOVED: the real cause of the bar's height was never the
+ * wrapping, it was the two mode-switch BUTTONS — `.primary,.secondary,button{padding:9px 13px}`
+ * plus the generic 16px body font — sized for the product's normal buttons elsewhere, never
+ * scaled down for a compact status bar. At `align-items:center` the tallest child sets the
+ * row's height, so those two buttons (~37px including their own padding, ~45px with the
+ * `.mode-switch` wrapper's own 4px) were driving a bar whose chips alone would have been
+ * ~25px — over the 1.5cm ceiling, which `overflow:hidden` was then silently CLIPPING rather
+ * than the bar visibly shrinking. Scaled to match the chips instead: the actual fix. */
+.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
 /* Six chips (project/git/model/ctx/reasoning/sandbox) plus the two mode buttons wrapped one
  * per line on a narrower viewport, turning a one-row status bar into an eight-row block.
  * `flex-wrap:nowrap` here plus `overflow-x:auto` on the chip list bounds the bar's height at
@@ -917,7 +922,8 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
  * trade a real terminal's status line already makes. */
 .coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
 .coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap}
-.coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto}
+.coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto;padding:2px}
+.coden-bar .mode-switch button{padding:4px 10px;font-size:calc(var(--text-scale)*11px)}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bench-where b{color:var(--text-primary);font-weight:600}
 .bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
