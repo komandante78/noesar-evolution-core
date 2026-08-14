@@ -10348,3 +10348,20 @@ derived book; the voice "twin" test now asserts no twins exist at all, which is 
 **Reversal cost.** Low for the code (one import, one branch, a list); the removed entries are in
 git history. The catalogue strings would need re-adding with them.
 **Status.** applied. Deploy: see the ledger.
+
+## D-0446 · NLnet/Restack funding-fit skill added, wired into §17 as the named external measuring stick — 2026-08-14
+**Decision.** Created `.claude/skills/noesar-evolution-funding-fit/SKILL.md`, recording the exact
+NLnet/Restack acceptance criteria the Owner supplied (funded vs not-funded categories, the seven
+recurring traits of an approved project, the 30/40/30 scoring split with a >5/7 gate, the red-flag
+list of weak proposals). Wired into `CLAUDE10.md` as rule 69a under §17 and added to the standing
+`@`-import list so it loads every session.
+**Why.** `CLAUDE10.md` rule 68 already required an "external measuring stick" for the mandatory
+improvement proposal but named none. The Owner supplied the actual program criteria and ordered
+them made binding, not left as a loose driver in memory.
+**Rejected.** Keeping the criteria only in the project memory `noesar-evolution-funding-context` —
+memory is recalled contextually, not reinjected every session the way a `CLAUDE10.md`-imported
+skill is; the Owner asked for it "di obbligo".
+**Evidence.** File created and reviewed; `CLAUDE10.md` diff adds rule 69a + governing-detail line +
+import line (9 insertions). Memory file updated to point at the skill instead of duplicating it.
+**Reversal cost.** none — additive only, removes nothing.
+**Status.** applied.

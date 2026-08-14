@@ -32,6 +32,12 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
   && docker rename noesar-evolution-pre-20260814T112620Z noesar-evolution && docker start noesar-evolution
 ```
 
+## ➜ D-0446 (governance, non un phase-D-0445)
+
+`.claude/skills/noesar-evolution-funding-fit/SKILL.md` creata e agganciata a `CLAUDE10.md`
+(regola 69a + import). Registra i criteri NLnet/Restack reali forniti dall'Owner. Nessun
+impatto sul prodotto: solo governance di sessione. Vedi `D-0446` nel decision log.
+
 ## Blockers e finding aperti
 
 | Id | Stato |

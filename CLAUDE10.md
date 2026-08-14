@@ -364,6 +364,14 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
     executing it in the same phase is the Owner's decision. The standing exception remains a
     defect that §40a HUNT AND FIX must repair. A portability breach (§60–64) is a **defect**,
     not an improvement, and is fixed, not proposed.
+69a. **The external measuring stick of rule 68 has a named referent, since 2026-08-14**: the
+    NLnet/NGI Zero Restack funding program the Owner is building this beta toward. Its
+    acceptance criteria — delimited/reusable components, no mandatory vendor lock-in,
+    measurable reliability, local/self-hosted operation — are recorded in
+    `.claude/skills/noesar-evolution-funding-fit/SKILL.md` and apply to every improvement
+    proposal this rule requires.
+
+Governing detail: `.claude/skills/noesar-evolution-funding-fit/SKILL.md`.
 
 ## 18. Automatic Advanced Engineering Orchestrator — the standing method
 
@@ -438,3 +446,4 @@ in a keyword list.
 @.claude/skills/noesar-evolution-context/SKILL.md
 @.claude/skills/noesar-evolution-verify/SKILL.md
 @.claude/skills/noesar-evolution-budget/SKILL.md
+@.claude/skills/noesar-evolution-funding-fit/SKILL.md
