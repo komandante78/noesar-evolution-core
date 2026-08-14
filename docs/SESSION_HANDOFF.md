@@ -1,27 +1,25 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0443`: `/models` investigato — logica corretta, causa non trovata, NON deployato)
+# SESSION HANDOFF — 2026-08-14 (`D-0444`: `/model <id>` costruito — NON deployato, in attesa di revisione)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **L'installazione gira ancora su `noesar-evolution:d0441-debug-20260814T092104Z` dalle
-09:21:17Z, sana.** `D-0443` è **committato ma NON deployato** — tenuto in sospeso apposta.
+09:21:17Z, sana.** `D-0443` e `D-0444` sono **committati ma NON deployati** — tenuti in
+sospeso apposta, `D-0444` perché è la **prima capacità del prodotto che lascia un operatore
+avviare un processo di sistema vero dal menu `/`** e merita una tua revisione prima di andare
+in produzione.
 
-**Serve una risposta dell'Owner prima del prossimo deploy**: hai riprodotto `/models` →
-"Nothing named `M`" su cellulare o desktop? Nel terminale del browser o via `ssh`? E cosa
-mostrava esattamente la casella del prompt un istante prima di premere Invio — "/models"
-per intero, o già qualcosa di sbagliato?
+**`D-0443` (report "Nothing named `M`"), riprodotto dall'Owner su desktop**: durante il
+tentativo è emerso il problema VERO — `/models` porta solo a una pagina di stato, non permette
+di caricare un modello. Il "Nothing named" era comportamento corretto (nessun comando si
+chiama solo una lettera), non un bug.
 
-**Cosa ho verificato eseguendo la pipeline vera** (non solo leggendo il codice): `resolveCommand`
-risolve correttamente tutti i 33 comandi dichiarati verso se stessi (nuovo test di regressione,
-33/33). `matchCommands` classifica correttamente "models" ad ogni prefisso digitato
-(m/mo/mod/mode/model/models). Il completamento con Tab legge dagli stessi array verificati sopra.
-**Non ho trovato nessun percorso di codice che produca "M" da "/models"** — non digitando, non
-con Tab, non con le frecce.
-
-**Un gap reale ma NON confermato come causa**: `#codenPrompt` (il fallback DOM) non aveva
-`autocapitalize="off"`, mentre xterm.js lo imposta già sul proprio input nascosto. Corretto per
-coerenza/difesa in profondità — ma è dichiarato "applicato, non provato come causa": se l'Owner
-non era sul fallback (cioè il terminale era `live`), questo non è la spiegazione, e la ricerca
-continua.
+**`D-0444` — costruito il collegamento mancante**: catalogo (cosa è presente sul disco) e
+runtime locale (come avviarlo) esistevano già ma non erano mai stati uniti. Nuovo comando
+`/model <id>` (stesso su ssh, terminale browser e fallback) che carica un modello **già
+presente e verificato** su questa installazione — non scarica modelli nuovi (`acquire` resta
+non implementato, 501, fuori scope per scelta dell'Owner). Verificato con un modello finto
+(`/bin/sleep`) perché questa installazione non ha ancora un secondo modello reale sul disco —
+9 nuovi test, inclusi 3 sulla catena reale (socket → permesso → dispatch → funzione).
 
 **Cose FATTE e deployate, in attesa di conferma a occhio:**
 - `D-0436` cursore xterm nascosto
@@ -78,7 +76,8 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 | `D-0436`…`D-0440` | **FATTO**, deployati. `D-0438` (margine terminale) confermato dall'Owner. |
 | `D-0441` WCAG 2.5.8 + CE-020 | **FATTO**, deployato, confermato con strumenti reali (27/27 a11y, 18/18 CE-020). |
 | `D-0442` proposta CE-020 in `node --test` + igiene immagini | **FATTO**, nessun redeploy necessario. |
-| `D-0443` report `/models` → "Nothing named `M`" | **INVESTIGATO, causa NON trovata.** Pipeline verificata corretta (33/33 comandi si risolvono). Un gap reale ma non confermato come causa applicato (autocapitalize su `#codenPrompt`). **Committato, NON deployato** — serve la risposta dell'Owner su come riprodurlo. |
+| `D-0443` report `/models` → "Nothing named `M`" | **INVESTIGATO** — comportamento corretto, non un bug. Riprodotto dall'Owner, ha rivelato il problema vero (`D-0444`). **Committato, NON deployato.** |
+| `D-0444` `/model <id>` — carica un modello presente | **COSTRUITO E VERIFICATO** (9 test nuovi, catena reale su socket). **Committato, NON deployato** — prima capacità che avvia un processo reale, in attesa della tua revisione. |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata che questa fase non ha. |
 | Cursore "doppio" | **NON CONFERMATO** — non riparato alla cieca. |
 | `D-0435` | **APERTO, due strati ora** — irraggiungibile via `#codenPrompt` E asserzioni sul menu a gruppi rimosso. |
@@ -90,21 +89,23 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 
 | Strumento | Risultato |
 |---|---|
-| `node --test …` | **2536/2537** (1 skip preesistente, invariato) |
-| `tools/run-eslint.sh` | **407 file, 0 errori** |
-| `node tools/seeded-defect-proof.mjs` | **19/19** — i rivelatori scattano davvero |
+| `node --test …` | **2546/2547** (+9 per `D-0444`, 1 skip preesistente invariato) |
+| `tools/run-eslint.sh` | **408 file, 0 errori** |
+| `node tools/seeded-defect-proof.mjs` | **19/19** — i rivelatori scattano davvero (ri-eseguito dopo `D-0444`, cambio sicurezza-rilevante) |
 | `node tools/acceptance/ce-020-tui-fullscreen.mjs` | **18/18** — TUI ssh, tastiera vera contro motore vero |
 | `tools/run-browser-e2e.sh` (probe usa-e-getta) | **228/229** — l'unico fallimento è il debito già noto `D-0435` |
 | Audit accessibilità (probe usa-e-getta) | **27/27** — 9 temi, 5139 misure di contrasto, 0 bersagli sotto 24px |
-| Byte-verify | `styles.css` container↔albero identico |
+| `D-0444`: catena reale su socket (login+MFA vero) | **3/3** — permesso, rifiuto senza `launchCommand`, rifiuto id sconosciuto |
+| Byte-verify | `styles.css` container↔albero identico (ultimo deploy, `D-0441`) |
 | Cleanup §5a | rollback vecchio rimosso, container non di progetto invariati a 50, volumi invariati a 63 |
 
 ## Cosa NON è stato fatto
 
+- **`D-0444` non deployato** — in attesa della tua revisione (prima capacità che avvia un processo reale dal menu `/`).
 - **ATOM↔CodeN Evolution non verificato** — serve una sessione autenticata (l'Owner ce l'ha già).
 - **`D-0435` non riparato** — ora due strati, fuori scope di questa fase.
 - **`D-0433` non riparato**, **immagini Docker orfane non rimosse** — fuori scope.
-- **Nessuna delle modifiche `D-0436`…`D-0441` confermata a occhio dall'Owner** (tranne `D-0438`).
+- **Nessuna delle modifiche `D-0436`…`D-0444` confermata a occhio dall'Owner** (tranne `D-0438`).
 - **Nessuna push ancora eseguita** al momento della scrittura di questo handoff.
 
 ## Proposta di miglioramento

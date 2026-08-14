@@ -10278,3 +10278,40 @@ xterm's own already-shipped protection), not because it is proven to be the caus
 or desktop, browser terminal or ssh, and what the prompt box showed just before Enter was
 pressed), since deploying and calling this closed without reproducing the report would be a claim
 this session cannot back.
+
+## D-0444 · `/model <id>` — the catalogue and the local runtime, finally joined — 2026-08-14
+**Decision.** New `activateModel()` in `local-model-runtime.mjs`: given a catalogue descriptor,
+its presence state and the runtime, it requests+approves a capability grant (the same
+`AdapterGrantOrchestrator` flow `launch()` already required, `ARCH-005`), then release+configure+
+launch the runtime onto that model's own `launchCommand` (an OPTIONAL, argv-only descriptor field
+— refused, not guessed at, when absent). Wired into `session-protocol.mjs` as `model.activate`
+(`model.manage`, `bridged: true`), reachable identically from ssh, the embedded browser terminal
+and the legacy DOM fallback — one dispatch, §4b.4 rule 4. New `AGENT_COMMANDS` entry `/model <id>`
++ `RUN` table entry + Italian catalogue string.
+**Why.** Owner report: `/models` only ever navigated to a settings page that could show status
+and never let a present model actually be loaded — "è una stupidaggine... non fa inserire il
+modello". Investigated with the Owner before building: this installation's own `/workspace/models`
+does not exist (zero catalogue entries besides the synthesized active one), so the Owner explicitly
+scoped this to models already present and verified (no download/acquire — `/api/v1/models/acquire`
+stays a declared 501, untouched) and agreed to prove the mechanism with a fake descriptor.
+**Rejected.** Guessing a launch-command convention (a fixed `-m <path>` flag, argv rewriting of
+whatever is already configured) — different inference servers name a model file differently, and
+this project's own stated rule is to refuse rather than invent the flag a binary needs. Building
+the download/acquire transport first — explicitly out of the Owner's chosen scope.
+**Evidence.** `local-model-runtime.test.mjs`: 5 new tests (launches end to end, replaces a running
+process rather than running alongside it, refuses an unknown id, refuses not-present, refuses no
+`launchCommand`) — all against a real `/bin/sleep` standing in for an inference server, since this
+installation's catalogue is empty. `session-protocol.test.mjs`: 3 new tests over the REAL unix
+socket with a REAL authenticated owner session, proving the full wiring (policy → dispatch →
+thunk → `activateModel`), not just the function in isolation. `two-shells-parity.test.mjs` updated
+(new `MODEL_MANAGE_METHODS` exclusion list, HTTP-twin proof against `PUT /api/v1/runtime/local-
+model`'s own `model.manage` gate, excluded-roles list). Full unit 2546/2547 (+9, 1 pre-existing
+skip unchanged). ESLint 408/0. `seeded-defect-proof.mjs` 19/19 (oracle re-run after this security-
+adjacent change). Security: no route/auth code touched beyond the one new, permission-gated
+method; the generic `methodPolicy[method]` gate (`session-protocol.mjs:484-492`) enforces it the
+same way as every other method, by construction, not by a special case in the new handler.
+**Reversal cost.** Low — one new exported function, one dispatch entry, one client command; no
+existing method's behaviour changed.
+**Status.** applied, NOT YET deployed — held pending the Owner's review, since this is the first
+capability in the product that lets an authenticated operator spawn a real OS process from the
+`/` menu, and §18 rule 77 lists deployment among what stops for explicit authorisation regardless.

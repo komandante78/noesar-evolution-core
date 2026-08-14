@@ -171,6 +171,14 @@ export const AGENT_COMMANDS = Object.freeze([
   // followed the surface, it did not summon it.
   { name: 'skills', argument: '', summary: 'Skills — what the agent knows how to do, and what adopting one costs in context', group: 'configure', kind: 'address', address: 'settings/skills' },
   { name: 'models', argument: '', summary: 'Models — which model answers, and on what hardware', group: 'configure', kind: 'address', address: 'models' },
+  // `D-0444`. Owner report, 2026-08-14: `/models` only ever navigated to a settings page that
+  // could show status and never let a present model actually be loaded — "e una stupidaggine
+  // il menu ... non fa inserire il modello". The catalogue (what is on disk) and the local
+  // runtime (how to run it) both already existed; nothing joined them to a command. Scoped to
+  // what the Owner asked for: a model already present and verified on this installation, not
+  // acquiring a new one (`/api/v1/models/acquire` has no transport configured and stays out of
+  // scope here).
+  { name: 'model', argument: '<id>', summary: 'Load a model already present on this installation', group: 'configure', kind: 'call', method: 'model.activate', permission: 'model.manage' },
   { name: 'settings', argument: '', summary: 'Everything else about how this installation behaves', group: 'configure', kind: 'address', address: 'settings' },
 
   // TOOLS · MODULES · APPROVALS — point 2b. What the CodeN page used to hold at the bottom of

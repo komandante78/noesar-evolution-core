@@ -13,7 +13,7 @@ import os from 'node:os';
 import http from 'node:http';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LocalModelRuntime, RuntimeMode, Backend } from '../src/local-model-runtime.mjs';
+import { LocalModelRuntime, RuntimeMode, Backend, activateModel } from '../src/local-model-runtime.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 
@@ -374,4 +374,71 @@ test('the CPU profile is always present and always available', async () => {
   assert.ok(cpu);
   assert.equal(cpu.available, true);
   assert.equal(cpu.backend, Backend.CPU);
+});
+
+// --- activateModel — the connection D-0444 adds between the catalogue and this class -------
+//
+// Owner report, 2026-08-14: the `/models` menu entry only ever navigated to a settings page
+// that could show status and never let a present model actually be loaded. Proved here with a
+// fake descriptor + a real `/bin/sleep` standing in for an inference server, since this
+// installation's own catalogue is empty (`/workspace/models` does not exist) — the mechanism
+// is what is under test, not any particular model.
+
+test('activateModel launches a present, described model end to end', async () => {
+  const { runtime, grants } = fresh();
+  const descriptor = { id: 'test-model', launchCommand: ['/bin/sleep', '60'] };
+  const present = new Map([['test-model', { verified: true }]]);
+  const result = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' });
+  assert.equal(result.activated, true);
+  assert.equal(result.id, 'test-model');
+  assert.ok(Number.isInteger(result.pid));
+  assert.equal(runtime.status().model, 'test-model');
+  assert.equal(runtime.status().launched.exited, false);
+  await runtime.release();
+});
+
+test('activateModel replaces whatever was already running, not run alongside it', async () => {
+  const { runtime, grants } = fresh();
+  await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
+  const first = await runtime.launch({ capabilityToken: grantLaunch(grants) });
+  const descriptor = { id: 'test-model-2', launchCommand: ['/bin/sleep', '60'] };
+  const present = new Map([['test-model-2', { verified: true }]]);
+  const second = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' });
+  assert.notEqual(second.pid, first.pid, 'a new process must actually have been spawned');
+  assert.equal(runtime.status().launched.pid, second.pid, 'only the new process is tracked as running');
+  await runtime.release();
+});
+
+test('activateModel refuses a model this installation does not know about', async () => {
+  const { runtime, grants } = fresh();
+  await assert.rejects(
+    () => activateModel({ descriptor: null, present: new Map(), runtime, grants, actor: 'test-owner' }),
+    /no such model is known/,
+  );
+});
+
+test('activateModel refuses a model that is not present and verified', async () => {
+  const { runtime, grants } = fresh();
+  const descriptor = { id: 'not-here', launchCommand: ['/bin/sleep', '60'] };
+  await assert.rejects(
+    () => activateModel({ descriptor, present: new Map(), runtime, grants, actor: 'test-owner' }),
+    /not a verified, present model/,
+  );
+  await assert.rejects(
+    () => activateModel({
+      descriptor, present: new Map([['not-here', { verified: false }]]), runtime, grants, actor: 'test-owner',
+    }),
+    /not a verified, present model/,
+  );
+});
+
+test('activateModel refuses a descriptor with no declared launchCommand, rather than guessing one', async () => {
+  const { runtime, grants } = fresh();
+  const descriptor = { id: 'no-launch-command' };
+  const present = new Map([['no-launch-command', { verified: true }]]);
+  await assert.rejects(
+    () => activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' }),
+    /declares no launchCommand/,
+  );
+  assert.equal(runtime.status().launched, null, 'a refused activation must not have spawned anything');
 });

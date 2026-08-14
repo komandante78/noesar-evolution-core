@@ -1276,6 +1276,7 @@ const it = {
   'Search across the sources this installation can reach': 'Cerca fra le fonti che questa installazione può raggiungere',
   'Skills — what the agent knows how to do, and what adopting one costs in context': 'Competenze — che cosa l\'agente sa fare, e quanto costa in contesto adottarne una',
   'Models — which model answers, and on what hardware': 'Modelli — quale modello risponde, e su quale hardware',
+  'Load a model already present on this installation': 'Carica un modello già presente su questa installazione',
   'Everything else about how this installation behaves': 'Tutto il resto su come si comporta questa installazione',
   'Registered tools — local, MCP and OpenAPI, and what each is allowed to do': 'Strumenti registrati — locali, MCP e OpenAPI, e che cosa è permesso a ciascuno',
   'Sector modules — the one catalogue: install, activate, remove': 'Moduli di settore — l\'unico catalogo: installa, attiva, rimuovi',

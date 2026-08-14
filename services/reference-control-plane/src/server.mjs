@@ -13,7 +13,7 @@ import {
 } from './data-plane.mjs';
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
-import { LocalModelRuntime } from './local-model-runtime.mjs';
+import { LocalModelRuntime, activateModel } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition } from './model-catalog.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
@@ -417,6 +417,19 @@ const sessionDispatch = createSessionDispatch({
   // after this dispatch — reading the binding directly here would read it uninitialised.
   aiWorkspace,
   getClosureRegister: () => closureRegister,
+  // `D-0444`: the connection between the catalogue (what is present) and the runtime (how to
+  // launch it), reachable identically from every shell through this one dispatch — the same
+  // reason `codenAddressBook` above is a thunk rather than a value: `localModels` and
+  // `adapterGrants` are constructed further down this file, and reading either binding here
+  // directly would read it before it exists. Deferred to the moment a shell actually asks.
+  activateInstalledModel: (id, actor) => {
+    const descriptors = readModelDescriptors();
+    return activateModel({
+      descriptor: descriptors.find((entry) => entry.id === id) ?? null,
+      present: readPresentModels(descriptors),
+      runtime: localModels, grants: adapterGrants, actor,
+    });
+  },
 });
 
 // --- data plane and multi-user directory -------------------------------------

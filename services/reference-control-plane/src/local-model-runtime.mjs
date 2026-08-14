@@ -564,3 +564,53 @@ export class LocalModelRuntime {
     };
   }
 }
+
+/**
+ * Switch this runtime to a model already present on this installation — the connection
+ * between the catalogue (which knows WHAT is on disk, `readModelDescriptors`/
+ * `readPresentModels` in `server.mjs`) and this class (which knows HOW to run a configured
+ * command), which nothing in the product joined until `D-0444`: the catalogue could always
+ * say a model was present, and this class could always launch a configured command, but a
+ * person who wanted to switch models had no path connecting the two — the `/` menu's
+ * `models` entry only ever navigated to a settings page that could show status and nothing
+ * else.
+ *
+ * The descriptor is the one thing this function trusts for HOW to launch: `launchCommand` is
+ * an OPTIONAL field on a descriptor, validated by `configure()` exactly as an operator's own
+ * would be (an argv array, never a shell string), and a descriptor that does not declare one
+ * is refused rather than guessed at — this function does not know what flag any particular
+ * inference server uses to name a model file, and inventing one would be exactly the kind of
+ * guess this project refuses to ship.
+ *
+ * `grants` is the SAME `AdapterGrantOrchestrator` `launch()` already requires a token from
+ * (`ARCH-005`) — request then approve, in one call, because this runs inside an already-
+ * authenticated, already-permission-checked request handler; a person who can reach this at
+ * all already holds `model.manage`, so a second, separate human approval step here would be
+ * confirming a decision already made rather than gating a new one.
+ */
+export async function activateModel({ descriptor, present, runtime, grants, actor, nowUnix = Math.floor(Date.now() / 1000) }) {
+  if (!descriptor) throw fail('no such model is known to this installation', 404);
+  const state = present.get(descriptor.id);
+  if (!state?.verified) {
+    throw fail(`\`${descriptor.id}\` is not a verified, present model on this installation`, 409);
+  }
+  if (!descriptor.launchCommand) {
+    throw fail(`\`${descriptor.id}\` declares no launchCommand — this installation does not know how to start it`, 422);
+  }
+  const granted = grants.request({ resource: 'local-model-runtime', operation: 'EXECUTE', actor, nowUnix });
+  const approved = grants.approve({ runId: granted.runId, approverId: actor, nowUnix });
+  // Idempotent either way (`release()` reports `alreadyStopped` rather than failing when
+  // nothing is running) — never conditioned on reading `status()` first, which would be a
+  // second, race-prone source of the same fact `release()` already establishes on its own.
+  await runtime.release();
+  const current = runtime.config();
+  await runtime.configure({
+    mode: current.mode === RuntimeMode.DISABLED ? RuntimeMode.MANUAL : current.mode,
+    profileId: current.profileId ?? 'cpu',
+    launchCommand: descriptor.launchCommand,
+    model: descriptor.id,
+    endpoint: descriptor.endpoint ?? current.endpoint ?? null,
+  });
+  const launched = await runtime.launch({ capabilityToken: approved.token, nowUnix });
+  return { activated: true, id: descriptor.id, ...launched };
+}

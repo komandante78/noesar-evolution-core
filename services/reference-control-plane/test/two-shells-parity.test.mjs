@@ -30,6 +30,11 @@ import { SESSION_METHOD_POLICY, bridgedMethodPermissions, createSessionDispatch 
  */
 const CODEN_PLAN_METHODS = ['coden.gitStatus', 'coden.divergence'];
 
+// `D-0444`. Same shape, a different permission: `model.activate` costs `model.manage`, which
+// `PUT /api/v1/runtime/local-model` already requires for the same class of action
+// (reconfiguring and launching the local runtime) — its HTTP twin, proven below.
+const MODEL_MANAGE_METHODS = ['model.activate'];
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const protocolSource = readFileSync(join(root, 'src/session-protocol.mjs'), 'utf8');
@@ -232,7 +237,7 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     // and is excluded the same way. The exclusion is a NAMED LIST rather than a growing chain
     // of `!==`, so adding a third forces the next test to prove its HTTP route agrees.
     const universal = new Set(Object.entries(SESSION_METHOD_POLICY)
-      .filter(([method]) => !CODEN_PLAN_METHODS.includes(method))
+      .filter(([method]) => !CODEN_PLAN_METHODS.includes(method) && !MODEL_MANAGE_METHODS.includes(method))
       .map(([, policy]) => policy.permission).filter(Boolean));
     assert.deepEqual([...universal].sort(), ['workspace.read', 'workspace.write']);
     for (const role of ROLES) {
@@ -275,6 +280,23 @@ describe('CE-021 — the two shells cannot drift apart unnoticed', () => {
     // discovered later by someone whose terminal reports `remote —` for no stated reason.
     const excluded = ROLES.filter((role) => !RolePermissions[role]?.has('coden.plan'));
     assert.deepEqual(excluded.sort(), ['client_restricted', 'service_account', 'user']);
+
+    // `D-0444`, same proof for `model.activate`: its own permission matches the HTTP route
+    // already asking for it, for the same class of action.
+    for (const method of MODEL_MANAGE_METHODS) {
+      assert.equal(SESSION_METHOD_POLICY[method]?.permission, 'model.manage',
+        `\`${method}\` is listed as a model.manage method and its policy says otherwise`);
+    }
+    // `routeGuard` matches by pathname alone, and `GET /api/v1/runtime/local-model` (a
+    // DIFFERENT gate, `hardware.read`) shares this exact pathname with the `PUT` route this
+    // proof needs — the first, not the relevant, block would win. Anchored on the method too.
+    const putStart = serverSource.indexOf("req.method === 'PUT' && url.pathname === '/api/v1/runtime/local-model'");
+    assert.ok(putStart > -1, 'there is no PUT route for /api/v1/runtime/local-model');
+    const putBlock = serverSource.slice(putStart, serverSource.indexOf('url.pathname ===', putStart + 60));
+    assert.match(putBlock, /requireSession\(req, res, 'model\.manage'\)/,
+      'the HTTP twin of `model.activate` no longer asks for model.manage');
+    const modelManageExcluded = ROLES.filter((role) => !RolePermissions[role]?.has('model.manage'));
+    assert.deepEqual(modelManageExcluded.sort(), ['client_restricted', 'developer', 'service_account', 'user']);
   });
 
   // ── Phase 1 of `MASTER_PROJECT/17_CODEN_EVOLUTION_PIANO_DI_LAVORO.md` ──────────────────

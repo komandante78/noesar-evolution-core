@@ -185,6 +185,13 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // the sideways asymmetry `D-0302` exists to prevent.
   'closure.list': { permission: 'workspace.read', bridged: false },
   'closure.record': { permission: 'workspace.write', bridged: false },
+  // `D-0444`: the `/models` menu entry could only ever navigate to a settings page — nothing
+  // let an operator actually load a model that was already present. `model.manage` is the
+  // same permission `PUT /api/v1/runtime/local-model` already requires for exactly this class
+  // of action (reconfiguring and launching a local process). `bridged: true` because there is
+  // no separate existing HTTP route for this operation to defer to — every shell reaches it
+  // through this one dispatch, §4b.4 rule 4.
+  'model.activate': { permission: 'model.manage', bridged: true },
 });
 
 /** The methods the HTTP bridge exposes, and what each needs — derived, never re-typed. */
@@ -222,6 +229,9 @@ export function createSessionDispatch({
   // browser — the "second client with its own state" this design rejects, and it would
   // quietly falsify the at-rest number both shells display.
   skillCatalogStatus, searchSkillCatalog,
+  // `D-0444`. `(id, actor) => Promise<result>` — see `model.activate` below and this
+  // factory's own note on `getClosureRegister` for why this arrives as a function.
+  activateInstalledModel,
   // The policy the gate below reads. A parameter, not a direct reference, for one reason:
   // "a method with no policy entry is refused" is the fail-closed branch that matters most and
   // the one the real configuration can never reach, since every implemented method is listed.
@@ -409,6 +419,22 @@ export function createSessionDispatch({
         reviewSeconds: params?.reviewSeconds ?? null,
         actorId: actor,
       });
+    },
+    // `D-0444`. `activateInstalledModel` is a thunk for the same reason `getClosureRegister`
+    // is one (see this factory's own doc comment): the objects it closes over are constructed
+    // after this dispatch, in `server.mjs`. Refusals from `activateModel` (not present, no
+    // declared `launchCommand`, unknown id) are real, named reasons — carried through as the
+    // message rather than re-worded, so the shell shows the SAME sentence a direct call to
+    // the function would raise.
+    'model.activate': async ({ params, actor }) => {
+      if (typeof activateInstalledModel !== 'function') {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the local model runtime');
+      }
+      try {
+        return await activateInstalledModel(params?.id, actor);
+      } catch (error) {
+        throw new ProtocolError('MODEL_ACTIVATION_REFUSED', error.message);
+      }
     },
     // Same module the HTTP route calls, against the same workspace root — not a second
     // reading of git that could disagree with the browser's chip about the same repository.

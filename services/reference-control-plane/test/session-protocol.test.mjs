@@ -21,6 +21,8 @@ import { AuthService } from '../src/auth.mjs';
 import { AuditLedger } from '../src/audit.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
 import { createSessionDispatch, startUnixSocketServer, PROTOCOL_VERSION } from '../src/session-protocol.mjs';
+import { LocalModelRuntime, activateModel } from '../src/local-model-runtime.mjs';
+import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { ContextGraph } from '../src/ai-workspace/context-graph.mjs';
 import { INVARIANT_ENFORCEMENT } from '../src/path-auth.mjs';
@@ -39,7 +41,7 @@ function resolveWorkspaceSubpath(root, subpath) {
   return candidate.startsWith(root) ? candidate : null;
 }
 
-let ws, shadows, socketPath, server, totpSecret, authenticatedSocket, contextGraph, handshake, authService;
+let ws, shadows, socketPath, server, totpSecret, authenticatedSocket, contextGraph, handshake, authService, localModelRuntime;
 
 before(async () => {
   ws = mkdtempSync(join(tmpdir(), 'noesar-sp-ws-'));
@@ -57,6 +59,16 @@ before(async () => {
     workspaceRoot: ws, shadowsRoot: shadows, minter: new TokenMinter(randomBytes(32)), events,
   });
   contextGraph = new ContextGraph(new AtomicJsonStore(join(ws, 'ai-workspace.json')));
+  // `D-0444`. A real runtime and a real grant orchestrator, not a mock of either: the test
+  // below proves `model.activate` end to end (socket -> policy -> dispatch -> the thunk ->
+  // `activateModel` -> configure/release/launch), the same real chain a live session drives.
+  const localModelMinter = new TokenMinter(randomBytes(32));
+  localModelRuntime = new LocalModelRuntime({ workspace: ws, minter: localModelMinter });
+  const modelGrants = new AdapterGrantOrchestrator({ minter: localModelMinter });
+  const fakeDescriptors = new Map([
+    ['test-model', { id: 'test-model', launchCommand: ['/bin/sleep', '30'] }],
+    ['no-launch-command', { id: 'no-launch-command' }],
+  ]);
   const dispatch = createSessionDispatch({
     workspaceActions, buildRepositoryMap, literalSearch, resolveWorkspaceSubpath,
     workspaceRoot: ws, engineEvents: events, workspaceActionsStatus,
@@ -73,6 +85,11 @@ before(async () => {
       agents: [{ id: 'a', name: 'the-agent' }],
       artifacts: [], conversations: [], tasks: [], tools: [], agentRuns: [],
     }) },
+    activateInstalledModel: (id, actor) => activateModel({
+      descriptor: fakeDescriptors.get(id) ?? null,
+      present: new Map([['test-model', { verified: true }], ['no-launch-command', { verified: true }]]),
+      runtime: localModelRuntime, grants: modelGrants, actor,
+    }),
   });
   socketPath = join(ws, 'tui-test.sock');
   // The await IS the readiness wait since s326: the promise resolves only once the socket
@@ -93,6 +110,7 @@ before(async () => {
 after(async () => {
   authenticatedSocket.end();
   await new Promise((resolve) => server.close(resolve));
+  await localModelRuntime.release();
   rmSync(ws, { recursive: true, force: true });
   rmSync(shadows, { recursive: true, force: true });
 });
@@ -392,6 +410,32 @@ describe('session protocol — coden.addresses (phase 4)', () => {
     // has no such fact. Saying so is the difference between a disclosed gap and a claim.
     const result = await call(authenticatedSocket, 'coden.addresses', {});
     assert.equal(result.accessFiltered, false);
+  });
+
+  // `D-0444`. The full chain, over the real socket, with the real owner session `before()`
+  // established — not `activateModel()` called directly, which `local-model-runtime.test.mjs`
+  // already covers. What is proven here is the WIRING: `SESSION_METHOD_POLICY`, the dispatch
+  // entry, and the thunk `activateInstalledModel` server.mjs builds for it all connect.
+  test('model.activate launches a present, described model over the real socket', async () => {
+    const result = await call(authenticatedSocket, 'model.activate', { id: 'test-model' });
+    assert.equal(result.activated, true);
+    assert.equal(result.id, 'test-model');
+    assert.ok(Number.isInteger(result.pid));
+    await localModelRuntime.release();
+  });
+
+  test('model.activate refuses a descriptor with no launchCommand, with the real reason', async () => {
+    await assert.rejects(
+      call(authenticatedSocket, 'model.activate', { id: 'no-launch-command' }),
+      (error) => error.kind === 'MODEL_ACTIVATION_REFUSED' && /declares no launchCommand/.test(error.message),
+    );
+  });
+
+  test('model.activate refuses a model this installation does not know about', async () => {
+    await assert.rejects(
+      call(authenticatedSocket, 'model.activate', { id: 'no-such-model' }),
+      (error) => error.kind === 'MODEL_ACTIVATION_REFUSED' && /no such model is known/.test(error.message),
+    );
   });
 
   test('a deployment whose interface cannot be read answers UNAVAILABLE, never an empty list', async () => {

@@ -55,6 +55,7 @@ export const RUN = {
   status: () => ['status', {}],
   sessions: (argument) => ['sessions.list', argument ? { filter: argument } : {}],
   git: () => ['coden.gitStatus', {}],
+  model: (argument) => ['model.activate', { id: argument }],
 };
 
 /**
