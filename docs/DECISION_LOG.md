@@ -10365,3 +10365,30 @@ skill is; the Owner asked for it "di obbligo".
 import line (9 insertions). Memory file updated to point at the skill instead of duplicating it.
 **Reversal cost.** none — additive only, removes nothing.
 **Status.** applied.
+
+## D-0447 · FUNDING/ dossier realigned to measured reality; 2 original NLnet-shaped WPs invented; phased work plan to beta — 2026-08-14
+**Decision.** Rewrote `FUNDING/01,03,05,06,07,08,09,15,17` (superseded-draft pattern, old text
+kept below the line per §12 no-deletion) to replace the retired "Master V4" B001-B006 framing
+with the current `MASTER_PROJECT/` plan of record. Added `18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`
+(four standalone components: ReasoningProvider conformance suite, capability-token spec,
+Proof-of-Session portable format, `noesar-sandbox` crate extraction) and
+`19_WORK_PLAN_TO_BETA.md` (8 dependency-ordered phases, 9.5-18 person-months, explicit "beta"
+definition). Corrected a real defect found mid-phase: `docs/WORK_PLAN_V5_REWRITE.md`'s
+2026-08-03 note wrongly listed `CE-005`/`CE-010` as never resumed — both are implemented
+(verified against the live tree); only `CE-015` is genuinely open. Fixed at the source, not
+only in the new dossier.
+**Why.** Owner ordered a page-by-page live audit, a read of the existing funding project, and
+original (non-copied) improvement research culminating in a phased plan to beta. The old
+dossier (2026-07-25) predated `D-0096` (rewrite becomes plan of record, one day later) and
+described a baseline the product no longer has.
+**Rejected.** Inventing many shallow improvement ideas across all 17 files, instead of four
+developed ones — the funding-fit skill's own trait 1 ("delimited, realizable") argues against
+breadth over depth. Also rejected: assigning calendar dates to the phased plan — no fixed team
+velocity exists to project one from; effort ranges only, per `CLAUDE10.md` rule 40.
+**Evidence.** `node --test` 2547/2546/1-skip/280 suites (fresh, this session); `node
+tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`; live `noesar-evolution` `Up`/`healthy`,
+`/livez` `/readyz` both 200; `rust/crates/noesar-sandbox` and `divergence-profile.mjs`
+consumers confirmed by direct grep against the current tree, not inherited from stale notes.
+**Reversal cost.** none — additive, old drafts retained in-file below the line and in git
+history.
+**Status.** applied. Not deployed (documentation only, no code/container change).

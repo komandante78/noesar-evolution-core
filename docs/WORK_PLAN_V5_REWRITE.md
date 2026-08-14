@@ -1,15 +1,20 @@
 # Piano di lavoro — la riscrittura come progetto di riferimento
 
-> **Nota (2026-08-03), non riscritto.** Questo piano (Fase 1→7) è stato eseguito quasi per
-> intero da `docs/DECISION_LOG.md` `D-0175` in poi — spina dorsale (`ReasoningProvider`,
-> capability token, esecuzione in ombra), CodeN Evolution, le due shell, memoria a cubi
-> (`CUBE-001…009` tutte chiuse), isolamento (`ARCH-008`), mondo esterno (OIDC/SCIM/Technology
-> Radar/moduli di settore). Resta genuinamente aperto solo il Gruppo 6 (pentest indipendente,
-> `docs/security/INDEPENDENT_PENTEST_SCOPE.md`) e alcuni criteri della matrice CE-001…024 mai
-> ripresi dopo il progetto iniziale (`CE-005`, `CE-010`, `CE-021`) o bloccati per scelta
-> dell'Owner (`CE-015`, richiede `EXECUTE`). Questo file resta "provvisorio" nel testo sotto
-> perché non è mai stato riportato a "completo" — trattalo come piano storico, non come stato
-> corrente.
+> **Nota (2026-08-03), corretta 2026-08-14 — non riscritto altrove.** Questo piano (Fase 1→7) è
+> stato eseguito quasi per intero da `docs/DECISION_LOG.md` `D-0175` in poi — spina dorsale
+> (`ReasoningProvider`, capability token, esecuzione in ombra), CodeN Evolution, le due shell,
+> memoria a cubi (`CUBE-001…009` tutte chiuse), isolamento (`ARCH-008`, chiuso `D-0253`), mondo
+> esterno (OIDC/SCIM/Technology Radar/moduli di settore). **Correzione verificata il
+> 2026-08-14** (durante la stesura di `FUNDING/`): `CE-005` e `CE-010`, elencati qui come "mai
+> ripresi", sono in realtà implementati — `CE-005` in `context-projector.mjs` (crescita
+> limitata provata), `CE-010` collegato a consumatori reali (`workspace-actions.mjs`,
+> `session-protocol.mjs`, `context-projector.mjs`, `server.mjs`, entrambe le shell) da `D-0326`
+> (2026-08-05), due giorni dopo questa nota. `CE-021` passa 13/13. **Resta genuinamente aperto
+> solo il Gruppo 6** (pentest indipendente, `docs/security/INDEPENDENT_PENTEST_SCOPE.md`) e
+> `CE-015`, bloccato per scelta dell'Owner (richiede `EXECUTE` — nota che `ARCH-008` ora spende
+> `EXECUTE` per davvero, `D-0253`, il che potrebbe sbloccare `CE-015` se l'Owner lo autorizza).
+> Questo file resta "provvisorio" nel testo sotto perché non è mai stato riportato a "completo"
+> — trattalo come piano storico, non come stato corrente.
 
 **Deciso dall'Owner il 2026-07-26.** Da questa data il progetto di riferimento è la
 riscrittura in `MASTER_PROJECT/`. La documentazione V4 è rimossa dall'albero di lavoro.

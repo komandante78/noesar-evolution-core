@@ -1,6 +1,21 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0445`: il menu `/` da 34 a 17 voci, tutte funzionanti)
+# SESSION HANDOFF — 2026-08-14 (`D-0447`: dossier FUNDING/ realineato, piano di lavoro a beta)
 
 ## ➜ LA PROSSIMA AZIONE
+
+**Apri `FUNDING/19_WORK_PLAN_TO_BETA.md`.** Otto fasi in ordine di dipendenza (B→H, la fase A è
+questa sessione). **Nessuna è stata eseguita** — questa sessione ha prodotto solo il piano e la
+ricerca, come richiesto ("progetta gli aggiornamenti", non "eseguili"). La prossima invocazione
+apre UNA fase (regola "una fase per volta"), a scelta dell'Owner: Fase B (CE-015, piccola) o
+Fase C (estrazione `noesar-sandbox`, ha già codice reale dietro, consigliata per prima in
+`18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`).
+
+**Difetto reale trovato e riparato in questa fase**: `docs/WORK_PLAN_V5_REWRITE.md` diceva
+`CE-005`/`CE-010` "mai ripresi" — falso, verificato contro l'albero corrente: entrambi
+implementati. Solo `CE-015` resta aperto davvero. Corretto alla fonte, non solo nel dossier.
+
+**Vecchia prossima azione (D-0445), ancora in sospeso, non toccata questa fase:**
+
+## ➜ ex-LA PROSSIMA AZIONE (D-0445)
 
 **L'installazione gira su `noesar-evolution:d0445-menu-20260814T112604Z` dalle 11:26:20Z, sana,
 byte-verificata.**
