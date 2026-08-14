@@ -4844,3 +4844,16 @@ rather than shipped unverified — see `D-0435`.
 **Predecessor preserved.** `noesar-evolution-pre-20260813T174805Z` (`d0431b-transcript-...`).
 **Cleanup.** Older rollback `noesar-evolution-pre-20260813T171114Z` removed; non-project
 containers unchanged at 52.
+
+## `d0436-cursor-20260814T011452Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0436-cursor-20260814T011452Z`, deployed 01:15:20Z. `D-0436`: the
+browser terminal's real xterm cursor is now hidden on every frame (it was parked visibly in the
+box's bottom-right corner, every draw). `.coden-terminal-region` shrunk to `min(55dvh, 36rem)`.
+**Health.** `running`/`healthy`; `/livez` + `/readyz` both 200 (checked in-container).
+**Verification.** Unit 2540/2541 (1 pre-existing skip) · ESLint 407/0 · byte-equal tree on the 3
+changed sources (`coden-terminal.js`, `styles.css`, `tui-screen.mjs`), sha256 matched container↔tree.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T011520Z` (`d0431c-onechat-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260813T174805Z` removed; non-project
+containers unchanged at 50, volumes unchanged at 63, networks unchanged.
+**Note.** Fifth redeploy this session — `D-0433` (chained-redeploy stop-hook gap) applies again.

@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0431 resolved on direct Owner instruction: #/coden shows only the emulated TUI, #codenShell hidden whenever terminal is live. Deployed d0431c-onechat-20260813T174751Z, healthy, byte-verified, proven with a screenshot+DOM query. D-0435 opened: ~12 browser-e2e.mjs checks still drive the now-hidden legacy shell and are broken -- two fix attempts tried and reverted rather than shipped unverified. D-0433 (chained-redeploy stop-hook gap) still open, this is the FOURTH redeploy this session.",
-  "phase_status": "deployed_and_verified__browser_e2e_has_a_known_real_gap_D-0435__stop_hook_will_FAIL_D-0433",
-  "next_phase": "Owner confirms visually: #/coden shows one surface only. Then, in whatever order the Owner sets: D-0435 (fix the ~12 remaining browser-e2e.mjs sites), D-0433 (redeploy.sh attestation for chained redeploys), repo hygiene (evidence/ vs EVIDENCE/, MANIFEST, three unreconciled phase plans).",
+  "current_phase": "D-0431 confirmed by the Owner: single terminal surface on #/coden. D-0436 found+fixed+deployed: the browser terminal cursor was never hidden and parked in the box bottom-right corner every frame -- coden-terminal.js draw() now sends SCREEN.hideCursor. .coden-terminal-region shrunk min(70dvh,48rem) -> min(55dvh,36rem) per Owner instruction. D-0435 (broken browser-e2e checks) and D-0433 (chained-redeploy stop-hook gap) unchanged, still open. This is the FIFTH redeploy this session.",
+  "phase_status": "deployed_and_verified__D-0436_closed__D-0435_and_D-0433_still_open__stop_hook_will_FAIL_D-0433",
+  "next_phase": "D-0435 (fix the ~12 remaining browser-e2e.mjs sites), D-0433 (redeploy.sh attestation for chained redeploys), repo hygiene (evidence/ vs EVIDENCE/, MANIFEST, three unreconciled phase plans).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "b4aa12b",
-  "last_updated_utc": "2026-08-13T17:50:00Z",
+  "last_commit": "c103656",
+  "last_updated_utc": "2026-08-14T01:20:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {

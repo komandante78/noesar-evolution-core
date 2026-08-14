@@ -10095,3 +10095,25 @@ has no reversal cost because nothing was silently marked passing.
 **Status.** applied · installed. Open: a dedicated pass through every remaining `#codenPrompt`
 site in `browser-e2e.mjs` — each one either redirected to drive the terminal (where the terminal
 now covers the same ground) or wrapped to explicitly exercise the fallback path first.
+
+## D-0436 · the browser terminal never hid its own cursor — found, fixed, shrunk the box — 2026-08-14
+**Decision.** New shared `SCREEN.hideCursor` (`\x1b[?25l`) in `tui-screen.mjs`; `coden-terminal.js`'s
+`draw()` now writes it before every frame. `.coden-terminal-region` reduced from
+`min(70dvh, 48rem)` to `min(55dvh, 36rem)`.
+**Why.** Owner reported a stray cursor in the terminal's bottom-right corner and the box "looking
+bigger than it should". `tui-fullscreen.mjs` (the real `ssh` shell) hides xterm's own cursor once
+via `SCREEN.enter` before its draw loop, because the TUI paints its own caret as part of the
+frame. `coden-terminal.js` never sent the equivalent. `renderFrame()` always right-pads the last
+row (the footer) to the full width, so the write-cursor was left parked at the end of it after
+every `terminal.write()` — column=width, row=height-1, the box's bottom-right cell, every frame.
+**Rejected.** Shrinking the region alone without fixing the cursor — would have hidden the symptom
+without correcting the actual defect, which stays visible regardless of box size.
+**Evidence.** Root cause VERIFIED by reading, not screenshot: `coden-terminal.js:143` vs
+`tools/tui-fullscreen.mjs:261,89` vs `tui-screen.mjs:452,470` (`padToWidth` on every row incl. the
+footer). New unit test seen red before the fix, green after. Unit 2540/2541 (+1, 1 pre-existing
+skip unchanged), ESLint 407/0. Deployed and live-verified: byte-equal tree on the 3 changed
+sources, `/livez` + `/readyz` 200, §5a cleanup proven (non-project containers 50 unchanged,
+volumes 63 unchanged, networks unchanged).
+**Reversal cost.** Low — one shared ANSI token, one write-site, one CSS dimension.
+**Status.** applied · installed (`d0436-cursor-20260814T011452Z`). This is the FIFTH redeploy of
+the session — `D-0433`'s stop-hook gap applies again; Owner acknowledgement needed at close.
