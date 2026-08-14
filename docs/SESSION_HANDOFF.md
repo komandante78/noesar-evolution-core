@@ -1,114 +1,75 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0444`: `/model <id>` deployato — Owner ha autorizzato)
+# SESSION HANDOFF — 2026-08-14 (`D-0445`: il menu `/` da 34 a 17 voci, tutte funzionanti)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**L'installazione gira su `noesar-evolution:d0444-model-20260814T105639Z` dalle 10:57:04Z,
-sana, byte-verificata.** L'Owner ha autorizzato esplicitamente il deploy ("si procedi con
-deploy") dopo la revisione. `D-0444` è la **prima capacità del prodotto che lascia un
-operatore avviare un processo di sistema vero dal menu `/`** — deployata, non ancora provata
-con un modello reale (questa installazione non ne ha un secondo sul disco).
+**L'installazione gira su `noesar-evolution:d0445-menu-20260814T112604Z` dalle 11:26:20Z, sana,
+byte-verificata.**
 
-**`D-0443` (report "Nothing named `M`"), riprodotto dall'Owner su desktop**: durante il
-tentativo è emerso il problema VERO — `/models` porta solo a una pagina di stato, non permette
-di caricare un modello. Il "Nothing named" era comportamento corretto (nessun comando si
-chiama solo una lettera), non un bug.
+**Apri `https://<host>:8443/#/coden`, premi `/` e conferma che ora si legge.** Il menu è passato
+da 34 voci a 17, e — più importante — **le voci che non facevano nulla ora non ci sono più, e
+quelle che restano rispondono davvero**.
 
-**`D-0444` — costruito il collegamento mancante**: catalogo (cosa è presente sul disco) e
-runtime locale (come avviarlo) esistevano già ma non erano mai stati uniti. Nuovo comando
-`/model <id>` (stesso su ssh, terminale browser e fallback) che carica un modello **già
-presente e verificato** su questa installazione — non scarica modelli nuovi (`acquire` resta
-non implementato, 501, fuori scope per scelta dell'Owner). Verificato con un modello finto
-(`/bin/sleep`) perché questa installazione non ha ancora un secondo modello reale sul disco —
-9 nuovi test, inclusi 3 sulla catena reale (socket → permesso → dispatch → funzione).
+**Il difetto vero, misurato non ipotizzato**: `coden-terminal.js` non aveva affatto il ramo
+`navigate`. Tutti i 17 comandi di navigazione cadevano in `if (turn.kind !== 'call')` e finivano
+in un `draw()` vuoto: **nessun messaggio, nessun movimento, nessun errore — silenzio**. È
+esattamente quello che avevi riportato. Aggiunto il ramo, rispecchiando la shell `ssh` attraverso
+la STESSA tabella `showAddress`.
 
-**Cose FATTE e deployate, in attesa di conferma a occhio:**
-- `D-0436` cursore xterm nascosto
-- `D-0437` menu `/` appiattito (lista unica, non più sottomenu)
-- `D-0438`+`D-0439`+`D-0440` `.coden-bar` progressivamente abbassata (~63px→~30px reale) e
-  margine/altezza del terminale aggiustati (margine 48px **confermato buono dall'Owner**,
-  terminale allungato a `min(65dvh,44rem)`)
-- `D-0441` **debug completo**: due difetti reali trovati e riparati (vedi sotto), non solo
-  letti — misurati con gli strumenti veri del repository.
+**Perché le 17 voci sono state tolte** (tre misure, non una preferenza):
+1. Erano una **seconda copia**: `coden-address-book.mjs` deriva già dal markup tutte le 13
+   destinazioni (misurato: 54 indirizzi). Nulla è diventato irraggiungibile — scrivere
+   `/settings` risolve ancora, attraverso la lista derivata invece che scritta a mano.
+2. Nel terminale del browser **non facevano nulla** (il punto 1 qui sopra).
+3. Nel browser **duplicavano la barra laterale**, che le porta già tutte e 13 come bottoni.
 
-**Debug `D-0441` — cosa ho trovato correndo gli strumenti, non solo leggendo il codice:**
+**Il menu adesso** — 17 voci, tutte agiscono: `/plan /simulate /approve /reject /restore /diff
+/map /search /events /status /sessions /git /closure /help /clear /model /logout`.
 
-1. **WCAG 2.5.8 (target 24×24px) violato** dall'abbassamento `D-0440`: i bottoni Normal/Owner
-   Bypass erano scesi a ~16px. **Riparato** con la stessa tecnica già usata in `F-A11Y-003`
-   (`min-height:24px` sul bottone vero, il padding visivo resta piccolo). **Confermato dal vivo**:
-   audit di accessibilità reale, 27/27, 0 bersagli sotto 24px su 9 temi.
-2. **`tools/acceptance/ce-020-tui-fullscreen.mjs`** (lo script di accettazione della TUI ssh, a
-   tastiera vera contro un motore vero) testava ancora il vecchio menu a gruppi — nessuno lo
-   esegue automaticamente, quindi `D-0437` l'aveva rotto senza che nessuno se ne accorgesse.
-   **Riparato**, ora 18/18.
-3. **Sicurezza**: l'intero diff della sessione tocca solo il modello del menu e il client
-   browser/terminale. `coden-bridge.mjs` (autenticazione del WebSocket) non è stato toccato —
-   letto e confermato solido (origin check, poi sessione, poi `SESSION_METHOD_POLICY`). 161/161
-   test di auth+bridge passano invariati.
-4. **ATOM↔CodeN Evolution: NON VERIFICATO, dichiarato non indovinato.** `atomd` è partito sano
-   con l'endpoint del modello configurato, ma la sua riga di avvio dice `simulation=true`. Per
-   sapere se la catena di ragionamento risponde davvero tramite ATOM o va sul fallback (`D-0312`)
-   servirebbe una lettura autenticata di `/api/v1/reasoning` — questa fase non ha una sessione
-   Owner e non può bootstrapparne una sull'installazione live (vietato). **Il modo più veloce per
-   saperlo: guarda il chip "reasoning" nella barra, sei già loggato.**
-
-**`D-0435` — ora un debito a due strati, non uno**: gli stessi ~12 punti di `browser-e2e.mjs` che
-pilotano `#codenPrompt`/`#codenMenu` nascosto ora testano ANCHE il menu a gruppi rimosso. Non
-riparato in questa fase (stessa ragione di prima: i tentativi di rivelazione hanno già causato
-timeout Puppeteer non spiegati due volte).
-
-**Proposta di miglioramento di questa fase**: `ce-020-tui-fullscreen.mjs` gira in <2s, è
-autonomo (avvia e chiude il proprio processo) e potrebbe entrare in `node --test` oggi stesso —
-è esattamente la ragione per cui la rottura di `D-0437` è sopravvissuta inosservata fino a questo
-debug pass. La suite E2E completa nel browser (minuti, costruisce un'immagine) resta una suite
-separata, per costo — non è questa la proposta.
-
-**Rollback**, se qualcosa non convince:
+**Rollback**, se non convince:
 
 ```sh
 docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
-  && docker rename noesar-evolution-pre-20260814T105704Z noesar-evolution && docker start noesar-evolution
+  && docker rename noesar-evolution-pre-20260814T112620Z noesar-evolution && docker start noesar-evolution
 ```
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `D-0436`…`D-0440` | **FATTO**, deployati. `D-0438` (margine terminale) confermato dall'Owner. |
-| `D-0441` WCAG 2.5.8 + CE-020 | **FATTO**, deployato, confermato con strumenti reali (27/27 a11y, 18/18 CE-020). |
-| `D-0442` proposta CE-020 in `node --test` + igiene immagini | **FATTO**, nessun redeploy necessario. |
-| `D-0443` report `/models` → "Nothing named `M`" | **INVESTIGATO** — comportamento corretto, non un bug. Riprodotto dall'Owner, ha rivelato il problema vero (`D-0444`). **Committato, NON deployato.** |
-| `D-0444` `/model <id>` — carica un modello presente | **FATTO, DEPLOYATO** — autorizzato dall'Owner. 9 test nuovi (catena reale su socket inclusa). Non ancora provato con un modello reale (nessuno presente su questa installazione). |
-| ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata che questa fase non ha. |
-| Cursore "doppio" | **NON CONFERMATO** — non riparato alla cieca. |
-| `D-0435` | **APERTO, due strati ora** — irraggiungibile via `#codenPrompt` E asserzioni sul menu a gruppi rimosso. |
-| `D-0433` | **APERTO, bloccante.** Decimo redeploy in sessione — stessa condizione già accettata. |
-| Immagini Docker orfane | **Trovate, non rimosse** — fuori scope. |
+| `D-0436`…`D-0441` | **FATTO**, deployati. Solo `D-0438` (margine terminale) confermato dall'Owner. |
+| `D-0442` CE-020 in `node --test` + igiene immagini | **FATTO.** |
+| `D-0443` report "Nothing named `M`" | **CHIUSO** — comportamento corretto, non un bug; ha rivelato il problema vero. |
+| `D-0444` `/model <id>` | **FATTO, DEPLOYATO.** Non ancora provato con un modello reale (nessuno presente su questa installazione). |
+| `D-0445` menu `/` 34→17 + ramo `navigate` | **FATTO, DEPLOYATO.** Conferma visiva in sospeso. |
+| ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata (l'Owner ce l'ha già). Guarda il chip "reasoning". |
+| `D-0435` | **APERTO** — è l'unico fallimento E2E rimasto (228/229), identico prima e dopo `D-0445`. |
+| `D-0433` | **APERTO.** Dodicesimo redeploy in sessione — stessa condizione già accettata. |
 | `D-0427`, `D-0429` | Invariati. |
 
 ## Verificato IN QUESTA SESSIONE (ultimo giro)
 
 | Strumento | Risultato |
 |---|---|
-| `node --test …` | **2546/2547** (+9 per `D-0444`, 1 skip preesistente invariato) |
+| `node --test …` | **2546/2547** (1 skip preesistente) |
 | `tools/run-eslint.sh` | **408 file, 0 errori** |
-| `node tools/seeded-defect-proof.mjs` | **19/19** — i rivelatori scattano davvero (ri-eseguito dopo `D-0444`, cambio sicurezza-rilevante) |
 | `node tools/acceptance/ce-020-tui-fullscreen.mjs` | **18/18** — TUI ssh, tastiera vera contro motore vero |
-| `tools/run-browser-e2e.sh` (probe usa-e-getta) | **228/229** — l'unico fallimento è il debito già noto `D-0435` |
-| Audit accessibilità (probe usa-e-getta) | **27/27** — 9 temi, 5139 misure di contrasto, 0 bersagli sotto 24px |
-| `D-0444`: catena reale su socket (login+MFA vero) | **3/3** — permesso, rifiuto senza `launchCommand`, rifiuto id sconosciuto |
-| Byte-verify | `styles.css` container↔albero identico (ultimo deploy, `D-0441`) |
+| `tools/run-browser-e2e.sh` (probe usa-e-getta) | **228/229** — l'unico fallimento è `D-0435`, identico al giro precedente ⇒ nessuna regressione |
+| Menu misurato | 34 → **17** voci, ogni superstite agisce; **0** nomi duplicati fra registro e libro indirizzi (erano 17) |
+| Byte-verify | 3 file modificati, container↔albero identici |
+| `/shared/coden/coden-address-views.mjs` | **200** sull'installazione viva — il nuovo import risolve dove deve |
 | Cleanup §5a | rollback vecchio rimosso, container non di progetto invariati a 50, volumi invariati a 63 |
 
 ## Cosa NON è stato fatto
 
-- **`D-0444` non ancora provato con un modello reale** — nessun secondo modello presente su questa installazione; la meccanica è verificata con un finto (`/bin/sleep`).
-- **ATOM↔CodeN Evolution non verificato** — serve una sessione autenticata (l'Owner ce l'ha già).
-- **`D-0435` non riparato** — ora due strati, fuori scope di questa fase.
-- **`D-0433` non riparato**, **immagini Docker orfane non rimosse** — fuori scope.
-- **Nessuna delle modifiche `D-0436`…`D-0444` confermata a occhio dall'Owner** (tranne `D-0438`).
-- **Nessuna push ancora eseguita** al momento della scrittura di questo handoff.
+- **Nessuna conferma visiva dell'Owner** su `D-0436`…`D-0445` (tranne `D-0438`).
+- **`D-0444` non provato con un modello reale** — nessun secondo modello sul disco.
+- **ATOM↔CodeN Evolution non verificato** — serve una sessione autenticata.
+- **`D-0435` non riparato** — resta l'unico fallimento E2E; **`D-0433`** invariato.
 
 ## Proposta di miglioramento
 
-Vedi sopra: `ce-020-tui-fullscreen.mjs` in `node --test`. È la proposta di questa fase, nata
-direttamente dal difetto che questo stesso debug pass ha trovato.
+**Un test che fallisca quando un `turn.kind` non ha un ramo in una shell.** `D-0445` è esistito
+perché `coden-terminal.js` gestiva 8 dei 9 tipi che `planTurn` può restituire e il nono cadeva in
+un `draw()` muto — nessun test poteva vederlo, perché "non fa nulla" non lancia e non stampa. Un
+controllo che enumeri i `kind` prodotti dal modello condiviso e pretenda un ramo in ogni shell
+chiuderebbe quella classe intera, che è la stessa forma del difetto `D-0435` e di `CE-033`.

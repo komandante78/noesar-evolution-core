@@ -4928,3 +4928,18 @@ legacy DOM fallback. Scoped to already-present models; download/acquire stays 50
 This is the first deployed capability that lets an authenticated operator (owner/admin,
 `model.manage`) spawn a real OS process from the `/` menu — capability-token gated
 (`AdapterGrantOrchestrator`, `ARCH-005`), argv-only launch commands, no shell string.
+
+## `d0445-menu-20260814T112604Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0445-menu-20260814T112604Z`, deployed 11:26:20Z. `D-0445`: the `/`
+menu cut from 34 entries to 17 (every survivor acts); `coden-terminal.js` gains the `navigate`
+branch it never had — the measured cause of address commands doing nothing in the browser
+terminal.
+**Health.** `running`/`healthy`; byte-equal tree on all 3 changed sources; the newly imported
+`/shared/coden/coden-address-views.mjs` confirmed served 200 on the live installation.
+**Verification.** Unit 2546/2547 (1 pre-existing skip) · ESLint 408/0 · CE-020 (ssh, real
+keystrokes against a real engine) 18/18 · browser E2E on a disposable probe **228/229**, the one
+failure byte-identical to the pre-change run (the recorded `D-0435` debt) — no regression.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T112620Z` (`d0444-model-...`).
+**Cleanup.** Older rollback removed; non-project containers unchanged at 50, volumes at 63.
+**Note.** Twelfth redeploy this session — `D-0433` gap applies again, same accepted condition.
