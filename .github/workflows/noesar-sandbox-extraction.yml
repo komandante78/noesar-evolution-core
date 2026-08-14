@@ -1,0 +1,31 @@
+name: noesar-sandbox standalone extraction
+
+# Proves, on every push that could break it, that rust/crates/noesar-sandbox still builds and
+# tests correctly with zero coupling to this monorepo -- the same offline, --network none,
+# outside-the-repository check D-0450 ran by hand and tools/verify-crate-extraction.sh
+# automates (docs/DECISION_LOG.md). This is the first CI workflow in this repository: scoped to
+# exactly the one crate the standing work plan (FUNDING/19_WORK_PLAN_TO_BETA.md, Phase C / WP6)
+# names as the extraction-pattern proof, not a general CI overhaul.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/crates/noesar-sandbox/**"
+      - "rust/vendor/**"
+      - "tools/verify-crate-extraction.sh"
+      - ".github/workflows/noesar-sandbox-extraction.yml"
+  pull_request:
+    paths:
+      - "rust/crates/noesar-sandbox/**"
+      - "rust/vendor/**"
+      - "tools/verify-crate-extraction.sh"
+      - ".github/workflows/noesar-sandbox-extraction.yml"
+
+jobs:
+  extraction-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify standalone extraction (offline, outside the repository)
+        run: ./tools/verify-crate-extraction.sh noesar-sandbox
