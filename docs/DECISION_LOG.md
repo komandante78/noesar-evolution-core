@@ -10253,3 +10253,28 @@ lineage lost. Non-project containers unchanged at 50, volumes at 63, networks un
 commits they were built from, same as any removed litter tag always has been).
 **Status.** applied. No redeploy — no `apps/` or `services/.../src` file changed, only a test and
 housekeeping.
+
+## D-0443 · `/models` report investigated: menu logic verified correct, root cause NOT found — 2026-08-14
+**Decision.** New regression test proving all 33 declared commands resolve to themselves via
+`resolveCommand` when typed exactly (33/33). `#codenPrompt`'s missing `autocapitalize="off"` /
+`autocorrect="off"` closed — xterm.js already sets `autocapitalize="off"` on its own hidden input
+(confirmed in the vendored bundle), the legacy DOM fallback never did.
+**Why.** Owner reported typing `/models` answered `Nothing named \`M\`` and asked whether the
+flattened menu had actually been checked end to end, not just assumed working.
+**What was checked, and is CONFIRMED correct by running it, not reading it:** `parseCommandPrompt`,
+`resolveCommand`, `matchCommands`'s ranking at every prefix of "models" (m/mo/mod/mode/model/
+models — `models` is always in the top hits), and the Tab-completion code path (`hits[selected]`,
+the same arrays the ranking check exercises). All 33 commands resolve to themselves.
+**What was NOT found.** No code path produces the word `M` from typing `/models` through any
+sequence this session could construct — not via typing, not via Tab, not via arrow navigation.
+**Declared UNVERIFIED, not guessed at:** the root cause of the Owner's specific report.
+**Rejected.** Declaring this "fixed" — nothing found and repaired IS the specific defect reported;
+shipping the autocapitalize hardening as if it explained the report would be exactly the false
+confidence rule 38 forbids. It is applied because it is a real, independent gap (parity with
+xterm's own already-shipped protection), not because it is proven to be the cause.
+**Evidence.** Unit 2538/2539 (+1). ESLint 408/0.
+**Reversal cost.** None — two HTML attributes, one test.
+**Status.** applied, NOT YET deployed — held pending the Owner's answer on how to reproduce (mobile
+or desktop, browser terminal or ssh, and what the prompt box showed just before Enter was
+pressed), since deploying and calling this closed without reproducing the report would be a claim
+this session cannot back.

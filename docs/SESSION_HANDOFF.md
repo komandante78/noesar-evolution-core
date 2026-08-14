@@ -1,16 +1,27 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0442`: proposta applicata — CE-020 in `node --test`, igiene immagini)
+# SESSION HANDOFF — 2026-08-14 (`D-0443`: `/models` investigato — logica corretta, causa non trovata, NON deployato)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**L'installazione gira su `noesar-evolution:d0441-debug-20260814T092104Z` dalle 09:21:17Z, sana,
-byte-verificata — invariata da `D-0442`, che non tocca prodotto (solo un test e igiene Docker).**
-Sessione lunga di iterazioni su `#/coden` (`D-0436`…`D-0441`), un debug completo su richiesta
-diretta dell'Owner, poi **`D-0442`** su "APPLICA TUTTO": la proposta di miglioramento di
-`D-0441` eseguita (`ce-020-tui-fullscreen.mjs` ora gira dentro `node --test`, 1/1) e le 4
-immagini Docker orfane rimosse (nessuna lineage di installazione persa). **`D-0435` e `D-0433`
-deliberatamente NON toccati** sotto la stessa istruzione — entrambi già segnati come rischiosi
-o da fase dedicata; "applica tutto" è stato letto come "applica ciò che è già proposto e sicuro",
-non come autorizzazione a forzare i due punti più delicati.
+**L'installazione gira ancora su `noesar-evolution:d0441-debug-20260814T092104Z` dalle
+09:21:17Z, sana.** `D-0443` è **committato ma NON deployato** — tenuto in sospeso apposta.
+
+**Serve una risposta dell'Owner prima del prossimo deploy**: hai riprodotto `/models` →
+"Nothing named `M`" su cellulare o desktop? Nel terminale del browser o via `ssh`? E cosa
+mostrava esattamente la casella del prompt un istante prima di premere Invio — "/models"
+per intero, o già qualcosa di sbagliato?
+
+**Cosa ho verificato eseguendo la pipeline vera** (non solo leggendo il codice): `resolveCommand`
+risolve correttamente tutti i 33 comandi dichiarati verso se stessi (nuovo test di regressione,
+33/33). `matchCommands` classifica correttamente "models" ad ogni prefisso digitato
+(m/mo/mod/mode/model/models). Il completamento con Tab legge dagli stessi array verificati sopra.
+**Non ho trovato nessun percorso di codice che produca "M" da "/models"** — non digitando, non
+con Tab, non con le frecce.
+
+**Un gap reale ma NON confermato come causa**: `#codenPrompt` (il fallback DOM) non aveva
+`autocapitalize="off"`, mentre xterm.js lo imposta già sul proprio input nascosto. Corretto per
+coerenza/difesa in profondità — ma è dichiarato "applicato, non provato come causa": se l'Owner
+non era sul fallback (cioè il terminale era `live`), questo non è la spiegazione, e la ricerca
+continua.
 
 **Cose FATTE e deployate, in attesa di conferma a occhio:**
 - `D-0436` cursore xterm nascosto
@@ -66,6 +77,8 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 |---|---|
 | `D-0436`…`D-0440` | **FATTO**, deployati. `D-0438` (margine terminale) confermato dall'Owner. |
 | `D-0441` WCAG 2.5.8 + CE-020 | **FATTO**, deployato, confermato con strumenti reali (27/27 a11y, 18/18 CE-020). |
+| `D-0442` proposta CE-020 in `node --test` + igiene immagini | **FATTO**, nessun redeploy necessario. |
+| `D-0443` report `/models` → "Nothing named `M`" | **INVESTIGATO, causa NON trovata.** Pipeline verificata corretta (33/33 comandi si risolvono). Un gap reale ma non confermato come causa applicato (autocapitalize su `#codenPrompt`). **Committato, NON deployato** — serve la risposta dell'Owner su come riprodurlo. |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata che questa fase non ha. |
 | Cursore "doppio" | **NON CONFERMATO** — non riparato alla cieca. |
 | `D-0435` | **APERTO, due strati ora** — irraggiungibile via `#codenPrompt` E asserzioni sul menu a gruppi rimosso. |

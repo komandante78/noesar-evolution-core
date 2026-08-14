@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0442: improvement proposal from D-0441 applied on Owner instruction (APPLICA TUTTO) -- ce-020-tui-fullscreen.mjs wired into node --test (new ce-020-tui-fullscreen.test.mjs, 1/1). 4 orphaned e2e-base/webui-e2e Docker image tags removed (litter, no product image lineage lost). D-0435 and D-0433 explicitly NOT attempted under the same instruction -- both are on record as needing a dedicated phase, scope narrowed deliberately rather than rushed.",
-  "phase_status": "applied_D-0442__no_redeploy_needed__D-0435_D-0433_deliberately_still_deferred",
-  "next_phase": "Owner: visual confirmation of D-0436..D-0441 (only D-0438 confirmed so far), check the reasoning chip for ATOM status. Then, in whatever order the Owner sets: D-0435 (needs its own careful phase), D-0433 (needs redeploy.sh trust-boundary work).",
+  "current_phase": "D-0443: Owner reported /models -> Nothing named `M`. Investigated by running the pipeline: parseCommandPrompt/resolveCommand/matchCommands/Tab-completion all verified correct (33/33 commands resolve to themselves, new regression test). Root cause of the specific M report NOT found/reproduced -- declared UNVERIFIED. Applied one real independent gap (codenPrompt missing autocapitalize=off/autocorrect=off, xterm already has it) as a plausible-but-unconfirmed hardening, held UNDEPLOYED pending the Owner answering how to reproduce.",
+  "phase_status": "committed_not_deployed__awaiting_owner_reproduction_detail_for_D-0443",
+  "next_phase": "Owner: how to reproduce the /models report (mobile/desktop, browser terminal/ssh, what the prompt showed before Enter). Then deploy D-0443 if it addresses it, or continue investigating if not. Also pending: visual confirmation of D-0436..D-0442, ATOM status via the reasoning chip, D-0435, D-0433.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "dda071d",
-  "last_updated_utc": "2026-08-14T09:30:00Z",
+  "last_commit": "df945d1",
+  "last_updated_utc": "2026-08-14T09:40:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
