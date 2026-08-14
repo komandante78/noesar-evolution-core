@@ -10392,3 +10392,59 @@ consumers confirmed by direct grep against the current tree, not inherited from 
 **Reversal cost.** none — additive, old drafts retained in-file below the line and in git
 history.
 **Status.** applied. Not deployed (documentation only, no code/container change).
+
+## D-0448 · Phase B (CE-015/D-0433/D-0435) investigated — CE-015 and D-0433 re-scoped, D-0435 found compound and larger than estimated — 2026-08-14
+**Decision.** Investigated all three items FUNDING/19's Phase B named, before touching any code.
+Re-scoped two, found the third compound:
+- **`CE-015`** — NOT a wiring gap. Grepped for any web-search/external-source ingestion
+  mechanism in `services/reference-control-plane/src/*.mjs`: zero hits. The capability
+  "promote a web result only after sandbox execution" has no subject to gate — the fetch/search
+  pipeline itself does not exist. This is Fase 4 territory (`MASTER_PROJECT/09_PIANO.md` §2,
+  "la ricerca su fonti verificate", point 20) — a new subsystem, not a fix. Re-scoped to a
+  future phase, not attempted here.
+- **`D-0433`** — confirmed as diagnosed: fixing it means changing `redeploy.sh`'s trust
+  boundary on an already adversarially-tested deployment tool (`D-0393`, 70/70 fixtures).
+  `CLAUDE10.md` §18 rule 77 names deployment explicitly among what needs to stop for
+  authorization, not be assumed. Not attempted here; re-scoped, unchanged from `D-0433`'s own
+  verdict.
+- **`D-0435`** — investigated in depth, and found to be COMPOUND, not single. Ran
+  `tools/run-browser-e2e.sh` fresh (disposable probe, §3a 11e): **228/229**, one harness
+  EXCEPTION (not a `check()` failure) at step `coden-addresses`: `page.click('#codenPrompt')`
+  throws "Node is either not clickable" — confirms `D-0435`'s hidden-element diagnosis still
+  holds. But reading the code the crash sits in (`tools/browser-e2e.mjs` lines 855-987, "POINT
+  3") found a SECOND, independent defect: this block asserts a GROUPED menu (`top.rows` as
+  groups, pressing `t` opens exactly `TOOLS`) — a design `D-0437`, deployed **the same day**,
+  **replaced** with a flat, ranked list (`menuFrame` in `coden-view-model.js:399-403`, comment:
+  "Flattened 2026-08-14 ... there is no group level left"). `D-0437`'s own evidence was a unit
+  test (`coden-shell-parity.test.mjs`, 50/50) and ESLint — **not** a browser E2E run. Because
+  `D-0435` had already made this exact block unreachable (hidden element) since the day before,
+  nobody saw `D-0437`'s design change break POINT 3's assertions too. Two defects masking each
+  other, not one.
+**Why not fixed here.** Repairing `D-0435` now means rewriting POINT 3 for the current flat-list
+design, driven through the terminal (`typeIntoTerminal`/`screenText`/`promptRow`, the pattern
+already proven in the `coden-terminal` step at lines 989-1338) — roughly ten behavioural
+properties (rank order, two-letter filter, Tab completion, `/status` reaching the engine,
+`/logout` confirm-without-ending, `/memory` navigation), none of them a copy of an existing
+check. This is real, careful new-test engineering against a text-buffer interface, not a
+one-line unhide. Two PRIOR attempts at fixing this same block (a `classList.remove` race, a
+`MutationObserver` reveal) already cost this project unexplained Puppeteer timeouts
+(`D-0435`'s own entry). Shipping an unverified third attempt, now proven larger than the
+0.5-1 person-month `19_WORK_PLAN_TO_BETA.md` estimated it, at the point this session's budget
+is already spent on investigation, is the exact failure mode `D-0381`/`D-0383` already cost
+this project — a rushed change to a tooling-adjacent harness, late in a long session.
+**Rejected.** Deleting POINT 3 outright — would silently drop real coverage (group-order,
+filter, Tab completion, `/status`/`/logout`/`/memory` round-trips) that the `coden-terminal`
+step does not already duplicate; rejected by the same reasoning `D-0435`'s own entry gave.
+Patching POINT 3 to merely not crash (e.g. skip the block when `#codenPrompt` is hidden) —
+would convert a known-broken check into a silently-skipped one, which is a worse state than a
+declared, tracked failure (`CLAUDE10.md` rule 38).
+**Evidence.** `tools/run-browser-e2e.sh` fresh run, 228/229, exact failing step and stack
+captured in session log. `coden-view-model.js:399-425` read directly, not inferred.
+`grep -rln` for web-search mechanisms: zero hits, confirmed twice. `D-0433`'s own entry
+re-read in full; verdict unchanged.
+**Reversal cost.** None — nothing changed in the product or the test harness this phase.
+**Status.** `CE-015` and `D-0433` deferred, unchanged in scope. `D-0435` re-scoped LARGER:
+`FUNDING/19_WORK_PLAN_TO_BETA.md` Phase B's 0.5-1 person-month estimate covered only what was
+believed to be a hidden-element fix; the actual work is a POINT-3 rewrite against the current
+flat-menu design, estimated 1-2 person-months on its own. `FUNDING/09_ENGINEERING_EFFORT_ESTIMATE.md`
+and `19_WORK_PLAN_TO_BETA.md` corrected in the same commit as this entry.

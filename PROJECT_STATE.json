@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0447: FUNDING/ dossier realigned to measured reality (Master V4/B001-B006 framing replaced with MASTER_PROJECT/ plan of record). 18_ORIGINAL_IMPROVEMENT_PROPOSALS.md (4 standalone components) and 19_WORK_PLAN_TO_BETA.md (8 phases, 9.5-18 person-months) added. docs/WORK_PLAN_V5_REWRITE.md stale note corrected: CE-005/CE-010 were wrongly listed open, both implemented; only CE-015 genuinely open.",
-  "phase_status": "planning_only__no_code_or_deploy_change",
-  "next_phase": "Owner to pick a phase from FUNDING/19_WORK_PLAN_TO_BETA.md: Phase B (CE-015) or Phase C (noesar-sandbox standalone extraction, recommended first). D-0445 owner confirmation still separately pending.",
+  "current_phase": "D-0448: Phase B (CE-015/D-0433/D-0435) investigated, not executed. CE-015 re-scoped out (needs a Fase-4 subsystem, verified-source search, that does not exist). D-0433 re-confirmed: touches deployment trust boundary, rule 77 stop. D-0435 found compound: hidden element (original diagnosis) + same-day menu flattening (D-0437) both broke tools/browser-e2e.mjs:855-987; real fix is a rewrite, re-estimated 1-2 person-months (was 0.5-1). No product or test code changed this phase.",
+  "phase_status": "investigated_not_executed__awaiting_owner_choice",
+  "next_phase": "Owner authorizes either: (a) the D-0435 test-block rewrite now known to be larger, or (b) Phase C (noesar-sandbox standalone extraction) instead, per Owner instruction to go phase-by-phase with authorization between each.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "fdca774",
-  "last_updated_utc": "2026-08-14T12:35:00Z",
+  "last_updated_utc": "2026-08-14T13:35:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -960,7 +960,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Read FUNDING/19_WORK_PLAN_TO_BETA.md, pick one phase (B-H), open its own six-line budget contract before touching files. Do not start more than one.",
+  "next_action": "Wait for Owner to pick D-0435 rewrite or Phase C. Do not start either without explicit authorization (Owner instruction this turn: finish one phase, wait for authorization for the next).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

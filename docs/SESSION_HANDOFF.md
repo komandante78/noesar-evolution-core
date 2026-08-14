@@ -1,17 +1,28 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0447`: dossier FUNDING/ realineato, piano di lavoro a beta)
+# SESSION HANDOFF — 2026-08-14 (`D-0448`: Fase B indagata — nessuna riga di codice toccata)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Apri `FUNDING/19_WORK_PLAN_TO_BETA.md`.** Otto fasi in ordine di dipendenza (B→H, la fase A è
-questa sessione). **Nessuna è stata eseguita** — questa sessione ha prodotto solo il piano e la
-ricerca, come richiesto ("progetta gli aggiornamenti", non "eseguili"). La prossima invocazione
-apre UNA fase (regola "una fase per volta"), a scelta dell'Owner: Fase B (CE-015, piccola) o
-Fase C (estrazione `noesar-sandbox`, ha già codice reale dietro, consigliata per prima in
-`18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`).
+**Owner ha chiesto di partire dalla Fase B e proseguire in ordine, una fase alla volta, con
+autorizzazione fra l'una e l'altra.** Fase B è stata **indagata a fondo, non eseguita**: i tre
+item che conteneva (`CE-015`, `D-0433`, `D-0435`) si sono rivelati tutti più grandi o diversi da
+come il piano li stimava — vedi `D-0448` nel decision log e `FUNDING/19_WORK_PLAN_TO_BETA.md`
+Fase B (riscritta con l'esito reale). **In sintesi:**
+- `CE-015` — non è wiring, serve un sottosistema Fase-4 che non esiste (ricerca su fonti
+  verificate). Fuori scope per WP7.
+- `D-0433` — confermato: tocca il confine di fiducia del deployment, la regola 77 impone lo stop.
+- `D-0435` — trovato **composto**: l'elemento nascosto (diagnosi originale) PIÙ un redesign del
+  menu (`D-0437`, stesso giorno, flat invece di gruppi) che ha rotto lo stesso blocco di test
+  senza che nessuno se ne accorgesse, perché il primo difetto lo rendeva già irraggiungibile.
+  La riparazione vera è una riscrittura di `tools/browser-e2e.mjs:855-987` contro il design
+  attuale — 1-2 persone-mese, non 0.5-1 come stimato.
 
-**Difetto reale trovato e riparato in questa fase**: `docs/WORK_PLAN_V5_REWRITE.md` diceva
-`CE-005`/`CE-010` "mai ripresi" — falso, verificato contro l'albero corrente: entrambi
-implementati. Solo `CE-015` resta aperto davvero. Corretto alla fonte, non solo nel dossier.
+**Prossima invocazione**: l'Owner sceglie se autorizzare la riscrittura di D-0435 (ora nota per
+essere più grande) oppure passare alla **Fase C** (`noesar-sandbox` standalone — ha già codice
+reale, rischio minore, consigliata in `18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`).
+
+**Difetto reale trovato e riparato in una fase precedente della stessa sessione**:
+`docs/WORK_PLAN_V5_REWRITE.md` diceva `CE-005`/`CE-010` "mai ripresi" — falso, verificato contro
+l'albero corrente: entrambi implementati. Corretto alla fonte (`D-0447`).
 
 **Vecchia prossima azione (D-0445), ancora in sospeso, non toccata questa fase:**
 
