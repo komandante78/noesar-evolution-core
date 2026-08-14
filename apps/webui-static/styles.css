@@ -905,12 +905,16 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* The field bar the terminal opens on, in the browser. One row: identity on the left, the
    mode control on the right — the same reading order as the TUI's top bar, so moving between
    the two shells does not mean re-finding the same facts in a different arrangement. */
-.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
-/* Owner instruction, 2026-08-14: six chips (project/git/model/ctx/reasoning/sandbox) plus the
- * two mode buttons wrapped one per line on a narrower viewport, turning a one-row status bar
- * into an eight-row block. `flex-wrap:nowrap` here plus `overflow-x:auto` on the chip list
- * bounds the bar's height at exactly one row on any viewport: the chips scroll sideways
- * instead of stacking, the same trade a real terminal's status line already makes. */
+/* Owner instruction, 2026-08-14: "o lo usiamo o lo abbassi... massimo 1,5cm" — a hard ceiling,
+ * not just an expectation that one row is short enough. `max-height` is enforced here
+ * regardless of what `flex-wrap:nowrap` below achieves on its own, so the bar cannot grow past
+ * it even if some future chip or a font-size change made a single row taller than this. */
+.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar);max-height:1.5cm;overflow:hidden}
+/* Six chips (project/git/model/ctx/reasoning/sandbox) plus the two mode buttons wrapped one
+ * per line on a narrower viewport, turning a one-row status bar into an eight-row block.
+ * `flex-wrap:nowrap` here plus `overflow-x:auto` on the chip list bounds the bar's height at
+ * exactly one row on any viewport: the chips scroll sideways instead of stacking, the same
+ * trade a real terminal's status line already makes. */
 .coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
 .coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap}
 .coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto}
@@ -1232,13 +1236,14 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    edges — a terminal has no card around it. */
 #view-coden .agent-shell{margin-block-end:0;border-inline:0;border-block-start:0}
 #view-coden .coden-bar{padding-inline:24px}
-/* Owner instruction, 2026-08-14: the emulated terminal (`.coden-terminal-region`, D-0404 slice
- * 3 — a later addition than the "full width, no bubbles" ruling above) reads as running edge
- * to edge with no breathing room. It never had margins of its own; it simply sat inside a
- * `.main` whose inline padding this view already zeroes for the AGENT SHELL below it. Scoped
- * to the terminal box alone, not a reversal of the ruling above: `.agent-shell` and its
+/* Owner instruction, 2026-08-14, widened further the same day: the emulated terminal
+ * (`.coden-terminal-region`, D-0404 slice 3 — a later addition than the "full width, no
+ * bubbles" ruling above) reads as running edge to edge with no breathing room. It never had
+ * margins of its own; it simply sat inside a `.main` whose inline padding this view already
+ * zeroes for the AGENT SHELL below it. 24px was not enough — asked again, explicitly narrower.
+ * Scoped to the terminal box alone, not a reversal of the ruling above: `.agent-shell` and its
  * children keep their own edge-to-edge layout with internal 24px padding, unchanged. */
-#view-coden .coden-terminal-region{margin-inline:24px}
+#view-coden .coden-terminal-region{margin-inline:48px}
 /* Height is the other half of "widen": a terminal is tall. This leaves room for the status row,
    the prompt, the legend and the bench heading below, and grows with the window instead of
    stopping at a fixed 420px. */
@@ -1248,8 +1253,8 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   #view-coden .bench,#view-coden .coden-bar,#view-coden .agent-transcript,
   #view-coden .agent-prompt,#view-coden .agent-hint,#view-coden #codenDivergence{padding-inline:14px;margin-inline:0}
   /* Narrower still keeps SOME margin — zero would put the terminal back edge to edge, which
-   * is the exact complaint this rule exists to fix — just less of it than the desktop 24px. */
-  #view-coden .coden-terminal-region{margin-inline:10px}
+   * is the exact complaint this rule exists to fix — just less of it than the desktop 48px. */
+  #view-coden .coden-terminal-region{margin-inline:16px}
 }
 
 /* ── The information buttons · s333 point 3c ────────────────────────────────────────────────
