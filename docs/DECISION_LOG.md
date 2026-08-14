@@ -10448,3 +10448,59 @@ re-read in full; verdict unchanged.
 believed to be a hidden-element fix; the actual work is a POINT-3 rewrite against the current
 flat-menu design, estimated 1-2 person-months on its own. `FUNDING/09_ENGINEERING_EFFORT_ESTIMATE.md`
 and `19_WORK_PLAN_TO_BETA.md` corrected in the same commit as this entry.
+
+## D-0449 · `D-0435` rewritten and closed — and doing so unmasked a real, larger backlog behind it — 2026-08-14
+**Decision.** Rewrote `tools/browser-e2e.mjs`'s POINT 3 block (old lines 855-987), which drove
+`#codenPrompt` directly and crashed the ENTIRE rest of the 35-step suite (one uncaught
+exception, one outer `try`/`catch` spanning the whole file — nothing downstream ever ran).
+Replaced with five properties driven through the terminal instead
+(`typeIntoTerminal`/`screenText`/`promptRow`, the pattern already proven in the `coden-terminal`
+step): rank/filter, Tab completion, a real command reaching the engine, `/logout`'s
+confirm-without-ending, and an address rendering inline (`showAddress`, NOT a hash change —
+confirmed by reading `coden-terminal.js:410-425`, a genuinely different current behaviour than
+the old test assumed). Also fixed two more sites the SAME crash had been masking, both stale
+against `D-0437`'s menu flattening: a `soft()` wait for the literal string `DESTINATIONS` (a
+removed group label — now waits for `/plan`, always on screen at `selected===0`), and an
+assertion expecting `count===0, groups>=5` on a bare `/` (now `count===17, groups===0`, the
+flat design). Also replaced a fixed 500ms sleep with a poll in the adjacent F-TERM-001 check,
+on the same reasoning already used elsewhere in this file for timing.
+**What this unmasked, not fixed.** Once POINT 3 stopped crashing, the suite ran to **386 checks
+executed against 228 before — 158 checks that have not run in at least the day since `D-0435`
+shipped.** Among the newly-reached checks, several fail for reasons that are NOT the
+`D-0435`/`D-0437` defect family:
+- The legacy `#codenPrompt`'s `Enter` key, after a value set by `page.evaluate` +
+  `dispatchEvent('input')` + `.focus()`, does not reach `submitCodenPrompt()` — diagnosed with
+  an added diagnostic check: the box keeps its typed value, no transcript entry appears, the
+  address IS present in the offered menu (`addressBookHasIt:true`), so this is not a matching
+  bug — it is an event-delivery question I did not resolve. Root cause **not found**.
+- `phase 3c — an address typed at the prompt opens its panel` now fails with the same shape.
+- A step named around "a destination navigates and a capability only waits to be sent" reports
+  `{"navigate":{"kind":"nothing","heard":"memory"}}` — an intent classifier returning `nothing`
+  for an input it should presumably route.
+- `workspace-actions` step now reaches and times out on `[data-agent-panel="plan"].active`.
+**Why not chased further.** Every one of these sits in a DIFFERENT subsystem than the one this
+phase was authorized to fix (legacy prompt event wiring, intent classification, workspace
+panel activation) — not variations on the same root cause, four distinct unknowns. `CLAUDE10.md`
+§40a: "do not fix, record instead, when... the repair would exceed the phase's scope... or
+rests on a root cause you have not actually found. Guessing is not fixing." Two prior sessions
+already paid for exactly this failure mode on this same file (`D-0381`/`D-0383`, cited in
+`D-0435`'s own entry) — a rushed, unverified change to a tooling-adjacent harness, late in an
+already long session. The Owner's instruction this turn was to finish the `D-0435` phase
+completely, not to open an unbounded new one; `D-0435` itself — the literal crash and its two
+directly-masked siblings — IS finished, verified, and does not regress on re-run.
+**Evidence.** `tools/run-browser-e2e.sh`, four fresh disposable-probe runs this phase:
+228→260→262→386 checks. My 5 new terminal-driven checks and both flattening fixes: 0 failures
+across the runs that included them. `node --test`: 2547/2546/1-skip (unaffected — no product
+code touched, only `tools/browser-e2e.mjs`). `tools/run-eslint.sh`: 408/0. `verify-source.mjs`:
+PASS.
+**Rejected.** Continuing to chase each newly-surfaced failure in this same phase — the classic
+way a 25-call phase becomes a 250-call one (`noesar-evolution-budget` §5), and here each fix
+was revealing a NEW frontier rather than converging, four distinct subsystems deep.
+**Reversal cost.** None for what shipped — `tools/browser-e2e.mjs` only, no product code, no
+deployment. The four newly-recorded findings have no reversal cost either; nothing was hidden
+again, the diagnostic check for the `#codenPrompt` Enter issue was left in place, failing
+loudly with its evidence, not silenced.
+**Status.** `D-0435` applied and closed. New findings recorded as open, unfixed, needing their
+own dedicated phase(s) each: legacy-prompt Enter delivery, intent-classifier `memory→nothing`,
+`workspace-actions` panel activation. `FUNDING/19_WORK_PLAN_TO_BETA.md` and
+`FUNDING/09_ENGINEERING_EFFORT_ESTIMATE.md` updated in the same commit.

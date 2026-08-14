@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0448: Phase B (CE-015/D-0433/D-0435) investigated, not executed. CE-015 re-scoped out (needs a Fase-4 subsystem, verified-source search, that does not exist). D-0433 re-confirmed: touches deployment trust boundary, rule 77 stop. D-0435 found compound: hidden element (original diagnosis) + same-day menu flattening (D-0437) both broke tools/browser-e2e.mjs:855-987; real fix is a rewrite, re-estimated 1-2 person-months (was 0.5-1). No product or test code changed this phase.",
-  "phase_status": "investigated_not_executed__awaiting_owner_choice",
-  "next_phase": "Owner authorizes either: (a) the D-0435 test-block rewrite now known to be larger, or (b) Phase C (noesar-sandbox standalone extraction) instead, per Owner instruction to go phase-by-phase with authorization between each.",
+  "current_phase": "D-0449: D-0435 rewritten and CLOSED (tools/browser-e2e.mjs POINT 3 rewritten against the current flat-menu design, driven through the terminal; two more D-0437-flattening staleness sites fixed in the same pass). Doing so unmasked 158 previously-unrun checks (228->386) and 3 genuinely new, unrelated findings (F-COMMAND-001, F-INTENT-001, F-PANEL-001) -- recorded, not chased, per rule 40a (root cause not found).",
+  "phase_status": "D-0435_closed__new_backlog_discovered_and_recorded",
+  "next_phase": "Owner chooses: (a) authorize investigation of one of the 3 new findings (F-COMMAND-001 recommended first -- medium severity, blocks a real user gesture), or (b) Phase C (noesar-sandbox standalone extraction, per the standing work plan).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "911dd54",
-  "last_updated_utc": "2026-08-14T13:35:00Z",
+  "last_updated_utc": "2026-08-14T14:05:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -76,7 +76,8 @@
         "Rotate NOESAR_RUST_REASONING_TOKEN on the live container and atomd when the project reaches completion (Owner's stated timing).",
         "Process fix already in effect for future phases: never write a raw docker inspect env dump into EVIDENCE/ without redacting secret-shaped values first."
       ]
-    }
+    },
+    "B-012: F-COMMAND-001/F-INTENT-001/F-PANEL-001 (D-0449, 2026-08-14) -- closing D-0435s E2E crash let the suite run 158 more checks than any run since D-0435 shipped (386 vs 228), and three of the newly-reached checks fail for reasons unrelated to D-0435/D-0437. Each needs its own dedicated investigation phase before an effort estimate is meaningful."
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
   "source_archives": "/mnt/user/downloads/NOESAR_EVOLUTION_FINAL",
@@ -326,6 +327,24 @@
       "severity": "low",
       "status": "OPEN - observed once 2026-08-13, not reproduced. Green in runs 14, 15 and 16 of the same suite on the same tree; failed in run 17. Recorded rather than repaired: a flake chased without a second observation is a guess.",
       "summary": "Browser row s327/4b \"a plan created with no chat attached is listed as belonging to none\" read the all-attached empty state instead of the unattached run — declared text correct, listed text the empty state, count empty. Order- or timing-dependent."
+    },
+    {
+      "id": "F-COMMAND-001",
+      "severity": "medium",
+      "status": "OPEN - found 2026-08-14 (D-0449) while closing D-0435, root cause NOT found. Diagnostic check added in tools/browser-e2e.mjs, left failing loudly rather than silenced.",
+      "summary": "The legacy #codenPrompt textarea, value set via page.evaluate + dispatchEvent(input) + .focus(), does not have its Enter keypress reach submitCodenPrompt() in wireCodenShell()s keydown listener (app.js). Box keeps its typed value, no transcript entry appears, the target address IS present in the offered menu -- not a matching bug, an event-delivery question."
+    },
+    {
+      "id": "F-INTENT-001",
+      "severity": "low",
+      "status": "OPEN - found 2026-08-14 (D-0449), not investigated further this phase.",
+      "summary": "A step named around \"a destination navigates and a capability only waits to be sent\" reports {navigate:{kind:nothing,heard:memory}} -- an intent classifier returning nothing for an input (memory) it should presumably route as a navigation."
+    },
+    {
+      "id": "F-PANEL-001",
+      "severity": "medium",
+      "status": "OPEN - found 2026-08-14 (D-0449), not investigated further this phase.",
+      "summary": "workspace-actions step (tools/browser-e2e.mjs) times out waiting for [data-agent-panel=\"plan\"].active after an action expected to open that panel. Newly reached because D-0435s crash previously prevented this step from running at all."
     }
   ],
   "resolved_findings": [
@@ -960,7 +979,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for Owner to pick D-0435 rewrite or Phase C. Do not start either without explicit authorization (Owner instruction this turn: finish one phase, wait for authorization for the next).",
+  "next_action": "Wait for Owner authorization -- explicit instruction this session was one phase, then wait. Do not start a new investigation without it.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

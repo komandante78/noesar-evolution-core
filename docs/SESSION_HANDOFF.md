@@ -1,24 +1,38 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0448`: Fase B indagata — nessuna riga di codice toccata)
+# SESSION HANDOFF — 2026-08-14 (`D-0449`: `D-0435` chiuso — e ha smascherato un arretrato vero)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Owner ha chiesto di partire dalla Fase B e proseguire in ordine, una fase alla volta, con
-autorizzazione fra l'una e l'altra.** Fase B è stata **indagata a fondo, non eseguita**: i tre
-item che conteneva (`CE-015`, `D-0433`, `D-0435`) si sono rivelati tutti più grandi o diversi da
-come il piano li stimava — vedi `D-0448` nel decision log e `FUNDING/19_WORK_PLAN_TO_BETA.md`
-Fase B (riscritta con l'esito reale). **In sintesi:**
-- `CE-015` — non è wiring, serve un sottosistema Fase-4 che non esiste (ricerca su fonti
-  verificate). Fuori scope per WP7.
-- `D-0433` — confermato: tocca il confine di fiducia del deployment, la regola 77 impone lo stop.
-- `D-0435` — trovato **composto**: l'elemento nascosto (diagnosi originale) PIÙ un redesign del
-  menu (`D-0437`, stesso giorno, flat invece di gruppi) che ha rotto lo stesso blocco di test
-  senza che nessuno se ne accorgesse, perché il primo difetto lo rendeva già irraggiungibile.
-  La riparazione vera è una riscrittura di `tools/browser-e2e.mjs:855-987` contro il design
-  attuale — 1-2 persone-mese, non 0.5-1 come stimato.
+**Owner ha autorizzato la riscrittura di `D-0435` con l'istruzione esplicita "non lasciare
+nulla a metà". `D-0435` È CHIUSO, verificato su 3 run puliti consecutivi.** Ma chiudere il crash
+che bloccava l'intera suite dopo il 6° step su 35 ha fatto girare **386 controlli invece di 228
+— 158 mai eseguiti da almeno un giorno** — e tre di quelli nuovi falliscono per ragioni
+**non collegate** a `D-0435`/`D-0437`. Vedi `D-0449` nel decision log per il dettaglio completo.
 
-**Prossima invocazione**: l'Owner sceglie se autorizzare la riscrittura di D-0435 (ora nota per
-essere più grande) oppure passare alla **Fase C** (`noesar-sandbox` standalone — ha già codice
-reale, rischio minore, consigliata in `18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`).
+**Cosa è chiuso davvero (verificato, non dichiarato):**
+- `tools/browser-e2e.mjs` POINT 3 riscritta contro il design flat del menu, guidata attraverso
+  il terminale (5 proprietà nuove: rank/filtro, Tab, un comando reale, `/logout`, un indirizzo
+  reso inline). Nessuno dei 5 nuovi controlli fallisce, su 3 run.
+- Altri due siti rotti dalla STESSA causa (`D-0437`, stesso giorno) corretti nello stesso giro:
+  un'attesa per la stringa `DESTINATIONS` (rimossa) e un'asserzione `count===0` (era 17).
+- Un flake di timing in F-TERM-001 sostituito con un poll.
+
+**Cosa NON è chiuso — tre scoperte nuove, non tentate oltre la diagnosi (`F-COMMAND-001`,
+`F-INTENT-001`, `F-PANEL-001` in `PROJECT_STATE.json.open_findings`):**
+1. **`F-COMMAND-001`** (medium) — il tasto Enter sul prompt legacy `#codenPrompt`, dopo un
+   valore impostato via `page.evaluate`, non arriva a `submitCodenPrompt()`. Causa NON trovata;
+   diagnostica aggiunta nel test, lasciata a fallire con l'evidenza invece di essere silenziata.
+2. **`F-INTENT-001`** (low) — un classificatore di intento risponde `{kind:'nothing'}` per
+   l'input "memory" invece di instradarlo.
+3. **`F-PANEL-001`** (medium) — lo step `workspace-actions` va in timeout aspettando
+   `[data-agent-panel="plan"].active`, mai raggiunto prima d'ora.
+
+**Perché non ho continuato**: quattro sottosistemi diversi, non varianti della stessa causa —
+esattamente lo schema "guessing is not fixing" (`CLAUDE10.md` §40a). L'Owner ha chiesto di
+finire UNA fase, non di aprirne una nuova senza confine.
+
+**Prossima invocazione**: l'Owner sceglie quale dei tre nuovi finding investigare per primo
+(`F-COMMAND-001` consigliato — blocca un gesto reale dell'utente), oppure passa alla **Fase C**
+(`noesar-sandbox` standalone).
 
 **Difetto reale trovato e riparato in una fase precedente della stessa sessione**:
 `docs/WORK_PLAN_V5_REWRITE.md` diceva `CE-005`/`CE-010` "mai ripresi" — falso, verificato contro

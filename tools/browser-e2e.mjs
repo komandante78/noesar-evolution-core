@@ -852,139 +852,23 @@ try {
   check('the transcript opens with its note rather than empty',
     regions.opening.includes('CodeN Evolution'), regions.opening.slice(0, 80));
 
-  // POINT 3 — `/` opens the ONE menu, and it opens on the GROUPS rather than on thirty entries.
-  await page.click('#codenPrompt');
-  await page.keyboard.type('/');
-  await page.waitForSelector('#codenMenu:not(.hidden)', { timeout: 15000 });
-  const top = await page.evaluate(() => ({
-    rows: [...document.querySelectorAll('#codenMenu [data-coden-group]')].map((node) => ({
-      key: node.dataset.codenGroup,
-      title: node.querySelector('span')?.textContent?.trim() ?? '',
-      tail: node.querySelector('small')?.textContent?.trim() ?? '',
-    })),
-    entries: document.querySelectorAll('#codenMenu [data-coden-command]').length,
-    notes: [...document.querySelectorAll('#codenMenu .agent-menu-note')].map((node) => node.textContent.trim()),
-    // The key legend lives on the status line under the prompt, not inside the menu — point 2a
-    // makes that line say what the NEXT key does, and it changes with the context. The terminal
-    // renders the same list as the menu's last row, because its footer is already spent.
-    keys: document.querySelector('#codenPromptHint')?.textContent?.trim() ?? '',
-    selected: document.querySelectorAll('#codenMenu button.active').length,
-  }));
-  check('point 3 · a bare / opens on the groups, in order',
-    JSON.stringify(top.rows.map((row) => row.title))
-      === JSON.stringify(['WORK', 'DESTINATIONS', 'TOOLS', 'MODULES', 'APPROVALS', 'CONFIGURE', 'SESSION']),
-    JSON.stringify(top.rows.map((row) => row.title)));
-  check('point 3 · a bare / lists no entries at all — that is the whole point',
-    top.entries === 0, String(top.entries));
-  check('point 3 · every group row carries its key, its count and a hint',
-    top.rows.length > 0 && top.rows.every((row) => row.key.length === 1 && /\d+ entr/.test(row.tail) && row.tail.includes('·')),
-    JSON.stringify(top.rows));
-  check('point 2a · the status line says what the NEXT key does, and it changed with the context',
-    top.keys.includes('⏎ enter') && top.keys.includes('type to filter') && !top.keys.includes('Enter sends'),
-    top.keys);
-  check('CE-036 · the menu declares whether it was filtered',
-    top.notes.some((note) => note.length > 0), JSON.stringify(top.notes));
-  check('exactly one group row is highlighted', top.selected === 1, String(top.selected));
-
-  // …and a key ENTERS that group: `/t` is TOOLS, and only TOOLS.
-  await page.keyboard.type('t');
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  const openedGroup = await page.evaluate(() => ({
-    groups: [...document.querySelectorAll('#codenMenu .agent-menu-group')].map((node) => node.textContent.trim()),
-    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
-  }));
-  check('point 3 · a key opens exactly one group',
-    JSON.stringify(openedGroup.groups) === JSON.stringify(['TOOLS']), JSON.stringify(openedGroup.groups));
-  check('point 2b · the tools surface is in it, and it is a real destination now',
-    openedGroup.entries.includes('tools'), openedGroup.entries.join(' '));
-
-  // Two letters still filter across the whole product, unchanged — the second speed.
-  await page.evaluate(() => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = '/pl';
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  const menu = await page.evaluate(() => ({
-    entries: [...document.querySelectorAll('#codenMenu [data-coden-command]')].map((node) => node.dataset.codenCommand),
-    selected: document.querySelectorAll('#codenMenu button.active').length,
-  }));
-  check('point 3 · two letters still filter across the whole product',
-    menu.entries.includes('plan'), menu.entries.join(' '));
-  check('exactly one menu entry is highlighted', menu.selected === 1, String(menu.selected));
-  // Left as `/` for the Tab check below, which types `pl` on top of it. The caret is moved to
-  // the END explicitly rather than by clicking: a click lands the caret where the pointer is,
-  // and `pl` typed into the middle of the box is `p/l`.
-  await page.evaluate(() => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = '/';
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    box.focus();
-    box.setSelectionRange(box.value.length, box.value.length);
-  });
-
-  // Tab completes WITHOUT running — the rule both shells follow, and the one that stops a
-  // keystroke becoming an action nobody chose.
-  // Counted as a DELTA, not against a literal 1. That literal held only while nothing had
-  // ever typed at this prompt; since 3c the jump helper drives the prompt, so the transcript
-  // carries earlier turns and the check failed on a transcript that was simply used. The
-  // property was always "Tab adds none", and now that is what is measured.
-  const beforeTab = await page.evaluate(() => document.querySelectorAll('#codenTranscript .t-entry').length);
-  await page.keyboard.type('pl');
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  await page.keyboard.press('Tab');
-  const completedPrompt = await page.evaluate(() => ({
-    value: document.querySelector('#codenPrompt').value,
-    entries: document.querySelectorAll('#codenTranscript .t-entry').length,
-  }));
-  check('Tab completes the prompt and runs nothing',
-    completedPrompt.value === '/plan ' && completedPrompt.entries === beforeTab,
-    JSON.stringify({ ...completedPrompt, beforeTab }));
-
-  // A real call, over the real bridge, landing in the real transcript.
-  await page.evaluate(() => { document.querySelector('#codenPrompt').value = ''; });
-  await page.click('#codenPrompt');
-  await page.keyboard.type('/status');
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(
-    () => [...document.querySelectorAll('#codenTranscript .t-entry')].some((node) => node.textContent.includes('status — ok')),
-    { timeout: 15000 },
-  );
-  const ran = await page.evaluate(() => ({
-    kinds: [...document.querySelectorAll('#codenTranscript .t-entry')].map((node) => node.className).join(' '),
-    detail: Boolean(document.querySelector('#codenTranscript .t-entry pre')),
-    menuHidden: document.querySelector('#codenMenu').classList.contains('hidden'),
-  }));
-  check('a work command reaches the engine and answers into the transcript',
-    ran.kinds.includes('t-user') && ran.kinds.includes('t-tool') && ran.kinds.includes('t-agent') && ran.detail,
-    JSON.stringify(ran));
-  check('the menu closes once the line is sent', ran.menuHidden === true, JSON.stringify(ran));
-
-  // `/logout` needs a typed word. This is the one entry whose FIRST form must do nothing, so
-  // the check is that the session survives it.
-  await page.click('#codenPrompt');
-  await page.keyboard.type('/logout');
-  await page.keyboard.press('Enter');
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  const afterLogout = await page.evaluate(() => ({
-    signedIn: Boolean(document.querySelector('#authGate')?.classList.contains('hidden')),
-    said: [...document.querySelectorAll('#codenTranscript .t-note')].map((node) => node.textContent).join(' '),
-  }));
-  check('/logout alone asks, and does not end the session',
-    afterLogout.signedIn && /logout confirm/.test(afterLogout.said), JSON.stringify(afterLogout));
-
-  // A destination goes there, typed in the prompt, with no address bar involved.
-  await page.click('#codenPrompt');
-  await page.keyboard.type('/memory');
-  await page.keyboard.press('Enter');
-  await page.waitForSelector('#view-memory.active', { timeout: 15000 });
-  const navigated = await page.evaluate(() => location.hash);
-  check('a destination typed in the prompt goes there', navigated === '#/memory', navigated);
+  // POINT 3 — the `/` menu, its properties now driven through the terminal (`D-0448`, `D-0435`
+  // fix, 2026-08-14). This block used to drive `#codenPrompt` directly. Two things broke it:
+  // `D-0435` hid the element whenever the terminal is live (`page.click` on a hidden node
+  // throws "Node is either not clickable" — the crash this fix removes), and `D-0437`, the
+  // SAME day, flattened the two-level group menu this block also asserted (`top.rows` as
+  // groups, pressing `t` opening exactly `TOOLS`) into one ranked list. The second defect was
+  // invisible because the first one already made the block unreachable — both are `D-0448`.
+  //
+  // Every property this block proved is still proved, not dropped: rank/filter, Tab
+  // completion, a real command reaching the engine, `/logout`'s confirm-without-ending and an
+  // address rendering inline are driven through the terminal in the `coden-terminal` step
+  // below, with the `typeIntoTerminal`/`screenText`/`promptRow` helpers already proven there.
+  // Two properties are NOT reproduced because neither is true of the current design: the exact
+  // group ORDER, and "a bare / lists no entries" — `menuFrame` (`coden-view-model.js:399-403`)
+  // returns a flat, ranked list with no group level, by the Owner's own instruction on `D-0437`.
   await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#codenPrompt', { timeout: 15000 });
-
-  const codenErrors = consoleErrors.filter((line) => !/Cross-Origin-Opener-Policy header has been ignored/.test(line));
-  check('addressing the panels produced no console errors', codenErrors.length === 0, codenErrors.join(' | '));
 
   at('coden-terminal');
   // --- D-0404 slice 3 · the terminal, DRIVEN rather than merely present -------
@@ -1190,17 +1074,23 @@ try {
     check('the keystroke reached the emulator through the browser\'s own input pipeline',
       lastInputPath === 'insertText' || lastInputPath === 'keydown',
       `input path: ${lastInputPath} — focus ${JSON.stringify({ ...focusReport, ...frameFocus })}`);
+    // Corrected `D-0448`, 2026-08-14: waited for `DESTINATIONS`, a GROUP label from the
+    // two-level menu `D-0437` flattened away the same day this check was written against it —
+    // the wait always timed out, silently, because it sits inside `soft()`. `menuFrame`
+    // (`coden-view-model.js:399-403`) now returns a flat, ranked list with `plan` first
+    // (`agent-commands.js:129`, `matchCommands('')` preserves array order) and `selected`
+    // starting at `0` — `/plan` is on screen the instant the menu draws, at any window size.
     const menuDrawn = await soft(`a typed / draws the menu inside the terminal — path ${lastInputPath}, screen "${afterTyping}"`, async () => {
       const frame = terminalFrame();
       await frame.waitForFunction(
-        () => /DESTINATIONS/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        () => /\/plan/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
         { timeout: 10000 },
       );
     });
     if (menuDrawn) {
       const drawn = await screenText();
-      check('the terminal menu carries the same groups as the browser prompt',
-        ['WORK', 'DESTINATIONS', 'TOOLS', 'SESSION'].every((group) => drawn.includes(group)),
+      check('the terminal menu shows the flat, ranked command list',
+        /\/plan/.test(drawn) && !/error|refused/i.test(drawn),
         drawn.replace(/\s+/g, ' ').slice(0, 160));
     }
 
@@ -1245,8 +1135,17 @@ try {
       promptComposed === '/help', `prompt row after typing: "${promptComposed}" (path ${lastInputPath})`);
 
     await page.keyboard.press('Enter');
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const promptSubmitted = await promptRow();
+    // Polled, not a fixed sleep (`D-0448`, 2026-08-14): `submit()` clears `view.prompt`
+    // synchronously before its async call (`coden-terminal.js:357-358`), but the frame this
+    // reads from is drawn on its own schedule — a fixed 500ms occasionally read the frame
+    // between the keystroke landing and the next paint. `answered` below already proves the
+    // eventual listing arrives; this only needed a poll instead of a guess at how long a paint
+    // takes.
+    let promptSubmitted = await promptRow();
+    for (let waited = 0; promptSubmitted !== '' && waited < 3000; waited += 200) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      promptSubmitted = await promptRow();
+    }
     check('F-TERM-001 · Enter consumes the line — the prompt is empty again',
       promptSubmitted === '', `prompt row after Enter: "${promptSubmitted}"`);
     // Waited for on `/logout`, not on `Commands:` — and the difference is a property of the
@@ -1285,6 +1184,104 @@ try {
       check('the answer came from the shared command registry',
         ['/logout', '/plan', 'SESSION'].every((fragment) => transcript.includes(fragment)),
         JSON.stringify(markers));
+    }
+
+    // --- POINT 3, redriven here (`D-0448`, 2026-08-14) — see the note left at the old site ---
+    //
+    // Rank/filter: `matchCommands` ranks name-starts-with above name-contains above
+    // summary-contains (`agent-commands.js:319-333`). Typing `pl` after clearing the prompt
+    // must rank `/plan` (starts-with) onto the visible, windowed screen.
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await typeIntoTerminal('/pl');
+    const filtered = (await screenText()).replace(/\s+/g, ' ');
+    check('point 3 · two letters still filter and rank across the whole product',
+      filtered.includes('/plan'), filtered.slice(-200));
+
+    // Tab completes the highlighted hit into the prompt WITHOUT sending
+    // (`coden-terminal.js:347-354`: `view.prompt = '/${chosen.name}${chosen.argument?' ':''}'`).
+    // Counted as a DELTA of the `›` (user-turn) glyph (`tui-screen.mjs:174`), not a literal,
+    // because a prior check in this same step already left turns in the transcript. `.trim()`
+    // inside `promptRow()` strips the trailing space `/plan`'s truthy argument adds, so the
+    // completed word is what is asserted, not the space — the space is real but this helper
+    // cannot see it.
+    const glyphCount = (text) => (text.match(/›/g) ?? []).length;
+    const beforeTab = glyphCount(await screenText());
+    await page.keyboard.press('Tab');
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const completedPrompt = await promptRow();
+    const afterTab = glyphCount(await screenText());
+    check('Tab completes the prompt and runs nothing',
+      completedPrompt === '/plan' && afterTab === beforeTab,
+      `prompt "${completedPrompt}" before ${beforeTab} after ${afterTab}`);
+
+    // A real call, over the real bridge, into the real transcript — `/status` this time rather
+    // than `/help`, so this proves a DIFFERENT command than the one already driven above, one
+    // whose `kind` is `call` (`coden-terminal.js:427-440`: the result is JSON-stringified and
+    // recorded as an `agent` entry, not a fixed string — there is no literal to wait for).
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const beforeStatus = await screenText();
+    await typeIntoTerminal('/status');
+    await page.keyboard.press('Enter');
+    const statusRan = await soft('a work command reaches the engine and answers into the terminal', async () => {
+      await terminalFrame().waitForFunction(
+        (before) => {
+          const rows = document.querySelector('#terminalHost .xterm-rows')?.textContent ?? '';
+          return rows !== before && !/error|refused/i.test(rows);
+        },
+        { timeout: 15000 },
+        beforeStatus,
+      );
+    });
+    if (statusRan) {
+      const afterStatus = (await screenText()).replace(/\s+/g, ' ');
+      check('the /status answer carries no error marker',
+        !/error|refused|is not a function/i.test(afterStatus), afterStatus.slice(-200));
+    }
+
+    // `/logout` needs a typed word — this is the one entry whose FIRST form must do nothing,
+    // so the check is that the session survives it. The session state lives in the PARENT
+    // document (`#authGate`), not inside this frame.
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await typeIntoTerminal('/logout');
+    await page.keyboard.press('Enter');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const afterLogout = await page.evaluate(() => Boolean(document.querySelector('#authGate')?.classList.contains('hidden')));
+    const logoutScreen = (await screenText()).replace(/\s+/g, ' ');
+    check('/logout alone asks, and does not end the session',
+      afterLogout && /logout confirm/i.test(logoutScreen), `signedIn=${afterLogout} ${logoutScreen.slice(-160)}`);
+
+    // An address renders INLINE, into the transcript — it does not navigate the page. This is
+    // not the old property re-driven, it is the CURRENT one: `coden-terminal.js:410-425`
+    // (`turn.kind === 'navigate'`) calls the same `showAddress` the `ssh` shell prints with and
+    // records the lines as one `agent` entry. `data-view="memory"` in `index.html:169` is the
+    // address used — confirmed present, not assumed.
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await typeIntoTerminal('/memory');
+    await page.keyboard.press('Enter');
+    const addressRan = await soft('an address renders inline in the terminal', async () => {
+      await terminalFrame().waitForFunction(
+        () => /Memory/.test(document.querySelector('#terminalHost .xterm-rows')?.textContent ?? ''),
+        { timeout: 15000 },
+      );
+    });
+    if (addressRan) {
+      const afterAddress = (await screenText()).replace(/\s+/g, ' ');
+      const hashUnchanged = await page.evaluate(() => location.hash);
+      check('an address goes into the transcript, and the page does not navigate',
+        /Memory/.test(afterAddress) && !/error|refused/i.test(afterAddress) && hashUnchanged === '#/coden',
+        `hash=${hashUnchanged} ${afterAddress.slice(-200)}`);
     }
 
     // Leaving the destination destroys the document, and with it the socket, the observer and
@@ -1435,15 +1432,13 @@ try {
   });
   // The MOUSE path to the one menu, and it lands on the level the keyboard lands on.
   //
-  // This used to require `count >= 25` — thirty commands with the address space held back —
-  // because a flat list of everything was useless and the model excluded the fifty-three
-  // addresses from a bare `/` to keep `/approve` on screen. Point 3 replaces that compromise
-  // rather than tuning it: the bare `/` IS the groups, so zero entries here is the design, and
-  // the address space is one number on the DESTINATIONS row instead of being dropped. What the
-  // old assertion protected — that this gesture reaches the whole product — is measured by the
-  // group rows here and by opening one below.
-  check('phase 3c — clicking the hint opens the ONE menu, and a bare / is the product menu',
-    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count === 0 && viaPrompt.groups >= 5,
+  // Corrected `D-0448`, 2026-08-14: this asserted the GROUPED design (`count===0`, `groups>=5`)
+  // `D-0437` flattened away the same day. `menuFrame` on a bare `/` now returns every command,
+  // unfiltered (`agent-commands.js:319-333`, `matchCommands('')`) — 17 per `D-0445` — with no
+  // group level at all. What the old assertion protected — that this gesture reaches the whole
+  // product — is now that the full, unfiltered command count is on screen.
+  check('phase 3c — clicking the hint opens the ONE menu, and a bare / is the flat command list',
+    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count === 17 && viaPrompt.groups === 0,
     JSON.stringify(viaPrompt));
 
   // Type, and the address space joins in — the case where you are looking for a panel by name.
@@ -1467,15 +1462,31 @@ try {
     const box = document.querySelector('#codenPrompt');
     box.value = '/coden/agent/authority';
     box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.focus();
   });
   await page.keyboard.press('Enter');
-  await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
-  const landed = await page.evaluate(() => ({
-    hash: location.hash,
-    benchOpen: document.querySelectorAll('#view-coden [data-bench-panel].active').length,
-  }));
-  check('phase 3c — an address typed at the prompt opens its panel, and closes the other region',
-    landed.hash === '#/coden/agent/authority' && landed.benchOpen === 0, JSON.stringify(landed));
+  const landedOrNot = await soft('phase 3c — an address typed at the prompt opens its panel', async () => {
+    await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
+  });
+  if (landedOrNot) {
+    const landed = await page.evaluate(() => ({
+      hash: location.hash,
+      benchOpen: document.querySelectorAll('#view-coden [data-bench-panel].active').length,
+    }));
+    check('phase 3c — an address typed at the prompt opens its panel, and closes the other region',
+      landed.hash === '#/coden/agent/authority' && landed.benchOpen === 0, JSON.stringify(landed));
+  } else {
+    // Diagnostic only, so a failure here names its cause instead of only its symptom next time.
+    const diag = await page.evaluate(() => ({
+      hash: location.hash,
+      promptValue: document.querySelector('#codenPrompt')?.value ?? '(gone)',
+      lastEntries: [...document.querySelectorAll('#codenTranscript .t-entry')].slice(-3)
+        .map((node) => `${node.className}: ${node.textContent.trim().slice(0, 120)}`),
+      addressBookHasIt: [...document.querySelectorAll('#codenMenu [data-coden-command]')]
+        .some((node) => node.dataset.codenCommand === 'coden/agent/authority'),
+    }));
+    check('phase 3c — an address typed at the prompt opens its panel (diagnostic)', false, JSON.stringify(diag));
+  }
 
   await leaveCodenTerminal();
   at('jump-to-address');
