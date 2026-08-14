@@ -4897,3 +4897,18 @@ oversized buttons) removed as no longer needed.
 **Cleanup.** Older rollback `noesar-evolution-pre-20260814T064410Z` removed; non-project
 containers unchanged at 50, volumes unchanged at 63.
 **Note.** Eighth redeploy this session — `D-0433` gap applies again, same accepted condition.
+
+## `d0441-debug-20260814T092104Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0441-debug-20260814T092104Z`, deployed 09:21:17Z. `D-0440` (bar
+lowered further, terminal lengthened) + `D-0441` (WCAG 2.5.8 fix on the mode-switch buttons,
+`ce-020-tui-fullscreen.mjs` repaired for the flat menu).
+**Health.** `running`/`healthy`; byte-equal `styles.css`.
+**Verification.** Unit 2536/2537 (unchanged) · ESLint 407/0 · seeded-defect-proof 19/19 · CE-020
+18/18 · browser E2E 228/229 (1 pre-existing `D-0435` gap) · accessibility audit **27/27** across 9
+themes / 5139 contrast measurements — 0 sub-24px targets, confirming the WCAG fix live in a real
+browser.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T092117Z` (`d0440-lower-...`).
+**Cleanup.** Older rollback removed; non-project containers unchanged at 50, volumes at 63. E2E
+probe/runner/images from this debug pass removed by `tools/run-browser-e2e.sh` itself, twice.
+**Note.** Tenth redeploy this session — `D-0433` gap applies again, same accepted condition.

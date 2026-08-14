@@ -10181,3 +10181,48 @@ Deployed and live-verified: byte-equal `styles.css`, `/readyz` 200.
 **Reversal cost.** None — three CSS declarations, one removed rule.
 **Status.** applied · installed (`d0439-bar-20260814T085950Z`). Eighth redeploy of the session;
 `D-0433`'s stop-hook gap fires again on close, same accepted condition as prior redeploys.
+
+## D-0441 · debug pass (Owner-requested): two real findings fixed, ATOM status declared unverifiable — 2026-08-14
+**Decision.** WCAG 2.5.8 target-size regression from `D-0440` fixed (`.coden-bar .mode-switch
+button{min-height:24px;display:inline-flex;align-items:center}`, same technique as `F-A11Y-003`'s
+`.hint-key`). `tools/acceptance/ce-020-tui-fullscreen.mjs` (the TUI's own keystroke-driven
+acceptance script) rewritten — it still asserted the removed two-level menu design and would have
+failed if anyone had run it since `D-0437`.
+**Why.** Owner asked for a complete debug of `#/coden` and the ssh TUI, security included, plus
+whether ATOM works with CodeN Evolution. Both findings surfaced from actually running instruments
+this session's earlier phases only read code for: `node tools/seeded-defect-proof.mjs` (19/19,
+detectors fire), `tools/run-browser-e2e.sh` (228/229 — the one failure is `D-0435`'s already-
+recorded gap, unchanged, see below), `NOESAR_E2E_DRIVER=tools/accessibility-audit.mjs
+tools/run-browser-e2e.sh` (27/27, which is how the target-size regression was caught for real
+rather than assumed fixed), and the repaired `ce-020-tui-fullscreen.mjs` itself (18/18).
+**Security.** This session's entire diff (`D-0436`…`D-0441`) touches only the shared menu model,
+the browser/terminal client and stylesheet — `coden-bridge.mjs` (the coden WebSocket's own auth:
+origin check before session, `SESSION_METHOD_POLICY`, per-user viewport cap) was read and is
+unchanged; its 31/31 tests and the wider 161/161 auth+bridge suite pass unmodified. No injection
+risk: the flattened menu's HTML rendering (`app.js`) uses `escapeHtml` on every interpolated field,
+same as before.
+**ATOM.** `docker logs` shows `atomd` spawned healthy with `NOESAR_AUTHORING_ENDPOINT` present, but
+`atomd`'s own startup line reports `simulation=true`. Whether the reasoning chain is actually
+answering through ATOM (`provider=atom`, per the `/api/v1/reasoning` shape measured live in an
+earlier phase) or falling back to the reference provider (`D-0312`'s documented degrade path)
+requires an AUTHENTICATED read of that endpoint, and this phase has no owner session to make one
+with — bootstrapping one against the live install is forbidden (§3a 11e). **Declared UNVERIFIED**,
+not guessed: the live `reasoning` chip (already visible to a signed-in Owner) is the fastest way to
+settle it, cheaper than a dedicated verification pass.
+**Rejected.** Fixing the ~12 `#codenPrompt`/`#codenMenu` sites in `browser-e2e.mjs` (`D-0435`) in
+this pass — still out of scope by the reasoning `D-0435` already gave (its own reveal-mechanism
+attempts caused unexplained Puppeteer timeouts twice), now compounded: the SAME block also asserts
+the removed grouped-menu shape, so it needs rewriting for TWO reasons, not patching for one. Left
+recorded, not guessed at under time pressure a second time.
+**Evidence.** Accessibility 27/27 (0 sub-24px targets, over 9 themes). CE-020 18/18. Unit 2536/2537
+(unchanged). ESLint 407/0. Deployed and live-verified: byte-equal `styles.css`, health/readyz OK.
+**Reversal cost.** None — one CSS rule, one test file rewritten to match already-shipped behaviour.
+**Status.** applied · installed (`d0441-debug-20260814T092104Z`). Tenth redeploy of the session;
+`D-0433` gap applies again, same accepted condition.
+**Improvement proposal** (this phase's, per §17): neither `ce-020-tui-fullscreen.mjs` nor the
+browser E2E suite runs on every change — only `node --test` does, and neither acceptance script is
+in it. That is exactly how both defects this phase found survived a design change unnoticed: a
+menu redesign broke an acceptance script nothing ran until an Owner asked for a debug pass. Cost:
+CE-020 already runs in under 2s and is self-contained (boots and tears down its own process) — it
+could join `node --test` today. The full browser E2E (minutes, builds an image) is a heavier, real
+trade-off: wiring it into every commit is not proposed; wiring `ce-020-tui-fullscreen.mjs` in is.
