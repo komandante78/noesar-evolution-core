@@ -4857,3 +4857,17 @@ changed sources (`coden-terminal.js`, `styles.css`, `tui-screen.mjs`), sha256 ma
 **Cleanup.** Older rollback `noesar-evolution-pre-20260813T174805Z` removed; non-project
 containers unchanged at 50, volumes unchanged at 63, networks unchanged.
 **Note.** Fifth redeploy this session — `D-0433` (chained-redeploy stop-hook gap) applies again.
+
+## `d0437-menu-20260814T060733Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0437-menu-20260814T060733Z`, deployed 06:07:48Z. `D-0437`: `/` menu
+flattened (no group sub-menu, ranked+windowed list, all three renderers); `.coden-bar` chip list
+scrolls instead of wrapping to ~8 rows; `.coden-terminal-region` gets a scoped side margin.
+**Health.** `running`/`healthy`; `/readyz` 200 (checked in-container).
+**Verification.** Unit 2536/2537 (1 pre-existing skip) · ESLint 407/0 · byte-equal tree on the 6
+changed sources, sha256 matched container↔tree.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T060748Z` (`d0436-cursor-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260814T011520Z` removed; non-project
+containers unchanged at 50, volumes unchanged at 63, networks unchanged.
+**Note.** Sixth redeploy this session — `D-0433` (chained-redeploy stop-hook gap) applies again;
+Owner acknowledged the state as correct after the fifth.

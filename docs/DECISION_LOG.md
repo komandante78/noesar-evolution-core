@@ -10117,3 +10117,29 @@ volumes 63 unchanged, networks unchanged).
 **Reversal cost.** Low — one shared ANSI token, one write-site, one CSS dimension.
 **Status.** applied · installed (`d0436-cursor-20260814T011452Z`). This is the FIFTH redeploy of
 the session — `D-0433`'s stop-hook gap applies again; Owner acknowledgement needed at close.
+
+## D-0437 · the `/` menu flattened; `.coden-bar` and `.coden-terminal-region` layout fixed — 2026-08-14
+**Decision.** `menuFrame` always returns a flat `{ level: 'entries' }` frame (no group-navigation
+level); `commandMenuRows` paints one ranked, windowed list, on ssh, the embedded terminal and the
+legacy browser fallback alike. `.coden-bar`'s chip list scrolls horizontally instead of wrapping
+to one chip per line. `.coden-terminal-region` gets its own 24px/10px side margin, scoped to the
+terminal box only.
+**Why.** Owner reported, from the live page: the chip/mode bar wrapping to ~8 rows, the terminal
+running edge-to-edge with no side margin, and the `/` menu's two-level group navigation reading as
+"menu sotto menu" — asked directly for a flat list, "stile come ha code claude". `matchCommands`
+already ranks hits (name-starts-with, then contains, then summary), so flattening needed no new
+matching logic, only removing the level the old design added on top of it.
+**Rejected.** Keeping the grouped `/` and only relabelling it — the Owner's ask was structural
+(no sub-menu at all), not cosmetic; a label would not have removed the extra keystroke to enter a
+group. Reversing `.main:has(#view-coden.active){padding-inline:0}` wholesale — that ruling (s333)
+still holds for the AGENT SHELL below the terminal; only the terminal box itself needed a margin.
+**Evidence.** Root causes read from source, not guessed. `coden-shell-parity.test.mjs` rewritten
+for the flat shape: 50/50. Full unit 2536/2537 (1 pre-existing skip, +1 vs D-0436's baseline).
+ESLint 407/0. Deployed and live-verified: byte-equal tree on the 6 changed sources, `/readyz` 200.
+**Reversal cost.** Medium — `groupFor`/`menuGroupRows` removed (dead once the level they served is
+gone); `MENU_GROUPS`/`groupMenu` kept, still used by `/help`'s grouped text output, unaffected.
+**Status.** applied · installed (`d0437-menu-20260814T060733Z`). Sixth redeploy of the session;
+`D-0433`'s stop-hook gap applies again, Owner has acknowledged the state as correct on the fifth.
+Open: Owner's visual confirmation of all four fixes, including whether the reported "double
+cursor" was a real duplicate or an artefact of copying the whole page's text (xterm's
+accessibility mirror sits invisibly over the visible canvas) rather than screenshotting it.

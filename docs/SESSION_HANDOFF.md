@@ -1,85 +1,71 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0436`: browser terminal cursor hidden, region shrunk)
+# SESSION HANDOFF — 2026-08-14 (`D-0437`: `/` menu flattened, `.coden-bar`/`.coden-terminal-region` layout fixed)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**L'installazione gira su `noesar-evolution:d0436-cursor-20260814T011452Z` dalle 01:15:20Z,
-sana.** L'Owner ha confermato a occhio `D-0431` (una sola superficie su `#/coden`), poi ha
-segnalato un cursore fermo nell'angolo in basso a destra del terminale e l'impressione che la
-finestra fosse più grande del dovuto.
+**L'installazione gira su `noesar-evolution:d0437-menu-20260814T060733Z` dalle 06:07:48Z,
+sana, byte-verificata.** Quattro problemi riportati dall'Owner su `#/coden`, tre risolti e
+deployati, uno da confermare a occhio:
 
-**Causa trovata leggendo il codice** (non da uno screenshot): `coden-terminal.js`'s `draw()`
-scriveva solo `SCREEN.home + rows` a ogni frame — non nascondeva mai il cursore reale di
-xterm.js. La shell `ssh` (`tui-fullscreen.mjs`) lo nasconde UNA VOLTA all'avvio via
-`SCREEN.enter` (che include `?25l`), perché il TUI disegna il proprio caret (`›`) come parte
-del frame. `renderFrame()` chiude sempre l'ultima riga (il footer) con `padToWidth` alla
-larghezza intera, quindi il cursore di scrittura restava parcheggiato a colonna=larghezza,
-riga=altezza-1 — l'angolo in basso a destra, ad ogni frame.
-
-**Fix**: nuovo token condiviso `SCREEN.hideCursor` (`tui-screen.mjs`), scritto ad ogni `draw()`
-di `coden-terminal.js`. `.coden-terminal-region` ridotta da `min(70dvh,48rem)` a
-`min(55dvh,36rem)` su richiesta diretta dell'Owner.
-
-1. **Apri `https://<host>:8443/#/coden`** e conferma a occhio: cursore non più visibile
-   nell'angolo, box più contenuto.
-2. **`D-0435` — ancora aperto**: ~12 controlli in `tools/browser-e2e.mjs` pilotano ancora
-   `#codenPrompt`/`#codenMenu` direttamente e falliscono contro l'elemento nascosto. Non
-   toccato in questa fase.
-3. **`D-0433` — ancora aperto**: questo è il **quinto** redeploy della sessione. L'hook di
-   chiusura fallirà — serve la conferma esplicita dell'Owner che lo stato è corretto.
-4. **Poi, come già proposto**: igiene del repository (immagini `e2e-base-*`/`webui-e2e-*`
-   orfane da sessioni precedenti, trovate ma non rimosse — fuori scope di questa fase, vedi
-   sotto), riconciliazione dei tre piani.
+1. **Barra chip troppo alta — FATTO.** `project`/`git`/`model`/.../`Owner Bypass` andavano a
+   capo uno per riga (8 righe). Ora la barra resta sempre una riga sola: i chip scorrono in
+   orizzontale invece di impilarsi.
+2. **Terminale bordo a bordo — FATTO.** `.coden-terminal-region` non aveva mai avuto margini
+   propri (ereditava il "full width" di una scelta precedente, s333, pensata per l'agent
+   shell sotto di lui). Ora ha 24px di margine (10px sotto gli 850px).
+3. **Menu `/` a sottomenu — FATTO.** Era a due livelli (`/` da solo mostrava 7 gruppi, una
+   lettera ne apriva uno). Ora è **una lista piatta unica**, classificata per rilevanza
+   (`matchCommands`), con scorrimento a frecce quando non ci sta tutta — stessa forma su ssh,
+   terminale integrato e fallback browser.
+4. **Cursore doppio nell'angolo — NON CONFERMATO.** Il testo incollato dall'Owner sembrava un
+   copia-incolla dell'intera pagina, non uno screenshot. xterm.js tiene una copia invisibile
+   del testo del terminale per i lettori di schermo, sovrapposta esattamente al canvas visibile
+   — è la spiegazione più probabile di un "doppio" nel testo copiato. `D-0436` (stessa sessione)
+   nasconde già il cursore reale. **Serve la conferma a occhio dell'Owner** (non copiare testo):
+   c'è davvero un secondo riquadro visibile, o no?
 
 **Rollback**, se qualcosa non convince:
 
 ```sh
 docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
-  && docker rename noesar-evolution-pre-20260814T011520Z noesar-evolution && docker start noesar-evolution
+  && docker rename noesar-evolution-pre-20260814T060748Z noesar-evolution && docker start noesar-evolution
 ```
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `D-0431` "due chat" | **CONFERMATO dall'Owner a occhio.** |
-| `D-0436` cursore terminale | **FATTO.** Causa trovata per lettura, non per screenshot; test unitario visto rosso poi verde. |
-| `D-0433` | **APERTO, bloccante.** Quinto redeploy in sessione — l'hook di chiusura fallirà. |
+| `D-0436` cursore terminale (xterm nascosto) | **FATTO**, deployato. |
+| `D-0437` barra chip / margini terminale / menu piatto | **FATTO**, deployato. Conferma visiva Owner in sospeso. |
+| Cursore "doppio" riportato dopo `D-0436` | **NON CONFERMATO** — probabile artefatto di copia-incolla, non riparato alla cieca. |
+| `D-0433` | **APERTO, bloccante.** Sesto redeploy in sessione — l'Owner ha già riconosciuto lo stato come corretto al quinto. |
 | `D-0435` | **APERTO, invariato.** ~12 controlli E2E rotti dalla correzione di `D-0431`. |
+| Immagini Docker orfane (`e2e-base-*`, `webui-e2e-*`, trovate durante il cleanup `D-0436`) | **Trovate, non rimosse** — fuori scope, da rimuovere in una fase di igiene repository. |
 | `D-0427`, `D-0429` | Invariati. |
-| Immagini orfane (`e2e-base-*`, `webui-e2e-*`, 4 tag da sessioni precedenti) | **Trovate, non rimosse** — non create da questa fase, fuori scope (`noesar-evolution-budget` §5). Da rimuovere in una fase di igiene repository. |
-| Igiene repository | Proposta, non iniziata. |
 
 ## Verificato IN QUESTA SESSIONE (ultimo giro)
 
 | Strumento | Risultato |
 |---|---|
-| `node --test …` | **2540/2541** (1 skip preesistente, +1 nuovo test) |
+| `node --test …` | **2536/2537** (1 skip preesistente) |
 | `tools/run-eslint.sh` | **407 file, 0 errori** |
-| Byte-verify | 3 file modificati, sha256 container↔albero identico |
-| `/livez` + `/readyz` (in-container) | entrambi 200/ready |
+| `coden-shell-parity.test.mjs` (riscritto per la forma piatta) | **50/50** |
+| Byte-verify | 6 file modificati, sha256 container↔albero identico |
+| `/readyz` (in-container) | 200/ready |
 | Cleanup §5a | rollback vecchio rimosso, container non di progetto invariati a 50, volumi invariati a 63, reti invariate |
-| `tools/run-secret-scan.sh` | `SKIPPED reason=image-absent` (gitleaks non installato su questo host) — scan euristico eseguito, dichiarato, 0 hit |
+| `tools/run-secret-scan.sh` | `SKIPPED reason=image-absent` — scan euristico eseguito, dichiarato, 0 hit |
 
 ## Cosa NON è stato fatto
 
+- **Il cursore "doppio" non riparato**: causa non confermata dal vivo, nessuna modifica alla
+  cieca. In attesa della conferma dell'Owner.
 - **`D-0435` non toccato**: fuori scope di questa fase.
 - **`D-0433` non riparato**: stesso motivo delle fasi precedenti, invariato.
-- **Immagini Docker orfane non rimosse**: `noesar-evolution:e2e-base-20260813T170128Z`,
-  `e2e-base-20260813T174609Z`, `webui-e2e-20260813T170128Z`, `webui-e2e-20260813T174609Z` —
-  litter da una sessione precedente, trovate durante l'inventario §5a di questa fase, non
-  create da questa fase. Da rimuovere in una fase di igiene dedicata.
-- **Nessuna push ancora eseguita** al momento della scrittura di questo handoff — vedi il
-  comando in coda alla fase.
-- Igiene repository, riconciliazione dei tre piani: proposte, non iniziate.
+- **Immagini Docker orfane non rimosse**: fuori scope, da fare in una fase dedicata.
+- **Nessuna push ancora eseguita** al momento della scrittura di questo handoff.
 
 ## Proposta di miglioramento
 
-**Il vocabolario ANSI condiviso (`SCREEN`) dovrebbe avere un test di parità che verifica ogni
-consumatore (`tui-fullscreen.mjs`, `coden-terminal.js`) contro l'INTERO set di stati che un
-frame può lasciare sul terminale reale** (cursore visibile/nascosto, buffer alternato
-attivo/non attivo) — non solo, come oggi, che i due shell condividano lo stesso renderer. Il
-difetto di `D-0436` è esistito per l'intera vita di `coden-terminal.js` senza che nessun test
-lo intercettasse, perché nessun test guardava lo STATO del terminale dopo un `write()`, solo
-il CONTENUTO. Costo: un test per stato (~4), beneficio: la stessa classe di difetto (uno shell
-dimentica un `SCREEN.*` che l'altro invia) non richiede più uno screenshot dal vivo per essere
-trovata.
+**Un test di parità sullo STATO del terminale dopo un `write()`** (cursore visibile/nascosto,
+buffer alternato attivo), non solo sul contenuto — già proposto in `D-0436`, resta valido: la
+via più economica per chiudere la classe di difetto "un shell dimentica un escape/stato che
+l'altro invia" senza dover aspettare uno screenshot dal vivo per scoprirlo.
