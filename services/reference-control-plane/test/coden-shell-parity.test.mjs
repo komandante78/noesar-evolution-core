@@ -72,6 +72,21 @@ test('CE-036 — a name resolves to exactly one entry', () => {
   }
 });
 
+test('CE-036 — every declared command actually resolves when typed exactly', () => {
+  // Owner report, 2026-08-14: typing `/models` answered "Nothing named `M`" — not reproduced
+  // by any code path found (parseCommandPrompt, matchCommands, resolveCommand and Tab
+  // completion all check out individually for this exact word), but the one thing that check
+  // above does NOT prove is that uniqueness implies reachability: two entries could be unique
+  // by name and still one of them never resolves, if `resolveCommand`'s exact-match ever drifts
+  // from the list `menuFrame` offers. This exercises the actual submit path for all thirty-
+  // three, not just `models`.
+  for (const command of AGENT_COMMANDS) {
+    const resolved = resolveCommand(`/${command.name}`, AGENT_COMMANDS);
+    assert.ok(resolved, `\`/${command.name}\` is declared but does not resolve`);
+    assert.equal(resolved.command.name, command.name);
+  }
+});
+
 test('CE-036 — every work entry names the permission its own method is gated on', () => {
   // The one place a second copy could drift. `agent-commands.js` carries the permission
   // because the browser cannot import out of `services/`; this makes it DERIVED rather than
