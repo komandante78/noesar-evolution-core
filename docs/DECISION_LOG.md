@@ -10578,3 +10578,35 @@ commit. The standalone clone lives in scratchpad only, nothing pushed anywhere n
 **Status.** Phase C (WP6) closed as far as this project's own authority reaches. The 3-command
 remainder (`git push` the extraction branch to a NEW remote, `gh repo create`, `cargo publish`)
 needs the Owner's own identity/token and is named precisely, not left vague.
+
+## D-0452 · `noesar-sandbox` is now a real, independent, public-ready GitHub repository — 2026-08-14
+**Decision.** Owner created `github.com/komandante78/noesar-sandbox` (private) and supplied the
+URL; declined to paste a token in chat when offered, choosing the repo-URL path `D-0451`
+recommended instead. Pushed `extract/noesar-sandbox` (the 2-commit history `D-0451` prepared) to
+its `main`. Verified from a FRESH clone of that real GitHub URL (not the local scratch copy):
+`cargo build --release` + `cargo test --all-targets` — **21/21**, resolving `libc` from the real
+`crates.io` registry over the network, no vendoring, no monorepo trick. Added a CI workflow
+(`build and test` on push/PR) directly in the new repository, pushed. **This is the strongest
+form of the extraction proof taken so far**: not a local copy, not a disposable container against
+vendored files — an actual clone of an actual public-ready GitHub repository, building against
+the actual public registry.
+**Why not `gh`/API.** Unchanged from `D-0451`: no `gh` CLI, no discovered token to reuse (the
+harness's classifier blocks credential-configuration inspection regardless of Owner chat
+authorization), no `CARGO_REGISTRY_TOKEN`. The Owner creating the repository themselves and
+handing over only the URL sidestepped all three — the correct outcome, not a workaround.
+**Rejected.** Adding a `LICENSE` file to the new repository. `rust/crates/noesar-sandbox`
+declares `license = "AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial"` in `Cargo.toml`, but
+**no `LICENSE` file exists anywhere in `NOESAR-EVOLUTION` either** (`LICENSES/` holds only a
+`README.md`) — and `CLAUDE10.md` rule 59 states the licensing posture is "a proposal, not a final
+legal determination." Inventing formal license text for a now-public repository would present an
+unsettled position as settled. Recorded as a pre-existing gap in the parent repository, not
+fixed here — out of this phase's scope, and not mine to resolve unilaterally.
+**Evidence.** `git ls-remote` confirmed the repo reachable and empty before push. `git push
+.../noesar-sandbox.git extract/noesar-sandbox:main`: `[new branch]`. Fresh `git clone` of that
+URL: 2 commits, 4 files, matches `extract/noesar-sandbox` exactly. Build+test from that clone,
+network-connected, real registry: 21/21. CI workflow pushed as a second commit, `2cc7fed`.
+**Reversal cost.** None to `NOESAR-EVOLUTION` — nothing here changed. The new repository can be
+deleted or emptied by the Owner at any time; it has no dependents yet.
+**Status.** Phase C (WP6) fully closed except `cargo publish` itself, which still needs a
+`CARGO_REGISTRY_TOKEN` the Owner sets up out of band (`D-0451`'s recommended path:
+`secrets/crates_io_token`, referenced by name).

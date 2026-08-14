@@ -1,48 +1,36 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0451`: Phase C closed within this project's own authority)
+# SESSION HANDOFF — 2026-08-14 (`D-0452`: `noesar-sandbox` is now a real GitHub repository)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Owner ha ordinato esplicitamente di non fermarsi a metà (`"non lasciare nulla a mezzo"`).
-Fase C è ora chiusa fino al limite dell'autorità di questo progetto: restano SOLO 3 comandi che
-l'Owner deve eseguire di persona, con la propria identità/token — non lavoro d'ingegneria
-rimasto in sospeso.**
+**Fase C (WP6) è chiusa quasi per intero. Resta UN solo comando, e serve solo il tuo token.**
 
-**Cosa è chiuso davvero, seconda fetta (verificato, non dichiarato):**
-- `tools/verify-crate-extraction.sh <crate>` — generalizza a comando riusabile i passi fatti a
-  mano in `D-0450`. Ri-eseguito su `noesar-sandbox`: **PASS** (21/21, offline, fuori dal repo).
-- `.github/workflows/noesar-sandbox-extraction.yml` — **prima CI mai esistita in questo
-  repository**, scoperta a un solo scopo: ri-eseguire quel controllo a ogni push/PR che tocca la
-  crate.
-- **Storia git indipendente vera, non uno snapshot**: nuovo branch locale
-  `extract/noesar-sandbox` (main mai toccato), riscritto con `git filter-branch
-  --subdirectory-filter rust/crates/noesar-sandbox` → 2 commit radicati sui soli file della
-  crate. Clonato da un path locale (nessuna rete, nessun GitHub) in un `.git` completamente
-  separato, remote `origin` rimosso, `rust/vendor/` + `.cargo/config.toml` aggiunti come terzo
-  commit **dentro quel repository**, poi buildato e testato lì direttamente: **21/21**.
-  Push del branch `extract/noesar-sandbox` verso il remote GIÀ autorizzato (stesso repository,
-  nessun asset nuovo): fatto.
-- `cargo package --offline --allow-dirty`: pacchetto creato (6 file, 46.1KiB), ricompilato dal
-  tarball per verifica — pulito, offline, senza contattare alcun registry.
-- Regressione: `node --test` **2546/2547** (1 skip preesistente), `verify-source.mjs` **PASS**.
+**Cosa è chiuso davvero, terza fetta (verificato, non dichiarato):**
+- Hai creato `github.com/komandante78/noesar-sandbox` (privato) e dato solo l'URL — **non hai
+  incollato un token in chat**, hai scelto la via sicura che avevo consigliato.
+- `extract/noesar-sandbox` (la storia a 2 commit già pronta da `D-0451`) pushata come `main` del
+  nuovo repository.
+- **Verificato da un clone FRESCO di quell'URL reale** — non la copia locale, non lo scratch —
+  buildato contro il **vero registry `crates.io`** in rete, senza vendoring: `cargo build
+  --release` + `cargo test` → **21/21**.
+- CI (`build and test` su push/PR) pushata direttamente nel nuovo repository.
 
-**I soli 3 comandi che restano, delimitati con precisione — non vaghi:**
-1. `git push extract/noesar-sandbox` verso un **nuovo** remote (repository proprio).
-2. `gh repo create` — decisione di nome/visibilità che questo progetto (precedente
-   `ATOM_EVOLUTION`, 2026-07-28) mostra essere sempre dell'Owner; anche il classificatore
-   auto-mode dell'harness ha rifiutato la sonda `gh auth` fatta per verificare fattibilità.
-3. `cargo publish` — richiede `CARGO_REGISTRY_TOKEN`, assente in questo ambiente, ed è un atto
-   pubblico irreversibile (una versione pubblicata non si cancella, solo si "yanka").
-
-Nessuno dei tre è rinviato per prudenza: il primo e il terzo mancano di un'identità/credenziale
-che questo agente non deve avere (`CLAUDE10.md` §7); il secondo è una decisione di prodotto che
-questo stesso progetto tratta sempre come dell'Owner. Dettaglio completo: `D-0451` nel decision
-log.
+**Cosa resta — un solo comando, delimitato con precisione:**
+`cargo publish`, e serve solo `CARGO_REGISTRY_TOKEN`. Via sicura, stesso schema di
+`secrets/github_push_token` già in uso in questo repository:
+```
+printf '%s' "IL_TUO_TOKEN_CRATES_IO" > /mnt/cachec/NOESAR_EVOLUTION/secrets/crates_io_token
+chmod 600 /mnt/cachec/NOESAR_EVOLUTION/secrets/crates_io_token
+```
+fatto da un terminale vero, non con `!comando` in chat (stesso motivo di `B-001`). Poi basta
+dirmi "l'ho messo in `secrets/crates_io_token`" — lo uso da lì, senza che il valore passi mai per
+questa conversazione. Se il classificatore dell'harness blocca comunque l'uso di quel file, te lo
+dico subito, non lo forzo.
 
 **Tre finding salvati per la fine, invariati** (`PROJECT_STATE.json.open_findings`):
 `F-COMMAND-001` (medium), `F-INTENT-001` (low), `F-PANEL-001` (medium) — nessuno indagato.
 
-**Prossima invocazione**: l'Owner esegue i 3 comandi quando vuole, oppure autorizza (a) i tre
-finding salvati, (b) Fase D (Capability Token spec, WP4 — riusa il pattern appena costruito).
+**Prossima invocazione**: token per `cargo publish` quando vuoi pubblicare davvero, oppure
+autorizzi (a) i tre finding salvati, (b) Fase D (Capability Token spec, WP4).
 
 ## Blockers e finding aperti
 
@@ -58,26 +46,29 @@ finding salvati, (b) Fase D (Capability Token spec, WP4 — riusa il pattern app
 
 | Strumento | Risultato |
 |---|---|
-| `tools/verify-crate-extraction.sh noesar-sandbox` | **PASS** — 21/21, offline, fuori dal repo |
-| Repository standalone clonato localmente (`.git` separato, no remote) | build+test **21/21** |
-| `cargo package --offline --allow-dirty` | pacchetto 6 file/46.1KiB, ricompilazione OK |
-| `git push origin extract/noesar-sandbox` | branch pubblicato, `main` invariato |
-| `node --test …` | **2546/2547** (1 skip preesistente) |
-| `verify-source.mjs` | **PASS** |
-| secret scan (euristico, gitleaks assente, dichiarato) | nessuna stringa credential-shaped |
+| `git push .../noesar-sandbox.git extract/noesar-sandbox:main` | `[new branch]`, verificato |
+| Clone fresco da GitHub reale, `cargo build --release` + `cargo test` (rete, crates.io vero) | **21/21** |
+| CI (`.github/workflows/ci.yml`) pushata nel nuovo repository | commit `2cc7fed` |
+| Repository `NOESAR-EVOLUTION` (`main`) | invariato da questa azione, nessuna regressione |
 
 ## Cosa NON è stato fatto
 
-- **I 3 comandi Owner-only** (nuovo remote, nuovo repo GitHub, publish su crates.io) — delimitati
-  con precisione sopra, non eseguibili da questo agente per mancanza di credenziale/identità.
+- **`cargo publish`** — manca solo `CARGO_REGISTRY_TOKEN`, via sicura descritta sopra.
+- **`LICENSE` file nel nuovo repository** — deliberatamente NON aggiunto: `NOESAR-EVOLUTION`
+  stesso non ne ha uno (`LICENSES/` ha solo un `README.md`), e `CLAUDE10.md` regola 59 dichiara la
+  postura di licensing "proposta, non determinazione legale definitiva". Inventare un testo di
+  licenza formale per un repository ora pubblico-pronto avrebbe presentato come deciso qualcosa
+  che non lo è. Registrato come lacuna pre-esistente nel repository madre, non risolto qui.
 - **I tre finding salvati** — non indagati, per istruzione diretta dell'Owner.
 - **Nessuna conferma visiva dell'Owner** su `D-0436`…`D-0445` (tranne `D-0438`).
 - **`D-0444` non provato con un modello reale**; **ATOM↔CodeN Evolution non verificato**.
 
 ## Proposta di miglioramento
 
-**`tools/verify-crate-extraction.sh` come gate pre-merge, non solo CI post-push.** Oggi il
-workflow gira dopo il push; un hook `pre-push` locale che lo esegue sulla crate toccata
-darebbe lo stesso segnale prima che il codice lasci la macchina di sviluppo — beneficio:
-niente run CI rossa da aspettare; costo: un hook in più da mantenere e da documentare come
-bypassabile (`--no-verify`) per chi lavora offline senza Docker.
+**Un vero `LICENSE` file per `NOESAR-EVOLUTION` stesso**, non solo per gli spin-off. La lacuna
+scoperta oggi (`D-0452`) non è di `noesar-sandbox` — è che il repository madre non ne ha mai
+avuto uno formale, solo un `README.md` in `LICENSES/`. Ogni componente estratto (WP4/WP5 dopo
+questa Fase C) erediterà la stessa lacuna finché non viene chiusa alla fonte. Beneficio: ogni
+repository pubblico futuro parte corretto senza bisogno di ricordarsene; costo: serve la
+decisione dell'Owner tra AGPL-3.0-or-later puro e il doppio-licensing proposto (`CLAUDE10.md`
+regola 58-59), non solo un file da scrivere.

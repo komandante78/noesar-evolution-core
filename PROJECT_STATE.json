@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0451: Phase C (WP6) second slice DONE, Owner-authorized -- tools/verify-crate-extraction.sh generalizes the extraction proof; first CI workflow in this repository wired to run it; noesar-sandbox given real independent git history (filter-branch on a new branch, cloned locally into a fully separate .git with no remote, built+tested there). Closed as far as this project own authority reaches -- remaining is 3 Owner-run commands needing external identity/token (git push to a new remote, gh repo create, cargo publish), not engineering work.",
-  "phase_status": "D-0451_phaseC_closed_within_project_authority__3_owner_commands_remain",
-  "next_phase": "Owner runs 3 commands when ready (git push extract/noesar-sandbox to a new remote, gh repo create, cargo publish -- needs CARGO_REGISTRY_TOKEN), or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4, reuses the extraction pattern and script just built).",
+  "current_phase": "D-0452: Phase C (WP6) third slice DONE -- noesar-sandbox pushed to a real, independent GitHub repository (github.com/komandante78/noesar-sandbox, private), verified from a fresh clone building against the real crates.io registry (21/21), CI workflow live there. Only cargo publish itself remains, needing CARGO_REGISTRY_TOKEN the Owner sets up out of band.",
+  "phase_status": "D-0452_phaseC_repo_live__only_crates_io_publish_remains",
+  "next_phase": "Owner sets CARGO_REGISTRY_TOKEN out of band (secrets/crates_io_token, referenced by name) when ready to publish, or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -979,7 +979,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for Owner authorization -- explicit instruction this session was one phase, then wait. F-COMMAND-001/F-INTENT-001/F-PANEL-001 stay open and untouched, saved for the end per Owner instruction.",
+  "next_action": "Wait for Owner authorization. F-COMMAND-001/F-INTENT-001/F-PANEL-001 stay open and untouched, saved for the end per Owner instruction.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
