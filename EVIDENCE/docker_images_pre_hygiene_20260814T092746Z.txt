@@ -1,0 +1,20 @@
+=== docker images (noesar-evolution) pre-cleanup ===
+noesar-evolution:d0372-voice-window                       83b6de3c3908        834MB             0B        
+noesar-evolution:d0373-voice-conversation                 b5e043fa9029        834MB             0B        
+noesar-evolution:d0397-agents-20260812T163057Z            28ca598292ee        835MB             0B        
+noesar-evolution:d0402-a11y-20260813T060132Z              2f466edea191        835MB             0B        
+noesar-evolution:d0423-terminal-20260813T132120Z          2b0cd82d1cbc        835MB             0B        
+noesar-evolution:d0426-origin-20260813T140526Z            1f42720d06a9        835MB             0B        
+noesar-evolution:d0431b-transcript-20260813T171059Z       e10af017f08b        835MB             0B        
+noesar-evolution:d0431c-onechat-20260813T174751Z          dfd2cfee6644        835MB             0B        
+noesar-evolution:d0432-menu-20260813T155141Z              9b772abb72a2        835MB             0B        
+noesar-evolution:d0436-cursor-20260814T011452Z            40f2ddeb319a        835MB             0B        
+noesar-evolution:d0437-menu-20260814T060733Z              6deb96691e64        835MB             0B        
+noesar-evolution:d0438-narrower-20260814T064356Z          87254ec8d2be        835MB             0B        
+noesar-evolution:d0439-bar-20260814T085950Z               15d84bf35588        835MB             0B        
+noesar-evolution:d0440-lower-20260814T091148Z             4a50daf4769c        835MB             0B   U    
+noesar-evolution:d0441-debug-20260814T092104Z             616b31b76e94        835MB             0B   U    
+noesar-evolution:e2e-base-20260813T170128Z                9b772abb72a2        835MB             0B        
+noesar-evolution:e2e-base-20260813T174609Z                dfd2cfee6644        835MB             0B        
+noesar-evolution:webui-e2e-20260813T170128Z               999fb6a392f9        838MB             0B        
+noesar-evolution:webui-e2e-20260813T174609Z               e1eb4d020e0e        838MB             0B        

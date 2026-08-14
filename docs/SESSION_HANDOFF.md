@@ -1,10 +1,16 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0441`: debug pass — WCAG fix, CE-020 repaired, ATOM status open)
+# SESSION HANDOFF — 2026-08-14 (`D-0442`: proposta applicata — CE-020 in `node --test`, igiene immagini)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **L'installazione gira su `noesar-evolution:d0441-debug-20260814T092104Z` dalle 09:21:17Z, sana,
-byte-verificata.** Sessione lunga di iterazioni su `#/coden` (`D-0436`…`D-0441`), poi un debug
-completo su richiesta diretta dell'Owner (browser + TUI ssh + sicurezza + ATOM).
+byte-verificata — invariata da `D-0442`, che non tocca prodotto (solo un test e igiene Docker).**
+Sessione lunga di iterazioni su `#/coden` (`D-0436`…`D-0441`), un debug completo su richiesta
+diretta dell'Owner, poi **`D-0442`** su "APPLICA TUTTO": la proposta di miglioramento di
+`D-0441` eseguita (`ce-020-tui-fullscreen.mjs` ora gira dentro `node --test`, 1/1) e le 4
+immagini Docker orfane rimosse (nessuna lineage di installazione persa). **`D-0435` e `D-0433`
+deliberatamente NON toccati** sotto la stessa istruzione — entrambi già segnati come rischiosi
+o da fase dedicata; "applica tutto" è stato letto come "applica ciò che è già proposto e sicuro",
+non come autorizzazione a forzare i due punti più delicati.
 
 **Cose FATTE e deployate, in attesa di conferma a occhio:**
 - `D-0436` cursore xterm nascosto

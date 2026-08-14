@@ -10226,3 +10226,30 @@ menu redesign broke an acceptance script nothing ran until an Owner asked for a 
 CE-020 already runs in under 2s and is self-contained (boots and tears down its own process) — it
 could join `node --test` today. The full browser E2E (minutes, builds an image) is a heavier, real
 trade-off: wiring it into every commit is not proposed; wiring `ce-020-tui-fullscreen.mjs` in is.
+
+## D-0442 · improvement proposal applied: CE-020 wired into `node --test`; orphaned E2E images removed — 2026-08-14
+**Decision.** New `services/reference-control-plane/test/ce-020-tui-fullscreen.test.mjs` spawns
+`tools/acceptance/ce-020-tui-fullscreen.mjs` as a subprocess and asserts `CE020_FAIL=0` — the
+improvement proposal `D-0441` raised, executed on the Owner's explicit "APPLICA TUTTO". Four
+orphaned Docker image tags (`e2e-base-20260813T170128Z`, `e2e-base-20260813T174609Z`,
+`webui-e2e-20260813T170128Z`, `webui-e2e-20260813T174609Z`) removed — build overlays from a prior
+session's E2E runs, found during `D-0436`'s cleanup, recorded then, applied now.
+**Why.** `D-0441`'s debug pass found `CE-020` had drifted silently because nothing ran it
+automatically; wiring it in closes that specific gap rather than leaving it as a standing risk.
+The image tags are litter by `CLAUDE10.md` §5a's own definition (build overlays, not product
+installations) and were already correctly scoped as safe to remove in `D-0436`'s handoff.
+**Scope, explicitly narrowed.** "APPLICA TUTTO" is read as authorizing the items already proposed
+and recorded, not as blanket authorization to also attempt `D-0435` or `D-0433` — both are already
+on record as needing a dedicated phase (`D-0435`: two prior reveal-mechanism attempts caused
+unexplained Puppeteer timeouts; `D-0433`: needs `redeploy.sh`'s trust boundary changed). Applying
+"everything" to those two under the same instruction would be exactly the failure mode `D-0381`/
+`D-0383` already cost this project — a rushed change to an already-adversarially-tested mechanism.
+**Evidence.** New test: 1/1, ≈1.5s. Full unit 2537/2538 (+1, 1 pre-existing skip unchanged).
+ESLint 408/0. Image removal verified: the two litter-only tags (`webui-e2e-*`) fully deleted; the
+two shared-ID tags (`e2e-base-*`) untagged with their layers surviving under the product
+installation tags that still reference them (`d0431c-onechat`, `d0432-menu`) — no product image
+lineage lost. Non-project containers unchanged at 50, volumes at 63, networks unchanged.
+**Reversal cost.** None — one new test file, four Docker tags (recoverable by rebuilding from the
+commits they were built from, same as any removed litter tag always has been).
+**Status.** applied. No redeploy — no `apps/` or `services/.../src` file changed, only a test and
+housekeeping.

@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0441: Owner-requested full debug of #/coden + ssh TUI, security included. Two real findings fixed: WCAG 2.5.8 target-size regression from D-0440 (coden-bar mode-switch buttons under 24px, same fix as F-A11Y-003), and tools/acceptance/ce-020-tui-fullscreen.mjs still asserting the removed grouped menu (rewritten, 18/18). Security: full session diff touches only the coden menu model + browser client, coden-bridge.mjs auth unchanged, 161/161 auth+bridge tests pass. ATOM<->CodeN status DECLARED UNVERIFIED: atomd healthy with model endpoint present but reports simulation=true at boot; confirming whether the reasoning chain answers via atom vs reference needs an authenticated /api/v1/reasoning read this phase could not make.",
-  "phase_status": "deployed_and_verified__D-0441_closed__D-0439_D-0440_confirmed_by_owner__ATOM_status_unverified__D-0435_D-0433_still_open",
-  "next_phase": "Owner: confirm D-0439/D-0440/D-0441 visually, check the reasoning chip for the ATOM answer this phase could not get authenticated access to. Then D-0435 (now a two-layer debt: unreachable + obsolete assertions), D-0433, repo hygiene (orphaned e2e images), and the improvement proposal (wire ce-020-tui-fullscreen.mjs into node --test).",
+  "current_phase": "D-0442: improvement proposal from D-0441 applied on Owner instruction (APPLICA TUTTO) -- ce-020-tui-fullscreen.mjs wired into node --test (new ce-020-tui-fullscreen.test.mjs, 1/1). 4 orphaned e2e-base/webui-e2e Docker image tags removed (litter, no product image lineage lost). D-0435 and D-0433 explicitly NOT attempted under the same instruction -- both are on record as needing a dedicated phase, scope narrowed deliberately rather than rushed.",
+  "phase_status": "applied_D-0442__no_redeploy_needed__D-0435_D-0433_deliberately_still_deferred",
+  "next_phase": "Owner: visual confirmation of D-0436..D-0441 (only D-0438 confirmed so far), check the reasoning chip for ATOM status. Then, in whatever order the Owner sets: D-0435 (needs its own careful phase), D-0433 (needs redeploy.sh trust-boundary work).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "2f0a7cd",
-  "last_updated_utc": "2026-08-14T09:23:00Z",
+  "last_commit": "dda071d",
+  "last_updated_utc": "2026-08-14T09:30:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
