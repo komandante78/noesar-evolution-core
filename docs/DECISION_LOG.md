@@ -10504,3 +10504,33 @@ loudly with its evidence, not silenced.
 own dedicated phase(s) each: legacy-prompt Enter delivery, intent-classifier `memory→nothing`,
 `workspace-actions` panel activation. `FUNDING/19_WORK_PLAN_TO_BETA.md` and
 `FUNDING/09_ENGINEERING_EFFORT_ESTIMATE.md` updated in the same commit.
+
+## D-0450 · Phase C (WP6) first slice — `noesar-sandbox` proven standalone-extractable — 2026-08-14
+**Decision.** Literal-ized `rust/crates/noesar-sandbox/Cargo.toml` (no more `version.workspace =
+true` etc. — real values, plus publish metadata: description/repository/readme/keywords), added
+a crate `README.md`, and proved extraction two ways: (1) unmodified in-tree
+`cargo test -p noesar-sandbox --offline --locked` still 21/21 green; (2) the crate directory
+copied ALONE — with its own vendored `libc-0.2.189` and `.cargo/config.toml` — to a path outside
+`PROJECT_ROOT`, built and tested inside a `--network none rust:1-bookworm` container with zero
+parent `[workspace]` in scope: `cargo build --release` and `cargo test` both green (21/21), and
+the built binary's `--detect` ran and reported correctly from inside that container.
+**Why.** Owner authorized Phase C of `FUNDING/19_WORK_PLAN_TO_BETA.md` (WP6). The crate had zero
+code coupling already (only `libc`); the sole blocker to "publishable, standalone" was syntactic
+— `.workspace = true` forces Cargo to find a parent workspace that would not exist in a clean
+checkout.
+**Rejected.** Publishing to crates.io or splitting git history into a separate repository —
+both irreversible external actions; `CLAUDE10.md` rule 77 names deployment/publish-adjacent
+moves as needing explicit Owner authorization, not assumed inside an already-scoped phase.
+Left as the next slice.
+**Evidence.** In-tree: `cargo test -p noesar-sandbox --offline --locked --all-targets` 21/21.
+Extraction: same crate, copied to `/tmp/.../scratchpad/noesar-sandbox-extracted`, `cargo build
+--release --offline` + `cargo test --offline` 21/21, `--network none` throughout, `grep -rl` for
+`services/reference-control-plane`/`apps/`/`NOESAR_EVOLUTION` inside the copy: zero hits.
+Regression: `node --test` 2546/2547 (1 pre-existing skip, unaffected), `verify-source.mjs` PASS.
+**Reversal cost.** None — one file edited (backed up at
+`BACKUPS/noesar-sandbox-Cargo.toml.20260814T142614Z`), one file added, no product code, no
+deployment.
+**Status.** Phase C's stated stop condition met for the extraction-pattern proof. Not done:
+actual crates.io publication, a separate git repository, and CI running this pattern — recorded
+as the next slice, not attempted here. `FUNDING/19_WORK_PLAN_TO_BETA.md` updated in the same
+commit.

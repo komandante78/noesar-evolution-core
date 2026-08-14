@@ -1,9 +1,17 @@
 [package]
+# Literal fields, not `.workspace = true`: this crate is extracted as a standalone, publishable
+# unit (Phase C / WP6, FUNDING/19_WORK_PLAN_TO_BETA.md) and must build with no parent [workspace]
+# present. Keep in step with rust/Cargo.toml's [workspace.package] by hand when that changes.
 name = "noesar-sandbox"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-rust-version.workspace = true
+version = "0.6.0"
+edition = "2024"
+license = "AGPL-3.0-or-later OR LicenseRef-NOESAR-Commercial"
+rust-version = "1.85"
+description = "Per-capability process isolation: applies a capability token's own limits (rlimit, seccomp, Landlock, cgroup v2 — strongest available, floor that needs nothing from the kernel) to a child process before it runs, then execs it."
+repository = "https://github.com/komandante78/NOESAR-EVOLUTION"
+readme = "README.md"
+keywords = ["sandbox", "isolation", "seccomp", "rlimit", "security"]
+categories = ["os::linux-apis", "command-line-utilities"]
 
 [lib]
 name = "noesar_sandbox"
@@ -13,8 +21,9 @@ path = "src/lib.rs"
 name = "noesar-sandbox"
 path = "src/main.rs"
 
-# libc only. This is the one binary in the workspace that runs with the fewest guarantees
-# around it -- it applies limits and then becomes an arbitrary command -- so its dependency
-# surface is kept to the crate that provides the syscalls themselves.
+# libc only, pinned literally for the same standalone-extraction reason as [package] above. This
+# is the one binary in the workspace that runs with the fewest guarantees around it -- it applies
+# limits and then becomes an arbitrary command -- so its dependency surface is kept to the crate
+# that provides the syscalls themselves.
 [dependencies]
-libc.workspace = true
+libc = "0.2"

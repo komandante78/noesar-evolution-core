@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0449: D-0435 rewritten and CLOSED (tools/browser-e2e.mjs POINT 3 rewritten against the current flat-menu design, driven through the terminal; two more D-0437-flattening staleness sites fixed in the same pass). Doing so unmasked 158 previously-unrun checks (228->386) and 3 genuinely new, unrelated findings (F-COMMAND-001, F-INTENT-001, F-PANEL-001) -- recorded, not chased, per rule 40a (root cause not found).",
-  "phase_status": "D-0435_closed__new_backlog_discovered_and_recorded",
-  "next_phase": "Owner chooses: (a) authorize investigation of one of the 3 new findings (F-COMMAND-001 recommended first -- medium severity, blocks a real user gesture), or (b) Phase C (noesar-sandbox standalone extraction, per the standing work plan).",
+  "current_phase": "D-0450: Phase C (WP6) first slice DONE, Owner-authorized -- rust/crates/noesar-sandbox Cargo.toml literal-ized (no .workspace=true), README added, extraction proven: 21/21 tests pass built+run from a copy outside PROJECT_ROOT with no parent workspace, network none, zero vendored refs to services/reference-control-plane or apps/. In-tree regression unaffected (21/21, node --test 2546/2547).",
+  "phase_status": "D-0450_phaseC_extraction_pattern_proven__publish_and_CI_slice_remains",
+  "next_phase": "Owner chooses: (a) Phase C next slice -- crates.io publish + separate git repo + CI wiring (all need explicit authorization, CLAUDE10.md rule 77), or (b) one of the 3 findings deferred by Owner instruction to be handled at the end of this work track (F-COMMAND-001, F-INTENT-001, F-PANEL-001), or (c) Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -979,7 +979,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for Owner authorization -- explicit instruction this session was one phase, then wait. Do not start a new investigation without it.",
+  "next_action": "Wait for Owner authorization -- explicit instruction this session was one phase, then wait. F-COMMAND-001/F-INTENT-001/F-PANEL-001 stay open and untouched by Owner instruction, saved for a dedicated pass at the end of this work track.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
