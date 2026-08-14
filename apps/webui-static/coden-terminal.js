@@ -34,6 +34,10 @@ import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, st
 import {
   accountFromUser, menuFor, groupMenu, hiddenNote, resolveCommand, parseCommandPrompt,
 } from '../shared/coden/agent-commands.js';
+// The SAME view table `tui-fullscreen.mjs` renders an address from. Imported rather than
+// reimplemented for the reason that has cost this project twice: a second table compared only
+// with itself always agrees with itself.
+import { showAddress } from '../shared/coden/coden-address-views.mjs';
 
 /** The bridge's own envelope version. A frame announcing anything else is from a server this
  *  build does not understand, and is refused rather than half-read — the versioned contract
@@ -118,6 +122,10 @@ export function mountCodenTerminal({
    *  `menuFrame` handles: a menu that offers no destinations is correct while none are known,
    *  and inventing a local list here is precisely what `D-0300` forbade. */
   let addressBook = [];
+  /** What the session-listing views remember a page in — the same object `tui-fullscreen.mjs`
+   *  creates for the same reason: the two shells must not answer `sessions` off two different
+   *  "last list shown". */
+  const addressState = { lastList: null, lastRefused: [], addresses: null };
 
   const setState = (next, detail = '') => {
     if (state === next && !detail) return;
@@ -388,6 +396,33 @@ export function mountCodenTerminal({
       draw();
       disposeSocket('detached by /logout');
       return;
+    }
+    // AN ADDRESS. This branch did not exist until 2026-08-14, and its absence was the defect
+    // the Owner reported as "non fa nulla": `turn.kind === 'navigate'` fell through the line
+    // below to `draw()` and returned, so every address command in THIS shell — the embedded
+    // browser terminal, the surface `#/coden` actually shows — was a silent no-op. Not an
+    // error, not a refusal, not a move: nothing at all, which is the worst of the three.
+    //
+    // Mirrored from `tui-fullscreen.mjs` line for line, through the SAME `showAddress` table,
+    // because a terminal's answer to "go somewhere" is to render that place into the
+    // transcript — the whole screen already IS a transcript. `write` is a no-op sink: the
+    // lines are collected and recorded as one entry, exactly as the ssh shell does it.
+    if (turn.kind === 'navigate') {
+      record('tool', `→ /${turn.command}`);
+      if (turn.because) record('note', turn.because);
+      draw();
+      const known = addressBook.find((entry) => entry.address === turn.address) ?? null;
+      if (!known) {
+        record('error', `\`${turn.address}\` is not in the address list this deployment serves.`);
+        return draw();
+      }
+      try {
+        const lines = await showAddress({ call }, addressState, known, turn.argument ?? '', () => {});
+        record('agent', known.label, lines);
+      } catch (error) {
+        record('error', `${known.label} refused${error.kind ? ` [${error.kind}]` : ''}: ${error.message}`);
+      }
+      return draw();
     }
     if (turn.kind !== 'call') { draw(); return; }
 

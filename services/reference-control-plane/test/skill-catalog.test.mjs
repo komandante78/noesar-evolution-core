@@ -236,22 +236,23 @@ describe('one surface, two shells — §4b.4 rule 4', () => {
     assert.equal(SESSION_METHOD_POLICY['skills.search'].permission, 'workspace.read');
   });
 
-  test('the menu entry points at an address the address book actually derives', () => {
-    // The failure this guards is the one the old comment described: an entry that appears and
-    // has nowhere to go. `settings/skills` is derived from the markup, never written twice.
+  test('the skills surface is reachable through the derived address book', () => {
+    // The failure this guards is the one the old comment described: a surface with nowhere to
+    // go from. It used to check a HAND-WRITTEN `/skills` menu entry beside the derived address;
+    // that entry was removed on 2026-08-14 with the other sixteen, because writing a
+    // destination down a second time beside a list that derives it is the `PANEL_NAMES`
+    // duplication this project has already paid for twice. The property is unchanged and is
+    // now checked where reachability actually lives — the derived book.
     const html = readFileSync(join(repoRoot, 'apps/webui-static/index.html'), 'utf8');
     const addresses = parseCodenAddressBook(html);
     const list = addresses.addresses ?? addresses;
     assert.ok(
       list.some((a) => a.address === 'settings/skills'),
-      'the address book does not derive settings/skills — the menu entry would be a dead end',
+      'the address book does not derive settings/skills — the surface would be unreachable',
     );
-
     const commands = readFileSync(join(repoRoot, 'apps/shared/coden/agent-commands.js'), 'utf8');
-    const entry = commands.match(/\{ name: 'skills',[^\n]*\}/);
-    assert.ok(entry, "there is no `/skills` entry in the one command source");
-    assert.match(entry[0], /group: 'configure'/, '§4b.4 puts skills in CONFIGURE');
-    assert.match(entry[0], /address: 'settings\/skills'/);
+    assert.doesNotMatch(commands, /\{ name: 'skills',/,
+      'the hand-written skills entry is back beside the derived address — that is the duplication');
   });
 
   test('the entry is written once, in the shared source, and not a second time in a shell', () => {

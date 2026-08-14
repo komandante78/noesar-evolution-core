@@ -56,13 +56,24 @@
  * summary contains), so the ranked list a person wants is already on top; `/` now shows it
  * directly, windowed to the box height, the same shape a Claude Code `/` palette uses. See
  * `menuFrame`/`commandMenuRows` for the mechanism this replaced.
+ *
+ * # Three groups removed 2026-08-14, with the entries that were in them
+ *
+ * `TOOLS`, `MODULES` and `APPROVALS` held ONLY hand-written address entries — removed below —
+ * so with those gone they were three headings over nothing. A heading over an empty group is
+ * the "door with no room behind it" `groupMenu` already refuses to render; this removes the
+ * door rather than leaving it to be filtered out at paint time.
+ *
+ * `DESTINATIONS` STAYS, and the distinction is the whole point of that change: what was removed
+ * is the seventeen destinations written down BY HAND here, duplicating what
+ * `coden-address-book.mjs` already derives from the markup. The derived ones — all 54 of them —
+ * are still shaped into this group by `addressEntries()` and still appear the moment something
+ * is typed. So the group is no longer a hand-kept list that can drift; it is the heading over
+ * the list the product derives from itself.
  */
 export const MENU_GROUPS = Object.freeze([
   { id: 'work', title: 'WORK' },
   { id: 'applications', title: 'DESTINATIONS' },
-  { id: 'tools', title: 'TOOLS' },
-  { id: 'modules', title: 'MODULES' },
-  { id: 'approvals', title: 'APPROVALS' },
   { id: 'configure', title: 'CONFIGURE' },
   { id: 'session', title: 'SESSION' },
 ]);
@@ -136,70 +147,37 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'help', argument: '', summary: 'These commands', group: 'work', kind: 'shell', method: null, permission: null },
   { name: 'clear', argument: '', summary: 'Clear the transcript on screen (the session keeps its state)', group: 'work', kind: 'shell', method: null, permission: null },
 
-  // APPLICATIONS — the destinations of the product. `address` is the address of that
-  // destination in the one address space (`coden-address-book.mjs`), so the menu and the
-  // address book cannot name the same place two ways. Thirteen destinations exist and eleven
-  // are here: `settings` and `models` are places you go AND places you change how the product
-  // behaves, and §4b.4's criterion puts those in CONFIGURE. Listing them twice would put the
-  // same door in two groups, which is the thing one menu exists to stop.
+  // SEVENTEEN address entries stood here and were REMOVED 2026-08-14, on the Owner's
+  // instruction that the `/` menu show only what is necessary and working: "in / non si
+  // capisce nulla, metti solo quello necessario e funzionante". Three measurements, not a
+  // preference:
   //
-  // Each summary says what the destination IS, never just its own name again. A menu whose
-  // right-hand column repeats its left-hand column has a column that costs width and carries
-  // nothing — the guard in `tui-screen-layout.test.mjs` caught the first draft doing exactly
-  // that, on eight entries.
-  { name: 'home', argument: '', summary: 'The overview — what is running and what is waiting', group: 'applications', kind: 'address', address: 'home' },
-  { name: 'chat', argument: '', summary: 'Talk to the model in the same session this shell is attached to', group: 'applications', kind: 'address', address: 'chat' },
-  { name: 'coden', argument: '', summary: 'The coding workbench — plans, diffs, shadow runs', group: 'applications', kind: 'address', address: 'coden' },
-  { name: 'tui', argument: '', summary: 'The terminal shell, and how to reach it over ssh', group: 'applications', kind: 'address', address: 'coden-tui' },
-  { name: 'projects', argument: '', summary: 'The workspaces this installation knows about', group: 'applications', kind: 'address', address: 'projects' },
-  { name: 'documents', argument: '', summary: 'Files ingested for the model to read', group: 'applications', kind: 'address', address: 'documents' },
-  { name: 'knowledge', argument: '', summary: 'What has been indexed, and what it was drawn from', group: 'applications', kind: 'address', address: 'knowledge' },
-  { name: 'memory', argument: '', summary: 'What the product remembers between sessions', group: 'applications', kind: 'address', address: 'memory' },
-  { name: 'agents', argument: '', summary: 'The agents defined here, and the authority each holds', group: 'applications', kind: 'address', address: 'agents' },
-  { name: 'workflows', argument: '', summary: 'Work that runs on a schedule or on a trigger', group: 'applications', kind: 'address', address: 'workflows' },
-  { name: 'research', argument: '', summary: 'Search across the sources this installation can reach', group: 'applications', kind: 'address', address: 'research' },
-
+  //   1. They were a SECOND copy. `coden-address-book.mjs` already derives all thirteen
+  //      top-level destinations from the markup (measured: 54 addresses, every one of these
+  //      among them), so nothing became unreachable — typing `/settings` still resolves,
+  //      through the one list that is derived rather than hand-kept. This is the exact
+  //      `PANEL_NAMES` duplication this project has already paid for twice.
+  //   2. They did NOTHING in the browser terminal — the surface the Owner actually uses.
+  //      `coden-terminal.js` had no `navigate` branch at all, so all seventeen address
+  //      commands were a silent no-op there: no message, no movement, nothing. Fixed in the
+  //      same change, so the addresses that remain (the bench panels, which have real views)
+  //      finally answer.
+  //   3. In the browser they duplicated the sidebar, which carries all thirteen as buttons.
+  //
+  // What a `/` menu in a shell is FOR is commands that act. Going somewhere is what a sidebar
+  // and an address are for, and both still work.
+  //
+  // `/models` is the one the Owner reported by name: it navigated to a page that could show
+  // status and could not load anything, which is what "non fa inserire il modello" describes.
+  // `/model <id>` is what replaced it — a command that acts.
+  //
   // CONFIGURE — changes how the product behaves.
   //
-  // `/skills` was absent here for three sessions, and the comment that stood in its place was
-  // right to refuse it: there was no destination, no section and no route, and an entry that
-  // appears and then has nowhere to go is the failure rule 3 of §4b.4 names. It is here now
-  // because all three exist — `settings/skills` is DERIVED from the markup by
-  // `coden-address-book.mjs` rather than written down a second time, `skill-catalog.mjs` is
-  // the surface behind it, and `skills.status`/`skills.search` carry it to the terminal so
-  // both shells reach the same object. The order of those facts is the whole point: the entry
-  // followed the surface, it did not summon it.
-  { name: 'skills', argument: '', summary: 'Skills — what the agent knows how to do, and what adopting one costs in context', group: 'configure', kind: 'address', address: 'settings/skills' },
-  { name: 'models', argument: '', summary: 'Models — which model answers, and on what hardware', group: 'configure', kind: 'address', address: 'models' },
-  // `D-0444`. Owner report, 2026-08-14: `/models` only ever navigated to a settings page that
-  // could show status and never let a present model actually be loaded — "e una stupidaggine
-  // il menu ... non fa inserire il modello". The catalogue (what is on disk) and the local
-  // runtime (how to run it) both already existed; nothing joined them to a command. Scoped to
-  // what the Owner asked for: a model already present and verified on this installation, not
-  // acquiring a new one (`/api/v1/models/acquire` has no transport configured and stays out of
-  // scope here).
+  // `D-0444`. The catalogue (what is present on disk, verified by sha256) and the local model
+  // runtime (configure/release/launch) both already existed and had never been joined to a
+  // command. Scoped to a model already present: acquiring a new one is a separate transport
+  // this installation does not have (`/api/v1/models/acquire` answers 501 and says so).
   { name: 'model', argument: '<id>', summary: 'Load a model already present on this installation', group: 'configure', kind: 'call', method: 'model.activate', permission: 'model.manage' },
-  { name: 'settings', argument: '', summary: 'Everything else about how this installation behaves', group: 'configure', kind: 'address', address: 'settings' },
-
-  // TOOLS · MODULES · APPROVALS — point 2b. What the CodeN page used to hold at the bottom of
-  // its own scroll, as places with addresses.
-  //
-  // `/tools` is NEW, and the measurement that produced it is the point of the whole item: the
-  // Tools surface had no address at ALL. It was a `work-block` nested inside `view-coden`, so
-  // it was not a nav button, not a settings section and not a bench panel — the three shapes
-  // `coden-address-book.mjs` reads — and therefore existed for the browser's scrollbar and for
-  // nothing else. The terminal could not reach a registered tool, and no test could say so,
-  // because you cannot assert a gap in a list nobody keeps.
-  { name: 'tools', argument: '', summary: 'Registered tools — local, MCP and OpenAPI, and what each is allowed to do', group: 'tools', kind: 'address', address: 'tools' },
-  // Moved out of CONFIGURE rather than copied: `/modules` is one entry and stays one entry.
-  // Its page is also the ONLY render of the catalogue now — the CodeN page used to draw the
-  // same list a second time through a second container, which is the divergence `D-0300` named
-  // and the owner spotted from the outside.
-  { name: 'modules', argument: '', summary: 'Sector modules — the one catalogue: install, activate, remove', group: 'modules', kind: 'address', address: 'settings/modules' },
-  // The queue the permanent footer strip counts. The strip could always be CLICKED and never
-  // typed: `Open queue` went to `settings/audit` while no command named it, so the one thing
-  // the product interrupts you about was the one thing the menu could not reach.
-  { name: 'approvals', argument: '', summary: 'Everything waiting for a human decision, whichever subsystem raised it', group: 'approvals', kind: 'address', address: 'settings/audit' },
 
   // SESSION — changes who you are. `/logout` needs a second, TYPED word rather than a key:
   // `15` §13, "in un terminale `y` è a un incollaggio di distanza dall'essere digitato da

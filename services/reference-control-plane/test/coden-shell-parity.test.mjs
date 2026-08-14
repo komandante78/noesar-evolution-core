@@ -45,19 +45,23 @@ const TERMINAL_CLIENT = read('tools/tui-client.mjs');
 // --- CE-036 · the menu is one list, in four groups, filtered and declared -------------------
 
 test('CE-036 — the menu has exactly the groups the design fixes, in order', () => {
-  // Four until point 2b. The stack the owner named at the bottom of the CodeN page (Strumenti ·
-  // Strumenti installati · Installable catalogues · Approvals) left the page and became keys of
-  // its own, which is what "le sezioni escono dalla pagina principale" has to mean once there
-  // is only one door. Asserted exactly rather than as a floor, for the reason the original note
-  // gives: a floor cannot notice a group quietly reappearing.
-  assert.deepEqual(MENU_GROUPS.map((group) => group.id),
-    ['work', 'applications', 'tools', 'modules', 'approvals', 'configure', 'session']);
+  // Three since 2026-08-14. Four groups (`applications`, `tools`, `modules`, `approvals`) held
+  // ONLY address entries, and those were removed on the Owner's instruction that the menu carry
+  // only what is necessary and working — so the four became headings over nothing. Asserted
+  // exactly rather than as a floor, for the reason the original note gives: a floor cannot
+  // notice a group quietly reappearing.
+  assert.deepEqual(MENU_GROUPS.map((group) => group.id), ['work', 'applications', 'configure', 'session']);
   // Every entry belongs to one of them. An entry with a group nobody renders would be present
   // in the list and absent from both menus, which is the failure mode a flat list hides.
   const known = new Set(MENU_GROUPS.map((group) => group.id));
   for (const entry of AGENT_COMMANDS) assert.ok(known.has(entry.group), `\`/${entry.name}\` has no group`);
+  // Every group holds something — but `applications` is filled by the DERIVED address book
+  // (`addressEntries()`), not by hand-written entries, which is exactly what the 2026-08-14
+  // change made true. Checked against both sources so an empty heading still cannot survive.
+  const derived = addressEntries(buildCodenAddressBook(join(ROOT, 'apps/webui-static')));
   for (const group of MENU_GROUPS) {
-    assert.ok(AGENT_COMMANDS.some((entry) => entry.group === group.id), `group \`${group.id}\` is empty`);
+    assert.ok([...AGENT_COMMANDS, ...derived].some((entry) => entry.group === group.id),
+      `group \`${group.id}\` is empty`);
   }
 });
 
@@ -114,9 +118,11 @@ test('CE-036 — an account without a permission is not offered the entries need
   assert.ok(names(owner).includes('plan'), 'an account with workspace.write may plan');
   assert.ok(!names(reader).includes('plan'), 'an account without workspace.write is not offered plan');
   assert.ok(names(reader).includes('simulate'), 'workspace.read is enough for simulate');
-  // Role-gated destinations, through the SAME table the browser hides its nav with.
-  assert.ok(names(owner).includes('modules'), 'the Owner is offered the modules section');
-  assert.ok(!names(reader).includes('modules'), 'a non-owner is not offered an owner-only section');
+  // Permission-gated COMMANDS. This used to assert the role-gated `modules` destination, which
+  // was removed with the other sixteen addresses on 2026-08-14; `/model` is the entry that now
+  // carries a permission a reader does not hold, so the property is proved through it instead
+  // of through an entry that no longer exists.
+  assert.ok(!names(reader).includes('model'), 'a reader without model.manage is not offered /model');
   assert.equal(reader.hidden, AGENT_COMMANDS.length - reader.entries.length);
   assert.ok(reader.hidden > 0, 'the reader really lost entries — otherwise this test proves nothing');
 });
@@ -235,18 +241,23 @@ test('CE-034 — /skills exists exactly while its surface does', () => {
   // exactly when there is something for it to open. Written this way the test does its job in
   // both directions — it fails on an entry that opens nothing, and on a surface no entry
   // reaches — and it will not need editing again when the answer changes.
-  const hasEntry = AGENT_COMMANDS.some((entry) => entry.name === 'skills');
+  // REWRITTEN AGAIN 2026-08-14, and for the same reason as the first time — the shape of the
+  // answer changed, not the property. The seventeen hand-written address entries were removed
+  // from the menu (they duplicated `coden-address-book.mjs`, which DERIVES every destination
+  // from the markup, and they did nothing at all in the embedded browser terminal). So the
+  // biconditional is no longer "a section exists ⟺ a MENU ENTRY names it" — the menu carries
+  // commands now. It is "a section exists ⟺ the ADDRESS BOOK reaches it", which is the same
+  // guarantee against an unreachable surface, checked where reachability actually lives.
   const hasSection = /data-section="skills"/.test(MARKUP);
-  assert.equal(hasEntry, hasSection,
-    hasEntry
-      ? '`/skills` is in the menu and the page has no skills section for it to open'
-      : 'a skills section exists and no menu entry reaches it');
-
-  if (hasEntry) {
-    const entry = AGENT_COMMANDS.find((item) => item.name === 'skills');
-    assert.equal(entry.group, 'configure', '§4b.4 puts skills in CONFIGURE');
-    assert.equal(entry.address, 'settings/skills');
-  }
+  const reachable = buildCodenAddressBook(join(ROOT, 'apps/webui-static'))
+    .some((entry) => entry.address === 'settings/skills');
+  assert.equal(reachable, hasSection,
+    reachable
+      ? 'the address book serves `settings/skills` and the page has no skills section behind it'
+      : 'a skills section exists and no address reaches it');
+  // And no hand-written menu entry has crept back in beside it: one list, derived, not two.
+  assert.ok(!AGENT_COMMANDS.some((entry) => entry.kind === 'address'),
+    'a hand-written address entry is back in the menu — the duplication removed on 2026-08-14');
 });
 
 // --- phase 3b · every address answers, and none of them answers "no source" -----------------
@@ -828,8 +839,12 @@ test('CE-033 — the highlight and Tab agree on which entry is selected', () => 
   // the arrow keys move through and what Tab reads off `hits[selected]` — one list, one
   // index, never rebuilt per row.
   const hits = [...AGENT_COMMANDS];
-  const late = hits.findIndex((entry) => entry.group === 'applications');
-  assert.ok(late > 0, 'no entry after the first few — this assertion would prove nothing');
+  // The LAST entry, not "the first one in some group": the seventeen hand-written address
+  // entries this used to reach through are gone, and picking an index by group id was always
+  // a proxy for "far enough down the list to matter". The last one is that, exactly, and it
+  // cannot go stale when the registry changes again.
+  const late = hits.length - 1;
+  assert.ok(late > 0, 'a one-entry menu — this assertion would prove nothing');
   const rows = commandMenuRows({ hits, selected: late, rowLimit: 99 }, 80);
   const marked = rows.filter((row) => row.includes('▸'));
   assert.equal(marked.length, 1, 'exactly one row is marked');
@@ -861,9 +876,12 @@ test('/logout needs a second, TYPED word — never a single key', () => {
 });
 
 test('the help listing is grouped when the caller supplies the grouping', () => {
-  const turn = planTurn('/', {
-    resolve: () => null, parse: () => null, commands: AGENT_COMMANDS, groups: groupMenu,
-  });
+  // Driven with what a shell actually passes — its commands PLUS the derived address book —
+  // rather than with `AGENT_COMMANDS` alone. Since 2026-08-14 `DESTINATIONS` is filled only by
+  // the derived entries, so a listing built from the registry alone legitimately has no such
+  // heading, and asserting one against that input was asserting the old duplication.
+  const commands = [...AGENT_COMMANDS, ...addressEntries(buildCodenAddressBook(join(ROOT, 'apps/webui-static')))];
+  const turn = planTurn('/', { resolve: () => null, parse: () => null, commands, groups: groupMenu });
   assert.equal(turn.kind, 'help');
   for (const group of MENU_GROUPS) assert.ok(turn.lines.includes(group.title), `no ${group.title} heading`);
   // And still usable for a caller with no grouping, rather than throwing or emitting nothing.

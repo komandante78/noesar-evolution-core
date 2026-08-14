@@ -49,8 +49,12 @@ describe('the list it resolves against is the product\'s own', () => {
     // assertion below would pass over an empty list and prove nothing at all. That failure mode
     // — a suite that is green because it measured nothing — is the one this file cannot have.
     assert.ok(addresses.length > 40, `only ${addresses.length} addresses were parsed`);
-    assert.ok(AGENT_COMMANDS.length > 25);
-    assert.ok(entries.length > 80);
+    // Was `> 25` while the registry carried seventeen hand-written address entries beside the
+    // commands; those were removed 2026-08-14 (they duplicated the derived address book), so
+    // the floor is the COMMANDS the shell actually offers. The combined figure below is what
+    // this guard is really about — that both sources arrived — and it is unchanged.
+    assert.ok(AGENT_COMMANDS.length > 12, `only ${AGENT_COMMANDS.length} commands in the registry`);
+    assert.ok(entries.length > 60, `only ${entries.length} entries in the combined list`);
   });
 });
 
@@ -138,11 +142,13 @@ describe('it speaks Italian by reading the product, not a second vocabulary', ()
   });
 
   test('a group heading answers only where nothing else did', () => {
-    // `/approvals` is the measured case: s328 added it with no nav button, so it has no label
-    // and its only Italian is a sentence nobody says. Its group is titled APPROVAZIONI.
-    const result = hear('approvazioni');
+    // The measured case moved on 2026-08-14: it used to be `/approvals`, one of the seventeen
+    // hand-written address entries removed that day. `CONFIGURA` is the same shape and is what
+    // exists now — `/model` is the only entry in CONFIGURE, and nothing matches "configura" on
+    // its own name, so the heading is the only thing that can answer.
+    const result = hear('configura');
     assert.equal(result.kind, VoiceIntent.INTENT);
-    assert.equal(result.entry.name, 'approvals');
+    assert.equal(result.entry.name, 'model');
 
     // And it must not be able to outrank a real name. Ranked last by construction: an entry that
     // matches on its own name beats one that only shares a room with it.
@@ -187,16 +193,26 @@ describe('it never guesses', () => {
       `${asked.length} of ${spoken.size} spoken names are ambiguous`);
   });
 
-  test('an entry and its own twin are one answer, not a choice', () => {
-    // Seventeen commands carry the very address the address book also lists, so the menu holds
-    // `memory` twice. Counting candidates without collapsing by destination would have made
-    // every main page of the product ambiguous with itself.
-    const twins = entries.filter((entry) => entry.name === 'memory');
-    assert.equal(twins.length, 2, 'the twinning this collapses no longer exists — re-read the rule before deleting it');
-    assert.equal(new Set(twins.map(destinationOf)).size, 1);
+  test('no entry has a twin at all — the duplication was removed at its source', () => {
+    // REWRITTEN 2026-08-14, and the reason is the good one: this used to assert that `memory`
+    // appears TWICE (a hand-written command carrying the same address the book derives) and
+    // that collapsing by destination turned the pair into one answer. Seventeen such duplicates
+    // existed and all seventeen were removed that day, so the collapse is no longer load-bearing
+    // for them — the list simply has no twins.
+    //
+    // The collapse itself is NOT deleted and is still exercised below: it is the guard against
+    // a twin coming back. What changed is that this test now pins the stronger property — the
+    // registry and the derived book name nothing twice — instead of pinning the duplication
+    // as if it were a requirement.
+    const byName = new Map();
+    for (const entry of entries) byName.set(entry.name, (byName.get(entry.name) ?? 0) + 1);
+    const twinned = [...byName].filter(([, count]) => count > 1);
+    assert.deepEqual(twinned, [], `${twinned.length} name(s) are declared twice: ${JSON.stringify(twinned)}`);
+    // And the destination collapse still answers a real utterance unambiguously.
     const result = hear('memory');
     assert.equal(result.kind, VoiceIntent.INTENT);
     assert.equal(result.line, '/memory');
+    assert.equal(new Set(entries.filter((e) => e.name === 'memory').map(destinationOf)).size, 1);
   });
 
   test('silence and filler are reported as unheard, never matched', () => {

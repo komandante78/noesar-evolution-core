@@ -10315,3 +10315,36 @@ existing method's behaviour changed.
 **Status.** applied, NOT YET deployed — held pending the Owner's review, since this is the first
 capability in the product that lets an authenticated operator spawn a real OS process from the
 `/` menu, and §18 rule 77 lists deployment among what stops for explicit authorisation regardless.
+
+## D-0445 · the `/` menu cut from 34 to 17 — only what acts; the browser terminal's silent no-op fixed — 2026-08-14
+**Decision.** Seventeen hand-written `kind: 'address'` entries removed from `AGENT_COMMANDS`
+(`home` `chat` `coden` `tui` `projects` `documents` `knowledge` `memory` `agents` `workflows`
+`research` `skills` `models` `settings` `tools` `modules` `approvals`), with the three groups
+that held only those (`TOOLS`, `MODULES`, `APPROVALS`) and their 20 now-orphaned catalogue
+strings. `coden-terminal.js` gains the `navigate` branch it never had. `DESTINATIONS` stays —
+filled by the DERIVED address book, not by hand.
+**Why.** Owner: *"in / non si capisce nulla, metti solo quello necessario e funzionante"*. Three
+measurements, taken before deciding anything, not a preference:
+1. **They were a second copy.** `buildCodenAddressBook()` already derives all 13 top-level
+   destinations from the markup (measured: 54 addresses). Nothing became unreachable — typing
+   `/settings` still resolves, through the list that is derived instead of hand-kept. This is
+   exactly the `PANEL_NAMES` duplication this project has paid for twice.
+2. **They did NOTHING in the browser terminal** — the surface `#/coden` shows. `coden-terminal.js`
+   had no `navigate` branch: `turn.kind === 'navigate'` fell through `if (turn.kind !== 'call')`
+   to a bare `draw()`, so all seventeen were a silent no-op. Not an error, not a refusal —
+   nothing, which is the worst of the three, and is precisely what the Owner reported.
+3. **In the browser they duplicated the sidebar**, which carries all 13 as buttons.
+**Rejected.** Fixing only the `navigate` branch and keeping the 34 entries — would have made the
+duplication WORK rather than removing it, leaving the menu just as unreadable. Removing the
+addresses without fixing `navigate` — would have left the bench panels (which have real views)
+still silently doing nothing.
+**Evidence.** Menu 34 → 17, every survivor acting (12 engine calls, 1 form, 2 shell, 1 session,
+`/model`). Zero duplicate names between registry and derived book (was 17). Unit 2546/2547 (1
+pre-existing skip). ESLint 408/0. CE-020 (ssh, real keystrokes, real engine) 18/18. Browser E2E on
+a disposable probe: **see the ledger entry** — `coden-address-views.mjs` confirmed fetched 200 by
+a real browser, so the new import resolves where it must. Ten tests updated to the new shape, each
+rewritten to pin the PROPERTY rather than the old value (the `skills` biconditional now checks the
+derived book; the voice "twin" test now asserts no twins exist at all, which is strictly stronger).
+**Reversal cost.** Low for the code (one import, one branch, a list); the removed entries are in
+git history. The catalogue strings would need re-adding with them.
+**Status.** applied. Deploy: see the ledger.
