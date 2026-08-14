@@ -23,9 +23,9 @@ import { dirname, join } from 'node:path';
 
 import {
   AGENT_COMMANDS, MENU_GROUPS, menuFor, groupMenu, matchCommands, resolveCommand,
-  accessRuleFor, accountFromUser, SECTION_ACCESS, groupFor, hiddenNote, parseCommandPrompt,
+  accessRuleFor, accountFromUser, SECTION_ACCESS, hiddenNote, parseCommandPrompt,
 } from '../../../apps/shared/coden/agent-commands.js';
-import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuViewModel, menuGroupRows, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
+import { planTurn, FORMS, startForm, fillForm, addressEntries, menuEntriesFor, menuFrame, menuViewModel, promptKeys } from '../../../apps/webui-static/coden-view-model.js';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { commandMenuRows } from '../../../apps/shared/coden/tui-screen.mjs';
 import { runFullScreen } from '../../../tools/tui-fullscreen.mjs';
@@ -586,15 +586,13 @@ test('CE-033 — neither shell has a region the other has not', () => {
   // "not filtered". A test that supplies a hand-built shape is a test that keeps passing after
   // the shells stop agreeing (`M-11`).
   const filtered = { accessFiltered: true, hidden: 3, hiddenBy: { 'workspace.write': 3 } };
+  const hits = [...AGENT_COMMANDS].slice(0, 4);
   const menuRows = commandMenuRows(
-    {
-      hits: [...AGENT_COMMANDS].slice(0, 4), selected: 0, rowLimit: 12, groups: groupMenu,
-      note: hiddenNote(filtered),
-    },
+    { hits, selected: 0, rowLimit: 12, note: hiddenNote(filtered) },
     80,
   );
   assert.ok(menuRows.length > 0, 'the terminal renders no menu');
-  assert.ok(menuRows.some((row) => row.includes('WORK')), 'the terminal menu has no group headings');
+  assert.ok(menuRows.some((row) => row.includes(hits[0].name)), 'the terminal menu drops its own first entry');
   assert.ok(menuRows.some((row) => row.includes('hidden')), 'the terminal menu does not declare it was filtered');
   // …and it NAMES the requirement, which is rule 4 of the approved design: "dichiara ciò che
   // non mostra, E PERCHÉ". A bare count leaves a reader to guess whether the short menu is
@@ -602,66 +600,33 @@ test('CE-033 — neither shell has a region the other has not', () => {
   assert.ok(menuRows.some((row) => row.includes('workspace.write')), 'the terminal hides entries without saying what they need');
 });
 
-test('point 3 — the group keys can never shadow a command, and are unique', () => {
-  // The whole progressive mechanism rests on one character meaning one thing. Two groups
-  // sharing a key, or a command named as short as a key, would make `/t` ambiguous — and
-  // `MENU_GROUPS` is exactly the kind of hand-kept table that drifts, so it is asserted rather
-  // than trusted.
-  const keys = MENU_GROUPS.map((group) => group.key);
-  assert.equal(new Set(keys).size, keys.length, 'two groups share a key');
-  for (const key of keys) assert.equal(String(key).length, 1, `group key ${key} is not one character`);
+test('point 3 — `/` is one flat list: no group ever shadows a command name', () => {
+  // Flattened 2026-08-14 on direct Owner instruction: no key opens a group any more, so the
+  // property that survives is simpler — every command name is reachable by typing itself,
+  // never intercepted by anything shorter.
   for (const command of AGENT_COMMANDS) {
-    assert.ok(command.name.length > 1, `command /${command.name} is as short as a group key`);
+    assert.ok(command.name.length > 1, `command /${command.name} is suspiciously short`);
   }
-  for (const group of MENU_GROUPS) assert.equal(groupFor(group.key)?.id, group.id);
-  // A prefix is NOT a key: `/mo` must go on filtering for models/modules/memory.
-  assert.equal(groupFor('mo'), null);
-  assert.equal(groupFor(''), null);
-  assert.equal(groupFor('z'), null);
 });
 
-test('point 3 — `/` lists groups, a key opens one, and the addresses come back', () => {
+test('point 3 — `/` is a flat, ranked list from the first keystroke, and the addresses join once there is room', () => {
   const commands = [...AGENT_COMMANDS];
   const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
   assert.ok(addresses.length > 20, 'the address book is too small for this to measure anything');
 
-  // Level zero: one row per group, never one row per entry. The count is the number that made
-  // a flat menu impossible — `menuEntriesFor` keeps the addresses out of a bare `/` precisely
-  // because they did not fit.
+  // A bare `/`: flat, not grouped — `menuEntriesFor` still keeps the address book out until a
+  // query narrows the list, the constraint `CE-020` measured, which survives the flattening
+  // unchanged.
   const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
-  assert.equal(top.level, 'groups');
-  assert.equal(top.groups.length, groupMenu([...commands, ...addressEntries(addresses)]).length);
-  assert.ok(top.groups.length < 10, 'level zero is not a short list');
+  assert.equal(top.level, 'entries');
+  assert.equal(top.group, null, 'the flat frame carries no group at all any more');
+  assert.deepEqual(top.hits, commands, 'a bare / does not show every command, unfiltered');
 
-  // …and the addresses are COUNTED there rather than dropped: the row says how many places the
-  // group holds, not how many a renderer felt like painting.
-  const destinations = top.groups.find((row) => row.id === 'applications');
-  assert.ok(destinations.count > addresses.length, 'the destinations row does not include the address space');
-  assert.ok(destinations.hint.length > 0, 'a group row carries no hint');
-  // The hint is DERIVED from the entries, never written beside them.
-  assert.equal(destinations.hint, [...commands, ...addressEntries(addresses)]
-    .filter((entry) => entry.group === 'applications').slice(0, 3).map((entry) => entry.name)
-    .join(' · '));
-
-  // A key opens exactly one group, and everything in it — including the addresses a bare `/`
-  // could not afford to list.
-  const opened = menuFrame({ word: 'd', argument: '' }, { commands, addresses });
-  assert.equal(opened.level, 'entries');
-  assert.equal(opened.group.id, 'applications');
-  assert.equal(opened.hits.length, destinations.count);
-  assert.ok(opened.hits.every((entry) => entry.group === 'applications'));
-
-  // A key plus text filters INSIDE the group — `/d diff` — and never leaves it.
-  const filtered = menuFrame({ word: 'd', argument: 'diff' }, { commands, addresses });
-  assert.ok(filtered.hits.length > 0, 'nothing matched inside the group');
-  assert.ok(filtered.hits.length < opened.hits.length, 'the argument did not filter');
-  assert.ok(filtered.hits.every((entry) => entry.group === 'applications'));
-
-  // Anything longer than a key is the flat filter, unchanged.
+  // Typing narrows the SAME flat list, ranked, and the address book joins in.
   const flat = menuFrame({ word: 'appro', argument: '' }, { commands, addresses });
   assert.equal(flat.level, 'entries');
-  assert.equal(flat.group, null);
   assert.deepEqual(flat.hits, matchCommands('appro', menuEntriesFor('appro', commands, addresses)));
+  assert.ok(flat.hits.length < top.hits.length, 'the query did not filter the flat list');
 });
 
 test('point 3 — menuFor records WHY it hid an entry, and the note reads it', () => {
@@ -744,122 +709,41 @@ test('point 2b — the module catalogue is rendered in exactly ONE place', () =>
   assert.ok(!MARKUP.includes('codenModulesList'), 'the CodeN page has a module list container again');
 });
 
-test('point 3 — the browser really branches on the level, and does not just import the frame', () => {
-  // A source guard that only looks for `menuFrame(` is satisfied by a page that calls it and
-  // then ignores the answer — mutation proved it: replacing the level-zero branch with `if(false)`
-  // left this file green and only the browser suite noticed. The branch itself is asserted now,
-  // and the browser suite still drives the real thing.
-  assert.match(BROWSER, /frame\.level==='groups'/, 'the browser does not branch on the menu level');
-  assert.match(BROWSER, /data-coden-group="/, 'the browser paints no group rows');
+test('point 3 — the browser paints one flat list, and branches on no level any more', () => {
+  // Flattened 2026-08-14 on direct Owner instruction: the old guard proved the browser really
+  // branched on `level==='groups'`, which is exactly the branch that no longer exists to prove.
+  // What still has to hold: the browser drives the real shared frame, offers no group rows to
+  // click (`data-coden-group` is gone), and writes its own key legend the way it always did.
+  assert.doesNotMatch(BROWSER, /frame\.level==='groups'/, 'the browser still branches on a menu level that no longer exists');
+  assert.doesNotMatch(BROWSER, /data-coden-group="/, 'the browser still paints group rows to click');
+  assert.match(BROWSER, /menuFrame\(/, 'the browser does not use the shared frame');
   assert.match(BROWSER, /promptKeys\(/, 'the browser writes its own key legend');
 });
 
-test('point 3 — both shells paint level zero, off the same frame', () => {
-  const commands = [...AGENT_COMMANDS];
-  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
-  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
-
-  // The terminal. Group rows carry the key, the title and the count — the three things you
-  // cannot work out from anything else on the screen.
-  const rows = commandMenuRows({ level: 'groups', groupRows: top.groups, selected: 0, rowLimit: 12, note: null, keys: promptKeys(top) }, 90);
-  for (const group of top.groups) {
-    assert.ok(rows.some((row) => row.includes(group.title)), `the terminal drops the ${group.title} row`);
-  }
-  assert.ok(rows.some((row) => row.includes('⏎ enter')), 'the terminal does not say which key enters a group');
-
-  // The browser paints the same rows from the same frame — asserted on its source, since this
-  // markup is written by `app.js` rather than shipped in `index.html`.
-  const app = readFileSync(join(ROOT, 'apps/webui-static/app.js'), 'utf8');
-  assert.match(app, /menuFrame\(/, 'the browser does not use the shared frame');
-  assert.match(app, /data-coden-group=/, 'the browser has no group row to click');
-  assert.match(app, /hiddenNote\(/, 'the browser words the filter note itself');
-});
-
-test('point 3 — the terminal menu still cannot outgrow its height at level zero', () => {
+test('point 3 — the terminal menu cannot outgrow the height it was given, flat', () => {
   const commands = [...AGENT_COMMANDS];
   const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
   const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
   for (const limit of [1, 2, 3, 7, 12]) {
     const rows = commandMenuRows(
       {
-        level: 'groups', groupRows: top.groups, selected: 0, rowLimit: limit,
+        hits: top.hits, selected: 0, rowLimit: limit,
         note: hiddenNote({ accessFiltered: true, hidden: 2, hiddenBy: { 'workspace.write': 2 } }),
       },
       80,
     );
-    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows at level zero`);
+    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows`);
   }
 
-  // …and the note survives the squeeze here too. At a height that cannot hold every group row,
-  // the row reserved for the disclosure has to be the one that is kept — the group rows are
-  // recoverable by scrolling, "nobody checked what this account may use" is not recoverable at
-  // all. Measured at limits BELOW the group count, which is where the two forms diverge; the
-  // first draft only tested comfortable heights and the mutation walked through it.
+  // …and the note survives the squeeze. At a height that cannot hold every command, the row
+  // reserved for the disclosure has to be the one kept — the list is recoverable by scrolling,
+  // "nobody checked what this account may use" is not recoverable at all.
   const note = hiddenNote({ accessFiltered: false });
   for (const limit of [3, 4, 5, 6, 7]) {
-    const rows = commandMenuRows(
-      { level: 'groups', groupRows: top.groups, selected: 0, rowLimit: limit, note, keys: promptKeys(top) },
-      80,
-    );
+    const rows = commandMenuRows({ hits: top.hits, selected: 0, rowLimit: limit, note, keys: promptKeys(top) }, 80);
     assert.ok(rows.some((row) => row.includes('Not filtered')),
-      `at ${limit} rows level zero drops the disclosure: ${JSON.stringify(rows)}`);
-    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows at level zero`);
-  }
-});
-
-test('point 3 — menuGroupRows drops a group with nothing in it', () => {
-  // A heading over nothing is a door with no room behind it — the rule `groupMenu` already
-  // applies one level down.
-  const rows = menuGroupRows([{ name: 'plan', group: 'work' }]);
-  assert.deepEqual(rows.map((row) => row.id), ['work']);
-  assert.equal(rows[0].count, 1);
-  assert.deepEqual(menuGroupRows([]), []);
-});
-
-test('CE-033 — the terminal menu cannot outgrow the height it was given', () => {
-  // Group headings are rows too. Counting only the entries let a menu of four groups push the
-  // prompt off the bottom of a short terminal — and the prompt is the one row that must never
-  // move.
-  for (const limit of [1, 3, 7, 12]) {
-    const rows = commandMenuRows(
-      { hits: [...AGENT_COMMANDS], selected: 0, rowLimit: limit, groups: groupMenu, accessFiltered: true, hidden: 0 },
-      80,
-    );
-    assert.ok(rows.length <= limit + 1, `rowLimit ${limit} produced ${rows.length} rows`);
-  }
-});
-
-test('CE-036 — every group is reachable at a real terminal height', () => {
-  // Found by DRIVING the shell, not by reading it. `renderFrame` gives the menu `h/3` rows, so
-  // a 30-row terminal budgets ten — and spending them first-come meant WORK's fourteen entries
-  // took all ten and APPLICATIONS, CONFIGURE and SESSION never rendered. "Una casella, tutto
-  // il prodotto" is false if three quarters of the product only appears once you already know
-  // what to type. No unit test failed; the menu simply showed one group.
-  // POINT 3 MOVED THIS PROPERTY, it did not weaken it. "Every group is reachable" was a claim
-  // about the BARE `/`, and the bare `/` is no longer a flat list of every entry — it is one row
-  // per group, so the guarantee now lives at level zero and is stronger there: it holds by
-  // construction (one row each) instead of by an arithmetic that happened to fit four groups
-  // and stopped fitting seven. What the flat branch below still owes is a different and true
-  // thing — it is the FILTERED view, so it must show the matches and never lose the selection.
-  const commands = [...AGENT_COMMANDS];
-  const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
-  const top = menuFrame({ word: '', argument: '' }, { commands, addresses });
-  for (const rowLimit of [10, 12, 16]) {
-    const rows = commandMenuRows({ level: 'groups', groupRows: top.groups, selected: 0, rowLimit, note: null }, 100);
-    for (const group of MENU_GROUPS) {
-      assert.ok(rows.some((row) => row.includes(group.title)),
-        `at ${rowLimit} rows level zero never shows ${group.title}: ${JSON.stringify(rows)}`);
-    }
-    assert.ok(rows.length <= rowLimit, `${rows.length} rows against a budget of ${rowLimit}`);
-  }
-
-  // And the filtered branch keeps its own half of the old guarantee: whatever it can afford to
-  // paint, it paints — no group heading over an empty share, no unspent rows.
-  const hits = [...AGENT_COMMANDS];
-  for (const rowLimit of [10, 12, 16]) {
-    const rows = commandMenuRows({ hits, selected: 0, rowLimit, groups: groupMenu, note: null }, 100);
-    assert.ok(rows.length <= rowLimit + 1, `${rows.length} rows against a budget of ${rowLimit}`);
-    assert.ok(rows.length >= Math.min(rowLimit, hits.length), `${rows.length} rows left a budget of ${rowLimit} unspent`);
+      `at ${limit} rows the menu drops the disclosure: ${JSON.stringify(rows)}`);
+    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows`);
   }
 });
 
@@ -883,67 +767,40 @@ test('phase 3c — the menu offers the address space once something is typed, an
     'the menu offers the address space but the matcher cannot reach it');
 });
 
-test('phase 3c — the menu SPENDS its budget, instead of one entry per group', () => {
-  // Red since 3a, and nothing said so. 3a fixed a real defect — WORK's fourteen entries were
-  // taking every row and three groups never rendered — by giving each group an EQUAL share.
-  // An equal share is not a shared budget: `floor((limit - headings - note) / groups)` is 1 at
-  // any ordinary height, so the menu showed "WORK 1 of 15" and `/approve` was not on the list
-  // the shell exists for. The tests written for 3a asserted that every group APPEARS and that
-  // the rows FIT; both stayed true through two phases. `CE-020` failed the whole time and is
-  // not part of `npm test`, so nobody read it.
+test('phase 3c — the menu SPENDS its budget: as many entries as the height allows, ranked', () => {
+  // The property the grouped renderer used to prove per-group, now proved for the one flat
+  // list: given a real budget, the menu paints AS MANY commands as fit, never a fixed number
+  // regardless of height, and never more than the height allows.
   const hits = [...AGENT_COMMANDS];
-  const work = AGENT_COMMANDS.filter((entry) => entry.group === 'work').length;
-  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 20, groups: groupMenu, accessFiltered: true, hidden: 0 }, 100);
-  // Stripped first: a painted row carries ANSI, so the `/` is preceded by an escape rather
-  // than by whitespace and a naive pattern counts zero of them.
   const plain = (row) => row.replace(/\u001b\[[0-9;]*m/g, '');
-  const entries = rows.filter((row) => /\s\/[a-z]/.test(plain(row))).length;
-  assert.ok(entries >= 12, `the menu painted ${entries} entries out of a budget of 20 rows`);
-  const workRow = plain(rows.find((row) => row.includes('WORK')));
-  const showing = Number(/ (\d+) of /.exec(workRow)?.[1] ?? work);
-  assert.ok(showing > 1, `WORK shows ${showing} of ${work} — the budget is not being spent`);
-
-  // What a SHORT group cannot use goes to the others rather than sitting unspent. SESSION holds
-  // one entry; an allocator that reserves an equal share for it wastes the difference.
-  const session = AGENT_COMMANDS.filter((entry) => entry.group === 'session').length;
-  assert.equal(session, 1, 'SESSION is no longer the short group this asserts through');
-  assert.ok(showing > Math.floor(20 / MENU_GROUPS.length),
-    `WORK got ${showing}, no more than an equal share would have given it`);
-
-  // 3a's property still holds where it can: every group the budget REACHES is reachable, and
-  // what it cannot reach is declared rather than dropped. Seven groups do not fit under twelve
-  // rows with entries beneath each; the honest answer is the `⋯ N groups above` marker plus the
-  // level-zero list, not a heading over nothing.
   for (const limit of [4, 8, 12, 20]) {
-    const tight = commandMenuRows({ hits, selected: 0, rowLimit: limit, groups: groupMenu }, 100);
-    assert.ok(tight.length <= limit + 1, `rowLimit ${limit} produced ${tight.length} rows`);
-    if (limit >= 20) {
-      for (const group of MENU_GROUPS) {
-        assert.ok(tight.some((row) => row.includes(group.title)), `at ${limit} rows ${group.title} is missing`);
-      }
-    }
+    const rows = commandMenuRows({ hits, selected: 0, rowLimit: limit }, 100);
+    assert.ok(rows.length <= limit, `rowLimit ${limit} produced ${rows.length} rows`);
+    const entries = rows.filter((row) => /\s\/[a-z]/.test(plain(row))).length;
+    assert.ok(entries >= Math.min(limit - 1, hits.length), `${entries} entries painted out of a budget of ${limit}`);
   }
 });
 
-test('CE-036 — a group showing fewer entries than it holds says so', () => {
+test('CE-036 — a windowed list says how many of the total it is showing', () => {
   // Truncating is the fix; truncating SILENTLY is not — a reader who cannot tell there is more
-  // takes what is shown for the whole group. The same rule `detailLines` already follows.
+  // takes what is shown for the whole list.
   const hits = [...AGENT_COMMANDS];
-  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 12, groups: groupMenu }, 100);
-  const work = rows.find((row) => row.includes('WORK'));
-  assert.match(work, new RegExp(` \\d+ of ${AGENT_COMMANDS.filter((e) => e.group === 'work').length}`), `WORK is truncated but does not say so: ${JSON.stringify(work)}`);
-  // A group that fits shows no count — a "4 of 4" would be noise on every row.
-  const session = rows.find((row) => row.includes('SESSION'));
-  assert.ok(!/ \d+ of \d+/.test(session), `SESSION fits entirely but claims to be truncated: ${JSON.stringify(session)}`);
+  const rows = commandMenuRows({ hits, selected: 0, rowLimit: 12 }, 100);
+  assert.ok(rows.some((row) => row.includes(`of ${hits.length}`)),
+    `a list of ${hits.length} windowed to 12 rows does not say so: ${JSON.stringify(rows)}`);
+  // A list that fits entirely shows no such marker — it would be noise on a screen with
+  // nothing to scroll to.
+  const short = commandMenuRows({ hits: hits.slice(0, 3), selected: 0, rowLimit: 12 }, 100);
+  assert.ok(!short.some((row) => row.includes(' of ')), `a list that fits claims to be windowed: ${JSON.stringify(short)}`);
 });
 
-test('CE-036 — the selected entry is painted however far down its group it sits', () => {
+test('CE-036 — the selected entry is painted however far down the list it sits', () => {
   // The window follows the selection. A fixed window would hide the highlight the moment the
-  // arrow keys walked past the share, which is the same defect the prompt box already solves
+  // arrow keys walked past its edge, which is the same defect the prompt box already solves
   // by keeping the caret visible — and it would be invisible in exactly the case it matters.
   const hits = [...AGENT_COMMANDS];
   for (let selected = 0; selected < hits.length; selected += 1) {
-    const rows = commandMenuRows({ hits, selected, rowLimit: 12, groups: groupMenu }, 100);
+    const rows = commandMenuRows({ hits, selected, rowLimit: 12 }, 100);
     const marked = rows.filter((row) => row.includes('▸'));
     assert.equal(marked.length, 1, `selection ${selected} (\`/${hits[selected].name}\`) painted ${marked.length} markers`);
     assert.match(marked[0], new RegExp(`/${hits[selected].name}\\b`),
@@ -952,17 +809,16 @@ test('CE-036 — the selected entry is painted however far down its group it sit
 });
 
 test('CE-033 — the highlight and Tab agree on which entry is selected', () => {
-  // The index each painted row carries is its position in the FLAT hit list, which is what the
-  // arrow keys move through. Rebuilding it per group would put the marker on a different entry
-  // than the one Tab completes, for every group after the first — invisible in the first
-  // group, wrong everywhere else.
+  // The index each painted row carries is its position in the FLAT hit list, which is what
+  // the arrow keys move through and what Tab reads off `hits[selected]` — one list, one
+  // index, never rebuilt per row.
   const hits = [...AGENT_COMMANDS];
-  const applications = hits.findIndex((entry) => entry.group === 'applications');
-  assert.ok(applications > 0, 'no entry after the first group — this assertion would prove nothing');
-  const rows = commandMenuRows({ hits, selected: applications, rowLimit: 99, groups: groupMenu }, 80);
+  const late = hits.findIndex((entry) => entry.group === 'applications');
+  assert.ok(late > 0, 'no entry after the first few — this assertion would prove nothing');
+  const rows = commandMenuRows({ hits, selected: late, rowLimit: 99 }, 80);
   const marked = rows.filter((row) => row.includes('▸'));
   assert.equal(marked.length, 1, 'exactly one row is marked');
-  assert.match(marked[0], new RegExp(`/${hits[applications].name}\\b`));
+  assert.match(marked[0], new RegExp(`/${hits[late].name}\\b`));
 });
 
 // --- the session group ----------------------------------------------------------------------
@@ -1035,57 +891,48 @@ test('matchCommands ranks and filters within the list it is given', () => {
 
 // --- D-0420 · one shaper between menuFrame and the renderer ------------------------------
 //
-// The defect this pins was found in a real browser, not by reading: typing `/` in the embedded
-// terminal drew "nothing to show", on an owner account holding every permission, while the DOM
-// prompt on the same page drew all seven groups from the same registry.
+// The defect this pins was found in a real browser, not by reading: typing `/` in the
+// embedded terminal drew "nothing to show", on an owner account holding every permission,
+// while the DOM prompt on the same page drew a different shape from the same registry. The
+// cause was a two-shape boundary between `menuFrame` and each shell's renderer; `menuFrame`
+// used to return group rows under one key and the renderer read them under another.
 //
-// The cause is a two-shape boundary. `menuFrame` returns the group rows under `groups`;
-// `tui-screen.mjs` reads them from `groupRows`, because it carries the grouping FUNCTION under
-// `groups`. `tui-fullscreen.mjs` did that translation by hand and `coden-terminal.js` spread the
-// frame straight through — so one shell worked and the other rendered an empty menu. Both halves
-// were individually correct, which is exactly why no test saw it.
-//
-// `menuViewModel` is now the only translation, and these assert the property rather than the
-// call: the rows arrive under the name the renderer reads, and the field it uses for the
-// grouping function holds a function.
+// Flattened 2026-08-14: there is no group shape left to lose in translation, but the
+// property this section pins is unchanged — `menuViewModel` is the ONLY translation, used
+// by both shells, and it is asserted on rather than assumed.
 {
   const commands = [...AGENT_COMMANDS];
   const addresses = buildCodenAddressBook(join(ROOT, 'apps/webui-static'));
 
-  test('group rows arrive under groupRows, and groups stays the grouping function', () => {
+  test('menuViewModel carries the hits and the selection, nothing more', () => {
     const frame = menuFrame({ word: '', argument: '' }, { commands, addresses });
-    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
-    assert.equal(model.level, 'groups');
-    assert.ok(Array.isArray(model.groupRows) && model.groupRows.length > 0,
-      'the renderer reads groupRows and would print "nothing to show" for an empty one');
-    assert.equal(typeof model.groups, 'function',
-      'groups must hold the grouping function — an array here is what the renderer would try to call');
+    const model = menuViewModel(frame, { menu: menuFor(null), note: '' });
+    assert.equal(model.level, 'entries');
+    assert.ok(Array.isArray(model.hits) && model.hits.length > 0,
+      'the renderer reads hits and would print "no command matches that" for an empty one');
+    assert.equal(model.selected, 0, 'a fresh frame starts on its first row in both shells');
   });
 
-  test('what the renderer draws from it is the groups, not an empty menu', () => {
+  test('what the renderer draws from it is real commands, not an empty menu', () => {
     const frame = menuFrame({ word: '', argument: '' }, { commands, addresses });
-    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
+    const model = menuViewModel(frame, { menu: menuFor(null), note: '' });
     const rows = commandMenuRows({ ...model, rowLimit: 12 }, 90).join('\n');
-    assert.doesNotMatch(rows, /nothing to show/, 'this is the exact frame the browser drew');
-    for (const title of ['WORK', 'DESTINATIONS', 'TOOLS', 'SESSION']) {
-      assert.match(rows, new RegExp(title), `the ${title} group is missing from the drawn menu`);
-    }
+    assert.doesNotMatch(rows, /nothing to show|no command matches/, 'this is the exact frame the browser drew');
+    assert.match(rows, /\/plan/, 'a command the shell is FOR is missing from the drawn menu');
   });
 
   test('both shells build it through the same call, and neither shapes it by hand', () => {
     // A source guard, because the property above can be satisfied by a helper nobody calls.
     for (const file of ['apps/webui-static/coden-terminal.js', 'tools/tui-fullscreen.mjs']) {
       const source = read(file);
-      assert.match(source, /menuViewModel\(frame, \{ grouping: groupMenu/,
+      assert.match(source, /menuViewModel\(frame, \{ menu/,
         `${file} does not build its menu through the shared shaper`);
-      assert.doesNotMatch(source, /groupRows: frame\.groups/,
-        `${file} still translates the frame by hand — that is the drift this closes`);
     }
   });
 
-  test('an entries-level frame keeps its hits and its selection', () => {
-    const frame = menuFrame({ word: 'd', argument: '' }, { commands, addresses });
-    const model = menuViewModel(frame, { grouping: groupMenu, menu: menuFor(null), note: '' });
+  test('a filtered frame keeps its hits and its selection', () => {
+    const frame = menuFrame({ word: 'diff', argument: '' }, { commands, addresses });
+    const model = menuViewModel(frame, { menu: menuFor(null), note: '' });
     assert.equal(model.level, 'entries');
     assert.ok(Array.isArray(model.hits) && model.hits.length > 0);
     assert.equal(model.selected, 0, 'a fresh frame starts on its first row in both shells');

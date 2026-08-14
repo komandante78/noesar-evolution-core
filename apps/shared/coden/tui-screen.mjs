@@ -220,61 +220,20 @@ export function promptRows(prompt, width) {
   ];
 }
 
-/** The one menu of the product, under the prompt — `16` §4b.4. Four groups (work,
- *  applications, configure, session) with a dim heading each, because a flat list of
- *  twenty-nine entries is a list nobody reads. Selection carries a glyph as well as colour
- *  (§6: colour is never the only signal).
- *
- *  `menu.groups` is the grouping function the shell passes through from the shared registry;
- *  without it the rows are flat. The heading rows count against `rowLimit` like any other, so
- *  the menu cannot grow past the height the caller allowed it — a menu that overruns pushes
- *  the prompt off the bottom of the terminal, which is the one row that must never move.
+/** The one menu of the product, under the prompt — flattened `2026-08-14` on direct Owner
+ *  instruction. It used to divide its row budget across group headings (work, applications,
+ *  configure, session…), which meant learning or remembering which group held a command
+ *  before finding it — a menu under a menu. `menu.hits` already arrives ranked
+ *  (`matchCommands`: name starts with, then contains, then summary contains), so this just
+ *  paints it — one row per command, windowed to the box height, the SAME shape whether the
+ *  list is the unfiltered bare `/` or three keystrokes into a filter. Selection carries a
+ *  glyph as well as colour (§6: colour is never the only signal).
  *
  *  When the list was filtered by permission it SAYS so on a final row (`CE-036`): a shorter
  *  menu that does not explain why it is shorter is indistinguishable from a broken one. */
 export function commandMenuRows(menu, width) {
-  const rows = [];
   const hits = menu.hits ?? [];
   const limit = Math.max(1, menu.rowLimit ?? 8);
-
-  // LEVEL ZERO — the product as groups you can enter. Point 3 of the owner's list.
-  //
-  // This branch is why the budget arithmetic below stopped being the load-bearing part of the
-  // menu: a bare `/` is now one row per group, which fits at any terminal height that can hold
-  // a prompt at all, and the sharing only has to work for ONE group at a time. The rows the
-  // arrow keys move through are the groups, so `menu.selected` indexes `menu.groups` here and
-  // `menu.hits` below — same variable, and the shell derives both lists from `menuFrame`, so
-  // they cannot disagree about which list is on screen.
-  // `groupRows`, not `groups`: the branch below already uses `menu.groups` for the grouping
-  // FUNCTION the shell passes through, and one field holding a function in one state and an
-  // array in another is how a renderer starts calling an array.
-  if (menu.level === 'groups') {
-    const groups = menu.groupRows ?? [];
-    if (!groups.length) return [`  ${C.dim}nothing to show${C.reset}`];
-    const noteRow = menu.note ? 1 : 0;
-    for (const [index, group] of groups.entries()) {
-      if (rows.length >= Math.max(1, limit - noteRow)) break;
-      const selected = index === menu.selected;
-      const marker = selected ? `${C.accent}▸${C.reset}` : ' ';
-      const left = `${marker} ${selected ? C.accent : C.reset}${group.key}${C.reset}  ${group.title}`;
-      const count = `${group.count} ${group.count === 1 ? 'entry' : 'entries'}`;
-      // The hint is dropped before the count is, and the count before the title: at a narrow
-      // width the row must still say WHICH group it is and what key opens it, because those
-      // two are the only parts you cannot work out from anything else on the screen.
-      const tail = group.hint ? `${count}   ${group.hint}` : count;
-      const gap = width - visibleWidth(left) - visibleWidth(tail) - 3;
-      rows.push(gap > 1
-        ? `  ${left}${' '.repeat(gap)}${C.dim}${tail}${C.reset}`
-        : `  ${left}   ${C.dim}${count}${C.reset}`);
-    }
-    if (menu.note && rows.length < limit) rows.push(`  ${C.dim}${menu.note}${C.reset}`);
-    // The key legend comes from `promptKeys` in the shared model, not from a string typed here.
-    // The browser renders the SAME list into the hint line under its prompt; a legend that
-    // promises `⏎ enter` in one shell and means something else in the other is worse than none.
-    if (menu.keys?.length) rows.push(`  ${C.dim}${menu.keys.join('   ')}${C.reset}`);
-    return rows.slice(0, Math.max(1, limit));
-  }
-
   if (!hits.length) return [`  ${C.dim}no command matches that${C.reset}`];
 
   const paint = (command, index) => {
@@ -289,129 +248,36 @@ export function commandMenuRows(menu, width) {
       : `  ${left}`;
   };
 
-  // The index a row carries is its position in the FLAT hit list, which is what the arrow
-  // keys move through. Rebuilding it per group would make the highlight land on a different
-  // entry than the one Tab completes, for every group after the first.
-  if (typeof menu.groups === 'function') {
-    const groups = menu.groups(hits);
-    // Reserved against the row that is actually going to be printed. This read
-    // `menu.accessFiltered` while the note itself now comes from `menu.note`, so a caller that
-    // filtered and supplied no note reserved a row nothing used — a row lost from the menu for
-    // a sentence that was never printed.
-    const noteRow = menu.note ? 1 : 0;
+  const noteRow = menu.note ? 1 : 0;
+  // A window row is reserved whenever the list does not fit, unconditionally — never only when
+  // the selection has actually scrolled past the edge. A conditional reservation needs the
+  // two-pass trick the grouped renderer this replaces used (compute the window, discover a
+  // marker is needed, recompute one row smaller); reserving up front costs one row on a list
+  // that scrolls at all, in exchange for never needing that second pass.
+  const windowed = hits.length > Math.max(1, limit - noteRow);
+  const markerRow = windowed ? 1 : 0;
+  const room = Math.max(1, limit - noteRow - markerRow);
+  const selected = Math.min(Math.max(0, menu.selected ?? 0), hits.length - 1);
+  // The window follows the selection — never truncates it off-screen, the same property the
+  // grouped renderer proved out per-group (`CE-020`) and this now gives the whole list at once.
+  const start = windowed
+    ? Math.min(Math.max(0, selected - room + 1), Math.max(0, hits.length - room))
+    : 0;
+  const shown = hits.slice(start, start + room);
 
-    // THE BUDGET IS SHARED ACROSS THE GROUPS, not spent first-come.
-    //
-    // Found by driving the shell, not by reading it. On a 30-row terminal the budget is ten
-    // rows, and filling them in order meant WORK's fourteen entries took every one:
-    // APPLICATIONS, CONFIGURE and SESSION never rendered at all. `16` §4b.4 calls this "una
-    // casella, tutto il prodotto" — a menu where three quarters of the product is invisible
-    // unless you already know what to type is not that. Every group gets a share now, and a
-    // group showing fewer than it holds SAYS so in its own heading instead of just stopping.
-    // …but an EQUAL share is not a shared budget, and that is the defect phase 3c found.
-    //
-    // `floor((limit - headings - note) / groups)` is 1 at any ordinary terminal height: twelve
-    // rows, four groups and a note leave seven for entries, and a quarter of seven is one. So
-    // the menu showed exactly one entry per group — "WORK 1 of 15" — and `/approve`, the third
-    // thing this shell is FOR, was not on it. 3a's own fix, over-corrected: it made every group
-    // reachable and left the menu useless, and the tests written for it asserted only that each
-    // group APPEARS and that the rows fit. Both stayed true. `CE-020` failed from 3a onward and
-    // nobody saw it, because it is not part of `npm test`.
-    //
-    // Two passes. One entry each first, so every group is still reachable — that property is
-    // 3a's and it stands. Then the rest round-robin, which returns what a short group cannot
-    // use (SESSION holds one entry; CONFIGURE three) to the groups that can, instead of
-    // leaving those rows unspent beside a WORK group showing one of fifteen.
-    const budget = Math.max(groups.length, limit - noteRow);
-    const want = groups.map((group) => group.entries.length);
-    const shares = groups.map(() => 0);
-    let free = budget - groups.length; // one heading row per group, always
-    for (let index = 0; index < groups.length && free > 0; index += 1) {
-      if (want[index] > 0) { shares[index] = 1; free -= 1; }
-    }
-    for (let spent = true; free > 0 && spent;) {
-      spent = false;
-      for (let index = 0; index < groups.length && free > 0; index += 1) {
-        if (shares[index] < want[index]) { shares[index] += 1; free -= 1; spent = true; }
-      }
-    }
-
-    // …AND THE WINDOW FOLLOWS THE SELECTION ACROSS GROUPS, not only inside one.
-    //
-    // Found by the group count going from four to seven (point 2b gave TOOLS, MODULES and
-    // APPROVALS keys of their own). With four groups the budget always reached the last one, so
-    // "the selection is always painted" held by arithmetic rather than by construction. With
-    // seven it stopped holding: at twelve rows the loop below spent the budget on the first
-    // five and broke, and an arrow key that had walked into APPROVALS moved a highlight onto a
-    // row that was never drawn. Same defect the entry-level window inside each group already
-    // solves — one level up, and it had simply never been reachable before.
-    const selectedGroup = groups.findIndex((group) =>
-      group.entries.some((command) => hits.indexOf(command) === menu.selected));
-    const cost = (index) => 1 + Math.max(1, shares[index]);
-    const windowFrom = (room) => {
-      if (selectedGroup <= 0) return 0;
-      let start = 0;
-      let used = 0;
-      for (let index = 0; index <= selectedGroup; index += 1) used += cost(index);
-      while (used > room && start < selectedGroup) { used -= cost(start); start += 1; }
-      return start;
-    };
-    // Computed twice on purpose. The `⋯ N groups above` marker below is itself a row, so a
-    // window sized against the full budget scrolls just far enough to need a marker and then
-    // has no room to draw the selected entry under it — measured: `/logout`, the last entry of
-    // the last group, moved the highlight onto a row that got cut. The second pass pays for the
-    // marker before deciding how far to scroll.
-    let from = windowFrom(budget);
-    if (from > 0) from = windowFrom(budget - 1);
-
-    // Scrolled-past groups are DECLARED, never silently dropped — the same rule the headings
-    // already follow with "WORK  5 of 15". A menu that is shorter than the product and does not
-    // say why is indistinguishable from a broken one.
-    if (from > 0) rows.push(`  ${C.dim}⋯ ${from} ${from === 1 ? 'group' : 'groups'} above${C.reset}`);
-
-    // Stops at `limit - noteRow`, not at `limit` — the reserved row has to survive to be used.
-    //
-    // The reservation was subtracted from `budget` and then ignored here, so the entry rows ran
-    // to the full height and the note had nowhere left to go. It never showed with four groups
-    // because the allocator's `free` was large enough that no group fell back on the
-    // `Math.max(1, …)` floor below; with seven it does, seven headings plus seven forced entries
-    // overran the budget by two, and the sentence saying WHY the menu is short was the thing
-    // that got dropped. Exactly the row you cannot afford to lose.
-    const room = Math.max(1, limit - noteRow);
-    for (const [position, group] of groups.entries()) {
-      if (position < from) continue;
-      if (rows.length >= room) break;
-      const share = Math.max(1, shares[position]);
-      // The window follows the selection. Truncating from the top always would hide the
-      // highlighted entry as soon as the arrow keys walked past the share — the same defect
-      // the prompt box already solves by keeping the caret in view.
-      const chosen = group.entries.findIndex((command) => hits.indexOf(command) === menu.selected);
-      const start = chosen >= share ? Math.min(chosen - share + 1, group.entries.length - share) : 0;
-      const shown = group.entries.slice(start, start + share);
-      rows.push(`  ${C.dim}${shown.length < group.entries.length
-        ? `${group.title}  ${shown.length} of ${group.entries.length}`
-        : group.title}${C.reset}`);
-      for (const command of shown) {
-        if (rows.length >= room) break;
-        rows.push(paint(command, hits.indexOf(command)));
-      }
-    }
-  } else {
-    hits.slice(0, limit).forEach((command, index) => rows.push(paint(command, index)));
-  }
+  const rows = shown.map((command, index) => paint(command, start + index));
+  // Declared, never silently dropped — the same rule the row budget always followed with
+  // "WORK  5 of 15". A menu shorter than the full match list and not saying why is
+  // indistinguishable from a broken one.
+  if (windowed) rows.push(`  ${C.dim}${start + 1}-${start + shown.length} of ${hits.length}  ↑↓ scroll${C.reset}`);
 
   // The note's WORDS come from `hiddenNote` in the shared registry, not from here.
-  //
-  // Two things were wrong with building the sentence in this file. It was a second wording of
-  // the browser's, off the same two fields — and the gate was `accessFiltered`, so the case
-  // where the shell was never told who is asking printed NOTHING in the terminal while the
-  // browser printed "Not filtered — this shell does not know what this account may use". A
-  // shell that silently omits the disclaimer the other shell shows is the divergence rule 3 of
-  // the skill is about, and it had been there since 3a.
-  if (menu.note && rows.length < limit) {
-    rows.push(`  ${C.dim}${menu.note}${C.reset}`);
-  }
-  return rows;
+  if (menu.note && rows.length < limit) rows.push(`  ${C.dim}${menu.note}${C.reset}`);
+  // A hard cap, not just an expectation of the arithmetic above: `room`'s own `Math.max(1, …)`
+  // floor guarantees at least one content row even when there is truly no space for one, which
+  // at `limit === 1` plus a scroll marker is two rows against a budget of one. The prompt is
+  // the row that must never move, so the cap is enforced here rather than trusted upstream.
+  return rows.slice(0, limit);
 }
 
 /** One dim line, the way an agent shell carries its state — not twelve labelled fields in a

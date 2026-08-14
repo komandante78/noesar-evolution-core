@@ -44,78 +44,32 @@
 // left; it does not become a fourth.
 
 /** The groups, in display order. The heading text lives here so neither shell writes its own
- *  — the same reason the entries do.
+ *  — the same reason the entries do. `id`/`title` still organise `/help`'s printed command
+ *  list and the language catalogues; there is no navigable group LEVEL any more.
  *
- * # Points 2 and 3 of the owner's list — the key is what you TYPE, and it IS the mechanism
+ * # Flattened 2026-08-14, on direct Owner instruction
  *
- * `/` was a flat list of thirty entries under four headings, and both shells had already
- * MEASURED what a flat list costs without either of them calling it a defect:
- *
- *  - `commandMenuRows` divides an eight-row budget across the groups and prints
- *    `WORK  5 of 15`, because the list does not fit at a terminal height;
- *  - `menuEntriesFor` deliberately keeps the fifty-three addresses OUT of the bare `/`,
- *    because folding them in took APPLICATIONS from eleven entries to sixty-four and pushed
- *    `/approve` off the menu entirely (`CE-020` caught that one).
- *
- * Both are the same fact — a flat menu does not scale — and both were *declared* rather than
- * repaired. So `/` gains exactly one level: a bare `/` lists the GROUPS, a single letter opens
- * one, and a letter followed by text filters inside it (`/t mcp`). Two speeds, one mechanism:
- * whoever does not know browses, whoever knows types and skips the level.
- *
- * The key is not a shortcut sitting beside the list. It is the group's address, the same way
- * `coden/bench/diff` is a panel's — which is why the same `/` reaches both and why neither
- * shell needs a second gesture.
- *
- * **The cost, stated rather than hidden:** a key is one character and every command name is
- * longer than one, so a key can never shadow a command — but `/w` opens WORK instead of
- * filtering for `workflows`. Typing a second letter filters as it always did. That the keys
- * are unique, single, and shorter than every command name is asserted rather than assumed
- * (`menu-group-keys`), because this file is exactly where a hand-kept list drifts.
+ * `/` used to be two levels: a bare `/` listed these groups, a single letter (`key`) entered
+ * one, and a letter followed by text filtered inside it. Measured complaint: that read as a
+ * menu under a menu, and finding a command meant first knowing — or guessing — which of seven
+ * groups held it. `matchCommands` already ranks hits (name starts with, then contains, then
+ * summary contains), so the ranked list a person wants is already on top; `/` now shows it
+ * directly, windowed to the box height, the same shape a Claude Code `/` palette uses. See
+ * `menuFrame`/`commandMenuRows` for the mechanism this replaced.
  */
 export const MENU_GROUPS = Object.freeze([
-  { id: 'work', key: 'w', title: 'WORK' },
-  // Renamed from APPLICATIONS with the key. `a` belongs to APPROVALS and a group whose key is
-  // `d` cannot go on calling itself APPLICATIONS; the group's own criterion in `16` §4b.4 has
-  // always been "le destinazioni del prodotto — è un posto dove si va", so the heading now says
-  // what the criterion says. The `id` is untouched: entries carry it, and renaming a heading is
-  // not a reason to rewrite thirty `group:` fields.
-  { id: 'applications', key: 'd', title: 'DESTINATIONS' },
-  // POINT 2b — the stack that used to be scrolled to at the bottom of the CodeN page. The
-  // owner named it item by item (Strumenti · Strumenti installati · Installable catalogues ·
-  // LOCAL ONLY VERIFIED · Approvals) and the approved mockup gives those items keys of their
-  // own rather than a heading on a page. They are groups instead of three more rows in
-  // DESTINATIONS for the reason the whole point exists: sixty-four destinations under one
-  // heading is the flat list again, one level down.
-  //
-  // A group holding one entry is not a defect and is not padded to look fuller — the row says
-  // `1 entry` and means it. What would be a defect is a NAMED place in the owner's model with
-  // nowhere to go, which is what these three were.
-  { id: 'tools', key: 't', title: 'TOOLS' },
-  { id: 'modules', key: 'm', title: 'MODULES' },
-  { id: 'approvals', key: 'a', title: 'APPROVALS' },
-  { id: 'configure', key: 'c', title: 'CONFIGURE' },
-  { id: 'session', key: 's', title: 'SESSION' },
+  { id: 'work', title: 'WORK' },
+  { id: 'applications', title: 'DESTINATIONS' },
+  { id: 'tools', title: 'TOOLS' },
+  { id: 'modules', title: 'MODULES' },
+  { id: 'approvals', title: 'APPROVALS' },
+  { id: 'configure', title: 'CONFIGURE' },
+  { id: 'session', title: 'SESSION' },
 ]);
 
-/**
- * The group a typed word opens, or `null` — an EXACT single-character key, nothing else.
- *
- * Deliberately not a prefix match: `/mo` must go on filtering for `models`/`modules`/`memory`
- * the way it always has, and a lookup that accepted prefixes would turn every second keystroke
- * into a level change. One character means one thing, and the guard above proves no command
- * name is one character long, so this can never intercept a command.
- */
-export function groupFor(word) {
-  const wanted = String(word ?? '').trim().toLowerCase();
-  if (!wanted) return null;
-  // Exact, not a prefix, and that is the whole rule. A length check used to stand here as well
-  // and it was DEAD: an equality against a one-character key already rejects every longer word,
-  // so no input could reach it and no mutation could kill it. A guard that cannot fail is a
-  // guard nobody can trust — the invariant it was defending (every key is one character, every
-  // command name is longer) is asserted where it can actually be measured, in
-  // `menu-group-keys`.
-  return MENU_GROUPS.find((group) => group.key === wanted) ?? null;
-}
+/* `groupFor` (a single-character key opening a group) was removed with the group navigation
+ * level it served — nothing resolves a typed word to a group any more, only `matchCommands`
+ * ranking it among the flat hits. */
 
 /**
  * What a page needs before it is worth offering at all — moved here from `app.js` in phase 3a.

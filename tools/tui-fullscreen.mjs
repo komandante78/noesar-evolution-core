@@ -115,10 +115,9 @@ export async function runFullScreen({
     const parsed = parseCommandPrompt(view.prompt);
     if (!parsed) { view.menu = null; return draw(); }
     const frame = menuFrame(parsed, { commands: menu.entries, addresses: addressBook });
-    // One shaper, both shells (D-0420). This translation used to live here, by hand, and the
-    // browser shell did not have it — which is why a typed / drew nothing there and everything
-    // here. Same call now, so the two cannot drift apart again without the shared test failing.
-    view.menu = menuViewModel(frame, { grouping: groupMenu, menu, note: hiddenNote(menu) });
+    // One shaper, both shells (D-0420) — a shape fixed here cannot silently diverge from the
+    // browser shell's own translation.
+    view.menu = menuViewModel(frame, { menu, note: hiddenNote(menu) });
     return draw();
   };
 
@@ -300,25 +299,11 @@ export async function runFullScreen({
       if (key?.ctrl && (name === 'c' || name === 'd')) return finish();
 
       if (view.menu) {
-        // What the arrows walk through is whichever list is ON SCREEN — the groups at level
-        // zero, the entries below it. Read off `view.menu.level` rather than from "whichever
-        // array is non-empty": the second form works until a level has both, and then it moves
-        // a highlight the eye cannot see.
-        const walking = view.menu.level === 'groups' ? (view.menu.groupRows ?? []) : view.menu.hits;
         if (name === 'escape') { view.menu = null; return draw(); }
         if (name === 'up' || name === 'down') {
-          const count = Math.max(1, walking.length);
+          const count = Math.max(1, view.menu.hits.length);
           view.menu.selected = (view.menu.selected + (name === 'down' ? 1 : -1) + count) % count;
           return draw();
-        }
-        // ENTERING A GROUP is `⏎` at level zero — the approved mockup's own key ("⏎ entra") —
-        // and it is a completion, not a command: the prompt becomes `/t ` and nothing runs.
-        // Scoped to level zero deliberately. Below it `⏎` still SUBMITS, because that is what it
-        // has always done at a prompt with a word in it and a key that means two things
-        // depending on how deep you are is a key you have to think about.
-        if (view.menu.level === 'groups' && (name === 'return' || name === 'tab')) {
-          const chosen = walking[view.menu.selected];
-          if (chosen) { view.prompt = `/${chosen.key} `; return refilter(); }
         }
         // Tab completes the highlighted command into the prompt without running it — choosing
         // and committing stay two acts, so a keystroke never becomes an action nobody picked.

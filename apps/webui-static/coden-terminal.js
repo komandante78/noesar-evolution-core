@@ -301,11 +301,9 @@ export function mountCodenTerminal({
     if (!prompt.startsWith('/')) { view.menu = null; return; }
     const menu = offeredMenu();
     const frame = menuFrame(parseCommandPrompt(prompt), { commands: menu.entries, addresses: addressBook });
-    // `menuViewModel`, not a spread (`D-0420`). `{ ...frame }` left `groupRows` unset and put the
-    // row array under `groups`, where the renderer expects the grouping FUNCTION — so a typed
-    // `/` drew "nothing to show" in this shell while the terminal shell, which did the same
-    // translation by hand, drew all seven groups. One shaper now, shared by both.
-    view.menu = menuViewModel(frame, { grouping: groupMenu, menu, note: hiddenNote(menu) });
+    // `menuViewModel`, not a spread (`D-0420`) — one shaper, shared by both shells, so a shape
+    // fixed here cannot silently diverge from the terminal shell's own translation.
+    view.menu = menuViewModel(frame, { menu, note: hiddenNote(menu) });
   }
 
   terminal.onData((data) => {
@@ -327,8 +325,7 @@ export function mountCodenTerminal({
     // these three intents: `refreshMenu()` reconstructs the frame from scratch and would reset
     // the highlight to its default every press, which is exactly the bug this would reintroduce.
     else if (['up', 'down'].includes(intent.kind) && view.menu) {
-      const walking = view.menu.level === 'groups' ? (view.menu.groupRows ?? []) : (view.menu.hits ?? []);
-      const count = Math.max(1, walking.length);
+      const count = Math.max(1, (view.menu.hits ?? []).length);
       view.menu.selected = (view.menu.selected + (intent.kind === 'down' ? 1 : -1) + count) % count;
       draw();
       return;
@@ -337,21 +334,12 @@ export function mountCodenTerminal({
     // within the prompt text, only appending and killing it. Declared rather than silently
     // dropped, so a decoder that starts emitting them for a new reason cannot rot unnoticed.
     else if (intent.kind === 'left' || intent.kind === 'right') { /* no-op, by design */ }
-    // ENTERING A GROUP is `⏎` at level zero, same as `ssh` — a completion, never a command: the
-    // prompt becomes `/key ` and nothing runs. Scoped to level zero deliberately; below it `⏎`
-    // still submits, which is why this branch returns early only when it actually completed.
-    else if (intent.kind === 'submit' && view.menu?.level === 'groups') {
-      const chosen = (view.menu.groupRows ?? [])[view.menu.selected];
-      if (chosen) { view.prompt = `/${chosen.key} `; refreshMenu(); draw(); return; }
-    }
     // Tab completes the highlighted entry into the prompt WITHOUT sending — choosing and
     // committing stay two acts, the same rule the terminal shell's click-to-complete follows.
     else if (intent.kind === 'tab' && view.menu) {
-      const chosen = view.menu.level === 'groups'
-        ? (view.menu.groupRows ?? [])[view.menu.selected]
-        : (view.menu.hits ?? [])[view.menu.selected];
+      const chosen = (view.menu.hits ?? [])[view.menu.selected];
       if (chosen) {
-        view.prompt = view.menu.level === 'groups' ? `/${chosen.key} ` : `/${chosen.name}${chosen.argument ? ' ' : ''}`;
+        view.prompt = `/${chosen.name}${chosen.argument ? ' ' : ''}`;
         refreshMenu();
         draw();
       }

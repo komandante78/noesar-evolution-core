@@ -1413,42 +1413,21 @@ function renderCodenMenu(){
   // observer off the result: it is already translated, and a second lookup of the whole
   // composed sentence would be recorded as a coverage gap nothing could ever close.
   const note=`<p class="agent-menu-note" translate="no">${escapeHtml(hiddenNote(menu,t))}</p>`;
-  // LEVEL ZERO — the product as groups you can enter. Point 3 of the owner's list, and the
-  // "una porta sola" property: this is `/` rendered, not a second navigation widget beside it,
-  // which is what `D-0299` spent a phase removing three of.
-  if(frame.level==='groups'){
-    const rows=frame.groups;
-    if(codenMenuIndex>=rows.length)codenMenuIndex=0;
-    box.innerHTML=rows.map((row,index)=>
-      `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="agent-menu-group-row${index===codenMenuIndex?' active':''}" data-coden-group="${escapeHtml(row.key)}"><b>${escapeHtml(row.key)}</b><span>${escapeHtml(row.title)}</span><small>${row.count} ${row.count===1?'entry':'entries'}${row.hint?` · ${escapeHtml(row.hint)}`:''}</small></button>`).join('')
-      +note;
-    box.querySelectorAll('[data-coden-group]').forEach((button)=>
-      button.addEventListener('click',()=>enterCodenGroup(button.dataset.codenGroup)));
-    return;
-  }
+  // Flattened 2026-08-14 on direct Owner instruction: one ranked list, no group you have to
+  // enter first — the same shape `commandMenuRows` now paints in the terminal. Unlike the
+  // terminal this is a real scrollable element, so there is no window to compute: every hit
+  // is in the DOM and the browser scrolls it, the same way any other list on this page does.
   const hits=frame.hits;
   if(codenMenuIndex>=hits.length)codenMenuIndex=0;
   if(!hits.length){box.innerHTML=`<p class="agent-menu-note">No entry matches that.</p>${note}`;return;}
-  // Grouped by the SAME `groupMenu` the terminal renders with, so the two menus cannot end up
-  // in different orders or under different headings — `CE-036` says same entries, same names,
-  // same order. Inside an open group there is exactly one heading, which is the breadcrumb: it
-  // says where you are without a second widget to say it.
-  box.innerHTML=groupMenu(hits).map((group)=>
-    `<p class="agent-menu-group">${escapeHtml(group.title)}</p>${group.entries.map((entry)=>{
-      const index=hits.indexOf(entry);
-      // `translate="no"` for the same reason as the chat menu, and with one more case: half of
-      // these entries are ADDRESSES (`coden/bench/diff`), and an address translated word by word
-      // is an address that resolves to nothing.
-      return `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b translate="no">/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`;
-    }).join('')}`).join('')+note;
+  box.innerHTML=hits.map((entry,index)=>
+    // `translate="no"` for the same reason as the chat menu, and with one more case: half of
+    // these entries are ADDRESSES (`coden/bench/diff`), and an address translated word by word
+    // is an address that resolves to nothing.
+    `<button type="button" role="option" aria-selected="${index===codenMenuIndex}" class="${index===codenMenuIndex?'active':''}" data-coden-command="${escapeHtml(entry.name)}"><b translate="no">/${escapeHtml(entry.name)}</b><span>${escapeHtml(entry.summary)}</span><small>${escapeHtml(entry.argument??'')}</small></button>`
+  ).join('')+note;
   box.querySelectorAll('[data-coden-command]').forEach((button)=>
     button.addEventListener('click',()=>completeCodenCommand(button.dataset.codenCommand)));
-}
-// Entering a group is a COMPLETION, never a command: the prompt becomes `/t ` and nothing runs.
-// Same act as Tab on an entry, same reason — choosing and committing stay two gestures.
-function enterCodenGroup(key){
-  const box=$('#codenPrompt');if(!box)return;
-  box.value=`/${key} `;box.focus();codenMenuIndex=0;renderCodenMenu();
 }
 function completeCodenCommand(name){
   const entry=codenOffered().find((candidate)=>candidate.name===name);
@@ -1531,22 +1510,14 @@ function wireCodenShell(){
   box.addEventListener('keydown',(event)=>{
     const parsed=parseCommandPrompt(box.value);
     const frame=parsed?codenFrame(parsed):null;
-    // Whichever list is ON SCREEN, read off the level — not "whichever array is non-empty",
-    // which works until a level has both and then moves a highlight nobody can see.
-    const groups=frame?.level==='groups';
-    const walking=frame?(groups?frame.groups:frame.hits):[];
-    if(walking.length){
+    const hits=frame?.hits??[];
+    if(hits.length){
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
-        codenMenuIndex=(codenMenuIndex+(event.key==='ArrowDown'?1:-1)+walking.length)%walking.length;
+        codenMenuIndex=(codenMenuIndex+(event.key==='ArrowDown'?1:-1)+hits.length)%hits.length;
         return renderCodenMenu();
       }
-      // `⏎ entra` — the approved mockup's own key, and only at level zero. Below it Enter goes
-      // on submitting, because that is what it has always done at a prompt with a word in it.
-      if(groups&&(event.key==='Enter'||event.key==='Tab')&&!event.shiftKey){
-        event.preventDefault();return enterCodenGroup(walking[codenMenuIndex].key);
-      }
-      if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(walking[codenMenuIndex].name);}
+      if(event.key==='Tab'){event.preventDefault();return completeCodenCommand(hits[codenMenuIndex].name);}
       if(event.key==='Escape'){event.preventDefault();$('#codenMenu')?.classList.add('hidden');return undefined;}
     }
     if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void submitCodenPrompt();}

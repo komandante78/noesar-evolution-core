@@ -35,7 +35,7 @@
 // test must drive with a made-up command list; a menu that assembled its own groups per shell
 // would be the hand-built object `accountFromUser` exists to have stopped (`M-11`: one shell
 // passed `null` and its menu went unfiltered with nothing failing).
-import { MENU_GROUPS, groupFor, matchCommands } from '../shared/coden/agent-commands.js';
+import { matchCommands } from '../shared/coden/agent-commands.js';
 
 /** How each command turns into an engine call. The method names come from the shared registry
  *  (`agent-commands.js`); this decides only what to send with them. */
@@ -376,65 +376,27 @@ export function menuEntriesFor(word, commands, addresses) {
 }
 
 /**
- * The GROUP rows of a bare `/` — one per group that holds something, with its count and a
- * hint made of what is actually inside it.
+ * What the menu shows for what has been typed — ONE function, both shells, ONE flat ranked
+ * list. Owner instruction, 2026-08-14: the earlier two-level design (`/` for groups, a group
+ * key to enter one) read as a menu under a menu — a reader had to learn or remember which of
+ * seven groups held a command before finding it, which is exactly the friction a `/` palette
+ * exists to remove. `matchCommands` already ranks (name-starts-with, then name-contains, then
+ * summary-contains), so the list a person actually wants is already at the top; the renderer
+ * just has to show it without making them pick a category first.
  *
- * The hint is derived, never written down. A hand-written "diff · piano · sessioni" beside a
- * group whose entries change is a second copy of the group's contents, and this repository has
- * paid for that shape twice already (`PANEL_NAMES` at fourteen against a markup of twenty-five;
- * `DECLARED_EMPTY_PANELS` as a second derivation of a list it already had). Three names is what
- * fits beside a count at a terminal width, and being wrong is impossible because they are the
- * first three.
+ *   `/`         → { level: 'entries' }   every command, ranked, windowed to the box height
+ *   `/appr`     → { level: 'entries' }   the same list, filtered
  *
- * A group with nothing in it does not get a row — the same rule `groupMenu` already applies to
- * headings, and for the same reason: a heading over nothing is a door with no room behind it.
- */
-export function menuGroupRows(entries) {
-  return MENU_GROUPS
-    .map((group) => {
-      const own = (entries ?? []).filter((entry) => entry.group === group.id);
-      return { ...group, count: own.length, hint: own.slice(0, 3).map((entry) => entry.name).join(' · ') };
-    })
-    .filter((row) => row.count > 0);
-}
-
-/**
- * What the menu shows for what has been typed — ONE function, both shells, three levels deep
- * at most. This is the whole of point 3 of the owner's list; the shells only paint it.
+ * # Why the addresses still wait for a keystroke
  *
- *   `/`         → { level: 'groups' }   the product, as groups you can enter
- *   `/t`        → { level: 'entries', group }   that group, with the WHOLE row budget
- *   `/t mcp`    → { level: 'entries', group }   filtered inside it
- *   `/appr`     → { level: 'entries', group: null }   the flat filter, exactly as before
- *
- * # Why the addresses come back
- *
- * `menuEntriesFor` keeps the fifty-three addresses out of a bare `/` because a flat menu could
- * not hold them — measured, and `CE-020` failed for a phase over it. That constraint is gone at
- * the group level: the bare `/` now paints one row per group, so the addresses cost the menu
- * one number on the DESTINATIONS row instead of fifty-three rows, and opening that group gives
- * them the entire budget. The exclusion stays exactly where it still applies — the flat filter
- * branch below is unchanged and still calls `menuEntriesFor`.
- *
- * The group's count therefore includes the addresses, which is the honest number: the row says
- * how many places that group holds, not how many of them a renderer felt like listing.
+ * `menuEntriesFor` keeps the fifty-three addresses out of a bare `/` — measured, `CE-020`
+ * failed for a phase when they were in it unconditionally. That constraint survives the
+ * flattening unchanged: a bare `/` shows the ~30 commands (still windowed, never all at once
+ * unless they fit), and the address book joins in the moment a query narrows the list, which
+ * is also the moment there is room to show it.
  */
 export function menuFrame(parsed, { commands = [], addresses = [] } = {}) {
   const word = String(parsed?.word ?? '');
-  const argument = String(parsed?.argument ?? '');
-  const group = groupFor(word);
-
-  if (group) {
-    // Scoped to the group, and the ARGUMENT is the filter — which is why `/t mcp` works
-    // without a second parser: `parseCommandPrompt` already splits a command word from its
-    // argument, and a group key occupies the word.
-    const scoped = [...commands, ...addressEntries(addresses)].filter((entry) => entry.group === group.id);
-    return { level: 'entries', group, hits: matchCommands(argument, scoped) };
-  }
-
-  if (!word.trim() && !argument.trim()) {
-    return { level: 'groups', group: null, hits: [], groups: menuGroupRows([...commands, ...addressEntries(addresses)]) };
-  }
 
   return { level: 'entries', group: null, hits: matchCommands(word, menuEntriesFor(word, commands, addresses)) };
 }
@@ -442,35 +404,18 @@ export function menuFrame(parsed, { commands = [], addresses = [] } = {}) {
 /**
  * The menu as the RENDERER wants it — one shaper, both shells (`D-0420`).
  *
- * `menuFrame` answers what the menu *is*: a level, a group, the hits, and — at group level —
- * the rows, under the key `groups`. `tui-screen.mjs` renders from a different shape: it reads
- * the rows from `groupRows`, because it also carries the grouping FUNCTION under `groups`, and
- * one field holding a function in one state and an array in another is how a renderer ends up
- * calling an array. Two shapes, one boundary, and until this function existed each shell did
- * the translation itself.
- *
- * The terminal shell did it (`tui-fullscreen.mjs`). The browser shell spread the frame straight
- * into the view — `{ ...frame }` — so `groupRows` was never set and `groups` held the row array
- * where the renderer expected a function. Measured in a real browser: typing `/` in the embedded
- * terminal drew **"nothing to show"**, on an account holding every permission, while the DOM
- * prompt three centimetres away drew all seven groups from the same registry. Exactly the
- * divergence `CE-033` forbids ("le due shell non divergono in nessun punto"), and no unit test
- * could see it because both halves were correct on their own.
- *
- * So the translation lives HERE, is used by both, and is tested for the shape rather than for
- * the pixels. A third shell gets it right by construction.
+ * Flattened 2026-08-14 alongside `menuFrame`: there is no group level left to translate
+ * between shapes, so this is now a plain pass-through of `hits` plus the bookkeeping
+ * (`selected`, the access-filtered note, the key legend) neither shell should compute twice.
+ * Kept as its own function rather than inlined at each call site for the same reason it always
+ * was one: a third shell gets the shape right by construction instead of by copying it.
  */
-export function menuViewModel(frame, { grouping, menu = null, note = '', keys = null, selected = 0 } = {}) {
+export function menuViewModel(frame, { menu = null, note = '', keys = null, selected = 0 } = {}) {
   if (!frame) return null;
   return {
     level: frame.level,
-    group: frame.group,
-    // The rows, under the name the renderer reads.
-    groupRows: frame.groups ?? [],
     hits: frame.hits ?? [],
     selected,
-    // The grouping function, under the name the renderer reads for it.
-    groups: grouping,
     accessFiltered: menu?.accessFiltered ?? false,
     hidden: menu?.hidden ?? 0,
     note,
@@ -493,21 +438,13 @@ export function menuViewModel(frame, { grouping, menu = null, note = '', keys = 
  * row — which is the same split `.coden-bar` and the terminal footer already are.
  *
  * The translator is injected for the same reason `hiddenNote`'s is (s336, voice stage 2): the
- * browser joins these into ONE line, and the last one has a group's name inside it, so neither
- * the joined line nor that entry can ever be a catalogue key. The terminal passes nothing and
- * keeps English, which is what it shows everywhere else.
+ * browser joins these into ONE line. The terminal passes nothing and keeps English, which is
+ * what it shows everywhere else.
  */
 export function promptKeys(frame, translate = (text) => text) {
   const say = (text) => translate(text);
   if (!frame) return [say('Enter sends'), say('/ opens the menu'), say('Tab completes without sending')];
-  if (frame.level === 'groups') return [say('↑↓ move'), say('⏎ enter'), say('esc close'), say('…or type to filter')];
-  const common = [say('↑↓ move'), say('Tab completes'), say('⏎ sends'), say('esc close')];
-  return frame.group
-    // The group's TITLE goes through the translator too — it is the same heading the menu paints
-    // above the rows, and a legend naming it in English above rows headed in Italian would be
-    // pointing at something the person cannot see.
-    ? [...common, `${say('in')} ${say(frame.group.title)} — ${say('backspace leaves it')}`]
-    : common;
+  return [say('↑↓ move'), say('Tab completes'), say('⏎ sends'), say('esc close')];
 }
 
 /**

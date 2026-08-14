@@ -905,9 +905,15 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* The field bar the terminal opens on, in the browser. One row: identity on the left, the
    mode control on the right — the same reading order as the TUI's top bar, so moving between
    the two shells does not mean re-finding the same facts in a different arrangement. */
-.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
-.coden-bar .chip-list{margin:0;flex:1}
-.coden-bar .mode-switch{margin-inline-start:auto}
+.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
+/* Owner instruction, 2026-08-14: six chips (project/git/model/ctx/reasoning/sandbox) plus the
+ * two mode buttons wrapped one per line on a narrower viewport, turning a one-row status bar
+ * into an eight-row block. `flex-wrap:nowrap` here plus `overflow-x:auto` on the chip list
+ * bounds the bar's height at exactly one row on any viewport: the chips scroll sideways
+ * instead of stacking, the same trade a real terminal's status line already makes. */
+.coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+.coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap}
+.coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bench-where b{color:var(--text-primary);font-weight:600}
 .bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
@@ -1097,7 +1103,6 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* Under the prompt, which is where the terminal draws it — a reader who learns one shell does
    not have to relearn where the list appears in the other. */
 .agent-menu{border-top:1px solid var(--line);max-height:min(40vh,340px);overflow-y:auto;padding:6px 0;background:var(--surface-popover)}
-.agent-menu-group{margin:6px 0 2px;padding-inline:14px;color:var(--text-faint);font-size:calc(var(--text-scale)*10px);text-transform:uppercase;letter-spacing:.06em}
 .agent-menu button{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;width:100%;text-align:start;padding:6px 14px;border:0;background:transparent;color:var(--text-popover);font:inherit;font-size:calc(var(--text-scale)*12px);cursor:pointer}
 /* The selected entry carries an inset bar as well as a fill — `07_INTERFACCIA.md` §6: colour is
    never the only signal — and `aria-selected` carries the same fact to a screen reader. */
@@ -1140,11 +1145,6 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* Inside a monospace transcript a rounded box around monospace text frames nothing; the rule on
    the leading edge is what a terminal uses to mark quoted output. */
 #view-coden .t-entry pre{border-radius:0;border-inline-start:2px solid var(--line)}
-/* The key column is where the progressive gesture is learned, so it is the one thing given
-   weight: `b` is the group KEY at level zero and the command name one level down. */
-#view-coden .agent-menu-group-row b{color:var(--accent-brand);font-family:var(--font-terminal);font-weight:700}
-#view-coden .agent-menu-group-row span{color:var(--text-popover);text-transform:uppercase;letter-spacing:.06em}
-#view-coden .agent-menu-group-row.active span{color:inherit}
 /* The line under the prompt is the key legend now, and it changes with the context — so it is
    drawn as a status bar rather than as a caption. */
 #view-coden .agent-hint{border-top:1px solid var(--line);padding-block:6px;letter-spacing:.02em}
@@ -1232,6 +1232,13 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    edges — a terminal has no card around it. */
 #view-coden .agent-shell{margin-block-end:0;border-inline:0;border-block-start:0}
 #view-coden .coden-bar{padding-inline:24px}
+/* Owner instruction, 2026-08-14: the emulated terminal (`.coden-terminal-region`, D-0404 slice
+ * 3 — a later addition than the "full width, no bubbles" ruling above) reads as running edge
+ * to edge with no breathing room. It never had margins of its own; it simply sat inside a
+ * `.main` whose inline padding this view already zeroes for the AGENT SHELL below it. Scoped
+ * to the terminal box alone, not a reversal of the ruling above: `.agent-shell` and its
+ * children keep their own edge-to-edge layout with internal 24px padding, unchanged. */
+#view-coden .coden-terminal-region{margin-inline:24px}
 /* Height is the other half of "widen": a terminal is tall. This leaves room for the status row,
    the prompt, the legend and the bench heading below, and grows with the window instead of
    stopping at a fixed 420px. */
@@ -1240,6 +1247,9 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 @media(max-width:850px){
   #view-coden .bench,#view-coden .coden-bar,#view-coden .agent-transcript,
   #view-coden .agent-prompt,#view-coden .agent-hint,#view-coden #codenDivergence{padding-inline:14px;margin-inline:0}
+  /* Narrower still keeps SOME margin — zero would put the terminal back edge to edge, which
+   * is the exact complaint this rule exists to fix — just less of it than the desktop 24px. */
+  #view-coden .coden-terminal-region{margin-inline:10px}
 }
 
 /* ── The information buttons · s333 point 3c ────────────────────────────────────────────────
