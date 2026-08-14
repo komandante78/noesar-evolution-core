@@ -4883,3 +4883,17 @@ Owner acknowledged the state as correct after the fifth.
 **Cleanup.** Older rollback `noesar-evolution-pre-20260814T060748Z` removed; non-project
 containers unchanged at 50, volumes unchanged at 63.
 **Note.** Seventh redeploy this session — `D-0433` gap applies again, same accepted condition.
+
+## `d0439-bar-20260814T085950Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0439-bar-20260814T085950Z`, deployed 09:00:06Z. `D-0439`:
+`.coden-bar`'s mode-switch buttons scaled to the chips' own padding/font-size (root cause of the
+bar's height, not wrapping); `D-0438`'s `max-height:1.5cm` cap (which was silently clipping the
+oversized buttons) removed as no longer needed.
+**Health.** `running`/`healthy`; `/readyz` 200 (in-container).
+**Verification.** Unit 2536/2537 (1 pre-existing skip, unchanged) · ESLint 407/0 · byte-equal
+`styles.css`, sha256 matched container↔tree.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T090006Z` (`d0438-narrower-...`).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260814T064410Z` removed; non-project
+containers unchanged at 50, volumes unchanged at 63.
+**Note.** Eighth redeploy this session — `D-0433` gap applies again, same accepted condition.

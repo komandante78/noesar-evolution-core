@@ -1,31 +1,33 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0438`: `.coden-bar` capped at 1.5cm, terminal margin doubled)
+# SESSION HANDOFF — 2026-08-14 (`D-0439`: `.coden-bar` height, real cause fixed)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**L'installazione gira su `noesar-evolution:d0438-narrower-20260814T064356Z` dalle 06:44:10Z,
-sana, byte-verificata.** Cinque richieste dell'Owner su `#/coden` in questa sessione, quattro
-risolte e deployate, una da confermare a occhio:
+**L'installazione gira su `noesar-evolution:d0439-bar-20260814T085950Z` dalle 09:00:06Z, sana,
+byte-verificata.** Sei richieste dell'Owner su `#/coden` in questa sessione. Il margine del
+terminale (`D-0438`, 48px) è **confermato buono dall'Owner**. Le altre:
 
 1. **Cursore xterm mai nascosto (`D-0436`) — FATTO.**
-2. **Barra chip a 8 righe (`D-0437`) — FATTO**, poi rinforzato (`D-0438`): oltre allo scorrimento
-   orizzontale, `.coden-bar` ha ora un tetto rigido `max-height:1,5cm`.
-3. **Terminale bordo a bordo (`D-0437`) — FATTO**, poi allargato (`D-0438`): margine
-   24px→**48px** (16px sotto gli 850px).
-4. **Menu `/` a sottomenu (`D-0437`) — FATTO.** Lista piatta unica, classificata per rilevanza,
-   stessa forma su ssh, terminale integrato e fallback browser.
-5. **Cursore "doppio" nell'angolo — NON CONFERMATO.** Probabile artefatto di copia-incolla
-   dell'intera pagina (xterm tiene un mirror di testo invisibile per i lettori di schermo,
-   sovrapposto al canvas) piuttosto che un bug visivo reale — `D-0436` nasconde già il cursore
-   vero. **Serve la conferma a occhio dell'Owner**, guardando lo schermo, non copiando testo.
-
-**Nessuna delle cinque cose è ancora stata confermata a occhio dall'Owner** — tutto il lavoro di
-questa sessione su `#/coden` è deployato ma non ancora visto dal vivo.
+2. **Barra chip a 8 righe (`D-0437`) — FATTO.**
+3. **Terminale bordo a bordo (`D-0437`→`D-0438`) — FATTO, CONFERMATO dall'Owner.**
+4. **Menu `/` a sottomenu (`D-0437`) — FATTO.**
+5. **Altezza `.coden-bar` ancora troppa dopo `D-0438` — FATTO (`D-0439`).** Il tetto
+   `max-height:1,5cm` di `D-0438` non cambiava nulla a vista perché non era la causa: i due
+   bottoni Normal/Owner Bypass ereditavano il padding dei bottoni generici del prodotto (9px
+   13px, font 16px) — ~45px contro i ~25px dei chip accanto. A `align-items:center` la riga
+   prende l'altezza del figlio più alto, quindi la barra era ~63px, **oltre** il tetto di
+   1,5cm — `overflow:hidden` la stava probabilmente tagliando in silenzio invece di farla
+   apparire più bassa. Corretto scalando i bottoni alla stessa misura dei chip: ~43px totali,
+   nessun taglio, riduzione reale del ~32%. Il tetto di `D-0438` è stato rimosso (non più
+   necessario).
+6. **Cursore "doppio" nell'angolo — NON CONFERMATO.** Probabile artefatto di copia-incolla
+   (mirror di accessibilità di xterm), non un bug visivo reale — `D-0436` nasconde già il
+   cursore vero. **Serve la conferma a occhio dell'Owner**, guardando lo schermo.
 
 **Rollback**, se qualcosa non convince:
 
 ```sh
 docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
-  && docker rename noesar-evolution-pre-20260814T064410Z noesar-evolution && docker start noesar-evolution
+  && docker rename noesar-evolution-pre-20260814T090006Z noesar-evolution && docker start noesar-evolution
 ```
 
 ## Blockers e finding aperti
@@ -33,10 +35,11 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 | Id | Stato |
 |---|---|
 | `D-0436` cursore terminale | **FATTO**, deployato. |
-| `D-0437` menu piatto / barra 1 riga / margine terminale | **FATTO**, deployato. |
-| `D-0438` barra 1,5cm / margine raddoppiato | **FATTO**, deployato. |
+| `D-0437` menu piatto / barra 1 riga | **FATTO**, deployato. |
+| `D-0438` margine terminale 48px | **FATTO**, **CONFERMATO dall'Owner**. |
+| `D-0439` altezza reale `.coden-bar` | **FATTO**, deployato. Conferma visiva Owner in sospeso. |
 | Cursore "doppio" | **NON CONFERMATO** — non riparato alla cieca. |
-| `D-0433` | **APERTO, bloccante.** Settimo redeploy in sessione — stessa condizione già accettata dall'Owner ai redeploy precedenti. |
+| `D-0433` | **APERTO, bloccante.** Ottavo redeploy in sessione — stessa condizione già accettata dall'Owner ai redeploy precedenti. |
 | `D-0435` | **APERTO, invariato.** ~12 controlli E2E rotti dalla correzione di `D-0431`. |
 | Immagini Docker orfane (`e2e-base-*`, `webui-e2e-*`) | **Trovate, non rimosse** — fuori scope. |
 | `D-0427`, `D-0429` | Invariati. |
@@ -53,7 +56,7 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 
 ## Cosa NON è stato fatto
 
-- **Nessuna delle 5 modifiche di `#/coden` confermata a occhio dall'Owner.**
+- **`.coden-bar` (`D-0439`) non ancora confermata a occhio dall'Owner.**
 - **Il cursore "doppio" non riparato**: causa non confermata dal vivo.
 - **`D-0435`, `D-0433` non riparati**: fuori scope di questa fase.
 - **Immagini Docker orfane non rimosse**: fuori scope.
@@ -62,4 +65,7 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 ## Proposta di miglioramento
 
 **Un test di parità sullo STATO del terminale dopo un `write()`** (cursore, buffer alternato),
-non solo sul contenuto — proposto in `D-0436`, resta valido e non ancora costruito.
+non solo sul contenuto — proposto in `D-0436`, resta valido e non ancora costruito. La stessa
+lezione di `D-0439` si applica anche qui: un tetto/cap dichiarato non è la stessa cosa che
+misurare la causa reale — un test che calcola l'altezza effettiva di `.coden-bar` dai valori
+CSS (come fatto a mano in questa fase) chiuderebbe la classe di difetto senza uno screenshot.

@@ -10160,3 +10160,24 @@ byte-equal `styles.css`, `/readyz` 200.
 **Status.** applied · installed (`d0438-narrower-20260814T064356Z`). Seventh redeploy of the
 session; `D-0433`'s stop-hook gap fires again on close, unchanged from prior redeploys this
 session — same accepted condition, not a new one.
+
+## D-0439 · `.coden-bar`'s real height cause was the mode-switch buttons, not wrapping — 2026-08-14
+**Decision.** `.coden-bar .mode-switch{padding:2px}` and `.coden-bar .mode-switch button{padding:4px
+10px;font-size:calc(var(--text-scale)*11px)}` — scaled to match the chips beside them.
+`max-height:1.5cm;overflow:hidden` (`D-0438`) removed.
+**Why.** Owner reported the `D-0438` fix "did nothing" and asked for the actual height to be
+checked. Computed from the CSS, not guessed: the two mode-switch buttons inherit the product's
+generic `button{padding:9px 13px}` plus the 16px body font-size — sized for normal UI buttons
+elsewhere, never scaled for a compact status bar. At `align-items:center` the tallest child sets
+the row height: chips ≈25px, mode-switch (button + its own 4px wrapper padding) ≈45px. Bar total
+≈63px — OVER the 1.5cm (56.7px) cap `D-0438` added, meaning `overflow:hidden` was silently
+CLIPPING the buttons rather than the bar visibly shrinking. The cap treated a symptom; the actual
+oversized element was never touched.
+**Rejected.** Raising the `max-height` cap instead — would have stopped the clipping but left the
+bar at its original, too-tall size, the opposite of what was asked.
+**Evidence.** Computed height before: ≈63px (1.67cm, over cap, clipped). After: ≈43px (1.14cm),
+comfortably under 1.5cm, no clipping. Unit 2536/2537 (unchanged, CSS-only diff). ESLint 407/0.
+Deployed and live-verified: byte-equal `styles.css`, `/readyz` 200.
+**Reversal cost.** None — three CSS declarations, one removed rule.
+**Status.** applied · installed (`d0439-bar-20260814T085950Z`). Eighth redeploy of the session;
+`D-0433`'s stop-hook gap fires again on close, same accepted condition as prior redeploys.
