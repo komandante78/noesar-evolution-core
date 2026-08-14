@@ -914,16 +914,20 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
  * `.mode-switch` wrapper's own 4px) were driving a bar whose chips alone would have been
  * ~25px — over the 1.5cm ceiling, which `overflow:hidden` was then silently CLIPPING rather
  * than the bar visibly shrinking. Scaled to match the chips instead: the actual fix. */
-.coden-bar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-statusbar)}
+/* Owner instruction, 2026-08-14, after `D-0439` found the real cause (the mode-switch
+ * buttons): lower it further still. Padding and font-size cut again across the bar, the chips
+ * and the buttons — ~43px (`D-0439`) to ~30px, the smallest this row can go without the chip
+ * border/radius starting to look like a flat rule instead of a pill. */
+.coden-bar{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin:0 0 10px;padding:5px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-statusbar)}
 /* Six chips (project/git/model/ctx/reasoning/sandbox) plus the two mode buttons wrapped one
  * per line on a narrower viewport, turning a one-row status bar into an eight-row block.
  * `flex-wrap:nowrap` here plus `overflow-x:auto` on the chip list bounds the bar's height at
  * exactly one row on any viewport: the chips scroll sideways instead of stacking, the same
  * trade a real terminal's status line already makes. */
 .coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
-.coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap}
-.coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto;padding:2px}
-.coden-bar .mode-switch button{padding:4px 10px;font-size:calc(var(--text-scale)*11px)}
+.coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap;padding:3px 8px;font-size:calc(var(--text-scale)*10px)}
+.coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto;padding:1px}
+.coden-bar .mode-switch button{padding:2px 8px;font-size:calc(var(--text-scale)*10px)}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bench-where b{color:var(--text-primary);font-weight:600}
 .bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}
@@ -1369,15 +1373,12 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
    * the screen. `dvh` follows the mobile browser chrome as it hides and shows, which `vh` does
    * not — on a phone `vh` leaves the last rows under the address bar.
    *
-   * Reduced from `min(70dvh, 48rem)`, Owner instruction 2026-08-14: the box read as oversized
-   * for a page that also carries a sidebar, a top bar and the bench dashboard below it — a
-   * terminal window, not a viewport takeover. The dominant contributor to that impression was
-   * a separate defect (the real xterm cursor was never hidden and parked in the box's
-   * bottom-right corner on every frame, see `SCREEN.hideCursor`); this shrinks the box itself
-   * on top of that fix, rather than leaving it as large as the cursor bug had made necessary
-   * to not look empty. */
+   * `min(70dvh,48rem)` -> `min(55dvh,36rem)` (`D-0436`, cursor bug made the box read oversized)
+   * -> `min(65dvh,44rem)` (2026-08-14, Owner: "allunga la chat coden" — with the cursor fixed
+   * and `.coden-bar` cut from ~63px to ~30px (`D-0439`), the page has the room back and the
+   * terminal is the thing that should use it, not sit small above freed space. */
   min-height: 24rem;
-  height: min(55dvh, 36rem);
+  height: min(65dvh, 44rem);
   margin-bottom: 1.5rem;
   border: 1px solid var(--line);
   border-radius: 8px;
