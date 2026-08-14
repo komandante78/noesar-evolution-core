@@ -927,7 +927,13 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .coden-bar .chip-list{margin:0;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
 .coden-bar .chip-list span{flex:0 0 auto;white-space:nowrap;padding:3px 8px;font-size:calc(var(--text-scale)*10px)}
 .coden-bar .mode-switch{margin-inline-start:auto;flex:0 0 auto;padding:1px}
-.coden-bar .mode-switch button{padding:2px 8px;font-size:calc(var(--text-scale)*10px)}
+/* WCAG 2.5.8 Target Size (Minimum), found in the debug pass that followed `D-0440`: shrinking
+ * the button to match the chips visually (padding 2px 8px, 10px font) took it to ~16px tall —
+ * under the 24x24 floor. Same fix as `.hint-key` (`F-A11Y-003`): `min-height` on the real
+ * button gives it the target size without the visual size growing to match — the padding and
+ * font stay as small as D-0440 asked for, `min-height` just refuses to let the box shrink
+ * past what a pointer needs to hit reliably. */
+.coden-bar .mode-switch button{padding:2px 8px;font-size:calc(var(--text-scale)*10px);min-height:24px;display:inline-flex;align-items:center}
 .bench-where{margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bench-where b{color:var(--text-primary);font-weight:600}
 .bench-where-hint{color:var(--muted);font-size:calc(var(--text-scale)*11px)}

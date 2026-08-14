@@ -241,29 +241,20 @@ try {
   input.press('/');
   await settle();
   const menu = lastFrame(out);
-  // POINT 3 — a bare `/` opens on the GROUPS. This check used to look for `/plan` and
-  // `/approve` here and it was right to: it was written after a phase in which `/approve` — the
-  // third thing this shell is for — fell off the menu at a real terminal height, because a flat
-  // list of thirty entries does not fit. The progressive menu is that defect's actual repair,
-  // so the check follows the property rather than the old picture: the groups are on screen,
-  // and `/approve` is one keystroke away instead of off the bottom.
-  check(menu.includes('WORK') && menu.includes('DESTINATIONS') && menu.includes('APPROVALS'),
-    'typing / in the prompt opens the command menu, on its groups');
-  check(!menu.includes('/plan'), 'a bare / lists no entries — the groups are the level');
+  // Flattened 2026-08-14 on direct Owner instruction: the two-level design (bare `/` lists
+  // GROUPS, a key enters one) read as a menu under a menu. This check used to require the
+  // group headings and a group key to reach `/plan`/`/approve` — now a bare `/` shows the
+  // ranked flat list directly, `matchCommands` already ranks it, and both are reachable with
+  // no extra keystroke naming a category first.
+  check(menu.includes('/plan') || menu.includes('/approve'),
+    'typing / in the prompt opens the command menu, on real commands');
   check(menu.includes('▸'), 'the menu marks its selection with a glyph, not colour alone');
-  check(menu.includes('⏎ enter'), 'the menu says which key enters a group');
+  check(!menu.includes('⏎ enter'), 'the menu no longer offers a group level to enter');
 
-  // 3b — a key ENTERS a group, and everything the shell is for is inside the first one.
-  input.press('w');
-  await settle();
-  const inWork = lastFrame(out);
-  check(inWork.includes('/plan') && inWork.includes('/approve'),
-    'a group key opens that group, with the commands this shell is for');
-
-  // 4 — typing filters INSIDE the open group (`/w map`), and Tab completes WITHOUT running.
+  // 4 — typing filters the SAME flat list (`/map`), and Tab completes WITHOUT running.
   //     Choosing and committing are two acts: a keystroke must never become an action nobody
   //     selected.
-  for (const character of ' map') input.press(character);
+  for (const character of 'map') input.press(character);
   await settle();
   check(lastFrame(out).includes('/map'), 'typing filters the menu to the command typed');
 
