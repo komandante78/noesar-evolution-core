@@ -206,4 +206,16 @@ describe('the client speaks the version the bridge speaks', () => {
     assert.doesNotMatch(source, /function renderFrame\s*\(/, 'the browser has grown a second renderer');
     assert.doesNotMatch(source, /const AGENT_COMMANDS\s*=/, 'the browser has grown its own command list');
   });
+
+  test('every draw hides the terminal cursor before positioning it', () => {
+    // `tui-fullscreen.mjs` (the ssh shell) hides the real cursor ONCE, via `SCREEN.enter`,
+    // before its draw loop starts — the caret a reader sees is the `›` `renderFrame` paints,
+    // never the terminal's own. This shell mounts xterm.js directly (no `enter`/`leave`,
+    // there is no alternate screen to enter) and used to never hide it at all: xterm's real
+    // cursor stayed visible and parked wherever the last `write()` left it, which
+    // `renderFrame` always right-pads to — the bottom-right cell of the box, every frame.
+    // Reported live 2026-08-14: a stray cursor in the terminal's bottom-right corner.
+    assert.match(source, /terminal\.write\(SCREEN\.hideCursor \+ SCREEN\.home/,
+      'draw() no longer hides the cursor before writing a frame — it will park visibly at the end of the last (padded) row');
+  });
 });

@@ -1346,9 +1346,17 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   flex-direction: column;
   /* Tall enough to be a terminal, bounded so it never pushes the rest of the destination off
    * the screen. `dvh` follows the mobile browser chrome as it hides and shows, which `vh` does
-   * not — on a phone `vh` leaves the last rows under the address bar. */
+   * not — on a phone `vh` leaves the last rows under the address bar.
+   *
+   * Reduced from `min(70dvh, 48rem)`, Owner instruction 2026-08-14: the box read as oversized
+   * for a page that also carries a sidebar, a top bar and the bench dashboard below it — a
+   * terminal window, not a viewport takeover. The dominant contributor to that impression was
+   * a separate defect (the real xterm cursor was never hidden and parked in the box's
+   * bottom-right corner on every frame, see `SCREEN.hideCursor`); this shrinks the box itself
+   * on top of that fix, rather than leaving it as large as the cursor bug had made necessary
+   * to not look empty. */
   min-height: 24rem;
-  height: min(70dvh, 48rem);
+  height: min(55dvh, 36rem);
   margin-bottom: 1.5rem;
   border: 1px solid var(--line);
   border-radius: 8px;

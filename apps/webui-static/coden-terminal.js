@@ -140,7 +140,12 @@ export function mountCodenTerminal({
     // column the previous one ended on, and the frame walks diagonally off the screen. The
     // terminal shell writes `\n` because a TTY in cooked mode supplies the return; xterm.js
     // does not, and `convertEol` is deliberately off so this stays explicit.
-    terminal.write(SCREEN.home + rows.join('\r\n'));
+    //
+    // `SCREEN.hideCursor` on every write, not once at mount: the terminal shell hides it once
+    // because a real TTY keeps the state until told otherwise, but nothing here guarantees
+    // xterm.js does the same across a theme change or an internal reset, and a cursor that
+    // reappears once is a regression nothing would catch. Idempotent and cheap either way.
+    terminal.write(SCREEN.hideCursor + SCREEN.home + rows.join('\r\n'));
   };
 
   /** One request over the bridge, resolved by id. Rejects if the socket dies first, so a caller

@@ -28,6 +28,15 @@ export const SCREEN = Object.freeze({
   leave: `${ESC}?1049l${ESC}?25h`,
   clear: `${ESC}2J${ESC}H`,
   home: `${ESC}H`,
+  // The half of `enter` that matters to a shell with no alternate screen buffer to enter:
+  // this renderer draws its own caret as part of the frame (the prompt box's `›`), so the
+  // terminal's OWN cursor is never where a reader should look. `tui-fullscreen.mjs` hides it
+  // once via `enter` before its draw loop starts; a consumer that never sends `enter` — the
+  // browser shell, which mounts xterm.js directly rather than opening a real TTY — never
+  // hides it at all, and it parks wherever the last `write()` left it: the end of the last
+  // row, which `renderFrame` always right-pads to the full width. That is the bottom-right
+  // corner of the box, not a stray artifact — every frame ends there.
+  hideCursor: `${ESC}?25l`,
 });
 
 // `07_INTERFACCIA.md` §1 fixes the palette by extraction, not invention, and §6 fixes the
