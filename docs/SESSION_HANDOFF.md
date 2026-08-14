@@ -1,12 +1,12 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0444`: `/model <id>` costruito — NON deployato, in attesa di revisione)
+# SESSION HANDOFF — 2026-08-14 (`D-0444`: `/model <id>` deployato — Owner ha autorizzato)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**L'installazione gira ancora su `noesar-evolution:d0441-debug-20260814T092104Z` dalle
-09:21:17Z, sana.** `D-0443` e `D-0444` sono **committati ma NON deployati** — tenuti in
-sospeso apposta, `D-0444` perché è la **prima capacità del prodotto che lascia un operatore
-avviare un processo di sistema vero dal menu `/`** e merita una tua revisione prima di andare
-in produzione.
+**L'installazione gira su `noesar-evolution:d0444-model-20260814T105639Z` dalle 10:57:04Z,
+sana, byte-verificata.** L'Owner ha autorizzato esplicitamente il deploy ("si procedi con
+deploy") dopo la revisione. `D-0444` è la **prima capacità del prodotto che lascia un
+operatore avviare un processo di sistema vero dal menu `/`** — deployata, non ancora provata
+con un modello reale (questa installazione non ne ha un secondo sul disco).
 
 **`D-0443` (report "Nothing named `M`"), riprodotto dall'Owner su desktop**: durante il
 tentativo è emerso il problema VERO — `/models` porta solo a una pagina di stato, non permette
@@ -66,7 +66,7 @@ separata, per costo — non è questa la proposta.
 
 ```sh
 docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
-  && docker rename noesar-evolution-pre-20260814T092117Z noesar-evolution && docker start noesar-evolution
+  && docker rename noesar-evolution-pre-20260814T105704Z noesar-evolution && docker start noesar-evolution
 ```
 
 ## Blockers e finding aperti
@@ -77,7 +77,7 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 | `D-0441` WCAG 2.5.8 + CE-020 | **FATTO**, deployato, confermato con strumenti reali (27/27 a11y, 18/18 CE-020). |
 | `D-0442` proposta CE-020 in `node --test` + igiene immagini | **FATTO**, nessun redeploy necessario. |
 | `D-0443` report `/models` → "Nothing named `M`" | **INVESTIGATO** — comportamento corretto, non un bug. Riprodotto dall'Owner, ha rivelato il problema vero (`D-0444`). **Committato, NON deployato.** |
-| `D-0444` `/model <id>` — carica un modello presente | **COSTRUITO E VERIFICATO** (9 test nuovi, catena reale su socket). **Committato, NON deployato** — prima capacità che avvia un processo reale, in attesa della tua revisione. |
+| `D-0444` `/model <id>` — carica un modello presente | **FATTO, DEPLOYATO** — autorizzato dall'Owner. 9 test nuovi (catena reale su socket inclusa). Non ancora provato con un modello reale (nessuno presente su questa installazione). |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata che questa fase non ha. |
 | Cursore "doppio" | **NON CONFERMATO** — non riparato alla cieca. |
 | `D-0435` | **APERTO, due strati ora** — irraggiungibile via `#codenPrompt` E asserzioni sul menu a gruppi rimosso. |
@@ -101,7 +101,7 @@ docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution \
 
 ## Cosa NON è stato fatto
 
-- **`D-0444` non deployato** — in attesa della tua revisione (prima capacità che avvia un processo reale dal menu `/`).
+- **`D-0444` non ancora provato con un modello reale** — nessun secondo modello presente su questa installazione; la meccanica è verificata con un finto (`/bin/sleep`).
 - **ATOM↔CodeN Evolution non verificato** — serve una sessione autenticata (l'Owner ce l'ha già).
 - **`D-0435` non riparato** — ora due strati, fuori scope di questa fase.
 - **`D-0433` non riparato**, **immagini Docker orfane non rimosse** — fuori scope.

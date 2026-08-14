@@ -4912,3 +4912,19 @@ browser.
 **Cleanup.** Older rollback removed; non-project containers unchanged at 50, volumes at 63. E2E
 probe/runner/images from this debug pass removed by `tools/run-browser-e2e.sh` itself, twice.
 **Note.** Tenth redeploy this session — `D-0433` gap applies again, same accepted condition.
+
+## `d0444-model-20260814T105639Z` — DEPLOYED and verified — 2026-08-14
+
+**Tag.** `noesar-evolution:d0444-model-20260814T105639Z`, deployed 10:57:04Z. `D-0444`: `/model
+<id>` — joins the model catalogue (present, verified models) to the local-model runtime
+(configure/release/launch), reachable identically from ssh, embedded browser terminal and the
+legacy DOM fallback. Scoped to already-present models; download/acquire stays 501/untouched.
+**Health.** `running`/`healthy`; `/readyz` 200 (in-container).
+**Verification.** Unit 2546/2547 (1 pre-existing skip) · ESLint 408/0 · seeded-defect-proof
+19/19 · byte-equal tree on all 6 changed sources, sha256 matched container↔tree.
+**Predecessor preserved.** `noesar-evolution-pre-20260814T105704Z` (`d0441-debug-...`).
+**Cleanup.** Older rollback removed; non-project containers unchanged at 50, volumes at 63.
+**Note.** Eleventh redeploy this session — `D-0433` gap applies again, same accepted condition.
+This is the first deployed capability that lets an authenticated operator (owner/admin,
+`model.manage`) spawn a real OS process from the `/` menu — capability-token gated
+(`AdapterGrantOrchestrator`, `ARCH-005`), argv-only launch commands, no shell string.
