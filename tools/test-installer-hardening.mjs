@@ -9,12 +9,18 @@
 // each installer against a stub `docker` on PATH and inspects the arguments that
 // actually arrive.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+// F-TMP-002 (2026-08-15): `stubEnvironment()` runs once per installer, and the "persists
+// across a reinstall" check below creates one more — tracked here and swept on exit, the
+// process-level equivalent of `test/support/workspace.mjs`'s `after()` for a plain script.
+const ownedDirs = [];
+process.on('exit', () => { for (const dir of ownedDirs) rmSync(dir, { recursive: true, force: true }); });
 
 const INSTALLERS = [
   { path: 'deployment/docker/run.sh', runsContainer: true },
@@ -34,6 +40,7 @@ const REQUIRED_FLAGS = [
 
 function stubEnvironment() {
   const root = mkdtempSync(join(tmpdir(), 'noesar-installer-'));
+  ownedDirs.push(root);
   const bin = join(root, 'bin');
   mkdirSync(bin, { recursive: true });
   const log = join(root, 'docker-args.log');
@@ -243,6 +250,7 @@ for (const installer of ACCESS_INSTALLERS) {
   //    what an update or a reinstall looks like.
   if (LAN_ADDRESS) {
     const persistRoot = mkdtempSync(join(tmpdir(), 'noesar-persist-'));
+    ownedDirs.push(persistRoot);
     const workspace = join(persistRoot, 'workspace');
     mkdirSync(workspace, { recursive: true });
     runInstaller(installer, { NOESAR_BIND_ADDRESS: LAN_ADDRESS }, { workspace });

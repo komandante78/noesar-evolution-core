@@ -10878,3 +10878,31 @@ leave `/tmp`'s `noesar-*` count flat (26→26): zero new leaks. Leaked backlog r
 (`tools/*.mjs`) are out of scope, recorded separately as `F-TMP-002` (different mechanism
 needed: `node:test`'s `after()` does not fire for a script run outside the test runner).
 **Status.** applied.
+
+## D-0465 · F-TMP-002 fixed — the mkdtemp leak class closed — 2026-08-15
+**Decision.** Each of the 5 `tools/*.mjs` scripts now tracks every `mkdtemp` directory it
+creates and sweeps them via `process.on('exit', ...)` — the process-level equivalent of
+`D-0464`'s `after()`-based helper, since `node:test`'s hook does not fire outside a test
+runner. Files that loop or call a setup helper more than once (`tls-smoke.mjs`'s per-scenario
+workspace, `test-installer-hardening.mjs`'s `stubEnvironment()` + `persistRoot`,
+`test-cross-platform-installers.mjs`'s `sandbox()`) track an array; `a3-security.mjs` tracks
+one variable (`scratch`), since its three zip fixtures already nest under it;
+`http-smoke.mjs` only removes the workspace it actually created, since `??=` means a
+caller-supplied `NOESAR_WORKSPACE` is never this script's to remove.
+**Why.** This closes the last piece of the leak class `F-CRASH-001` found this session: two
+files caused today's disk crisis, `D-0464` found and fixed 58 more, this is the remaining 5.
+**Rejected.** A shared helper module mirroring `test/support/workspace.mjs` — these 5 files
+share no common entry point or runner the way `node:test` files do, so a shared module would
+buy nothing a repeated 2-3 line pattern does not already give, and would add an import path
+five different scripts in different directories would each have to resolve correctly.
+**Evidence.** 4 of 5 run live: `node tools/http-smoke.mjs` (PASS, 0 leaked dirs before/after),
+`node tools/tls-smoke.mjs` (PASS, 0 new leaks — and the 12 pre-existing leaked dirs from
+before this fix removed), `node tools/test-installer-hardening.mjs` (100/100 PASS, 0 leaked
+dirs), `node tools/test-cross-platform-installers.mjs` (87 checks, 0 failures, 0 leaked
+dirs). `tools/acceptance/a3-security.mjs` needs a disposable live server + mock to run for
+real — out of scope to stand up just for this fix — so it is verified by the identical,
+already-proven-correct pattern rather than an independent live run, and declared as such
+rather than claimed an equal-weight PASS. Full suite: 2554/2555 (1 pre-existing skip,
+unchanged). ESLint: 411/0.
+**Reversal cost.** none — script-only, no product code touched.
+**Status.** applied.

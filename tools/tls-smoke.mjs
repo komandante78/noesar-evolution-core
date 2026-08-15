@@ -17,7 +17,7 @@ import { once } from 'node:events';
 import { request as httpsRequest } from 'node:https';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, existsSync } from 'node:fs';
+import { mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -38,7 +38,15 @@ function check(name, condition, detail = '') {
   failures.push(detail ? `${name}: ${detail}` : name);
 }
 
+// F-TMP-002 (2026-08-15): `bootServer` below creates a fresh workspace per scenario, so this
+// tracks every directory this script creates (the certificate one plus one per scenario) and
+// sweeps all of them on exit — the same idea `test/support/workspace.mjs` uses for node:test
+// files, adapted for a plain script: `process.on('exit', ...)` instead of `after()`, since
+// there is no test runner here to fire that hook.
+const ownedDirs = [];
 const certDir = mkdtempSync(join(tmpdir(), 'noesar-tls-smoke-'));
+ownedDirs.push(certDir);
+process.on('exit', () => { for (const dir of ownedDirs) rmSync(dir, { recursive: true, force: true }); });
 const certFile = join(certDir, 'cert.pem');
 const keyFile = join(certDir, 'key.pem');
 execFileSync('openssl', [
@@ -53,6 +61,7 @@ check('throwaway self-signed certificate generated', existsSync(certFile) && exi
 // problem http-smoke.mjs solves by forcing NOESAR_WORKSPACE before its one static import.
 async function bootServer(scenarioEnv, label) {
   const workspace = mkdtempSync(join(tmpdir(), 'noesar-tls-smoke-ws-'));
+  ownedDirs.push(workspace);
   Object.assign(process.env, { NOESAR_WORKSPACE: workspace, NOESAR_LOG_LEVEL: 'ERROR' }, scenarioEnv);
   for (const key of ['NOESAR_TLS_CERT_FILE', 'NOESAR_TLS_KEY_FILE']) {
     if (!(key in scenarioEnv)) delete process.env[key];

@@ -27,12 +27,18 @@
 // here should be read as "macOS is verified" or "Podman is verified" — what is verified is
 // that the script does what it claims when its external commands are observed.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, statSync, symlinkSync, realpathSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, statSync, symlinkSync, realpathSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+// F-TMP-002 (2026-08-15): `sandbox()` below runs once per platform/scenario — tracked here
+// and swept on exit, the process-level equivalent of `test/support/workspace.mjs`'s
+// `after()` for a plain script.
+const ownedDirs = [];
+process.on('exit', () => { for (const dir of ownedDirs) rmSync(dir, { recursive: true, force: true }); });
 
 let checks = 0;
 let failures = 0;
@@ -58,6 +64,7 @@ function note(message) {
  */
 function sandbox() {
   const root = mkdtempSync(join(tmpdir(), 'noesar-xplat-'));
+  ownedDirs.push(root);
   const home = join(root, 'home');
   const bin = join(root, 'stubbin');
   mkdirSync(home, { recursive: true });

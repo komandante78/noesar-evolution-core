@@ -8,7 +8,7 @@
 // leftover from a previous run.
 //
 //   node tools/acceptance/a3-security.mjs <base> <workspace> <mockBase>
-import { readFileSync, writeFileSync, mkdtempSync, symlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -28,6 +28,10 @@ const r = new Results('SEC');
 const OWNER = { username: 'sec-owner', displayName: 'Sec Owner', password: `sec-${randomBytes(18).toString('base64url')}` };
 const CANARY = `CANARY-${randomBytes(12).toString('hex').toUpperCase()}-MUST-NOT-LEAK`;
 const scratch = mkdtempSync(join(tmpdir(), 'noesar-fixtures-'));
+// F-TMP-002 (2026-08-15): the three zip fixtures below (`zipmany-`/`zipbomb-`/`ziplink-`)
+// all nest under `scratch`, so removing this one root is enough — the process-level
+// equivalent of `test/support/workspace.mjs`'s `after()` for a plain script.
+process.on('exit', () => rmSync(scratch, { recursive: true, force: true }));
 
 const c = new Client(base);
 const setupToken = readFileSync(`${workspace}/config/first-owner-setup.token`, 'utf8').trim();

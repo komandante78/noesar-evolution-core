@@ -20,11 +20,20 @@
 // The import is dynamic for exactly that reason: a static import is hoisted above the
 // assignment and would read the environment too early.
 import { once } from 'node:events';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-process.env.NOESAR_WORKSPACE ??= mkdtempSync(join(tmpdir(), 'noesar-http-smoke-'));
+// F-TMP-002 (2026-08-15): only clean up the workspace THIS script created — if the caller
+// already supplied NOESAR_WORKSPACE, the `??=` below never calls mkdtempSync at all, and
+// removing a directory this script does not own would be someone else's mistake to make,
+// not this one's to repeat.
+let ownedWorkspace = null;
+if (!process.env.NOESAR_WORKSPACE) {
+  ownedWorkspace = mkdtempSync(join(tmpdir(), 'noesar-http-smoke-'));
+  process.env.NOESAR_WORKSPACE = ownedWorkspace;
+}
+if (ownedWorkspace) process.on('exit', () => rmSync(ownedWorkspace, { recursive: true, force: true }));
 process.env.NOESAR_LOG_LEVEL ??= 'ERROR';
 
 const { server } = await import('../services/reference-control-plane/src/server.mjs');
