@@ -299,18 +299,40 @@ boundary is absolute — it authorises cleaning up **our own litter**, nothing e
 
 ## 14. Open core and the ATOM boundary
 
+> **Amended by the Owner, 2026-08-15 (`D-0468`).** ATOM stops being proprietary. It stays
+> **architecturally separate** — its own repository, `ATOM_EVOLUTION` — but its licence
+> becomes **AGPL-3.0-or-later**, matching the core. This is a licensing change, not an
+> architectural one: rules 54-55 (no dependency, public-interface-only integration) are
+> **unchanged** — the repository split is what makes "the core does not depend on ATOM" a
+> checkable fact rather than a promise, and that stays true regardless of ATOM's licence.
+> What rule 56 protected against — proprietary ATOM material leaking into a public
+> repository — no longer applies to `ATOM_EVOLUTION` itself, since it is now meant to be
+> public; it is **replaced** by the boundary that was always separate and still stands: the
+> **old**, genuinely different, still-proprietary ATOM projects on this host (`ATOM`,
+> `ATOM_MODEL`, `ATOM_INTERNAL`, `NOESAR-ATOM-PRIVATE`) remain fully off-limits as a source.
+> Opening `ATOM_EVOLUTION`'s own licence is not permission to copy their IP into it.
+
 52. The **FOSS core must be complete and independently useful** on its own. A user
     with only the open core gets a working product, not a demo.
-53. **ATOM is proprietary and separate.** The core must not require ATOM to build,
-    start, pass its tests, or deliver its documented functionality.
+53. **ATOM is open and architecturally separate** — its own repository
+    (`ATOM_EVOLUTION`), licensed AGPL-3.0-or-later like the core, not merged into this
+    repository. The core must not require ATOM to build, start, pass its tests, or
+    deliver its documented functionality — that requirement does not soften because
+    ATOM is no longer proprietary; separation is what keeps it checkable.
 54. `FOSS_CORE_DEPENDS_ON_ATOM = false` is an invariant, not an aspiration.
 55. Integration happens through **public interfaces only** — a stable, documented
     boundary the open core defines and any implementation may satisfy.
-56. **No proprietary ATOM implementation, algorithm, weight, corpus, or internal
-    document may ever be copied into the future public repository** — not as code,
-    not as vendored files, not as test fixtures, not as documentation detail.
-57. Work funded under public/FOSS funding programs must itself be FOSS. Anything
-    that cannot be released as FOSS is not funded work and stays outside that scope.
+56. **No material from the old, separate, still-proprietary ATOM projects on this
+    host — `ATOM`, `ATOM_MODEL`, `ATOM_INTERNAL`, `NOESAR-ATOM-PRIVATE` — may ever be
+    copied into `ATOM_EVOLUTION` or this repository**: not as code, not as vendored
+    files, not as weights or corpora, not as test fixtures, not as documentation
+    detail. `ATOM_EVOLUTION` is built from scratch, from the public `ReasoningProvider`
+    contract (`MASTER_PROJECT/02_ATOM.md`) and what the Owner specifies in session —
+    never from those four paths. See the `noesar-evolution` skill's own "🛑 ATOM
+    EVOLUTION" section for the mechanism this already relies on.
+57. Work funded under public/FOSS funding programs must itself be FOSS. `ATOM_EVOLUTION`
+    being open now widens, not narrows, what can count as funded scope. Anything that
+    cannot be released as FOSS is not funded work and stays outside that scope.
 
 ## 15. Licensing posture (proposal, not settled law)
 

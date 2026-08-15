@@ -150,6 +150,14 @@ Il "seam" ATOM per NOESAR EVOLUTION (passo 11 dell'ordine di costruzione,
 **separato**, creato il 2026-07-28: **`/mnt/cachec/ATOM_EVOLUTION`** — nato **vuoto**,
 zero commit alla creazione, deliberatamente.
 
+**Licenza, deciso dall'Owner il 2026-08-15 (`D-0468`)**: `ATOM_EVOLUTION` è **aperto**,
+AGPL-3.0-or-later come il core — non più proprietario. Resta comunque un repository **suo**,
+separato: la separazione è ciò che rende verificabile che il core non dipende da ATOM
+(`CLAUDE10.md` §14), e non cambia per il cambio di licenza. Aprire `ATOM_EVOLUTION` **non**
+allenta di una virgola la regola sotto — anzi la rende più importante da dichiarare
+esplicitamente: aprire la licenza del progetto NUOVO non è permesso a copiarci dentro IP dei
+quattro percorsi VECCHI e ancora chiusi elencati sotto.
+
 **Non copiare, non importare, non "riprendere" dentro `ATOM_EVOLUTION` nulla da:**
 
 - `/mnt/cachec/NOESAR-ATOM-PRIVATE` — il vecchio blueprint privato per NOESAR EVOLUTION

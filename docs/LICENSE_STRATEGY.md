@@ -12,9 +12,10 @@
 ```text
 OPEN_CORE_PROPOSED_LICENSE   = AGPL-3.0-or-later
 ADDITIONAL_COMMERCIAL_LICENSE = planned
-ATOM_IMPLEMENTATION           = proprietary and separate
+ATOM_IMPLEMENTATION           = open (AGPL-3.0-or-later) and separate — its own repository
 FOSS_CORE_DEPENDS_ON_ATOM     = false
 FUNDED_WORK_MUST_BE_FOSS      = true
+PRODUCT_ACCESS_CONTROL        = registration only, no licence key
 ```
 
 ## 1. Open core
@@ -37,10 +38,27 @@ contributions are accepted.
 
 ## 3. ATOM
 
-ATOM's implementation is **proprietary and separate**. It is not licensed under the
-open-core license and its source never enters the public repository. The open core
-defines public interfaces; any implementation, proprietary or otherwise, may satisfy
-them. See `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`.
+**Amended by the Owner, 2026-08-15 (`D-0468`).** ATOM's implementation is **open and
+architecturally separate** — its own repository (`ATOM_EVOLUTION`), licensed
+AGPL-3.0-or-later, matching the open core. It is no longer proprietary, but it is
+still not merged into this repository: the split is what keeps "the core does not
+depend on ATOM" a checkable, structural fact rather than a promise. The open core
+defines public interfaces; any implementation, including ATOM's own, may satisfy
+them. `ATOM_EVOLUTION` is built from scratch against that contract — never from the
+old, separate, still-proprietary ATOM projects on this host (`ATOM`, `ATOM_MODEL`,
+`ATOM_INTERNAL`, `NOESAR-ATOM-PRIVATE`), whose closure is unaffected by this change.
+See `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`.
+
+## 3a. Product access control
+
+Owner, verbatim, 2026-08-15: *"la licenza con codice non la metterei, farei fare solo
+registrazione utente per usare il prodotto"*. Settled: the product gates use through
+**registration** (the owner/account system it already builds — `AuthService`, setup
+token, MFA) and never through a code-based licence key. A key-activation layer would
+be new attack surface in tension with offline-by-default (`CLAUDE10.md` §8) and with
+the open-core posture this document describes. Commercial differentiation, if any,
+belongs in support, hosting, or the additional commercial license (§2) — never in a
+key that gates the software itself.
 
 ## 4. Interaction with funding
 

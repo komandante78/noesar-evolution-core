@@ -10962,3 +10962,34 @@ measured count rather than a cap picked before writing, the same correction `noe
 context`'s own history records for itself.
 **Reversal cost.** none — a skill/process file, no product code touched.
 **Status.** applied.
+
+## D-0468 · ATOM stops being proprietary — architecturally separate stays — 2026-08-15
+**Decision.** ATOM's implementation is now **open, AGPL-3.0-or-later**, matching the core.
+It stays in its **own repository**, `ATOM_EVOLUTION` (created empty, `2026-07-28`), not
+merged into this one. Amended: `CLAUDE10.md` §14 (rules 52-57), `docs/
+ATOM_PUBLIC_PRIVATE_BOUNDARY.md` (its own `D-0007` invariant, now explicitly re-amended
+rather than silently reinterpreted), `docs/LICENSE_STRATEGY.md` §3 (+ new §3a), and the
+`noesar-evolution` skill's "ATOM EVOLUTION" section.
+**Why.** Owner instruction, direct: ATOM should not be "separato e proprietario" in the old
+sense. Asked which axis changes — repository location or licence — the Owner chose: keep
+`ATOM_EVOLUTION` on its own repository, make it open. Licensing and repository-location are
+independent axes; only the first moved.
+**Rejected.** Merging `ATOM_EVOLUTION` into this repository. Repository separation is not a
+licensing artifact — it is the structural check that "the core does not depend on ATOM"
+(`FOSS_CORE_DEPENDS_ON_ATOM = false`) stays true rather than eroding through an accidental
+import over time, and it matches NLnet's own stated preference for delimited, independently
+reusable components (`noesar-evolution-funding-fit`, untouched, §"seven recurring traits"
+point 1-2). It also keeps this already-heavy test suite (2500+ unit tests, minutes-long e2e)
+from growing further, and keeps Phase 4's "ATOM-absent run" acceptance check unambiguous.
+**Evidence.** `git diff --stat`: 4 files (`CLAUDE10.md`, `docs/ATOM_PUBLIC_PRIVATE_BOUNDARY.md`,
+`docs/LICENSE_STRATEGY.md`, `.claude/skills/noesar-evolution/SKILL.md`), 91 insertions / 30
+deletions. `noesar-evolution-funding-fit` confirmed untouched by `git status`, as the Owner
+separately and explicitly required. `MASTER_PROJECT/02_ATOM.md` checked: it declares the
+technical `ReasoningProvider` contract only, never a licence posture, so it needed no
+supersession note.
+**Reversal cost.** Documentation and governance only in this phase — no code moved, no
+repository merged, `ATOM_EVOLUTION` untouched (still empty). The only follow-on cost is
+setting `ATOM_EVOLUTION`'s own `LICENSE` file to AGPL-3.0-or-later when work there begins —
+recorded here so it is not forgotten at that point.
+**Status.** applied. Also settled in the same session, folded into `docs/LICENSE_STRATEGY.md`
+§3a and `D-0467`: product access control is registration only, never a code-based licence key.

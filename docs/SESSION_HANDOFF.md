@@ -1,24 +1,28 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0466`: `/model` lists instead of demanding an id)
+# SESSION HANDOFF — 2026-08-15 (`D-0468`: ATOM open, governance session — closing)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0466` is fixed in SOURCE ONLY — it is not deployed and not verified live.** Two things
-are outstanding on it, and they are the next action:
+**Session closing on two governance amendments, `D-0467`/`D-0468` — no product code in
+either.** `D-0467` added a "path to final delivery" section to `noesar-evolution-
+engineering-depth` (audit-once → frozen checklist → complete implementation → five delivery
+ZIPs vs. checklist) and settled product access control as **registration only, never a
+licence key**. `D-0468`: **ATOM is no longer proprietary** — open, AGPL-3.0-or-later,
+matching the core — but stays **architecturally separate** in its own repository
+(`ATOM_EVOLUTION`, still empty; repository split ≠ licence, only the licence moved).
+`noesar-evolution-funding-fit` was named explicitly out of scope by the Owner and is
+untouched — confirmed by `git status` both times it was checked.
+
+**The top of the next action list is still `D-0466`, unfinished**: `/model` is fixed in
+SOURCE ONLY.
 
 1. **Run the disposable e2e probe** (`tools/run-browser-e2e.sh`) — a `/model` check was added
    to `tools/browser-e2e.mjs` but never executed (Owner stopped the run as too costly). Until
    it runs, the browser/terminal path for this fix is `[UNVERIFIED]`.
 2. **Deploy**, if the Owner authorizes it — the running container still has the old `/model`.
 
-**What was wrong** (Owner-reported): `/model` demanded an id and could name none — the command
-declared `<id>` (required), so `planTurn` answered "`/model` needs `<id>`. Nothing was run" and
-offered no way to discover one, while `#/models` in the browser had the whole catalogue the
-entire time. Same dead end `s333 point 2` fixed for `/diff` and 8 others, never applied here.
-**Now**: the argument is optional, and `/model` with nothing lists what is actually loadable,
-read from the SAME catalogue the page renders — never a second listing.
-
 Earlier this session: crash fix (`D-0460`) → F-PANEL-001 (`D-0461`) → F-TERM-002 (`D-0462`) →
-F-SLASH-001 investigated (`D-0463`) → F-TMP-001 (`D-0464`) → F-TMP-002 (`D-0465`).
+F-SLASH-001 investigated (`D-0463`) → F-TMP-001 (`D-0464`) → F-TMP-002 (`D-0465`) →
+`/model` fix (`D-0466`) → engineering-depth + access-control (`D-0467`) → ATOM open (`D-0468`).
 
 Also still open, untouched:
 
@@ -44,6 +48,8 @@ Also still open, untouched:
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata (l'Owner ce l'ha già). |
 | `D-0433` | **APERTO.** Stessa condizione già accettata. |
 | `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da terminale vero. |
+| ATOM licence | **APPLICATO** — aperto, AGPL-3.0-or-later, repository separato invariato (`ATOM_EVOLUTION`, ancora vuoto). `D-0468`. Follow-on: impostare il file `LICENSE` lì quando parte il lavoro. |
+| Product access control | **DECISO** — registrazione, mai chiave/licenza a codice. `D-0467`/`D-0468`/`LICENSE_STRATEGY.md` §3a. |
 
 ## Verificato IN QUESTA SESSIONE
 
@@ -81,10 +87,24 @@ Also still open, untouched:
 - **F-SLASH-001's actual fix** — root cause is confirmed (not a guess: 2 driven runs), but the
   fix itself needs a test-strategy decision between two named designs before any code is
   written. Deliberately not picked unilaterally, same discipline `D-0456` used for `F-PANEL-001`.
+- **`ATOM_EVOLUTION`'s own `LICENSE` file** — `D-0468` settled that it will be
+  AGPL-3.0-or-later, but the repository is still empty; nothing was written into it this
+  session (governance only, in `NOESAR_EVOLUTION`).
+- **`MASTER_PROJECT/02_ATOM.md`** — checked, not edited: it declares only the technical
+  `ReasoningProvider` contract, never a licence posture, so `D-0468` needed no supersession
+  note there.
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0466`, non eseguita)**: `/model` was broken in a way NO test could
+**Nuova, da questo giro (`D-0468`, non eseguita)**: now that `ATOM_EVOLUTION` is meant to be
+open, it has no repository yet with a `LICENSE`, `NOTICE`, or a first commit — it is still
+the empty repository from `2026-07-28`. Beneficio: the FIRST commit into it should carry the
+AGPL text and the `ReasoningProvider` contract's own copy (or a pointer to this repo's), so the
+licence is never an afterthought bolted on after code already exists — matching how `D-0453`
+did the root `LICENSE`/`NOTICE` for this repository. Costo: near zero, and it is the natural
+first step whenever `ATOM_EVOLUTION` work is actually authorized.
+
+**Precedente (`D-0466`, non eseguita)**: `/model` was broken in a way NO test could
 have caught, because nothing asserts that a command's declared argument is *discoverable*. Nine
 commands take `<required>` arguments; `panelOwning()` gives eight of them a panel that shows the
 possible values, and `/model` was the one with no panel and no listing — a fact visible only by
