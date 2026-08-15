@@ -95,6 +95,22 @@ printf '  (file is %s lines — read only the last entry)\n' "$(wc -l < docs/INS
 printf '\n----- HANDOFF MAP (docs/SESSION_HANDOFF.md — read this one, by offset) -----\n'
 grep -n '^#\{1,3\} ' docs/SESSION_HANDOFF.md 2>/dev/null | sed 's/^/  /'
 
+printf '\n----- HOOK MATCHER COVERAGE (.claude/settings.json vs documented event enums, D-0455) -----\n'
+MATCHER_LIB="$ROOT/.claude/hooks/lib/hook-matcher-enums.sh"
+if [ -f "$MATCHER_LIB" ] && command -v jq >/dev/null 2>&1; then
+  # shellcheck source=../../hooks/lib/hook-matcher-enums.sh
+  . "$MATCHER_LIB"
+  GAPS="$(hme_check_settings "$ROOT/.claude/settings.json" 2>/dev/null)"
+  if [ -z "$GAPS" ]; then
+    printf '  OK — every enum-type hook matcher (SessionStart, SessionEnd) has full coverage\n'
+  else
+    printf '  ⚠ GAP — a matcher is silently missing a documented value (F-HOOK-005 bug class):\n'
+    printf '%s\n' "$GAPS" | sed 's/^/    /'
+  fi
+else
+  printf '  [checker unavailable: %s or jq missing]\n' "$MATCHER_LIB"
+fi
+
 printf '\n----- PROJECT CONTAINERS (read-only; §5a allows exactly two at phase close) -----\n'
 if command -v docker >/dev/null 2>&1; then
   docker ps -a --filter 'name=noesar-evolution' \

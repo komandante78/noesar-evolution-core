@@ -1,12 +1,16 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0454`: `F-HOOK-005` root cause found and fixed)
+# SESSION HANDOFF — 2026-08-15 (`D-0454`/`D-0455`: `F-HOOK-005` chiuso, checker generico costruito)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **Governance, non Fase C: `F-HOOK-005` (SessionStart non scriveva la baseline dei container)
-aveva root cause ignota da tre giorni (D-0396). Trovata e riparata in questa sessione — vedi
-`D-0454`. Fase C (WP6) resta ESATTAMENTE dove D-0453 l'aveva lasciata: non "quasi tutta chiusa",
-un solo comando tecnico resta scoperto e nominato sotto, nessun altro pezzo di Fase C è stato
-toccato da questo giro.**
+aveva root cause ignota da tre giorni (D-0396). Trovata e riparata in questa sessione (`D-0454`
+— matcher mancava `clear`), poi generalizzata su richiesta esplicita dell'Owner (`D-0455`): un
+checker riusabile (`hme_check_settings`) confronta ogni matcher-a-enum del progetto contro
+l'enum documentato reale, e costruendolo si è trovato un SECONDO buco che `D-0454` da solo non
+copriva — `fork`, il quinto valore di `SessionStart`. Entrambi chiusi. Il checker gira ora
+automaticamente in `state-digest.sh` ad ogni sessione (fallisce rumorosamente, non in silenzio)
+e in 258/258 test hook. Fase C (WP6) resta ESATTAMENTE dove D-0453 l'aveva lasciata: un solo
+comando tecnico resta scoperto e nominato sotto, nessun altro pezzo di Fase C è stato toccato.**
 
 **Resta UN solo comando tecnico (`cargo publish`), e 6 domande legali/di prodotto esplicitamente
 per la Fase 5 — nessuna delle due nascosta.**
@@ -40,7 +44,7 @@ autorizzi (a) i tre finding salvati, (b) Fase D (Capability Token spec, WP4).
 
 | Id | Stato |
 |---|---|
-| `F-HOOK-005` | **CHIUSO 2026-08-15 (`D-0454`)** — matcher `SessionStart` non copriva `clear`; riparato + test di regressione, 249/249 suite hook verde. |
+| `F-HOOK-005` | **CHIUSO 2026-08-15 (`D-0454`/`D-0455`)** — matcher `SessionStart` non copriva `clear` (poi trovato: nemmeno `fork`); riparato + checker generico riusabile, 258/258 suite hook verde. |
 | `F-COMMAND-001`/`F-INTENT-001`/`F-PANEL-001` | **APERTI, salvati per la fine** (istruzione Owner). |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5** — dual-license, audit, marchio, termini commerciali. |
 | `D-0436`…`D-0445` | **FATTO**, deployati. Solo `D-0438` confermato dall'Owner. |

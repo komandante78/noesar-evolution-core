@@ -329,25 +329,24 @@ else
   ok "[SKIPPED, declared] git is unavailable here — the end-to-end closure-set case did not run"
 fi
 
-# --- SessionStart matcher must cover /clear (F-HOOK-005 root cause, 2026-08-15) ---
-# The matcher used to be "startup|resume|compact": /clear fires SessionStart with
-# source=="clear", a value distinct from all three, so the hook silently never ran on a
-# mid-session /clear and no container baseline was ever written for that session — the Stop
-# hook then blocked on "baseline missing" with no way to tell it apart from real litter.
+# --- every enum-type hook matcher in settings.json covers its documented enum
+# (F-HOOK-005 root cause, D-0454/D-0455) --- delegates to lib/hook-matcher-enums.sh, the
+# single source of truth for the canonical values, so this suite and
+# test-hook-matcher-enums.sh (which exercises the checker itself) never hold two copies of
+# the same enum to drift apart.
 SETTINGS="$HERE/../../settings.json"
-if [ -f "$SETTINGS" ] && command -v jq >/dev/null 2>&1; then
-  MATCHER="$(jq -r '.hooks.SessionStart[0].matcher // empty' "$SETTINGS" 2>/dev/null)"
-  FOUND=0
-  OLDIFS="$IFS"; IFS='|'
-  for ALT in $MATCHER; do [ "$ALT" = "clear" ] && FOUND=1; done
-  IFS="$OLDIFS"
-  if [ "$FOUND" = 1 ]; then
-    ok "settings.json SessionStart matcher covers the /clear source (matcher=$MATCHER)"
+MATCHER_LIB="$HERE/../lib/hook-matcher-enums.sh"
+if [ -f "$SETTINGS" ] && [ -f "$MATCHER_LIB" ] && command -v jq >/dev/null 2>&1; then
+  # shellcheck source=../lib/hook-matcher-enums.sh
+  . "$MATCHER_LIB"
+  GAPS="$(hme_check_settings "$SETTINGS")"
+  if [ -z "$GAPS" ]; then
+    ok "settings.json: every enum-type hook matcher has full documented coverage"
   else
-    bad "settings.json SessionStart matcher covers the /clear source" "matcher=$MATCHER"
+    bad "settings.json: every enum-type hook matcher has full documented coverage" "$GAPS"
   fi
 else
-  ok "[SKIPPED, declared] settings.json or jq unavailable — matcher coverage not checked"
+  ok "[SKIPPED, declared] settings.json, the matcher-enums lib, or jq is unavailable"
 fi
 
 echo

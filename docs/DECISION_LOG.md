@@ -10656,3 +10656,30 @@ containers were created or removed by this session before the write.
 **Reversal cost.** None — a one-token regex widening plus a test; no behavior removed.
 **Status.** Applied and verified. `F-HOOK-005` closed (was OPEN/root-cause-unknown in
 `PROJECT_STATE.json.blockers`).
+
+## D-0455 · Generic hook-matcher-vs-documented-enum checker — Owner-accepted improvement proposal, built — 2026-08-15
+**Decision.** New `.claude/hooks/lib/hook-matcher-enums.sh` (POSIX sh): a canonical table of
+the documented enum for hook events whose `matcher` partitions a fixed source/reason set
+(`SessionStart`: startup/resume/clear/compact/fork; `SessionEnd`: clear/resume/logout/
+prompt_input_exit/bypass_permissions_disabled/other), and `hme_check_settings()` to diff a
+`settings.json` against it. Wired into `state-digest.sh` (fails loud every session,
+automatically) and into `test-session-lifecycle.sh` (generalized from the single hardcoded
+`clear` assertion added under `D-0454`); a dedicated `test-hook-matcher-enums.sh` proves the
+checker itself. Building it found a SECOND real gap `D-0454` missed: `fork` (SessionStart's
+fifth documented value) — fixed in the same matcher edit.
+**Why.** Owner accepted the improvement proposed while closing `D-0454`: the specific fix only
+proved SessionStart covers `clear`; the bug class (a matcher silently missing a documented
+value) could recur in any hook, unnoticed, the same way it went unnoticed for three days.
+**Rejected.** Extending the checker to `PreToolUse`/`PostToolUse`/etc. — those matchers are
+tool-NAME allowlists, a deliberate subset by design, not an enum to fully cover; flagging them
+would be the exact false-positive class `CLAUDE10.md` §40a warns against.
+**Evidence.** `test-hook-matcher-enums.sh`: 9/9, including the checker firing on the real
+pre-`D-0454` and `D-0454`-only settings.json states and staying silent on `PreToolUse`.
+`test-session-lifecycle.sh` 69/69, `test-container-baseline.sh` 58/58,
+`test-engineering-orchestrator.sh` 122/122 (258/258 total). `state-digest.sh` shown live: `OK`
+against the fixed file, `⚠ GAP … MISSING:SessionStart:clear / :fork` against the pre-fix
+backup. `node --test` 2546/2547 (unaffected, 1 pre-existing skip), `verify-source.mjs` PASS.
+**Reversal cost.** None — additive: one new lib, one new test file, one digest section, one
+generalized assertion. No existing behavior removed.
+**Status.** Applied. Both real gaps this incident had (`clear`, `fork`) are closed and now
+mechanically guarded against recurrence in any of this project's hooks.
