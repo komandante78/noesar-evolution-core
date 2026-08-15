@@ -215,7 +215,22 @@ describe('the client speaks the version the bridge speaks', () => {
     // cursor stayed visible and parked wherever the last `write()` left it, which
     // `renderFrame` always right-pads to — the bottom-right cell of the box, every frame.
     // Reported live 2026-08-14: a stray cursor in the terminal's bottom-right corner.
-    assert.match(source, /terminal\.write\(SCREEN\.hideCursor \+ SCREEN\.home/,
+    assert.match(source, /terminal\.write\(SCREEN\.hideCursor \+ SCREEN\.clear/,
       'draw() no longer hides the cursor before writing a frame — it will park visibly at the end of the last (padded) row');
+  });
+
+  test('every draw erases the screen rather than only homing the cursor', () => {
+    // `F-TERM-002`, 2026-08-15: `SCREEN.home` alone (`\x1b[H`, no `\x1b[2J`) only REPOSITIONS
+    // the cursor — it never erases what was there. With no alternate screen buffer entered
+    // (see the test above), nothing guarantees a new frame lands exactly where the previous one
+    // did, and when it does not, home-only leaves the old frame's content on screen instead of
+    // overwriting it. Measured live: the browser e2e suite found five stale prompt-box
+    // snapshots — one per keystroke of a five-character command — still on screen after the
+    // line was submitted and the data model's prompt was already empty. `SCREEN.clear`
+    // (`\x1b[2J\x1b[H`, defined in `tui-screen.mjs` and until this fix never used by this file)
+    // erases the visible screen unconditionally before writing, so a frame cannot leave a trace
+    // of the one before it regardless of where home lands.
+    assert.doesNotMatch(source, /terminal\.write\([^)]*SCREEN\.hideCursor \+ SCREEN\.home\b/,
+      'draw() went back to home-only, which can leave a stale frame on screen — see F-TERM-002');
   });
 });

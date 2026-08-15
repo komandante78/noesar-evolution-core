@@ -1227,8 +1227,19 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 200));
       promptSubmitted = await promptRow();
     }
+    // F-TERM-002 diagnostic (2026-08-15): `promptRow()`'s regex takes the FIRST `>...▍` match
+    // in the whole buffer. If the prompt-shaped pattern appears more than once — a stale row
+    // left over from before the help listing scrolled the screen, not the current one — the
+    // check would be reading the wrong occurrence. Every match is reported on failure so this
+    // is PROVEN rather than guessed at.
+    let allPromptMatches = 'n/a (check passed)';
+    if (promptSubmitted !== '') {
+      const finalScreen = await screenText();
+      const matches = [...finalScreen.matchAll(/>\s*([^│\n]*)▍/g)].map((m) => JSON.stringify(m[1]));
+      allPromptMatches = `${matches.length} match(es): ${matches.join(', ')}`;
+    }
     check('F-TERM-001 · Enter consumes the line — the prompt is empty again',
-      promptSubmitted === '', `prompt row after Enter: "${promptSubmitted}"`);
+      promptSubmitted === '', `prompt row after Enter: "${promptSubmitted}" — all >...▍ occurrences: ${allPromptMatches}`);
     // Waited for on `/logout`, not on `Commands:` — and the difference is a property of the
     // renderer, not a detail. The transcript region draws the TAIL of the transcript, and the
     // help listing is thirty-odd lines, so its heading scrolls off the top the moment it is

@@ -153,7 +153,20 @@ export function mountCodenTerminal({
     // because a real TTY keeps the state until told otherwise, but nothing here guarantees
     // xterm.js does the same across a theme change or an internal reset, and a cursor that
     // reappears once is a regression nothing would catch. Idempotent and cheap either way.
-    terminal.write(SCREEN.hideCursor + SCREEN.home + rows.join('\r\n'));
+    //
+    // `SCREEN.clear` (erase-display, then home), not `SCREEN.home` alone (`F-TERM-002`,
+    // 2026-08-15): this shell never enters the alternate screen buffer (see the note on
+    // `SCREEN.enter` above), so home-only relies on every frame landing on the exact same
+    // physical rows to actually overwrite the previous one — an assumption a repaint-in-place
+    // TUI can lean on with a real TTY (`tui-fullscreen.mjs`'s own draw loop does exactly this),
+    // but not here, where nothing guarantees xterm.js's viewport stays aligned to where the
+    // last frame started. Measured: the browser e2e suite found FIVE stale prompt-box
+    // snapshots (one per keystroke of a five-character command) still present in the buffer
+    // after the line was submitted and the prompt cleared in the data model — the escape
+    // sequence was overwriting nothing, only ever writing further down. `\x1b[2J` before
+    // `\x1b[H` erases the visible screen unconditionally each frame, so a frame can never leave
+    // a trace of the one before it, regardless of why home-only did not land where expected.
+    terminal.write(SCREEN.hideCursor + SCREEN.clear + rows.join('\r\n'));
   };
 
   /** One request over the bridge, resolved by id. Rejects if the socket dies first, so a caller

@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0461: F-PANEL-001's test-strategy decision resolved (Owner: direct hash jump). tools/browser-e2e.mjs's jump() helper generalized with a panel-kind param, reused at the plan-restore site instead of composer-driving. Verified live via disposable e2e probe: 477 checks (391 before, +86 unmasked), 'Restore reverts a promoted run' PASS, ESLint 409/0. Unmasked a new, different occurrence of the same defect class at a different check, recorded not chased as F-SLASH-001 (single-run hypothesis, not yet a finding). F-TERM-002 and cargo publish remain open, unchanged.",
-  "phase_status": "D-0461_fixed_and_verified__F-SLASH-001_new_F-TERM-002_and_cargo_publish_still_open",
+  "current_phase": "D-0462: F-TERM-002 fixed, driven investigation not a guess. Root cause: coden-terminal.js's draw() used SCREEN.home (reposition only) instead of SCREEN.clear (erase then home) -- with no alternate screen buffer entered, nothing guaranteed a new frame landed on the same rows as the last, so old frames were never overwritten. A diagnostic added to the e2e check proved five stale prompt-box snapshots, one per keystroke, still on screen after the prompt was already cleared in the data model. Fixed with SCREEN.clear (already defined, previously unused). Verified live: the exact failing check now passes, suite 475/477 (up from 474/477). Unit tests 21/21, ESLint 409/0. F-SLASH-001 and cargo publish remain open, unchanged.",
+  "phase_status": "D-0462_fixed_and_verified__F-SLASH-001_and_cargo_publish_still_open",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -349,7 +349,8 @@
     {
       "id": "F-TERM-002",
       "severity": "low",
-      "status": "OPEN - found 2026-08-15, reproduced 5/5 e2e runs this session (unrelated to this session's authorized scope, so not investigated beyond recording it): F-TERM-001's own check (\"Enter consumes the line -- the prompt is empty again\") now fails every run -- prompt row reads \"/help\" (not cleared) up to 3s after Enter, despite D-0448's poll already accounting for render-timing lag. F-TERM-001 itself (D-0423, commit ff448e4) is not reverted -- Ctrl-U still empties the prompt and typing still composes it correctly; only the post-Enter clear is affected. Needs its own driven investigation, not a guess."
+      "status": "FIXED 2026-08-15 (D-0462), driven not guessed. Root cause: coden-terminal.js's draw() repainted with SCREEN.home alone (\\x1b[H, reposition only, no erase) -- correct ONLY if every frame lands on exactly the same physical rows, which nothing guarantees once the terminal never enters the alternate screen buffer (documented, deliberate, for the D-0436 cursor fix). A diagnostic added to the e2e check (report every prompt-pattern occurrence in the buffer, not just the first) proved it: FIVE stale prompt-box snapshots, one per keystroke of the five-character command just submitted, still present after the data model's prompt was already empty -- home-only was writing further down every frame, never overwriting. Fixed: SCREEN.clear (\\x1b[2J\\x1b[H, already defined in tui-screen.mjs, never used by this file) erases the visible screen before every write. Verified live: disposable e2e probe, the exact failing check now PASSES with prompt row \"\", suite 475/477 (up from 474/477, only F-SLASH-001 and the already-tracked I18N gap remain). Unit tests: coden-terminal-client.test.mjs 21/21 (2 new/updated), ESLint 409/0.",
+      "summary": "F-TERM-001's own check (\"Enter consumes the line -- the prompt is empty again\") failed every run -- prompt row read \"/help\" (not cleared) up to 3s after Enter. Root cause: no screen erase between terminal frames, only cursor reposition."
     },
     {
       "id": "F-CRASH-001",

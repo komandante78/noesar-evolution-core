@@ -10794,3 +10794,26 @@ PASS. `tools/run-eslint.sh`: 409/0. Probe/runner/image removed; only the stable
 **Status.** applied. Unmasked a 4th, different occurrence of the same defect class — recorded,
 not chased, as `F-SLASH-001`: this project's own precedent (two failed guesses on
 `F-COMMAND-001`) is that a hypothesis from one run is not yet a finding.
+
+## D-0462 · F-TERM-002 fixed, driven investigation not a guess — 2026-08-15
+**Decision.** `coden-terminal.js`'s `draw()` writes `SCREEN.clear` (`\x1b[2J\x1b[H`, erase then
+home) instead of `SCREEN.home` alone (`\x1b[H`, reposition only). Regression test added:
+`coden-terminal-client.test.mjs` now asserts `SCREEN.clear` is used and `SCREEN.home` alone is
+not.
+**Why.** Root cause, measured not guessed: this shell never enters the alternate screen buffer
+(a documented, deliberate choice), so home-only repaint is correct ONLY if every frame lands on
+the exact same physical rows — nothing guarantees that. A diagnostic added to the e2e check
+(report every prompt-pattern match in the buffer, not just the first) proved it on a real run:
+FIVE stale prompt-box snapshots, one per keystroke of the five-character command just
+submitted, still on screen after the data model's own prompt was already empty. Home-only was
+never overwriting the previous frame, only ever writing further down.
+**Rejected.** Fixing at the `promptRow()` test helper instead (e.g. match the LAST occurrence,
+not the first) — would have hidden a real product bug (a person driving this terminal sees the
+same stale-frame garbage) behind a more forgiving test.
+**Evidence.** Disposable e2e probe, before: the check failed with `5 match(es): "/help", "",
+"/", "/h", "/he"`. After: PASSES, prompt row `""`, suite 475/477 (up from 474/477 — only
+`F-SLASH-001` and the already-tracked I18N gap remain). `coden-terminal-client.test.mjs`:
+21/21 (2 new/updated). `tools/run-eslint.sh`: 409/0.
+**Reversal cost.** none — `SCREEN.clear` was already defined for exactly this purpose and
+simply unused; the change is one identifier.
+**Status.** applied.
