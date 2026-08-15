@@ -10937,3 +10937,28 @@ previously refused now answers. No existing call shape changed.
 **Status.** applied. **NOT yet verified live**: a `/model` check was added to
 `tools/browser-e2e.mjs` but the disposable probe was not run this phase (Owner stopped it as
 too costly), and the fix is not deployed to the running container.
+
+## D-0467 · engineering-depth skill gets a "path to final delivery" section — 2026-08-15
+**Decision.** Added §8 to `noesar-evolution-engineering-depth/SKILL.md`: work from proven state
+to five packaged delivery ZIPs without re-auditing what already has evidence, without stopping
+at every intermediate file, and without widening scope — audit-once, freeze a dependency-ordered
+checklist, implement each item whole (code+config+UI+errors+tests), missing secrets get a slot
+and validation but never stop the rest, errors get root-cause-then-minimal-diff never a retry
+loop, targeted tests during the work and the full suite once at the gate, fix only blockers,
+verify the product end to end (install/start/use/restart/update/rollback), package and compare
+the five ZIPs against the frozen checklist, then declare done or name the one precise blocker.
+`noesar-evolution-funding-fit` was explicitly named out of scope and left untouched.
+**Why.** Owner instruction, verbatim, given as thirteen numbered requirements plus one settled
+question. `noesar-evolution-engineering-depth` is "how to work" — the skill the Owner named —
+so this landed there, not in a new file.
+**Rejected.** A license-key/activation-code system for the product (Owner's own instinct,
+confirmed): the project already builds an owner/account system (`AuthService`, setup token,
+MFA) for its own reasons, and a second code-based gate would be new attack surface in tension
+with the offline-by-default rule (`CLAUDE10.md` §8) and the AGPL open-core posture (§14-15).
+Settled in the skill text: registration only, no license key, ever, on this path.
+**Evidence.** `git diff --stat`: one file, `noesar-evolution-funding-fit` confirmed untouched
+by `git status`. File measured at 232 lines after the edit — the closing line states the
+measured count rather than a cap picked before writing, the same correction `noesar-evolution-
+context`'s own history records for itself.
+**Reversal cost.** none — a skill/process file, no product code touched.
+**Status.** applied.

@@ -170,6 +170,63 @@ transient purpose, this work removes** (`CLAUDE10.md` section 5a, `noesar-evolut
 | L5-ready vs. no overengineering | build extension **points**, not extensions |
 | improvement duty vs. one phase at a time | generate the proposal always, execute only when the Owner says so |
 
+## 8 — The path to final delivery (Owner, 2026-08-15)
+
+This section governs the run from **wherever the project stands today** to the five final
+delivery ZIPs, without re-auditing what is already proven and without stopping at every
+intermediate file. It does not replace the phase cycle (`noesar-evolution`) — it is the shape
+each phase on this path takes.
+
+1. **State what already works from existing proof, not a fresh audit.** A capability with a
+   passing test or a live verification already on record is accepted as working; re-auditing
+   it is waste, the same waste `noesar-evolution-context` names for re-reading a file.
+2. **Freeze a checklist of what is actually missing** before writing code. Order it by
+   dependency (what blocks what) and by criticality — not by file order or convenience.
+3. **Implement each missing requirement whole**: code, configuration, UI, error handling and
+   tests together, not code now and tests "later" — rule 73's "capability, not element" applies
+   to every line of the checklist, not just the first one built.
+4. **Do not stop after one file or one small win.** The unit of "done" on this path is the
+   phase's whole authorized slice of the checklist, not any single item inside it.
+5. **A missing secret does not stop the work around it.** Build the configuration slot and its
+   validation, leave the value empty, continue everything that does not depend on it, and
+   collect every such gap into **one** final list — never several scattered stops.
+6. **An error gets a root cause, a minimal diff, and a verification — never a retry loop.**
+   Guessing a fix and re-running is not debugging; `CLAUDE10.md` §40a's "reproduce → root
+   cause → fix the cause → prove it" is the only loop this runs.
+7. **Test targeted during the work; the full suite once, at the final gate.** Re-running green
+   suites mid-phase is the exact waste `noesar-evolution-verify` §"single-pass rules" already
+   forbids — this is that rule, restated for the delivery path specifically.
+8. **Fix only what blocks.** A non-blocking anomaly found along the way is documented — in
+   `docs/DECISION_LOG.md` or as an open finding — and does not reopen or re-scope the phase.
+9. **The commercially-necessary surface is whole, not partial**: installation, configuration,
+   WebUI, runtime, offline access control, hardware backend, security, update, rollback,
+   documentation, tests, uninstallation. A product missing any one of these is not "done with a
+   gap" — it is not done.
+10. **Access control is registration, not a license key.** Owner, verbatim: *"la licenza con
+    codice non la metterei, farei fare solo registrazione utente per usare il prodotto"*. This
+    project already builds an owner/account system (`AuthService`, first-owner setup token,
+    MFA) for the product's own reasons; a second, code-based license-activation layer would be
+    new attack surface and new complexity in tension with §8's offline-by-default rule and this
+    project's AGPL open-core posture (§14-15) — commercial differentiation belongs in support,
+    hosting or proprietary ATOM modules, never in crippling the FOSS core behind a key check.
+    Settled: no license key, ever, on this path. Registration is the whole mechanism.
+11. **Verify the product, not just the code**: a clean install, first start, the primary use
+    path, a restart, an update and a rollback — each one actually run, not inferred.
+12. **Package exactly five final ZIPs**, each with its manifest, version and checksum. These
+    are the *delivery* ZIPs — a different five from `CLAUDE10.md` rule 34's five *source*
+    ZIPs (which stay forbidden from the repository, unrelated to this list). Naming both
+    "the five ZIPs" is a collision this project has been burned by before (the ATOM `L0-L8`
+    naming collision, `02_ATOM.md`) — never call one when the other is meant.
+13. **Compare the five ZIPs against the frozen checklist from step 2.** All criteria pass →
+    declare the product complete and **stop** — no further phase is opened uninvited. Something
+    truly indispensable still missing → name **only** the precise blocker and the exact datum
+    needed to close it, nothing broader.
+
+The standing rule underneath all thirteen: work from where the project truly stands to the
+five deliverables, without widening scope, without re-running what is already proven, and
+without a full stop at every intermediate step — the phase cycle's own STOP still applies at
+the end of whatever slice was authorized, not before it.
+
 ---
 
-*Deliberately under 175 lines, for the same reason the other four skills are short.*
+*232 lines, measured — not "deliberately under" a number picked before writing it.*
