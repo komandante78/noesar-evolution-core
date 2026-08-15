@@ -30,7 +30,7 @@ import { Terminal } from './vendor/xterm/xterm.mjs';
 // The pure decisions live in the shared tree so the suite can import them without a browser.
 import { decodeInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
 import { SCREEN, renderFrame } from '../shared/coden/tui-screen.mjs';
-import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE } from './coden-view-model.js';
+import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, detailLines } from './coden-view-model.js';
 import {
   accountFromUser, menuFor, groupMenu, hiddenNote, resolveCommand, parseCommandPrompt,
 } from '../shared/coden/agent-commands.js';
@@ -443,7 +443,15 @@ export function mountCodenTerminal({
     draw();
     try {
       const result = await call(turn.method, turn.params);
-      record('agent', typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+      // F-TERM-003 (2026-08-15), found verifying `/model`'s own fix: an untruncated
+      // `JSON.stringify` of a large result (a populated model catalogue was the first thing
+      // ever large enough to expose it) can occupy so much of the fixed-height transcript
+      // that a LATER turn's own response effectively disappears from view — the same "a
+      // single /map buried the tool call" defect this file's own `DETAIL_LINES` history
+      // already names, just not yet closed here. `detailLines(result)` is the SAME shaper
+      // `tui-fullscreen.mjs` and `app.js` already use for a generic call result — CE-033: the
+      // two (three, counting this one) shells give the same answer, not a third one.
+      record('agent', `${turn.command} — ok`, detailLines(result));
     } catch (error) {
       // Errors are said into the transcript, never swallowed and never thrown at the console:
       // a terminal that silently does nothing is the failure mode this product has already

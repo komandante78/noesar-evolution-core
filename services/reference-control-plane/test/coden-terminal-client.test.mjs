@@ -233,4 +233,20 @@ describe('the client speaks the version the bridge speaks', () => {
     assert.doesNotMatch(source, /terminal\.write\([^)]*SCREEN\.hideCursor \+ SCREEN\.home\b/,
       'draw() went back to home-only, which can leave a stale frame on screen — see F-TERM-002');
   });
+
+  test('a call result is truncated the same way both other shells already truncate it', () => {
+    // `F-TERM-003`, 2026-08-15, found verifying `/model`'s own fix: this shell's generic
+    // `call` handler used to `JSON.stringify` the whole result untruncated. A large enough
+    // result (a populated model catalogue was the first thing ever big enough) can occupy so
+    // much of the fixed-height transcript that a LATER turn's own response effectively
+    // disappears from view — measured live: the e2e suite's very next check, an unrelated
+    // `/memory` address lookup, started failing to find its own answer on screen. Both
+    // `tui-fullscreen.mjs` and `app.js` already truncate with `detailLines(result)`
+    // (`DETAIL_LINES` = 10, "… N more lines"); this shell must use the same shaper, not a
+    // third answer to the same question (CE-033).
+    assert.match(source, /record\('agent',\s*`\$\{turn\.command\} — ok`,\s*detailLines\(result\)\)/,
+      'the call-result branch no longer truncates with detailLines() — a large result can bury a later turn again');
+    assert.doesNotMatch(source, /JSON\.stringify\(result/,
+      'an untruncated JSON.stringify(result) is back — see F-TERM-003');
+  });
 });

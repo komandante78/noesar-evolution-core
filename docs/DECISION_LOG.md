@@ -10993,3 +10993,27 @@ setting `ATOM_EVOLUTION`'s own `LICENSE` file to AGPL-3.0-or-later when work the
 recorded here so it is not forgotten at that point.
 **Status.** applied. Also settled in the same session, folded into `docs/LICENSE_STRATEGY.md`
 §3a and `D-0467`: product access control is registration only, never a code-based licence key.
+
+## D-0469 · `/model` verified live; unmasked and fixed F-TERM-003 — 2026-08-15
+**Decision.** Ran `D-0466`'s `/model` fix through the disposable e2e probe, as promised. It
+passed — and doing so unmasked a second, real, previously-invisible defect: `coden-
+terminal.js`'s generic `call`-result rendering was untruncated `JSON.stringify`, and the
+model listing was the first result ever large enough to expose it. Fixed with
+`detailLines(result)`, the identical truncation `tui-fullscreen.mjs` and `app.js` already use.
+**Why.** The e2e run's very next check — an unrelated `/memory` address lookup — started
+failing to find its own answer on screen, right after `/model`'s listing. Confirmed against 6
+prior e2e logs from earlier today, all green on that exact check: this is a real regression
+`/model` exposed, not a flake. Root cause: this file's own history already named the bug
+class (`/map`'s 24 untruncated lines "buried the tool call", fixed here in `app.js` and
+`tui-fullscreen.mjs` on `2026-08-14`) but the fix was never applied to this third shell —
+`CE-033` says the two (three) shells must not diverge, and this was exactly that divergence,
+just never large enough to be caught until now.
+**Rejected.** Shrinking `/model`'s own listing instead of fixing the renderer — that would
+have hidden the general defect behind a special case for one command, and the next command
+whose result happens to be large would rediscover it.
+**Evidence.** Before: 3 e2e failures (`F-SLASH-001`, `I18N` gap, this new one). After: 2 —
+only the two already-tracked ones. New regression test in `coden-terminal-client.test.mjs`
+(source-text assertion: `detailLines(result)` present, `JSON.stringify(result` absent),
+22/22 in that file. Full suite 2560/2561 (1 pre-existing skip, +1 new). ESLint 411/0.
+**Reversal cost.** none — one line, matches an already-proven pattern used twice elsewhere.
+**Status.** applied and verified live. Not yet deployed — next action.
