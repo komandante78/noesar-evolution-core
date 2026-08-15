@@ -18,14 +18,13 @@
 // produces this state, and the store is the only place that state is observable.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { AtomicJsonStore } from '../src/ai-workspace/atomic-store.mjs';
 import { WorkflowService } from '../src/ai-workspace/workflow-service.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function freshService() {
-  const directory = mkdtempSync(join(tmpdir(), 'noesar-workflow-interrupted-'));
+  const directory = freshTempDir('noesar-workflow-interrupted-');
   const store = new AtomicJsonStore(join(directory, 'state/ai-workspace.json'));
   const appended = [];
   const service = new WorkflowService({ store, ledger: { append: (entry) => appended.push(entry) } });

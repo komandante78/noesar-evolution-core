@@ -7,11 +7,10 @@
 // had no revocation path at all, which is why replacement is the centrepiece here.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { AuthService } from '../src/auth.mjs';
 import { totpCode, base32Decode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -23,7 +22,7 @@ function ledgerStub() {
 
 /** Bring up an initialised installation with an owner, and return the pieces. */
 function bootstrap() {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-security-'));
+  const workspace = freshTempDir('noesar-security-');
   const ledger = ledgerStub();
   const auth = new AuthService({ workspace, setupToken: SETUP_TOKEN, ledger });
   const begun = auth.beginSetup({

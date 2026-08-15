@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, symlinkSync, writeFileSync, readFileSync } from 'node:fs';
+import { symlinkSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   SOURCE_TIERS, SUPPORTED_LOCALES, TimezoneService, formatInZone, isValidTimeZone,
@@ -11,8 +10,9 @@ import {
 } from '../src/timezone.mjs';
 import { JsonStore } from '../src/store.mjs';
 import { AuditLedger } from '../src/audit.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-function workspace() { return mkdtempSync(join(tmpdir(), 'noesar-tz-')); }
+function workspace() { return freshTempDir('noesar-tz-'); }
 function service(options = {}) {
   const root = workspace();
   const store = new JsonStore(join(root, 'state/state.json'));

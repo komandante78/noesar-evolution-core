@@ -12,14 +12,12 @@
 // *reports* and what the server *enforces* can never drift apart.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { AuthService, ROLES, RolePermissions, MFA_REQUIRED_ROLES } from '../src/auth.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function service() {
   return new AuthService({
-    workspace: mkdtempSync(join(tmpdir(), 'noesar-perms-')),
+    workspace: freshTempDir('noesar-perms-'),
     setupToken: 'test-only-setup-token-not-a-real-secret',
     ledger: { append() {} },
   });

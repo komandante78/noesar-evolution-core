@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { Watchdog, RECOVERY_LEVELS, CRASH_LOOP_RESTARTS, watchdogStatePath } from '../src/watchdog.mjs';
 import { Logger } from '../src/logging.mjs';
 import { Metrics } from '../src/metrics.mjs';
 import { AuditLedger } from '../src/audit.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-function harness({ root = mkdtempSync(join(tmpdir(), 'noesar-wd-')), clockStart = Date.parse('2026-07-25T06:00:00Z') } = {}) {
+function harness({ root = freshTempDir('noesar-wd-'), clockStart = Date.parse('2026-07-25T06:00:00Z') } = {}) {
   const logger = new Logger({ dir: join(root, 'logs'), stdout: false, level: 'TRACE' });
   const ledger = new AuditLedger(join(root, 'audit/events.jsonl'));
   const metrics = new Metrics();
@@ -115,7 +115,7 @@ test('an idempotent operation is retried behind exponential capped backoff with 
 });
 
 test('backoff jitter is actually applied', () => {
-  const root = mkdtempSync(join(tmpdir(), 'noesar-wd-j-'));
+  const root = freshTempDir('noesar-wd-j-');
   const low = new Watchdog({ statePath: watchdogStatePath(root), random: () => 0 });
   const high = new Watchdog({ statePath: join(root, 'other.json'), random: () => 1 });
   assert.equal(low.backoffMs(1), 2500);
@@ -166,7 +166,7 @@ test('restart history older than the window does not count as a crash loop', asy
 });
 
 test('a crash loop recorded before this boot puts the process straight into safe mode', () => {
-  const root = mkdtempSync(join(tmpdir(), 'noesar-wd-boot-'));
+  const root = freshTempDir('noesar-wd-boot-');
   const first = harness({ root });
   first.watchdog.recordRestartRequest('r1');
   first.watchdog.recordRestartRequest('r2');
@@ -238,7 +238,7 @@ test('entering safe mode notifies the owner', () => {
 });
 
 test('a notification sink that throws cannot break recovery', () => {
-  const root = mkdtempSync(join(tmpdir(), 'noesar-wd-n-'));
+  const root = freshTempDir('noesar-wd-n-');
   const watchdog = new Watchdog({
     statePath: watchdogStatePath(root),
     notify: () => { throw new Error('sink is down'); },

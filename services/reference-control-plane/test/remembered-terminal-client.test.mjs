@@ -15,17 +15,18 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { attachSession, LineReader, login } from '../../../tools/tui-client.mjs';
 import { clearCredential, credentialPath, readCredential, writeCredential } from '../../../tools/terminal-credential.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const USER = { id: 'u1', username: 'owner', role: 'owner' };
 const ENDPOINT = '/run/codev-tui.sock';
 
 function tmp() {
-  return mkdtempSync(join(os.tmpdir(), 'noesar-cred-'));
+  return freshTempDir('noesar-cred-');
 }
 
 function scriptedReader(lines) {

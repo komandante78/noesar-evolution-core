@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { gunzipSync } from 'node:zlib';
 import { Logger, LEVELS, redactRecord } from '../src/logging.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-function workspace() { return mkdtempSync(join(tmpdir(), 'noesar-log-')); }
+function workspace() { return freshTempDir('noesar-log-'); }
 function logger(dir, options = {}) {
   return new Logger({ dir, stdout: false, quotaCheckEvery: 1, ...options });
 }

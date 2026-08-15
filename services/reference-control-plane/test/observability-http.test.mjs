@@ -4,12 +4,10 @@
 // deployed, not merely as unit-tested modules.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { request as httpRequest } from 'node:http';
+import { freshTempDir } from './support/workspace.mjs';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-http-'));
+const workspace = freshTempDir('noesar-http-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_LOG_LEVEL = 'INFO';
 process.env.NOESAR_SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';

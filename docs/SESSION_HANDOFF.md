@@ -1,22 +1,24 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0463`: F-SLASH-001 root cause confirmed, fix deferred)
+# SESSION HANDOFF — 2026-08-15 (`D-0464`: F-TMP-001 fixed — shared workspace helper)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **Continuation of the same out-of-sequence session — Owner authorized up to 3 phases in a row,
-one at a time, each closing with its own report.** Fourth piece: crash fix (`D-0460`) →
-F-PANEL-001 (`D-0461`) → F-TERM-002 (`D-0462`) → F-SLASH-001 investigated (`D-0463`, this one).
+one at a time, each closing with its own report. This was phase 2 of 3.** Fifth piece: crash
+fix (`D-0460`) → F-PANEL-001 (`D-0461`) → F-TERM-002 (`D-0462`) → F-SLASH-001 investigated
+(`D-0463`) → F-TMP-001 fixed (`D-0464`, this one).
 
-**F-SLASH-001 is NOT fixed — its root cause is CONFIRMED, and the fix is deliberately deferred
-as its own next phase.** Two driven e2e runs (retry did not help — proved STEADY STATE, not a
-race: composer state unchanged across 5 attempts over 1 full second) confirm the same defect
-class as `F-PANEL-001`, but at a check that specifically tests the composer GESTURE — so
-`F-PANEL-001`'s `jump()`-bypass does not transfer here. A real fix needs the terminal-driving
-helpers hoisted out of their current block scope and new assertions built for a code path never
-exercised before. Two competing designs are named in `D-0463`, neither self-evidently right —
-this needs a decision, not a guess, exactly like `F-PANEL-001` did before `D-0461`.
+**F-TMP-001 is FIXED**, and turned out bigger than estimated: a shared `freshTempDir()` test
+helper now owns cleanup for 58 files (not the originally-estimated 55-57) — 6 more were found
+only by actually running the migration and diffing `/tmp`, because they DID call `rmSync`, just
+for something unrelated to their own leaked workspace, which the original grep could not tell
+apart. The single worst offender, `update-manager.test.mjs`, had leaked 6,698 directories on
+its own — bigger than either file `F-CRASH-001` fixed this morning. Total backlog removed:
+75,114 directories, rootfs 30%→20% used.
 
-Two items are still open:
+Three items are still open:
 
+- **`F-TMP-002`** — the same pattern in 5 plain-script `tools/*.mjs` files, deliberately
+  deferred: they need `process.on('exit', ...)`, not `node:test`'s `after()`. See `D-0464`.
 - **F-SLASH-001's actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
   when the terminal has claimed the surface. See `D-0463`.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
@@ -28,7 +30,8 @@ Two items are still open:
 | Id | Stato |
 |---|---|
 | `F-CRASH-001` | **FIXED** — 8.3 GB / 3,553 leaked `/tmp` dirs removed, both leaking test files patched, rootfs 82%→29% full. See `D-0460`. |
-| `F-TMP-001` | **OPEN, recorded** — same mkdtemp-without-cleanup pattern in ~55 other files, small leak each, not today's cause, not fixed. |
+| `F-TMP-001` | **FIXED** — shared `freshTempDir()` helper, 58 files migrated, 75,114 leaked dirs removed, rootfs 30%→20% full. `D-0464`. |
+| `F-TMP-002` | **OPEN, recorded** — same pattern in 5 plain-script `tools/*.mjs` files, needs a different (non-`after()`) mechanism. `D-0464`. |
 | `F-COMMAND-001` | **RIPARATO E DEPLOYATO** — `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z`, live e sano. |
 | `F-PANEL-001` | **FIXED** — direct hash jump (`jump('agent/plan','plan','agent')`) replaces composer-driving at the plan-restore site. `D-0461`. Test-harness only, nothing to deploy. |
 | `F-SLASH-001` | **ROOT CAUSE CONFIRMED, not fixed** — steady state (terminal already live), not a race, proven over 2 driven runs. Fix needs a test-strategy choice, deferred as its own phase. `D-0463`. |
@@ -42,13 +45,15 @@ Two items are still open:
 
 | Strumento | Risultato |
 |---|---|
-| `node --test` on the two fixed files | 36/36 pass, 0 new `/tmp` dirs (was leaking every run) |
-| `node --test services/reference-control-plane/test/*.test.mjs` | 2550/2551 pass, 1 pre-existing skip, unchanged |
-| `tools/run-eslint.sh` | 409 files, 0 errors |
-| `df -h /`, `free -h` before/after removing leaked dirs | rootfs 82%→29% (2.9G→12G free); available memory 1.9Gi→10Gi |
-| `tools/run-browser-e2e.sh` (disposable probe, ×5 this session) | run 1: 477 checks, 474 pass. Run 2 (F-TERM-002 diagnostic): proof of 5 stale prompt snapshots. Run 3 (F-TERM-002 fix): 475/477, that check now PASSES. Run 4 (F-SLASH-001 one-shot diagnostic): fired never, generic error persisted. Run 5 (F-SLASH-001 retry diagnostic): proved steady state — identical composer/terminal state across 5 attempts over 1s |
-| `node --test services/reference-control-plane/test/coden-terminal-client.test.mjs` | 21/21 pass (2 new/updated) |
-| `node --test services/reference-control-plane/test/*.test.mjs` (final regression) | 2551/2552 pass, 1 pre-existing skip, unchanged |
+| `node --test` on the two `F-CRASH-001` files | 36/36 pass, 0 new `/tmp` dirs (was leaking every run) |
+| `tools/run-browser-e2e.sh` (disposable probe, ×5) | run 1: 477 checks, 474 pass. Run 2 (F-TERM-002 diagnostic): proof of 5 stale prompt snapshots. Run 3 (F-TERM-002 fix): 475/477, that check now PASSES. Run 4/5 (F-SLASH-001 diagnostics): proved steady state, not a race |
+| `node --test services/reference-control-plane/test/coden-terminal-client.test.mjs` | 21/21 pass (2 new/updated, F-TERM-002) |
+| `node --test` on `workspace.mjs`'s own suite | 3/3 pass, confirmed self-cleaning (`/tmp` count 0→0) |
+| `node --test` on all 58 `F-TMP-001`-migrated files together | 706/706 pass |
+| `node --test services/reference-control-plane/test/*.test.mjs` (final, after everything) | 2554/2555 pass, 1 pre-existing skip |
+| `tools/run-eslint.sh` (final) | 411 files, 0 errors |
+| Full-suite leak check, ×2 consecutive runs | `noesar-*` count in `/tmp` flat: 26→26 |
+| `df -h /` across the whole session | rootfs 82%→29% (`F-CRASH-001`) →20% (`F-TMP-001`'s backlog removal) |
 | §5a cleanup after each e2e probe | probe/runner/image removed every time; only the stable `noesar-e2e-net` network survives |
 
 ## Cosa NON è stato fatto
@@ -59,26 +64,23 @@ Two items are still open:
 - **Deploy of `D-0462`'s fix** — verified live via the disposable probe only; not installed to
   the running container (no deployment authorization this session, same as `D-0461`).
 - **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
-- **`F-TMP-001`** — the same leak pattern in ~55 other files was found, not fixed: real fix
-  needs a shared test helper (a single `withWorkspace()`/registered-temp-dir utility) so the
-  cleanup lives in one place instead of being re-added file by file.
-- **`F-SLASH-001`'s actual fix** — root cause is confirmed (not a guess: 2 driven runs), but the
+- **`F-TMP-002`** — the same pattern in 5 plain-script `tools/*.mjs` files, deliberately out of
+  scope: they are not `node:test` suites, so `freshTempDir()`'s `after()`-based cleanup cannot
+  apply; they need `process.on('exit', ...)` or a top-level `try/finally` instead.
+- **F-SLASH-001's actual fix** — root cause is confirmed (not a guess: 2 driven runs), but the
   fix itself needs a test-strategy decision between two named designs before any code is
   written. Deliberately not picked unilaterally, same discipline `D-0456` used for `F-PANEL-001`.
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0463`, non eseguita)**: `typeIntoTerminal`/`terminalFrame`/
-`screenText` (the proven, hard-won terminal-driving primitives from the `coden-terminal` step)
-are block-scoped to that one step and unusable anywhere else in this 3900+ line file — which is
-exactly what blocked a same-phase fix for `F-SLASH-001`. Beneficio: hoisting them to file scope
-(a mechanical, low-risk move — they close over `page`/`terminalFrame` already, not over
-anything step-local) turns "drive the live terminal" into a reusable capability for every check
-downstream, not just the one step that happened to need it first. Costo: low, pure refactor; it
-is also the FIRST thing `D-0463`'s own fix will need, so this is not speculative.
+**Nuova, da questo giro (`D-0464`, non eseguita)**: `F-TMP-002` (5 `tools/*.mjs` scripts) needs
+its own small helper — a `process.on('exit', ...)`-based sibling to `freshTempDir()`, same
+tracking-array idea, different teardown trigger since these are plain scripts, not `node:test`
+suites. Beneficio: closes the LAST piece of this whole leak class, ~10-13 call sites, small and
+mechanical once the pattern exists. Costo: low; the design is already known, just not built.
 
-**Precedente (`D-0462`, non eseguita)**: `renderFrame`'s output has no unit test bounding a
-row's rendered width to the terminal's actual column count. See `D-0462` in
-`docs/DECISION_LOG.md`.
+**Precedente (`D-0463`, non eseguita)**: hoist `typeIntoTerminal`/`terminalFrame`/`screenText`
+out of the `coden-terminal` step's block scope — the FIRST thing `F-SLASH-001`'s own fix will
+need. See `D-0463` in `docs/DECISION_LOG.md`.
 
-**Precedente (`D-0461`/`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md` for both.
+**Precedenti (`D-0462`/`D-0461`/`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, statSync, chmodSync, utimesSync, existsSync } from 'node:fs';
+import { readFileSync, statSync, chmodSync, utimesSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { resolveSetupToken, fingerprint, DEFAULT_TTL_HOURS } from '../src/setup-token.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-function tokenPath() { return join(mkdtempSync(join(tmpdir(), 'noesar-setup-')), 'config', 'first-owner-setup.token'); }
+function tokenPath() { return join(freshTempDir('noesar-setup-'), 'config', 'first-owner-setup.token'); }
 
 test('a token is generated on first run and written to the runtime file', () => {
   const path = tokenPath();

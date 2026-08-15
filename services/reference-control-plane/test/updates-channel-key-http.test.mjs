@@ -18,16 +18,16 @@
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { generateKeyPairSync } from 'node:crypto';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-upd-key-http-'));
+const workspace = freshTempDir('noesar-upd-key-http-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';
@@ -122,7 +122,7 @@ describe('POST /api/v1/updates/channel-key — the missing pin for a verifier no
   });
 
   test('negative control · a real keypair from tools/sign-update-artifact.mjs is pinned and shows up in status', async () => {
-    const keysDir = mkdtempSync(join(tmpdir(), 'noesar-upd-key-out-'));
+    const keysDir = freshTempDir('noesar-upd-key-out-');
     const keygen = execFileSync('node', [TOOL, 'keygen', '--channel', 'offline', '--out-dir', keysDir], { encoding: 'utf8' });
     assert.match(keygen, /KEYGEN channel=offline fingerprint=[0-9a-f]{64}/);
     const publicKeyPem = readFileSync(join(keysDir, 'offline.pub.pem'), 'utf8');

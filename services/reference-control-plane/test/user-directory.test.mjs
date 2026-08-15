@@ -10,19 +10,19 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService, ROLES, MFA_REQUIRED_ROLES } from '../src/auth.mjs';
 import { UserDirectory } from '../src/user-directory.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const PASSWORD = 'correct horse battery staple';
 const OTHER_PASSWORD = 'another entirely separate passphrase';
 
 function setup() {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-directory-'));
+  const workspace = freshTempDir('noesar-directory-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken: 'setup-secret-value', ledger });
   const pending = auth.beginSetup({

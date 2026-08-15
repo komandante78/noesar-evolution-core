@@ -25,15 +25,16 @@
 // switched off must say so rather than appear in a list titled non-bypassable.
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
+import { homedir } from 'node:os';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-invariant-adv-'));
+const workspace = freshTempDir('noesar-invariant-adv-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';

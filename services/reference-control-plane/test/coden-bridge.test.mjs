@@ -17,9 +17,8 @@
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { connect } from 'node:net';
 import { once } from 'node:events';
@@ -29,11 +28,12 @@ import {
 } from '../src/websocket.mjs';
 import { BRIDGE_PATH, BRIDGE_PROTOCOL, CARRIED_PROTOCOL, REFUSED_METHODS } from '../src/coden-bridge.mjs';
 import { SESSION_METHOD_POLICY, PROTOCOL_VERSION } from '../src/session-protocol.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-coden-bridge-'));
+const workspace = freshTempDir('noesar-coden-bridge-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';

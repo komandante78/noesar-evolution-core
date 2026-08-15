@@ -9,10 +9,8 @@
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
@@ -33,7 +31,7 @@ process.env.NOESAR_MODULE_PROXY_PORT = String(PROXY_PORT);
 process.env.NOESAR_BIND_ADDRESS = BIND_ADDRESS;
 process.env.NOESAR_BIND_SCOPE = 'lan';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-module-proxy-catalog-'));
+const workspace = freshTempDir('noesar-module-proxy-catalog-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';

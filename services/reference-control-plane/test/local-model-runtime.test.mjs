@@ -9,16 +9,16 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
 import http from 'node:http';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LocalModelRuntime, RuntimeMode, Backend, activateModel } from '../src/local-model-runtime.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function fresh(env = {}) {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-localmodel-'));
+  const workspace = freshTempDir('noesar-localmodel-');
   const minter = new TokenMinter(Buffer.alloc(32, 7));
   const grants = new AdapterGrantOrchestrator({ minter });
   return { workspace, minter, grants, runtime: new LocalModelRuntime({ workspace, env, minter }) };
@@ -305,7 +305,7 @@ test('a runtime that exits immediately is reported, not waited on', async () => 
 // ARCH-005 (03_ARCHITETTURA.md §4): "no adapter may grant itself a permission." These
 // cover the refusal side of that sentence for the one adapter that exists.
 test('launch refuses outright when no capability engine is wired to the runtime', async () => {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-localmodel-'));
+  const workspace = freshTempDir('noesar-localmodel-');
   const runtime = new LocalModelRuntime({ workspace }); // no `minter` — the default
   await runtime.configure({ mode: RuntimeMode.MANUAL, profileId: 'cpu', launchCommand: ['/bin/sleep', '60'] });
   await assert.rejects(() => runtime.launch(), /no capability engine is wired/);

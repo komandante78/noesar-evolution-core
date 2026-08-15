@@ -34,11 +34,11 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer, connect } from 'node:net';
-import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { freshTempDir } from './support/workspace.mjs';
 
 import {
   reclaimSocketPath, socketPathIsLive, startUnixSocketServer, ProtocolError,
@@ -46,7 +46,7 @@ import {
 
 const repoRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 
-function tempDir() { return mkdtempSync(join(tmpdir(), 'noesar-sockguard-')); }
+function tempDir() { return freshTempDir('noesar-sockguard-'); }
 
 /** A listener that is genuinely accepting connections, closed by the returned handle. */
 async function liveListener(socketPath) {

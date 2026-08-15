@@ -13,17 +13,17 @@
 
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService } from '../src/auth.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const PASSWORD = 'correct horse battery staple';
 
 function setup() {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-terminal-'));
+  const workspace = freshTempDir('noesar-terminal-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken: 'setup-secret-value', ledger });
   const pending = auth.beginSetup({ suppliedSetupToken: 'setup-secret-value', username: 'owner', displayName: 'Owner', password: PASSWORD });

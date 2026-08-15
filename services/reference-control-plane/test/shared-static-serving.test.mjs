@@ -25,11 +25,11 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { request as httpRequest } from 'node:http';
+import { freshTempDir } from './support/workspace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(here, '../src/server.mjs');
@@ -71,7 +71,7 @@ function raw(path) {
 }
 
 before(async () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-shared-static-'));
+  const workspace = freshTempDir('noesar-shared-static-');
   child = spawn(process.execPath, [serverPath], {
     env: {
       ...process.env,

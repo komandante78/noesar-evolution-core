@@ -5,12 +5,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign as signBytes, createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { UpdateManager, CHANNELS, APPLY_CONFIRMATION, compareVersions } from '../src/update-manager.mjs';
 import { canonicalJsonBytes } from '../src/canonical-json.mjs';
 import { AuditLedger } from '../src/audit.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function keypair() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -52,7 +52,7 @@ function buildBundle(root, name, { channel = 'offline', version = '0.7.0', priva
 }
 
 function manager(options = {}) {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-upd-'));
+  const workspace = freshTempDir('noesar-upd-');
   const root = join(workspace, 'updates');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const calls = { backups: 0, migrations: [], healthChecks: [], restores: 0 };
@@ -392,7 +392,7 @@ test('rollback restores the previous slot and reports health', async () => {
 });
 
 test('safe mode blocks apply but leaves rollback available', async () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-upd-sm-'));
+  const workspace = freshTempDir('noesar-upd-sm-');
   const keys = keypair();
   const watchdog = {
     assertOperationAllowed: (operation) => {

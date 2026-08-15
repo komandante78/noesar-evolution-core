@@ -109,9 +109,12 @@ test('verify refuses when the entry carries no signature', () => {
 });
 
 test('loadTechnologyRadar: an empty or absent directory scans to zero, does not throw', () => {
-  const absent = join(tmpDir('noesar-radar-parent-'), 'does-not-exist');
-  const scan = loadTechnologyRadar(repoRoot, absent);
-  assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  const parent = tmpDir('noesar-radar-parent-');
+  try {
+    const absent = join(parent, 'does-not-exist');
+    const scan = loadTechnologyRadar(repoRoot, absent);
+    assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  } finally { rmSync(parent, { recursive:true, force:true }); }
 });
 
 test('loadTechnologyRadar: an unsigned entry is valid without a configured key, invalid with one', () => {

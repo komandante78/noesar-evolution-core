@@ -75,9 +75,12 @@ test('validateToolEntry: an empty operations array is rejected', () => {
 });
 
 test('searchCatalog: an empty or absent directory scans to zero, does not throw', () => {
-  const absent = join(tmpDir('noesar-tools-parent-'), 'does-not-exist');
-  const result = searchCatalog(repoRoot, absent);
-  assert.deepEqual(result, { scanned:0, truncated:false, matches:[], invalid:[] });
+  const parent = tmpDir('noesar-tools-parent-');
+  try {
+    const absent = join(parent, 'does-not-exist');
+    const result = searchCatalog(repoRoot, absent);
+    assert.deepEqual(result, { scanned:0, truncated:false, matches:[], invalid:[] });
+  } finally { rmSync(parent, { recursive:true, force:true }); }
 });
 
 test('searchCatalog: finds a tool by name substring and by declared operation', () => {

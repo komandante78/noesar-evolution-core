@@ -12,12 +12,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { encryptSecret, decryptSecret } from '../src/auth-crypto.mjs';
 import { CredentialVault } from '../src/ai-workspace/credential-vault.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SHORT_TAG_LENGTHS = [4, 8, 12, 13, 14, 15];
 
@@ -59,7 +58,7 @@ test('auth-crypto: rejects a corrupted tag and a tampered ciphertext', () => {
 });
 
 function vault() {
-  return new CredentialVault({ keyPath: join(mkdtempSync(join(os.tmpdir(), 'noesar-vault-')), 'key.bin') });
+  return new CredentialVault({ keyPath: join(freshTempDir('noesar-vault-'), 'key.bin') });
 }
 
 test('credential vault: encrypt/decrypt round-trip is unchanged', () => {

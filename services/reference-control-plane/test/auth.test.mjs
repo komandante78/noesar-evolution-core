@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService } from '../src/auth.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function setup() {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-auth-'));
+  const workspace = freshTempDir('noesar-auth-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken:'setup-secret-value', ledger });
   const pending = auth.beginSetup({ suppliedSetupToken:'setup-secret-value', username:'owner', displayName:'Owner', password:'correct horse battery staple' });
@@ -22,7 +22,7 @@ function setup() {
 }
 
 test('first Owner requires setup token and TOTP confirmation', () => {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-auth-'));
+  const workspace = freshTempDir('noesar-auth-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken:'secret', ledger });
   assert.throws(() => auth.beginSetup({ suppliedSetupToken:'wrong', username:'owner', password:'correct horse battery staple' }), /Invalid setup token/);

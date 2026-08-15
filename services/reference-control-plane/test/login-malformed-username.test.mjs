@@ -13,12 +13,12 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService, normalizeUsername } from '../src/auth.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const MALFORMED = [
   ['an email address', 'barciale1978@gmail.com'],
@@ -58,7 +58,7 @@ describe('sign-in refuses without teaching the format', () => {
   // before the branch under test could run. The double could not hold the state the branch
   // needs, so it could not guard it.
   function realService() {
-    const workspace = mkdtempSync(join(tmpdir(), 'noesar-login-'));
+    const workspace = freshTempDir('noesar-login-');
     const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
     const auth = new AuthService({ workspace, setupToken: 'setup-secret-value', ledger });
     const pending = auth.beginSetup({

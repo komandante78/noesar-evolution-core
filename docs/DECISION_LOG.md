@@ -10849,3 +10849,32 @@ ESLint: 409/0.
 **Reversal cost.** none — test-harness diagnostic only, no product code touched.
 **Status.** root cause confirmed and documented; fix deferred to a dedicated next phase with two
 named designs, per the Owner's own instruction this session not to rush multi-phase work.
+
+## D-0464 · F-TMP-001 fixed: a shared, tracked test workspace helper — 2026-08-15
+**Decision.** Built `services/reference-control-plane/test/support/workspace.mjs`
+(`freshTempDir(prefix)`, tracked and swept by one `after()` per file) and migrated all 58
+files that leaked `mkdtemp` workspaces — the 52 originally scoped, plus 6 found only while
+verifying (see Why). Removed the 75,114 directories already leaked before this fix.
+**Why.** The original F-TMP-001 grep (`mkdtempSync` present, `rmSync` absent, same file) had
+a real gap: `update-manager.test.mjs` and 5 others DO call `rmSync` — just for something
+unrelated to their leaked workspace (`update-manager.test.mjs`'s deletes a `manifest.sig`
+file). Found by actually running the migrated suite and diffing `/tmp` before/after, not by
+re-deriving a smarter grep. `update-manager.test.mjs` alone had leaked 6,698 directories —
+bigger than either file `F-CRASH-001` fixed. Also renamed the export mid-phase:
+`workspace` collided with a pre-existing local name in 47 of the 52 files, caught by running
+the migration once and reading the resulting `SyntaxError: Identifier already declared`
+across ~24 files, not by auditing 52 files by hand first.
+**Rejected.** A per-call-site `try/finally` migration (the pattern used for `F-CRASH-001`'s
+two files) — at 76 call sites across 58 files, one shared, auto-swept helper is less code and
+removes the whole defect class at the root, which is what this same phase's `D-0463`
+proposal already named as the right shape.
+**Evidence.** `workspace.mjs`'s own suite: 3/3, confirmed self-cleaning (`/tmp` count 0→0).
+All 58 migrated files together: 706/706. Full suite: 2554/2555 (1 pre-existing skip,
+unchanged). ESLint: 411 files, 0 errors (28 unused-import fallouts from the migration, all
+fixed — 25 by script, 3 middle-of-import-list cases by hand). Two consecutive full-suite runs
+leave `/tmp`'s `noesar-*` count flat (26→26): zero new leaks. Leaked backlog removed:
+67,232 dirs (52-file batch) + 7,882 (6-file batch) = 75,114 total; rootfs 30%→20% used.
+**Reversal cost.** none — test-harness only; the 5 remaining plain-script files
+(`tools/*.mjs`) are out of scope, recorded separately as `F-TMP-002` (different mechanism
+needed: `node:test`'s `after()` does not fire for a script run outside the test runner).
+**Status.** applied.

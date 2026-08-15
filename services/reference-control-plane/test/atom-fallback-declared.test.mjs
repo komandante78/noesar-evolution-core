@@ -10,8 +10,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -22,6 +21,7 @@ import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 import { reasoningSummary, frequencySummary, createView } from '../../../apps/webui-static/coden-view-model.js';
+import { freshTempDir } from './support/workspace.mjs';
 
 /** An installation that selected ATOM. `fetchImpl` is what decides whether ATOM is up. */
 const ATOM_ENV = {
@@ -34,7 +34,7 @@ const ATOM_ENV = {
 const DEAD = async () => { throw new Error('connect ECONNREFUSED'); };
 
 function workspace() {
-  const root = mkdtempSync(join(tmpdir(), 'noesar-phase6-'));
+  const root = freshTempDir('noesar-phase6-');
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'src/login.js'), 'export function loginRoute(app) {\n  app.post("/login", handler);\n}\n');
   writeFileSync(join(root, 'README.md'), '# demo\n\nA login route with no rate limiting.\n');
@@ -180,7 +180,7 @@ test('a whole task completes with ATOM down, and the Session Proof says how', as
   const events = new EventLedger();
   const orchestrator = new WorkspaceActionOrchestrator({
     workspaceRoot: root,
-    shadowsRoot: mkdtempSync(join(tmpdir(), 'noesar-phase6-shadows-')),
+    shadowsRoot: freshTempDir('noesar-phase6-shadows-'),
     minter: new TokenMinter(randomBytes(32)), events, env: ATOM_ENV,
     reasoningFor: (sessionId) => new ReasoningRouter({ workspaceRoot: root, env: ATOM_ENV, fetchImpl: DEAD, sessionId }),
     author: new Author({
@@ -282,7 +282,7 @@ test('a real degraded run writes the ledger line the frequency counts, and count
   const events = new EventLedger();
   const orchestrator = new WorkspaceActionOrchestrator({
     workspaceRoot: root,
-    shadowsRoot: mkdtempSync(join(tmpdir(), 'noesar-phase6-freq-')),
+    shadowsRoot: freshTempDir('noesar-phase6-freq-'),
     minter: new TokenMinter(randomBytes(32)), events, env: ATOM_ENV,
     reasoningFor: (sessionId) => new ReasoningRouter({ workspaceRoot: root, env: ATOM_ENV, fetchImpl: DEAD, sessionId }),
   });

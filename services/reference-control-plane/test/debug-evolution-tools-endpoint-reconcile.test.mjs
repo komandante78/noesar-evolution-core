@@ -15,18 +15,18 @@
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { defaultAiState } from '../src/ai-workspace/atomic-store.mjs';
 import { OWNER_MODULE_CATALOG } from '../src/owner-module-catalog.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const OLD_URL = 'http://192.168.178.100:8787';
 const NEW_URL = 'http://debug-evolution:8787';
 const TOKEN = 'stub-debug-evolution-token';
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-de-reconcile-'));
+const workspace = freshTempDir('noesar-de-reconcile-');
 mkdirSync(join(workspace, 'state'), { recursive: true });
 // Built from `defaultAiState()` rather than by listing the collections by hand. The hand-
 // written version claimed `schemaVersion: AI_STATE_VERSION`, so no migration ran on it, and

@@ -2,10 +2,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
-import { mkdtempSync, mkdirSync, symlinkSync } from 'node:fs';
+import { mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { createPathPlan } from '../src/path-auth.mjs';
 import { PrivacyState, evaluateEgress, privacyBanner } from '../src/privacy.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
  test('local privacy banner is exact and verified', () => {
   const banner = privacyBanner(PrivacyState.LOCAL_ONLY_VERIFIED);
@@ -21,7 +22,7 @@ test('external egress always requires approval', () => {
 });
 
 test('workspace path is planned without implicit execution', () => {
-  const root = mkdtempSync(join(os.tmpdir(), 'noesar-path-'));
+  const root = freshTempDir('noesar-path-');
   mkdirSync(join(root, 'project'));
   const plan = createPathPlan({ path:'project', operation:'write', mode:'NORMAL' }, root);
   assert.equal(plan.insideWorkspace, true);
@@ -30,7 +31,7 @@ test('workspace path is planned without implicit execution', () => {
 });
 
 test('symlink path becomes critical risk', () => {
-  const root = mkdtempSync(join(os.tmpdir(), 'noesar-link-'));
+  const root = freshTempDir('noesar-link-');
   symlinkSync(os.tmpdir(), join(root, 'linked'));
   const plan = createPathPlan({ path:'linked/file', operation:'write' }, root);
   assert.equal(plan.risk, 'CRITICAL');

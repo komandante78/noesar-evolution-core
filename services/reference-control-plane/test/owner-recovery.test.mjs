@@ -7,12 +7,11 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, statSync, utimesSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { existsSync, readFileSync, statSync, utimesSync } from 'node:fs';
 import { mintProof, verifyProof, proofPath, PROOF_TTL_MS } from '../src/owner-recovery.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-const install = () => mkdtempSync(join(tmpdir(), 'noesar-proof-'));
+const install = () => freshTempDir('noesar-proof-');
 const tokenOnDisk = (workspace) => readFileSync(proofPath(workspace), 'utf8').trim();
 
 describe('what the network gets, and what it does not', () => {

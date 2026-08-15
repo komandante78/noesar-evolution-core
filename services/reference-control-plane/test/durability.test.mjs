@@ -12,8 +12,7 @@
 
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync, appendFileSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, appendFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { RunStore, encode, decode, RunStoreError } from '../src/run-store.mjs';
@@ -21,8 +20,9 @@ import { EventLedger, eventsStatus } from '../src/events.mjs';
 import { WorkspaceActionOrchestrator } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { buildRepositoryMap, literalSearch } from '../src/repo-map.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
-const tmp = (label) => mkdtempSync(join(os.tmpdir(), `noesar-${label}-`));
+const tmp = (label) => freshTempDir(`noesar-${label}-`);
 
 describe('the run codec — refuses rather than degrades', () => {
   test('a Map survives with its contents, which is the whole point', () => {

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 test('audit ledger verifies its hash chain', () => {
-  const root = mkdtempSync(join(os.tmpdir(), 'noesar-audit-'));
+  const root = freshTempDir('noesar-audit-');
   const ledger = new AuditLedger(join(root, 'events.jsonl'));
   ledger.append({ actor:'test', action:'one', result:'ok' });
   ledger.append({ actor:'test', action:'two', result:'ok' });
@@ -19,7 +18,7 @@ test('audit ledger verifies its hash chain', () => {
 // timing the ledger's own file I/O (unreliable in CI): readAll() is called exactly once,
 // at construction, no matter how many events are appended afterward.
 test('append() reads the whole ledger from disk once, at construction — never again per write', () => {
-  const root = mkdtempSync(join(os.tmpdir(), 'noesar-audit-'));
+  const root = freshTempDir('noesar-audit-');
   const ledger = new AuditLedger(join(root, 'events.jsonl'));
   let readAllCalls = 0;
   const originalReadAll = ledger.readAll.bind(ledger);
@@ -30,7 +29,7 @@ test('append() reads the whole ledger from disk once, at construction — never 
 });
 
 test('a second instance opened on the same path picks up the real last hash, not GENESIS', () => {
-  const root = mkdtempSync(join(os.tmpdir(), 'noesar-audit-'));
+  const root = freshTempDir('noesar-audit-');
   const path = join(root, 'events.jsonl');
   const first = new AuditLedger(path);
   const written = first.append({ actor: 'test', action: 'one', result: 'ok' });

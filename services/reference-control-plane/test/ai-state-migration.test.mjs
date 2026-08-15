@@ -20,10 +20,10 @@
 // version 1, with the thirteen collections that version had and none of the four added since.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { AI_STATE_VERSION, AtomicJsonStore, defaultAiState, migrateAiState } from '../src/ai-workspace/atomic-store.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const VERSION_1_COLLECTIONS = [
   'projects', 'conversations', 'messages', 'branches', 'memories', 'artifacts', 'sources',
@@ -147,7 +147,7 @@ describe('the AI workspace state migrates forward', () => {
 
 describe('the store reads and rewrites an installed version-1 file', () => {
   test('read() upgrades a real version-1 file on disk without touching it', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'noesar-ai-migration-'));
+    const directory = freshTempDir('noesar-ai-migration-');
     const path = join(directory, 'state/ai-workspace.json');
     const store = new AtomicJsonStore(path);
     const original = `${JSON.stringify(versionOneState(), null, 2)}\n`;
@@ -163,7 +163,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
   });
 
   test('the first write after a migration persists version 5 and keeps the data', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'noesar-ai-migration-write-'));
+    const directory = freshTempDir('noesar-ai-migration-write-');
     const path = join(directory, 'state/ai-workspace.json');
     const store = new AtomicJsonStore(path);
     writeFileSync(path, `${JSON.stringify(versionOneState(), null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
@@ -180,7 +180,7 @@ describe('the store reads and rewrites an installed version-1 file', () => {
   test('a transaction on a migrated file does not crash on the new collections', () => {
     // This is the failure mode the migration exists to prevent: `state.workflows.push(...)`
     // against `undefined` on the very first workflow created on an upgraded installation.
-    const directory = mkdtempSync(join(tmpdir(), 'noesar-ai-migration-push-'));
+    const directory = freshTempDir('noesar-ai-migration-push-');
     const path = join(directory, 'state/ai-workspace.json');
     const store = new AtomicJsonStore(path);
     writeFileSync(path, `${JSON.stringify(versionOneState(), null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });

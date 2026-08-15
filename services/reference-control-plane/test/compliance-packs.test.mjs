@@ -188,9 +188,12 @@ test(
 );
 
 test('loadCompliancePacks: an empty or absent directory scans to zero, does not throw', () => {
-  const absent = join(tmpDir('noesar-compliance-parent-'), 'does-not-exist');
-  const scan = loadCompliancePacks(repoRoot, absent);
-  assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  const parent = tmpDir('noesar-compliance-parent-');
+  try {
+    const absent = join(parent, 'does-not-exist');
+    const scan = loadCompliancePacks(repoRoot, absent);
+    assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  } finally { rmSync(parent, { recursive:true, force:true }); }
 });
 
 test('loadCompliancePacks: a valid current pack is listed valid, an expired one invalid', () => {

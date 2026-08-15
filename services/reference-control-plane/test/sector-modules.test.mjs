@@ -147,9 +147,12 @@ test('the OLD (camelCase) shape of that same manifest fails against the tracked 
 });
 
 test('loadSectorModules: an empty or absent directory scans to zero, does not throw', () => {
-  const absent = join(tmpDir('noesar-sector-parent-'), 'does-not-exist');
-  const scan = loadSectorModules(repoRoot, absent);
-  assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  const parent = tmpDir('noesar-sector-parent-');
+  try {
+    const absent = join(parent, 'does-not-exist');
+    const scan = loadSectorModules(repoRoot, absent);
+    assert.deepEqual(scan, { scanned:0, truncated:false, valid:[], invalid:[] });
+  } finally { rmSync(parent, { recursive:true, force:true }); }
 });
 
 test('loadSectorModules: a valid manifest is listed valid, an invalid one is listed invalid with reasons', () => {

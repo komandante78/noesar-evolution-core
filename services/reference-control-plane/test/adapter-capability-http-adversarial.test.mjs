@@ -8,17 +8,15 @@
 
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { generateKeyPairSync } from 'node:crypto';
 import { totpCode } from '../src/auth-crypto.mjs';
 import { signSectorModuleManifest } from '../src/sector-modules.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const SETUP_TOKEN = 'test-only-setup-token-not-a-real-secret';
 const PASSWORD = 'correct horse battery staple 42';
 
-const workspace = mkdtempSync(join(tmpdir(), 'noesar-adapter-cap-http-'));
+const workspace = freshTempDir('noesar-adapter-cap-http-');
 process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';
@@ -29,7 +27,7 @@ process.env.NOESAR_DATA_PLANE = 'reference-json';
 // that write inside a throwaway directory instead of leaking into the repository itself
 // (found by running this file: a first version without this line left
 // `.sector-modules/http.lifecycle.one/` — active -- sitting in the real repo afterward).
-process.env.NOESAR_SECTOR_MODULES = mkdtempSync(join(tmpdir(), 'noesar-adapter-cap-http-sector-modules-'));
+process.env.NOESAR_SECTOR_MODULES = freshTempDir('noesar-adapter-cap-http-sector-modules-');
 
 const { server } = await import('../src/server.mjs');
 

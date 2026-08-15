@@ -15,14 +15,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import os from 'node:os';
-import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService } from '../src/auth.mjs';
 import { UserDirectory } from '../src/user-directory.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const PASSWORD = 'correct horse battery staple';
 
@@ -65,7 +64,7 @@ async function withServer(handler, run) {
 }
 
 function setup() {
-  const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-service-token-'));
+  const workspace = freshTempDir('noesar-service-token-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken:'setup-secret-value', ledger });
   const pending = auth.beginSetup({

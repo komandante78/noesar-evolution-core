@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { DebugMode, DEBUG_SCOPES, MAX_TTL_MINUTES } from '../src/debug-mode.mjs';
 import { Logger } from '../src/logging.mjs';
 import { AuditLedger } from '../src/audit.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 function harness() {
-  const root = mkdtempSync(join(tmpdir(), 'noesar-debug-'));
+  const root = freshTempDir('noesar-debug-');
   const logger = new Logger({ dir: join(root, 'logs'), stdout: false, level: 'INFO' });
   const ledger = new AuditLedger(join(root, 'audit/events.jsonl'));
   let now = Date.parse('2026-07-25T06:00:00Z');

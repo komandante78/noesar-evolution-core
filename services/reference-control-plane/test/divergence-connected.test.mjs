@@ -10,9 +10,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -23,6 +22,7 @@ import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
 import { createSessionDispatch, SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { divergenceLines, divergenceSummary, DIVERGENCE_LEVELS } from '../../../apps/webui-static/coden-view-model.js';
+import { freshTempDir } from './support/workspace.mjs';
 
 const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8',
@@ -33,7 +33,7 @@ const git = (root, ...args) => execFileSync('git', ['-C', root, ...args], {
 });
 
 function repository(name) {
-  const root = mkdtempSync(join(tmpdir(), `noesar-phase7-${name}-`));
+  const root = freshTempDir(`noesar-phase7-${name}-`);
   git(root, 'init', '-q', '-b', 'main');
   return root;
 }
@@ -129,7 +129,7 @@ test('plan() computes the profile before authoring and returns it beside the cha
   const seen = [];
   const orchestrator = new WorkspaceActionOrchestrator({
     workspaceRoot: root,
-    shadowsRoot: mkdtempSync(join(tmpdir(), 'noesar-phase7-shadows-')),
+    shadowsRoot: freshTempDir('noesar-phase7-shadows-'),
     minter: new TokenMinter(randomBytes(32)), events: new EventLedger(),
     author: new Author({
       generate: async ({ profile }) => { seen.push(profile); return '```\nexport const a = 9;\n```'; },
@@ -159,14 +159,14 @@ test('plan() computes the profile before authoring and returns it beside the cha
 test('a workspace with no history still plans, and says why it has no profile', async () => {
   // A real installation: a directory that is not a repository. It gets a plan; what it does not
   // get is an invented profile.
-  const root = mkdtempSync(join(tmpdir(), 'noesar-phase7-bare-'));
+  const root = freshTempDir('noesar-phase7-bare-');
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'src/a.js'), 'export const a = 0;\n');
   await assert.rejects(() => profileChange(root, ['src/a.js']), DivergenceUnavailable);
 
   const orchestrator = new WorkspaceActionOrchestrator({
     workspaceRoot: root,
-    shadowsRoot: mkdtempSync(join(tmpdir(), 'noesar-phase7-shadows2-')),
+    shadowsRoot: freshTempDir('noesar-phase7-shadows2-'),
     minter: new TokenMinter(randomBytes(32)), events: new EventLedger(),
   });
   const planned = await orchestrator.plan({

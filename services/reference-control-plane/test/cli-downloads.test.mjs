@@ -7,11 +7,11 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { freshTempDir } from './support/workspace.mjs';
 import {
   cliDownloadRoutes, resolveCliDownload, readCliArtifact, renderCliIndex, MAX_ARTIFACT_BYTES,
 } from '../src/cli-downloads.mjs';
@@ -95,7 +95,7 @@ describe('what the table serves', () => {
 
 describe('reading an artifact', () => {
   function stagedRoot(files) {
-    const root = mkdtempSync(join(tmpdir(), 'noesar-cli-downloads-'));
+    const root = freshTempDir('noesar-cli-downloads-');
     mkdirSync(join(root, 'tools'), { recursive: true });
     for (const [name, body] of Object.entries(files)) {
       writeFileSync(join(root, 'tools', name), body);
@@ -127,7 +127,7 @@ describe('reading an artifact', () => {
   });
 
   test('a directory wearing the name of an artifact is refused', () => {
-    const root = mkdtempSync(join(tmpdir(), 'noesar-cli-downloads-'));
+    const root = freshTempDir('noesar-cli-downloads-');
     mkdirSync(join(root, 'tools', 'install-coden-cli.sh'), { recursive: true });
     assert.equal(readCliArtifact(root, resolveCliDownload('/cli/install.sh')), null);
   });

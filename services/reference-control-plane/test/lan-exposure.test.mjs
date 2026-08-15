@@ -15,9 +15,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { request as httpRequest } from 'node:http';
 import {
@@ -26,6 +24,7 @@ import {
 } from '../src/http-security.mjs';
 import { mayReadHealthDetail } from '../src/auth.mjs';
 import { publicHealth } from '../src/observability.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const serverPath = resolve(dirname(fileURLToPath(import.meta.url)), '../src/server.mjs');
 
@@ -208,7 +207,7 @@ describe('the published address joins the Host allowlist', () => {
 // --- behaviour of a real listener ------------------------------------------
 
 function startServer(env) {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-exposure-'));
+  const workspace = freshTempDir('noesar-exposure-');
   const child = spawn(process.execPath, [serverPath], {
     env: {
       ...process.env,

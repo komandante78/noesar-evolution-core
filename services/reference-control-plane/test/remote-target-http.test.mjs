@@ -144,6 +144,7 @@ after(async () => {
   await new Promise((resolve) => stubDebugEvolution.close(resolve));
   sshdProcess.kill('SIGKILL');
   rmSync(sshWorkDir, { recursive: true, force: true });
+  rmSync(workspace, { recursive: true, force: true });
 });
 
 describe('D-0286 — remote target registration and fetch-and-scan, real sshd end to end', () => {

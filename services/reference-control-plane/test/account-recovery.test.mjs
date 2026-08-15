@@ -11,18 +11,17 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AuditLedger } from '../src/audit.mjs';
 import { AuthService } from '../src/auth.mjs';
 import { totpCode } from '../src/auth-crypto.mjs';
+import { freshTempDir } from './support/workspace.mjs';
 
 const PASSPHRASE = 'correct horse battery staple';
 const NEW_PASSPHRASE = 'a different passphrase entirely, long enough';
 
 function install({ extraUsers = [] } = {}) {
-  const workspace = mkdtempSync(join(tmpdir(), 'noesar-recovery-'));
+  const workspace = freshTempDir('noesar-recovery-');
   const ledger = new AuditLedger(join(workspace, 'audit/events.jsonl'));
   const auth = new AuthService({ workspace, setupToken: 'setup-secret-value', ledger });
   if (extraUsers.length) {
