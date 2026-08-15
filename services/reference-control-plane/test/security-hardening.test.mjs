@@ -2,10 +2,10 @@
 //
 // Security requirements that Phase 3 had to repair or prove, exercised against
 // the real code paths rather than against the matrix that describes them.
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,19 @@ import { AuditLedger } from '../src/audit.mjs';
 
 const repoRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 
-function workspace() { return mkdtempSync(join(tmpdir(), 'noesar-sec-')); }
+// Each call leaves a mkdtemp directory; test bodies here mix sync asserts and
+// unresolved-promise returns, so a single after() sweep is more reliable than
+// a try/finally at each of the 13 call sites. Leaked ones (pre-fix) filled
+// /tmp with 8.3 GB across 3,366 directories on this host.
+const workspaceDirs = [];
+function workspace() {
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-sec-'));
+  workspaceDirs.push(dir);
+  return dir;
+}
+after(() => {
+  for (const dir of workspaceDirs) rmSync(dir, { recursive: true, force: true });
+});
 
 // ------------------------------------------------------ prompt injection
 

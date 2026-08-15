@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { redactText, redactMessages } from '../src/ai-workspace/privacy-redaction.mjs';
 import { Logger } from '../src/logging.mjs';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -118,11 +118,15 @@ test('a correlation id written through the real logger comes back readable', () 
   // so the operator can find that request in the log. If the sink rewrites it, the feature
   // does not work — and that is precisely what was happening for ~7% of requests.
   const dir = mkdtempSync(join(tmpdir(), 'noesar-redaction-log-'));
-  const logger = new Logger({ dir, level: 'INFO', component: 'test' });
-  const ids = Array.from({ length: 300 }, () => randomUUID());
-  for (const id of ids) logger.info('http.request', { correlation_id: id });
-  const written = readFileSync(join(dir, 'noesar.log'), 'utf8');
-  const missing = ids.filter((id) => !written.includes(id));
-  assert.equal(missing.length, 0,
-    `${missing.length} of ${ids.length} correlation ids were corrupted in the log sink`);
+  try {
+    const logger = new Logger({ dir, level: 'INFO', component: 'test' });
+    const ids = Array.from({ length: 300 }, () => randomUUID());
+    for (const id of ids) logger.info('http.request', { correlation_id: id });
+    const written = readFileSync(join(dir, 'noesar.log'), 'utf8');
+    const missing = ids.filter((id) => !written.includes(id));
+    assert.equal(missing.length, 0,
+      `${missing.length} of ${ids.length} correlation ids were corrupted in the log sink`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

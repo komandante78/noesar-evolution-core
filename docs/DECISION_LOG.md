@@ -10761,3 +10761,11 @@ by hand loses a step under pressure.
 **Evidence.** n/a — proposal only.
 **Reversal cost.** n/a.
 **Status.** deferred — proposed for a future phase.
+
+## D-0460 · Root cause of the Owner-reported Claude Code instability, fixed — 2026-08-15
+**Decision.** Fixed two test files whose `mkdtemp()` workspaces were never removed.
+**Why.** `security-hardening.test.mjs` (13 sites) and `redaction-identifier-integrity.test.mjs` (1) leaked 3,366 + 187 `/tmp` directories, 8.3 GB, pushing the shared host's rootfs to 82% full (2.9G free) and available memory to 1.9Gi with no swap — the resource floor the Claude Code process itself runs on.
+**Rejected.** Deferring to a later phase — this is an active, reproducible instability cause, not a cosmetic gap.
+**Evidence.** Both files: 36/36 pass, 0 new leaked dirs (was leaking every run). Full suite 2550/2551 (1 pre-existing skip, unchanged). ESLint 409/0. rootfs 82%→29%, free 2.9G→12G, available memory 1.9Gi→10Gi after removing the leaked dirs.
+**Reversal cost.** none — cleanup removed only disposable `/tmp` scratch outside `PROJECT_ROOT`; the code fix is additive (`rmSync`/`after()`).
+**Status.** applied. F-TMP-001 records the same unfixed pattern in ~55 other files, out of this session's scope.

@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0458: D-0457 fix deployed to the live installation, noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z. Owner-authorized (\"Deploy della riparazione F-COMMAND-001\"). Byte-equal tree<->container verified, /livez /readyz 200, older rollback cleaned. F-PANEL-001 third occurrence test-strategy decision and F-TERM-002 remain open, unchanged.",
-  "phase_status": "D-0458_deployed_and_verified__F-PANEL-001_test_strategy_and_F-TERM-002_still_open",
+  "current_phase": "D-0460: out-of-sequence bug hunt, Owner-reported Claude Code instability. Root cause measured: security-hardening.test.mjs and redaction-identifier-integrity.test.mjs leaked 8.3 GB / 3,553 /tmp dirs, pushing shared host rootfs to 82% full and available memory to 1.9Gi. Fixed and verified (36/36 + 2550/2551 suite green, ESLint 409/0); rootfs now 29% full. F-TMP-001 records the same unfixed pattern in ~55 other files. D-0458's installation and its F-PANEL-001/F-TERM-002 status are unchanged by this session.",
+  "phase_status": "D-0460_fixed_and_verified__D-0458_F-PANEL-001_test_strategy_and_F-TERM-002_still_open",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -350,6 +350,18 @@
       "id": "F-TERM-002",
       "severity": "low",
       "status": "OPEN - found 2026-08-15, reproduced 5/5 e2e runs this session (unrelated to this session's authorized scope, so not investigated beyond recording it): F-TERM-001's own check (\"Enter consumes the line -- the prompt is empty again\") now fails every run -- prompt row reads \"/help\" (not cleared) up to 3s after Enter, despite D-0448's poll already accounting for render-timing lag. F-TERM-001 itself (D-0423, commit ff448e4) is not reverted -- Ctrl-U still empties the prompt and typing still composes it correctly; only the post-Enter clear is affected. Needs its own driven investigation, not a guess."
+    },
+    {
+      "id": "F-CRASH-001",
+      "severity": "high",
+      "status": "FIXED 2026-08-15 (D-0460). Root cause of the Owner-reported Claude Code instability, measured not guessed: security-hardening.test.mjs (13 mkdtemp call sites) and redaction-identifier-integrity.test.mjs (1) never removed their /tmp workspaces, leaking 3,366 and 187 directories respectively -- 8.3 GB -- across many test runs. That pushed the shared host's rootfs to 82% full (2.9G free) and available memory to 1.9Gi with zero swap, the resource floor Claude Code's own Node process runs on. Fixed with an after() sweep (security-hardening) and try/finally (redaction-identifier-integrity), matching the rmSync convention already used elsewhere in this test tree. Verified: both files 36/36 green with 0 new leaked dirs (was leaking every run before); full suite 2550/2551 unchanged (1 pre-existing skip); ESLint 409/0. Leaked dirs removed: rootfs 82%->29% used, 2.9G->12G free.",
+      "summary": "mkdtemp() workspaces created by two test files were never deleted, filling the host root filesystem and starving available memory -- the resource pressure most likely behind the reported crashes."
+    },
+    {
+      "id": "F-TMP-001",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-15, NOT fixed: found while triaging F-CRASH-001, out of this session's scope (55 files, well beyond the two that actually caused today's disk-near-full crisis). Each leaks only 2-5 dirs per run (small individually), so this is a slow accumulation, not an active crisis, unlike F-CRASH-001.",
+      "summary": "The same mkdtemp-without-cleanup pattern exists, unfixed, in ~55 more files (services/reference-control-plane/test/audit.test.mjs, auth.test.mjs, watchdog.test.mjs, and about 52 others, plus tools/http-smoke.mjs, tools/tls-smoke.mjs, tools/test-installer-hardening.mjs, tools/test-cross-platform-installers.mjs, tools/acceptance/a3-security.mjs) -- grep: mkdtempSync present, rmSync absent, in the same file."
     }
   ],
   "resolved_findings": [
