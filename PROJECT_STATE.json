@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0469: D-0466 (/model) verified live via the disposable e2e probe, unmasking and fixing a second real defect (F-TERM-003): coden-terminal.js's generic call-result rendering was untruncated JSON.stringify, and the model listing was the first result large enough to bury a later turn off the fixed-height transcript. Fixed with detailLines(result), matching tui-fullscreen.mjs and app.js (CE-033). Re-verified live: 476/478, only F-SLASH-001 and the tracked I18N gap remain. Unit suite 2560/2561 (1 pre-existing skip), ESLint 411/0. Next: deploy both fixes to the live installation. D-0467/D-0468 governance amendments from earlier this session unaffected. F-SLASH-001 (D-0463) and cargo publish remain open, unchanged.",
-  "phase_status": "D-0469_verified_live__deploy_next__F-SLASH-001_and_cargo_publish_still_open",
+  "current_phase": "D-0466/D-0469: DEPLOYED and verified. /model lists what is loadable instead of demanding an id nobody could discover; coden-terminal.js's call-result rendering now truncates with detailLines(result) (F-TERM-003, found live while verifying /model, fixed same phase). Image noesar-evolution:d0469-model-list-20260815T164217Z, deployed 16:42:52Z, byte-equal on all 6 changed sources tree<->image<->running container, /livez /readyz 200, 4 children healthy, 0 auth-failures. Predecessor preserved (d0457-legacy-shell-hide), older rollback removed, exactly 2 project containers survive. This closes the thread the Owner opened this morning: crash root-caused and fixed, /model reported broken, fixed, deployed. D-0467/D-0468 governance amendments unaffected. F-SLASH-001 (D-0463) and cargo publish remain open, unchanged.",
+  "phase_status": "D-0466_D-0469_deployed_and_verified__F-SLASH-001_and_cargo_publish_still_open",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,

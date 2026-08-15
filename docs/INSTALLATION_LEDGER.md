@@ -4957,3 +4957,30 @@ surfaces answering (§3a 11e — no mutating suite against the running installat
 **Predecessor preserved.** `noesar-evolution-pre-20260815T060555Z` (`d0445-menu-...`).
 **Cleanup.** Older rollback (`noesar-evolution-pre-20260814T112620Z`, `d0444-model-...`)
 removed; non-project containers unchanged at 50, volumes at 64, networks unchanged.
+
+## `d0469-model-list-20260815T164217Z` — DEPLOYED and verified — 2026-08-15
+
+**Tag.** `noesar-evolution:d0469-model-list-20260815T164217Z`, deployed 16:42:52Z. `D-0466`:
+`/model` with no id lists what is loadable instead of demanding an id nobody could discover.
+`D-0469`: `coden-terminal.js`'s generic call-result rendering now truncates with
+`detailLines(result)`, matching `tui-fullscreen.mjs`/`app.js` — an oversized untruncated
+result (the model listing) was found live to bury a later turn off the fixed-height
+transcript.
+**Health.** `running`/`healthy`; `/livez` 200, `/readyz` 200 (via the published host port,
+`curl` absent inside the minimal image). 4 children spawned (`postgres`/`api`/`codev`/`atom`),
+0 auth-failure lines.
+**Verification.** Byte-equal on all 6 changed sources (`agent-commands.js`,
+`i18n-catalog.js`, `coden-terminal.js`, `model-catalog.mjs`, `server.mjs`,
+`session-protocol.mjs`), tree↔image before deploy and tree↔running container after. Unit
+2560/2561 (1 pre-existing skip). ESLint 411/0. Disposable e2e probe, live, twice: once
+finding `F-TERM-003` (the `/model` fix's own check passed; an unrelated `/memory` check
+broke), once confirming the fix — 476/478, only `F-SLASH-001` and the tracked I18N gap
+remain.
+**Predecessor preserved.** `noesar-evolution-pre-20260815T164252Z` (`d0457-legacy-shell-
+hide-...`).
+**Cleanup.** Older rollback (`noesar-evolution-pre-20260815T060555Z`, `d0445-menu-...`)
+removed; non-project containers unchanged at 50, networks unchanged. Volumes measured at 65
+(64 at the last entry) — host-wide count, not this project's; no `noesar-evolution` volume
+created or removed by this deploy.
+**Note.** Closes the same-day thread the Owner opened this morning: crash root-caused and
+fixed (`D-0460`), `/model` reported broken, fixed, and now deployed (`D-0466`/`D-0469`).
