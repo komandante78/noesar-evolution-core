@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0453: root LICENSE (verbatim AGPL-3.0-or-later, fetched via curl from gnu.org, byte-diffed) and NOTICE added to NOESAR-EVOLUTION and noesar-sandbox, Owner-scoped narrowly -- the other 6 open items in docs/LICENSE_STRATEGY.md stay open for Phase 5.",
-  "phase_status": "D-0453_license_notice_added__phase5_items_still_open",
+  "current_phase": "D-0454/D-0455: governance, not Phase C. F-HOOK-005 root cause found (SessionStart matcher missed 'clear', then 'fork') and fixed; generalized into a reusable hme_check_settings() checker wired into state-digest.sh and the hook test suites (258/258 green). Phase C (WP6) unchanged since D-0453: same one open technical item (cargo publish) and the same 6 Phase-5 legal/product questions.",
+  "phase_status": "D-0454_D-0455_hook_matcher_checker_closed__phase5_items_still_open",
   "next_phase": "Owner sets CARGO_REGISTRY_TOKEN out of band when ready to cargo publish noesar-sandbox, or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "c849651",
-  "last_updated_utc": "2026-08-14T16:39:01Z",
+  "last_commit": "1467033",
+  "last_updated_utc": "2026-08-15T04:09:23Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
