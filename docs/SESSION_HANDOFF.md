@@ -1,43 +1,30 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0456`/`D-0457`: i tre finding indagati, la proposta implementata)
+# SESSION HANDOFF — 2026-08-15 (`D-0458`: la riparazione `F-COMMAND-001` deployata)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Owner ha detto "NON DARMI PROPOSTE SE PENSI SIA VALIDO... IMPLEMENTA, PROCEDI PURE" sulla
-proposta di miglioramento del giro precedente. Implementata, verificata, committata, pushata
-— NON deployata (deployment resta un'autorizzazione a parte, regola 77).**
+**Owner ha scelto "Deploy della riparazione F-COMMAND-001" fra le opzioni aperte dal giro
+precedente. Fatto: build offline, byte-equal tree↔immagine, `redeploy.sh --apply`, verifica
+live, pulizia — tutto in questo giro (`D-0458`).**
 
-**Riassunto dei tre finding, stato finale:**
+Restano aperte le stesse tre decisioni di prima, nessuna presa in questo giro:
 
-- **`F-INTENT-001` CHIUSO.** Bug nel check e2e (ricostruiva l'input del resolver senza
-  l'address book), non nel prodotto. Verde 7/7 run.
-- **`F-COMMAND-001`/`F-PANEL-001`: bug di prodotto reale trovato E RIPARATO** —
-  `codenTerminalState()` (`app.js`) nascondeva `#codenShell` (il prompt legacy) in modo
-  incondizionato nell'istante in cui il terminale moderno diventava `live`, anche se una
-  persona ci stava scrivendo dentro in quel momento: parole digitate sparite sotto un cambio
-  di superficie senza preavviso. Ora differisce il nascondimento finché il box è occupato
-  (focus o testo non inviato) e riprova quando la persona ha finito. **Misurato**: la corsa di
-  fase 3c che questo finding nominava è passata da 5/5 fallimenti a 0/2; la prima occorrenza
-  di `workspace-actions` (creazione piano) pure. **Resta UNA terza occorrenza** (plan-restore,
-  tardi nel flusso) che NON è una corsa — a quel punto il terminale è live e stabile da molti
-  passi, quindi il box legacy resta nascosto per progetto, correttamente. Serve che il TEST
-  impari a guidare quell'indirizzo attraverso qualunque superficie sia davvero attiva
-  (terminale live vs box legacy) — decisione di strategia di test, ancora tua.
-- **`F-TERM-002` (nuovo)**: regressione osservata 5/5 (poi non ricontrollata nelle run 6-7,
-  irrilevante alla riparazione di questo giro), non indagata — fuori scope.
-
-**Prossima invocazione**: la decisione su come il test dovrebbe raggiungere il pannello Plan
-di restore quando il terminale è stabilmente live, oppure autorizzazione a indagare
-`F-TERM-002`, oppure il token per `cargo publish`, oppure Fase D, oppure autorizzazione a
-**deployare** questa riparazione sull'installazione live (non fatto in questo giro).
+- **`F-PANEL-001`, terza occorrenza** — decisione di strategia di test tua: il TEST deve
+  raggiungere il pannello plan-restore guidando il menu `/` del terminale live oppure con un
+  hash jump diretto, quando il terminale è stabilmente live (non è una corsa, è una collisione
+  di design a stato stabile — vedi `D-0456`).
+- **`F-TERM-002`** — regressione osservata 5/5 su "Enter svuota il prompt", non indagata,
+  fuori scope della fase precedente.
+- **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
+  terminale vero.
+- oppure **Fase D**.
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `F-INTENT-001` | **CHIUSO 2026-08-15.** |
-| `F-COMMAND-001` | **RIPARATO** (bug di prodotto reale, app.js) — 5/5→0/2, test di regressione `coden-legacy-shell-hide.test.mjs` 4/4. Non ancora deployato. |
-| `F-PANEL-001` | **PARZIALMENTE RIPARATO** — 2 occorrenze su 3 pulite. La terza è una collisione di design a stato stabile, non una corsa; decisione di strategia di test aperta. |
-| `F-TERM-002` | **APERTO, non indagato** — regressione osservata 5/5, fuori scope di questa fase. |
+| `F-COMMAND-001` | **RIPARATO E DEPLOYATO** — `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z`, live e sano. |
+| `F-PANEL-001` | 2/3 occorrenze pulite e deployate. La terza resta una collisione di design a stato stabile — decisione di strategia di test aperta. |
+| `F-TERM-002` | **APERTO, non indagato** — regressione osservata 5/5, fuori scope. |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata (l'Owner ce l'ha già). |
 | `D-0433` | **APERTO.** Stessa condizione già accettata. |
@@ -47,30 +34,30 @@ di restore quando il terminale è stabilmente live, oppure autorizzazione a inda
 
 | Strumento | Risultato |
 |---|---|
-| `tools/run-browser-e2e.sh` (probe disposable) | **7 run totali**: le prime 5 hanno trovato la causa; le run 6-7, dopo la riparazione, mostrano `BROWSER_E2E_FAIL` sceso da 4 a 2 |
-| `node --test …` | **2550/2551** (1 skip preesistente) — ha bloccato una regressione reale prima del commit: `webui-boot-order.test.mjs` (`D-0416`) ha trovato `legacyHidePending` dichiarato dopo `initRouter()` (temporal dead zone), riparato spostandolo |
-| `tools/run-eslint.sh` | **409 file, 0/0/0** — dopo ogni edit |
-| pulizia container/rete/tag | verificata dopo tutte le run: solo `noesar-evolution` + 1 rollback, zero tag `*e2e*`/`*probe*` residui |
-| nuovo test di regressione | `coden-legacy-shell-hide.test.mjs` — 4/4, guardia sulla forma del fix in `app.js` |
+| `docker build -f oci/Dockerfile` | build offline (rete solo per apt/postgres, come tutti i build precedenti), quasi interamente da cache — solo il layer `apps/webui-static/` differiva |
+| byte-equal tree↔immagine | `sha256sum apps/webui-static/app.js` identico prima del deploy |
+| `tools/deploy/redeploy.sh --check` poi `--apply` | PREFLIGHT PASS, DEPLOYED, 4 figli (`postgres`/`api`/`codev`/`atom`) sani, 0 righe di auth-failure |
+| live | `running`/`healthy`, `/livez` 200, `/readyz` 200, `app.js` byte-equal tree↔container dopo il deploy |
+| pulizia §5a | rollback precedente (`…pre-20260814T112620Z`) rimosso; non-project container 50, volumi 64, reti invariate — prima/dopo in `EVIDENCE/docker_inventory_{pre,post}_cleanup_20260815T060*.txt` |
 
 ## Cosa NON è stato fatto
 
-- **Il deployment** della riparazione `app.js` sull'installazione live — non autorizzato in
-  questo giro (regola 77: il deployment resta una decisione a parte).
-- **La terza occorrenza di `F-PANEL-001`** — richiede una decisione tua di strategia di test
-  (vedi sopra), non presa da solo.
-- **`F-TERM-002`** — trovato, non indagato: fuori dallo scope autorizzato di questa fase.
-- **`cargo publish`** e **le altre 6 domande di `docs/LICENSE_STRATEGY.md` §5** — invariate.
-- **Nessuna conferma visiva dell'Owner** su `D-0436`…`D-0445` (tranne `D-0438`); **ATOM↔CodeN
-  Evolution non verificato**.
+- **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e: la verifica
+  live non usa una suite che muta dati; provato solo salute + uguaglianza dei byte + risposta
+  delle superfici.
+- **La terza occorrenza di `F-PANEL-001`** — decisione di strategia di test tua, non presa.
+- **`F-TERM-002`** — non indagato, fuori scope.
+- **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
 
 ## Proposta di miglioramento
 
-**La stessa collisione di design appena riparata per il box legacy esiste, simmetrica, per il
-terminale moderno**: se un utente sta scrivendo NEL terminale nell'istante in cui
-`codenTerminalState()` transita a `failed`/`refused` (per esempio una disconnessione di rete),
-il box legacy ricompare sotto di lui senza preavviso, esattamente lo scambio di ruoli del
-difetto appena chiuso. Beneficio: coerenza — un solo principio ("mai interrompere una persona
-a metà") applicato a entrambe le direzioni della transizione, non solo a una; costo: la stessa
-guardia, letta al contrario, sul ramo `show`. Non eseguita in questo giro — proposta e
-registrata, come impone `CLAUDE10.md` §17.
+**Nuova, da questo giro (`D-0459`, non eseguita)**: la prova byte-equal tree↔immagine che
+`CLAUDE10.md` §3a impone prima di ogni deploy è rifatta a mano ogni volta (`docker create` +
+`docker cp` + `sha256sum`, ad hoc, di nuovo in questo giro) — nessuno strumento la porta nel
+repository, a differenza della sequenza di deploy stessa (`tools/deploy/redeploy.sh`, nata
+proprio da `D-0390` per la stessa ragione: prosa ripetuta a mano è come si è persa una prova
+prima). Beneficio: uno script `tools/deploy/verify-image-tree.sh <tag> <file...>` (o
+`--changed-since <commit>`) rende la prova ripetibile e testabile invece che una sequenza di
+comandi ricordata a memoria; costo: basso, stesso schema del container disposable già usato
+qui. Ancora la proposta viva di `D-0456`/`D-0457` (guardia simmetrica sul ramo `show` di
+`codenTerminalState()`), non eseguita.

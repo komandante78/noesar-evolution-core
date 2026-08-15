@@ -10732,3 +10732,32 @@ plan-restore occurrence still fails, now proven to be a DIFFERENT, steady-state 
 anywhere else; the new deferred-hide path degrades to the old one whenever the box is idle.
 **Status.** Applied, not yet installed to the live container (no deployment authorized this
 phase). Committed and pushed to `main`.
+
+## D-0458 · `D-0457`'s fix deployed to the live installation — 2026-08-15
+**Decision.** `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z` built and installed
+via `tools/deploy/redeploy.sh --apply` on Owner authorization ("Deploy della riparazione
+F-COMMAND-001", asked directly after the digest).
+**Why.** `D-0457`'s app.js fix was applied and pushed but not yet serving live; the Owner
+authorized closing that gap in this turn.
+**Rejected.** Nothing — routine §3a redeploy, no design choice involved.
+**Evidence.** Preflight PASS. sha256 of `apps/webui-static/app.js` identical tree↔image
+before deploy. `node --test`/ESLint already green from `D-0457` (code unchanged since).
+Post-deploy: `running`/`healthy`, `/livez` 200, `/readyz` 200, app.js sha256 identical
+tree↔running container. Cleanup: older rollback `noesar-evolution-pre-20260814T112620Z`
+removed; non-project containers (50), volumes (64), networks unchanged — see
+`EVIDENCE/docker_inventory_{pre,post}_cleanup_20260815T060*.txt`.
+**Reversal cost.** Low: `docker stop --timeout 30 noesar-evolution && docker rm noesar-evolution
+&& docker rename noesar-evolution-pre-20260815T060555Z noesar-evolution && docker start
+noesar-evolution` — the kept rollback carries the prior config.
+**Status.** installed. See `docs/INSTALLATION_LEDGER.md`.
+
+## D-0459 · improvement proposal — `verify-image-tree.sh`, byte-equal proof as a tool, not a memory — 2026-08-15
+**Decision.** Proposed, not built (`CLAUDE10.md` §17, `noesar-evolution-budget` §5).
+**Why.** `D-0458`'s §3a byte-equal proof (image content == repo tree) was done by hand again
+this deploy — `docker create`/`docker cp`/`sha256sum`, the same shape `tools/deploy/redeploy.sh`
+was built to stop happening for the rest of the sequence, after `D-0390` showed prose repeated
+by hand loses a step under pressure.
+**Rejected.** n/a — not executed this phase, out of scope (routine deploy, no new capability).
+**Evidence.** n/a — proposal only.
+**Reversal cost.** n/a.
+**Status.** deferred — proposed for a future phase.

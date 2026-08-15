@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0456/D-0457: the 3 saved findings investigated (7 disposable e2e probe runs) and the mandatory improvement proposal IMPLEMENTED on Owner authorization (\"NON DARMI PROPOSTE... IMPLEMENTA, PROCEDI PURE\"). F-INTENT-001 closed. F-COMMAND-001/F-PANEL-001: real product bug found and fixed in app.js (codenTerminalState() no longer hides the legacy composer out from under a person mid-use) -- this closed 2 of 3 failing occurrences (5/5 fail -> 0/2 fail, measured). The 3rd occurrence is a genuine steady-state design collision (terminal lastingly live), not a race a retry can fix -- left for the Owner as a named test-strategy decision. F-TERM-002 (new) recorded, not chased: out of this phase's scope.",
-  "phase_status": "D-0456_D-0457_findings_investigated__owner_improvement_implemented__one_residual_test_strategy_call_left",
-  "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal's own / menu vs. a direct hash jump), or authorizes F-TERM-002's investigation, or sets CARGO_REGISTRY_TOKEN for cargo publish, or authorizes Phase D (Capability Token open spec, WP4).",
+  "current_phase": "D-0458: D-0457 fix deployed to the live installation, noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z. Owner-authorized (\"Deploy della riparazione F-COMMAND-001\"). Byte-equal tree<->container verified, /livez /readyz 200, older rollback cleaned. F-PANEL-001 third occurrence test-strategy decision and F-TERM-002 remain open, unchanged.",
+  "phase_status": "D-0458_deployed_and_verified__F-PANEL-001_test_strategy_and_F-TERM-002_still_open",
+  "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "ef40c47",
-  "last_updated_utc": "2026-08-15T05:37:43Z",
+  "last_updated_utc": "2026-08-15T06:10:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -984,7 +984,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for the Owner's call on the one residual test-strategy question (F-PANEL-001's steady-state occurrence), or authorization to chase F-TERM-002, or the cargo publish token, or Phase D.",
+  "next_action": "Wait for the Owner call on the residual F-PANEL-001 test-strategy question, or authorization to chase F-TERM-002, or the cargo publish token, or Phase D.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

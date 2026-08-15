@@ -4943,3 +4943,17 @@ failure byte-identical to the pre-change run (the recorded `D-0435` debt) — no
 **Predecessor preserved.** `noesar-evolution-pre-20260814T112620Z` (`d0444-model-...`).
 **Cleanup.** Older rollback removed; non-project containers unchanged at 50, volumes at 63.
 **Note.** Twelfth redeploy this session — `D-0433` gap applies again, same accepted condition.
+
+## `d0457-legacy-shell-hide-20260815T060429Z` — DEPLOYED and verified — 2026-08-15
+
+**Tag.** `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z`, deployed 06:05:55Z.
+`D-0457`/`D-0458`: `codenTerminalState()` no longer hides the legacy `#codenShell` composer
+out from under a person typing in it when the modern terminal reaches `live`.
+**Health.** `running`/`healthy`; `/livez` 200, `/readyz` 200 (in-container).
+**Verification.** Byte-equal on `apps/webui-static/app.js`, tree↔image before deploy and
+tree↔running container after. Unit 2550/2551 (1 pre-existing skip) and ESLint 409/0 carried
+over from `D-0457` (no code change since). Live check used only health + byte-equality +
+surfaces answering (§3a 11e — no mutating suite against the running installation).
+**Predecessor preserved.** `noesar-evolution-pre-20260815T060555Z` (`d0445-menu-...`).
+**Cleanup.** Older rollback (`noesar-evolution-pre-20260814T112620Z`, `d0444-model-...`)
+removed; non-project containers unchanged at 50, volumes at 64, networks unchanged.
