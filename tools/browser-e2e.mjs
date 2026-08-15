@@ -3354,7 +3354,52 @@ try {
       whereText: document.querySelector('#benchWhereName')?.textContent ?? '',
       transcript: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().length,
     }));
-    await page.click('#codenPrompt');
+    // F-SLASH-001 (2026-08-15, D-0463), STILL OPEN — this retry does NOT fix the underlying
+    // defect, it only turns an opaque Puppeteer error into a self-diagnosing one, so read the
+    // thrown message below rather than assuming green means healthy here.
+    //
+    // A one-shot pre-click check (composer height/display/terminal state, evaluated once right
+    // before the click) never fired before this retry existed — the composer was still visible
+    // at that single check — which first looked like a race narrower than one check could
+    // catch. It is not: driven over a SECOND run, wrapping the click in this same 5-attempt
+    // retry `submitCodenAddress` above uses for its own race, the composer state came back
+    // IDENTICAL across all 5 attempts spanning a full second — `height:0` while
+    // `terminalState:'live'`, unchanged. That is steady state, the same class as `F-PANEL-001`
+    // (D-0461): on this fresh `gotoIdle` page load, the modern terminal has already reached
+    // `live` and retired `#codenPrompt` by design (`D-0413`) before this check ever gets a
+    // turn — not a timing gap a retry can close.
+    //
+    // Unlike `F-PANEL-001`'s fix site, a `jump()`-style bypass is the wrong answer here: this
+    // check exists specifically to test the composer's GESTURE and its visible feedback (Owner
+    // s333 point 2), and the terminal's own gesture for an address renders inline into its own
+    // transcript (`showAddress()` in `coden-terminal.js`), never touching the
+    // `[data-bench-panel]` this check currently asserts on. The real fix needs the
+    // terminal-driving helpers from the `coden-terminal` step hoisted out of their current
+    // block scope and new assertions built for that different, never-yet-tested behavior — see
+    // `D-0463` for the two named designs, deliberately not picked here.
+    const composerState = async () => page.evaluate(() => {
+      const box = document.querySelector('#codenPrompt');
+      const rect = box?.getBoundingClientRect();
+      return {
+        exists: Boolean(box),
+        height: rect?.height ?? 0,
+        display: box ? getComputedStyle(box).display : 'no-element',
+        visibility: box ? getComputedStyle(box).visibility : 'no-element',
+        terminalState: document.querySelector('#codenTerminalHost')?.dataset.terminalState ?? 'no-host',
+      };
+    });
+    let clicked = false;
+    let lastState = null;
+    for (let attempt = 1; attempt <= 5 && !clicked; attempt += 1) {
+      lastState = await composerState();
+      if (lastState.height > 0 && lastState.display !== 'none') {
+        try { await page.click('#codenPrompt'); clicked = true; break; } catch { /* retry below */ }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    if (!clicked) {
+      throw new Error(`#codenPrompt not clickable after 5 attempts over ~1s — last composer state: ${JSON.stringify(lastState)}`);
+    }
     await page.type('#codenPrompt', '/diff');
     await page.keyboard.press('Enter');
     await new Promise((resolve) => { setTimeout(resolve, 600); });

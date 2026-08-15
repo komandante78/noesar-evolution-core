@@ -10817,3 +10817,35 @@ same stale-frame garbage) behind a more forgiving test.
 **Reversal cost.** none — `SCREEN.clear` was already defined for exactly this purpose and
 simply unused; the change is one identifier.
 **Status.** applied.
+
+## D-0463 · F-SLASH-001 root cause confirmed, driven — fix deferred, not rushed — 2026-08-15
+**Decision.** Confirmed, over 2 driven e2e runs, that `POINT-2B-MEASURE`'s failure is the same
+defect CLASS as `F-PANEL-001` (composer retired in steady state, not a race) but at a check
+that specifically tests the composer GESTURE — so `F-PANEL-001`'s `jump()`-bypass fix does not
+transfer. Shipped: the check's failure now names the real cause (composer + terminal state)
+instead of Puppeteer's opaque error. The actual fix — driving the gesture through whichever
+surface is current — is recorded as its own next phase, not built here.
+**Why.** Run 1 (one-shot pre-click check): never fired, composer was visible at check-time, yet
+`page.click` still failed — looked like a race. Run 2 (wrapped the click in the same 5-attempt
+retry `submitCodenAddress` uses): the state was IDENTICAL across all 5 attempts over a full
+second — `{height:0, display:block, terminalState:live}` — proving steady state, not a race.
+Retrying cannot fix a steady state; this project already knows that from `F-PANEL-001`. A real
+fix needs `typeIntoTerminal`/`terminalFrame`/`screenText` — currently scoped inside the earlier
+`coden-terminal` step — hoisted to file scope, and new assertions for an ADDRESS-kind command
+driven through the terminal, which nothing in this suite has ever exercised (the existing
+terminal checks cover `/help`, `/status`, and `/plan`'s filter/tab-complete, never a submitted
+address). That is a second phase's work, not a tail end of this one.
+**Rejected.** Rushing the terminal-driven redesign in this same phase — two competing designs
+exist (drive the terminal and assert on its transcript, vs. have the check declare-and-skip
+when the terminal has already claimed the surface) and neither is self-evidently right; forcing
+one now risks exactly the kind of guess this project's own `F-COMMAND-001` history warns
+against. Also rejected: leaving the check's error message opaque — that much was unambiguous
+and low-risk, so it shipped.
+**Evidence.** Run 1: generic Puppeteer error, no diagnosis. Run 2: `#codenPrompt not clickable
+after 5 attempts over ~1s — last composer state: {"exists":true,"height":0,"display":"block",
+"visibility":"visible","terminalState":"live"}`. Full suite unaffected both times: 475/477 (only
+`F-SLASH-001` itself and the tracked I18N gap). Unit suite: 2551/2552 (1 pre-existing skip).
+ESLint: 409/0.
+**Reversal cost.** none — test-harness diagnostic only, no product code touched.
+**Status.** root cause confirmed and documented; fix deferred to a dedicated next phase with two
+named designs, per the Owner's own instruction this session not to rush multi-phase work.
