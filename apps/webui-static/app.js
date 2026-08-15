@@ -1336,6 +1336,12 @@ function codenMenu(){return menuFor(accountFromUser(currentUser&&{...currentUser
 // page writes no list of its own — the same rule that killed `PANEL_NAMES`. The terminal folds
 // in the list it is SERVED, derived from this same markup, so the two prompts offer one set.
 function codenOffered(){return [...codenMenu().entries,...addressEntries(addressBook())];}
+// F-INTENT-001: exposed so an e2e check can hand `resolveUtterance` the SAME list this page
+// hands it, instead of reassembling one by hand — a reassembled list drifted from this one
+// (the address book was missing from it) and the check condemned the resolver for a gap that
+// was actually in the check's own input. No new capability: every entry here is already in
+// the accessible DOM, and the server enforces permissions regardless of what this offers.
+window.__noesarCodenOffered=codenOffered;
 // `sessions.list` and `coden.gitStatus` are `bridged:false` — this page reaches them through
 // routes of its own, which is an exposure decision the policy table records, not a weaker
 // gate (`GET /api/v1/sessions` asks the same `workspace.read`). Routing them here is what

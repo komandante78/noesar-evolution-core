@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0454/D-0455: governance, not Phase C. F-HOOK-005 root cause found (SessionStart matcher missed 'clear', then 'fork') and fixed; generalized into a reusable hme_check_settings() checker wired into state-digest.sh and the hook test suites (258/258 green). Phase C (WP6) unchanged since D-0453: same one open technical item (cargo publish) and the same 6 Phase-5 legal/product questions.",
-  "phase_status": "D-0454_D-0455_hook_matcher_checker_closed__phase5_items_still_open",
-  "next_phase": "Owner sets CARGO_REGISTRY_TOKEN out of band when ready to cargo publish noesar-sandbox, or authorizes: (a) one of the 3 findings saved for the end (F-COMMAND-001/F-INTENT-001/F-PANEL-001), or (b) Phase D (Capability Token open spec, WP4).",
+  "current_phase": "D-0456: the 3 saved findings investigated, driven not read (5 disposable e2e probe runs). F-INTENT-001 closed (the e2e CHECK's own input was wrong, not the resolver). F-COMMAND-001/F-PANEL-001 root cause found -- a shell-exclusivity race between the legacy #codenShell composer and the modern terminal's async live-attach, not the matching/event-delivery bug D-0449 guessed -- but the real repair is a test-strategy decision left for the Owner. F-TERM-002 (new) found and recorded, not chased: out of this phase's authorized scope.",
+  "phase_status": "D-0456_three_saved_findings_investigated__one_closed__two_need_owner_decision__one_new_recorded",
+  "next_phase": "Owner decides F-COMMAND-001/F-PANEL-001's test strategy (wait for terminal to settle vs. drive whichever surface is live), or authorizes F-TERM-002's investigation, or sets CARGO_REGISTRY_TOKEN for cargo publish, or authorizes Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -331,20 +331,25 @@
     {
       "id": "F-COMMAND-001",
       "severity": "medium",
-      "status": "OPEN - found 2026-08-14 (D-0449) while closing D-0435, root cause NOT found. Diagnostic check added in tools/browser-e2e.mjs, left failing loudly rather than silenced.",
+      "status": "OPEN, root cause FOUND 2026-08-15 (not a test-focus bug, a shell-exclusivity race): `#codenShell` (the legacy prompt/transcript/menu) is hidden by `codenTerminalState()` (app.js ~5943) the instant the modern xterm.js terminal reaches state==live, by explicit Owner design (D-0413-era, 2026-08-13: #/coden shows ONE chat, never both stacked). That handshake is async and can complete mid-test, after the legacy composer was already used successfully earlier in the SAME run -- proven via a full ancestor-chain DOM dump: section#codenShell.agent-shell.hidden{display:none}, confirmed non-transient by a 3s poll that never recovered. Fixing it means a TEST-STRATEGY decision (wait for the terminal to settle before choosing which surface to drive, vs. drive whichever is live), not a code repair -- recorded per CLAUDE10.md §40a rather than picked without the Owner. tools/browser-e2e.mjs:submitCodenAddress() now names this exact cause on failure instead of a generic timeout.",
       "summary": "The legacy #codenPrompt textarea, value set via page.evaluate + dispatchEvent(input) + .focus(), does not have its Enter keypress reach submitCodenPrompt() in wireCodenShell()s keydown listener (app.js). Box keeps its typed value, no transcript entry appears, the target address IS present in the offered menu -- not a matching bug, an event-delivery question."
     },
     {
       "id": "F-INTENT-001",
       "severity": "low",
-      "status": "OPEN - found 2026-08-14 (D-0449), not investigated further this phase.",
+      "status": "CLOSED 2026-08-15 (this session). Root cause was the CHECK, not the resolver: tools/browser-e2e.mjs reconstructed `entries` as `[...commands.AGENT_COMMANDS]` only, omitting the served address book — `heardResult()` (app.js) actually passes `codenOffered()` = commands + addressEntries(addressBook()). \"memory\" lives only in the address book, so the AGENT_COMMANDS-only list could never match it. Fixed by exposing `window.__noesarCodenOffered` (the same function the page itself calls, no new list) and having the check call it. Verified 5/5 e2e runs green on this exact check.",
       "summary": "A step named around \"a destination navigates and a capability only waits to be sent\" reports {navigate:{kind:nothing,heard:memory}} -- an intent classifier returning nothing for an input (memory) it should presumably route as a navigation."
     },
     {
       "id": "F-PANEL-001",
       "severity": "medium",
-      "status": "OPEN - found 2026-08-14 (D-0449), not investigated further this phase.",
+      "status": "OPEN, same root cause as F-COMMAND-001 (see that entry) -- confirmed at BOTH call sites in the workspace-actions step (plan creation and plan restore), the second only reached this session because the first one used to abort the whole step unguarded. Consolidated into one shared helper, submitCodenAddress(), so both report the same diagnosed cause instead of two different opaque timeouts.",
       "summary": "workspace-actions step (tools/browser-e2e.mjs) times out waiting for [data-agent-panel=\"plan\"].active after an action expected to open that panel. Newly reached because D-0435s crash previously prevented this step from running at all."
+    },
+    {
+      "id": "F-TERM-002",
+      "severity": "low",
+      "status": "OPEN - found 2026-08-15, reproduced 5/5 e2e runs this session (unrelated to this session's authorized scope, so not investigated beyond recording it): F-TERM-001's own check (\"Enter consumes the line -- the prompt is empty again\") now fails every run -- prompt row reads \"/help\" (not cleared) up to 3s after Enter, despite D-0448's poll already accounting for render-timing lag. F-TERM-001 itself (D-0423, commit ff448e4) is not reverted -- Ctrl-U still empties the prompt and typing still composes it correctly; only the post-Enter clear is affected. Needs its own driven investigation, not a guess."
     }
   ],
   "resolved_findings": [
@@ -979,7 +984,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for Owner authorization. F-COMMAND-001/F-INTENT-001/F-PANEL-001 stay open and untouched, saved for the end per Owner instruction.",
+  "next_action": "Wait for the Owner's test-strategy call on F-COMMAND-001/F-PANEL-001 (root cause found, repair choice is theirs), or authorization to chase F-TERM-002, or the cargo publish token, or Phase D.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -1,83 +1,80 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0454`/`D-0455`: `F-HOOK-005` chiuso, checker generico costruito)
+# SESSION HANDOFF — 2026-08-15 (`D-0456`: i tre finding salvati, indagati — driven, not read)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Governance, non Fase C: `F-HOOK-005` (SessionStart non scriveva la baseline dei container)
-aveva root cause ignota da tre giorni (D-0396). Trovata e riparata in questa sessione (`D-0454`
-— matcher mancava `clear`), poi generalizzata su richiesta esplicita dell'Owner (`D-0455`): un
-checker riusabile (`hme_check_settings`) confronta ogni matcher-a-enum del progetto contro
-l'enum documentato reale, e costruendolo si è trovato un SECONDO buco che `D-0454` da solo non
-copriva — `fork`, il quinto valore di `SessionStart`. Entrambi chiusi. Il checker gira ora
-automaticamente in `state-digest.sh` ad ogni sessione (fallisce rumorosamente, non in silenzio)
-e in 258/258 test hook. Fase C (WP6) resta ESATTAMENTE dove D-0453 l'aveva lasciata: un solo
-comando tecnico resta scoperto e nominato sotto, nessun altro pezzo di Fase C è stato toccato.**
+**Owner ha autorizzato "prossima fase" e, alla domanda di chiarimento, scelto: indagare i tre
+finding salvati (`F-COMMAND-001`/`F-INTENT-001`/`F-PANEL-001`), non `cargo publish` né Fase D.**
 
-**Resta UN solo comando tecnico (`cargo publish`), e 6 domande legali/di prodotto esplicitamente
-per la Fase 5 — nessuna delle due nascosta.**
+**`F-INTENT-001` CHIUSO.** Non era un bug del resolver — era il CHECK a ricostruire `entries`
+come solo `AGENT_COMMANDS`, senza l'address book che il prodotto reale ci mette dentro
+(`heardResult()` passa `codenOffered()`). "memory" vive solo nell'address book, quindi non
+poteva mai combaciare. Fix: `window.__noesarCodenOffered` esposto (la stessa funzione della
+pagina, nessuna lista nuova) e il check ora la chiama. Verde 5/5 run e2e.
 
-**Fatto in questo giro (verificato, non dichiarato):**
-- `LICENSE` (testo verbatim AGPL-3.0-or-later, scaricato con `curl` da `gnu.org` — non
-  ricostruito a memoria, diffato byte-identico) + `NOTICE` aggiunti alla radice di
-  `NOESAR-EVOLUTION` **e** di `github.com/komandante78/noesar-sandbox`.
-- Ambito **scelto da te**, non deciso da me: solo la licenza open-core, non le altre 6 domande
-  aperte di `docs/LICENSE_STRATEGY.md` §5 (meccanismo dual-license, audit dipendenze, marchio,
-  termini commerciali) — quelle restano per la Fase 5, nominate esplicitamente nel documento.
-- `docs/LICENSE_STRATEGY.md` §5 aggiornato voce per voce, non riscritto.
+**`F-COMMAND-001`/`F-PANEL-001`: causa radice TROVATA (5 run e2e disposable, non indovinata),
+ma NON È IL BUG CHE `D-0449` PENSAVA.** Non è un problema di matching né di consegna
+dell'evento Enter — due tentativi di fix su quella base (`.focus()` grezzo, poi
+`page.focus()` di Puppeteer) sono stati provati e hanno misurabilmente NON funzionato, quindi
+scartati invece di essere spacciati per una riparazione. La causa vera, letta da un dump
+completo della catena di antenati DOM: `#codenShell` (il prompt legacy) viene nascosto da
+`codenTerminalState()` (`app.js` riga ~5943) nell'istante in cui il terminale xterm.js
+moderno raggiunge `state==='live'` — per decisione esplicita dell'Owner del 2026-08-13
+("`#/coden` mostra UNA chat, mai le due impilate"). Quell'handshake è asincrono e può
+completarsi a metà test, DOPO che lo stesso box legacy era già stato usato con successo prima
+nella stessa run. **Non è un difetto — è una scelta di strategia di test**: aspettare che il
+terminale si assesti prima di scegliere quale superficie guidare, oppure guidare quella
+realmente viva in quel momento. Lasciato aperto per una decisione tua, non presa da solo
+(`CLAUDE10.md` §40a). Consolidato in `submitCodenAddress()` (nuovo helper, 3 punti prima
+duplicati), che ora nomina questa causa esatta invece di un timeout generico.
 
-**Cosa resta — un solo comando, delimitato con precisione:**
-`cargo publish`, e serve solo `CARGO_REGISTRY_TOKEN`. Via sicura, stesso schema di
-`secrets/github_push_token` già in uso in questo repository:
-```
-printf '%s' "IL_TUO_TOKEN_CRATES_IO" > /mnt/cachec/NOESAR_EVOLUTION/secrets/crates_io_token
-chmod 600 /mnt/cachec/NOESAR_EVOLUTION/secrets/crates_io_token
-```
-fatto da un terminale vero, non con `!comando` in chat (stesso motivo di `B-001`). Poi basta
-dirmi "l'ho messo in `secrets/crates_io_token`".
+**Trovato anche, fuori scope, non inseguito**: `F-TERM-002` (nuovo) — il check di `F-TERM-001`
+("Enter svuota la riga") fallisce 5/5 in questa sessione. `F-TERM-001` stesso non è regredito
+(Ctrl-U e la composizione funzionano); solo lo svuotamento dopo Enter è colpito. Serve una sua
+indagine dedicata, guidata come questa — non una supposizione.
 
-**Tre finding salvati per la fine, invariati** (`PROJECT_STATE.json.open_findings`):
-`F-COMMAND-001` (medium), `F-INTENT-001` (low), `F-PANEL-001` (medium) — nessuno indagato.
-
-**Prossima invocazione**: token per `cargo publish` quando vuoi pubblicare davvero, oppure
-autorizzi (a) i tre finding salvati, (b) Fase D (Capability Token spec, WP4).
+**Prossima invocazione**: una decisione su `F-COMMAND-001`/`F-PANEL-001` (aspetta-il-terminale
+vs guida-il-vivo), oppure `F-TERM-002`, oppure il token per `cargo publish`, oppure Fase D.
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `F-HOOK-005` | **CHIUSO 2026-08-15 (`D-0454`/`D-0455`)** — matcher `SessionStart` non copriva `clear` (poi trovato: nemmeno `fork`); riparato + checker generico riusabile, 258/258 suite hook verde. |
-| `F-COMMAND-001`/`F-INTENT-001`/`F-PANEL-001` | **APERTI, salvati per la fine** (istruzione Owner). |
+| `F-INTENT-001` | **CHIUSO 2026-08-15** — bug nel check, non nel prodotto; vedi sopra. |
+| `F-COMMAND-001`/`F-PANEL-001` | **APERTI** — causa radice trovata, riparazione è una decisione di strategia di test, non un difetto. |
+| `F-TERM-002` | **NUOVO, APERTO** — regressione osservata 5/5, non indagata (fuori scope di questa fase). |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5** — dual-license, audit, marchio, termini commerciali. |
 | `D-0436`…`D-0445` | **FATTO**, deployati. Solo `D-0438` confermato dall'Owner. |
-| `D-0444` `/model <id>` | **FATTO, DEPLOYATO.** Non ancora provato con un modello reale. |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata (l'Owner ce l'ha già). |
 | `D-0433` | **APERTO.** Stessa condizione già accettata. |
+| `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da terminale vero. |
 
-## Verificato IN QUESTA SESSIONE (ultimo giro)
+## Verificato IN QUESTA SESSIONE
 
 | Strumento | Risultato |
 |---|---|
-| `curl gnu.org/licenses/agpl-3.0.txt` vs `LICENSE` committato | `diff` — **identico** |
-| `git push` `LICENSE`+`NOTICE` a `noesar-sandbox` | commit `7c93a5b` |
+| `tools/run-browser-e2e.sh` (probe disposable) | **5 run**: 391 check/run, `F-INTENT-001` verde 5/5, `F-COMMAND-001`/`F-PANEL-001` rossi 5/5 con causa nominata, `F-TERM-002` rosso 5/5 |
 | `node --test …` | **2546/2547** (1 skip preesistente, invariato) |
-| `verify-source.mjs` | **PASS** |
-| secret scan (euristico) su `LICENSE`/`NOTICE`/`docs/LICENSE_STRATEGY.md` | nessuna stringa credential-shaped |
+| `tools/run-eslint.sh` | **408 file, 0/0/0** — dopo ogni edit |
+| pulizia container/rete/tag | verificata dopo le 5 run: solo `noesar-evolution` + 1 rollback, zero tag `*e2e*`/`*probe*` residui |
+| bookkeeping di stato | `PROJECT_STATE.json.last_commit` era rimasto a `c849651` con `HEAD` già a `1467033` (i commit `D-0454`/`D-0455` mai chiusi in stato) — riallineato, commit `9d3c4fc`, pushato |
 
 ## Cosa NON è stato fatto
 
-- **`cargo publish`** — manca solo `CARGO_REGISTRY_TOKEN`, via sicura descritta sopra.
-- **Le altre 6 domande di `docs/LICENSE_STRATEGY.md` §5** — deliberatamente non toccate, per
-  scelta esplicita tua quando te l'ho chiesto: meccanismo CLA/DCO, audit dipendenze, licensing
-  di asset/modelli terzi, policy marchio, termini della licenza commerciale, consistenza
-  `LICENSE`/`NOTICE` su ogni futuro repository spin-off (WP4/WP5).
-- **I tre finding salvati** — non indagati, per istruzione diretta dell'Owner.
-- **Nessuna conferma visiva dell'Owner** su `D-0436`…`D-0445` (tranne `D-0438`).
-- **`D-0444` non provato con un modello reale**; **ATOM↔CodeN Evolution non verificato**.
+- **La riparazione vera di `F-COMMAND-001`/`F-PANEL-001`** — richiede una decisione tua di
+  strategia di test (vedi sopra), non eseguita senza di te.
+- **`F-TERM-002`** — trovato, non indagato: fuori dallo scope autorizzato di questa fase.
+- **`cargo publish`** e **le altre 6 domande di `docs/LICENSE_STRATEGY.md` §5** — invariate da
+  `D-0453`, restano per la Fase 5 / per quando fornisci il token.
+- **Nessuna conferma visiva dell'Owner** su `D-0436`…`D-0445` (tranne `D-0438`); **ATOM↔CodeN
+  Evolution non verificato**.
 
 ## Proposta di miglioramento
 
-**Un check automatico che ogni repository spin-off (WP4/WP5 dopo Fase D) porti `LICENSE` +
-`NOTICE` prima del primo push pubblico** — oggi `D-0453` l'ha fatto a mano per
-`noesar-sandbox`; `tools/verify-crate-extraction.sh` potrebbe rifiutarsi di dichiarare PASS se
-la crate non ha entrambi i file, così la lacuna non si ripete ad ogni estrazione. Beneficio:
-zero repository pubblici senza licenza per dimenticanza; costo: una manciata di righe nello
-script già esistente.
+**`codenTerminalState()` nasconde `#codenShell` incondizionatamente al passaggio a `live`,
+anche se un utente reale ci sta scrivendo dentro in quel momento** — lo stesso difetto che
+questa sessione ha trovato in forma automatizzata è reale anche per una persona: testo
+digitato nel box legacy può sparire silenziosamente sotto un cambio di superficie che l'utente
+non ha chiesto. Beneficio: nessun input perso a un evento asincrono di cui l'utente non sa
+nulla; costo: una guardia (`if (legacyShell.matches(':focus-within') || legacyShell contains a
+non-empty prompt) defer the hide until submit/cancel`) in `app.js`, poche righe. Non eseguita
+in questa fase — proposta e registrata, come impone `CLAUDE10.md` §17.

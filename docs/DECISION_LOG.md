@@ -10683,3 +10683,28 @@ backup. `node --test` 2546/2547 (unaffected, 1 pre-existing skip), `verify-sourc
 generalized assertion. No existing behavior removed.
 **Status.** Applied. Both real gaps this incident had (`clear`, `fork`) are closed and now
 mechanically guarded against recurrence in any of this project's hooks.
+
+## D-0456 · F-COMMAND-001/F-INTENT-001/F-PANEL-001 investigated, driven not read — 2026-08-15
+**Decision.** F-INTENT-001 CLOSED: the e2e check reconstructed `resolveUtterance`'s `entries`
+as `AGENT_COMMANDS` only, omitting the served address book `heardResult()` actually passes —
+fixed by exposing `window.__noesarCodenOffered` (the page's own function, no new list).
+F-COMMAND-001/F-PANEL-001 (3 call sites, 1 newly found masked by the first): root cause FOUND
+after 5 disposable e2e runs — not a matching or event-delivery bug, a shell-exclusivity race.
+`#codenShell` (legacy prompt) is hidden by `codenTerminalState()` the instant the modern
+terminal reaches `live`, by design (2026-08-13, one chat, never stacked); that handshake can
+land mid-test. Consolidated into `submitCodenAddress()`, which now names this exact cause
+(ancestor-chain dump) instead of a generic timeout. Left OPEN: the actual repair is a
+test-strategy choice (wait for the terminal to settle vs. drive whichever surface is live),
+not a code defect — recorded for the Owner rather than picked unilaterally.
+**Why.** Owner-authorized ("AUTORIZZO PROSSIMA FASE PROCEDI" → chose the 3 saved findings).
+**Rejected.** Guessing a fix for F-COMMAND-001/F-PANEL-001 without the ancestor-chain evidence
+— two earlier attempts (raw `.focus()`, then `page.focus()`) both looked plausible and both
+measurably failed; recorded per `CLAUDE10.md` §40a rather than shipping a third guess.
+**Evidence.** 5× `tools/run-browser-e2e.sh`, disposable probes: 391 checks/run, F-INTENT-001
+green 5/5. `node --test`: 2546/2547 (1 pre-existing skip), unaffected. `tools/run-eslint.sh`:
+408/0, run after every edit. Also found: `F-TERM-002` (new), F-TERM-001's own check now fails
+5/5 — unrelated regression, out of this phase's authorized scope, recorded not chased.
+**Reversal cost.** None — `apps/webui-static/app.js` gains one exposed accessor (no behavior
+change), `tools/browser-e2e.mjs` gains one shared helper replacing 3 duplicated blocks.
+**Status.** F-INTENT-001 closed. F-COMMAND-001/F-PANEL-001 open pending the Owner's
+test-strategy call. F-TERM-002 open, unstarted.

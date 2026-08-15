@@ -84,6 +84,72 @@ async function clickOrExplain(page, selector) {
   return geometry;
 }
 
+/**
+ * Drive `#codenPrompt` to an address and submit it — set the value, wait for the box to
+ * actually have a rendered size, then focus and press Enter.
+ *
+ * F-COMMAND-001 / F-PANEL-001 (2026-08-14, D-0449) — ROOT CAUSE FOUND, 2026-08-15, and it is
+ * neither finding's original guess. Not a matching bug (the address was always present in
+ * `#codenMenu`'s own DOM). Not a synthetic-event-vs-CDP gap (Puppeteer's own `page.focus()`
+ * made no difference, and a 3s poll for a nonzero rect never recovered — ruling out a
+ * transient render race, D-0448's class of fix, before it was blamed).
+ *
+ * The real cause, read off a full ancestor-chain dump the first four attempts did not
+ * capture: `section#codenShell.agent-shell.hidden{display:none}`. `#codenShell` is the
+ * LEGACY prompt/transcript/menu stack — `codenTerminalState()` (app.js, ~line 5943) hides it
+ * the moment the modern xterm.js terminal reaches `state==='live'`, on explicit Owner
+ * instruction (2026-08-13): "`#/coden` shows ONE chat... not stacked". That handshake is
+ * async and unrelated to anything this test does; it can complete at any point after the
+ * terminal iframe attaches, including mid-phase-3c, after this exact composer was already
+ * used successfully earlier in the SAME test run (the click and the real typing above both
+ * happened before the terminal went live). This is not a bug in the product OR in this
+ * test's event delivery — it is this test driving a surface that the product's own,
+ * intentional, one-chat-at-a-time rule can retire out from under it at any moment. Fixing it
+ * for real means deciding, as a test-strategy question and not a defect repair, whether
+ * phase 3c should (a) wait for the terminal to settle before choosing which surface to
+ * drive, or (b) drive whichever surface is actually live. Left open, named, for that
+ * decision (`CLAUDE10.md` §40a: a root cause resting on a design choice not yet made is
+ * recorded, not guessed at). What ships here narrows the failure from an opaque downstream
+ * timeout to this exact, evidenced explanation, and the same collapse-detection discipline
+ * `clickOrExplain` already applies to clicks, applied here to type-and-Enter, which had none.
+ */
+async function submitCodenAddress(page, address) {
+  await page.evaluate((value) => {
+    const box = document.querySelector('#codenPrompt');
+    box.value = value;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  }, address);
+  const settled = await page.evaluate(() => new Promise((resolve) => {
+    const box = document.querySelector('#codenPrompt');
+    const deadline = Date.now() + 3000;
+    const poll = () => {
+      if (box.getBoundingClientRect().height > 0) return resolve(true);
+      if (Date.now() > deadline) return resolve(false);
+      requestAnimationFrame(poll);
+    };
+    poll();
+  }));
+  if (!settled) {
+    // Still collapsed after a poll long enough to rule out a render-timing race (D-0448's
+    // class of fix, tried and it did not help) — walk the ancestor chain so the NEXT session
+    // does not have to spend a run rediscovering which one is 0-height or `display:none`.
+    const chain = await page.evaluate(() => {
+      const trail = [];
+      let node = document.querySelector('#codenPrompt');
+      while (node && node !== document.documentElement) {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        trail.push(`${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${[...node.classList].map((c) => `.${c}`).join('')}: ${rect.width}x${rect.height} display=${style.display} visibility=${style.visibility}`);
+        node = node.parentElement;
+      }
+      return trail;
+    });
+    throw new Error(`#codenPrompt: still collapsed to 0 height 3s after being given a value :: ancestor chain: ${chain.join(' | ')}`);
+  }
+  await page.focus('#codenPrompt');
+  await page.keyboard.press('Enter');
+}
+
 /** Wait for a fresh TOTP step so a code cannot be rejected as already used. */
 async function freshCode(secret, avoid = new Set()) {
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -1458,14 +1524,13 @@ try {
 
   // Driven end to end: type an address at the prompt, press Enter, land on the panel. This is
   // the gesture that has to work for the removal above to be honest.
-  await page.evaluate(() => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = '/coden/agent/authority';
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    box.focus();
-  });
-  await page.keyboard.press('Enter');
+  //
+  // F-COMMAND-001 (D-0449, investigated 2026-08-15): `submitCodenAddress` above carries the
+  // full account of what was found and what was not — the short version is that `Enter` was
+  // never the problem, `#codenPrompt` collapsing to 0 height right before it was pressed was.
+  const submitError = await submitCodenAddress(page, '/coden/agent/authority').then(() => null, (error) => error.message);
   const landedOrNot = await soft('phase 3c — an address typed at the prompt opens its panel', async () => {
+    if (submitError) throw new Error(submitError);
     await page.waitForSelector('[data-agent-panel="authority"].active', { timeout: 15000 });
   });
   if (landedOrNot) {
@@ -1484,8 +1549,10 @@ try {
         .map((node) => `${node.className}: ${node.textContent.trim().slice(0, 120)}`),
       addressBookHasIt: [...document.querySelectorAll('#codenMenu [data-coden-command]')]
         .some((node) => node.dataset.codenCommand === 'coden/agent/authority'),
+      focusedNow: document.activeElement?.id ?? '(none)',
     }));
-    check('phase 3c — an address typed at the prompt opens its panel (diagnostic)', false, JSON.stringify(diag));
+    check('phase 3c — an address typed at the prompt opens its panel (diagnostic)', false,
+      JSON.stringify({ submitError, ...diag }));
   }
 
   await leaveCodenTerminal();
@@ -1682,7 +1749,11 @@ try {
   const voiceHeard = await page.evaluate(async () => {
     const intent = await import('/voice-intent.js');
     const commands = await import('/shared/coden/agent-commands.js');
-    const entries = [...commands.AGENT_COMMANDS];
+    // F-INTENT-001: `[...commands.AGENT_COMMANDS]` alone is not what the page hands the
+    // resolver — `heardResult()` (app.js) passes `codenOffered()`, commands PLUS the served
+    // address book. 'memory' lives only in the address book, so the AGENT_COMMANDS-only list
+    // could never match it: not a resolver defect, a reconstructed-input defect in this check.
+    const entries = window.__noesarCodenOffered();
     const groupTitles = Object.fromEntries(commands.MENU_GROUPS.map((group) => [group.id, group.title]));
     const say = (text) => intent.resolveUtterance(text, { entries, groupTitles });
     return {
@@ -2658,13 +2729,9 @@ try {
   // died there ("collapsed to 0x0") on a product that was behaving correctly: a false red, and
   // an expensive one — everything after the click in this step never ran. The plan is now
   // created from the Plan panel's own address, and the shadow is opened after it exists.
-  await page.evaluate(() => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = '/coden/agent/plan';
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    box.focus();
-  });
-  await page.keyboard.press('Enter');
+  //
+  // F-PANEL-001 (D-0449) — same root cause as F-COMMAND-001, see `submitCodenAddress` above.
+  await submitCodenAddress(page, '/coden/agent/plan');
   await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
   await page.type('#planGoal', 'add a short note file for this e2e run');
   await page.type('.plan-file-path', 'e2e-notes/browser-e2e-note.txt');
@@ -2794,13 +2861,11 @@ try {
   // s327, same false red as the plan submit above and the same fix: `#planRestoreBtn` lives in
   // the Plan panel (agent region), so opening a BENCH panel first closes it and leaves the
   // button legitimately 0x0. Open the panel that owns the button.
-  await page.evaluate(() => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = '/coden/agent/plan';
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-    box.focus();
-  });
-  await page.keyboard.press('Enter');
+  //
+  // Same F-PANEL-001 defect class — a third occurrence, never reached before this session
+  // because the FIRST occurrence's unguarded throw aborted this whole step before this line
+  // ever ran. `submitCodenAddress` above carries the finding.
+  await submitCodenAddress(page, '/coden/agent/plan');
   await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(
