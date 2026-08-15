@@ -1322,6 +1322,12 @@ const codenView=createView();
 codenView.transcript = [{ kind: 'note', text:
   'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.' }];
 let codenMenuIndex=0;
+// D-0456: whether `codenTerminalState` owes `#codenShell` a hide it deferred because the
+// person was busy with it. Declared here, not beside `codenTerminalState` itself further
+// down — `D-0416`'s guard: a module-level `let` after `initRouter()` starts is in the
+// temporal dead zone for any boot call that reaches it, and the router's own activation path
+// can reach `codenTerminalState` on the first tick.
+let legacyHidePending=false;
 // What this account may use — the same `menuFor` the terminal calls, on the same list, with
 // the permission set the server reported for this session. Rebuilt on demand rather than
 // cached at load: `currentPermissions` is filled during sign-in, and a menu built before that
@@ -1447,7 +1453,7 @@ function completeCodenCommand(name){
 async function submitCodenPrompt(){
   const box=$('#codenPrompt');if(!box)return;
   const typed=box.value.trim();
-  box.value='';codenMenuIndex=0;renderCodenMenu();
+  box.value='';codenMenuIndex=0;renderCodenMenu();maybeApplyLegacyHide();
   if(!typed)return;
   const offered=codenOffered();
   say(codenView,'user',typed);renderCodenTranscript();
@@ -1512,7 +1518,12 @@ async function submitCodenPrompt(){
 function wireCodenShell(){
   const box=$('#codenPrompt');if(!box)return;
   renderCodenTranscript();
-  box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();});
+  box.addEventListener('input',()=>{codenMenuIndex=0;renderCodenMenu();maybeApplyLegacyHide();});
+  // D-0456: the terminal may have gone `live` while this box had focus or held unsent text —
+  // `codenTerminalState` deferred its hide rather than cut the person off mid-thought. Looking
+  // away is the third and last way a busy spell can end (the other two: submitting, emptying
+  // the box), so it gets the same retry.
+  box.addEventListener('blur',()=>{maybeApplyLegacyHide();});
   box.addEventListener('keydown',(event)=>{
     const parsed=parseCommandPrompt(box.value);
     const frame=parsed?codenFrame(parsed):null;
@@ -5929,6 +5940,34 @@ initializeAuth()
 // the accessibility tree can see them), theme IN. Keystrokes, geometry and the socket never
 // cross — they belong to the document the emulator is in, which is why there is no input
 // protocol here to get wrong.
+// Found 2026-08-15 (D-0456) driving `#codenPrompt` in the browser e2e suite: the hide below
+// used to fire unconditionally, mid-keystroke if the terminal's async attach happened to land
+// there. A script driving the box synthetically just gets its Enter silently swallowed by a
+// box that stopped being rendered; a PERSON typing into it gets their words vanish under a
+// surface change they never asked for and were given no notice of — the same defect, worse for
+// a human because there is no error to read, only a box that is suddenly gone. `legacyPromptBusy`
+// and `maybeApplyLegacyHide` defer the hide until the person is done with the box (submits,
+// clears it, or looks away) instead of cutting them off. `legacyHidePending` is intentionally
+// visible file scope, not a closure inside `codenTerminalState`: the three places that can end a
+// busy spell (`submitCodenPrompt`, the input listener, a new blur listener, all in `wireCodenShell`)
+// need to ask the SAME question `codenTerminalState` asked when it deferred. The flag itself
+// (`legacyHidePending`) is declared near `codenMenuIndex`, before `initRouter()` — `D-0416`'s
+// own guard: a module-level `let` declared after the router starts is in the temporal dead
+// zone for any boot call that reaches it, and `attachCodenTerminal()`/`detachCodenTerminal()`
+// (called from the router's own activation path) can reach `codenTerminalState` on the very
+// first tick.
+function legacyPromptBusy(){
+  const box=$('#codenPrompt');
+  return Boolean(box)&&(document.activeElement===box||box.value.trim()!=='');
+}
+function applyLegacyHide(){
+  const legacyShell=$('#codenShell');const legacyHeading=$('#codenShellHeading');
+  legacyShell?.classList.add('hidden');legacyHeading?.classList.add('hidden');
+  legacyHidePending=false;
+}
+function maybeApplyLegacyHide(){
+  if(legacyHidePending&&!legacyPromptBusy())applyLegacyHide();
+}
 function codenTerminalState(state,detail){
   const host=$('#codenTerminalHost');const statusEl=$('#codenTerminalStatus');
   if(host)host.dataset.terminalState=state;
@@ -5938,14 +5977,15 @@ function codenTerminalState(state,detail){
   // stays in the DOM (rule 12: nothing here is deleted) and stays the fallback for a browser
   // or a bridge that cannot attach the emulator (`CLAUDE10.md` §63-64: a limitation on one
   // installation is a fact about a category of host, degraded to, never a reason to remove the
-  // capability everywhere). Hidden the moment the terminal is actually live; restored the
-  // moment it is not.
-  const legacyShell=$('#codenShell');const legacyHeading=$('#codenShellHeading');
+  // capability everywhere). Hidden the moment the terminal is actually live AND the person is
+  // not in the middle of using it (D-0456: deferred, not skipped, while they are); restored the
+  // moment the terminal is not.
+  const legacyShell=$('#codenShell');
   if(legacyShell){
     const hide=state==='live';
     const show=state==='failed'||state==='refused'||state==='idle';
-    if(hide){legacyShell.classList.add('hidden');legacyHeading?.classList.add('hidden');}
-    else if(show){legacyShell.classList.remove('hidden');legacyHeading?.classList.remove('hidden');}
+    if(hide){if(legacyPromptBusy())legacyHidePending=true;else applyLegacyHide();}
+    else if(show){legacyShell.classList.remove('hidden');$('#codenShellHeading')?.classList.remove('hidden');legacyHidePending=false;}
   }
 }
 function codenTerminalTheme(){

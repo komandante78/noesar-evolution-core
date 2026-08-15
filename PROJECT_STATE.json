@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0456: the 3 saved findings investigated, driven not read (5 disposable e2e probe runs). F-INTENT-001 closed (the e2e CHECK's own input was wrong, not the resolver). F-COMMAND-001/F-PANEL-001 root cause found -- a shell-exclusivity race between the legacy #codenShell composer and the modern terminal's async live-attach, not the matching/event-delivery bug D-0449 guessed -- but the real repair is a test-strategy decision left for the Owner. F-TERM-002 (new) found and recorded, not chased: out of this phase's authorized scope.",
-  "phase_status": "D-0456_three_saved_findings_investigated__one_closed__two_need_owner_decision__one_new_recorded",
-  "next_phase": "Owner decides F-COMMAND-001/F-PANEL-001's test strategy (wait for terminal to settle vs. drive whichever surface is live), or authorizes F-TERM-002's investigation, or sets CARGO_REGISTRY_TOKEN for cargo publish, or authorizes Phase D (Capability Token open spec, WP4).",
+  "current_phase": "D-0456/D-0457: the 3 saved findings investigated (7 disposable e2e probe runs) and the mandatory improvement proposal IMPLEMENTED on Owner authorization (\"NON DARMI PROPOSTE... IMPLEMENTA, PROCEDI PURE\"). F-INTENT-001 closed. F-COMMAND-001/F-PANEL-001: real product bug found and fixed in app.js (codenTerminalState() no longer hides the legacy composer out from under a person mid-use) -- this closed 2 of 3 failing occurrences (5/5 fail -> 0/2 fail, measured). The 3rd occurrence is a genuine steady-state design collision (terminal lastingly live), not a race a retry can fix -- left for the Owner as a named test-strategy decision. F-TERM-002 (new) recorded, not chased: out of this phase's scope.",
+  "phase_status": "D-0456_D-0457_findings_investigated__owner_improvement_implemented__one_residual_test_strategy_call_left",
+  "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal's own / menu vs. a direct hash jump), or authorizes F-TERM-002's investigation, or sets CARGO_REGISTRY_TOKEN for cargo publish, or authorizes Phase D (Capability Token open spec, WP4).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -331,7 +331,7 @@
     {
       "id": "F-COMMAND-001",
       "severity": "medium",
-      "status": "OPEN, root cause FOUND 2026-08-15 (not a test-focus bug, a shell-exclusivity race): `#codenShell` (the legacy prompt/transcript/menu) is hidden by `codenTerminalState()` (app.js ~5943) the instant the modern xterm.js terminal reaches state==live, by explicit Owner design (D-0413-era, 2026-08-13: #/coden shows ONE chat, never both stacked). That handshake is async and can complete mid-test, after the legacy composer was already used successfully earlier in the SAME run -- proven via a full ancestor-chain DOM dump: section#codenShell.agent-shell.hidden{display:none}, confirmed non-transient by a 3s poll that never recovered. Fixing it means a TEST-STRATEGY decision (wait for the terminal to settle before choosing which surface to drive, vs. drive whichever is live), not a code repair -- recorded per CLAUDE10.md §40a rather than picked without the Owner. tools/browser-e2e.mjs:submitCodenAddress() now names this exact cause on failure instead of a generic timeout.",
+      "status": "OPEN, substantially FIXED 2026-08-15 -- app.js codenTerminalState() now defers hiding #codenShell while the box is focused or holds unsent text (legacyPromptBusy/maybeApplyLegacyHide), instead of hiding it unconditionally the instant the terminal goes live. Real product bug, not just a test artifact: a person mid-sentence could lose typed words to an unannounced surface change. Measured: the phase-3c race this finding named failed 5/5 e2e runs before the fix, 0/2 after (2 confirming runs). Regression test: services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs (4/4 green). Left open only because the SAME symptom has a second, different cause at a later point in the same suite -- see F-PANEL-001.",
       "summary": "The legacy #codenPrompt textarea, value set via page.evaluate + dispatchEvent(input) + .focus(), does not have its Enter keypress reach submitCodenPrompt() in wireCodenShell()s keydown listener (app.js). Box keeps its typed value, no transcript entry appears, the target address IS present in the offered menu -- not a matching bug, an event-delivery question."
     },
     {
@@ -343,7 +343,7 @@
     {
       "id": "F-PANEL-001",
       "severity": "medium",
-      "status": "OPEN, same root cause as F-COMMAND-001 (see that entry) -- confirmed at BOTH call sites in the workspace-actions step (plan creation and plan restore), the second only reached this session because the first one used to abort the whole step unguarded. Consolidated into one shared helper, submitCodenAddress(), so both report the same diagnosed cause instead of two different opaque timeouts.",
+      "status": "OPEN -- two of three occurrences now pass clean after the app.js fix (see F-COMMAND-001). The third (plan-restore, deep in workspace-actions) is NOT a race: by that point in the flow the modern terminal has been live and steady for many prior steps (the immediately-preceding check drives the terminal's own #terminalCommandInput), so #codenShell staying hidden is codenTerminalState() doing exactly what D-0413 asked, on purpose. A retry cannot fix a steady state. Real fix needs the TEST to route this one address through whichever surface (legacy #codenPrompt or the live terminal's own / menu) is actually current -- the test-strategy decision named in D-0456, still the Owner's call.",
       "summary": "workspace-actions step (tools/browser-e2e.mjs) times out waiting for [data-agent-panel=\"plan\"].active after an action expected to open that panel. Newly reached because D-0435s crash previously prevented this step from running at all."
     },
     {
@@ -984,7 +984,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for the Owner's test-strategy call on F-COMMAND-001/F-PANEL-001 (root cause found, repair choice is theirs), or authorization to chase F-TERM-002, or the cargo publish token, or Phase D.",
+  "next_action": "Wait for the Owner's call on the one residual test-strategy question (F-PANEL-001's steady-state occurrence), or authorization to chase F-TERM-002, or the cargo publish token, or Phase D.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

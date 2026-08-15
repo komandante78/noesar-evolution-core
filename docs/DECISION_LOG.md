@@ -10708,3 +10708,27 @@ green 5/5. `node --test`: 2546/2547 (1 pre-existing skip), unaffected. `tools/ru
 change), `tools/browser-e2e.mjs` gains one shared helper replacing 3 duplicated blocks.
 **Status.** F-INTENT-001 closed. F-COMMAND-001/F-PANEL-001 open pending the Owner's
 test-strategy call. F-TERM-002 open, unstarted.
+
+## D-0457 · D-0456's improvement proposal implemented on Owner authorization — 2026-08-15
+**Decision.** `codenTerminalState()` (app.js) no longer hides the legacy `#codenShell`
+composer unconditionally the instant the modern terminal reaches `live`. It now defers the
+hide while `#codenPrompt` is focused or holds unsent text (`legacyPromptBusy()`), and retries
+once the person is done — submits, empties the box, or looks away (`maybeApplyLegacyHide()`,
+wired at all three exit points). New regression test:
+`services/reference-control-plane/test/coden-legacy-shell-hide.test.mjs` (4/4).
+**Why.** Owner: "NON DARMI PROPOSTE SE PENSI SIA VALIDO... IMPLEMENTA, PROCEDI PURE" — the
+proposal from `D-0456` was authorized to build, not just record.
+**Rejected.** Nothing — this is additive: the hide still happens, only ever later, never never.
+**Evidence.** `node --test`: 2550/2551 (1 pre-existing skip) — caught a REAL regression before
+shipping: the new `let legacyHidePending` first landed beside `codenTerminalState` itself,
+past `initRouter()`, which `webui-boot-order.test.mjs` (`D-0416`) correctly failed on
+(temporal-dead-zone hazard on the router's own boot path); moved beside `codenMenuIndex`,
+before the router, green after. `tools/run-eslint.sh`: 409/0, after every edit. 2 further
+disposable e2e runs (6th and 7th of this session): the phase-3c race this was built for went
+5/5 fail → 0/2 fail; workspace-actions' plan-creation occurrence also went clean; its
+plan-restore occurrence still fails, now proven to be a DIFFERENT, steady-state cause (see
+`F-PANEL-001`), not something this fix could reach.
+**Reversal cost.** None — the retired app.js behavior (unconditional hide) is not depended on
+anywhere else; the new deferred-hide path degrades to the old one whenever the box is idle.
+**Status.** Applied, not yet installed to the live container (no deployment authorized this
+phase). Committed and pushed to `main`.

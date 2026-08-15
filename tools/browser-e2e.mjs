@@ -102,52 +102,67 @@ async function clickOrExplain(page, selector) {
  * async and unrelated to anything this test does; it can complete at any point after the
  * terminal iframe attaches, including mid-phase-3c, after this exact composer was already
  * used successfully earlier in the SAME test run (the click and the real typing above both
- * happened before the terminal went live). This is not a bug in the product OR in this
- * test's event delivery — it is this test driving a surface that the product's own,
- * intentional, one-chat-at-a-time rule can retire out from under it at any moment. Fixing it
- * for real means deciding, as a test-strategy question and not a defect repair, whether
- * phase 3c should (a) wait for the terminal to settle before choosing which surface to
- * drive, or (b) drive whichever surface is actually live. Left open, named, for that
- * decision (`CLAUDE10.md` §40a: a root cause resting on a design choice not yet made is
- * recorded, not guessed at). What ships here narrows the failure from an opaque downstream
- * timeout to this exact, evidenced explanation, and the same collapse-detection discipline
- * `clickOrExplain` already applies to clicks, applied here to type-and-Enter, which had none.
+ * happened before the terminal went live).
+ *
+ * Repaired at the source, not worked around here: `codenTerminalState()` (app.js) used to
+ * hide `#codenShell` unconditionally the instant the terminal went live, mid-keystroke if
+ * that is when the handshake landed — real for a person too, not just this driver; typed
+ * words vanishing under a surface change nobody asked for. It now defers the hide while the
+ * box is focused or holds unsent text (`legacyPromptBusy`), and retries once the person is
+ * done (submit, empty the box, or blur). Measured: before the app.js fix, the phase-3c
+ * occurrence failed 5/5 runs; after, 1/1 clean, and the workspace-actions step's FIRST
+ * occurrence (plan creation) also went clean.
+ *
+ * One occurrence remains, and a retry does not reach it: the workspace-actions step's SECOND
+ * occurrence (plan-restore) fails even after 3 attempts spanning 3s, because by then the
+ * terminal is not mid-handshake — it has been live and STEADY for many prior steps (the check
+ * immediately before this one drives the terminal's own `#terminalCommandInput`). That is
+ * `codenTerminalState()` doing exactly what `D-0413` asked: once the modern terminal is
+ * genuinely, lastingly live, the legacy composer stays retired, by design. A retry cannot fix
+ * a steady state, only a race — this is the test still reaching for a surface the product has
+ * moved past. The real fix is this test learning to drive the address through whichever
+ * surface (`#codenPrompt` or the live terminal's own `/` menu, same shared vocabulary) is
+ * actually current, left for the Owner as the test-strategy decision named in D-0456.
  */
-async function submitCodenAddress(page, address) {
-  await page.evaluate((value) => {
-    const box = document.querySelector('#codenPrompt');
-    box.value = value;
-    box.dispatchEvent(new Event('input', { bubbles: true }));
-  }, address);
-  const settled = await page.evaluate(() => new Promise((resolve) => {
-    const box = document.querySelector('#codenPrompt');
-    const deadline = Date.now() + 3000;
-    const poll = () => {
-      if (box.getBoundingClientRect().height > 0) return resolve(true);
-      if (Date.now() > deadline) return resolve(false);
-      requestAnimationFrame(poll);
-    };
-    poll();
-  }));
-  if (!settled) {
-    // Still collapsed after a poll long enough to rule out a render-timing race (D-0448's
-    // class of fix, tried and it did not help) — walk the ancestor chain so the NEXT session
-    // does not have to spend a run rediscovering which one is 0-height or `display:none`.
-    const chain = await page.evaluate(() => {
-      const trail = [];
-      let node = document.querySelector('#codenPrompt');
-      while (node && node !== document.documentElement) {
-        const rect = node.getBoundingClientRect();
-        const style = getComputedStyle(node);
-        trail.push(`${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${[...node.classList].map((c) => `.${c}`).join('')}: ${rect.width}x${rect.height} display=${style.display} visibility=${style.visibility}`);
-        node = node.parentElement;
-      }
-      return trail;
-    });
-    throw new Error(`#codenPrompt: still collapsed to 0 height 3s after being given a value :: ancestor chain: ${chain.join(' | ')}`);
+async function submitCodenAddress(page, address, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await page.evaluate((value) => {
+      const box = document.querySelector('#codenPrompt');
+      box.value = value;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    }, address);
+    const settled = await page.evaluate(() => new Promise((resolve) => {
+      const box = document.querySelector('#codenPrompt');
+      const deadline = Date.now() + 1000;
+      const poll = () => {
+        if (box.getBoundingClientRect().height > 0) return resolve(true);
+        if (Date.now() > deadline) return resolve(false);
+        requestAnimationFrame(poll);
+      };
+      poll();
+    }));
+    if (settled) {
+      await page.focus('#codenPrompt');
+      await page.keyboard.press('Enter');
+      return;
+    }
+    if (attempt === attempts) {
+      // Walk the ancestor chain so a genuine regression (not just a slow retry) names its
+      // own cause instead of an opaque downstream timeout.
+      const chain = await page.evaluate(() => {
+        const trail = [];
+        let node = document.querySelector('#codenPrompt');
+        while (node && node !== document.documentElement) {
+          const rect = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          trail.push(`${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${[...node.classList].map((c) => `.${c}`).join('')}: ${rect.width}x${rect.height} display=${style.display} visibility=${style.visibility}`);
+          node = node.parentElement;
+        }
+        return trail;
+      });
+      throw new Error(`#codenPrompt: still collapsed to 0 height after ${attempts} attempts :: ancestor chain: ${chain.join(' | ')}`);
+    }
   }
-  await page.focus('#codenPrompt');
-  await page.keyboard.press('Enter');
 }
 
 /** Wait for a fresh TOTP step so a code cannot be rejected as already used. */
