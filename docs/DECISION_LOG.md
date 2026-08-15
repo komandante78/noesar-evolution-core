@@ -10635,3 +10635,24 @@ repositories: `NOESAR-EVOLUTION` (this commit) and `noesar-sandbox` (`7c93a5b`).
 **Reversal cost.** None — two new files, one doc edited additively.
 **Status.** Applied to both repositories. Six items of `docs/LICENSE_STRATEGY.md` §5 remain
 open, named, for Phase 5 — not silently closed by this narrower fix.
+
+## D-0454 · `F-HOOK-005` root cause found and fixed — SessionStart matcher missed `/clear` — 2026-08-15
+**Decision.** `.claude/settings.json` SessionStart matcher changed from `startup|resume|compact`
+to `startup|resume|clear|compact`; regression test added to `test-session-lifecycle.sh`.
+**Why.** `/clear` fires SessionStart with `source=="clear"`, distinct from the three covered
+values (confirmed against Claude Code's own hooks reference). The matcher never covered it, so
+a mid-session `/clear` silently skipped `session-context.sh` and no container baseline was ever
+written — the exact condition this session hit, and the reason `F-HOOK-005` (D-0396) had been
+"repaired by hand, root cause NOT found" three days running.
+**Rejected.** Leaving it as a per-session hand-repair — already tried twice (D-0396), never
+closed the gap, just moved the pain to the next `/clear`.
+**Evidence.** New assertion in `test-session-lifecycle.sh` run against the pre-fix
+`settings.json` (from the timestamped backup): **FAIL** (`matcher=startup|resume|compact`).
+Same assertion against the fixed file: **PASS**. Full hook suite after the fix: 58+122+69 = 249
+passed, 0 failed (`test-container-baseline.sh`, `test-engineering-orchestrator.sh`,
+`test-session-lifecycle.sh`). This session's own baseline, missing at Stop-block time, written
+by hand via `cbl_write_baseline` reflecting current container state — honest because zero
+containers were created or removed by this session before the write.
+**Reversal cost.** None — a one-token regex widening plus a test; no behavior removed.
+**Status.** Applied and verified. `F-HOOK-005` closed (was OPEN/root-cause-unknown in
+`PROJECT_STATE.json.blockers`).

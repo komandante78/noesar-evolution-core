@@ -329,6 +329,27 @@ else
   ok "[SKIPPED, declared] git is unavailable here — the end-to-end closure-set case did not run"
 fi
 
+# --- SessionStart matcher must cover /clear (F-HOOK-005 root cause, 2026-08-15) ---
+# The matcher used to be "startup|resume|compact": /clear fires SessionStart with
+# source=="clear", a value distinct from all three, so the hook silently never ran on a
+# mid-session /clear and no container baseline was ever written for that session — the Stop
+# hook then blocked on "baseline missing" with no way to tell it apart from real litter.
+SETTINGS="$HERE/../../settings.json"
+if [ -f "$SETTINGS" ] && command -v jq >/dev/null 2>&1; then
+  MATCHER="$(jq -r '.hooks.SessionStart[0].matcher // empty' "$SETTINGS" 2>/dev/null)"
+  FOUND=0
+  OLDIFS="$IFS"; IFS='|'
+  for ALT in $MATCHER; do [ "$ALT" = "clear" ] && FOUND=1; done
+  IFS="$OLDIFS"
+  if [ "$FOUND" = 1 ]; then
+    ok "settings.json SessionStart matcher covers the /clear source (matcher=$MATCHER)"
+  else
+    bad "settings.json SessionStart matcher covers the /clear source" "matcher=$MATCHER"
+  fi
+else
+  ok "[SKIPPED, declared] settings.json or jq unavailable — matcher coverage not checked"
+fi
+
 echo
 echo "================================================================"
 echo "session-lifecycle fixture tests: $PASS passed, $FAIL failed"

@@ -1,10 +1,15 @@
-# SESSION HANDOFF — 2026-08-14 (`D-0453`: `LICENSE`/`NOTICE` aggiunti, ambito ristretto)
+# SESSION HANDOFF — 2026-08-15 (`D-0454`: `F-HOOK-005` root cause found and fixed)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Fase C (WP6) è chiusa quasi per intero, più la lacuna `LICENSE` che avevo trovato è ora chiusa
-per la sua parte minima. Resta UN solo comando tecnico (`cargo publish`), e 6 domande legali/di
-prodotto esplicitamente per la Fase 5 — nessuna delle due nascosta.**
+**Governance, non Fase C: `F-HOOK-005` (SessionStart non scriveva la baseline dei container)
+aveva root cause ignota da tre giorni (D-0396). Trovata e riparata in questa sessione — vedi
+`D-0454`. Fase C (WP6) resta ESATTAMENTE dove D-0453 l'aveva lasciata: non "quasi tutta chiusa",
+un solo comando tecnico resta scoperto e nominato sotto, nessun altro pezzo di Fase C è stato
+toccato da questo giro.**
+
+**Resta UN solo comando tecnico (`cargo publish`), e 6 domande legali/di prodotto esplicitamente
+per la Fase 5 — nessuna delle due nascosta.**
 
 **Fatto in questo giro (verificato, non dichiarato):**
 - `LICENSE` (testo verbatim AGPL-3.0-or-later, scaricato con `curl` da `gnu.org` — non
@@ -35,6 +40,7 @@ autorizzi (a) i tre finding salvati, (b) Fase D (Capability Token spec, WP4).
 
 | Id | Stato |
 |---|---|
+| `F-HOOK-005` | **CHIUSO 2026-08-15 (`D-0454`)** — matcher `SessionStart` non copriva `clear`; riparato + test di regressione, 249/249 suite hook verde. |
 | `F-COMMAND-001`/`F-INTENT-001`/`F-PANEL-001` | **APERTI, salvati per la fine** (istruzione Owner). |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5** — dual-license, audit, marchio, termini commerciali. |
 | `D-0436`…`D-0445` | **FATTO**, deployati. Solo `D-0438` confermato dall'Owner. |

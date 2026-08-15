@@ -277,7 +277,7 @@
     {
       "id": "F-HOOK-005",
       "severity": "medium",
-      "status": "OPEN - recorded 2026-08-12 (D-0396), repaired by hand for this session only, root cause NOT found",
+      "status": "CLOSED 2026-08-15 (D-0454) — root cause found: .claude/settings.json SessionStart matcher missed the clear source, so /clear mid-session silently skipped the baseline write. Matcher fixed to startup|resume|clear|compact, regression test added (proved red against the pre-fix file, green after), full hook suite 249/249.",
       "summary": "SessionStart did not write the container baseline: the runtime directory existed with the right mode and a session-start mtime but was empty, so the Stop guard blocked the close. Run by hand the same library succeeds (rc=0, 28233 bytes), so the fault is not in cbl_write_baseline. Every call in session-context.sh job 2 is || true, so the failure left no trace anywhere. The baseline written mid-session anchors from that moment, not from session start - declared, not implied."
     },
     {
