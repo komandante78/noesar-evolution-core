@@ -862,9 +862,9 @@ try {
   // pushState-based jump avoided. Hiding the prompt removes that specific efficiency, honestly,
   // not just this check's old assertion of it: a bench-panel move is a page hashchange now,
   // same as any other in-page link. `D-0435` records the loss; it is not hidden here.
-  const jump = async (address, panel) => {
+  const jump = async (address, panel, kind = 'bench') => {
     await page.evaluate((h) => { location.hash = h; }, `#/coden/${address}`);
-    await page.waitForSelector(`[data-bench-panel="${panel}"].active`, { timeout: 15000 });
+    await page.waitForSelector(`[data-${kind}-panel="${panel}"].active`, { timeout: 15000 });
   };
   await jump('bench/map', 'map');
   const afterJump = await page.evaluate(() => ({ hash: location.hash, title: document.title }));
@@ -2877,11 +2877,16 @@ try {
   // the Plan panel (agent region), so opening a BENCH panel first closes it and leaves the
   // button legitimately 0x0. Open the panel that owns the button.
   //
-  // Same F-PANEL-001 defect class — a third occurrence, never reached before this session
-  // because the FIRST occurrence's unguarded throw aborted this whole step before this line
-  // ever ran. `submitCodenAddress` above carries the finding.
-  await submitCodenAddress(page, '/coden/agent/plan');
-  await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
+  // F-PANEL-001, resolved (D-0461, test-strategy decision named in D-0456): this occurrence is
+  // not a race like the other two — by this point the modern terminal has been live and STEADY
+  // for many prior steps, so `#codenShell` staying hidden is `codenTerminalState()` doing
+  // exactly what `D-0413` asked, on purpose. A retry cannot fix a steady state, and this step
+  // does not need to re-prove the composer gesture (that is `submitCodenAddress`'s job above,
+  // at the authority and plan-creation sites) — it only needs to REACH the panel to test
+  // Restore. `jump()`, already proven for every bench panel above, does exactly that: the same
+  // `location.hash` assignment `app.js`'s own composer and terminal paths both resolve to
+  // (`jumpTo()`), without depending on which composer surface happens to be visible.
+  await jump('agent/plan', 'plan', 'agent');
   await clickOrExplain(page, '#planRestoreBtn');
   await page.waitForFunction(
     () => /restored/i.test(document.querySelector('#planRunBadge')?.textContent ?? ''),

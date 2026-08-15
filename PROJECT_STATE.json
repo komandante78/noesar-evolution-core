@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0460: out-of-sequence bug hunt, Owner-reported Claude Code instability. Root cause measured: security-hardening.test.mjs and redaction-identifier-integrity.test.mjs leaked 8.3 GB / 3,553 /tmp dirs, pushing shared host rootfs to 82% full and available memory to 1.9Gi. Fixed and verified (36/36 + 2550/2551 suite green, ESLint 409/0); rootfs now 29% full. F-TMP-001 records the same unfixed pattern in ~55 other files. D-0458's installation and its F-PANEL-001/F-TERM-002 status are unchanged by this session.",
-  "phase_status": "D-0460_fixed_and_verified__D-0458_F-PANEL-001_test_strategy_and_F-TERM-002_still_open",
+  "current_phase": "D-0461: F-PANEL-001's test-strategy decision resolved (Owner: direct hash jump). tools/browser-e2e.mjs's jump() helper generalized with a panel-kind param, reused at the plan-restore site instead of composer-driving. Verified live via disposable e2e probe: 477 checks (391 before, +86 unmasked), 'Restore reverts a promoted run' PASS, ESLint 409/0. Unmasked a new, different occurrence of the same defect class at a different check, recorded not chased as F-SLASH-001 (single-run hypothesis, not yet a finding). F-TERM-002 and cargo publish remain open, unchanged.",
+  "phase_status": "D-0461_fixed_and_verified__F-SLASH-001_new_F-TERM-002_and_cargo_publish_still_open",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -343,7 +343,7 @@
     {
       "id": "F-PANEL-001",
       "severity": "medium",
-      "status": "OPEN -- two of three occurrences now pass clean after the app.js fix (see F-COMMAND-001). The third (plan-restore, deep in workspace-actions) is NOT a race: by that point in the flow the modern terminal has been live and steady for many prior steps (the immediately-preceding check drives the terminal's own #terminalCommandInput), so #codenShell staying hidden is codenTerminalState() doing exactly what D-0413 asked, on purpose. A retry cannot fix a steady state. Real fix needs the TEST to route this one address through whichever surface (legacy #codenPrompt or the live terminal's own / menu) is actually current -- the test-strategy decision named in D-0456, still the Owner's call.",
+      "status": "FIXED 2026-08-15 (D-0461), Owner-selected test-strategy: a direct hash jump, not composer-driving. The plan-restore call only needs to REACH the panel (Restore is what it tests), unlike the authority/plan-creation sites which deliberately test the composer gesture itself -- so tools/browser-e2e.mjs's existing jump() helper (already proven for every bench panel) was generalized with an optional panel-kind param and reused: jump('agent/plan','plan','agent') sets location.hash directly, the same call app.js's own jumpTo() resolves to under both composer paths, without depending on which composer surface is visible. Verified live: disposable e2e probe, 477 checks (391 before this fix -- unmasked ~86 more), 'Restore reverts a promoted run' PASS. Unmasked a 4th, different occurrence of the same defect class, recorded separately as F-SLASH-001.",
       "summary": "workspace-actions step (tools/browser-e2e.mjs) times out waiting for [data-agent-panel=\"plan\"].active after an action expected to open that panel. Newly reached because D-0435s crash previously prevented this step from running at all."
     },
     {
@@ -362,6 +362,12 @@
       "severity": "low",
       "status": "OPEN - recorded 2026-08-15, NOT fixed: found while triaging F-CRASH-001, out of this session's scope (55 files, well beyond the two that actually caused today's disk-near-full crisis). Each leaks only 2-5 dirs per run (small individually), so this is a slow accumulation, not an active crisis, unlike F-CRASH-001.",
       "summary": "The same mkdtemp-without-cleanup pattern exists, unfixed, in ~55 more files (services/reference-control-plane/test/audit.test.mjs, auth.test.mjs, watchdog.test.mjs, and about 52 others, plus tools/http-smoke.mjs, tools/tls-smoke.mjs, tools/test-installer-hardening.mjs, tools/test-cross-platform-installers.mjs, tools/acceptance/a3-security.mjs) -- grep: mkdtempSync present, rmSync absent, in the same file."
+    },
+    {
+      "id": "F-SLASH-001",
+      "severity": "low",
+      "status": "OPEN - found 2026-08-15 while verifying D-0461, unmasked by that same fix (the suite now reaches 477 checks instead of 391 -- F-PANEL-001 previously aborted the whole run before this step). NOT chased: only one disposable e2e run has seen it, and this project's own precedent (F-COMMAND-001/F-PANEL-001, D-0456) is that a hypothesis from a single run is a guess, not a finding -- two earlier guesses on that defect both looked plausible and both measurably failed. Working hypothesis, UNVERIFIED: gotoIdle('#/coden') is a full page.goto reload, so codenTerminalState() starts fresh -- but if the modern terminal auto-reconnects to `live` faster than page.click('#codenPrompt') runs, #codenPrompt would be legitimately hidden by design (D-0413) before the click, not a bug in the composer itself. Needs its own driven investigation (repeat runs, ancestor-chain dump on failure) before any fix is attempted.",
+      "summary": "tools/browser-e2e.mjs's 'coden-slash-feedback' step (POINT-2B-MEASURE, line ~3346) fails page.click('#codenPrompt') with 'Node is either not clickable or not an Element' -- same defect class as F-PANEL-001 (a test assuming the legacy composer is available when the modern terminal may already be live), at a step that (unlike F-PANEL-001's fix site) deliberately tests the composer gesture itself, so a hash-jump bypass is not the right fix here."
     }
   ],
   "resolved_findings": [

@@ -1,21 +1,18 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0460`: fixed the leak that was starving disk/memory)
+# SESSION HANDOFF — 2026-08-15 (`D-0461`: F-PANEL-001 resolved, direct hash jump)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Out-of-sequence session, Owner-reported: "continui a crashare".** Measured root cause —
-`security-hardening.test.mjs` and `redaction-identifier-integrity.test.mjs` leaked 8.3 GB
-across 3,553 `/tmp` directories, pushing the shared host's rootfs to 82% full and available
-memory to 1.9Gi with no swap. Fixed (`after()` sweep + `try/finally`), leaked dirs removed,
-suite green (2550/2551), rootfs now 29% full / 12G free. Detail: `D-0460`, finding
-`F-CRASH-001`. Same pattern found unfixed in ~55 other files, recorded as `F-TMP-001`, not
-executed — out of this session's scope.
+**Continuation of the same out-of-sequence session.** After fixing the reported crash
+(`D-0460`), Owner picked "F-PANEL-001 strategia test" as the work to proceed with. Resolved:
+`tools/browser-e2e.mjs`'s `jump()` helper (already proven for bench panels) generalized with a
+panel-kind param and reused at the plan-restore site instead of composer-driving — see
+`D-0461`, finding `F-PANEL-001` now FIXED. Verified live via disposable e2e probe: 477 checks
+(391 before — this fix unmasked ~86 more), `Restore reverts a promoted run` PASS. That same
+unmasking surfaced a NEW, different occurrence of the same defect class, recorded (not
+chased, single-run hypothesis only) as `F-SLASH-001`.
 
-This does not change the standing decisions from `D-0458`/`D-0459`, still open:
+Two other standing decisions from `D-0458`/`D-0459` are still open, untouched by this session:
 
-- **`F-PANEL-001`, terza occorrenza** — decisione di strategia di test tua: il TEST deve
-  raggiungere il pannello plan-restore guidando il menu `/` del terminale live oppure con un
-  hash jump diretto, quando il terminale è stabilmente live (non è una corsa, è una collisione
-  di design a stato stabile — vedi `D-0456`).
 - **`F-TERM-002`** — regressione osservata 5/5 su "Enter svuota il prompt", non indagata,
   fuori scope della fase precedente.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
@@ -29,7 +26,8 @@ This does not change the standing decisions from `D-0458`/`D-0459`, still open:
 | `F-CRASH-001` | **FIXED** — 8.3 GB / 3,553 leaked `/tmp` dirs removed, both leaking test files patched, rootfs 82%→29% full. See `D-0460`. |
 | `F-TMP-001` | **OPEN, recorded** — same mkdtemp-without-cleanup pattern in ~55 other files, small leak each, not today's cause, not fixed. |
 | `F-COMMAND-001` | **RIPARATO E DEPLOYATO** — `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z`, live e sano. |
-| `F-PANEL-001` | 2/3 occorrenze pulite e deployate. La terza resta una collisione di design a stato stabile — decisione di strategia di test aperta. |
+| `F-PANEL-001` | **FIXED** — direct hash jump (`jump('agent/plan','plan','agent')`) replaces composer-driving at the plan-restore site. `D-0461`. Test-harness only, nothing to deploy. |
+| `F-SLASH-001` | **OPEN, recorded, NOT chased** — new, unmasked by `F-PANEL-001`'s fix. `#codenPrompt` click fails in `coden-slash-feedback`; one-run hypothesis only, needs its own driven investigation. |
 | `F-TERM-002` | **APERTO, non indagato** — regressione osservata 5/5, fuori scope. |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
 | ATOM↔CodeN Evolution | **NON VERIFICATO** — serve una sessione autenticata (l'Owner ce l'ha già). |
@@ -44,6 +42,8 @@ This does not change the standing decisions from `D-0458`/`D-0459`, still open:
 | `node --test services/reference-control-plane/test/*.test.mjs` | 2550/2551 pass, 1 pre-existing skip, unchanged |
 | `tools/run-eslint.sh` | 409 files, 0 errors |
 | `df -h /`, `free -h` before/after removing leaked dirs | rootfs 82%→29% (2.9G→12G free); available memory 1.9Gi→10Gi |
+| `tools/run-browser-e2e.sh` (disposable probe) | 477/477 checks run, 474 pass, 3 fail (`F-TERM-002`, `F-I18N-002` — both already tracked; `F-SLASH-001` — new). `Restore reverts a promoted run`: PASS |
+| §5a cleanup after the e2e probe | probe/runner/image removed; only the stable `noesar-e2e-net` network survives, as intended |
 | `docker build -f oci/Dockerfile` | build offline (rete solo per apt/postgres, come tutti i build precedenti), quasi interamente da cache — solo il layer `apps/webui-static/` differiva |
 | byte-equal tree↔immagine | `sha256sum apps/webui-static/app.js` identico prima del deploy |
 | `tools/deploy/redeploy.sh --check` poi `--apply` | PREFLIGHT PASS, DEPLOYED, 4 figli (`postgres`/`api`/`codev`/`atom`) sani, 0 righe di auth-failure |
@@ -55,16 +55,28 @@ This does not change the standing decisions from `D-0458`/`D-0459`, still open:
 - **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e: la verifica
   live non usa una suite che muta dati; provato solo salute + uguaglianza dei byte + risposta
   delle superfici.
-- **La terza occorrenza di `F-PANEL-001`** — decisione di strategia di test tua, non presa.
 - **`F-TERM-002`** — non indagato, fuori scope.
 - **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
 - **`F-TMP-001`** — the same leak pattern in ~55 other files was found, not fixed: real fix
   needs a shared test helper (a single `withWorkspace()`/registered-temp-dir utility) so the
   cleanup lives in one place instead of being re-added file by file.
+- **`F-SLASH-001`** — deliberately not chased: only one disposable e2e run has seen it, and a
+  single-run hypothesis is a guess, not a finding, per this project's own precedent (two
+  failed guesses on `F-COMMAND-001` before the real cause was found). Needs its own driven
+  investigation — repeat runs, ancestor-chain dump on failure — same method D-0456 used.
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0460`, non eseguita)**: `F-TMP-001` is the same defect repeated
+**Nuova, da questo giro (`D-0461`, non eseguita)**: `submitCodenAddress` and `jump()` are two
+parallel ways this suite reaches a CodeN panel, chosen ad hoc per call site with no documented
+rule for which one a new check should use. Beneficio: a short comment block (or a `README` in
+`tools/`) stating the actual rule found here — "does this check test the composer/terminal
+gesture itself? Drive it. Does it only need to REACH a panel? `jump()`, always." — would have
+made this session's investigation faster and prevents the next new check from picking the
+wrong one by habit. Costo: near zero, documentation only; directly reduces the odds of a 5th
+`F-PANEL-001`-class occurrence.
+
+**Precedente (`D-0460`, non eseguita)**: `F-TMP-001` is the same defect repeated
 55 times because this test tree has no shared temp-workspace helper — every file reinvents
 `mkdtempSync(join(tmpdir(), 'noesar-<x>-'))` and either remembers cleanup or (usually)
 doesn't. Beneficio: one `test/support/workspace.mjs` exporting `withWorkspace(fn)` (creates,

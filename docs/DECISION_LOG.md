@@ -10769,3 +10769,28 @@ by hand loses a step under pressure.
 **Evidence.** Both files: 36/36 pass, 0 new leaked dirs (was leaking every run). Full suite 2550/2551 (1 pre-existing skip, unchanged). ESLint 409/0. rootfs 82%→29%, free 2.9G→12G, available memory 1.9Gi→10Gi after removing the leaked dirs.
 **Reversal cost.** none — cleanup removed only disposable `/tmp` scratch outside `PROJECT_ROOT`; the code fix is additive (`rmSync`/`after()`).
 **Status.** applied. F-TMP-001 records the same unfixed pattern in ~55 other files, out of this session's scope.
+
+## D-0461 · F-PANEL-001 test-strategy decision resolved: a direct hash jump — 2026-08-15
+**Decision.** Owner picked the "direct hash jump" branch of D-0456's named choice. Generalized
+`tools/browser-e2e.mjs`'s existing `jump()` helper (already proven for every bench panel) with
+an optional panel-kind param, and used it at the plan-restore call site:
+`jump('agent/plan','plan','agent')` sets `location.hash` directly — the same call `app.js`'s
+own `jumpTo()` resolves to under both composer paths — instead of `submitCodenAddress`, which
+depends on a composer surface that is correctly, by design, retired by then.
+**Why.** F-PANEL-001's third occurrence is not a race: the modern terminal has been live and
+steady for many prior steps, so `#codenShell` staying hidden is intended (`D-0413`). The
+plan-restore call only needs to REACH the panel (Restore is what it tests) — unlike the
+authority/plan-creation sites, which deliberately test the composer gesture and were left
+untouched.
+**Rejected.** Driving the terminal's own `/` menu instead — the other branch D-0456 named.
+Would duplicate ~100 lines of existing keystroke-simulation code for a step that isn't testing
+that gesture; the hash jump is simpler, already proven, and exactly what the product itself
+resolves to either way.
+**Evidence.** Disposable e2e probe (`tools/run-browser-e2e.sh`): 477 checks, up from 391 (the
+old unguarded throw aborted everything after this line). `Restore reverts a promoted run`:
+PASS. `tools/run-eslint.sh`: 409/0. Probe/runner/image removed; only the stable
+`noesar-e2e-net` network survives, as intended.
+**Reversal cost.** none — test-harness-only change, no product code touched.
+**Status.** applied. Unmasked a 4th, different occurrence of the same defect class — recorded,
+not chased, as `F-SLASH-001`: this project's own precedent (two failed guesses on
+`F-COMMAND-001`) is that a hypothesis from one run is not yet a finding.
