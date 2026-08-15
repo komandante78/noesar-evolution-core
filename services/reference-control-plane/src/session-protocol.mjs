@@ -232,6 +232,9 @@ export function createSessionDispatch({
   // `D-0444`. `(id, actor) => Promise<result>` — see `model.activate` below and this
   // factory's own note on `getClosureRegister` for why this arrives as a function.
   activateInstalledModel,
+  // Owner, 2026-08-15: `() => { models }` — the SAME catalogue `#/models` reads, filtered to
+  // what `/model` with no id can actually answer. See `model.activate` below.
+  listInstalledModels,
   // The policy the gate below reads. A parameter, not a direct reference, for one reason:
   // "a method with no policy entry is refused" is the fail-closed branch that matters most and
   // the one the real configuration can never reach, since every implemented method is listed.
@@ -426,7 +429,17 @@ export function createSessionDispatch({
     // declared `launchCommand`, unknown id) are real, named reasons — carried through as the
     // message rather than re-worded, so the shell shows the SAME sentence a direct call to
     // the function would raise.
+    //
+    // Owner, 2026-08-15: no id given is not the same refusal as a WRONG id — it is the
+    // question "what can I load", and `agent-commands.js` made the argument optional exactly
+    // so this branch is reached instead of a `needs-argument` dead end upstream in `planTurn`.
     'model.activate': async ({ params, actor }) => {
+      if (!params?.id) {
+        if (typeof listInstalledModels !== 'function') {
+          throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the local model runtime');
+        }
+        return listInstalledModels();
+      }
       if (typeof activateInstalledModel !== 'function') {
         throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the local model runtime');
       }

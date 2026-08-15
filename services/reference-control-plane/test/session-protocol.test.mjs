@@ -90,6 +90,11 @@ before(async () => {
       present: new Map([['test-model', { verified: true }], ['no-launch-command', { verified: true }]]),
       runtime: localModelRuntime, grants: modelGrants, actor,
     }),
+    // Owner, 2026-08-15: `/model` with no id used to be a dead end. A tiny stand-in is
+    // enough here — `server.mjs`'s own `listInstalledModels` (built on `buildCatalog`) is
+    // proved separately by the catalogue's own tests; what THIS test proves is the wiring:
+    // an empty id reaches this thunk at all, through the real socket and dispatch.
+    listInstalledModels: () => ({ models: [{ id: 'test-model', lane: 'downloaded' }] }),
   });
   socketPath = join(ws, 'tui-test.sock');
   // The await IS the readiness wait since s326: the promise resolves only once the socket
@@ -422,6 +427,13 @@ describe('session protocol — coden.addresses (phase 4)', () => {
     assert.equal(result.id, 'test-model');
     assert.ok(Number.isInteger(result.pid));
     await localModelRuntime.release();
+  });
+
+  // Owner, 2026-08-15: `/model` with no id used to answer "needs an id" and name none —
+  // the same dead end already fixed for `/diff` and friends, just not yet for this one.
+  test('model.activate with no id lists what is loadable, instead of refusing', async () => {
+    const result = await call(authenticatedSocket, 'model.activate', {});
+    assert.deepEqual(result, { models: [{ id: 'test-model', lane: 'downloaded' }] });
   });
 
   test('model.activate refuses a descriptor with no launchCommand, with the real reason', async () => {

@@ -1263,7 +1263,7 @@ const it = {
   'Close a piece of work — what was done, what was NOT, and the residual risk': 'Chiudi un lavoro — che cosa è stato fatto, che cosa NON lo è stato, e il rischio residuo',
   'These commands': 'Questi comandi',
   'Clear the transcript on screen (the session keeps its state)': 'Pulisci la trascrizione a schermo (la sessione mantiene il suo stato)',
-  'Load a model already present on this installation': 'Carica un modello già presente su questa installazione',
+  'List models present on this installation, or load one by id': 'Elenca i modelli presenti su questa installazione, o caricane uno per id',
   'End this session — asks for `logout confirm`': 'Chiudi questa sessione — richiede `logout confirm`',
   //
   // The argument placeholders. `<goal>` describes what to type, so it is translated; `[confirm]`
@@ -1404,6 +1404,7 @@ const it = {
   'Estrela': 'Estrela',                       // the product's feminine voice — a name, s336
   'in': 'in',                                 // the preposition is the same word in Italian
   '<id>': '<id>',                             // an identifier is not a word
+  '[id]': '[id]',                             // same identifier, now optional — /model with none lists
   // --- D-0397 · Agents, painted by renderAgents() in app.js — declared in RUNTIME_ONLY below ---
   'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.': 'Nessuna istruzione propria: a questo agente si chiede di rispondere direttamente e di dichiarare ciò che non può sapere.',
   'No tool': 'Nessuno strumento',

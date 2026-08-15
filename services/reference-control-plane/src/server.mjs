@@ -14,7 +14,7 @@ import {
 import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime, activateModel } from './local-model-runtime.mjs';
-import { buildCatalog, planAcquisition } from './model-catalog.mjs';
+import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
 import { chooseDestination, VoiceChoice } from './voice-interpreter.mjs';
@@ -429,6 +429,21 @@ const sessionDispatch = createSessionDispatch({
       present: readPresentModels(descriptors),
       runtime: localModels, grants: adapterGrants, actor,
     });
+  },
+  // Owner, 2026-08-15: `/model` with no id answered "needs an id" and named none — the same
+  // dead end `s333 point 2` already found for every other required-argument command, just not
+  // yet fixed for this one. The SAME catalogue `GET /api/v1/models/catalog` already serves the
+  // browser's `#/models` page, so a terminal or the composer asking `/model` with nothing gets
+  // the identical answer, not a second reading of "what is here" that could disagree with it.
+  // Which lanes count as loadable is `loadableModels`' decision, in the catalogue module with
+  // the lanes themselves, so it is a pure function with its own test rather than a filter
+  // buried in this file where nothing can reach it.
+  listInstalledModels: () => {
+    const descriptors = readModelDescriptors();
+    const present = readPresentModels(descriptors);
+    return {
+      models: loadableModels(buildCatalog({ descriptors, present, activeModelId: activeModelId() })),
+    };
   },
 });
 

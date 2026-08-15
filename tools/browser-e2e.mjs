@@ -1336,6 +1336,34 @@ try {
         !/error|refused|is not a function/i.test(afterStatus), afterStatus.slice(-200));
     }
 
+    // Owner, 2026-08-15: `/model` with no id used to be a dead end — "needs an id", naming
+    // none. `agent-commands.js` made the argument optional and `model.activate` now lists
+    // what is loadable when none is given, the same catalogue `#/models` reads. Driven here
+    // because this is exactly the gesture the Owner reported broken: type it, see choices.
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const beforeModel = await screenText();
+    await typeIntoTerminal('/model');
+    await page.keyboard.press('Enter');
+    const modelRan = await soft('/model with no id answers into the terminal instead of hanging', async () => {
+      await terminalFrame().waitForFunction(
+        (before) => {
+          const rows = document.querySelector('#terminalHost .xterm-rows')?.textContent ?? '';
+          return rows !== before;
+        },
+        { timeout: 15000 },
+        beforeModel,
+      );
+    });
+    if (modelRan) {
+      const afterModel = (await screenText()).replace(/\s+/g, ' ');
+      check('/model with no id lists what is loadable, not a "needs an id" dead end',
+        !/needs.*id.*Nothing was run/i.test(afterModel) && /models?/i.test(afterModel),
+        afterModel.slice(-300));
+    }
+
     // `/logout` needs a typed word — this is the one entry whose FIRST form must do nothing,
     // so the check is that the session survives it. The session state lives in the PARENT
     // document (`#authGate`), not inside this frame.

@@ -10906,3 +10906,34 @@ rather than claimed an equal-weight PASS. Full suite: 2554/2555 (1 pre-existing 
 unchanged). ESLint: 411/0.
 **Reversal cost.** none — script-only, no product code touched.
 **Status.** applied.
+
+## D-0466 · `/model` with no id lists what is loadable, instead of a dead end — 2026-08-15
+**Decision.** `/model`'s argument became `[id]` (optional) from `<id>` (required), and
+`model.activate` given no id now answers with the models this installation can actually load.
+The lane filtering is a new pure function, `loadableModels()`, in `model-catalog.mjs` beside
+the lanes themselves — not a filter buried in `server.mjs` where no test could reach it.
+**Why.** Owner, verbatim: *«QUANDO CLICCO SU /models devo poter scegliere il modello che e
+scaricato e poterlo usare»*. `/model` demanded an id and named none: `requiresArgument()` saw
+`<id>`, so `planTurn` returned `needs-argument` — "`/model` needs `<id>`. Nothing was run" —
+and there was no way to discover an id from the command. `#/models` in the browser had the
+full catalogue all along; the command simply never asked it. This is the same dead end
+`s333 point 2` fixed for `/diff` and the other eight required-argument commands, never
+applied to this one.
+**Rejected.** Routing `/model` to the `#/models` page via `panelOwning()` (what `/diff` does):
+there is no `coden/*/model` panel, so it cannot match — and a jump out of CodeN to a different
+destination is a different promise from answering in place, which the shell's own comment on
+`panelOwning` already forbids. Also rejected: a second model listing inside the command — the
+browser page and the command would then be two answers to one question, the shape `D-0300`
+and `D-0302` already cost this project twice.
+**Evidence.** `loadableModels` unit tests, 4 new, covering in-use + downloaded offered with
+their lane, `unverified` never offered (MC-004 — each fixture first asserts it really landed
+in that lane, so the test cannot pass vacuously), `available` never offered, and an empty
+installation answering `[]` not an error. `model.activate` with no id proven over the real
+unix socket in `session-protocol.test.mjs` (wiring: policy → dispatch → thunk). Full suite
+2559/2560 (1 pre-existing skip). ESLint 411/0. i18n catalogue updated — the suite caught the
+missing entries as 3 real failures before this was complete, and they are now green.
+**Reversal cost.** none — additive: a required argument became optional, and a branch that
+previously refused now answers. No existing call shape changed.
+**Status.** applied. **NOT yet verified live**: a `/model` check was added to
+`tools/browser-e2e.mjs` but the disposable probe was not run this phase (Owner stopped it as
+too costly), and the fix is not deployed to the running container.

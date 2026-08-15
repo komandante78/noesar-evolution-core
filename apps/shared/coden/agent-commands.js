@@ -177,7 +177,13 @@ export const AGENT_COMMANDS = Object.freeze([
   // runtime (configure/release/launch) both already existed and had never been joined to a
   // command. Scoped to a model already present: acquiring a new one is a separate transport
   // this installation does not have (`/api/v1/models/acquire` answers 501 and says so).
-  { name: 'model', argument: '<id>', summary: 'Load a model already present on this installation', group: 'configure', kind: 'call', method: 'model.activate', permission: 'model.manage' },
+  //
+  // `[id]`, not `<id>` (Owner, 2026-08-15): a required argument nobody can discover is the same
+  // dead end `s333 point 2` already named for `/diff` and friends — `/model` with no id would
+  // fall into `needs-argument` and say only that an id is needed, never which ones exist. Made
+  // optional so `planTurn` treats it as an ordinary call: the SAME `model.activate` handler,
+  // given no id, answers with what is actually loadable right now instead of refusing.
+  { name: 'model', argument: '[id]', summary: 'List models present on this installation, or load one by id', group: 'configure', kind: 'call', method: 'model.activate', permission: 'model.manage' },
 
   // SESSION — changes who you are. `/logout` needs a second, TYPED word rather than a key:
   // `15` §13, "in un terminale `y` è a un incollaggio di distanza dall'essere digitato da

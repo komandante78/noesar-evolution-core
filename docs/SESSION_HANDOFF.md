@@ -1,20 +1,26 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0465`: F-TMP-002 fixed — 3-phase batch complete)
+# SESSION HANDOFF — 2026-08-15 (`D-0466`: `/model` lists instead of demanding an id)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**This was phase 3 of 3 — the Owner-authorized batch ("procedi per 3 fasi") is now complete.**
-Six pieces in one session: crash fix (`D-0460`) → F-PANEL-001 (`D-0461`) → F-TERM-002 (`D-0462`)
-→ F-SLASH-001 investigated (`D-0463`) → F-TMP-001 fixed (`D-0464`) → F-TMP-002 fixed (`D-0465`,
-this one, closing the whole mkdtemp-leak class `F-CRASH-001` started). **The next action needs
-fresh Owner instruction — this is not a "procedi" situation any more.**
+**`D-0466` is fixed in SOURCE ONLY — it is not deployed and not verified live.** Two things
+are outstanding on it, and they are the next action:
 
-Every `tools/*.mjs` script that leaked a workspace now tracks and sweeps it via
-`process.on('exit', ...)`, the process-level sibling of `D-0464`'s `after()`-based helper.
-4 of 5 verified live and green; the 5th (`a3-security.mjs`) needs a disposable server+mock this
-fix's scope didn't warrant standing up, so it is verified by the identical, already-proven
-pattern instead of an independent run — declared as such, not claimed equal.
+1. **Run the disposable e2e probe** (`tools/run-browser-e2e.sh`) — a `/model` check was added
+   to `tools/browser-e2e.mjs` but never executed (Owner stopped the run as too costly). Until
+   it runs, the browser/terminal path for this fix is `[UNVERIFIED]`.
+2. **Deploy**, if the Owner authorizes it — the running container still has the old `/model`.
 
-Three items are still open, none touched this session's final phase:
+**What was wrong** (Owner-reported): `/model` demanded an id and could name none — the command
+declared `<id>` (required), so `planTurn` answered "`/model` needs `<id>`. Nothing was run" and
+offered no way to discover one, while `#/models` in the browser had the whole catalogue the
+entire time. Same dead end `s333 point 2` fixed for `/diff` and 8 others, never applied here.
+**Now**: the argument is optional, and `/model` with nothing lists what is actually loadable,
+read from the SAME catalogue the page renders — never a second listing.
+
+Earlier this session: crash fix (`D-0460`) → F-PANEL-001 (`D-0461`) → F-TERM-002 (`D-0462`) →
+F-SLASH-001 investigated (`D-0463`) → F-TMP-001 (`D-0464`) → F-TMP-002 (`D-0465`).
+
+Also still open, untouched:
 
 - **F-SLASH-001's actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
   when the terminal has claimed the surface. See `D-0463`.
@@ -29,6 +35,7 @@ Three items are still open, none touched this session's final phase:
 | `F-CRASH-001` | **FIXED** — 8.3 GB / 3,553 leaked `/tmp` dirs removed, both leaking test files patched, rootfs 82%→29% full. See `D-0460`. |
 | `F-TMP-001` | **FIXED** — shared `freshTempDir()` helper, 58 files migrated, 75,114 leaked dirs removed, rootfs 30%→20% full. `D-0464`. |
 | `F-TMP-002` | **FIXED** — 5 plain-script `tools/*.mjs` files now sweep via `process.on('exit', ...)`. `D-0465`. 4/5 verified live; `a3-security.mjs` verified by pattern only (needs a disposable server+mock). |
+| `F-MODEL-002` | **FIXED IN SOURCE, NOT DEPLOYED, NOT VERIFIED LIVE** — `/model` now lists what is loadable instead of demanding an id nobody could discover. `D-0466`. Unit-tested; e2e check added but never run. |
 | `F-COMMAND-001` | **RIPARATO E DEPLOYATO** — `noesar-evolution:d0457-legacy-shell-hide-20260815T060429Z`, live e sano. |
 | `F-PANEL-001` | **FIXED** — direct hash jump (`jump('agent/plan','plan','agent')`) replaces composer-driving at the plan-restore site. `D-0461`. Test-harness only, nothing to deploy. |
 | `F-SLASH-001` | **ROOT CAUSE CONFIRMED, not fixed** — steady state (terminal already live), not a race, proven over 2 driven runs. Fix needs a test-strategy choice, deferred as its own phase. `D-0463`. |
@@ -50,8 +57,9 @@ Three items are still open, none touched this session's final phase:
 | `node tools/http-smoke.mjs`, `tools/tls-smoke.mjs` | both PASS, 0 leaked dirs; `tls-smoke`'s 12 pre-existing leaks also removed |
 | `node tools/test-installer-hardening.mjs` | 100/100 checks, 0 leaked dirs |
 | `node tools/test-cross-platform-installers.mjs` | 87 checks, 0 failures, 0 leaked dirs |
-| `node --test services/reference-control-plane/test/*.test.mjs` (final, after everything) | 2554/2555 pass, 1 pre-existing skip |
-| `tools/run-eslint.sh` (final, ×2) | 411 files, 0 errors both times |
+| `node --test services/reference-control-plane/test/model-catalog.test.mjs` (`D-0466`) | 36/36 pass, 4 new `loadableModels` tests |
+| `node --test services/reference-control-plane/test/*.test.mjs` (final, after everything) | 2559/2560 pass, 1 pre-existing skip |
+| `tools/run-eslint.sh` (final) | 411 files, 0 errors |
 | Full-suite leak check, ×2 consecutive runs | `noesar-*` count in `/tmp` flat: 26→26 |
 | `df -h /` across the whole session | rootfs 82%→29% (`F-CRASH-001`) →20% (`F-TMP-001`'s backlog removal) |
 | §5a cleanup after each e2e probe | probe/runner/image removed every time; only the stable `noesar-e2e-net` network survives |
@@ -64,6 +72,9 @@ Three items are still open, none touched this session's final phase:
 - **Deploy of `D-0462`'s fix** — verified live via the disposable probe only; not installed to
   the running container (no deployment authorization this session, same as `D-0461`).
 - **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
+- **`D-0466`'s live verification and deploy** — the `/model` fix is source-only. Its e2e check
+  exists in `tools/browser-e2e.mjs` but has never been executed, and the running container
+  still serves the old behaviour. This is the top of the next action list above.
 - **`a3-security.mjs`'s live run** — needs a disposable server + mock, out of scope to stand up
   just to verify a leak fix; verified by the identical, already-proven `process.on('exit')`
   pattern used (and live-confirmed) in the other 4 files instead.
@@ -73,13 +84,19 @@ Three items are still open, none touched this session's final phase:
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0465`, non eseguita)**: none of the 5 `tools/*.mjs` scripts assert
-their own cleanup the way `test/support/workspace.mjs`'s own test does (`workspace-support.test.mjs`
-proves `freshTempDir()` self-cleans). Beneficio: a tiny shared assertion — run the script,
-snapshot `/tmp` before and after, assert flat — added once to `scripts/test.sh` (or a new small
-tool) would catch a REGRESSION of this exact defect class automatically, instead of needing a
-person to notice `/tmp` filling up again the way this whole session started. Costo: low, one
-small script; directly closes the loop this session opened with `F-CRASH-001`.
+**Nuova, da questo giro (`D-0466`, non eseguita)**: `/model` was broken in a way NO test could
+have caught, because nothing asserts that a command's declared argument is *discoverable*. Nine
+commands take `<required>` arguments; `panelOwning()` gives eight of them a panel that shows the
+possible values, and `/model` was the one with no panel and no listing — a fact visible only by
+reading. Beneficio: one test walking `AGENT_COMMANDS` and asserting every `<required>` argument
+has EITHER an owning panel OR a no-argument listing branch would have failed the day `/model`
+shipped, and would fail again for the next command added without one. Costo: low, one test, no
+product change — and it is the "criterio che nessuna riga misura" rule 5 of the phase skill
+already names. **This is the strongest candidate for the next phase.**
+
+**Precedente (`D-0465`, non eseguita)**: none of the 5 `tools/*.mjs` scripts assert their own
+cleanup the way `workspace-support.test.mjs` does. A tiny shared assertion (run, snapshot `/tmp`
+before/after, assert flat) would catch a regression of the leak class automatically.
 
 **Precedente (`D-0463`, non eseguita)**: hoist `typeIntoTerminal`/`terminalFrame`/`screenText`
 out of the `coden-terminal` step's block scope — the FIRST thing `F-SLASH-001`'s own fix will

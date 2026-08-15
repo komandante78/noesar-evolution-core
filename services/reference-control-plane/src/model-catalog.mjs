@@ -245,6 +245,26 @@ export function buildCatalog({
   };
 }
 
+/**
+ * What `/model`, given no id, can offer — the answer to "which can I load right now".
+ *
+ * Owner, 2026-08-15: `/model` used to demand an id and name none, the same dead end `s333
+ * point 2` found for every other required-argument command. The fix is not a second listing:
+ * this reads the SAME catalogue `#/models` renders, so the command and the page can never
+ * disagree about what is present.
+ *
+ * `unverified` is excluded on purpose. It is a foreground lane — visible on the page, where
+ * seeing it and its reason is the point — but MC-004 forbids starting from it, so offering it
+ * here would be offering a choice that refuses the moment it is picked. `available` is
+ * excluded too: it is the acquire-from-elsewhere lane, paginated and potentially large, and
+ * "what can I load" is a different question from "what exists in the world".
+ */
+export function loadableModels(catalog) {
+  return (catalog?.foreground ?? [])
+    .filter((lane) => lane.lane !== Lane.UNVERIFIED)
+    .flatMap((lane) => (lane.items ?? []).map((item) => ({ id: item.id, lane: lane.lane })));
+}
+
 /** Counts per declared type and function, `undeclared` included as a visible row. */
 export function groupingOf(descriptors) {
   const byType = {};

@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import {
   Lane, FOREGROUND_LANES, UNDECLARED, ModelCatalogError,
   declaredType, declaredFunctions, declaredDigest, verifyArtifact,
-  laneOf, buildCatalog, groupingOf, acquisitionAvailability, planAcquisition,
+  laneOf, buildCatalog, groupingOf, acquisitionAvailability, planAcquisition, loadableModels,
 } from '../src/model-catalog.mjs';
 
 const DIGEST_A = 'a'.repeat(64);
@@ -290,6 +290,48 @@ describe('refusals are refusals, not empty results', () => {
 
   test('a declared digest that is not a sha256 is treated as absent', () => {
     assert.equal(declaredDigest(model('m', { hashes: { sha256: 'not-a-digest' } })), null);
+  });
+});
+
+// Owner, 2026-08-15: `/model` with no id used to demand an id and name none. What it answers
+// now is this — and it must be the SAME catalogue `#/models` renders, never a second listing.
+describe('loadableModels — what `/model` with no id can offer', () => {
+  const catalogOf = (descriptors, present, activeModelId = null) =>
+    buildCatalog({ descriptors, present: new Map(present), activeModelId });
+
+  test('offers the model in use and the verified ones on disk, with their lane', () => {
+    const catalog = catalogOf(
+      [model('running'), model('ready')],
+      [['running', { verified: true }], ['ready', { verified: true }]],
+      'running',
+    );
+    assert.deepEqual(loadableModels(catalog), [
+      { id: 'running', lane: Lane.IN_USE },
+      { id: 'ready', lane: Lane.DOWNLOADED },
+    ]);
+  });
+
+  // MC-004: nothing starts from `unverified`. Offering it would be offering a choice that
+  // refuses the moment it is picked — the page still SHOWS it, with its reason, which is a
+  // different job from this one.
+  test('never offers an unverified artefact, which cannot be started', () => {
+    const catalog = catalogOf([model('tampered')], [['tampered', { verified: false }]]);
+    assert.equal(catalog.foreground.find((l) => l.lane === Lane.UNVERIFIED).items.length, 1,
+      'the fixture must actually land in the unverified lane, or this proves nothing');
+    assert.deepEqual(loadableModels(catalog), []);
+  });
+
+  // `available` is "what exists elsewhere", not "what I can load now" — and it is the one
+  // paginated lane, so including it would also make the answer depend on the page.
+  test('never offers the acquire-from-elsewhere lane', () => {
+    const catalog = catalogOf([model('somewhere-else')], []);
+    assert.equal(catalog.available.items.length, 1, 'the fixture must land in available');
+    assert.deepEqual(loadableModels(catalog), []);
+  });
+
+  test('an installation with nothing present answers an empty list, not an error', () => {
+    assert.deepEqual(loadableModels(catalogOf([], [])), []);
+    assert.deepEqual(loadableModels(undefined), []);
   });
 });
 
