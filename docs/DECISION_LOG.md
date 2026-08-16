@@ -11329,3 +11329,20 @@ Plan→Approve→shadow), e2e-proven with real content assertions, not placehold
 touched.
 **Status.** applied. 33 of 55 pages checked. Next: bench panels 4-6 (`preview`, `tests`,
 `problems`).
+
+## D-0486 · Deep review, §3 bench panels 4-6 (`preview`, `tests`, `problems`) — 2026-08-16
+**Decision.** Reviewed bench panels 4-6; findings appended in-file (§8), `Checked` flipped to
+`SI`. `tests`'s `[NAME ONLY]` description ("Test results") corrected: the panel is
+**permanently static by design**, a security decision (EXECUTE is a permanent refusal,
+architecture-wide), not an unwired feature.
+**Why.** Continuation of the `D-0473`-`D-0485` review cadence at the Owner's "PROSEGUI".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `preview`'s sandboxed `srcdoc` iframe confirmed (`sandbox=""`, strips scripts);
+`tests`'s EXECUTE-permanent-refusal claim confirmed across 10 backend test files including 2
+adversarial suites; `problems` confirmed to reuse already-fetched run/approve data, no new API
+call in `renderProblemsContent`. e2e assertions for `preview`/`problems` at
+`tools/browser-e2e.mjs:2843-2854`.
+**Reversal cost.** None — documentation only (one description correction), no code touched.
+**Status.** applied. 36 of 55 pages checked. Two of six `[NAME ONLY]` guesses reviewed so far
+(`terminal`, `tests`) turned out inaccurate — flagged as worth watching across the remaining 14
+bench + 5 agent panels. Next: bench panels 7-9 (`logs`, `history`, `tasks`).

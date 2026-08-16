@@ -77,9 +77,9 @@ others load real data on open.
 | 1 | `#/coden/bench/terminal` | Legacy tab: not a panel body, scrolls focus to the real terminal region below (`app.js:298`). `[VERIFIED, D-0485]` | SI |
 | 2 | `#/coden/bench/editor` | Read-only view of a plan's proposed/promoted files — never a second write path. `[VERIFIED, D-0485]` | SI |
 | 3 | `#/coden/bench/diff` | Diff against the shadow copy after Approve, never against reply text. `[VERIFIED, D-0485]` | SI |
-| 4 | `#/coden/bench/preview` | Preview surface. `[NAME ONLY]` | NO |
-| 5 | `#/coden/bench/tests` | Test results. `[NAME ONLY]` | NO |
-| 6 | `#/coden/bench/problems` | Problems/diagnostics list. `[NAME ONLY]` | NO |
+| 4 | `#/coden/bench/preview` | Same promoted content rendered where it means something — sandboxed for HTML. `[VERIFIED, D-0486]` | SI |
+| 5 | `#/coden/bench/tests` | Permanently static: EXECUTE is refused architecture-wide, not merely unwired. `[VERIFIED, D-0486]` | SI |
+| 6 | `#/coden/bench/problems` | Refused steps, unclean shadow comparisons, contradicted claims — reused, not re-fetched. `[VERIFIED, D-0486]` | SI |
 | 7 | `#/coden/bench/logs` | Log stream for the session. `[NAME ONLY]` | NO |
 | 8 | `#/coden/bench/history` | Session history. `[NAME ONLY]` | NO |
 | 9 | `#/coden/bench/tasks` | Task list. `[NAME ONLY]` | NO |
@@ -565,5 +565,50 @@ functional defect — the code was already correct).
 
 ---
 
+### `D-0486` (2026-08-16) — §3 bench panels 4-6: `preview`, `tests`, `problems`
+
+**`#/coden/bench/preview`** (`index.html:465`, `app.js:2938-2956`).
+*Works, VERIFIED*: renders the same promoted content Editor shows, but where rendering means
+something — an HTML file goes into a **sandboxed** `srcdoc` iframe (`sandbox=""`, strips scripts
+and same-origin access) so this is a rendered artefact, never executable workspace content;
+everything else falls back to the same text view as Editor. e2e asserts the actual promoted
+text renders (`tools/browser-e2e.mjs:2852-2853`).
+*Missing*: none found.
+*To change*: none.
+
+**`#/coden/bench/tests`** (`index.html:462`).
+*Works, VERIFIED*: **permanently static by design**, not merely unwired — no `#testsContent`
+element exists and no JS ever touches this panel. The reason stated in its own copy ("the
+executor is passed an empty test list on this path... reopening that would be arbitrary code
+execution wearing the shape of this page") is **architecturally real**: `workspace-actions.mjs`
+comments confirm EXECUTE is a **permanent refusal**, and this exact security boundary is
+covered across 10 backend test files (`executor.test.mjs`, `executor-vectors.test.mjs`,
+`isolation.test.mjs`, `permission-surface.test.mjs`, `verification.test.mjs`,
+`workspace-actions.test.mjs`, `workspace-actions-http-adversarial.test.mjs`, and 3 more). This is
+the strongest-defended row reviewed in this whole pass — a security decision wearing the shape
+of an empty panel, not a gap.
+*Missing*: nothing — the emptiness is the correct, intended state.
+*To change*: none — the original `[NAME ONLY]` guess ("Test results") was misleading in the
+same direction as `terminal`'s; corrected in §4's table to say what it actually is.
+
+**`#/coden/bench/problems`** (`index.html:468`, `app.js:2957-2977`).
+*Works, VERIFIED*: aggregates refused steps, unclean shadow-comparison surprises, and
+contradicted claims — all from data already fetched at run/approve time, per its own comment
+("nothing new is fetched... this panel only had never rendered them"), confirmed by reading:
+no new API call in `renderProblemsContent`. e2e asserts a clean run reports as clean, not "no
+run" (`tools/browser-e2e.mjs:2854` context).
+*Missing*: none found.
+*To change*: none.
+
+**§3 progress note**: two of the three `[NAME ONLY]` descriptions reviewed so far (`terminal`,
+`tests`) turned out to describe something different from what the guessed name implied — both
+now corrected. Worth watching whether this recurs across the remaining 14 bench + 5 agent
+panels still `[NAME ONLY]`.
+
+**No HUNT AND FIX this batch** beyond the two description corrections above (documentation, not
+functional defects).
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 33 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 36 of 55 checked in depth.**
