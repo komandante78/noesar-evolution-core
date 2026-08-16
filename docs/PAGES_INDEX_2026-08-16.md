@@ -80,9 +80,9 @@ others load real data on open.
 | 4 | `#/coden/bench/preview` | Same promoted content rendered where it means something — sandboxed for HTML. `[VERIFIED, D-0486]` | SI |
 | 5 | `#/coden/bench/tests` | Permanently static: EXECUTE is refused architecture-wide, not merely unwired. `[VERIFIED, D-0486]` | SI |
 | 6 | `#/coden/bench/problems` | Refused steps, unclean shadow comparisons, contradicted claims — reused, not re-fetched. `[VERIFIED, D-0486]` | SI |
-| 7 | `#/coden/bench/logs` | Log stream for the session. `[NAME ONLY]` | NO |
-| 8 | `#/coden/bench/history` | Session history. `[NAME ONLY]` | NO |
-| 9 | `#/coden/bench/tasks` | Task list. `[NAME ONLY]` | NO |
+| 7 | `#/coden/bench/logs` | Causal event trail of THIS run (not the product's own logs, which live in Settings). `[VERIFIED, D-0487]` | SI |
+| 8 | `#/coden/bench/history` | Up to 6 recent agent runs, each a button opening the owning destination. `[VERIFIED, D-0487]` | SI |
+| 9 | `#/coden/bench/tasks` | Up to 6 tasks, same pattern as history — honest about no per-item address yet. `[VERIFIED, D-0487]` | SI |
 | 10 | `#/coden/bench/map` | Repository map. `[NAME ONLY]` | NO |
 | 11 | `#/coden/bench/tools` | Tools available inside the bench. `[NAME ONLY]` | NO |
 | 12 | `#/coden/bench/plugins` | Plugins panel. `[NAME ONLY]` | NO |
@@ -610,5 +610,43 @@ functional defects).
 
 ---
 
+### `D-0487` (2026-08-16) — §3 bench panels 7-9: `logs`, `history`, `tasks`
+
+**`#/coden/bench/logs`** (`index.html:463`, `app.js:2978-2997`).
+*Works, VERIFIED*: **not** the product's own log stream (that's `Settings → Health and logs`,
+linked from here) — this is the causal **event trail of the current run**, read from
+`GET /api/v1/events/:correlationId` (`D-0230`). e2e proves a real event
+(`workspace_action.promoted`) appears after a run (`tools/browser-e2e.mjs:2859-2862`); backend
+coverage in `workspace-actions-http-adversarial.test.mjs`.
+*Missing*: none found.
+*To change*: none — the `[NAME ONLY]` guess ("Log stream for the session") was close but
+imprecise about scope; corrected to name what it actually shows.
+
+**`#/coden/bench/history`** (`index.html:514`, `app.js:5158-5169`).
+*Works, VERIFIED*: shows up to 6 real agent runs (`state.agentRuns`), each a clickable button.
+The product is honest about the limit, in its own comment: these buttons "open the destination
+that owns that kind of thing" rather than a per-item address, "as far as this product can
+honestly take you while nothing has a per-item address" — a stated limitation, not a hidden one.
+*Missing*: no e2e click-path found for the bench-navigator buttons specifically (distinct from
+the global-search `data-jump` buttons, which are e2e-tested at `tools/browser-e2e.mjs:1869`) —
+lower-stakes than the earlier 8 occurrences of the pattern, since the mechanism (render 6 items,
+click → `jumpTo`) is the same shape already proven elsewhere.
+*To change*: not built this pass.
+
+**`#/coden/bench/tasks`** (`index.html:496`, `app.js:5158-5169`).
+*Works, VERIFIED*: same real, honest pattern as `history` — up to 6 tasks from `state.tasks`,
+each opening `#/home` (there is no dedicated tasks destination; `#/tasks` is itself a legacy
+redirect to `#/home`, §6 of this file).
+*Missing*: same e2e note as `history`.
+*To change*: none.
+
+**§3 progress note**: `terminal` and `tests` (`D-0485`/`D-0486`) needed real corrections;
+`logs`/`history`/`tasks` this batch needed only precision, not correction — the
+`[NAME ONLY]` guesses were directionally right this time.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 36 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 39 of 55 checked in depth.**

@@ -11346,3 +11346,19 @@ call in `renderProblemsContent`. e2e assertions for `preview`/`problems` at
 **Status.** applied. 36 of 55 pages checked. Two of six `[NAME ONLY]` guesses reviewed so far
 (`terminal`, `tests`) turned out inaccurate — flagged as worth watching across the remaining 14
 bench + 5 agent panels. Next: bench panels 7-9 (`logs`, `history`, `tasks`).
+
+## D-0487 · Deep review, §3 bench panels 7-9 (`logs`, `history`, `tasks`) — 2026-08-16
+**Decision.** Reviewed bench panels 7-9; findings appended in-file (§8), `Checked` flipped to
+`SI`. Descriptions refined for precision (not corrected — the `[NAME ONLY]` guesses were
+directionally right this time, unlike `terminal`/`tests` in `D-0485`/`D-0486`).
+**Why.** Continuation of the `D-0473`-`D-0486` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `logs` reads `GET /api/v1/events/:correlationId` (`D-0230`), e2e-proven to show a
+real event after a run (`tools/browser-e2e.mjs:2859-2862`); `history`/`tasks` confirmed real
+(`state.agentRuns`/`state.tasks`, `app.js:5158-5169`), each honestly declared as
+destination-level navigation, not per-item, per the code's own comment.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 39 of 55 pages checked. Minor coverage note (not a new occurrence of the
+main pattern): no e2e click-path for the bench-navigator's own buttons specifically, distinct
+from and lower-stakes than the 8 already-named occurrences. Next: bench panels 10-12 (`map`,
+`tools`, `plugins`).
