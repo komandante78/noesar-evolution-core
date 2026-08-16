@@ -11440,3 +11440,27 @@ correction to the review's own earlier finding (§3 nav-list mechanism), 5 `[NAM
 corrections, 1 standing improvement proposal (`file-extractors.mjs` packaging, `D-0476`). No
 code was changed across any of the 18 review phases. Next: `docs/TOOLS_MODULES_INDEX_2026-08-16.md`
 (103 items), not yet started — or Owner may choose to act on one of the named findings instead.
+
+## D-0492 · #/coden/agent/authority driven end to end in browser-e2e.mjs — 2026-08-16
+**Decision.** Closed `D-0491`'s highest-priority gap: `tools/browser-e2e.mjs` now drives the
+real form — Owner Bypass mode select → Analyze (`POST /api/v1/coden/path-plan`) → Authorize
+refused pre-reauth (`403`, gate proven live) → Owner reauth with a real TOTP step
+(`POST /api/v1/auth/reauth`) → Authorize succeeds (`POST /api/v1/coden/authorize`) → the status
+line's live-authority list reflects the grant. Five new checks, inserted after the existing
+Plan/Terminal/Map sequence (~`tools/browser-e2e.mjs:2937`).
+**Why.** 8 backend suites + a dedicated route suite proved the endpoints; nothing had proven the
+button the Owner clicks reaches them. This is the security boundary itself, not a convenience.
+**Rejected.** Asserting the pre-reauth 403 on the suite's ambient session state — rejected as
+non-deterministic (elevation from an earlier MFA-replacement step could still be live). Fixed by
+relying on the verified fact that `elevatedUntil` is re-earned per session, never inherited
+(`auth.mjs`), so Owner Bypass mode's gate is refused deterministically until this flow's own
+reauth call succeeds.
+**Evidence.** Full disposable-probe run, `tools/run-browser-e2e.sh`, this session: 481 PASS / 2
+FAIL of 483. All 5 new checks PASS. Both FAILs pre-existing and already tracked, unrelated to
+this change: `POINT-2B-MEASURE` (`F-SLASH-001`, `D-0463`, root cause confirmed pending a
+test-strategy choice) and `I18N-RUNTIME` catalogue gap (`F-I18N-002`, 644/900, baseline 607 —
+same numbers already on record). Containers/images cleaned by the script's own trap; confirmed
+via `docker ps -a`/`images` after the run — only the running installation and one rollback
+container remain, no e2e-tagged survivor.
+**Reversal cost.** None — test-only change, no product code touched.
+**Status.** applied.

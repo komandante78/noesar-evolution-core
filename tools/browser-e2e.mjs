@@ -2934,6 +2934,100 @@ try {
   const restoredBadge = await page.evaluate(() => document.querySelector('#planRunBadge')?.textContent ?? '');
   check('Restore reverts a promoted run', /restored/i.test(restoredBadge), restoredBadge);
 
+  at('authority-form');
+  // --- D-0491: #/coden/agent/authority driven end to end, not merely reached ---------------
+  // The 55-page review named this the single highest-priority e2e gap of the whole pass: the
+  // capability-token security core (path-plan -> authorize, gated by Owner reauth) has 8
+  // backend suites plus a dedicated route suite, but nothing had ever proven that the button
+  // the Owner actually clicks reaches that backend. The earlier check in this file (~line 833)
+  // only proves the panel occupies pixels at its address — geometry, not the form.
+  //
+  // Owner Bypass mode is selected deliberately: `/api/v1/coden/authorize` only demands recent
+  // strong reauthentication when `plan.mode === 'OWNER_BYPASS'` (server.mjs). Session elevation
+  // is re-earned every session and never inherited (auth.mjs, verified by reading `login`/
+  // `reauthenticate`), so the pre-reauth refusal below is deterministic regardless of whatever
+  // this suite's earlier MFA-replacement section already did to `elevatedUntil`.
+  resetObservations();
+  await jump('agent/authority', 'authority', 'agent');
+  await clickOrExplain(page, '[data-mode="OWNER_BYPASS"]');
+  await page.waitForSelector('#ownerReauth:not(.hidden)', { timeout: 15000 });
+
+  const authorityPath = 'e2e-notes/authority-e2e-check.txt';
+  await page.$eval('#pathInput', (node) => { node.value = ''; });
+  await page.type('#pathInput', authorityPath);
+  await page.select('#operation', 'write');
+  await clickOrExplain(page, '#analyzePath');
+  await page.waitForFunction(
+    () => document.querySelector('#approvalControls')?.classList.contains('hidden') === false,
+    { timeout: 15000 },
+  );
+  const analyzed = await page.evaluate(() => document.querySelector('#pathResult')?.textContent ?? '');
+  check('Analyze reaches the real path-plan endpoint and returns a plan, not a placeholder',
+    requestWasMade('/api/v1/coden/path-plan') && /canonicalPath/.test(analyzed) && /consentOptions/.test(analyzed)
+      && !/"blocked": ?true/.test(analyzed),
+    analyzed.slice(0, 300));
+
+  // The gate itself, exercised negatively first: proving Authorize is refused NOW is what
+  // makes the pass below mean something, rather than the session having been elevated all
+  // along from an earlier step.
+  await page.select('#consentScope', 'ONE_OPERATION');
+  await clickOrExplain(page, '#authorizePlan');
+  await page.waitForFunction(
+    () => /Recent strong reauthentication/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const preReauthRefusal = await page.evaluate(() => ({
+    message: document.querySelector('#statusMessage')?.textContent ?? '',
+    isError: document.querySelector('#statusMessage')?.classList.contains('error') ?? false,
+  }));
+  check('Authorize is refused before reauth — the security gate is real, not decorative',
+    /Recent strong reauthentication/i.test(preReauthRefusal.message) && preReauthRefusal.isError,
+    JSON.stringify(preReauthRefusal));
+
+  // `newSecret` (not the original `totpSecret`) is the account's active authenticator from the
+  // MFA-replacement flow above; `nextRealStepCode`, not `freshCode`, because many steps on this
+  // secret have already been consumed by other checks between here and there — same reasoning
+  // as the re-login step this file already uses that secret for.
+  const reauthCode = await nextRealStepCode(newSecret);
+  await page.type('#reauthPassword', PASSWORD);
+  await page.type('#reauthTotp', reauthCode);
+  await clickOrExplain(page, '#reauthButton');
+  await page.waitForFunction(
+    () => /unlocked/i.test(document.querySelector('#pathResult')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const unlocked = await page.evaluate(() => document.querySelector('#pathResult')?.textContent ?? '');
+  check('Owner reauth with a live TOTP code unlocks Owner scope through the real endpoint',
+    requestWasMade('/api/v1/auth/reauth') && /unlocked/i.test(unlocked), unlocked.slice(0, 200));
+
+  await clickOrExplain(page, '#authorizePlan');
+  await page.waitForFunction(
+    () => /"consentScope"/.test(document.querySelector('#pathResult')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const authorized = await page.evaluate(() => document.querySelector('#pathResult')?.textContent ?? '');
+  check('Authorize succeeds once reauth is live and returns a real grant, not a decorative echo',
+    requestWasMade('/api/v1/coden/authorize') && /"consentScope": ?"ONE_OPERATION"/.test(authorized)
+      && /"expiresAt"/.test(authorized) && !/"error"/i.test(authorized),
+    authorized.slice(0, 300));
+
+  // The status line's live-authority list is populated once, on entering the `coden` region
+  // (`renderBenchStatus`, app.js) — re-entering fires it again, which is the only way the UI
+  // itself learns the grant just minted through the form is live, rather than asserting the
+  // grant exists straight off the API response above.
+  await jump('bench/logs', 'logs');
+  await jump('agent/authority', 'authority', 'agent');
+  await page.waitForFunction(
+    () => !(document.querySelector('#liveAuthorityList')?.textContent ?? '').includes('Nothing is granted'),
+    { timeout: 15000 },
+  );
+  const live = await page.evaluate(() => ({
+    count: document.querySelector('#liveAuthorityCount')?.textContent ?? '',
+    list: document.querySelector('#liveAuthorityList')?.textContent ?? '',
+  }));
+  check('the status line reflects the grant just authorized through the form, not a stale placeholder',
+    Number(live.count) >= 1 && live.list.includes('authority-e2e-check.txt'), JSON.stringify(live).slice(0, 300));
+
   at('closure');
   // --- the NOT DONE box · UI-036, Critical --------------------------------
   //

@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0491: deep review of docs/PAGES_INDEX_2026-08-16.md sec4-5, all 5 CodeN Evolution agent panels (plan, authority, activity, conversation, invariants). PAGES INVENTORY NOW COMPLETE 55/55, 18 phases from D-0474. Highest-priority finding of the whole review: #/coden/agent/authority (capability-token request/analyze/authorize + Owner reauth, the architectural security core) is real and deeply backend-tested (8 suites + dedicated route suite) but has ZERO e2e coverage of the actual form -- the single most important gap named across all 9 occurrences of the backend-proven-not-e2e-driven pattern, since this is the security boundary itself. Final tally: 3 fixes applied (F4-011, settings/hardware, settings/appearance live flag), 1 unfixed product-copy inconsistency (documentation, D-0489), 9 e2e-coverage gaps named, 1 scope correction (D-0490), 5 NAME ONLY corrections, 1 improvement proposal carried forward (file-extractors.mjs packaging, D-0476). No code changed across all 18 phases. Checked flipped to SI for the final 5 rows.",
-  "phase_status": "D-0491_applied__55_of_55_pages_reviewed__PAGES_INVENTORY_COMPLETE",
-  "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
+  "current_phase": "D-0492: closed D-0491's highest-priority e2e gap -- tools/browser-e2e.mjs now drives the real #/coden/agent/authority form end to end (analyze -> refused pre-reauth -> reauth with live TOTP -> authorize succeeds -> live-authority list reflects the grant). Full disposable-probe run: 481 PASS / 2 FAIL of 483, all 5 new checks PASS, both FAILs pre-existing and already tracked (F-SLASH-001, F-I18N-002). No product code changed -- test-only.",
+  "phase_status": "D-0492_applied__authority_e2e_gap_closed__481_pass_2_pre_existing_fail",
+  "next_phase": "Owner decides: start docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items), or act on another named open item (F-SLASH-001, F-MODEL-001, documentation copy fix D-0489, file-extractors.mjs packaging D-0476), or apply the same e2e-driving template to another of the 8 remaining backend-proven-not-e2e-driven occurrences D-0491 named.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "PAGES_INDEX_2026-08-16.md inventory is complete (55/55). Owner to choose next: (a) start docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items, not yet started), (b) act on the highest-priority finding -- an e2e check for #/coden/agent/authority form (D-0491), (c) act on one of the other named open items (documentation panel copy fix D-0489, file-extractors.mjs packaging D-0476, F-SLASH-001 design pick D-0463, F-MODEL-001 servedBy D-0395, cargo publish, Fase D/WP4). No code changes without explicit Owner authorization for whichever is chosen.",
+  "next_action": "D-0491's highest-priority finding is closed (D-0492): the #/coden/agent/authority form is now driven end to end in tools/browser-e2e.mjs, 481 PASS / 2 FAIL of 483 (both pre-existing, tracked). Owner to choose next: (a) start docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items, not yet started), (b) act on another named open item (documentation panel copy fix D-0489, file-extractors.mjs packaging D-0476, F-SLASH-001 design pick D-0463, F-MODEL-001 servedBy D-0395, cargo publish), (c) apply the same e2e-driving template to another of the 8 remaining backend-proven-not-e2e-driven occurrences D-0491 named. No code changes without explicit Owner authorization for whichever is chosen.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1531,7 +1531,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-08-11T18:40:16Z",
+  "last_updated": "2026-08-16T14:15:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",
