@@ -52,8 +52,8 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | SI |
 | 13 | `#/settings/updates` | Staged/approved/applied updates with rollback; nothing self-installs. `[PAGE_HELP]` | SI |
 | 14 | `#/settings/skills` | Skill catalogue — payload is instructions, cost is context, nothing preloaded. `[PAGE_HELP]` | SI |
-| 15 | `#/settings/modules` | Owner modules — signed, one-click install, open in a new tab, never embedded. `[PAGE_HELP]` | NO |
-| 16 | `#/settings/remote-targets` | Scan a remote codebase over SSH; the analysing module never sees the credential. `[PAGE_HELP]` | NO |
+| 15 | `#/settings/modules` | Owner modules — signed, one-click install, open in a new tab, never embedded. `[PAGE_HELP]` | SI |
+| 16 | `#/settings/remote-targets` | Scan a remote codebase over SSH; the analysing module never sees the credential. `[PAGE_HELP]` | SI |
 
 *Note: `settings/hardware` also exists as a distinct `PAGE_HELP` entry (accelerator probe) —
 `measure-page-liveness.mjs` did not list it as a separate live section; flag for the deep pass
@@ -493,5 +493,36 @@ own click-path, even though their backends are consistently well-tested.
 
 ---
 
+### `D-0484` (2026-08-16) — §2 settings sections 15-16: `modules`, `remote-targets` (§2 complete, 16/16)
+
+**`#/settings/modules`** (`index.html:1162-1165`, `app.js:2512,2625-2652`).
+*Works, VERIFIED*: owner-module catalog real (`owner-module-catalog.mjs`); registration/signing/
+install run **server-side**, not by pasting a key around, matching the page's own claim exactly.
+Backend suites `sector-modules.test.mjs`, `sector-modules-activation.test.mjs`.
+*Missing*: no e2e click-path found (7th occurrence of the pattern).
+*To change*: not built this pass.
+
+**`#/settings/remote-targets`** (`index.html:1166-1183`, `app.js:2563-2624`).
+*Works, VERIFIED*: host key is captured and **pinned in full** (`known_hosts` format, not just a
+fingerprint) at registration (`remote-target-registry.mjs:16,56-60`); the SSH connection runs
+`StrictHostKeyChecking=yes`, **never disabled** — a later mismatch genuinely refuses the
+connection, matching the page's claim word-for-word
+(`remote-target-fetch.mjs:106,140`). Private key is supplied only at activation, per target, and
+removal deletes the stored key. 16 backend tests across `remote-target-registry.test.mjs`,
+`remote-target-fetch.test.mjs`, `remote-target-http.test.mjs`.
+*Missing*: no e2e click-path found (8th occurrence).
+*To change*: not built this pass.
+
+**§2 (settings, 16 sections) is now fully reviewed.** Final pattern tally for this section:
+**8 occurrences** of "backend proven, not e2e-driven" —
+`#/research`(§1, `D-0478`) + 7 more inside §2: theme/accent (`D-0479`), password-change/passkeys
+(`D-0481`), log-search/debug-mode (`D-0482`), updates, skills (`D-0483`), modules,
+remote-targets (`D-0484`). Every one of these also has thorough **backend** coverage — the
+pattern is specifically about the UI-driving layer, not about correctness confidence overall.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 28 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 30 of 55 checked in depth.**

@@ -11293,3 +11293,22 @@ destination-reachability/nav-visibility lists.
 reviewed — read as a property of the e2e suite's growth (coverage added page-by-page, never
 retrofitted to later sections), not 6 isolated gaps. Next: the last 2 settings sections
 (`modules`, `remote-targets`), completing §2.
+
+## D-0484 · Deep review, §2 settings sections 15-16 — §2 complete, 16/16 (`modules`, `remote-targets`) — 2026-08-16
+**Decision.** Reviewed settings sections 15-16; findings appended in-file (§8), `Checked`
+flipped to `SI`. All 16 settings sections are now reviewed.
+**Why.** Continuation of the `D-0473`-`D-0483` review cadence at the Owner's "PROCEDI".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `modules`: server-side registration/signing/install confirmed in
+`owner-module-catalog.mjs`, backend suites `sector-modules.test.mjs`,
+`sector-modules-activation.test.mjs`. `remote-targets`: full host-key pinning (not just a
+fingerprint) confirmed in `remote-target-registry.mjs:16,56-60`;
+`StrictHostKeyChecking=yes`, never disabled, confirmed in `remote-target-fetch.mjs:106,140` —
+the page's "a later mismatch refuses the connection" claim is literally true in the code. 16
+backend tests across 3 suites.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 30 of 55 pages checked, §2 complete (16/16). Final tally for the
+e2e-coverage pattern across §1+§2: **8 occurrences**
+(`D-0478`/`D-0479`/`D-0481`/`D-0482`/`D-0483`/`D-0484`), all backend-proven, none UI-driven —
+named as one class, not filed as 8 separate findings. Next: §3 (CodeN Evolution bench panels,
+20 items) and §4-5 (agent panels), or the tools/modules inventory — Owner's pick.
