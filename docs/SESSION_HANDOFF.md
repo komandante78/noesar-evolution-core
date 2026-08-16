@@ -1,31 +1,30 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0493`: password-change gap closed, real bug found+fixed)
+# SESSION HANDOFF — 2026-08-16 (`D-0494`: TOOLS_MODULES_INDEX §1 reviewed, 2 defects corrected)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0481`'s 3rd-named gap is closed, and driving it found a real bug.** `tools/browser-e2e.mjs`
-now drives `#securityPasswordForm` end to end (round-tripped: change → old password refused →
-change back to the constant, since the suite reuses this session for every later login). Doing
-so caught `app.js` reading `event.currentTarget` **after an `await`** — the DOM nulls it once
-sync dispatch ends, so `.reset()` threw and a real `200` password change was shown to the Owner
-as an error toast. The same broken pattern was in `#passkeyAddForm` and `#passkeyRemoveForm`
-too; all three fixed (capture the form synchronously, before the `await` — `D-0493`).
+**The other list built this morning (`D-0473`, 08:14) has had its first slice reviewed.**
+`docs/TOOLS_MODULES_INDEX_2026-08-16.md` §1 (60 backend API route groups) is now checked in
+depth, same discipline as the pages-index review (`D-0474`-`D-0491`). Two real defects found and
+corrected **in the document**: `projects` (v1)/(v2) were the same implementation counted twice
+(real total 59 groups, not 60 — `server.mjs` has exactly one `/api/v1/projects` block); and §6's
+claim that `ATOM_EVOLUTION` is "still empty" was false — it has 28 real commits and a working
+`atomd` daemon satisfying all 11 `ReasoningProvider` surfaces (self-declared gap:
+`ATOM_SELECTED_BY_ANY_ENGINE=false`, nothing calls it yet). 7 groups have real routes but no
+dedicated backend test by name (`artifacts`, `chat`, `closures`, `conversations`, `knowledge`,
+`search`, `sources`) — recorded, not fixed (writing 7 new test files was not this phase's scope).
+Details: `docs/DECISION_LOG.md` `D-0494`.
 
-Full disposable-probe run after the fix: **491 PASS / 1 FAIL of 492** — the FAIL is the
-pre-existing, already-tracked `F-I18N-002` (644/908, baseline 607). `F-SLASH-001`'s flaky check
-did not fire this run (known non-deterministic race, root cause on record, `D-0463`). Details:
-`docs/DECISION_LOG.md` `D-0493`.
+**§2 (17 slash commands), §3 (20 Rust crates), §4 (6 `capabilities/` dirs) of the same file
+remain at `Checked: NO`** — natural next slice of this same review.
 
-**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy** — this phase's fix is in
-`apps/webui-static/app.js`, not yet deployed to the running installation (deploy is a separate,
-explicitly-authorized step, `CLAUDE10.md` §3a).
+**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy** — `D-0493`'s `app.js`
+fix (password/passkey handlers) is proven on the disposable e2e probe only, **not yet deployed**.
 
 **Next — Owner's choice**:
-1. **Deploy** the `app.js` fix so the live installation stops showing this false error (currently
-   only proven in the disposable e2e probe).
-2. Apply the same e2e-driving template to another of the 7 remaining "backend proven, not
-   e2e-driven" occurrences `D-0491` named (`#/research`, theme/accent, log-search/debug-mode,
-   updates, skills, modules, remote-targets).
-3. Start `docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 items) — not yet begun.
+1. Continue `TOOLS_MODULES_INDEX` — §2 (slash commands), §3 (Rust crates) or §4 (`capabilities/`).
+2. **Deploy** the `D-0493` `app.js` fix to the live installation.
+3. Apply the same e2e-driving template to another of the 7 remaining "backend proven, not
+   e2e-driven" page-level occurrences `D-0491` named.
 4. Act on another named open item (see table below).
 
 No code changes or deployment without explicit Owner authorization for whichever is chosen.
@@ -35,48 +34,50 @@ No code changes or deployment without explicit Owner authorization for whichever
 | Id | Stato |
 |---|---|
 | `app.js` password/passkey fix | **APPLIED, not deployed** — `D-0493`, e2e-proven on the probe, live installation still runs the old (buggy) build. |
+| `TOOLS_MODULES_INDEX` §2-4 | **OPEN** — 43 of 102 named items (slash commands, Rust crates, `capabilities/` dirs) not yet reviewed. `D-0494`. |
+| 7 API groups with no dedicated backend test | **RECORDED, not fixed** — `artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`, `sources`. `D-0494`. |
 | `F-SLASH-001` | **ROOT CAUSE CONFIRMED, not fixed** — needs a test-strategy choice. `D-0463`. |
 | `F-MODEL-001` | **OPEN**, awaiting Owner choice — `#/models` `servedBy` not declared. `D-0395`. |
 | `#/coden/bench/documentation` copy | **OPEN, `D-0489`** — wording proposed, needs Owner sign-off. |
-| ATOM licence | **APPLICATO** — aperto, AGPL, repository separato invariato (ancora vuoto). `D-0468`. |
+| ATOM licence | **APPLICATO** — aperto, AGPL, repository separato invariato. `D-0468`. `ATOM_EVOLUTION` stesso **non è vuoto** (28 commit, corretto in `D-0494`). |
 | Product access control | **DECISO** — registrazione, mai licenza a codice. `D-0467`/`D-0468`. |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
 | `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` da terminale vero. |
-| `F-I18N-002` | **OPEN**, not re-baselined — catalogue-closable gap 644/908 (baseline 607), reconfirmed this session. |
+| `F-I18N-002` | **OPEN**, not re-baselined — catalogue-closable gap 644/908 (baseline 607). |
 | `F-MANIFEST-001` | **OPEN**, pre-existing, out of scope — `MANIFEST.sha256` 5898 vs 6568 tracked files. |
 | `F-ROT-001` | **OPEN** — `NOESAR_ALLOWED_HOSTS` still names the pre-rotation container IP. |
+| Independent pentest (beta criterio 4) | **OPEN, non pianificato** — scope pronto (`docs/security/INDEPENDENT_PENTEST_SCOPE.md`), serve l'Owner per ingaggiare un tester esterno. |
 
 All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
-`docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0492).
+`docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0493).
 
 ## Verificato IN QUESTA SESSIONE
 
-Two full disposable-probe browser-e2e runs, this session: first **failed as predicted**
-(`harness completed without throwing [step: password-change]`, the bug caught live); after the
-fix, **491 PASS / 1 FAIL of 492**, evidence produced this session. All 3 new password-change
-checks PASS, including the literal success-toast text. The one FAIL pre-existing/tracked. Both
-runs' containers/images cleaned by the script's own trap — confirmed via `docker ps -a` and
-`docker images`: only the running installation and one rollback container remain.
+Documentation-only review: 60 rows of `TOOLS_MODULES_INDEX_2026-08-16.md` §1 cross-checked
+against real routes in `server.mjs` (grep, both spacing styles the file uses) and real test
+coverage in the 166-file `test/` directory (by content match, not filename-prefix guessing — a
+first-pass filename check undercounted badly, e.g. missed 11 `coden-*.test.mjs` files entirely).
+`node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. No product code touched.
 
 ## Cosa NON è stato fatto
 
-- **Deployment of the `app.js` fix** — proven on the disposable e2e probe only; the running
-  installation still serves the old (buggy) build until an explicitly-authorized deploy phase.
-- **Passkey add/remove e2e coverage** — the identical bug pattern was fixed there too (by the
-  proven mechanism, not independently re-run), but exercising the form itself needs a WebAuthn
-  virtual authenticator (CDP), not wired into this suite; left open.
-- **`docs/TOOLS_MODULES_INDEX_2026-08-16.md`** (103 items) — not started.
+- **§2, §3, §4 of `TOOLS_MODULES_INDEX`** (43 of 102 named items) — not yet reviewed.
+- **Tests for the 7 groups found undertested** — recorded as a gap, not written; new scope.
+- **Deployment of the `D-0493` `app.js` fix** — still only proven on the disposable e2e probe.
 - **`F-SLASH-001`, `F-MODEL-001`, the `documentation` copy fix, the `file-extractors.mjs`
-  packaging, the other 7 named e2e gaps** — all still open, none built without authorization.
+  packaging, the other 7 named page-level e2e gaps** — all still open, none built without
+  authorization.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0493`)**: `event.currentTarget` read after an `await` is a bug CLASS, not one
-instance — 3 of 3 occurrences found were broken, 0 of the safe `withBusy(event.currentTarget,
-async()=>{...})` call-site pattern were. Worth an ESLint rule (or a grep-based pre-commit check)
-that flags `event.currentTarget` referenced anywhere after an `await` in the same function, so
-the next occurrence is caught at commit time, not by an e2e run reaching that exact button.
-Benefit: closes this whole defect class permanently, cheaply. Cost: low — a no-restricted-syntax
-ESLint rule or a small AST check, one afternoon.
+**Questo giro (`D-0494`)**: a group with real routes and zero dedicated tests is invisible to
+every automated signal this project has (unit suite green, e2e green) — it only surfaces by a
+human reading `server.mjs` against `test/` by hand, which is exactly how the 7-group gap and the
+`projects` double-count were found. Worth a small script (`tools/verify-route-coverage.mjs`)
+that extracts every `/api/v1/*` group from `server.mjs` and flags any with zero matching test
+file content (not filename-prefix — this session's own experience shows that undercounts),
+turning this from a one-off manual pass into a repeatable check the CI-equivalent suite can run.
+Benefit: the exact gap this phase found, caught automatically on every future route added. Cost:
+low — a few hours, same shape as `tools/measure-page-liveness.mjs` already proves works.
 
-**Precedenti (`D-0492`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0493`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

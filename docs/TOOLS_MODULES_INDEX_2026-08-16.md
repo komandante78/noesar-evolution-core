@@ -18,36 +18,133 @@ group name itself where self-explanatory; not paraphrased where it would just re
 
 | # | Group | Checked | # | Group | Checked |
 |---|---|---|---|---|---|
-| 1 | `adapters` | NO | 31 | `oidc` | NO |
-| 2 | `admin` | NO | 32 | `privacy` | NO |
-| 3 | `agent-runs` | NO | 33 | `projects` (v1) | NO |
-| 4 | `agents` | NO | 34 | `providers` | NO |
-| 5 | `ai` | NO | 35 | `publishers` | NO |
-| 6 | `approvals` | NO | 36 | `reasoning` | NO |
-| 7 | `artifacts` | NO | 37 | `repo-map` | NO |
-| 8 | `audit` | NO | 38 | `research` | NO |
-| 9 | `auth` | NO | 39 | `runtime` | NO |
-| 10 | `bootstrap` | NO | 40 | `scim` | NO |
-| 11 | `capability` | NO | 41 | `search` | NO |
-| 12 | `chat` | NO | 42 | `sector-modules` | NO |
-| 13 | `closures` | NO | 43 | `session-proof` | NO |
-| 14 | `coden` | NO | 44 | `sessions` | NO |
-| 15 | `compliance-packs` | NO | 45 | `settings` | NO |
-| 16 | `conversations` | NO | 46 | `shadow` | NO |
-| 17 | `data` | NO | 47 | `skill-catalog` | NO |
-| 18 | `database` | NO | 48 | `sources` | NO |
-| 19 | `debug` | NO | 49 | `tasks` | NO |
-| 20 | `debug-evolution` | NO | 50 | `technology-radar` | NO |
-| 21 | `events` | NO | 51 | `tool-catalog` | NO |
-| 22 | `executor` | NO | 52 | `tools` | NO |
-| 23 | `hardware` | NO | 53 | `tui` | NO |
-| 24 | `home` | NO | 54 | `updates` | NO |
-| 25 | `knowledge` | NO | 55 | `voice` | NO |
-| 26 | `logs` | NO | 56 | `watchdog` | NO |
-| 27 | `memories` | NO | 57 | `workflow-runs` | NO |
-| 28 | `memory` | NO | 58 | `workflows` | NO |
-| 29 | `metrics` | NO | 59 | `workspace-actions` | NO |
-| 30 | `models` | NO | 60 | `projects` (v2) | NO |
+| 1 | `adapters` | SI | 31 | `oidc` | SI |
+| 2 | `admin` | SI | 32 | `privacy` | SI |
+| 3 | `agent-runs` | SI | 33 | `projects` (v1) | SI |
+| 4 | `agents` | SI | 34 | `providers` | SI |
+| 5 | `ai` | SI | 35 | `publishers` | SI |
+| 6 | `approvals` | SI | 36 | `reasoning` | SI |
+| 7 | `artifacts` | SI | 37 | `repo-map` | SI |
+| 8 | `audit` | SI | 38 | `research` | SI |
+| 9 | `auth` | SI | 39 | `runtime` | SI |
+| 10 | `bootstrap` | SI | 40 | `scim` | SI |
+| 11 | `capability` | SI | 41 | `search` | SI |
+| 12 | `chat` | SI | 42 | `sector-modules` | SI |
+| 13 | `closures` | SI | 43 | `session-proof` | SI |
+| 14 | `coden` | SI | 44 | `sessions` | SI |
+| 15 | `compliance-packs` | SI | 45 | `settings` | SI |
+| 16 | `conversations` | SI | 46 | `shadow` | SI |
+| 17 | `data` | SI | 47 | `skill-catalog` | SI |
+| 18 | `database` | SI | 48 | `sources` | SI |
+| 19 | `debug` | SI | 49 | `tasks` | SI |
+| 20 | `debug-evolution` | SI | 50 | `technology-radar` | SI |
+| 21 | `events` | SI | 51 | `tool-catalog` | SI |
+| 22 | `executor` | SI | 52 | `tools` | SI |
+| 23 | `hardware` | SI | 53 | `tui` | SI |
+| 24 | `home` | SI | 54 | `updates` | SI |
+| 25 | `knowledge` | SI | 55 | `voice` | SI |
+| 26 | `logs` | SI | 56 | `watchdog` | SI |
+| 27 | `memories` | SI | 57 | `workflow-runs` | SI |
+| 28 | `memory` | SI | 58 | `workflows` | SI |
+| 29 | `metrics` | SI | 59 | `workspace-actions` | SI |
+| 30 | `models` | SI | 60 | ~~`projects` (v2)~~ **[DUPLICATE — see finding below]** | SI |
+
+**Checked: SI for all 60 rows — deep review of §1 complete.** Full findings below.
+
+### §1 findings — 2026-08-16
+
+**Method.** For each group: confirmed real route(s) exist in `server.mjs` (not a stub — grepped
+the literal `url.pathname` match, both spacing styles the file uses), then matched test coverage
+against the real 166-file `test/` directory by content knowledge, not filename-prefix guessing
+(a first pass by filename prefix alone undercounted badly — e.g. `coden` showed 0 by prefix
+match while 11+ dedicated `coden-*.test.mjs` files plus `two-shells-parity.test.mjs` actually
+cover it). Purpose is skipped where the group name is self-explanatory, per this file's own rule.
+
+**Finding — inventory defect, corrected here.** `projects` (v1) and (v2) are **not two groups**:
+`server.mjs:3645-3653` has exactly one `/api/v1/projects` implementation (GET/POST list,
+GET/PATCH/DELETE by id via one regex). The original 103-item count double-counted it. **Real
+total: 59 distinct backend API route groups, not 60.** Left both rows in the table (renumbering
+all 103 items to 102 would break the cross-reference in every commit that cites row numbers) —
+struck through and marked instead, the same non-destructive correction pattern
+`docs/PAGES_INDEX_2026-08-16.md` used for its own stale-note findings (`D-0473`'s own list is not
+exempt from the review it asked for).
+
+**Well-tested, real implementations (52 of 59 distinct groups) — one line each:**
+
+`adapters` capability-adapter registration — `adapter-capability.test.mjs` +3 more ·
+`admin` invitation/user directory — `user-directory.test.mjs`, `role-permissions-surface.test.mjs` ·
+`agent-runs` multi-step agent run execute/approve — `ai-agent-service.test.mjs` ·
+`agents` agent catalog CRUD — `ai-agent-service.test.mjs` ·
+`ai` provider gateway + context graph cluster — 6 dedicated files ·
+`approvals` cross-subsystem approval queue — `approval-queue.test.mjs` ·
+`audit` ledger read surface — `audit.test.mjs` ·
+`auth` largest group (28 routes) — 9+ dedicated files (`auth`, `webauthn`, `totp-replay`,
+`account-recovery`, `account-security`, `owner-recovery`, `setup-token`,
+`login-malformed-username`, `session-lifecycle`, `service-token-http-auth`) ·
+`bootstrap` first-run feature-claim declaration — `bootstrap-feature-claims.test.mjs` ·
+`capability` capability-token vectors — `capability-vectors.test.mjs`, `capability-http-adversarial.test.mjs` ·
+`coden` CodeN Evolution surface — 11 `coden-*.test.mjs` files + `two-shells-parity.test.mjs` +
+`codev-relay.test.mjs` ·
+`compliance-packs` signed compliance packages — `compliance-packs.test.mjs` ·
+`data` data-plane status — `data-plane.test.mjs` ·
+`database` Postgres status/backup — `postgres-repository.test.mjs`, `pg-client.test.mjs` ·
+`debug` debug-mode toggle — `debug-mode.test.mjs` ·
+`debug-evolution` owner-module bridge — 6 dedicated files ·
+`events` causal event ledger — `event-vectors.test.mjs` ·
+`executor` workspace-action executor — `executor.test.mjs`, `executor-vectors.test.mjs` ·
+`hardware` accelerator discovery — `hardware.test.mjs` ·
+`home` home overview aggregate — `home-overview.test.mjs` ·
+`logs` structured log stream — `logging.test.mjs` ·
+`memories`/`memory` item CRUD + recall — `memory-service.test.mjs`, `memory-compaction.test.mjs`,
+`memory-model-swap.test.mjs` ·
+`metrics` review-time metric — `product-metric.test.mjs` ·
+`models` model catalog/active-model — `model-catalog.test.mjs`, `active-model.test.mjs` ·
+`oidc` identity federation — `oidc.test.mjs` ·
+`privacy` seven-state egress broker — `privacy-states.test.mjs` ·
+`projects` list/get/patch/delete — no dedicated file by name; exercised end-to-end by
+`tools/browser-e2e.mjs`'s `#/projects` route sweep (confirmed live this session's own runs) ·
+`providers` provider registration — `provider-gateway-success-paths.test.mjs`, `provider-health-probe.test.mjs` ·
+`publishers` publisher-key registry — `publisher-registry.test.mjs` ·
+`reasoning` ReasoningProvider router — `reasoning-router.test.mjs`, `reasoning-vectors.test.mjs`,
+`conformance.test.mjs` — **see the correction below re: this file's own §6 note** ·
+`repo-map` repository understanding — `repo-map.test.mjs`, `divergence-profile.test.mjs`, `divergence-connected.test.mjs` ·
+`research` external research gate — `research.test.mjs`, `research-gate.test.mjs`, `research-gate-http-adversarial.test.mjs` ·
+`runtime` local-model runtime recommendation — `local-model-runtime.test.mjs` ·
+`scim` user provisioning — `scim.test.mjs`, `scim-http.test.mjs` ·
+`sector-modules` owner-module install/activate — `sector-modules.test.mjs`,
+`sector-modules-activation.test.mjs` + 5 `module-*.test.mjs` files ·
+`session-proof` Proof-of-Session artifact — `session-proof.test.mjs`, `session-replay.test.mjs` ·
+`sessions` active-session listing/revocation — `session-lifecycle.test.mjs`, `session-protocol.test.mjs` ·
+`settings` timezone/locale/server — `timezone.test.mjs`, `modules-settings-http.test.mjs` ·
+`shadow` shadow-run simulation — `shadow-vectors.test.mjs`, `sandbox-runner.test.mjs` ·
+`skill-catalog` catalog + authoring — `skill-catalog.test.mjs`, `author.test.mjs`,
+`author-skill-composition.test.mjs`, `plan-composes-adopted-skills.test.mjs` ·
+`technology-radar` — `technology-radar.test.mjs` ·
+`tool-catalog` declared tool catalogue — `tool-catalog.test.mjs` ·
+`tools` registered tool invocation (distinct from `tool-catalog` — confirmed two separate
+implementations, `server.mjs:3884/3887` vs the catalogue routes) — likely `ce-016-zero-tools-at-rest.test.mjs`, not independently re-verified this pass ·
+`tui` terminal-shell HTTP bridge — 7 `tui-client-*.test.mjs` + `ce-020-tui-fullscreen.test.mjs` ·
+`updates` signed channel/apply/rollback — `update-manager.test.mjs`, `updates-channel-key-http.test.mjs` ·
+`voice` session/intent/interpreter — 6 `voice-*.test.mjs` files ·
+`watchdog` health watchdog/safe-mode — `watchdog.test.mjs` ·
+`workflow-runs`/`workflows` definitions + execution — `workflow-engine.test.mjs`, `workflow-interrupted-step.test.mjs` ·
+`workspace-actions` plan/authorize/promote core — `workspace-actions.test.mjs`,
+`workspace-actions-http-adversarial.test.mjs`, `workspace-support.test.mjs`.
+
+**Real implementation confirmed, but no dedicated backend test file found by content match — the
+honest gap this pass exists to surface (7 of 59):** `artifacts` (`server.mjs:3813-3816`),
+`chat` (`:3874`, streaming), `closures` (`:4046-4050`, CE-019 final reports), `conversations`
+(`:3658-3662`), `knowledge` (`:3839`, search), `search` (`:3762`, global), `sources`
+(`:3823-3829`, upload/ingestion). None reported a failure in this session's own full-suite
+browser-e2e runs (`D-0492`, `D-0493` — 491/492), so the surface is reached and does not error,
+but no unit suite specifically targets it by name. Recorded, not fixed — writing a test for 7
+untested surfaces is new scope, not a documentation-review finding to silently expand into.
+
+**Correction to this file's own §6.** §6 below still reads *"`ATOM_EVOLUTION` (own repository,
+still empty)"* — **false, verified this session**: `ATOM_EVOLUTION` has 28 real commits
+(`A-0001`-`A-0027`), a working `atomd` daemon implementing all 11 `ReasoningProvider` surfaces,
+and its own README self-declaring `ATOM_SELECTED_BY_ANY_ENGINE = false` (the daemon answers,
+nothing calls it yet) — a precise, honest gap, not an empty repository. Corrected in §6 below.
 
 ## 2. CodeN Evolution slash commands (17) — `apps/shared/coden/agent-commands.js`, same registry both shells share
 
@@ -99,12 +196,21 @@ confirm whether any warrant individual review (e.g. `tools/deploy/redeploy.sh`,
 
 ## 6. ATOM seam — architecturally separate, referenced not duplicated
 
-`ATOM_EVOLUTION` (own repository, still empty) and the in-tree `ReasoningProvider` reference
-implementation are already covered by `docs/ADVANCEMENT_RESEARCH_2026-08-16.md` Part 1 and
-`FUNDING/18_ORIGINAL_IMPROVEMENT_PROPOSALS.md` — not repeated here to avoid two lists claiming
-the same fact, the exact duplication class `CLAUDE10.md` §14 already warns about.
+**Corrected 2026-08-16, during the §1 review.** This line previously read *"`ATOM_EVOLUTION`
+(own repository, still empty)"* — false, verified directly against the repository: 28 real
+commits (`A-0001`-`A-0027`), a working `atomd` daemon implementing all 11 `ReasoningProvider`
+surfaces, self-declared in its own README as `ATOM_PROVIDER_CONTRACT=SATISFIED` but
+`ATOM_SELECTED_BY_ANY_ENGINE=false` (the daemon answers; nothing in this repository calls it
+yet) — a precise, honest gap, not an empty shell. The in-tree Node reference implementation
+(`services/reference-control-plane/src/reasoning.mjs`, `reasoning-router.mjs`) is what the
+product actually ships with today (`FOSS_CORE_DEPENDS_ON_ATOM=false`), and is what §1's
+`reasoning` row above is tested against. Full detail already covered by
+`docs/ADVANCEMENT_RESEARCH_2026-08-16.md` Part 1 and `FUNDING/18_ORIGINAL_IMPROVEMENT_PROPOSALS.md`
+— not repeated here to avoid two lists claiming the same fact, the exact duplication class
+`CLAUDE10.md` §14 already warns about.
 
 ---
 
-**Totals: 60 API groups + 17 slash commands + 20 Rust crates + 6 capability directories = 103
-named items, + 45 internal tools counted but not itemized. 0 of 103 checked in depth.**
+**Totals: 59 distinct API route groups (§1 corrected the `projects` v1/v2 double-count) + 17
+slash commands + 20 Rust crates + 6 capability directories = 102 named items, + 45 internal
+tools counted but not itemized. §1 (59/102) checked in depth, 2026-08-16. §2-4 remain at 0.**

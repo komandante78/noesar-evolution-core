@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0493: closed D-0481's 3rd-named e2e gap (password-change/passkeys) -- tools/browser-e2e.mjs now drives #securityPasswordForm end to end, round-tripped. Driving it found a REAL BUG: app.js read event.currentTarget after an await in 3 form handlers (#securityPasswordForm, #passkeyAddForm, #passkeyRemoveForm) -- DOM nulls currentTarget after sync dispatch ends, so .reset() threw and masked a successful password change as an error toast. Fixed all 3 (capture form synchronously before the await). Full disposable-probe run: 491 PASS / 1 FAIL of 492, all 3 new checks PASS, the 1 FAIL is pre-existing F-I18N-002. Fix is e2e-proven on the probe, NOT yet deployed to the live installation.",
-  "phase_status": "D-0493_applied__password_change_e2e_gap_closed__real_bug_fixed__not_yet_deployed",
-  "next_phase": "Owner decides: deploy the app.js fix to the live installation, or apply the same e2e-driving template to another of the 7 remaining backend-proven-not-e2e-driven occurrences (research, theme/accent, log-search/debug-mode, updates, skills, modules, remote-targets), or start docs/TOOLS_MODULES_INDEX_2026-08-16.md, or act on another named open item.",
+  "current_phase": "D-0494: deep review of docs/TOOLS_MODULES_INDEX_2026-08-16.md sec1 (60 backend API route groups, built this morning D-0473, never reviewed until now). All 60 rows checked: routes confirmed real in server.mjs, test coverage matched against the 166-file test/ dir by content not filename. 2 defects found and corrected in the document: projects (v1)/(v2) were the same implementation double-counted (real total 59 groups, not 60); section 6 falsely claimed ATOM_EVOLUTION is still empty (it has 28 real commits and a working atomd daemon). 7 groups have real routes but no dedicated backend test by name -- recorded, not fixed (new scope). Documentation-only, no product code touched.",
+  "phase_status": "D-0494_applied__tools_modules_index_sec1_reviewed__59_of_59_groups__2_defects_corrected",
+  "next_phase": "Owner decides: continue TOOLS_MODULES_INDEX sec2 (17 slash commands)/sec3 (20 Rust crates)/sec4 (6 capabilities dirs), or deploy the D-0493 app.js fix to the live installation, or apply the e2e-driving template to another of the 7 remaining page-level backend-proven-not-e2e-driven gaps, or act on another named open item.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0481's 3rd-named gap is closed (D-0493): password-change form driven end to end, and a real app.js bug (event.currentTarget read after await, masking password-change success as an error) fixed in 3 handlers. E2e-proven on the disposable probe (491 PASS/1 FAIL of 492) but NOT YET DEPLOYED to the live installation. Owner to choose next: (a) authorize deployment of the app.js fix, (b) apply the same e2e template to another of the 7 remaining named gaps, (c) start docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items), (d) act on another named open item (F-SLASH-001, F-MODEL-001, documentation copy fix D-0489, file-extractors.mjs packaging D-0476, cargo publish). No code changes or deployment without explicit Owner authorization for whichever is chosen.",
+  "next_action": "TOOLS_MODULES_INDEX sec1 (60 API route groups, built this morning D-0473) now reviewed in depth (D-0494): all rows checked, 2 real defects found and corrected in the document (projects v1/v2 double-count -> 59 real groups; ATOM_EVOLUTION falsely described as empty -> corrected, it has 28 commits and a working atomd daemon). 7 groups flagged with no dedicated backend test (recorded, not fixed). sec2-4 (43 items: slash commands, Rust crates, capabilities dirs) remain unreviewed. Owner to choose next: (a) continue the TOOLS_MODULES_INDEX review, (b) deploy the D-0493 app.js fix, (c) apply the e2e template to another of the 7 remaining page-level gaps, (d) act on another named open item (F-SLASH-001, F-MODEL-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling). No code changes or deployment without explicit Owner authorization for whichever is chosen.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1531,7 +1531,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-08-16T15:10:00Z",
+  "last_updated": "2026-08-16T18:10:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",

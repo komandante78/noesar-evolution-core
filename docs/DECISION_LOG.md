@@ -11497,3 +11497,27 @@ and one rollback container remain.
 **Reversal cost.** Low — `apps/webui-static/app.js` behavioural fix (3 handlers), test-only
 otherwise. No migration, no data touched.
 **Status.** applied.
+
+## D-0494 · TOOLS_MODULES_INDEX §1 deep review — 59 API groups checked, 2 defects found — 2026-08-16
+**Decision.** Reviewed all 60 rows of `docs/TOOLS_MODULES_INDEX_2026-08-16.md` §1 (backend API
+route groups, `D-0473`'s list from this morning). Each group's real route(s) confirmed present
+in `server.mjs` (not a stub) and matched against actual test coverage in the 166-file `test/`
+directory by content, not filename-prefix guessing. `Checked` flipped to `SI` for all 60 rows.
+**Why.** Same review discipline `D-0474`-`D-0491` applied to the pages inventory, now applied to
+the other list built the same morning (`D-0473`) — the Owner's own question surfaced that it had
+been built but never reviewed.
+**Rejected.** Writing new test files for the 7 groups found with real routes but no dedicated
+backend test (`artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`,
+`sources`) — rejected as scope creep (`noesar-evolution-budget` §5): a documentation review that
+starts writing tests for what it finds under-tested stops being a review. Recorded instead.
+**Evidence.** Two real defects found and corrected in the document itself (not the product):
+(1) `projects` (v1)/(v2) were counted as two API groups — `server.mjs:3645-3653` has exactly one
+implementation; struck through non-destructively, real total corrected 60→59 groups (103→102
+named items). (2) §6 of the same file claimed `ATOM_EVOLUTION` is "still empty" — false,
+verified directly: 28 real commits (`A-0001`-`A-0027`), a working `atomd` daemon satisfying all
+11 `ReasoningProvider` surfaces, `ATOM_SELECTED_BY_ANY_ENGINE=false` self-declared as the honest
+remaining gap. `node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Documentation-only change;
+`git status` shows only the one file touched.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. §1 (59/59 distinct groups) complete. §2 (17 slash commands), §3 (20 Rust
+crates), §4 (6 `capabilities/` dirs) remain at `Checked: NO` — next slice of this same review.
