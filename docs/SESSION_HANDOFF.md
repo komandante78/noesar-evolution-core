@@ -1,37 +1,34 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0482`: deep review, §2 settings sections 10-12)
+# SESSION HANDOFF — 2026-08-16 (`D-0483`: deep review, §2 settings sections 13-14)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0482`), settings sections 10-12:
+this session.** Continued the review cadence (`D-0473`→`D-0483`), settings sections 13-14:
 
-- **`#/settings/storage`** — real; `postgres-supervisor.mjs` backup computes a SHA-256 sidecar,
-  restore verifies it and throws on mismatch, read directly in the code. No unit test exists,
-  correctly so — both operations need a live PostgreSQL, T2/T3 territory, not a read-only-review
-  finding.
-- **`#/settings/audit`** — real; genuinely aggregates 4 subsystems (workflow/agent/update/
-  memory) by reading their live state, not duplicating it — no second source of truth. Heavily
-  e2e-covered including a race-proofed check.
-- **`#/settings/health`** — real; watchdog, safe mode, log search, time-boxed debug mode.
-  Watchdog status is e2e-covered; log search and debug-mode toggle are not.
+- **`#/settings/updates`** — real; check/channel/approve/apply/rollback all wired, and the page
+  is honest that no update channel key is pinned so nothing can currently be applied — stated,
+  not hidden. 2 backend suites.
+- **`#/settings/skills`** — real; zero-skills-at-rest, search-only catalogue, cost stated in
+  bytes before adoption. 3 backend suites, including the adoption flow, not just the read.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0482`, `docs/DECISION_LOG.md` `D-0482`.
-`Checked` is now `SI` for 26 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0483`, `docs/DECISION_LOG.md` `D-0483`.
+`Checked` is now `SI` for 28 of 55 pages.
 
-**Pattern now at 4 occurrences**: `#/research`'s form (`D-0478`), theme/accent picker
-(`D-0479`), password-change/passkeys (`D-0481`), log-search/debug-mode (`D-0482`) — all
-backend-proven, none e2e-driven. Reads as a property of how the e2e suite grew (page-by-page,
-unevenly deepened), not four unrelated gaps.
+**Pattern now at 6 occurrences**: `#/research` (`D-0478`), theme/accent (`D-0479`),
+password-change/passkeys (`D-0481`), log-search/debug-mode (`D-0482`), updates, skills
+(`D-0483`) — all backend-proven, none e2e-driven. At 6 sightings across 8 sections reviewed,
+this reads as a property of how the e2e suite grew (page-by-page, never retrofitted), not 6
+isolated gaps.
 
-**Next phase**: settings sections 13-14 — `updates`, `skills`. Same method: what works /
-what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
-broken. No code changes without Owner authorization.
+**Next phase**: the last 2 settings sections — `modules`, `remote-targets` — completing §2
+(16/16). Same method: what works / what's missing / what to change, cite file:line, `HUNT AND
+FIX` anything in-scope found stale or broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
 - **`F-SLASH-001`**, **`F-MODEL-001`**, **`cargo publish`**, **Fase D (WP4)**, the hover/title
   fix, one of the 3 `D-0472` research directions, the `file-extractors.mjs` packaging proposal
-  (`D-0476`), the 4-occurrence e2e-coverage pattern, and the orphaned
+  (`D-0476`), the 6-occurrence e2e-coverage pattern, and the orphaned
   `page-help.js['settings/hardware']` key — all scoped, none started.
 
 ## Blockers e finding aperti
@@ -55,29 +52,26 @@ All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 
 ## Verificato IN QUESTA SESSIONE
 
-Read-only review phase — direct source reading (`app.js`, `index.html`, `postgres-supervisor.mjs`,
-`approval-queue.mjs`) cross-checked against existing e2e/unit coverage cited in
-`docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full this session, cited as
-already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No suite run, no deploy,
-no container touched.
+Read-only review phase — direct source reading (`app.js`, `index.html`) cross-checked against
+existing e2e/unit coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full
+this session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No
+suite run, no deploy, no container touched.
 
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **29 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **Backup/restore live verification** — read the code, did not run it; needs a live PostgreSQL,
-  correctly deferred to a T2/T3 phase rather than forced into this read-only review.
-- **The 4-occurrence e2e-coverage pattern** — named, not built into a check.
+- **27 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **The 6-occurrence e2e-coverage pattern** — named, not built into a check.
 - **All previously named open items** — unchanged, none executed.
 - **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0482`)**: the e2e-coverage pattern is now at 4 independent occurrences across
-2 different top-level sections and 3 different settings sections — strong enough to stop
-treating it as noise. Benefit: once §2 finishes, a single review of all named occurrences could
-decide whether they share a fixable root cause (e.g., the e2e suite's own page-coverage order
-never caught up with later features) rather than writing N bespoke checks. Cost: none this phase
-— still an observation, to act on with the full list once §2 (settings) completes.
+**Questo giro (`D-0483`)**: with the pattern at 6 occurrences, the shape is clear enough to name
+a concrete next step (not built without Owner authorization): a shared e2e helper — "open
+section X, click primary action, assert outcome panel/toast changed" — could close most of the 6
+in one small, reusable addition rather than 6 bespoke checks. Benefit: closes a real, repeatedly
+observed coverage gap with proportionate effort. Cost: low-medium — one helper plus 6 short call
+sites, once §2 is fully reviewed and the list is confirmed complete.
 
-**Precedenti (`D-0481`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0482`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

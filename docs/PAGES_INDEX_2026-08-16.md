@@ -50,8 +50,8 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 10 | `#/settings/storage` | Export, backup, retention — checksummed, restore refuses a mismatch. `[PAGE_HELP]` | SI |
 | 11 | `#/settings/audit` | One queue for everything awaiting a human decision, any subsystem. `[PAGE_HELP]` | SI |
 | 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | SI |
-| 13 | `#/settings/updates` | Staged/approved/applied updates with rollback; nothing self-installs. `[PAGE_HELP]` | NO |
-| 14 | `#/settings/skills` | Skill catalogue — payload is instructions, cost is context, nothing preloaded. `[PAGE_HELP]` | NO |
+| 13 | `#/settings/updates` | Staged/approved/applied updates with rollback; nothing self-installs. `[PAGE_HELP]` | SI |
+| 14 | `#/settings/skills` | Skill catalogue — payload is instructions, cost is context, nothing preloaded. `[PAGE_HELP]` | SI |
 | 15 | `#/settings/modules` | Owner modules — signed, one-click install, open in a new tab, never embedded. `[PAGE_HELP]` | NO |
 | 16 | `#/settings/remote-targets` | Scan a remote codebase over SSH; the analysing module never sees the credential. `[PAGE_HELP]` | NO |
 
@@ -461,5 +461,37 @@ page-by-page, deepened unevenly) rather than four unrelated gaps.
 
 ---
 
+### `D-0483` (2026-08-16) — §2 settings sections 13-14: `updates`, `skills`
+
+**`#/settings/updates`** (`index.html:1150-1157`, `app.js:2410-2452`).
+*Works, VERIFIED*: check/channel-change/approve/apply/rollback all real (`/api/v1/updates/*`);
+the page is honest about its own current limit — "no update channel key is pinned on this
+installation, so nothing can currently be applied. This is stated rather than hidden" — matching
+`CLAUDE10.md` rule 38 in spirit (no false PASS, here applied to the product's own copy). Backend
+suites `update-manager.test.mjs`, `updates-channel-key-http.test.mjs`.
+*Missing*: no e2e click-path found for any of the five buttons.
+*To change*: not built this pass.
+
+**`#/settings/skills`** (`index.html:1158-1161`, `app.js:5855-5873`).
+*Works, VERIFIED*: search-only catalogue, zero skills loaded at rest, cost stated in bytes
+before adoption — matches `noesar-evolution-context`'s own economy principle applied to the
+product's skill system, not just to this session's own tooling. Backend suites
+`skill-catalog.test.mjs`, `author-skill-composition.test.mjs`,
+`plan-composes-adopted-skills.test.mjs` (adoption flow, not just the catalogue read).
+*Missing*: no e2e click-path found for the catalogue search/adoption gesture.
+*To change*: not built this pass.
+
+**§2 pattern update: 6 occurrences now**, all in this session's own review —
+`#/research` (`D-0478`), theme/accent (`D-0479`), password-change/passkeys (`D-0481`),
+log-search/debug-mode (`D-0482`), updates, skills (`D-0483`). At 6 independent sightings across
+8 sections reviewed, this is no longer a coincidence worth naming per-section — it is a
+property of the e2e suite itself: interaction coverage was built page-by-page as each feature
+shipped, and settings sections added after the suite's last major coverage pass never got their
+own click-path, even though their backends are consistently well-tested.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 26 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 28 of 55 checked in depth.**

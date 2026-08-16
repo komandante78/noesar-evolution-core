@@ -11276,3 +11276,20 @@ their live state, not duplicating it; e2e race-condition-proofed
 e2e-driven" pattern found (log-search/debug-mode toggle), joining `D-0478`/`D-0479`/`D-0481` —
 now reads as a property of how the e2e suite grew rather than four isolated gaps. Next: settings
 sections 13-14 (`updates`, `skills`).
+
+## D-0483 · Deep review, §2 settings sections 13-14 (`updates`, `skills`) — 2026-08-16
+**Decision.** Reviewed settings sections 13-14; findings appended in-file (§8), `Checked`
+flipped to `SI`. Both confirmed real and backend-tested; both add to the e2e-coverage-gap
+pattern, now at 6 occurrences.
+**Why.** Continuation of the `D-0473`-`D-0482` review cadence at the Owner's "PROCEDI".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `updates`: 5 buttons wired to `/api/v1/updates/*`, backend suites
+`update-manager.test.mjs`, `updates-channel-key-http.test.mjs`. `skills`: zero-at-rest catalogue
+confirmed, backend suites `skill-catalog.test.mjs`, `author-skill-composition.test.mjs`,
+`plan-composes-adopted-skills.test.mjs`. No e2e click-path found for either beyond
+destination-reachability/nav-visibility lists.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 28 of 55 pages checked. Pattern now at 6 occurrences across 8 sections
+reviewed — read as a property of the e2e suite's growth (coverage added page-by-page, never
+retrofitted to later sections), not 6 isolated gaps. Next: the last 2 settings sections
+(`modules`, `remote-targets`), completing §2.
