@@ -2241,6 +2241,60 @@ try {
     document.querySelector('#authGate')?.classList.contains('hidden') === true);
   check('the rejection check did not disturb the browser session', stillSignedIn);
 
+  at('password-change');
+  // --- D-0481: #/settings/security's password-change form driven end to end ---------------
+  // 3rd of the review's "backend proven, not e2e-driven" occurrences (after #/research,
+  // D-0478, and the theme/accent picker, D-0479): `auth.changePassword` is unit-tested, but
+  // nothing had proven `#securityPasswordForm`'s submit button actually reaches it.
+  //
+  // Round-tripped deliberately — change to a temporary password, prove the old one is
+  // refused, then change back to `PASSWORD` — because this is the SAME browser session the
+  // rest of this suite reuses (the restricted-role re-login and the invitation flow further
+  // down both sign in again with the `PASSWORD` constant). An unreverted rotation here would
+  // not be a clean test, it would be a real credential change bleeding into every later step.
+  resetObservations();
+  const tempPassword = 'e2e throwaway passphrase, temporarily rotated for the change-password check';
+  const changeCode1 = await nextRealStepCode(newSecret);
+  await page.type('#secCurrentPassword', PASSWORD);
+  await page.type('#secTotpCode', changeCode1);
+  await page.type('#secNewPassword', tempPassword);
+  await clickOrExplain(page, '#securityPasswordForm button.primary');
+  await page.waitForFunction(
+    () => /Password changed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const passwordChanged = await page.evaluate(() => ({
+    message: document.querySelector('#statusMessage')?.textContent ?? '',
+    isError: document.querySelector('#statusMessage')?.classList.contains('error') ?? false,
+  }));
+  check('Change password reaches the real endpoint and rotates the credential, not a decorative form',
+    requestWasMade('/api/v1/auth/password') && /Password changed/i.test(passwordChanged.message) && !passwordChanged.isError,
+    JSON.stringify(passwordChanged));
+
+  // The rotation is real, not cosmetic: the superseded password must now be refused, checked
+  // from Node (not the page) for the same isolation reason the MFA-replacement flow above
+  // uses — a browser-side fetch would carry the live session cookie regardless of password.
+  const oldPasswordRefused = await fetch(`${BASE}/api/v1/auth/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
+  });
+  check('the superseded password no longer authenticates',
+    oldPasswordRefused.status >= 400, `status ${oldPasswordRefused.status}`);
+
+  // Change back to `PASSWORD` — this session must leave the account exactly as it found it.
+  const changeCode2 = await nextRealStepCode(newSecret);
+  await page.type('#secCurrentPassword', tempPassword);
+  await page.type('#secTotpCode', changeCode2);
+  await page.type('#secNewPassword', PASSWORD);
+  await clickOrExplain(page, '#securityPasswordForm button.primary');
+  await page.waitForFunction(
+    () => /Password changed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const restoredPassword = await page.evaluate(() => document.querySelector('#statusMessage')?.textContent ?? '');
+  check('the password is restored to the constant this suite relies on for every later login',
+    /Password changed/i.test(restoredPassword), restoredPassword);
+
   at('settings');
   // --- settings actually persists ------------------------------------------
   resetObservations();

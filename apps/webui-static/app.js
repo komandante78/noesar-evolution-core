@@ -2106,14 +2106,14 @@ function showRecoveryCodes(node,codes,heading){
 }
 $('#securityPasswordForm').addEventListener('submit',(event)=>{
   event.preventDefault();
-  const submit=event.currentTarget.querySelector('button');
+  const form=event.currentTarget;const submit=form.querySelector('button');
   return withBusy(submit,async()=>{
     try{
       const result=await api('/api/v1/auth/password',{method:'POST',body:JSON.stringify({
         currentPassword:$('#secCurrentPassword').value,totpCode:$('#secTotpCode').value,
         newPassword:$('#secNewPassword').value,revokeOtherSessions:$('#secRevokeOthers').checked,
       })});
-      event.currentTarget.reset();$('#secRevokeOthers').checked=true;
+      form.reset();$('#secRevokeOthers').checked=true;
       toast(`Password changed. ${result.revokedSessions??0} other session(s) signed out.`,{kind:'success'});
       await loadSecurity();
     }catch(error){reportError(error,'Change password');}
@@ -2205,7 +2205,7 @@ $('#revokeOthers').addEventListener('click',(event)=>withBusy(event.currentTarge
 }));
 $('#passkeyAddForm').addEventListener('submit',(event)=>{
   event.preventDefault();
-  const submit=event.currentTarget.querySelector('button');
+  const form=event.currentTarget;const submit=form.querySelector('button');
   return withBusy(submit,async()=>{
     try{
       const options=await api('/api/v1/auth/passkeys/register',{method:'POST',body:JSON.stringify({
@@ -2228,7 +2228,7 @@ $('#passkeyAddForm').addEventListener('submit',(event)=>{
         attestationObject:bytesToBase64url(credential.response.attestationObject),
         name:$('#passkeyName').value,
       })});
-      event.currentTarget.reset();
+      form.reset();
       toast(`Passkey "${result.passkey.name}" added.`,{kind:'success'});
       await loadSecurity();
     }catch(error){reportError(error,'Add passkey');}
@@ -2236,15 +2236,15 @@ $('#passkeyAddForm').addEventListener('submit',(event)=>{
 });
 $('#passkeyRemoveForm').addEventListener('submit',(event)=>{
   event.preventDefault();
-  const submit=event.currentTarget.querySelector('button');
+  const form=event.currentTarget;const submit=form.querySelector('button');
   return withBusy(submit,async()=>{
     if(!passkeyRemoveId)return toast('Choose a passkey to remove first.',{kind:'error'});
     try{
       await api('/api/v1/auth/passkeys/remove',{method:'POST',body:JSON.stringify({
         password:$('#passkeyRemovePassword').value,totpCode:$('#passkeyRemoveTotp').value,credentialId:passkeyRemoveId,
       })});
-      event.currentTarget.reset();
-      event.currentTarget.classList.add('hidden');
+      form.reset();
+      form.classList.add('hidden');
       passkeyRemoveId=null;
       toast('Passkey removed.',{kind:'success'});
       await loadSecurity();

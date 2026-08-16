@@ -11464,3 +11464,36 @@ via `docker ps -a`/`images` after the run — only the running installation and 
 container remain, no e2e-tagged survivor.
 **Reversal cost.** None — test-only change, no product code touched.
 **Status.** applied.
+
+## D-0493 · Password-change gesture wired to a real, previously-masked crash — 2026-08-16
+**Decision.** Closed D-0481's 3rd-named gap (password-change/passkeys, backend proven, not
+e2e-driven): `tools/browser-e2e.mjs` now drives `#securityPasswordForm` end to end, round-tripped
+(change → prove the old password refused → change back) since the suite reuses this session for
+every later login. Driving it found a real bug: `app.js`'s handler read `event.currentTarget`
+AFTER an `await` — the DOM nulls `currentTarget` once synchronous dispatch ends, so `.reset()`
+threw, and the `catch` displayed the thrown `TypeError` as an error toast even though
+`POST /api/v1/auth/password` had already returned 200. A real success was shown to the Owner as
+a failure. The same broken pattern was in `#passkeyAddForm` and `#passkeyRemoveForm` too (found
+by grep, not independently e2e-proven — passkeys need a WebAuthn virtual authenticator, out of
+this suite's current scope). All three fixed: capture `const form=event.currentTarget` once,
+synchronously, before the `await`, same safe pattern the file already used elsewhere.
+**Why.** HUNT AND FIX requires repairing what a phase's own diff reaches, not just logging it;
+the defect is in `app.js`, which the new test directly drives, understood down to the DOM
+mechanism, and provable by the very test that found it.
+**Rejected.** Leaving the bug and only noting it — rejected: it is in scope, fully understood,
+and a fix + regression test were both cheap. Fixing only the one instance the test hit — rejected
+per "fix the rule, not the instance" (`CLAUDE10.md` §40a): the other two occurrences are the
+identical mechanism and would fail identically the moment anything drives them.
+**Evidence.** First run (before the fix) FAILED exactly as predicted:
+`FAIL harness completed without throwing [step: password-change] — ... "Cannot read properties
+of null (reading 'reset')"`. After the fix, full disposable-probe re-run: **491 PASS / 1 FAIL**.
+All 3 new checks PASS, including the message text itself: `"Password changed. 0 other session(s)
+signed out."` — proving the toast now reports the truth. The one FAIL is the pre-existing,
+already-tracked `F-I18N-002` (644/908, baseline 607 — same finding, corpus size drifted from the
+extra UI surfaces this run visited). `F-SLASH-001`'s flaky check did not fire this run (known
+non-deterministic timing race, root cause already on record, `D-0463`). Containers/images cleaned
+by the script's own trap; confirmed via `docker ps -a`/`images` — only the running installation
+and one rollback container remain.
+**Reversal cost.** Low — `apps/webui-static/app.js` behavioural fix (3 handlers), test-only
+otherwise. No migration, no data touched.
+**Status.** applied.
