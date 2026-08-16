@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0473: two inventory lists built, no code touched. docs/PAGES_INDEX_2026-08-16.md (55 WebUI/CodeN Evolution addresses: 14 top-level routes, 16 settings sections, 20 bench panels, 5 agent panels, +11 legacy redirects noted separately) and docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items: 60 API route groups, 17 slash commands, 20 Rust crates, 6 capabilities/ dirs, +45 tools/ scripts counted not itemized). Every row Checked:NO by design -- inventory only, per Owner instruction not to scan deeply yet. Page list built from tools/measure-page-liveness.mjs (generated, proven to catch drift, D-0300) not hand-derived. D-0472 research doc unaffected. D-0469 deploy still live.",
-  "phase_status": "D-0473_applied__inventory_lists_only__deep_review_not_started",
+  "current_phase": "D-0474: deep review of docs/PAGES_INDEX_2026-08-16.md items 1-3 (#/home, #/chat, #/coden). All three confirmed real (no placeholder/mock), backed by live API calls and e2e coverage in tools/browser-e2e.mjs. One pre-existing declared gap each: #/home Intent Frame (already disclosed in-product, page-help.js), #/coden F-SLASH-001 (already tracked, D-0463, needs Owner design pick). #/chat: no new finding. Checked flipped to SI for those 3 rows only, findings appended in PAGES_INDEX_2026-08-16.md section 8. No code changed.",
+  "phase_status": "D-0474_applied__3_of_55_pages_reviewed",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "817e943",
-  "last_updated_utc": "2026-08-16T02:45:00Z",
+  "last_updated_utc": "2026-08-16T07:20:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Deep review of docs/PAGES_INDEX_2026-08-16.md and docs/TOOLS_MODULES_INDEX_2026-08-16.md, 3 items per phase, in list order. Each phase: what works, what is missing, what to change. Checked flips to SI only for items actually reviewed that phase. No code changes without Owner authorization or a HUNT AND FIX requirement.",
+  "next_action": "Continue the deep review: items 4-6 of docs/PAGES_INDEX_2026-08-16.md (#/tools, #/coden-tui, #/projects), same pace, 3 items per phase, in list order. Checked flips to SI only for items reviewed that phase. No code changes without Owner authorization or a HUNT AND FIX requirement.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

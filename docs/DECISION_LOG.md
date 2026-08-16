@@ -11130,3 +11130,18 @@ lines, `git status` shows only the two new files, no existing doc touched.
 **Reversal cost.** None — two new documentation files, no code, no existing doc modified.
 **Status.** applied. Zero of the 158 total listed items have had their deep, one-at-a-time
 review yet — that is the explicitly next, not-yet-authorized phase.
+
+## D-0474 · Deep review, items 1-3 of 158 (`#/home`, `#/chat`, `#/coden`) — 2026-08-16
+**Decision.** Reviewed the first 3 rows of `docs/PAGES_INDEX_2026-08-16.md` in depth, per the
+Owner-agreed pace of 3/phase; findings appended in-file (§8), `Checked` flipped to `SI` for
+those 3 rows only.
+**Why.** Agreed plan from `D-0473`'s close: work through both inventories one small batch at a
+time instead of a bulk re-audit.
+**Rejected.** N/A — read-only review phase, no alternative approach considered.
+**Evidence.** Read `app.js`/`index.html` wiring for all three pages plus their e2e coverage in
+`tools/browser-e2e.mjs`; all three confirmed real (no placeholder/mock), one pre-existing
+declared gap each: `#/home` Intent Frame (already disclosed in-product), `#/coden` `F-SLASH-001`
+(already tracked, `D-0463`). `#/chat` no new finding.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 3 of 55 pages checked. Next: items 4-6 (`#/tools`, `#/coden-tui`,
+`#/projects`).

@@ -1,115 +1,84 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0473`: two inventory lists built, no code touched)
+# SESSION HANDOFF — 2026-08-16 (`D-0474`: deep review, items 1-3 of 158)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session: `D-0470`
-(`CLAUDE10.md` §19, native-tooling scope) → `D-0471` (tooling-drift checker, `state-digest.sh`)
-→ `D-0472` (`docs/ADVANCEMENT_RESEARCH_2026-08-16.md`, research + checklist) → **`D-0473`: two
-new inventory lists**, `docs/PAGES_INDEX_2026-08-16.md` (55 WebUI/CodeN addresses) and
-`docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 tools/modules/API groups) — every row `Checked:
-NO` on purpose, built to be worked through **one row at a time** in a future phase. Not a deep
-review — an inventory, per the Owner's explicit instruction not to scan deeply yet.
+**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no code changed this
+session.** This session reviewed the first 3 rows of `docs/PAGES_INDEX_2026-08-16.md`, per the
+Owner-agreed plan from `D-0473`'s close (3 items/phase, in list order, top-level pages first):
 
-`D-0472`'s summary, unchanged:
+- **`#/home`** (`app.js:973-977`, `index.html:198-236`) — real, working: `renderHome()` reads
+  live state, entry/goal actions render from a payload (not hardcoded), e2e-covered. Declared
+  gap (not hidden): the "Intent Frame" (goal → Plan) does not exist yet — the product says so
+  itself, in `page-help.js` and inline in `index.html:218`.
+- **`#/chat`** (`app.js:979-1123`, `index.html:262-327`) — real, working: conversation/branch
+  CRUD, work panel, dictation/read-aloud all wired to real handlers, not placeholders. No new
+  finding.
+- **`#/coden`** (`app.js` terminal wiring, `index.html:330-450`) — real, working: shared WS
+  terminal session with the SSH TUI, slash-routing e2e-checked. Missing: `F-SLASH-001` (open,
+  root cause confirmed `D-0463`, blocked on an Owner design pick A/B) and 25 legacy bench/agent
+  panels still pending "slice 4" removal.
 
-- **Checklist**: confirms `F-SLASH-001`, `cargo publish`, and **Phase D (WP4, Capability Token
-  spec)** as the three live, ready options — "Fase D" from yesterday's handoff is now named:
-  `FUNDING/19_WORK_PLAN_TO_BETA.md`'s Phase D, unblocked, no dependency.
-- **UX audit** (new finding): of 143 static buttons in `index.html`, only 11 have
-  `title=`/`aria-label=`; no shared tooltip mechanism exists anywhere. ~130+ elements need one.
-  Fix is scoped and sized (Part 2 of the doc), **not built yet** — research phase only.
-- **Original research** (new): 3 directions beyond the 4 already in `FUNDING/18` — PQC
-  crypto-agility for the token/audit chain (strongest fit), an "Intelligence-per-Watt" local
-  routing signal (most original), quantum-inspired QUBO scheduling (recorded, not proposed).
-  Nanotechnology found to have no honest software application — said so, not forced.
-- **Declined, with the rule cited in-document**: a standing Unraid research container; literal
-  quantum/nanotech hardware R&D.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8, `docs/DECISION_LOG.md` `D-0474`.
+`Checked` flipped to `SI` for these 3 of 55 pages only — the other 52 pages and all 103
+tools/modules items are still `NO`, unreviewed.
 
-The real open items are unchanged, still the Owner's call:
+**Next phase**: items 4-6 of `docs/PAGES_INDEX_2026-08-16.md`, list order — `#/tools`,
+`#/coden-tui`, `#/projects`. Same shape: what works / what's missing / what to change, `Checked`
+flips to `SI` only for what was actually reviewed. No code changes unless the Owner authorizes a
+fix or `HUNT AND FIX` requires one. At 3/phase, ~50 phases remain to cover both inventories once.
 
-- **F-SLASH-001's actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
+The other open items are unchanged, still the Owner's call:
+
+- **`F-SLASH-001`'s actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
   when the terminal has claimed the surface. See `D-0463`.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
   terminale vero.
-- **Fase D (WP4)**, or the hover/title fix, or pushing one of the 3 research directions into a
-  real proposal — all three now scoped and ready, none started.
-- **New, from `D-0473`**: pick which of the 158 listed items (55 pages + 103 tools/modules) to
-  review first, in depth — none reviewed yet.
-
-**Agreed plan for the next session (Owner, 2026-08-16, this session's close):** start the deep,
-one-at-a-time review of `docs/PAGES_INDEX_2026-08-16.md` and
-`docs/TOOLS_MODULES_INDEX_2026-08-16.md`, **3 items reviewed in depth per phase**, in the order
-the lists are written (top-level pages first, dependency order — not random). Each phase ends
-with: what works, what's missing, what to change — same shape as this session's own research,
-scaled down to 3 items instead of one big sweep. `Checked` flips to `SI` only for an item a
-phase actually reviewed this way, never in bulk. No code changes inside a review phase unless
-the Owner authorizes fixing what's found (same rule as always: find first, fix on authorization
-or when `HUNT AND FIX` requires it). At ~3/phase across 158 items, expect roughly 50+ phases to
-cover both lists once — said plainly now so it isn't a surprise discovered halfway through.
+- **Fase D (WP4)**, or the hover/title fix, or pushing one of the 3 research directions from
+  `D-0472` into a real proposal — all three scoped and ready, none started.
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `F-CRASH-001` | **FIXED** — 8.3 GB / 3,553 leaked `/tmp` dirs removed. `D-0460`. |
-| `F-TMP-001` | **FIXED** — shared `freshTempDir()` helper, 58 files, 75,114 leaked dirs removed. `D-0464`. |
-| `F-TMP-002` | **FIXED** — 5 plain-script `tools/*.mjs` files sweep via `process.on('exit', ...)`. `D-0465`. |
-| `F-MODEL-002` | **FIXED, DEPLOYED, VERIFIED LIVE** — `/model` lists what is loadable. `D-0466`. |
-| `F-TERM-003` | **FIXED, DEPLOYED, VERIFIED LIVE** — the browser terminal's call results now truncate (`detailLines`), matching the other two shells. `D-0469`. |
-| `F-COMMAND-001` | **DEPLOYATO** — live e sano. |
-| `F-PANEL-001` | **FIXED** — direct hash jump, test-harness only. `D-0461`. |
-| `F-TERM-002` | **FIXED, DEPLOYED** — `SCREEN.clear` instead of `SCREEN.home`. `D-0462`. |
 | `F-SLASH-001` | **ROOT CAUSE CONFIRMED, not fixed** — needs a test-strategy choice. `D-0463`. |
 | ATOM licence | **APPLICATO** — aperto, AGPL, repository separato invariato (ancora vuoto). `D-0468`. |
 | Product access control | **DECISO** — registrazione, mai licenza a codice. `D-0467`/`D-0468`. |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
 | `D-0433` | **APERTO.** Stessa condizione già accettata. |
 | `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` da terminale vero. |
+| `F-I18N-002` | **OPEN**, not re-baselined — catalogue-closable gap rose 607→644. |
+| `F-MANIFEST-001` | **OPEN**, pre-existing, out of scope — `MANIFEST.sha256` 5898 vs 6568 tracked files. |
+| `F-MODEL-001` | **OPEN**, awaiting Owner choice — `#/models` provenance display. |
+| `F-ROT-001` | **OPEN** — `NOESAR_ALLOWED_HOSTS` still names the pre-rotation container IP. |
 
-## Verificato IN QUESTA SESSIONE (deploy finale)
+All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
+`docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0469).
 
-| Strumento | Risultato |
-|---|---|
-| `docker build` + byte-equal, 6 file cambiati | tutti MATCH, tree↔immagine, prima del deploy |
-| `tools/deploy/redeploy.sh --check` poi `--apply --authorized-by-owner --image ...` | PREFLIGHT PASS, DEPLOYED, 4 figli sani, 0 righe di auth-failure |
-| byte-equal live | tutti e 6 i file MATCH, tree↔container in esecuzione, dopo il deploy |
-| `/livez` `/readyz` (host, porta pubblicata) | 200, 200 |
-| `node --test` suite completa (finale) | 2560/2561, 1 skip preesistente |
-| `tools/run-eslint.sh` (finale) | 411 file, 0 errori |
-| `tools/run-browser-e2e.sh` (disposable, ×2 in questo giro) | run 1: trovato F-TERM-003 (476→477 fallimenti attesi diventano 478 totali, 3 fail). Run 2, dopo il fix: 476/478, solo i 2 già tracciati restano |
-| pulizia §5a | rollback più vecchio rimosso; esattamente 2 container del progetto sopravvivono |
+## Verificato IN QUESTA SESSIONE
 
-Cronologia completa dei numeri intermedi (58 file migrati, 75.114 directory rimosse, ecc.):
-`docs/DECISION_LOG.md`, non ripetuta qui.
+Read-only review phase — no suite run, no deploy, no container touched. Verification was direct
+source reading (`app.js`, `index.html`) cross-checked against existing e2e coverage
+(`tools/browser-e2e.mjs`, lines cited in `docs/PAGES_INDEX_2026-08-16.md` §8) — not re-executed
+this session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1.
 
 ## Cosa NON è stato fatto
 
-- **Nessun tool di rule 83 è stato usato** — `DesignSync`/`Artifact`/`claude-in-chrome` sono
-  solo stati portati a un'autorizzazione esplicita "a conferma per uso", non invocati.
-- **Nessuna skill dedicata scritta per §19** — dichiarato in `CLAUDE10.md`: nascerà se questo
-  toolset diventa pratica ricorrente, come le altre tre skill di economia.
-- **`shellcheck` non eseguito sui 2 nuovi script** — assente su questo host, dichiarato non
-  eseguito piuttosto che saltato in silenzio; `sh -n`/`bash -n`/`jq .` sono puliti.
-- **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e (non applicabile
-  a questa fase, solo documentazione toccata).
-- **F-SLASH-001's actual fix** — decisione di design non ancora presa, deliberatamente.
-- **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
-- **`ATOM_EVOLUTION`'s own `LICENSE` file** — settled (AGPL), not written; repository still
-  empty, no product work happened there this session (governance only, in this repository).
-- **`a3-security.mjs`'s live run** — verified by pattern only (needs a disposable server+mock).
+- **No test suite run** — nothing changed in `services/`, `apps/`, `rust/`; a doc-only phase per
+  the verify skill's change-to-tier map (T0 territory, and even T0 was judged unnecessary since
+  zero source files changed).
+- **52 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **`F-SLASH-001`'s actual fix** — design decision not taken, deliberately, still the Owner's.
+- **`cargo publish`** and the other `docs/LICENSE_STRATEGY.md` §5 questions — invariate.
+- **No HUNT AND FIX** — nothing found this pass rose to the level of an unrecorded defect; both
+  gaps found (`#/home` Intent Frame, `#/coden` `F-SLASH-001`) were already known and tracked.
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0471`, non eseguita)**: il checker confronta contro un baseline
-a 2 flag booleani (presenza file/chiave), non contro un elenco nominato di integrazioni. Se
-in futuro nascesse un secondo MCP server legittimo mentre il primo resta non dichiarato, il
-checker vedrebbe solo "presente" e non distinguerebbe. Beneficio: passare da booleano a un
-elenco di nomi dichiarati (stesso schema di `hme_canonical_enum`) darebbe drift per-nome, non
-solo per-categoria. Costo: basso, ma prematuro finché il conteggio reale resta zero.
+**Nuova, da questo giro (`D-0474`, non eseguita)**: `#/home`'s Intent-Frame gap is asserted in
+two independent places (`index.html:218` inline copy, `page-help.js:36`) with no single source.
+If Intent Frame ships, both need editing together or the two will silently disagree about
+whether the gap still exists. Benefit: a shared constant or a test asserting both strings change
+together would catch the drift the day it happens instead of leaving stale copy live. Cost: low
+— one small regression test, no runtime change.
 
-**Precedente (`D-0469`, non eseguita)**: `coden-terminal.js` had a defect (`F-TERM-003`) that
-no test caught because nothing in this suite asserts the terminal's generic `call` path stays
-bounded. A unit test asserting `detailLines()` is always the shape used (not just present, but
-that no other path bypasses it) would catch the next oversized command result. Costo: basso.
-
-**Precedenti (`D-0468`–`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0473`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

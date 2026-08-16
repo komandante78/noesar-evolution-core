@@ -19,9 +19,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 
 | # | Address | What it is | Checked |
 |---|---|---|---|
-| 1 | `#/home` | Starting point: projects, recent conversations, work queue, service health. `[PAGE_HELP]` | NO |
-| 2 | `#/chat` | The conversation with its context graph — per-project chats, branches, memory, files, tools. `[PAGE_HELP]` | NO |
-| 3 | `#/coden` | The workbench + session: one program, two shells (this + terminal), one live session. `[PAGE_HELP]` | NO |
+| 1 | `#/home` | Starting point: projects, recent conversations, work queue, service health. `[PAGE_HELP]` | SI |
+| 2 | `#/chat` | The conversation with its context graph — per-project chats, branches, memory, files, tools. `[PAGE_HELP]` | SI |
+| 3 | `#/coden` | The workbench + session: one program, two shells (this + terminal), one live session. `[PAGE_HELP]` | SI |
 | 4 | `#/tools` | Registered tools (HTTP/MCP/OpenAPI), disabled until consent is granted. `[PAGE_HELP]` | NO |
 | 5 | `#/coden-tui` | Static instructions for reaching the real terminal shell (`coden_evolution`). `[PAGE_HELP]` | NO |
 | 6 | `#/projects` | A project: one controlled scope — chats, instructions, files, memory, tools, agents. `[PAGE_HELP]` | NO |
@@ -128,7 +128,42 @@ page during the deep review.
 slash commands — listed in `docs/TOOLS_MODULES_INDEX_2026-08-16.md` §2, not duplicated here,
 since a command is a functionality, not a page/link.
 
+## 8. Deep review log — 3 items per phase, in list order
+
+### `D-0474` (2026-08-16) — items 1-3: `#/home`, `#/chat`, `#/coden`
+
+**`#/home`** (`app.js:973-977`, `index.html:198-236`).
+*Works, VERIFIED*: `renderHome()` reads real state (`/api/v1/ai/bootstrap`); entry/goal actions
+render from a payload, not hardcoded six/ten buttons (`UI-060`/`UI-061`); the review-time metric
+counts rejected changes rather than excluding them (`UI-070…072`, `app.js:4893-4900`); e2e covers
+entry+goal clicks (`tools/browser-e2e.mjs:2266,3041-3088`).
+*Missing, declared not hidden*: the "Intent Frame" (goal → Plan) does not exist — stated in the
+page itself (`index.html:218`, `page-help.js:36`), not a silent gap.
+*To change*: none urgent. Risk noted: the gap is asserted in two places (inline HTML comment +
+`page-help.js`) — if Intent Frame ships, both need updating together or they drift.
+
+**`#/chat`** (`app.js:979-1123`, `index.html:262-327`).
+*Works, VERIFIED*: new/fork/compare/merge conversation and branch, all real API calls; work panel
+(sources/plan/context) live-populated (`renderChatPlan` `app.js:1050`); dictation/read-aloud wired
+to real handlers (`app.js:3172,3916-4022`), not placeholders; e2e covers the work-panel plan
+attach gesture (`tools/browser-e2e.mjs:2449-2483`).
+*Missing*: none found this pass beyond what's already tracked project-wide (I18N gap).
+*To change*: none — no defect found; not itself re-audited for accessibility/i18n depth (out of
+this pass's 3-item scope).
+
+**`#/coden`** (`app.js` terminal wiring, `index.html:330-450`).
+*Works, VERIFIED*: real WS terminal (`/ws/coden`) sharing one session with the SSH TUI, same
+renderer (`apps/shared/coden/tui-screen.mjs`); slash-command routing e2e-checked
+(`tools/browser-e2e.mjs:3367-3493`, `POINT-2B`, mostly PASS); status chips read real sources and
+show `—` rather than guess when absent.
+*Missing*: `F-SLASH-001` (address-command routed through the terminal) — root cause confirmed
+`D-0463`, fix needs an Owner design pick (A: drive the terminal / B: declare-and-skip), still open;
+25 legacy bench/agent panels (this index's §4-5) remain pending "slice 4" removal — those rows are
+mostly not independently meaningful until that slice lands.
+*To change*: nothing built this pass (no authorization); confirms `F-SLASH-001`'s design choice
+is the one blocking item for this page's completeness.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 0 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 3 of 55 checked in depth.**
