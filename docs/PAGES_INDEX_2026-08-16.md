@@ -83,9 +83,9 @@ others load real data on open.
 | 7 | `#/coden/bench/logs` | Causal event trail of THIS run (not the product's own logs, which live in Settings). `[VERIFIED, D-0487]` | SI |
 | 8 | `#/coden/bench/history` | Up to 6 recent agent runs, each a button opening the owning destination. `[VERIFIED, D-0487]` | SI |
 | 9 | `#/coden/bench/tasks` | Up to 6 tasks, same pattern as history — honest about no per-item address yet. `[VERIFIED, D-0487]` | SI |
-| 10 | `#/coden/bench/map` | Repository map. `[NAME ONLY]` | NO |
-| 11 | `#/coden/bench/tools` | Tools available inside the bench. `[NAME ONLY]` | NO |
-| 12 | `#/coden/bench/plugins` | Plugins panel. `[NAME ONLY]` | NO |
+| 10 | `#/coden/bench/map` | Real repo scan + search, same engine the terminal `map`/`search` commands use. `[VERIFIED, D-0488]` | SI |
+| 11 | `#/coden/bench/tools` | Up to 6 registered tools, same honest nav-list pattern as history/tasks. `[VERIFIED, D-0488]` | SI |
+| 12 | `#/coden/bench/plugins` | Permanently empty by design: no plugin registry exists in this build. `[VERIFIED, D-0488]` | SI |
 | 13 | `#/coden/bench/agents` | Agents panel (bench-side view). `[NAME ONLY]` | NO |
 | 14 | `#/coden/bench/documentation` | Documentation panel. `[NAME ONLY]` | NO |
 | 15 | `#/coden/bench/closure` | Closure/final-report panel. `[NAME ONLY]` | NO |
@@ -648,5 +648,45 @@ redirect to `#/home`, §6 of this file).
 
 ---
 
+### `D-0488` (2026-08-16) — §3 bench panels 10-12: `map`, `tools`, `plugins`
+
+**`#/coden/bench/map`** (`index.html:466`, `app.js:4041-4086,5055-5056`).
+*Works, VERIFIED*: real repo scan/search via `POST /api/v1/repo-map/scan` and `/search` —
+**the same engine the terminal's own `map`/`search` commands call** (`app.js:5055-5056`),
+matching `#/coden`'s own claim of one shared session across both shells. e2e clicks the real
+button and asserts a real "Files scanned" result (`tools/browser-e2e.mjs:2868-2873`); backend
+suite `repo-map.test.mjs`.
+*Missing*: none found.
+*To change*: none.
+
+**`#/coden/bench/tools`** (`index.html:498`, `app.js:5158-5169`).
+*Works, VERIFIED*: same honest nav-list pattern as `history`/`tasks` (`D-0487`) — up to 6
+registered tools, click opens `#/coden` (the destination that owns tools), no per-item address
+implied or promised.
+*Missing*: same minor e2e-click note as `history`/`tasks`.
+*To change*: none.
+
+**`#/coden/bench/plugins`** (`index.html:513`).
+*Works, VERIFIED*: **permanently empty by design**, and confirmed still true, not stale — a
+repo-wide search finds no plugin registry anywhere in the source
+(`grep -rl plugin.registry services/ apps/` returns nothing). The panel's own copy says exactly
+this ("a plugin is a tool with a surface of its own, and this build has no registry to put one
+in") — matches `favourites`'s sibling honesty (item 17, not yet reviewed, same class per the
+`index.html:499-512` comment block read this session).
+*Missing*: nothing — the emptiness is the correct, intended state, same shape as `tests`
+(`D-0486`).
+*To change*: none — the `[NAME ONLY]` guess ("Plugins panel") was too thin to convey this was a
+declared architectural absence rather than an unbuilt feature; corrected to say so.
+
+**§3 progress note, 12 of 20 done**: 3 of 12 `[NAME ONLY]` guesses needed real correction
+(`terminal`, `tests`, `plugins`); the rest needed only precision. All three "declared-empty by
+design" panels found so far (`tests`, `plugins`, and `favourites` by the same comment block) are
+genuine security/architecture statements, not placeholders — a pattern distinct from, and
+healthier than, the e2e-coverage gap tracked separately.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 39 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 42 of 55 checked in depth.**

@@ -1,29 +1,29 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0487`: deep review, §3 bench panels 7-9)
+# SESSION HANDOFF — 2026-08-16 (`D-0488`: deep review, §3 bench panels 10-12)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued §3 (20 legacy CodeN Evolution bench panels), items 7-9:
+this session.** Continued §3 (20 legacy CodeN Evolution bench panels), items 10-12:
 
-- **`#/coden/bench/logs`** — real; the causal event trail of the **current run** (not the
-  product's own log stream, which is `Settings → Health and logs`, linked from here).
-  e2e-proven to show a real event after a run.
-- **`#/coden/bench/history`** — real; up to 6 recent agent runs, each a button. Honestly
-  declared in-code as destination-level navigation only, since no per-item address exists yet.
-- **`#/coden/bench/tasks`** — same pattern as `history`, real, honest.
+- **`#/coden/bench/map`** — real; shares the **exact same** `repo-map.mjs` engine the
+  terminal's own `map`/`search` commands call. e2e-proven with a real scan result.
+- **`#/coden/bench/tools`** — real; same honest nav-list pattern as `history`/`tasks`
+  (`D-0487`) — up to 6 registered tools, no per-item address implied.
+- **`#/coden/bench/plugins`** — **permanently empty by design**, re-verified not stale: a
+  repo-wide grep confirms no plugin registry exists anywhere in `services/`/`apps/`. Corrected
+  the `[NAME ONLY]` guess to say this is a declared architectural absence, not an unbuilt
+  feature.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0487`, `docs/DECISION_LOG.md` `D-0487`.
-`Checked` is now `SI` for 39 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0488`, `docs/DECISION_LOG.md` `D-0488`.
+`Checked` is now `SI` for 42 of 55 pages.
 
-**Note**: unlike `terminal`/`tests` (`D-0485`/`D-0486`), this batch's `[NAME ONLY]` guesses were
-directionally right — only refined, not corrected.
+**§3 progress**: 12 of 20 bench panels done. 3 needed real corrections (`terminal`, `tests`,
+`plugins`); all three "declared-empty by design" panels found are genuine architecture
+statements, not placeholders — a healthier pattern than the separately-tracked e2e-coverage gap.
 
-**Next phase**: bench panels 10-12 — `map`, `tools`, `plugins`. Same method: what works /
-what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
-broken. No code changes without Owner authorization. Note: `plugins` (index.html:513 comment,
-seen while reading this batch's context) is already known to be permanently empty by design —
-"a plugin is a tool with a surface of its own, and this build has no registry to put one in" —
-worth confirming, not assuming, when its turn comes.
+**Next phase**: bench panels 13-15 — `agents`, `documentation`, `closure`. Same method: what
+works / what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found
+stale or broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
@@ -54,22 +54,24 @@ All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 ## Verificato IN QUESTA SESSIONE
 
 Read-only review phase — direct source reading (`app.js`, `index.html`) cross-checked against
-existing e2e coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full this
-session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No
-suite run, no deploy, no container touched.
+existing e2e/backend coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in
+full this session, cited as already-proven evidence per `noesar-evolution-engineering-depth`
+§8.1. One repo-wide grep run live to re-verify `plugins`'s "no registry" claim. No suite run, no
+deploy, no container touched.
 
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **16 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **13 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
 - **The 8-occurrence e2e-coverage pattern (§1+§2)** — named, not built into a check.
 - **All previously named open items** — unchanged, none executed.
 - **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0487`)**: none new — all three panels were already correct, only the
-inventory's own descriptions needed refinement. Standing best proposals remain `D-0476`'s
-`file-extractors.mjs` packaging and `D-0483`'s shared e2e-helper idea.
+**Questo giro (`D-0488`)**: none new — this batch's finding was a review-quality correction
+(`plugins`'s description) plus confirmation that a real absence (no plugin registry) is still
+accurately declared. Standing best proposals remain `D-0476`'s `file-extractors.mjs` packaging
+and `D-0483`'s shared e2e-helper idea.
 
-**Precedenti (`D-0486`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0487`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

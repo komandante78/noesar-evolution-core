@@ -11362,3 +11362,20 @@ destination-level navigation, not per-item, per the code's own comment.
 main pattern): no e2e click-path for the bench-navigator's own buttons specifically, distinct
 from and lower-stakes than the 8 already-named occurrences. Next: bench panels 10-12 (`map`,
 `tools`, `plugins`).
+
+## D-0488 · Deep review, §3 bench panels 10-12 (`map`, `tools`, `plugins`) — 2026-08-16
+**Decision.** Reviewed bench panels 10-12; findings appended in-file (§8), `Checked` flipped to
+`SI`. `plugins`'s `[NAME ONLY]` description corrected to state it is a declared architectural
+absence (no plugin registry exists), not an unbuilt feature.
+**Why.** Continuation of the `D-0473`-`D-0487` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `map` confirmed to share the exact same `repo-map.mjs` engine the terminal's own
+`map`/`search` commands call (`app.js:5055-5056`), e2e-proven with a real scan result
+(`tools/browser-e2e.mjs:2868-2873`), backend suite `repo-map.test.mjs`. `plugins`'s "no registry"
+claim re-verified by a repo-wide grep finding zero plugin-registry code anywhere in
+`services/`/`apps/` — still true, not stale.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 42 of 55 pages checked. 3 of 12 bench panels reviewed so far needed real
+description corrections (`terminal`, `tests`, `plugins`); all three "declared-empty by design"
+panels found are genuine architecture statements, not placeholders. Next: bench panels 13-15
+(`agents`, `documentation`, `closure`).
