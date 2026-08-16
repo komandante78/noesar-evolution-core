@@ -22,12 +22,12 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 1 | `#/home` | Starting point: projects, recent conversations, work queue, service health. `[PAGE_HELP]` | SI |
 | 2 | `#/chat` | The conversation with its context graph — per-project chats, branches, memory, files, tools. `[PAGE_HELP]` | SI |
 | 3 | `#/coden` | The workbench + session: one program, two shells (this + terminal), one live session. `[PAGE_HELP]` | SI |
-| 4 | `#/tools` | Registered tools (HTTP/MCP/OpenAPI), disabled until consent is granted. `[PAGE_HELP]` | NO |
-| 5 | `#/coden-tui` | Static instructions for reaching the real terminal shell (`coden_evolution`). `[PAGE_HELP]` | NO |
-| 6 | `#/projects` | A project: one controlled scope — chats, instructions, files, memory, tools, agents. `[PAGE_HELP]` | NO |
-| 7 | `#/documents` | Artifacts: documents, code, tables, charts, canvas, app specs, versioned. `[PAGE_HELP]` | NO |
-| 8 | `#/knowledge` | Ingested sources, searched lexically + semantically, original passages kept. `[PAGE_HELP]` | NO |
-| 9 | `#/memory` | What the product has learned about your work, written at session end. `[PAGE_HELP]` | NO |
+| 4 | `#/tools` | Registered tools (HTTP/MCP/OpenAPI), disabled until consent is granted. `[PAGE_HELP]` | SI |
+| 5 | `#/coden-tui` | Static instructions for reaching the real terminal shell (`coden_evolution`). `[PAGE_HELP]` | SI |
+| 6 | `#/projects` | A project: one controlled scope — chats, instructions, files, memory, tools, agents. `[PAGE_HELP]` | SI |
+| 7 | `#/documents` | Artifacts: documents, code, tables, charts, canvas, app specs, versioned. `[PAGE_HELP]` | SI |
+| 8 | `#/knowledge` | Ingested sources, searched lexically + semantically, original passages kept. `[PAGE_HELP]` | SI |
+| 9 | `#/memory` | What the product has learned about your work, written at session end. `[PAGE_HELP]` | SI |
 | 10 | `#/agents` | Agents plan; a step that changes something waits for human approval with scope. `[PAGE_HELP]` | NO |
 | 11 | `#/workflows` | Declared step effects, retries, compensation, replay; effectful steps wait for a person. `[PAGE_HELP]` | NO |
 | 12 | `#/models` | Model catalogue — running/on-disk at top, publisher-declared elsewhere. `[PAGE_HELP]` | NO |
@@ -163,7 +163,73 @@ mostly not independently meaningful until that slice lands.
 *To change*: nothing built this pass (no authorization); confirms `F-SLASH-001`'s design choice
 is the one blocking item for this page's completeness.
 
+### `D-0476` (2026-08-16) — items 4-9: `#/tools`, `#/coden-tui`, `#/projects`, `#/documents`,
+`#/knowledge`, `#/memory`
+
+**`#/tools`** (`index.html:650-660`, `app.js:1712`).
+*Works, VERIFIED*: registration is real (`POST /api/v1/tools`); consent is enforced **server-side**,
+default-deny — `tool-executor.mjs:36` (external tool) and `workflow-service.mjs:616` ("every tool
+is default-deny") both reject an ungranted tool, not just the UI checkbox. Installable catalogues
+correctly point to the one place (`Settings › Modules`), not duplicated here (`D-0283`/`D-0277`).
+*Missing*: no dedicated e2e click-path found for this form (backend gate is proven, UI submit path
+is not, this pass).
+*To change*: none built; e2e gap noted, not urgent — the security-relevant half (the gate) is proven.
+
+**`#/coden-tui`** (`index.html:662-701`).
+*Works, VERIFIED*: single sign-on via 60-second attach code, e2e-covered (`tools/browser-e2e.mjs:
+2993-3029`, mint + re-mint invalidation both checked); the page is honest about container vs.
+source-install access paths and about what it is not (no arbitrary shell).
+*Missing*: none found.
+*To change*: none.
+
+**`#/projects`** (`index.html:704-706`).
+*Works, VERIFIED*: creation e2e-covered (`tools/browser-e2e.mjs:450-462`); knowledge-mode isolation
+(hybrid/full-context/disabled) and conversation-scoped memory isolation unit-tested
+(`ai-workspace.test.mjs:109`).
+*Missing*: none found.
+*To change*: none.
+
+**`#/documents`** (`index.html:709-712`).
+*Works, VERIFIED*: artifact creation/versioning real, backend-tested (`ai-workspace.test.mjs`,
+`session-lifecycle.test.mjs`).
+*Missing*: plain textarea only — no rich/code editor, no in-page version-diff view (diffing exists
+for CodeN runs, `#/coden/bench/diff`, not for artifact versions here).
+*To change*: not built this pass (no authorization); worth a future contract if artifact editing
+turns out to be a real workflow bottleneck — not assumed without Owner input.
+
+**`#/knowledge`** (`index.html:714-722`).
+*Works, VERIFIED*: hybrid search real (`GET /api/v1/knowledge/search`); binary ingestion real,
+routed through local extraction (`FileExtractor`, `file-extractors.mjs`); Notes-vs-Memory split is
+deliberate and documented in two places (`index.html:719` comment, `page-help.js:64`), not a defect.
+*Fixed this pass (HUNT AND FIX)*: `F4-011` in `PROJECT_STATE.json.open_findings` read "OPEN -
+accepted — … no magic-byte sniffing", but `sniffContentType()` (`file-extractors.mjs:44`) already
+does exactly that, landed before `D-0362` (2026-08-09) — a **stale declaration**, not a live gap.
+Re-verified: `node --test .../file-extractor-sniffing.test.mjs` → 13/13 pass. Record corrected,
+see `D-0475`.
+*To change*: none further.
+
+**`#/memory`** (`index.html:724-736`).
+*Works, VERIFIED*: "Recently learned" pending queue with keep/discard, search, real backend
+(`memory-service.mjs`, PostgreSQL-backed, `provenance`/`derivedFrom` already tracked per item).
+*Missing*: none found.
+*To change*: none.
+
+**Improvement research this batch (requested explicitly, not the routine one-liner)**: while
+reviewing `#/knowledge`, `file-extractors.mjs` (204 lines, zero imports outside `node:fs`/
+`node:path`/`node:child_process`/`node:crypto` — already fully decoupled from the rest of the
+control plane) turned out to be a strong NLnet-fit candidate against
+`.claude/skills/noesar-evolution-funding-fit/SKILL.md`'s seven traits: **(1) delimited** — magic-byte
+sniffing + safe local extraction, nothing else; **(2) reusable** — any local-first tool needing "what
+is this file, safely, offline" could use it as-is; **(3) privacy/autonomy** — no network call, no
+cloud dependency, ever; **(4) no lock-in** — pure Node core, no model, no provider. Proposal:
+publish it as its own small, versioned, AGPL package (own README, own test entry point, the
+existing 13-test suite as its acceptance contract) rather than leaving it filed inside
+`ai-workspace/`, invisible to anyone outside this repository. **Benefit**: a concrete, low-risk,
+genuinely reusable artifact for a funding narrative that currently has none at this granularity.
+**Cost**: low — extraction, not a rewrite; the module already has no internal coupling to sever.
+**Not executed this phase** — proposed only, per `noesar-evolution-budget` §5.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 3 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 9 of 55 checked in depth.**

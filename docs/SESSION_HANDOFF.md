@@ -1,31 +1,36 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0474`: deep review, items 1-3 of 158)
+# SESSION HANDOFF — 2026-08-16 (`D-0476`: deep review, items 4-9 of 158)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no code changed this
-session.** This session reviewed the first 3 rows of `docs/PAGES_INDEX_2026-08-16.md`, per the
-Owner-agreed plan from `D-0473`'s close (3 items/phase, in list order, top-level pages first):
+**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
+this session.** This session reviewed rows 4-9 of `docs/PAGES_INDEX_2026-08-16.md` (6 items, at
+the Owner's request this round — was 3/phase):
 
-- **`#/home`** (`app.js:973-977`, `index.html:198-236`) — real, working: `renderHome()` reads
-  live state, entry/goal actions render from a payload (not hardcoded), e2e-covered. Declared
-  gap (not hidden): the "Intent Frame" (goal → Plan) does not exist yet — the product says so
-  itself, in `page-help.js` and inline in `index.html:218`.
-- **`#/chat`** (`app.js:979-1123`, `index.html:262-327`) — real, working: conversation/branch
-  CRUD, work panel, dictation/read-aloud all wired to real handlers, not placeholders. No new
-  finding.
-- **`#/coden`** (`app.js` terminal wiring, `index.html:330-450`) — real, working: shared WS
-  terminal session with the SSH TUI, slash-routing e2e-checked. Missing: `F-SLASH-001` (open,
-  root cause confirmed `D-0463`, blocked on an Owner design pick A/B) and 25 legacy bench/agent
-  panels still pending "slice 4" removal.
+- **`#/tools`** — real; consent is enforced **server-side**, default-deny
+  (`tool-executor.mjs:36`, `workflow-service.mjs:616`), not just a UI checkbox.
+- **`#/coden-tui`** — real; single sign-on via 60s attach code, e2e-covered.
+- **`#/projects`** — real; knowledge-mode isolation unit-tested.
+- **`#/documents`** — real; versioned, backend-tested. Missing: no in-page version-diff, plain
+  textarea only (not built — needs Owner input on whether it's a real bottleneck).
+- **`#/knowledge`** — real; hybrid search + local extraction confirmed live.
+- **`#/memory`** — real; pending queue with keep/discard, `provenance` already tracked per item.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8, `docs/DECISION_LOG.md` `D-0474`.
-`Checked` flipped to `SI` for these 3 of 55 pages only — the other 52 pages and all 103
-tools/modules items are still `NO`, unreviewed.
+**`HUNT AND FIX` this phase (`D-0475`)**: `F4-011` (magic-byte sniffing) was recorded `OPEN` in
+`PROJECT_STATE.json` but the fix (`sniffContentType()`, `file-extractors.mjs:44`) had already
+landed before `D-0362` (2026-08-09) — a **stale record**, found while reading the `#/knowledge`
+upload path. Corrected, re-verified: 13/13 tests pass.
 
-**Next phase**: items 4-6 of `docs/PAGES_INDEX_2026-08-16.md`, list order — `#/tools`,
-`#/coden-tui`, `#/projects`. Same shape: what works / what's missing / what to change, `Checked`
-flips to `SI` only for what was actually reviewed. No code changes unless the Owner authorizes a
-fix or `HUNT AND FIX` requires one. At 3/phase, ~50 phases remain to cover both inventories once.
+**Funding-fit research, explicitly requested this turn (not the routine one-liner)**:
+`file-extractors.mjs` (204 lines, zero imports outside Node core) is a strong NLnet-fit
+candidate — delimited, reusable, fully local/offline, no model/provider lock-in. Proposal:
+publish it as its own small AGPL package. **Not built** — proposed only. Full text:
+`docs/PAGES_INDEX_2026-08-16.md` §8 `D-0476`, `docs/DECISION_LOG.md` `D-0476`.
+
+`Checked` is now `SI` for 9 of 55 pages (items 1-9). **Next phase**: items 10-12 —
+`#/agents`, `#/workflows`, `#/models` — same method: what works / what's missing / what to
+change, cite file:line, `HUNT AND FIX` anything in-scope found stale or broken, one funding-fit
+research note if warranted. No code changes without Owner authorization or a `HUNT AND FIX`
+requirement.
 
 The other open items are unchanged, still the Owner's call:
 
@@ -33,8 +38,9 @@ The other open items are unchanged, still the Owner's call:
   when the terminal has claimed the surface. See `D-0463`.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
   terminale vero.
-- **Fase D (WP4)**, or the hover/title fix, or pushing one of the 3 research directions from
-  `D-0472` into a real proposal — all three scoped and ready, none started.
+- **Fase D (WP4)**, the hover/title fix, or one of the 3 `D-0472` research directions, or now
+  also **the `file-extractors.mjs` packaging proposal (`D-0476`)** — four options scoped and
+  ready, none started.
 
 ## Blockers e finding aperti
 
@@ -50,35 +56,39 @@ The other open items are unchanged, still the Owner's call:
 | `F-MANIFEST-001` | **OPEN**, pre-existing, out of scope — `MANIFEST.sha256` 5898 vs 6568 tracked files. |
 | `F-MODEL-001` | **OPEN**, awaiting Owner choice — `#/models` provenance display. |
 | `F-ROT-001` | **OPEN** — `NOESAR_ALLOWED_HOSTS` still names the pre-rotation container IP. |
+| `F4-011` | **CORRECTED** (was a stale `OPEN` record) — actually fixed pre-`D-0362`. `D-0475`. |
 
 All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 `docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0469).
 
 ## Verificato IN QUESTA SESSIONE
 
-Read-only review phase — no suite run, no deploy, no container touched. Verification was direct
-source reading (`app.js`, `index.html`) cross-checked against existing e2e coverage
-(`tools/browser-e2e.mjs`, lines cited in `docs/PAGES_INDEX_2026-08-16.md` §8) — not re-executed
-this session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1.
+Read-only review phase, one targeted re-verification: `node --test services/reference-control-plane/
+test/file-extractor-sniffing.test.mjs` → **13/13 pass** (proves `D-0475`'s correction). Everything
+else was direct source reading (`app.js`, `index.html`, `tool-executor.mjs`, `workflow-service.mjs`)
+cross-checked against existing e2e/unit coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8 —
+not re-executed in full this session, cited as already-proven evidence per
+`noesar-evolution-engineering-depth` §8.1.
 
 ## Cosa NON è stato fatto
 
-- **No test suite run** — nothing changed in `services/`, `apps/`, `rust/`; a doc-only phase per
-  the verify skill's change-to-tier map (T0 territory, and even T0 was judged unnecessary since
-  zero source files changed).
-- **52 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **No full suite run, no deploy** — only the one targeted test above; nothing else changed in
+  `services/`, `apps/`, `rust/`.
+- **46 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **`#/documents` version-diff** — gap named, not built; no Owner authorization sought yet.
+- **`#/tools` UI-level e2e** — the server-side consent gate is proven, the browser submit path
+  through the form itself is not covered by a dedicated e2e check found this pass.
 - **`F-SLASH-001`'s actual fix** — design decision not taken, deliberately, still the Owner's.
-- **`cargo publish`** and the other `docs/LICENSE_STRATEGY.md` §5 questions — invariate.
-- **No HUNT AND FIX** — nothing found this pass rose to the level of an unrecorded defect; both
-  gaps found (`#/home` Intent Frame, `#/coden` `F-SLASH-001`) were already known and tracked.
+- **`file-extractors.mjs` packaging** — proposed only, per `noesar-evolution-budget` §5, not
+  executed without Owner authorization.
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0474`, non eseguita)**: `#/home`'s Intent-Frame gap is asserted in
-two independent places (`index.html:218` inline copy, `page-help.js:36`) with no single source.
-If Intent Frame ships, both need editing together or the two will silently disagree about
-whether the gap still exists. Benefit: a shared constant or a test asserting both strings change
-together would catch the drift the day it happens instead of leaving stale copy live. Cost: low
-— one small regression test, no runtime change.
+**Questo giro (`D-0476`)**: see "Funding-fit research" above — publish `file-extractors.mjs` as
+its own small AGPL package. Full reasoning in `docs/PAGES_INDEX_2026-08-16.md` §8.
+
+**Precedente (`D-0474`, non eseguita)**: `#/home`'s Intent-Frame gap is asserted in two places
+(`index.html:218`, `page-help.js:36`) with no single source — a shared constant or a test tying
+them together would catch drift if one is edited without the other. Cost: low.
 
 **Precedenti (`D-0473`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

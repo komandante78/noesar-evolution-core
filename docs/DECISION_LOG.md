@@ -11145,3 +11145,37 @@ declared gap each: `#/home` Intent Frame (already disclosed in-product), `#/code
 **Reversal cost.** None — documentation only, no code touched.
 **Status.** applied. 3 of 55 pages checked. Next: items 4-6 (`#/tools`, `#/coden-tui`,
 `#/projects`).
+
+## D-0475 · `F4-011` stale-record corrected, HUNT AND FIX during `#/knowledge` review — 2026-08-16
+**Decision.** `PROJECT_STATE.json.open_findings` carried `F4-011` as `OPEN - accepted` ("no
+magic-byte sniffing" on file extraction). Corrected to `STALE_RECORD_CORRECTED`: the underlying
+gap was already fixed before `D-0362` (2026-08-09) by `sniffContentType()`
+(`services/reference-control-plane/src/ai-workspace/file-extractors.mjs:44`), used by
+`FileExtractor.extract()` (`file-extractors.mjs:140`) on the real `#/knowledge` upload path.
+**Why.** Found while reading the extraction path for this phase's `#/knowledge` review — the
+finding had sat open in state for ~5 weeks after its own fix landed, which is exactly the kind
+of stale declaration `noesar-evolution-context` §6 warns about.
+**Rejected.** N/A — a state-record correction, not a design choice.
+**Evidence.** `node --test services/reference-control-plane/test/file-extractor-sniffing.test.mjs`
+→ 13/13 pass, this session.
+**Reversal cost.** None — state metadata only, no product code touched.
+**Status.** applied.
+
+## D-0476 · Deep review, items 4-9 of 158 + funding-fit research (`file-extractors.mjs`) — 2026-08-16
+**Decision.** Reviewed rows 4-9 of `docs/PAGES_INDEX_2026-08-16.md` (`#/tools`, `#/coden-tui`,
+`#/projects`, `#/documents`, `#/knowledge`, `#/memory`); findings appended in-file (§8), `Checked`
+flipped to `SI` for those 6 rows. Owner explicitly asked this round to include real improvement
+research (not the routine one-liner): proposed publishing `file-extractors.mjs` as its own small
+AGPL package — delimited, reusable, zero external coupling, matches
+`noesar-evolution-funding-fit`'s seven traits directly.
+**Why.** Continuation of the `D-0473`/`D-0474` review cadence, scaled to 6 items this round per
+Owner instruction; the funding-fit research was requested explicitly this turn.
+**Rejected.** N/A — read-only review + research phase.
+**Evidence.** `app.js`/`index.html` wiring read for all 6 pages; server-side consent gate
+confirmed at `tool-executor.mjs:36` and `workflow-service.mjs:616`; e2e coverage confirmed at
+`tools/browser-e2e.mjs:2993-3029` (`#/coden-tui`) and `:450-462` (`#/projects`); backend coverage
+confirmed in `ai-workspace.test.mjs` and `memory-service.mjs`.
+**Reversal cost.** None — documentation and one state-field correction (`D-0475`), no product
+code changed.
+**Status.** applied. 9 of 55 pages checked. Next: items 10-12 (`#/agents`, `#/workflows`,
+`#/models`), or whatever batch size the Owner sets next.
