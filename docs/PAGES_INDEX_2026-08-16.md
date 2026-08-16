@@ -86,9 +86,9 @@ others load real data on open.
 | 10 | `#/coden/bench/map` | Real repo scan + search, same engine the terminal `map`/`search` commands use. `[VERIFIED, D-0488]` | SI |
 | 11 | `#/coden/bench/tools` | Up to 6 registered tools, same honest nav-list pattern as history/tasks. `[VERIFIED, D-0488]` | SI |
 | 12 | `#/coden/bench/plugins` | Permanently empty by design: no plugin registry exists in this build. `[VERIFIED, D-0488]` | SI |
-| 13 | `#/coden/bench/agents` | Agents panel (bench-side view). `[NAME ONLY]` | NO |
-| 14 | `#/coden/bench/documentation` | Documentation panel. `[NAME ONLY]` | NO |
-| 15 | `#/coden/bench/closure` | Closure/final-report panel. `[NAME ONLY]` | NO |
+| 13 | `#/coden/bench/agents` | Up to 6 agents, same honest nav-list pattern as history/tasks/tools. `[VERIFIED, D-0489]` | SI |
+| 14 | `#/coden/bench/documentation` | Static; no attachment mechanism exists, but copy doesn't declare that (unlike tests/plugins). `[VERIFIED, D-0489]` | SI |
+| 15 | `#/coden/bench/closure` | Mandatory NOT-DONE disclosure, server-enforced (not by politeness) — real, tested. `[VERIFIED, D-0489]` | SI |
 | 16 | `#/coden/bench/shadow` | Shadow-execution panel. `[NAME ONLY]` | NO |
 | 17 | `#/coden/bench/favourites` | Favourites. `[NAME ONLY]` | NO |
 | 18 | `#/coden/bench/recent` | Recent items. `[NAME ONLY]` | NO |
@@ -688,5 +688,47 @@ healthier than, the e2e-coverage gap tracked separately.
 
 ---
 
+### `D-0489` (2026-08-16) — §3 bench panels 13-15: `agents`, `documentation`, `closure`
+
+**`#/coden/bench/agents`** (`index.html:497`, `app.js:5158-5169`).
+*Works, VERIFIED*: same honest nav-list pattern as `history`/`tasks`/`tools` (`D-0487`/`D-0488`)
+— up to 6 real agents, click opens `#/agents`, no per-item address implied.
+*Missing*: same minor e2e-click note as its siblings.
+*To change*: none.
+
+**`#/coden/bench/documentation`** (`index.html:467`).
+*Works, VERIFIED*: static, and no attachment mechanism exists anywhere in the source
+(`grep -rn attachDocumentation` finds nothing) — so in practice this panel is as permanently
+empty as `tests`/`plugins`/`favourites`.
+*Missing, real*: unlike its three siblings, the copy ("No documentation is attached to this
+piece of work") does **not** declare the absence as permanent — it reads as ordinary "not yet"
+emptiness, when in fact nothing can ever attach documentation here. This is a genuine
+inconsistency in the product's own honesty pattern, the same pattern `tests`/`plugins` apply
+correctly.
+*To change*: **recorded, not fixed** — this is product-facing copy, a wording decision rather
+than a pure documentation correction, so it is not changed without Owner authorization per
+`noesar-evolution-engineering-depth`. Proposed wording, for when authorized: "No documentation
+is attached, and none can be: this build has no attachment mechanism" (matching
+`plugins`'/`favourites`' own phrasing).
+
+**`#/coden/bench/closure`** (`index.html:469-487`, `app.js:5147,5361-5381`,
+`product-metric.mjs:117-150`).
+*Works, VERIFIED*: **genuinely server-enforced**, not client-side politeness — `ClosureRegister
+.record()` throws `400` if neither a `notDone` item nor `nothingLeftUndone:true` is supplied, and
+throws again if `residualRisk` is empty, matching the page's own claim word-for-word. This is the
+same "what's NOT done must be said, never silently blank" discipline `CLAUDE10.md` and this very
+review cadence apply to themselves, built into the product for its own users. e2e proves both the
+refusal and the successful path (`tools/browser-e2e.mjs:2943-2956`); 5 backend test files touch
+`ClosureRegister` including `two-shells-parity.test.mjs` and `coden-shell-parity.test.mjs`
+(same rule enforced identically from both shells).
+*Missing*: none found — this is one of the strongest-evidenced features reviewed in this whole
+pass, not an occurrence of the e2e-coverage-gap pattern.
+*To change*: none.
+
+**No HUNT AND FIX this batch**: the `documentation` copy inconsistency is real but is a wording
+decision requiring Owner authorization, not a code defect this review can silently repair.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 42 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 45 of 55 checked in depth.**

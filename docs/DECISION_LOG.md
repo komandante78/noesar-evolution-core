@@ -11379,3 +11379,21 @@ claim re-verified by a repo-wide grep finding zero plugin-registry code anywhere
 description corrections (`terminal`, `tests`, `plugins`); all three "declared-empty by design"
 panels found are genuine architecture statements, not placeholders. Next: bench panels 13-15
 (`agents`, `documentation`, `closure`).
+
+## D-0489 · Deep review, §3 bench panels 13-15 (`agents`, `documentation`, `closure`) — 2026-08-16
+**Decision.** Reviewed bench panels 13-15; findings appended in-file (§8), `Checked` flipped to
+`SI`. Found one real, recorded-not-fixed inconsistency: `documentation`'s copy does not declare
+its emptiness as permanent, unlike `tests`/`plugins`/`favourites`, though no attachment
+mechanism exists (confirmed by grep).
+**Why.** Continuation of the `D-0473`-`D-0488` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `closure`'s server-side enforcement confirmed in
+`product-metric.mjs:117-150` (`ClosureRegister.record()` throws 400 without `notDone` or
+`nothingLeftUndone:true`, and again without `residualRisk`); e2e proves both refusal and success
+(`tools/browser-e2e.mjs:2943-2956`); 5 backend test files including two-shell parity suites.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 45 of 55 pages checked. One real product-copy inconsistency found
+(`documentation` panel) — **not fixed**, since changing user-facing copy is a wording decision
+needing Owner authorization, not a doc correction this review phase can make silently. Proposed
+replacement wording recorded in §8. Next: the last 5 bench panels — 16 `shadow`, 17
+`favourites`, 18 `recent`, 19 `sessions`, 20 `projects` — completing §3.
