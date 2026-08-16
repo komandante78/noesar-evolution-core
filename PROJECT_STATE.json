@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0471: state-digest.sh now fails loud on undeclared MCP/plugin drift. New .claude/hooks/lib/tooling-inventory.sh (tin_check_baseline, POSIX sh, same shape as D-0455 hme_check_settings) compares .mcp.json/settings.json plugins key against a git-tracked baseline (tooling-inventory-baseline.json, both flags false) and reports GAP both directions. 9/9 regression suite, verified live (touch .mcp.json -> GAP shown, removed -> OK restored). D-0470 (CLAUDE10.md SS19) unaffected. No product code touched, D-0469 deploy still live. F-SLASH-001 and cargo publish remain open, unchanged.",
-  "phase_status": "D-0471_applied__governance_tooling_only__F-SLASH-001_and_cargo_publish_still_open",
+  "current_phase": "D-0472: advancement research delivered, docs/ADVANCEMENT_RESEARCH_2026-08-16.md, no product code touched (Owner instruction: research only). Checklist synthesized from FUNDING/07-19-05 (already current) confirms F-SLASH-001/cargo-publish/Phase-D-WP4 as the three live options. New: hover/tooltip UX audit (143 index.html buttons, 11 have title/aria-label, no shared tooltip mechanism, ~130+ elements need one) and 3 original research directions beyond FUNDING/18 (PQC crypto-agility for token/audit signing, Intelligence-per-Watt local routing, quantum-inspired QUBO scheduling recorded not proposed; nanotechnology found inapplicable, said so). Declined: standing Unraid research container (CLAUDE10.md SS5/16), literal quantum/nanotech hardware R&D. All three tracks (hover fix, Phase D, PQC direction) scoped and ready, none authorized to build yet. D-0469 deploy still live.",
+  "phase_status": "D-0472_applied__research_only__three_ready_tracks_await_owner_pick",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "a2efeeb",
-  "last_updated_utc": "2026-08-16T01:30:00Z",
+  "last_commit": "PENDING",
+  "last_updated_utc": "2026-08-16T02:00:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Wait for the Owner call on F-SLASH-001 test-strategy choice, or authorization to chase cargo publish token, or Phase D.",
+  "next_action": "Wait for the Owner to pick among: F-SLASH-001 design choice, cargo publish token, Phase D (WP4 capability token spec), the hover/title UX fix, or authorizing the PQC-agility research into a real proposal.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

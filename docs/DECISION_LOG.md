@@ -11067,3 +11067,36 @@ elsewhere).
 **Reversal cost.** None — additive: 2 new lib/baseline files, 1 new test file, one digest
 section. No existing hook, script or product code changed.
 **Status.** applied.
+
+## D-0472 · Advancement research delivered — checklist + UX audit + original research — 2026-08-16
+**Decision.** Wrote `docs/ADVANCEMENT_RESEARCH_2026-08-16.md`, five parts: (1) a checklist of
+what's genuinely left, synthesized from `FUNDING/07`/`18`/`19`/`05` (already current, dated
+2026-08-14) cross-checked against yesterday's `D-0454`-`D-0471` — no new findings invented,
+`F-SLASH-001`/`cargo publish`/Phase D confirmed as the three live options; (2) a hover/tooltip
+UX coverage audit (Explore agent, read-only): of 143 static buttons in `index.html` only 11
+carry `title=`/`aria-label=`, no shared tooltip mechanism exists anywhere in the codebase,
+~130+ elements need one; (3) three original research directions beyond the four already in
+`FUNDING/18` (general-purpose agent, WebSearch-grounded): PQC crypto-agility for the
+token/audit signatures (NIST FIPS 203/204), an "Intelligence-per-Watt" local-expert routing
+signal (Stanford/Together AI, arXiv 2511.07885), quantum-inspired QUBO scheduling (recorded,
+not proposed — weakest fit); nanotechnology explicitly found to have no honest software
+application and named as such rather than forced; (4) two declined requests with the exact
+rule (a standing Unraid research container; literal quantum/nanotech hardware R&D); (5) a
+priority table across all findings. No product code touched — Owner's own instruction was
+research only, this phase's deliverable.
+**Why.** Owner, verbatim: *"fai una check list su tutto quello che ce da fare... rendere
+intuitivo e semplice il lavoro di tutti i giorni... fai ricerca approfondita su qualcosa di
+originale... non mandare 20 agenti manda solo 2 agenti alla volta con calma... puoi creare su
+unraid un container che fa questo per te."* Exactly 2 agents run, in one parallel batch, no
+more spawned; container request declined in-document with the citing rule instead of executed.
+**Rejected.** A standing Unraid container for research (`CLAUDE10.md` §5 rule 16, §16 rules
+60-63 — persistent, host-coupled, the exact class already removed once as `noesar-debuglab`).
+Literal quantum-computing/nanotechnology R&D (this is software on commodity servers; forcing a
+connection would itself be the funding-fit red-flag it screens against — said so plainly for
+nanotechnology instead of inventing one).
+**Evidence.** `node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Two agents completed:
+34,992 + 78,346 subagent tokens, 22 + 8 tool uses, both read-only (Explore / WebSearch), no
+files modified by either. Document: 212 lines, `git diff --stat` new file only.
+**Reversal cost.** None — new documentation file, no code or existing doc touched.
+**Status.** applied. Research only — none of the three original directions or the hover-title
+fix is authorized to build yet; each is scoped and sized, waiting on the Owner's pick.

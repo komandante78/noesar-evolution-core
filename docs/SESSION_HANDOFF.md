@@ -1,22 +1,34 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0471`: tooling-drift checker built, governance only)
+# SESSION HANDOFF — 2026-08-16 (`D-0472`: advancement research delivered, no code touched)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session added
-two governance layers, no product code: `CLAUDE10.md` §19 (`D-0470`, rules 81-85) audits the
-Claude Code tools actually available (measured: no `.mcp.json`, no `plugins` key) and scopes
-which are authorized without a further ask vs. confirmed per use. `D-0471` (Owner-authorized
-execution of `D-0470`'s own proposal) built the mechanical guard: `state-digest.sh` now fails
-loud (`⚠ GAP`) if `.mcp.json` or a `settings.json` `plugins` key ever diverges from the
-declared baseline — verified live, both directions, 9/9 regression suite.
+**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session: `D-0470`
+(`CLAUDE10.md` §19, native-tooling scope) → `D-0471` (tooling-drift checker, `state-digest.sh`)
+→ **`D-0472`: `docs/ADVANCEMENT_RESEARCH_2026-08-16.md`**, a 5-part research/checklist document
+(Owner asked for a checklist + a targeted UX scan + original research into advanced tech, "2
+agents at a time, calmly"). Read it for the full picture — summary:
 
-The real open items are unchanged from yesterday, still the Owner's call:
+- **Checklist**: confirms `F-SLASH-001`, `cargo publish`, and **Phase D (WP4, Capability Token
+  spec)** as the three live, ready options — "Fase D" from yesterday's handoff is now named:
+  `FUNDING/19_WORK_PLAN_TO_BETA.md`'s Phase D, unblocked, no dependency.
+- **UX audit** (new finding): of 143 static buttons in `index.html`, only 11 have
+  `title=`/`aria-label=`; no shared tooltip mechanism exists anywhere. ~130+ elements need one.
+  Fix is scoped and sized (Part 2 of the doc), **not built yet** — research phase only.
+- **Original research** (new): 3 directions beyond the 4 already in `FUNDING/18` — PQC
+  crypto-agility for the token/audit chain (strongest fit), an "Intelligence-per-Watt" local
+  routing signal (most original), quantum-inspired QUBO scheduling (recorded, not proposed).
+  Nanotechnology found to have no honest software application — said so, not forced.
+- **Declined, with the rule cited in-document**: a standing Unraid research container; literal
+  quantum/nanotech hardware R&D.
+
+The real open items are unchanged, still the Owner's call:
 
 - **F-SLASH-001's actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
   when the terminal has claimed the surface. See `D-0463`.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
   terminale vero.
-- oppure **Fase D**.
+- **Fase D (WP4)**, or the hover/title fix, or pushing one of the 3 research directions into a
+  real proposal — all three now scoped and ready, none started.
 
 ## Blockers e finding aperti
 
