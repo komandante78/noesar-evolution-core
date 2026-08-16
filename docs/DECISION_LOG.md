@@ -11397,3 +11397,21 @@ mechanism exists (confirmed by grep).
 needing Owner authorization, not a doc correction this review phase can make silently. Proposed
 replacement wording recorded in §8. Next: the last 5 bench panels — 16 `shadow`, 17
 `favourites`, 18 `recent`, 19 `sessions`, 20 `projects` — completing §3.
+
+## D-0490 · Deep review, §3 bench panels 16-20 — §3 complete, 20/20 (`shadow`, `favourites`, `recent`, `sessions`, `projects`) — 2026-08-16
+**Decision.** Reviewed the last 5 bench panels; findings appended in-file (§8), `Checked`
+flipped to `SI`. All 20 CodeN Evolution bench panels are now reviewed.
+**Why.** Continuation of the `D-0473`-`D-0489` review cadence at the Owner's "PROCEDI".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `shadow` (default panel) e2e-proven honest about unsupported simulation
+(`tools/browser-e2e.mjs:2826-2827`); `favourites` confirmed correctly self-declared permanent
+absence, matching `plugins`/`tests`; `recent`/`sessions`/`tools`/`history`/`tasks`/`agents`/
+`projects` confirmed to share **one** generic renderer (`app.js:5158-5169`), and `projects`
+carries a dedicated e2e click-through (`:1505-1529`) proving that shared mechanism end-to-end —
+narrowing the earlier "no e2e" notes on the other six from a gap to "not independently
+re-verified per panel."
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 50 of 55 pages checked, §3 complete (20/20). Final §3 tally: 3 real
+description corrections (`terminal`, `tests`, `plugins`), 1 recorded-not-fixed product-copy
+inconsistency (`documentation`, `D-0489`), 1 correction to prior sessions' own e2e-coverage
+notes (this batch). Only §5 (5 CodeN Evolution agent panels) remains of the 158-item plan.

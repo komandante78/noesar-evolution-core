@@ -89,11 +89,11 @@ others load real data on open.
 | 13 | `#/coden/bench/agents` | Up to 6 agents, same honest nav-list pattern as history/tasks/tools. `[VERIFIED, D-0489]` | SI |
 | 14 | `#/coden/bench/documentation` | Static; no attachment mechanism exists, but copy doesn't declare that (unlike tests/plugins). `[VERIFIED, D-0489]` | SI |
 | 15 | `#/coden/bench/closure` | Mandatory NOT-DONE disclosure, server-enforced (not by politeness) — real, tested. `[VERIFIED, D-0489]` | SI |
-| 16 | `#/coden/bench/shadow` | Shadow-execution panel. `[NAME ONLY]` | NO |
-| 17 | `#/coden/bench/favourites` | Favourites. `[NAME ONLY]` | NO |
-| 18 | `#/coden/bench/recent` | Recent items. `[NAME ONLY]` | NO |
-| 19 | `#/coden/bench/sessions` | Sessions panel (bench-side view). `[NAME ONLY]` | NO |
-| 20 | `#/coden/bench/projects` | Projects panel (bench-side view). `[NAME ONLY]` | NO |
+| 16 | `#/coden/bench/shadow` | Default panel: copy-on-write run result, honest about unsupported simulation. `[VERIFIED, D-0490]` | SI |
+| 17 | `#/coden/bench/favourites` | Permanently empty by design: no pinning mechanism exists. `[VERIFIED, D-0490]` | SI |
+| 18 | `#/coden/bench/recent` | Up to 6 recent artifacts, same nav-list pattern — mechanism e2e-proven via `projects`. `[VERIFIED, D-0490]` | SI |
+| 19 | `#/coden/bench/sessions` | Up to 6 conversations, same nav-list pattern. `[VERIFIED, D-0490]` | SI |
+| 20 | `#/coden/bench/projects` | Up to 6 projects — the one nav-list panel with its own dedicated e2e click-through. `[VERIFIED, D-0490]` | SI |
 
 ## 5. CodeN Evolution — agent column panels (5) — `data-agent-panel`, address `#/coden/agent/<name>`
 
@@ -730,5 +730,58 @@ decision requiring Owner authorization, not a code defect this review can silent
 
 ---
 
+### `D-0490` (2026-08-16) — §3 bench panels 16-20: `shadow`, `favourites`, `recent`, `sessions`,
+`projects` (§3 complete, 20/20)
+
+**`#/coden/bench/shadow`** (`index.html:459`, `app.js:2887-2911`).
+*Works, VERIFIED*: the **default panel** — copy-on-write execution result, shown "before anyone
+is asked to approve," which is why Approve *promotes* rather than merely allows. Honestly
+declares when the reference provider's simulation is unsupported rather than inventing a
+prediction. e2e-proven both for content (`tools/browser-e2e.mjs:2826-2827`, "Simulate answers...
+honestly") and geometry (`:811`).
+*Missing*: none found.
+*To change*: none.
+
+**`#/coden/bench/favourites`** (`index.html:515`).
+*Works, VERIFIED*: **permanently empty by design**, and its copy already says so correctly
+("Nothing is pinned, and nothing can be... empty by construction rather than because you have
+not used it") — unlike `documentation` (`D-0489`), this sibling gets its own honesty pattern
+right. Confirmed no pinning mechanism exists anywhere in source.
+*Missing*: none — correct as built.
+*To change*: none.
+
+**`#/coden/bench/recent`, `#/coden/bench/sessions`** (`index.html:494-495`, `app.js:5158-5169`).
+*Works, VERIFIED*: same real, honest nav-list pattern as `history`/`tasks`/`tools`/`agents`.
+*Missing*: same minor e2e-click note as those four — **resolved by this batch's next finding**.
+*To change*: none.
+
+**`#/coden/bench/projects`** (`index.html:493`, `app.js:5158-5169`).
+*Works, VERIFIED*: same pattern, **but this is the one nav-list panel with its own dedicated
+e2e click-through** (`tools/browser-e2e.mjs:1505-1529`) — navigates to the panel, asserts every
+row carries a real `data-jump` target and a title matching `— opens projects`, clicks a row, and
+asserts the resulting URL is `#/projects`.
+
+**Correction to the e2e-coverage notes in `D-0487`/`D-0488`/`D-0489`**: `history`, `tasks`,
+`tools`, `agents`, `recent`, `sessions` and `projects` are all rendered by the **exact same**
+generic mechanism (`renderBenchNavigator`'s `list()` helper, `app.js:5158-5169`) — one function,
+seven call sites, identical markup shape (`data-jump` button, `title` ending `— opens <dest>`).
+`projects`'s dedicated e2e check exercises that shared mechanism end-to-end, including the
+actual click and the resulting navigation. The "no e2e click-path" notes on the other six were
+therefore **narrower than they should have been** — literally true (no check names *them*
+specifically) but understated: the mechanism they all share **is** proven, once via its most
+thorough sibling. Downgraded from "gap" to "not independently re-verified per panel," which is
+a much smaller claim.
+
+**§3 (20 bench panels) is now fully reviewed.** Final tally: 5 of 20 `[NAME ONLY]` descriptions
+needed real correction (`terminal`, `tests`, `plugins`, and — via this batch's re-reading —
+none newly added here); one real product-copy inconsistency found and recorded, not fixed
+(`documentation`, `D-0489`); the shared nav-list mechanism is proven once, thoroughly, not
+independently seven times, which this batch clarifies rather than treats as seven open items.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 45 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 50 of 55 checked in depth — only §5 (5 agent panels)
+remains.**
