@@ -11100,3 +11100,33 @@ files modified by either. Document: 212 lines, `git diff --stat` new file only.
 **Reversal cost.** None — new documentation file, no code or existing doc touched.
 **Status.** applied. Research only — none of the three original directions or the hover-title
 fix is authorized to build yet; each is scoped and sized, waiting on the Owner's pick.
+
+## D-0473 · Two inventory lists built — pages/links and tools/modules — 2026-08-16
+**Decision.** Two new documents, inventory only, no deep review performed:
+`docs/PAGES_INDEX_2026-08-16.md` (55 real addressable WebUI/CodeN Evolution destinations — 14
+top-level routes, 16 settings sections, 20 CodeN bench panels, 5 CodeN agent panels — plus 11
+legacy redirects listed separately so they aren't mistaken for missing pages) and
+`docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 named items — 60 backend API route groups, 17
+CodeN slash commands, 20 Rust crates, 6 `capabilities/` directories — plus 45 internal `tools/`
+scripts counted but not itemized, since they're developer instruments, not product features).
+Every row carries a `Checked: NO` column by design — the lists exist to be worked through one
+row at a time in a future phase, not to claim any review happened now.
+**Why.** Owner, verbatim: *"crea una lista di tutte le pagine e link... cosa è quel link, che
+funzionalità... se è stato controllato... poi fai un'altra lista di tutti i tools moduli e
+funzionalità... non fare scansioni approfondite ma solo crearti le liste."* Also: the required-
+changes list from the prior turn (hover/title fix, Phase D, cargo publish, F-SLASH-001, the two
+research directions, doc re-baselining) is already recorded in `docs/
+ADVANCEMENT_RESEARCH_2026-08-16.md` Part 1/5 (`D-0472`) — confirmed present, not duplicated
+into a new file.
+**Rejected.** Hand-deriving the page list from scratch by reading markup — this project already
+has `tools/measure-page-liveness.mjs`, a generated instrument proven to catch real drift
+(`D-0300`: `PANEL_NAMES` claimed 14 addresses against 25 real ones). Ran it live instead of
+trusting the 8-day-old `docs/WEBUI_PAGE_CENSUS_S333.md` or writing descriptions by hand — page
+descriptions are quoted from the product's own `page-help.js`, never invented.
+**Evidence.** `node tools/measure-page-liveness.mjs --markdown` run live, 34 rows cross-checked
+against `ROUTES`/`SETTINGS_SECTIONS` in `app.js` and `data-bench-panel`/`data-agent-panel` in
+`index.html`. `node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Both files: 134 + 110
+lines, `git status` shows only the two new files, no existing doc touched.
+**Reversal cost.** None — two new documentation files, no code, no existing doc modified.
+**Status.** applied. Zero of the 158 total listed items have had their deep, one-at-a-time
+review yet — that is the explicitly next, not-yet-authorized phase.

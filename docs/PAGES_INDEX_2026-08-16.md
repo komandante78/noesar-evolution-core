@@ -1,0 +1,134 @@
+# Pages & links index — NOESAR EVOLUTION WebUI + CodeN Evolution
+
+**2026-08-16. Inventory only, not an audit.** Every row below is either machine-generated
+(`tools/measure-page-liveness.mjs --markdown`, run live this session — the same tool that
+caught `D-0300`'s "14 vs 25 real addresses" drift) or read directly from the router source
+(`apps/webui-static/app.js`) and the product's own help text (`apps/webui-static/page-help.js`,
+never invented here). Purpose: a base list to review **one row at a time, in depth**, in a
+future phase — "what works, what's missing, how to improve." **`Checked` is `NO` for every
+row on purpose** — this phase only builds the list, per the Owner's own instruction.
+
+Columns: **Address** = the `#/...` hash link. **What it is** = one-line summary of the
+product's own description (full text in `page-help.js` where marked `[PAGE_HELP]`, otherwise
+the panel name is the only source available — marked `[NAME ONLY]`). **Checked** = has this
+row had its own in-depth review yet (`SI`/`NO`).
+
+---
+
+## 1. Top-level destinations (14) — `apps/webui-static/app.js` `ROUTES`
+
+| # | Address | What it is | Checked |
+|---|---|---|---|
+| 1 | `#/home` | Starting point: projects, recent conversations, work queue, service health. `[PAGE_HELP]` | NO |
+| 2 | `#/chat` | The conversation with its context graph — per-project chats, branches, memory, files, tools. `[PAGE_HELP]` | NO |
+| 3 | `#/coden` | The workbench + session: one program, two shells (this + terminal), one live session. `[PAGE_HELP]` | NO |
+| 4 | `#/tools` | Registered tools (HTTP/MCP/OpenAPI), disabled until consent is granted. `[PAGE_HELP]` | NO |
+| 5 | `#/coden-tui` | Static instructions for reaching the real terminal shell (`coden_evolution`). `[PAGE_HELP]` | NO |
+| 6 | `#/projects` | A project: one controlled scope — chats, instructions, files, memory, tools, agents. `[PAGE_HELP]` | NO |
+| 7 | `#/documents` | Artifacts: documents, code, tables, charts, canvas, app specs, versioned. `[PAGE_HELP]` | NO |
+| 8 | `#/knowledge` | Ingested sources, searched lexically + semantically, original passages kept. `[PAGE_HELP]` | NO |
+| 9 | `#/memory` | What the product has learned about your work, written at session end. `[PAGE_HELP]` | NO |
+| 10 | `#/agents` | Agents plan; a step that changes something waits for human approval with scope. `[PAGE_HELP]` | NO |
+| 11 | `#/workflows` | Declared step effects, retries, compensation, replay; effectful steps wait for a person. `[PAGE_HELP]` | NO |
+| 12 | `#/models` | Model catalogue — running/on-disk at top, publisher-declared elsewhere. `[PAGE_HELP]` | NO |
+| 13 | `#/research` | Goal+criteria research, evidence per candidate, states what was NOT verified. `[PAGE_HELP]` | NO |
+| 14 | `#/settings` | One destination holding every setting; itself static, each section loads its own. `[PAGE_HELP]` | NO |
+
+## 2. Settings sections (16) — `apps/webui-static/app.js` `SETTINGS_SECTIONS`
+
+| # | Address | What it is | Checked |
+|---|---|---|---|
+| 1 | `#/settings/sessions` | Your sessions: working list, archive, 30-day bin. `[PAGE_HELP]` | NO |
+| 2 | `#/settings/appearance` | Theme, accent, text size, motion — device-local only. `[PAGE_HELP]` | NO |
+| 3 | `#/settings/language` | Time zone and locale (UI language itself is in the top bar). `[PAGE_HELP]` | NO |
+| 4 | `#/settings/about` | Version, edition, data plane, the open-core/ATOM boundary. `[PAGE_HELP]` | NO |
+| 5 | `#/settings/licence` | Licence posture — static, deliberately empty (no licence state asserted). `[PAGE_HELP]` | NO |
+| 6 | `#/settings/privacy` | Providers/connectors — local by default, external needs explicit scope. `[PAGE_HELP]` | NO |
+| 7 | `#/settings/people` | Account directory — invite by token, MFA mandatory for owner/admin. `[PAGE_HELP]` | NO |
+| 8 | `#/settings/security` | Your own account: password, recovery codes, authenticator, passkeys, sessions. `[PAGE_HELP]` | NO |
+| 9 | `#/settings/models-hardware` | What the host has, what the runtime would choose — read-only discovery. `[PAGE_HELP]` | NO |
+| 10 | `#/settings/storage` | Export, backup, retention — checksummed, restore refuses a mismatch. `[PAGE_HELP]` | NO |
+| 11 | `#/settings/audit` | One queue for everything awaiting a human decision, any subsystem. `[PAGE_HELP]` | NO |
+| 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | NO |
+| 13 | `#/settings/updates` | Staged/approved/applied updates with rollback; nothing self-installs. `[PAGE_HELP]` | NO |
+| 14 | `#/settings/skills` | Skill catalogue — payload is instructions, cost is context, nothing preloaded. `[PAGE_HELP]` | NO |
+| 15 | `#/settings/modules` | Owner modules — signed, one-click install, open in a new tab, never embedded. `[PAGE_HELP]` | NO |
+| 16 | `#/settings/remote-targets` | Scan a remote codebase over SSH; the analysing module never sees the credential. `[PAGE_HELP]` | NO |
+
+*Note: `settings/hardware` also exists as a distinct `PAGE_HELP` entry (accelerator probe) —
+`measure-page-liveness.mjs` did not list it as a separate live section; flag for the deep pass
+to confirm whether it's a real second address or stale text.*
+
+## 3. Live-measurement flags (`tools/measure-page-liveness.mjs`, run 2026-08-16) — cross-check, not a new list
+
+Everything above is `live: yes` **except**: `coden-tui`, `settings` (itself, by design — static
+shell), `settings/appearance` (flagged `live: no` by the tool — worth a look in the deep pass:
+`page-help.js` describes it as fully device-local, so "not live" may be correct by design, or
+may be the tool not recognizing its loader), `settings/licence` (static by design, documented),
+`not-found`/`access-denied` (static by design, documented). All others load real data on open.
+
+## 4. CodeN Evolution — bench panels (20) — `data-bench-panel`, address `#/coden/bench/<name>`
+
+| # | Address | What it is | Checked |
+|---|---|---|---|
+| 1 | `#/coden/bench/terminal` | Terminal panel — the browser shell surface itself. `[NAME ONLY]` | NO |
+| 2 | `#/coden/bench/editor` | File editor. `[NAME ONLY]` | NO |
+| 3 | `#/coden/bench/diff` | Diff view for a run/change. `[NAME ONLY]` | NO |
+| 4 | `#/coden/bench/preview` | Preview surface. `[NAME ONLY]` | NO |
+| 5 | `#/coden/bench/tests` | Test results. `[NAME ONLY]` | NO |
+| 6 | `#/coden/bench/problems` | Problems/diagnostics list. `[NAME ONLY]` | NO |
+| 7 | `#/coden/bench/logs` | Log stream for the session. `[NAME ONLY]` | NO |
+| 8 | `#/coden/bench/history` | Session history. `[NAME ONLY]` | NO |
+| 9 | `#/coden/bench/tasks` | Task list. `[NAME ONLY]` | NO |
+| 10 | `#/coden/bench/map` | Repository map. `[NAME ONLY]` | NO |
+| 11 | `#/coden/bench/tools` | Tools available inside the bench. `[NAME ONLY]` | NO |
+| 12 | `#/coden/bench/plugins` | Plugins panel. `[NAME ONLY]` | NO |
+| 13 | `#/coden/bench/agents` | Agents panel (bench-side view). `[NAME ONLY]` | NO |
+| 14 | `#/coden/bench/documentation` | Documentation panel. `[NAME ONLY]` | NO |
+| 15 | `#/coden/bench/closure` | Closure/final-report panel. `[NAME ONLY]` | NO |
+| 16 | `#/coden/bench/shadow` | Shadow-execution panel. `[NAME ONLY]` | NO |
+| 17 | `#/coden/bench/favourites` | Favourites. `[NAME ONLY]` | NO |
+| 18 | `#/coden/bench/recent` | Recent items. `[NAME ONLY]` | NO |
+| 19 | `#/coden/bench/sessions` | Sessions panel (bench-side view). `[NAME ONLY]` | NO |
+| 20 | `#/coden/bench/projects` | Projects panel (bench-side view). `[NAME ONLY]` | NO |
+
+## 5. CodeN Evolution — agent column panels (5) — `data-agent-panel`, address `#/coden/agent/<name>`
+
+| # | Address | What it is | Checked |
+|---|---|---|---|
+| 1 | `#/coden/agent/plan` | The current Plan awaiting/under authorization. `[NAME ONLY]` | NO |
+| 2 | `#/coden/agent/authority` | What capability token/authority is currently granted. `[NAME ONLY]` | NO |
+| 3 | `#/coden/agent/activity` | Live agent activity feed. `[NAME ONLY]` | NO |
+| 4 | `#/coden/agent/conversation` | The agent-facing conversation view. `[NAME ONLY]` | NO |
+| 5 | `#/coden/agent/invariants` | Declared invariants the agent must not violate. `[NAME ONLY]` | NO |
+
+## 6. Legacy redirects (11) — informational only, not real pages, `LEGACY_ROUTES` in `app.js`
+
+Old address → where it lands now. Listed so a bookmark/old note is not mistaken for a missing
+page during the deep review.
+
+| Old address | Redirects to |
+|---|---|
+| `#/tasks` | `#/home` |
+| `#/tools` *(legacy sense)* | `#/coden` |
+| `#/approvals` | `#/settings/audit` |
+| `#/providers` | `#/settings/privacy` |
+| `#/hardware` | `#/settings/models-hardware` |
+| `#/users` | `#/settings/people` |
+| `#/security` | `#/settings/security` |
+| `#/health` | `#/settings/health` |
+| `#/logs` | `#/settings/health` |
+| `#/updates` | `#/settings/updates` |
+| `#/backups` | `#/settings/storage` |
+| `#/about` | `#/settings/about` |
+
+## 7. Terminal-only surface — not a page, noted for completeness
+
+`coden_evolution` (real SSH terminal) exposes the same CodeN Evolution capabilities via 17
+slash commands — listed in `docs/TOOLS_MODULES_INDEX_2026-08-16.md` §2, not duplicated here,
+since a command is a functionality, not a page/link.
+
+---
+
+**Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
+destinations, + 11 legacy redirects. 0 of 55 checked in depth.**

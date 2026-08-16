@@ -1,12 +1,16 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0472`: advancement research delivered, no code touched)
+# SESSION HANDOFF — 2026-08-16 (`D-0473`: two inventory lists built, no code touched)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session: `D-0470`
 (`CLAUDE10.md` §19, native-tooling scope) → `D-0471` (tooling-drift checker, `state-digest.sh`)
-→ **`D-0472`: `docs/ADVANCEMENT_RESEARCH_2026-08-16.md`**, a 5-part research/checklist document
-(Owner asked for a checklist + a targeted UX scan + original research into advanced tech, "2
-agents at a time, calmly"). Read it for the full picture — summary:
+→ `D-0472` (`docs/ADVANCEMENT_RESEARCH_2026-08-16.md`, research + checklist) → **`D-0473`: two
+new inventory lists**, `docs/PAGES_INDEX_2026-08-16.md` (55 WebUI/CodeN addresses) and
+`docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 tools/modules/API groups) — every row `Checked:
+NO` on purpose, built to be worked through **one row at a time** in a future phase. Not a deep
+review — an inventory, per the Owner's explicit instruction not to scan deeply yet.
+
+`D-0472`'s summary, unchanged:
 
 - **Checklist**: confirms `F-SLASH-001`, `cargo publish`, and **Phase D (WP4, Capability Token
   spec)** as the three live, ready options — "Fase D" from yesterday's handoff is now named:
@@ -29,6 +33,8 @@ The real open items are unchanged, still the Owner's call:
   terminale vero.
 - **Fase D (WP4)**, or the hover/title fix, or pushing one of the 3 research directions into a
   real proposal — all three now scoped and ready, none started.
+- **New, from `D-0473`**: pick which of the 158 listed items (55 pages + 103 tools/modules) to
+  review first, in depth — none reviewed yet.
 
 ## Blockers e finding aperti
 
