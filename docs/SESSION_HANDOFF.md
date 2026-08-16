@@ -36,6 +36,17 @@ The real open items are unchanged, still the Owner's call:
 - **New, from `D-0473`**: pick which of the 158 listed items (55 pages + 103 tools/modules) to
   review first, in depth — none reviewed yet.
 
+**Agreed plan for the next session (Owner, 2026-08-16, this session's close):** start the deep,
+one-at-a-time review of `docs/PAGES_INDEX_2026-08-16.md` and
+`docs/TOOLS_MODULES_INDEX_2026-08-16.md`, **3 items reviewed in depth per phase**, in the order
+the lists are written (top-level pages first, dependency order — not random). Each phase ends
+with: what works, what's missing, what to change — same shape as this session's own research,
+scaled down to 3 items instead of one big sweep. `Checked` flips to `SI` only for an item a
+phase actually reviewed this way, never in bulk. No code changes inside a review phase unless
+the Owner authorizes fixing what's found (same rule as always: find first, fix on authorization
+or when `HUNT AND FIX` requires it). At ~3/phase across 158 items, expect roughly 50+ phases to
+cover both lists once — said plainly now so it isn't a surprise discovered halfway through.
+
 ## Blockers e finding aperti
 
 | Id | Stato |
