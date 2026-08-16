@@ -11415,3 +11415,28 @@ re-verified per panel."
 description corrections (`terminal`, `tests`, `plugins`), 1 recorded-not-fixed product-copy
 inconsistency (`documentation`, `D-0489`), 1 correction to prior sessions' own e2e-coverage
 notes (this batch). Only §5 (5 CodeN Evolution agent panels) remains of the 158-item plan.
+
+## D-0491 · Deep review, §4-5 agent panels — pages inventory complete, 55/55 — 2026-08-16
+**Decision.** Reviewed all 5 CodeN Evolution agent panels (`plan`, `authority`, `activity`,
+`conversation`, `invariants`); findings appended in-file (§8), `Checked` flipped to `SI`. The
+entire `docs/PAGES_INDEX_2026-08-16.md` inventory (55 pages, 18 phases from `D-0474`) is now
+fully reviewed.
+**Why.** Continuation of the review cadence at the Owner's "PROCEDI"; this was the last section.
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `plan` confirmed the most e2e-proven surface in the whole pass
+(`tools/browser-e2e.mjs:2790-2854`). `authority` (capability-token request/analyze/authorize +
+Owner reauth) confirmed real and deeply backend-tested (8 suites + a dedicated 6-test route
+suite), but **zero e2e drives the actual form** — the single highest-priority gap in the entire
+review, since this is the security boundary itself, not a settings convenience. `activity`
+confirmed empty-by-design for the same reason as `tests` (`D-0486`, EXECUTE permanent refusal).
+`conversation` confirmed to correctly declare shared session state, not a second chat.
+`invariants` confirmed live and server-declared, e2e-proven.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. **55 of 55 pages checked — the pages inventory is complete.** Final tally:
+3 fixes applied (`F4-011`, `settings/hardware`, `settings/appearance`'s live flag), 1 unfixed
+product-copy inconsistency recorded (`documentation`, `D-0489`), 9 "backend proven, not
+e2e-driven" occurrences named (8 in §1+§2 + `authority` as the highest-priority one), 1 scope
+correction to the review's own earlier finding (§3 nav-list mechanism), 5 `[NAME ONLY]`
+corrections, 1 standing improvement proposal (`file-extractors.mjs` packaging, `D-0476`). No
+code was changed across any of the 18 review phases. Next: `docs/TOOLS_MODULES_INDEX_2026-08-16.md`
+(103 items), not yet started — or Owner may choose to act on one of the named findings instead.

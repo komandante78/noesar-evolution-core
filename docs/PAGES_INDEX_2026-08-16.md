@@ -99,11 +99,11 @@ others load real data on open.
 
 | # | Address | What it is | Checked |
 |---|---|---|---|
-| 1 | `#/coden/agent/plan` | The current Plan awaiting/under authorization. `[NAME ONLY]` | NO |
-| 2 | `#/coden/agent/authority` | What capability token/authority is currently granted. `[NAME ONLY]` | NO |
-| 3 | `#/coden/agent/activity` | Live agent activity feed. `[NAME ONLY]` | NO |
-| 4 | `#/coden/agent/conversation` | The agent-facing conversation view. `[NAME ONLY]` | NO |
-| 5 | `#/coden/agent/invariants` | Declared invariants the agent must not violate. `[NAME ONLY]` | NO |
+| 1 | `#/coden/agent/plan` | The current Plan; default panel, most thoroughly e2e-proven surface in this review. `[VERIFIED, D-0491]` | SI |
+| 2 | `#/coden/agent/authority` | Capability-token request/analyze/authorize + Owner reauth — real, backend-proven, **zero e2e**. `[VERIFIED, D-0491]` | SI |
+| 3 | `#/coden/agent/activity` | Mostly permanently empty by design (no execution surface); one live sub-panel. `[VERIFIED, D-0491]` | SI |
+| 4 | `#/coden/agent/conversation` | Declares it shares session state with Chat/terminal — not a second chat. `[VERIFIED, D-0491]` | SI |
+| 5 | `#/coden/agent/invariants` | Live, server-declared, non-bypassable list — e2e-proven. `[VERIFIED, D-0491]` | SI |
 
 ## 6. Legacy redirects (11) — informational only, not real pages, `LEGACY_ROUTES` in `app.js`
 
@@ -782,6 +782,86 @@ independently seven times, which this batch clarifies rather than treats as seve
 
 ---
 
+### `D-0491` (2026-08-16) — §4-5 agent panels, all 5: `plan`, `authority`, `activity`,
+`conversation`, `invariants` — **inventory complete, 55/55**
+
+**`#/coden/agent/plan`** (`index.html:570-599`).
+*Works, VERIFIED*: the default agent panel, wired to `POST /api/v1/workspace-actions/plan`.
+Already the single most thoroughly e2e-proven surface reviewed across this whole pass — the
+D-0230/UI-036 sequence (`tools/browser-e2e.mjs:2790-2854`) fills the goal, submits, simulates,
+approves, and cross-checks Diff/Editor/Preview/Problems all reading the same run. Also shows
+runs unattached to any chat (terminal-started work), honestly labelled rather than misfiled
+under a conversation that didn't create them.
+*Missing*: none found.
+*To change*: none.
+
+**`#/coden/agent/authority`** (`index.html:614-625`, `app.js:1903-1904,5319-5320`).
+*Works, VERIFIED, and the most significant finding of this whole review*: the capability-token
+request/analyze/authorize flow — `POST /api/v1/coden/path-plan`, `/api/v1/coden/authorize`,
+`/api/v1/auth/reauth` (Owner password + live TOTP for elevated scope) — all real, and this is
+the **architectural core** the rewrite collapses "twelve components into one" around
+(`MASTER_PROJECT/09_PIANO.md`). Backend coverage is deep: 8 suites
+(`authority.test.mjs`, `authority-protocol.test.mjs`, `authority-ipc-frame.test.mjs`,
+`authority-external-client.test.mjs`, `capability-vectors.test.mjs`,
+`capability-http-adversarial.test.mjs`, `adapter-capability.test.mjs`,
+`adapter-capability-http-adversarial.test.mjs`) plus a dedicated route suite
+(`coden-path-authorization.test.mjs`, 6 tests).
+*Missing, real and higher-stakes than the §1+§2 pattern*: **zero e2e coverage of the actual
+form** — no check drives `#analyzePath` → `#authorizePlan` → `#reauthButton` and asserts a real
+authorization was granted. Every other occurrence of "backend proven, not e2e-driven" in this
+review (8 in §1+§2, `D-0478`-`D-0484`) was a settings convenience feature; this one is the
+security boundary a person actually depends on when granting the product write/delete/execute
+access. The backend being this well-tested is reassuring, but it does not prove the **button
+the Owner actually clicks** reaches it correctly.
+*To change*: **recommended as the highest-priority item from the whole e2e-coverage pattern** —
+not built this pass, no authorization to build it. If only one of the 9 named coverage gaps gets
+an e2e check, this should be it.
+
+**`#/coden/agent/activity`** (`index.html:605-613`, `app.js` tool-activity wiring).
+*Works, VERIFIED*: mostly permanently declared-empty, for the **same architectural reason**
+`tests` (`D-0486`) is — "this layer has no execution surface, so it reads and writes nothing" —
+consistent with EXECUTE being a permanent refusal. `agentToolActivity` is the one live
+sub-section (tool calls actually made). Sub-agents declared absent honestly ("needs its own
+authority and an independent reviewer; neither exists in this build").
+*Missing*: no e2e for `agentToolActivity` specifically found.
+*To change*: none built this pass; lower priority than `authority`.
+
+**`#/coden/agent/conversation`** (`index.html:563`, `app.js:5273`).
+*Works, VERIFIED*: correctly declares it is **not** a second chat — shares session state with
+Chat and the terminal, consistent with `#/coden`'s own "one program, two shells, one live
+session" claim (`D-0474`).
+*Missing*: no e2e found.
+*To change*: none.
+
+**`#/coden/agent/invariants`** (`index.html:626`, `app.js:2800`).
+*Works, VERIFIED*: a live, **server-declared** list (`#invariantList`), not a hardcoded UI
+string — e2e-proven the list actually populates (`tools/browser-e2e.mjs:762-765`); backend
+coverage in `coden-invariant-adversarial.test.mjs`.
+*Missing*: none found.
+*To change*: none.
+
+## The 55-page inventory is now fully reviewed (55/55).
+
+**Final tally across the whole pass** (`D-0474` through `D-0491`, 18 phases):
+- **3 fixes applied**: `F4-011` stale-record correction (`D-0475`), the `settings/hardware`
+  orphan resolved (`D-0481`), `settings/appearance`'s `live:no` flag resolved as correct-by-design
+  (`D-0479`).
+- **1 real, unfixed product-copy inconsistency**: `#/coden/bench/documentation`'s emptiness not
+  declared as permanent, unlike its siblings (`D-0489`) — wording proposed, needs Owner sign-off.
+- **9 occurrences of "backend proven, not e2e-driven"**: 8 in §1+§2 (`D-0478`-`D-0484`) plus the
+  most significant one, `#/coden/agent/authority` (`D-0491`) — the capability-token security
+  core, the single highest-priority gap named in this entire review.
+- **1 correction to the review's own earlier scope**: 7 nav-list panels in §3 share one proven
+  mechanism, not 7 independent gaps (`D-0490`).
+- **5 description corrections** to `[NAME ONLY]` guesses that were wrong (`terminal`, `tests`,
+  `plugins` in §3; none in §4-5, where the guesses were thin but not wrong).
+- **1 improvement proposal carried forward, not yet executed**: `file-extractors.mjs` as a
+  standalone reusable AGPL package (`D-0476`), the strongest NLnet-funding-fit candidate found.
+
+**No code was changed in any of these 18 phases** — this was a read-only, evidence-gathering
+review. `docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 items) has not been started.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 50 of 55 checked in depth — only §5 (5 agent panels)
-remains.**
+destinations, + 11 legacy redirects. 55 of 55 checked in depth. Complete.**

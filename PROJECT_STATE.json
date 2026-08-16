@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0490: deep review of docs/PAGES_INDEX_2026-08-16.md sec3 items 16-20 (bench/shadow, favourites, recent, sessions, projects). Section3 (20 bench panels) now fully reviewed. shadow (default panel) confirmed e2e-proven honest about unsupported simulation. favourites confirmed correctly self-declared permanent absence, unlike documentation (D-0489). recent/sessions/tools/history/tasks/agents/projects confirmed to share one generic renderer; projects carries a dedicated e2e click-through proving that shared mechanism end-to-end, narrowing prior sessions e2e-coverage notes on the other six from a gap to not independently re-verified per panel. Checked flipped to SI for these 5 rows.",
-  "phase_status": "D-0490_applied__50_of_55_pages_reviewed__section3_complete",
+  "current_phase": "D-0491: deep review of docs/PAGES_INDEX_2026-08-16.md sec4-5, all 5 CodeN Evolution agent panels (plan, authority, activity, conversation, invariants). PAGES INVENTORY NOW COMPLETE 55/55, 18 phases from D-0474. Highest-priority finding of the whole review: #/coden/agent/authority (capability-token request/analyze/authorize + Owner reauth, the architectural security core) is real and deeply backend-tested (8 suites + dedicated route suite) but has ZERO e2e coverage of the actual form -- the single most important gap named across all 9 occurrences of the backend-proven-not-e2e-driven pattern, since this is the security boundary itself. Final tally: 3 fixes applied (F4-011, settings/hardware, settings/appearance live flag), 1 unfixed product-copy inconsistency (documentation, D-0489), 9 e2e-coverage gaps named, 1 scope correction (D-0490), 5 NAME ONLY corrections, 1 improvement proposal carried forward (file-extractors.mjs packaging, D-0476). No code changed across all 18 phases. Checked flipped to SI for the final 5 rows.",
+  "phase_status": "D-0491_applied__55_of_55_pages_reviewed__PAGES_INVENTORY_COMPLETE",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "54fbdd7",
-  "last_updated_utc": "2026-08-16T14:00:00Z",
+  "last_updated_utc": "2026-08-16T14:30:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Continue the deep review: docs/PAGES_INDEX_2026-08-16.md section 4-5, the 5 CodeN Evolution agent panels (plan, authority, activity, conversation, invariants) -- the last 5 of 55 pages, completing the pages inventory. Same method -- what works, what is missing, what to change, cite file:line evidence, HUNT AND FIX any in-scope stale/broken finding. After that: docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items, not yet started). No code changes without Owner authorization -- including the documentation panel copy fix proposed in D-0489, which needs explicit sign-off.",
+  "next_action": "PAGES_INDEX_2026-08-16.md inventory is complete (55/55). Owner to choose next: (a) start docs/TOOLS_MODULES_INDEX_2026-08-16.md (103 items, not yet started), (b) act on the highest-priority finding -- an e2e check for #/coden/agent/authority form (D-0491), (c) act on one of the other named open items (documentation panel copy fix D-0489, file-extractors.mjs packaging D-0476, F-SLASH-001 design pick D-0463, F-MODEL-001 servedBy D-0395, cargo publish, Fase D/WP4). No code changes without explicit Owner authorization for whichever is chosen.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
