@@ -111,6 +111,23 @@ else
   printf '  [checker unavailable: %s or jq missing]\n' "$MATCHER_LIB"
 fi
 
+printf '\n----- TOOLING INVENTORY (.mcp.json / settings.json plugins vs CLAUDE10.md §19, D-0470) -----\n'
+TOOLING_LIB="$ROOT/.claude/hooks/lib/tooling-inventory.sh"
+if [ -f "$TOOLING_LIB" ] && command -v jq >/dev/null 2>&1; then
+  # shellcheck source=../../hooks/lib/tooling-inventory.sh
+  . "$TOOLING_LIB"
+  TGAPS="$(tin_check_baseline "$ROOT" 2>/dev/null)"
+  if [ -z "$TGAPS" ]; then
+    printf '  OK — measured tooling surface matches the declared baseline\n'
+  else
+    printf '  ⚠ GAP — an undeclared MCP/plugin integration appeared (or the baseline is stale):\n'
+    printf '%s\n' "$TGAPS" | sed 's/^/    /'
+    printf '  fix: update CLAUDE10.md §19 AND .claude/hooks/lib/tooling-inventory-baseline.json together\n'
+  fi
+else
+  printf '  [checker unavailable: %s or jq missing]\n' "$TOOLING_LIB"
+fi
+
 printf '\n----- PROJECT CONTAINERS (read-only; §5a allows exactly two at phase close) -----\n'
 if command -v docker >/dev/null 2>&1; then
   docker ps -a --filter 'name=noesar-evolution' \

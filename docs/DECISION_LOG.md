@@ -11037,3 +11037,33 @@ tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Inventory measured live: `.mcp.j
 `.claude/settings.json` keys = `hooks`, `permissions` only (`jq -r keys`).
 **Reversal cost.** None — documentation-only, additive rule.
 **Status.** applied.
+
+## D-0471 · Tooling-drift checker built — D-0470's own improvement proposal — 2026-08-16
+**Decision.** Built `.claude/hooks/lib/tooling-inventory.sh` (`tin_check_baseline()`, POSIX
+sh, same shape as `D-0455`'s `hme_check_settings()`), a git-tracked baseline
+(`.claude/hooks/lib/tooling-inventory-baseline.json`, currently both flags `false`), and
+wired it into `state-digest.sh` as a new "TOOLING INVENTORY" section that fails loud
+(`⚠ GAP`) when `.mcp.json` or a `plugins` key in `.claude/settings.json` diverges from the
+declared baseline, in either direction. Regression suite:
+`.claude/hooks/test/test-tooling-inventory.sh`, 9/9.
+**Why.** Owner authorized executing D-0470's own recorded proposal (*"ti autorizzo a gestirte
+il miglioramento e autorizzo cambiamenti che servono per migliorare noesar evolution"*).
+`CLAUDE10.md` §19 rule 81 declared "no `.mcp.json`, no `plugins` key" as a measured fact with
+nothing to keep it true — the same silently-stale-claim bug class `F-HOOK-005` already cost
+this project three days once.
+**Rejected.** Parsing §19's prose directly for named integrations — `hook-matcher-enums.sh`'s
+own comment already rejects this shape for a near-identical reason (fragile, and a change in
+wording would silently break the checker). A baseline file a human edits alongside the
+`CLAUDE10.md` amendment is the same pattern this project already trusts (`MANIFEST.sha256`,
+the I18N baseline, `hme_check_settings`'s own settings.json read).
+**Evidence.** `bash .claude/hooks/test/test-tooling-inventory.sh`: 9/9 — proves the gap fires
+both directions (undeclared appearance AND stale-baseline removal), proves a matching
+baseline stays silent, proves the real repository is clean against its own baseline. Live
+digest run: `OK` against the real tree; `touch .mcp.json` then re-run: `⚠ GAP` naming exactly
+`mcp_json_present:declared=false,measured=true`; file removed, confirmed absent from `git
+status` before commit. `sh -n`/`bash -n`/`jq .` on all 4 new/changed files: clean. `shellcheck`
+absent on this host — declared, not run (same honest gap this project already declares
+elsewhere).
+**Reversal cost.** None — additive: 2 new lib/baseline files, 1 new test file, one digest
+section. No existing hook, script or product code changed.
+**Status.** applied.

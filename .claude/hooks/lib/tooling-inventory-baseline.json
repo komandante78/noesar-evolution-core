@@ -1,0 +1,5 @@
+{
+  "_comment": "Declared native-tooling surface for NOESAR EVOLUTION, CLAUDE10.md §19 (D-0470). tin_check_baseline() in tooling-inventory.sh compares MEASURED reality against these two flags, never against §19's prose directly (too fragile to parse). Update THIS file in the SAME commit as any CLAUDE10.md §19 amendment that names a new .mcp.json or settings.json plugins integration — otherwise the digest check in state-digest.sh flags real drift as a false gap forever.",
+  "mcp_json_present": false,
+  "settings_plugins_key_present": false
+}

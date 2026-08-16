@@ -1,15 +1,14 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0470`: native tooling audited and scoped, governance only)
+# SESSION HANDOFF — 2026-08-16 (`D-0471`: tooling-drift checker built, governance only)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session added
-one governance rule, no product code: `CLAUDE10.md` §19 (rules 81-85) audits the Claude Code
-tools actually available (measured: no `.mcp.json`, no `plugins` key — zero third-party
-integrations exist) and authorizes the internal-use ones (subagents, search, `Task*`,
-`Monitor`, worktrees) without a further ask, while keeping per-instance confirmation for
-anything that publishes outside the repo (`DesignSync`, `Artifact`, `claude-in-chrome`).
-Cron/scheduled autonomy declined as incompatible with "one phase per invocation" (rule 9).
-See `D-0470`.
+two governance layers, no product code: `CLAUDE10.md` §19 (`D-0470`, rules 81-85) audits the
+Claude Code tools actually available (measured: no `.mcp.json`, no `plugins` key) and scopes
+which are authorized without a further ask vs. confirmed per use. `D-0471` (Owner-authorized
+execution of `D-0470`'s own proposal) built the mechanical guard: `state-digest.sh` now fails
+loud (`⚠ GAP`) if `.mcp.json` or a `settings.json` `plugins` key ever diverges from the
+declared baseline — verified live, both directions, 9/9 regression suite.
 
 The real open items are unchanged from yesterday, still the Owner's call:
 
@@ -60,6 +59,8 @@ Cronologia completa dei numeri intermedi (58 file migrati, 75.114 directory rimo
   solo stati portati a un'autorizzazione esplicita "a conferma per uso", non invocati.
 - **Nessuna skill dedicata scritta per §19** — dichiarato in `CLAUDE10.md`: nascerà se questo
   toolset diventa pratica ricorrente, come le altre tre skill di economia.
+- **`shellcheck` non eseguito sui 2 nuovi script** — assente su questo host, dichiarato non
+  eseguito piuttosto che saltato in silenzio; `sh -n`/`bash -n`/`jq .` sono puliti.
 - **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e (non applicabile
   a questa fase, solo documentazione toccata).
 - **F-SLASH-001's actual fix** — decisione di design non ancora presa, deliberatamente.
@@ -70,13 +71,12 @@ Cronologia completa dei numeri intermedi (58 file migrati, 75.114 directory rimo
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0470`, non eseguita)**: nulla oggi impedisce un futuro `.mcp.json`
-di introdurre un server MCP non verificato in silenzio — `noesar-evolution-verify`'s HUNT AND
-FIX non ha una riga che controlli la presenza/assenza di `.mcp.json` o della chiave `plugins`
-contro quanto dichiarato in `CLAUDE10.md` §19. Beneficio: una riga di digest (`state-digest.sh`)
-che fallisce rumorosamente se compare un'integrazione non ancora nominata in §19, sullo stesso
-schema del `hme_check_settings()` che `D-0455` ha già costruito per gli hook. Costo: basso, uno
-script POSIX più una riga nel digest.
+**Nuova, da questo giro (`D-0471`, non eseguita)**: il checker confronta contro un baseline
+a 2 flag booleani (presenza file/chiave), non contro un elenco nominato di integrazioni. Se
+in futuro nascesse un secondo MCP server legittimo mentre il primo resta non dichiarato, il
+checker vedrebbe solo "presente" e non distinguerebbe. Beneficio: passare da booleano a un
+elenco di nomi dichiarati (stesso schema di `hme_canonical_enum`) darebbe drift per-nome, non
+solo per-categoria. Costo: basso, ma prematuro finché il conteggio reale resta zero.
 
 **Precedente (`D-0469`, non eseguita)**: `coden-terminal.js` had a defect (`F-TERM-003`) that
 no test caught because nothing in this suite asserts the terminal's generic `call` path stays
