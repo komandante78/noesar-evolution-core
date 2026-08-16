@@ -31,8 +31,8 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 10 | `#/agents` | Agents plan; a step that changes something waits for human approval with scope. `[PAGE_HELP]` | SI |
 | 11 | `#/workflows` | Declared step effects, retries, compensation, replay; effectful steps wait for a person. `[PAGE_HELP]` | SI |
 | 12 | `#/models` | Model catalogue — running/on-disk at top, publisher-declared elsewhere. `[PAGE_HELP]` | SI |
-| 13 | `#/research` | Goal+criteria research, evidence per candidate, states what was NOT verified. `[PAGE_HELP]` | NO |
-| 14 | `#/settings` | One destination holding every setting; itself static, each section loads its own. `[PAGE_HELP]` | NO |
+| 13 | `#/research` | Goal+criteria research, evidence per candidate, states what was NOT verified. `[PAGE_HELP]` | SI |
+| 14 | `#/settings` | One destination holding every setting; itself static, each section loads its own. `[PAGE_HELP]` | SI |
 
 ## 2. Settings sections (16) — `apps/webui-static/app.js` `SETTINGS_SECTIONS`
 
@@ -265,7 +265,36 @@ models) are already server-authoritative with real approval/consent gates, which
 correct baseline rather than a gap to close. The standing proposal from `D-0476`
 (`file-extractors.mjs` packaging) remains the best open item; not duplicating it here.
 
+### `D-0478` (2026-08-16) — items 13-14: `#/research`, `#/settings` (§1 now complete, 14/14)
+
+**`#/research`** (`index.html:820-836`, `app.js:5510-5603`).
+*Works, VERIFIED*: real two-gate pipeline — intent gate before anything leaves, content gate
+before anything is shown, three outcomes (proceed/ask/refuse), each refusal named
+(`services/reference-control-plane/src/research.mjs:197-229`, `research-gate.mjs`); the report
+is reached through an ephemeral, revocable, session-gated link, not a public one; no provider
+built in — configured and consented like any other connector. Backend coverage is thorough: 35
+tests across `research.test.mjs`, `research-gate.test.mjs` and a dedicated
+`research-gate-http-adversarial.test.mjs`.
+*Missing*: no e2e check found driving the actual gesture (type objective, add criteria, run,
+read the outcome panel) — `#/research` appears only in destination-reachability list checks
+(`tools/browser-e2e.mjs:482,3519`), not in one exercising the form. The backend is thoroughly
+proven; the UI wiring to it is not, in this suite.
+*To change*: not built this pass (no authorization) — worth an e2e check given how well-tested
+the backend already is and how thin the UI-side proof is by comparison.
+
+**`#/settings`** (`index.html:838-867`, `app.js:743,503,538`).
+*Works, VERIFIED*: static shell by design (confirmed live-measurement, §3 above); each of the 16
+sections is independently deep-linkable (`#/settings/<section>`) and denies per-section when the
+account may not open it (`#settingsDenied`, rendered rather than a blank 403) — the gate is
+visible, not merely enforced.
+*Missing*: none found at the shell level (sections reviewed individually, not yet started).
+*To change*: none.
+
+**Top-level destinations (§1) are now fully reviewed: 14 of 14.** No HUNT AND FIX this batch —
+nothing found rose to a repairable in-scope defect; the `#/research` e2e gap is a coverage note,
+not a broken behaviour.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 12 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 14 of 55 checked in depth.**

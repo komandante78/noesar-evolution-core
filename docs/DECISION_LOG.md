@@ -11194,3 +11194,17 @@ confirmed at `tools/browser-e2e.mjs:3271` (agents), `:1882-1909` (workflows), `:
 **Status.** applied. 12 of 55 pages checked. No new defect found; `F-MODEL-001` (already
 tracked, `D-0395`) cited, not re-litigated. Next: items 13-15 (`#/research`, `#/settings`, then
 the 16 settings sections start).
+
+## D-0478 · Deep review, items 13-14 of 158 — §1 top-level destinations complete (14/14) — 2026-08-16
+**Decision.** Reviewed rows 13-14 of `docs/PAGES_INDEX_2026-08-16.md` (`#/research`,
+`#/settings`); findings appended in-file (§8), `Checked` flipped to `SI`. All 14 top-level
+destinations are now reviewed.
+**Why.** Continuation of the `D-0473`-`D-0477` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `research.mjs`/`research-gate.mjs` two-gate pipeline read; 35 backend tests found
+across `research.test.mjs`, `research-gate.test.mjs`, `research-gate-http-adversarial.test.mjs`;
+`#/settings` per-section deep-linking and denial rendering confirmed in `app.js:743,503,538`.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 14 of 55 pages checked, §1 (top-level) complete. One coverage gap noted, not
+fixed: no e2e check drives the `#/research` form gesture itself (destination-reachability only).
+Next: the 16 settings sections (§2), starting `#/settings/sessions`.
