@@ -1,35 +1,32 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0484`: deep review, §2 complete — 16/16 settings sections)
+# SESSION HANDOFF — 2026-08-16 (`D-0485`: deep review, §3 bench panels 1-3)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0484`), settings sections 15-16:
+this session.** §2 (settings) completed last phase; started §3 (20 legacy CodeN Evolution bench
+panels, pre-`D-0404`, pending "slice 4" removal once the modern terminal is proven to replace
+them all — that terminal was already confirmed real in `D-0474`). Reviewed items 1-3:
 
-- **`#/settings/modules`** — real; owner-module registration/signing/install run server-side,
-  matching the page's own claim exactly.
-- **`#/settings/remote-targets`** — real; full host-key pinning (not just a fingerprint),
-  `StrictHostKeyChecking=yes` never disabled — "a later mismatch refuses the connection" is
-  literally true in the code, read directly.
+- **`#/coden/bench/terminal`** — **corrected a table description**: this tab is not the
+  terminal surface itself, it only scrolls focus to the real terminal region below
+  (`app.js:298`). The original `[NAME ONLY]` guess in the inventory was wrong; now `[VERIFIED]`.
+- **`#/coden/bench/editor`** — real, genuinely read-only view of a run's proposed/promoted
+  files, e2e-proven with actual content assertions (not placeholder checks).
+- **`#/coden/bench/diff`** — real, computed against the shadow copy after Approve, e2e-proven
+  the same way.
 
-**§2 (16 settings sections) is now fully reviewed.** Full findings:
-`docs/PAGES_INDEX_2026-08-16.md` §8 `D-0484`, `docs/DECISION_LOG.md` `D-0484`. `Checked` is now
-`SI` for 30 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0485`, `docs/DECISION_LOG.md` `D-0485`.
+`Checked` is now `SI` for 33 of 55 pages.
 
-**e2e-coverage pattern, final tally for §1+§2: 8 occurrences** — `#/research` (§1, `D-0478`),
-theme/accent, password-change/passkeys, log-search/debug-mode, updates, skills, modules,
-remote-targets (all §2, `D-0479`-`D-0484`). All backend-proven, none UI-driven. Named as one
-class now, not 8 separate small findings.
-
-**Next phase**: the Owner picks the next target — §3 (20 CodeN Evolution bench panels), §4-5 (5
-agent panels), or a pivot to `docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 items, not yet
-started). Same method: what works / what's missing / what to change, cite file:line, `HUNT AND
-FIX` anything in-scope found stale or broken. No code changes without Owner authorization.
+**Next phase**: bench panels 4-6 — `preview`, `tests`, `problems`. Same method: what works /
+what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
+broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
 - **`F-SLASH-001`**, **`F-MODEL-001`**, **`cargo publish`**, **Fase D (WP4)**, the hover/title
   fix, one of the 3 `D-0472` research directions, the `file-extractors.mjs` packaging proposal
-  (`D-0476`), the 8-occurrence e2e-coverage pattern (a shared e2e helper was proposed in
+  (`D-0476`), the 8-occurrence e2e-coverage pattern (§1+§2, a shared e2e helper proposed in
   `D-0483`, not built), and the orphaned `page-help.js['settings/hardware']` key — all scoped,
   none started.
 
@@ -54,27 +51,25 @@ All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 
 ## Verificato IN QUESTA SESSIONE
 
-Read-only review phase — direct source reading (`app.js`, `index.html`,
-`remote-target-registry.mjs`, `remote-target-fetch.mjs`, `owner-module-catalog.mjs`)
-cross-checked against existing backend coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8,
-not re-executed in full this session, cited as already-proven evidence per
-`noesar-evolution-engineering-depth` §8.1. No suite run, no deploy, no container touched.
+Read-only review phase — direct source reading (`app.js`, `index.html`) cross-checked against
+existing e2e coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full this
+session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No
+suite run, no deploy, no container touched.
 
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **25 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **The 8-occurrence e2e-coverage pattern** — named as one class, no shared helper built.
+- **22 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **The 8-occurrence e2e-coverage pattern (§1+§2)** — named, not built into a check.
 - **All previously named open items** — unchanged, none executed.
-- **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+- **No HUNT AND FIX this batch** — the terminal-panel description correction was documentation,
+  not a functional defect (the code was already correct).
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0484`)**: with §2 complete and the pattern at a final tally of 8, the
-proposal from `D-0483` stands confirmed rather than speculative: a shared e2e helper ("open
-section X, drive its primary gesture, assert the outcome") could plausibly close most of these
-8 in one focused addition. Benefit: turns a repeatedly observed structural gap into a bounded,
-estimable piece of work instead of 8 open-ended notes. Cost: low-medium, unchanged from
-`D-0483`'s estimate — not executed without Owner authorization.
+**Questo giro (`D-0485`)**: none new — both real findings this batch were review-quality
+corrections (one description fixed) rather than product gaps. The standing best proposals
+remain `D-0476`'s `file-extractors.mjs` packaging and `D-0483`'s shared e2e-helper idea for the
+8-occurrence coverage pattern.
 
-**Precedenti (`D-0483`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0484`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

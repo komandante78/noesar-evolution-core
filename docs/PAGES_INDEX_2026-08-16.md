@@ -74,9 +74,9 @@ others load real data on open.
 
 | # | Address | What it is | Checked |
 |---|---|---|---|
-| 1 | `#/coden/bench/terminal` | Terminal panel — the browser shell surface itself. `[NAME ONLY]` | NO |
-| 2 | `#/coden/bench/editor` | File editor. `[NAME ONLY]` | NO |
-| 3 | `#/coden/bench/diff` | Diff view for a run/change. `[NAME ONLY]` | NO |
+| 1 | `#/coden/bench/terminal` | Legacy tab: not a panel body, scrolls focus to the real terminal region below (`app.js:298`). `[VERIFIED, D-0485]` | SI |
+| 2 | `#/coden/bench/editor` | Read-only view of a plan's proposed/promoted files — never a second write path. `[VERIFIED, D-0485]` | SI |
+| 3 | `#/coden/bench/diff` | Diff against the shadow copy after Approve, never against reply text. `[VERIFIED, D-0485]` | SI |
 | 4 | `#/coden/bench/preview` | Preview surface. `[NAME ONLY]` | NO |
 | 5 | `#/coden/bench/tests` | Test results. `[NAME ONLY]` | NO |
 | 6 | `#/coden/bench/problems` | Problems/diagnostics list. `[NAME ONLY]` | NO |
@@ -524,5 +524,46 @@ pattern is specifically about the UI-driving layer, not about correctness confid
 
 ---
 
+### `D-0485` (2026-08-16) — §3 CodeN Evolution bench panels, items 1-3: `terminal`, `editor`, `diff`
+
+**Context, not repeated per item below**: these 20 panels are the pre-`D-0404` legacy bench
+surface (`index.html:339-341` comment) — still live and functioning, scheduled for removal only
+after "slice 4" proves the modern terminal replaces every one of them (§1's `#/coden` review,
+`D-0474`, already confirmed the modern terminal itself is real and working). This batch reviews
+whether the legacy panels *still function correctly* pending that removal, not whether they
+should exist.
+
+**`#/coden/bench/terminal`** (`index.html:464`, `app.js:298`).
+*Works, VERIFIED*: **not** a panel body — the tab exists only to scroll focus to
+`#benchTerminal`, the real terminal region below the bench, matching its own copy exactly ("not
+a tab that disappears... this tab moves focus to it", `UI-033`). The table description above was
+`[NAME ONLY]` and read as if this panel *were* the terminal surface; corrected to what the code
+actually does.
+*Missing*: none — correct as built once its actual behaviour is understood.
+*To change*: the original inventory description was wrong (guessed from the name, as
+`[NAME ONLY]` warned it might be); corrected in §4's table.
+
+**`#/coden/bench/editor`** (`index.html:460`, `app.js:2926-2937`).
+*Works, VERIFIED*: **genuinely read-only** — shows a run's proposed (pre-Approve) or promoted
+(post-Approve) files, with the comment stating exactly why a live edit box would be wrong here:
+it would let a byte reach the workspace without a plan, a token, or a shadow comparison. e2e
+proves it shows the run's *actual* promoted content, not a placeholder
+(`tools/browser-e2e.mjs:2843-2851`, asserts real file text appears).
+*Missing*: none found.
+*To change*: none.
+
+**`#/coden/bench/diff`** (`index.html:461`, `app.js:2913-2921`).
+*Works, VERIFIED*: computed against the shadow copy after Approve runs it, never against reply
+text — matches the architecture's own "a reply describing a change is not the change" principle.
+e2e asserts a real diff appears after Approve, not "no change to compare"
+(`tools/browser-e2e.mjs:2839-2841`).
+*Missing*: none found.
+*To change*: none.
+
+**No HUNT AND FIX this batch** beyond the description correction above (documentation, not a
+functional defect — the code was already correct).
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 30 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 33 of 55 checked in depth.**

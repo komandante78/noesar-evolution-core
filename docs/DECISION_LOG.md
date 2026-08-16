@@ -11312,3 +11312,20 @@ e2e-coverage pattern across §1+§2: **8 occurrences**
 (`D-0478`/`D-0479`/`D-0481`/`D-0482`/`D-0483`/`D-0484`), all backend-proven, none UI-driven —
 named as one class, not filed as 8 separate findings. Next: §3 (CodeN Evolution bench panels,
 20 items) and §4-5 (agent panels), or the tools/modules inventory — Owner's pick.
+
+## D-0485 · Deep review, §3 CodeN Evolution bench panels 1-3 (`terminal`, `editor`, `diff`) — 2026-08-16
+**Decision.** Started §3 (20 legacy bench panels, pre-`D-0404`, pending "slice 4" removal once
+the modern terminal is proven to replace them all — already confirmed real, `D-0474`). Reviewed
+items 1-3; findings appended in-file (§8), `Checked` flipped to `SI`. Corrected `terminal`'s
+table description: it is not the terminal surface itself, only a tab that scrolls focus to the
+real region (`app.js:298`) — the original `[NAME ONLY]` guess was wrong, now `[VERIFIED]`.
+**Why.** Continuation of the `D-0473`-`D-0484` review cadence at the Owner's "PROCEDI"; §2
+complete, moving to §3 in list order per the original agreed plan.
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `editor`/`diff` confirmed genuinely read-only (no second write path around
+Plan→Approve→shadow), e2e-proven with real content assertions, not placeholder checks
+(`tools/browser-e2e.mjs:2839-2851`, asserts real diff/file text after Approve, not empty state).
+**Reversal cost.** None — documentation only (one table description correction), no code
+touched.
+**Status.** applied. 33 of 55 pages checked. Next: bench panels 4-6 (`preview`, `tests`,
+`problems`).
