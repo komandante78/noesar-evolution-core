@@ -11208,3 +11208,20 @@ across `research.test.mjs`, `research-gate.test.mjs`, `research-gate-http-advers
 **Status.** applied. 14 of 55 pages checked, §1 (top-level) complete. One coverage gap noted, not
 fixed: no e2e check drives the `#/research` form gesture itself (destination-reachability only).
 Next: the 16 settings sections (§2), starting `#/settings/sessions`.
+
+## D-0479 · Deep review, §2 settings sections 1-3 (`sessions`, `appearance`, `language`) — 2026-08-16
+**Decision.** Reviewed the first 3 of 16 settings sections; findings appended in-file (§8),
+`Checked` flipped to `SI`. Resolved a standing open question from §3 of the same file: whether
+`settings/appearance`'s `live: no` flag (from `tools/measure-page-liveness.mjs`) was correct by
+design or a tool detection gap — confirmed correct by design, `renderAppearance()`
+(`app.js:4344`) never calls `api()`, matching its own "device-local only" copy.
+**Why.** Continuation of the `D-0473`-`D-0478` review cadence at the Owner's "procedi"; §1
+(top-level) completed last phase, §2 (settings) begins here.
+**Rejected.** N/A — read-only review phase.
+**Evidence.** e2e coverage confirmed at `tools/browser-e2e.mjs:2505-2758` (sessions),
+`:2645-2661` (appearance zoom/motion), `:2248-2249` (language/timezone); backend suites
+`session-lifecycle.test.mjs`, `webui-colour.test.mjs`, `timezone.test.mjs`.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 17 of 55 pages checked. One coverage gap noted, same shape as
+`#/research`'s (`D-0478`): no e2e click-path for the theme grid or accent picker specifically.
+Next: settings sections 4-6 (`about`, `licence`, `privacy`).

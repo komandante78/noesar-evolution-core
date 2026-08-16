@@ -38,9 +38,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 
 | # | Address | What it is | Checked |
 |---|---|---|---|
-| 1 | `#/settings/sessions` | Your sessions: working list, archive, 30-day bin. `[PAGE_HELP]` | NO |
-| 2 | `#/settings/appearance` | Theme, accent, text size, motion — device-local only. `[PAGE_HELP]` | NO |
-| 3 | `#/settings/language` | Time zone and locale (UI language itself is in the top bar). `[PAGE_HELP]` | NO |
+| 1 | `#/settings/sessions` | Your sessions: working list, archive, 30-day bin. `[PAGE_HELP]` | SI |
+| 2 | `#/settings/appearance` | Theme, accent, text size, motion — device-local only. `[PAGE_HELP]` | SI |
+| 3 | `#/settings/language` | Time zone and locale (UI language itself is in the top bar). `[PAGE_HELP]` | SI |
 | 4 | `#/settings/about` | Version, edition, data plane, the open-core/ATOM boundary. `[PAGE_HELP]` | NO |
 | 5 | `#/settings/licence` | Licence posture — static, deliberately empty (no licence state asserted). `[PAGE_HELP]` | NO |
 | 6 | `#/settings/privacy` | Providers/connectors — local by default, external needs explicit scope. `[PAGE_HELP]` | NO |
@@ -62,10 +62,11 @@ to confirm whether it's a real second address or stale text.*
 ## 3. Live-measurement flags (`tools/measure-page-liveness.mjs`, run 2026-08-16) — cross-check, not a new list
 
 Everything above is `live: yes` **except**: `coden-tui`, `settings` (itself, by design — static
-shell), `settings/appearance` (flagged `live: no` by the tool — worth a look in the deep pass:
-`page-help.js` describes it as fully device-local, so "not live" may be correct by design, or
-may be the tool not recognizing its loader), `settings/licence` (static by design, documented),
-`not-found`/`access-denied` (static by design, documented). All others load real data on open.
+shell), `settings/appearance` (flagged `live: no` by the tool — **resolved in the deep pass,
+`D-0479`: correct by design**, `renderAppearance()` [app.js:4344] never calls `api()`, matching
+its own copy, "stored on this device only, never leaves the installation"), `settings/licence`
+(static by design, documented), `not-found`/`access-denied` (static by design, documented). All
+others load real data on open.
 
 ## 4. CodeN Evolution — bench panels (20) — `data-bench-panel`, address `#/coden/bench/<name>`
 
@@ -294,7 +295,43 @@ visible, not merely enforced.
 nothing found rose to a repairable in-scope defect; the `#/research` e2e gap is a coverage note,
 not a broken behaviour.
 
+### `D-0479` (2026-08-16) — §2 settings sections 1-3: `sessions`, `appearance`, `language`
+
+**`#/settings/sessions`** (`index.html:872-931`).
+*Works, VERIFIED*: three places (working list / archive / bin), each addressable
+(`#/settings/sessions/archive`); select-all, delete-selected with confirmation, restore; the
+terminal keyboard-parity table is checked against the client's real dispatch, not aspirational.
+Extensive e2e coverage (`tools/browser-e2e.mjs:2505-2758`: archive, delete-selected, keyboard
+focus) plus `session-lifecycle.test.mjs`.
+*Missing*: none found.
+*To change*: none.
+
+**`#/settings/appearance`** (`index.html:933-990`, `app.js:4344`).
+*Works, VERIFIED*: 9 themes + any-hue accent with live contrast readout (4.5:1 target, derived
+not refused when the raw hue fails), 4-step text size, independent zoom, motion — all confirmed
+device-local (`renderAppearance()` never calls `api()`). Contrast math has its own unit suite
+(`webui-colour.test.mjs`); zoom/motion e2e-covered (`tools/browser-e2e.mjs:2645-2661`).
+**Resolves the open question from §3 of this file**: the tool's `live: no` flag on this page is
+**correct by design**, not a detection gap — confirmed by reading the render function, not
+inferred.
+*Missing*: no e2e click-path found for the theme grid or the accent picker/readout specifically
+(zoom and motion are covered, theme and accent are not).
+*To change*: not built this pass — coverage gap named, matches the shape of the `#/research`
+gap from `D-0478`.
+
+**`#/settings/language`** (`index.html:991-1001+`).
+*Works, VERIFIED*: time zone resolution order (your preference → server default → host → UTC)
+stated and backed by `timezone.test.mjs`; e2e-covered (`tools/browser-e2e.mjs:2248-2249`).
+*Missing*: none found.
+*To change*: none.
+
+**No HUNT AND FIX this batch** beyond resolving the pre-existing open question above (a
+clarification, not a defect — the behaviour was already correct). Two coverage gaps now on
+record across the review so far, same shape: `#/research`'s form (`D-0478`) and
+`#/settings/appearance`'s theme/accent picker (`D-0479`) — both well-tested at the logic layer,
+neither driven end-to-end by the UI-facing suite.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 14 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 17 of 55 checked in depth.**

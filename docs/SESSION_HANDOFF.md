@@ -1,34 +1,34 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0478`: deep review, items 13-14 — §1 complete, 14/14)
+# SESSION HANDOFF — 2026-08-16 (`D-0479`: deep review, §2 settings sections 1-3)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0478`), rows 13-14 of
-`docs/PAGES_INDEX_2026-08-16.md`:
+this session.** Continued the review cadence (`D-0473`→`D-0479`); §1 (14 top-level destinations)
+finished last phase, §2 (16 settings sections) begins here — reviewed sections 1-3:
 
-- **`#/research`** — real; a genuine two-gate pipeline (intent before anything leaves, content
-  before anything is shown, proceed/ask/refuse), ephemeral revocable report link, 35 backend
-  tests. Missing: no e2e check drives the actual UI gesture (objective/criteria/run) — the
-  page only appears in destination-reachability list checks, not an interaction test.
-- **`#/settings`** — real static shell, each of the 16 sections independently deep-linkable,
-  a denied section renders visibly rather than a blank 403.
+- **`#/settings/sessions`** — real; three addressable places, extensive e2e coverage, keyboard
+  parity checked against the terminal client's real dispatch.
+- **`#/settings/appearance`** — real, device-local by design. **Resolved a standing open
+  question** from this file's own §3: the tool's `live: no` flag on this page is *correct*, not
+  a detection gap — `renderAppearance()` (`app.js:4344`) never calls `api()`, confirmed by
+  reading the function. Coverage gap noted: no e2e click-path for the theme grid/accent picker
+  specifically (zoom/motion are covered).
+- **`#/settings/language`** — real; time-zone resolution order stated and backend-tested.
 
-**§1 (14 top-level destinations) is now fully reviewed, 14/14.** Full findings:
-`docs/PAGES_INDEX_2026-08-16.md` §8 `D-0478`, `docs/DECISION_LOG.md` `D-0478`. `Checked` is `SI`
-for 14 of 55 pages overall.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0479`, `docs/DECISION_LOG.md` `D-0479`.
+`Checked` is now `SI` for 17 of 55 pages.
 
-**Next phase**: §2, the 16 settings sections, starting with `#/settings/sessions`. Same method:
-what works / what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope
-found stale or broken. No code changes without Owner authorization.
+**Next phase**: settings sections 4-6 — `about`, `licence`, `privacy`. Same method: what works /
+what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
+broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
-- **`F-SLASH-001`'s actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
-  when the terminal has claimed the surface. See `D-0463`.
-- **`F-MODEL-001`'s `servedBy` field** — not built, `D-0395`.
-- **`cargo publish`**, **Fase D (WP4)**, the hover/title fix, one of the 3 `D-0472` research
-  directions, the `file-extractors.mjs` packaging proposal (`D-0476`), or now also **an e2e
-  check for `#/research`'s form gesture** — five options scoped and ready, none started.
+- **`F-SLASH-001`'s actual fix**, **`F-MODEL-001`'s `servedBy` field**, **`cargo publish`**,
+  **Fase D (WP4)**, the hover/title fix, one of the 3 `D-0472` research directions, the
+  `file-extractors.mjs` packaging proposal (`D-0476`), an e2e check for `#/research`'s form
+  gesture (`D-0478`), and now also **one for `#/settings/appearance`'s theme/accent picker**
+  (`D-0479`) — six scoped options plus two coverage gaps, none started.
 
 ## Blockers e finding aperti
 
@@ -51,29 +51,29 @@ All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 
 ## Verificato IN QUESTA SESSIONE
 
-Read-only review phase — direct source reading (`app.js`, `index.html`, `research.mjs`,
-`research-gate.mjs`) cross-checked against existing backend suites and e2e coverage cited in
-`docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full this session, cited as
-already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No suite run, no deploy,
-no container touched.
+Read-only review phase — direct source reading (`app.js`, `index.html`) cross-checked against
+existing e2e/unit coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full
+this session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No
+suite run, no deploy, no container touched.
 
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **41 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **`#/research` e2e coverage** — gap named, not built; no Owner authorization sought.
-- **`F-MODEL-001`'s actual fix**, **`F-SLASH-001`'s actual fix**, **`cargo publish`**,
+- **38 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **Theme/accent-picker e2e coverage** — gap named, not built; no Owner authorization sought.
+- **`#/research` e2e coverage**, **`F-MODEL-001`**, **`F-SLASH-001`**, **`cargo publish`**,
   **`file-extractors.mjs` packaging** — all proposed/scoped from earlier phases, none executed.
-- **No HUNT AND FIX this batch** — nothing found rose to the level of a repairable in-scope
-  defect.
+- **No HUNT AND FIX this batch** — the one thing corrected (`settings/appearance`'s `live: no`
+  flag) was a clarification of already-correct behaviour, not a defect.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0478`)**: `#/research`'s backend (two-gate pipeline, ephemeral links) has 35
-tests and zero e2e coverage of the UI gesture that reaches it — the inverse imbalance of most
-pages reviewed so far, where the UI path is what's proven and the backend is inferred. Benefit:
-one e2e check (objective + criterion + run + read outcome panel) would close the one surface in
-this product where the well-tested half is the one nobody can see. Cost: low — the harness
-pattern for a form-gesture check already exists for a dozen other pages in this same suite.
+**Questo giro (`D-0479`)**: the review has now found the same shape of gap twice —
+`#/research`'s form (`D-0478`) and `#/settings/appearance`'s theme/accent picker (`D-0479`) are
+both thoroughly tested at the logic layer (35 backend tests; a dedicated contrast-math suite)
+but have no e2e click-path proving the UI actually reaches that logic. Benefit: naming this as a
+**pattern** rather than two isolated notes means the next occurrence gets recognised faster —
+worth checking whether other unreviewed pages share it once a few more are done. Cost: none this
+phase — an observation, not a build.
 
-**Precedenti (`D-0477`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0478`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
