@@ -4984,3 +4984,31 @@ removed; non-project containers unchanged at 50, networks unchanged. Volumes mea
 created or removed by this deploy.
 **Note.** Closes the same-day thread the Owner opened this morning: crash root-caused and
 fixed (`D-0460`), `/model` reported broken, fixed, and now deployed (`D-0466`/`D-0469`).
+
+## `d0493-password-form-fix-20260816T155232Z` — DEPLOYED and verified — 2026-08-16
+
+**Tag.** `noesar-evolution:d0493-password-form-fix-20260816T155232Z`, deployed 16:15:06Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-password-form-fix`).
+`D-0493`: repaired `event.currentTarget` read after an `await` in 3 form-submit handlers
+(`#securityPasswordForm`, `#passkeyAddForm`, `#passkeyRemoveForm`) — the DOM nulls
+`currentTarget` once synchronous dispatch ends, so `.reset()` threw and a real `200` password
+change was shown to the Owner as an error toast. Only `apps/webui-static/` changed.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` 200 (`status:"alive"`), `/readyz`
+200 (`ready:true`), both read in-container (minimal image has no `curl`/`wget`). 4 children
+spawned (`postgres`/`api`/`codev`/`atom`), 0 auth-failure lines.
+**Verification.** Byte-equal on `apps/webui-static/app.js`, tree↔image before deploy and
+tree↔running container after (`sha256sum` identical both times), 20/20 files matched between
+tree and image. Unit suite `2561/2561` (1 pre-existing skip), 0 fail — run before `--apply`.
+Live check used only health + byte-equality + surfaces answering (§3a 11e — no mutating suite
+against the running installation).
+**Predecessor preserved.** `noesar-evolution-pre-20260816T161506Z`
+(`d0469-model-list-20260815T164217Z`).
+**Cleanup.** Older rollback (`noesar-evolution-pre-20260815T164252Z`,
+`d0457-legacy-shell-hide-...`) removed; non-project containers unchanged, `noesar-e2e-net`/
+`noesar-evolution-net` unchanged, volumes unchanged at 66 (measured before and after removal,
+`EVIDENCE/docker_inventory_pre_cleanup_D-0495_20260816T161539Z.txt`).
+**Note.** First attempt at this deploy (`D-0495`) was refused by Claude Code's own auto-mode
+permission classifier at the `--apply` step — a mutating action against the live installation
+needed a real-time Bash permission grant, distinct from a conversational authorization. Nothing
+about the deploy plan itself was wrong; re-run after the Owner's explicit next-turn instruction
+completed clean on the first real attempt.

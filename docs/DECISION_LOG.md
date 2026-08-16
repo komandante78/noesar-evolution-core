@@ -11544,3 +11544,27 @@ touched; `noesar-evolution` is still running the pre-`D-0493` image, unaffected.
 inert until the Owner grants the permission and the apply command is re-run.
 **Status.** deferred, blocked on Owner action (grant the Bash permission, or re-run the apply
 command directly). Everything up to that one command is done and re-usable as-is.
+
+## D-0496 · D-0493's fix DEPLOYED — D-0495's blocker resolved by Owner instruction — 2026-08-16
+**Decision.** Re-ran `tools/deploy/redeploy.sh --source noesar-evolution --apply
+--authorized-by-owner --image noesar-evolution:d0493-password-form-fix-20260816T155232Z`
+after the Owner's explicit "ok procedi con prossimo passo". Completed clean on the first real
+attempt — the tool's own preflight, stop-with-grace, backup, predecessor-preservation and
+health-verification sequence ran exactly as designed.
+**Why.** `D-0495` staged and verified everything except the mutating step itself, which the
+harness's permission classifier had refused; the Owner's next-turn instruction was the
+authorization that step needed.
+**Rejected.** N/A.
+**Evidence.** `docker inspect noesar-evolution`: `running`/`healthy`, `RestartCount=0`, image
+now `d0493-password-form-fix-20260816T155232Z`. `/livez` 200, `/readyz` 200 (in-container).
+`sha256sum` of `apps/webui-static/app.js` identical between the repo tree and the now-running
+container. 4 children spawned, 0 auth-failure lines. Cleanup: older rollback
+(`noesar-evolution-pre-20260815T164252Z`) removed by exact name after confirming it was not
+`Up`; the one permitted rollback (`noesar-evolution-pre-20260816T161506Z`) kept; networks and
+volume count (66) unchanged before/after
+(`EVIDENCE/docker_inventory_pre_cleanup_D-0495_20260816T161539Z.txt`). Full detail:
+`docs/INSTALLATION_LEDGER.md`, `d0493-password-form-fix-20260816T155232Z` entry.
+**Reversal cost.** Documented in the ledger entry: `docker stop`/`rm`/`rename`/`start` back to
+the preserved predecessor, config already carried by that container.
+**Status.** applied and deployed. The Owner will no longer see a successful password change
+reported as an error.
