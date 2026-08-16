@@ -28,9 +28,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 7 | `#/documents` | Artifacts: documents, code, tables, charts, canvas, app specs, versioned. `[PAGE_HELP]` | SI |
 | 8 | `#/knowledge` | Ingested sources, searched lexically + semantically, original passages kept. `[PAGE_HELP]` | SI |
 | 9 | `#/memory` | What the product has learned about your work, written at session end. `[PAGE_HELP]` | SI |
-| 10 | `#/agents` | Agents plan; a step that changes something waits for human approval with scope. `[PAGE_HELP]` | NO |
-| 11 | `#/workflows` | Declared step effects, retries, compensation, replay; effectful steps wait for a person. `[PAGE_HELP]` | NO |
-| 12 | `#/models` | Model catalogue — running/on-disk at top, publisher-declared elsewhere. `[PAGE_HELP]` | NO |
+| 10 | `#/agents` | Agents plan; a step that changes something waits for human approval with scope. `[PAGE_HELP]` | SI |
+| 11 | `#/workflows` | Declared step effects, retries, compensation, replay; effectful steps wait for a person. `[PAGE_HELP]` | SI |
+| 12 | `#/models` | Model catalogue — running/on-disk at top, publisher-declared elsewhere. `[PAGE_HELP]` | SI |
 | 13 | `#/research` | Goal+criteria research, evidence per candidate, states what was NOT verified. `[PAGE_HELP]` | NO |
 | 14 | `#/settings` | One destination holding every setting; itself static, each section loads its own. `[PAGE_HELP]` | NO |
 
@@ -229,7 +229,43 @@ genuinely reusable artifact for a funding narrative that currently has none at t
 **Cost**: low — extraction, not a rewrite; the module already has no internal coupling to sever.
 **Not executed this phase** — proposed only, per `noesar-evolution-budget` §5.
 
+### `D-0477` (2026-08-16) — items 10-12: `#/agents`, `#/workflows`, `#/models`
+
+**`#/agents`** (`index.html:738-761`, `app.js:1655-1720`).
+*Works, VERIFIED*: agent creation, test-one-turn, archive (not delete — record kept), and
+approval-aware plan runs all real (`POST /api/v1/agents`, `/agent-runs`, `/agent-runs/.../
+approve`, `/execute`); a mutative tool always stops for approval, enforced by the run's own step
+status (`awaiting_approval`), not by the UI hiding the button; e2e-covered
+(`tools/browser-e2e.mjs:3271`), backend suites `ai-agent-service.test.mjs`,
+`agents-archive-http.test.mjs`.
+*Missing*: none found.
+*To change*: none.
+
+**`#/workflows`** (`index.html:763-784`).
+*Works, VERIFIED*: step vocabulary loaded live (not hardcoded), a step with declared effects
+waits for a person; e2e-covered (`tools/browser-e2e.mjs:1882-1909`), backend suites
+`workflow-engine.test.mjs`, `workflow-interrupted-step.test.mjs` (retries/compensation/replay).
+*Missing*: none found.
+*To change*: none.
+
+**`#/models`** (`index.html:786-817`, `app.js:5659-5734`).
+*Works, VERIFIED*: "On this installation" and the available-publisher catalogue both live, never
+paginate at the top; type/function shown as publisher-`declared` vs `undeclared`, never guessed
+from a name; acquisition (egress) explicitly gated with a stated reason when off; e2e-covered
+(`tools/browser-e2e.mjs:3318-3333`), backend suite `model-catalog.test.mjs`.
+*Missing*: `F-MODEL-001` (already tracked, `D-0395`, open) — `servedBy` is not declared, so "On
+this installation" can show a model actually served by a different deployment
+(`atom-evolution-model`) without saying so. Still awaiting the Owner's choice; not re-litigated
+here.
+*To change*: none built this pass.
+
+**Improvement note this batch (routine, per `noesar-evolution-budget` §3)**: no new defect and
+no new funding-fit candidate surfaced in this trio — all three engines (agents, workflows,
+models) are already server-authoritative with real approval/consent gates, which is itself the
+correct baseline rather than a gap to close. The standing proposal from `D-0476`
+(`file-extractors.mjs` packaging) remains the best open item; not duplicating it here.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 9 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 12 of 55 checked in depth.**

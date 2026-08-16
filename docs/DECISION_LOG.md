@@ -11179,3 +11179,18 @@ confirmed in `ai-workspace.test.mjs` and `memory-service.mjs`.
 code changed.
 **Status.** applied. 9 of 55 pages checked. Next: items 10-12 (`#/agents`, `#/workflows`,
 `#/models`), or whatever batch size the Owner sets next.
+
+## D-0477 · Deep review, items 10-12 of 158 (`#/agents`, `#/workflows`, `#/models`) — 2026-08-16
+**Decision.** Reviewed rows 10-12 of `docs/PAGES_INDEX_2026-08-16.md`; findings appended in-file
+(§8), `Checked` flipped to `SI` for those 3 rows.
+**Why.** Continuation of the `D-0473`-`D-0476` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `app.js`/`index.html` wiring read for all three pages; approval/consent gates
+confirmed server-side (agent-run step status, workflow declared-effect gate); e2e coverage
+confirmed at `tools/browser-e2e.mjs:3271` (agents), `:1882-1909` (workflows), `:3318-3333`
+(models); backend suites `ai-agent-service.test.mjs`, `agents-archive-http.test.mjs`,
+`workflow-engine.test.mjs`, `workflow-interrupted-step.test.mjs`, `model-catalog.test.mjs`.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 12 of 55 pages checked. No new defect found; `F-MODEL-001` (already
+tracked, `D-0395`) cited, not re-litigated. Next: items 13-15 (`#/research`, `#/settings`, then
+the 16 settings sections start).

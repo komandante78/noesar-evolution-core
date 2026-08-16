@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0476: deep review of docs/PAGES_INDEX_2026-08-16.md items 4-9 (#/tools, #/coden-tui, #/projects, #/documents, #/knowledge, #/memory), all confirmed real and working. HUNT AND FIX in-scope: F4-011 was a stale OPEN record for a gap already fixed pre-D-0362 (sniffContentType(), file-extractors.mjs) -- corrected, D-0475. Owner-requested funding-fit research delivered: file-extractors.mjs proposed as a standalone reusable AGPL package (delimited, zero external coupling, matches noesar-evolution-funding-fit 7 traits) -- proposed only, not built. Checked flipped to SI for these 6 rows.",
-  "phase_status": "D-0476_applied__9_of_55_pages_reviewed",
+  "current_phase": "D-0477: deep review of docs/PAGES_INDEX_2026-08-16.md items 10-12 (#/agents, #/workflows, #/models), all confirmed real with server-side approval/consent gates and e2e+unit coverage. No new defect found. F-MODEL-001 (servedBy not declared, D-0395) cited, still awaiting Owner choice, not re-litigated. Checked flipped to SI for these 3 rows.",
+  "phase_status": "D-0477_applied__12_of_55_pages_reviewed",
   "next_phase": "Owner decides how the e2e suite should reach the plan-restore panel once the terminal is lastingly live (drive the terminal own / menu vs. a direct hash jump), or authorization to chase F-TERM-002, or cargo publish token, or Phase D",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "7f600a4",
-  "last_updated_utc": "2026-08-16T08:10:00Z",
+  "last_updated_utc": "2026-08-16T08:40:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Continue the deep review: items 10-12 of docs/PAGES_INDEX_2026-08-16.md (#/agents, #/workflows, #/models), same method -- what works, what is missing, what to change, cite file:line evidence, HUNT AND FIX any in-scope stale/broken finding, one funding-fit-lens improvement note. Checked flips to SI only for items reviewed that phase. No code changes without Owner authorization.",
+  "next_action": "Continue the deep review: items 13-14 of docs/PAGES_INDEX_2026-08-16.md (#/research, #/settings), then the 16 settings sections. Same method -- what works, what is missing, what to change, cite file:line evidence, HUNT AND FIX any in-scope stale/broken finding. Checked flips to SI only for items reviewed that phase. No code changes without Owner authorization.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
