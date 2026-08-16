@@ -11017,3 +11017,23 @@ only the two already-tracked ones. New regression test in `coden-terminal-client
 22/22 in that file. Full suite 2560/2561 (1 pre-existing skip, +1 new). ESLint 411/0.
 **Reversal cost.** none — one line, matches an already-proven pattern used twice elsewhere.
 **Status.** applied and verified live. Not yet deployed — next action.
+
+## D-0470 · Native tooling audited and scoped — `CLAUDE10.md` §19 — 2026-08-16
+**Decision.** Added `CLAUDE10.md` §19 (rules 81-85). Blanket-authorizes Claude Code's own
+internal-use tools (subagents, codebase search, `WebSearch`/`WebFetch` for reference lookups,
+`Task*`, `Monitor`, `EnterWorktree`/`ExitWorktree`) as engineering aids. Keeps per-instance
+confirmation for tools that publish or act outside the repository (`DesignSync`, `Artifact`,
+`claude-in-chrome`). Declines cron/scheduled autonomous execution and any new MCP
+server/plugin as out of scope for a blanket grant.
+**Why.** Owner, verbatim: *"devi poter usare tutto se ti aiutano a finire... controlla plugin
+e strumenti"*. Measured first: no `.mcp.json`, no `plugins` key in `.claude/settings.json` —
+zero third-party integrations exist to enable. What exists is the native toolset.
+**Rejected.** A single blanket "use anything" line — would silently override rules 30-32
+(external APIs disabled by default) and the platform's own external-action confirmation
+default, for a cause never stated as intended. Split into scopes instead, per rules 1a/56's
+existing discipline against conflating two different things sharing a session.
+**Evidence.** `git diff --stat CLAUDE10.md`: 44 insertions, one file. `node
+tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Inventory measured live: `.mcp.json` absent,
+`.claude/settings.json` keys = `hooks`, `permissions` only (`jq -r keys`).
+**Reversal cost.** None — documentation-only, additive rule.
+**Status.** applied.

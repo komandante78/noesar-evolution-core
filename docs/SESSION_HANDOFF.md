@@ -1,29 +1,23 @@
-# SESSION HANDOFF — 2026-08-15 (`D-0469`: `/model` deployed — this morning's thread closed)
+# SESSION HANDOFF — 2026-08-16 (`D-0470`: native tooling audited and scoped, governance only)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The thread the Owner opened this morning is closed.** Crash root-caused and fixed
-(`D-0460`) → `/model` reported broken (Owner, verbatim: *"QUANDO CLICCO SU /models devo poter
-scegliere il modello che e scaricato e poterlo usare"*) → fixed (`D-0466`) → verified live,
-which unmasked and fixed a second real defect, `F-TERM-003` (`D-0469`) → **deployed**,
-`noesar-evolution:d0469-model-list-20260815T164217Z`, `16:42:52Z`. Byte-equal on all 6 changed
-sources tree↔image↔running container, `/livez`/`/readyz` 200, 4 children healthy, exactly 2
-project containers survive.
+**`D-0469`'s deploy from 2026-08-15 is still what is live and healthy.** This session added
+one governance rule, no product code: `CLAUDE10.md` §19 (rules 81-85) audits the Claude Code
+tools actually available (measured: no `.mcp.json`, no `plugins` key — zero third-party
+integrations exist) and authorizes the internal-use ones (subagents, search, `Task*`,
+`Monitor`, worktrees) without a further ask, while keeping per-instance confirmation for
+anything that publishes outside the repo (`DesignSync`, `Artifact`, `claude-in-chrome`).
+Cron/scheduled autonomy declined as incompatible with "one phase per invocation" (rule 9).
+See `D-0470`.
 
-Nothing from this session is left half-done. What remains is **new** work, not unfinished
-work:
+The real open items are unchanged from yesterday, still the Owner's call:
 
 - **F-SLASH-001's actual fix** — pick design (A) drive the terminal, or (B) declare-and-skip
   when the terminal has claimed the surface. See `D-0463`.
 - **`cargo publish`** — serve `CARGO_REGISTRY_TOKEN` in `secrets/crates_io_token`, da
   terminale vero.
 - oppure **Fase D**.
-
-Also this session, governance only, no product code: `D-0467` (a "path to final delivery"
-section in `noesar-evolution-engineering-depth`; product access control settled as
-registration-only, never a licence key) and `D-0468` (ATOM open, AGPL-3.0-or-later, stays
-architecturally separate in its own still-empty repository). `noesar-evolution-funding-fit`
-was named explicitly out of scope by the Owner and is untouched.
 
 ## Blockers e finding aperti
 
@@ -62,7 +56,12 @@ Cronologia completa dei numeri intermedi (58 file migrati, 75.114 directory rimo
 
 ## Cosa NON è stato fatto
 
-- **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e.
+- **Nessun tool di rule 83 è stato usato** — `DesignSync`/`Artifact`/`claude-in-chrome` sono
+  solo stati portati a un'autorizzazione esplicita "a conferma per uso", non invocati.
+- **Nessuna skill dedicata scritta per §19** — dichiarato in `CLAUDE10.md`: nascerà se questo
+  toolset diventa pratica ricorrente, come le altre tre skill di economia.
+- **Nessuna verifica che richieda una sessione autenticata** — regola §3a 11e (non applicabile
+  a questa fase, solo documentazione toccata).
 - **F-SLASH-001's actual fix** — decisione di design non ancora presa, deliberatamente.
 - **`cargo publish`** e le altre domande di `docs/LICENSE_STRATEGY.md` §5 — invariate.
 - **`ATOM_EVOLUTION`'s own `LICENSE` file** — settled (AGPL), not written; repository still
@@ -71,14 +70,17 @@ Cronologia completa dei numeri intermedi (58 file migrati, 75.114 directory rimo
 
 ## Proposta di miglioramento
 
-**Nuova, da questo giro (`D-0469`, non eseguita)**: `coden-terminal.js` had a defect
-(`F-TERM-003`) that no test caught because nothing in this suite asserts the terminal's
-generic `call` path stays bounded — only `F-TERM-002`'s render-erase test exists for `draw()`
-itself. Beneficio: a unit test asserting `detailLines()` is always the shape used for a `call`
-result (not just a source-text check that it is *present*, but that no OTHER path can bypass
-it) would catch the next command whose result happens to be large. Costo: low, one test.
+**Nuova, da questo giro (`D-0470`, non eseguita)**: nulla oggi impedisce un futuro `.mcp.json`
+di introdurre un server MCP non verificato in silenzio — `noesar-evolution-verify`'s HUNT AND
+FIX non ha una riga che controlli la presenza/assenza di `.mcp.json` o della chiave `plugins`
+contro quanto dichiarato in `CLAUDE10.md` §19. Beneficio: una riga di digest (`state-digest.sh`)
+che fallisce rumorosamente se compare un'integrazione non ancora nominata in §19, sullo stesso
+schema del `hme_check_settings()` che `D-0455` ha già costruito per gli hook. Costo: basso, uno
+script POSIX più una riga nel digest.
 
-**Precedente (`D-0468`, non eseguita)**: the first commit into the ATOM repository should
-carry its `LICENSE`/`NOTICE` from day one, matching how `D-0453` did this repository's own.
+**Precedente (`D-0469`, non eseguita)**: `coden-terminal.js` had a defect (`F-TERM-003`) that
+no test caught because nothing in this suite asserts the terminal's generic `call` path stays
+bounded. A unit test asserting `detailLines()` is always the shape used (not just present, but
+that no other path bypasses it) would catch the next oversized command result. Costo: basso.
 
-**Precedenti (`D-0466`–`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0468`–`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

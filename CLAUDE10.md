@@ -461,6 +461,50 @@ half is `.claude/hooks/engineering-orchestrator.sh` (`UserPromptSubmit`), which 
 rule and **never blocks anything** — the semantics live in this file and in the skill, never
 in a keyword list.
 
+## 19. Engineering tooling — the native Claude Code toolset, audited and scoped
+
+> Owner instruction, 2026-08-16 (verbatim): *"verifica che strumenti hai a disposizione come
+> claude designe che possono aiutarti a lavorare meglio su noesar evolution, devi controllare
+> plugin e strumenti, devi poter usare tutto se ti aiutano a finire"*.
+
+81. **The inventory, measured on this date, not assumed.** No `.mcp.json` and no `plugins`
+    key in `.claude/settings.json`: zero third-party MCP servers or marketplace plugins are
+    configured for this project. What exists is Claude Code's own native toolset: subagents
+    (research/parallel investigation), the project's own skills, generic platform skills
+    (design/artifact/browser/scheduling/reference helpers), and a set of tools loaded on
+    demand — `DesignSync`, `WebSearch`/`WebFetch`, `Task*`, `Monitor`, `EnterWorktree`/
+    `ExitWorktree`, `Cron*`, `Artifact`, `claude-in-chrome`, `SendMessage` and others.
+82. **Authorized without a further ask, as engineering aids — none of these touch the
+    product's own runtime or its external-API posture, so §8 and §16–21 stand untouched:**
+    subagents, codebase search, `WebSearch`/`WebFetch` for reference lookups that inform a
+    decision (specs, standards, upstream docs — never wired into the product's own code
+    path), `Task*` for tracking multi-step phase work, `Monitor` for a long-running local
+    process, `EnterWorktree`/`ExitWorktree` for isolated experiments that never touch the
+    main tree directly.
+83. **Authorized, but each use is still named and confirmed individually before it runs —
+    because it acts or publishes outside this repository, the same class rules 30-32 and
+    the platform's own default already gate:** `DesignSync` (pushes local files to a
+    claude.ai design-system project), `Artifact` (publishes a page externally — also checked
+    against rule 35, the repository stays private until an explicit decision),
+    `claude-in-chrome` (drives the Owner's real browser). Rule 82's blanket grant does not
+    extend to these three on purpose — the same discipline rules 1a/56 already impose
+    against conflating two different things because they share a session.
+84. **Not adopted, named rather than silently skipped:** `CronCreate`/`schedule`/`loop` for
+    autonomous recurring execution — incompatible with rule 9 ("one and only one phase per
+    invocation") until the Owner separately authorizes a specific recurring task, named as
+    such; a standing MCP server or marketplace plugin — none is configured, and adding one is
+    a supply-chain decision (rules 25-29 secrets, rules 16-21 external systems) taken per
+    integration, never blanket.
+85. **"Use everything that helps finish" is granted at rule 82's scope, not rule 83's or
+    84's.** Blanket pre-authorization of externally-visible publishing was not what this
+    instruction measured, and would silently erode rules already reasoned into this file for
+    a stated cause. Pre-authorizing a rule-83 tool for a specific, named workflow is its own
+    future amendment — this one is not read to imply it.
+
+Governing detail: none yet — no NOESAR-EVOLUTION-specific skill wraps this rule. If a
+workflow built on rule 82's tools becomes standing practice, it earns a skill the same way
+`noesar-evolution-context`/`-verify`/`-budget` did.
+
 ---
 
 @.claude/skills/noesar-evolution/SKILL.md
