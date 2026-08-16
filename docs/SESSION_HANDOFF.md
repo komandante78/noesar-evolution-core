@@ -1,34 +1,31 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0479`: deep review, §2 settings sections 1-3)
+# SESSION HANDOFF — 2026-08-16 (`D-0480`: deep review, §2 settings sections 4-6)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0479`); §1 (14 top-level destinations)
-finished last phase, §2 (16 settings sections) begins here — reviewed sections 1-3:
+this session.** Continued the review cadence (`D-0473`→`D-0480`), settings sections 4-6:
 
-- **`#/settings/sessions`** — real; three addressable places, extensive e2e coverage, keyboard
-  parity checked against the terminal client's real dispatch.
-- **`#/settings/appearance`** — real, device-local by design. **Resolved a standing open
-  question** from this file's own §3: the tool's `live: no` flag on this page is *correct*, not
-  a detection gap — `renderAppearance()` (`app.js:4344`) never calls `api()`, confirmed by
-  reading the function. Coverage gap noted: no e2e click-path for the theme grid/accent picker
-  specifically (zoom/motion are covered).
-- **`#/settings/language`** — real; time-zone resolution order stated and backend-tested.
+- **`#/settings/about`** — real; reads `GET /api/v1/bootstrap` live, and the advertised feature
+  list is held honest by a dedicated suite (`bootstrap-feature-claims.test.mjs`: every feature
+  has a probe, no probe names an unadvertised one).
+- **`#/settings/licence`** — deliberately static, correctly so: no code asserts a licence state,
+  matches `CLAUDE10.md` §15 and `docs/LICENSE_STRATEGY.md` exactly.
+- **`#/settings/privacy`** — real; provider consent/anonymization/routing, e2e specifically
+  hardened against a render race, 3 backend suites.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0479`, `docs/DECISION_LOG.md` `D-0479`.
-`Checked` is now `SI` for 17 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0480`, `docs/DECISION_LOG.md` `D-0480`.
+`Checked` is now `SI` for 20 of 55 pages.
 
-**Next phase**: settings sections 4-6 — `about`, `licence`, `privacy`. Same method: what works /
-what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
-broken. No code changes without Owner authorization.
+**Next phase**: settings sections 7-9 — `people`, `security`, `models-hardware`. Same method:
+what works / what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope
+found stale or broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
-- **`F-SLASH-001`'s actual fix**, **`F-MODEL-001`'s `servedBy` field**, **`cargo publish`**,
-  **Fase D (WP4)**, the hover/title fix, one of the 3 `D-0472` research directions, the
-  `file-extractors.mjs` packaging proposal (`D-0476`), an e2e check for `#/research`'s form
-  gesture (`D-0478`), and now also **one for `#/settings/appearance`'s theme/accent picker**
-  (`D-0479`) — six scoped options plus two coverage gaps, none started.
+- **`F-SLASH-001`**, **`F-MODEL-001`**, **`cargo publish`**, **Fase D (WP4)**, the hover/title
+  fix, one of the 3 `D-0472` research directions, the `file-extractors.mjs` packaging proposal
+  (`D-0476`), and two named e2e coverage gaps (`#/research`'s form, `D-0478`;
+  `#/settings/appearance`'s theme/accent picker, `D-0479`) — all scoped, none started.
 
 ## Blockers e finding aperti
 
@@ -59,21 +56,18 @@ suite run, no deploy, no container touched.
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **38 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **Theme/accent-picker e2e coverage** — gap named, not built; no Owner authorization sought.
-- **`#/research` e2e coverage**, **`F-MODEL-001`**, **`F-SLASH-001`**, **`cargo publish`**,
-  **`file-extractors.mjs` packaging** — all proposed/scoped from earlier phases, none executed.
-- **No HUNT AND FIX this batch** — the one thing corrected (`settings/appearance`'s `live: no`
-  flag) was a clarification of already-correct behaviour, not a defect.
+- **35 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect. One
+  cosmetic id-naming inconsistency (`view-about`/`view-providers` vs. `section-<name>`) recorded
+  as a note, not actionable — routing reads `data-section`, never the id.
+- **All previously named open items** (`F-SLASH-001`, `F-MODEL-001`, `cargo publish`,
+  `file-extractors.mjs` packaging, both e2e coverage gaps) — unchanged, none executed.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0479`)**: the review has now found the same shape of gap twice —
-`#/research`'s form (`D-0478`) and `#/settings/appearance`'s theme/accent picker (`D-0479`) are
-both thoroughly tested at the logic layer (35 backend tests; a dedicated contrast-math suite)
-but have no e2e click-path proving the UI actually reaches that logic. Benefit: naming this as a
-**pattern** rather than two isolated notes means the next occurrence gets recognised faster —
-worth checking whether other unreviewed pages share it once a few more are done. Cost: none this
-phase — an observation, not a build.
+**Questo giro (`D-0480`)**: none new — all three sections were already correct as built,
+including `#/settings/licence`'s deliberate emptiness, which is itself the right answer rather
+than a gap. Standing best proposals remain `D-0476`'s `file-extractors.mjs` packaging and the
+two named e2e coverage gaps (`D-0478`, `D-0479`).
 
-**Precedenti (`D-0478`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0479`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

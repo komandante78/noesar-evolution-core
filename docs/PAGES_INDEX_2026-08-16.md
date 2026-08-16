@@ -41,9 +41,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 1 | `#/settings/sessions` | Your sessions: working list, archive, 30-day bin. `[PAGE_HELP]` | SI |
 | 2 | `#/settings/appearance` | Theme, accent, text size, motion — device-local only. `[PAGE_HELP]` | SI |
 | 3 | `#/settings/language` | Time zone and locale (UI language itself is in the top bar). `[PAGE_HELP]` | SI |
-| 4 | `#/settings/about` | Version, edition, data plane, the open-core/ATOM boundary. `[PAGE_HELP]` | NO |
-| 5 | `#/settings/licence` | Licence posture — static, deliberately empty (no licence state asserted). `[PAGE_HELP]` | NO |
-| 6 | `#/settings/privacy` | Providers/connectors — local by default, external needs explicit scope. `[PAGE_HELP]` | NO |
+| 4 | `#/settings/about` | Version, edition, data plane, the open-core/ATOM boundary. `[PAGE_HELP]` | SI |
+| 5 | `#/settings/licence` | Licence posture — static, deliberately empty (no licence state asserted). `[PAGE_HELP]` | SI |
+| 6 | `#/settings/privacy` | Providers/connectors — local by default, external needs explicit scope. `[PAGE_HELP]` | SI |
 | 7 | `#/settings/people` | Account directory — invite by token, MFA mandatory for owner/admin. `[PAGE_HELP]` | NO |
 | 8 | `#/settings/security` | Your own account: password, recovery codes, authenticator, passkeys, sessions. `[PAGE_HELP]` | NO |
 | 9 | `#/settings/models-hardware` | What the host has, what the runtime would choose — read-only discovery. `[PAGE_HELP]` | NO |
@@ -331,7 +331,45 @@ record across the review so far, same shape: `#/research`'s form (`D-0478`) and
 `#/settings/appearance`'s theme/accent picker (`D-0479`) — both well-tested at the logic layer,
 neither driven end-to-end by the UI-facing suite.
 
+### `D-0480` (2026-08-16) — §2 settings sections 4-6: `about`, `licence`, `privacy`
+
+**`#/settings/about`** (`index.html:1011-1018`, `app.js:2770-2789`).
+*Works, VERIFIED*: reads `GET /api/v1/bootstrap` live — product/edition/version, signed-in
+identity, data-plane mode, authority mode, the open-core/ATOM boundary claim, and the advertised
+feature list. The feature list is held honest by a dedicated suite,
+`bootstrap-feature-claims.test.mjs`: every advertised feature has a probe, and no probe names a
+feature bootstrap doesn't advertise — so what this page displays cannot silently drift into an
+unverified claim.
+*Missing*: no dedicated e2e content check (only appears in the destination-reachability list,
+`tools/browser-e2e.mjs:485`), but the backend claims-integrity suite substitutes for most of what
+such a check would prove here.
+*To change*: none built this pass.
+
+**`#/settings/licence`** (`index.html:1019-1022`).
+*Works, VERIFIED*: deliberately static — "No code in this build reads or asserts a licence
+state, so there is nothing here to display. Showing an invented one would be exactly the kind of
+false declaration this product exists to remove." Matches `CLAUDE10.md` §15 (proposal, not
+settled law) and `docs/LICENSE_STRATEGY.md` exactly; nothing to wire, nothing missing.
+*To change*: none — correct as built.
+
+**`#/settings/privacy`** (`index.html:1023-1026`, `app.js:1616-1622`).
+*Works, VERIFIED*: provider registration, per-provider consent + anonymization toggles, fallback
+routing, encrypted-key storage, live health check — all real (`POST /api/v1/providers`, consent
+PUT). e2e specifically hardened against a render race (`tools/browser-e2e.mjs:2008-2035`, checks
+a stale-DOM marker rather than trusting a re-render happened before assertion); 3 dedicated
+backend suites (`ai-provider-gateway.test.mjs`, `provider-health-probe.test.mjs`,
+`provider-gateway-success-paths.test.mjs`).
+*Missing*: none found.
+*To change*: none.
+
+**Minor note, not a finding**: `#/settings/about` and `#/settings/privacy` use legacy element
+ids (`view-about`, `view-providers`) rather than this file's `section-<name>` convention seen
+elsewhere. Harmless — section switching reads `data-section`, never the id
+(`app.js:480`) — named only for completeness, not worth a change.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
 ---
 
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 17 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 20 of 55 checked in depth.**

@@ -11225,3 +11225,18 @@ design or a tool detection gap — confirmed correct by design, `renderAppearanc
 **Status.** applied. 17 of 55 pages checked. One coverage gap noted, same shape as
 `#/research`'s (`D-0478`): no e2e click-path for the theme grid or accent picker specifically.
 Next: settings sections 4-6 (`about`, `licence`, `privacy`).
+
+## D-0480 · Deep review, §2 settings sections 4-6 (`about`, `licence`, `privacy`) — 2026-08-16
+**Decision.** Reviewed settings sections 4-6; findings appended in-file (§8), `Checked` flipped
+to `SI`.
+**Why.** Continuation of the `D-0473`-`D-0479` review cadence at the Owner's "procedi".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `#/settings/about` reads `GET /api/v1/bootstrap`, held honest by
+`bootstrap-feature-claims.test.mjs` (every advertised feature has a probe, no orphan probes);
+`#/settings/licence` confirmed deliberately static, matching `CLAUDE10.md` §15 and
+`docs/LICENSE_STRATEGY.md`; `#/settings/privacy` provider consent/routing confirmed real,
+e2e-hardened against a render race (`tools/browser-e2e.mjs:2008-2035`), 3 backend suites.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 20 of 55 pages checked. No new defect; one cosmetic id-naming note recorded
+(not actionable — routing reads `data-section`, never the id). Next: settings sections 7-9
+(`people`, `security`, `models-hardware`).
