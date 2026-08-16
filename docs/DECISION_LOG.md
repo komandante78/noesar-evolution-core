@@ -11257,3 +11257,22 @@ gesture not e2e-driven" pattern (password change/passkeys) — now worth treatin
 once §2 completes rather than three isolated notes. Orphaned `page-help.js['settings/hardware']`
 key noted as a future cleanup candidate, not fixed without authorization. Next: settings sections
 10-12 (`storage`, `audit`, `health`).
+
+## D-0482 · Deep review, §2 settings sections 10-12 (`storage`, `audit`, `health`) — 2026-08-16
+**Decision.** Reviewed settings sections 10-12; findings appended in-file (§8), `Checked`
+flipped to `SI`.
+**Why.** Continuation of the `D-0473`-`D-0481` review cadence at the Owner's "PROCEDI".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `storage`: backup/restore checksum logic read directly in
+`postgres-supervisor.mjs:775-795` (SHA-256 sidecar, restore throws on mismatch) — verified by
+reading, not running, since it needs a live PostgreSQL (T2/T3 tier, out of a read-only review).
+`audit`: `approval-queue.mjs:22,55-118` confirmed to genuinely aggregate 4 subsystems by reading
+their live state, not duplicating it; e2e race-condition-proofed
+(`tools/browser-e2e.mjs:1932-1961,2099-2120`), 10 backend tests. `health`: e2e at
+`tools/browser-e2e.mjs:637`, 55 backend tests across `watchdog.test.mjs`, `debug-mode.test.mjs`,
+`logging.test.mjs`.
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 26 of 55 pages checked. 4th occurrence of the "backend proven, not
+e2e-driven" pattern found (log-search/debug-mode toggle), joining `D-0478`/`D-0479`/`D-0481` —
+now reads as a property of how the e2e suite grew rather than four isolated gaps. Next: settings
+sections 13-14 (`updates`, `skills`).

@@ -1,37 +1,38 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0481`: deep review, §2 settings sections 7-9)
+# SESSION HANDOFF — 2026-08-16 (`D-0482`: deep review, §2 settings sections 10-12)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0481`), settings sections 7-9:
+this session.** Continued the review cadence (`D-0473`→`D-0482`), settings sections 10-12:
 
-- **`#/settings/people`** — real; token invitations, role selection, e2e + backend covered.
-- **`#/settings/security`** — real; password/recovery/MFA-replace/passkeys/session-revoke, every
-  mutation gated on password + live TOTP. MFA-replace is e2e-covered; password change and
-  passkey add/remove are not (backend is: `webauthn.test.mjs`, `totp-replay.test.mjs`).
-- **`#/settings/models-hardware`** — real; read-only accelerator discovery + explained runtime
-  recommendation, `hardware.test.mjs`. **Resolved a second standing open question** from this
-  file's §1: `settings/hardware` (a separate `page-help.js` entry) is confirmed **stale** —
-  `SETTINGS_SECTIONS` (`app.js:251`) has no `'hardware'` key, only `'models-hardware'`.
+- **`#/settings/storage`** — real; `postgres-supervisor.mjs` backup computes a SHA-256 sidecar,
+  restore verifies it and throws on mismatch, read directly in the code. No unit test exists,
+  correctly so — both operations need a live PostgreSQL, T2/T3 territory, not a read-only-review
+  finding.
+- **`#/settings/audit`** — real; genuinely aggregates 4 subsystems (workflow/agent/update/
+  memory) by reading their live state, not duplicating it — no second source of truth. Heavily
+  e2e-covered including a race-proofed check.
+- **`#/settings/health`** — real; watchdog, safe mode, log search, time-boxed debug mode.
+  Watchdog status is e2e-covered; log search and debug-mode toggle are not.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0481`, `docs/DECISION_LOG.md` `D-0481`.
-`Checked` is now `SI` for 23 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0482`, `docs/DECISION_LOG.md` `D-0482`.
+`Checked` is now `SI` for 26 of 55 pages.
 
-**Pattern now at 3 occurrences**: `#/research`'s form (`D-0478`), theme/accent picker
-(`D-0479`), password-change/passkeys (`D-0481`) — all backend-proven, none e2e-driven. Worth
-treating as one finding once §2 (settings) is fully reviewed, rather than three small notes.
+**Pattern now at 4 occurrences**: `#/research`'s form (`D-0478`), theme/accent picker
+(`D-0479`), password-change/passkeys (`D-0481`), log-search/debug-mode (`D-0482`) — all
+backend-proven, none e2e-driven. Reads as a property of how the e2e suite grew (page-by-page,
+unevenly deepened), not four unrelated gaps.
 
-**Next phase**: settings sections 10-12 — `storage`, `audit`, `health`. Same method: what works
-/ what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale
-or broken. No code changes without Owner authorization.
+**Next phase**: settings sections 13-14 — `updates`, `skills`. Same method: what works /
+what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale or
+broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
 - **`F-SLASH-001`**, **`F-MODEL-001`**, **`cargo publish`**, **Fase D (WP4)**, the hover/title
   fix, one of the 3 `D-0472` research directions, the `file-extractors.mjs` packaging proposal
-  (`D-0476`), the growing e2e-coverage-gap pattern (3 named sites), and the orphaned
-  `page-help.js['settings/hardware']` key (harmless, never rendered, cleanup candidate) — all
-  scoped, none started.
+  (`D-0476`), the 4-occurrence e2e-coverage pattern, and the orphaned
+  `page-help.js['settings/hardware']` key — all scoped, none started.
 
 ## Blockers e finding aperti
 
@@ -54,29 +55,29 @@ All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
 
 ## Verificato IN QUESTA SESSIONE
 
-Read-only review phase — direct source reading (`app.js`, `index.html`) cross-checked against
-existing e2e/unit coverage cited in `docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full
-this session, cited as already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No
-suite run, no deploy, no container touched.
+Read-only review phase — direct source reading (`app.js`, `index.html`, `postgres-supervisor.mjs`,
+`approval-queue.mjs`) cross-checked against existing e2e/unit coverage cited in
+`docs/PAGES_INDEX_2026-08-16.md` §8, not re-executed in full this session, cited as
+already-proven evidence per `noesar-evolution-engineering-depth` §8.1. No suite run, no deploy,
+no container touched.
 
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **32 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **The 3-occurrence e2e-coverage pattern** — named, not built into a check.
-- **Orphaned `page-help.js['settings/hardware']` key** — identified, not removed (harmless,
-  never rendered; removal needs an explicit ask per `CLAUDE10.md` §4/§13, not silent cleanup).
-- **All previously named open items** (`F-SLASH-001`, `F-MODEL-001`, `cargo publish`,
-  `file-extractors.mjs` packaging) — unchanged, none executed.
-- **No HUNT AND FIX this batch** — the stale-note correction was documentation, not a functional
-  defect.
+- **29 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **Backup/restore live verification** — read the code, did not run it; needs a live PostgreSQL,
+  correctly deferred to a T2/T3 phase rather than forced into this read-only review.
+- **The 4-occurrence e2e-coverage pattern** — named, not built into a check.
+- **All previously named open items** — unchanged, none executed.
+- **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0481`)**: the "backend proven, UI gesture not e2e-driven" shape has now
-appeared 3 times independently. Benefit: naming it as a single pattern rather than 3 scattered
-notes means a future phase can address the class in one pass (a shared e2e-harness helper for
-"drive this form, read this outcome panel") instead of writing 3+ bespoke checks. Cost: none
-this phase — an observation to act on once §2 finishes and the full list of occurrences is known.
+**Questo giro (`D-0482`)**: the e2e-coverage pattern is now at 4 independent occurrences across
+2 different top-level sections and 3 different settings sections — strong enough to stop
+treating it as noise. Benefit: once §2 finishes, a single review of all named occurrences could
+decide whether they share a fixable root cause (e.g., the e2e suite's own page-coverage order
+never caught up with later features) rather than writing N bespoke checks. Cost: none this phase
+— still an observation, to act on with the full list once §2 (settings) completes.
 
-**Precedenti (`D-0480`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0481`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

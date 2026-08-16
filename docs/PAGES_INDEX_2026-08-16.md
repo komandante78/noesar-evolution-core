@@ -47,9 +47,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 7 | `#/settings/people` | Account directory — invite by token, MFA mandatory for owner/admin. `[PAGE_HELP]` | SI |
 | 8 | `#/settings/security` | Your own account: password, recovery codes, authenticator, passkeys, sessions. `[PAGE_HELP]` | SI |
 | 9 | `#/settings/models-hardware` | What the host has, what the runtime would choose — read-only discovery. `[PAGE_HELP]` | SI |
-| 10 | `#/settings/storage` | Export, backup, retention — checksummed, restore refuses a mismatch. `[PAGE_HELP]` | NO |
-| 11 | `#/settings/audit` | One queue for everything awaiting a human decision, any subsystem. `[PAGE_HELP]` | NO |
-| 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | NO |
+| 10 | `#/settings/storage` | Export, backup, retention — checksummed, restore refuses a mismatch. `[PAGE_HELP]` | SI |
+| 11 | `#/settings/audit` | One queue for everything awaiting a human decision, any subsystem. `[PAGE_HELP]` | SI |
+| 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | SI |
 | 13 | `#/settings/updates` | Staged/approved/applied updates with rollback; nothing self-installs. `[PAGE_HELP]` | NO |
 | 14 | `#/settings/skills` | Skill catalogue — payload is instructions, cost is context, nothing preloaded. `[PAGE_HELP]` | NO |
 | 15 | `#/settings/modules` | Owner modules — signed, one-click install, open in a new tab, never embedded. `[PAGE_HELP]` | NO |
@@ -415,5 +415,51 @@ correction, not a functional defect).
 
 ---
 
+### `D-0482` (2026-08-16) — §2 settings sections 10-12: `storage`, `audit`, `health`
+
+**`#/settings/storage`** (`index.html:1112-1118`, `app.js:2730-2764`).
+*Works, VERIFIED*: `POST /api/v1/database/backup` (`postgres-supervisor.mjs:775`) runs real
+`pg_dump`, computes a SHA-256 sidecar, `0600`-permissions both files; `restore()` (line 795)
+re-verifies that checksum before touching anything and **throws on mismatch** — the page's claim
+is literally true in the code, not aspirational. Workspace export and retention (save/apply) are
+separate, real endpoints. **No unit test exists for backup/restore** — architecturally so: both
+spawn real `pg_dump`/`pg_restore` against a live PostgreSQL, which is T2/T3-tier territory
+(`noesar-evolution-verify`), not something a unit suite can exercise without a live database.
+Verified by **reading the implementation**, not by running it — labelled accordingly, not
+claimed as tested.
+*Missing*: none found within what a read-only review can establish; live-tier proof would need a
+future T3 phase, not this one.
+*To change*: none.
+
+**`#/settings/audit`** (`index.html:1119-1122`, `app.js:4203-4227`).
+*Works, VERIFIED*: `GET /api/v1/approvals` genuinely aggregates **four** subsystems —
+`workflow-step`, `agent-step`, `update`, `memory-candidate` (`approval-queue.mjs:22,55-118`) —
+by **reading** each owner's live state rather than duplicating it, so there is no second source
+of truth to drift. The "one queue, any subsystem" claim is real, not a UI illusion over one
+backend. Extensively e2e-covered, including a race-condition-proofed check on
+run-started→refresh ordering (`tools/browser-e2e.mjs:1932-1961,2099-2120`); 10 backend tests
+(`approval-queue.test.mjs`).
+*Missing*: none found.
+*To change*: none.
+
+**`#/settings/health`** (`index.html:1123-1148`, `app.js:2355-2400,2696-2711`).
+*Works, VERIFIED*: watchdog check, safe-mode status/exit, structured log search (level/
+component/correlation/text), time-boxed debug mode (self-expires) — all real; `healthComponents`
+e2e-covered (`tools/browser-e2e.mjs:637`); backend suites `watchdog.test.mjs`,
+`debug-mode.test.mjs`, `logging.test.mjs` (55 tests across the three).
+*Missing*: no e2e click-path found for log search or debug-mode toggle specifically (watchdog
+status is covered, these two are not) — a 4th occurrence of the "backend proven, not e2e-driven"
+pattern.
+*To change*: not built this pass.
+
+**§2 pattern update: 4 occurrences now** — `#/research` (`D-0478`), theme/accent (`D-0479`),
+password-change/passkeys (`D-0481`), log-search/debug-mode (`D-0482`). Consistent enough across
+independent sections that it reads as a property of the e2e suite's growth pattern (built
+page-by-page, deepened unevenly) rather than four unrelated gaps.
+
+**No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect.
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 23 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 26 of 55 checked in depth.**
