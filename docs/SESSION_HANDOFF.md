@@ -1,31 +1,37 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0480`: deep review, §2 settings sections 4-6)
+# SESSION HANDOFF — 2026-08-16 (`D-0481`: deep review, §2 settings sections 7-9)
 
 ## ➜ LA PROSSIMA AZIONE
 
 **`D-0469`'s deploy from 2026-08-15 is still what is live and healthy — no product code changed
-this session.** Continued the review cadence (`D-0473`→`D-0480`), settings sections 4-6:
+this session.** Continued the review cadence (`D-0473`→`D-0481`), settings sections 7-9:
 
-- **`#/settings/about`** — real; reads `GET /api/v1/bootstrap` live, and the advertised feature
-  list is held honest by a dedicated suite (`bootstrap-feature-claims.test.mjs`: every feature
-  has a probe, no probe names an unadvertised one).
-- **`#/settings/licence`** — deliberately static, correctly so: no code asserts a licence state,
-  matches `CLAUDE10.md` §15 and `docs/LICENSE_STRATEGY.md` exactly.
-- **`#/settings/privacy`** — real; provider consent/anonymization/routing, e2e specifically
-  hardened against a render race, 3 backend suites.
+- **`#/settings/people`** — real; token invitations, role selection, e2e + backend covered.
+- **`#/settings/security`** — real; password/recovery/MFA-replace/passkeys/session-revoke, every
+  mutation gated on password + live TOTP. MFA-replace is e2e-covered; password change and
+  passkey add/remove are not (backend is: `webauthn.test.mjs`, `totp-replay.test.mjs`).
+- **`#/settings/models-hardware`** — real; read-only accelerator discovery + explained runtime
+  recommendation, `hardware.test.mjs`. **Resolved a second standing open question** from this
+  file's §1: `settings/hardware` (a separate `page-help.js` entry) is confirmed **stale** —
+  `SETTINGS_SECTIONS` (`app.js:251`) has no `'hardware'` key, only `'models-hardware'`.
 
-Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0480`, `docs/DECISION_LOG.md` `D-0480`.
-`Checked` is now `SI` for 20 of 55 pages.
+Full findings: `docs/PAGES_INDEX_2026-08-16.md` §8 `D-0481`, `docs/DECISION_LOG.md` `D-0481`.
+`Checked` is now `SI` for 23 of 55 pages.
 
-**Next phase**: settings sections 7-9 — `people`, `security`, `models-hardware`. Same method:
-what works / what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope
-found stale or broken. No code changes without Owner authorization.
+**Pattern now at 3 occurrences**: `#/research`'s form (`D-0478`), theme/accent picker
+(`D-0479`), password-change/passkeys (`D-0481`) — all backend-proven, none e2e-driven. Worth
+treating as one finding once §2 (settings) is fully reviewed, rather than three small notes.
+
+**Next phase**: settings sections 10-12 — `storage`, `audit`, `health`. Same method: what works
+/ what's missing / what to change, cite file:line, `HUNT AND FIX` anything in-scope found stale
+or broken. No code changes without Owner authorization.
 
 The other open items are unchanged, still the Owner's call:
 
 - **`F-SLASH-001`**, **`F-MODEL-001`**, **`cargo publish`**, **Fase D (WP4)**, the hover/title
   fix, one of the 3 `D-0472` research directions, the `file-extractors.mjs` packaging proposal
-  (`D-0476`), and two named e2e coverage gaps (`#/research`'s form, `D-0478`;
-  `#/settings/appearance`'s theme/accent picker, `D-0479`) — all scoped, none started.
+  (`D-0476`), the growing e2e-coverage-gap pattern (3 named sites), and the orphaned
+  `page-help.js['settings/hardware']` key (harmless, never rendered, cleanup candidate) — all
+  scoped, none started.
 
 ## Blockers e finding aperti
 
@@ -56,18 +62,21 @@ suite run, no deploy, no container touched.
 ## Cosa NON è stato fatto
 
 - **No test suite run** — zero source files changed this phase.
-- **35 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
-- **No HUNT AND FIX this batch** — nothing found rose to a repairable in-scope defect. One
-  cosmetic id-naming inconsistency (`view-about`/`view-providers` vs. `section-<name>`) recorded
-  as a note, not actionable — routing reads `data-section`, never the id.
+- **32 of 55 pages, 103 of 103 tools/modules items** — still `Checked: NO`, unreviewed.
+- **The 3-occurrence e2e-coverage pattern** — named, not built into a check.
+- **Orphaned `page-help.js['settings/hardware']` key** — identified, not removed (harmless,
+  never rendered; removal needs an explicit ask per `CLAUDE10.md` §4/§13, not silent cleanup).
 - **All previously named open items** (`F-SLASH-001`, `F-MODEL-001`, `cargo publish`,
-  `file-extractors.mjs` packaging, both e2e coverage gaps) — unchanged, none executed.
+  `file-extractors.mjs` packaging) — unchanged, none executed.
+- **No HUNT AND FIX this batch** — the stale-note correction was documentation, not a functional
+  defect.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0480`)**: none new — all three sections were already correct as built,
-including `#/settings/licence`'s deliberate emptiness, which is itself the right answer rather
-than a gap. Standing best proposals remain `D-0476`'s `file-extractors.mjs` packaging and the
-two named e2e coverage gaps (`D-0478`, `D-0479`).
+**Questo giro (`D-0481`)**: the "backend proven, UI gesture not e2e-driven" shape has now
+appeared 3 times independently. Benefit: naming it as a single pattern rather than 3 scattered
+notes means a future phase can address the class in one pass (a shared e2e-harness helper for
+"drive this form, read this outcome panel") instead of writing 3+ bespoke checks. Cost: none
+this phase — an observation to act on once §2 finishes and the full list of occurrences is known.
 
-**Precedenti (`D-0479`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0480`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

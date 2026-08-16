@@ -11240,3 +11240,20 @@ e2e-hardened against a render race (`tools/browser-e2e.mjs:2008-2035`), 3 backen
 **Status.** applied. 20 of 55 pages checked. No new defect; one cosmetic id-naming note recorded
 (not actionable — routing reads `data-section`, never the id). Next: settings sections 7-9
 (`people`, `security`, `models-hardware`).
+
+## D-0481 · Deep review, §2 settings sections 7-9 (`people`, `security`, `models-hardware`) — 2026-08-16
+**Decision.** Reviewed settings sections 7-9; findings appended in-file (§8), `Checked` flipped
+to `SI`. Resolved a second standing open question from §1 of the same file: `settings/hardware`
+(a distinct `page-help.js` entry) confirmed **stale** — `SETTINGS_SECTIONS` (`app.js:251`) has
+no `'hardware'` key, only `'models-hardware'`; no route ever reaches the orphaned text.
+**Why.** Continuation of the `D-0473`-`D-0480` review cadence at the Owner's "prosegui".
+**Rejected.** N/A — read-only review phase.
+**Evidence.** `people` e2e-covered (`tools/browser-e2e.mjs:3649,3709`) + `user-directory.test.mjs`;
+`security` MFA-replacement e2e-covered (`:2179`) + `webauthn.test.mjs`/`totp-replay.test.mjs`/
+`auth.test.mjs`; `models-hardware` backend suite `hardware.test.mjs` (CPU fallback, multi-GPU).
+**Reversal cost.** None — documentation only, no code touched.
+**Status.** applied. 23 of 55 pages checked. Named a 3rd occurrence of the "backend proven, UI
+gesture not e2e-driven" pattern (password change/passkeys) — now worth treating as one finding
+once §2 completes rather than three isolated notes. Orphaned `page-help.js['settings/hardware']`
+key noted as a future cleanup candidate, not fixed without authorization. Next: settings sections
+10-12 (`storage`, `audit`, `health`).

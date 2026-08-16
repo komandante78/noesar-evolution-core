@@ -44,9 +44,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 | 4 | `#/settings/about` | Version, edition, data plane, the open-core/ATOM boundary. `[PAGE_HELP]` | SI |
 | 5 | `#/settings/licence` | Licence posture — static, deliberately empty (no licence state asserted). `[PAGE_HELP]` | SI |
 | 6 | `#/settings/privacy` | Providers/connectors — local by default, external needs explicit scope. `[PAGE_HELP]` | SI |
-| 7 | `#/settings/people` | Account directory — invite by token, MFA mandatory for owner/admin. `[PAGE_HELP]` | NO |
-| 8 | `#/settings/security` | Your own account: password, recovery codes, authenticator, passkeys, sessions. `[PAGE_HELP]` | NO |
-| 9 | `#/settings/models-hardware` | What the host has, what the runtime would choose — read-only discovery. `[PAGE_HELP]` | NO |
+| 7 | `#/settings/people` | Account directory — invite by token, MFA mandatory for owner/admin. `[PAGE_HELP]` | SI |
+| 8 | `#/settings/security` | Your own account: password, recovery codes, authenticator, passkeys, sessions. `[PAGE_HELP]` | SI |
+| 9 | `#/settings/models-hardware` | What the host has, what the runtime would choose — read-only discovery. `[PAGE_HELP]` | SI |
 | 10 | `#/settings/storage` | Export, backup, retention — checksummed, restore refuses a mismatch. `[PAGE_HELP]` | NO |
 | 11 | `#/settings/audit` | One queue for everything awaiting a human decision, any subsystem. `[PAGE_HELP]` | NO |
 | 12 | `#/settings/health` | Watchdog observations, safe-mode status, log stream. `[PAGE_HELP]` | NO |
@@ -57,7 +57,9 @@ row had its own in-depth review yet (`SI`/`NO`).
 
 *Note: `settings/hardware` also exists as a distinct `PAGE_HELP` entry (accelerator probe) —
 `measure-page-liveness.mjs` did not list it as a separate live section; flag for the deep pass
-to confirm whether it's a real second address or stale text.*
+to confirm whether it's a real second address or stale text.* **Resolved, `D-0481`: stale.**
+`SETTINGS_SECTIONS` (`app.js:251`) has no `'hardware'` entry, only `'models-hardware'` — the
+key is orphaned `page-help.js` text with no route ever reaching it, not a second address.
 
 ## 3. Live-measurement flags (`tools/measure-page-liveness.mjs`, run 2026-08-16) — cross-check, not a new list
 
@@ -371,5 +373,47 @@ elsewhere. Harmless — section switching reads `data-section`, never the id
 
 ---
 
+### `D-0481` (2026-08-16) — §2 settings sections 7-9: `people`, `security`, `models-hardware`
+
+**`#/settings/people`** (`index.html:1027-1041`, `app.js:2333-2341`).
+*Works, VERIFIED*: token-based invitation, role selection, account directory, all real
+(`POST /api/v1/invitations`); e2e-covered (`tools/browser-e2e.mjs:3649,3709`), backend suite
+`user-directory.test.mjs`.
+*Missing*: none found.
+*To change*: none.
+
+**`#/settings/security`** (`index.html:1042-1104`, `app.js:2107-2206`).
+*Works, VERIFIED*: password change, recovery-code regeneration, authenticator replacement
+(two consecutive codes from the new one before the old one stops working — a half-finished swap
+cannot lock the account out), passkeys, active-session revocation — all real, every mutation
+gated on password + live TOTP; MFA replacement e2e-covered (`tools/browser-e2e.mjs:2179`);
+backend suites `webauthn.test.mjs`, `totp-replay.test.mjs`, `auth.test.mjs`.
+*Missing*: no e2e click-path found for password change or passkey add/remove specifically
+(the authenticator-replacement flow is covered, these two are not) — third occurrence of the
+"backend proven, UI gesture not driven" shape (`#/research` `D-0478`, theme/accent `D-0479`).
+*To change*: not built this pass.
+
+**`#/settings/models-hardware`** (`index.html:1106-1111`, `app.js:1900-1901`).
+*Works, VERIFIED*: read-only accelerator discovery (`GET /api/v1/hardware`) plus an explained
+runtime recommendation (`POST /api/v1/runtime/recommendation`) for a given model size and
+quantisation — both real, backend suite `hardware.test.mjs` (CPU fallback, multi-GPU).
+**Resolves the open question from §1 of this file** (the `settings/hardware` note): confirmed
+**stale** — `SETTINGS_SECTIONS` (`app.js:251`) has no `'hardware'` entry, only
+`'models-hardware'`; the `page-help.js` key is orphaned text with no route ever reaching it, not
+a live second address. Corrected in §1's note above.
+*Missing*: no e2e coverage found for this section specifically.
+*To change*: not built this pass; the orphaned `page-help.js['settings/hardware']` key (harmless,
+never rendered) is a candidate for a future cleanup phase, not fixed here without authorization.
+
+**Pattern now at 3 occurrences**: `#/research`'s form (`D-0478`), theme/accent picker
+(`D-0479`), and now password-change/passkeys (`D-0481`) — all thoroughly tested at the backend/
+logic layer with no e2e proving the UI actually drives that logic. Worth treating as one finding
+once §2 is done, not three separate small ones.
+
+**No HUNT AND FIX this batch** beyond the stale-note correction above (a documentation
+correction, not a functional defect).
+
+---
+
 **Totals: 14 top-level + 16 settings + 20 bench panels + 5 agent panels = 55 real addressable
-destinations, + 11 legacy redirects. 20 of 55 checked in depth.**
+destinations, + 11 legacy redirects. 23 of 55 checked in depth.**
