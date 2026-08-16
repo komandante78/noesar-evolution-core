@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0494: deep review of docs/TOOLS_MODULES_INDEX_2026-08-16.md sec1 (60 backend API route groups, built this morning D-0473, never reviewed until now). All 60 rows checked: routes confirmed real in server.mjs, test coverage matched against the 166-file test/ dir by content not filename. 2 defects found and corrected in the document: projects (v1)/(v2) were the same implementation double-counted (real total 59 groups, not 60); section 6 falsely claimed ATOM_EVOLUTION is still empty (it has 28 real commits and a working atomd daemon). 7 groups have real routes but no dedicated backend test by name -- recorded, not fixed (new scope). Documentation-only, no product code touched.",
-  "phase_status": "D-0494_applied__tools_modules_index_sec1_reviewed__59_of_59_groups__2_defects_corrected",
-  "next_phase": "Owner decides: continue TOOLS_MODULES_INDEX sec2 (17 slash commands)/sec3 (20 Rust crates)/sec4 (6 capabilities dirs), or deploy the D-0493 app.js fix to the live installation, or apply the e2e-driving template to another of the 7 remaining page-level backend-proven-not-e2e-driven gaps, or act on another named open item.",
+  "current_phase": "D-0495: deploy of D-0493 (app.js password/passkey handler fix) staged and verified -- new overlay oci/Dockerfile.phase4-password-form-fix built noesar-evolution:d0493-password-form-fix-20260816T155232Z offline FROM the current running image. Verified: app.js byte-identical tree vs image, 20/20 files match, redeploy.sh --check PREFLIGHT PASS, unit suite 2561/2561 (1 pre-existing skip). The --apply --authorized-by-owner command itself was refused by Claude Code auto-mode permission classifier (mutating live-installation action needs a real-time Bash grant, not just a conversational authorization). noesar-evolution container UNTOUCHED, still running the pre-D-0493 image.",
+  "phase_status": "D-0495_deferred__deploy_staged_and_verified__blocked_on_permission_grant",
+  "next_phase": "Owner grants the Bash permission (or runs the command directly): bash tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image noesar-evolution:d0493-password-form-fix-20260816T155232Z -- everything else is done. Otherwise: continue TOOLS_MODULES_INDEX sec2-4, or apply the e2e template to another of the 7 remaining page-level gaps, or act on another named open item.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -1021,7 +1021,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "TOOLS_MODULES_INDEX sec1 (60 API route groups, built this morning D-0473) now reviewed in depth (D-0494): all rows checked, 2 real defects found and corrected in the document (projects v1/v2 double-count -> 59 real groups; ATOM_EVOLUTION falsely described as empty -> corrected, it has 28 commits and a working atomd daemon). 7 groups flagged with no dedicated backend test (recorded, not fixed). sec2-4 (43 items: slash commands, Rust crates, capabilities dirs) remain unreviewed. Owner to choose next: (a) continue the TOOLS_MODULES_INDEX review, (b) deploy the D-0493 app.js fix, (c) apply the e2e template to another of the 7 remaining page-level gaps, (d) act on another named open item (F-SLASH-001, F-MODEL-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling). No code changes or deployment without explicit Owner authorization for whichever is chosen.",
+  "next_action": "Deploy of the D-0493 app.js fix is fully staged and verified (D-0495) but blocked at the final --apply step by the harness permission classifier, not by any defect in the plan. Image noesar-evolution:d0493-password-form-fix-20260816T155232Z is built and proven byte-equal to the tree; redeploy.sh --check passed clean; unit suite green. To finish: grant the Bash permission when prompted for the redeploy.sh --apply command (see docs/SESSION_HANDOFF.md for the exact command), or authorize it another way. Otherwise Owner may choose: continue TOOLS_MODULES_INDEX sec2-4, apply the e2e-driving template to another of the 7 remaining page-level gaps, or act on another named open item.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
@@ -1531,7 +1531,7 @@
     "manifest": "5737/5737, 0 duplicates",
     "seeded_defects": "19/19, each caught by exactly one guard"
   },
-  "last_updated": "2026-08-16T18:10:00Z",
+  "last_updated": "2026-08-16T15:55:00Z",
   "arch_001_supervisor": {
     "status": "COMPLETE_3_OF_3_PEERS",
     "date": "2026-07-30",

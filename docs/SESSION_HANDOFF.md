@@ -1,6 +1,26 @@
-# SESSION HANDOFF — 2026-08-16 (`D-0494`: TOOLS_MODULES_INDEX §1 reviewed, 2 defects corrected)
+# SESSION HANDOFF — 2026-08-16 (`D-0495`: deploy of D-0493 prepared, BLOCKED at apply)
 
 ## ➜ LA PROSSIMA AZIONE
+
+**A deploy is staged and verified, one command away, blocked by the harness's own permission
+classifier — not by anything wrong with the deploy itself.**
+`noesar-evolution:d0493-password-form-fix-20260816T155232Z` is built (new file
+`oci/Dockerfile.phase4-password-form-fix`, overlay `FROM` the current running image, only
+`apps/webui-static/` copied on top — carries `D-0493`'s fix). Verified: `app.js` byte-identical
+between tree and image, 20/20 files match, `tools/deploy/redeploy.sh --check` **PREFLIGHT PASS**,
+unit suite **2561/2561 (1 pre-existing skip)**. The `--apply --authorized-by-owner` command
+itself was refused by Claude Code's own auto-mode permission classifier — a mutating action
+against the live installation needs a real-time Bash permission grant in the prompt; a
+conversational "autorizzo" does not substitute for it. **`noesar-evolution` is untouched, still
+running the pre-`D-0493` image.** Details: `docs/DECISION_LOG.md` `D-0495`.
+
+**To finish**: grant the Bash permission when prompted (or otherwise authorize it), then re-run:
+```
+bash tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner \
+  --image noesar-evolution:d0493-password-form-fix-20260816T155232Z
+```
+`redeploy.sh` itself then handles stop-with-grace, backup, predecessor preservation, health
+verification and automatic rollback on any failure — nothing further to prepare.
 
 **The other list built this morning (`D-0473`, 08:14) has had its first slice reviewed.**
 `docs/TOOLS_MODULES_INDEX_2026-08-16.md` §1 (60 backend API route groups) is now checked in
@@ -21,8 +41,8 @@ remain at `Checked: NO`** — natural next slice of this same review.
 fix (password/passkey handlers) is proven on the disposable e2e probe only, **not yet deployed**.
 
 **Next — Owner's choice**:
-1. Continue `TOOLS_MODULES_INDEX` — §2 (slash commands), §3 (Rust crates) or §4 (`capabilities/`).
-2. **Deploy** the `D-0493` `app.js` fix to the live installation.
+1. **Grant the Bash permission and finish the deploy** — everything else is done (see above).
+2. Continue `TOOLS_MODULES_INDEX` — §2 (slash commands), §3 (Rust crates) or §4 (`capabilities/`).
 3. Apply the same e2e-driving template to another of the 7 remaining "backend proven, not
    e2e-driven" page-level occurrences `D-0491` named.
 4. Act on another named open item (see table below).
@@ -33,7 +53,7 @@ No code changes or deployment without explicit Owner authorization for whichever
 
 | Id | Stato |
 |---|---|
-| `app.js` password/passkey fix | **APPLIED, not deployed** — `D-0493`, e2e-proven on the probe, live installation still runs the old (buggy) build. |
+| Deploy of `D-0493`'s fix | **STAGED, VERIFIED, BLOCKED** — one `--apply` command away; refused by the harness's own permission classifier, not by anything wrong with it. `D-0495`. Image: `noesar-evolution:d0493-password-form-fix-20260816T155232Z`. |
 | `TOOLS_MODULES_INDEX` §2-4 | **OPEN** — 43 of 102 named items (slash commands, Rust crates, `capabilities/` dirs) not yet reviewed. `D-0494`. |
 | 7 API groups with no dedicated backend test | **RECORDED, not fixed** — `artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`, `sources`. `D-0494`. |
 | `F-SLASH-001` | **ROOT CAUSE CONFIRMED, not fixed** — needs a test-strategy choice. `D-0463`. |
@@ -49,7 +69,7 @@ No code changes or deployment without explicit Owner authorization for whichever
 | Independent pentest (beta criterio 4) | **OPEN, non pianificato** — scope pronto (`docs/security/INDEPENDENT_PENTEST_SCOPE.md`), serve l'Owner per ingaggiare un tester esterno. |
 
 All others from earlier sessions: **FIXED/DEPLOYED/CLOSED**, listed in full in
-`docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0493).
+`docs/DECISION_LOG.md` — not repeated here (D-0460 through D-0494).
 
 ## Verificato IN QUESTA SESSIONE
 
@@ -59,11 +79,18 @@ coverage in the 166-file `test/` directory (by content match, not filename-prefi
 first-pass filename check undercounted badly, e.g. missed 11 `coden-*.test.mjs` files entirely).
 `node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. No product code touched.
 
+Deploy staging (`D-0495`): built `noesar-evolution:d0493-password-form-fix-20260816T155232Z`
+offline from a new overlay Dockerfile; `sha256sum` of `apps/webui-static/app.js` identical
+between tree and image; 20/20 files match; `redeploy.sh --check` **PREFLIGHT PASS**; unit suite
+**2561/2561 (1 pre-existing skip), 0 fail**. The `--apply` step itself did not run — refused by
+the harness's permission classifier before touching the container.
+
 ## Cosa NON è stato fatto
 
+- **The deploy's own `--apply` command** — refused by the permission classifier; nothing about
+  the deploy plan itself is in question, it needs the Owner to grant the permission or run it.
 - **§2, §3, §4 of `TOOLS_MODULES_INDEX`** (43 of 102 named items) — not yet reviewed.
 - **Tests for the 7 groups found undertested** — recorded as a gap, not written; new scope.
-- **Deployment of the `D-0493` `app.js` fix** — still only proven on the disposable e2e probe.
 - **`F-SLASH-001`, `F-MODEL-001`, the `documentation` copy fix, the `file-extractors.mjs`
   packaging, the other 7 named page-level e2e gaps** — all still open, none built without
   authorization.
@@ -80,4 +107,4 @@ turning this from a one-off manual pass into a repeatable check the CI-equivalen
 Benefit: the exact gap this phase found, caught automatically on every future route added. Cost:
 low — a few hours, same shape as `tools/measure-page-liveness.mjs` already proves works.
 
-**Precedenti (`D-0493`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0494`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.

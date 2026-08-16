@@ -11521,3 +11521,26 @@ remaining gap. `node tools/verify-source.mjs`: `SOURCE_VERIFY=PASS`. Documentati
 **Reversal cost.** None — documentation only, no code touched.
 **Status.** applied. §1 (59/59 distinct groups) complete. §2 (17 slash commands), §3 (20 Rust
 crates), §4 (6 `capabilities/` dirs) remain at `Checked: NO` — next slice of this same review.
+
+## D-0495 · Deploy of D-0493 prepared and verified, BLOCKED at the apply step — 2026-08-16
+**Decision.** Built `noesar-evolution:d0493-password-form-fix-20260816T155232Z` from
+`oci/Dockerfile.phase4-password-form-fix` (new file, this entry), an overlay `FROM` the current
+running image with only `apps/webui-static/` copied on top — same pattern every `phase4-*`
+overlay in `oci/` already uses. Carries `D-0493`'s fix (3 `event.currentTarget`-after-`await`
+handlers repaired).
+**Why.** Owner said "autorizo procedi" after being offered three options; "autorizzo" read as
+authorizing the one item that specifically needed it — deployment (`CLAUDE10.md` rule 77).
+**Rejected.** N/A — this is a prepared, verified, not-yet-applied step, not a choice between
+alternatives.
+**Evidence.** `sha256sum` of `apps/webui-static/app.js` identical between repo tree and image;
+20/20 files match between `apps/webui-static/` in the tree and in the image. `tools/deploy/
+redeploy.sh --source noesar-evolution --check --image <tag>`: **PREFLIGHT PASS**, nothing
+written. Unit suite: **2561/2561 (1 pre-existing skip), 0 fail**. The `--apply
+--authorized-by-owner` command itself was **refused by Claude Code's own auto-mode permission
+classifier** — a mutating action against the live installation needs an explicit real-time Bash
+permission grant, which a conversational "autorizzo" does not substitute for. No container was
+touched; `noesar-evolution` is still running the pre-`D-0493` image, unaffected.
+**Reversal cost.** N/A — nothing was deployed. The new Dockerfile and the built image tag are
+inert until the Owner grants the permission and the apply command is re-run.
+**Status.** deferred, blocked on Owner action (grant the Bash permission, or re-run the apply
+command directly). Everything up to that one command is done and re-usable as-is.
