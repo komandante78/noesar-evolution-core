@@ -1,122 +1,93 @@
-# SESSION HANDOFF — 2026-08-17 (sessione CHIUSA — `D-0503`…`D-0509`, sette fasi)
+# SESSION HANDOFF
+
+**Last updated:** 2026-08-17 · **Phase closed:** `D-0511` / `D-0512` / `D-0513`
+**Head at close:** see `PROJECT_STATE.json.last_commit` · **Plan of record:** `MASTER_PROJECT/`
+
+---
 
 ## ➜ LA PROSSIMA AZIONE
 
-> **Sessione CHIUSA il 2026-08-17** (`D-0510`). Sette fasi consegnate, tutte committate e pushate,
-> tree pulito, remote allineato a `530dfe4`. Prodotto **VERIFICATO sano alla chiusura**:
-> `running/healthy`, `RestartCount=0`, `/livez` 200 `alive` e `/readyz` 200 `ready:true` su
-> **entrambe** `http:8088` e `https:8443` (letti dentro il container). Container: esattamente i due
-> che §5a permette, **0** tag immagine e2e, **0** reti stampate.
+**Nothing is pending, and nothing is half-built.** The phase the last session agreed on is
+delivered: rule 12's named exceptions now have one source, the guard reads it, and a suite goes
+red when the two disagree.
 
-**La prossima sessione apre su una cosa sola, decisa dall'Owner alla chiusura:**
+**Two things need the Owner, and neither blocks anything:**
 
-**Allineare `destructive-command-guard.sh` all'autorità che applica.** Oggi `CLAUDE10.md` porta la
-**terza eccezione nominata** alla regola 12 e la guardia non ne sa nulla: le due divergono, e la
-seconda non può accorgersene. La forma da costruire **non** è «modificare la guardia» — sarebbe una
-copia a mano in più della stessa lista — ma **derivare le eccezioni da una sorgente unica** che
-entrambe leggono, con **un test che fallisce quando divergono**.
+1. **`CLAUDE10.md` rule 12's third exception names the wrong driver.** It says
+   `e2e_retention_prunable()` "is driven by `tools/test-e2e-retention.sh`" — that is the *test*.
+   The production driver is `tools/run-browser-e2e.sh`, which is what actually performed the
+   `D-0509` sweep. The single source records **both** as authorised callers and the suite passes
+   either way, so nothing is broken; amending the authority's own text is the Owner's act.
+2. **`D-0513` is a proposal awaiting a yes or no** (see below). Nothing was started.
 
-Prima cosa da misurare quando si apre: quante eccezioni nominate contiene `CLAUDE10.md` §4 regola 12
-e quante ne conosce la guardia. Oggi: **3 contro 2**.
+**Where a next phase would begin, if the Owner says yes to `D-0513`:** `session-close-guard.sh`
+already enforces §5a's "exactly two containers survive" by a list held in its own code. Same shape
+as rule 12 before this phase: one source, one oracle, and `.claude/hooks/test/run-all.sh` picks the
+new suite up without being edited.
 
-**Da sapere prima di toccare quel file:** la modifica alla guardia è stata **bloccata dal
-classificatore dell'harness** in questa sessione, e **non è stata aggirata**. È un file di sicurezza:
-l'autorizzazione a modificarlo la dà l'Owner, esplicitamente.
+---
 
-**Dopo quella, i candidati restano** (nessuno urgente): i **6 gap e2e page-level** (`#/research`,
-theme/accent, log-search/debug-mode, skills, modules, remote-targets) · `F-RUST-001`, il più
-sostanzioso — `noesar-auth` (Argon2/TOTP reali) compilata, linkata e **mai chiamata** · `F-TOOLS2-001`
-· `F-CAP4-001` · i **7 gruppi API** senza test dedicato (`D-0494`) · il ri-baseline di `F-I18N-002`,
-unico FAIL rimasto nella suite.
+## OPEN BLOCKERS
 
-## Che cosa è vero adesso che prima non lo era
+**None.** No blocker was opened this phase and none was inherited.
 
-| Fase | Cosa è vero adesso, con la misura |
+The one item deliberately left open is a **finding**, not a blocker:
+
+| id | severity | why it is not fixed |
+|---|---|---|
+| `F-HOOK-008` | low | The quote mask added this phase tracks quote state **per line**, so a quoted string spanning newlines (a multi-line `jq` program, a heredoc) still splits. It **over-denies** — never under-denies. The obvious fix (whole-command quote state) turns a fail-safe nuisance into a **fail-open hole**: one apostrophe in prose inside a heredoc masks every real separator after it. The correct repair is real shell tokenisation, with its own adversarial matrix — a phase of its own. Workaround with no loss of protection: pass a long quoted program **by file path**. |
+
+---
+
+## WHAT WAS VERIFIED — measured this session, not quoted
+
+| Check | Result |
 |---|---|
-| `D-0507` | **Il disco degli artefatti e2e è limitato per costruzione**, non per attenzione: `e2e_retention_prunable(root, keep)` + `NOESAR_E2E_RETAIN` (default **5**, `off` disattiva). L'insieme è definito da ciò che un nome **corrisponde** — esattamente uno stamp di run, direttamente sotto la root — mai da ciò che un glob espande. Il runner **ri-controlla il pattern** prima di rimuovere: **due cancelli indipendenti** su un atto irreversibile. |
-| `D-0508` | **17 sleep a tempo fisso sono diventati attese sulla prova** che il check successivo asserisce (55 → **38**). `settled()` **non lancia e non fa fallire nessun check**: su timeout stampa `SETTLE_TIMEOUT` e il chiamante legge lo stesso — quindi un predicato sbagliato degrada al comportamento di oggi, **in modo visibile**. È questa proprietà che rende sicura una conversione di massa. |
-| `D-0509` | **Backlog smaltito dallo strumento**: **151 → 5** directory, **7,3 GB → 246 MB**, `/mnt/cachec` libero **238G → 245G**. `PRUNED=146`, `PRUNE_REFUSED=0`; la seconda run ha pruned **0** — regime stazionario, il cap è idempotente. |
+| `scripts/test.sh` | **11/11 PASS** — unit **2561 tests** (2560 pass, 1 skipped, 0 fail), source-verify (migrations=19, baseline 12/12), auth-smoke, http-smoke, tls-smoke, packaging, pg-migrations, pg-contract, rust-source, rust-provenance, **governance** |
+| new `governance` step | **6 suites / 316 assertions, all pass** — container-baseline 58 · engineering-orchestrator 122 · hook-matcher-enums 9 · **rule12-exceptions 49** · session-lifecycle 69 · tooling-inventory 9 |
+| the divergence oracle | **5 fixtures shown RED on demand**: a 4th exception added to the authority · an entry dropped from the source · a stale quote · a mechanism the authority never names · an exception deleted from the authority |
+| the runner's own red path | a deliberately failing suite → exit 1 · an empty directory → exit 1 ("no suite found is a failure, not a pass") |
+| `F-HOOK-006` / `F-HOOK-007` | **both seen red before the fix** — the grep was really refused, the sibling-path removal was really allowed |
+| shellcheck, 4 changed shell files | disposable offline container; only `SC1007` on the `CDPATH= cd` idiom — the dismissal already on record |
+| portability (§64) | the exception root is `NOESAR_ARTIFACT_ROOT` with a default, exactly as `tools/run-browser-e2e.sh` resolves it; the suite needs only bash/jq/awk and declares `UNAVAILABLE` otherwise; no host path is acted on |
 
-**I 38 sleep rimasti sono dichiarati per categoria** dentro il file, perché diversi sono **corretti
-così** e convertirli sarebbe un difetto: il tempo *è* la prova per uno step TOTP; il prober del
-percorso di input esiste per misurare un'**assenza**; un **non-evento** non si può attendere; alcuni
-sono già poll con una condizione; alcuni girano **dentro `page.evaluate`**, dove `waitForFunction`
-non arriva.
+**What is true now that was not before:** an amendment to `CLAUDE10.md` rule 12 can no longer pass
+unnoticed by the program that enforces it, and the guard no longer silently allowed removals under
+`…/NOESAR_EVOLUTION_ARTIFACTS`.
 
-**L'autorizzazione dell'Owner è registrata dove conta**: `CLAUDE10.md` §4 regola 12, **terza eccezione
-nominata** — il meccanismo che §1a prescrive («l'Owner emenda questo file, non lo si aggira»), non una
-decisione presa altrove. È deliberatamente strettissima: solo `<artifact root>/e2e/<stamp>`, solo
-tramite la funzione testata, mai la newest. E dichiara ciò che le prime due eccezioni non dovevano
-dichiarare: **questo contenuto non è recuperabile**, né da git né dagli archivi.
+---
 
-## Verificato IN QUESTA SESSIONE
+## WHAT WAS **NOT** DONE — deliberately
 
-| Misura | Risultato |
+- **No product code, no build, no deployment, no install.** This phase touched governance only.
+- **No container created, started, stopped or removed** — so §5a cleanup had nothing to remove, and
+  the closing inventory is unchanged from last session's (two containers, 0 e2e tags, 0 stamped
+  networks). The product was **not** re-verified live: nothing this phase changed can reach it.
+- **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Not an omission.
+- **`F-HOOK-008` was not fixed** (reason above), and **`CLAUDE10.md` was not edited**: the drift in
+  its rule-12 wording is reported to the Owner, not corrected by the session that found it.
+- **`D-0513` was not executed.** Generating the proposal is mandatory; running it is the Owner's.
+
+---
+
+## FILES THIS PHASE CHANGED
+
+| File | What |
 |---|---|
-| Sonda e2e, **due run consecutive** | **500/501** entrambe — unico FAIL il gap **dichiarato** `F-I18N-002` |
-| `SETTLE_TIMEOUT` | **0 in entrambe** → tutti e 17 i predicati erano corretti, **misurato, non assunto** |
-| Tempo di parete | 226 s poi 213 s |
-| `npm run test:e2e-retention` | **28/28** — 13 casi di decisione + 11 del cap + 4 invarianti statiche |
-| Rosso visto prima | ogni invariante costruibile, e **ogni rilevatore provato a discriminare** contro copie deliberatamente rotte |
-| Esche del cap a `keep=0` | `not-a-run`, `2026-08-17`, `notes.txt`, un `.log`, uno stamp annidato — **nessuna** nominata |
-| Effetto sul disco | 151 → 5 directory · 7,3 GB → 246 MB · 238G → 245G liberi · `PRUNE_REFUSED=0` |
-| `tools/run-eslint.sh` · `verify-source` | 411 file 0 errori · `PASS migrations=19 baseline=12/12` |
-| Chiavi dataset usate nei predicati | verificate su **entrambi** i lati (i lettori dell'harness e gli scrittori del prodotto) prima dell'uso |
-| Secret scan | **euristico** — `gitleaks` assente su questo host, dichiarato (regola 45) |
-| Container / immagini / reti | esattamente i due che §5a permette · 0 tag e2e · 0 reti stampate |
+| `.claude/hooks/lib/rule12-exceptions.json` | **new** — the one source: 3 exceptions, each with its authority marker, quote, mechanism, recoverability and filesystem roots |
+| `.claude/hooks/destructive-command-guard.sh` | reads that source; quote-aware segmentation (`F-HOOK-006`); path-boundary fix (`F-HOOK-007`); exception-aware refusals that name the only authorised mechanism |
+| `.claude/hooks/test/test-rule12-exceptions.sh` | **new** — 49 assertions: structure, alignment, the 5 red fixtures, behaviour in both directions |
+| `.claude/hooks/test/run-all.sh` | **new** — every governance suite in one run, discovered by pattern |
+| `scripts/test.sh` (+ its `MANIFEST.sha256` line) | one `governance` step, `UNAVAILABLE` and declared where `.claude/` is absent |
+| `docs/DECISION_LOG.md`, `PROJECT_STATE.json` | `D-0511`/`D-0512`/`D-0513`; `F-HOOK-006`/`007`/`008` |
 
-## Cosa NON è stato fatto
+---
 
-- **La guardia non è stata aggiornata.** `destructive-command-guard.sh` applica ancora la regola 12
-  *senza* la terza eccezione: la modifica è stata **bloccata dal classificatore dell'harness** e non è
-  stata aggirata. Conseguenza dichiarata: un `rm` ad hoc su quel percorso resta negato — lo strumento
-  testato è l'unica via, ed è la via giusta comunque.
-- **I 38 sleep rimasti non sono stati convertiti**, per categoria e con la ragione scritta nel file.
-  Nessuno di essi è un flake noto.
-- **Gli sleep dentro `page.evaluate`** richiederebbero un poll iniettato in pagina: registrato, non
-  costruito.
-- **Le 5 directory superstiti non sono state rimosse**: sono la finestra di ritenzione voluta, non un
-  residuo. A `keep=5` un fallimento vero ha ancora dove vivere.
-- **Nessun codice di prodotto modificato. Nessuna installazione** → §3a non si applica, **nessuna voce
-  nel ledger** — dichiarato, non saltato.
-- `MANIFEST.sha256` non aggiornato per i file nuovi: già coperto da `F-MANIFEST-001`, che resta aperto.
+## THE ONE IMPROVEMENT PROPOSAL — `D-0513`, awaiting the Owner
 
-## Blockers e finding aperti
-
-| Id | Stato |
-|---|---|
-| `F-E2EDISK-001` | **CLOSED** — trigger (`D-0505`) + cap e sweep (`D-0507`/`D-0509`). |
-| `F-E2E-001` | **CLOSED `D-0503`** — con controllo positivo permanente. |
-| Disallineamento guardia ↔ regola 12 | **APERTO, dichiarato** — la modifica è stata bloccata dal classificatore; serve l'Owner. |
-| 6 remaining "backend proven, not e2e-driven" | **OPEN** — `#/research`, theme/accent, log-search/debug-mode, skills, modules, remote-targets. |
-| `F-TOOLS2-001` | **OPEN, recorded** — 3/17 slash command non testati al livello di dispatch. `D-0497`. |
-| `F-RUST-001` | **OPEN, recorded** — 8/20 crate Rust senza test; `noesar-auth` compilata e mai chiamata. `D-0497`. |
-| `F-CAP4-001` | **OPEN, recorded** — `capabilities/sandbox/` + `templates/` non letti da alcun codice. `D-0497`. |
-| 7 API groups senza test dedicato | **RECORDED** — `artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`, `sources`. `D-0494`. |
-| `F7-001` | **OPEN, fuori scope** — `capabilities/reference/*.py`, 23 CRITICAL/9 HIGH dal sweep `D-0204`. |
-| `F-MODEL-001` | **OPEN**, attende scelta Owner — `#/models` `servedBy` non dichiarato. `D-0395`. |
-| `#/coden/bench/documentation` copy | **OPEN, `D-0489`** — testo proposto, serve approvazione. |
-| ATOM licence | **APPLICATO** — aperto, AGPL, repository separato invariato. `D-0468`. |
-| Product access control | **DECISO** — registrazione, mai licenza a codice. `D-0467`/`D-0468`. |
-| `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
-| `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` da terminale vero. |
-| `F-I18N-002` | **OPEN**, not re-baselined — 643 closable su 905-906 (baseline 607). Unico FAIL della suite. |
-| `F-MANIFEST-001` | **OPEN**, pre-esistente — `MANIFEST.sha256` 5898 vs 6568 file tracciati. |
-| `F-ROT-001` | **OPEN** — `NOESAR_ALLOWED_HOSTS` nomina ancora l'IP pre-rotazione. |
-| Independent pentest (beta criterio 4) | **OPEN, non pianificato** — serve l'Owner per ingaggiare un tester esterno. |
-
-Tutti gli altri: **FIXED/DEPLOYED/CLOSED** in `docs/DECISION_LOG.md`.
-
-## Proposta di miglioramento
-
-**Allineare la guardia all'autorità che applica, e renderlo impossibile da dimenticare.** Oggi
-`CLAUDE10.md` e `destructive-command-guard.sh` dicono due cose diverse sulla regola 12, e la seconda
-non lo sa. La forma avanzata non è «modificare la guardia»: è **derivare le sue eccezioni da una
-sorgente unica** che entrambi leggono (un piccolo file di eccezioni versionato, con un test che
-fallisce quando il numero di eccezioni nominate in `CLAUDE10.md` non corrisponde a quelle che la
-guardia conosce). Costo: ~30 righe più un caso di test; beneficio: la classe di difetto «una regola e
-il suo esecutore divergono in silenzio» — la stessa che ha prodotto `F-E2EDISK-001` e il passo
-`noesar-debuglab` ritirato — diventa impossibile invece che da riscoprire. Registrata, non costruita:
-tocca un file di sicurezza, e la sua modifica richiede l'Owner.
-
-**Precedenti (`D-0509`-`D-0460`)**: vedi `docs/DECISION_LOG.md`.
+Extend the `authority → machine source → divergence oracle` shape to the **other** rules a program
+already enforces: §5a's keeper list, §3a's deployment sequence, the budget skill's caps. Every
+governance defect this project has repaired has one shape — a rule whose executor drifted from it in
+silence. Rule 12 is now the only one that cannot. **Cost:** roughly one phase per rule family.
+**Funding fit:** "policy-as-data with a divergence oracle" is delimited and reusable outside this
+product (traits 1/2/5) — publishable as a small standalone checker, not as a WebUI feature.

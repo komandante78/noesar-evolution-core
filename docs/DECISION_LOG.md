@@ -11874,3 +11874,62 @@ worked around. It is also the wrong shape — one more hand-maintained copy of t
 0 stamped networks; e2e artifacts **5 directories / 246 MB**, `/mnt/cachec` 245G free.
 **Reversal cost.** None — a close records, it does not change the product.
 **Status.** applied.
+
+## D-0511 · Rule 12's exceptions get one source, and a test that goes red when it drifts — 2026-08-17
+**Decision.** `.claude/hooks/lib/rule12-exceptions.json` is now the single source for `CLAUDE10.md`
+§4 rule 12's named exceptions. `destructive-command-guard.sh` reads it — no path, root or run-stamp
+pattern is hardcoded in the guard's code — and `.claude/hooks/test/test-rule12-exceptions.sh`
+(**49 assertions**) fails when the file and rule 12 stop agreeing. A covered run directory now
+reaches the Owner as an **ask** naming the exception, its irreversibility and the only authorised
+mechanism; `rm -rf` there still **denies**, with the same naming. No source file → **no exception
+recognised**, declared in the reason: the fallback is stricter, never looser.
+**Why.** The rule gained a third named exception (`D-0506`) that its own executor had never heard
+of, so the guard denied what the authority permits — visible last session when the sweep had to go
+through the tool. A hand-copied list would only re-create the drift.
+**Rejected.** Teaching the guard the new path directly: one more copy to diverge, with nothing to
+notice next time.
+**Evidence.** 49/49 new; **five divergence fixtures shown RED** (a 4th exception in the authority, an
+entry dropped from the source, a stale quote, an unnamed mechanism, an exception deleted from the
+authority). Existing guard suite 122/122 unchanged. `scripts/test.sh` **11/11 PASS** including the
+new `governance` step, which runs all **6** governance suites (316 assertions) — previously invoked
+by nothing. Runner's own red path proven (deliberate failing suite → exit 1; empty dir → exit 1).
+**Reversal cost.** None on the product — no product code, no deployment. Deleting the JSON makes
+the guard stricter and the suite red, which is the intended failure direction.
+**Status.** applied.
+
+## D-0512 · Two defects in the guard, found while driving its own matrix — 2026-08-17
+**Decision.** Both fixed in place, with assertions in both directions. **F-HOOK-006**: segments were
+split on `; & |` over the raw string, so a separator **inside quotes** started a new command —
+`grep -nE "RETAIN\|rm -rf" tools/run-browser-e2e.sh` was DENIED as an `rm -rf`, measured live this
+session. Separators inside `'…'`/`"…"` are now masked and restored, operands byte-identical;
+unbalanced quotes fall back to the old split. **F-HOOK-007**: `case $OP in "$PROJECT_ROOT"*)` is a
+string prefix, and this host has a sibling named `…/NOESAR_EVOLUTION_ARTIFACTS` — every `rm` under
+it, 7.3 GB outside git and outside any archive, was read as "inside the repository" and **silently
+allowed**. The boundary is now `"$PROJECT_ROOT"|"$PROJECT_ROOT"/*`; same repair on `ATOM_ROOT`.
+**Why.** F-HOOK-007 is a fail-**open** hole in the one guard standing between an accident and an
+irreversible deletion, and it was invisible until the exception work made that exact path a case.
+**Rejected.** Deferring them as out of scope: §40a — the defect is in the file this phase edits,
+understood, and provable by a test.
+**Evidence.** Both seen red before the fix (F-HOOK-006 denied a real read; F-HOOK-007 allowed
+`rm /mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e/…`). Now: 8 assertions across the two, 49/49 suite,
+122/122 existing suite green. Shellcheck (disposable offline container) on all four changed shell
+files: only `SC1007` on the `CDPATH= cd` idiom — the dismissal this project already records.
+**Reversal cost.** None. Both are narrowings of a false positive and a false negative respectively.
+**Status.** applied. IDs 006/007 chosen after checking: `F-HOOK-004`/`005` are already taken.
+
+## D-0513 · Improvement proposal — the drift oracle generalised beyond rule 12 — 2026-08-17
+**Decision.** Proposed, **not executed**: extend the `authority → machine source → divergence
+oracle` shape built here to the other rules of `CLAUDE10.md` that a program already enforces —
+§5a's keeper/removable container list (enforced by `session-close-guard.sh`), §3a's deployment
+sequence, and the length caps of the budget skill — one source and one red-capable check each.
+**Why.** Every governance defect this project has repaired has the same shape: a rule whose
+executor drifted from it in silence (the dead `noesar-debuglab` hunt step, the retention branch
+that never fired, rule 12's third exception). Rule 12 is now the only one that cannot drift.
+**Rejected.** Doing it in this phase: three more rule families is three more phases of scope, and
+`noesar-evolution-budget` §5 forbids taking an improvement as authorisation.
+**Evidence.** The mechanism is proven here — 5 fixtures red on demand, 49 assertions green.
+**Funding fit.** Traits 1/2/5 (`noesar-evolution-funding-fit`): "policy-as-data with a divergence
+oracle" is delimited, reusable outside this product, and makes reliability measurable — the
+publishable form is a small standalone checker, not a feature of the WebUI.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.
