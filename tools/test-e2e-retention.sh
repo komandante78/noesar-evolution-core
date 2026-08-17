@@ -102,6 +102,73 @@ expect 'DUPLICATED-COUNTER preserves'                 preserve 1 \
 expect 'MARKER-INSIDE-A-CHECK-NAME still deletes'     delete   1 \
   "$(log_with anchored 1 0 'FAIL  a check mentioning BROWSER_E2E_FAIL_UNDECLARED=9 in its name')"
 
+# --- the retention cap (D-0506) ------------------------------------------------------------
+# A fake artifact root: ten run stamps, plus four things that are NOT run directories and must
+# never be named however the cap is configured. This content is unrecoverable in the real
+# world — no git history, no archive — so the decoys are the point of the test, not garnish.
+CAP_ROOT="$WORK/artifacts/e2e"
+mkdir -p "$CAP_ROOT"
+for i in 1 2 3 4 5 6 7 8 9; do mkdir -p "$CAP_ROOT/2026081${i}T101010Z"; done
+mkdir -p "$CAP_ROOT/20260820T101010Z"
+mkdir -p "$CAP_ROOT/not-a-run" "$CAP_ROOT/2026-08-17" "$CAP_ROOT/20260819T101010Z/nested/20260101T000000Z"
+: > "$CAP_ROOT/20260818T101010Z.log"
+: > "$CAP_ROOT/notes.txt"
+
+prunable() { e2e_retention_prunable "$CAP_ROOT" "$1" | sed "s|^$CAP_ROOT/||" | tr '\n' ' '; }
+
+got="$(prunable 3)"
+if [ "$got" = "20260811T101010Z 20260812T101010Z 20260813T101010Z 20260814T101010Z 20260815T101010Z 20260816T101010Z 20260817T101010Z " ]; then
+  pass 'CAP-KEEPS-THE-NEWEST-N  (10 runs, keep 3 -> the 7 oldest)'
+else
+  fail 'CAP-KEEPS-THE-NEWEST-N' "got '$got'"
+fi
+
+case "$(prunable 3)" in
+  *20260818T101010Z*|*20260819T101010Z*|*20260820T101010Z*)
+    fail 'CAP-NEVER-NAMES-A-KEPT-RUN' "the newest three appear in '$(prunable 3)'" ;;
+  *) pass 'CAP-NEVER-NAMES-A-KEPT-RUN' ;;
+esac
+
+# The current run's own directory is always the newest, so any keep >= 1 protects it. This is
+# the case that would otherwise delete a workspace out from under a running probe.
+case "$(prunable 1)" in
+  *20260820T101010Z*) fail 'CAP-NEVER-NAMES-THE-NEWEST-RUN' 'the newest was named with keep=1' ;;
+  *) pass 'CAP-NEVER-NAMES-THE-NEWEST-RUN' ;;
+esac
+
+got="$(prunable 0 | wc -w)"
+[ "$got" = "10" ] && pass 'CAP-ZERO-NAMES-EVERY-RUN  (10)' || fail 'CAP-ZERO-NAMES-EVERY-RUN' "named $got"
+got="$(prunable 50)"
+[ -z "$got" ] && pass 'CAP-LARGER-THAN-THE-SET-NAMES-NOTHING' || fail 'CAP-LARGER-THAN-THE-SET-NAMES-NOTHING' "got '$got'"
+got="$(prunable off)"
+[ -z "$got" ] && pass 'CAP-OFF-NAMES-NOTHING' || fail 'CAP-OFF-NAMES-NOTHING' "got '$got'"
+got="$(prunable '')"
+[ -z "$got" ] && pass 'CAP-UNSET-NAMES-NOTHING' || fail 'CAP-UNSET-NAMES-NOTHING' "got '$got'"
+got="$(e2e_retention_prunable "$WORK/no/such/root" 0)"
+[ -z "$got" ] && pass 'CAP-MISSING-ROOT-NAMES-NOTHING' || fail 'CAP-MISSING-ROOT-NAMES-NOTHING' "got '$got'"
+
+# Everything that is not a run directory, at keep=0 — the most aggressive setting there is.
+case "$(prunable 0)" in
+  *not-a-run*|*2026-08-17*|*notes.txt*|*.log*|*nested*)
+    fail 'CAP-NAMES-ONLY-RUN-DIRECTORIES' "a non-run entry was named: '$(prunable 0)'" ;;
+  *) pass 'CAP-NAMES-ONLY-RUN-DIRECTORIES  (decoys ignored at keep=0)' ;;
+esac
+
+# Absolute paths, always: a relative one would be removed relative to whatever the caller's
+# working directory happened to be.
+case "$(e2e_retention_prunable "$CAP_ROOT" 0 | head -1)" in
+  /*) pass 'CAP-EMITS-ABSOLUTE-PATHS' ;;
+  *)  fail 'CAP-EMITS-ABSOLUTE-PATHS' "got '$(e2e_retention_prunable "$CAP_ROOT" 0 | head -1)'" ;;
+esac
+
+# The runner must re-check the pattern before removing anything. Two independent gates on an
+# irreversible act; a caller that trusts the list is one refactor away from a wildcard.
+if grep -qE '\[0-9\]\{8\}T\[0-9\]\{6\}Z' "$RUNNER"; then
+  pass 'SOURCE-RUNNER-RECHECKS-THE-STAMP-PATTERN'
+else
+  fail 'SOURCE-RUNNER-RECHECKS-THE-STAMP-PATTERN' 'the runner removes what the policy names without re-checking it'
+fi
+
 # --- the static invariant -------------------------------------------------------------------
 # The runner must ASK the policy, and the branch that keeps or deletes the workspace must key
 # on the verdict — not on the exit code. That is the defect being repaired, and no runtime

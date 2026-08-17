@@ -69,3 +69,54 @@ e2e_retention_verdict() {
   fi
   printf 'preserve %s-undeclared-failure(s)\n' "${value}"
 }
+
+# e2e_retention_prunable <artifact_root> <keep>
+#
+# Prints, one absolute path per line, the run directories that may be removed: everything under
+# <artifact_root> except the newest <keep>. Prints nothing and succeeds when there is nothing to
+# prune, when the root does not exist, or when <keep> is not a number ("off" disables pruning).
+#
+# # Why this half exists (D-0506)
+#
+# `e2e_retention_verdict` bounds the workspaces of runs with nothing to diagnose. It does not
+# bound the other kind: a genuinely failed run keeps its evidence, correctly, and then keeps it
+# forever, because nothing ever revisits the decision. "Keep the evidence" and "keep every piece
+# of evidence ever produced" are not the same policy, and only the second one fills a disk.
+#
+# # The safety is the PATTERN, not the caller's care
+#
+# This removes content that no git history and no archive can return (CLAUDE10.md §4 rule 12,
+# third named exception). So the set it will name is defined by what a name MATCHES, never by
+# what a glob happens to expand to: exactly `YYYYMMDDTHHMMSSZ`, a directory, directly under the
+# given root. A stray file, a differently-named directory, a symlink to somewhere else, a nested
+# path — none can ever appear in this list. The caller re-checks the pattern before removing,
+# which is deliberate duplication: two independent gates on an irreversible act.
+e2e_retention_prunable() {
+  local root="${1:-}" keep="${2:-}"
+  [ -n "${root}" ] && [ -d "${root}" ] || return 0
+  case "${keep}" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+
+  # Sorted lexicographically, which for this stamp format IS chronological — no mtime is
+  # consulted, so a directory touched by a backup or a viewer cannot change its age.
+  local names=() name
+  while IFS= read -r name; do
+    [ -n "${name}" ] || continue
+    names+=("${name}")
+  done < <(
+    find "${root}" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
+      | grep -E '^[0-9]{8}T[0-9]{6}Z$' | LC_ALL=C sort
+  )
+
+  local total="${#names[@]}" removable
+  removable=$((total - keep))
+  [ "${removable}" -gt 0 ] || return 0
+
+  local index=0
+  for name in "${names[@]}"; do
+    [ "${index}" -lt "${removable}" ] || break
+    printf '%s/%s\n' "${root}" "${name}"
+    index=$((index + 1))
+  done
+}

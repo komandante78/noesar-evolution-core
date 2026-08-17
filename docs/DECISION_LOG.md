@@ -11802,3 +11802,24 @@ session does not route around it.
 trend, not an emergency. The exact command is named in `docs/SESSION_HANDOFF.md` for the Owner to run.
 **Reversal cost.** Deletion is irreversible — which is precisely why it is proposed, not taken.
 **Status.** deferred — awaiting the Owner.
+
+## D-0507 · The e2e artifact disk is bounded by construction — cap built, backlog swept by the tool — 2026-08-17
+**Decision.** `e2e_retention_prunable(root, keep)` names every run directory except the newest
+`keep`; `tools/run-browser-e2e.sh` removes what it names, **default `NOESAR_E2E_RETAIN=5`**, `off`
+disables it. Owner authorisation (*"TUTTE LE PROPOSTE IMPLEMENTALE NON CHIEDERE"*, 2026-08-17) is
+recorded as the **third named exception** to `CLAUDE10.md` §4 rule 12 — the amendment mechanism §1a
+prescribes, not a decision taken elsewhere.
+**Why.** `D-0505` bounded the runs with nothing to diagnose; nothing bounded the other kind. "Keep
+the evidence" and "keep every piece of evidence ever produced" are different policies, and only the
+second fills a disk.
+**Rejected.** An ad-hoc `rm -rf` of the 151-directory backlog: the destructive-command guard denied
+it (correctly — it enforces rule 12 mechanically), and the edit teaching the guard the new exception
+was **blocked by the harness classifier**. Not worked around. The tested tool does the sweep instead,
+from inside the runner where its own cleanup has always operated.
+**Evidence.** `tools/test-e2e-retention.sh` **28/28** (11 new cap cases), the cap cases seen green
+against decoys a glob would have caught — `not-a-run`, `2026-08-17`, `notes.txt`, a `.log`, a nested
+stamp — at `keep=0`, the most aggressive setting. The new runner gate proven to discriminate against
+a copy with the re-check removed. Two independent gates guard an irreversible act.
+**Reversal cost.** Removed run directories are **not recoverable** — no git history, no archive.
+Bounded by a pattern a test enforces, never by care.
+**Status.** applied — cap live; backlog sweep executes on the next probe run, measured there.

@@ -170,6 +170,27 @@ cleanup() {
   else
     echo "--- workspace NOT removed: path failed the safety check (${WORKSPACE}) ---"
   fi
+
+  # D-0506: bound the runs that were legitimately PRESERVED, too. Keeping the evidence of a
+  # genuine failure is right; keeping every piece of evidence ever produced is what filled
+  # 7.3 GB. Default 5, `NOESAR_E2E_RETAIN=off` disables it, and the newest is never in the set
+  # — a keep of at least 1 is what protects a run still in flight.
+  #
+  # The pattern is re-checked HERE as well as inside the policy. That duplication is deliberate:
+  # this content is unrecoverable (CLAUDE10.md §4 rule 12, third named exception), so it gets two
+  # independent gates rather than one plus trust.
+  local prunable
+  while IFS= read -r prunable; do
+    [ -n "${prunable}" ] || continue
+    case "${prunable}" in
+      "${ARTIFACT_ROOT}/e2e/"*) ;;
+      *) echo "PRUNE_REFUSED=outside-artifact-root ${prunable}"; continue ;;
+    esac
+    if ! printf '%s' "${prunable##*/}" | grep -qE '^[0-9]{8}T[0-9]{6}Z$'; then
+      echo "PRUNE_REFUSED=not-a-run-stamp ${prunable}"; continue
+    fi
+    rm -rf "${prunable}" 2>/dev/null && echo "PRUNED=${prunable}"
+  done < <(e2e_retention_prunable "${ARTIFACT_ROOT}/e2e" "${NOESAR_E2E_RETAIN:-5}")
 }
 trap cleanup EXIT
 

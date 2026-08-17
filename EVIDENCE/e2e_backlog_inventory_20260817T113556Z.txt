@@ -1,0 +1,259 @@
+== artifact root, top level ==
+total 204
+drwxrwxrwx  32 root   root   4096 Aug 10 05:04 ./
+drwxrwxrwx  39 nobody users  4096 Aug  9 21:13 ../
+-rw-rw-rw-   1 root   root     17 Jul 25 16:23 INSTALL_TS
+-rw-rw-rw-   1 root   root  13579 Jul 25 16:34 append-findings.mjs
+drwxrwxrwx  13 root   root   4096 Jul 31 09:07 backups/
+-rw-rw-rw-   1 root   root   2565 Jul 25 16:59 cascade-split.mjs
+-rw-rw-rw-   1 root   root    734 Jul 25 16:56 claude-md-pointer.mjs
+-rw-rw-rw-   1 root   root  10183 Jul 25 16:59 claude-md-sections.mjs
+-rw-rw-rw-   1 root   root   1233 Jul 25 16:57 claude0-overflow.mjs
+drwxrwxrwx  11 root   root    137 Aug  6 12:59 coldstart-cKVy/
+drwx------   3 root   root     18 Jul 25 15:07 ctxpack.FQRFiF/
+drwxrwxrwx 153 root   root   8192 Aug 17 13:28 e2e/
+-rw-rw-rw-   1 root   root   1528 Jul 25 16:13 flake-stress-console.log
+drwxrwxrwx   2 root   root     38 Jul 25 16:34 flake-stress-final/
+-rw-rw-rw-   1 root   root   1180 Jul 25 16:34 flake-stress-final-console.log
+drwxrwxrwx   2 root   root   4096 Jul 25 16:21 flake-stress-postfix/
+-rw-rw-rw-   1 root   root   4740 Jul 25 16:21 flake-stress-postfix-console.log
+drwxrwxrwx   2 root   root     93 Jul 25 16:13 flake-stress-prefix/
+-rw-rw-rw-   1 root   root  77944 Jul 25 16:17 flake-stress-prefix-report.json
+drwxrwxrwx   3 root   root    131 Jul 25 16:04 lint/
+drwxrwxrwx   3 root   root    139 Jul 25 17:25 lint-canary/
+drwxrwxrwx   3 root   root     48 Jul 26 10:18 master_spec_nested_archives_20260726T081821Z/
+drwxrwxrwx   5 root   root    138 Jul 25 16:39 phase4_completion_evidence/
+drwxrwxrwx   8 root   root    284 Jul 25 14:32 phase4_evidence/
+drwx------   8  10001 10001    86 Jul 25 14:29 phase4_probe_runtime/
+drwxrwxrwx   8 root   root     86 Jul 25 14:22 phase4_ws_a/
+drwxrwxrwx   8 root   root     86 Jul 25 14:21 phase4_ws_b/
+drwxrwxrwx   8 root   root     86 Jul 25 13:28 phase4_ws_c/
+drwxrwxrwx   8 root   root     86 Jul 25 13:28 phase4_ws_d/
+drwxrwxrwx   8 root   root     86 Jul 25 14:01 phase4_ws_probe/
+drwxrwxrwx   8 root   root     86 Jul 25 14:02 phase4_ws_probe2/
+drwxrwxrwx   8 root   root     86 Jul 25 14:48 phase4_ws_sec/
+drwx------   9  10001 10001   104 Jul 25 16:22 phase4c_boot/
+drwx------   4  10001 10001    64 Jul 25 15:42 phase4c_dbtest/
+drwx------   3  10001 10001    24 Jul 25 15:15 phase4c_pgprobe/
+-rwxr-xr-x   1 root   root   1798 Jul 25 15:26 phase4c_pgprobe_script.sh*
+drwx------   9  10001 10001   104 Jul 25 16:47 phase4c_reverify/
+drwxrwxrwx   3 root   root     26 Jul 25 03:28 prebuilt/
+-rw-rw-rw-   1 root   root    667 Jul 25 16:15 probe-placeholder.mjs
+drwx------  14  10001 10001   177 Jul 25 18:05 probe-webui-20260725T160542Z/
+-rw-rw-rw-   1 root   root   2821 Jul 25 17:00 repair-cascade.mjs
+-rw-rw-rw-   1 root   root   2150 Jul 25 16:16 rewrite-forgery-test.mjs
+-rw-rw-rw-   1 root   root   8151 Jul 25 16:58 s260-header.mjs
+drwxrwxrwx   2 root   root    326 Jul 31 09:03 sbom/
+drwxrwxrwx   2 root   root      6 Jul 30 16:44 scratch/
+-rw-rw-rw-   1 root   root   2375 Jul 25 16:44 update-manifest.mjs
+-rw-rw-rw-   1 root   root   7139 Jul 25 16:40 update-state.mjs
+drwxrwxrwx   3 root   root     54 Jul 25 03:39 vendor-binary-fragments/
+drwxrwxrwx   2 root   root    104 Jul 25 18:08 webui-diagnostics/
+
+== e2e children (count) ==
+151
+
+== du ==
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/INSTALL_TS
+16K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/append-findings.mjs
+665M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/backups
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/cascade-split.mjs
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/claude-md-pointer.mjs
+12K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/claude-md-sections.mjs
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/claude0-overflow.mjs
+43M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/coldstart-cKVy
+0	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/ctxpack.FQRFiF
+7.3G	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-console.log
+80K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-final
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-final-console.log
+2.0M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-postfix
+8.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-postfix-console.log
+256K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-prefix
+80K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/flake-stress-prefix-report.json
+14M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/lint
+24K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/lint-canary
+188K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/master_spec_nested_archives_20260726T081821Z
+76K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_completion_evidence
+263M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_evidence
+131M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_probe_runtime
+60K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_a
+68K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_b
+36K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_c
+36K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_d
+52K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_probe
+128K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_probe2
+131M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4_ws_sec
+65M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4c_boot
+74M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4c_dbtest
+40M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4c_pgprobe
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4c_pgprobe_script.sh
+49M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/phase4c_reverify
+2.8M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/prebuilt
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/probe-placeholder.mjs
+65M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/probe-webui-20260725T160542Z
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/repair-cascade.mjs
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/rewrite-forgery-test.mjs
+8.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/s260-header.mjs
+50M	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/sbom
+0	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/scratch
+4.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/update-manifest.mjs
+8.0K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/update-state.mjs
+44K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/vendor-binary-fragments
+20K	/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/webui-diagnostics
+
+== df before ==
+/dev/nvme1n1p1  466G  229G  238G  50% /mnt/cachec
+
+== every e2e child ==
+20260805T035452Z/
+20260805T035615Z/
+20260805T035727Z/
+20260805T035844Z/
+20260805T035958Z/
+20260805T040124Z/
+20260805T040402Z/
+20260805T041524Z/
+20260805T060705Z/
+20260805T060842Z/
+20260805T070213Z/
+20260805T070332Z/
+20260805T070457Z/
+20260805T070606Z/
+20260805T071218Z/
+20260805T071822Z/
+20260805T072051Z/
+20260805T072405Z/
+20260805T072607Z/
+20260805T073334Z/
+20260805T073611Z/
+20260805T160411Z/
+20260805T160531Z/
+20260805T172510Z/
+20260806T094328Z/
+20260806T094500Z/
+20260806T094828Z/
+20260806T094839Z/
+20260806T094903Z/
+20260806T095124Z/
+20260806T095319Z/
+20260806T095433Z/
+20260806T095805Z/
+20260806T095937Z/
+20260806T100106Z/
+20260806T100322Z/
+20260806T100526Z/
+20260806T100740Z/
+20260806T100951Z/
+20260806T101210Z/
+20260806T101432Z/
+20260806T105437Z/
+20260806T105611Z/
+20260806T110209Z/
+20260806T112148Z/
+20260806T112347Z/
+20260806T112532Z/
+20260806T112823Z/
+20260806T114810Z/
+20260806T134401Z/
+20260806T134552Z/
+20260806T134759Z/
+20260806T135043Z/
+20260806T135235Z/
+20260806T135542Z/
+20260806T170707Z/
+20260806T171252Z/
+20260807T052724Z/
+20260807T052739Z/
+20260807T052807Z/
+20260807T101018Z/
+20260807T101255Z/
+20260808T021026Z/
+20260808T021515Z/
+20260808T021823Z/
+20260808T061408Z/
+20260808T063518Z/
+20260808T064054Z/
+20260808T064320Z/
+20260808T065640Z/
+20260808T065953Z/
+20260808T071126Z/
+20260808T071159Z/
+20260808T071413Z/
+20260808T071726Z/
+20260809T021207Z/
+20260809T235655Z/
+20260810T035640Z/
+20260812T162620Z/
+20260813T095352Z/
+20260813T100128Z/
+20260813T100513Z/
+20260813T100515Z/
+20260813T101115Z/
+20260813T101117Z/
+20260813T101208Z/
+20260813T114821Z/
+20260813T115147Z/
+20260813T115442Z/
+20260813T120024Z/
+20260813T120647Z/
+20260813T121050Z/
+20260813T121510Z/
+20260813T121953Z/
+20260813T122741Z/
+20260813T122801Z/
+20260813T123102Z/
+20260813T123637Z/
+20260813T123639Z/
+20260813T124111Z/
+20260813T124511Z/
+20260813T131614Z/
+20260813T153118Z/
+20260813T153800Z/
+20260813T154134Z/
+20260813T154551Z/
+20260813T170029Z/
+20260813T170128Z/
+20260813T170623Z/
+20260813T172053Z/
+20260813T172212Z/
+20260813T172427Z/
+20260813T172741Z/
+20260813T172919Z/
+20260813T173620Z/
+20260813T174609Z/
+20260814T091511Z/
+20260814T112141Z/
+20260814T112337Z/
+20260814T131620Z/
+20260814T131742Z/
+20260814T133448Z/
+20260814T133919Z/
+20260814T134338Z/
+20260815T043027Z/
+20260815T043610Z/
+20260815T043959Z/
+20260815T044546Z/
+20260815T044923Z/
+20260815T053106Z/
+20260815T053349Z/
+20260815T083004Z/
+20260815T084806Z/
+20260815T085422Z/
+20260815T093607Z/
+20260815T094012Z/
+20260815T121350Z/
+20260815T162826Z/
+20260815T163530Z/
+20260816T140045Z/
+20260816T140154Z/
+20260816T145327Z/
+20260816T145756Z/
+20260817T073358Z/
+20260817T075657Z/
+20260817T082115Z/
+20260817T083619Z/
+20260817T084201Z/
+20260817T084750Z/
+20260817T105125Z/
+20260817T105555Z/

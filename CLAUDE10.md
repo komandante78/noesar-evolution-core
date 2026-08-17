@@ -124,6 +124,18 @@ verified work in the source tree for a deployment that never comes.
     Owner amendment to this file, not a decision taken elsewhere. The content survives in
     git history and in the sealed archives (`/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`,
     SHA-256 recorded) — nothing is destroyed, only removed from the working tree.
+    **Third named exception**, added by the owner on 2026-08-17 (*"TUTTE LE PROPOSTE
+    IMPLEMENTALE NON CHIEDERE"*, answering `D-0506`): the **e2e probe's own run directories**
+    under `NOESAR_ARTIFACT_ROOT` (`/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e` on this host).
+    They are throwaway workspaces this project creates — a per-run PostgreSQL cluster and a
+    driver log — of the same class as the containers and image tags §5a already requires it to
+    remove. This exception is **narrow and mechanical**: only directories whose name matches the
+    run stamp `YYYYMMDDTHHMMSSZ` exactly, only directly under that root, only through
+    `e2e_retention_prunable()` in `tools/e2e-retention-policy.sh`, which is driven by
+    `tools/test-e2e-retention.sh` and never removes the newest `NOESAR_E2E_RETAIN` runs. It
+    authorises **nothing else outside `PROJECT_ROOT`**: no other path, no glob, no `prune`, and
+    no artifact of any other project. Unlike the first two exceptions this content is **not**
+    recoverable — which is why it is bounded by a pattern a test enforces rather than by care.
 13. **No destructive modification by implication.** Overwriting, truncating,
     renaming, moving, or replacing an existing artifact requires that the phase
     specification explicitly asks for it, and requires a backup first (§6).
