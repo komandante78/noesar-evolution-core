@@ -11568,3 +11568,21 @@ volume count (66) unchanged before/after
 the preserved predecessor, config already carried by that container.
 **Status.** applied and deployed. The Owner will no longer see a successful password change
 reported as an error.
+
+## D-0497 · TOOLS_MODULES_INDEX §2-4 deep review — 43 items checked, 3 defect classes found — 2026-08-17
+**Decision.** Completed the deep review D-0494 started: 17 CodeN slash commands, 20 Rust
+crates, 6 `capabilities/` dirs, same content-match method (not filename-prefix). All 102/102
+named items in the index are now `Checked: SI`.
+**Why.** Owner authorization ("procedi con 1") to continue the review left at 59/102 by D-0494.
+**Rejected.** Writing tests for the gaps found — new scope, not a review-phase finding; each is
+recorded instead, matching §1's own posture for its 7 gaps.
+**Evidence.** `cargo test --workspace --offline` in a disposable `rust:1-bookworm` container
+(`--network none`, vendored deps) → 144 passed, 0 failed, 26 binaries — VERIFIED this session
+after correcting a mount-scope mistake (first attempt mounted only `rust/`, missing the
+project-root `conformance/` vectors). 3 findings appended to `PROJECT_STATE.json.open_findings`:
+`F-TOOLS2-001` (3/17 slash commands untested at the dispatch layer), `F-RUST-001` (8/20 crates
+with zero tests, `noesar-auth`'s Argon2/TOTP logic compiled but never called anywhere in the
+workspace, 3 crates never packaged), `F-CAP4-001` (`sandbox/`+`templates/` unread by any code).
+**Reversal cost.** None — documentation and state only, no code or deployment touched.
+**Status.** applied. No container beyond the disposable analysis one was created; it was
+removed by `--rm` in every run.

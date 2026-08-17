@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0496: D-0493 fix DEPLOYED and verified live. noesar-evolution now runs noesar-evolution:d0493-password-form-fix-20260816T155232Z. Verified: running/healthy, RestartCount=0, /livez 200, /readyz 200, app.js byte-identical tree vs running container, 4 children spawned, 0 auth-failure lines. Cleanup done: older rollback removed by exact name, one permitted rollback kept (noesar-evolution-pre-20260816T161506Z), networks/volumes unchanged (66). D-0495 blocked at the harness permission classifier; resolved by Owner instruction next turn.",
-  "phase_status": "D-0496_applied__D-0493_fix_deployed_and_verified_live",
-  "next_phase": "Owner decides: continue TOOLS_MODULES_INDEX sec2-4 (17 slash commands, 20 Rust crates, 6 capabilities dirs), or apply the e2e-driving template to another of the 7 remaining page-level backend-proven-not-e2e-driven gaps, or act on another named open item.",
+  "current_phase": "D-0497: TOOLS_MODULES_INDEX section 2-4 deep review complete (17 slash commands, 20 Rust crates, 6 capabilities/ dirs) -- 102/102 named items now reviewed. cargo test --workspace --offline VERIFIED 144/144 passed. 3 new findings recorded (F-TOOLS2-001, F-RUST-001, F-CAP4-001), none fixed -- out of this review phase declared scope, same posture section 1 took for its own 7 gaps.",
+  "phase_status": "D-0497_applied__TOOLS_MODULES_INDEX_sec2-4_reviewed",
+  "next_phase": "Owner decides: apply the e2e-driving template to one of the 7 remaining page-level gaps, or act on another named open item (F-SLASH-001, F-MODEL-001, F-TOOLS2-001, F-RUST-001, F-CAP4-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling)",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "6560ca7",
-  "last_updated_utc": "2026-08-16T14:30:00Z",
+  "last_updated_utc": "2026-08-17T07:20:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -387,6 +387,24 @@
       "severity": "medium",
       "status": "FIXED and VERIFIED LIVE 2026-08-15 (D-0469), found while verifying D-0466 live, not guessed. coden-terminal.js's generic 'call' result rendering did `record('agent', typeof result==='string'?result:JSON.stringify(result,null,2))` -- untruncated. tui-fullscreen.mjs and app.js already truncate a call result with detailLines(result) (DETAIL_LINES=10, this file's own history names the exact class of bug: 'a single /map buried the tool call' on 24 untruncated lines, fixed there in 2026-08-14 but never applied to this third shell). The model listing D-0466 introduced was the first result ever large enough to expose it: the disposable e2e probe's very next, unrelated check (an address command, /memory) started failing to find its own answer on screen -- the oversized prior turn was crowding it out of the fixed-height transcript. PASSED cleanly in every one of 6 prior e2e runs today; failed only after D-0466 landed -- confirmed via before/after log comparison, not assumed. Fixed: record('agent', `${turn.command} — ok`, detailLines(result)) -- the identical line the other two shells already use (CE-033: no third answer to the same question). Verified: new source-text regression test in coden-terminal-client.test.mjs (asserts detailLines(result) present, JSON.stringify(result absent); 22/22 in that file). Re-run live: the previously-failing check now PASSES, 476/478 total (only F-SLASH-001 and the tracked I18N gap remain). Full suite 2560/2561 (1 pre-existing skip), ESLint 411/0.",
       "summary": "The browser-embedded terminal's generic command-result rendering was the one of three shells never truncated -- an untruncated result could bury a later turn's own answer off the fixed-height transcript. Now uses the same detailLines() truncation the other two shells already use."
+    },
+    {
+      "id": "F-TOOLS2-001",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-17 (D-0497), not fixed. TOOLS_MODULES_INDEX §2 deep review: the underlying engine logic is unit-tested (orch.reject()/orch.simulate() in workspace-actions.test.mjs, gitStatus() in git-status.test.mjs), but the session-protocol.mjs dispatch handlers workspace.reject/workspace.simulate/coden.gitStatus are never called by any test the way sibling methods workspace.approve/workspace.restore are (session-protocol.test.mjs), and tools/browser-e2e.mjs drives none of the three commands either.",
+      "summary": "3 of 17 CodeN slash commands (/reject, /simulate, /git) have their engine method tested but not the socket-protocol dispatch layer a keystroke actually goes through, and no e2e covers them."
+    },
+    {
+      "id": "F-RUST-001",
+      "severity": "medium",
+      "status": "OPEN - recorded 2026-08-17 (D-0497), not fixed. TOOLS_MODULES_INDEX §3 deep review, cargo test --workspace --offline VERIFIED (144 passed, 0 failed, disposable rust:1-bookworm container, --network none, offline vendored build). 8/20 crates have zero #[test]: noesar-audit-ledger, noesar-auth, noesar-authority-protocol, noesar-authority-transport, noesar-contracts, noesar-control-plane, noesar-data-plane, noesar-hardware-orchestrator. Most significant: noesar-auth (Argon2 password hashing, HMAC-SHA1 TOTP verification, subtle::ConstantTimeEq) is declared as a Cargo dependency of noesar-authority-daemon but grep -rn noesar_auth rust/crates/*/src finds zero use sites anywhere in the workspace -- compiled, linked, never called. noesar-control-plane, noesar-hardware-orchestrator and noesar-audit-ledger additionally have zero workspace dependents and appear in no oci/*.Dockerfile -- compiled by cargo build --workspace but never packaged.",
+      "summary": "8 of 20 Rust crates carry zero tests; noesar-auth holds real untested Argon2/TOTP logic that nothing in the workspace actually calls; 3 crates compile but are never packaged into any deliverable."
+    },
+    {
+      "id": "F-CAP4-001",
+      "severity": "low",
+      "status": "OPEN - recorded 2026-08-17 (D-0497), not fixed. TOOLS_MODULES_INDEX §4 deep review: grep -rl across services/, rust/crates/*/src, tools/*.mjs for the exact filenames finds zero readers of capabilities/sandbox/{README.md,capability-execution-contract.json,wasi-profile.json} and zero runtime readers of capabilities/templates/* (industry-module/module.template.json appears once, in a comment). Both directories are reference/scaffolding material only. Distinct from the already-tracked F7-001 (capabilities/reference/*.py static-analysis findings) and from examples/ and tools/, which are reference/CLI material by design per D-0205.",
+      "summary": "2 of 6 capabilities/ subdirectories (sandbox/, templates/) are not read by any product code -- reference material with no live wiring."
     }
   ],
   "resolved_findings": [
@@ -1021,7 +1039,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0493 password/passkey fix is now deployed and verified live (D-0496) -- the Owner will no longer see a successful password change reported as an error. Owner to choose next: (a) continue TOOLS_MODULES_INDEX sec2-4, (b) apply the e2e template to another of the 7 remaining page-level gaps, (c) act on another named open item (F-SLASH-001, F-MODEL-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling). No code changes or deployment without explicit Owner authorization for whichever is chosen.",
+  "next_action": "TOOLS_MODULES_INDEX sec2-4 review is complete (D-0497) -- 102/102 named items now reviewed, no code deployed or removed. Owner to choose next: (a) apply the e2e-driving template to one of the 7 remaining page-level gaps, (b) act on a named open item -- F-SLASH-001 (design choice needed), F-MODEL-001, F-TOOLS2-001 (3 slash-command dispatch-layer gaps), F-RUST-001 (noesar-auth crate untested/unwired), F-CAP4-001 (capabilities/sandbox+templates unread), documentation copy fix D-0489, cargo publish, independent pentest scheduling. No code changes or deployment without explicit Owner authorization for whichever is chosen.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

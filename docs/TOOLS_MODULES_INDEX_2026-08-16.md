@@ -150,41 +150,169 @@ nothing calls it yet) — a precise, honest gap, not an empty repository. Correc
 
 | # | Command | Checked | # | Command | Checked |
 |---|---|---|---|---|---|
-| 1 | `/help` | NO | 10 | `/logout` | NO |
-| 2 | `/status` | NO | 11 | `/git` | NO |
-| 3 | `/plan` | NO | 12 | `/events` | NO |
-| 4 | `/approve` | NO | 13 | `/sessions` | NO |
-| 5 | `/reject` | NO | 14 | `/simulate` | NO |
-| 6 | `/diff` | NO | 15 | `/restore` | NO |
-| 7 | `/model` | NO | 16 | `/search` | NO |
-| 8 | `/map` | NO | 17 | `/clear` | NO |
-| 9 | `/closure` | NO | | | |
+| 1 | `/help` | SI | 10 | `/logout` | SI |
+| 2 | `/status` | SI | 11 | `/git` | SI |
+| 3 | `/plan` | SI | 12 | `/events` | SI |
+| 4 | `/approve` | SI | 13 | `/sessions` | SI |
+| 5 | `/reject` | SI | 14 | `/simulate` | SI |
+| 6 | `/diff` | SI | 15 | `/restore` | SI |
+| 7 | `/model` | SI | 16 | `/search` | SI |
+| 8 | `/map` | SI | 17 | `/clear` | SI |
+| 9 | `/closure` | SI | | | |
+
+### §2 findings — 2026-08-17
+
+**Method.** All 17 commands resolve structurally: `coden-shell-parity.test.mjs` iterates the
+literal `AGENT_COMMANDS` array and asserts, for every entry, that `resolveCommand` finds it
+(`\`/${name}\` is declared but does not resolve`) and — for every `call`/`form` kind — that the
+declared `permission` matches `SESSION_METHOD_POLICY[method]` exactly (`CE-036`), so a menu entry
+lying about its own cost fails the suite, not just a manual reading. That covers shape and
+authorization-declaration for all 17 uniformly. Behavioural coverage of the underlying method was
+then checked one command at a time, by content grep, not by filename guess (same corrective the
+§1 review already applied).
+
+**14 of 17 fully covered end-to-end** — the socket-protocol dispatch (or the engine method
+directly) is exercised by a real test, not only declared: `/plan` `/approve` `/restore` `/diff`
+`/map` `/search` `/events` `/status` `/sessions` `/model` (`session-protocol.test.mjs`, direct
+`call(authenticatedSocket, '<method>', …)`); `/closure` (`coden-bridge.test.mjs:547`, a live
+`closure.record` call asserted to succeed); `/help` `/clear` (`coden-view-model.test.mjs`,
+`coden-shell-parity.test.mjs`, `tui-screen-layout.test.mjs`); `/logout` (`coden-shell-parity.test.mjs:870-873`,
+the two-step `logout` → `logout confirm` sequence itself, not only the menu entry).
+
+**3 of 17 — the underlying engine logic is tested directly, but the dispatch layer a keystroke
+actually goes through is not, and no e2e drives them either (real gap, not previously
+recorded):** `/reject` (`workspace.reject` → `orch.reject()` is called directly in
+`workspace-actions.test.mjs:338/376/626`, but no test calls it through
+`session-protocol.mjs`'s `'workspace.reject'` handler the way `workspace.approve`/`workspace.restore`
+are called at `session-protocol.test.mjs:283/286`); `/simulate` (`orch.simulate()` is tested
+thoroughly in `workspace-actions.test.mjs:565-608`, including the routed-provider path, but never
+through `'workspace.simulate'` dispatch); `/git` (`gitStatus()` itself has its own dedicated
+`git-status.test.mjs`, but `session-protocol.mjs`'s `'coden.gitStatus'` handler is only ever
+called through a stub mock in `coden-fullscreen-input-flow.test.mjs`/`coden-shell-parity.test.mjs`,
+never against the real handler). `tools/browser-e2e.mjs` drives none of the three. Recorded, not
+fixed — writing the missing dispatch-layer test is new scope, the same posture §1 took for its
+own 7 gaps.
 
 ## 3. Rust crates (20) — `rust/crates/`, the "decides and confines" half of the stack
 
 | # | Crate | Checked | # | Crate | Checked |
 |---|---|---|---|---|---|
-| 1 | `noesar-audit-ledger` | NO | 11 | `noesar-data-plane` | NO |
-| 2 | `noesar-auth` | NO | 12 | `noesar-events` | NO |
-| 3 | `noesar-authority-api` | NO | 13 | `noesar-executor` | NO |
-| 4 | `noesar-authority-daemon` | NO | 14 | `noesar-hardware-orchestrator` | NO |
-| 5 | `noesar-authority-protocol` | NO | 15 | `noesar-reasoning` | NO |
-| 6 | `noesar-authority-transport` | NO | 16 | `noesar-reasoning-reference` | NO |
-| 7 | `noesar-canonical-json` | NO | 17 | `noesar-sandbox` *(already extracted, public repo — see `D-0452`)* | NO |
-| 8 | `noesar-capability` | NO | 18 | `noesar-security-kernel` | NO |
-| 9 | `noesar-contracts` | NO | 19 | `noesar-shadow` | NO |
-| 10 | `noesar-control-plane` | NO | 20 | `noesar-supervisor` | NO |
+| 1 | `noesar-audit-ledger` | SI | 11 | `noesar-data-plane` | SI |
+| 2 | `noesar-auth` | SI | 12 | `noesar-events` | SI |
+| 3 | `noesar-authority-api` | SI | 13 | `noesar-executor` | SI |
+| 4 | `noesar-authority-daemon` | SI | 14 | `noesar-hardware-orchestrator` | SI |
+| 5 | `noesar-authority-protocol` | SI | 15 | `noesar-reasoning` | SI |
+| 6 | `noesar-authority-transport` | SI | 16 | `noesar-reasoning-reference` | SI |
+| 7 | `noesar-canonical-json` | SI | 17 | `noesar-sandbox` *(already extracted, public repo — see `D-0452`)* | SI |
+| 8 | `noesar-capability` | SI | 18 | `noesar-security-kernel` | SI |
+| 9 | `noesar-contracts` | SI | 19 | `noesar-shadow` | SI |
+| 10 | `noesar-control-plane` | SI | 20 | `noesar-supervisor` | SI |
+
+### §3 findings — 2026-08-17
+
+**Method.** All 20 are real workspace members (`rust/Cargo.toml`), not aspirational rows.
+`cargo test --workspace --offline`, run in a disposable `rust:1-bookworm` container
+(`--network none`, the repository already vendors every dependency under `rust/vendor/` and
+pins `[source.vendored-sources]` in `.cargo/config.toml`, so an offline build is a supported
+path, not a workaround). **First attempt genuinely failed** (`noesar-capability`'s
+`tests/conformance.rs` could not find `conformance/capability-vectors.json`) because the
+container mounted only `rust/`, and the vectors live at the project root
+(`conformance/*.json`, shared with the JS suites — `reasoning-vectors.json` etc.) — a mount-scope
+mistake on this pass, not a product defect; re-run mounting the whole repository root fixed it.
+Corrected run, **VERIFIED this session: `cargo test --workspace --offline` → 144 tests passed, 0
+failed, 0 skipped, across 26 test binaries** (some crates ship both a lib and a bin target, and
+`noesar-capability` additionally ships the `tests/conformance.rs` integration suite).
+
+**11 of 20 carry real, passing tests** (unit and/or the `conformance.rs` integration binary):
+`noesar-authority-api` (2), `noesar-authority-daemon` (4, its own peer-identity unit tests —
+Unix-socket uid allowlisting), `noesar-canonical-json` (2), `noesar-capability` (20 unit + 1
+conformance = 21 — the capability-token vectors, the same JS/Rust byte-for-byte parity `arch008_
+limits_tests` names), `noesar-events` (14), `noesar-executor` (14 + 1 warning: unused import
+`ShadowLimits`, cosmetic, not a defect — `cargo fix` would clear it but that is a lint-hygiene
+edit outside this review's declared scope), `noesar-reasoning` (14), `noesar-reasoning-reference`
+(1), `noesar-sandbox` (14), `noesar-security-kernel` (7), `noesar-shadow` (1) and
+`noesar-supervisor` (12 + 1 in its `main.rs` binary target = 13).
+
+**8 of 20 have zero `#[test]` anywhere in the crate — a real, measured gap, not previously
+recorded:** `noesar-audit-ledger`, `noesar-auth`, `noesar-authority-protocol`,
+`noesar-authority-transport`, `noesar-contracts`, `noesar-control-plane`, `noesar-data-plane`,
+`noesar-hardware-orchestrator`. The most significant of the eight is **`noesar-auth`**: 76 lines
+of real, security-relevant logic — Argon2 password hashing/verification, HMAC-SHA1 TOTP
+verification with a ±1 step window, `subtle::ConstantTimeEq` used for the comparison — with no
+crate-level test at all. **Checked whether something else exercises it indirectly: nothing does.**
+`grep -rn "noesar_auth" rust/crates/*/src/*.rs` finds zero `use` sites anywhere in the workspace,
+even though `noesar-authority-daemon`'s `Cargo.toml` lists it as a dependency — declared, linked,
+compiled, **never called**. The product's live password/TOTP path is the Node implementation
+already covered by 9+ dedicated files (§1's `auth` row); this Rust crate is inert scaffolding for
+the "Rust decides and confines" migration named in `11_REVISIONE_E_CORREZIONI.md` D-A, not yet
+wired to anything. `noesar-control-plane`, `noesar-hardware-orchestrator` and
+`noesar-audit-ledger` share a second property: **zero workspace dependents** (no other crate
+imports them) **and zero references in `oci/*.Dockerfile` or `rust/build-authority-release.sh`**
+— they compile as part of `cargo build --workspace` but are never packaged into a deliverable
+image or binary. Recorded, not fixed: writing tests for eight crates or wiring three unused ones
+into a build is new scope, not a documentation-review finding to expand into — the same posture
+§1 and §2 already took for their own gaps.
 
 ## 4. `capabilities/` — sandboxed capability surface (6 subdirectories)
 
 | # | Directory | Checked |
 |---|---|---|
-| 1 | `examples/` | NO |
-| 2 | `reference/` | NO |
-| 3 | `sandbox/` | NO |
-| 4 | `security/` | NO |
-| 5 | `templates/` | NO |
-| 6 | `tools/` | NO |
+| 1 | `examples/` | SI |
+| 2 | `reference/` | SI |
+| 3 | `sandbox/` | SI |
+| 4 | `security/` | SI |
+| 5 | `templates/` | SI |
+| 6 | `tools/` | SI |
+
+### §4 findings — 2026-08-17
+
+**Method.** For each directory: full file listing, then `grep -rl` across `services/`,
+`rust/crates/*/src`, `tools/*.mjs` and `docs/*.md` for the exact filenames, to tell "read by
+running code" from "reference material" from "already-known dead" — the same three-way split
+`D-0204`/`F7-001` already established for part of this surface.
+
+**`security/` (5 JSON policy files) — live and wired.** Read at runtime by
+`sector-modules.mjs` and `server.mjs` (confirmed by §1's `sector-modules` row and `D-0204`,
+which revived this exact set from schema-only to load-bearing on 2026-07-28).
+
+**`reference/` (27 files: a full Python reference implementation of the capability-token
+protocol — `noesar_capabilities/`, `bin/noesar-capabilityctl.py`, 1,790 lines across 5 test
+files) — real, substantial, with a known open gap already tracked, not rediscovered here:**
+`F7-001` (state digest) records 23 CRITICAL / 9 HIGH static-analysis findings in this exact
+directory, found by the `D-0204` sweep, explicitly out of scope for that phase and still open.
+This review does not re-triage `F7-001` — re-auditing an already-open, already-evidenced finding
+is the exact waste `noesar-evolution-context` rule 1 forbids; it is named here only so a reader
+of this index does not read `Checked: SI` as `F7-001` being resolved.
+
+**`sandbox/` (3 files: `README.md`, `capability-execution-contract.json`,
+`wasi-profile.json`) — orphaned, a real gap not previously recorded.** Zero references anywhere
+in `services/`, `rust/crates/*/src`, or `tools/*.mjs`. The README documents a WASI execution
+contract and profile that no code reads — reference material for a sandbox backend not yet
+built, not a live policy surface the way `security/`'s files are.
+
+**`templates/` (4 files: manifest templates for `capability`, `hardware-adapter`,
+`industry-module`, `runtime-adapter`) — reference-only, a real gap not previously recorded.**
+Only `industry-module/module.template.json` is referenced anywhere in code, and only inside a
+*comment* in `sector-modules.mjs` (the `D-0204` note about the schema/example mismatch it
+fixed) — no code path reads any of the four templates at runtime. They are scaffolding for
+someone hand-authoring a manifest, not inputs to a validator.
+
+**`examples/` (1 file: `packages/noesar.foundation-public.pem`) — correctly named,
+reference-only by design.** Cited in `docs/UPDATE_MANAGER_DESIGN.md` as the existing Ed25519
+verification primitive to reuse for the update channel, not read by any shipped code path yet.
+Consistent with its name; not a gap.
+
+**`tools/` (3 Python scripts: `build-signed-package.py`, `verify-package.py`,
+`verify-production-evidence.py`) — real, operational, CLI-only by design.**
+`build-signed-package.py` is the Python original `D-0205` names as the sibling of the Node
+`tools/sign-compliance-pack.mjs`/`verify-compliance-pack.mjs` pair that `compliance-packs.mjs`
+and `server.mjs` actually call at runtime — these three stay CLI-invoked on purpose (`D-0205`:
+"a private key never reaches `server.mjs`"), so "no runtime `import`" is the intended posture,
+not a gap.
+
+**Net for §4: 2 of 6 directories (`sandbox/`, `templates/`) are genuinely unread by any code —
+new findings this pass — while `reference/`'s gap was already known (`F7-001`) and `examples/`+
+`tools/` are reference/CLI material by design, not gaps.**
 
 ## 5. `tools/` — repository's own operational/verification tooling (45 scripts)
 
@@ -213,4 +341,18 @@ product actually ships with today (`FOSS_CORE_DEPENDS_ON_ATOM=false`), and is wh
 
 **Totals: 59 distinct API route groups (§1 corrected the `projects` v1/v2 double-count) + 17
 slash commands + 20 Rust crates + 6 capability directories = 102 named items, + 45 internal
-tools counted but not itemized. §1 (59/102) checked in depth, 2026-08-16. §2-4 remain at 0.**
+tools counted but not itemized. §1 (59/102) checked 2026-08-16; §2-4 (43/102) checked
+2026-08-17 — all 102/102 named items now reviewed in depth.**
+
+**§2-4 findings in one line each:** 14/17 slash commands fully covered end-to-end, 3
+(`/reject` `/simulate` `/git`) have their engine logic tested but not the dispatch layer a
+keystroke actually goes through. 20/20 Rust crates are real workspace members, `cargo test
+--workspace --offline` → **144 passed, 0 failed** (VERIFIED 2026-08-17); 8 crates carry zero
+tests, the most significant being `noesar-auth` (real Argon2/TOTP logic, compiled, declared as
+a dependency, never actually called anywhere in the workspace); 3 crates
+(`noesar-control-plane`, `noesar-hardware-orchestrator`, `noesar-audit-ledger`) have zero
+workspace dependents and appear in no Dockerfile — compiled but never packaged. 2/6
+`capabilities/` directories (`sandbox/`, `templates/`) are unread by any code; `reference/`'s
+gap was already tracked (`F7-001`); `examples/` and `tools/` are reference/CLI material by
+design. None of these are fixed in this pass — each is recorded, matching §1's own posture for
+its 7 gaps.
