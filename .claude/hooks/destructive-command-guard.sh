@@ -34,6 +34,27 @@
 # PATTERN, not a path, so `grep -qE 'secrets/' f` would deny — which is precisely the bug
 # being fixed here. Extending coverage to those tools needs per-tool operand knowledge.
 #
+# QUOTE-AWARE SEGMENTATION (F-HOOK-006, fixed 2026-08-17).
+# Segments were split with `sed 's/[;&|]/\n/g'` over the raw string, which split INSIDE quotes
+# too. Measured live this session, on a read-only inspection:
+#   grep -nE "RETAIN\|rm -rf" tools/run-browser-e2e.sh   -> DENIED as "rm -rf"
+# The `\|` inside the quoted regex became a segment boundary, and the text after it — `rm -rf`
+# — became a command word with flags. This is F-HOOK-001's class surviving one layer below the
+# operand scoping that fixed it: the operands were parsed correctly, out of segments that were
+# wrong. Separators are now masked while inside `'…'` or `"…"` and restored afterwards, so no
+# operand changes by a byte. Declared limit, and it is fail-safe: on unbalanced quotes the line
+# is left exactly as it was, so an ambiguous command still splits everywhere and still denies.
+#
+# RULE 12 EXCEPTIONS COME FROM ONE SOURCE (D-0511).
+# `CLAUDE10.md` §4 rule 12 forbids deletion and names its exceptions in prose; this guard
+# enforces it. The two drifted: the rule gained a third named exception (the e2e probe's own
+# run directories, OUTSIDE `PROJECT_ROOT`) that the guard had never heard of, so the guard
+# denied — with a reason that stated a rule the authority no longer states flatly — what the
+# authority permits. Hand-copying the list here would only reproduce the drift, so both read
+# `lib/rule12-exceptions.json`, and `test/test-rule12-exceptions.sh` fails when the file and
+# `CLAUDE10.md` stop agreeing. This guard never widens the authority: an unreadable source
+# means NO exception is recognised — the strictest reading — and it is declared in the reason.
+#
 # DECLARED LIMIT, unchanged by this repair: obfuscation defeats it, and always did.
 # `cat $(echo .env)` hides the literal from any pattern match. This hook is a safety net
 # against ACCIDENT, not an adversarial sandbox, and it has never claimed otherwise.
@@ -41,6 +62,8 @@ set -u
 
 PROJECT_ROOT="/mnt/cachec/NOESAR_EVOLUTION"
 ATOM_ROOT="/mnt/cachec/ATOM_EVOLUTION"
+# Overridable so the test can drive the missing/garbled-source paths without moving the real one.
+RULE12_SOURCE="${NOESAR_RULE12_SOURCE:-$PROJECT_ROOT/.claude/hooks/lib/rule12-exceptions.json}"
 
 # The sensitive-path patterns. IDENTICAL to the pre-repair version — only the subject
 # changed, from the whole command string to a single parsed operand.
@@ -119,6 +142,96 @@ is_sensitive_operand() {
   printf '%s' "$t" | grep -qE "$SENSITIVE_RE"
 }
 
+# Mask `; & |` that sit INSIDE quotes, so they cannot become segment boundaries. Operands are
+# preserved byte for byte — only the separators move out of the way, and are restored per
+# segment after the split. A line whose quotes do not balance is emitted UNCHANGED: it then
+# splits everywhere, exactly as before this repair, which is the safe direction. (F-HOOK-006)
+mask_quoted_separators() {
+  awk '{
+    out = ""; q = ""; n = length($0)
+    for (i = 1; i <= n; i++) {
+      c = substr($0, i, 1)
+      if (q == "") {
+        if (c == "\047" || c == "\"") { q = c }
+        out = out c
+      } else if (c == q) {
+        q = ""; out = out c
+      } else if (c == ";") { out = out "\001"
+      } else if (c == "&") { out = out "\002"
+      } else if (c == "|") { out = out "\003"
+      } else { out = out c }
+    }
+    if (q != "") { print $0 } else { print out }
+  }'
+}
+
+# --- rule 12 exceptions, read from the single source ------------------------------------------
+# RULE12_SOURCE_OK=false means "no exception is recognised": the guard falls back to the
+# strictest reading and says so, rather than inventing a permission or hiding a gap.
+RULE12_SOURCE_OK=false
+[ -r "$RULE12_SOURCE" ] && jq -e '.exceptions | type == "array"' "$RULE12_SOURCE" >/dev/null 2>&1 \
+  && RULE12_SOURCE_OK=true
+
+RULE12_ID=""
+RULE12_MECHANISM=""
+RULE12_RECOVERABLE=""
+
+# rule12_match <absolute path>
+# True when CLAUDE10.md rule 12, as recorded in the single source, names this path as removable.
+# It matches a run directory UNDER an exception root, never the root itself: removing the whole
+# artifact root is not what any exception authorises. `..` anywhere is never a match.
+rule12_match() {
+  RULE12_ID=""; RULE12_MECHANISM=""; RULE12_RECOVERABLE=""
+  [ "$RULE12_SOURCE_OK" = true ] || return 1
+
+  local target="$1"
+  case "$target" in
+    *..*) return 1 ;;
+  esac
+  while [ "${target}" != "/" ] && [ "${target%/}" != "${target}" ]; do target="${target%/}"; done
+
+  local id envname default suffix pattern mech recov root child
+  while IFS=$'\t' read -r id envname default suffix pattern mech recov; do
+    [ -n "$id" ] || continue
+    root="$default"
+    if [ -n "$envname" ]; then
+      local from_env
+      from_env="$(printenv "$envname" 2>/dev/null || true)"
+      [ -n "$from_env" ] && root="$from_env"
+    fi
+    root="${root}${suffix}"
+    while [ "${root}" != "/" ] && [ "${root%/}" != "${root}" ]; do root="${root%/}"; done
+
+    case "$target" in
+      "$root"/*) child="${target#"$root"/}" ;;
+      *) continue ;;
+    esac
+
+    if [ -n "$pattern" ]; then
+      # Exactly one level below the root, and the name must match the authority's pattern.
+      case "$child" in */*) continue ;; esac
+      printf '%s' "$child" | grep -qE "$pattern" || continue
+    fi
+
+    RULE12_ID="$id"; RULE12_MECHANISM="$mech"; RULE12_RECOVERABLE="$recov"
+    return 0
+  done <<< "$(jq -r '
+    .exceptions[] as $e
+    | $e.filesystem_roots[]?
+    | [ $e.id, (.env // ""), (.default // ""), (.suffix // ""), (.child_pattern // ""),
+        ($e.mechanism.summary // "no mechanism recorded"),
+        (if $e.recoverable then "recoverable" else "IRREVERSIBLE" end) ]
+    | @tsv' "$RULE12_SOURCE" 2>/dev/null)"
+
+  return 1
+}
+
+# What to append to a denial when the guard could not read the authority it enforces.
+rule12_note() {
+  [ "$RULE12_SOURCE_OK" = true ] && return 0
+  printf ' [rule 12 exception source unreadable (%s): strictest reading applied, no exception recognised]' "$RULE12_SOURCE"
+}
+
 case "$TOOL_NAME" in
 
 Bash)
@@ -126,6 +239,7 @@ Bash)
   [ -z "$CMD" ] && allow_silent
 
   ASK_REASON=""
+  RULE12_ASK_REASON=""
   CMD_NAMES_ATOM=false
   if printf '%s' "$CMD" | grep -qF "$ATOM_ROOT" || printf '%s' "$CMD" | grep -qE '(^|[^A-Za-z0-9_])ATOM_EVOLUTION([^A-Za-z0-9_]|$)'; then
     CMD_NAMES_ATOM=true
@@ -156,6 +270,9 @@ Bash)
   # Split into simple-command segments. `&&` and `||` collapse into empty segments, which
   # are skipped. Redirections are NOT separators: `cat x > y` stays one segment.
   while IFS= read -r SEG; do
+    # Restore the separators that were masked inside quotes (F-HOOK-006): the operands the
+    # checks below see are byte-identical to what the Owner typed.
+    SEG="$(printf '%s' "$SEG" | tr '\001\002\003' ';&|')"
     [ -z "${SEG//[[:space:]]/}" ] && continue
 
     CMDWORD=""
@@ -186,10 +303,29 @@ $TOK"
 
     # --- rm -rf and equivalent forms (flags of an actual rm, not the words in a string) ---
     if printf '%s' "$CMDWORD" | grep -qE "$REMOVERS_RE"; then
+      # Does any operand fall inside a path rule 12 names as removable? Computed BEFORE the
+      # flag check so a denial can name the exception and the one mechanism authorised to act,
+      # instead of a generic message the reader has to go and reconstruct (D-0511).
+      R12_PATH=""; R12_HIT_ID=""; R12_HIT_MECH=""; R12_HIT_RECOV=""
+      while IFS= read -r OP; do
+        [ -z "$OP" ] && continue
+        OP="$(strip_token "$OP")"
+        case "$OP" in /*) ;; *) continue ;; esac
+        if rule12_match "$OP"; then
+          R12_PATH="$OP"; R12_HIT_ID="$RULE12_ID"
+          R12_HIT_MECH="$RULE12_MECHANISM"; R12_HIT_RECOV="$RULE12_RECOVERABLE"
+          break
+        fi
+      done <<< "$OPERANDS"
+
       # Flags are judged as a SET, so the split form `rm -r -f x` is caught too. The
       # pre-repair regex required both letters inside one token and missed it.
       if printf '%s' "$FLAGS" | grep -qE '(^| )(-[a-zA-Z]*r[a-zA-Z]*|--recursive)' \
          && printf '%s' "$FLAGS" | grep -qE '(^| )(-[a-zA-Z]*f[a-zA-Z]*|--force)'; then
+        # DENY either way — this is not a decision change, only a reason the reader can act on.
+        if [ -n "$R12_HIT_ID" ]; then
+          deny "recursive+force removal of $R12_PATH: CLAUDE10.md rule 12 exception $R12_HIT_ID ($R12_HIT_RECOV) does cover this path, but authorises removal ONLY through: $R12_HIT_MECH. An ad-hoc rm is not that mechanism. In: $CMD"
+        fi
         deny "rm -rf (or an equivalent recursive+force form) in: $CMD"
       fi
       # --- deletions outside PROJECT_ROOT ---
@@ -199,8 +335,21 @@ $TOK"
         case "$OP" in
           /*)
             case "$OP" in
-              "$PROJECT_ROOT"*) ;;
-              *) deny "rm targets a path outside PROJECT_ROOT ($OP) in: $CMD" ;;
+              # The boundary is deliberate (F-HOOK-007, found 2026-08-17 driving this matrix).
+              # `"$PROJECT_ROOT"*` is a bare string prefix, and this host has a SIBLING path
+              # whose name begins with the root's: /mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS. Every
+              # `rm` under it — 7.3 GB of e2e workspaces, outside the repository, outside git —
+              # was read as "inside PROJECT_ROOT" and silently allowed. A prefix is not a path.
+              "$PROJECT_ROOT"|"$PROJECT_ROOT"/*) ;;
+              *)
+                if rule12_match "$OP"; then
+                  # The authority permits removal here, through a named mechanism only. Deferred
+                  # to an ASK after the whole command is scanned, so a deny elsewhere still wins.
+                  RULE12_ASK_REASON="rm targets $OP, which CLAUDE10.md rule 12 exception $RULE12_ID ($RULE12_RECOVERABLE) covers — but that exception authorises removal ONLY through: $RULE12_MECHANISM. An ad-hoc rm is not that mechanism, so the Owner decides, not this hook. In: $CMD"
+                else
+                  deny "rm targets a path outside PROJECT_ROOT ($OP) that no CLAUDE10.md rule 12 named exception covers, in: $CMD$(rule12_note)"
+                fi
+                ;;
             esac
             ;;
         esac
@@ -259,7 +408,13 @@ $TOK"
       fi
     fi
 
-  done <<< "$(printf '%s' "$CMD" | sed 's/[;&|]/\n/g')"
+  done <<< "$(printf '%s' "$CMD" | mask_quoted_separators | sed 's/[;&|]/\n/g')"
+
+  # A path the authority DOES name as removable, reached by a form that is not the authorised
+  # mechanism. The hook does not decide this one: it names the exception, its recoverability and
+  # the only mechanism that may act, and the Owner decides. Asked before the fuzzy signal below
+  # because it is the specific reason.
+  [ -n "$RULE12_ASK_REASON" ] && ask "$RULE12_ASK_REASON"
 
   # --- residual fuzzy signal: a sensitive path that is NOT a reader's operand ---
   # The pre-repair guard hard-denied this whole class on a substring match. It now reaches
@@ -295,7 +450,10 @@ Write|Edit)
   PATH_VAL="$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)"
   [ -z "$PATH_VAL" ] && allow_silent
   case "$PATH_VAL" in
-    "$ATOM_ROOT"*)
+    # Same boundary as F-HOOK-007: `"$ATOM_ROOT"*` also claimed any sibling whose name merely
+    # starts with it (`…/ATOM_EVOLUTION_NOTES/x`), which is a different path and not this repo's
+    # to deny. The Bash tier still recognises the repository by name, so nothing is lost.
+    "$ATOM_ROOT"|"$ATOM_ROOT"/*)
       deny "$TOOL_NAME targets /mnt/cachec/ATOM_EVOLUTION (separate repo, not authorised this session): $PATH_VAL"
       ;;
   esac

@@ -93,6 +93,16 @@ step pg-migrations   pyrun tools/verify-postgres-migrations.py
 step pg-contract     pyrun tools/verify-postgres-contract.py
 step rust-source     pyrun tools/verify-rust-authority-source.py
 step rust-provenance pyrun tools/test-rust-build-provenance.py -q
+# The governance suites (hooks, guards, and the rule-12 single-source alignment) were in exactly
+# the position the comment above describes: green, and invoked by nothing. Added 2026-08-17,
+# D-0511. Skipped with a declaration — never silently — where the checkout has no .claude/, since
+# these test this workspace's governance and not the shipped product.
+if [ -x .claude/hooks/test/run-all.sh ]; then
+  step governance      .claude/hooks/test/run-all.sh
+else
+  printf '%s\n' "STEP governance = UNAVAILABLE (.claude/hooks/test/run-all.sh not present)"
+  UNAVAILABLE=$((UNAVAILABLE + 1)); UNAVAILABLE_STEPS="$UNAVAILABLE_STEPS governance"
+fi
 
 printf '\n%s\n' "TEST_SUMMARY pass=$PASSED fail=$FAILED partial=$PARTIAL unavailable=$UNAVAILABLE"
 [ "$FAILED" -eq 0 ] || printf '%s\n' "FAILED:$FAILED_STEPS"

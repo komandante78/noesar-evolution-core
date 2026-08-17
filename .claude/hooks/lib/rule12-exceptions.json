@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "purpose": "The ONE source for CLAUDE10.md rule 12's named exceptions to 'No deletion'. CLAUDE10.md states them in prose for a human; this file states the same exceptions in a form a program can act on; .claude/hooks/test/test-rule12-exceptions.sh fails when the two stop agreeing. Nothing here grants anything: the authority is CLAUDE10.md, and an entry that cannot be traced back to its text is a test failure, not a permission.",
+  "consumers": [
+    ".claude/hooks/destructive-command-guard.sh",
+    ".claude/hooks/test/test-rule12-exceptions.sh"
+  ],
+  "authority": {
+    "file": "CLAUDE10.md",
+    "rule": 12,
+    "rule_opens_with": "12. **No deletion.**",
+    "rule_ends_before": "13. **No destructive modification by implication.**",
+    "count_phrase": "named exception"
+  },
+  "exceptions": [
+    {
+      "id": "E1-docker-litter",
+      "what": "the throwaway Docker containers, image tags and networks this project itself creates",
+      "authority_marker": "One named exception",
+      "authority_quote": "throwaway Docker",
+      "added_utc": "2026-07-26",
+      "governed_by": "CLAUDE10.md §5a",
+      "recoverable": true,
+      "recoverable_how": "the image lineage stays on disk; a stopped container is not what makes a run reproducible",
+      "filesystem_roots": [],
+      "docker_name_prefixes": ["noesar-evolution", "noesar-e2e"],
+      "mechanism": {
+        "implementation": null,
+        "function": null,
+        "callers": [],
+        "summary": "named targets only, under CLAUDE10.md §5a; docker system/container/image/volume/network prune is forbidden without exception"
+      }
+    },
+    {
+      "id": "E2-webui-react",
+      "what": "apps/webui-react/ — three files, twelve lines, superseded by apps/webui-static",
+      "authority_marker": "Second named exception",
+      "authority_quote": "apps/webui-react/",
+      "added_utc": "2026-07-28",
+      "governed_by": "D-0195",
+      "recoverable": true,
+      "recoverable_how": "git history and the sealed archives (SHA-256 recorded)",
+      "filesystem_roots": [
+        {
+          "env": "NOESAR_PROJECT_ROOT",
+          "default": "/mnt/cachec/NOESAR_EVOLUTION",
+          "suffix": "/apps/webui-react",
+          "child_pattern": null,
+          "outside_project_root": false
+        }
+      ],
+      "docker_name_prefixes": [],
+      "mechanism": {
+        "implementation": null,
+        "function": null,
+        "callers": [],
+        "summary": "a completed one-off act, recorded in D-0195; it authorises no recurring removal"
+      }
+    },
+    {
+      "id": "E3-e2e-run-directories",
+      "what": "the e2e probe's own per-run workspaces under NOESAR_ARTIFACT_ROOT",
+      "authority_marker": "Third named exception",
+      "authority_quote": "e2e_retention_prunable()",
+      "added_utc": "2026-08-17",
+      "governed_by": "D-0506, D-0507, D-0509",
+      "recoverable": false,
+      "recoverable_how": "NOT recoverable — no git history, no archive; bounded by a pattern a test enforces rather than by care",
+      "filesystem_roots": [
+        {
+          "env": "NOESAR_ARTIFACT_ROOT",
+          "default": "/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS",
+          "suffix": "/e2e",
+          "child_pattern": "^[0-9]{8}T[0-9]{6}Z$",
+          "outside_project_root": true
+        }
+      ],
+      "docker_name_prefixes": [],
+      "mechanism": {
+        "implementation": "tools/e2e-retention-policy.sh",
+        "function": "e2e_retention_prunable",
+        "callers": [
+          "tools/run-browser-e2e.sh",
+          "tools/test-e2e-retention.sh"
+        ],
+        "summary": "only tools/e2e-retention-policy.sh's e2e_retention_prunable(), driven by tools/run-browser-e2e.sh (NOESAR_E2E_RETAIN, default 5) or tools/test-e2e-retention.sh; never the newest NOESAR_E2E_RETAIN runs, never a glob, never an ad-hoc rm"
+      }
+    }
+  ]
+}
