@@ -102,6 +102,32 @@ try {
   if (csrfDenied.status !== 403) throw new Error(`CSRF expected 403, got ${csrfDenied.status}`);
   csrf = noCsrfValue;
 
+  // s336 — the model chooser's own two routes, smoked against a real listener because that is
+  // the layer the defect would live in: `server.mjs` cannot be imported by a unit test (it opens
+  // a listener and a workspace on import), so a route that exists in the source and answers 404
+  // in reality is exactly the gap this file exists to close.
+  const installed = await request('/api/v1/models/installed');
+  if (installed.status !== 200) throw new Error(`models/installed expected 200, got ${installed.status}`);
+  if (!Array.isArray(installed.data.models)) throw new Error('models/installed must answer with a models array');
+  if (!('activeId' in installed.data)) throw new Error('models/installed must declare which model is active, even as null');
+  // A throwaway workspace has no descriptors, so the honest answer is an empty list — asserted
+  // as EMPTY rather than skipped, because "no models" and "the list could not be read" are the
+  // two states the chooser draws differently and both must be reachable.
+  if (installed.data.models.length !== 0) throw new Error('a fresh workspace should offer no startable model');
+
+  const activateNoCsrf = (() => { const held = csrf; csrf = ''; return held; })();
+  const activateDenied = await request('/api/v1/models/activate', { method:'POST', value:{ id:'anything' } });
+  if (activateDenied.status !== 403) throw new Error(`models/activate without CSRF expected 403, got ${activateDenied.status}`);
+  csrf = activateNoCsrf;
+  const activateUnnamed = await request('/api/v1/models/activate', { method:'POST', value:{} });
+  if (activateUnnamed.status !== 400) throw new Error(`models/activate with no id expected 400, got ${activateUnnamed.status}`);
+  const activateUnknown = await request('/api/v1/models/activate', { method:'POST', value:{ id:'no-such-model' } });
+  // 404 and not 500: an id nobody published is the caller's question answered, not a crash.
+  if (activateUnknown.status !== 404) throw new Error(`models/activate with an unknown id expected 404, got ${activateUnknown.status}`);
+  if (!/known to this installation/.test(activateUnknown.data.error ?? '')) {
+    throw new Error(`models/activate refusal must say why: ${JSON.stringify(activateUnknown.data)}`);
+  }
+
   const plan = await request('/api/v1/coden/path-plan', { method:'POST', value:{ path:'project', operation:'write', mode:'OWNER_BYPASS' } });
   if (plan.status !== 200 || !plan.data.requiresStrongReauthentication) throw new Error('Owner plan failed');
   const denied = await request('/api/v1/coden/authorize', { method:'POST', value:{ plan:plan.data, consentScope:'ONE_OPERATION', durationMinutes:15 } });

@@ -422,14 +422,11 @@ const sessionDispatch = createSessionDispatch({
   // reason `codenAddressBook` above is a thunk rather than a value: `localModels` and
   // `adapterGrants` are constructed further down this file, and reading either binding here
   // directly would read it before it exists. Deferred to the moment a shell actually asks.
-  activateInstalledModel: (id, actor) => {
-    const descriptors = readModelDescriptors();
-    return activateModel({
-      descriptor: descriptors.find((entry) => entry.id === id) ?? null,
-      present: readPresentModels(descriptors),
-      runtime: localModels, grants: adapterGrants, actor,
-    });
-  },
+  // s336: the body moved to a module-level function so the HTTP route added for the browser's
+  // model chooser calls THE SAME decision, not a second one written beside it. A hoisted
+  // function declaration still reads `localModels`/`adapterGrants` only when called, which is
+  // the deferral the note above is about.
+  activateInstalledModel: (id, actor) => activateInstalledModelById(id, actor),
   // Owner, 2026-08-15: `/model` with no id answered "needs an id" and named none — the same
   // dead end `s333 point 2` already found for every other required-argument command, just not
   // yet fixed for this one. The SAME catalogue `GET /api/v1/models/catalog` already serves the
@@ -438,14 +435,57 @@ const sessionDispatch = createSessionDispatch({
   // Which lanes count as loadable is `loadableModels`' decision, in the catalogue module with
   // the lanes themselves, so it is a pure function with its own test rather than a filter
   // buried in this file where nothing can reach it.
-  listInstalledModels: () => {
-    const descriptors = readModelDescriptors();
-    const present = readPresentModels(descriptors);
-    return {
-      models: loadableModels(buildCatalog({ descriptors, present, activeModelId: activeModelId() })),
-    };
-  },
+  listInstalledModels: () => installedModelList(),
 });
+
+/**
+ * The models this installation can actually start, and the act of starting one — written once
+ * because three surfaces ask for them: `/model` over the session bridge, `POST
+ * /api/v1/models/activate` for the browser's chooser, and the chooser's own listing.
+ *
+ * s336, Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e fa
+ * scegliere quale usare». The chooser must never compute "what is present" for itself — that is
+ * the second-reading defect this file has already paid for twice (`D-0300`, `D-0302`), and it
+ * would show a person a model the terminal would refuse to start.
+ */
+function installedModelList() {
+  const descriptors = readModelDescriptors();
+  const present = readPresentModels(descriptors);
+  const catalog = buildCatalog({ descriptors, present, activeModelId: activeModelId() });
+  // WHICH models are startable stays `loadableModels`' decision — pure, in the catalogue module,
+  // with its own tests. What is added here is only how to DESCRIBE them, taken from the very
+  // catalogue entries that produced the ids, so a chooser cannot show a publisher or a context
+  // window that `#/models` disagrees with. Anything the publisher left undeclared stays null:
+  // inventing a type to make a row look complete is what `MC-003` forbids on the page, and a
+  // smaller surface is not licence to do it here.
+  const described = new Map(
+    (catalog.foreground ?? []).flatMap((lane) => (lane.items ?? []).map((item) => [item.id, item])),
+  );
+  return {
+    activeId: activeModelId(),
+    models: loadableModels(catalog).map((entry) => {
+      const item = described.get(entry.id) ?? {};
+      return {
+        id: entry.id,
+        lane: entry.lane,
+        publisher: item.publisher ?? null,
+        version: item.version ?? null,
+        type: item.type ?? null,
+        functions: Array.isArray(item.functions) ? item.functions : [],
+        contextWindow: item.contextWindow ?? null,
+      };
+    }),
+  };
+}
+
+function activateInstalledModelById(id, actor) {
+  const descriptors = readModelDescriptors();
+  return activateModel({
+    descriptor: descriptors.find((entry) => entry.id === id) ?? null,
+    present: readPresentModels(descriptors),
+    runtime: localModels, grants: adapterGrants, actor,
+  });
+}
 
 // --- data plane and multi-user directory -------------------------------------
 // ARCH-001: under noesar-supervisord (rust/crates/noesar-supervisor) postgres is a real
@@ -1878,6 +1918,47 @@ const requestListener = async (req, res) => {
         error: 'this installation has no model transport configured, so the artefact cannot be fetched yet',
         kind: 'NO_TRANSPORT', grant: plan.grant,
       });
+    }
+    // s336, Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
+    // fa scegliere quale usare». Measured before building: `model.activate` existed ONLY on the
+    // session bridge, so a browser button would have had to open a terminal session to press
+    // itself. These two routes are the same two decisions the bridge already dispatches —
+    // `installedModelList` and `activateInstalledModelById`, both module-level and shared — so
+    // the chooser and `/model` can never disagree about what is startable or what starting did.
+    if (req.method === 'GET' && url.pathname === '/api/v1/models/installed') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      // Bounded like the catalogue route above: the held snapshot inside its TTL, and the probe
+      // underneath carries its own timeout. A chooser that hangs is a chooser nobody opens.
+      await refreshActiveModel();
+      return json(res, 200, installedModelList());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/activate') {
+      // `model.manage`, not `model.read`: starting a model stops the one that is answering.
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      const id = typeof request?.id === 'string' ? request.id.trim() : '';
+      if (!id) return json(res, 400, { error: 'an activation names the model it starts' });
+      try {
+        const activated = await activateInstalledModelById(id, authenticated.user.id);
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.activate', result: 'activated', details: { id },
+        });
+        // Forced, and awaited: the chip and the chooser both read `models/active`, and a reply
+        // that says "activated" while the next read still names the previous model is the kind
+        // of disagreement this product treats as a defect rather than as latency.
+        await refreshActiveModel({ force: true });
+        return json(res, 200, activated);
+      } catch (error) {
+        // The refusal carries its own status from `activateModel` — 404 unknown, 409 present
+        // but unverified, 422 no launchCommand. Flattening them to one code would hide the only
+        // part of the answer that tells a person what to do next.
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.activate', result: 'refused',
+          details: { id, reason: error.message },
+        });
+        return json(res, Number.isInteger(error.status) ? error.status : 409, { error: error.message });
+      }
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/hardware') {
       const authenticated = requireSession(req, res, 'hardware.read'); if (!authenticated) return;

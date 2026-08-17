@@ -28,7 +28,7 @@
 
 import { Terminal } from './vendor/xterm/xterm.mjs';
 // The pure decisions live in the shared tree so the suite can import them without a browser.
-import { decodeInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
+import { decodeInput, segmentInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
 import { SCREEN, renderFrame } from '../shared/coden/tui-screen.mjs';
 import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, detailLines } from './coden-view-model.js';
 import {
@@ -327,7 +327,10 @@ export function mountCodenTerminal({
     view.menu = menuViewModel(frame, { menu, note: hiddenNote(menu) });
   }
 
-  terminal.onData((data) => {
+  /** One decodable piece of input — never a raw chunk. `onData` below hands this the SEGMENTS
+   *  of what xterm delivered, because a chunk can carry a whole pasted line, or a character and
+   *  the Enter that follows it in the same tick (`segmentInput`, and the defect it names). */
+  function handleInput(data) {
     const intent = decodeInput(data);
     if (intent.kind === 'ignore') return;
     // Prompt editing lives here because the two shells decode keys differently and must: this
@@ -374,6 +377,10 @@ export function mountCodenTerminal({
     }
     refreshMenu();
     draw();
+  }
+
+  terminal.onData((data) => {
+    for (const segment of segmentInput(data)) handleInput(segment);
   });
 
   /** One typed line, resolved through the SAME `planTurn` the terminal shell drives, with the

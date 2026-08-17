@@ -1453,3 +1453,35 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   /* A blinking cursor is motion, and this is the one piece of motion on the surface. */
   .coden-terminal-host .xterm-cursor-blink { animation: none !important; }
 }
+
+/* s336 · the model chooser on the CodeN page.
+   Anchored to the `.coden-bar` it opens from rather than floating over the terminal: the
+   emulator is the working surface and a panel covering it is a panel people close before
+   reading. It uses the popover surface tokens the search popover and the `/` menu already use,
+   so all three overlays in this product read as one thing in either theme. */
+.model-picker {
+  position: relative; z-index: 30; margin: -4px 0 12px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-popover); color: var(--text-popover);
+  box-shadow: 0 24px 80px var(--shadow-overlay); padding: 12px;
+}
+.model-picker-head { display: flex; align-items: center; gap: 10px; }
+.model-picker-head h3 { margin: 0; font-size: calc(var(--text-scale) * 14px); }
+.model-picker-head .text-button { margin-inline-start: auto; }
+.model-picker .hint { margin: 6px 0 10px; color: var(--muted); font-size: calc(var(--text-scale) * 11px); }
+.model-picker-list { display: grid; gap: 8px; max-height: min(46vh, 380px); overflow-y: auto; }
+.model-picker-list .empty-state { padding: 12px; text-align: start; }
+.model-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-card);
+}
+.model-row.active { box-shadow: inset 3px 0 0 var(--accent-brand); }
+.model-row b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.model-row small { display: block; margin-top: 3px; color: var(--muted); font-size: calc(var(--text-scale) * 11px); }
+/* The confirmation replaces the row's own actions instead of opening a second layer: the thing
+   being confirmed stays on screen and in place, which a modal over a modal does not give. */
+.model-row-confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.model-row-confirm span { flex: 1 1 200px; color: var(--state-warn-text); font-size: calc(var(--text-scale) * 11px); }
+.model-row-note { grid-column: 1 / -1; color: var(--state-warn-text); font-size: calc(var(--text-scale) * 11px); }
+.model-picker-foot { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.chip-list .chip #codenModelPickerOpen { font-size: calc(var(--text-scale) * 11px); }

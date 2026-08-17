@@ -79,7 +79,9 @@ try {
   // --- NOT readable without a session --------------------------------------
   // The point of the smoke. Each of these once answered anonymously; a regression that
   // reopened one would otherwise be invisible until an audit.
-  for (const path of ['/api/v1/privacy', '/api/v1/bootstrap', '/api/v1/home', '/diagnostics']) {
+  // `models/installed` joins this list on the day it is added (s336): what an installation has
+  // on disk is not public, and a new route is exactly where an anonymous hole appears.
+  for (const path of ['/api/v1/privacy', '/api/v1/bootstrap', '/api/v1/home', '/diagnostics', '/api/v1/models/installed']) {
     const response = await fetch(`${base}${path}`);
     check(`${path} requires a session`, response.status === 401, `got ${response.status}`);
   }

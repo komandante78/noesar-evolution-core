@@ -3355,6 +3355,45 @@ try {
   check('Map search finds a literal match inside the promoted file',
     /browser-e2e-note\.txt/.test(mapSearch) && !/No match/.test(mapSearch), mapSearch.slice(0, 200));
 
+  // --- s336: the model chooser on the CodeN page -------------------------------------
+  //
+  // Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e fa
+  // scegliere quale usare». Driven here rather than asserted from the source, because the
+  // failure this catches is the one the source cannot show: a panel that opens and then sits on
+  // its loading sentence because the route it asks for answers 404.
+  //
+  // What it does NOT assert is that a model starts. This installation has no model descriptors
+  // and no local runtime, so starting one is not reachable — and inventing a fixture to make a
+  // green line appear would be measuring the fixture. The reachable claim is the whole gesture
+  // up to the choice: it opens, it asks the installation, and it says what it found.
+  await page.evaluate(() => { document.querySelector('#codenModelPickerOpen')?.click(); });
+  await page.waitForFunction(
+    () => document.querySelector('#codenModelPickerList')?.getAttribute('aria-busy') === 'false',
+    { timeout: 15000 },
+  );
+  const picker = await page.evaluate(() => ({
+    shown: !document.querySelector('#codenModelPicker')?.classList.contains('hidden'),
+    expanded: document.querySelector('#codenModelPickerOpen')?.getAttribute('aria-expanded'),
+    rows: document.querySelectorAll('#codenModelPickerList .model-row').length,
+    text: (document.querySelector('#codenModelPickerList')?.textContent ?? '').trim(),
+    count: (document.querySelector('#codenModelPickerCount')?.textContent ?? '').trim(),
+  }));
+  check('the model chooser opens from the CodeN model chip', picker.shown && picker.expanded === 'true',
+    JSON.stringify(picker).slice(0, 200));
+  check('the chooser answers from the installation instead of sitting on its loading line',
+    picker.rows > 0 || /can be started/.test(picker.text),
+    `rows=${picker.rows} count=${picker.count} text=${picker.text.slice(0, 200)}`);
+  check('an empty chooser says WHY it is empty, not just that it is',
+    picker.rows > 0 || (/digest/.test(picker.text) && /launch command/.test(picker.text)),
+    picker.text.slice(0, 260));
+  await page.evaluate(() => { document.querySelector('#codenModelPickerClose')?.click(); });
+  const pickerClosed = await page.evaluate(() => ({
+    hidden: document.querySelector('#codenModelPicker')?.classList.contains('hidden'),
+    expanded: document.querySelector('#codenModelPickerOpen')?.getAttribute('aria-expanded'),
+  }));
+  check('closing the chooser reports it closed to assistive technology too',
+    pickerClosed.hidden === true && pickerClosed.expanded === 'false', JSON.stringify(pickerClosed));
+
   // --- D-0230: the Terminal tab's HTTP bridge (/api/v1/tui/command) ------------------
   await jump('bench/terminal', 'terminal');
   await page.waitForSelector('#terminalCommandInput', { timeout: 15000 });

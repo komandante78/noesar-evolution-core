@@ -42,6 +42,46 @@ export function decodeInput(data) {
 }
 
 /**
+ * Split one raw chunk into the pieces `decodeInput` can decide about, in order.
+ *
+ * xterm.js does NOT promise one keystroke per `onData`. It hands over whatever arrived in the
+ * same tick: a paste is one chunk, and so is a fast typist whose last character and Enter land
+ * together. `decodeInput` is total but single-minded — it tests the chunk for equality with
+ * `\r`, so `"l\r"` is not a submit, it is the literal text `l\r` appended to the prompt. The
+ * line then never sends, a carriage return sits invisibly inside the prompt, and the next Enter
+ * submits a line whose first character is stale. That is a lost line, with no error anywhere.
+ *
+ * Splitting HERE, rather than teaching `decodeInput` a compound intent, is deliberate: the
+ * decoder's vocabulary is shared with `tui-fullscreen.mjs` (which gets parsed keypresses from
+ * readline and can never see a batched chunk), and a `text-submit` kind would be a word one
+ * shell speaks and the other cannot. Segmentation is a property of the transport, so it stays
+ * on the transport's side of the seam.
+ *
+ * `CRLF` collapses to one submit: a paste from a Windows editor must not submit the line and
+ * then an empty one after it.
+ */
+export function segmentInput(data) {
+  const raw = String(data ?? '');
+  // One character, or an ESC-led sequence: `decodeInput` already decides these whole, and
+  // splitting an escape sequence would turn one arrow key into three printable characters.
+  if (raw.length <= 1 || raw.startsWith('\x1b')) return [raw];
+  const segments = [];
+  let text = '';
+  let previous = '';
+  for (const character of raw) {
+    if (character === '\r' || character === '\n') {
+      if (text) { segments.push(text); text = ''; }
+      if (!(character === '\n' && previous === '\r')) segments.push('\n');
+    } else {
+      text += character;
+    }
+    previous = character;
+  }
+  if (text) segments.push(text);
+  return segments;
+}
+
+/**
  * Columns and rows for a box, given one character's measured size.
  *
  * Derived, never fixed. The design (§5) requires the terminal to fill the CodeN **content

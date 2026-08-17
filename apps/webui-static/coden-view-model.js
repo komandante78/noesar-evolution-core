@@ -501,10 +501,24 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
     // Prose, or a slash word that names nothing — neither a command nor an address, since
     // phase 3c puts both in the one list the caller resolves against. Said plainly rather than
     // guessed at: running the nearest command would be an action nobody chose.
+    //
+    // Owner report, 2026-08-17: typing `/model` answered "Nothing named `mode`" — so `/mode`
+    // is what reached the engine, and the shell had the answer and did not give it. A near miss
+    // is the ORDINARY case of this branch, not prose: one dropped character turns every command
+    // in the list into this sentence. `matchCommands` already ranks by prefix, then substring,
+    // then summary, and it is the same ranking the menu paints while typing — so the suggestion
+    // and the menu can never offer different words for the same three keystrokes.
+    //
+    // Suggested, never run. Guessing at submit time is precisely what `resolveCommand`'s
+    // exact-match exists to prevent, and this branch does not soften it: the sentence names the
+    // candidates, the person chooses.
+    const typedWord = line.startsWith('/') ? String(parse(line)?.word ?? '') : '';
+    const near = typedWord ? matchCommands(typedWord, commands).slice(0, 3).map((entry) => `/${entry.name}`) : [];
     return {
       kind: 'unknown',
+      suggestions: near,
       message: line.startsWith('/')
-        ? `Nothing named \`${parse(line)?.word ?? ''}\`. Type / for the list.`
+        ? `Nothing named \`${typedWord}\`.${near.length ? ` Did you mean ${near.join(' · ')}?` : ''} Type / for the list.`
         : 'This shell has no model wired for prose. Every capability is a command — type / for the list.',
     };
   }

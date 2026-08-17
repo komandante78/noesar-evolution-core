@@ -58,6 +58,17 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // s336. The model chooser's rows, its counts and its refusals: `app.js` composes every one of
+  // them from `GET /api/v1/models/installed`, so none can appear in `index.html`. The panel's
+  // own frame — its heading, its hint, its footer — IS in the markup and is not listed here.
+  'undeclared',
+  'context',
+  'startable',
+  'Starting this stops the model that is answering now.',
+  'Start it',
+  'Refused:',
+  'The list could not be read:',
+  'No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.',
   // `D-0404` slice 3. The CodeN terminal's status line after boot: every one of these is
   // written by `coden-terminal.js` from DEFAULT_STATUS as the socket changes state, so none
   // appears in `index.html`. Listed rather than tolerated, per this block's own rule.
@@ -609,6 +620,24 @@ const it = {
   'Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.': 'Quale fornitore ha risposto in questa sessione: atom quando la catena ha funzionato, reference quando ATOM non è stato raggiungibile.',
   'Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below': 'Bypass del proprietario contro modalità Normale per le operazioni sui percorsi — lo stesso segnale del campo Sandbox nella riga di stato del banco qui sotto',
   'Open the menu — the same thing typing / does': 'Apri il menu — la stessa cosa che fa digitare /',
+  // s336 — the model chooser opened from the `model` chip.
+  'Choose the model this installation uses': 'Scegli il modello che questa installazione usa',
+  'What this installation can start. Starting one stops the model answering now.':
+    'Ciò che questa installazione può avviare. Avviarne uno ferma il modello che sta rispondendo adesso.',
+  'Reading what is present…': 'Lettura di ciò che è presente…',
+  'All models, and how to get more': 'Tutti i modelli, e come averne altri',
+  'Close': 'Chiudi',
+  // …and the rows it paints at runtime, which appear in no markup — listed in RUNTIME_ONLY
+  // below for exactly that reason, per that block's own rule.
+  'undeclared': 'non dichiarato',
+  'context': 'contesto',
+  'startable': 'avviabili',
+  'Starting this stops the model that is answering now.': 'Avviarlo ferma il modello che sta rispondendo adesso.',
+  'Start it': 'Avvialo',
+  'Refused:': 'Rifiutato:',
+  'The list could not be read:': 'Non è stato possibile leggere l’elenco:',
+  'No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.':
+    'Nessun modello di questa installazione può essere avviato. Qui non è nascosto nulla: un modello presente ma non corrispondente al digest dichiarato dal suo publisher non può essere avviato, e nemmeno uno che non dichiara un comando di avvio — entrambi sono mostrati, con la loro ragione, in Tutti i modelli.',
   'Bench command line': 'Riga di comando del banco',
   'CodeN Evolution — bench command line, same session as the terminal above. Type / to jump to a panel below.':
     'CodeN Evolution — riga di comando del banco, stessa sessione del terminale sopra. Digita / per saltare a un pannello qui sotto.',

@@ -93,6 +93,37 @@ describe('the view model — what a session looks like, decided once', () => {
     assert.match(turn.message, /Nothing named/);
   });
 
+  test('a near miss names the commands it is near, and still runs none of them', () => {
+    // Owner report, 2026-08-17: `/model` came back "Nothing named `mode`" — one dropped
+    // character, and a shell that knew the answer and did not offer it. The dead end is the
+    // defect, not the refusal: refusing to GUESS is right (`resolveCommand` is exact on
+    // purpose), refusing to POINT is not.
+    const turn = planTurn('/mode', deps);
+    assert.equal(turn.kind, 'unknown');
+    assert.match(turn.message, /Nothing named `mode`/);
+    assert.match(turn.message, /Did you mean \/model/);
+    assert.deepEqual(turn.suggestions, ['/model']);
+    // Named, never run: the turn is still `unknown`, so no shell can treat it as a command.
+    assert.equal(turn.command, undefined);
+  });
+
+  test('the suggestions come from the offered list, so a hidden command is never suggested', () => {
+    // The failure this prevents: suggesting `/plan` to an account whose menu does not carry it,
+    // which is a 403 announced as a hint. `commands` here is what the shell OFFERS — the same
+    // array the menu paints — not `AGENT_COMMANDS` reached past the filter.
+    const offered = AGENT_COMMANDS.filter((entry) => entry.name !== 'model');
+    const turn = planTurn('/mode', { ...deps, commands: offered });
+    assert.deepEqual(turn.suggestions, []);
+    assert.doesNotMatch(turn.message, /Did you mean/);
+  });
+
+  test('prose gets no suggestions — the branch is about slash words', () => {
+    const turn = planTurn('summarise the repository', deps);
+    assert.equal(turn.kind, 'unknown');
+    assert.deepEqual(turn.suggestions, []);
+    assert.doesNotMatch(turn.message, /Did you mean/);
+  });
+
   test('an empty line is a turn that does nothing', () => {
     assert.equal(planTurn('   ', deps).kind, 'empty');
   });

@@ -386,7 +386,26 @@
              AA and a view with no h1 is a worse page, not a tidier one. What is gone is the
              three-line block occupying the row the terminal spends on state. -->
         <h1 class="visually-hidden">CodeN Evolution</h1>
-        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar"><div class="chip-list" id="codenTopChips"><span class="chip" id="codenProjectChip" title="Active project for this workspace, same value as the global Project chip">project —</span><span class="chip" id="codenGitChip" title="Branch of the active workspace root, from git itself — not tracked separately by this product">git —</span><span class="chip" id="codenModelChip" title="Active model, same value as the global Model chip, plus the accelerator it runs on when hardware discovery reports one">model —</span><span class="chip" id="codenCtxChip" title="Total tokens of the most recent turn against the active provider's declared context window. Reads '—' when the provider has not declared one in Settings › Models &amp; External APIs, rather than guessing.">ctx —</span><span class="chip" id="codenReasoningChip" title="Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.">reasoning —</span><span class="chip" id="codenSandboxChip" title="Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below">sandbox —</span></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <div id="codenDivergence" class="divergence hidden" aria-live="polite"></div><div class="coden-bar"><div class="chip-list" id="codenTopChips"><span class="chip" id="codenProjectChip" title="Active project for this workspace, same value as the global Project chip">project —</span><span class="chip" id="codenGitChip" title="Branch of the active workspace root, from git itself — not tracked separately by this product">git —</span><span class="chip" id="codenModelChip" title="Active model, same value as the global Model chip, plus the accelerator it runs on when hardware discovery reports one"><span id="codenModelChipLabel">model —</span><button type="button" id="codenModelPickerOpen" aria-expanded="false" aria-controls="codenModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">▾</button></span><span class="chip" id="codenCtxChip" title="Total tokens of the most recent turn against the active provider's declared context window. Reads '—' when the provider has not declared one in Settings › Models &amp; External APIs, rather than guessing.">ctx —</span><span class="chip" id="codenReasoningChip" title="Which provider answered this session: atom when the chain worked, reference when ATOM could not be reached.">reasoning —</span><span class="chip" id="codenSandboxChip" title="Owner Bypass vs Normal mode for path operations — the same signal as the Sandbox field in the bench status line below">sandbox —</span></div><div class="mode-switch"><button class="selected" data-mode="NORMAL">Normal</button><button data-mode="OWNER_BYPASS">Owner Bypass</button></div></div>
+        <!-- s336 · the model chooser, opened from the `model` chip above.
+             Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
+             fa scegliere quale usare». It is deliberately NOT a second catalogue: it lists what
+             `GET /api/v1/models/installed` says is startable — the same decision `/model` with
+             no id answers with — and everything about acquiring, deleting or browsing what
+             exists elsewhere stays on `#/models`, which the footer links to rather than
+             duplicating. Every row's verb costs a runtime restart, so it asks first. -->
+        <div class="model-picker hidden" id="codenModelPicker" role="dialog" aria-modal="false" aria-labelledby="codenModelPickerTitle">
+          <div class="model-picker-head">
+            <h3 id="codenModelPickerTitle">Model</h3>
+            <span class="badge" id="codenModelPickerCount" translate="no">—</span>
+            <button type="button" class="text-button" id="codenModelPickerClose" aria-label="Close">✕</button>
+          </div>
+          <p class="hint" id="codenModelPickerHint">What this installation can start. Starting one stops the model answering now.</p>
+          <div id="codenModelPickerList" class="model-picker-list" role="list" aria-busy="true" aria-live="polite">
+            <p class="empty-state">Reading what is present…</p>
+          </div>
+          <p class="model-picker-foot"><button type="button" class="text-button" data-view-link="models">All models, and how to get more</button></p>
+        </div>
         <!-- PHASE 3a · the four regions — `16` §4b.2. "La WebUI È la TUI, resa in un browser."
              The canonical form is the terminal's, and this page renders it:
 

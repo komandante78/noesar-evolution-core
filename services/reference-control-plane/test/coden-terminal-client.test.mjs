@@ -250,3 +250,51 @@ describe('the client speaks the version the bridge speaks', () => {
       'an untruncated JSON.stringify(result) is back — see F-TERM-003');
   });
 });
+
+describe('segmentInput — a chunk is not a keystroke', () => {
+  // Owner report, 2026-08-17: `/model` answered "Nothing named `mode`", so `/mode` is what
+  // reached the engine. This is the defect class found while reading that path, and it is
+  // stated as its own class rather than as that report's diagnosis: xterm.js hands `onData`
+  // whatever arrived in one tick, and `decodeInput` tests the chunk for EQUALITY with `\r`.
+  // A batched "l\r" was therefore text — the line never sent, and a carriage return sat
+  // invisibly in the prompt.
+  test('the pre-repair behaviour is still exactly what decodeInput does, alone', () => {
+    // The reason segmentInput has to exist, pinned so nobody "simplifies" it away: fed the
+    // raw chunk, the decoder still calls it text. It is not wrong — it is single-minded.
+    assert.deepEqual(pure.decodeInput('l\r'), { kind: 'text', text: 'l\r' });
+  });
+
+  test('a character and the Enter that arrived with it become two segments', () => {
+    assert.deepEqual(pure.segmentInput('l\r'), ['l', '\n']);
+    assert.equal(pure.decodeInput(pure.segmentInput('l\r')[1]).kind, 'submit');
+  });
+
+  test('CRLF submits once, not twice', () => {
+    // A paste from a Windows editor must not send the line and then an empty one after it.
+    assert.deepEqual(pure.segmentInput('/model\r\n'), ['/model', '\n']);
+  });
+
+  test('a multi-line paste keeps its lines and their order', () => {
+    assert.deepEqual(pure.segmentInput('/status\nsecond line\n'), ['/status', '\n', 'second line', '\n']);
+  });
+
+  test('a single character and an escape sequence are handed over whole', () => {
+    // Splitting an ESC sequence would turn one arrow key into three printable characters —
+    // the exact symptom `decodeInput`'s own `ignore` branch exists to prevent.
+    assert.deepEqual(pure.segmentInput('a'), ['a']);
+    assert.deepEqual(pure.segmentInput('\x1b[A'), ['\x1b[A']);
+    assert.deepEqual(pure.segmentInput('\r'), ['\r']);
+    assert.deepEqual(pure.segmentInput(''), ['']);
+  });
+
+  test('an ordinary pasted run is one segment, unchanged', () => {
+    assert.deepEqual(pure.segmentInput('summarise the repo'), ['summarise the repo']);
+    assert.deepEqual(pure.segmentInput('è→'), ['è→']);
+  });
+
+  test('the client feeds segments to the handler, never the raw chunk', () => {
+    // The seam that would rot: segmentInput exported, tested, and not actually wired.
+    assert.match(source, /for \(const segment of segmentInput\(data\)\) handleInput\(segment\)/,
+      'onData no longer segments the chunk — a batched Enter is swallowed again');
+  });
+});

@@ -5234,7 +5234,10 @@ async function renderBenchStatus(){
       const accelerator=hardware?.accelerators?.[0]?.name;
       if(accelerator)label=`${label} · ${accelerator}`;
     }catch{ /* leave without an accelerator suffix */ }
-    modelChip.textContent=`model ${label}`;
+    // s336: the label is its own element now — the chip also carries the button that opens the
+    // model chooser, and writing `textContent` on the chip would delete that button the first
+    // time this line ran.
+    ($('#codenModelChipLabel')??modelChip).textContent=`model ${label}`;
   }
   const sandboxChip=$('#codenSandboxChip');
   if(sandboxChip)sandboxChip.textContent=`sandbox ${codenMode==='OWNER_BYPASS'?'owner bypass':'normal'}`;
@@ -5734,6 +5737,144 @@ function wireModelCatalogue(){
   $('#modelPageNext')?.addEventListener('click',()=>{modelCatalogPage+=1;loadModelCatalogue();});
 }
 
+// ── s336 · the model chooser on the CodeN page ────────────────────────────────────────────
+//
+// Owner, 2026-08-17: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
+// fa scegliere quale usare».
+//
+// It asks `GET /api/v1/models/installed`, which is the SAME decision `/model` with no id answers
+// in either shell (`installedModelList` in `server.mjs`, built on `loadableModels`). A chooser
+// that filtered a catalogue itself would eventually offer a model the terminal refuses to start,
+// and the person would be looking at two products.
+//
+// What it deliberately does NOT do: acquire, delete, or browse what exists elsewhere. Those live
+// on `#/models`, which the footer links to. A small menu that grows a second copy of a big page
+// is how two pages start disagreeing.
+let codenModelPending=null;
+let codenModelSnapshot=null;
+function codenModelRowMarkup(entry,activeId){
+  const inUse=entry.lane==='in-use'||(activeId!=null&&entry.id===activeId);
+  const declared=(value)=>value==null||value===''||value==='undeclared'
+    ?`<em>${escapeHtml(t('undeclared'))}</em>`:escapeHtml(String(value));
+  const facts=[
+    declared(entry.publisher),
+    `${escapeHtml(t('type'))} ${declared(entry.type)}`,
+    entry.contextWindow?`${escapeHtml(t('context'))} ${escapeHtml(String(entry.contextWindow))}`
+      :`${escapeHtml(t('context'))} <em>${escapeHtml(t('undeclared'))}</em>`,
+  ].join(' &middot; ');
+  const action=inUse
+    ?`<span class="badge badge-on">${escapeHtml(t('In use'))}</span>`
+    :`<button type="button" class="secondary" data-model-use="${escapeHtml(entry.id)}">${escapeHtml(t('Use'))}</button>`;
+  // The confirmation takes the row's own space rather than opening a dialog over it: what is
+  // being confirmed stays visible, in place, which a second layer does not give.
+  const confirming=codenModelPending===entry.id
+    ?`<div class="model-row-confirm"><span>${escapeHtml(t('Starting this stops the model that is answering now.'))}</span>`
+      +`<button type="button" class="primary" data-model-confirm="${escapeHtml(entry.id)}">${escapeHtml(t('Start it'))}</button>`
+      +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
+    :'';
+  return `<div class="model-row${inUse?' active':''}" role="listitem" data-model-id="${escapeHtml(entry.id)}">`
+    +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small></div>`
+    +`<div>${action}</div>${confirming}</div>`;
+}
+function renderCodenModelPicker(data,{loading=false,error=null}={}){
+  const list=$('#codenModelPickerList');if(!list)return;
+  const count=$('#codenModelPickerCount');
+  list.setAttribute('aria-busy',loading?'true':'false');
+  const say=(text)=>{list.innerHTML=`<p class="empty-state">${escapeHtml(text)}</p>`;};
+  if(loading){if(count)count.textContent='—';return say(t('Reading what is present…'));}
+  if(error){
+    // Declared, never blank: an unreadable list and an empty one are different statements, and
+    // rendering the second when the first happened is how a page lies quietly.
+    if(count)count.textContent='—';
+    return say(`${t('The list could not be read:')} ${error} ${t('This is not the same as having no models.')}`);
+  }
+  const models=data?.models??[];
+  const activeId=data?.activeId??null;
+  if(count){count.setAttribute('translate','no');count.textContent=`${models.length} ${t('startable')}`;}
+  if(!models.length){
+    return say(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'));
+  }
+  list.innerHTML=models.map((entry)=>codenModelRowMarkup(entry,activeId)).join('');
+}
+async function loadCodenModelPicker(){
+  const list=$('#codenModelPickerList');if(!list)return;
+  renderCodenModelPicker(null,{loading:true});
+  try{
+    codenModelSnapshot=await api('/api/v1/models/installed');
+    renderCodenModelPicker(codenModelSnapshot);
+  }catch(error){
+    codenModelSnapshot=null;
+    renderCodenModelPicker(null,{error:error.value?.error??error.message});
+  }
+}
+async function activateCodenModel(id){
+  const list=$('#codenModelPickerList');if(!list)return;
+  const row=[...list.querySelectorAll('[data-model-id]')].find((node)=>node.dataset.modelId===id);
+  for(const button of row?.querySelectorAll('button')??[])button.disabled=true;
+  try{
+    await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
+    codenModelPending=null;
+    await loadCodenModelPicker();
+    await refreshCodenModelChip();
+  }catch(error){
+    // The server's own refusal, in the row that asked for it — 404 unknown, 409 present but
+    // unverified, 422 no launch command. Replacing it with "activation failed" would throw away
+    // the only part of the answer that says what to do next.
+    codenModelPending=null;
+    if(row){
+      for(const button of row.querySelectorAll('button'))button.disabled=false;
+      const note=document.createElement('p');
+      note.className='model-row-note';
+      note.setAttribute('role','status');
+      note.textContent=`${t('Refused:')} ${error.value?.error??error.message}`;
+      row.append(note);
+    }
+  }
+}
+/** The chip above the terminal, re-read from the installation after an activation — never
+ *  written from the activation's own reply, which would make the chip say "loaded" while the
+ *  next read of `models/active` still names the model before it. */
+async function refreshCodenModelChip(){
+  const label=$('#codenModelChipLabel');if(!label)return;
+  try{
+    const active=await api('/api/v1/models/active');
+    label.textContent=`model ${active?.state==='loaded'?(active.id||'loaded')
+      :active?.state==='unreachable'?'unreachable'
+      :active?.state==='none-served'?'no model served':'none configured'}`;
+  }catch{ label.textContent='model —'; }
+}
+function wireCodenModelPicker(){
+  const picker=$('#codenModelPicker');
+  const open=$('#codenModelPickerOpen');
+  if(!picker||!open)return;
+  const setOpen=(shown)=>{
+    picker.classList.toggle('hidden',!shown);
+    open.setAttribute('aria-expanded',shown?'true':'false');
+    if(shown)loadCodenModelPicker();else codenModelPending=null;
+  };
+  open.addEventListener('click',()=>setOpen(picker.classList.contains('hidden')));
+  $('#codenModelPickerClose')?.addEventListener('click',()=>{setOpen(false);open.focus();});
+  // Escape closes it and returns focus to the control that opened it — the same contract every
+  // other overlay on this page keeps.
+  picker.addEventListener('keydown',(event)=>{if(event.key==='Escape'){setOpen(false);open.focus();}});
+  $('#codenModelPickerList')?.addEventListener('click',(event)=>{
+    const use=event.target.closest('[data-model-use]');
+    const confirm=event.target.closest('[data-model-confirm]');
+    const cancel=event.target.closest('[data-model-cancel]');
+    if(use){codenModelPending=use.dataset.modelUse;return repaintCodenModelPicker();}
+    if(cancel){codenModelPending=null;return repaintCodenModelPicker();}
+    if(confirm)return activateCodenModel(confirm.dataset.modelConfirm);
+  });
+}
+/** Re-paint for a choice that changed nothing on the server — from the payload already held,
+ *  never from the DOM. Reading the rows back to rebuild them would make the page its own data
+ *  source, and every fact the server declared (`undeclared` included) would have to survive a
+ *  round trip through markup to stay true. No request either: opening a confirmation must not
+ *  be something the network can slow down or disagree with. */
+function repaintCodenModelPicker(){
+  if(codenModelSnapshot)renderCodenModelPicker(codenModelSnapshot);
+}
+
 
 // ── The information buttons · s333 point 3c ───────────────────────────────────────────────
 //
@@ -5892,6 +6033,7 @@ Object.assign(SECTION_LOADERS,{
 });
 
 wireModelCatalogue();
+wireCodenModelPicker();
 installHelpButtons();
 initI18n();
 initAppearance();
