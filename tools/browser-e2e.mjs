@@ -301,6 +301,57 @@ let step = 'start';
 function at(name) { step = name; }
 
 /**
+ * The browser session's Owner-elevation state, read from the product's own endpoint.
+ *
+ * `GET /api/v1/auth/me` returns `elevatedUntil` (`server.mjs:1519`); a fresh session carries
+ * `0` (`auth.mjs:567`, and elevation is deliberately never inherited across login, invitation
+ * or recovery — three separate comments in that file say so), and `reauthenticate()` sets
+ * `Date.now() + 5 * 60_000` (`auth.mjs:913`). The predicate below is `Number(x ?? 0) > now` —
+ * copied from `auth.mjs:1060`, where the product answers this same question for its own session
+ * listing, rather than invented here. A third answer to a question the product already answers
+ * is the exact class of drift `CE-033` names.
+ *
+ * Read through the PAGE, not Node's `fetch`: the elevation being asserted belongs to the
+ * browser's cookie-bearing session, and a Node fetch carries no cookies — it would report a
+ * different session's state and always look unelevated, which is a check that can never fail.
+ */
+async function sessionElevation() {
+  return page.evaluate(async () => {
+    const response = await fetch('/api/v1/auth/me', { headers: { accept: 'application/json' } });
+    if (!response.ok) return { readable: false, status: response.status, elevatedUntil: null, elevated: false };
+    const payload = await response.json();
+    const elevatedUntil = Number(payload.elevatedUntil ?? 0);
+    return { readable: true, status: response.status, elevatedUntil, elevated: elevatedUntil > Date.now() };
+  });
+}
+
+/**
+ * Guard a block whose assertions are only meaningful on an UNELEVATED session.
+ *
+ * Two blocks in this file prove a security gate by watching it REFUSE first — `updates`
+ * (`#applyUpdate`) and `authority-form` (`#authorizePlan`), both gated on
+ * `session.elevatedUntil < Date.now()` (`server.mjs:4209` and the `coden/authorize` route).
+ * Their determinism rests entirely on running BEFORE `authority-form` calls
+ * `/api/v1/auth/reauth`, which elevates the session for five minutes.
+ *
+ * That was a silent ordering dependency between two blocks ~700 lines apart, held together by a
+ * comment at each site and nothing else: reorder them and the refusals stop happening, the
+ * `waitForFunction` calls time out, and the failure names a timeout rather than its cause.
+ * `D-0498`'s improvement proposal, authorised by the Owner — this turns the assumption into an
+ * assertion that fails locally, first, and says exactly what went wrong.
+ *
+ * `readable` is asserted too, not just `!elevated`: an endpoint that answered 401 would return
+ * `elevated:false` and quietly satisfy a naive guard, which is the "clean scan proves the
+ * scanner found nothing" failure mode written into this project's own rules.
+ */
+async function checkSessionNotElevated(blockName) {
+  const elevation = await sessionElevation();
+  check(`ordering guard: the session is not elevated when \`${blockName}\` begins`,
+    elevation.readable && !elevation.elevated,
+    JSON.stringify(elevation));
+}
+
+/**
  * Run something that may throw, record the outcome, and CARRY ON.
  *
  * Why this exists, measured in s326: the whole harness is one `try`, so the first throw ends
@@ -2316,6 +2367,11 @@ try {
   // (empty here), `approve`/`apply` throw `NOTHING_STAGED`/`NOT_APPROVED`-shaped errors the
   // page surfaces verbatim, and `rollback` never throws — with no `previous/` snapshot yet, it
   // reports success at the version already running, which is the true state, not an error.
+  //
+  // Guarded BEFORE `resetObservations()` so the guard's own `/api/v1/auth/me` request is not
+  // left in this block's observation window — the `requestWasMade` assertions below should see
+  // exactly the requests the five buttons make, and nothing this harness added.
+  await checkSessionNotElevated('updates');
   resetObservations();
   await gotoIdle(`${BASE}/#/settings/updates`);
   await page.waitForFunction(
@@ -3101,6 +3157,12 @@ try {
   // is re-earned every session and never inherited (auth.mjs, verified by reading `login`/
   // `reauthenticate`), so the pre-reauth refusal below is deterministic regardless of whatever
   // this suite's earlier MFA-replacement section already did to `elevatedUntil`.
+  //
+  // That reasoning is now CHECKED rather than reasoned about (`D-0498`'s improvement, authorised
+  // by the Owner): if a future edit moves this block above something that elevates the session,
+  // the guard fails here and names the cause, instead of the pre-reauth refusal below silently
+  // never arriving and surfacing as an opaque 15s timeout.
+  await checkSessionNotElevated('authority-form');
   resetObservations();
   await jump('agent/authority', 'authority', 'agent');
   await clickOrExplain(page, '[data-mode="OWNER_BYPASS"]');
@@ -3153,6 +3215,21 @@ try {
   const unlocked = await page.evaluate(() => document.querySelector('#pathResult')?.textContent ?? '');
   check('Owner reauth with a live TOTP code unlocks Owner scope through the real endpoint',
     requestWasMade('/api/v1/auth/reauth') && /unlocked/i.test(unlocked), unlocked.slice(0, 200));
+
+  // POSITIVE CONTROL for the two `checkSessionNotElevated` guards above — this is the only
+  // moment in the whole suite when the session is KNOWN to be elevated, so it is the only place
+  // the guard's detector can be shown to discriminate rather than merely to pass.
+  //
+  // Without this, both guards could report "not elevated" for a reason that has nothing to do
+  // with elevation — a renamed field, a 401, a shape change in `/api/v1/auth/me` — and would
+  // still show green forever. That is the "a clean scan proves the scanner found nothing, never
+  // that the code is correct" rule, applied to this harness's own instrument. It is a permanent
+  // assertion rather than a temporary experiment deleted after one run, because the detector has
+  // to keep discriminating, not merely have discriminated once.
+  const elevatedNow = await sessionElevation();
+  check('the elevation detector reports ELEVATED right after a real reauth — the guards above discriminate, they do not merely pass',
+    elevatedNow.readable && elevatedNow.elevated && elevatedNow.elevatedUntil > 0,
+    JSON.stringify(elevatedNow));
 
   await clickOrExplain(page, '#authorizePlan');
   await page.waitForFunction(

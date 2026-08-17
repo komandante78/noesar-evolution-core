@@ -11607,3 +11607,29 @@ baseline 607 — unchanged). `docker ps -a --filter name=noesar-evolution` befor
 (the probe container the script created was removed by its own trap).
 **Reversal cost.** None — test-only change, no product code touched.
 **Status.** applied.
+
+## D-0499 · The e2e suite's silent ordering dependency becomes a self-proving assertion — 2026-08-17
+**Decision.** Owner authorised `D-0498`'s improvement proposal. `tools/browser-e2e.mjs` gains
+`sessionElevation()` (reads `elevatedUntil` from `GET /api/v1/auth/me`, through the PAGE so the
+cookie-bearing session is the one measured) and `checkSessionNotElevated(block)`, called at the
+head of the two blocks whose assertions are only meaningful unelevated — `updates` and
+`authority-form`. Plus a **permanent positive control** after the real reauth.
+**Why.** Both blocks prove a security gate by watching it refuse first; that determinism rested
+on running before `/api/v1/auth/reauth`, held together only by a comment at each of two sites
+~700 lines apart. Reordered, the refusals stop happening and the failure reads as an opaque 15s
+timeout instead of naming its cause.
+**Rejected.** A temporary "see it fail first" experiment deleted after one run — rejected for a
+permanent positive control instead: the detector must keep discriminating, not merely have
+discriminated once. Inventing a third elevation predicate — rejected; `Number(x ?? 0) > now` is
+copied from `auth.mjs:1060`, where the product answers this same question (`CE-033`).
+**Evidence.** Full disposable probe: **493/500 PASS**. All 3 new checks PASS, and the positive
+control discriminates measurably — `elevatedUntil:0, elevated:false` at both guards versus
+`elevatedUntil:1786953900383, elevated:true` immediately after reauth. Total 492→500 and FAIL
+2→7 are fully accounted for and are **not** a regression: execution reached past the click that
+previously threw, so the 5 assertions inside the already-failing `soft('POINT-2B-MEASURE')`
+block ran and reported for the first time. Diff is test-only, 77 insertions, 0 deletions,
+touching no composer, terminal, panel or navigation code. `F-SLASH-001` updated in
+`PROJECT_STATE.json` with this new evidence.
+**Reversal cost.** None — test-only, additive.
+**Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
+stamped network survived.
