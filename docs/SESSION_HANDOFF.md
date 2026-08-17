@@ -60,9 +60,12 @@ unnoticed by the program that enforces it, and the guard no longer silently allo
 ## WHAT WAS **NOT** DONE — deliberately
 
 - **No product code, no build, no deployment, no install.** This phase touched governance only.
-- **No container created, started, stopped or removed** — so §5a cleanup had nothing to remove, and
-  the closing inventory is unchanged from last session's (two containers, 0 e2e tags, 0 stamped
-  networks). The product was **not** re-verified live: nothing this phase changed can reach it.
+- **No container created, started, stopped or removed** — so §5a cleanup had nothing to remove. The
+  closing inventory was still checked and is unchanged: exactly the two containers §5a permits, no
+  stray analysis container, **0** e2e image tags, **0** stamped networks. Health confirmed cheaply
+  (`running/healthy`, `RestartCount=0`, `/livez` 200 `alive`, `/readyz` 200 `ready:true`, read
+  inside the container). **No deployment and no bytes-equal-tree check** — nothing this phase
+  changed can reach the installation, so there was nothing to install.
 - **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Not an omission.
 - **`F-HOOK-008` was not fixed** (reason above), and **`CLAUDE10.md` was not edited**: the drift in
   its rule-12 wording is reported to the Owner, not corrected by the session that found it.
