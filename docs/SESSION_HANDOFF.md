@@ -1,55 +1,62 @@
-# SESSION HANDOFF — 2026-08-17 (`D-0499`: the e2e ordering dependency becomes a self-proving assertion)
+# SESSION HANDOFF — 2026-08-17 (`D-0500`: the harness stops hiding assertions it never reached)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`D-0498`'s improvement proposal, authorised by the Owner and now built.**
-`tools/browser-e2e.mjs` gains `sessionElevation()` and `checkSessionNotElevated(block)`, called
-at the head of the two blocks whose assertions only mean anything on an unelevated session —
-`updates` and `authority-form`. Both prove a security gate by watching it **refuse first**, and
-that determinism rested entirely on running before `/api/v1/auth/reauth` elevates the session —
-an ordering dependency between two blocks ~700 lines apart, held together by a comment at each
-site and nothing else. It is now an assertion that fails locally and names its cause.
+**Blocked on one Owner decision, and only one.** `F-SLASH-001` is now the best-evidenced item
+on the whole list, and everything about it is understood except the choice that is not mine to
+make — the **A/B test-strategy fork**, unchanged since `D-0463`:
 
-**The guard proves itself, permanently.** A positive control sits immediately after the real
-reauth — the one moment in the whole suite when the session is known to be elevated. It measured
-`elevatedUntil:0, elevated:false` at both guards versus `elevatedUntil:1786953900383,
-elevated:true` after reauth. Without it, both guards could report "not elevated" for reasons
-having nothing to do with elevation (a renamed field, a 401, a shape change) and stay green
-forever — a clean scan proving only that the scanner found nothing.
+- **design A** — drive `/diff` through the live terminal and assert its transcript. The more
+  faithful test of the Owner's original complaint ("*i comandi / non vedo cambiamenti*") now that
+  the terminal is the surface a person actually looks at.
+- **design B** — keep testing the composer specifically, and have the check **declare** when the
+  terminal has already claimed the surface, on the reasoning that the composer's own
+  gesture-to-panel path is separately proven by the authority and plan-creation checks.
 
-**Verified live: 493/500 PASS**, all 3 new checks PASS.
+Neither is self-evidently right, and picking wrong means building the wrong test. Everything
+that did not depend on that choice has already been delivered (`D-0498`, `D-0499`, `D-0500`).
 
-**The FAIL count moved 2→7 and this is NOT a regression — read this before reacting to it.**
-Total moved 492→500: +3 from the new checks, **+5 from assertions that had never executed
-before**. In earlier runs `soft('POINT-2B-MEASURE')` threw at the click, so the 5 assertions
-inside it never ran and were never counted. This run execution got past that point, so they ran
-and reported their (failing) state. All 5 belong to the already-open `F-SLASH-001`. The diff is
-test-only, additive (77 insertions, 0 deletions), and touches no composer, terminal, panel or
-navigation code. `F-SLASH-001` has been updated with this new evidence in `PROJECT_STATE.json`.
+**Alternatives if you would rather not decide that now**: one of the **6 remaining** "backend
+proven, not e2e-driven" gaps (`#/research`, theme/accent, log-search/debug-mode, skills, modules,
+remote-targets), or another named open item from the table.
 
-**Next — Owner's choice**:
-1. **`F-SLASH-001`** — now the best-evidenced item on the list. The 5 newly-surfaced assertions
-   describe the defect directly (`activePanel:null`, transcript showing the terminal's own
-   `showAddress()` path). It still needs the Owner's **test-strategy choice**, unchanged since
-   `D-0463`: **(A)** drive `/diff` through the live terminal and assert the transcript, or
-   **(B)** keep testing the composer and have the check *declare* when the terminal has already
-   claimed the surface.
-2. One of the **6 remaining** "backend proven, not e2e-driven" gaps: `#/research`, theme/accent,
-   log-search/debug-mode, skills, modules, remote-targets.
-3. Another named open item (see table).
+No code changes or deployment without explicit Owner authorization.
 
-No code changes or deployment without explicit Owner authorization for whichever is chosen.
+## Cosa è cambiato in questa sessione (3 fasi, tutte committate e pushate)
+
+**`D-0497`** — `TOOLS_MODULES_INDEX` §2-4 reviewed, 43 items: **102/102 named items now
+reviewed**. `cargo test --workspace --offline` in a disposable `rust:1-bookworm` container
+(`--network none`): **144 passed, 0 failed** — the first real measurement of the Rust half.
+Three findings recorded: `F-TOOLS2-001`, `F-RUST-001`, `F-CAP4-001`.
+
+**`D-0498`** — `#/settings/updates` driven end to end, 5 new checks (check / change-channel,
+round-tripped / approve / apply / rollback), each asserted against the real honest outcome for a
+fresh install. Closed the 6th of `D-0491`'s 9 named e2e gaps.
+
+**`D-0499`** — the silent ordering dependency between the `updates` and `authority-form` blocks
+became an assertion, with a **permanent positive control** after the real reauth proving the
+detector discriminates (`elevatedUntil:0/false` at both guards vs a live timestamp after reauth)
+rather than merely passing.
+
+**`D-0500`** — `soft()` now declares what an aborted block never reached. The count is **derived**
+from the block's own source, never hand-kept. Verified live: the accounting fired on the real
+throw — `0/7 check call sites in this block ran, 7 never reached`.
+
+**Why `D-0500` mattered more than it looks**: the suite total moved 492 → 500 → 495 across this
+session's runs, purely because of *where* one exception landed. Five real assertions had been
+invisible for at least two runs, and their appearance in the `D-0499` run read as a regression
+when it was the opposite. That number is now self-explaining.
 
 ## Blockers e finding aperti
 
 | Id | Stato |
 |---|---|
-| `F-SLASH-001` | **OPEN, ROOT CAUSE CONFIRMED, better evidenced (`D-0499`)** — needs the Owner's A/B test-strategy choice. Non-determinism now documented across 3 runs. |
+| `F-SLASH-001` | **OPEN — needs the Owner's A/B choice (above).** Root cause confirmed; 4 distinct manifestations in 4 runs, now self-documenting in the run output. |
 | 6 remaining "backend proven, not e2e-driven" | **OPEN** — `#/research`, theme/accent, log-search/debug-mode, skills, modules, remote-targets. `D-0491`/`D-0498`. |
 | `F-TOOLS2-001` | **OPEN, recorded** — 3/17 CodeN slash commands untested at the dispatch layer. `D-0497`. |
-| `F-RUST-001` | **OPEN, recorded** — 8/20 Rust crates with zero tests; `noesar-auth` compiled but never called. `D-0497`. |
+| `F-RUST-001` | **OPEN, recorded** — 8/20 Rust crates with zero tests; `noesar-auth` (real Argon2/TOTP) compiled, declared as a dependency, never called anywhere. `D-0497`. |
 | `F-CAP4-001` | **OPEN, recorded** — `capabilities/sandbox/` + `capabilities/templates/` unread by any code. `D-0497`. |
-| 7 API groups with no dedicated backend test | **RECORDED, not fixed** — `artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`, `sources`. `D-0494`. |
+| 7 API groups with no dedicated backend test | **RECORDED** — `artifacts`, `chat`, `closures`, `conversations`, `knowledge`, `search`, `sources`. `D-0494`. |
 | `F7-001` | **OPEN, out of scope** — `capabilities/reference/*.py`, 23 CRITICAL/9 HIGH from the `D-0204` sweep. |
 | `F-MODEL-001` | **OPEN**, awaiting Owner choice — `#/models` `servedBy` not declared. `D-0395`. |
 | `#/coden/bench/documentation` copy | **OPEN, `D-0489`** — wording proposed, needs Owner sign-off. |
@@ -57,7 +64,7 @@ No code changes or deployment without explicit Owner authorization for whichever
 | Product access control | **DECISO** — registrazione, mai licenza a codice. `D-0467`/`D-0468`. |
 | `docs/LICENSE_STRATEGY.md` §5, voci 2-6 | **APERTE per la Fase 5.** |
 | `cargo publish` | **APERTO** — serve `CARGO_REGISTRY_TOKEN` da terminale vero. |
-| `F-I18N-002` | **OPEN**, not re-baselined — 643 closable of 912 (baseline 607). |
+| `F-I18N-002` | **OPEN**, not re-baselined — 643 closable of 904 (baseline 607). |
 | `F-MANIFEST-001` | **OPEN**, pre-existing — `MANIFEST.sha256` 5898 vs 6568 tracked files. |
 | `F-ROT-001` | **OPEN** — `NOESAR_ALLOWED_HOSTS` still names the pre-rotation container IP. |
 | Independent pentest (beta criterio 4) | **OPEN, non pianificato** — scope pronto, serve l'Owner per ingaggiare un tester esterno. |
@@ -66,39 +73,40 @@ All others: **FIXED/DEPLOYED/CLOSED** in `docs/DECISION_LOG.md`.
 
 ## Verificato IN QUESTA SESSIONE
 
-Three phases, all committed and pushed: **`D-0497`** (TOOLS_MODULES_INDEX §2-4, 43 items —
-`cargo test --workspace --offline` in a disposable `rust:1-bookworm` container, `--network
-none`: **144 passed, 0 failed**), **`D-0498`** (`#/settings/updates` driven end to end, 5 new
-checks, probe 490/492), **`D-0499`** (the ordering guard, probe **493/500**, positive control
-discriminating measurably).
-
-`docker ps -a --filter name=noesar-evolution` after every run: exactly the two permitted
-containers, no e2e image tag and no stamped network survived. `tools/run-eslint.sh`: 411 files,
-0 errors. Secret scan: **heuristic** (`gitleaks` absent on this host, declared per rule 45).
+`cargo test --workspace --offline`: **144/144**. Final probe: **493/495 PASS**, the only 2 FAILs
+both pre-existing and tracked. `D-0500`'s counting logic: **9/9** oracle cases, seen RED first.
+`tools/run-eslint.sh`: 411 files, 0 errors, 0 warnings. `node tools/verify-source.mjs`:
+`SOURCE_VERIFY=PASS migrations=19 baseline=12/12 intact`. Secret scan: **heuristic** — `gitleaks`
+is absent on this host, declared per rule 45. `docker ps -a` after every run: exactly the two
+permitted containers, no e2e image tag and no stamped network survived.
 
 ## Cosa NON è stato fatto
 
-- **`F-SLASH-001` is not fixed** — it is better evidenced, which is not the same thing. It needs
-  a design decision only the Owner can make.
-- **The 5 newly-surfaced `POINT-2B` assertions were not repaired** — they are the already-open
-  finding becoming visible, and repairing them is the A/B choice above, not this phase's scope.
-- **The 6 remaining page-level e2e gaps, `F-TOOLS2-001`, `F-RUST-001`, `F-CAP4-001`, the 8
-  untested Rust crates, `F7-001` re-triage** — recorded, none built.
-- **No product code was changed in any of the three phases** — `D-0497` was documentation,
-  `D-0498` and `D-0499` are test-only.
+- **`F-SLASH-001` is not fixed.** It is better evidenced and now self-documenting, which is not
+  the same thing. It needs the A/B decision above.
+- **The 7 `POINT-2B` assertions inside it were not repaired** — repairing them *is* the A/B
+  choice, not a separate task.
+- **A prediction made before the final run did not hold** (`5/7` expected, `0/7` observed,
+  because the flake landed at the click instead of past it). Recorded in `D-0500` rather than
+  dropped: a prediction that missed is evidence about the flake.
+- **The 6 remaining page-level gaps, `F-TOOLS2-001`, `F-RUST-001`, `F-CAP4-001`, the 8 untested
+  Rust crates, `F7-001` re-triage** — recorded, none built.
+- **No product code was changed in any of the four phases** — `D-0497` documentation, `D-0498`/
+  `D-0499`/`D-0500` test-only.
 
 ## Proposta di miglioramento
 
-**Questo giro (`D-0499`)**: `soft()` swallows a throw and records one FAIL, which is correct for
-carrying on — but it also means every assertion *after* the throw inside that block silently
-never runs, and the suite total shrinks without saying so. That is how 5 real assertions stayed
-invisible across at least two runs, and why today's honest improvement looked like a regression
-in the raw counts. `soft()` could **declare the assertions it skipped** — count the checks a
-block would have made versus the ones it reached, and report `N assertions unreached because the
-step aborted`. Cost: a per-block counter and one line of output; benefit: the suite total stops
-being a number that silently depends on where an exception landed, which is the same "declare
-what you do not show, and why" rule the product's own `/` menu already follows (`hiddenNote`,
-`agent-commands.js`). Recorded for the Owner's judgment; not built — it would touch the harness
-in the same phase that already changed it for an orthogonal reason.
+**Questo giro (`D-0500`)**: `scripts/test.sh` still has no step that runs `cargo test` — it runs
+two *static* Rust verifiers (`rust-source`, `rust-provenance`) and nothing that executes the
+crates, so the 144 tests measured this session are invisible to the project's own
+portable-verification entry point and stay that way unless a session goes looking by hand. This
+is the same proposal `D-0497` recorded and it is now worth more, because `D-0497` proved the run
+works offline from vendored dependencies and `D-0500` proved the harness can be trusted to
+declare what it did not run. Cost: one shell function (~15 lines, the disposable
+`rust:1-bookworm --network none` pattern is already written down in `D-0497`), plus a cold
+compile per full sweep (~2-3 min, since `--rm` keeps no `target/`) — removable with a named
+volume scoped to that container, itself a smaller second improvement. Benefit: `cargo test`
+becomes a `PASS`/`FAIL`/`UNAVAILABLE` line in every full sweep instead of a fact nobody sees.
+Recorded, not built — it was not in this phase's authorised scope.
 
-**Precedenti (`D-0498`-`D-0460`, non eseguite)**: see `docs/DECISION_LOG.md`.
+**Precedenti (`D-0499`-`D-0460`)**: see `docs/DECISION_LOG.md`.

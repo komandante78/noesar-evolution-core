@@ -370,12 +370,61 @@ async function checkSessionNotElevated(blockName) {
  * The failure is still a failure, recorded through `check` with the weight it always had.
  * What changes is that it no longer decides whether the rest of the product gets tested.
  */
+/**
+ * How many `check(...)` call sites are written inside a block's own source.
+ *
+ * DERIVED from the function's text, never a number kept by hand next to the block: a
+ * hand-kept count is the `PANEL_NAMES` failure this project has already paid for twice — a
+ * list compared only with itself always agrees. `Function.prototype.toString()` gives the
+ * real source, so the count cannot drift from the code it describes.
+ *
+ * Comments are stripped first, because this file's blocks carry long explanatory comments and
+ * several of them mention `check()` in prose — counting those would inflate the number and
+ * make the accounting below lie in the safe direction, which is still a lie. The stripping is
+ * lexical and deliberately simple (no parser): the `[^:]` guard keeps `https://` from being
+ * read as a line comment.
+ *
+ * `\bcheck\s*\(` does not match `checkSessionNotElevated(` — the `(` must follow `check`
+ * immediately — so the guard helper added in `D-0499` is correctly not counted as a call site
+ * of its own, even though it calls `check` internally (which IS counted, at its own site).
+ */
+function checkCallSites(run) {
+  const source = String(run)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  return (source.match(/\bcheck\s*\(/g) ?? []).length;
+}
+
 async function soft(name, run) {
+  // Measured against `results`, the same array `check` appends to — so "reached" is what the
+  // block actually asserted, not what it was expected to.
+  const before = results.length;
+  const callSites = checkCallSites(run);
   try {
     await run();
     return true;
   } catch (error) {
-    check(name, false, `${error.message} [step: ${step}] — recorded, and the run continues`);
+    // WHY this accounting exists (`D-0499`'s improvement proposal, authorised by the Owner):
+    // this function swallows a throw so the rest of the product still gets tested — but every
+    // assertion after the throw then silently never runs, and the suite TOTAL shrinks without
+    // saying so. That is not hypothetical: five real `POINT-2B` assertions stayed invisible
+    // across at least two runs for exactly this reason, and when a later change happened to get
+    // execution past the throw, their sudden appearance read as a regression in the raw counts
+    // when it was the opposite — an already-open defect becoming visible.
+    //
+    // A suite whose total silently depends on where an exception landed is the same class of
+    // problem this function was built to fix in the first place: "a suite that stops early while
+    // reporting a plausible number is worse than one that fails loudly."
+    //
+    // Stated as CALL SITES, not as assertions, and the distinction is load-bearing: a call site
+    // inside a loop runs many times, one behind a conditional may legitimately never run. So
+    // `reached` can exceed `callSites`, which is why the difference is clamped at zero and never
+    // reported as a negative or as a precise count of "missing tests".
+    const reached = results.length - before;
+    const unreached = Math.max(0, callSites - reached);
+    const accounting = callSites === 0 ? ''
+      : ` — ${reached}/${callSites} \`check\` call sites in this block ran${unreached ? `, ${unreached} never reached` : ''}`;
+    check(name, false, `${error.message} [step: ${step}]${accounting} — recorded, and the run continues`);
     return false;
   }
 }

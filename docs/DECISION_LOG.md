@@ -11633,3 +11633,36 @@ touching no composer, terminal, panel or navigation code. `F-SLASH-001` updated 
 **Reversal cost.** None — test-only, additive.
 **Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
 stamped network survived.
+
+## D-0500 · `soft()` declares the assertions an aborted block never reached — 2026-08-17
+**Decision.** Owner authorised `D-0499`'s improvement proposal. `soft()` in
+`tools/browser-e2e.mjs` now reports how many `check(...)` call sites the aborted block contains
+versus how many actually ran, folded into the FAIL detail it already emits. `checkCallSites()`
+derives the number from the block's own source (`Function.prototype.toString()`, comments
+stripped) — never a count kept by hand beside the block, which is the `PANEL_NAMES` failure
+class this project has already paid for twice.
+**Why.** `soft()` swallows a throw so the rest of the product still gets tested, but every
+assertion after the throw then silently never runs and the suite TOTAL shrinks without saying
+so. Measured across this session's own runs: 492 → 500 → 495, moving by 5 purely because of
+where one exception landed. Five real `POINT-2B` assertions had been invisible for at least two
+runs for this reason, and when `D-0499` happened to get execution past the throw their sudden
+appearance read as a regression when it was the opposite.
+**Rejected.** A declared per-block expected count (`soft(name, fn, { assertions: 7 })`) —
+rejected as a hand-kept number that drifts from the code it describes. Adding a new `check()`
+for the accounting — rejected: it would change the suite total, the very number this phase
+exists to make trustworthy. Calling the figure "assertions" — rejected as imprecise: a call
+site in a loop runs many times, so it is reported as **call sites** and the difference is
+clamped at zero.
+**Evidence.** Logic proven first by a 9-case oracle covering every risky input — comments
+mentioning `check(`, `checkSessionNotElevated(` (correctly not a call site), a URL not read as a
+comment, a loop counting once: **9/9**, and seen RED first (two genuine harness bugs of my own
+before it went green). Static count of the real block: **7 call sites**, lines 3749-3870. Then
+live: full disposable probe **493/495 PASS**, 2 pre-existing tracked FAILs
+(`F-SLASH-001`, `F-I18N-002`), and the accounting fired on the real throw — `0/7 \`check\` call
+sites in this block ran, 7 never reached`. A prediction of `5/7` was written before the run and
+**did not hold**: the flake landed at the click instead of past it, and the mechanism reported
+the true `0/7` — recorded because a prediction that missed is evidence about the flake, not
+something to quietly drop. `F-SLASH-001` updated with this 4th manifestation.
+**Reversal cost.** None — test-only, and the suite total is unchanged by the mechanism itself.
+**Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
+stamped network survived.
