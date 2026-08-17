@@ -2,7 +2,7 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": "D-0511/D-0512/D-0513: rule 12's named exceptions now come from ONE source (.claude/hooks/lib/rule12-exceptions.json) that destructive-command-guard.sh reads and .claude/hooks/test/test-rule12-exceptions.sh (49 assertions) fails on when it diverges from CLAUDE10.md; five divergence fixtures shown RED. Two guard defects found while driving the matrix and fixed: F-HOOK-006 (a separator inside quotes started a new command, so a read-only grep was refused as a recursive-force removal) and F-HOOK-007 (PROJECT_ROOT matched as a bare string prefix, so every removal under the sibling path NOESAR_EVOLUTION_ARTIFACTS was SILENTLY ALLOWED - fail-open). scripts/test.sh gained a governance step: 6 suites / 316 assertions that no runner invoked before.",
-  "phase_status": "delivered_20260817__D-0511_to_D-0513",
+  "phase_status": "session_closed_20260817__D-0511_to_D-0514_delivered",
   "next_phase": "Owner decision. D-0513 proposes extending the same authority->source->oracle shape to the other machine-enforced rules (the S5a keeper list in session-close-guard.sh, the S3a deployment sequence, the budget caps). Nothing is started.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "97bca75d80ae2bc3afbf83daad49f84ac81b65ee",
-  "last_updated_utc": "2026-08-17T14:14:45Z",
+  "last_updated_utc": "2026-08-17T14:17:27Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -77,7 +77,13 @@
         "Process fix already in effect for future phases: never write a raw docker inspect env dump into EVIDENCE/ without redacting secret-shaped values first."
       ]
     },
-    "B-012: F-COMMAND-001/F-INTENT-001/F-PANEL-001 (D-0449, 2026-08-14) -- closing D-0435s E2E crash let the suite run 158 more checks than any run since D-0435 shipped (386 vs 228), and three of the newly-reached checks fail for reasons unrelated to D-0435/D-0437. Each needs its own dedicated investigation phase before an effort estimate is meaningful."
+    {
+      "id": "B-012",
+      "severity": "resolved",
+      "code": "E2E_FINDINGS=RESOLVED_ALL_THREE_CLOSED",
+      "summary": "CLOSED 2026-08-17 (D-0514): all three named findings (F-COMMAND-001, F-INTENT-001, F-PANEL-001) are closed; D-0502 recorded that this entry still sat in blockers unmarked, as a string rather than an object, which is why a type-safe filter is needed to read this array. Converted to an object and marked resolved so no future session reads it as live. ORIGINAL TEXT PRESERVED VERBATIM: B-012: F-COMMAND-001/F-INTENT-001/F-PANEL-001 (D-0449, 2026-08-14) -- closing D-0435s E2E crash let the suite run 158 more checks than any run since D-0435 shipped (386 vs 228), and three of the newly-reached checks fail for reasons unrelated to D-0435/D-0437. Each needs its own dedicated investigation phase before an effort estimate is meaningful.",
+      "blocks_next_phase": false
+    }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
   "source_archives": "/mnt/user/downloads/NOESAR_EVOLUTION_FINAL",
@@ -1065,7 +1071,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Nothing is pending. VERIFIED this session: scripts/test.sh 11/11 PASS (unit 2561 tests, 2560 pass, 1 skipped, 0 fail; source-verify migrations=19 baseline=12/12; auth-smoke; http-smoke; tls-smoke; packaging; pg-migrations; pg-contract; rust-source; rust-provenance; governance). Governance runner: 6 suites all pass - container-baseline 58, engineering-orchestrator 122, hook-matcher-enums 9, rule12-exceptions 49, session-lifecycle 69, tooling-inventory 9. NOT done, deliberately: no product code, no build, no deployment, no container created or removed (nothing to clean up). TWO THINGS FOR THE OWNER. (1) CLAUDE10.md rule 12's third exception names tools/test-e2e-retention.sh as what drives e2e_retention_prunable(), but the production driver is tools/run-browser-e2e.sh - it is what performed the D-0509 sweep. The single source records both as callers and the suite passes either way; amending the authority text is the Owner's act, not a session's. (2) F-HOOK-008 is recorded, not fixed, and the reason is in its entry: the safe-looking fix is a fail-open regression.",
+  "next_action": "Session closed 2026-08-17 after D-0511..D-0514. Committed and pushed, tree clean, local main = origin/main at 895d3b2 (a later close commit follows this state write). WHAT IS TRUE NOW: CLAUDE10.md rule 12's named exceptions live in ONE source (.claude/hooks/lib/rule12-exceptions.json), destructive-command-guard.sh reads it and hardcodes no root and no run-stamp pattern, and .claude/hooks/test/test-rule12-exceptions.sh (49 assertions, 5 divergence fixtures shown RED) fails when the file and CLAUDE10.md stop agreeing. scripts/test.sh gained a governance step: 6 suites / 316 assertions previously invoked by nothing; 11/11 steps PASS. Two guard defects fixed, both seen red first - F-HOOK-006 (a separator inside quotes started a new command) and F-HOOK-007 (PROJECT_ROOT matched as a bare string prefix, so every removal under the sibling NOESAR_EVOLUTION_ARTIFACTS was SILENTLY ALLOWED, fail-open). Product VERIFIED healthy at close: running/healthy, RestartCount=0, /livez 200 alive and /readyz 200 ready:true on BOTH http:8088 and https:8443, read inside the container. Containers: exactly the two S5a permits, 0 e2e image tags, 0 stamped networks. e2e artifacts steady at 5 directories / 246 MB, /mnt/cachec 245G free. FIRST THING NEXT SESSION: the Owner's answer to D-0513 - generalise the authority -> machine source -> divergence oracle shape to the other machine-enforced rules, starting with S5a's keeper list in session-close-guard.sh (the same shape rule 12 had before this phase, and .claude/hooks/test/run-all.sh picks a new suite up without being edited). TWO ITEMS AWAITING THE OWNER, NEITHER BLOCKING: (1) rule 12's third exception names tools/test-e2e-retention.sh as what drives e2e_retention_prunable() while the production driver is tools/run-browser-e2e.sh, which performed the D-0509 sweep - the single source records both as callers and the suite passes either way, but amending CLAUDE10.md is the Owner's act; (2) F-HOOK-008 is recorded OPEN and deliberately not fixed - the quote mask is per line, so a quoted string spanning newlines still splits; it over-denies and never under-denies, and the obvious whole-command fix turns that into a fail-OPEN hole, so the correct repair is real shell tokenisation with its own adversarial matrix. Workaround with no loss of protection: pass a long quoted program by file path.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

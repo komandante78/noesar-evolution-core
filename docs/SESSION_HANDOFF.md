@@ -1,6 +1,6 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-17 · **Phase closed:** `D-0511` / `D-0512` / `D-0513`
+**Last updated:** 2026-08-17 · **Session closed:** `D-0511` / `D-0512` / `D-0513` / `D-0514`
 **Head at close:** see `PROJECT_STATE.json.last_commit` · **Plan of record:** `MASTER_PROJECT/`
 
 ---
@@ -29,7 +29,14 @@ new suite up without being edited.
 
 ## OPEN BLOCKERS
 
-**None.** No blocker was opened this phase and none was inherited.
+**None that block anything, and none opened this phase.** What `PROJECT_STATE.json.blockers` still
+carries, stated rather than implied:
+
+| id | severity | what it actually is |
+|---|---|---|
+| `B-011` | `low-deferred` | the token exposed in chat on 2026-07-30 was removed from git history (`D-0258`, verified via a fresh clone); **rotation was deliberately deferred by the Owner**. Not this session's to close. |
+| `B-002` | `stale-premise` | kept for history only — superseded by `B-011`. |
+| `B-012` | **closed this session** | its three findings (`F-COMMAND-001`, `F-INTENT-001`, `F-PANEL-001`) were all closed, but the record sat in `blockers` unmarked and as a bare string, which `D-0502` had already noted as stale state. Converted to an object, marked `resolved`, original text preserved verbatim. |
 
 The one item deliberately left open is a **finding**, not a blocker:
 
@@ -62,9 +69,12 @@ unnoticed by the program that enforces it, and the guard no longer silently allo
 - **No product code, no build, no deployment, no install.** This phase touched governance only.
 - **No container created, started, stopped or removed** — so §5a cleanup had nothing to remove. The
   closing inventory was still checked and is unchanged: exactly the two containers §5a permits, no
-  stray analysis container, **0** e2e image tags, **0** stamped networks. Health confirmed cheaply
-  (`running/healthy`, `RestartCount=0`, `/livez` 200 `alive`, `/readyz` 200 `ready:true`, read
-  inside the container). **No deployment and no bytes-equal-tree check** — nothing this phase
+  stray analysis container, **0** e2e image tags, **0** stamped networks. Health confirmed at close:
+  `running/healthy`, `RestartCount=0`, `/livez` 200 `alive` and `/readyz` 200 `ready:true` on
+  **both** `http:8088` and `https:8443`, read inside the container — the https probe needs
+  certificate verification disabled for the self-signed cert, which is the probe's condition and not
+  a product fault. e2e artifacts steady at **5 directories / 246 MB**, `/mnt/cachec` **245G** free.
+  **No deployment and no bytes-equal-tree check** — nothing this phase
   changed can reach the installation, so there was nothing to install.
 - **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Not an omission.
 - **`F-HOOK-008` was not fixed** (reason above), and **`CLAUDE10.md` was not edited**: the drift in

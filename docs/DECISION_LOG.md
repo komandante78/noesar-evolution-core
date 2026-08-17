@@ -11933,3 +11933,23 @@ oracle" is delimited, reusable outside this product, and makes reliability measu
 publishable form is a small standalone checker, not a feature of the WebUI.
 **Reversal cost.** None — nothing built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0514 · Session close — rule 12 can no longer drift from its executor — 2026-08-17
+**Decision.** Session closed after `D-0511`…`D-0513`. Next session opens on the Owner's answer to
+`D-0513` (generalise the drift oracle) — nothing is started, nothing is half-built.
+**Why.** The phase the previous close named is delivered: one source for rule 12's exceptions, an
+oracle that goes red on divergence, and the guard reading the authority instead of a copy of it.
+**Rejected.** Opening a further phase uninvited. `D-0513` is a proposal, and executing it is the
+Owner's call (`noesar-evolution-budget` §5).
+**Evidence.** Closing state **re-measured, not quoted**: tree clean, local `main` = `origin/main`
+at `895d3b2`; `running/healthy`, `RestartCount=0`; `/livez` **200 alive** and `/readyz` **200
+ready:true** on **both** `http:8088` and `https:8443`, read inside the container — the https probe
+needs certificate verification disabled for the self-signed cert, which is the probe's condition
+and not a product fault. Containers: exactly the two §5a permits; **0** e2e image tags, **0**
+stamped networks, no stray analysis container. e2e artifacts steady at **5 directories / 246 MB**,
+`/mnt/cachec` **245G** free — the `NOESAR_E2E_RETAIN` cap holding without being run again. Handoff
+**96 lines**, under its 150-line cap. `scripts/test.sh` 11/11 and the 6 governance suites (316
+assertions) were green earlier in this phase on code unchanged since — not re-run, per
+`noesar-evolution-verify` §single-pass rule 4.
+**Reversal cost.** None — a close records, it does not change the product.
+**Status.** applied.
