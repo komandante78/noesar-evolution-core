@@ -5012,3 +5012,33 @@ permission classifier at the `--apply` step — a mutating action against the li
 needed a real-time Bash permission grant, distinct from a conversational authorization. Nothing
 about the deploy plan itself was wrong; re-run after the Owner's explicit next-turn instruction
 completed clean on the first real attempt.
+
+## `d0516-model-chooser-20260817T155937Z` — DEPLOYED and verified — 2026-08-17
+
+**Tag.** `noesar-evolution:d0516-model-chooser-20260817T155937Z`, deployed 16:00:04Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-model-chooser`, built
+`--network none`). `D-0515`/`D-0516`/`D-0518`: the `/model` dead end the Owner reported
+(«Nothing named `mode`») closes on both its causes — a near miss now names what it is near, and
+a terminal chunk carrying an embedded newline submits instead of swallowing the line — plus the
+CodeN model chooser and the two routes the browser never had.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` 200 (`alive`) and `/readyz` 200
+(`ready:true`) on **both** `http:8088` and `https:8443` (read in-container; the minimal image
+has no `curl`/`wget`, and the https probe needs verification disabled for the self-signed cert).
+4 children spawned (`postgres`/`api`/`codev`/`atom`), **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **8/8** before deploy, tree↔running container **4/4**
+after. Live surfaces: `/api/v1/models/installed` answers **401** anonymously (the route exists
+and the boundary holds), and the served assets carry the chooser (`codenModelPicker`,
+`wireCodenModelPicker`), `segmentInput` and the "Did you mean" suggestion. Before `--apply`:
+full unit suite **2570/2571** (1 pre-existing skip), browser e2e **504 PASS / 1 FAIL**
+(`F-I18N-002`, declared gap), ESLint 411/0. §3a 11e respected — no mutating suite was run
+against the installation.
+**Predecessor preserved.** `noesar-evolution-pre-20260817T160004Z`
+(`d0493-password-form-fix-20260816T155232Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key added, nothing written to the workspace by this image. Backup taken with the
+service stopped (0600 in a 0700 directory, checksum written).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260816T161506Z` removed; its image
+(`d0469-model-list-...`) **stays on disk**, so every documented rollback path still works.
+Measured before and after: non-project containers **51 → 51**, volumes **65 → 65**, networks
+**10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0516_20260817T160054Z.txt`). Exactly the
+two containers §21b permits survive.

@@ -2,15 +2,15 @@
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
   "current_phase": "s336 (D-0515/D-0516/D-0517): the Owner-reported dead end on /model is repaired at its two causes — a near miss now names the commands it is near (planTurn suggestions, matchCommands ranking), and a terminal chunk carrying an embedded newline now submits instead of swallowing the line (segmentInput). The CodeN page gained a model chooser opened from the model chip, backed by two routes the browser never had: GET /api/v1/models/installed and POST /api/v1/models/activate (model.manage + CSRF + ledger, refusal statuses preserved), both calling the SAME decisions the session bridge dispatches. Nothing was committed, pushed or deployed.",
-  "phase_status": "delivered_uncommitted__awaiting_owner_authorisation_for_commit_and_deploy",
+  "phase_status": "installed_and_verified__s336_deployed_d0516-model-chooser-20260817T155937Z",
   "next_phase": "s337: #/models redesigned — rows get real Use and Delete buttons with confirmations, grouped by declared type with an explanation of what each is for. Use already has its route (D-0516); DELETE HAS NO ROUTE and must be built. Then s338 (download transport, acquire is still 501 NO_TRANSPORT) and s339 (automatic discovery, egress, off by default).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "0610d72eaec151c87d4ece36106e87f032f7e95d",
-  "last_updated_utc": "2026-08-17T15:09:18Z",
+  "last_commit": "7fcddff",
+  "last_updated_utc": "2026-08-17T16:01:49Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -110,10 +110,10 @@
   "database_mutation": false,
   "network_configuration": true,
   "installation": {
-    "image": "noesar-evolution:phase4-module-credentials",
+    "image": "noesar-evolution:d0516-model-chooser-20260817T155937Z",
     "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui -> :phase4-service-token-auth -> :phase4-module-credentials",
-    "base_image": "noesar-evolution:phase4-service-token-auth",
-    "dockerfile": "oci/Dockerfile.phase4-webui",
+    "base_image": "noesar-evolution:d0493-password-form-fix-20260816T155232Z",
+    "dockerfile": "oci/Dockerfile.phase4-model-chooser",
     "build_network": "none",
     "container": "noesar-evolution",
     "network": "noesar-evolution-net",
@@ -122,7 +122,7 @@
     "bind_address": "192.168.178.100",
     "bind_scope": "lan",
     "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
-    "health": "healthy, 17 components, 0 degraded, RestartCount=0",
+    "health": "running/healthy, RestartCount=0, /livez 200 alive and /readyz 200 ready:true on http:8088 and https:8443 — measured 2026-08-17T16:00Z",
     "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
     "rollback_containers": [
       "noesar-evolution.rollback-lan-webui-20260725T175916Z (image :phase4-complete-lan)",
@@ -132,7 +132,11 @@
     ],
     "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z and .probe-reverify-20260725T142301Z (stopped; created by the completion gate)",
     "host_impact": "networks and volumes diff IDENTICAL against the pre-gate inventory; the 37 unrelated containers untouched and still Exited; noesar-debuglab started for HUNT AND FIX and stopped in the same phase",
-    "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002."
+    "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002.",
+    "current_tag": "noesar-evolution:d0516-model-chooser-20260817T155937Z",
+    "deployed_utc": "2026-08-17T16:00:04Z",
+    "predecessor_container": "noesar-evolution-pre-20260817T160004Z",
+    "image_lineage_note": "The lineage string below is the JULY chain and is kept as history only; docs/INSTALLATION_LEDGER.md is the authority for what is deployed. D-0519 (2026-08-17) corrected image/base_image/dockerfile here because a stale value beside a fresh one is a contradiction inside a single key, not merely old news."
   },
   "production_touched": false,
   "zip_repackaging": false,
@@ -1072,7 +1076,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "TWO OWNER DECISIONS, IN ORDER. (1) Authorise the commit: 12 files, +502/-21, complete and verified, nothing half-built. (2) Authorise the deployment, or refuse it: the repair the Owner reported is IN THE TREE AND NOT ON THE INSTALLATION — the live container is noesar-evolution:d0493-password-form-fix-20260816T155232Z (2026-08-16) and still carries the dead end, so until it is deployed the Owner keeps seeing the defect he reported. VERIFIED THIS SESSION: browser e2e 504 PASS / 1 FAIL (the failure is F-I18N-002, a declared gap; RETENTION=delete only-declared-gaps-failed, exit 0), the four new chooser checks all PASS in the browser, auth-http-smoke PASS with four new assertions (200 + {models,activeId}; 403 without CSRF; 400 with no id; 404 not 500 for an unknown id), http-smoke PASS with models/installed on the anonymous-401 list, 168/168 targeted unit tests, ESLint 411/0. SEEN RED FIRST: the pre-repair planTurn returns exactly the Owner sentence \"Nothing named `mode`. Type / for the list.\" with suggestions undefined, and segmentInput did not exist. NOT DONE: #/models untouched (its cards still have no buttons), no delete route, no download transport, and starting a real model is UNVERIFIED because the probe has no model descriptor and no local runtime.",
+  "next_action": "NEXT PHASE, NOT STARTED: s337 — #/models redesigned, rows get real Use and Delete buttons with confirmations, grouped by declared type with an explanation of what each is for. Use already has its route (D-0516); DELETE HAS NO ROUTE and must be built. Then s338 (download transport: acquire still answers 501 NO_TRANSPORT) and s339 (automatic discovery, egress, off by default per rules 30-32). WHAT IS TRUE NOW, VERIFIED AND LIVE: the /model dead end the Owner reported is repaired on the installation he uses — a near miss names what it is near, a terminal chunk carrying an embedded newline submits instead of swallowing the line, and #/coden has a model chooser backed by GET /api/v1/models/installed and POST /api/v1/models/activate. Deployed as noesar-evolution:d0516-model-chooser-20260817T155937Z: byte-equal tree-image 8/8 and tree-running 4/4, running/healthy, RestartCount=0, /livez and /readyz 200 on http:8088 and https:8443, models/installed 401 anonymously. Predecessor kept as noesar-evolution-pre-20260817T160004Z; older rollback removed with its image retained; containers 51->51 non-project, volumes 65->65, networks 10->10. STILL UNVERIFIED: starting a real model end to end — no descriptor and no local runtime exist to start.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

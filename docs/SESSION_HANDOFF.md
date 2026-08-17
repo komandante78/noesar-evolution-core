@@ -1,23 +1,20 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-17 · **Phase:** `s336` — `D-0515` / `D-0516` / `D-0517`
-**Plan of record:** `MASTER_PROJECT/` · **Head at close:** see `PROJECT_STATE.json.last_commit`
+**Last updated:** 2026-08-17 · **Phase:** `s336` — `D-0515`…`D-0519` · **INSTALLED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `7fcddff` · **Live:** `noesar-evolution:d0516-model-chooser-20260817T155937Z`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is half-built, and two things need the Owner — in this order:**
+**Nothing is pending and nothing is half-built.** The Owner authorised both steps
+(«PROCEDI CON 1 POI CON 2») and both were performed: committed and pushed (`7fcddff`,
+`main` = `origin/main`), then **deployed and verified live** as
+`noesar-evolution:d0516-model-chooser-20260817T155937Z` (`D-0519`). The defect the Owner
+reported is repaired **on the installation he actually uses**, not only in the tree.
 
-1. **Authorise the commit.** The work below is complete, verified and **uncommitted**: 12 files,
-   +502/−21. `CLAUDE10.md` §77 stops at commit and push, and this session did not cross it.
-2. **Authorise the deployment, or say no.** The repair the Owner reported (`/model` →
-   «Nothing named `mode`») is **in the tree and not on the installation**. The live container is
-   `noesar-evolution:d0493-password-form-fix-20260816T155232Z` (2026-08-16), which still has the
-   dead end. Until it is deployed, the Owner keeps seeing the defect he reported.
-
-**Then the next phase, which is already scoped and NOT started** — the rest of what the Owner
-asked for on 2026-08-17, in dependency order:
+**The next phase is scoped and NOT started** — the rest of what the Owner asked for on
+2026-08-17, in dependency order:
 
 | Next | What | Blocked by |
 |---|---|---|
@@ -56,13 +53,17 @@ asked for on 2026-08-17, in dependency order:
 | **seen red first** | the pre-repair `planTurn` returns **exactly the Owner's sentence** (`Nothing named \`mode\`. Type / for the list.`) with `suggestions: undefined`; `segmentInput` did not exist and its wiring assertion was false — both checked against `git show HEAD:` |
 | the `/` menu itself | **17 entries, all resolve** (`CE-036` green). Grouped WORK 15 · CONFIGURE 1 · SESSION 1. The Owner's pasted list started mid-address-book, so the missing WORK group was **scrolled off**, not filtered away |
 | §5a cleanup | the probe, the runner and the probe image were removed by the tool; inventory in `EVIDENCE/docker_inventory_post_e2e_20260817T150751Z.txt`. **0** e2e containers, **0** e2e image tags, **0** stamped networks. Other projects' containers untouched |
-| the live installation | `running/healthy`, `RestartCount=0`, `/livez` **200 alive**, `/readyz` **200 ready:true** — unchanged by this phase, which deployed nothing |
+| the full unit suite | **2570/2571**, 1 pre-existing skip, **0 failures** — the pre-commit gate refused the first commit for 5 untranslated markup strings (`D-0518`), which is rule 50 enforced mechanically |
+| **the deployment** (`D-0519`) | byte-equal tree↔image **8/8** before, tree↔running **4/4** after; `running/healthy`, `RestartCount=0`; `/livez` and `/readyz` **200** on **http:8088 and https:8443**; `/api/v1/models/installed` **401** anonymously; the served assets carry the chooser, `segmentInput` and the "Did you mean" suggestion |
+| §5a after the deploy | older rollback removed, its image kept; non-project containers **51→51**, volumes **65→65**, networks **10→10**; exactly the two containers §21b permits survive |
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately
 
-- **No commit, no push, no deployment.** All three are Owner decisions (`CLAUDE10.md` §77).
+- **`MANIFEST.sha256` was not regenerated** for the new overlay `oci/Dockerfile.phase4-model-chooser`.
+  The previous overlay (`…password-form-fix`, 2026-08-16) is not in it either — that is
+  `F-MANIFEST-001`, already tracked, and repairing it is its own phase, not a side effect of this one.
 - **The `#/models` page was not touched.** Its cards still have no buttons — that is `s337`, and
   it is named above rather than half-started here.
 - **No download and no delete.** `acquire` still answers `501 NO_TRANSPORT`; no delete route
@@ -70,8 +71,7 @@ asked for on 2026-08-17, in dependency order:
 - **The `/model` chain to a running model was never exercised end to end**, because no model
   descriptor and no local runtime exist on the probe: the chooser was proven up to the choice,
   and the empty state it drew is the honest one. Starting a real model is `[UNVERIFIED]`.
-- **`F-I18N-002` was not re-baselined** and the new strings were not added to the catalogue.
-- **`MANIFEST.sha256` was not touched** — the tracked file **set** did not change.
+- **`F-I18N-002` was not re-baselined.** The phase own new strings WERE translated (`D-0518`, 5 markup + 8 runtime); what stays open is the pre-existing runtime gap, whose baseline moves only after its full diff is read.
 
 ---
 
@@ -87,7 +87,9 @@ asked for on 2026-08-17, in dependency order:
 | `services/reference-control-plane/src/server.mjs` | `GET /api/v1/models/installed`, `POST /api/v1/models/activate`; `installedModelList` / `activateInstalledModelById` hoisted so the bridge and HTTP share one decision |
 | `tools/auth-http-smoke.mjs`, `tools/http-smoke.mjs`, `tools/browser-e2e.mjs` | the new routes and the chooser, driven rather than asserted from source |
 | `services/…/test/coden-view-model.test.mjs`, `coden-terminal-client.test.mjs` | +11 tests (3 suggestion, 7 segmentation, 1 pinning the pre-repair decoder) |
-| `docs/DECISION_LOG.md` | `D-0515`, `D-0516`, `D-0517` |
+| `apps/webui-static/i18n-catalog.js` | the 5 markup and 8 runtime strings of the chooser, in Italian, with the runtime ones registered in `RUNTIME_ONLY` |
+| `oci/Dockerfile.phase4-model-chooser` | **new** — the deployed overlay, with its rollback cost stated in the file itself (§3a 11d) |
+| `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md` | `D-0515`…`D-0519`; the installation entry |
 
 ---
 

@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s336 · D-0515 / D-0516 / D-0518.
+#
+# Owner report, 2026-08-17: `/model` answered "Nothing named `mode`". Two causes, both repaired:
+# a slash word that resolves to nothing now names the entries it is near (`planTurn` +
+# `matchCommands`, suggested and never run), and `segmentInput` splits an xterm chunk so an
+# Enter batched with the last character submits the line instead of landing in the prompt as a
+# literal CR. The CodeN page gained the model chooser opened from the `model` chip, and the two
+# routes the browser never had: `GET /api/v1/models/installed` and `POST /api/v1/models/activate`.
+#
+# Three paths changed, so three are copied — deliberately narrow:
+#   apps/webui-static/               the chooser, its styles, its markup, its catalogue
+#   apps/shared/coden/               `segmentInput`, shared by the browser and the terminal shell
+#   services/…/src/server.mjs        the two routes and the two hoisted decisions they share
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration,
+# no schema change, no data written, no configuration key added — the two new routes are
+# additive and nothing outside them changed shape. `PROJECT_STATE.json`, the audit ledger and
+# the workspace are untouched by this image. The predecessor is preserved under a timestamped
+# name by `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0493-password-form-fix-20260816T155232Z
+
+LABEL org.noesar.phase="4-model-chooser"
+LABEL org.noesar.decision="D-0515,D-0516,D-0518"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 apps/shared/ /opt/noesar/apps/shared/
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001

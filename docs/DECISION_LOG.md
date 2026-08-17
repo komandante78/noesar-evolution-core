@@ -12023,3 +12023,19 @@ strings no markup can contain, and the panel's frame IS in the markup.
 Commit `7da9d81`.
 **Reversal cost.** None.
 **Status.** applied.
+
+## D-0519 · The repair reaches the installation the Owner is actually using — 2026-08-17
+**Decision.** `s336` deployed as `noesar-evolution:d0516-model-chooser-20260817T155937Z`, on the
+Owner's explicit authorisation («PROCEDI CON 1 POI CON 2»), through the §3a sequence the
+repository owns rather than by hand.
+**Why.** The defect the Owner reported was repaired in the tree and the live container was still
+serving it — the exact condition §3a 11a exists to remove.
+**Rejected.** Deploying the whole tree in a fresh base image: three paths changed, so the
+overlay copies three, and the rollback stays a rename.
+**Evidence.** Built `--network none`; byte-equal tree↔image **8/8**, tree↔running **4/4**;
+`running/healthy`, `RestartCount=0`, `/livez` and `/readyz` **200** on http and https; the
+served assets carry the chooser, `segmentInput` and the suggestion; `models/installed` **401**
+anonymously. Cleanup measured: containers 51→51 non-project, volumes 65→65, networks 10→10.
+**Reversal cost.** One rename and a start — no migration, nothing written by this image.
+Predecessor kept as `noesar-evolution-pre-20260817T160004Z`; all three images remain on disk.
+**Status.** installed.
