@@ -2,6 +2,12 @@
 
 ## ➜ LA PROSSIMA AZIONE
 
+> **Sessione CHIUSA il 2026-08-17** (`D-0502`). Cinque fasi consegnate, tutte committate e
+> pushate, tree pulito, remote allineato a `d1977cf`. Prodotto **VERIFICATO sano alla chiusura**:
+> `running/healthy`, `RestartCount=0`, `/livez` 200 `alive` e `/readyz` 200 `ready:true` su
+> `http:8088` e `https:8443` (letti dentro il container). Container: esattamente i due che §5a
+> permette, nessun tag immagine e2e, nessuna rete stampata.
+
 **`F-SLASH-001` is closed.** It had been open since 2026-08-15 and was the last item on the list
 waiting on a decision only the Owner could make. Design A was chosen: the `coden-slash-feedback`
 step now drives the **live terminal** instead of `#codenPrompt`, the legacy composer the modern
@@ -44,6 +50,7 @@ No code changes or deployment without explicit Owner authorization.
 
 | Id | Stato |
 |---|---|
+| `F-E2EDISK-001` | **OPEN — trovato alla chiusura (`D-0502`)**, non riparato. La pulizia della sonda e2e è corretta ma il suo trigger non scatta mai: 149 workspace, 7,2 GB. Non un rischio ora (misurato: `/mnt/cachec` 49%, 238G liberi). |
 | `F-E2E-001` | **OPEN — 2ª osservazione (`D-0501`)**, non riparato. `s327/4b`, dipendente da ordine o tempi. Il più pronto da inseguire. |
 | 6 remaining "backend proven, not e2e-driven" | **OPEN** — `#/research`, theme/accent, log-search/debug-mode, skills, modules, remote-targets. |
 | `F-TOOLS2-001` | **OPEN, recorded** — 3/17 slash command non testati al livello di dispatch. `D-0497`. |
@@ -88,6 +95,11 @@ i due container permessi, nessun tag immagine e2e e nessuna rete stampata soprav
   run e `false` in quella successiva, su codice identico. Asserirla comprerebbe un flake.
 - **I 6 gap page-level, `F-TOOLS2-001`, `F-RUST-001`, `F-CAP4-001`, gli 8 crate Rust senza test,
   la ri-triage di `F7-001`** — registrati, nessuno costruito.
+- **I 7,2 GB di workspace e2e accumulate NON sono state cancellate** (`F-E2EDISK-001`): stanno
+  fuori da `PROJECT_ROOT`, quindi sono in sola lettura per questo progetto, e la regola 12 lo
+  vieta comunque. Trovate, misurate e dichiarate — non toccate.
+- **`F-E2EDISK-001` non è riparato**: la riparazione è una modifica di codice, e «fai chiusura»
+  non la autorizza. Due candidati sono nominati nel finding.
 - **Nessun codice di prodotto è stato modificato in nessuna delle cinque fasi.**
 
 ## Proposta di miglioramento

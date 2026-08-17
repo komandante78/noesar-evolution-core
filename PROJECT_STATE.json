@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "319d1a973c0f24fd9563b7a5aa781a7ffa7425a3",
-  "last_updated_utc": "2026-08-17T09:05:00Z",
+  "last_updated_utc": "2026-08-17T09:20:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -405,6 +405,12 @@
       "severity": "low",
       "status": "OPEN - recorded 2026-08-17 (D-0497), not fixed. TOOLS_MODULES_INDEX §4 deep review: grep -rl across services/, rust/crates/*/src, tools/*.mjs for the exact filenames finds zero readers of capabilities/sandbox/{README.md,capability-execution-contract.json,wasi-profile.json} and zero runtime readers of capabilities/templates/* (industry-module/module.template.json appears once, in a comment). Both directories are reference/scaffolding material only. Distinct from the already-tracked F7-001 (capabilities/reference/*.py static-analysis findings) and from examples/ and tools/, which are reference/CLI material by design per D-0205.",
       "summary": "2 of 6 capabilities/ subdirectories (sandbox/, templates/) are not read by any product code -- reference material with no live wiring."
+    },
+    {
+      "id": "F-E2EDISK-001",
+      "severity": "low",
+      "status": "OPEN - found during the D-0501 session close 2026-08-17, recorded not repaired. tools/run-browser-e2e.sh HAS a correct retention policy (lines 149-158): it deletes the run artifact directory when the run passed (rc==0) and preserves it for diagnosis when it failed. The defect is in the TRIGGER, not the cleanup: the suite exits non-zero whenever ANY check fails, and F-I18N-002 is a permanently-open DECLARED gap, so BROWSER_E2E_EXIT=1 on every run -- measured 6 of 6 runs this session. The preserve-on-failure branch therefore runs every time and the delete branch never does. Accumulated: 149 preserved run directories, 7.2 GB, in /mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e (OUTSIDE PROJECT_ROOT, so read-only to this project and deliberately not deleted here). NOT currently a resource risk, measured rather than assumed: /mnt/cachec 49% used with 238G available, rootfs 20% with 13G free. It is a trend, not the emergency F-CRASH-001 was (that one had rootfs at 82% and was actively starving Claude Code). Same class as the retired noesar-debuglab step: a rule whose condition never fires. Two candidate repairs, neither built: distinguish a run whose ONLY failures are already-declared gaps from a genuinely failed run, or cap retention to the newest N directories.",
+      "summary": "The e2e probe preserves its run workspace on failure and deletes it on success, but a permanently-declared open gap keeps the exit code non-zero forever, so the delete branch never runs -- 149 directories, 7.2 GB accumulated."
     }
   ],
   "resolved_findings": [
@@ -1039,7 +1045,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0501 is complete, committed and pushed. F-SLASH-001 -- open since 2026-08-15 and the last item needing an Owner design decision -- is CLOSED, verified over two consecutive runs. Owner to choose next: (a) F-E2E-001, which this session gave its second independent observation (its own record said one observation made chasing it a guess; that objection is now gone), (b) one of the 6 remaining page-level e2e gaps, (c) another named open item. No code changes or deployment without explicit Owner authorization.",
+  "next_action": "Session closed 2026-08-17 after five phases (D-0497..D-0501), all committed and pushed, tree clean, remote in sync at d1977cf. Product VERIFIED healthy at close: running/healthy, RestartCount=0, /livez 200 alive and /readyz 200 ready:true on both http:8088 and https:8443 (read inside the container; :8089 is the TLS module-console listener and answers 401 by design, D-0282). Containers: exactly the two S5a permits. No e2e image tag or stamped network survived. Owner to choose next: (a) F-E2E-001, which now has the second independent observation its own record said was needed before chasing it, (b) one of the 6 remaining page-level e2e gaps (research, theme/accent, log-search/debug-mode, skills, modules, remote-targets), (c) F-E2EDISK-001, found during this close, (d) another named open item. No code changes or deployment without explicit Owner authorization.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

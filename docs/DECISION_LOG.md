@@ -11704,3 +11704,31 @@ that objection is now gone. Out of this phase's authorised scope.
 panel and, since `D-0461`, agent panels too.
 **Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
 stamped network survived.
+
+## D-0502 · Session close — health proven, and a cleanup whose trigger never fires — 2026-08-17
+**Decision.** Closed the session after five phases (`D-0497`…`D-0501`). No code change: this is
+the close itself, plus one finding recorded that the close surfaced.
+**Why.** `CLAUDE10.md` §5a 21f requires the product proven healthy at close, not assumed, and
+rule 39 requires what was found declared rather than carried silently into the next session.
+**Rejected.** Invoking the host's `/session-close` skill — it belongs to another project on this
+host and writes to a context pack and session log outside `PROJECT_ROOT` (REGOLA ZERO, rule 4).
+Deleting the 7.2 GB of accumulated e2e artifacts — outside `PROJECT_ROOT`, so read-only to this
+project, and rule 12 forbids it regardless.
+**Evidence.** Tree clean, `HEAD` = `origin/main` = `d1977cf`. Containers: exactly the two §5a
+permits, no e2e image tag, no stamped network. Product health read **inside** the container:
+`/livez` 200 `alive` and `/readyz` 200 `ready:true, reasons:[]` on both `http:8088` and
+`https:8443`; `status=running health=healthy restarts=0`. `:8089` answers 401 over TLS — the
+module-console listener (`D-0282`) behaving as designed, checked rather than declared broken.
+Handoff 107 lines (cap 150). No archive, binary, database or `.env` tracked.
+**Found at close, recorded not repaired (`F-E2EDISK-001`).** `tools/run-browser-e2e.sh`'s
+retention policy is correct — delete the run directory on `rc==0`, preserve it on failure — but
+its trigger never fires: `F-I18N-002` is a permanently-open **declared** gap, so the suite exits
+non-zero on every run (measured 6 of 6 this session) and only the preserve branch is ever taken.
+149 directories, 7.2 GB. **Not** a live risk, measured: `/mnt/cachec` 49% used, 238G free; rootfs
+20%, 13G free — a trend, not `F-CRASH-001`'s 82%-full emergency. Same class as the retired
+`noesar-debuglab` step: a rule whose condition can never be met.
+**Also noted.** `B-012`'s three named findings (`F-COMMAND-001`, `F-INTENT-001`, `F-PANEL-001`)
+are all closed, but the entry still sits in `blockers` unmarked; and that array mixes strings and
+objects, which is why a type-safe filter is needed to read it. State hygiene, not a defect.
+**Reversal cost.** None — documentation and state only.
+**Status.** applied. Session closed.
