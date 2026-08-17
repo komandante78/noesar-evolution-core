@@ -11953,3 +11953,73 @@ assertions) were green earlier in this phase on code unchanged since — not re-
 `noesar-evolution-verify` §single-pass rule 4.
 **Reversal cost.** None — a close records, it does not change the product.
 **Status.** applied.
+
+## D-0515 · The `/` dead end the Owner hit: a near miss now names what it is near — 2026-08-17
+**Decision.** `planTurn`'s `unknown` branch suggests up to three offered entries for a slash word
+that resolves to nothing, and `segmentInput` splits an xterm chunk so an Enter batched with the
+last character still submits the line.
+**Why.** Owner, verbatim: «questo e comando /model … mi da ✕ Nothing named `mode`». `/mode` is
+what reached the engine, and the shell had the answer — `matchCommands` ranks `/model` first for
+that exact word — and did not offer it. Refusing to GUESS is right (`resolveCommand` stays
+exact); refusing to POINT is the defect. Separately, `decodeInput` compared the whole chunk with
+`\r`, so a batched `"l\r"` was text: the line never sent and a CR sat invisibly in the prompt.
+**Rejected.** Running the nearest command — that turns a keystroke into an action nobody chose.
+Teaching `decodeInput` a compound intent — a word the readline shell can never speak.
+**Evidence.** Seen red first, against `git show HEAD:` of both files: the pre-repair `planTurn`
+returns exactly the Owner's sentence and `suggestions: undefined`; `segmentInput` did not exist
+and the wiring assertion was false. After: `coden-view-model.test.mjs` 23/23,
+`coden-terminal-client.test.mjs` 29/29 (+7 segmentation, +1 pinning the pre-repair decoder).
+**Reversal cost.** None — both are additive; removing them restores the dead end.
+**Status.** applied, not installed (no deployment this phase).
+
+## D-0516 · The model chooser on `#/coden`, and the activation route the browser never had — 2026-08-17
+**Decision.** `GET /api/v1/models/installed` and `POST /api/v1/models/activate` (permission
+`model.manage`, CSRF, ledger, the refusal's own status preserved), and a chooser opened from the
+CodeN `model` chip that lists what is startable and starts one after a confirmation.
+**Why.** Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e fa
+scegliere quale usare». Measured first: `model.activate` existed **only** on the session bridge,
+so a browser button would have had to open a terminal session to press itself.
+**Rejected.** Letting the chooser filter the catalogue itself — a second reading of "what is
+present" is how it ends up offering a model the terminal refuses to start (`D-0300`, `D-0302`).
+**Evidence.** Both routes absent from `git show HEAD:server.mjs` (proved, not assumed).
+`auth-http-smoke` PASS with the four new assertions — 200 + `{models,activeId}`, 403 without
+CSRF, 400 with no id, **404** (not 500) for an unknown id, refusal text preserved; `http-smoke`
+PASS with `models/installed` added to the anonymous-401 list. ESLint 411/0.
+**Reversal cost.** The chip keeps its label element; removing the routes removes the chooser.
+**Status.** applied, not installed. Acquire is still `501 NO_TRANSPORT` — untouched by this.
+
+## D-0517 · Improvement proposal — verified model acquisition as a component, not a feature — 2026-08-17
+**Decision.** Proposed, not executed: build the model transport the Owner asked for
+(«pulsante downloads … poi attiva») as a **delimited, reusable component** — resolve a
+publisher-signed descriptor, stream the artefact under a byte cap, verify the declared digest
+before it is ever startable, and expose the same lanes the catalogue already declares — rather
+than as a download button wired into `#/models`.
+**Why.** `POST /api/v1/models/acquire` already plans and refuses correctly (`501 NO_TRANSPORT`);
+what is missing is only the transport. Built as a component it satisfies the funding criteria
+this project measures itself against (`noesar-evolution-funding-fit` traits 1, 2, 3, 5): a
+precise result, reusable beyond this product, local and offline-first, with verifiability —
+against the red flag of "a WebUI over someone else's model API".
+**Rejected.** A download button that shells out to a vendor CLI: it would make the product
+depend on one provider's tooling, which is trait 4 inverted.
+**Evidence.** Measured this phase: acquire returns 501 with `kind: NO_TRANSPORT`; no delete
+route exists; descriptors are local JSON read from `MODEL_CATALOG_DIR`; nothing discovers new
+models. Cost: one phase for transport + digest verification, one for delete/discovery, the
+latter egress-gated and **off by default** (`CLAUDE10.md` §8 rules 30-32).
+**Reversal cost.** None — nothing was built.
+**Status.** deferred, awaiting the Owner.
+
+## D-0518 · The translation gate refused the first commit, and was right — 2026-08-17
+**Decision.** The 5 new markup strings of the model chooser are translated, and the 8 strings
+`app.js` composes at runtime are translated **and** registered in `RUNTIME_ONLY`.
+**Why.** `ui-language-coverage.test.mjs` failed the pre-commit hook: `view-coden: 5 uncovered`.
+Rule 50 says no non-English string ships outside the localization layer; the strings went
+through `t()` correctly but had no entry, which renders them in the source language and says
+nothing to anyone else. A half-translated panel shipping quietly is exactly what that test
+exists to prevent.
+**Rejected.** Adding them to `RUNTIME_ONLY` alone to silence the gate — that list is for
+strings no markup can contain, and the panel's frame IS in the markup.
+**Evidence.** Refused first, then green: `ui-language-coverage` 25/25, full unit suite
+**2570/2571** (1 pre-existing skip, 0 failures), ESLint 411/0, migration manifest CURRENT.
+Commit `7da9d81`.
+**Reversal cost.** None.
+**Status.** applied.

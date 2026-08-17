@@ -1,85 +1,77 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-17 · **Session closed:** `D-0511` / `D-0512` / `D-0513` / `D-0514`
-**Head at close:** see `PROJECT_STATE.json.last_commit` · **Plan of record:** `MASTER_PROJECT/`
+**Last updated:** 2026-08-17 · **Phase:** `s336` — `D-0515` / `D-0516` / `D-0517`
+**Plan of record:** `MASTER_PROJECT/` · **Head at close:** see `PROJECT_STATE.json.last_commit`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending, and nothing is half-built.** The phase the last session agreed on is
-delivered: rule 12's named exceptions now have one source, the guard reads it, and a suite goes
-red when the two disagree.
+**Nothing is half-built, and two things need the Owner — in this order:**
 
-**Two things need the Owner, and neither blocks anything:**
+1. **Authorise the commit.** The work below is complete, verified and **uncommitted**: 12 files,
+   +502/−21. `CLAUDE10.md` §77 stops at commit and push, and this session did not cross it.
+2. **Authorise the deployment, or say no.** The repair the Owner reported (`/model` →
+   «Nothing named `mode`») is **in the tree and not on the installation**. The live container is
+   `noesar-evolution:d0493-password-form-fix-20260816T155232Z` (2026-08-16), which still has the
+   dead end. Until it is deployed, the Owner keeps seeing the defect he reported.
 
-1. **`CLAUDE10.md` rule 12's third exception names the wrong driver.** It says
-   `e2e_retention_prunable()` "is driven by `tools/test-e2e-retention.sh`" — that is the *test*.
-   The production driver is `tools/run-browser-e2e.sh`, which is what actually performed the
-   `D-0509` sweep. The single source records **both** as authorised callers and the suite passes
-   either way, so nothing is broken; amending the authority's own text is the Owner's act.
-2. **`D-0513` is a proposal awaiting a yes or no** (see below). Nothing was started.
+**Then the next phase, which is already scoped and NOT started** — the rest of what the Owner
+asked for on 2026-08-17, in dependency order:
 
-**Where a next phase would begin, if the Owner says yes to `D-0513`:** `session-close-guard.sh`
-already enforces §5a's "exactly two containers survive" by a list held in its own code. Same shape
-as rule 12 before this phase: one source, one oracle, and `.claude/hooks/test/run-all.sh` picks the
-new suite up without being edited.
+| Next | What | Blocked by |
+|---|---|---|
+| `s337` | `#/models` redesigned: rows get real **Use** and **Delete** buttons with confirmations, grouped by declared type with an explanation of what each is for | nothing — `Use` already has its route (`D-0516`); **Delete has no route and must be built** |
+| `s338` | The **download transport**: `POST /api/v1/models/acquire` plans correctly and then answers `501 NO_TRANSPORT` — the bytes are never fetched | an Owner decision on egress; see `D-0517` |
+| `s339` | **Automatic discovery** of new models from curated sources | egress, so **off by default** (`CLAUDE10.md` §8 rules 30-32) — a design decision, not a switch |
 
 ---
 
 ## OPEN BLOCKERS
 
-**None that block anything, and none opened this phase.** What `PROJECT_STATE.json.blockers` still
-carries, stated rather than implied:
+**None opened this phase.** What `PROJECT_STATE.json.blockers` carries is unchanged: `B-011`
+(token rotation deliberately deferred by the Owner, history already rewritten) and `B-002`
+(stale premise, kept for history, superseded by `B-011`).
 
-| id | severity | what it actually is |
-|---|---|---|
-| `B-011` | `low-deferred` | the token exposed in chat on 2026-07-30 was removed from git history (`D-0258`, verified via a fresh clone); **rotation was deliberately deferred by the Owner**. Not this session's to close. |
-| `B-002` | `stale-premise` | kept for history only — superseded by `B-011`. |
-| `B-012` | **closed this session** | its three findings (`F-COMMAND-001`, `F-INTENT-001`, `F-PANEL-001`) were all closed, but the record sat in `blockers` unmarked and as a bare string, which `D-0502` had already noted as stale state. Converted to an object, marked `resolved`, original text preserved verbatim. |
-
-The one item deliberately left open is a **finding**, not a blocker:
+**One finding was found and deliberately left open:**
 
 | id | severity | why it is not fixed |
 |---|---|---|
-| `F-HOOK-008` | low | The quote mask added this phase tracks quote state **per line**, so a quoted string spanning newlines (a multi-line `jq` program, a heredoc) still splits. It **over-denies** — never under-denies. The obvious fix (whole-command quote state) turns a fail-safe nuisance into a **fail-open hole**: one apostrophe in prose inside a heredoc masks every real separator after it. The correct repair is real shell tokenisation, with its own adversarial matrix — a phase of its own. Workaround with no loss of protection: pass a long quoted program **by file path**. |
+| `F-I18N-002` | low | The e2e run's only failure: the catalogue-closable gap reads **643 of 911 recorded** against a declared baseline of **607**. It did not rise this phase (the last recorded reading was 644) and the finding's own protocol forbids re-baselining before the full diff is read. The new UI strings all go through `t()`, so they are inside the localization layer (rule 50) — they are simply not translated yet. |
+
+`F-HOOK-008` (quote mask per line, fail-safe) also remains open from the previous phase.
 
 ---
 
-## WHAT WAS VERIFIED — measured this session, not quoted
+## WHAT WAS VERIFIED — measured this session
 
 | Check | Result |
 |---|---|
-| `scripts/test.sh` | **11/11 PASS** — unit **2561 tests** (2560 pass, 1 skipped, 0 fail), source-verify (migrations=19, baseline 12/12), auth-smoke, http-smoke, tls-smoke, packaging, pg-migrations, pg-contract, rust-source, rust-provenance, **governance** |
-| new `governance` step | **6 suites / 316 assertions, all pass** — container-baseline 58 · engineering-orchestrator 122 · hook-matcher-enums 9 · **rule12-exceptions 49** · session-lifecycle 69 · tooling-inventory 9 |
-| the divergence oracle | **5 fixtures shown RED on demand**: a 4th exception added to the authority · an entry dropped from the source · a stale quote · a mechanism the authority never names · an exception deleted from the authority |
-| the runner's own red path | a deliberately failing suite → exit 1 · an empty directory → exit 1 ("no suite found is a failure, not a pass") |
-| `F-HOOK-006` / `F-HOOK-007` | **both seen red before the fix** — the grep was really refused, the sibling-path removal was really allowed |
-| shellcheck, 4 changed shell files | disposable offline container; only `SC1007` on the `CDPATH= cd` idiom — the dismissal already on record |
-| portability (§64) | the exception root is `NOESAR_ARTIFACT_ROOT` with a default, exactly as `tools/run-browser-e2e.sh` resolves it; the suite needs only bash/jq/awk and declares `UNAVAILABLE` otherwise; no host path is acted on |
-
-**What is true now that was not before:** an amendment to `CLAUDE10.md` rule 12 can no longer pass
-unnoticed by the program that enforces it, and the guard no longer silently allowed removals under
-`…/NOESAR_EVOLUTION_ARTIFACTS`.
+| `tools/run-browser-e2e.sh`, full run against a disposable probe | **504 PASS · 1 FAIL**, the one failure being `F-I18N-002`, a declared gap. `RETENTION=delete only-declared-gaps-failed`, exit 0 |
+| the four new chooser checks, in the browser | **all PASS** — it opens from the chip (`expanded=true`), it answers from the installation instead of sitting on its loading line, an empty result **says why** it is empty, and closing it reports `aria-expanded=false` |
+| `tools/auth-http-smoke.mjs` | **PASS** with four new assertions: `models/installed` 200 + `{models,activeId}`, `models/activate` **403** without CSRF, **400** with no id, **404** (not 500) for an unknown id with its reason preserved |
+| `tools/http-smoke.mjs` | **PASS** — `models/installed` added to the anonymous-401 boundary list |
+| targeted unit suites | **168/168** (`coden-view-model`, `coden-terminal-client`, `coden-shell-parity`, `model-catalog`, `session-protocol`) |
+| `tools/run-eslint.sh` | **411 files, 0 errors, 0 warnings** |
+| **seen red first** | the pre-repair `planTurn` returns **exactly the Owner's sentence** (`Nothing named \`mode\`. Type / for the list.`) with `suggestions: undefined`; `segmentInput` did not exist and its wiring assertion was false — both checked against `git show HEAD:` |
+| the `/` menu itself | **17 entries, all resolve** (`CE-036` green). Grouped WORK 15 · CONFIGURE 1 · SESSION 1. The Owner's pasted list started mid-address-book, so the missing WORK group was **scrolled off**, not filtered away |
+| §5a cleanup | the probe, the runner and the probe image were removed by the tool; inventory in `EVIDENCE/docker_inventory_post_e2e_20260817T150751Z.txt`. **0** e2e containers, **0** e2e image tags, **0** stamped networks. Other projects' containers untouched |
+| the live installation | `running/healthy`, `RestartCount=0`, `/livez` **200 alive**, `/readyz` **200 ready:true** — unchanged by this phase, which deployed nothing |
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately
 
-- **No product code, no build, no deployment, no install.** This phase touched governance only.
-- **No container created, started, stopped or removed** — so §5a cleanup had nothing to remove. The
-  closing inventory was still checked and is unchanged: exactly the two containers §5a permits, no
-  stray analysis container, **0** e2e image tags, **0** stamped networks. Health confirmed at close:
-  `running/healthy`, `RestartCount=0`, `/livez` 200 `alive` and `/readyz` 200 `ready:true` on
-  **both** `http:8088` and `https:8443`, read inside the container — the https probe needs
-  certificate verification disabled for the self-signed cert, which is the probe's condition and not
-  a product fault. e2e artifacts steady at **5 directories / 246 MB**, `/mnt/cachec` **245G** free.
-  **No deployment and no bytes-equal-tree check** — nothing this phase
-  changed can reach the installation, so there was nothing to install.
-- **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Not an omission.
-- **`F-HOOK-008` was not fixed** (reason above), and **`CLAUDE10.md` was not edited**: the drift in
-  its rule-12 wording is reported to the Owner, not corrected by the session that found it.
-- **`D-0513` was not executed.** Generating the proposal is mandatory; running it is the Owner's.
+- **No commit, no push, no deployment.** All three are Owner decisions (`CLAUDE10.md` §77).
+- **The `#/models` page was not touched.** Its cards still have no buttons — that is `s337`, and
+  it is named above rather than half-started here.
+- **No download and no delete.** `acquire` still answers `501 NO_TRANSPORT`; no delete route
+  exists. Both were measured, not assumed, and both are separate phases.
+- **The `/model` chain to a running model was never exercised end to end**, because no model
+  descriptor and no local runtime exist on the probe: the chooser was proven up to the choice,
+  and the empty state it drew is the honest one. Starting a real model is `[UNVERIFIED]`.
+- **`F-I18N-002` was not re-baselined** and the new strings were not added to the catalogue.
+- **`MANIFEST.sha256` was not touched** — the tracked file **set** did not change.
 
 ---
 
@@ -87,20 +79,22 @@ unnoticed by the program that enforces it, and the guard no longer silently allo
 
 | File | What |
 |---|---|
-| `.claude/hooks/lib/rule12-exceptions.json` | **new** — the one source: 3 exceptions, each with its authority marker, quote, mechanism, recoverability and filesystem roots |
-| `.claude/hooks/destructive-command-guard.sh` | reads that source; quote-aware segmentation (`F-HOOK-006`); path-boundary fix (`F-HOOK-007`); exception-aware refusals that name the only authorised mechanism |
-| `.claude/hooks/test/test-rule12-exceptions.sh` | **new** — 49 assertions: structure, alignment, the 5 red fixtures, behaviour in both directions |
-| `.claude/hooks/test/run-all.sh` | **new** — every governance suite in one run, discovered by pattern |
-| `scripts/test.sh` (+ its `MANIFEST.sha256` line) | one `governance` step, `UNAVAILABLE` and declared where `.claude/` is absent |
-| `docs/DECISION_LOG.md`, `PROJECT_STATE.json` | `D-0511`/`D-0512`/`D-0513`; `F-HOOK-006`/`007`/`008` |
+| `apps/shared/coden/terminal-input.mjs` | **new** `segmentInput()` — a chunk carrying an embedded newline submits instead of swallowing the line |
+| `apps/webui-static/coden-terminal.js` | `onData` feeds segments to a named `handleInput`, never the raw chunk |
+| `apps/webui-static/coden-view-model.js` | `planTurn`'s `unknown` branch suggests up to three offered entries and carries `suggestions` |
+| `apps/webui-static/app.js` | the CodeN model chooser: render, states, confirmation, activation, chip refresh; the chip label moved to its own element |
+| `apps/webui-static/index.html`, `styles.css` | the chip's opener button, the chooser panel, its styles in both themes |
+| `services/reference-control-plane/src/server.mjs` | `GET /api/v1/models/installed`, `POST /api/v1/models/activate`; `installedModelList` / `activateInstalledModelById` hoisted so the bridge and HTTP share one decision |
+| `tools/auth-http-smoke.mjs`, `tools/http-smoke.mjs`, `tools/browser-e2e.mjs` | the new routes and the chooser, driven rather than asserted from source |
+| `services/…/test/coden-view-model.test.mjs`, `coden-terminal-client.test.mjs` | +11 tests (3 suggestion, 7 segmentation, 1 pinning the pre-repair decoder) |
+| `docs/DECISION_LOG.md` | `D-0515`, `D-0516`, `D-0517` |
 
 ---
 
-## THE ONE IMPROVEMENT PROPOSAL — `D-0513`, awaiting the Owner
+## THE ONE IMPROVEMENT PROPOSAL — `D-0517`, awaiting the Owner
 
-Extend the `authority → machine source → divergence oracle` shape to the **other** rules a program
-already enforces: §5a's keeper list, §3a's deployment sequence, the budget skill's caps. Every
-governance defect this project has repaired has one shape — a rule whose executor drifted from it in
-silence. Rule 12 is now the only one that cannot. **Cost:** roughly one phase per rule family.
-**Funding fit:** "policy-as-data with a divergence oracle" is delimited and reusable outside this
-product (traits 1/2/5) — publishable as a small standalone checker, not as a WebUI feature.
+Build the model transport as a **delimited, reusable component** — publisher-signed descriptor,
+capped stream, digest verified before the artefact is ever startable — rather than as a download
+button wired into a page. It is what `s338` needs anyway, and as a component it answers the
+funding criteria this project measures itself against (`noesar-evolution-funding-fit` traits
+1, 2, 3, 5) instead of the red flag of a WebUI over someone else's model API.
