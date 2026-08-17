@@ -11732,3 +11732,37 @@ are all closed, but the entry still sits in `blockers` unmarked; and that array 
 objects, which is why a type-safe filter is needed to read it. State hygiene, not a defect.
 **Reversal cost.** None — documentation and state only.
 **Status.** applied. Session closed.
+
+## D-0503 · `F-E2E-001` closed — the check now waits for its evidence, and a control proves the wait — 2026-08-17
+**Decision.** `tools/browser-e2e.mjs`'s `s327/4b` check waits for the unattached-runs list itself
+(`#unattachedRunCount === '1'` plus the run's own goal text) instead of reading it straight after the
+`pending approval` badge. A permanent positive control sits beside it: the next `?scope=unattached`
+response is delayed once by 2.5 s, so the stale window is guaranteed, and the control asserts the OLD
+read really does land inside it. The product is unchanged — it was never at fault.
+**Why.** `submitPlanForm()` writes the two facts in two different awaits: `renderWorkspaceRun()` sets
+the badge (`app.js:3044`); the list is refreshed four lines later after a second round trip
+(`app.js:3058`). Waiting on the badge is waiting on a signal written *before* the evidence — green when
+that fetch was quick, red when it was not. Two observations, four days apart, same symptom.
+**Rejected.** A retry or a longer fixed sleep: it would hide the race rather than remove it, and would
+leave the next such check to rediscover the class one flake at a time.
+**Evidence.** Two consecutive probe runs of the final code: **500/501** each, the single FAIL being the
+declared `F-I18N-002` gap. Control PASS in both — `fired:true`, `count:""`, all-attached empty state
+observed at the old read point; then `unattachedWaited:true`, `count:"1"`, the real run listed. ESLint
+411/0, `verify-source` PASS (migrations 19).
+**Reversal cost.** None beyond reverting the block; no deployment, no schema, no product code.
+**Status.** applied — harness only, nothing installed.
+
+## D-0504 · Improvement proposal — 55 fixed sleeps are the same class `F-E2E-001` belonged to — 2026-08-17
+**Decision.** Proposed, **not built**: replace the driver's fixed `setTimeout` sleeps with waits on the
+evidence, starting with the sibling site `tools/browser-e2e.mjs:2753` (`await 800 ms` then read the chat
+Work column). Measured this phase: **55** fixed sleeps against **73** real waits in that file.
+**Why.** A sleep passes because time elapsed, never because the product answered — the exact reason
+`F-E2E-001` was green for four days between its two observations. Removing the class is cheaper than
+rediscovering it one flake at a time, and it shortens the suite wherever the wait is currently padded.
+**Rejected.** Doing it inside this phase: each converted site needs two probe runs (~7 min each) to be
+proven, and `noesar-evolution-budget` §5 forbids widening a phase for an improvement the Owner has not
+authorised.
+**Evidence.** `grep -c "setTimeout(resolve" tools/browser-e2e.mjs` → 55; `grep -c waitForFunction` → 73.
+No sleep site is currently observed failing — this is prevention, not a repair.
+**Reversal cost.** None — nothing built.
+**Status.** deferred — awaiting the Owner.

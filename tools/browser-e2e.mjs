@@ -3092,6 +3092,39 @@ try {
   // F-PANEL-001 (D-0449) — same root cause as F-COMMAND-001, see `submitCodenAddress` above.
   await submitCodenAddress(page, '/coden/agent/plan');
   await page.waitForSelector('[data-agent-panel="plan"].active', { timeout: 15000 });
+  // The baseline the control below measures against: opening the Plan panel renders the
+  // unattached list once (app.js:305), and with no chatless run yet it is the declared-empty
+  // text. Waited for explicitly so the delay installed next lands on the POST-submit refresh
+  // and not on a panel-open fetch still in flight.
+  let unattachedBaseline = true;
+  try {
+    await page.waitForFunction(
+      () => /Every run in this session belongs to a chat/
+        .test(document.querySelector('#unattachedRuns')?.textContent ?? ''),
+      { timeout: 15000 },
+    );
+  } catch { unattachedBaseline = false; }
+  // F-E2E-001 — the delay that makes the race deterministic instead of hoped for.
+  //
+  // The next response to `?scope=unattached` is held for 2.5s, once. Nothing about the
+  // product changes: `api()` calls the bare global `fetch` (app.js:220), so the shim is the
+  // slow link a real installation can have at any moment, applied on purpose at the one
+  // instant this check depends on it. It restores itself the moment it fires.
+  await page.evaluate(() => {
+    const realFetch = window.fetch;
+    window.__noesarUnattachedRealFetch = realFetch;
+    window.__noesarUnattachedDelayFired = false;
+    window.fetch = function delayUnattachedOnce(input, init) {
+      const url = String(typeof input === 'string' ? input : (input?.url ?? ''));
+      if (!window.__noesarUnattachedDelayFired && url.includes('scope=unattached')) {
+        window.__noesarUnattachedDelayFired = true;
+        window.fetch = realFetch;
+        return realFetch.call(window, input, init)
+          .then((response) => new Promise((resolve) => { setTimeout(() => resolve(response), 2500); }));
+      }
+      return realFetch.call(window, input, init);
+    };
+  });
   await page.type('#planGoal', 'add a short note file for this e2e run');
   await page.type('.plan-file-path', 'e2e-notes/browser-e2e-note.txt');
   await page.type('.plan-file-contents', 'written by the browser E2E suite');
@@ -3112,6 +3145,44 @@ try {
   // s327/4b: a plan created from the Plan panel itself, with nothing attached, must belong to
   // no chat — and must be listed as such rather than filed under whichever conversation the
   // session last opened. This is the negative half of the Owner's decision, driven for real.
+  //
+  // F-E2E-001, closed here (D-0503). This block used to read the three fields immediately
+  // after the badge said "pending approval". Those facts are written by TWO different awaits
+  // inside submitPlanForm(): renderWorkspaceRun() sets the badge (app.js:3044), and the
+  // unattached list is only refreshed four lines later, after a second round trip
+  // (app.js:3058). Waiting on the badge is waiting on a signal written BEFORE the evidence —
+  // green whenever that fetch happened to be quick, red when it was not. Two independent
+  // observations, four days apart (2026-08-13 and 2026-08-17), both with the same symptom:
+  // declared text correct, listed text the all-attached empty state, count empty. The product
+  // was never at fault and must not be changed for this: it does refresh the list.
+  //
+  // The control is permanent, in the shape D-0499 established: a wait nobody can see fail is
+  // indistinguishable from no wait at all, so the delay above guarantees the stale window and
+  // this check asserts the OLD read really does land inside it. If a future change makes the
+  // list refresh before the badge, this control fails and says so — it is not decoration.
+  const stale = await page.evaluate(() => ({
+    fired: window.__noesarUnattachedDelayFired === true,
+    listed: (document.querySelector('#unattachedRuns')?.textContent ?? '').trim(),
+    count: (document.querySelector('#unattachedRunCount')?.textContent ?? '').trim(),
+  }));
+  check('F-E2E-001 control — the badge alone does not prove the unattached list was refreshed',
+    unattachedBaseline && stale.fired && stale.count === ''
+      && /Every run in this session belongs to a chat/.test(stale.listed),
+    JSON.stringify({ unattachedBaseline, ...stale }).slice(0, 300));
+  let unattachedWaited = true;
+  try {
+    await page.waitForFunction(
+      () => (document.querySelector('#unattachedRunCount')?.textContent ?? '').trim() === '1'
+        && /add a short note file for this e2e run/
+          .test(document.querySelector('#unattachedRuns')?.textContent ?? ''),
+      { timeout: 20000 },
+    );
+  } catch {
+    // Reported through the check below with the state actually observed, never thrown: a
+    // timeout escaping this step would take every later check in it with it — the failure
+    // mode gotoIdle()'s own comment block was written for, measured at 205 lost checks.
+    unattachedWaited = false;
+  }
   const unattached = await page.evaluate(() => ({
     declared: (document.querySelector('#planAttachment')?.textContent ?? '').trim(),
     listed: (document.querySelector('#unattachedRuns')?.textContent ?? '').trim(),
@@ -3120,7 +3191,11 @@ try {
   check('s327/4b — a plan created with no chat attached is listed as belonging to none',
     /belong to no chat/i.test(unattached.declared) && unattached.count === '1'
       && /add a short note file for this e2e run/.test(unattached.listed),
-    JSON.stringify(unattached).slice(0, 300));
+    JSON.stringify({ unattachedWaited, ...unattached }).slice(0, 300));
+  // Whatever this block installed, this block removes — including when the shim never fired.
+  await page.evaluate(() => {
+    if (window.__noesarUnattachedRealFetch) window.fetch = window.__noesarUnattachedRealFetch;
+  });
 
   await clickOrExplain(page, '#planSimulateBtn');
   await page.waitForFunction(
