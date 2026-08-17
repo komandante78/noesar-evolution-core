@@ -303,6 +303,54 @@ async function gotoIdle(url) {
   return page.goto(url, { waitUntil: 'networkidle2' });
 }
 
+/**
+ * Wait until the page itself says the thing happened — the replacement for a fixed sleep.
+ *
+ * `F-E2E-001` was green for four days between its two observations because the check waited on
+ * a signal written before the evidence. A fixed `setTimeout` is the same defect with the timer
+ * on the outside: it passes because time elapsed, never because the product answered. On a
+ * loaded host the elapsed time buys nothing; on an idle one it is dead weight paid every run.
+ *
+ * **It never throws and never fails a check.** On timeout it prints `SETTLE_TIMEOUT` and returns
+ * false, and the caller reads and asserts exactly as it did when this was a sleep. That is the
+ * property that makes converting many call sites at once safe rather than reckless: a predicate
+ * that is subtly wrong degrades to "waited the timeout, then read anyway" — today's behaviour,
+ * slower and *visible* — and can never turn a passing check into a failing one. The printed
+ * label is how a wrong predicate is found and fixed, instead of hiding as a slow run.
+ *
+ * `frame` selects the document: the embedded terminal lives in its own (`D-0423`), so a
+ * predicate about the emulator must be evaluated there and not in the host page.
+ */
+async function settled(predicate, { timeout = 4000, label = '', frame = null, arg = undefined } = {}) {
+  const target = frame ?? page;
+  try {
+    await target.waitForFunction(predicate, { timeout }, arg);
+    return true;
+  } catch {
+    console.log(`SETTLE_TIMEOUT  ${label || 'unlabelled'} (${timeout}ms) — read proceeded anyway`);
+    return false;
+  }
+}
+
+/*
+ * The sleeps that REMAIN in this file, and why — so this taxonomy is not re-litigated.
+ *
+ *   TIME IS THE EVIDENCE      a TOTP step must genuinely elapse; no DOM fact can stand in for
+ *                             wall-clock time (`freshCode`, `nextRealStepCode`, the two
+ *                             enrolment loops).
+ *   PROBING FOR AN ABSENCE    the input-path prober tries a path and asks whether ANYTHING
+ *                             reached the emulator; a wait for evidence would defeat the very
+ *                             fallback it exists to measure.
+ *   ASSERTING A NON-EVENT     "a bracket typed into a field does not collapse the sidebar",
+ *                             "a bare / does not open the jump box". You cannot wait for a
+ *                             thing not to happen — you can only give it the chance and look.
+ *   ALREADY A BOUNDED POLL    loops that re-read until a condition holds are waits already,
+ *                             hand-rolled; they have a condition, which is the whole point.
+ *   IN-PAGE, INSIDE evaluate  a few sleeps run inside `page.evaluate`, where `waitForFunction`
+ *                             does not reach. Convertible only with an injected in-page poll —
+ *                             recorded, not built, and none of them is a known flake.
+ */
+
 async function leaveCodenTerminal() {
   if (!(await page.$('#codenTerminalHost iframe'))) return;
   await page.evaluate(() => { window.location.hash = '#/home'; });
@@ -875,7 +923,8 @@ try {
   // Without this the redaction could have emptied the one surface that consumes it and
   // nothing here would have noticed.
   await gotoIdle(`${BASE}/#/settings/health`);
-  await new Promise((resolve) => setTimeout(resolve, 900));
+  await settled(() => (document.querySelectorAll('#healthComponents .metric').length > 0),
+    { label: 'health components rendered' });
   const healthPanel = await page.evaluate(() => {
     const node = document.querySelector('#healthComponents');
     const read = (label) => {
@@ -909,14 +958,20 @@ try {
     sidebarWidth: Math.round(document.querySelector('#sidebar')?.getBoundingClientRect().width ?? -1),
   }));
   ranks.push(await rankOf());
+  // Each press is awaited on the rank it produces, not on 200ms. The expected sequence is the
+  // one the check below asserts — full -> icons -> hidden -> icons — so the wait and the
+  // assertion read the same fact, and a press that never lands says so instead of drifting.
   await page.keyboard.press('BracketLeft');
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.sidebar === 'icons',
+    { label: 'sidebar collapsed to icons' });
   ranks.push(await rankOf());
   await page.keyboard.press('BracketLeft');
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.sidebar === 'hidden',
+    { label: 'sidebar collapsed to hidden' });
   ranks.push(await rankOf());
   await page.keyboard.press('BracketRight');
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.sidebar === 'icons',
+    { label: 'sidebar expanded back to icons' });
   ranks.push(await rankOf());
   check('the sidebar collapses through three ranks with [ and expands with ]',
     ranks[0].rank === 'full' && ranks[1].rank === 'icons' && ranks[2].rank === 'hidden' && ranks[3].rank === 'icons',
@@ -944,7 +999,8 @@ try {
     JSON.stringify(whileTyping));
   await page.evaluate(() => { document.querySelector('#globalSearch').value = ''; document.querySelector('#globalSearch').blur(); });
   await page.evaluate(() => { document.querySelector('#sidebarRank').click(); });
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.sidebar === 'full',
+    { label: 'sidebar control cycled to full' });
   // The control cycles hidden → icons → full → hidden. Standing at "icons" after the
   // reload, one press must arrive at "full": the keyboard is the fast path, never the only
   // one, or a mouse user who hid the sidebar has no way to bring it back.
@@ -959,7 +1015,8 @@ try {
   }));
   await gotoIdle(`${BASE}/#/home`);
   await page.evaluate(() => document.querySelector('[data-panel-rank="floating"]').click());
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.panel === 'floating',
+    { label: 'context panel floated' });
   const homeFloating = await panelOf();
   await gotoIdle(`${BASE}/#/projects`);
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -976,11 +1033,13 @@ try {
   check('the placement is remembered for the destination it was chosen on',
     homeAgain.rank === 'floating', JSON.stringify(homeAgain));
   await page.evaluate(() => document.querySelector('[data-panel-rank="hidden"]').click());
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.panel === 'hidden',
+    { label: 'context panel hidden' });
   const hiddenPanel = await panelOf();
   check('a hidden context panel is really off the screen', !hiddenPanel.onScreen, JSON.stringify(hiddenPanel));
   await page.evaluate(() => document.querySelector('#panelRank').click());
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await settled(() => document.querySelector('#appShell')?.dataset.panel !== 'hidden',
+    { label: 'context panel restored from the top bar' });
   const restored = await panelOf();
   check('a hidden context panel can be brought back from the top bar',
     restored.onScreen, JSON.stringify(restored));
@@ -1003,7 +1062,9 @@ try {
   resetObservations();
   await gotoIdle(`${BASE}/#/coden`);
   await page.waitForSelector('#invariantList li', { timeout: 15000 });
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  await settled(() => [...document.querySelectorAll('#invariantList li')]
+    .every((item) => (item.textContent ?? '').trim() !== ''),
+    { label: 'invariant list rows carry text' });
   const invariants = await page.evaluate(() => {
     const items = [...document.querySelectorAll('#invariantList li')];
     return {
@@ -1577,7 +1638,8 @@ try {
     // Leaving the destination destroys the document, and with it the socket, the observer and
     // the reconnect timer. Returning builds a new one — not a second one beside the first.
     await gotoIdle(`${BASE}/#/home`);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await settled(() => document.querySelectorAll('#codenTerminalHost iframe').length === 0,
+      { label: 'terminal document detached on leaving' });
     const detached = await page.evaluate(() => ({
       frames: document.querySelectorAll('#codenTerminalHost iframe').length,
       state: document.querySelector('#codenTerminalHost')?.dataset.terminalState ?? '',
@@ -2018,7 +2080,8 @@ try {
   check('the box\'s own data source answers with something to show',
     searchProbe.status === 200 && searchProbe.count > 0, JSON.stringify(searchProbe));
   await page.keyboard.type('reload');
-  await new Promise((resolve) => setTimeout(resolve, 900));
+  await settled(() => document.querySelectorAll('#globalSearchResults button').length > 0,
+    { label: 'global search returned rows' });
   const withContent = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#globalSearchResults button')];
     const content = rows.filter((node) => !/^(Page|Settings|Bench|Agent)$/.test(node.querySelector('b')?.textContent ?? ''));
@@ -2582,7 +2645,8 @@ try {
     { timeout: 15000 },
   );
   await page.reload({ waitUntil: 'networkidle2' });
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await settled(() => /Asia\/Tokyo/.test(document.querySelector('#settingsTimezoneSummary')?.textContent ?? ''),
+    { label: 'timezone summary repainted after reload' });
   const persisted = await page.$eval('#settingsTimezoneSummary', (node) => node.textContent);
   check('a settings change survives a reload', /Asia\/Tokyo/.test(persisted));
 
@@ -2656,7 +2720,8 @@ try {
     { timeout: 15000 },
   );
   await gotoIdle(`${BASE}/#/home`);
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  await settled(() => document.querySelector('#navModules a.nav') === null,
+    { label: 'modules nav entry withdrawn' });
   const afterDeactivate = await page.evaluate(() => document.querySelector('#navModules a.nav'));
   check('deactivating withdraws the sidebar entry again', afterDeactivate === null);
 
@@ -2992,7 +3057,8 @@ try {
   // The preferences survive a reload: a display setting that resets is not a setting.
   await clickOrExplain(page, '[data-text-step="2"]');
   await page.reload({ waitUntil: 'networkidle2' });
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  await settled(() => getComputedStyle(document.documentElement).getPropertyValue('--text-scale').trim() !== '',
+    { label: 'text scale applied after reload' });
   const persistedScale = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text-scale').trim());
   check('the reading preferences survive a reload', persistedScale === '1.15', `--text-scale=${persistedScale}`);
   await page.evaluate(() => { localStorage.removeItem('noesar.textScale'); });
@@ -3605,7 +3671,9 @@ try {
   // fires a request has decided for the person what they meant by it.
   const beforeGoal = await page.evaluate(() => document.querySelectorAll('.message').length);
   await clickOrExplain(page, '#homeGoalActions .goal-action');
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  await settled(() => (document.querySelector('#view-chat')?.classList.contains('active') ?? false)
+    && (document.querySelector('#chatInput')?.value ?? '') !== '',
+    { label: 'goal action landed in chat with a composed prompt' });
   const afterGoal = await page.evaluate(() => ({
     view: document.querySelector('#view-chat')?.classList.contains('active') ?? false,
     composer: document.querySelector('#chatInput')?.value ?? '',
@@ -3618,7 +3686,8 @@ try {
 
   await gotoIdle(`${BASE}/#/home`);
   await page.waitForSelector('#homeServices', { timeout: 15000 });
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  await settled(() => (document.querySelector('#homeServices')?.textContent ?? '').trim() !== '',
+    { label: 'home inventory painted' });
   const inventory = await page.evaluate(() => {
     const read = (id) => (document.querySelector(id)?.textContent ?? '').trim();
     return {
@@ -3688,7 +3757,9 @@ try {
     JSON.stringify(fieldZone));
 
   await gotoIdle(`${BASE}/#/home`);
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await settled(() => (document.querySelector('#taskScheduledCount')?.textContent ?? '').trim() !== ''
+    && (document.querySelector('#taskScheduledList')?.textContent ?? '').trim() !== '',
+    { label: 'task board counts painted' });
   const board = await page.evaluate(() => ({
     active: document.querySelector('#taskActiveCount')?.textContent ?? '',
     scheduled: document.querySelector('#taskScheduledCount')?.textContent ?? '',

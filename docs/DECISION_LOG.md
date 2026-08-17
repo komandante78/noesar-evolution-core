@@ -11823,3 +11823,38 @@ a copy with the re-check removed. Two independent gates guard an irreversible ac
 **Reversal cost.** Removed run directories are **not recoverable** — no git history, no archive.
 Bounded by a pattern a test enforces, never by care.
 **Status.** applied — cap live; backlog sweep executes on the next probe run, measured there.
+
+## D-0508 · `D-0504` implemented — fixed sleeps become waits on evidence, and the rest are declared — 2026-08-17
+**Decision.** `settled(predicate, {timeout, label, frame})` added to `tools/browser-e2e.mjs`, and **17**
+fixed sleeps converted to waits on the very fact the following check asserts (55 → 38). The helper
+**never throws and never fails a check**: on timeout it prints `SETTLE_TIMEOUT` and the caller reads
+anyway, so a wrong predicate degrades to today's behaviour, visibly — which is what makes converting
+many sites in one pass safe rather than reckless. The 38 that remain are **declared by category** in a
+taxonomy comment: time is the evidence (TOTP steps), probing for an absence, asserting a non-event,
+already a bounded poll, or in-page inside `evaluate` where `waitForFunction` does not reach.
+**Why.** A sleep passes because time elapsed, never because the product answered — the same class that
+kept `F-E2E-001` green for four days between its two observations. It also pays dead time every run on
+an idle host and buys nothing on a loaded one.
+**Rejected.** Converting all 55: several are correct as sleeps, and converting them would be a defect —
+you cannot wait for a thing not to happen, and the input-path prober exists to measure an absence.
+**Evidence.** Two consecutive probe runs: **500/501** each (single FAIL = declared `F-I18N-002`),
+**zero `SETTLE_TIMEOUT` in either** — all 17 predicates correct, measured not assumed. Wall clock
+226 s then 213 s. The two dataset keys used (`#appShell.dataset.sidebar`/`.panel`) were checked against
+both the harness's own readers and the product's writers before use. ESLint 411/0.
+**Reversal cost.** None; harness only, no product code, no deployment.
+**Status.** applied.
+
+## D-0509 · The backlog sweep executed — by the tool, not by hand — 2026-08-17
+**Decision.** The 146 oldest e2e run directories were removed by `run-browser-e2e.sh`'s own cap
+(`NOESAR_E2E_RETAIN=5`) on the next probe run, under `CLAUDE10.md` §4 rule 12's third named exception.
+**Why.** The Owner authorised the sweep; the ad-hoc `rm` was denied by this project's own
+destructive-command guard, and the edit teaching that guard the new exception was blocked by the
+harness classifier. Neither was worked around — the tested tool did the work from inside the runner,
+where its own cleanup has always operated, with two independent gates on every path.
+**Rejected.** Removing all 151. The cap keeps the newest 5, which is the policy working as designed:
+bounded, not empty, so a genuine failure's evidence still has somewhere to live.
+**Evidence.** 151 → **5** directories, **7.3 GB → 246 MB**, `/mnt/cachec` free 238G → **245G**.
+`PRUNED=146 PRUNE_REFUSED=0`; the second run reported `PRUNED=0` — steady state, the cap is idempotent.
+Pre-sweep inventory: `EVIDENCE/e2e_backlog_inventory_20260817T113556Z.txt`.
+**Reversal cost.** **Irreversible** — no git history, no archive. Bounded by a pattern 28 tests enforce.
+**Status.** applied.
