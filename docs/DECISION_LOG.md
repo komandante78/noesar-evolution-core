@@ -11766,3 +11766,39 @@ authorised.
 No sleep site is currently observed failing — this is prevention, not a repair.
 **Reversal cost.** None — nothing built.
 **Status.** deferred — awaiting the Owner.
+
+## D-0505 · `F-E2EDISK-001` closed — the e2e probe's retention keys on genuine failures — 2026-08-17
+**Decision.** The runner no longer decides retention from the exit code. `tools/browser-e2e.mjs`
+classifies a failing check as a **declared gap** when a finding already owns it (`F-I18N-002`, marked
+at its call site) and prints `BROWSER_E2E_FAIL_DECLARED` / `_UNDECLARED`; `tools/e2e-retention-policy.sh`
+turns `(exit code, driver log)` into `delete` or `preserve`; the runner asks it. **The exit code is
+unchanged** — a red check still exits non-zero. This exempts the disk, never the verdict.
+**Why.** The suite exits non-zero when ANY check fails and `F-I18N-002` is permanently red, so the
+preserve branch fired on every run and the delete branch never fired at all: 151 directories, 7.3 GB.
+A rule whose condition never fires is not a rule. "Should the suite go red?" and "is there anything
+here worth diagnosing?" are two questions; one boolean was answering both.
+**Rejected.** Capping retention to the newest N: it would bound the symptom while the trigger stayed
+broken, and it needs deletion authority beyond the current run — see the proposal below.
+**Evidence.** `tools/test-e2e-retention.sh` **17/17**, seen **RED first** (3 static invariants) against
+the shipped tree; all three detectors then proven to discriminate against deliberately broken copies
+(`NOESAR_E2E_RETENTION_RUNNER`/`_DRIVER`). Live probe: `RETENTION=delete only-declared-gaps-failed`,
+`FAIL_DECLARED=1 FAIL_UNDECLARED=0`, 500/501, its own directory gone, count flat at 151 (was +1/run).
+ESLint 411/0, `verify-source` PASS. Every ambiguity preserves — 8 fail-safe cases assert it.
+**Reversal cost.** None; no product code, no deployment. Reverting restores the old accumulation.
+**Status.** applied — harness only, nothing installed.
+
+## D-0506 · Improvement proposal — the 7.3 GB backlog needs an Owner decision, not a silent sweep — 2026-08-17
+**Decision.** Proposed, **not executed**: remove the 151 pre-existing run directories
+(7.3 GB, `/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS/e2e`) and add an opt-in `NOESAR_E2E_RETAIN=N` cap so
+genuinely-failed runs cannot accumulate without bound either.
+**Why.** `D-0505` stops the growth but removes nothing already there, and every one of those 151 is a
+run whose only red was the declared gap — nothing to diagnose. The cap is the second half: a real
+failure should keep its evidence, but not forever.
+**Rejected.** Doing it inside this phase. The path is **outside `PROJECT_ROOT`**, which rule 12 makes
+read-only to this project, and extending deletion from "this run's own directory" (which the script
+has always done) to "directories older runs left" is new authority. The Owner amends this file; a
+session does not route around it.
+**Evidence.** 151 directories / 7.3 GB measured this phase; `/mnt/cachec` 50% used, 238G free — a
+trend, not an emergency. The exact command is named in `docs/SESSION_HANDOFF.md` for the Owner to run.
+**Reversal cost.** Deletion is irreversible — which is precisely why it is proposed, not taken.
+**Status.** deferred — awaiting the Owner.

@@ -30,10 +30,34 @@ if (!BASE || !SETUP_TOKEN) {
 
 const results = [];
 let failures = 0;
-function check(name, ok, detail = '') {
-  results.push({ name, ok, detail });
-  if (!ok) failures += 1;
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
+let declaredFailures = 0;
+/**
+ * One check, and — where it applies — the finding that already owns its failure.
+ *
+ * `options.declaredGap` names a finding id for a check that is KNOWN red and tracked, the
+ * `F-I18N-002` catalogue ratchet being the only one today. It changes nothing about the
+ * verdict: the line still prints FAIL, the check still counts as a failure, and the process
+ * still exits non-zero. What it adds is the distinction between the two questions this file
+ * used to answer with one boolean — "should the suite go red?" (yes, both cases) and "is
+ * there anything here worth diagnosing?" (no, for a gap whose state is already written down).
+ *
+ * `F-E2EDISK-001` is what the missing distinction cost: the runner deletes a run's workspace
+ * when the run passed and keeps it when it failed, and a permanently-declared gap held the
+ * exit code at 1 forever — so the keep branch fired on every run and the delete branch never
+ * fired at all. 151 directories, 7.3 GB. The counter below is what the runner now reads.
+ *
+ * Marked at the CALL SITE, deliberately, never matched against a list of names kept in a
+ * second file: a list like that goes stale in silence the first time a check is renamed.
+ */
+function check(name, ok, detail = '', options = {}) {
+  const declaredGap = options.declaredGap ?? null;
+  results.push({ name, ok, detail, declaredGap });
+  if (!ok) {
+    failures += 1;
+    if (declaredGap) declaredFailures += 1;
+  }
+  const gapNote = declaredGap && !ok ? `  [declared gap ${declaredGap}]` : '';
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${gapNote}${detail ? `  — ${detail}` : ''}`);
 }
 
 /**
@@ -4180,7 +4204,11 @@ try {
       // from "the measurement got wider", which is the only question the number cannot answer.
       `${closable ? closable.length : '?'} closable of ${Array.isArray(missed) ? missed.length : '?'} recorded, declared baseline ${RUNTIME_GAP_BASELINE}`
       + (Array.isArray(closable) && closable.length > RUNTIME_GAP_BASELINE
-        ? ` — sample of the untranslated set: ${JSON.stringify(closable.slice(0, 20))}` : ''));
+        ? ` — sample of the untranslated set: ${JSON.stringify(closable.slice(0, 20))}` : ''),
+      // The one declared gap in this suite (F-I18N-002). Its red is tracked, not news — which
+      // is why the run that produces it has nothing to diagnose and may delete its workspace.
+      // It stays a FAIL and still exits non-zero: this exempts the DISK, never the verdict.
+      { declaredGap: 'F-I18N-002' });
     check('I18N-RUNTIME the static markup half is complete, and is measured separately',
       true, 'tools/measure-ui-language-coverage.mjs — 793 of 793, fails on one gap');
 
@@ -4376,4 +4404,17 @@ console.log('');
 console.log(`BROWSER_E2E_TOTAL=${results.length}`);
 console.log(`BROWSER_E2E_PASS=${results.length - failures}`);
 console.log(`BROWSER_E2E_FAIL=${failures}`);
+// The split the runner's retention policy reads (F-E2EDISK-001). DECLARED failures are the
+// tracked, already-written-down gaps; UNDECLARED is everything else — the only number that
+// means "something here is worth keeping the workspace for".
+console.log(`BROWSER_E2E_FAIL_DECLARED=${declaredFailures}`);
+console.log(`BROWSER_E2E_FAIL_UNDECLARED=${failures - declaredFailures}`);
+// A declared gap that PASSES is news, not silence: it means the gap closed and the exemption
+// is now covering a check that no longer needs it. Printed so the next session sees it without
+// having to go looking — an exemption nobody re-reads is how a ratchet stops ratcheting.
+for (const closed of results.filter((entry) => entry.ok && entry.declaredGap)) {
+  console.log(`BROWSER_E2E_DECLARED_GAP_CLOSED=${closed.declaredGap}  — ${closed.name}`);
+}
+// Unchanged, deliberately: a red check keeps this process non-zero whatever kind it is. The
+// declared/undeclared split governs what is kept on DISK, never whether the suite passed.
 process.exit(failures === 0 ? 0 : 1);

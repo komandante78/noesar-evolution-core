@@ -23,6 +23,10 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Sourced, not reimplemented: the retention decision is a pure function so it can be driven by
+# `tools/test-e2e-retention.sh` in milliseconds, instead of only by a ~7-minute real probe.
+# shellcheck source=tools/e2e-retention-policy.sh
+. "${PROJECT_ROOT}/tools/e2e-retention-policy.sh"
 ARTIFACT_ROOT="${NOESAR_ARTIFACT_ROOT:-/mnt/cachec/NOESAR_EVOLUTION_ARTIFACTS}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
@@ -147,9 +151,19 @@ cleanup() {
   fi
   # The workspace holds this run's throwaway PostgreSQL cluster. On failure it is the
   # only forensic artifact left, so it is kept and its path reported; it is only deleted
-  # when the run passed. The guard is insurance against ARTIFACT_ROOT being overridden
-  # into something unexpected: refuse to recurse unless the path is this run's own.
-  if [ "${rc}" -ne 0 ]; then
+  # when there is nothing here to diagnose. The guard is insurance against ARTIFACT_ROOT being
+  # overridden into something unexpected: refuse to recurse unless the path is this run's own.
+  #
+  # F-E2EDISK-001, repaired here: this used to be `if rc -ne 0 then preserve`. The suite exits
+  # non-zero whenever ANY check fails, and `F-I18N-002` is a permanently-open DECLARED gap, so
+  # rc was 1 on every run — the preserve branch fired every time and the delete branch never
+  # fired at all. 151 directories and 7.3 GB accumulated behind a policy that read as correct.
+  # The decision now lives in `tools/e2e-retention-policy.sh`, is driven by
+  # `tools/test-e2e-retention.sh` without a Docker daemon, and preserves on every ambiguity.
+  local verdict
+  verdict="$(e2e_retention_verdict "${rc}" "${DRIVER_LOG:-}")"
+  echo "RETENTION=${verdict}"
+  if [ "${verdict%% *}" != "delete" ]; then
     echo "--- workspace PRESERVED for diagnosis: ${WORKSPACE} ---"
   elif [ -n "${STAMP}" ] && [ "${WORKSPACE}" = "${ARTIFACT_ROOT}/e2e/${STAMP}/workspace" ]; then
     rm -rf "${ARTIFACT_ROOT:?}/e2e/${STAMP:?}" 2>/dev/null || true
@@ -190,6 +204,11 @@ if [ ! -f "${PROJECT_ROOT}/${DRIVER}" ]; then
   exit 1
 fi
 echo "DRIVER=${DRIVER}"
+# Streamed AND recorded. The retention decision below reads the driver's own summary counters,
+# which means they have to survive the pipe — and a preserved run now keeps its transcript
+# beside its workspace, which it never did before: on a genuine failure the log was whatever
+# the caller happened to still have in a terminal.
+DRIVER_LOG="${ARTIFACT_ROOT}/e2e/${STAMP}/driver.log"
 set +e
 docker run --name "${RUNNER_NAME}" \
   --network "${NETWORK}" \
@@ -197,8 +216,10 @@ docker run --name "${RUNNER_NAME}" \
   -e NOESAR_E2E_BASE_URL="http://${PROBE_NAME}:8088" \
   -e NOESAR_E2E_SETUP_TOKEN="${SETUP_TOKEN}" \
   --entrypoint node \
-  "${PUPPETEER_IMAGE}" "/home/pptruser/repo/${DRIVER}"
-RESULT=$?
+  "${PUPPETEER_IMAGE}" "/home/pptruser/repo/${DRIVER}" 2>&1 | tee "${DRIVER_LOG}"
+# The DRIVER's status, not tee's — tee is almost always 0 and would have turned every failed
+# run into a passing one, which is the same class of defect this whole phase is repairing.
+RESULT=${PIPESTATUS[0]}
 set -e
 
 echo "BROWSER_E2E_EXIT=${RESULT}"
