@@ -2295,6 +2295,106 @@ try {
   check('the password is restored to the constant this suite relies on for every later login',
     /Password changed/i.test(restoredPassword), restoredPassword);
 
+  at('updates');
+  // --- D-0483: #/settings/updates' five buttons driven end to end -------------------------
+  // 6th of the review's "backend proven, not e2e-driven" occurrences: `update-manager.test.mjs`
+  // and `updates-channel-key-http.test.mjs` prove the pipeline, but nothing had proven that
+  // Check/Change channel/Approve/Apply/Roll back actually reach it from the page.
+  //
+  // Placed BEFORE `authority-form` below (not after) on purpose: `#applyUpdate` requires the
+  // same recent-strong-reauthentication gate `#authorizePlan` does (`server.mjs`), and session
+  // elevation is re-earned per session, never inherited (the same fact `authority-form`'s own
+  // comment relies on). Running here keeps the pre-reauth 403 deterministic — this suite has
+  // not called `/api/v1/auth/reauth` yet at this point.
+  //
+  // A signed update package was NOT fabricated to drive a real `apply` success — out of this
+  // suite's scope, the same posture `password-change` above took for passkeys/WebAuthn: doing
+  // so would need a private signing key this suite has no business holding. What IS proven is
+  // that every button reaches its real endpoint and reports the real, honest outcome for a
+  // fresh installation with no channel key pinned and nothing staged — read directly from
+  // `update-manager.mjs` before asserting, not guessed: `check` returns real inbox contents
+  // (empty here), `approve`/`apply` throw `NOTHING_STAGED`/`NOT_APPROVED`-shaped errors the
+  // page surfaces verbatim, and `rollback` never throws — with no `previous/` snapshot yet, it
+  // reports success at the version already running, which is the true state, not an error.
+  resetObservations();
+  await gotoIdle(`${BASE}/#/settings/updates`);
+  await page.waitForFunction(
+    () => !/Loading/.test(document.querySelector('#updatesStatus')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const initialStatus = await page.evaluate(() => document.querySelector('#updatesStatus')?.textContent ?? '');
+  check('the updates panel loads real status, not a placeholder',
+    requestWasMade('/api/v1/updates/status') && /Channel/.test(initialStatus) && /Pinned channel keys/.test(initialStatus),
+    initialStatus.slice(0, 200));
+
+  await clickOrExplain(page, '#checkUpdates');
+  await page.waitForFunction(
+    () => /Update check completed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const afterCheck = await page.evaluate(() => ({
+    message: document.querySelector('#statusMessage')?.textContent ?? '',
+    isError: document.querySelector('#statusMessage')?.classList.contains('error') ?? false,
+  }));
+  check('Check for updates reaches the real endpoint, not a decorative form',
+    requestWasMade('/api/v1/updates/check') && !afterCheck.isError, JSON.stringify(afterCheck));
+
+  const originalChannel = await page.$eval('#updateChannel', (node) => node.value);
+  const otherChannel = await page.$eval('#updateChannel',
+    (node, current) => [...node.options].map((o) => o.value).find((v) => v !== current),
+    originalChannel);
+  await page.select('#updateChannel', otherChannel);
+  await clickOrExplain(page, '#applyChannel');
+  await page.waitForFunction(
+    () => /Channel change completed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const afterChannelChange = await page.evaluate(() => document.querySelector('#updatesStatus')?.textContent ?? '');
+  check('Change channel reaches the real endpoint and the status panel reflects the new channel',
+    requestWasMade('/api/v1/updates/channel') && afterChannelChange.includes(otherChannel),
+    afterChannelChange.slice(0, 200));
+  // Round-tripped: this suite must leave the probe's declared state as it found it, the same
+  // discipline the password-change round-trip above applies to the credential.
+  await page.select('#updateChannel', originalChannel);
+  await clickOrExplain(page, '#applyChannel');
+  await page.waitForFunction(
+    () => /Channel change completed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+
+  await clickOrExplain(page, '#approveUpdate');
+  await page.waitForFunction(
+    () => document.querySelector('#statusMessage')?.classList.contains('error') === true,
+    { timeout: 15000 },
+  );
+  const afterApprove = await page.evaluate(() => document.querySelector('#statusMessage')?.textContent ?? '');
+  check('Approve staged is refused with the real reason — nothing is staged, not a silent no-op',
+    requestWasMade('/api/v1/updates/approve') && /no update is staged/i.test(afterApprove),
+    afterApprove);
+
+  resetObservations();
+  await clickOrExplain(page, '#applyUpdate');
+  await page.waitForFunction(
+    () => /Recent strong reauthentication/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const afterApply = await page.evaluate(() => document.querySelector('#statusMessage')?.textContent ?? '');
+  check('Apply staged is gated by the same strong-reauthentication check as Authorize — not decorative',
+    requestWasMade('/api/v1/updates/apply') && /Recent strong reauthentication/i.test(afterApply),
+    afterApply);
+
+  await clickOrExplain(page, '#rollbackUpdate');
+  await page.waitForFunction(
+    () => /Rollback completed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
+    { timeout: 15000 },
+  );
+  const afterRollback = await page.evaluate(() => ({
+    message: document.querySelector('#statusMessage')?.textContent ?? '',
+    isError: document.querySelector('#statusMessage')?.classList.contains('error') ?? false,
+  }));
+  check('Roll back reaches the real endpoint and reports the true state, not an error, when there is nothing to revert from',
+    requestWasMade('/api/v1/updates/rollback') && !afterRollback.isError, JSON.stringify(afterRollback));
+
   at('settings');
   // --- settings actually persists ------------------------------------------
   resetObservations();

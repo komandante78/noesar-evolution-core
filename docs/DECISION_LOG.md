@@ -11586,3 +11586,24 @@ workspace, 3 crates never packaged), `F-CAP4-001` (`sandbox/`+`templates/` unrea
 **Reversal cost.** None — documentation and state only, no code or deployment touched.
 **Status.** applied. No container beyond the disposable analysis one was created; it was
 removed by `--rm` in every run.
+
+## D-0498 · #/settings/updates driven end to end in browser-e2e.mjs — 2026-08-17
+**Decision.** Closed the 6th of `D-0491`'s 9 named "backend proven, not e2e-driven"
+occurrences (Owner: "procedi con A" — the e2e-template option). `tools/browser-e2e.mjs` now
+drives all five buttons: Check, Change channel (round-tripped), Approve staged, Apply staged,
+Roll back — inserted before `authority-form` so the reauth-gate assertion on Apply stays
+deterministic (session not yet elevated at that point in the run).
+**Why.** `update-manager.test.mjs`/`updates-channel-key-http.test.mjs` prove the pipeline;
+nothing had proven the buttons the Owner clicks reach it.
+**Rejected.** Fabricating a signed update package/private key to drive a real `apply` success —
+out of scope, same posture `D-0493` took for passkey/WebAuthn. Each assertion instead matches
+the real, honest outcome read directly from `update-manager.mjs` before writing the check:
+empty inbox on `check`, `NOTHING_STAGED` on `approve`, the strong-reauth 403 on `apply`,
+success-at-current-version (not an error) on `rollback` since `rollback()` never throws.
+**Evidence.** Full disposable-probe run, `tools/run-browser-e2e.sh`: **490/492 PASS**, all 5 new
+checks PASS. Both FAILs pre-existing and already tracked, unrelated to this change:
+`POINT-2B-MEASURE` (`F-SLASH-001`, known flake) and `I18N-RUNTIME` (`F-I18N-002`, 643/909,
+baseline 607 — unchanged). `docker ps -a --filter name=noesar-evolution` before/after: unchanged
+(the probe container the script created was removed by its own trap).
+**Reversal cost.** None — test-only change, no product code touched.
+**Status.** applied.

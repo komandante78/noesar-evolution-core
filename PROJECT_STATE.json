@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0497: TOOLS_MODULES_INDEX section 2-4 deep review complete (17 slash commands, 20 Rust crates, 6 capabilities/ dirs) -- 102/102 named items now reviewed. cargo test --workspace --offline VERIFIED 144/144 passed. 3 new findings recorded (F-TOOLS2-001, F-RUST-001, F-CAP4-001), none fixed -- out of this review phase declared scope, same posture section 1 took for its own 7 gaps.",
-  "phase_status": "D-0497_applied__TOOLS_MODULES_INDEX_sec2-4_reviewed",
-  "next_phase": "Owner decides: apply the e2e-driving template to one of the 7 remaining page-level gaps, or act on another named open item (F-SLASH-001, F-MODEL-001, F-TOOLS2-001, F-RUST-001, F-CAP4-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling)",
+  "current_phase": "D-0498: #/settings/updates driven end to end in tools/browser-e2e.mjs -- 5 new checks (check/change-channel/approve/apply/rollback), all PASS. Disposable-probe full run: 490/492 (2 pre-existing tracked FAILs: F-SLASH-001 flake, F-I18N-002 gap), unrelated to this change. Closes the 6th of D-0491's 9 named 'backend proven, not e2e-driven' occurrences (after authority D-0492 and password-change D-0493) -- 6 remain: research, theme/accent, log-search/debug-mode, skills, modules, remote-targets.",
+  "phase_status": "D-0498_applied__settings_updates_e2e_driven",
+  "next_phase": "Owner decides: apply the e2e-driving template to one of the 6 remaining page-level gaps, or act on another named open item (F-SLASH-001, F-MODEL-001, F-TOOLS2-001, F-RUST-001, F-CAP4-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling)",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "3b533777ad8d19d7a3c5ce863baf5d300aa02f76",
-  "last_updated_utc": "2026-08-17T07:20:00Z",
+  "last_updated_utc": "2026-08-17T07:45:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1039,7 +1039,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "TOOLS_MODULES_INDEX sec2-4 review is complete (D-0497) -- 102/102 named items now reviewed, no code deployed or removed. Owner to choose next: (a) apply the e2e-driving template to one of the 7 remaining page-level gaps, (b) act on a named open item -- F-SLASH-001 (design choice needed), F-MODEL-001, F-TOOLS2-001 (3 slash-command dispatch-layer gaps), F-RUST-001 (noesar-auth crate untested/unwired), F-CAP4-001 (capabilities/sandbox+templates unread), documentation copy fix D-0489, cargo publish, independent pentest scheduling. No code changes or deployment without explicit Owner authorization for whichever is chosen.",
+  "next_action": "#/settings/updates e2e gap is closed (D-0498) -- no code changed beyond the test file, no deployment. Owner to choose next: (a) apply the e2e-driving template to one of the 6 remaining page-level gaps (research, theme/accent, log-search/debug-mode, skills, modules, remote-targets), (b) act on a named open item -- F-SLASH-001 (design choice needed), F-MODEL-001, F-TOOLS2-001, F-RUST-001, F-CAP4-001, documentation copy fix D-0489, cargo publish, independent pentest scheduling. No code changes or deployment without explicit Owner authorization for whichever is chosen.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -469,7 +469,15 @@ the page is honest about its own current limit — "no update channel key is pin
 installation, so nothing can currently be applied. This is stated rather than hidden" — matching
 `CLAUDE10.md` rule 38 in spirit (no false PASS, here applied to the product's own copy). Backend
 suites `update-manager.test.mjs`, `updates-channel-key-http.test.mjs`.
-*Missing*: no e2e click-path found for any of the five buttons.
+*Missing → CLOSED, `D-0498` (2026-08-17)*: `tools/browser-e2e.mjs` now drives all five buttons —
+Check (real 200, no crash), Change channel (round-tripped, status panel reflects the change),
+Approve staged (refused with the real `NOTHING_STAGED` reason, nothing silently swallowed),
+Apply staged (refused by the same strong-reauthentication gate `#authorizePlan` uses — proven
+deterministic by running before `authority-form`'s own reauth call), Roll back (reaches the real
+endpoint and reports the true state — success at the version already running — rather than a
+fabricated error, since there is nothing to revert from on a fresh install). A real, signed
+update package was **not** fabricated to drive a live `apply` success — same posture as the
+passkey/WebAuthn exclusion in `password-change`, `D-0493`.
 *To change*: not built this pass.
 
 **`#/settings/skills`** (`index.html:1158-1161`, `app.js:5855-5873`).
@@ -859,7 +867,14 @@ coverage in `coden-invariant-adversarial.test.mjs`.
   standalone reusable AGPL package (`D-0476`), the strongest NLnet-funding-fit candidate found.
 
 **No code was changed in any of these 18 phases** — this was a read-only, evidence-gathering
-review. `docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 items) has not been started.
+review. `docs/TOOLS_MODULES_INDEX_2026-08-16.md` (103 items, now 102 — `D-0494` corrected the
+count) was reviewed to completion separately (`D-0494`, `D-0497`).
+
+**Update, post-review (non-destructive — the 18-phase tally above is left as written):** of the
+9 "backend proven, not e2e-driven" occurrences named above, 3 are now closed by later phases:
+`#/coden/agent/authority` (`D-0492`), `password-change`/passkeys (`D-0493`), `#/settings/updates`
+(`D-0498`, 2026-08-17). **6 remain**: `#/research`, theme/accent, log-search/debug-mode, skills,
+modules, remote-targets.
 
 ---
 
