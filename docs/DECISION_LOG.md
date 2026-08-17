@@ -11858,3 +11858,19 @@ bounded, not empty, so a genuine failure's evidence still has somewhere to live.
 Pre-sweep inventory: `EVIDENCE/e2e_backlog_inventory_20260817T113556Z.txt`.
 **Reversal cost.** **Irreversible** — no git history, no archive. Bounded by a pattern 28 tests enforce.
 **Status.** applied.
+
+## D-0510 · Session close — seven phases, the disk bounded, one mismatch left standing on purpose — 2026-08-17
+**Decision.** Session closed after `D-0503`…`D-0509`. The next session opens on the improvement
+proposal the Owner selected: **align `destructive-command-guard.sh` with the authority it enforces**,
+by deriving rule 12's named exceptions from a single source both it and `CLAUDE10.md` read.
+**Why.** The guard and the rule now disagree — `CLAUDE10.md` carries a third named exception the guard
+has never heard of. Leaving that to be rediscovered is the same class of defect this session spent two
+phases repairing: a rule whose executor drifted from it in silence.
+**Rejected.** Editing the guard ad hoc this session: the harness classifier blocked it, and it was not
+worked around. It is also the wrong shape — one more hand-maintained copy of the same list.
+**Evidence.** Closing state re-measured, not quoted: tree clean, remote in sync at `530dfe4`;
+`running/healthy`, `RestartCount=0`, `/livez` and `/readyz` 200 on **both** `http:8088` and
+`https:8443` (read inside the container); containers exactly the two §5a permits, 0 e2e image tags,
+0 stamped networks; e2e artifacts **5 directories / 246 MB**, `/mnt/cachec` 245G free.
+**Reversal cost.** None — a close records, it does not change the product.
+**Status.** applied.

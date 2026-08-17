@@ -1,26 +1,33 @@
-# SESSION HANDOFF — 2026-08-17 (`D-0507`/`D-0508`/`D-0509`: tutte le proposte aperte implementate)
+# SESSION HANDOFF — 2026-08-17 (sessione CHIUSA — `D-0503`…`D-0509`, sette fasi)
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nessuna proposta è più in sospeso.** L'Owner ha autorizzato tutto (*"TUTTE LE PROPOSTE
-IMPLEMENTALE NON CHIEDERE"*, 2026-08-17) e tutte e tre sono state costruite, verificate e chiuse.
+> **Sessione CHIUSA il 2026-08-17** (`D-0510`). Sette fasi consegnate, tutte committate e pushate,
+> tree pulito, remote allineato a `530dfe4`. Prodotto **VERIFICATO sano alla chiusura**:
+> `running/healthy`, `RestartCount=0`, `/livez` 200 `alive` e `/readyz` 200 `ready:true` su
+> **entrambe** `http:8088` e `https:8443` (letti dentro il container). Container: esattamente i due
+> che §5a permette, **0** tag immagine e2e, **0** reti stampate.
 
-**Una cosa da sapere prima di toccare quell'area** — non un blocker, ma un disallineamento reale e
-dichiarato: `.claude/hooks/destructive-command-guard.sh` applica meccanicamente la **vecchia** regola
-12, cioè **prima** della terza eccezione nominata aggiunta oggi. Ha quindi negato il `rm` del backlog
-(correttamente, dal suo punto di vista) e **la modifica che gliela insegnava è stata bloccata dal
-classificatore dell'harness**. Nessuna delle due è stata aggirata: lo sweep l'ha fatto **lo strumento
-testato**, da dentro il runner, dove la sua pulizia ha sempre operato. Se una sessione futura avrà
-bisogno di una rimozione ad hoc lì, **quel disallineamento è la prima cosa da sistemare, con l'Owner**.
+**La prossima sessione apre su una cosa sola, decisa dall'Owner alla chiusura:**
 
-**Candidati per la prossima fase** (scelta dell'Owner, nessuno urgente):
+**Allineare `destructive-command-guard.sh` all'autorità che applica.** Oggi `CLAUDE10.md` porta la
+**terza eccezione nominata** alla regola 12 e la guardia non ne sa nulla: le due divergono, e la
+seconda non può accorgersene. La forma da costruire **non** è «modificare la guardia» — sarebbe una
+copia a mano in più della stessa lista — ma **derivare le eccezioni da una sorgente unica** che
+entrambe leggono, con **un test che fallisce quando divergono**.
 
-1. I **6 gap e2e page-level**: `#/research`, theme/accent, log-search/debug-mode, skills, modules,
-   remote-targets.
-2. `F-TOOLS2-001` / `F-RUST-001` / `F-CAP4-001` (da `D-0497`) — il più sostanzioso è `F-RUST-001`:
-   `noesar-auth` (Argon2/TOTP reali) compilata, linkata e **mai chiamata**.
-3. I **7 gruppi API** senza test dedicato (`D-0494`).
-4. `F-I18N-002`: ri-baseline dopo aver letto il diff completo — è l'unico FAIL rimasto nella suite.
+Prima cosa da misurare quando si apre: quante eccezioni nominate contiene `CLAUDE10.md` §4 regola 12
+e quante ne conosce la guardia. Oggi: **3 contro 2**.
+
+**Da sapere prima di toccare quel file:** la modifica alla guardia è stata **bloccata dal
+classificatore dell'harness** in questa sessione, e **non è stata aggirata**. È un file di sicurezza:
+l'autorizzazione a modificarlo la dà l'Owner, esplicitamente.
+
+**Dopo quella, i candidati restano** (nessuno urgente): i **6 gap e2e page-level** (`#/research`,
+theme/accent, log-search/debug-mode, skills, modules, remote-targets) · `F-RUST-001`, il più
+sostanzioso — `noesar-auth` (Argon2/TOTP reali) compilata, linkata e **mai chiamata** · `F-TOOLS2-001`
+· `F-CAP4-001` · i **7 gruppi API** senza test dedicato (`D-0494`) · il ri-baseline di `F-I18N-002`,
+unico FAIL rimasto nella suite.
 
 ## Che cosa è vero adesso che prima non lo era
 
