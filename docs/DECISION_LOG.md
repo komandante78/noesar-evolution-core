@@ -11666,3 +11666,41 @@ something to quietly drop. `F-SLASH-001` updated with this 4th manifestation.
 **Reversal cost.** None — test-only, and the suite total is unchanged by the mechanism itself.
 **Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
 stamped network survived.
+
+## D-0501 · `F-SLASH-001` closed — the `/` gesture measured on the surface a person actually uses — 2026-08-17
+**Decision.** Owner chose **design A** from the fork this finding had been waiting on since
+`D-0463`. `tools/browser-e2e.mjs`'s `coden-slash-feedback` step now drives the **live terminal**
+rather than `#codenPrompt`, the legacy composer the modern terminal retires by design
+(`D-0413`). The four terminal-driving helpers were hoisted from block scope to file scope
+exactly as the finding's own record prescribed, plus `submitTerminalLine()` and
+`openLiveTerminal()`.
+**Why.** The old step asserted on `[data-bench-panel].active`, a path the visible surface never
+takes: the terminal answers a `/` command by rendering into its own transcript
+(`showAddress()`), never touching the parent's panels. So the step was measuring a surface a
+person does not have, which is why no retry could ever fix it — it was steady state, not a race.
+Design A answers the Owner's actual complaint («i comandi / non so se funzionano, non vedo
+cambiamenti e non si capisce») where the complaint lives.
+**Rejected.** A `jump()`-style bypass, as used at `F-PANEL-001`'s site — setting
+`location.hash` would prove the address resolves while proving nothing about what a person
+typing sees, and this step exists to test a gesture. Design B (keep testing the composer and
+have the check *declare* when the terminal has claimed the surface) — the Owner's call.
+**Evidence.** Six checks, all PASS on **two consecutive runs of the final code**: the line
+composes on the terminal prompt exactly as typed; the visible surface demonstrably changes
+(520 → 685 chars — «non vedo cambiamenti», answered literally); the arrow and the reason are on
+screen («non si capisce», answered); no doomed call is fired; **`/diff <realRunId>` returns that
+run's own record** through `workspace.get` — measured `status: RESTORED`, the real uuid, real
+plan steps, not a placeholder; and `/approve`, which no panel owns, says what it needs and runs
+nothing. Probe **498/500**. Two defects were found in the NEW checks while driving them and both
+were fixed before closing: the `/diff <run>` wait was satisfied by the terminal's own **echo** of
+the submitted line (`coden-terminal.js:442`) so it proceeded before any answer existed; and a
+blind `slice(-260)` diagnostic reported the PREVIOUS command's JSON, because one entry's
+truncation marker sits adjacent to the next on the wrapped screen. Diagnostics are now
+marker-anchored.
+**Also found, recorded not repaired.** `F-E2E-001` failed in the final run with its symptom
+matching the 2026-08-13 record verbatim — its **second independent observation**, four days
+apart. Its own text set the bar ("a flake chased without a second observation is a guess"), so
+that objection is now gone. Out of this phase's authorised scope.
+**Reversal cost.** None — test-only. Panel routing stays proven by `jump()` for every bench
+panel and, since `D-0461`, agent panels too.
+**Status.** applied. Containers after the run: exactly the two permitted, no e2e image tag or
+stamped network survived.

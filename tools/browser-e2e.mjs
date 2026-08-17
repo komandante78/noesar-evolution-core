@@ -429,6 +429,125 @@ async function soft(name, run) {
   }
 }
 
+// --- driving the embedded terminal ------------------------------------------------------
+//
+// At FILE scope since `D-0501`, and the reason is `F-SLASH-001`: these four were block-scoped
+// inside the `coden-terminal` step, which is why the `coden-slash-feedback` step ~2,600 lines
+// below could only ever drive the LEGACY composer — and that composer is retired by design the
+// moment the terminal reaches `live` (`D-0413`), so the step was reaching for a surface a person
+// never sees on a fresh `#/coden` load. The finding's own record named this hoist as the
+// prerequisite for repairing it. Moved verbatim; no behaviour was changed in the move.
+
+const terminalFrame = () => page.frames().find((frame) => frame.url().includes('coden-terminal.html')) ?? null;
+
+/** `textContent`, not `innerText`: `innerText` returns only what is visibly laid out, and
+ *  xterm's rows are painted into a subtree whose layout the harness has no reason to trust
+ *  when the question is "did the shared renderer produce this frame". */
+const screenText = async () => {
+  const frame = terminalFrame();
+  if (!frame) return '';
+  // `.xterm-rows` and NOT the whole host: the host's `textContent` also carries xterm's
+  // injected <style> element and its screen-reader live region, and the stylesheet alone is
+  // hundreds of characters that pushed the actual screen out of every truncated diagnostic
+  // — the first version of this helper reported CSS where it meant to report the frame.
+  return frame.evaluate(() => {
+    const rows = document.querySelector('#terminalHost .xterm-rows');
+    const live = document.querySelector('#terminalHost .live-region');
+    return `${rows?.textContent ?? ''}\n${live?.textContent ?? ''}`;
+  });
+};
+
+/** What the prompt row currently holds — the only honest way to ask "did that keystroke
+ *  arrive". The renderer draws the prompt as `> <text>▍` inside the box, so a keystroke that
+ *  reached `onData` is visible there and one that did not is not. */
+const promptRow = async () => {
+  const text = await screenText();
+  const match = text.match(/>\s*([^│\n]*)▍/);
+  return (match ? match[1] : '').trim();
+};
+
+/** Type, and REPORT WHICH INPUT PATH the emulator actually accepted.
+ *
+ * Typing into an emulator that lives in a SUBFRAME needs the browser's focus to be in that
+ * frame, not merely on an element inside it: `element.focus()` from `frame.evaluate` moves the
+ * frame's own active element and leaves the top document holding the keyboard, so the keystrokes
+ * land on the page instead. Measured — runs 3, 4 and 5 all typed into nothing. Clicking the
+ * frame is what actually hands the keyboard over, and it is also what a person does.
+ *
+ * Three paths are tried in order of realism, and the one that worked is carried in
+ * `lastInputPath` so the checks below can say so rather than quietly passing on whichever
+ * one happened to land:
+ *
+ *   1. `keyboard.sendCharacter` — CDP `Input.insertText`, the path a real keypress and an
+ *      IME both end on, and the one xterm.js reads for printable characters;
+ *   2. `keyboard.type` — synthesised keydown/keypress/keyup;
+ *   3. a real `InputEvent` dispatched on xterm's own helper textarea, inside the frame.
+ *
+ * Path 3 is NOT a pass. It proves the emulator's wiring is intact while saying that nothing
+ * the browser's own input pipeline produced ever got there — which is a finding about the
+ * harness or about the surface, and either way is reported, never hidden. Runs 5-11 all
+ * failed at paths 1 and 2 with the frame focused and the caret in the textarea, and this is
+ * what distinguishes "the product ignores typing" from "the driver cannot type into it".
+ */
+let lastInputPath = 'none';
+const typeIntoTerminal = async (text) => {
+  const frame = terminalFrame();
+  if (!frame) throw new Error('the terminal document is not embedded');
+  const before = await promptRow();
+  const changed = async () => (await promptRow()) !== before;
+
+  await page.click('#codenTerminalHost iframe.coden-terminal-embed');
+  await frame.focus('#terminalHost .xterm-helper-textarea');
+  for (const character of text) await page.keyboard.sendCharacter(character);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  if (await changed()) { lastInputPath = 'insertText'; return; }
+
+  await page.keyboard.type(text);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  if (await changed()) { lastInputPath = 'keydown'; return; }
+
+  await frame.evaluate((typed) => {
+    const textarea = document.querySelector('#terminalHost .xterm-helper-textarea');
+    if (!textarea) return;
+    textarea.value = typed;
+    textarea.dispatchEvent(new InputEvent('input', { bubbles: true, data: typed, inputType: 'insertText' }));
+  }, text);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  lastInputPath = (await changed()) ? 'synthetic-input-event' : 'nothing-reached-the-emulator';
+};
+
+/**
+ * Submit the line currently on the prompt and wait for the prompt to be consumed.
+ *
+ * Polled, never a fixed sleep, for the reason `D-0448` already measured on the `/help`
+ * submission: `submit()` clears `view.prompt` synchronously before its async call
+ * (`coden-terminal.js:357-358`), but the frame is drawn on its own schedule, so a fixed delay
+ * occasionally reads the screen between the keystroke landing and the next paint.
+ */
+const submitTerminalLine = async () => {
+  await page.keyboard.press('Enter');
+  let row = await promptRow();
+  for (let waited = 0; row !== '' && waited < 3000; waited += 200) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    row = await promptRow();
+  }
+  return row;
+};
+
+/** Bring the terminal up at `#/coden` and wait for it to be genuinely `live` — the state the
+ *  parent region publishes once the bridge has attached, not merely "the iframe exists". */
+const openLiveTerminal = async () => {
+  await gotoIdle(`${BASE}/#/coden`);
+  await page.waitForFunction(
+    () => document.querySelector('#codenTerminalHost')?.dataset.terminalState === 'live',
+    { timeout: 30000 },
+  );
+  await page.waitForFunction(
+    () => Boolean(document.querySelector('#codenTerminalHost iframe.coden-terminal-embed')),
+    { timeout: 15000 },
+  );
+};
+
 try {
   at('bootstrap');
   // --- bootstrap the throwaway Owner through the real forms ----------------
@@ -1077,83 +1196,10 @@ try {
     // asserted, because the split is exactly where a surface like this silently comes apart:
     // a frame that attaches while the parent's status line still says "Not connected" is two
     // surfaces disagreeing about one fact.
-    const terminalFrame = () => page.frames().find((frame) => frame.url().includes('coden-terminal.html')) ?? null;
-    /** `textContent`, not `innerText`: `innerText` returns only what is visibly laid out, and
-     *  xterm's rows are painted into a subtree whose layout the harness has no reason to trust
-     *  when the question is "did the shared renderer produce this frame". */
-    const screenText = async () => {
-      const frame = terminalFrame();
-      if (!frame) return '';
-      // `.xterm-rows` and NOT the whole host: the host's `textContent` also carries xterm's
-      // injected <style> element and its screen-reader live region, and the stylesheet alone is
-      // hundreds of characters that pushed the actual screen out of every truncated diagnostic
-      // — the first version of this helper reported CSS where it meant to report the frame.
-      return frame.evaluate(() => {
-        const rows = document.querySelector('#terminalHost .xterm-rows');
-        const live = document.querySelector('#terminalHost .live-region');
-        return `${rows?.textContent ?? ''}\n${live?.textContent ?? ''}`;
-      });
-    };
-    /** Typing into an emulator that lives in a SUBFRAME needs the browser's focus to be in that
-     *  frame, not merely on an element inside it: `element.focus()` from `frame.evaluate` moves
-     *  the frame's own active element and leaves the top document holding the keyboard, so the
-     *  keystrokes land on the page instead. Measured — runs 3, 4 and 5 all typed into nothing.
-     *  Clicking the frame is what actually hands the keyboard over, and it is also what a person
-     *  does. The explicit `focus()` after it is belt and braces for the case where the click
-     *  lands on padding rather than on xterm's screen. */
-    /** What the prompt row currently holds — the only honest way to ask "did that keystroke
-     *  arrive". The renderer draws the prompt as `> <text>▍` inside the box, so a keystroke that
-     *  reached `onData` is visible there and one that did not is not. */
-    const promptRow = async () => {
-      const text = await screenText();
-      const match = text.match(/>\s*([^│\n]*)▍/);
-      return (match ? match[1] : '').trim();
-    };
-
-    /** Type, and REPORT WHICH INPUT PATH the emulator actually accepted.
-     *
-     * Three paths are tried in order of realism, and the one that worked is carried in
-     * `lastInputPath` so the checks below can say so rather than quietly passing on whichever
-     * one happened to land:
-     *
-     *   1. `keyboard.sendCharacter` — CDP `Input.insertText`, the path a real keypress and an
-     *      IME both end on, and the one xterm.js reads for printable characters;
-     *   2. `keyboard.type` — synthesised keydown/keypress/keyup;
-     *   3. a real `InputEvent` dispatched on xterm's own helper textarea, inside the frame.
-     *
-     * Path 3 is NOT a pass. It proves the emulator's wiring is intact while saying that nothing
-     * the browser's own input pipeline produced ever got there — which is a finding about the
-     * harness or about the surface, and either way is reported, never hidden. Runs 5-11 all
-     * failed at paths 1 and 2 with the frame focused and the caret in the textarea, and this is
-     * what distinguishes "the product ignores typing" from "the driver cannot type into it".
-     */
-    let lastInputPath = 'none';
-    const typeIntoTerminal = async (text) => {
-      const frame = terminalFrame();
-      if (!frame) throw new Error('the terminal document is not embedded');
-      const before = await promptRow();
-      const changed = async () => (await promptRow()) !== before;
-
-      await page.click('#codenTerminalHost iframe.coden-terminal-embed');
-      await frame.focus('#terminalHost .xterm-helper-textarea');
-      for (const character of text) await page.keyboard.sendCharacter(character);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      if (await changed()) { lastInputPath = 'insertText'; return; }
-
-      await page.keyboard.type(text);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      if (await changed()) { lastInputPath = 'keydown'; return; }
-
-      await frame.evaluate((typed) => {
-        const textarea = document.querySelector('#terminalHost .xterm-helper-textarea');
-        if (!textarea) return;
-        textarea.value = typed;
-        textarea.dispatchEvent(new InputEvent('input', { bubbles: true, data: typed, inputType: 'insertText' }));
-      }, text);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      lastInputPath = (await changed()) ? 'synthetic-input-event' : 'nothing-reached-the-emulator';
-    };
-
+    // `terminalFrame`, `screenText`, `promptRow` and `typeIntoTerminal` used to be defined
+    // HERE, block-scoped to this step. They were hoisted to file scope in `D-0501` because
+    // `F-SLASH-001`'s repair needs to drive the terminal from a second step far below, and its
+    // own record named this hoist as the prerequisite. Nothing about them changed in the move.
     const embedded = await page.evaluate(() => {
       const host = document.querySelector('#codenTerminalHost');
       const frames = host?.querySelectorAll('iframe.coden-terminal-embed') ?? [];
@@ -3747,126 +3793,181 @@ try {
   // first "did it route", then "was anything visible about it" — and both answers are
   // recorded even when the first is yes.
   await soft('POINT-2B-MEASURE', async () => {
-    await gotoIdle(`${BASE}/#/coden`);
-    await page.waitForSelector('#codenPrompt', { timeout: 15000 });
-    const before = await page.evaluate(() => ({
-      hash: location.hash,
-      benchOpen: document.querySelector('#view-coden')?.getAttribute('data-panel-open') ?? null,
-      whereVisible: (document.querySelector('#benchWhere')?.getBoundingClientRect().height ?? 0) > 0,
-      whereText: document.querySelector('#benchWhereName')?.textContent ?? '',
-      transcript: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().length,
-    }));
-    // F-SLASH-001 (2026-08-15, D-0463), STILL OPEN — this retry does NOT fix the underlying
-    // defect, it only turns an opaque Puppeteer error into a self-diagnosing one, so read the
-    // thrown message below rather than assuming green means healthy here.
+    // Historical note kept because it is the evidence for the design below, not decoration.
+    // `F-SLASH-001` (2026-08-15, `D-0463`) — CLOSED by `D-0501` with the Owner's design A.
     //
     // A one-shot pre-click check (composer height/display/terminal state, evaluated once right
-    // before the click) never fired before this retry existed — the composer was still visible
+    // before the click) never fired before a retry existed — the composer was still visible
     // at that single check — which first looked like a race narrower than one check could
-    // catch. It is not: driven over a SECOND run, wrapping the click in this same 5-attempt
+    // catch. It is not: driven over a SECOND run, wrapping the click in the same 5-attempt
     // retry `submitCodenAddress` above uses for its own race, the composer state came back
     // IDENTICAL across all 5 attempts spanning a full second — `height:0` while
     // `terminalState:'live'`, unchanged. That is steady state, the same class as `F-PANEL-001`
-    // (D-0461): on this fresh `gotoIdle` page load, the modern terminal has already reached
+    // (D-0461): on a fresh `gotoIdle` page load, the modern terminal has already reached
     // `live` and retired `#codenPrompt` by design (`D-0413`) before this check ever gets a
     // turn — not a timing gap a retry can close.
     //
-    // Unlike `F-PANEL-001`'s fix site, a `jump()`-style bypass is the wrong answer here: this
-    // check exists specifically to test the composer's GESTURE and its visible feedback (Owner
-    // s333 point 2), and the terminal's own gesture for an address renders inline into its own
-    // transcript (`showAddress()` in `coden-terminal.js`), never touching the
-    // `[data-bench-panel]` this check currently asserts on. The real fix needs the
-    // terminal-driving helpers from the `coden-terminal` step hoisted out of their current
-    // block scope and new assertions built for that different, never-yet-tested behavior — see
-    // `D-0463` for the two named designs, deliberately not picked here.
-    const composerState = async () => page.evaluate(() => {
-      const box = document.querySelector('#codenPrompt');
-      const rect = box?.getBoundingClientRect();
-      return {
-        exists: Boolean(box),
-        height: rect?.height ?? 0,
-        display: box ? getComputedStyle(box).display : 'no-element',
-        visibility: box ? getComputedStyle(box).visibility : 'no-element',
-        terminalState: document.querySelector('#codenTerminalHost')?.dataset.terminalState ?? 'no-host',
-      };
+    // A `jump()`-style bypass was rejected as the answer here, unlike at `F-PANEL-001`'s fix
+    // site: this step exists to test a GESTURE and its visible feedback, and setting
+    // `location.hash` directly would assert that the address resolves while proving nothing
+    // about what a person typing sees. So the gesture moved to the surface that actually
+    // receives it.
+    // ---------------------------------------------------------------------------------
+    // DESIGN A, chosen by the Owner 2026-08-17, closing `F-SLASH-001` (`D-0463`/`D-0501`).
+    //
+    // What this step used to do, and why it could not work: it drove `#codenPrompt`, the LEGACY
+    // composer. On a fresh `#/coden` load the modern terminal reaches `live` and retires that
+    // composer BY DESIGN (`D-0413`) — measured as steady state, `height:0` unchanged across a
+    // full second of retries, not a race a retry could close. So the step was reaching for a
+    // surface a person does not have, and its assertions about `[data-bench-panel].active`
+    // described a path the visible surface never takes.
+    //
+    // The Owner's original complaint is the reason design A was chosen over design B: «i comandi
+    // / non so se funzionano, non vedo cambiamenti e non si capisce». The terminal IS the surface
+    // a person is looking at, so that complaint has to be answered there or it is not answered.
+    //
+    // What the terminal really does with these commands — read out of the product before writing
+    // a single assertion, never guessed:
+    //   bare `/diff`   -> `planTurn` returns `kind:'navigate'` (a panel owns it), and the
+    //                     terminal records `→ /diff`, then the `because` sentence
+    //                     ("`/diff` needs <run> to run, so this is the panel that shows it"),
+    //                     then renders the address inline via `showAddress()` — which for the
+    //                     three run-scoped addresses with no run emits a `Usage:` line
+    //                     (`coden-address-views.mjs:145,177`). It never touches
+    //                     `[data-bench-panel].active`, which is exactly why the old assertions
+    //                     could not pass here.
+    //   `/diff <run>`  -> `kind:'call'`, `workspace.get({runId})`
+    //                     (`coden-view-model.js:51`), recorded as `diff — ok` plus
+    //                     `detailLines(result)` (`coden-terminal.js:454`; `command` is the bare
+    //                     name, `coden-view-model.js:602`).
+    //   bare `/approve`-> `kind:'needs-argument'` — NO panel owns it, so it says what is missing
+    //                     and runs nothing. A different branch of the same decision, asserted
+    //                     too, so a repair to one branch cannot look like both.
+    //
+    // Panel routing itself is NOT left unproven by moving off the composer: `jump()` covers
+    // every bench panel and, since `F-PANEL-001`'s repair (`D-0461`), agent panels as well.
+    await openLiveTerminal();
+    const screenBefore = (await screenText()).replace(/\s+/g, ' ').trim();
+
+    // 1 · bare `/diff` — composed, submitted, and answered on the surface a person sees.
+    await page.click('#codenTerminalHost iframe.coden-terminal-embed');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await typeIntoTerminal('/diff');
+    const composed = await promptRow();
+    check('POINT-2B the command is composed on the terminal prompt, exactly as typed',
+      composed === '/diff', `prompt row: "${composed}" (input path ${lastInputPath})`);
+
+    await submitTerminalLine();
+    await soft('POINT-2B the terminal answers the bare command', async () => {
+      await terminalFrame().waitForFunction(
+        () => /needs/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        { timeout: 15000 },
+      );
     });
-    let clicked = false;
-    let lastState = null;
-    for (let attempt = 1; attempt <= 5 && !clicked; attempt += 1) {
-      lastState = await composerState();
-      if (lastState.height > 0 && lastState.display !== 'none') {
-        try { await page.click('#codenPrompt'); clicked = true; break; } catch { /* retry below */ }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+    const bare = (await screenText()).replace(/\s+/g, ' ').trim();
+    const bareMarkers = {
+      arrow: /→\s*\/diff/.test(bare),
+      why: /needs\s+<run>/.test(bare),
+      // Informational only, deliberately NOT asserted: the `Usage:` line `showAddress()` emits
+      // for a run-scoped address with no run is real, but whether it is still on the visible
+      // rows depends on how far the transcript has scrolled — measured true in one run and
+      // false in the next, on identical code. Asserting it would buy a flake, not coverage.
+      usage: /Usage:/.test(bare),
+      refused: /refused/i.test(bare),
+      error: /is not a function|undefined/i.test(bare),
+      // Anchored on the marker rather than a blind tail, for the reason spelled out at the
+      // `/approve` check below: a `slice(-260)` of this screen showed the wrong entry.
+      around: (bare.match(/.{0,70}needs <run>.{0,70}/) ?? ['(marker not on screen)'])[0],
+    };
+
+    // The literal complaint, asserted literally: something on the visible surface changed.
+    check('POINT-2B «non vedo cambiamenti» — the visible surface DID change when the command landed',
+      bare !== screenBefore && bare.length > screenBefore.length,
+      `before ${screenBefore.length} chars, after ${bare.length}`);
+    check('POINT-2B the command is acknowledged where a person is looking — in the terminal transcript',
+      bareMarkers.arrow, JSON.stringify(bareMarkers));
+    // «non si capisce», answered: a move for an unstated reason is the same defect seen from the
+    // other side, so the REASON must be on screen, not merely the movement.
+    check('POINT-2B it states WHY it showed the panel instead of running, and fires no doomed call',
+      bareMarkers.why && !bareMarkers.refused && !bareMarkers.error, JSON.stringify(bareMarkers));
+
+    // 2 · the same command WITH a real run — the half no surface had ever exercised. `planRunId`
+    // comes from the `workspace-actions` step's own plan, so this is a run this suite really
+    // created, not a fabricated id.
+    if (!planRunId) {
+      check('POINT-2B `/diff <run>` could not be driven — no run id came from the workspace-actions step',
+        false, 'planRunId is undefined; the earlier step must have failed — declared, not skipped silently');
+    } else {
+      await page.click('#codenTerminalHost iframe.coden-terminal-embed');
+      await page.keyboard.down('Control');
+      await page.keyboard.press('KeyU');
+      await page.keyboard.up('Control');
+      await typeIntoTerminal(`/diff ${planRunId}`);
+      await submitTerminalLine();
+      // Waited on the ANSWER's own marker, never on the run id.
+      //
+      // Measured, first attempt: waiting for the id to appear was satisfied INSTANTLY by the
+      // terminal's echo of the submitted line — `record('user', typed)` runs before the call
+      // (`coden-terminal.js:442`) — so the wait returned before any answer existed and the
+      // assertion read a screen that only held its own input back. A wait a check can satisfy
+      // by itself proves nothing, and it is the same lesson the `/help` submission above already
+      // records for `Commands:` versus `/logout`: pick a marker only the real outcome produces.
+      //
+      // Both outcomes are waited for, not just the good one, so a genuine refusal is measured
+      // rather than timing out into a bare "waiting failed".
+      await soft('POINT-2B the terminal answers `/diff <run>` (not merely echoes it)', async () => {
+        await terminalFrame().waitForFunction(
+          () => /—\s*ok|NOT_FOUND|refused|no run/i.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+          { timeout: 15000 },
+        );
+      });
+      const withRun = (await screenText()).replace(/\s+/g, ' ').trim();
+      const runMarkers = {
+        ok: /diff\s+—\s+ok/.test(withRun),
+        echoedTheId: withRun.includes(planRunId),
+        carriesRunFields: /"status"|"runId"|"files"/.test(withRun),
+        notFound: /NOT_FOUND|no run/i.test(withRun),
+        refused: /refused/i.test(withRun),
+        // The box-drawing frame dominates a raw tail and pushed the actual answer out of the
+        // first version of this diagnostic. Stripped, so the excerpt shows the transcript.
+        excerpt: withRun.replace(/[─│╭╮╰╯]/g, '').replace(/\s+/g, ' ').trim().slice(-320),
+      };
+      check('POINT-2B `/diff <run>` runs the real call and shows that run\'s own content, not a placeholder',
+        runMarkers.ok && !runMarkers.notFound && !runMarkers.refused,
+        JSON.stringify({ ...runMarkers, runId: planRunId }));
     }
-    if (!clicked) {
-      throw new Error(`#codenPrompt not clickable after 5 attempts over ~1s — last composer state: ${JSON.stringify(lastState)}`);
-    }
-    await page.type('#codenPrompt', '/diff');
-    await page.keyboard.press('Enter');
-    await new Promise((resolve) => { setTimeout(resolve, 600); });
-    const after = await page.evaluate(() => {
-      const active = document.querySelector('#view-coden [data-bench-panel].active');
-      const where = document.querySelector('#benchWhere');
-      return {
-        hash: location.hash,
-        activePanel: active?.getAttribute('data-bench-panel') ?? null,
-        activeVisible: (active?.getBoundingClientRect().height ?? 0) > 0,
-        whereVisible: (where?.getBoundingClientRect().height ?? 0) > 0,
-        whereText: document.querySelector('#benchWhereName')?.textContent ?? '',
-        transcriptTail: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().slice(-80),
-        title: document.title,
-      };
+
+    // 3 · a command NO panel owns — the other branch of the same decision. It must name what is
+    // missing and run nothing, never surface a server refusal for a call nobody asked to make.
+    await page.click('#codenTerminalHost iframe.coden-terminal-embed');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyU');
+    await page.keyboard.up('Control');
+    await typeIntoTerminal('/approve');
+    await submitTerminalLine();
+    await soft('POINT-2B the terminal answers a command no panel owns', async () => {
+      await terminalFrame().waitForFunction(
+        () => /Nothing was run/.test(document.querySelector('#terminalHost')?.textContent ?? ''),
+        { timeout: 15000 },
+      );
     });
-    check('POINT-2B the slash command routes — the address moves to the panel',
-      after.hash === '#/coden/bench/diff', `${before.hash} -> ${after.hash}`);
-    check('POINT-2B the panel it names is the one on screen',
-      after.activePanel === 'diff' && after.activeVisible, JSON.stringify(after));
-    check('POINT-2B something VISIBLE says where the command landed',
-      after.whereVisible && /Diff/i.test(after.whereText),
-      `benchWhere visible=${after.whereVisible} text=${JSON.stringify(after.whereText)} title=${JSON.stringify(after.title)}`);
-    check('POINT-2B the transcript acknowledges the command',
-      /diff/i.test(after.transcriptTail), JSON.stringify(after.transcriptTail));
-
-    // The transcript must SAY why it moved rather than running. A move for an unstated reason
-    // is the same «non si capisce» seen from the other side.
-    check('POINT-2B it states why it went to the panel instead of running',
-      /needs/i.test(after.transcriptTail) || /needs/i.test(await page.evaluate(() =>
-        (document.querySelector('#codenTranscript')?.textContent ?? ''))),
-      JSON.stringify(after.transcriptTail));
-
-    // The agent column, which is the other half of the same defect: `/plan` needs `<goal>`
-    // and fired `workspace.plan()` without one. Both failures had one cause, so both are
-    // asserted — a fix that repaired only the bench would look complete from here.
-    await page.click('#codenPrompt');
-    await page.type('#codenPrompt', '/plan');
-    await page.keyboard.press('Enter');
-    await new Promise((resolve) => { setTimeout(resolve, 600); });
-    const agent = await page.evaluate(() => {
-      const active = document.querySelector('#view-coden [data-agent-panel].active');
-      return {
-        hash: location.hash,
-        activeAgent: active?.getAttribute('data-agent-panel') ?? null,
-        agentVisible: (active?.getBoundingClientRect().height ?? 0) > 0,
-      };
-    });
-    check('POINT-2B an agent-column command routes too, and lands visibly',
-      agent.hash === '#/coden/agent/plan' && agent.activeAgent === 'plan' && agent.agentVisible,
-      JSON.stringify(agent));
-
-    // A command that needs a subject AND has no panel of its own must run nothing and say what
-    // is missing — never surface a server refusal for a call the person did not ask to make.
-    await page.click('#codenPrompt');
-    await page.type('#codenPrompt', '/approve');
-    await page.keyboard.press('Enter');
-    await new Promise((resolve) => { setTimeout(resolve, 600); });
-    const approve = await page.evaluate(() => ({
-      tail: (document.querySelector('#codenTranscript')?.textContent ?? '').trim().slice(-160),
-      hash: location.hash,
-    }));
-    check('POINT-2B a command with no panel of its own states what it needs, and runs nothing',
-      /needs/i.test(approve.tail) && !/refused/i.test(approve.tail.slice(-90)),
-      JSON.stringify(approve.tail));
+    const noPanel = (await screenText()).replace(/\s+/g, ' ').trim();
+    // Reported as PRESENCE, not as a tail slice. A blind `slice(-260)` of this screen is an
+    // unreliable window on what just happened — measured: it showed the middle of the PREVIOUS
+    // command's JSON while the marker this check asserts on was present and confirmed by two
+    // independent reads. A diagnostic that shows the wrong entry is worse than a short one,
+    // because the next session reads it as evidence.
+    const noPanelMarkers = {
+      saysNothingRan: /Nothing was run/.test(noPanel),
+      saysWhatItNeeds: /needs/.test(noPanel),
+      refused: /refused/i.test(noPanel),
+      around: (noPanel.match(/.{0,60}Nothing was run.{0,60}/) ?? ['(marker not on screen)'])[0],
+    };
+    check('POINT-2B a command no panel owns says what it needs and runs nothing',
+      noPanelMarkers.saysNothingRan && noPanelMarkers.saysWhatItNeeds && !noPanelMarkers.refused,
+      JSON.stringify(noPanelMarkers));
   });
 
   await leaveCodenTerminal();
