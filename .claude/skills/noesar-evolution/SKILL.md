@@ -93,7 +93,9 @@ l'installazione di domani, non per il test di oggi.
 3. **Migliorare attivamente, non aspettare che sia chiesto.** Ogni fase produce almeno una
    proposta concreta di miglioramento — architettura, sicurezza, prestazioni, portabilità,
    esperienza d'uso — con il beneficio atteso e il costo. Va in `docs/DECISION_LOG.md`, e la
-   migliore si nomina nella risposta all'Owner.
+   migliore si nomina nella risposta all'Owner. **E dichiara la sua aderenza al finanziamento**
+   (`D-0531`): quale piattaforma di `noesar-evolution-funding-fit` §1 e quale dei sette tratti —
+   *"nessuna"* è una risposta valida e va scritta, non aggirata con una pretesa allargata.
 4. **Il metro è esterno.** La domanda non è "soddisfa la matrice", è **"è più avanzato di ciò
    che esiste altrove, e in che cosa esattamente"**. Se la risposta onesta è no su un punto,
    si dice, con il punto nominato.

@@ -1,0 +1,29 @@
+{
+  "name": "@noesar/verified-acquisition",
+  "version": "1.0.0",
+  "description": "Fetch a publisher-signed document or a digest-committed artefact under a byte ceiling, and refuse it by name when it is not what was promised. No filesystem, no network of its own, no trust store — all three are injected.",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./conformance": "./conformance/index.mjs",
+    "./conformance/vectors.json": "./conformance/vectors.json",
+    "./SPEC.md": "./SPEC.md"
+  },
+  "files": [
+    "src",
+    "conformance",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

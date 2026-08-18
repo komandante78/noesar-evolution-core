@@ -381,7 +381,14 @@ cbl_fetch_all_containers() {
 # (CLAUDE10.md §5a/§21d), not every container on a shared host.
 cbl_is_noesar_scoped() {
   jq -e '
-    (.name | test("^noesar-evolution($|-)")) or
+    # `D-0530`: the separator is `-` OR `.`. This project names its throwaway containers with a
+    # DOT — `noesar-evolution.e2e-probe-<stamp>`, exactly as `noesar-evolution` skill §13 and
+    # §5a describe — and the old pattern matched only `-`, so every probe, runner and sonda was
+    # classified as somebody ELSE'"'"'s container and waved through as out of scope. On this host
+    # they were caught anyway, by their `org.noesar.*` labels, which is why it went unseen; a
+    # probe built from a non-product image would have slipped past both tests. Found by a
+    # fixture written for a different case (R8), which is the ordinary way this holds.
+    (.name | test("^noesar-evolution($|[-.])")) or
     ((.labels // {}) | keys | any(startswith("org.noesar."))) or
     ((.labels["org.opencontainers.image.title"] // "") == "NOESAR Evolution")
   ' >/dev/null 2>&1
@@ -430,32 +437,46 @@ cbl_check_containers() {
     # The rule and the instance were both wrong: the rule had no idea the product's own
     # deployment sequence exists.
     #
-    # The exemption is deliberately narrow, and each clause carries its own weight:
-    #   - the name is EXACTLY `noesar-evolution` — never a probe, a runner or a sonda;
+    # REPAIRED 2026-08-18 (`D-0530`), after it blocked EVERY turn of a session that deployed
+    # TWICE. The clause below used to require the preserved predecessor's id to come from the
+    # baseline. That models one deployment per session and nothing else: on a second deployment
+    # the predecessor is the FIRST deployment's replacement, so its id was created this session,
+    # the clause fell, and both survivors were reported as litter — including the running
+    # product. A guard that fires on every deployment trains its reader to dismiss it, which is
+    # the failure mode that made the mandatory `noesar-debuglab` hunt step a step everyone
+    # skipped (repaired 2026-07-30 for that identical reason).
+    #
+    # The exemption now states §21b directly instead of approximating it: **exactly two
+    # containers may exist at phase close — the running installation and ONE rollback.** It is
+    # granted only when all of this holds, and each clause carries its own weight:
     #   - an installation existed in the baseline, so something was there to replace;
-    #   - the container it replaced is STILL PRESENT and ITS ID CAME FROM THE BASELINE.
-    # The last clause is what distinguishes a replacement from a container conjured out of
-    # nothing: the parachute §3a requires must actually be on the host. Miss any one of them and
-    # the container blocks exactly as before.
+    #   - an installation named EXACTLY `noesar-evolution` is present now — the parachute is
+    #     useless without the thing it protects;
+    #   - EXACTLY ONE rollback is present, its name anchored to a UTC stamp. Not "at least one":
+    #     two rollbacks is itself a §21b breach and both then block, which is stricter than
+    #     before, not looser.
+    # Only those two names are exempt. A probe, a runner or a sonda blocks exactly as before,
+    # and so does a "predecessor" whose name carries no stamp — which is what keeps a container
+    # conjured from nothing from buying the exemption.
     had_installation="$(jq -r '[.[] | select(.name=="noesar-evolution")] | length' <<<"$baseline_json" 2>/dev/null || echo 0)"
-    preserved_predecessor="$(jq -r --argjson base "$baseline_json" '
-      ($base | map(.id)) as $baseids
-      | [ .[]
-          | select(.name | test("^noesar-evolution-(pre|old)-"))
-          | select(.id as $i | ($baseids | index($i)) != null) ]
-      | length' <<<"$current_json" 2>/dev/null || echo 0)"
+    local rollback_pattern='^noesar-evolution-(pre|old)-.*[0-9]{8}T[0-9]{6}Z$'
+    local rollbacks_now rollback_name installation_now
+    rollbacks_now="$(jq -r --arg p "$rollback_pattern" '[.[] | select(.name | test($p))] | length' <<<"$current_json" 2>/dev/null || echo 0)"
+    rollback_name="$(jq -r --arg p "$rollback_pattern" '[.[] | select(.name | test($p))] | (.[0].name // "")' <<<"$current_json" 2>/dev/null || echo "")"
+    installation_now="$(jq -r '[.[] | select(.name=="noesar-evolution")] | length' <<<"$current_json" 2>/dev/null || echo 0)"
 
     while IFS= read -r entry; do
       [ -z "$entry" ] && continue
       name="$(jq -r '.name' <<<"$entry" 2>/dev/null)"
       idshort="$(jq -r '.id[0:12]' <<<"$entry" 2>/dev/null)"
       if printf '%s' "$entry" | cbl_is_noesar_scoped; then
-        if [ "$name" = "noesar-evolution" ] \
+        if { [ "$name" = "noesar-evolution" ] || { [ -n "$rollback_name" ] && [ "$name" = "$rollback_name" ]; }; } \
            && [ "${had_installation:-0}" -gt 0 ] 2>/dev/null \
-           && [ "${preserved_predecessor:-0}" -gt 0 ] 2>/dev/null; then
+           && [ "${installation_now:-0}" -gt 0 ] 2>/dev/null \
+           && [ "${rollbacks_now:-0}" -eq 1 ] 2>/dev/null; then
           # Reported, never silent: a replacement is a fact the close must carry, not an
           # exemption that hides it.
-          echo "DEBT:the installation container was REPLACED this session under CLAUDE10.md §3a and its predecessor is preserved as required: $name ($idshort)"
+          echo "DEBT:the installation was REPLACED this session under CLAUDE10.md §3a; this is one of the exactly two containers §21b permits to survive (the running installation and one rollback): $name ($idshort)"
         else
           echo "FAIL:container created this session and not cleaned up (id absent from the SessionStart baseline): $name ($idshort)"
         fi

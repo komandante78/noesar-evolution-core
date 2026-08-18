@@ -149,6 +149,13 @@ COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
 # on its first import — the fourth occurrence of the defect `tui-import-closure.test.mjs` was
 # written to catch, and the first one that test caught before a build rather than after one.
 COPY --chown=10001:10001 apps/shared/ /opt/noesar/apps/shared/
+# `D-0526`. The extracted package the control plane now imports for verified acquisition —
+# transport, descriptor authenticity and the canonical JSON encoder nine other modules reach
+# through. Exactly the same failure the comment above describes, one directory over: without this
+# line the server throws on its first import, and the image would be a container that starts,
+# fails, and restarts for ever. `tui-import-closure.test.mjs` now walks the SERVER's import graph
+# too, so this line is checked rather than remembered.
+COPY --chown=10001:10001 packages/verified-acquisition/ /opt/noesar/packages/verified-acquisition/
 COPY --chown=10001:10001 database/ /opt/noesar/database/
 COPY --chown=10001:10001 tools/acceptance/ /opt/noesar/tools/acceptance/
 # The terminal shell itself. The WebUI's CodeN Evolution TUI page names this exact program

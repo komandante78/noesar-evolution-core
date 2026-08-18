@@ -434,6 +434,43 @@ printf '%s' "$BASE" > "$TMPDIR/baseR4.json"
 OUT="$(cbl_check_containers "$TMPDIR/baseR4.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
 assert_contains "$OUT" "FAIL:" "noesar-evolution-e2e-probe-1 (idPROBE" "the exemption covers the installation only, never a probe or a runner"
 
+echo "=== R5. TWO deployments in one session: both survivors are the two §21b permits ==="
+# The case measured on 2026-08-18, three times, on a session that deployed twice. After the
+# second deployment the preserved predecessor is the FIRST deployment's replacement, so its id
+# was created THIS session — the old clause required the predecessor's id to come from the
+# baseline, fell, and reported the RUNNING PRODUCT as uncleaned litter. §21b does not say the
+# rollback must predate the session; it says exactly two containers may survive.
+BASE="[$(entry idGEN0 noesar-evolution), $(entry idOLDROLL noesar-evolution-pre-20260817T160004Z)]"
+CUR="[$(entry idGEN2 noesar-evolution), $(entry idGEN1 noesar-evolution-pre-20260818T060547Z)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR5.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR5.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_no_fail "$OUT" "a second deployment in one session does not turn the product into litter"
+assert_contains "$OUT" "DEBT:" "noesar-evolution (idGEN2" "the replacement is still reported"
+assert_contains "$OUT" "DEBT:" "noesar-evolution-pre-20260818T060547Z" "and so is the one rollback it is allowed to keep"
+
+echo "=== R6. TWO rollbacks is a §21b breach, and now blocks instead of being waved through ==="
+BASE="[$(entry idGEN0 noesar-evolution)]"
+CUR="[$(entry idGEN2 noesar-evolution), $(entry idGEN1 noesar-evolution-pre-20260818T060547Z), $(entry idGEN3 noesar-evolution-pre-20260818T023359Z)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR6.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR6.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution (idGEN2" "with two rollbacks present the exemption is not granted at all"
+
+echo "=== R7. a rollback with no running installation is not a sanctioned survivor ==="
+BASE="[$(entry idGEN0 noesar-evolution)]"
+CUR="[$(entry idGEN1 noesar-evolution-pre-20260818T060547Z)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR7.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR7.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution-pre-20260818T060547Z" "a parachute with nothing to protect is litter, not a rollback"
+
+echo "=== R8. the exemption never covers a third container, however it is named ==="
+BASE="[$(entry idGEN0 noesar-evolution)]"
+CUR="[$(entry idGEN2 noesar-evolution), $(entry idGEN1 noesar-evolution-pre-20260818T060547Z), $(entry idPROBE2 noesar-evolution.e2e-probe-20260818T022520Z)]"
+printf '%s' "$BASE" > "$TMPDIR/baseR8.json"
+OUT="$(cbl_check_containers "$TMPDIR/baseR8.json" "$CUR" sessA "$TMPDIR/no-such-marker")"
+assert_contains "$OUT" "FAIL:" "noesar-evolution.e2e-probe-20260818T022520Z" "the probe still blocks while the two permitted survivors do not"
+assert_contains "$OUT" "DEBT:" "noesar-evolution (idGEN2" "and the two permitted survivors beside it are still exempt"
+
+
 echo
 echo "================================================================"
 echo "container-baseline fixture tests: $PASS passed, $FAIL failed"

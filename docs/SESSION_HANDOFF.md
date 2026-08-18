@@ -1,82 +1,94 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`…`D-0525` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `14cedd6` · **Live:** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`
+**Last updated:** 2026-08-18 · **Phase:** `s339` — `D-0526`…`D-0533` · **COMMITTED, NOT PUSHED, NOT DEPLOYED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `a202070` · **Live:** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z` (still `s338`)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending and nothing is half-built.** The Owner authorised the commit
-(«PROCEDI CON COMMIT»), then push and deploy («FAI ENTRAMBI»), and all three were performed:
-`9aa48a0` + `f7e5920` + `14cedd6` on `origin/main`, then deployed and verified live as
-`noesar-evolution:d0523-descriptor-signing-20260818T060209Z` (`D-0525`).
+**The Owner authorised the commit** («poi fai commit») and only that was done. Two things wait on
+a further word:
 
-**A descriptor is now believed only if a registered publisher signed it — on the installation the
-Owner actually uses.**
+1. **Push** — nothing has left this machine.
+2. **Deploy** of the `D-0526` half. The overlay **must copy `packages/verified-acquisition/`** or
+   the server throws on its first import — see below.
 
-**Then, and only on a new instruction: the `/model` chain the Owner named** («poi vai avanti con
-/model»). It was deliberately **not** started — rule 9, one phase per invocation. Its first
-measurement, before any code: *can a local inference runtime exist on this host without a
-host-level change?* (platform law §60-64). Today `NOESAR_LOCAL_MODEL_RUNTIME` is `disabled` on the
-container, no model artefact is present and no runtime binary is in the image — which is exactly
-why "starting a real model end to end" has been `[UNVERIFIED]` for three phases running.
+**`D-0528` is governance-only and could be committed on its own** — it touches no product code:
+the funding skill now names six platforms with their URLs, their licence terms and the date each
+was read, because the version written on 2026-08-14 described a programme that had closed on
+2026-06-01. **NGI Zero has concluded**; the target is **Restack** when its call reopens after
+summer 2026.
+
+**Read this before deploying — it is why this deployment is not routine.** The control plane now
+imports from `packages/`, which the base image did **not** copy. That is repaired in
+`oci/Dockerfile`, and `tui-import-closure.test.mjs` now proves it by walking the server's own
+import graph. **An overlay Dockerfile for this phase must copy `packages/verified-acquisition/`
+too** — an overlay copying only the changed `services/` files would ship a server that throws on
+its first import and restart-loops.
+
+**Then, on a new instruction: the `/model` chain** («poi vai avanti con /model»). Not started —
+rule 9. Its first measurement, before any code: *can a local inference runtime exist on this host
+without a host-level change?* (platform law §60-64). `NOESAR_LOCAL_MODEL_RUNTIME` is `disabled` on
+the container, no model artefact is on disk, no runtime binary is in the image.
 
 ---
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-`D-0520` made an artefact startable only if its bytes match the sha256 **the publisher declared**.
-That digest is a field of a document **nobody had signed**: the chain was strong at the wrong link.
+**`packages/verified-acquisition/` exists as a component another project could adopt**, and the
+product consumes it rather than a copy of it.
 
-**A descriptor is now accepted only if an ACTIVE key of a registered publisher signed it.**
-
-| Property | How it is held |
+| | |
 |---|---|
-| the signature covers `source` and `hashes.sha256` | ed25519 over `canonicalJsonBytes(document minus its signature)` — the shape `sector-modules.mjs` already uses, not a second format |
-| a revocation applies **retroactively** | verified on **every read**, never cached at import |
-| not checking cannot pass | `descriptorAuthenticity: null` refuses with `NOT_CHECKED` — an omission must never read as a permission |
-| an unsigned descriptor is **visible** | shown with *why*, and unacquirable. Hiding it teaches nobody anything (`MC-002`'s posture) |
-| an air-gapped installation can still import | the paste door uses **no network at all**; the fetch door is egress-consented |
+| one implementation, not two | the three former paths in `services/…/src/` are **re-export shims**. Nothing deleted (rule 12), originals backed up (rule 22), and the nine callers of `canonical-json.mjs` are untouched |
+| a versioned contract | `CONTRACT_VERSION 1.0.0`, one public entry point, a **frozen** `REFUSALS` list so a consumer can assert it handles every refusal |
+| self-contained | its imports reach **nothing outside itself** — measured: `node:crypto`, `node:fs`, `node:url`, `node:test`, `node:assert` and its own files |
+| the suite is the specification | `conformance/index.mjs` imports **no test runner** and returns a plain report; the origin-policy half is declarative JSON a non-JavaScript runtime can execute |
+| the suite has been seen to fail | it is run against **broken** implementations — missing function, permissive origin policy, ignored byte cap — because a suite never seen to fail has not been shown to measure anything |
+| it is inside a gate | added to `npm test` **and** the pre-commit hook. A conformance suite no gate runs is one that rots |
+
+**Two defects found in this diff and repaired at the rule, not the instance:**
+
+1. **`oci/Dockerfile` did not copy `packages/`.** The shipped server would have thrown on its
+   first import — a container that starts, fails and restarts for ever. The `COPY` line is the
+   instance; the rule is that `tui-import-closure.test.mjs` now walks **the server's** import
+   graph, not only the shell's. **The oracle was proven to fire**: with the `COPY` line removed in
+   memory, the package resolves to `null` — the exact failure the test reports.
+2. **The closure walker read comments as code.** `repo-map.mjs` documents `import … from './x'` in
+   prose, and the walker went looking for a file named `x`. It failed loudly by luck; a comment
+   naming a path that *exists* would have demanded a `COPY` for a file nothing imports. Comments
+   are stripped before matching now.
 
 **Evidence, produced this session:**
 
-- `node tools/model-acquisition-e2e.mjs` → **`PASS`, 33/33** against the real control plane. New
-  this phase: edited-after-signing refused `SIGNATURE_INVALID`; unsigned refused `NO_SIGNATURE` and
-  **never written**; unsigned visible but `DESCRIPTOR_NOT_VERIFIED` on acquire; the origin policy
-  applying to descriptors as to artefacts; re-import refused (rule 13); and **the imported document
-  still verifying when read back from disk** — the round trip, not just the write.
-- `node --test services/reference-control-plane/test/*.test.mjs` → **2614 tests, 2613 pass, 0 fail,
-  1 skipped** (12 new authenticity tests, 2 new catalogue refusals).
-- `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 418 files**.
-- `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`. i18n → `VERDICT=COVERED` (10 markup +
-  10 runtime strings translated).
-- `bash tools/run-browser-e2e.sh` → **504 PASS / 1 FAIL of 505**. The one FAIL is the declared gap
-  `F-I18N-002`, and this phase grew it by **zero**: 647 closable, unchanged, while recorded strings
-  rose 905→910. `route models` populated (2290 chars, up from 1675), no console error, no failed
-  request.
-- **Live, after deployment** (`D-0525`): byte-equal tree↔image **8/8**, tree↔running **4/4**;
-  `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines; `/livez` and
-  `/readyz` **200** on both ports; `descriptors/import` **401** anonymously; the served assets carry
-  `authenticityLine`, `importDescriptor` and the import panel. Cleanup: non-project containers
-  **50→50**, volumes **65→65**, networks **10→10**, zero e2e litter.
+- `npm test` → **2623 tests, 2622 pass, 0 fail, 1 skipped** (+9 from the package).
+- `node tools/model-acquisition-e2e.mjs` → **`PASS`, 33/33** — the whole signed chain still works
+  through the shims, against the real control plane.
+- `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 424 files**.
+- `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`.
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **The `/model` chain was not started.** It is the Owner's named next step, not this phase.
-- **`F-MODEL-AUTH-001` opened, not repaired.** Authenticity gates **acquiring**, not **starting**,
-  and neither `#/coden`'s chooser nor `/model` in the terminal displays it. Not repaired on purpose:
-  the running model is synthesised with **no publisher**, so it is unsigned by construction, and
-  gating activation would refuse to re-activate what the installation is already running. The fix
-  is to distinguish *unsigned because nobody signed it* from *unsigned because we synthesised it* —
-  its own phase.
-- **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped. The browser suite WAS
-  run and is green on `route models` (populated 2290 chars, no console error, no failed request);
-  the audit is the remaining T2 instrument.
-- **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, still its own phase.
-- **No delete, no discovery, no download resume, no quarantine retention.** Unchanged from `s337`.
+- **Not committed, not pushed, not deployed.** The installation still serves `s338`.
+- **No overlay Dockerfile was written for this phase.** It must copy `packages/verified-acquisition/`
+  — see the warning above. Writing it belongs to the deployment, not to this build.
+- **Publication is not done and was not decided.** The package is in no registry, and rule 35 keeps
+  the repository private until an explicit recorded decision.
+- **The licence question is open, not settled.** The package carries `AGPL-3.0-or-later` because the
+  code does; whether a component meant for adoption should be more permissive — the sibling
+  `@noesar/sdk` is Apache-2.0 — is the Owner's call and was **not** taken here.
+- **Some in-file commentary still cites this project's decision records** (`D-05xx`, `MC-00x`).
+  Honest provenance, not a dependency: nothing in the code reads them. A publish-ready pass would
+  neutralise the prose.
+- **The browser suite was not re-run** — `[UNVERIFIED]`, low risk: this phase changed no markup and
+  no browser JavaScript. It runs with the deployment.
+- **`F-MODEL-AUTH-001`** unchanged: authenticity gates acquiring, not starting, and neither shell
+  displays it.
+- **No delete route, no discovery, no download resume, no quarantine retention, `MANIFEST` not
+  regenerated.** Unchanged.
 - **`gitleaks` is absent.** The secret scan was **heuristic** and is declared as such.
 
 ---
@@ -85,32 +97,36 @@ That digest is a field of a document **nobody had signed**: the chain was strong
 
 | File | What |
 |---|---|
-| `services/…/src/model-descriptor-authenticity.mjs` | **new** — sign, verify, and five named refusals: `NO_SIGNATURE`, `NO_PUBLISHER`, `NO_REGISTRY`, `KEY_NOT_TRUSTED`, `SIGNATURE_INVALID` |
-| `services/…/src/model-transport.mjs` | `fetchDocument()` — same origin policy, cap, stall deadline and cancellation, integrity from the signature instead of a pre-declared digest. `fetchArtefact` keeps its digest requirement, unchanged |
-| `services/…/src/model-catalog.mjs` | `DESCRIPTOR_NOT_VERIFIED` in `planAcquisition`; `authenticity` on every card |
-| `services/…/src/server.mjs` | descriptors verified on read; `POST /api/v1/models/descriptors/import` with both doors; the authenticity passed into the acquisition plan |
-| `schemas/model-descriptor.schema.json` | the `signature` object, previously impossible under `additionalProperties:false` |
-| `apps/webui-static/{app.js,index.html,i18n-catalog.js}` | *signed by whom* / *unsigned and why* on every card; the import panel; 20 translations |
-| `services/…/test/model-descriptor-authenticity.test.mjs` | **new** — 12 tests, each altering exactly one thing and requiring the answer to change |
-| `services/…/test/model-catalog.test.mjs` | the two refusals, including "not checking is refused like failing" |
-| `tools/model-acquisition-e2e.mjs` | the signed chain end to end, 33 checks |
-| `docs/DECISION_LOG.md` | `D-0523`, `D-0524` |
+| `packages/verified-acquisition/` | **new** — `package.json`, `README.md`, `LICENSE`, `src/{index,transport,authenticity,canonical-json}.mjs`, `conformance/{index.mjs,vectors.json}`, `test/conformance.test.mjs` |
+| `services/…/src/{model-transport,model-descriptor-authenticity,canonical-json}.mjs` | **re-export shims**, each stating where the implementation went and why the path stays |
+| `oci/Dockerfile` | copies `packages/verified-acquisition/` — without it the server throws on its first import |
+| `services/…/test/tui-import-closure.test.mjs` | walks the **server's** import graph too; strips comments so prose is not read as code |
+| `.githooks/pre-commit`, `package.json` | the package suite is inside the gate |
+| `.claude/skills/noesar-evolution-funding-fit/SKILL.md` | rewritten (`D-0528`): six named platforms with URLs, the licence requirement of each, the geography that disqualifies, and **the date every row was read** |
+| `.claude/hooks/lib/container-baseline.sh` | (`D-0530`) the exemption states §21b directly — exactly two survivors — and the scope pattern accepts the **dot** separator this project actually uses for probes |
+| `.claude/hooks/test/test-container-baseline.sh` | 4 new fixtures: two deployments in one session · two rollbacks block · a rollback with no installation blocks · a probe beside the two permitted survivors still blocks |
+| `.claude/skills/noesar-evolution{,-budget}/SKILL.md` | (`D-0531`) the improvement proposal must name its funding platform and trait; **"fits none" is a valid written answer** |
+| `packages/verified-acquisition/SPEC.md` | **new** (`D-0533`) — eleven normative requirements `VA-001`…`VA-011`, each naming the case family that measures it; traceability enforced in both directions |
+| `packages/verified-acquisition/conformance/vectors.json` | 8 fixed ed25519 authenticity vectors, **public material only** — another language can be measured against the same bytes |
+| `docs/DECISION_LOG.md` | `D-0526`…`D-0533` |
+| `BACKUPS/d0524_extraction_20260818T073509Z/` | the three originals, before the shims replaced them |
 
 ---
 
 ## OPEN BLOCKERS
 
-- `B-002` **stale premise** (`D-0257`): re-measured — `gitleaks` is genuinely absent, so the
-  heuristic scan stands.
+- `B-002` **stale premise** (`D-0257`): re-measured — `gitleaks` is genuinely absent.
 - `B-011` low, deferred (`D-0258`): history rewritten on the Owner's explicit authorisation.
 
 ---
 
-## THE ONE IMPROVEMENT PROPOSAL — `D-0524`, awaiting the Owner
+## THE IMPROVEMENT PROPOSAL — `D-0532`, awaiting the Owner
 
-Publish the verified-acquisition layer (`model-transport.mjs` + `model-descriptor-authenticity.mjs`)
-as a **documented, independently usable component** with its own conformance suite. It is already
-shaped that way — the transport imports no `node:fs`, the verifier holds no policy, both take their
-dependencies injected, and their 41 tests need no network and no container. "Fetch a
-publisher-signed artefact under a cap, verify it, refuse it by name" is a problem every self-hosted
-AI project has, and most solve it by shelling out to one vendor's CLI.
+`D-0527` and `D-0529` were authorised and are **executed**, as `D-0530` and `D-0531`.
+
+**`D-0532`:** make the conformance suite publishable **on its own** — vectors, runner and a short
+specification — so another project can adopt the *guarantees* without adopting this
+implementation. **Funding fit: Restack · traits 1, 2 and 5** — a delimited result, reusable by
+construction, with reliability that is measured rather than asserted; and it is what NLnet's own
+eligibility page funds in as many words («technical validation … testing infrastructure …
+standards participation»).

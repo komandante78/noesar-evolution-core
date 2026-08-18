@@ -12175,3 +12175,231 @@ non-project containers **50→50**, volumes **65→65**, networks **10→10**, z
 **Reversal cost.** One rename and a start — no migration, nothing written by this image.
 Predecessor kept as `noesar-evolution-pre-20260818T060547Z`; all four images remain on disk.
 **Status.** installed.
+
+## D-0526 · The verified-acquisition layer becomes its own package — 2026-08-18
+**Decision.** `D-0524` executed. `packages/verified-acquisition/` (`@noesar/verified-acquisition`,
+zero dependencies) now holds the transport, the descriptor authenticity check and the canonical
+JSON encoder, behind a versioned entry point (`CONTRACT_VERSION 1.0.0`) with a frozen `REFUSALS`
+list. **The extraction is real, not a copy**: the three former paths in
+`services/reference-control-plane/src/` are now documented re-export shims, so there is exactly
+ONE implementation — the failure a copy would produce is the one `D-0275` already found here, three
+copies of one canonicaliser each verified only against itself. Nothing was deleted (rule 12); the
+originals were backed up first (`BACKUPS/d0524_extraction_20260818T073509Z/`, rule 22).
+**Why.** The proposal's own reason, and the funding one: a delimited, reusable result with
+measurable reliability, useful beyond the origin product (`noesar-evolution-funding-fit` traits 1,
+2, 5). "Fetch a publisher-signed artefact under a cap, verify it, refuse it by name" is a problem
+most self-hosted AI projects solve by shelling out to one vendor's CLI — trait 4 inverted.
+**The conformance suite is the point, not the code.** `conformance/index.mjs` imports **no test
+runner** and returns a plain report, so any harness — or a consumer's own implementation, in any
+language for the declarative half — can be held to it. It is itself tested against **broken**
+implementations (missing function, permissive origin policy, ignored cap): a suite never seen to
+fail has not been shown to measure anything.
+**Two defects found and repaired in the same diff.** (1) The control plane now imports outside
+`services/`, and `oci/Dockerfile` did not copy `packages/` — the shipped server would have thrown
+on its first import and restart-looped. Fixed at the rule, not the instance:
+`tui-import-closure.test.mjs` now walks the **server's** import graph as well as the shell's, and
+the oracle was proven to fire (with the `COPY` line removed in memory the package resolves to
+`null`). (2) Widening it exposed that the walker read **comments as code** — `repo-map.mjs`
+documents `import ... from './x'` in prose and the walker went looking for a file named `x`. It
+failed loudly by luck; a comment naming a path that exists would have demanded a `COPY` for a file
+nothing imports. Comments are now stripped before matching.
+**Rejected.** Copying the modules into the package (two implementations, the `D-0275` defect);
+deleting the old paths (rule 12, and nine call sites import `canonical-json.mjs`); putting the
+vectors in the repository's top-level `conformance/` (a package whose suite lives elsewhere is not
+extractable).
+**Evidence.** `npm test` **2622/2623** (1 pre-existing skip; +9 from the package, including the
+three oracle checks). The package's imports reach **nothing outside itself** — measured, not
+claimed: only `node:crypto`, `node:fs`, `node:url`, `node:test`, `node:assert` and its own files.
+`tools/model-acquisition-e2e.mjs` **33/33 PASS** through the shims. ESLint **0/424**.
+`SOURCE_VERIFY=PASS`. The package suite is now inside the pre-commit gate and `npm test`, because a
+conformance suite no gate runs is one that rots.
+**Reversal cost.** None yet — not installed. The shims mean no caller changed, and the base image
+recipe gained one `COPY` line.
+**Open, and named rather than implied.** Publication to any registry is a separate Owner decision
+(rule 35 — the repository is private). The licence follows the core (`AGPL-3.0-or-later`); whether
+a component meant for adoption should be more permissive, as the sibling `@noesar/sdk` is
+(Apache-2.0), is unsettled and was **not** decided here. Some in-file commentary still cites this
+project's decision records — honest provenance, not a dependency.
+**Status.** applied, tested, **not committed, not pushed, not deployed** — awaiting the Owner.
+
+## D-0527 · Improvement proposal — the session-close guard cannot tell the installation from litter — 2026-08-18
+**Decision.** Proposed, not executed: teach the `Stop` hook the §21b rule it is meant to enforce —
+**exactly two** project containers may survive a phase, the running installation and the most
+recent rollback — instead of flagging every container absent from the session's opening baseline.
+**Why.** Measured this session: after a deployment the guard reported `noesar-evolution` and
+`noesar-evolution-pre-<stamp>` as "created this session and not cleaned up". Both are precisely
+what §21b **requires** to survive, and one of them is the product. A guard that fires on every
+deployment trains its reader to dismiss it — the same failure that made the mandatory
+`noesar-debuglab` hunt step a step everyone skipped, repaired on 2026-07-30 for that exact reason.
+**Rejected.** Suppressing the guard, or adding the two names to a static allow-list: the stamped
+rollback name changes every deployment, so a list would be stale by the next one.
+**Evidence.** Two false positives this session, on a deployment that `docs/INSTALLATION_LEDGER.md`
+records as leaving containers 50→50 non-project, volumes 65→65, networks 10→10, and exactly the two
+§21b permits. Cost: one small change to `.claude/hooks/`, with the same test discipline the
+governance hooks already carry.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.
+
+## D-0528 · The funding skill names its platforms, dates its claims, and was wrong — 2026-08-18
+**Decision.** `.claude/skills/noesar-evolution-funding-fit/SKILL.md` rewritten on the Owner's
+instruction («verifica queste piattaforme cosa vogliono di licenze ed altro … lavorare su questo
+tassativamente»). It now carries **six named platforms with their URLs**, the **licence requirement
+of each**, the geography that disqualifies, the money, and the **date every row was read**. No
+CLAUDE10 amendment was needed or taken: §17 rule 69a already names this file as its governing
+detail, so updating the skill IS the binding mechanism.
+**Why it mattered more than expected.** The skill, written 2026-08-14, described **an open
+programme that had closed on 2026-06-01**. Verified 2026-08-18: **NGI Zero has concluded**, NLnet's
+open calls are *temporarily paused* until after summer 2026, and three successors launch under the
+**Open Internet Stack** (€10M) — **Restack** (€5k–50k, €7M to 2030), **CodeSupply**, **ELFA**. A
+criterion is not a fact about the world; it is a fact about a programme on a date, and §6 rule 3 of
+the skill now forbids quoting one without re-reading its source.
+**The licence answer the Owner asked for.** Every platform checked requires results under a
+**recognised free/open source licence**. NLnet **explicitly permits additional licences, even
+proprietary ones, alongside it** — so `CLAUDE10.md` §15's AGPL-3.0-or-later plus a planned
+commercial licence is compatible, and open core is not a disqualifier. The Sovereign Tech Agency is
+stricter and more specific: **OSI-approved or FSF Free/Libre for code**, and documentation under
+Creative-Commons-like terms **with no `NC` and no `ND` clause** — a rule this project had never
+stated anywhere. Copyleft is **not** penalised by any of them, which means the open question about
+`packages/verified-acquisition` (`D-0526`) is about **adoption**, not eligibility.
+**Two disqualifiers recorded rather than left to be discovered.** The Prototype Fund requires a
+German residence or company seat. The EU Sovereign Tech Fund is **advocacy and research, not an
+operational programme** — it accepts nothing today.
+**Rejected.** Keeping the criteria as remembered prose (that is exactly what produced a skill
+describing a dead programme); amending `CLAUDE10.md` (the Owner amends that file, and rule 69a
+already delegates here).
+**Evidence.** Read 2026-08-18 from `nlnet.nl` (stocktaking · restack · restack/eligibility ·
+restack/faq · ELFA), `sovereign.tech`, `prototypefund.de`, `eu-stf.openforumeurope.org`. Governance
+suite `.claude/hooks/test/test-session-lifecycle.sh` **69 passed / 0 failed** after the change. The
+skill is 161 lines. `[UNVERIFIED]`, and named as such in §7: Restack's application form, timetable
+and reporting duties — the fund read "Coming soon" on the day.
+**Reversal cost.** None — governance prose, no product code touched.
+**Status.** applied. **Not committed** — awaiting the Owner.
+
+## D-0529 · Improvement proposal — a funding-fit line in the phase close, not only in the skill — 2026-08-18
+**Decision.** Proposed, not executed: make every phase's mandatory improvement proposal state, in
+**one line**, which named platform of the funding skill §1 table it would fit and which of the
+seven traits it satisfies — the way `NON FATTO` is already a mandatory line in the phase close.
+**Why.** The skill now says the check is mandatory (§6 rule 1), but nothing **fails** if it is
+skipped, and this project has already learned once that a criterion no row measures is not closed
+(`noesar-evolution` skill, rule 5, written of the two-shells requirement). The cheapest enforcement
+is a line in the close template, not a new tool.
+**Rejected.** A hook that greps the reply — it would police wording rather than substance, and the
+orchestrator's own §0 warns that a green hook says the reminder arrived, never that the work is good.
+**Evidence.** Measured: `D-0521`, `D-0524` and `D-0527` each named a trait informally; none named a
+platform, and one of them (`D-0527`, the session-close guard) fits **no** funding programme at all —
+which is fine, and is exactly the thing the line would make visible instead of implied.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.
+
+## D-0530 · The session-close guard learns §21b, and a scoping hole falls out of it — 2026-08-18
+**Decision.** `D-0527` executed. The container guard's replacement exemption now states
+`CLAUDE10.md` §21b directly — **exactly two containers may survive: the running installation and
+ONE rollback** — instead of requiring the preserved predecessor's id to come from the SessionStart
+baseline.
+**Why.** That clause modelled one deployment per session. On a **second** deployment the
+predecessor IS the first deployment's replacement, so its id was created that session, the clause
+fell, and the guard reported **the running product** as uncleaned litter — three times in one
+session, measured 2026-08-18. A guard that fires on every deployment trains its reader to dismiss
+it, which is exactly what made the mandatory `noesar-debuglab` hunt step a step everyone skipped.
+**It is stricter, not looser.** The exemption now requires: an installation in the baseline · an
+installation present now · **exactly one** rollback, its name anchored to a UTC stamp. Two
+rollbacks is itself a §21b breach and now **blocks** rather than producing a non-blocking note.
+**A second defect fell out of writing the fixture.** `cbl_is_noesar_scoped` matched
+`^noesar-evolution($|-)` — dash only. This project names its throwaway containers with a **dot**
+(`noesar-evolution.e2e-probe-<stamp>`, as `noesar-evolution` §13 and §5a describe), so **every
+probe, runner and sonda was classified as somebody else's container** and waved through as out of
+scope. On this host they were caught anyway by their `org.noesar.*` labels — which is why it went
+unseen — but a probe built from a non-product image would have slipped past both tests. Pattern is
+now `^noesar-evolution($|[-.])`.
+**Rejected.** Adding the two container names to a static allow-list: the rollback's stamped name
+changes at every deployment, so the list would be stale by the next one. Suppressing the guard.
+**Evidence.** 4 new fixtures (R5 two deployments in one session · R6 two rollbacks block · R7 a
+rollback with no installation blocks · R8 a probe beside the two permitted survivors still
+blocks). Governance suites: **6 suites, 323 checks, all passed** — container-baseline 65,
+engineering-orchestrator 122, rule12 49, session-lifecycle 69, matcher-enums 9, tooling 9. The
+failing observation is not synthetic: the live guard blocked this session's close three times.
+**Reversal cost.** None — governance tooling, no product code.
+**Funding fit.** **None**, and that is the honest answer: an internal guard repair is not a
+delimited reusable result for any programme in `noesar-evolution-funding-fit` §1.
+**Status.** applied. **Not committed** — awaiting the Owner.
+
+## D-0531 · The funding-fit line becomes part of every phase close — 2026-08-18
+**Decision.** `D-0529` executed, on the Owner's «autorizzo proposta e fai quello che serve per
+applicare le regole a tutto noesar evolution». Every phase's mandatory improvement proposal now
+names, in the same line, **which platform** of `noesar-evolution-funding-fit` §1 it would fit and
+**which of the seven traits** it satisfies. Written into the two templates that already bind —
+`noesar-evolution-budget` §3 and `noesar-evolution` §MENTALITÀ point 3 — and into the funding
+skill's own §6 rule 1, so a session reaches it from whichever skill it opens first.
+**Why.** The funding skill said the check was mandatory and **nothing failed if it was skipped**.
+This project has already paid for that shape once: «le due shell non divergono in nessun punto» was
+binding from 26 July, measured by no row, and quietly untrue for months.
+**"Fits none" is explicitly a valid answer.** `D-0530` in this same phase fits no programme at all,
+and writing that is worth more than a stretched claim — which is the failure mode the funding
+skill's own red-flag list exists to prevent.
+**Rejected.** A hook that greps the reply for a platform name: it would police wording rather than
+substance, and the orchestrator's §0 already warns that a green hook says the reminder arrived,
+never that the work is good.
+**Evidence.** Applied to three skills; governance suites **6/6, 323 checks, all passed** after the
+edits. Self-applied immediately: `D-0530` and `D-0532` in this phase both carry the line.
+**Reversal cost.** None — governance prose.
+**Funding fit.** **None** directly: it is the mechanism by which every FUTURE proposal is checked.
+**Status.** applied. **Not committed** — awaiting the Owner.
+
+## D-0532 · Improvement proposal — publish the conformance suite as the reusable artefact, before the code — 2026-08-18
+**Decision.** Proposed, not executed: make `packages/verified-acquisition/conformance/` publishable
+on its own — vectors, runner and a short specification document — so another project can adopt the
+**guarantees** without adopting this implementation.
+**Why.** `D-0526` built a component whose suite already imports no test runner and whose origin
+half is declarative JSON. A specification with an executable conformance suite is a stronger
+contribution to a commons than one more library: it lets a Rust or Python implementation of
+verified artefact acquisition prove itself against the same rows.
+**Funding fit.** **Restack · traits 1, 2 and 5** — a delimited result (a spec + suite, not a
+platform), reusable beyond the origin product by construction, and reliability that is *measured*
+rather than asserted. It is also the shape NLnet's own eligibility page funds explicitly:
+"technical validation … testing infrastructure … standards participation".
+**Rejected.** Publishing the code first and the suite later — that is what produces a library
+nobody can check against, and it makes the suite optional in practice.
+**Evidence.** Measured: the suite is 40+ cases, runs offline with no container, and is already
+proven to fail three broken implementations. The vectors file is consumable by a non-JavaScript
+runtime today.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.
+
+## D-0533 · The conformance suite becomes the publishable artefact — 2026-08-18
+**Decision.** `D-0532` executed. `packages/verified-acquisition/` now carries **`SPEC.md`**, eleven
+normative requirements (`VA-001`…`VA-011`) written so the component can be implemented **in any
+language from that document alone** and then measured — not read out of the reference code. Three
+things make it real rather than a README with headings:
+1. **Traceability, enforced in both directions.** Each conformance case family maps to a
+   requirement, derived from the case id rather than repeated by hand. A requirement no case
+   measures, or a case naming a requirement `SPEC.md` does not state, **fails the package's own
+   tests**. 59 cases, **11 of 11 requirements covered**.
+2. **Cross-language vectors for the crypto half.** 8 fixed ed25519 authenticity cases — a public
+   key, signed documents, tampered variants, a transplanted signature, a revoked key — so a Rust or
+   Python implementation is measured against the same bytes instead of against its own key
+   generation agreeing with itself. **Public material only: no private key is stored, and none is
+   needed, because verification is the operation under test** (rules 25-28 untouched, verified by
+   grep).
+3. **`SPEC.md` is in `files` and `exports`,** so it travels with the package rather than staying
+   behind in the repository that produced it.
+**Two defects found while building it, both in what this phase itself wrote.** (1) The vector
+runner built the publisher registry from `descriptor.publisher` — **the document's own claim about
+itself** — so the trust store recognised every forgery that renamed itself, and the
+publisher-reattribution case reported `SIGNATURE_INVALID` where it must report `KEY_NOT_TRUSTED`.
+The registry is now pinned to `registeredPublisherId`, and `SPEC.md` VA-010 states the rule
+explicitly so no other implementation repeats it. (2) A traceability test asserted the *shape* of
+the mapping table while its comment claimed to be an oracle. Replaced with one that measures the
+observable property (no case may carry a null requirement) and says so — a check that overstates
+itself is worse than an absent one.
+**Rejected.** Publishing the code first and the suite later (that is what produces a library nobody
+can check against); embedding a private key to make signing cases declarative too (a tracked
+private key is a secret in a tracked artefact, rule 25, whatever it is called).
+**Evidence.** `npm test` **2626/2627** (1 pre-existing skip). Conformance **59/59**, 11/11
+requirements. ESLint **0/424**. Governance suites **6/6, 323 checks**. No `PRIVATE KEY` string
+anywhere in the package — measured.
+**Reversal cost.** None yet — not installed, not published.
+**Funding fit.** **Restack · traits 1, 2 and 5** — a delimited result (a specification with an
+executable suite, not a platform), reusable beyond this product by construction, with reliability
+that is measured rather than asserted; and it is what NLnet's eligibility page funds in as many
+words: "technical validation … testing infrastructure … standards participation".
+**Status.** applied, tested, **committed on the Owner's instruction; not pushed, not deployed.**

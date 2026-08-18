@@ -32,8 +32,38 @@ import { dirname, join, posix } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');
 
-/** The shell's entry point — the one file the interface tells a human to run. */
-const ENTRY = 'tools/tui-client.mjs';
+/**
+ * The entry points this recipe must be able to ship, each the first file of a program a person
+ * or a service actually starts.
+ *
+ * `D-0526` added the second one. The shell was covered because a shell that will not start is
+ * loud; the SERVER was not, and the server is where an unshippable import is a container that
+ * starts, throws, and restarts for ever. The extraction of `packages/verified-acquisition` made
+ * that risk real for the first time — the control plane had never imported anything outside
+ * `services/` and `apps/shared/` before — so the rule is widened here rather than the single
+ * COPY line being remembered by hand.
+ */
+const ENTRIES = ['tools/tui-client.mjs', 'services/reference-control-plane/src/server.mjs'];
+
+/**
+ * Comments removed, so PROSE about an import is never mistaken for one — `D-0526`.
+ *
+ * Found by widening this check to the server: `repo-map.mjs` documents its own parser with the
+ * words `import ... from './x'` inside a doc comment, and the walker dutifully went looking for a
+ * file called `x`. It failed loudly here, which was luck: a comment naming a path that DOES exist
+ * would have added a phantom dependency and demanded a COPY line for a file nothing imports.
+ *
+ * Only whole comments are stripped — block comments, and lines that begin with `//` or continue a
+ * block with `*`. Code lines are left untouched, so a `//` inside a URL string cannot swallow a
+ * real import that follows it.
+ */
+function withoutComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+    .join('\n');
+}
 
 /** Every relative `import`/`export ... from` in a module, as repo-relative paths.
  *
@@ -42,7 +72,7 @@ const ENTRY = 'tools/tui-client.mjs';
  *  resolve against the *importer's own directory*, which is what makes "copied, but to
  *  the wrong place" a real failure mode rather than a theoretical one. */
 function relativeImportsOf(repoPath) {
-  const source = readFileSync(join(root, repoPath), 'utf8');
+  const source = withoutComments(readFileSync(join(root, repoPath), 'utf8'));
   const dir = posix.dirname(repoPath);
   const specifiers = [];
   // `from '…'` covers both `import … from` and `export … from`; the bare side-effect form
@@ -105,7 +135,7 @@ function imagePathFor(repoPath, instructions) {
   return null;
 }
 
-describe('the terminal shell survives being copied into the image', () => {
+for (const ENTRY of ENTRIES) describe(`${ENTRY} survives being copied into the image`, () => {
   const closure = importClosure(ENTRY);
   const instructions = copyInstructions();
 

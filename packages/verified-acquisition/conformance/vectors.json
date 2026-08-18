@@ -1,0 +1,340 @@
+{
+  "contractVersion": "1.0.0",
+  "note": "Declarative cases for the parts of the contract that are pure functions of their input. The behavioural cases (streaming, caps, redirects, signatures) live in index.mjs, because a stub server is code and pretending otherwise would make this file a fiction. Kept inside the package rather than in the repository's top-level conformance/ directory on purpose: this package must stay extractable, and a suite whose vectors live somewhere else is not.",
+  "origin": [
+    {
+      "id": "https-is-the-transport",
+      "source": "https://models.example/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "https-with-a-port",
+      "source": "https://models.example:8443/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "loopback-v4-is-not-egress",
+      "source": "http://127.0.0.1:8080/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "loopback-name-is-not-egress",
+      "source": "http://localhost:8080/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "loopback-v6-is-not-egress",
+      "source": "http://[::1]:8080/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "loopback-anywhere-in-127-8",
+      "source": "http://127.13.4.9/a.gguf",
+      "allowed": true
+    },
+    {
+      "id": "plain-http-to-a-host",
+      "source": "http://models.example/a.gguf",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "plain-http-to-a-lan-address",
+      "source": "http://10.0.0.5/a.gguf",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "plain-http-to-a-name-that-merely-contains-localhost",
+      "source": "http://localhost.attacker.example/a.gguf",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "ftp",
+      "source": "ftp://models.example/a.gguf",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "file-url-never-reads-the-local-disk",
+      "source": "file:///etc/passwd",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "data-url",
+      "source": "data:text/plain;base64,aGk=",
+      "allowed": false,
+      "kind": "SCHEME_NOT_ALLOWED"
+    },
+    {
+      "id": "not-a-url-at-all",
+      "source": "not a url",
+      "allowed": false,
+      "kind": "NO_SOURCE"
+    },
+    {
+      "id": "empty",
+      "source": "",
+      "allowed": false,
+      "kind": "NO_SOURCE"
+    },
+    {
+      "id": "absent",
+      "source": null,
+      "allowed": false,
+      "kind": "NO_SOURCE"
+    }
+  ],
+  "authenticity": {
+    "note": "Fixed ed25519 material so an implementation in ANY language can be measured without generating keys and without agreeing with itself. Only PUBLIC material is stored: a public key, documents, and signatures. No private key is here and none is needed — verification is the operation under test. Regenerate by signing the base document with a fresh key and replacing publicKeyPem, fingerprint and every signature. The registry is the INSTALLATION's trust store: it is built from registeredPublisherId and registeredFingerprint, never from the publisher the document under test claims to be — deriving it from the document would make the registry agree with every forgery that renames itself.",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA9wXoWI6VENuoOBBORXg1bR4an+Tj28qA+kVukEIgtbw=\n-----END PUBLIC KEY-----\n",
+    "registeredFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+    "cases": [
+      {
+        "id": "genuine-signature-verifies",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": true
+        }
+      },
+      {
+        "id": "source-altered-after-signing",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://attacker.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "SIGNATURE_INVALID"
+        }
+      },
+      {
+        "id": "digest-altered-after-signing",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "SIGNATURE_INVALID"
+        }
+      },
+      {
+        "id": "signature-transplanted-from-another-document",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "pB2KHHjIm7BGhrUKilrLA4klD8+znDCYde2fecUszfT8qo1LJjMQgWX+c5M95CrTw6rZjgGEPzBC5r5OT09XAA==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "SIGNATURE_INVALID"
+        }
+      },
+      {
+        "id": "unsigned-document",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": []
+        },
+        "expect": {
+          "verified": false,
+          "kind": "NO_SIGNATURE"
+        }
+      },
+      {
+        "id": "publisher-reattributed-to-another-name",
+        "keyState": "active",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "someone-else",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "KEY_NOT_TRUSTED"
+        }
+      },
+      {
+        "id": "key-revoked-after-it-signed",
+        "keyState": "revoked",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "KEY_NOT_TRUSTED"
+        }
+      },
+      {
+        "id": "fingerprint-not-registered-here",
+        "keyState": "active",
+        "registeredFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+        "descriptor": {
+          "id": "p/tiny-1b",
+          "publisher": "p",
+          "version": "1",
+          "license": "apache-2.0",
+          "source": "https://p.example/tiny.bin",
+          "hashes": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "text"
+          ],
+          "resource_profiles": [],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "uoSlaj+aQRj65BpM3FUVH1yefEvUjY/p67tbAhBhy6V+R9KEHeFxWmrPtSQcFwDeUoXqK5w3AG2tGdgUvMPLAQ==",
+            "publicKeyFingerprint": "d099c945f766421dcd51c691e80a188fc351317342df813069afe3d8f7538150",
+            "signedAt": "2026-08-18T00:00:00.000Z"
+          }
+        },
+        "expect": {
+          "verified": false,
+          "kind": "KEY_NOT_TRUSTED"
+        }
+      }
+    ],
+    "registeredPublisherId": "p"
+  }
+}

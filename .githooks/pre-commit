@@ -18,7 +18,9 @@ if git diff --cached --name-only --diff-filter=A | grep -Ei '\.(zip|tar|tar\.gz|
 fi
 
 echo "pre-commit: unit suite"
-node --test services/reference-control-plane/test/*.test.mjs > /dev/null
+# D-0526: the extracted packages are in the same gate as the control plane. A conformance suite
+# that no gate runs is a conformance suite that rots — and this one is the specification.
+node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs > /dev/null
 
 echo "pre-commit: migration manifest"
 node tools/generate-migration-manifest.mjs --check

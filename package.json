@@ -9,7 +9,7 @@
     "lint:self-test": "tools/verify-linter-detects.sh",
     "smoke:auth": "node tools/auth-http-smoke.mjs",
     "start": "node services/reference-control-plane/src/server.mjs",
-    "test": "node --test services/reference-control-plane/test/*.test.mjs",
+    "test": "node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.test.mjs",
     "test:accessibility": "NOESAR_E2E_DRIVER=tools/accessibility-audit.mjs bash tools/run-browser-e2e.sh",
     "test:authority": "node --test services/reference-control-plane/test/authority.test.mjs services/reference-control-plane/test/data-plane.test.mjs services/reference-control-plane/test/conformance.test.mjs",
     "test:authority-external": "node --test services/reference-control-plane/test/authority-external-client.test.mjs",
@@ -29,7 +29,8 @@
     "verify:migrations": "python3 tools/verify-postgres-migrations.py",
     "verify:postgres-contract": "python3 tools/verify-postgres-contract.py",
     "verify:rust-provenance": "python3 tools/test-rust-build-provenance.py",
-    "verify:rust-source": "python3 tools/verify-rust-authority-source.py"
+    "verify:rust-source": "python3 tools/verify-rust-authority-source.py",
+    "test:conformance-package": "node --test packages/verified-acquisition/test/*.test.mjs"
   },
   "type": "module",
   "version": "0.6.0"

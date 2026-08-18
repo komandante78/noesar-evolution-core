@@ -1,34 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// **The implementation moved** — `D-0526`. It now lives in
+// `packages/verified-acquisition/src/canonical-json.mjs`, where the signature verification that
+// depends on it lives, so an extracted package is self-contained rather than reaching back into
+// the product it came from.
+//
+// This file stays and re-exports. **Nine call sites import this path** — the authority protocol,
+// the IPC frame, the update manager, sector modules, the context projector, two suites and two
+// tools — and rule 12 forbids deletion. More to the point: a canonical encoder is precisely the
+// thing that must never exist twice. `D-0275` found three copies of it in this repository once
+// already, each verified only against itself.
 
-export function canonicalJson(value) {
-  if (value === null) return 'null';
-  if (value === true) return 'true';
-  if (value === false) return 'false';
-
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new TypeError('canonical JSON rejects non-finite numbers');
-    }
-    if (Object.is(value, -0)) return '0';
-    return JSON.stringify(value);
-  }
-
-  if (typeof value === 'string') return JSON.stringify(value);
-
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`;
-  }
-
-  if (typeof value === 'object') {
-    const entries = Object.keys(value)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`);
-    return `{${entries.join(',')}}`;
-  }
-
-  throw new TypeError(`canonical JSON rejects ${typeof value}`);
-}
-
-export function canonicalJsonBytes(value) {
-  return Buffer.from(canonicalJson(value), 'utf8');
-}
+export { canonicalJson, canonicalJsonBytes } from '../../../packages/verified-acquisition/src/canonical-json.mjs';

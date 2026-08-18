@@ -90,6 +90,15 @@ the single best thing that would make the platform more advanced than what exist
 with its expected benefit and its cost. It is **recorded and proposed, never executed
 silently** — see §5. A phase that reports no proposal has not looked.
 
+> **That line names its funding fit, or it is not finished** (`D-0531`, Owner instruction
+> 2026-08-18). Four words are enough: **which platform** of `noesar-evolution-funding-fit` §1 it
+> would fit, and **which of the seven traits** it satisfies — e.g. *"Restack · trait 2, reusable
+> beyond this product"*. **"Fits none" is a valid and useful answer** and is written as such: a
+> guard repair fits no funding programme, and saying so is worth more than a stretched claim.
+> The reason this is enforced by a template rather than by a tool: this project has already
+> learned that *a criterion no row measures is not closed* — and a hook that grepped for a
+> platform name would police wording, not substance.
+
 ## 4 — Do not narrate what is already written
 
 - The reply does not restate the handoff, and the handoff does not restate the decision log.
