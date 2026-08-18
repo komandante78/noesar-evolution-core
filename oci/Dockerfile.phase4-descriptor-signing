@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s338 · D-0523.
+#
+# `D-0520` made an artefact startable only if its bytes match the sha256 **the publisher
+# declared** — and that digest is a field of a document nobody had signed. This image closes
+# that: a model descriptor is accepted only if an ACTIVE key of a registered publisher signed
+# it, ed25519 over the canonical JSON of the document without its own signature.
+#
+#   * `planAcquisition` refuses `DESCRIPTOR_NOT_VERIFIED`, and `null` refuses too — an omission
+#     must never read as a permission;
+#   * verification happens on EVERY READ, never cached at import, so a revocation applies to a
+#     descriptor that verified last week;
+#   * `POST /api/v1/models/descriptors/import` has two doors — a pasted document (NO network at
+#     all, the air-gapped case) and one fetched over the same transport, behind egress consent;
+#   * `#/models` shows *signed by whom* or *unsigned and why*, in every lane. What the product
+#     will not run is explained, never hidden.
+#
+# Six paths changed, so six are copied — deliberately narrow:
+#   apps/webui-static/                            the authenticity line and the import panel
+#   services/…/src/server.mjs                     descriptors verified on read; the import route
+#   services/…/src/model-catalog.mjs              the DESCRIPTOR_NOT_VERIFIED refusal
+#   services/…/src/model-transport.mjs            `fetchDocument` for small signed documents
+#   services/…/src/model-descriptor-authenticity.mjs   NEW — sign, verify, five named refusals
+#   schemas/model-descriptor.schema.json          the `signature` object
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration, no
+# schema change in any database, no data written, no configuration key added. One behaviour
+# changes and it is the intended one: acquiring from an UNSIGNED descriptor now refuses. On this
+# installation that changes nothing observable — `models/catalog/` is empty, measured — and any
+# descriptor placed later stays visible with its reason rather than disappearing. The predecessor
+# is preserved under a timestamped name by `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0520-model-transport-20260818T023243Z
+
+LABEL org.noesar.phase="4-descriptor-signing"
+LABEL org.noesar.decision="D-0523"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-catalog.mjs /opt/noesar/services/reference-control-plane/src/model-catalog.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-transport.mjs /opt/noesar/services/reference-control-plane/src/model-transport.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-descriptor-authenticity.mjs /opt/noesar/services/reference-control-plane/src/model-descriptor-authenticity.mjs
+COPY --chown=10001:10001 schemas/model-descriptor.schema.json /opt/noesar/schemas/model-descriptor.schema.json
+USER 10001:10001

@@ -5075,3 +5075,35 @@ Measured before and after: non-project containers **50 → 50**, volumes **65 �
 **10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0520_20260818T023054Z.txt`). Exactly the two
 containers §21b permits survive. The browser suite's own probe and image tag were removed by the
 suite itself — verified, not assumed.
+
+## `d0523-descriptor-signing-20260818T060209Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`, deployed 06:05:47Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-descriptor-signing`, built
+`--network none`). `D-0523`: a model descriptor is accepted only if an **active** key of a
+registered publisher signed it — the digest every later guarantee rests on is a field of that
+document, and until now nobody had signed it.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` **200** and `/readyz` **200** on **both**
+`http:8088` and `https:8443` (read in-container; the minimal image has no `curl`, and the https
+probe needs verification disabled for the self-signed cert). 4 children spawned
+(`postgres`/`api`/`codev`/`atom`), **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **8/8** before deploy, tree↔running container **4/4** after.
+Live: `POST /api/v1/models/descriptors/import` answers **401** anonymously — the route exists and
+the boundary holds; the served `app.js` carries `authenticityLine`, `importDescriptor` and
+`modelDescriptorFetch`, and `index.html` carries the import panel. Before `--apply`:
+`tools/model-acquisition-e2e.mjs` **33/33 PASS**, unit **2613/2614**, browser e2e **504/505** (the
+one FAIL is the declared gap `F-I18N-002`, whose closable count stayed at **647** while recorded
+strings rose 905→910 — this phase grew the gap by **zero**), ESLint **0/418**. §3a 11e respected —
+no mutating suite was run against the installation.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T060547Z`
+(`d0520-model-transport-20260818T023243Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key, nothing written to the workspace by this image. One behaviour changes and it is
+the intended one — acquiring from an unsigned descriptor now refuses, and on this installation
+`models/catalog/` is empty, so nothing observable changes. Backup taken with the service stopped
+(0600 in a 0700 directory, checksum written).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T023359Z` removed; its image
+(`d0520-model-transport-…`) **stays on disk**, so every documented rollback path still works.
+Measured before and after: non-project containers **50 → 50**, volumes **65 → 65**, networks
+**10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0523_20260818T060429Z.txt`). Exactly the two
+containers §21b permits survive; **0** e2e probe containers and **0** e2e image tags remain.

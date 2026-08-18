@@ -1,20 +1,19 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`/`D-0524` · **COMMITTED, NOT PUSHED, NOT DEPLOYED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `9aa48a0` (1 ahead of `origin/main`) · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z` (still `s337`)
+**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`…`D-0525` · **INSTALLED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `f7e5920` · **Live:** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The Owner authorised the commit only** («PROCEDI CON COMMIT»), and only that was done:
-`9aa48a0`, 14 files, pre-commit gate green (unit suite + ESLint 0/418). Two things wait on a
-further word:
+**Nothing is pending and nothing is half-built.** The Owner authorised the commit
+(«PROCEDI CON COMMIT»), then push and deploy («FAI ENTRAMBI»), and all three were performed:
+`9aa48a0` + `f7e5920` on `origin/main`, then deployed and verified live as
+`noesar-evolution:d0523-descriptor-signing-20260818T060209Z` (`D-0525`).
 
-1. **Push** — `origin/main` is one commit behind; nothing has left this machine.
-2. **Deploy** (§3a: build → bytes-equal-tree → stop with grace → backup stopped → preserve
-   predecessor → start with config read back → live verify → §5a cleanup). The browser suite runs
-   there, against a probe, and is what closes the `[UNVERIFIED]` on the new UI.
+**A descriptor is now believed only if a registered publisher signed it — on the installation the
+Owner actually uses.**
 
 **Then, and only on a new instruction: the `/model` chain the Owner named** («poi vai avanti con
 /model»). It was deliberately **not** started — rule 9, one phase per invocation. Its first
@@ -52,12 +51,20 @@ That digest is a field of a document **nobody had signed**: the chain was strong
 - `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 418 files**.
 - `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`. i18n → `VERDICT=COVERED` (10 markup +
   10 runtime strings translated).
+- `bash tools/run-browser-e2e.sh` → **504 PASS / 1 FAIL of 505**. The one FAIL is the declared gap
+  `F-I18N-002`, and this phase grew it by **zero**: 647 closable, unchanged, while recorded strings
+  rose 905→910. `route models` populated (2290 chars, up from 1675), no console error, no failed
+  request.
+- **Live, after deployment** (`D-0525`): byte-equal tree↔image **8/8**, tree↔running **4/4**;
+  `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines; `/livez` and
+  `/readyz` **200** on both ports; `descriptors/import` **401** anonymously; the served assets carry
+  `authenticityLine`, `importDescriptor` and the import panel. Cleanup: non-project containers
+  **50→50**, volumes **65→65**, networks **10→10**, zero e2e litter.
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Committed (`9aa48a0`) but NOT pushed and NOT deployed.** The installation still serves `s337`, and nothing has left this machine.
 - **The `/model` chain was not started.** It is the Owner's named next step, not this phase.
 - **`F-MODEL-AUTH-001` opened, not repaired.** Authenticity gates **acquiring**, not **starting**,
   and neither `#/coden`'s chooser nor `/model` in the terminal displays it. Not repaired on purpose:
@@ -65,10 +72,9 @@ That digest is a field of a document **nobody had signed**: the chain was strong
   gating activation would refuse to re-activate what the installation is already running. The fix
   is to distinguish *unsigned because nobody signed it* from *unsigned because we synthesised it* —
   its own phase.
-- **The browser suite was not re-run after the UI change** — `[UNVERIFIED]`: the new card line and
-  the import panel are proven by their markup/i18n gates and by the route-level e2e, not by a
-  browser driving them. It runs with the deployment, against a probe (§3a 11e).
-- **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped.
+- **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped. The browser suite WAS
+  run and is green on `route models` (populated 2290 chars, no console error, no failed request);
+  the audit is the remaining T2 instrument.
 - **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, still its own phase.
 - **No delete, no discovery, no download resume, no quarantine retention.** Unchanged from `s337`.
 - **`gitleaks` is absent.** The secret scan was **heuristic** and is declared as such.

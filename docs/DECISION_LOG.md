@@ -12159,3 +12159,19 @@ NLnet explicitly favours the delimited component over the platform.
 41 tests run with no network, no container and no filesystem for the transport half.
 **Reversal cost.** None — nothing built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0525 · Signed descriptors reach the installation — 2026-08-18
+**Decision.** `D-0523` deployed as `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`,
+06:05:47Z, on the Owner's «FAI ENTRAMBI» — commits `9aa48a0` and `f7e5920`, pushed to `origin/main`.
+**Why.** §3a: a phase that changes the product installs it and verifies it live, in the same phase.
+**Rejected.** Deploying before the browser suite: the phase added a card line and a panel, and
+route-level evidence does not prove a page renders.
+**Evidence.** Browser e2e **504/505** — `route models` populated (2290 chars, up from 1675), no
+console error, no failed request; the one FAIL is `F-I18N-002` and this phase grew it by **zero**
+(647 closable, unchanged, while recorded strings rose 905→910). Live: byte-equal tree↔image **8/8**,
+tree↔running **4/4**; `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines;
+`/livez` and `/readyz` **200** on both ports; `descriptors/import` **401** anonymously. Cleanup:
+non-project containers **50→50**, volumes **65→65**, networks **10→10**, zero e2e litter.
+**Reversal cost.** One rename and a start — no migration, nothing written by this image.
+Predecessor kept as `noesar-evolution-pre-20260818T060547Z`; all four images remain on disk.
+**Status.** installed.
