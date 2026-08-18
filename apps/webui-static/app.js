@@ -5987,9 +5987,28 @@ function codenModelRowMarkup(entry,activeId){
     entry.contextWindow?`${escapeHtml(t('context'))} ${escapeHtml(String(entry.contextWindow))}`
       :`${escapeHtml(t('context'))} <em>${escapeHtml(t('undeclared'))}</em>`,
   ].join(' &middot; ');
+  // D-0535. Who says this is this — on the surface that STARTS a model, not only on the page
+  // that lists them. Three states, and the third is not a warning: `SYNTHESISED` means this
+  // installation wrote the record from its own runtime, so there is no signature to look for
+  // and its absence says nothing. Rendering that as "unsigned" would be a false alarm about
+  // the model the product is running.
+  const authenticity=entry.authenticity;
+  const provenance=!authenticity
+    ?''
+    :authenticity.verified
+      ?`<span class="badge badge-on">${escapeHtml(t('Signed by'))} ${escapeHtml(authenticity.signedBy??'—')}</span>`
+      :authenticity.kind==='SYNTHESISED'
+        ?`<span class="badge" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Provenance unknown'))}</span>`
+        :`<span class="badge badge-off" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Unsigned'))}</span>`;
+  // A model whose descriptor does not verify is not startable, so the gesture that would start
+  // it is drawn STOPPED with its reason rather than removed — MC-006's posture, and it is what
+  // the server would answer anyway (403).
+  const unattested=Boolean(authenticity)&&!authenticity.verified&&authenticity.kind!=='SYNTHESISED';
   const action=inUse
     ?`<span class="badge badge-on">${escapeHtml(t('In use'))}</span>`
-    :`<button type="button" class="secondary" data-model-use="${escapeHtml(entry.id)}">${escapeHtml(t('Use'))}</button>`;
+    :unattested
+      ?`<button type="button" class="secondary" disabled title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Use'))}</button>`
+      :`<button type="button" class="secondary" data-model-use="${escapeHtml(entry.id)}">${escapeHtml(t('Use'))}</button>`;
   // The confirmation takes the row's own space rather than opening a dialog over it: what is
   // being confirmed stays visible, in place, which a second layer does not give.
   const confirming=codenModelPending===entry.id
@@ -5998,7 +6017,7 @@ function codenModelRowMarkup(entry,activeId){
       +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
     :'';
   return `<div class="model-row${inUse?' active':''}" role="listitem" data-model-id="${escapeHtml(entry.id)}">`
-    +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small></div>`
+    +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small>${provenance}</div>`
     +`<div>${action}</div>${confirming}</div>`;
 }
 function renderCodenModelPicker(data,{loading=false,error=null}={}){

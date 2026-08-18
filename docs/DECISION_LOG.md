@@ -12445,3 +12445,60 @@ the other in the same breath.
 executes, reliability measured rather than asserted. Explicitly **not trait 2**: product surface,
 not a reusable component.
 **Status.** deferred, awaiting the Owner.
+
+## D-0536 · Starting a model is gated by WHO said so — F-MODEL-AUTH-001 closed — 2026-08-18
+**Decision.** `D-0535` executed. Descriptor authenticity now reaches the surfaces that **start** a
+model and gates the start: `installedModelList()` carries `authenticity` per entry, `activateModel`
+refuses an unattested descriptor with **403**, and `#/coden`'s chooser draws the provenance beside
+each row with its Use button **disabled and explained** when the descriptor does not verify.
+**The distinction that unblocked it, and why it belongs to the product rather than the package.**
+`model-descriptor-authenticity.mjs` reports what it SEES — a record with no signature is
+`NO_SIGNATURE`. Only `server.mjs` knows it **wrote one of those records itself**, from what the
+runtime reports it is running. That record is now marked `synthesised` and reported as a third
+kind, **`SYNTHESISED`**: nobody claimed anything, so the absence of a signature is not evidence of
+anything. `NO_SIGNATURE` means a publisher placed a document and did not sign it — opposite
+treatment. Collapsing the two is exactly what `F-MODEL-AUTH-001` was blocked on: gate on the first
+and the product protects itself; gate on the second and it refuses to describe what it is running.
+The package stays generic, so `SPEC.md` and the conformance suite are untouched.
+**Both shells, with no second renderer.** `detailLines` serialises the call result, so `/model`
+shows the same field over `ssh` and in the browser. Measured before building — it is why this phase
+wrote one field instead of two renderings (`noesar-evolution` rule 3).
+**`undefined` refuses, `null` is a statement.** A caller that did not check at all is refused
+(`403`, "was not checked against a publisher registry") — an omission must never read as a
+permission, the same rule `planAcquisition` already carries. An explicit `null` — a caller with no
+registry, saying so — is accepted.
+**Evidence.** The gate was **observed to fire against real callers**: the moment it landed, five
+pre-existing tests failed because they started models without checking. They now state what they
+checked. 6 new tests cover the six conditions (unchecked · unsigned · revoked key · `SYNTHESISED`
+starts · verified starts · explicit `null` starts). `tools/model-acquisition-e2e.mjs` **36/36 PASS**,
+including three new checks that a downloaded, signed model reaches `/api/v1/models/installed`
+carrying **who signed it**. `npm test` **2632/2633** (1 pre-existing skip). ESLint **0/424**.
+`SOURCE_VERIFY=PASS`. i18n `VERDICT=COVERED`.
+**Rejected.** Gating `SYNTHESISED` (it would refuse to re-activate what the installation runs);
+teaching the package about synthesised records (a product concept in a generic component);
+rendering the state in one shell only.
+**Reversal cost.** None yet — not installed. On the live installation `models/catalog/` is empty,
+so no start that works today stops working.
+**Funding fit.** **Restack · traits 3 and 5** — user-visible provenance for what a local system
+executes, and reliability measured rather than asserted. Not trait 2: product surface.
+**Status.** applied, tested, **not committed, not pushed, not deployed** — awaiting the Owner.
+
+## D-0537 · Improvement proposal — a signing tool, so the requirement has a door — 2026-08-18
+**Decision.** Proposed, not executed: `tools/sign-model-descriptor.mjs` — key in, descriptor in,
+signed descriptor out — refusing to sign anything that does not already validate against
+`schemas/model-descriptor.schema.json`.
+**Why.** `D-0523` made a signed descriptor **required**; `D-0536` made an unsigned one
+**unstartable**. Producing one today means knowing the exact canonical-JSON rule and writing an
+ed25519 signature by hand: the product ships `signModelDescriptor` as a function and no tool a
+publisher can run. A requirement nobody outside this repository can satisfy is a wall with no door,
+and the schema check in the same tool is what stops a publisher signing a document that will be
+rejected downstream for an unrelated reason.
+**Rejected.** Documenting the procedure instead of shipping the tool — the canonical encoder is
+exactly the kind of detail a prose description gets subtly wrong, and a wrong signature is
+indistinguishable from a tampered document.
+**Evidence.** Measured this phase: `signModelDescriptor` is exported from the package and used only
+by this repository's own tests and its e2e. No CLI wraps it.
+**Reversal cost.** None — nothing built.
+**Funding fit.** **Restack · traits 2 and 6** — it is what makes the format adoptable by someone
+other than us, and ecosystem impact is the trait that asks *who else can use this*.
+**Status.** deferred, awaiting the Owner.

@@ -7,7 +7,8 @@
 // except the inference itself, which belongs to whatever local server the runtime
 // attaches to.
 
-import test from 'node:test';
+import test, { describe } from 'node:test';
+
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -16,6 +17,11 @@ import { LocalModelRuntime, RuntimeMode, Backend, activateModel } from '../src/l
 import { TokenMinter } from '../src/capability.mjs';
 import { AdapterGrantOrchestrator } from '../src/adapter-capability.mjs';
 import { freshTempDir } from './support/workspace.mjs';
+
+// D-0535: activateModel now refuses a caller that did not check the descriptor against a
+// publisher registry at all — an omission must never read as a permission. Every call below
+// therefore states what it checked, exactly as the server does.
+const SIGNED = Object.freeze({ verified: true, kind: 'VERIFIED', signedBy: 'test-publisher' });
 
 function fresh(env = {}) {
   const workspace = freshTempDir('noesar-localmodel-');
@@ -388,7 +394,7 @@ test('activateModel launches a present, described model end to end', async () =>
   const { runtime, grants } = fresh();
   const descriptor = { id: 'test-model', launchCommand: ['/bin/sleep', '60'] };
   const present = new Map([['test-model', { verified: true }]]);
-  const result = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' });
+  const result = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED });
   assert.equal(result.activated, true);
   assert.equal(result.id, 'test-model');
   assert.ok(Number.isInteger(result.pid));
@@ -403,7 +409,7 @@ test('activateModel replaces whatever was already running, not run alongside it'
   const first = await runtime.launch({ capabilityToken: grantLaunch(grants) });
   const descriptor = { id: 'test-model-2', launchCommand: ['/bin/sleep', '60'] };
   const present = new Map([['test-model-2', { verified: true }]]);
-  const second = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' });
+  const second = await activateModel({ descriptor, present, runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED });
   assert.notEqual(second.pid, first.pid, 'a new process must actually have been spawned');
   assert.equal(runtime.status().launched.pid, second.pid, 'only the new process is tracked as running');
   await runtime.release();
@@ -412,7 +418,7 @@ test('activateModel replaces whatever was already running, not run alongside it'
 test('activateModel refuses a model this installation does not know about', async () => {
   const { runtime, grants } = fresh();
   await assert.rejects(
-    () => activateModel({ descriptor: null, present: new Map(), runtime, grants, actor: 'test-owner' }),
+    () => activateModel({ descriptor: null, present: new Map(), runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED }),
     /no such model is known/,
   );
 });
@@ -421,7 +427,7 @@ test('activateModel refuses a model that is not present and verified', async () 
   const { runtime, grants } = fresh();
   const descriptor = { id: 'not-here', launchCommand: ['/bin/sleep', '60'] };
   await assert.rejects(
-    () => activateModel({ descriptor, present: new Map(), runtime, grants, actor: 'test-owner' }),
+    () => activateModel({ descriptor, present: new Map(), runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED }),
     /not a verified, present model/,
   );
   await assert.rejects(
@@ -437,8 +443,82 @@ test('activateModel refuses a descriptor with no declared launchCommand, rather 
   const descriptor = { id: 'no-launch-command' };
   const present = new Map([['no-launch-command', { verified: true }]]);
   await assert.rejects(
-    () => activateModel({ descriptor, present, runtime, grants, actor: 'test-owner' }),
+    () => activateModel({ descriptor, present, runtime, grants, actor: 'test-owner', descriptorAuthenticity: SIGNED }),
     /declares no launchCommand/,
   );
   assert.equal(runtime.status().launched, null, 'a refused activation must not have spawned anything');
+});
+
+// ── D-0535 · starting is gated by WHO said so, not only by WHAT the bytes hash to ───────────
+//
+// The artefact check answers "do these bytes match the digest the descriptor declares". It
+// cannot answer "and who declared that digest" — an unsigned descriptor vouches for itself.
+// Three conditions, and the third is the one `F-MODEL-AUTH-001` was blocked on.
+describe('D-0535 — an unchecked or unattested model is not started', () => {
+  const startable = {
+    id: 'test-model', launchCommand: ['node', '-e', 'setTimeout(()=>{},1000)'],
+  };
+  const present = new Map([['test-model', { verified: true }]]);
+  const stubs = () => ({
+    runtime: { release: async () => {}, config: () => ({ mode: 'manual', profileId: 'cpu' }), configure: async () => {}, launch: async () => ({ pid: 1 }) },
+    grants: { request: () => ({ runId: 'r' }), approve: () => ({ token: 't' }) },
+  });
+
+  test('a caller that did not check at all is refused — an omission is not a permission', async () => {
+    const { runtime, grants } = stubs();
+    await assert.rejects(
+      () => activateModel({ descriptor: startable, present, runtime, grants, actor: 'owner' }),
+      /was not checked against a publisher registry/,
+    );
+  });
+
+  test('a descriptor nobody signed is refused, and the refusal carries its reason', async () => {
+    const { runtime, grants } = stubs();
+    await assert.rejects(
+      () => activateModel({
+        descriptor: startable, present, runtime, grants, actor: 'owner',
+        descriptorAuthenticity: { verified: false, kind: 'NO_SIGNATURE', reason: 'nobody signed it' },
+      }),
+      /nobody signed it/,
+    );
+  });
+
+  test('a descriptor whose publisher key was revoked is refused', async () => {
+    const { runtime, grants } = stubs();
+    await assert.rejects(
+      () => activateModel({
+        descriptor: startable, present, runtime, grants, actor: 'owner',
+        descriptorAuthenticity: { verified: false, kind: 'KEY_NOT_TRUSTED', reason: 'the key was revoked' },
+      }),
+      /the key was revoked/,
+    );
+  });
+
+  test('SYNTHESISED starts — the product describing what it runs is not a publisher claim', async () => {
+    // The carve-out that makes the gate installable. Refusing this would make an installation
+    // unable to re-activate the model it is already running, which is why F-MODEL-AUTH-001
+    // stayed open: the fix was never the gate, it was the distinction the gate needed.
+    const { runtime, grants } = stubs();
+    const result = await activateModel({
+      descriptor: startable, present, runtime, grants, actor: 'owner',
+      descriptorAuthenticity: { verified: false, kind: 'SYNTHESISED', reason: 'this installation wrote this record' },
+    });
+    assert.equal(result.activated, true);
+  });
+
+  test('a verified descriptor starts', async () => {
+    const { runtime, grants } = stubs();
+    const result = await activateModel({
+      descriptor: startable, present, runtime, grants, actor: 'owner', descriptorAuthenticity: SIGNED,
+    });
+    assert.equal(result.activated, true);
+  });
+
+  test('an explicit null starts — a caller with no registry says so instead of staying silent', async () => {
+    const { runtime, grants } = stubs();
+    const result = await activateModel({
+      descriptor: startable, present, runtime, grants, actor: 'owner', descriptorAuthenticity: null,
+    });
+    assert.equal(result.activated, true);
+  });
 });

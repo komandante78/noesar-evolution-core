@@ -270,6 +270,18 @@ try {
   check('and the origin policy applies to descriptors exactly as to artefacts',
     badScheme.status === 422 && badScheme.data.kind === 'SCHEME_NOT_ALLOWED', `${badScheme.status} ${JSON.stringify(badScheme.data)}`);
 
+  console.log('\nD-0535 — the authenticity reaches the surface that STARTS a model');
+  const installed = await request('/api/v1/models/installed');
+  const entry = (installed.data.models ?? []).find((item) => item.id === 'e2e/honest-1b') ?? null;
+  check('a downloaded, signed model is listed as startable', Boolean(entry), JSON.stringify(installed.data));
+  check('and it carries WHO signed it, on the listing /model answers from',
+    entry?.authenticity?.verified === true && entry?.authenticity?.signedBy === 'e2e-publisher',
+    JSON.stringify(entry?.authenticity));
+  const unsignedEntry = (installed.data.models ?? []).find((item) => item.id === 'e2e/unsigned-1b') ?? null;
+  check('an unsigned descriptor, if it were startable, would say so rather than look identical',
+    unsignedEntry === null || unsignedEntry.authenticity?.verified === false,
+    JSON.stringify(unsignedEntry?.authenticity));
+
   console.log('\nthe gate closes again, and acquiring stops');
   const withdrawn = await request('/api/v1/settings/model-egress', { method: 'PUT', value: { consented: false } });
   check('consent can be withdrawn', withdrawn.status === 200 && withdrawn.data.consented === false);

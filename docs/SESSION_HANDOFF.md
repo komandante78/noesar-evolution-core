@@ -1,88 +1,101 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s339` — `D-0526`…`D-0534` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `50c417b` · **Live:** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z`
+**Last updated:** 2026-08-18 · **Phase:** `s340` — `D-0536` · **BUILT AND TESTED, NOT COMMITTED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `d943e8e` · **Live:** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z` (still `s339`)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending and nothing is half-built.** The Owner authorised commit, then push and
-deploy; all three were performed — `cb01846` + `25704e1` + `50c417b` on `origin/main`, deployed and verified
-live as `noesar-evolution:d0526-verified-acquisition-20260818T083258Z` (`D-0534`).
+**Waiting on the Owner:** commit → push → deploy of `D-0536`. 7 files. Nothing staged; the diff has
+been reviewed and the working tree is otherwise clean.
 
-**The next phase is the `/model` chain** («poi vai avanti con /model»), scoped and **not started**.
+**`F-MODEL-AUTH-001` is closed by this phase.** Nothing about it remains open.
 
-**Its first measurement, before any code is written:** *can a local inference runtime exist on this
-host without a host-level change?* (platform law §60-64). Today `NOESAR_LOCAL_MODEL_RUNTIME` is
-`disabled` on the container, **no model artefact is on disk** and **no runtime binary is in the
-image**. That is why "starting a real model end to end" has been `[UNVERIFIED]` for four phases,
-and the honest answer decides whether that phase builds a runtime, an adapter to one the operator
-installs, or a declared refusal. Do not start by writing code.
+**Then, on a new instruction: the `/model` chain.** Its first measurement, before any code: *can a
+local inference runtime exist on this host without a host-level change?* (platform law §60-64).
+`NOESAR_LOCAL_MODEL_RUNTIME` is `disabled` on the container, no model artefact is on disk, no
+runtime binary is in the image. The honest answer decides whether that phase builds a runtime, an
+adapter to one the operator installs, or a declared refusal. **Do not start by writing code.**
 
 ---
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**The guarantees are adoptable without the implementation.** `packages/verified-acquisition/`
-carries `SPEC.md` — eleven normative requirements (`VA-001`…`VA-011`), written so the component can
-be implemented in any language from that document alone — plus the suite that measures it.
+**Starting a model is gated by WHO said so, not only by what the bytes hash to.**
+
+The artefact check answers *"do these bytes match the digest the descriptor declares"*. It cannot
+answer *"and who declared that digest"* — an unsigned descriptor vouches for itself. Both questions
+are now asked, on the surfaces that start a model.
 
 | | |
 |---|---|
-| traceability, both directions | a requirement no case measures, or a case naming a requirement the spec does not state, **fails the package's own tests**. **59 cases, 11/11 requirements covered** |
-| cross-language crypto vectors | 8 fixed ed25519 cases — signed, tampered, transplanted signature, revoked key — **public material only**; no private key is stored and none is needed, because verification is the operation under test |
-| one implementation, not two | the three former paths in `services/…/src/` are **re-export shims**; nothing deleted (rule 12), originals backed up (rule 22) |
-| the suite has been seen to fail | run against broken implementations — missing function, permissive origin policy, ignored byte cap |
+| `installedModelList()` | carries `authenticity` per entry — the listing `/model` answers from |
+| `activateModel` | **403** for an unattested descriptor, **and** for a caller that did not check at all |
+| `#/coden`'s chooser | draws the provenance beside each row; the **Use** button is drawn **disabled with its reason** when the descriptor does not verify (MC-006's posture) |
+| both shells, one renderer | `detailLines` serialises the call result, so `/model` shows the same field over `ssh` and in the browser — **measured before building**, which is why this phase wrote one field instead of two renderings |
 
-**Governance changed too, and it binds every future phase:**
+**The distinction that unblocked it — and why it belongs to the product, not the package.**
+`model-descriptor-authenticity.mjs` reports what it *sees*: a record with no signature is
+`NO_SIGNATURE`. Only `server.mjs` knows it **wrote one of those records itself**, from what the
+runtime reports it is running. That record is marked `synthesised` and reported as a third kind:
 
-- **The funding skill was verified against its sources and was wrong.** It described NGI Zero as
-  open two months after it closed. **NGI Zero has concluded**; calls resume after summer 2026 under
-  the **Open Internet Stack** — **Restack** (€5k–50k, €7M to 2030), **CodeSupply**, **ELFA**. Six
-  platforms now carry URLs, licence terms, the geography that disqualifies, and **the date each row
-  was read**. Licence answer: all require a recognised free/open licence, and NLnet **explicitly
-  permits additional proprietary licences alongside it** — AGPL plus a commercial licence is
-  compatible, open core is not a disqualifier.
-- **The session-close guard states §21b directly** — exactly two containers survive — instead of
-  assuming one deployment per session. Stricter, not looser: two rollbacks now block. Its scope
-  pattern also now catches the **dot-separated** probe names this project actually uses.
-- **Every improvement proposal must name its funding platform and trait.** *"Fits none"* is a valid
-  written answer.
+- **`NO_SIGNATURE`** — a publisher placed a document here and did not sign it. Something was
+  claimed and nothing backs it. **Not started.**
+- **`SYNTHESISED`** — nobody claimed anything. There is no signature to look for and its absence is
+  not evidence of anything. **Reported prominently, and started**, because refusing it would make
+  an installation unable to describe what it is running.
 
-**Five defects found and repaired, four of them in what this phase itself wrote:** the base image
-did not copy `packages/` (a restart loop, not a wrong answer) · the import-closure walker read
-comments as code · the container guard's scope pattern missed the dot · the conformance vector
-runner built the trust store from the document's own claim about itself · a traceability test
-asserted a table's shape while its comment claimed to be an oracle.
+Collapsing the two is exactly what `F-MODEL-AUTH-001` was blocked on. The package stays generic, so
+`SPEC.md` and the conformance suite are untouched.
 
-**Evidence, produced this session:** `npm test` **2626/2627** (1 pre-existing skip) · conformance
-**59/59, 11/11 requirements** · `model-acquisition-e2e` **33/33** through the shims · ESLint
-**0/424** · governance **6/6, 323 checks** · byte-equal tree↔image **9/9**, tree↔running **4/4** ·
-`/livez` and `/readyz` **200** on both ports · the four model surfaces **401** anonymously ·
-containers **50→50** non-project, volumes **65→65**, networks **10→10**.
+**`undefined` refuses; `null` is a statement.** A caller that did not check is refused — an
+omission must never read as a permission, the same rule `planAcquisition` carries. An explicit
+`null`, from a caller with no registry saying so, is accepted.
 
-**The restart-loop risk was removed before production was touched**, not after: the shim's import
-was executed inside the built image, offline (`docker run --rm --network none --entrypoint node`),
-and resolved.
+**Evidence, produced this session:**
+
+- **The gate was observed to fire against real callers**, not against a synthetic fixture: the
+  moment it landed, **five pre-existing tests failed** because they started models without
+  checking. They now state what they checked.
+- 6 new tests, one per condition: unchecked · unsigned · revoked key · `SYNTHESISED` starts ·
+  verified starts · explicit `null` starts.
+- `node tools/model-acquisition-e2e.mjs` → **`PASS`, 36/36**, including three new checks that a
+  downloaded, signed model reaches `/api/v1/models/installed` **carrying who signed it**.
+- `npm test` → **2633 tests, 2632 pass, 0 fail, 1 skipped**.
+- `bash tools/run-browser-e2e.sh` → **504/505**; the one FAIL is the declared gap `F-I18N-002` and
+  this phase grew it by **zero** (647 closable, unchanged; recorded 905→908). `route coden` green.
+- ESLint **0/424** · `SOURCE_VERIFY=PASS` · i18n `VERDICT=COVERED`.
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **The `/model` chain was not started.** It is the next phase, not this one.
-- **The browser suite was not re-run**, and that is a scoping decision, not a gap: this phase
-  changed no markup and no browser JavaScript. `tools/accessibility-audit.mjs` likewise.
-- **Starting a real model end to end is still `[UNVERIFIED]`** — unchanged for four phases, for the
-  reason stated at the top.
-- **`F-MODEL-AUTH-001`** unchanged: descriptor authenticity gates **acquiring**, not **starting**,
-  and neither shell displays it.
-- **Publication and the licence question are Owner decisions, not taken.** The package is in no
-  registry (rule 35), and whether a component meant for adoption should be more permissive than
-  AGPL is about **adoption**, not eligibility — copyleft is penalised by no platform checked.
+- **Not committed, not pushed, not deployed.** The installation still serves `s339`.
+- **The `/model` chain was not started.** Next phase.
+- **Starting a real model end to end is still `[UNVERIFIED]`** — no runtime, no artefact, no binary
+  on this host. This phase gates a start; it does not make one possible.
+- **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped.
+- **The live installation's behaviour does not change.** `models/catalog/` is empty there, so no
+  start that works today stops working — `[INFERRED]` from that emptiness, and the deployment's own
+  verification is what will confirm it.
 - **No delete route, no discovery, no download resume, no quarantine retention, `MANIFEST` not
   regenerated.** Unchanged.
-- **`gitleaks` is absent.** Every secret scan this session was **heuristic** and declared as such.
+- **`gitleaks` is absent.** The secret scan was **heuristic** and is declared as such.
+
+---
+
+## FILES THIS PHASE CHANGED
+
+| File | What |
+|---|---|
+| `services/…/src/server.mjs` | the synthesised record is marked; `productAuthenticity()` reports `SYNTHESISED`; `installedModelList()` carries `authenticity`; the activation call states what it checked |
+| `services/…/src/local-model-runtime.mjs` | `activateModel` gains the authenticity gate, with the `SYNTHESISED` carve-out that makes it installable |
+| `apps/webui-static/app.js`, `i18n-catalog.js` | provenance beside each chooser row; **Use** disabled and explained when unattested; one new string |
+| `services/…/test/local-model-runtime.test.mjs` | 6 new tests, and every existing call now states what it checked |
+| `services/…/test/session-protocol.test.mjs` | the same, on the wiring the shells drive |
+| `tools/model-acquisition-e2e.mjs` | three checks that authenticity reaches the starting surface |
+| `docs/DECISION_LOG.md` | `D-0536` |
 
 ---
 
@@ -93,14 +106,15 @@ and resolved.
 
 ---
 
-## THE IMPROVEMENT PROPOSAL — `D-0535`, awaiting the Owner
+## THE IMPROVEMENT PROPOSAL — `D-0537`, awaiting the Owner
 
-**Give `#/coden`'s chooser and `/model` the authenticity `#/models` already shows**, and
-distinguish *unsigned because nobody signed it* from *unsigned because we synthesised it from the
-running runtime* — the distinction `F-MODEL-AUTH-001` is blocked on. It would let **starting** a
-model be gated the way **acquiring** one already is, without refusing to re-activate what the
-installation is currently running.
+**Make the descriptor a publisher can produce without reading our source.** Signing one today means
+knowing the exact canonical-JSON rule and writing an ed25519 signature by hand; the product ships
+`signModelDescriptor` but no *tool* a publisher can run. A tiny `tools/sign-model-descriptor.mjs`
+— key in, descriptor in, signed descriptor out, refusing to sign anything that does not already
+validate against `schemas/model-descriptor.schema.json` — turns "signed descriptors are required"
+from a rule into something a third party can actually satisfy.
 
-**Funding fit: Restack · traits 3 and 5** — user-visible provenance for what a local system
-executes, and reliability measured rather than asserted. Explicitly **not trait 2**: this part is
-product surface, not a reusable component.
+**Funding fit: Restack · traits 2 and 6** — it is what makes the format adoptable by someone other
+than us, and ecosystem impact is the trait that asks *who else can use this*. Without it the
+signature requirement is a wall with no door.

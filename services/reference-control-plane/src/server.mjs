@@ -480,6 +480,12 @@ function installedModelList() {
         type: item.type ?? null,
         functions: Array.isArray(item.functions) ? item.functions : [],
         contextWindow: item.contextWindow ?? null,
+        // `D-0535`. Who says this is this. Carried HERE rather than rendered twice: `detailLines`
+        // serialises this object for both shells, so `/model` shows it identically over `ssh`
+        // and in the browser, and the chooser draws a badge from the same field. A surface that
+        // starts a model while showing less than the page that lists it is the divergence
+        // `noesar-evolution` rule 3 exists to prevent.
+        authenticity: item.authenticity ?? null,
       };
     }),
   };
@@ -487,10 +493,14 @@ function installedModelList() {
 
 function activateInstalledModelById(id, actor) {
   const descriptors = readModelDescriptors();
+  const descriptor = descriptors.find((entry) => entry.id === id) ?? null;
   return activateModel({
-    descriptor: descriptors.find((entry) => entry.id === id) ?? null,
+    descriptor,
     present: readPresentModels(descriptors),
     runtime: localModels, grants: adapterGrants, actor,
+    // `D-0535`: computed by `readModelDescriptors` against the LIVE registry on this read, so a
+    // key revoked a moment ago stops a start that a cached verdict would have allowed.
+    descriptorAuthenticity: descriptor?.authenticity ?? null,
   });
 }
 
@@ -731,7 +741,11 @@ function readModelDescriptors() {
   // installation did not start itself, which on a sidecar installation is all of them.
   const running = activeModelId();
   if (running && !descriptors.some((entry) => entry.id === running)) {
-    descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [] });
+    // `D-0535`: marked as OURS. Without this mark the synthesised record is indistinguishable
+    // from a descriptor a publisher placed and did not sign — and those two deserve opposite
+    // treatment. Nobody claimed anything about this one; the product wrote it from what the
+    // runtime reports. See `productAuthenticity` below.
+    descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [], synthesised: true });
   }
   // D-0521. Every descriptor carries its authenticity from here on, and the synthesised one for
   // a running model carries `NO_SIGNATURE` like any other unsigned document — which is the
@@ -742,8 +756,38 @@ function readModelDescriptors() {
   // `MC-001` consults the registry at plan time instead of trusting a cached lane.
   return descriptors.map((descriptor) => ({
     ...descriptor,
-    authenticity: authenticitySummary(verifyModelDescriptor({ descriptor, registry: publisherRegistry })),
+    authenticity: productAuthenticity(descriptor),
   }));
+}
+
+/**
+ * `D-0535` — the third answer the verifier cannot give, and the product can.
+ *
+ * `model-descriptor-authenticity.mjs` reports what it SEES: a record with no signature is
+ * `NO_SIGNATURE`. That is correct and generic, and it is why the distinction lives here instead
+ * of in the package: only this file knows that it wrote one of these records itself.
+ *
+ *   NO_SIGNATURE   a publisher placed a descriptor here and did not sign it. Something was
+ *                  claimed and nothing backs the claim — do not start it.
+ *   SYNTHESISED    nobody claimed anything. The product built this record from what the runtime
+ *                  reports it is running, so there is no signature to look for and its absence
+ *                  is not evidence of anything. Reported prominently, and NOT a refusal.
+ *
+ * Collapsing the two is what `F-MODEL-AUTH-001` was blocked on: gate on the first and the
+ * product protects itself; gate on the second and it refuses to describe what it is running.
+ */
+function productAuthenticity(descriptor) {
+  if (descriptor?.synthesised) {
+    return {
+      verified: false,
+      kind: 'SYNTHESISED',
+      signedBy: null,
+      fingerprint: null,
+      trustLevel: null,
+      reason: 'this installation is running this model, and wrote this record from its runtime — no publisher described it, so there is no signature to check. Its provenance is unknown, not unverified.',
+    };
+  }
+  return authenticitySummary(verifyModelDescriptor({ descriptor, registry: publisherRegistry }));
 }
 
 // Which artefacts are on disk, and whether each matches the digest its publisher declared.

@@ -126,6 +126,8 @@ export const RUNTIME_ONLY = Object.freeze([
   'Received:',
   'Kept aside, not deleted and not startable.',
   'Changing this needs the permission to manage providers.',
+  // D-0535 · la provenienza sulle superfici che AVVIANO un modello.
+  'Provenance unknown',
   // D-0521 · who signed a descriptor, and every way the import can refuse one.
   'Signed by',
   'trust level',
@@ -1207,6 +1209,7 @@ const it = {
   'Received:': 'Ricevuta:',
   'Kept aside, not deleted and not startable.': 'Messo da parte, non cancellato e non avviabile.',
   'Changing this needs the permission to manage providers.': 'Cambiare questo richiede il permesso di gestire i fornitori.',
+  'Provenance unknown': 'Provenienza sconosciuta',
   // D-0521 · l'autenticità del descrittore e l'importazione.
   'Import a model descriptor': 'Importa un descrittore di modello',
   'Only a descriptor signed by a publisher registered on this installation is accepted. The digest every later guarantee rests on is a field of this document, so an unsigned one is refused rather than trusted.': 'È accettato solo un descrittore firmato da un pubblicatore registrato su questa installazione. L’impronta su cui poggia ogni garanzia successiva è un campo di questo documento, quindi uno non firmato è rifiutato invece che creduto.',

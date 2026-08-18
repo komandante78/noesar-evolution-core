@@ -588,11 +588,35 @@ export class LocalModelRuntime {
  * all already holds `model.manage`, so a second, separate human approval step here would be
  * confirming a decision already made rather than gating a new one.
  */
-export async function activateModel({ descriptor, present, runtime, grants, actor, nowUnix = Math.floor(Date.now() / 1000) }) {
+export async function activateModel({ descriptor, present, runtime, grants, actor, nowUnix = Math.floor(Date.now() / 1000), descriptorAuthenticity = undefined }) {
   if (!descriptor) throw fail('no such model is known to this installation', 404);
   const state = present.get(descriptor.id);
   if (!state?.verified) {
     throw fail(`\`${descriptor.id}\` is not a verified, present model on this installation`, 409);
+  }
+  // `D-0535` — starting is gated the way acquiring already was (`D-0523`).
+  //
+  // The artefact check above answers "do these bytes match the digest the descriptor declares".
+  // It cannot answer "and who declared that digest": an unsigned descriptor is a document that
+  // vouches for itself. Both questions, or the first one proves only internal consistency.
+  //
+  // `SYNTHESISED` passes deliberately — that record is the product's own account of what it is
+  // running, not a publisher's claim, and refusing it would make the installation unable to
+  // describe itself. That distinction is exactly what `F-MODEL-AUTH-001` was blocked on.
+  //
+  // `undefined` means the caller did not check. It refuses, like `planAcquisition`: an omission
+  // must never read as a permission. `null` is accepted only from a caller that has no registry
+  // to check against at all, and says so by passing it explicitly.
+  if (descriptorAuthenticity === undefined) {
+    throw fail(`\`${descriptor.id}\` was not checked against a publisher registry, and an unchecked model is not started`, 403);
+  }
+  if (descriptorAuthenticity !== null
+      && !descriptorAuthenticity.verified
+      && descriptorAuthenticity.kind !== 'SYNTHESISED') {
+    throw fail(
+      `\`${descriptor.id}\` is not started: ${descriptorAuthenticity.reason ?? 'its descriptor does not verify against a registered publisher'}`,
+      403,
+    );
   }
   if (!descriptor.launchCommand) {
     throw fail(`\`${descriptor.id}\` declares no launchCommand — this installation does not know how to start it`, 422);

@@ -89,6 +89,8 @@ before(async () => {
       descriptor: fakeDescriptors.get(id) ?? null,
       present: new Map([['test-model', { verified: true }], ['no-launch-command', { verified: true }]]),
       runtime: localModelRuntime, grants: modelGrants, actor,
+      // D-0535: the wiring must state what it checked; an unchecked model is not started.
+      descriptorAuthenticity: { verified: true, kind: 'VERIFIED', signedBy: 'test-publisher' },
     }),
     // Owner, 2026-08-15: `/model` with no id used to be a dead end. A tiny stand-in is
     // enough here — `server.mjs`'s own `listInstalledModels` (built on `buildCatalog`) is
