@@ -1,24 +1,27 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s337` — `D-0520`/`D-0521` · **BUILT AND TESTED, NOT COMMITTED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `807ed28` · **Live:** `noesar-evolution:d0516-model-chooser-20260817T155937Z` (unchanged — this phase has not been deployed)
+**Last updated:** 2026-08-18 · **Phase:** `s337` — `D-0520`…`D-0522` · **INSTALLED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `98ac312` · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The work is complete and verified in the tree. It is waiting on the Owner for three things,
-in this order, and nothing else is pending:**
+**Nothing is pending and nothing is half-built.** The Owner authorised commit, push and deploy
+(«autorizzo») and all three were performed: `98ac312` on `origin/main`, then deployed and verified
+live as `noesar-evolution:d0520-model-transport-20260818T023243Z` (`D-0522`).
 
-1. **Commit** — 11 files (5 new). Nothing is staged; the diff has been reviewed.
-2. **Push** — remote is `origin/main`, currently level with `807ed28`.
-3. **Deploy** (`CLAUDE10.md` §3a: build → bytes-equal-tree → stop with grace → backup stopped →
-   preserve predecessor → start with config read back → live verify → §5a cleanup). The browser
-   suite and the accessibility audit run as part of that step, against a probe, never the
-   installation (§3a 11e).
+**A model of a registered publisher is now fetched, verified against the digest its publisher
+declared, and made startable — on the installation the Owner actually uses.** Egress ships **off**,
+so nothing is fetched until an operator turns the consent on.
 
-**What the Owner authorised on 2026-08-18:** «procedi la proposta» — `D-0517`, the verified model
-acquisition component. That is what was built. It did **not** authorise commit, push or deploy.
+**The next phase is scoped and NOT started**, in dependency order:
+
+| Next | What | Blocked by |
+|---|---|---|
+| `s338` | **Delete** on `#/models`: a real button with a confirmation | nothing — but **no delete route exists at all** and must be built. Deleting is a different authority from acquiring. |
+| `s339` | **Automatic discovery** of models from curated sources | egress, so **off by default** (rules 30-32) — a design decision, not a switch |
+| `D-0521` | Publisher-**signed descriptors** over the same transport | an Owner decision; it is what makes `s339` better than "trust a URL" |
 
 ---
 
@@ -57,10 +60,7 @@ real acquisition, and **two defects in the surface it depends on were found and 
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Not committed, not pushed, not deployed.** The installation still serves `s336`.
 - **`tools/accessibility-audit.mjs` was not run** — the browser suite was, and is green on `route models`. The audit is the remaining T2 instrument and is named rather than skipped silently.
-- **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Its entry belongs to
-  the deployment step, with the rollback cost stated (§3a 11d).
 - **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, already tracked, still its own phase.
 - **Delete (`s337` original scope) was NOT built.** No delete route exists. Acquiring and deleting
   are separate authorities and separate gestures; this phase is the one the Owner authorised.

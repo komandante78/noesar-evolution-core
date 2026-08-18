@@ -5042,3 +5042,36 @@ service stopped (0600 in a 0700 directory, checksum written).
 Measured before and after: non-project containers **51 → 51**, volumes **65 → 65**, networks
 **10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0516_20260817T160054Z.txt`). Exactly the
 two containers §21b permits survive.
+
+## `d0520-model-transport-20260818T023243Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0520-model-transport-20260818T023243Z`, deployed 02:33:59Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-model-transport`, built
+`--network none`). `D-0520`: the model transport — `POST /api/v1/models/acquire` no longer answers
+`501 NO_TRANSPORT` but runs a verified job — plus the egress gate that could never open
+(`privacy.state === 'external'`, not one of the seven `PrivacyState` values) and the artefact path
+that interpolated a model id straight into a filename.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` **200** (`alive`) and `/readyz` **200**
+(`ready:true`) on **both** `http:8088` and `https:8443` (read in-container; the minimal image has no
+`curl`, and the https probe needs verification disabled for the self-signed cert). 4 children
+spawned (`postgres`/`api`/`codev`/`atom`), **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **8/8** before deploy, tree↔running container **4/4** after.
+Live surfaces, anonymous: `/api/v1/models/acquisitions`, `/api/v1/settings/model-egress` and
+`/api/v1/models/acquire` all answer **401** — the routes exist and the boundary holds. The served
+`app.js` carries `acquireControl`, `renderAcquisitions` and `toggleModelEgress`. Before `--apply`:
+`tools/model-acquisition-e2e.mjs` **22/22 PASS**, unit **2599/2600**, browser e2e **504/505** (the
+one FAIL is the declared gap `F-I18N-002`), ESLint **0/416**. §3a 11e respected — no mutating suite
+was run against the installation.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T023359Z`
+(`d0516-model-chooser-20260817T155937Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key added. One workspace directory can appear under this image
+(`models/quarantine/`, only if an acquisition fails) and the predecessor ignores it; the egress
+consent defaults to **off**, so an untouched installation behaves exactly as before. Backup taken
+with the service stopped (0600 in a 0700 directory, checksum written).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260817T160004Z` removed; its image
+(`d0493-password-form-fix-…`) **stays on disk**, so every documented rollback path still works.
+Measured before and after: non-project containers **50 → 50**, volumes **65 → 65**, networks
+**10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0520_20260818T023054Z.txt`). Exactly the two
+containers §21b permits survive. The browser suite's own probe and image tag were removed by the
+suite itself — verified, not assumed.

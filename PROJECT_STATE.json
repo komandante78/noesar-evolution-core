@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "s337 (D-0520/D-0521)",
-  "phase_status": "BUILT AND TESTED IN THE TREE — not committed, not pushed, not deployed",
-  "next_phase": "commit + push + deploy of D-0520, on the Owner authorisation; then delete route/button, then s339 discovery",
+  "current_phase": "s337 (D-0520/D-0521/D-0522)",
+  "phase_status": "COMPLETE — committed 98ac312, pushed, deployed and verified live",
+  "next_phase": "the delete route and button on #/models (no route exists), then s338 discovery, then D-0521 signed descriptors if the Owner takes the proposal",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "f9207b1299ce297ed3395e8c6e6fc18aa9d35133",
-  "last_updated_utc": "2026-08-18T02:16:01.442Z",
+  "last_commit": "98ac312",
+  "last_updated_utc": "2026-08-18T02:35:41.460Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1076,7 +1076,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "AWAITING OWNER AUTHORISATION for commit, push and deploy of D-0520 — the verified model acquisition component. BUILT AND VERIFIED THIS SESSION: POST /api/v1/models/acquire no longer answers 501 NO_TRANSPORT; it runs a real job on model-transport.mjs (https only plus loopback http, redirects re-checked per hop, byte cap counted while streaming, incremental sha256, stall deadline, cancellation) and model-acquisition.mjs (.part -> verified -> rename, quarantine on mismatch, never an overwrite, never a delete). TWO DEFECTS REPAIRED IN THE SAME DIFF: the egress gate compared privacy.state against \"external\", which is not one of the seven PrivacyState values, so it could never open — replaced by the named off-by-default consent settings.modelAcquisitionEgress with GET/PUT /api/v1/settings/model-egress, reported by derivePrivacy as EXTERNAL_METADATA_ONLY; and readPresentModels built its path as ${id}.bin, so an id containing a slash was never found and an id containing .. pointed outside the artefact directory — reader and writer now share artefactName(). EVIDENCE: tools/model-acquisition-e2e.mjs 22/22 PASS against the real control plane with a publisher on loopback (consent ships off and refuses EGRESS_NOT_CONSENTED, nothing written while off, honest artefact lands verified into the downloaded lane, tampered one fails DIGEST_MISMATCH and is quarantined and is in no foreground lane, withdrawal refuses again, both writes CSRF-guarded); 2599/2600 unit pass 0 fail (29 new); ESLint 0 errors on 416 files; SOURCE_VERIFY=PASS; i18n VERDICT=COVERED. UNVERIFIED: the new UI has no browser evidence — browser-e2e and accessibility-audit run with the deployment against a probe. NOT DONE: delete route (still none), discovery, download resume, quarantine retention, MANIFEST regeneration.",
+  "next_action": "NEXT PHASE, NOT STARTED. WHAT IS TRUE NOW, VERIFIED AND LIVE: a model of a registered publisher is fetched, verified against the digest the publisher declared, and made startable — POST /api/v1/models/acquire runs a real job instead of answering 501 NO_TRANSPORT. Deployed as noesar-evolution:d0520-model-transport-20260818T023243Z (D-0522): byte-equal tree-image 8/8 and tree-running 4/4, running/healthy, RestartCount=0, /livez and /readyz 200 on http:8088 and https:8443, the three new routes 401 anonymously, the served app.js carries the new UI. Predecessor kept as noesar-evolution-pre-20260818T023359Z; older rollback removed with its image retained; containers 50->50 non-project, volumes 65->65, networks 10->10. Egress ships OFF: nothing is fetched until an operator turns on Settings-side consent (settings.modelAcquisitionEgress), and the privacy indicator reports it as EXTERNAL_METADATA_ONLY. STILL NOT BUILT: the DELETE route and button (no route exists at all), automatic discovery (s339), download resume, and a retention policy for models/quarantine/. STILL UNVERIFIED: starting a real model end to end — no descriptor and no local runtime exist on this host, so the chain is proven up to a verified artefact on disk and no further. OPEN PROPOSAL D-0521: carry publisher-SIGNED descriptors over the same transport, so the metadata declaring which bytes to fetch is guarded by the key that already guards the bytes.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

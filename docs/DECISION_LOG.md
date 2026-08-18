@@ -12093,3 +12093,22 @@ widen egress while adding no guarantee, which is the worst of both.
 and are used for modules; nothing calls them on a model descriptor. Cost: one phase.
 **Reversal cost.** None — nothing built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0522 · The transport reaches the installation the Owner is actually using — 2026-08-18
+**Decision.** `D-0520` deployed as `noesar-evolution:d0520-model-transport-20260818T023243Z`,
+02:33:59Z, on the Owner's «autorizzo» — commit `98ac312`, pushed to `origin/main`.
+**Why.** §3a: a phase that changes the product installs what it changed and verifies it on the
+running installation, in the same phase. Leaving a built transport in the tree would leave the
+installation still answering `501 NO_TRANSPORT`.
+**Rejected.** Deploying without the browser suite — the new panels had no browser evidence, and
+`route models` being green (populated, no console error, no failed request) is what closed that
+`[UNVERIFIED]`.
+**Evidence.** Byte-equal tree↔image **8/8** and tree↔running **4/4**; `running`/`healthy`,
+`RestartCount=0`, 4 children, **0** auth-failure lines; `/livez` and `/readyz` **200** on both
+`http:8088` and `https:8443`; the three new routes answer **401** anonymously; the served `app.js`
+carries `acquireControl`/`renderAcquisitions`/`toggleModelEgress`. Cleanup measured: non-project
+containers **50→50**, volumes **65→65**, networks **10→10**.
+**Reversal cost.** One rename and a start — no migration, nothing written by this image except a
+`models/quarantine/` directory that only appears if an acquisition fails. Predecessor kept as
+`noesar-evolution-pre-20260818T023359Z`; all three images remain on disk.
+**Status.** installed.
