@@ -5201,3 +5201,28 @@ runners and their overlay tags were removed by `run-browser-e2e.sh` in-run — z
 remains. Volumes **65 → 65**, networks **10 → 10**, and the set of non-project containers is
 **identical** before and after (diffed by name, not counted:
 `EVIDENCE/docker_inventory_pre_cleanup_D-0539_20260818T154206Z.txt`).
+
+## `d0544-health-lane-20260818T160214Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0544-health-lane-20260818T160214Z`, deployed 16:02Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-health-lane`, built
+`--network none`). `D-0544`: a dead model is reported before a chat message pays for it.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` and `/readyz` **200** on **both**
+`http://…:8100` and `https://…:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **3/3** before deploy, tree↔running **2/2** after;
+`livenessReport` present in the running `local-model-runtime.mjs`. Before `--apply`: `npm test`
+**2650 tests / 0 fail**, `model-acquisition-e2e` **PASS 52/52** (a real inference server killed
+mid-run: the surface flips on the **second** failure, not the first), ESLint **0/426**,
+`SOURCE_VERIFY=PASS`.
+**Nothing is asked of the network here, and it was measured, not assumed.** The runtime is
+`disabled` on this installation, so `liveness()` performs no fetch: `liveness-failed` log lines
+after deployment = **0**. Section 8 (external APIs off by default) is untouched.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T160230Z`
+(`d0539-model-chain-20260818T154206Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key, nothing written to the workspace — the reading is held in memory.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T154259Z` removed (`Exited`, confirmed
+first); its image stays on disk. No probe, runner or overlay tag was created this phase — the
+browser suite was not run, because nothing in the DOM changed. Volumes **65 → 65**, networks
+**10 → 10**, and the set of non-project containers is **identical** before and after, diffed by
+name (`EVIDENCE/docker_inventory_pre_cleanup_D-0544_20260818T160214Z.txt`).

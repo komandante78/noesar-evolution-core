@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s342 · D-0544 (the Owner's authorisation of the D-0541 proposal).
+#
+# A dead model is reported BEFORE a chat message pays for the discovery.
+#
+# `lastProbe` was written only by `attach()`, which an operator calls once. In attach mode —
+# binding to a server somebody else started, which is the normal case on a host with no runtime
+# of its own — a server that died stayed `ok: true` for ever, and the first chat message after
+# the death was what found out.
+#
+#   * `local-model-runtime.mjs` gains `liveness()`: a background re-read of the endpoint, at most
+#     once per 15 s, single-flight, that never blocks a reader; `attach()` becomes the SINGLE
+#     observer, recording the monotone "last seen" and the failure counter;
+#   * `active-runtime-provider.mjs` withdraws the derived provider after TWO consecutive failures,
+#     never one, and names when the model was last there;
+#   * `server.mjs` drives the same reading from every provider read AND from an `unref()`-ed
+#     heartbeat, so an installation with nobody watching still notices.
+#     `NOESAR_LOCAL_MODEL_HEARTBEAT=off` switches the heartbeat off — declared, not hidden.
+#
+# **Nothing is asked of the network while the runtime is disabled**, which is this installation's
+# state: `liveness()` returns without a fetch, measured at 0 calls in the suite. So the deployed
+# behaviour here is unchanged, and section 8 (external APIs off by default) is untouched.
+#
+# Three paths changed, so three are copied:
+#   services/…/src/local-model-runtime.mjs                  liveness, the single observer
+#   services/…/src/ai-workspace/active-runtime-provider.mjs the hysteresis, and the reason
+#   services/…/src/server.mjs                               the heartbeat and the freshness field
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration, no
+# schema change, no configuration key, nothing written to the workspace — the reading is held in
+# memory and rebuilt from the endpoint. The predecessor is preserved under a timestamped name by
+# `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0539-model-chain-20260818T154206Z
+
+LABEL org.noesar.phase="4-health-lane"
+LABEL org.noesar.decision="D-0544"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/local-model-runtime.mjs /opt/noesar/services/reference-control-plane/src/local-model-runtime.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/ai-workspace/active-runtime-provider.mjs /opt/noesar/services/reference-control-plane/src/ai-workspace/active-runtime-provider.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001
