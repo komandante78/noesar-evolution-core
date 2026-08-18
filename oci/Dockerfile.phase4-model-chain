@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s341 · D-0539…D-0543.
+#
+# The last link of the `/model` chain: the model an operator CHOSE is the model that ANSWERS.
+#
+# Nothing joined `activateModel()` to the provider gateway. A person could choose a model, watch
+# it start, and be answered by something else — or by nothing, with `All streaming providers
+# failed` — and no surface said which had happened. `activeModelConsumers()` was honest by
+# omission: it named the Author and ATOM and never chat, because chat genuinely did not use it.
+#
+#   * `active-runtime-provider.mjs` (new) derives a provider profile from the runtime's own
+#     status at every read, and never stores one — so it stops existing the instant the runtime
+#     stops serving, with no reconciliation step that can be skipped;
+#   * `provider-gateway.mjs` routes at it, lists it first, and refuses to let it be edited as if
+#     it were stored; `route()` now separates an explicit per-message ask from a standing
+#     preference, so choosing a model leads the default without overriding a caller;
+#   * `server.mjs` reports `chat` on the listing `/model` answers from and on the activation
+#     itself — key order included, because `detailLines` keeps ten lines and the reason chat will
+#     NOT answer is the line an operator most needs;
+#   * `apps/webui-static/` states the same fact in the chooser, and draws the derived provider as
+#     read-only on the providers page instead of offering controls the server answers 409 to.
+#
+# `D-0540` is the property that keeps this safe: the derived profile is `external: false`, which
+# is what lets it answer with no consent grant and no credential — so an endpoint that is not
+# loopback or a private address is REFUSED rather than dialled.
+#
+# Five paths changed, so five are copied:
+#   services/…/src/server.mjs                              chat consumers, the `chat` field
+#   services/…/src/ai-workspace/active-runtime-provider.mjs the derivation (new file)
+#   services/…/src/ai-workspace/provider-gateway.mjs        routing, listing, refusals
+#   services/…/src/ai-workspace/chat-orchestrator.mjs       the two intents, kept apart
+#   apps/webui-static/                                      both surfaces that show who answers
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration, no
+# schema change, no configuration key, and nothing is written to the workspace — the profile this
+# adds is derived at read time and stored nowhere. On this installation the local model runtime is
+# `disabled` and no model artefact is present, so the deployed behaviour is unchanged until an
+# operator configures one; the deployment's verification confirms that rather than assuming it.
+# The predecessor is preserved under a timestamped name by `tools/deploy/redeploy.sh`, and its
+# image stays on disk.
+
+FROM noesar-evolution:d0536-start-gate-20260818T085504Z
+
+LABEL org.noesar.phase="4-model-chain"
+LABEL org.noesar.decision="D-0539"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/ai-workspace/active-runtime-provider.mjs /opt/noesar/services/reference-control-plane/src/ai-workspace/active-runtime-provider.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/ai-workspace/provider-gateway.mjs /opt/noesar/services/reference-control-plane/src/ai-workspace/provider-gateway.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs /opt/noesar/services/reference-control-plane/src/ai-workspace/chat-orchestrator.mjs
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

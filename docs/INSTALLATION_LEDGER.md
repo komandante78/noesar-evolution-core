@@ -5171,3 +5171,33 @@ than waved through**: `romantic_feynman` (`nous-trainer:v3-s134`, a python probe
 project's container** — it was `Up 3 seconds` when the inventory was taken and ended on its own.
 Every removal this phase performed named a `noesar-evolution-` container explicitly
 (`EVIDENCE/docker_inventory_pre_cleanup_D-0536_20260818T085504Z.txt`).
+
+## `d0539-model-chain-20260818T154206Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0539-model-chain-20260818T154206Z`, deployed 15:43Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-model-chain`, built
+`--network none`). `D-0539`: the model chosen with `/model` is the model that answers.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` **200** and `/readyz` **200** on **both**
+`http://…:8100` and `https://…:8443`. 4 children spawned (postgres, api, codev, atom), **0**
+auth-failure lines.
+**Verification.** Byte-equal tree↔image **7/7** before deploy, tree↔running **3/3** after. Live,
+anonymous: `/api/v1/models/installed`, `/models/catalog`, `/models/active` and `/providers` answer
+**401**. The deployed bytes carry the chain: `LOCAL_RUNTIME_PROFILE_ID` present in the running
+`provider-gateway.mjs`, `codenChatAnswerMarkup` in the served `app.js`. Before `--apply`:
+`npm test` **2645 tests / 0 fail**, `model-acquisition-e2e` **PASS 48/48**, browser e2e
+**504/505** (the one FAIL is the declared gap `F-I18N-002`, closable **647 unchanged**),
+accessibility **27/27**, ESLint **0/426**, `SOURCE_VERIFY=PASS`.
+**Behaviour on this installation is deliberately unchanged.** `NOESAR_LOCAL_MODEL_RUNTIME` is
+`disabled` here and no model artefact is present, so no derived provider exists and chat routes
+exactly as before — verified live, not assumed.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T154259Z`
+(`d0536-start-gate-20260818T085504Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key, nothing written to the workspace — the profile this adds is derived at read
+time and stored nowhere.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T085515Z` removed (`Exited`, confirmed
+before removal); its image stays on disk, as does the whole lineage. Four browser-suite probes and
+runners and their overlay tags were removed by `run-browser-e2e.sh` in-run — zero e2e litter
+remains. Volumes **65 → 65**, networks **10 → 10**, and the set of non-project containers is
+**identical** before and after (diffed by name, not counted:
+`EVIDENCE/docker_inventory_pre_cleanup_D-0539_20260818T154206Z.txt`).
