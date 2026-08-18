@@ -12039,3 +12039,57 @@ anonymously. Cleanup measured: containers 51→51 non-project, volumes 65→65, 
 **Reversal cost.** One rename and a start — no migration, nothing written by this image.
 Predecessor kept as `noesar-evolution-pre-20260817T160004Z`; all three images remain on disk.
 **Status.** installed.
+
+## D-0520 · The model transport, built — and the consent gate that could never open — 2026-08-18
+**Decision.** `D-0517` executed. `POST /api/v1/models/acquire` no longer answers `501 NO_TRANSPORT`:
+it starts a job on two new modules — `model-transport.mjs` (https only, plus http to loopback for a
+local mirror; every redirect hop re-checked; the byte cap counted **while streaming**, never trusted
+from `Content-Length`; sha256 incremental; stall deadline; `AbortSignal`) and `model-acquisition.mjs`
+(the disk: `.part` → verified → rename, quarantine on mismatch, never an overwrite, never a delete).
+Three routes make the job usable (`GET /acquisitions`, `GET /acquisitions/:id`, `POST /:id/cancel`),
+and `#/models` gained the Acquire button, the progress rows and the cancel gesture.
+**Why.** Every gate around acquisition already existed; only the transport did not. Built as a
+component rather than a download button it satisfies `noesar-evolution-funding-fit` traits 1, 2, 3
+and 5 — and it depends on no vendor CLI, which is trait 4 kept upright.
+**Two defects found in the diff's own surface and repaired here.** (1) The route asked
+`egressAllowed: privacy.state === 'external'`, and `'external'` is **not** one of the seven
+`PrivacyState` values: the gate was a constant `false` in the shape of a decision, so acquisition
+was refused as unconsented before the missing transport was ever reached. Replaced by a **named,
+off-by-default consent** (`settings.modelAcquisitionEgress`, `GET/PUT /api/v1/settings/model-egress`,
+rules 30-32), reported by `derivePrivacy` as `EXTERNAL_METADATA_ONLY` so the indicator cannot hide
+it. It is deliberately NOT derived from provider consent: agreeing to send prompts to a remote model
+is not agreeing to fetch weights from one. (2) `readPresentModels` built its path as
+`${descriptor.id}.bin` — an id like `acme/tiny-1b` is a PATH when interpolated, so such a model could
+never be found on disk, and an id containing `..` pointed outside the artefact directory. Both reader
+and writer now share `artefactName()`.
+**Rejected.** Shelling out to a vendor's CLI (one provider owning our models); streaming the download
+inside the HTTP response (ties gigabytes to one tab and leaves cancellation with no name); deleting a
+failed download (rule 12) or promoting it to `.bin` (`MC-004`).
+**Evidence.** `tools/model-acquisition-e2e.mjs`, against the real control plane, real session, real
+CSRF, real registry, publisher on loopback: **22/22 checks PASS** — consent ships off and acquiring is
+refused `EGRESS_NOT_CONSENTED`, nothing is written while it is off, consent opens and the privacy
+state becomes `EXTERNAL_METADATA_ONLY`, the honest artefact lands verified and moves to the
+`downloaded` lane, the tampered one fails `DIGEST_MISMATCH`, is quarantined, appears in **no**
+foreground lane, and withdrawing consent refuses again. Unit: **2599 pass / 0 fail** (29 new across
+`model-transport.test.mjs` and `model-acquisition.test.mjs`). ESLint **0 errors / 416 files**.
+`SOURCE_VERIFY=PASS`. i18n `VERDICT=COVERED`.
+**Reversal cost.** None yet — not installed. The consent setting defaults to off, so an installation
+that never touches it behaves exactly as before.
+**Status.** applied, tested, **not committed, not pushed, not deployed** — awaiting the Owner.
+
+## D-0521 · Improvement proposal — the artefact transport should carry the DESCRIPTOR too — 2026-08-18
+**Decision.** Proposed, not executed: use the same verified transport to fetch **publisher-signed
+descriptors**, not only artefacts — verifying the ed25519 signature against
+`publisher-registry.mjs` before a descriptor is ever written to `models/catalog/`.
+**Why.** Today an operator must place descriptor JSON in the workspace by hand, so the strongest
+link in the chain (a registered, revocable publisher key) guards the bytes while the metadata that
+declares which bytes to fetch — including the sha256 everything else depends on — arrives unsigned
+and unchecked. Signing it closes the loop and is the precondition for `s339` discovery being
+anything better than "trust a URL". As a component it is trait 5 (verifiability) and trait 2
+(reusable: any signed-manifest fetch, not only models).
+**Rejected.** Fetching descriptors over the same path without signature verification — it would
+widen egress while adding no guarantee, which is the worst of both.
+**Evidence.** Measured this phase: `registerKey`/`verify` already exist in `publisher-registry.mjs`
+and are used for modules; nothing calls them on a model descriptor. Cost: one phase.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.

@@ -188,6 +188,11 @@ function toolDisclosure(tool, retentionDays, pending, canRevoke) {
  * @param {Array}   [input.providers]     provider profiles as stored
  * @param {Array}   [input.tools]         tool/connector records as stored
  * @param {boolean} [input.updateMetadataEgress]  an update check would leave this host
+ * @param {boolean} [input.modelAcquisitionEgress] `D-0520`: this installation has been given
+ *        consent to fetch model artefacts. It is metadata egress and not content egress — what
+ *        leaves is "this installation wants model X", never a user's data — so it colours the
+ *        state exactly as an update check does. It is reported because an egress nobody can see
+ *        on the privacy indicator is an egress the indicator is lying about.
  * @param {object}  [input.lastViolation] the most recent refusal, if one is being reported
  * @param {number}  [input.retentionDays] this installation's own retention setting
  */
@@ -241,7 +246,7 @@ export function derivePrivacy(input = {}) {
   if (activeProviders.length) candidates.push(PrivacyState.REMOTE_MODEL_ACTIVE);
   if (activeTools.length) candidates.push(PrivacyState.EXTERNAL_CONNECTOR_ACTIVE);
   if (pendingProviders.length || pendingTools.length) candidates.push(PrivacyState.EXTERNAL_CONNECTOR_PENDING);
-  if (input.updateMetadataEgress) candidates.push(PrivacyState.EXTERNAL_METADATA_ONLY);
+  if (input.updateMetadataEgress || input.modelAcquisitionEgress) candidates.push(PrivacyState.EXTERNAL_METADATA_ONLY);
   if (!candidates.length) candidates.push(PrivacyState.LOCAL_ONLY_VERIFIED);
 
   const state = worst(candidates);

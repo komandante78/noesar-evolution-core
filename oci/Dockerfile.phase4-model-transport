@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s337 · D-0520.
+#
+# The model transport `planAcquisition` was planning for. `POST /api/v1/models/acquire` answered
+# `501 NO_TRANSPORT` for thirteen sessions; it now runs a real job on two new modules, and two
+# defects in the surface it depends on are repaired in the same image:
+#
+#   * the egress gate compared `privacy.state` with `'external'`, which is not one of the seven
+#     `PrivacyState` values — a constant `false` in the shape of a check. It is now a NAMED,
+#     off-by-default consent (`settings.modelAcquisitionEgress`), reported by the privacy
+#     indicator as `EXTERNAL_METADATA_ONLY` rather than hidden;
+#   * `readPresentModels` built its path as `${descriptor.id}.bin`, so a model whose id contains
+#     a separator could never be found on disk and an id containing `..` pointed outside the
+#     artefact directory. Reader and writer now share `artefactName()`.
+#
+# Five paths changed, so five are copied — deliberately narrow:
+#   apps/webui-static/                 the Acquire button, the acquisitions panel, the consent
+#                                      switch, their styles and their catalogue entries
+#   services/…/src/server.mjs          the four routes, the gate and the path repair
+#   services/…/src/privacy.mjs         the indicator reports the new egress
+#   services/…/src/model-transport.mjs    NEW — the verified transport
+#   services/…/src/model-acquisition.mjs  NEW — the job registry and the disk
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration and
+# no schema change. One workspace directory can come into existence under this image —
+# `models/quarantine/`, and only if an acquisition actually fails — and the predecessor simply
+# ignores it. The consent setting defaults to **off**, so an installation that never touches it
+# behaves exactly as it did before this image. The predecessor is preserved under a timestamped
+# name by `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0516-model-chooser-20260817T155937Z
+
+LABEL org.noesar.phase="4-model-transport"
+LABEL org.noesar.decision="D-0520"
+
+USER root
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/privacy.mjs /opt/noesar/services/reference-control-plane/src/privacy.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-transport.mjs /opt/noesar/services/reference-control-plane/src/model-transport.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-acquisition.mjs /opt/noesar/services/reference-control-plane/src/model-acquisition.mjs
+USER 10001:10001

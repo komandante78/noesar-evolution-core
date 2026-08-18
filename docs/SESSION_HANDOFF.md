@@ -1,77 +1,81 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-17 · **Phase:** `s336` — `D-0515`…`D-0519` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `7fcddff` · **Live:** `noesar-evolution:d0516-model-chooser-20260817T155937Z`
+**Last updated:** 2026-08-18 · **Phase:** `s337` — `D-0520`/`D-0521` · **BUILT AND TESTED, NOT COMMITTED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `807ed28` · **Live:** `noesar-evolution:d0516-model-chooser-20260817T155937Z` (unchanged — this phase has not been deployed)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending and nothing is half-built.** The Owner authorised both steps
-(«PROCEDI CON 1 POI CON 2») and both were performed: committed and pushed (`7fcddff`,
-`main` = `origin/main`), then **deployed and verified live** as
-`noesar-evolution:d0516-model-chooser-20260817T155937Z` (`D-0519`). The defect the Owner
-reported is repaired **on the installation he actually uses**, not only in the tree.
+**The work is complete and verified in the tree. It is waiting on the Owner for three things,
+in this order, and nothing else is pending:**
 
-**The next phase is scoped and NOT started** — the rest of what the Owner asked for on
-2026-08-17, in dependency order:
+1. **Commit** — 11 files (5 new). Nothing is staged; the diff has been reviewed.
+2. **Push** — remote is `origin/main`, currently level with `807ed28`.
+3. **Deploy** (`CLAUDE10.md` §3a: build → bytes-equal-tree → stop with grace → backup stopped →
+   preserve predecessor → start with config read back → live verify → §5a cleanup). The browser
+   suite and the accessibility audit run as part of that step, against a probe, never the
+   installation (§3a 11e).
 
-| Next | What | Blocked by |
-|---|---|---|
-| `s337` | `#/models` redesigned: rows get real **Use** and **Delete** buttons with confirmations, grouped by declared type with an explanation of what each is for | nothing — `Use` already has its route (`D-0516`); **Delete has no route and must be built** |
-| `s338` | The **download transport**: `POST /api/v1/models/acquire` plans correctly and then answers `501 NO_TRANSPORT` — the bytes are never fetched | an Owner decision on egress; see `D-0517` |
-| `s339` | **Automatic discovery** of new models from curated sources | egress, so **off by default** (`CLAUDE10.md` §8 rules 30-32) — a design decision, not a switch |
+**What the Owner authorised on 2026-08-18:** «procedi la proposta» — `D-0517`, the verified model
+acquisition component. That is what was built. It did **not** authorise commit, push or deploy.
 
 ---
 
-## OPEN BLOCKERS
+## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**None opened this phase.** What `PROJECT_STATE.json.blockers` carries is unchanged: `B-011`
-(token rotation deliberately deferred by the Owner, history already rewritten) and `B-002`
-(stale premise, kept for history, superseded by `B-011`).
+`POST /api/v1/models/acquire` answered `501 NO_TRANSPORT` for thirteen sessions. It now runs a
+real acquisition, and **two defects in the surface it depends on were found and repaired**:
 
-**One finding was found and deliberately left open:**
-
-| id | severity | why it is not fixed |
-|---|---|---|
-| `F-I18N-002` | low | The e2e run's only failure: the catalogue-closable gap reads **643 of 911 recorded** against a declared baseline of **607**. It did not rise this phase (the last recorded reading was 644) and the finding's own protocol forbids re-baselining before the full diff is read. The new UI strings all go through `t()`, so they are inside the localization layer (rule 50) — they are simply not translated yet. |
-
-`F-HOOK-008` (quote mask per line, fail-safe) also remains open from the previous phase.
-
----
-
-## WHAT WAS VERIFIED — measured this session
-
-| Check | Result |
+| Repaired | What was wrong |
 |---|---|
-| `tools/run-browser-e2e.sh`, full run against a disposable probe | **504 PASS · 1 FAIL**, the one failure being `F-I18N-002`, a declared gap. `RETENTION=delete only-declared-gaps-failed`, exit 0 |
-| the four new chooser checks, in the browser | **all PASS** — it opens from the chip (`expanded=true`), it answers from the installation instead of sitting on its loading line, an empty result **says why** it is empty, and closing it reports `aria-expanded=false` |
-| `tools/auth-http-smoke.mjs` | **PASS** with four new assertions: `models/installed` 200 + `{models,activeId}`, `models/activate` **403** without CSRF, **400** with no id, **404** (not 500) for an unknown id with its reason preserved |
-| `tools/http-smoke.mjs` | **PASS** — `models/installed` added to the anonymous-401 boundary list |
-| targeted unit suites | **168/168** (`coden-view-model`, `coden-terminal-client`, `coden-shell-parity`, `model-catalog`, `session-protocol`) |
-| `tools/run-eslint.sh` | **411 files, 0 errors, 0 warnings** |
-| **seen red first** | the pre-repair `planTurn` returns **exactly the Owner's sentence** (`Nothing named \`mode\`. Type / for the list.`) with `suggestions: undefined`; `segmentInput` did not exist and its wiring assertion was false — both checked against `git show HEAD:` |
-| the `/` menu itself | **17 entries, all resolve** (`CE-036` green). Grouped WORK 15 · CONFIGURE 1 · SESSION 1. The Owner's pasted list started mid-address-book, so the missing WORK group was **scrolled off**, not filtered away |
-| §5a cleanup | the probe, the runner and the probe image were removed by the tool; inventory in `EVIDENCE/docker_inventory_post_e2e_20260817T150751Z.txt`. **0** e2e containers, **0** e2e image tags, **0** stamped networks. Other projects' containers untouched |
-| the full unit suite | **2570/2571**, 1 pre-existing skip, **0 failures** — the pre-commit gate refused the first commit for 5 untranslated markup strings (`D-0518`), which is rule 50 enforced mechanically |
-| **the deployment** (`D-0519`) | byte-equal tree↔image **8/8** before, tree↔running **4/4** after; `running/healthy`, `RestartCount=0`; `/livez` and `/readyz` **200** on **http:8088 and https:8443**; `/api/v1/models/installed` **401** anonymously; the served assets carry the chooser, `segmentInput` and the "Did you mean" suggestion |
-| §5a after the deploy | older rollback removed, its image kept; non-project containers **51→51**, volumes **65→65**, networks **10→10**; exactly the two containers §21b permits survive |
+| the egress gate | `egressAllowed: privacy.state === 'external'` — `'external'` is **not** one of the seven `PrivacyState` values, so the gate was a constant `false` written in the shape of a check. Every acquisition was refused as unconsented before the missing transport was ever reached. |
+| the artefact path | `readPresentModels` built `${descriptor.id}.bin` — an id like `acme/tiny-1b` is a **path** when interpolated (never found on disk), and an id containing `..` pointed outside the artefact directory. Reader and writer now share `artefactName()`. |
+
+**Evidence, produced this session:**
+
+- `node tools/model-acquisition-e2e.mjs` → **`MODEL_ACQUISITION_E2E=PASS`, 22/22** against the real
+  control plane, real session, real CSRF, real publisher registry, publisher served on loopback.
+  It asserts the refusals as hard as the success: consent ships **off**, acquiring is refused
+  `EGRESS_NOT_CONSENTED`, **nothing is written while it is off**, consent opens and the privacy
+  state becomes `EXTERNAL_METADATA_ONLY`, the honest artefact lands verified and moves to the
+  `downloaded` lane, the tampered one fails `DIGEST_MISMATCH` + is quarantined + appears in **no**
+  foreground lane, withdrawing consent refuses again, and both writes are CSRF-guarded.
+- `node --test services/reference-control-plane/test/*.test.mjs` → **2600 tests, 2599 pass, 0 fail,
+  1 skipped** (29 new).
+- `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 416 files**.
+- `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS migrations=19 baseline=12/12 intact`.
+- `node tools/measure-ui-language-coverage.mjs` → `VERDICT=COVERED`.
+- `bash tools/run-browser-e2e.sh` → **504 PASS / 1 FAIL of 505**. The single FAIL is the declared
+  gap `F-I18N-002`, and its +3 this phase were **identified rather than assumed**: they are the
+  *Italian* renderings of three strings this phase did translate, recorded in their rendered form
+  because the harness keys on the text a JS renderer wrote after a language switch. No
+  untranslated English reaches the user from this phase. `route models` is green — the panel
+  renders, populated, with **no console error and no failed request**.
 
 ---
 
-## WHAT WAS **NOT** DONE — deliberately
+## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **`MANIFEST.sha256` was not regenerated** for the new overlay `oci/Dockerfile.phase4-model-chooser`.
-  The previous overlay (`…password-form-fix`, 2026-08-16) is not in it either — that is
-  `F-MANIFEST-001`, already tracked, and repairing it is its own phase, not a side effect of this one.
-- **The `#/models` page was not touched.** Its cards still have no buttons — that is `s337`, and
-  it is named above rather than half-started here.
-- **No download and no delete.** `acquire` still answers `501 NO_TRANSPORT`; no delete route
-  exists. Both were measured, not assumed, and both are separate phases.
-- **The `/model` chain to a running model was never exercised end to end**, because no model
-  descriptor and no local runtime exist on the probe: the chooser was proven up to the choice,
-  and the empty state it drew is the honest one. Starting a real model is `[UNVERIFIED]`.
-- **`F-I18N-002` was not re-baselined.** The phase own new strings WERE translated (`D-0518`, 5 markup + 8 runtime); what stays open is the pre-existing runtime gap, whose baseline moves only after its full diff is read.
+- **Not committed, not pushed, not deployed.** The installation still serves `s336`.
+- **`tools/accessibility-audit.mjs` was not run** — the browser suite was, and is green on `route models`. The audit is the remaining T2 instrument and is named rather than skipped silently.
+- **`docs/INSTALLATION_LEDGER.md` was not touched** — nothing was installed. Its entry belongs to
+  the deployment step, with the rollback cost stated (§3a 11d).
+- **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, already tracked, still its own phase.
+- **Delete (`s337` original scope) was NOT built.** No delete route exists. Acquiring and deleting
+  are separate authorities and separate gestures; this phase is the one the Owner authorised.
+- **Discovery (`s339`) untouched**, and correctly so: it is egress and off by default.
+- **Resume of an interrupted download is deliberately absent.** Range requests need their own
+  integrity story; an unverified prefix under a verified name is exactly what `MC-004` forbids.
+- **Quarantine has no retention.** Failed and cancelled downloads accumulate under
+  `models/quarantine/` because rule 12 forbids deleting them. This is a **stated cost**, not an
+  oversight — a sweep needs its own named exception, like the e2e run directories got.
+- **Starting a real model end to end is still `[UNVERIFIED]`** — unchanged from `s336`: no local
+  runtime and no real model exist on this host.
+- **`gitleaks` is absent** (`command -v` finds nothing). The secret scan was **heuristic** and
+  declared as such: no credential-bearing string in the diff. `tools/model-acquisition-e2e.mjs`
+  carries the same throwaway test literals `tools/auth-http-smoke.mjs` already carries — a temp
+  workspace's own setup token and password, valid for nothing.
 
 ---
 
@@ -79,24 +83,31 @@ reported is repaired **on the installation he actually uses**, not only in the t
 
 | File | What |
 |---|---|
-| `apps/shared/coden/terminal-input.mjs` | **new** `segmentInput()` — a chunk carrying an embedded newline submits instead of swallowing the line |
-| `apps/webui-static/coden-terminal.js` | `onData` feeds segments to a named `handleInput`, never the raw chunk |
-| `apps/webui-static/coden-view-model.js` | `planTurn`'s `unknown` branch suggests up to three offered entries and carries `suggestions` |
-| `apps/webui-static/app.js` | the CodeN model chooser: render, states, confirmation, activation, chip refresh; the chip label moved to its own element |
-| `apps/webui-static/index.html`, `styles.css` | the chip's opener button, the chooser panel, its styles in both themes |
-| `services/reference-control-plane/src/server.mjs` | `GET /api/v1/models/installed`, `POST /api/v1/models/activate`; `installedModelList` / `activateInstalledModelById` hoisted so the bridge and HTTP share one decision |
-| `tools/auth-http-smoke.mjs`, `tools/http-smoke.mjs`, `tools/browser-e2e.mjs` | the new routes and the chooser, driven rather than asserted from source |
-| `services/…/test/coden-view-model.test.mjs`, `coden-terminal-client.test.mjs` | +11 tests (3 suggestion, 7 segmentation, 1 pinning the pre-repair decoder) |
-| `apps/webui-static/i18n-catalog.js` | the 5 markup and 8 runtime strings of the chooser, in Italian, with the runtime ones registered in `RUNTIME_ONLY` |
-| `oci/Dockerfile.phase4-model-chooser` | **new** — the deployed overlay, with its rollback cost stated in the file itself (§3a 11d) |
-| `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md` | `D-0515`…`D-0519`; the installation entry |
+| `services/…/src/model-transport.mjs` | **new** — https-only (loopback http excepted), redirects re-checked per hop, byte cap counted while streaming, incremental sha256, stall deadline, `AbortSignal`. No `node:fs`. |
+| `services/…/src/model-acquisition.mjs` | **new** — the job registry and the disk: `.part` → verified → rename, quarantine on mismatch, never an overwrite, never a delete, `artefactName()` shared with the reader |
+| `services/…/src/server.mjs` | acquire → 202 + job; `GET /models/acquisitions[/:id]`, `POST /:id/cancel`; `GET/PUT /settings/model-egress`; the egress gate and the artefact path repaired |
+| `services/…/src/privacy.mjs` | `modelAcquisitionEgress` colours the indicator `EXTERNAL_METADATA_ONLY` |
+| `apps/webui-static/{app.js,index.html,styles.css}` | the consent switch, the Acquire button per card, the acquisitions panel with progress/cancel/refusals, the two digests side by side on a mismatch |
+| `apps/webui-static/i18n-catalog.js` | 6 markup + 24 runtime strings, in Italian |
+| `services/…/test/model-{transport,acquisition}.test.mjs` | **new** — 29 tests |
+| `tools/model-acquisition-e2e.mjs` | **new** — the end-to-end proof, 22 checks, no network, no container |
+| `oci/Dockerfile.phase4-model-transport` | **new** — the deployment overlay, with its rollback cost stated in the file itself (§3a 11d) |
+| `docs/DECISION_LOG.md` | `D-0520`, `D-0521` |
 
 ---
 
-## THE ONE IMPROVEMENT PROPOSAL — `D-0517`, awaiting the Owner
+## OPEN BLOCKERS
 
-Build the model transport as a **delimited, reusable component** — publisher-signed descriptor,
-capped stream, digest verified before the artefact is ever startable — rather than as a download
-button wired into a page. It is what `s338` needs anyway, and as a component it answers the
-funding criteria this project measures itself against (`noesar-evolution-funding-fit` traits
-1, 2, 3, 5) instead of the red flag of a WebUI over someone else's model API.
+- `B-002` **stale premise** (`D-0257`): its text says neither `gitleaks` nor `trufflehog` is
+  installed. Re-measured today: **`gitleaks` is genuinely absent**, so the heuristic scan stands.
+- `B-011` low, deferred (`D-0258`): history rewritten on the Owner's explicit authorisation.
+
+---
+
+## THE ONE IMPROVEMENT PROPOSAL — `D-0521`, awaiting the Owner
+
+Carry **publisher-signed descriptors** over the same verified transport, checking the ed25519
+signature against `publisher-registry.mjs` before a descriptor is written to `models/catalog/`.
+Today the artefact is guarded by a registered, revocable key while the metadata declaring *which*
+bytes to fetch — including the sha256 everything depends on — arrives unsigned. It is the
+precondition for `s339` discovery being anything better than "trust a URL".

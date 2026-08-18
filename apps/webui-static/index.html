@@ -823,6 +823,15 @@
             <button id="modelFilterClear" type="button">Clear filters</button>
           </div>
           <p class="hint" id="modelAcquireReason">Checking whether this installation can start a model…</p>
+          <!-- D-0520. Downloading a model is egress, and this is the switch that says so out
+               loud. It ships OFF (rules 30-32) and it is its own consent: agreeing to send
+               prompts to a remote provider is not agreeing to fetch weights from one. While it
+               is off every acquisition is refused before a packet is formed. -->
+          <div class="inline-form" id="modelEgressRow">
+            <span class="badge badge-off" id="modelEgressState">Checking…</span>
+            <span id="modelEgressReason">Fetching a model artefact reaches the publisher named in its descriptor.</span>
+            <button id="modelEgressToggle" type="button" disabled>Allow model downloads</button>
+          </div>
         </section>
         <section class="panel" id="modelForeground">
           <div class="panel-title"><h2>On this installation</h2><span class="chip" id="modelForegroundCount">—</span></div>
@@ -832,6 +841,16 @@
           <div class="panel-title"><h2>Available from registered publishers</h2><span class="chip" id="modelAvailableCount">—</span></div>
           <div id="modelAvailableList" class="empty-state">Loading…</div>
           <div class="inline-form" id="modelPager"><button id="modelPagePrev" type="button">Previous page</button><span id="modelPageLabel">—</span><button id="modelPageNext" type="button">Next page</button></div>
+        </section>
+        <!-- D-0520. A download of several gigabytes is not an HTTP request, it is a job — so it
+             has a place where it can be watched and stopped. What is shown is what the server
+             reports about it, including a refusal and the digest that did not match: a failed
+             acquisition that leaves no trace teaches nothing and looks like a button that does
+             nothing. -->
+        <section class="panel" id="modelAcquisitionsPanel">
+          <div class="panel-title"><h2>Acquisitions</h2><span class="chip" id="modelAcquisitionCount">—</span></div>
+          <p class="hint">Each download is verified against the digest its publisher declared before it can be started. What does not match is kept aside, never made startable and never deleted.</p>
+          <div id="modelAcquisitionList" class="empty-state">No acquisition has been started on this installation.</div>
         </section>
         <section class="panel"><div class="panel-title"><h2>Parallel comparison</h2><button class="text-button" data-view-link="providers">Manage providers</button></div><label>Providers<select id="comparisonProviders" multiple></select></label><pre id="comparisonResults">Select at least two enabled providers and use “Compare models” in chat.</pre></section>
       </section>

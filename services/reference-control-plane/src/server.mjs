@@ -15,6 +15,9 @@ import { PostgresSupervisor } from './postgres-supervisor.mjs';
 import { UserDirectory } from './user-directory.mjs';
 import { LocalModelRuntime, activateModel } from './local-model-runtime.mjs';
 import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.mjs';
+// D-0520: the transport `planAcquisition` was planning FOR. The manager owns the disk and the
+// jobs; the transport owns the bytes; this file owns neither and only wires them to a route.
+import { AcquisitionManager, artefactName } from './model-acquisition.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
 import { chooseDestination, VoiceChoice } from './voice-interpreter.mjs';
@@ -569,6 +572,9 @@ function currentPrivacy(user = null) {
       providers: state.providerProfiles ?? [],
       tools: state.tools ?? [],
       retentionDays: state.settings?.retentionDays,
+      // D-0520: model acquisition is metadata egress, and the indicator says so. An egress the
+      // privacy panel cannot see is an egress the privacy panel is lying about.
+      modelAcquisitionEgress: state.settings?.modelAcquisitionEgress === true,
       lastViolation: recentViolation(),
       // Answered by the same check the revoke route enforces, so the disclosure cannot
       // advertise a control this particular caller would be refused.
@@ -645,6 +651,10 @@ const updateManager = new UpdateManager({
 // can place them without a rebuild, which is also how a future transport will deliver them.
 const MODEL_CATALOG_DIR = join(workspace, 'models', 'catalog');
 const MODEL_ARTEFACT_DIR = join(workspace, 'models', 'artefacts');
+// Where an artefact goes when it arrives and does NOT match the digest its publisher declared,
+// or when an acquisition is interrupted. Not a bin: rule 12 forbids deleting it, and MC-004
+// forbids leaving it anywhere a reader would take it for a model. Both duties, one directory.
+const MODEL_QUARANTINE_DIR = join(workspace, 'models', 'quarantine');
 // The ceiling written into the acquisition grant. A model is large; a grant with no ceiling is
 // not a grant, it is permission to fill the disk.
 const MODEL_ACQUIRE_MAX_BYTES = 64 * 1024 * 1024 * 1024;
@@ -728,7 +738,13 @@ function readModelDescriptors() {
 function readPresentModels(descriptors) {
   const present = new Map();
   for (const descriptor of descriptors) {
-    const file = join(MODEL_ARTEFACT_DIR, `${descriptor.id}.bin`);
+    // `artefactName` and not `${descriptor.id}`: an id like `acme/tiny-1b` is a PATH when it is
+    // interpolated, so this reader was looking inside a directory nothing ever creates, and an
+    // id containing `..` would have pointed outside the artefact directory altogether. The
+    // writer uses the same function — two naming schemes for one file is a file that exists for
+    // one half of the product and not for the other.
+    let file;
+    try { file = join(MODEL_ARTEFACT_DIR, `${artefactName(descriptor.id)}.bin`); } catch { continue; }
     let stat = null;
     try { stat = statSync(file); } catch { stat = null; }
     if (!stat?.isFile?.()) {
@@ -749,6 +765,38 @@ function readPresentModels(descriptors) {
 }
 
 const publisherRegistry = new PublisherRegistry({ root: join(workspace, 'publishers'), ledger });
+
+/**
+ * `D-0520` — may this installation fetch a model artefact, right now?
+ *
+ * **The defect this replaces was a check that could never be true.** The acquire route asked
+ * `privacy.state === 'external'`, and `'external'` is not one of the seven `PrivacyState`
+ * values — so `egressAllowed` was a constant `false` written in the shape of a decision, and
+ * every acquisition was refused as unconsented before the missing transport was ever reached.
+ *
+ * The replacement is a NAMED consent, off by default, in the operator's own settings (rules
+ * 30-32: an outbound integration ships disabled and is enabled by an explicit, documented,
+ * opt-in choice). It is deliberately not derived from the provider/connector states: consenting
+ * to send prompts to a remote model is not the same act as consenting to download weights from
+ * a third party, and one gesture standing for two is how consent stops meaning anything.
+ */
+function modelEgressConsented() {
+  try { return aiStore.read().settings?.modelAcquisitionEgress === true; } catch { return false; }
+}
+
+/**
+ * The acquisitions in flight. One at a time on purpose: a model is measured in gigabytes, and
+ * two concurrent downloads on a home connection make both slower and neither finish sooner.
+ * `maxConcurrent` is the extension point if that ever stops being true.
+ */
+const acquisitions = new AcquisitionManager({
+  artefactDir: MODEL_ARTEFACT_DIR,
+  quarantineDir: MODEL_QUARANTINE_DIR,
+  fetchImpl: (...args) => fetch(...args),
+  maxConcurrent: 1,
+  onEvent: ({ action, result, details, actorId }) =>
+    ledger.append({ actor: actorId ?? 'system', action, result, details }),
+});
 
 // D-0277: "moduli owner" (a fixed NOESAR-built catalog, OWNER_MODULE_CATALOG) get a
 // one-click Install/Activate instead of asking the Owner to drive the register/sign/mint
@@ -1895,14 +1943,15 @@ const requestListener = async (req, res) => {
       const request = await body(req);
       const descriptor = readModelDescriptors().find((entry) => entry.id === request?.id) ?? null;
       if (!descriptor) return json(res, 404, { error: 'no descriptor with that id is known to this installation' });
-      const privacy = currentPrivacy(authenticated.user);
       const plan = planAcquisition({
         descriptor,
         registry: publisherRegistry,
         runtime: localModels.config(),
         // Egress consent is the product's own state, not a parameter of the request: a caller
-        // must not be able to assert its own consent.
-        egressAllowed: privacy.state === 'external',
+        // must not be able to assert its own consent. `D-0520` replaced a comparison against a
+        // `PrivacyState` value that does not exist — a gate that could never open — with this
+        // named, off-by-default setting.
+        egressAllowed: modelEgressConsented(),
         maxBytes: MODEL_ACQUIRE_MAX_BYTES,
       });
       ledger.append({
@@ -1911,13 +1960,47 @@ const requestListener = async (req, res) => {
         details: { id: descriptor.id, publisher: descriptor.publisher, kind: plan.kind ?? null },
       });
       if (!plan.allowed) return json(res, 403, { error: plan.reason, kind: plan.kind });
-      // Declared rather than pretended: the transport that fetches the bytes is not built on
-      // this installation. Answering 202 with an invented job id would be the false
-      // declaration this product exists to remove.
-      return json(res, 501, {
-        error: 'this installation has no model transport configured, so the artefact cannot be fetched yet',
-        kind: 'NO_TRANSPORT', grant: plan.grant,
+      // `D-0520`: this used to answer `501 NO_TRANSPORT` — honest, because no transport existed.
+      // It now starts a JOB and answers at once. A model is measured in gigabytes: holding the
+      // request open would tie the download to one tab, make a reload look like a failure, and
+      // leave cancellation with no name.
+      const started = acquisitions.start({ descriptor, grant: plan.grant, actorId: authenticated.user.id });
+      if (!started.ok) {
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.acquire', result: 'refused',
+          details: { id: descriptor.id, kind: started.kind },
+        });
+        // 409 for "the disk already has it" and "it is already running"; 422 for a descriptor
+        // this installation will not fetch from. Both are the caller's answer, not a fault.
+        const status = started.kind === 'ALREADY_PRESENT' ? 409 : 422;
+        return json(res, status, { error: started.reason, kind: started.kind });
+      }
+      return json(res, 202, { job: started.job, grant: plan.grant, alreadyRunning: Boolean(started.alreadyRunning) });
+    }
+    // The three routes that make a long job usable: what is happening, what happened, and stop.
+    // `model.read` to watch and `model.manage` to interrupt — watching a download is not the
+    // same authority as ending someone else's.
+    if (req.method === 'GET' && url.pathname === '/api/v1/models/acquisitions') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      return json(res, 200, { acquisitions: acquisitions.list() });
+    }
+    if (req.method === 'GET' && url.pathname.startsWith('/api/v1/models/acquisitions/')) {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      const job = acquisitions.get(decodeURIComponent(url.pathname.slice('/api/v1/models/acquisitions/'.length)));
+      if (!job) return json(res, 404, { error: 'no acquisition with that id is known to this installation' });
+      return json(res, 200, { job });
+    }
+    if (req.method === 'POST' && url.pathname.startsWith('/api/v1/models/acquisitions/') && url.pathname.endsWith('/cancel')) {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(url.pathname.slice('/api/v1/models/acquisitions/'.length, -'/cancel'.length));
+      const cancelled = acquisitions.cancel(id, { actorId: authenticated.user.id });
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.acquire-cancel',
+        result: cancelled.ok ? 'success' : 'refused', details: { jobId: id, kind: cancelled.kind ?? null },
       });
+      if (!cancelled.ok) return json(res, cancelled.kind === 'NO_SUCH_JOB' ? 404 : 409, { error: cancelled.reason, kind: cancelled.kind });
+      return json(res, 200, { job: cancelled.job });
     }
     // s336, Owner: «crei in #/coden un piccolo menu che fa visualizzare i modelli scaricati e
     // fa scegliere quale usare». Measured before building: `model.activate` existed ONLY on the
@@ -2256,6 +2339,39 @@ const requestListener = async (req, res) => {
       const updated = aiStore.transact((state) => { state.settings ??= {}; state.settings.researchProviderToolId = toolId; return { researchProviderToolId:toolId }; });
       ledger.append({ actor:authenticated.user.id, action:'research.provider-designated', result:'success', details:updated });
       return json(res, 200, updated);
+    }
+    // `D-0520` — the named consent that lets a model artefact be fetched at all.
+    //
+    // Rules 30-32: an outbound integration ships DISABLED and is enabled by an explicit,
+    // documented, opt-in choice. `false` here is not a placeholder — it is the shipped state,
+    // and every acquisition is refused while it holds. It is deliberately its own switch rather
+    // than a consequence of having consented to a remote provider: sending a prompt to someone
+    // and downloading weights from someone are two acts, and one gesture standing for both is
+    // how consent stops meaning anything.
+    if (req.method === 'GET' && url.pathname === '/api/v1/settings/model-egress') {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      return json(res, 200, {
+        consented: modelEgressConsented(),
+        // Answered by the same check the PUT enforces, so the page cannot offer a live-looking
+        // switch to an account whose press would be refused — the posture `currentPrivacy`
+        // already takes for the revoke control it advertises.
+        canManage: auth.hasPermission(authenticated.user, 'provider.manage'),
+        effect: 'When on, acquiring a model may reach the publisher named in its descriptor. What leaves this installation is the request for that artefact — never a conversation, a file or a credential.',
+        privacyState: currentPrivacy(authenticated.user).state,
+      });
+    }
+    if (req.method === 'PUT' && url.pathname === '/api/v1/settings/model-egress') {
+      const authenticated = requireSession(req, res, 'provider.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      if (typeof request?.consented !== 'boolean') return json(res, 400, { error: 'consented must be true or false.' });
+      const consented = request.consented;
+      aiStore.transact((state) => { state.settings ??= {}; state.settings.modelAcquisitionEgress = consented; return { consented }; });
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.egress-consent',
+        result: consented ? 'granted' : 'withdrawn', details: { consented },
+      });
+      return json(res, 200, { consented, privacyState: currentPrivacy(authenticated.user).state });
     }
 
     // D-0275: the ad-hoc external-link module mechanism D-0273 built here

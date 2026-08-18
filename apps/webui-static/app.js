@@ -5647,7 +5647,24 @@ const MODEL_LANE_NOTE={
   'downloaded':'Present on disk and matching the digest its publisher declared.',
   'unverified':'Present on disk and NOT matching the declared digest, so it cannot be started. A file that was downloaded and not verified is not a model you have.',
 };
-function modelCard(item){
+// D-0520. The `available` lane is the only one whose verb is *acquire*, so it is the only one
+// that grows a button — and the button is DRAWN AND DISABLED with its reason when the gesture is
+// unavailable (MC-006), never removed. A missing control teaches nothing; a stopped one with a
+// sentence attached teaches where it turns on.
+function acquireControl(item,context){
+  if(item.lane!=='available')return '';
+  const blocked=!context.acquireOffered
+    ?context.acquireReason||t('Acquiring is switched off on this installation.')
+    :!context.egressConsented
+      ?t('Model downloads are not allowed yet. Turn them on above — downloading is egress.')
+      :null;
+  const busy=context.busy?.has?.(item.id)?t('Acquiring…'):null;
+  const label=busy??t('Acquire');
+  return `<p class="card-actions"><button type="button" data-acquire="${escapeHtml(item.id)}"`
+    +`${blocked||busy?' disabled':''}${blocked?` title="${escapeHtml(blocked)}"`:''}>${escapeHtml(label)}</button>`
+    +(blocked?`<small translate="no">${escapeHtml(blocked)}</small>`:'')+'</p>';
+}
+function modelCard(item,context={}){
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
     ?'<em>undeclared</em>':escapeHtml(String(value));
   const outside=item.outsideFilter
@@ -5657,7 +5674,7 @@ function modelCard(item){
       `<small>${declared(item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}</small>`
       +`<p>Type ${declared(item.type)} &middot; function ${item.functions.map(declared).join(', ')}`
       +`${item.contextWindow?` &middot; context ${item.contextWindow}`:' &middot; context <em>undeclared</em>'}</p>`
-      +outside+'</article>');
+      +outside+acquireControl(item,context)+'</article>');
 }
 function renderModelLanes(catalog){
   const foreground=$('#modelForegroundLanes');
@@ -5678,7 +5695,12 @@ function renderModelLanes(catalog){
     list.classList.toggle('empty-state',catalog.available.items.length===0);
     list.innerHTML=catalog.available.items.length===0
       ?'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.'
-      :`<div class="card-list">${catalog.available.items.map(modelCard).join('')}</div>`;
+      :`<div class="card-list">${catalog.available.items.map((item)=>modelCard(item,{
+        acquireOffered:catalog.acquisition.offered,
+        acquireReason:catalog.acquisition.reason,
+        egressConsented:modelEgress.consented,
+        busy:acquiringModelIds(),
+      })).join('')}</div>`;
     $('#modelPageLabel').setAttribute('translate','no');$('#modelPageLabel').textContent=`${t('Page')} ${catalog.available.page} ${t('of')} ${catalog.available.pages}`;
     $('#modelPagePrev').disabled=catalog.available.page<=1;
     $('#modelPageNext').disabled=catalog.available.page>=catalog.available.pages;
@@ -5721,7 +5743,163 @@ async function loadModelCatalogue(){
     foreground.textContent=`${t('The catalogue could not be read:')} ${error.value?.error??error.message}. ${t('This is not the same as having no models.')}`;
   }
 }
+// ── D-0520 · acquiring a model: the consent, the job, and what it is doing ────────────────
+//
+// Three things had to become visible at once for the button to be honest. Whether this
+// installation is ALLOWED to fetch at all (egress, off by default, its own consent — not
+// inherited from having consented to some remote provider). What a running download is doing,
+// because several gigabytes is a job and not a request. And why one failed, including the digest
+// that did not match: a download that vanishes silently is indistinguishable from a button that
+// does nothing.
+let modelEgress={consented:false,canManage:true};
+let modelAcquisitions=[];
+let acquisitionPoll=null;
+const ACQUISITION_ACTIVE=['queued','downloading','verifying'];
+const acquiringModelIds=()=>new Set(modelAcquisitions
+  .filter((job)=>ACQUISITION_ACTIVE.includes(job.state)).map((job)=>job.modelId));
+const ACQUISITION_STATE_LABEL={
+  queued:'Queued',downloading:'Downloading',verifying:'Verifying',
+  completed:'Verified and on disk',failed:'Failed',cancelled:'Cancelled',
+};
+/** Bytes as a person reads them. Never a percentage when the total was never declared. */
+function humanBytes(value){
+  if(!Number.isFinite(value))return '—';
+  const units=['B','KB','MB','GB','TB'];
+  let size=value,unit=0;
+  while(size>=1024&&unit<units.length-1){size/=1024;unit+=1;}
+  return `${size>=100||unit===0?Math.round(size):size.toFixed(1)} ${units[unit]}`;
+}
+function acquisitionProgress(job){
+  if(!ACQUISITION_ACTIVE.includes(job.state))return '';
+  const received=humanBytes(job.receivedBytes);
+  // A percentage is shown only when the server declared a total. Inventing a denominator to
+  // make a progress bar move is the same class of lie as inventing a field on a card.
+  const share=Number.isFinite(job.totalBytes)&&job.totalBytes>0
+    ? ` · ${Math.min(100,Math.floor((job.receivedBytes/job.totalBytes)*100))}%`:'';
+  return `<progress${Number.isFinite(job.totalBytes)&&job.totalBytes>0
+    ? ` value="${job.receivedBytes}" max="${job.totalBytes}"`:''}></progress>`
+    +`<small translate="no">${escapeHtml(received)}${job.totalBytes?` / ${escapeHtml(humanBytes(job.totalBytes))}`:''}${escapeHtml(share)}</small>`;
+}
+function acquisitionRow(job){
+  const active=ACQUISITION_ACTIVE.includes(job.state);
+  const badge=job.state==='completed'?'badge-on':active?'badge':'badge-off';
+  const failure=job.reason
+    ?`<p class="hint" translate="no">${escapeHtml(job.reason)}</p>`:'';
+  // The two digests, side by side, when they disagreed. This is the single most useful thing a
+  // person can be shown here and the one a generic "download failed" throws away.
+  const digests=job.kind==='DIGEST_MISMATCH'&&job.digest
+    ?`<p class="hint" translate="no">${escapeHtml(t('Declared:'))} ${escapeHtml(job.expectedSha256??'—')}<br>`
+      +`${escapeHtml(t('Received:'))} ${escapeHtml(job.digest)}</p>`:'';
+  const quarantined=job.quarantinedAs
+    ?`<p class="hint">${escapeHtml(t('Kept aside, not deleted and not startable.'))}</p>`:'';
+  const cancel=active
+    ?`<button type="button" class="secondary" data-acquire-cancel="${escapeHtml(job.id)}">${escapeHtml(t('Cancel'))}</button>`:'';
+  return `<article class="entity-card" translate="no"><h3>${escapeHtml(job.modelId)}</h3>`
+    +`<p><span class="badge ${badge}">${escapeHtml(t(ACQUISITION_STATE_LABEL[job.state]??job.state))}</span> ${cancel}</p>`
+    +acquisitionProgress(job)+failure+digests+quarantined+'</article>';
+}
+function renderAcquisitions(){
+  const list=$('#modelAcquisitionList');
+  if(!list)return;
+  const count=$('#modelAcquisitionCount');
+  if(count){count.setAttribute('translate','no');count.textContent=`${modelAcquisitions.length} ${t('recorded')}`;}
+  list.classList.toggle('empty-state',modelAcquisitions.length===0);
+  list.innerHTML=modelAcquisitions.length===0
+    ?escapeHtml(t('No acquisition has been started on this installation.'))
+    :`<div class="card-list">${modelAcquisitions.map(acquisitionRow).join('')}</div>`;
+}
+/**
+ * Poll while something is in flight, and stop when nothing is. A timer that keeps running after
+ * the last job ended is a page that costs battery for ever; one that stops too early is a
+ * download that looks stuck. The condition below is the same one the rows are drawn from.
+ */
+async function refreshAcquisitions({schedule=true}={}){
+  try{
+    const before=acquiringModelIds();
+    const payload=await api('/api/v1/models/acquisitions');
+    modelAcquisitions=payload.acquisitions??[];
+    renderAcquisitions();
+    const after=acquiringModelIds();
+    // Something finished: the catalogue's lanes changed, so it is re-read once rather than on
+    // every tick — the lane a model sits in is the whole point of finishing.
+    if([...before].some((id)=>!after.has(id)))await loadModelCatalogue();
+  }catch{/* the panel keeps what it last knew rather than blanking on one failed poll */}
+  clearTimeout(acquisitionPoll);
+  if(schedule&&acquiringModelIds().size>0)acquisitionPoll=setTimeout(()=>refreshAcquisitions(),1500);
+}
+async function loadModelEgress(){
+  try{
+    const payload=await api('/api/v1/settings/model-egress');
+    modelEgress={consented:Boolean(payload.consented),canManage:payload.canManage!==false};
+  }catch{modelEgress={consented:false,canManage:false};}
+  renderModelEgress();
+}
+function renderModelEgress(){
+  const badge=$('#modelEgressState');
+  if(badge){
+    badge.textContent=modelEgress.consented?t('Downloads allowed'):t('Downloads not allowed');
+    badge.className=modelEgress.consented?'badge badge-on':'badge badge-off';
+  }
+  const button=$('#modelEgressToggle');
+  if(button){
+    // A switch this account cannot throw is shown STOPPED with its reason, not shown live and
+    // then refused by the server — the same posture the acquire button takes one panel below.
+    button.disabled=!modelEgress.canManage;
+    button.title=modelEgress.canManage?'':t('Changing this needs the permission to manage providers.');
+    button.textContent=modelEgress.consented?t('Stop allowing model downloads'):t('Allow model downloads');
+  }
+  const reason=$('#modelEgressReason');
+  if(reason)reason.textContent=modelEgress.consented
+    ?t('Acquiring a model may reach the publisher named in its descriptor. What leaves this installation is the request for that artefact — never a conversation, a file or a credential.')
+    :t('Downloading is egress, so it is off until you allow it. Nothing leaves this installation while this is off.');
+}
+async function toggleModelEgress(){
+  const next=!modelEgress.consented;
+  try{
+    const payload=await api('/api/v1/settings/model-egress',{method:'PUT',body:JSON.stringify({consented:next})});
+    modelEgress={...modelEgress,consented:Boolean(payload.consented)};
+    renderModelEgress();
+    await loadModelCatalogue();
+    toast(next?t('Model downloads are now allowed.'):t('Model downloads are no longer allowed.'),{kind:'info'});
+  }catch(error){
+    toast(`${t('The setting could not be changed:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+}
+async function acquireModel(id){
+  try{
+    const payload=await api('/api/v1/models/acquire',{method:'POST',body:JSON.stringify({id})});
+    if(payload.job)modelAcquisitions=[payload.job,...modelAcquisitions.filter((job)=>job.id!==payload.job.id)];
+    renderAcquisitions();
+    await loadModelCatalogue();
+    refreshAcquisitions();
+  }catch(error){
+    // The server's own refusal, verbatim. Each one names a rule — no consent, publisher not
+    // registered, publisher revoked, no declared digest, runtime disabled, already on disk —
+    // and replacing them with "could not start" would throw the only useful part away.
+    toast(`${t('This model was not acquired:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+}
+async function cancelAcquisition(jobId){
+  try{
+    await api(`/api/v1/models/acquisitions/${encodeURIComponent(jobId)}/cancel`,{method:'POST',body:'{}'});
+  }catch(error){
+    toast(`${t('The acquisition was not cancelled:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+  await refreshAcquisitions();
+  await loadModelCatalogue();
+}
 function wireModelCatalogue(){
+  $('#modelEgressToggle')?.addEventListener('click',toggleModelEgress);
+  // Delegated: the cards are rebuilt on every filter change and on every completed download, so
+  // a listener per button would be a listener per render.
+  $('#modelAvailableList')?.addEventListener('click',(event)=>{
+    const id=event.target?.closest?.('[data-acquire]')?.dataset?.acquire;
+    if(id)acquireModel(id);
+  });
+  $('#modelAcquisitionList')?.addEventListener('click',(event)=>{
+    const jobId=event.target?.closest?.('[data-acquire-cancel]')?.dataset?.acquireCancel;
+    if(jobId)cancelAcquisition(jobId);
+  });
   for(const id of ['#modelFilterType','#modelFilterFunction']){
     $(id)?.addEventListener('change',()=>{modelCatalogPage=1;loadModelCatalogue();});
   }
@@ -5976,7 +6154,9 @@ Object.assign(VIEW_LOADERS,{
   workflows:loadWorkflows,
   coden:()=>{benchOpenedAt=benchOpenedAt||Date.now();loadCoden();renderBenchNavigator();renderBenchStatus();renderTerminals();},
   home:loadHome,
-  models:loadModelCatalogue,
+  // D-0520: the consent is read BEFORE the catalogue, because the Acquire button on every card
+  // is drawn from it — reading it after would draw the whole page in the wrong state first.
+  models:async()=>{await loadModelEgress();await loadModelCatalogue();await refreshAcquisitions();},
   // s333 point 3b — the seven that were painted once at sign-in and never again. They all read
   // the SAME fetch, so they share the one loader: seven copies would be seven places to forget
   // one, which is the shape D-0300 and D-0302 were both about.

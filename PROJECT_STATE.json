@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "s336 (D-0515/D-0516/D-0517): the Owner-reported dead end on /model is repaired at its two causes — a near miss now names the commands it is near (planTurn suggestions, matchCommands ranking), and a terminal chunk carrying an embedded newline now submits instead of swallowing the line (segmentInput). The CodeN page gained a model chooser opened from the model chip, backed by two routes the browser never had: GET /api/v1/models/installed and POST /api/v1/models/activate (model.manage + CSRF + ledger, refusal statuses preserved), both calling the SAME decisions the session bridge dispatches. Nothing was committed, pushed or deployed.",
-  "phase_status": "installed_and_verified__s336_deployed_d0516-model-chooser-20260817T155937Z",
-  "next_phase": "s337: #/models redesigned — rows get real Use and Delete buttons with confirmations, grouped by declared type with an explanation of what each is for. Use already has its route (D-0516); DELETE HAS NO ROUTE and must be built. Then s338 (download transport, acquire is still 501 NO_TRANSPORT) and s339 (automatic discovery, egress, off by default).",
+  "current_phase": "s337 (D-0520/D-0521)",
+  "phase_status": "BUILT AND TESTED IN THE TREE — not committed, not pushed, not deployed",
+  "next_phase": "commit + push + deploy of D-0520, on the Owner authorisation; then delete route/button, then s339 discovery",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "f9207b1299ce297ed3395e8c6e6fc18aa9d35133",
-  "last_updated_utc": "2026-08-17T16:05:57Z",
+  "last_updated_utc": "2026-08-18T02:16:01.442Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -324,7 +324,7 @@
       "id": "F-I18N-002",
       "severity": "low",
       "status": "OPEN - recorded 2026-08-13 (D-0419), NOT re-baselined. The harness own rule is that the baseline moves only after the full diff is read; the suite now prints a 20-string sample on a rise so the next session can read it.",
-      "summary": "The runtime catalogue-closable gap rose 607 -> 644 as the browser suite grew past its old abort point and reached surfaces it had never measured. Most of the sample are suite fixtures (\"before reload\", \"Project: before reload\"); two are new terminal strings (\"Terminal input\", \"type a command - help for the list\")."
+      "summary": "The runtime catalogue-closable gap: 607 (declared baseline) -> 644 (measured earlier) -> 647 (measured 2026-08-18, s337). The +3 of this phase were IDENTIFIED, not assumed: they are \"Download non permessi\", \"Permetti il download dei modelli\" and \"Nessuna acquisizione e stata avviata su questa installazione.\" — the ITALIAN renderings of strings this phase DID translate. The recorder registers text written by JS after a language switch in its rendered form, so a correctly translated string is counted as an unknown key. Same class as the suite fixtures already in the set (\"Project: before reload\"). No untranslated English reaches the user from this phase; the defect is in the measurement, and re-baselining plus keying the recorder on the source string is its own phase."
     },
     {
       "id": "F-CSP-001",
@@ -1076,7 +1076,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NEXT PHASE, NOT STARTED: s337 — #/models redesigned, rows get real Use and Delete buttons with confirmations, grouped by declared type with an explanation of what each is for. Use already has its route (D-0516); DELETE HAS NO ROUTE and must be built. Then s338 (download transport: acquire still answers 501 NO_TRANSPORT) and s339 (automatic discovery, egress, off by default per rules 30-32). WHAT IS TRUE NOW, VERIFIED AND LIVE: the /model dead end the Owner reported is repaired on the installation he uses — a near miss names what it is near, a terminal chunk carrying an embedded newline submits instead of swallowing the line, and #/coden has a model chooser backed by GET /api/v1/models/installed and POST /api/v1/models/activate. Deployed as noesar-evolution:d0516-model-chooser-20260817T155937Z: byte-equal tree-image 8/8 and tree-running 4/4, running/healthy, RestartCount=0, /livez and /readyz 200 on http:8088 and https:8443, models/installed 401 anonymously. Predecessor kept as noesar-evolution-pre-20260817T160004Z; older rollback removed with its image retained; containers 51->51 non-project, volumes 65->65, networks 10->10. STILL UNVERIFIED: starting a real model end to end — no descriptor and no local runtime exist to start.",
+  "next_action": "AWAITING OWNER AUTHORISATION for commit, push and deploy of D-0520 — the verified model acquisition component. BUILT AND VERIFIED THIS SESSION: POST /api/v1/models/acquire no longer answers 501 NO_TRANSPORT; it runs a real job on model-transport.mjs (https only plus loopback http, redirects re-checked per hop, byte cap counted while streaming, incremental sha256, stall deadline, cancellation) and model-acquisition.mjs (.part -> verified -> rename, quarantine on mismatch, never an overwrite, never a delete). TWO DEFECTS REPAIRED IN THE SAME DIFF: the egress gate compared privacy.state against \"external\", which is not one of the seven PrivacyState values, so it could never open — replaced by the named off-by-default consent settings.modelAcquisitionEgress with GET/PUT /api/v1/settings/model-egress, reported by derivePrivacy as EXTERNAL_METADATA_ONLY; and readPresentModels built its path as ${id}.bin, so an id containing a slash was never found and an id containing .. pointed outside the artefact directory — reader and writer now share artefactName(). EVIDENCE: tools/model-acquisition-e2e.mjs 22/22 PASS against the real control plane with a publisher on loopback (consent ships off and refuses EGRESS_NOT_CONSENTED, nothing written while off, honest artefact lands verified into the downloaded lane, tampered one fails DIGEST_MISMATCH and is quarantined and is in no foreground lane, withdrawal refuses again, both writes CSRF-guarded); 2599/2600 unit pass 0 fail (29 new); ESLint 0 errors on 416 files; SOURCE_VERIFY=PASS; i18n VERDICT=COVERED. UNVERIFIED: the new UI has no browser evidence — browser-e2e and accessibility-audit run with the deployment against a probe. NOT DONE: delete route (still none), discovery, download resume, quarantine retention, MANIFEST regeneration.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
