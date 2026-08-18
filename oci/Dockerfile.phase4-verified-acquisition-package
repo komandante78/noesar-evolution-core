@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s339 · D-0526 / D-0533.
+#
+# The verified-acquisition layer became its own component: `packages/verified-acquisition/`
+# (`@noesar/verified-acquisition`, zero dependencies, `CONTRACT_VERSION 1.0.0`), carrying the
+# transport, the descriptor authenticity check, the canonical JSON encoder, a normative `SPEC.md`
+# and a conformance suite. The extraction is real rather than a copy — the three former paths in
+# `services/reference-control-plane/src/` are re-export shims — so ONE implementation exists.
+#
+# ── THE LINE THAT MAKES THIS IMAGE DIFFERENT FROM EVERY OVERLAY BEFORE IT ────────────────────
+#
+# The control plane now imports from OUTSIDE `services/` for the first time. An overlay copying
+# only the changed `services/` files would ship a server whose FIRST import throws — a container
+# that starts, fails, and restarts for ever. The `packages/` COPY below is not tidiness; it is
+# the difference between a working installation and a restart loop.
+#
+# The base recipe `oci/Dockerfile` gained the same line, and it is no longer remembered by hand:
+# `tui-import-closure.test.mjs` walks the SERVER's import graph and fails if any file it reaches
+# is not copied — proven to fire, with the line removed in memory, before this image was built.
+#
+# Six paths changed, so six are copied:
+#   packages/verified-acquisition/                     NEW — the component the server now imports
+#   services/…/src/model-transport.mjs                 re-export shim
+#   services/…/src/model-descriptor-authenticity.mjs   re-export shim
+#   services/…/src/canonical-json.mjs                  re-export shim (nine callers, unchanged)
+#   services/…/src/model-catalog.mjs                   unchanged this phase, copied for coherence
+#   services/…/src/server.mjs                          unchanged this phase, copied for coherence
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration, no
+# schema change, no configuration key, nothing written to the workspace by this image. The product
+# behaves identically — the shims make every caller's import resolve to the same code it resolved
+# to before. What changes is where that code LIVES. The predecessor is preserved under a
+# timestamped name by `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0523-descriptor-signing-20260818T060209Z
+
+LABEL org.noesar.phase="4-verified-acquisition-package"
+LABEL org.noesar.decision="D-0526,D-0533"
+
+USER root
+COPY --chown=10001:10001 packages/verified-acquisition/ /opt/noesar/packages/verified-acquisition/
+COPY --chown=10001:10001 services/reference-control-plane/src/model-transport.mjs /opt/noesar/services/reference-control-plane/src/model-transport.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-descriptor-authenticity.mjs /opt/noesar/services/reference-control-plane/src/model-descriptor-authenticity.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/canonical-json.mjs /opt/noesar/services/reference-control-plane/src/canonical-json.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/model-catalog.mjs /opt/noesar/services/reference-control-plane/src/model-catalog.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+USER 10001:10001

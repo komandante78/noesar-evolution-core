@@ -12403,3 +12403,45 @@ executable suite, not a platform), reusable beyond this product by construction,
 that is measured rather than asserted; and it is what NLnet's eligibility page funds in as many
 words: "technical validation … testing infrastructure … standards participation".
 **Status.** applied, tested, **committed on the Owner's instruction; not pushed, not deployed.**
+
+## D-0534 · The extracted package reaches the installation — 2026-08-18
+**Decision.** `D-0526`/`D-0533` deployed as
+`noesar-evolution:d0526-verified-acquisition-20260818T083258Z`, 08:33:12Z, on the Owner's «FAI
+ENTRAMBI push e deploy» — commits `cb01846` and `25704e1`, pushed to `origin/main`.
+**Why this deployment was not routine.** It is the first time the control plane imports from
+outside `services/`. The failure mode was a restart loop, not a wrong answer, so it was removed in
+the image **before** production was touched: the shim's import was executed inside the built image,
+offline, and resolved.
+**Rejected.** Re-running the browser suite: this phase changed no markup and no browser
+JavaScript, and re-verifying what a change could not have touched is the waste
+`noesar-evolution-verify` exists to remove. Declared rather than skipped silently.
+**Evidence.** Byte-equal tree↔image **9/9**, tree↔running **4/4**; `running`/`healthy`,
+`RestartCount=0`, 4 children, **0** auth-failure lines; `/livez` and `/readyz` **200** on both
+ports; the four model surfaces answer **401** anonymously. Cleanup: non-project containers
+**50→50**, volumes **65→65**, networks **10→10**, exactly the two §21b permits.
+**Reversal cost.** One rename and a start. Nothing was written by this image; the shims make the
+product's behaviour identical.
+**Funding fit.** **None** — a deployment is not a delimited reusable result. What it carries
+(`D-0533`) fits **Restack · traits 1, 2 and 5**.
+**Status.** installed.
+
+## D-0535 · Improvement proposal — authenticity on the surfaces that START a model — 2026-08-18
+**Decision.** Proposed, not executed: show descriptor authenticity on `#/coden`'s model chooser and
+in `/model`, and distinguish **unsigned because nobody signed it** from **unsigned because the
+product synthesised the record from the running runtime**.
+**Why.** `D-0523` made authenticity gate **acquiring**; it does not gate **starting**, and neither
+shell displays it — `F-MODEL-AUTH-001`. The blocker is precisely the missing distinction: the
+running model is synthesised with no publisher, so gating activation today would refuse to
+re-activate what the installation is already running. With the distinction, starting can be gated
+the way acquiring is, and a model whose publisher key was revoked after download stops being
+startable instead of merely being reported.
+**Rejected.** Gating activation now, on the current data: it would break the live installation.
+Showing the state on one shell only: `noesar-evolution` skill rule 3 — build for one shell, declare
+the other in the same breath.
+**Evidence.** Measured this phase: `installedModelList()` carries no authenticity field, and
+`#/models` is the only surface that shows one. `F-MODEL-AUTH-001` is open with this exact text.
+**Reversal cost.** None — nothing built.
+**Funding fit.** **Restack · traits 3 and 5** — user-visible provenance for what a local system
+executes, reliability measured rather than asserted. Explicitly **not trait 2**: product surface,
+not a reusable component.
+**Status.** deferred, awaiting the Owner.

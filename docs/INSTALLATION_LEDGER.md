@@ -5107,3 +5107,39 @@ the intended one — acquiring from an unsigned descriptor now refuses, and on t
 Measured before and after: non-project containers **50 → 50**, volumes **65 → 65**, networks
 **10 → 10** (`EVIDENCE/docker_inventory_pre_cleanup_D-0523_20260818T060429Z.txt`). Exactly the two
 containers §21b permits survive; **0** e2e probe containers and **0** e2e image tags remain.
+
+## `d0526-verified-acquisition-20260818T083258Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z`, deployed 08:33:12Z via
+`tools/deploy/redeploy.sh --apply` (new overlay
+`oci/Dockerfile.phase4-verified-acquisition-package`, built `--network none`). `D-0526`/`D-0533`:
+the verified-acquisition layer now lives in `packages/verified-acquisition/` with its own `SPEC.md`
+and conformance suite; the three former paths in `services/…/src/` are re-export shims.
+**The risk this deployment carried, and how it was removed BEFORE production was touched.** The
+control plane imports from outside `services/` for the first time, so an overlay that copied only
+the changed `services/` files would have shipped a server whose first import throws — a container
+that starts, fails and restarts for ever. Proven absent in the built image before `--apply`:
+`docker run --rm --network none --entrypoint node <tag> -e "import('/opt/noesar/services/…/model-transport.mjs')"`
+→ **"shim resolves, exports: 5"**.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` **200** and `/readyz` **200** on **both**
+`http:8088` and `https:8443`. 4 children spawned (`postgres`/`api`/`codev`/`atom`), **0**
+auth-failure lines.
+**Verification.** Byte-equal tree↔image **9/9** before deploy, tree↔running container **4/4** after.
+Live, anonymous: `/models/catalog`, `/models/acquire`, `/models/descriptors/import` and
+`/models/acquisitions` all answer **401** — the surfaces the extracted package serves exist and the
+boundary holds. Before `--apply`: `npm test` **2626/2627**, conformance **59/59** with 11/11
+requirements traced, `model-acquisition-e2e` **33/33**, ESLint **0/424**, governance **6/6, 323
+checks**. Browser suite **deliberately not re-run** and declared: this phase changed no markup and
+no browser JavaScript.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T083312Z`
+(`d0523-descriptor-signing-20260818T060209Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key, nothing written to the workspace. Behaviour is identical — the shims make every
+caller's import resolve to the same code; only where that code lives changed. Backup taken with the
+service stopped (0600 in a 0700 directory, checksum written).
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T060547Z` removed; its image
+(`d0523-descriptor-signing-…`) **stays on disk**, as do all five in the lineage. Measured before and
+after: non-project containers **50 → 50**, volumes **65 → 65**, networks **10 → 10**
+(`EVIDENCE/docker_inventory_pre_cleanup_D-0526_20260818T083312Z.txt`). Exactly the two containers
+§21b permits survive — and this is the first deployment whose close guard recognises them as such
+(`D-0530`).
