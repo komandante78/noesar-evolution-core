@@ -1,7 +1,7 @@
 # SESSION HANDOFF
 
 **Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`…`D-0525` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `f7e5920` · **Live:** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `14cedd6` · **Live:** `noesar-evolution:d0523-descriptor-signing-20260818T060209Z`
 
 ---
 
@@ -9,7 +9,7 @@
 
 **Nothing is pending and nothing is half-built.** The Owner authorised the commit
 («PROCEDI CON COMMIT»), then push and deploy («FAI ENTRAMBI»), and all three were performed:
-`9aa48a0` + `f7e5920` on `origin/main`, then deployed and verified live as
+`9aa48a0` + `f7e5920` + `14cedd6` on `origin/main`, then deployed and verified live as
 `noesar-evolution:d0523-descriptor-signing-20260818T060209Z` (`D-0525`).
 
 **A descriptor is now believed only if a registered publisher signed it — on the installation the
