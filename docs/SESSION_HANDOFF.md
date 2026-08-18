@@ -1,18 +1,20 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`/`D-0524` · **BUILT AND TESTED, NOT COMMITTED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `3bb236f` · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z` (still `s337` — this phase is not deployed)
+**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`/`D-0524` · **COMMITTED, NOT PUSHED, NOT DEPLOYED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `9aa48a0` (1 ahead of `origin/main`) · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z` (still `s337`)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Waiting on the Owner for three things, in this order:**
+**The Owner authorised the commit only** («PROCEDI CON COMMIT»), and only that was done:
+`9aa48a0`, 14 files, pre-commit gate green (unit suite + ESLint 0/418). Two things wait on a
+further word:
 
-1. **Commit** — 11 files (2 new). Nothing staged; the diff has been reviewed.
-2. **Push** — `origin/main` is level with `3bb236f`.
-3. **Deploy** (§3a: build → bytes-equal-tree → stop with grace → backup stopped → preserve
-   predecessor → start with config read back → live verify → §5a cleanup).
+1. **Push** — `origin/main` is one commit behind; nothing has left this machine.
+2. **Deploy** (§3a: build → bytes-equal-tree → stop with grace → backup stopped → preserve
+   predecessor → start with config read back → live verify → §5a cleanup). The browser suite runs
+   there, against a probe, and is what closes the `[UNVERIFIED]` on the new UI.
 
 **Then, and only on a new instruction: the `/model` chain the Owner named** («poi vai avanti con
 /model»). It was deliberately **not** started — rule 9, one phase per invocation. Its first
@@ -55,7 +57,7 @@ That digest is a field of a document **nobody had signed**: the chain was strong
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Not committed, not pushed, not deployed.** The installation still serves `s337`.
+- **Committed (`9aa48a0`) but NOT pushed and NOT deployed.** The installation still serves `s337`, and nothing has left this machine.
 - **The `/model` chain was not started.** It is the Owner's named next step, not this phase.
 - **`F-MODEL-AUTH-001` opened, not repaired.** Authenticity gates **acquiring**, not **starting**,
   and neither `#/coden`'s chooser nor `/model` in the terminal displays it. Not repaired on purpose:
