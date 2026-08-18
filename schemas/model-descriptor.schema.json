@@ -76,6 +76,18 @@
       "items": {
         "type": "string"
       }
+    },
+    "signature": {
+      "description": "D-0521. The publisher's detached ed25519 signature over the canonical JSON of this document with `signature` removed — the same shape a sector-module manifest carries. Without it a descriptor is visible but not acquirable: the digest every later guarantee rests on is a field of this document, so an unsigned one asks to be believed.",
+      "type": "object",
+      "required": ["algorithm", "value", "publicKeyFingerprint"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "value": { "type": "string" },
+        "publicKeyFingerprint": { "type": "string" },
+        "signedAt": { "type": "string" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

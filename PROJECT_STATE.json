@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "s337 (D-0520/D-0521/D-0522)",
-  "phase_status": "COMPLETE — committed 98ac312, pushed, deployed and verified live",
-  "next_phase": "the delete route and button on #/models (no route exists), then s338 discovery, then D-0521 signed descriptors if the Owner takes the proposal",
+  "current_phase": "s338 (D-0523/D-0524)",
+  "phase_status": "BUILT AND TESTED IN THE TREE — not committed, not pushed, not deployed",
+  "next_phase": "commit + push + deploy of D-0523 on the Owner authorisation; then the /model chain the Owner named",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "98ac312",
-  "last_updated_utc": "2026-08-18T02:35:41.460Z",
+  "last_updated_utc": "2026-08-18T02:55:38.300Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -439,6 +439,12 @@
       "severity": "low",
       "status": "OPEN - recorded 2026-08-17 (D-0512), deliberately NOT fixed; fail-safe, it over-denies and never under-denies",
       "summary": "The F-HOOK-006 quote mask tracks quote state PER LINE, so a quoted string that spans newlines - a multi-line jq program, a heredoc - is seen as quoted on its first line and unquoted on the rest. Separators on later lines then split, and destructive-looking prose inside the quoted body can become a command word. Observed this session writing this very state file. WHY IT IS NOT FIXED: carrying quote state across the whole command, the obvious fix, converts a fail-safe nuisance into a fail-OPEN hole - one apostrophe in ordinary prose inside a heredoc (\"don't\") flips the state and masks every real separator after it, so a genuine trailing removal would no longer be judged. The correct repair is real shell tokenisation, which is a phase of its own and needs its own adversarial matrix. Workaround with no loss of protection: put a long quoted program in a file and pass it by path."
+    },
+    {
+      "id": "F-MODEL-AUTH-001",
+      "severity": "medium",
+      "opened": "2026-08-18 (s338, D-0523)",
+      "summary": "Descriptor authenticity is shown on #/models in every lane, and it gates ACQUIRING. It does not gate STARTING an already-present model, and neither the CodeN model chooser (#/coden) nor /model in the terminal displays it — so a model whose publisher key was revoked after download can still be started, and the two shells show less than the catalogue page does. Not repaired here on purpose: the currently-running model is synthesised with no publisher and is therefore unsigned by construction, so gating activation on a verified descriptor would refuse to re-activate what the installation is already running. The fix is to distinguish >>unsigned because nobody signed it<< from >>unsigned because we synthesised it from the runtime<<, which is its own phase."
     }
   ],
   "resolved_findings": [
@@ -1076,7 +1082,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NEXT PHASE, NOT STARTED. WHAT IS TRUE NOW, VERIFIED AND LIVE: a model of a registered publisher is fetched, verified against the digest the publisher declared, and made startable — POST /api/v1/models/acquire runs a real job instead of answering 501 NO_TRANSPORT. Deployed as noesar-evolution:d0520-model-transport-20260818T023243Z (D-0522): byte-equal tree-image 8/8 and tree-running 4/4, running/healthy, RestartCount=0, /livez and /readyz 200 on http:8088 and https:8443, the three new routes 401 anonymously, the served app.js carries the new UI. Predecessor kept as noesar-evolution-pre-20260818T023359Z; older rollback removed with its image retained; containers 50->50 non-project, volumes 65->65, networks 10->10. Egress ships OFF: nothing is fetched until an operator turns on Settings-side consent (settings.modelAcquisitionEgress), and the privacy indicator reports it as EXTERNAL_METADATA_ONLY. STILL NOT BUILT: the DELETE route and button (no route exists at all), automatic discovery (s339), download resume, and a retention policy for models/quarantine/. STILL UNVERIFIED: starting a real model end to end — no descriptor and no local runtime exist on this host, so the chain is proven up to a verified artefact on disk and no further. OPEN PROPOSAL D-0521: carry publisher-SIGNED descriptors over the same transport, so the metadata declaring which bytes to fetch is guarded by the key that already guards the bytes.",
+  "next_action": "AWAITING OWNER AUTHORISATION for commit, push and deploy of D-0523 — publisher-signed model descriptors. BUILT AND VERIFIED THIS SESSION: a descriptor is accepted only if an ACTIVE key of a registered publisher signed it (ed25519 over canonical JSON without the signature, the same shape sector-modules.mjs uses); planAcquisition refuses DESCRIPTOR_NOT_VERIFIED and null refuses exactly like a failed check; verification happens on EVERY read so a revocation applies retroactively; POST /api/v1/models/descriptors/import has two doors, a pasted document with no network at all and one fetched over the same transport behind egress consent; #/models shows signed-by-whom or unsigned-and-why in every lane. EVIDENCE: tools/model-acquisition-e2e.mjs 33/33 PASS against the real control plane (edited-after-signing refused SIGNATURE_INVALID, unsigned refused NO_SIGNATURE and never written, unsigned visible but unacquirable, re-import refused per rule 13, and the imported document still verifying when read back from disk); unit 2613/2614; ESLint 0 errors on 418 files; SOURCE_VERIFY=PASS; i18n VERDICT=COVERED. THE OWNER ALSO ASKED to go on with /model afterwards — that is the NEXT phase and was deliberately NOT started (rule 9). Its first measurement: whether a local inference runtime can exist on this host without any host-level change (platform law) — today NOESAR_LOCAL_MODEL_RUNTIME is disabled on the container and no model artefact and no runtime binary exist, which is why starting a real model end to end has been UNVERIFIED for three phases.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

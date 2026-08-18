@@ -18,6 +18,10 @@ import { buildCatalog, planAcquisition, loadableModels } from './model-catalog.m
 // D-0520: the transport `planAcquisition` was planning FOR. The manager owns the disk and the
 // jobs; the transport owns the bytes; this file owns neither and only wires them to a route.
 import { AcquisitionManager, artefactName } from './model-acquisition.mjs';
+// D-0521: who says this model is this model. The registry that already holds revocation
+// answers it, over the signature shape `sector-modules.mjs` uses for module manifests.
+import { verifyModelDescriptor, authenticitySummary } from './model-descriptor-authenticity.mjs';
+import { fetchDocument, checkSource as checkTransportSource } from './model-transport.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
 import { chooseDestination, VoiceChoice } from './voice-interpreter.mjs';
@@ -729,7 +733,17 @@ function readModelDescriptors() {
   if (running && !descriptors.some((entry) => entry.id === running)) {
     descriptors.push({ id: running, workloads: [], hashes: {}, formats: [], resource_profiles: [] });
   }
-  return descriptors;
+  // D-0521. Every descriptor carries its authenticity from here on, and the synthesised one for
+  // a running model carries `NO_SIGNATURE` like any other unsigned document — which is the
+  // honest answer: this installation is running it, and nobody signed a claim about it.
+  //
+  // Verified on READ rather than once at import, deliberately: a key revoked five minutes ago
+  // must change this answer for a file that was verified last week. That is the same reason
+  // `MC-001` consults the registry at plan time instead of trusting a cached lane.
+  return descriptors.map((descriptor) => ({
+    ...descriptor,
+    authenticity: authenticitySummary(verifyModelDescriptor({ descriptor, registry: publisherRegistry })),
+  }));
 }
 
 // Which artefacts are on disk, and whether each matches the digest its publisher declared.
@@ -1953,6 +1967,9 @@ const requestListener = async (req, res) => {
         // named, off-by-default setting.
         egressAllowed: modelEgressConsented(),
         maxBytes: MODEL_ACQUIRE_MAX_BYTES,
+        // D-0521: attached by `readModelDescriptors`, computed against the live registry on
+        // this read. Passing the descriptor without it would let an omission read as consent.
+        descriptorAuthenticity: descriptor.authenticity,
       });
       ledger.append({
         actor: authenticated.user.id, action: 'model.acquire',
@@ -1976,6 +1993,69 @@ const requestListener = async (req, res) => {
         return json(res, status, { error: started.reason, kind: started.kind });
       }
       return json(res, 202, { job: started.job, grant: plan.grant, alreadyRunning: Boolean(started.alreadyRunning) });
+    }
+    // ── D-0521 · importing a descriptor, and refusing an unsigned one ────────────────────────
+    //
+    // Two doors, one gate. `{ descriptor }` is a document the operator already holds — pasted or
+    // uploaded, **no egress**, so an air-gapped installation can accept a signed descriptor
+    // without ever reaching a network. `{ source }` fetches it over the SAME transport an
+    // artefact travels on, which is egress and therefore behind the same consent.
+    //
+    // Neither door writes anything the publisher's key did not sign. That is the whole point:
+    // the digest every later guarantee rests on is a field of this document.
+    if (req.method === 'POST' && url.pathname === '/api/v1/models/descriptors/import') {
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const request = await body(req);
+      let candidate = request?.descriptor ?? null;
+      let fetchedFrom = null;
+
+      if (!candidate) {
+        const origin = checkTransportSource(request?.source);
+        if (!origin.allowed) return json(res, 422, { error: origin.reason, kind: origin.kind });
+        if (!modelEgressConsented()) {
+          return json(res, 403, {
+            error: 'fetching a descriptor is egress, and this installation has not been given consent for it. A descriptor you already hold can be imported directly, with no network at all.',
+            kind: 'EGRESS_NOT_CONSENTED',
+          });
+        }
+        const fetched = await fetchDocument({ source: request.source, fetchImpl: (...args) => fetch(...args) });
+        if (!fetched.ok) {
+          ledger.append({ actor: authenticated.user.id, action: 'model.descriptor-import', result: 'failed', details: { kind: fetched.kind } });
+          return json(res, 502, { error: fetched.reason, kind: fetched.kind });
+        }
+        try { candidate = JSON.parse(fetched.text); } catch {
+          return json(res, 422, { error: 'what that source returned is not JSON, so it is not a descriptor', kind: 'NOT_JSON' });
+        }
+        fetchedFrom = fetched.source;
+      }
+
+      if (!candidate?.id) return json(res, 422, { error: 'a descriptor needs an id', kind: 'INVALID_DESCRIPTOR' });
+      const authenticity = authenticitySummary(verifyModelDescriptor({ descriptor: candidate, registry: publisherRegistry }));
+      if (!authenticity.verified) {
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.descriptor-import', result: 'refused',
+          details: { id: candidate.id, publisher: candidate.publisher ?? null, kind: authenticity.kind },
+        });
+        return json(res, 403, { error: authenticity.reason, kind: authenticity.kind });
+      }
+      let name;
+      try { name = artefactName(candidate.id); } catch (error) { return json(res, 422, { error: error.message, kind: 'INVALID_MODEL_ID' }); }
+      const target = join(MODEL_CATALOG_DIR, `${name}.json`);
+      // Rule 13: an existing descriptor is not replaced by implication. A publisher issuing a
+      // new version of the same id is a deliberate act with its own gesture, not a silent
+      // overwrite of the digest an operator already reviewed.
+      if (existsSync(target)) return json(res, 409, { error: 'a descriptor with that id is already on this installation; it is not replaced by an import', kind: 'ALREADY_PRESENT' });
+      mkdirSync(MODEL_CATALOG_DIR, { recursive: true, mode: 0o700 });
+      // The document is written EXACTLY as it was signed — signature included, nothing added,
+      // nothing reformatted. A reformatted document no longer verifies, and a stored copy that
+      // cannot be re-verified is a copy that has to be believed.
+      writeFileSync(target, JSON.stringify(candidate), { mode: 0o600 });
+      ledger.append({
+        actor: authenticated.user.id, action: 'model.descriptor-import', result: 'success',
+        details: { id: candidate.id, publisher: authenticity.signedBy, fingerprint: authenticity.fingerprint, source: fetchedFrom },
+      });
+      return json(res, 201, { id: candidate.id, authenticity, source: fetchedFrom });
     }
     // The three routes that make a long job usable: what is happening, what happened, and stop.
     // `model.read` to watch and `model.manage` to interrupt — watching a download is not the

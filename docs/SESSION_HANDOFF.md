@@ -1,81 +1,75 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s337` — `D-0520`…`D-0522` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `98ac312` · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z`
+**Last updated:** 2026-08-18 · **Phase:** `s338` — `D-0523`/`D-0524` · **BUILT AND TESTED, NOT COMMITTED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `3bb236f` · **Live:** `noesar-evolution:d0520-model-transport-20260818T023243Z` (still `s337` — this phase is not deployed)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending and nothing is half-built.** The Owner authorised commit, push and deploy
-(«autorizzo») and all three were performed: `98ac312` on `origin/main`, then deployed and verified
-live as `noesar-evolution:d0520-model-transport-20260818T023243Z` (`D-0522`).
+**Waiting on the Owner for three things, in this order:**
 
-**A model of a registered publisher is now fetched, verified against the digest its publisher
-declared, and made startable — on the installation the Owner actually uses.** Egress ships **off**,
-so nothing is fetched until an operator turns the consent on.
+1. **Commit** — 11 files (2 new). Nothing staged; the diff has been reviewed.
+2. **Push** — `origin/main` is level with `3bb236f`.
+3. **Deploy** (§3a: build → bytes-equal-tree → stop with grace → backup stopped → preserve
+   predecessor → start with config read back → live verify → §5a cleanup).
 
-**The next phase is scoped and NOT started**, in dependency order:
-
-| Next | What | Blocked by |
-|---|---|---|
-| `s338` | **Delete** on `#/models`: a real button with a confirmation | nothing — but **no delete route exists at all** and must be built. Deleting is a different authority from acquiring. |
-| `s339` | **Automatic discovery** of models from curated sources | egress, so **off by default** (rules 30-32) — a design decision, not a switch |
-| `D-0521` | Publisher-**signed descriptors** over the same transport | an Owner decision; it is what makes `s339` better than "trust a URL" |
+**Then, and only on a new instruction: the `/model` chain the Owner named** («poi vai avanti con
+/model»). It was deliberately **not** started — rule 9, one phase per invocation. Its first
+measurement, before any code: *can a local inference runtime exist on this host without a
+host-level change?* (platform law §60-64). Today `NOESAR_LOCAL_MODEL_RUNTIME` is `disabled` on the
+container, no model artefact is present and no runtime binary is in the image — which is exactly
+why "starting a real model end to end" has been `[UNVERIFIED]` for three phases running.
 
 ---
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-`POST /api/v1/models/acquire` answered `501 NO_TRANSPORT` for thirteen sessions. It now runs a
-real acquisition, and **two defects in the surface it depends on were found and repaired**:
+`D-0520` made an artefact startable only if its bytes match the sha256 **the publisher declared**.
+That digest is a field of a document **nobody had signed**: the chain was strong at the wrong link.
 
-| Repaired | What was wrong |
+**A descriptor is now accepted only if an ACTIVE key of a registered publisher signed it.**
+
+| Property | How it is held |
 |---|---|
-| the egress gate | `egressAllowed: privacy.state === 'external'` — `'external'` is **not** one of the seven `PrivacyState` values, so the gate was a constant `false` written in the shape of a check. Every acquisition was refused as unconsented before the missing transport was ever reached. |
-| the artefact path | `readPresentModels` built `${descriptor.id}.bin` — an id like `acme/tiny-1b` is a **path** when interpolated (never found on disk), and an id containing `..` pointed outside the artefact directory. Reader and writer now share `artefactName()`. |
+| the signature covers `source` and `hashes.sha256` | ed25519 over `canonicalJsonBytes(document minus its signature)` — the shape `sector-modules.mjs` already uses, not a second format |
+| a revocation applies **retroactively** | verified on **every read**, never cached at import |
+| not checking cannot pass | `descriptorAuthenticity: null` refuses with `NOT_CHECKED` — an omission must never read as a permission |
+| an unsigned descriptor is **visible** | shown with *why*, and unacquirable. Hiding it teaches nobody anything (`MC-002`'s posture) |
+| an air-gapped installation can still import | the paste door uses **no network at all**; the fetch door is egress-consented |
 
 **Evidence, produced this session:**
 
-- `node tools/model-acquisition-e2e.mjs` → **`MODEL_ACQUISITION_E2E=PASS`, 22/22** against the real
-  control plane, real session, real CSRF, real publisher registry, publisher served on loopback.
-  It asserts the refusals as hard as the success: consent ships **off**, acquiring is refused
-  `EGRESS_NOT_CONSENTED`, **nothing is written while it is off**, consent opens and the privacy
-  state becomes `EXTERNAL_METADATA_ONLY`, the honest artefact lands verified and moves to the
-  `downloaded` lane, the tampered one fails `DIGEST_MISMATCH` + is quarantined + appears in **no**
-  foreground lane, withdrawing consent refuses again, and both writes are CSRF-guarded.
-- `node --test services/reference-control-plane/test/*.test.mjs` → **2600 tests, 2599 pass, 0 fail,
-  1 skipped** (29 new).
-- `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 416 files**.
-- `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS migrations=19 baseline=12/12 intact`.
-- `node tools/measure-ui-language-coverage.mjs` → `VERDICT=COVERED`.
-- `bash tools/run-browser-e2e.sh` → **504 PASS / 1 FAIL of 505**. The single FAIL is the declared
-  gap `F-I18N-002`, and its +3 this phase were **identified rather than assumed**: they are the
-  *Italian* renderings of three strings this phase did translate, recorded in their rendered form
-  because the harness keys on the text a JS renderer wrote after a language switch. No
-  untranslated English reaches the user from this phase. `route models` is green — the panel
-  renders, populated, with **no console error and no failed request**.
+- `node tools/model-acquisition-e2e.mjs` → **`PASS`, 33/33** against the real control plane. New
+  this phase: edited-after-signing refused `SIGNATURE_INVALID`; unsigned refused `NO_SIGNATURE` and
+  **never written**; unsigned visible but `DESCRIPTOR_NOT_VERIFIED` on acquire; the origin policy
+  applying to descriptors as to artefacts; re-import refused (rule 13); and **the imported document
+  still verifying when read back from disk** — the round trip, not just the write.
+- `node --test services/reference-control-plane/test/*.test.mjs` → **2614 tests, 2613 pass, 0 fail,
+  1 skipped** (12 new authenticity tests, 2 new catalogue refusals).
+- `bash tools/run-eslint.sh` → **0 errors, 0 warnings, 418 files**.
+- `node tools/verify-source.mjs` → `SOURCE_VERIFY=PASS`. i18n → `VERDICT=COVERED` (10 markup +
+  10 runtime strings translated).
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **`tools/accessibility-audit.mjs` was not run** — the browser suite was, and is green on `route models`. The audit is the remaining T2 instrument and is named rather than skipped silently.
-- **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, already tracked, still its own phase.
-- **Delete (`s337` original scope) was NOT built.** No delete route exists. Acquiring and deleting
-  are separate authorities and separate gestures; this phase is the one the Owner authorised.
-- **Discovery (`s339`) untouched**, and correctly so: it is egress and off by default.
-- **Resume of an interrupted download is deliberately absent.** Range requests need their own
-  integrity story; an unverified prefix under a verified name is exactly what `MC-004` forbids.
-- **Quarantine has no retention.** Failed and cancelled downloads accumulate under
-  `models/quarantine/` because rule 12 forbids deleting them. This is a **stated cost**, not an
-  oversight — a sweep needs its own named exception, like the e2e run directories got.
-- **Starting a real model end to end is still `[UNVERIFIED]`** — unchanged from `s336`: no local
-  runtime and no real model exist on this host.
-- **`gitleaks` is absent** (`command -v` finds nothing). The secret scan was **heuristic** and
-  declared as such: no credential-bearing string in the diff. `tools/model-acquisition-e2e.mjs`
-  carries the same throwaway test literals `tools/auth-http-smoke.mjs` already carries — a temp
-  workspace's own setup token and password, valid for nothing.
+- **Not committed, not pushed, not deployed.** The installation still serves `s337`.
+- **The `/model` chain was not started.** It is the Owner's named next step, not this phase.
+- **`F-MODEL-AUTH-001` opened, not repaired.** Authenticity gates **acquiring**, not **starting**,
+  and neither `#/coden`'s chooser nor `/model` in the terminal displays it. Not repaired on purpose:
+  the running model is synthesised with **no publisher**, so it is unsigned by construction, and
+  gating activation would refuse to re-activate what the installation is already running. The fix
+  is to distinguish *unsigned because nobody signed it* from *unsigned because we synthesised it* —
+  its own phase.
+- **The browser suite was not re-run after the UI change** — `[UNVERIFIED]`: the new card line and
+  the import panel are proven by their markup/i18n gates and by the route-level e2e, not by a
+  browser driving them. It runs with the deployment, against a probe (§3a 11e).
+- **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped.
+- **`MANIFEST.sha256` not regenerated** — `F-MANIFEST-001`, still its own phase.
+- **No delete, no discovery, no download resume, no quarantine retention.** Unchanged from `s337`.
+- **`gitleaks` is absent.** The secret scan was **heuristic** and is declared as such.
 
 ---
 
@@ -83,31 +77,32 @@ real acquisition, and **two defects in the surface it depends on were found and 
 
 | File | What |
 |---|---|
-| `services/…/src/model-transport.mjs` | **new** — https-only (loopback http excepted), redirects re-checked per hop, byte cap counted while streaming, incremental sha256, stall deadline, `AbortSignal`. No `node:fs`. |
-| `services/…/src/model-acquisition.mjs` | **new** — the job registry and the disk: `.part` → verified → rename, quarantine on mismatch, never an overwrite, never a delete, `artefactName()` shared with the reader |
-| `services/…/src/server.mjs` | acquire → 202 + job; `GET /models/acquisitions[/:id]`, `POST /:id/cancel`; `GET/PUT /settings/model-egress`; the egress gate and the artefact path repaired |
-| `services/…/src/privacy.mjs` | `modelAcquisitionEgress` colours the indicator `EXTERNAL_METADATA_ONLY` |
-| `apps/webui-static/{app.js,index.html,styles.css}` | the consent switch, the Acquire button per card, the acquisitions panel with progress/cancel/refusals, the two digests side by side on a mismatch |
-| `apps/webui-static/i18n-catalog.js` | 6 markup + 24 runtime strings, in Italian |
-| `services/…/test/model-{transport,acquisition}.test.mjs` | **new** — 29 tests |
-| `tools/model-acquisition-e2e.mjs` | **new** — the end-to-end proof, 22 checks, no network, no container |
-| `oci/Dockerfile.phase4-model-transport` | **new** — the deployment overlay, with its rollback cost stated in the file itself (§3a 11d) |
-| `docs/DECISION_LOG.md` | `D-0520`, `D-0521` |
+| `services/…/src/model-descriptor-authenticity.mjs` | **new** — sign, verify, and five named refusals: `NO_SIGNATURE`, `NO_PUBLISHER`, `NO_REGISTRY`, `KEY_NOT_TRUSTED`, `SIGNATURE_INVALID` |
+| `services/…/src/model-transport.mjs` | `fetchDocument()` — same origin policy, cap, stall deadline and cancellation, integrity from the signature instead of a pre-declared digest. `fetchArtefact` keeps its digest requirement, unchanged |
+| `services/…/src/model-catalog.mjs` | `DESCRIPTOR_NOT_VERIFIED` in `planAcquisition`; `authenticity` on every card |
+| `services/…/src/server.mjs` | descriptors verified on read; `POST /api/v1/models/descriptors/import` with both doors; the authenticity passed into the acquisition plan |
+| `schemas/model-descriptor.schema.json` | the `signature` object, previously impossible under `additionalProperties:false` |
+| `apps/webui-static/{app.js,index.html,i18n-catalog.js}` | *signed by whom* / *unsigned and why* on every card; the import panel; 20 translations |
+| `services/…/test/model-descriptor-authenticity.test.mjs` | **new** — 12 tests, each altering exactly one thing and requiring the answer to change |
+| `services/…/test/model-catalog.test.mjs` | the two refusals, including "not checking is refused like failing" |
+| `tools/model-acquisition-e2e.mjs` | the signed chain end to end, 33 checks |
+| `docs/DECISION_LOG.md` | `D-0523`, `D-0524` |
 
 ---
 
 ## OPEN BLOCKERS
 
-- `B-002` **stale premise** (`D-0257`): its text says neither `gitleaks` nor `trufflehog` is
-  installed. Re-measured today: **`gitleaks` is genuinely absent**, so the heuristic scan stands.
+- `B-002` **stale premise** (`D-0257`): re-measured — `gitleaks` is genuinely absent, so the
+  heuristic scan stands.
 - `B-011` low, deferred (`D-0258`): history rewritten on the Owner's explicit authorisation.
 
 ---
 
-## THE ONE IMPROVEMENT PROPOSAL — `D-0521`, awaiting the Owner
+## THE ONE IMPROVEMENT PROPOSAL — `D-0524`, awaiting the Owner
 
-Carry **publisher-signed descriptors** over the same verified transport, checking the ed25519
-signature against `publisher-registry.mjs` before a descriptor is written to `models/catalog/`.
-Today the artefact is guarded by a registered, revocable key while the metadata declaring *which*
-bytes to fetch — including the sha256 everything depends on — arrives unsigned. It is the
-precondition for `s339` discovery being anything better than "trust a URL".
+Publish the verified-acquisition layer (`model-transport.mjs` + `model-descriptor-authenticity.mjs`)
+as a **documented, independently usable component** with its own conformance suite. It is already
+shaped that way — the transport imports no `node:fs`, the verifier holds no policy, both take their
+dependencies injected, and their 41 tests need no network and no container. "Fetch a
+publisher-signed artefact under a cap, verify it, refuse it by name" is a problem every self-hosted
+AI project has, and most solve it by shelling out to one vendor's CLI.

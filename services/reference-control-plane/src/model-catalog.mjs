@@ -178,6 +178,10 @@ function card(descriptor, lane, { outsideFilter = false } = {}) {
     // different statement from a number that happens to be wrong.
     contextWindow: descriptor.context?.window ?? null,
     digest: declaredDigest(descriptor),
+    // D-0521. Never absent and never null: an unverified descriptor carries a summary that SAYS
+    // it is unverified, because a missing field is read as "fine" by every reader that ever
+    // sees one. Attached by the caller, which is the only party holding the registry.
+    authenticity: descriptor.authenticity ?? { verified: false, kind: 'NOT_CHECKED', signedBy: null, reason: 'this installation has not checked who published this descriptor' },
     lane,
     // Why a card is showing when the filter would have excluded it. Without the reason the
     // card looks like a filter that does not work.
@@ -311,9 +315,13 @@ export function acquisitionAvailability(runtime) {
  *   2. **The origin is registered AND NOT REVOKED AT THIS MOMENT.** Not "was registered when
  *      the catalogue was built": revocation that only applies to future registrations is not
  *      revocation. This is why the registry is consulted here rather than cached upstream.
- *   3. **The publisher committed to a digest.** Without one there is nothing to verify against
+ *   3. **The publisher actually SAID this** (`D-0521`). Steps 2 and 4 protect the bytes with a
+ *      key the operator can revoke, while the document naming *which* bytes to fetch — and the
+ *      digest they must match — used to arrive unsigned. `descriptorAuthenticity` is that
+ *      check's result, and `null` refuses: an omission must never read as a permission.
+ *   4. **The publisher committed to a digest.** Without one there is nothing to verify against
  *      later, so the download cannot be made safe by any amount of care afterwards.
- *   4. **The runtime is able to start it.** Refused early rather than after the bytes are on
+ *   5. **The runtime is able to start it.** Refused early rather than after the bytes are on
  *      disk, so a disabled runtime does not cost a download.
  *
  * Returns a refusal or an authorised plan. It does NOT perform the download and does not mint
@@ -326,6 +334,7 @@ export function planAcquisition({
   runtime = null,
   egressAllowed = false,
   maxBytes = null,
+  descriptorAuthenticity = null,
 } = {}) {
   if (!descriptor?.id) refuse('INVALID_DESCRIPTOR', 'a descriptor with an id is required');
 
@@ -347,6 +356,19 @@ export function planAcquisition({
   const liveKeys = (publisher.keys ?? []).filter((key) => !key.revokedAtUnix);
   if (liveKeys.length === 0) {
     return { allowed: false, kind: 'PUBLISHER_REVOKED', reason: `every key of "${publisherId}" has been revoked` };
+  }
+
+  // D-0521. Placed AFTER the origin is known to be registered and BEFORE the digest is trusted,
+  // because the digest is a field of the very document being authenticated: checking it first
+  // would be believing the thing that has not been verified yet.
+  if (!descriptorAuthenticity?.verified) {
+    return {
+      allowed: false,
+      kind: 'DESCRIPTOR_NOT_VERIFIED',
+      reason: descriptorAuthenticity?.reason
+        ?? 'this descriptor has not been verified against a registered publisher key, so nothing states that the publisher declared this source or this digest',
+      authenticityKind: descriptorAuthenticity?.kind ?? 'NOT_CHECKED',
+    };
   }
 
   const digest = declaredDigest(descriptor);

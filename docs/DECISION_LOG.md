@@ -12112,3 +12112,50 @@ containers **50→50**, volumes **65→65**, networks **10→10**.
 `models/quarantine/` directory that only appears if an acquisition fails. Predecessor kept as
 `noesar-evolution-pre-20260818T023359Z`; all three images remain on disk.
 **Status.** installed.
+
+## D-0523 · Publisher-signed descriptors — the metadata is guarded by the key that guards the bytes — 2026-08-18
+**Decision.** `D-0521` executed. A model descriptor is accepted only if an **active** key of a
+registered publisher signed it: `model-descriptor-authenticity.mjs` (ed25519 over
+`canonicalJsonBytes(document without its signature)` — the shape `sector-modules.mjs` already uses
+for high-risk manifests, not a second format). `planAcquisition` gains `DESCRIPTOR_NOT_VERIFIED`,
+and **`null` refuses**: not checking is refused exactly like failing the check. Descriptors are
+verified **on every read**, not once at import, so a revocation applies to a file verified last
+week. `POST /api/v1/models/descriptors/import` has two doors — a document the operator already
+holds (**no network at all**, the air-gapped case) and one fetched over the same transport
+(`fetchDocument`, egress-consented). `#/models` shows *signed by whom* or *unsigned, and why*, in
+every lane.
+**Why.** `D-0520` made an artefact startable only if its bytes match the sha256 the publisher
+declared — and that digest is a field of a document nobody had signed. The chain was strong at the
+wrong link. Funding fit: a delimited, reusable, verifiable component (traits 1, 2, 5).
+**Rejected.** Trusting a descriptor because it is in the workspace (the state before this);
+verifying once at import and caching (a revocation that only applies to future imports is not a
+revocation); hiding unsigned descriptors (`MC-002`'s posture — what is not run is explained, never
+concealed); a second signature format of its own.
+**Evidence.** `tools/model-acquisition-e2e.mjs` **33/33 PASS** against the real control plane —
+including: an edited-after-signing descriptor refused `SIGNATURE_INVALID`, an unsigned one refused
+`NO_SIGNATURE` and never written, an unsigned one visible-but-unacquirable
+(`DESCRIPTOR_NOT_VERIFIED`), the origin policy applying to descriptors as to artefacts, re-import
+refused (rule 13), and **the imported document still verifying when read back from disk**. Unit
+**2613/2614** (12 new authenticity tests + 2 new catalogue refusals). ESLint **0/418**.
+`SOURCE_VERIFY=PASS`. i18n `VERDICT=COVERED`.
+**Reversal cost.** None yet — not installed. On an installation with descriptors already placed by
+hand, acquisition of an unsigned one now refuses: that is the intended change, and the descriptor
+stays visible with its reason rather than disappearing.
+**Status.** applied, tested, **not committed, not pushed, not deployed** — awaiting the Owner.
+
+## D-0524 · Improvement proposal — publish the verified-acquisition layer as its own component — 2026-08-18
+**Decision.** Proposed, not executed: extract `model-transport.mjs` +
+`model-descriptor-authenticity.mjs` into a **documented, independently usable component** — a
+signed-document-and-artefact acquisition library with its own conformance suite — that another
+project can adopt without taking any of NOESAR EVOLUTION with it.
+**Why.** It is already shaped that way (no `node:fs` in the transport, no policy in the verifier,
+both driven by injected dependencies), and NLnet's strongest recurring trait is **a reusable result
+useful beyond the origin product** (trait 2), with measurable reliability (trait 5). "Fetch a
+publisher-signed artefact under a cap, verify it, refuse it by name" is a problem every
+self-hosted AI project has and most solve by shelling out to one vendor's CLI — trait 4 inverted.
+**Rejected.** Publishing the whole control plane as the reusable artefact: too large to adopt, and
+NLnet explicitly favours the delimited component over the platform.
+**Evidence.** Measured this phase: the two modules import only `node:crypto` and each other; their
+41 tests run with no network, no container and no filesystem for the transport half.
+**Reversal cost.** None — nothing built.
+**Status.** deferred, awaiting the Owner.

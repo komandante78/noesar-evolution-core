@@ -146,9 +146,53 @@ const refusal = (kind, reason, extra = {}) => ({ ok: false, kind, reason, ...ext
  * @param {number}   [options.stallTimeoutMs]
  * @returns {Promise<{ok:true,digest:string,bytes:number,source:string}|{ok:false,kind:string,reason:string}>}
  */
-export async function fetchArtefact({
+export async function fetchArtefact(options = {}) {
+  // Refused rather than defaulted: a transport that will accept any digest is a transport with
+  // no integrity story, and a default here would make that state reachable by omission. This
+  // stays on the ARTEFACT path only — `fetchDocument` below takes its integrity from a
+  // signature instead, which is a different guarantee and is never silently substituted here.
+  if (!HEX64.test(String(options.expectedSha256 ?? ''))) {
+    throw new ModelTransportError('NO_EXPECTED_DIGEST', 'a 64-character sha256 the publisher declared is required');
+  }
+  const result = await streamToSink(options);
+  if (!result.ok) return result;
+  if (result.digest !== String(options.expectedSha256).toLowerCase()) {
+    return refusal(
+      TransportRefusal.DIGEST_MISMATCH,
+      'the artefact does not match the digest the publisher declared, so it will not be made startable',
+      { digest: result.digest, expected: String(options.expectedSha256).toLowerCase(), receivedBytes: result.bytes },
+    );
+  }
+  return result;
+}
+
+/**
+ * Fetch a small **signed document** — a model descriptor — over the same policy.
+ *
+ * Same origin rule, same cap, same stall deadline, same cancellation. What is deliberately
+ * different is where integrity comes from: an artefact is trusted because its bytes match a
+ * digest the publisher declared **in a descriptor**, and a descriptor cannot be trusted the
+ * same way without begging the question. Its integrity comes from the publisher's SIGNATURE,
+ * checked by `model-descriptor-authenticity.mjs` after this returns — so this function must
+ * never be used for artefacts, and `fetchArtefact` above keeps its digest requirement.
+ *
+ * The cap is small by default for the same reason a grant carries one: a "descriptor" that
+ * turns out to be a gigabyte is not a descriptor.
+ */
+export async function fetchDocument({ maxBytes = 512 * 1024, ...options } = {}) {
+  const chunks = [];
+  const sink = {
+    async write(chunk) { chunks.push(Buffer.from(chunk)); },
+    async close() {},
+    async abort() {},
+  };
+  const result = await streamToSink({ ...options, maxBytes, sink });
+  if (!result.ok) return result;
+  return { ...result, text: Buffer.concat(chunks).toString('utf8') };
+}
+
+async function streamToSink({
   source,
-  expectedSha256,
   maxBytes,
   fetchImpl,
   sink,
@@ -159,11 +203,6 @@ export async function fetchArtefact({
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new ModelTransportError('NO_FETCH', 'a fetch implementation must be injected');
   if (!sink || typeof sink.write !== 'function') throw new ModelTransportError('NO_SINK', 'a sink with write/close/abort must be provided');
-  // Refused rather than defaulted: a transport that will accept any digest is a transport with
-  // no integrity story, and a default here would make that state reachable by omission.
-  if (!HEX64.test(String(expectedSha256 ?? ''))) {
-    throw new ModelTransportError('NO_EXPECTED_DIGEST', 'a 64-character sha256 the publisher declared is required');
-  }
   const cap = Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : null;
 
   const first = checkSource(source);
@@ -238,17 +277,9 @@ export async function fetchArtefact({
     return refusal(TransportRefusal.TRANSPORT_ERROR, `the download failed: ${error?.message ?? error}`, { receivedBytes: received });
   }
 
-  const digest = hash.digest('hex');
-  if (digest !== String(expectedSha256).toLowerCase()) {
-    // The sink is closed rather than abandoned: the caller quarantines what arrived, because
-    // "what did I actually receive" is the first question asked when a digest does not match.
-    await sink.close?.();
-    return refusal(
-      TransportRefusal.DIGEST_MISMATCH,
-      'the artefact does not match the digest the publisher declared, so it will not be made startable',
-      { digest, expected: String(expectedSha256).toLowerCase(), receivedBytes: received },
-    );
-  }
+  // Closed rather than abandoned in every ending, including the one the caller will reject on a
+  // digest mismatch: "what did I actually receive" is the first question asked then, and a
+  // half-written file nobody closed cannot answer it.
   await sink.close?.();
-  return { ok: true, digest, bytes: received, source: current.toString() };
+  return { ok: true, digest: hash.digest('hex'), bytes: received, source: current.toString() };
 }

@@ -5651,13 +5651,28 @@ const MODEL_LANE_NOTE={
 // that grows a button — and the button is DRAWN AND DISABLED with its reason when the gesture is
 // unavailable (MC-006), never removed. A missing control teaches nothing; a stopped one with a
 // sentence attached teaches where it turns on.
+// D-0521. Who signed this descriptor, on every card and in every lane — not only where a button
+// is. A model already on disk whose publisher key has since been revoked must say so, and the
+// place a person looks is the card, not a log.
+function authenticityLine(item){
+  const authenticity=item.authenticity;
+  if(!authenticity)return '';
+  if(authenticity.verified){
+    return `<p class="card-actions"><span class="badge badge-on">${escapeHtml(t('Signed by'))} ${escapeHtml(authenticity.signedBy??'—')}</span>`
+      +(authenticity.trustLevel?`<small translate="no">${escapeHtml(t('trust level'))} ${escapeHtml(authenticity.trustLevel)}</small>`:'')+'</p>';
+  }
+  return `<p class="card-actions"><span class="badge badge-off">${escapeHtml(t('Unsigned'))}</span>`
+    +`<small translate="no">${escapeHtml(authenticity.reason??t('This descriptor has not been verified against a registered publisher.'))}</small></p>`;
+}
 function acquireControl(item,context){
   if(item.lane!=='available')return '';
   const blocked=!context.acquireOffered
     ?context.acquireReason||t('Acquiring is switched off on this installation.')
     :!context.egressConsented
       ?t('Model downloads are not allowed yet. Turn them on above — downloading is egress.')
-      :null;
+      :item.authenticity&&!item.authenticity.verified
+        ?t('Nobody registered here signed this descriptor, so the source and the digest it declares are not attested.')
+        :null;
   const busy=context.busy?.has?.(item.id)?t('Acquiring…'):null;
   const label=busy??t('Acquire');
   return `<p class="card-actions"><button type="button" data-acquire="${escapeHtml(item.id)}"`
@@ -5674,7 +5689,7 @@ function modelCard(item,context={}){
       `<small>${declared(item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}</small>`
       +`<p>Type ${declared(item.type)} &middot; function ${item.functions.map(declared).join(', ')}`
       +`${item.contextWindow?` &middot; context ${item.contextWindow}`:' &middot; context <em>undeclared</em>'}</p>`
-      +outside+acquireControl(item,context)+'</article>');
+      +outside+authenticityLine(item)+acquireControl(item,context)+'</article>');
 }
 function renderModelLanes(catalog){
   const foreground=$('#modelForegroundLanes');
@@ -5888,8 +5903,40 @@ async function cancelAcquisition(jobId){
   await refreshAcquisitions();
   await loadModelCatalogue();
 }
+/**
+ * D-0521 · import a descriptor, by either door.
+ *
+ * The refusal is shown verbatim, because each one names a different thing that is wrong —
+ * unsigned, edited since signing, a key this installation never registered, a key that has been
+ * revoked — and "import failed" would throw away the only part worth reading.
+ */
+async function importDescriptor(payload){
+  try{
+    const result=await api('/api/v1/models/descriptors/import',{method:'POST',body:JSON.stringify(payload)});
+    toast(`${t('Descriptor accepted, signed by')} ${result.authenticity?.signedBy??'—'}`,{kind:'info'});
+    const paste=$('#modelDescriptorPaste');if(paste)paste.value='';
+    const urlField=$('#modelDescriptorUrl');if(urlField)urlField.value='';
+    await loadModelCatalogue();
+  }catch(error){
+    toast(`${t('This descriptor was refused:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+}
 function wireModelCatalogue(){
   $('#modelEgressToggle')?.addEventListener('click',toggleModelEgress);
+  $('#modelDescriptorPasteImport')?.addEventListener('click',()=>{
+    const raw=$('#modelDescriptorPaste')?.value?.trim();
+    if(!raw)return toast(t('Paste the descriptor first.'),{kind:'error'});
+    let parsed;
+    // Parsed here so a typo is answered instantly and locally, rather than travelling to the
+    // server to come back as a 422 that says the same thing more slowly.
+    try{parsed=JSON.parse(raw);}catch{return toast(t('That is not valid JSON.'),{kind:'error'});}
+    importDescriptor({descriptor:parsed});
+  });
+  $('#modelDescriptorFetch')?.addEventListener('click',()=>{
+    const source=$('#modelDescriptorUrl')?.value?.trim();
+    if(!source)return toast(t('Give the address to fetch it from.'),{kind:'error'});
+    importDescriptor({source});
+  });
   // Delegated: the cards are rebuilt on every filter change and on every completed download, so
   // a listener per button would be a listener per render.
   $('#modelAvailableList')?.addEventListener('click',(event)=>{

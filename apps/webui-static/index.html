@@ -832,6 +832,24 @@
             <span id="modelEgressReason">Fetching a model artefact reaches the publisher named in its descriptor.</span>
             <button id="modelEgressToggle" type="button" disabled>Allow model downloads</button>
           </div>
+          <!-- D-0521. A descriptor is accepted only if a key registered here signed it. Two
+               doors, because an installation with no network is a first-class case: paste the
+               document you already hold, or fetch it over the same verified transport an
+               artefact travels on. Neither writes anything the publisher's key did not sign. -->
+          <details id="modelDescriptorImport">
+            <summary>Import a model descriptor</summary>
+            <p class="hint">Only a descriptor signed by a publisher registered on this installation is accepted. The digest every later guarantee rests on is a field of this document, so an unsigned one is refused rather than trusted.</p>
+            <label>Paste a signed descriptor<textarea id="modelDescriptorPaste" rows="4" placeholder="{ &quot;id&quot;: …, &quot;signature&quot;: { … } }"></textarea></label>
+            <div class="inline-form">
+              <button id="modelDescriptorPasteImport" type="button">Import this descriptor</button>
+              <span id="modelDescriptorNote">No network is used for a descriptor you paste.</span>
+            </div>
+            <label>Or fetch one from its publisher<input id="modelDescriptorUrl" placeholder="https://publisher.example/model.json"></label>
+            <div class="inline-form">
+              <button id="modelDescriptorFetch" type="button">Fetch and verify</button>
+              <span>Fetching is egress and needs the consent above.</span>
+            </div>
+          </details>
         </section>
         <section class="panel" id="modelForeground">
           <div class="panel-title"><h2>On this installation</h2><span class="chip" id="modelForegroundCount">—</span></div>

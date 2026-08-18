@@ -26,6 +26,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { PublisherRegistry } from '../services/reference-control-plane/src/publisher-registry.mjs';
+import { signModelDescriptor } from '../services/reference-control-plane/src/model-descriptor-authenticity.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const workspace = mkdtempSync(join(os.tmpdir(), 'noesar-acquire-e2e-'));
@@ -47,7 +48,8 @@ const check = (label, condition, detail = '') => {
 
 // ── the publisher, registered through the real registry, before the server starts ──────────
 const registry = new PublisherRegistry({ root: join(workspace, 'publishers') });
-const { publicKey } = generateKeyPairSync('ed25519');
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+const publisherKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 registry.registerKey({
   publisherId: 'e2e-publisher',
   trustLevel: 'community',
@@ -64,8 +66,18 @@ const descriptor = (id, sha, file) => ({
   source: `http://127.0.0.1:${artefactPort}/${file}`,
   hashes: { sha256: sha }, formats: ['gguf'], workloads: ['text', 'code'], resource_profiles: [],
 });
-writeFileSync(join(catalogDir, 'honest.json'), JSON.stringify(descriptor('e2e/honest-1b', GOOD_SHA, 'honest.bin')));
-writeFileSync(join(catalogDir, 'tampered.json'), JSON.stringify(descriptor('e2e/tampered-1b', TAMPERED_SHA, 'tampered.bin')));
+// D-0521: the two working descriptors are SIGNED by the publisher registered above. The third
+// is deliberately left unsigned — an unsigned descriptor must be visible and unacquirable, and
+// a suite that only ever feeds signed input would never notice if that stopped being true.
+const signed = (d) => signModelDescriptor(d, publisherKeyPem);
+writeFileSync(join(catalogDir, 'honest.json'), JSON.stringify(signed(descriptor('e2e/honest-1b', GOOD_SHA, 'honest.bin'))));
+writeFileSync(join(catalogDir, 'tampered.json'), JSON.stringify(signed(descriptor('e2e/tampered-1b', TAMPERED_SHA, 'tampered.bin'))));
+writeFileSync(join(catalogDir, 'unsigned.json'), JSON.stringify(descriptor('e2e/unsigned-1b', GOOD_SHA, 'honest.bin')));
+// A descriptor the publisher signed and an attacker then edited — the same document with one
+// field changed, which is exactly what a signature exists to catch.
+const forged = { ...signed(descriptor('e2e/forged-1b', GOOD_SHA, 'honest.bin')), source: `http://127.0.0.1:${artefactPort}/tampered.bin` };
+// Two more, served rather than placed: the import route's own doors.
+const importable = signed(descriptor('e2e/imported-1b', GOOD_SHA, 'honest.bin'));
 
 // The runtime must not be `disabled`, or `planAcquisition` refuses before egress is even asked.
 mkdirSync(join(workspace, 'config'), { recursive: true });
@@ -73,6 +85,16 @@ writeFileSync(join(workspace, 'config', 'local-model.json'), JSON.stringify({ mo
 
 // ── the publisher's own HTTP server, on loopback, serving bytes and nothing else ───────────
 const artefacts = createServer((req, res) => {
+  // D-0521: the same loopback publisher also serves descriptors, so the import route's fetch
+  // door is exercised over the real transport rather than described.
+  if (req.url === '/served-descriptor.json' || req.url === '/served-unsigned.json') {
+    const document = req.url === '/served-descriptor.json'
+      ? signed(descriptor('e2e/served-1b', GOOD_SHA, 'honest.bin'))
+      : descriptor('e2e/served-unsigned-1b', GOOD_SHA, 'honest.bin');
+    const payload = JSON.stringify(document);
+    res.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) });
+    return res.end(payload);
+  }
   const body = req.url === '/tampered.bin' ? 'these are not the bytes that were declared\n' : GOOD;
   res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': Buffer.byteLength(body) });
   res.end(body);
@@ -191,6 +213,62 @@ try {
   const mismatchLanes = Object.fromEntries((afterMismatch.data.foreground ?? []).map((lane) => [lane.lane, lane.items.map((item) => item.id)]));
   check('the failed model is in no foreground lane at all',
     !Object.values(mismatchLanes).flat().includes('e2e/tampered-1b'), JSON.stringify(mismatchLanes));
+
+  console.log('\nD-0521 — who says this model is this model');
+  const cat = await request('/api/v1/models/catalog');
+  const cards = [...(cat.data.foreground ?? []).flatMap((lane) => lane.items), ...(cat.data.available?.items ?? [])];
+  const cardFor = (id) => cards.find((item) => item.id === id) ?? null;
+  check('a signed descriptor is reported as signed, and names WHO',
+    cardFor('e2e/honest-1b')?.authenticity?.verified === true && cardFor('e2e/honest-1b')?.authenticity?.signedBy === 'e2e-publisher',
+    JSON.stringify(cardFor('e2e/honest-1b')?.authenticity));
+  check('an unsigned descriptor is VISIBLE — it is not hidden, it is explained',
+    Boolean(cardFor('e2e/unsigned-1b')),
+    'a catalogue that hides what it will not run teaches nobody why');
+  check('and it is reported as unsigned, with a reason',
+    cardFor('e2e/unsigned-1b')?.authenticity?.verified === false
+      && String(cardFor('e2e/unsigned-1b')?.authenticity?.reason ?? '').length > 0,
+    JSON.stringify(cardFor('e2e/unsigned-1b')?.authenticity));
+  const unsignedAcquire = await request('/api/v1/models/acquire', { method: 'POST', value: { id: 'e2e/unsigned-1b' } });
+  check('acquiring an unsigned descriptor is refused as DESCRIPTOR_NOT_VERIFIED',
+    unsignedAcquire.status === 403 && unsignedAcquire.data.kind === 'DESCRIPTOR_NOT_VERIFIED',
+    `${unsignedAcquire.status} ${JSON.stringify(unsignedAcquire.data)}`);
+
+  console.log('\nimporting a descriptor — the door that needs no network');
+  const importedOk = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { descriptor: importable } });
+  check('a signed descriptor is accepted', importedOk.status === 201 && importedOk.data.authenticity?.verified === true,
+    `${importedOk.status} ${JSON.stringify(importedOk.data)}`);
+  check('it is on disk', existsSync(join(catalogDir, 'e2e~2fimported-1b.json')));
+  // The round trip is the property, not the write: a stored copy that no longer verifies is a
+  // copy that has to be BELIEVED, and re-serialising a document is the easy way to produce one.
+  const afterImport = await request('/api/v1/models/catalog');
+  const importedCard = [...(afterImport.data.foreground ?? []).flatMap((lane) => lane.items), ...(afterImport.data.available?.items ?? [])]
+    .find((item) => item.id === 'e2e/imported-1b') ?? null;
+  check('and it still verifies when read back from disk, not only when it arrived',
+    importedCard?.authenticity?.verified === true && importedCard?.authenticity?.signedBy === 'e2e-publisher',
+    JSON.stringify(importedCard?.authenticity));
+  const importedAgain = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { descriptor: importable } });
+  check('importing the same id again is refused rather than overwriting (rule 13)',
+    importedAgain.status === 409 && importedAgain.data.kind === 'ALREADY_PRESENT', String(importedAgain.status));
+  const forgedImport = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { descriptor: forged } });
+  check('a descriptor edited after it was signed is refused as SIGNATURE_INVALID',
+    forgedImport.status === 403 && forgedImport.data.kind === 'SIGNATURE_INVALID',
+    `${forgedImport.status} ${JSON.stringify(forgedImport.data)}`);
+  const unsignedImport = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { descriptor: descriptor('e2e/never-1b', GOOD_SHA, 'honest.bin') } });
+  check('an unsigned descriptor is never written to the catalogue',
+    unsignedImport.status === 403 && unsignedImport.data.kind === 'NO_SIGNATURE' && !existsSync(join(catalogDir, 'e2e~2fnever-1b.json')),
+    `${unsignedImport.status} ${JSON.stringify(unsignedImport.data)}`);
+
+  console.log('\nimporting a descriptor — the door that fetches it over the same transport');
+  const fetchedImport = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { source: `http://127.0.0.1:${artefactPort}/served-descriptor.json` } });
+  check('a signed descriptor fetched over the transport is accepted',
+    fetchedImport.status === 201 && fetchedImport.data.authenticity?.signedBy === 'e2e-publisher',
+    `${fetchedImport.status} ${JSON.stringify(fetchedImport.data)}`);
+  const fetchedUnsigned = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { source: `http://127.0.0.1:${artefactPort}/served-unsigned.json` } });
+  check('an unsigned one fetched the same way is refused just the same',
+    fetchedUnsigned.status === 403 && fetchedUnsigned.data.kind === 'NO_SIGNATURE', String(fetchedUnsigned.status));
+  const badScheme = await request('/api/v1/models/descriptors/import', { method: 'POST', value: { source: 'http://models.example/d.json' } });
+  check('and the origin policy applies to descriptors exactly as to artefacts',
+    badScheme.status === 422 && badScheme.data.kind === 'SCHEME_NOT_ALLOWED', `${badScheme.status} ${JSON.stringify(badScheme.data)}`);
 
   console.log('\nthe gate closes again, and acquiring stops');
   const withdrawn = await request('/api/v1/settings/model-egress', { method: 'PUT', value: { consented: false } });

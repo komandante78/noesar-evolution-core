@@ -175,7 +175,14 @@ describe('MC-004 — an artefact whose digest does not match is not startable', 
 });
 
 describe('MC-001 — no download from an unregistered origin, nor one revoked since', () => {
-  const ok = { descriptor: model('m'), registry: registryWith(LIVE_ACME), runtime: { mode: 'auto' }, egressAllowed: true };
+  // D-0521: an authenticity result is now part of an authorised plan. It is stated in the
+  // fixture rather than defaulted inside `planAcquisition`, because the whole point of the
+  // check is that its ABSENCE refuses — see the two tests at the end of this block.
+  const signedByAcme = { verified: true, kind: 'VERIFIED', signedBy: 'acme', reason: null };
+  const ok = {
+    descriptor: model('m'), registry: registryWith(LIVE_ACME), runtime: { mode: 'auto' },
+    egressAllowed: true, descriptorAuthenticity: signedByAcme,
+  };
 
   test('the happy path is authorised, with the ceiling written into the grant', () => {
     const plan = planAcquisition({ ...ok, maxBytes: 8_000_000_000 });
@@ -223,6 +230,23 @@ describe('MC-001 — no download from an unregistered origin, nor one revoked si
     const plan = planAcquisition({ ...ok, runtime: { mode: 'disabled' } });
     assert.equal(plan.allowed, false);
     assert.equal(plan.kind, 'RUNTIME_DISABLED');
+  });
+
+  test('D-0521 — a descriptor nobody signed is refused, however good its publisher looks', () => {
+    const plan = planAcquisition({ ...ok, descriptorAuthenticity: { verified: false, kind: 'NO_SIGNATURE', reason: 'nobody signed it' } });
+    assert.equal(plan.allowed, false);
+    assert.equal(plan.kind, 'DESCRIPTOR_NOT_VERIFIED');
+    assert.equal(plan.authenticityKind, 'NO_SIGNATURE');
+  });
+
+  test('D-0521 — NOT CHECKING is refused exactly like failing the check', () => {
+    // The property this pins: an omission must never read as a permission. A caller that
+    // forgets to verify gets the same refusal as one whose verification failed.
+    const { descriptorAuthenticity: _omitted, ...withoutTheCheck } = ok;
+    const plan = planAcquisition(withoutTheCheck);
+    assert.equal(plan.allowed, false);
+    assert.equal(plan.kind, 'DESCRIPTOR_NOT_VERIFIED');
+    assert.equal(plan.authenticityKind, 'NOT_CHECKED');
   });
 
   test('planning never mints authority for itself', () => {
