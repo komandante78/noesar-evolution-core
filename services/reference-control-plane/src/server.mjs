@@ -359,7 +359,14 @@ const store = new JsonStore(join(workspace, 'state/state.json'));
 const aiStore = new AtomicJsonStore(join(workspace, 'state/ai-workspace.json'));
 const contextGraph = new ContextGraph(aiStore);
 const credentialVault = new CredentialVault({ keyPath:join(workspace, 'config/provider-credentials.key') });
-const providerGateway = new ProviderGateway({ store:aiStore, vault:credentialVault, ledger });
+// `activeRuntime` is a thunk for the same reason `codenAddressBook` below is one: `localModels`
+// is constructed later in this file, and the gateway only ever calls this at request time. It
+// hands over `status()` — a reading — never the runtime object: the provider gateway must not
+// be able to start or stop a model, only to route at one that is already serving.
+const providerGateway = new ProviderGateway({
+  store:aiStore, vault:credentialVault, ledger,
+  activeRuntime: () => localModels.status(),
+});
 providerGateway.ensureDefaults();
 const fileExtractor = new FileExtractor({ blobRoot:join(workspace, 'files') });
 const aiWorkspace = new WorkspaceService({ store:aiStore, graph:contextGraph, ledger, fileExtractor });
@@ -470,6 +477,11 @@ function installedModelList() {
   );
   return {
     activeId: activeModelId(),
+    // s341: the listing states whether the active model is the one chat will answer from.
+    // `/model` with no id is the question "what can I load, and what is happening now" — and
+    // "phi-4 is active" without "and chat does not use it" was the half-answer that let the
+    // chain look complete while its last link was missing.
+    chat: chatAnswerFrom(),
     models: loadableModels(catalog).map((entry) => {
       const item = described.get(entry.id) ?? {};
       return {
@@ -491,10 +503,25 @@ function installedModelList() {
   };
 }
 
-function activateInstalledModelById(id, actor) {
+/**
+ * s341 — who answers a chat message right now, in the words both shells show.
+ *
+ * Derived from the SAME call `ProviderGateway.route()` makes, never computed a second way: a
+ * `/model` output that promised an answer the router would not produce is the divergence
+ * `noesar-evolution` rule 5 is about. Exactly one of `model`/`reason` is ever set, so a shell
+ * can always say why chat will not use the chosen model instead of leaving it to be inferred.
+ */
+function chatAnswerFrom() {
+  const { profile, reason } = providerGateway.activeRuntimeProfile();
+  return profile
+    ? { answers: true, providerId: profile.id, model: profile.defaultModel, evidence: profile.servingEvidence, reason: null }
+    : { answers: false, providerId: null, model: null, evidence: null, reason };
+}
+
+async function activateInstalledModelById(id, actor) {
   const descriptors = readModelDescriptors();
   const descriptor = descriptors.find((entry) => entry.id === id) ?? null;
-  return activateModel({
+  const activated = await activateModel({
     descriptor,
     present: readPresentModels(descriptors),
     runtime: localModels, grants: adapterGrants, actor,
@@ -502,6 +529,16 @@ function activateInstalledModelById(id, actor) {
     // key revoked a moment ago stops a start that a cached verdict would have allowed.
     descriptorAuthenticity: descriptor?.authenticity ?? null,
   });
+  // s341: a model that started is not yet a model that answers. This says which of the two
+  // just happened, in the same object both shells render — so `/model phi-4` reports "chat
+  // answers from phi-4" or the exact reason it does not, and never leaves the operator to
+  // discover the difference by sending a message and reading an error.
+  //
+  // The key ORDER is not cosmetic. Both shells render this through `detailLines`, which
+  // JSON-serialises the object and keeps the first ten lines; a `chat` block appended at the
+  // end would be exactly the part that gets truncated — and the reason chat will NOT answer
+  // is the one line an operator most needs. Named here so a later edit does not undo it.
+  return { activated: activated.activated, id: activated.id, chat: chatAnswerFrom(), ...activated };
 }
 
 // --- data plane and multi-user directory -------------------------------------
@@ -696,6 +733,10 @@ function activeModelConsumers() {
   const consumers = [];
   if (String(process.env.NOESAR_AUTHORING_ENDPOINT ?? '').trim()) consumers.push('noesar-authoring');
   if (String(process.env.NOESAR_RUST_REASONING_ENDPOINT ?? '').trim()) consumers.push('atom');
+  // s341: chat is listed only when it is TRUE. Until this phase the chosen model was not on
+  // any chat route at all, and this list said so by omission — correctly. It is derived from
+  // the same call the router uses, so the two can never disagree about who answers.
+  if (providerGateway.activeRuntimeProfile().profile) consumers.push('chat');
   return consumers;
 }
 async function refreshActiveModel({ force = false } = {}) {

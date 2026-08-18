@@ -52,7 +52,13 @@ export class ChatOrchestrator{
   async streamToResponse({res,actorId,conversationId,branchId,content,providerId=null,model=null,mode=null,sourceIds=[],toolIds=[]}){
     const initial=this.workspace.contextInspection({conversationId,branchId});
     const selectedMode=String(mode??initial.conversation.mode??'ASK').toUpperCase();
-    const providerRoute=this.providers.route({requestedProviderId:providerId??initial.providerId,mode:selectedMode});
+    // The two are passed apart, not collapsed with `??`. `providerId` is THIS caller naming a
+    // provider for THIS message and still wins outright; `initial.providerId` is a standing
+    // preference (the conversation's provider, or the workspace default) which a model the
+    // operator just started with `/model` leads — see ProviderGateway.route(). Collapsing them
+    // is what made a freshly chosen model unreachable on any workspace that had ever set a
+    // default: the chain ended at the preference and never reached the running model.
+    const providerRoute=this.providers.route({requestedProviderId:providerId,standingProviderId:initial.providerId,mode:selectedMode});
     if(!providerRoute.length)throw Object.assign(new Error('No enabled model provider is available for this mode.'),{status:409});
     // Everything that can reject on malformed input happens BEFORE a single byte is
     // written. Once the 200 and the event-stream headers are out there is no way to

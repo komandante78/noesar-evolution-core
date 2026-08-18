@@ -2587,6 +2587,15 @@ try {
     () => /Channel change completed/i.test(document.querySelector('#statusMessage')?.textContent ?? ''),
     { timeout: 15000 },
   );
+  // s341: wait for the PANEL, not only for the toast. `updateAction` in app.js shows
+  // "Channel change completed." and only THEN awaits `loadUpdates()`, so reading the panel the
+  // instant the message appears is a race this suite lost once (run 2 of s341: the assertion
+  // read `Channeloffline` a beat before the re-render). The product was correct both times;
+  // the check was reading too early. Bounded, so a genuine failure still fails.
+  await page.waitForFunction(
+    (wanted) => (document.querySelector('#updatesStatus')?.textContent ?? '').includes(wanted),
+    { timeout: 15000 }, otherChannel,
+  ).catch(() => { /* leave the assertion below to report what the panel actually says */ });
   const afterChannelChange = await page.evaluate(() => document.querySelector('#updatesStatus')?.textContent ?? '');
   check('Change channel reaches the real endpoint and the status panel reflects the new channel',
     requestWasMade('/api/v1/updates/channel') && afterChannelChange.includes(otherChannel),

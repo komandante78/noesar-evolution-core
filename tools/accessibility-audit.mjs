@@ -262,17 +262,41 @@ window.__a11y = (() => {
     // to reach. Only the real disabled attribute is skipped now. Found by measurement:
     // the skipped count did not move when three buttons changed from one to the other,
     // which is only possible if the audit could not tell them apart.
+    // s341, second declared exclusion: a control inside a CLOSED <details>.
+    //
+    // It is not focusable — 'element.focus()' on it does nothing — so the 2.4.7 probe compared
+    // a control with itself and reported four phantom failures on #/models' descriptor import
+    // panel. 'visible()' did not catch them because current Chrome no longer renders a closed
+    // disclosure's contents with 'display:none': it uses 'content-visibility', so they keep a
+    // computed display, an offsetParent and a stale layout box. A browser changed underneath
+    // this tool, which is exactly the class of drift an audit has to notice rather than report
+    // as a defect in the product.
+    //
+    // The exclusion is COUNTED, like the disabled one above: an exclusion nobody counts is how
+    // a green audit starts meaning less than it says. <summary> is deliberately not excluded —
+    // it is the control that opens the disclosure, it IS focusable while closed, and both 2.4.7
+    // and 2.5.8 apply to it.
+    inClosedDisclosure(element) {
+      return element.tagName !== 'SUMMARY' && element.closest('details:not([open])') !== null;
+    },
     interactiveElements(rootSelector) {
       const root = document.querySelector(rootSelector) ?? document.body;
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter(visible)
-        .filter((element) => !element.disabled);
+        .filter((element) => !element.disabled)
+        .filter((element) => !this.inClosedDisclosure(element));
     },
     disabledSkipped(rootSelector) {
       const root = document.querySelector(rootSelector) ?? document.body;
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter(visible)
         .filter((element) => element.disabled).length;
+    },
+    collapsedSkipped(rootSelector) {
+      const root = document.querySelector(rootSelector) ?? document.body;
+      return [...root.querySelectorAll(INTERACTIVE)]
+        .filter(visible)
+        .filter((element) => !element.disabled && this.inClosedDisclosure(element)).length;
     },
     // Target size 2.5.8 (new in WCAG 2.2): 24x24 CSS px minimum, with the standard
     // exception for links inline in a sentence.
@@ -588,7 +612,7 @@ try {
       let checked = 0;
       let skipped = 0;
       for (const selector of scope) {
-        skipped += window.__a11y.disabledSkipped(selector);
+        skipped += window.__a11y.disabledSkipped(selector) + window.__a11y.collapsedSkipped(selector);
         for (const element of window.__a11y.interactiveElements(selector)) {
           const before = window.__a11y.focusSignature(element);
           element.focus();
@@ -613,7 +637,7 @@ try {
   }
   check('every interactive control shows a visible focus indicator (2.4.7)',
     focusFailures.length === 0,
-    `${focusFailures.length} of ${focusChecked} controls change nothing when focused (${focusSkipped} disabled controls skipped — not focusable, proven separately in the browser suite): ${JSON.stringify(focusFailures.slice(0, 5))}`);
+    `${focusFailures.length} of ${focusChecked} controls change nothing when focused (${focusSkipped} skipped: disabled, or inside a closed disclosure — neither is focusable; the disabled case is proven separately in the browser suite): ${JSON.stringify(focusFailures.slice(0, 5))}`);
 
   // --- target size, per route ----------------------------------------------
   at('target-size');

@@ -1615,7 +1615,16 @@ $('#sourceForm').addEventListener('submit',async(event)=>{event.preventDefault()
 $('#knowledgeSearch').addEventListener('click',async()=>{const result=await api(`/api/v1/knowledge/search?q=${encodeURIComponent($('#knowledgeQuery').value)}&projectId=${encodeURIComponent(state.activeProjectId??'')}`);$('#knowledgeResults').innerHTML=result.results.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.source?.name??item.sourceId)}</h3><p>${escapeHtml(item.text)}</p><small>score ${item.score.toFixed(3)} · passage ${item.index}</small></article>`).join('')||'No results.';});
 function renderProviders(){
   $('#providerType').innerHTML=state.providerCatalog.map((item)=>`<option value="${escapeHtml(item.type)}">${escapeHtml(item.name)}</option>`).join('');syncProviderDefaults();
-  $('#providerList').innerHTML=state.providers.map((item)=>`<article class="entity-card provider-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.type)} · ${escapeHtml(item.baseUrl)}</p><small>${item.external?'External':'Local'} · ${item.enabled?'Enabled':'Disabled'} · credential ${item.credentialConfigured?'configured':'missing'} · priority ${item.priority??100}</small><div class="inline-form"><input type="password" data-provider-key="${item.id}" placeholder="API key"><select data-provider-persistence="${item.id}"><option value="ephemeral">Session only</option><option value="encrypted">Encrypted on disk</option></select><button data-save-key="${item.id}">Save key</button><button data-probe-provider="${item.id}">Health check</button></div><div class="inline-form"><label class="check"><input type="checkbox" data-provider-consent="${item.id}" ${item.consent?.granted?'checked':''}> Explicit external consent</label><label class="check"><input type="checkbox" data-provider-anonymize="${item.id}" ${item.consent?.anonymize!==false?'checked':''}> Redaction/anonymization</label><button data-toggle-provider="${item.id}">${item.enabled?'Disable':'Enable'}</button></div><label>Fallback providers<select multiple data-provider-fallbacks="${item.id}">${state.providers.filter((other)=>other.id!==item.id).map((other)=>`<option value="${other.id}" ${(item.fallbackProviderIds??[]).includes(other.id)?'selected':''}>${escapeHtml(other.name)}</option>`).join('')}</select></label><button data-save-routing="${item.id}">Save routing</button><pre data-provider-health-result="${item.id}" class="hidden"></pre></article>`).join('')||'No providers configured.';
+  // s341: the running local model appears in this list because it is genuinely one of the
+  // providers that can answer — but it is DERIVED from the runtime, not stored, so every
+  // control on an ordinary card would be a gesture the server answers 409 to. A card that
+  // offers a button which cannot work is the placeholder this project refuses to ship, so
+  // this one states what it is and where it is changed instead.
+  const runtimeProviderCard=(item)=>`<article class="entity-card provider-card"><h3>${escapeHtml(item.name)}</h3>`
+    +`<p>${escapeHtml(item.type)} · ${escapeHtml(item.baseUrl)}</p>`
+    +`<small>Local · Answering now · derived from the local model runtime, not a stored profile</small>`
+    +`<p class="hint">This is the model chosen with <code>/model</code>. Change it by choosing another model — it has no credential and reaches nothing outside this machine.</p></article>`;
+  $('#providerList').innerHTML=state.providers.map((item)=>item.virtual?runtimeProviderCard(item):`<article class="entity-card provider-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.type)} · ${escapeHtml(item.baseUrl)}</p><small>${item.external?'External':'Local'} · ${item.enabled?'Enabled':'Disabled'} · credential ${item.credentialConfigured?'configured':'missing'} · priority ${item.priority??100}</small><div class="inline-form"><input type="password" data-provider-key="${item.id}" placeholder="API key"><select data-provider-persistence="${item.id}"><option value="ephemeral">Session only</option><option value="encrypted">Encrypted on disk</option></select><button data-save-key="${item.id}">Save key</button><button data-probe-provider="${item.id}">Health check</button></div><div class="inline-form"><label class="check"><input type="checkbox" data-provider-consent="${item.id}" ${item.consent?.granted?'checked':''}> Explicit external consent</label><label class="check"><input type="checkbox" data-provider-anonymize="${item.id}" ${item.consent?.anonymize!==false?'checked':''}> Redaction/anonymization</label><button data-toggle-provider="${item.id}">${item.enabled?'Disable':'Enable'}</button></div><label>Fallback providers<select multiple data-provider-fallbacks="${item.id}">${state.providers.filter((other)=>other.id!==item.id&&!other.virtual).map((other)=>`<option value="${other.id}" ${(item.fallbackProviderIds??[]).includes(other.id)?'selected':''}>${escapeHtml(other.name)}</option>`).join('')}</select></label><button data-save-routing="${item.id}">Save routing</button><pre data-provider-health-result="${item.id}" class="hidden"></pre></article>`).join('')||'No providers configured.';
   const selectedProvider=$('#chatProvider').value;$('#chatProvider').innerHTML=optionList(state.providers,{empty:'Automatic route',label:(item)=>`${item.name}${item.external?' · external':' · local'}`,selected:selectedProvider});$('#comparisonProviders').innerHTML=state.providers.filter((item)=>item.enabled).map((item)=>`<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('');bindProviderActions();
 }
 function syncProviderDefaults(){const descriptor=state.providerCatalog.find((item)=>item.type===$('#providerType').value)??state.providerCatalog[0];if(!descriptor)return;$('#providerName').value=descriptor.name;$('#providerBaseUrl').value=descriptor.baseUrl??'';}
@@ -6036,9 +6045,29 @@ function renderCodenModelPicker(data,{loading=false,error=null}={}){
   const activeId=data?.activeId??null;
   if(count){count.setAttribute('translate','no');count.textContent=`${models.length} ${t('startable')}`;}
   if(!models.length){
-    return say(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'));
+    // The "who answers" line survives an empty list on purpose: a runtime attached to a model
+    // no descriptor describes IS answering chat while nothing here is startable, and a panel
+    // that went blank in that state would hide the one fact the operator came for.
+    list.innerHTML=codenChatAnswerMarkup(data?.chat)
+      +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`;
+    return undefined;
   }
-  list.innerHTML=models.map((entry)=>codenModelRowMarkup(entry,activeId)).join('');
+  list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>codenModelRowMarkup(entry,activeId)).join('');
+}
+// s341 — the sentence this chooser was missing: a model that STARTED is not yet a model that
+// ANSWERS. The panel showed "In use" beside a row while chat could still be served by
+// something else entirely, and nothing on the page said so. The field is computed once, in
+// `server.mjs`, from the same call the router makes, so this line and `/model` over `ssh`
+// cannot disagree — and when chat does not use the model, the reason is shown rather than
+// the absence being left to be noticed.
+function codenChatAnswerMarkup(chat){
+  if(!chat)return '';
+  if(chat.answers){
+    return `<p class="model-picker-chat"><span class="badge badge-on">${escapeHtml(t('Chat answers from'))} `
+      +`<span translate="no">${escapeHtml(chat.model??'—')}</span></span></p>`;
+  }
+  return `<p class="model-picker-chat"><span class="badge badge-off">${escapeHtml(t('Chat is not answering from a local model'))}</span> `
+    +`<small translate="no">${escapeHtml(chat.reason??'')}</small></p>`;
 }
 async function loadCodenModelPicker(){
   const list=$('#codenModelPickerList');if(!list)return;

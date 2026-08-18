@@ -83,6 +83,35 @@ const importable = signed(descriptor('e2e/imported-1b', GOOD_SHA, 'honest.bin'))
 mkdirSync(join(workspace, 'config'), { recursive: true });
 writeFileSync(join(workspace, 'config', 'local-model.json'), JSON.stringify({ mode: 'auto' }));
 
+// ── s341: a REAL OpenAI-compatible server, standing in for a local inference runtime ───────
+//
+// Not a mock of the product: a mock of the MODEL. This host has no inference runtime — no
+// ollama, no llama-server, no vLLM, nothing on :11434 (measured) — and the repository may not
+// carry a binary (rule 33). What the `/model` chain has to prove is not that a transformer
+// decodes tokens; it is that the model an operator CHOSE is the one the chat surface reaches.
+// So the runtime is the smallest real thing that answers the surface a real one answers on,
+// and it names the model it was asked for, so the assertion cannot pass by accident.
+const inference = createServer((req, res) => {
+  const chunks = [];
+  req.on('data', (chunk) => chunks.push(chunk));
+  req.on('end', () => {
+    if (req.url.endsWith('/models')) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ data: [{ id: 'e2e/honest-1b' }] }));
+    }
+    const payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    if (payload.stream) {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: `answered by ${payload.model}` } }] })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ model: payload.model, choices: [{ message: { role: 'assistant', content: `answered by ${payload.model}` } }] }));
+  });
+});
+const inferencePort = port + 2;
+
 // ── the publisher's own HTTP server, on loopback, serving bytes and nothing else ───────────
 const artefacts = createServer((req, res) => {
   // D-0521: the same loopback publisher also serves descriptors, so the import route's fetch
@@ -151,6 +180,7 @@ async function settle(jobId, timeoutMs = 15_000) {
 
 try {
   await new Promise((done) => artefacts.listen(artefactPort, '127.0.0.1', done));
+  await new Promise((done) => inference.listen(inferencePort, '127.0.0.1', done));
   for (let attempt = 0; attempt < 120; attempt += 1) {
     try { const probe = await fetch(`http://127.0.0.1:${port}/livez`); if (probe.ok) break; } catch { /* not up yet */ }
     await sleep(120);
@@ -282,6 +312,67 @@ try {
     unsignedEntry === null || unsignedEntry.authenticity?.verified === false,
     JSON.stringify(unsignedEntry?.authenticity));
 
+  console.log('\ns341 — the chain: from the model CHOSEN to the model that ANSWERS');
+  const beforeWiring = await request('/api/v1/models/installed');
+  check('with nothing serving, the listing says chat does NOT answer from a model, and why',
+    beforeWiring.data.chat?.answers === false && String(beforeWiring.data.chat?.reason ?? '').length > 0,
+    JSON.stringify(beforeWiring.data.chat));
+  const providersBefore = await request('/api/v1/providers');
+  check('and no derived provider is offered while nothing is serving',
+    !(providersBefore.data.providers ?? []).some((item) => item.id === 'local-runtime'),
+    JSON.stringify((providersBefore.data.providers ?? []).map((item) => item.id)));
+
+  const configured = await request('/api/v1/runtime/local-model', {
+    method: 'PUT',
+    value: { mode: 'manual', profileId: 'cpu', endpoint: `http://127.0.0.1:${inferencePort}`, model: 'e2e/honest-1b' },
+  });
+  check('the runtime accepts an endpoint and a model', configured.status === 200, `${configured.status} ${JSON.stringify(configured.data)}`);
+  const attached = await request('/api/v1/runtime/local-model/attach', { method: 'POST' });
+  check('and attaches to the server that is really there', attached.status === 200 && attached.data.attached === true,
+    `${attached.status} ${JSON.stringify(attached.data)}`);
+
+  const afterWiring = await request('/api/v1/models/installed');
+  check('now the listing /model answers from says chat WILL answer from that model',
+    afterWiring.data.chat?.answers === true && afterWiring.data.chat?.model === 'e2e/honest-1b'
+      && afterWiring.data.chat?.providerId === 'local-runtime',
+    JSON.stringify(afterWiring.data.chat));
+  const activeReport = await request('/api/v1/models/active');
+  check('and the active-model report finally counts chat among the model\u2019s consumers',
+    (activeReport.data.usedBy ?? []).includes('chat'), JSON.stringify(activeReport.data.usedBy));
+  const providersAfter = await request('/api/v1/providers');
+  check('the running model is listed FIRST among the providers, local and credential-free',
+    providersAfter.data.providers?.[0]?.id === 'local-runtime'
+      && providersAfter.data.providers?.[0]?.external === false
+      && providersAfter.data.providers?.[0]?.credentialRequired === false,
+    JSON.stringify(providersAfter.data.providers?.[0] ?? null));
+  const editRefused = await request('/api/v1/providers/local-runtime', { method: 'PATCH', value: { enabled: false } });
+  check('and it refuses to be edited as if it were a stored profile', editRefused.status === 409, String(editRefused.status));
+
+  // THE claim of this phase, and the only check that can prove it: a chat message comes back
+  // in the words of the server the chosen model is served by. Everything above is wiring.
+  const conversation = await request('/api/v1/conversations', { method: 'POST', value: { title: 's341' } });
+  const conversationId = conversation.data?.conversation?.id ?? null;
+  check('a conversation can be opened', conversation.status === 201 && Boolean(conversationId),
+    `${conversation.status} ${JSON.stringify(conversation.data)}`);
+  const streamed = await fetch(`http://127.0.0.1:${port}/api/v1/chat/stream`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie, 'x-noesar-csrf': csrf },
+    body: JSON.stringify({ conversationId, content: 'who is answering me?' }),
+  });
+  const transcript = await streamed.text();
+  check('the chosen model is the model that ANSWERS a chat message',
+    transcript.includes('answered by e2e/honest-1b'),
+    transcript.slice(0, 400));
+  check('and the answer is attributed to the derived provider, not to something else',
+    /"providerId":"local-runtime"/.test(transcript), transcript.slice(0, 400));
+
+  const released = await request('/api/v1/runtime/local-model', {
+    method: 'PUT', value: { mode: 'disabled' },
+  });
+  check('switching the runtime off is enough to stop chat claiming that model',
+    released.status === 200 && (await request('/api/v1/models/installed')).data.chat?.answers === false,
+    String(released.status));
+
   console.log('\nthe gate closes again, and acquiring stops');
   const withdrawn = await request('/api/v1/settings/model-egress', { method: 'PUT', value: { consented: false } });
   check('consent can be withdrawn', withdrawn.status === 200 && withdrawn.data.consented === false);
@@ -307,5 +398,6 @@ try {
   child.kill('SIGTERM');
   await new Promise((done) => child.once('exit', done));
   await new Promise((done) => artefacts.close(done));
+  await new Promise((done) => inference.close(done));
   rmSync(workspace, { recursive: true, force: true });
 }

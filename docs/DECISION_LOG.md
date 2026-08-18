@@ -12521,3 +12521,83 @@ exactly the two containers §21b permits.
 **Funding fit.** **None** — a deployment is not a delimited reusable result. What it carries
 (`D-0536`) fits **Restack · traits 3 and 5**.
 **Status.** installed.
+
+## D-0539 · The `/model` chain reaches the surface that answers — 2026-08-18
+**Decision.** The model chosen with `/model` becomes a **derived provider profile**
+(`local-runtime`, `ai-workspace/active-runtime-provider.mjs`), computed from
+`LocalModelRuntime.status()` at every read and never stored, so chat routes at it and stops
+routing at it the instant it stops serving. `route()` now takes `standingProviderId` apart from
+`requestedProviderId`: an explicit per-message ask still wins, a standing preference keeps its own
+chain, and the running model leads in front of it.
+**Why.** Nothing joined `activateModel()` to `ProviderGateway`. An operator could choose a model,
+watch it start, and be answered by something else — or by nothing, with `All streaming providers
+failed`. `activeModelConsumers()` was honest by omission: it listed the Author and ATOM, not chat.
+**Rejected.** Writing a real profile on activation and deleting it on release: a second copy of a
+fact the runtime owns, and a dead runtime would leave a profile claiming to be enabled.
+**Evidence.** 12 new unit tests; the oracle was seen to fail first (3 of them fail with the
+`lead()` line reverted). `tools/model-acquisition-e2e.mjs` **PASS 49/49**, including a chat message
+answered by a real OpenAI-compatible server and attributed to `local-runtime`. `npm test` 2645
+tests, 0 fail. ESLint 0/426. `SOURCE_VERIFY=PASS`. i18n `VERDICT=COVERED`.
+**Reversal cost.** None on data: nothing is written. Reverting the module and the two call sites
+returns the previous routing exactly.
+**Status.** applied.
+
+## D-0540 · A derived profile must never be able to point outward — 2026-08-18
+**Decision.** The derived profile is refused unless its endpoint is loopback, a private address,
+`localhost` or `host.docker.internal`, reusing `address-guard`'s audited `isInternalAddress`
+rather than a second copy of the rule.
+**Why.** The profile is `external: false`, which is what lets it answer with no consent grant and
+no credential. Without this, `endpoint: https://api.example.com` in the runtime configuration
+would have become an unconsented outbound call wearing the word "local" — a hole in §8 shaped
+like a configuration field.
+**Rejected.** Trusting `validateBaseUrl` at the edge: it never runs on a profile that is derived
+rather than created.
+**Evidence.** Four outward endpoints refused, four legitimate local ones accepted, in
+`active-runtime-provider.test.mjs`.
+**Reversal cost.** None.
+**Status.** applied.
+
+## D-0541 · Improvement proposal — a health lane for the model that is answering — 2026-08-18
+**Decision.** Proposed, not built: give the derived provider a **cheap periodic liveness reading**
+(the probe the runtime already performs) so a model that dies between messages is reported as gone
+*before* the next message fails, instead of on it.
+**Why.** Today the evidence a runtime is serving is a live child process or the last successful
+probe. Both can be minutes stale, so the first message after a crash pays for the discovery.
+**Rejected for this phase.** It adds a timer to a phase whose claim is the chain itself; a wrong
+liveness policy would make chat flap between providers.
+**Funding fit.** Restack · traits 5 and 3 — measurable reliability of a local-first component, and
+it strengthens the offline/self-hosted path rather than an external one.
+**Reversal cost.** n/a — not built.
+**Status.** deferred, awaiting the Owner.
+
+## D-0542 · Two WCAG defects found by the audit this phase ran — 2026-08-18
+**Decision.** Repaired both, and one of them at the rule rather than the instance:
+`#codenModelPickerOpen` was a **14x11 px target** (2.5.8 requires 24x24) and now has a 24x24
+press area with the same small glyph; the audit's four "no focus indicator" hits on `#/models`
+were a **false positive** — the controls sit in a closed `<details>` and are not focusable — so
+`tools/accessibility-audit.mjs` now excludes and **counts** controls inside a closed disclosure,
+as it already did for disabled ones.
+**Why.** Current Chrome no longer renders a closed disclosure's contents with `display:none`; it
+uses `content-visibility`, so they keep a computed display, an offsetParent and a stale layout
+box, and the audit's `visible()` predicate — written before that change — let them through. A
+browser changed underneath the tool: reporting that as a product defect is how an audit loses its
+meaning in both directions.
+**Rejected.** Dismissing the four hits in the log and leaving the probe as it was: the next
+collapsed panel would have produced the same phantoms.
+**Evidence.** `A11Y_PASS=27 A11Y_FAIL=0` on the final tree (was `A11Y_FAIL=2`), with the focus
+probe reporting `0 of 879 controls` and `23 skipped: disabled, or inside a closed disclosure`.
+**Reversal cost.** None.
+**Status.** applied.
+
+## D-0543 · A flaky assertion in the browser suite, fixed at the race — 2026-08-18
+**Decision.** The update-channel check now waits for the STATUS PANEL to carry the new channel,
+not only for the toast.
+**Why.** `updateAction()` shows "Channel change completed." and only then awaits `loadUpdates()`,
+so reading `#updatesStatus` the instant the message appears is a race. It passed on one run of
+this phase and failed on the next with `Channeloffline`, on a product that behaved identically
+both times. An intermittently red suite is one nobody trusts when it is genuinely red.
+**Rejected.** Retrying the whole check, which would hide a real regression behind a second attempt.
+**Evidence.** 504/505 on the run after the repair; the only FAIL is the declared gap
+`F-I18N-002`, whose closable count is **647, unchanged**.
+**Reversal cost.** None.
+**Status.** applied.

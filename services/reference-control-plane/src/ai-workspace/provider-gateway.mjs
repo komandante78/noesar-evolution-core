@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { redactMessages } from './privacy-redaction.mjs';
 import { resolvePublicAddresses } from './address-guard.mjs';
+import { localRuntimeProfileFrom, LOCAL_RUNTIME_PROFILE_ID } from './active-runtime-provider.mjs';
 
 const STYLES = new Set(['openai-responses','openai-chat','anthropic-messages']);
 const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1','host.docker.internal']);
@@ -171,16 +172,58 @@ export class ProviderGateway {
   // `lookup` is injected for the same reason every other seam in this file is: the address check
   // performs a DNS query, and a unit suite that depends on name resolution is a unit suite that
   // fails on an offline machine for a reason that has nothing to do with the code.
-  constructor({ store, vault, ledger, onEgressBlocked = null, lookup = null }) { this.store = store; this.vault = vault; this.ledger = ledger; this.onEgressBlocked = onEgressBlocked; this.lookup = lookup; }
+  // `activeRuntime` is a THUNK returning `LocalModelRuntime.status()` (or null on a deployment
+  // that wired no runtime), never the runtime object: this gateway must not be able to start,
+  // stop or configure a model, only to read what is already serving. Called at each read so
+  // the derived profile cannot outlive the process it describes — see active-runtime-provider.
+  constructor({ store, vault, ledger, onEgressBlocked = null, lookup = null, activeRuntime = null }) { this.store = store; this.vault = vault; this.ledger = ledger; this.onEgressBlocked = onEgressBlocked; this.lookup = lookup; this.activeRuntime = activeRuntime; }
   catalog() { return DEFAULT_CATALOG; }
+
+  /**
+   * The chosen model, as a routable profile — or the reason there is none.
+   *
+   * Never throws: a runtime that fails to report its own status must not take the provider
+   * list, the chat route or the settings page down with it. That failure becomes a reason
+   * like any other, which is what the shells display.
+   */
+  activeRuntimeProfile() {
+    if (typeof this.activeRuntime !== 'function') {
+      return { profile: null, reason: 'this deployment did not wire a local model runtime' };
+    }
+    try {
+      return localRuntimeProfileFrom(this.activeRuntime());
+    } catch (error) {
+      return { profile: null, reason: `the local model runtime could not be read: ${error.message}` };
+    }
+  }
+  #refuseIfRuntimeProfile(profileId) {
+    if (profileId !== LOCAL_RUNTIME_PROFILE_ID) return;
+    // A derived profile has nothing to write to. Saying so beats a "not found" that reads
+    // like the profile does not exist, when the settings page is showing it.
+    throw statusError('This provider is the running local model, derived from the runtime. Change it by choosing a model, not by editing a profile.', 409);
+  }
   ensureDefaults() {
     const existing=new Set(this.store.read().providerProfiles.map((item)=>item.type));const created=[];
     for(const descriptor of DEFAULT_CATALOG.filter((item)=>item.type!=='custom-openai-compatible'))if(!existing.has(descriptor.type))created.push(this.create({type:descriptor.type,name:descriptor.name,baseUrl:descriptor.baseUrl,external:descriptor.external,apiStyle:descriptor.apiStyle,defaultModel:''}));
     return created;
   }
 
-  list() { return this.store.read().providerProfiles.map(publicProfile); }
+  // The running model is listed FIRST, and only while it is running. It is not stored, so it
+  // cannot be listed from the store — and a settings page that showed every provider except
+  // the one currently answering would be the exact confusion this chain exists to remove.
+  list() {
+    const { profile } = this.activeRuntimeProfile();
+    const stored = this.store.read().providerProfiles.map(publicProfile);
+    return profile ? [publicProfile(profile), ...stored] : stored;
+  }
   get(profileId) {
+    if (profileId === LOCAL_RUNTIME_PROFILE_ID) {
+      const { profile, reason } = this.activeRuntimeProfile();
+      if (profile) return profile;
+      // 409, not 404: the id is real and permanent, the model behind it is not serving. A
+      // 404 would tell a caller to stop asking; this tells them what to fix.
+      throw statusError(`No local model is answering: ${reason}`, 409);
+    }
     const profile = this.store.read().providerProfiles.find((item) => item.id === profileId);
     if (!profile) throw statusError('Provider profile not found.', 404);
     return profile;
@@ -210,6 +253,7 @@ export class ProviderGateway {
     });
   }
   update(profileId, patch = {}) {
+    this.#refuseIfRuntimeProfile(profileId);
     return this.store.transact((state) => {
       const profile = state.providerProfiles.find((item) => item.id === profileId); if (!profile) throw statusError('Provider profile not found.',404);
       if (patch.baseUrl !== undefined) profile.baseUrl = validateBaseUrl(patch.baseUrl, patch.external ?? profile.external);
@@ -227,6 +271,7 @@ export class ProviderGateway {
     });
   }
   setCredential(profileId, apiKey, { persistence='encrypted' } = {}) {
+    this.#refuseIfRuntimeProfile(profileId);
     if (!String(apiKey ?? '').trim()) throw statusError('API key cannot be empty.');
     if (persistence === 'ephemeral') {
       this.get(profileId); this.vault.setEphemeral(profileId, apiKey);
@@ -238,10 +283,12 @@ export class ProviderGateway {
     });
   }
   clearCredential(profileId) {
+    this.#refuseIfRuntimeProfile(profileId);
     this.vault.clearEphemeral(profileId);
     return this.store.transact((state) => { const profile = state.providerProfiles.find((item) => item.id === profileId); if (!profile) throw statusError('Provider profile not found.',404); profile.encryptedCredential=null; profile.credentialEphemeral=false; return publicProfile(profile); });
   }
   grantConsent(profileId, consent = {}) {
+    this.#refuseIfRuntimeProfile(profileId);
     return this.store.transact((state) => {
       const profile = state.providerProfiles.find((item) => item.id === profileId); if (!profile) throw statusError('Provider profile not found.',404);
       profile.consent = {
@@ -299,15 +346,58 @@ export class ProviderGateway {
     else if (credential) headers.authorization = `Bearer ${credential}`;
     return headers;
   }
-  route({ requestedProviderId=null, mode='ASK' } = {}) {
+  /**
+   * Which providers answer this request, in order.
+   *
+   * Three kinds of intent, and they are NOT the same thing — collapsing them is what let a
+   * freshly chosen model be quietly ignored:
+   *
+   *   `requestedProviderId`  this caller, for this message, named a provider. It wins,
+   *                          always. Choosing a model must never override an explicit ask.
+   *   the running local model the operator's most recent act (`/model <id>`). It leads the
+   *                          default route, and the standing preference follows it as the
+   *                          first fallback — nothing is removed from the chain.
+   *   `standingProviderId`   a preference set once (the conversation's provider, or the
+   *                          workspace default). It leads when no model is running.
+   *
+   * `standingProviderId` is accepted separately from `requestedProviderId` for exactly that
+   * reason. A caller that passes neither gets the enabled profiles by priority, as before.
+   */
+  route({ requestedProviderId=null, standingProviderId=null, mode='ASK' } = {}) {
+    // An explicit ask is answered by what was asked for. The running model does NOT jump
+    // ahead of it: choosing a model is a statement about the default, never an override of
+    // a caller who named a provider for this message.
     if (requestedProviderId) return [requestedProviderId, ...this.get(requestedProviderId).fallbackProviderIds.filter((id)=>id!==requestedProviderId)];
+    const { profile }=this.activeRuntimeProfile();
+    // Deduplicated rather than assumed absent: the derived id is reserved, but a store that
+    // already contained it must not produce a route that tries the same profile twice.
+    const lead=(chain)=>(profile ? [profile.id, ...chain.filter((id)=>id!==profile.id)] : chain);
+
+    if (standingProviderId) {
+      // A standing preference keeps EXACTLY the chain it had — itself and the fallbacks its
+      // operator configured, and nothing else. Widening it to every enabled provider would
+      // quietly add destinations nobody chose, which is a worse defect than the one this
+      // change closes. The running model is added in front of that chain, never inside it.
+      let chain;
+      try {
+        chain=[standingProviderId, ...this.get(standingProviderId).fallbackProviderIds.filter((id)=>id!==standingProviderId)];
+      } catch (error) {
+        // The preferred profile is gone, or is the runtime id while nothing is serving. With
+        // a model running, answering from it beats failing the message; with none, the
+        // original error is still the truth and is raised unchanged.
+        if (!profile) throw error;
+        chain=[];
+      }
+      return lead(chain);
+    }
+
     const normalized=String(mode).toUpperCase();
     const profiles=this.store.read().providerProfiles
       .filter((item)=>item.enabled && (item.modes?.length ? item.modes.includes(normalized) : true))
       .sort((a,b)=>(a.priority??100)-(b.priority??100));
     const preferred=this.store.read().settings.defaultProviderId;
     if(preferred){const index=profiles.findIndex((item)=>item.id===preferred);if(index>0)profiles.unshift(...profiles.splice(index,1));}
-    return profiles.map((item)=>item.id);
+    return lead(profiles.map((item)=>item.id));
   }
   #prepared(profile, request) {
     const credential=this.#assertAllowed(profile,request);
