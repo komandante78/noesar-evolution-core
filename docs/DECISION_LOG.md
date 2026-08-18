@@ -12502,3 +12502,22 @@ by this repository's own tests and its e2e. No CLI wraps it.
 **Funding fit.** **Restack · traits 2 and 6** — it is what makes the format adoptable by someone
 other than us, and ecosystem impact is the trait that asks *who else can use this*.
 **Status.** deferred, awaiting the Owner.
+
+## D-0538 · The start gate reaches the installation — 2026-08-18
+**Decision.** `D-0536` deployed as `noesar-evolution:d0536-start-gate-20260818T085504Z`, 08:55:15Z,
+on the Owner's «OK CON LA PROPOSTA CHIUSURA AUTORIZZO» — commit `ae1fec4`, pushed to `origin/main`.
+**Why.** §3a: a phase that changes the product installs it and verifies it live, in the same phase.
+**Evidence.** Byte-equal tree↔image **4/4**, tree↔running **3/3**; `running`/`healthy`,
+`RestartCount=0`, 4 children, **0** auth-failure lines; `/livez` and `/readyz` **200** on both
+ports; `/models/installed` and `/models/catalog` **401** anonymously; `SYNTHESISED` present in the
+deployed runtime and server, `Provenance unknown` in the served `app.js`.
+**One measurement did not match, and was chased rather than rounded off.** Non-project containers
+read **51 before, 50 after**. The difference is `romantic_feynman` (`nous-trainer:v3-s134`) — a
+python probe belonging to **another project on this host**, `Up 3 seconds` when the inventory was
+taken and gone by the time it was compared. Every removal this phase performed named a
+`noesar-evolution-` container explicitly. Volumes **65→65**, networks **10→10**, zero e2e litter,
+exactly the two containers §21b permits.
+**Reversal cost.** One rename and a start. Nothing written by this image.
+**Funding fit.** **None** — a deployment is not a delimited reusable result. What it carries
+(`D-0536`) fits **Restack · traits 3 and 5**.
+**Status.** installed.

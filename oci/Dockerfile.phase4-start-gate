@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# s340 · D-0536.
+#
+# Starting a model is gated by WHO said so, not only by what the bytes hash to. The artefact
+# check answers "do these bytes match the digest the descriptor declares"; it cannot answer "and
+# who declared that digest", because an unsigned descriptor vouches for itself.
+#
+#   * `installedModelList()` carries `authenticity` per entry — the listing `/model` answers from,
+#     and `detailLines` serialises it, so both shells show it with no second renderer;
+#   * `activateModel` refuses an unattested descriptor with 403, and refuses a caller that did
+#     not check at all — an omission must never read as a permission;
+#   * `#/coden`'s chooser draws the provenance and disables Use, with its reason, when the
+#     descriptor does not verify.
+#
+# The `SYNTHESISED` carve-out is what makes this installable: the record the product writes from
+# its own runtime is not a publisher's claim, so its lack of a signature is not evidence of
+# anything, and refusing it would leave an installation unable to describe what it is running.
+#
+# Three paths changed, so three are copied:
+#   services/…/src/server.mjs                  the synthesised mark, productAuthenticity, the listing
+#   services/…/src/local-model-runtime.mjs     the gate in activateModel
+#   apps/webui-static/                         the provenance beside each chooser row
+#
+# ROLLBACK COST (§3a 11d): **none beyond restarting the predecessor container.** No migration, no
+# schema change, no configuration key, nothing written to the workspace. On this installation
+# `models/catalog/` is empty, so no start that works today stops working — the deployment's own
+# verification confirms it rather than assuming it. The predecessor is preserved under a
+# timestamped name by `tools/deploy/redeploy.sh`, and its image stays on disk.
+
+FROM noesar-evolution:d0526-verified-acquisition-20260818T083258Z
+
+LABEL org.noesar.phase="4-start-gate"
+LABEL org.noesar.decision="D-0536"
+
+USER root
+COPY --chown=10001:10001 services/reference-control-plane/src/server.mjs /opt/noesar/services/reference-control-plane/src/server.mjs
+COPY --chown=10001:10001 services/reference-control-plane/src/local-model-runtime.mjs /opt/noesar/services/reference-control-plane/src/local-model-runtime.mjs
+COPY --chown=10001:10001 apps/webui-static/ /opt/noesar/apps/webui-static/
+USER 10001:10001

@@ -1,14 +1,14 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-18 · **Phase:** `s340` — `D-0536` · **BUILT AND TESTED, NOT COMMITTED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `d943e8e` · **Live:** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z` (still `s339`)
+**Last updated:** 2026-08-18 · **Phase:** `s340` — `D-0536`…`D-0538` · **INSTALLED**
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `ae1fec4` · **Live:** `noesar-evolution:d0536-start-gate-20260818T085504Z`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Waiting on the Owner:** commit → push → deploy of `D-0536`. 7 files. Nothing staged; the diff has
-been reviewed and the working tree is otherwise clean.
+**Nothing is pending and nothing is half-built.** Committed (`ae1fec4`), pushed, deployed and
+verified live as `noesar-evolution:d0536-start-gate-20260818T085504Z` (`D-0538`).
 
 **`F-MODEL-AUTH-001` is closed by this phase.** Nothing about it remains open.
 
@@ -71,14 +71,12 @@ omission must never read as a permission, the same rule `planAcquisition` carrie
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Not committed, not pushed, not deployed.** The installation still serves `s339`.
 - **The `/model` chain was not started.** Next phase.
 - **Starting a real model end to end is still `[UNVERIFIED]`** — no runtime, no artefact, no binary
   on this host. This phase gates a start; it does not make one possible.
 - **`tools/accessibility-audit.mjs` not run.** Named, not silently skipped.
-- **The live installation's behaviour does not change.** `models/catalog/` is empty there, so no
-  start that works today stops working — `[INFERRED]` from that emptiness, and the deployment's own
-  verification is what will confirm it.
+- **The live installation's behaviour did not change**, as expected: `models/catalog/` is empty
+  there. Confirmed by the deployment — healthy, `RestartCount=0`, surfaces answering.
 - **No delete route, no discovery, no download resume, no quarantine retention, `MANIFEST` not
   regenerated.** Unchanged.
 - **`gitleaks` is absent.** The secret scan was **heuristic** and is declared as such.
@@ -95,7 +93,8 @@ omission must never read as a permission, the same rule `planAcquisition` carrie
 | `services/…/test/local-model-runtime.test.mjs` | 6 new tests, and every existing call now states what it checked |
 | `services/…/test/session-protocol.test.mjs` | the same, on the wiring the shells drive |
 | `tools/model-acquisition-e2e.mjs` | three checks that authenticity reaches the starting surface |
-| `docs/DECISION_LOG.md` | `D-0536` |
+| `oci/Dockerfile.phase4-start-gate` | **new** — the deployment overlay, with its rollback cost stated in the file itself |
+| `docs/DECISION_LOG.md`, `docs/INSTALLATION_LEDGER.md` | `D-0536`…`D-0538` and the installation entry |
 
 ---
 

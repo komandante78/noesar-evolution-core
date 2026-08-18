@@ -5143,3 +5143,31 @@ after: non-project containers **50 → 50**, volumes **65 → 65**, networks **1
 (`EVIDENCE/docker_inventory_pre_cleanup_D-0526_20260818T083312Z.txt`). Exactly the two containers
 §21b permits survive — and this is the first deployment whose close guard recognises them as such
 (`D-0530`).
+
+## `d0536-start-gate-20260818T085504Z` — DEPLOYED and verified — 2026-08-18
+
+**Tag.** `noesar-evolution:d0536-start-gate-20260818T085504Z`, deployed 08:55:15Z via
+`tools/deploy/redeploy.sh --apply` (new overlay `oci/Dockerfile.phase4-start-gate`, built
+`--network none`). `D-0536`: starting a model is gated by **who said so**, not only by what the
+bytes hash to — `F-MODEL-AUTH-001` closed.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` **200** and `/readyz` **200** on **both**
+`http:8088` and `https:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **4/4** before deploy, tree↔running **3/3** after. Live,
+anonymous: `/api/v1/models/installed` and `/api/v1/models/catalog` answer **401**. The deployed
+bytes carry the gate and the provenance — `SYNTHESISED` present in both
+`local-model-runtime.mjs` and `server.mjs`, `Provenance unknown` and the disabled-Use branch in the
+served `app.js`. Before `--apply`: `npm test` **2632/2633**, `model-acquisition-e2e` **36/36**,
+browser e2e **504/505** (the one FAIL is the declared gap `F-I18N-002`, grown by **zero** this
+phase), ESLint **0/424**.
+**Predecessor preserved.** `noesar-evolution-pre-20260818T085515Z`
+(`d0526-verified-acquisition-20260818T083258Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key, nothing written to the workspace. `models/catalog/` is empty on this
+installation, so no start that works today stops working.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T083312Z` removed; its image stays on
+disk, as do all six in the lineage. Volumes **65 → 65**, networks **10 → 10**, zero e2e litter.
+**Non-project containers read 51 before and 50 after, and the difference was identified rather
+than waved through**: `romantic_feynman` (`nous-trainer:v3-s134`, a python probe), **not this
+project's container** — it was `Up 3 seconds` when the inventory was taken and ended on its own.
+Every removal this phase performed named a `noesar-evolution-` container explicitly
+(`EVIDENCE/docker_inventory_pre_cleanup_D-0536_20260818T085504Z.txt`).

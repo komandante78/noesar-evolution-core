@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "s340 (D-0536)",
-  "phase_status": "BUILT AND TESTED IN THE TREE — not committed, not pushed, not deployed",
-  "next_phase": "commit + push + deploy of D-0536 on the Owner authorisation; then the /model chain",
+  "current_phase": "s340 (D-0536/D-0537/D-0538)",
+  "phase_status": "COMPLETE — committed ae1fec4, pushed, deployed and verified live",
+  "next_phase": "the /model chain: from a chosen model to one that actually answers",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "50c417b",
-  "last_updated_utc": "2026-08-18T08:52:51.216Z",
+  "last_commit": "ae1fec4",
+  "last_updated_utc": "2026-08-18T08:57:08.113Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1083,7 +1083,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "AWAITING OWNER AUTHORISATION for commit, push and deploy of D-0536 — F-MODEL-AUTH-001 CLOSED. Descriptor authenticity now reaches the surfaces that START a model and gates the start: installedModelList carries authenticity per entry, activateModel refuses an unattested descriptor with 403, and the #/coden chooser draws the provenance with its Use button disabled and explained when the descriptor does not verify. THE DISTINCTION THAT UNBLOCKED IT: the product marks the record it synthesises from its own runtime and reports it as SYNTHESISED — nobody claimed anything, so the absence of a signature is not evidence of anything — while NO_SIGNATURE means a publisher placed a document and did not sign it. The first starts, the second does not. The package stays generic, so SPEC.md and the conformance suite are untouched. undefined refuses (a caller that did not check at all), an explicit null is accepted (a caller with no registry, saying so). BOTH SHELLS with no second renderer: detailLines serialises the call result, so /model shows the same field over ssh and in the browser — measured before building. EVIDENCE: the gate was OBSERVED to fire against real callers (five pre-existing tests failed the moment it landed, because they started models without checking); 6 new tests for the six conditions; model-acquisition-e2e 36/36 including three checks that a downloaded signed model reaches /api/v1/models/installed carrying who signed it; npm test 2632/2633; browser e2e 504/505 with F-I18N-002 grown by ZERO this phase (647 closable unchanged, recorded 905 to 908); ESLint 0 on 424 files; SOURCE_VERIFY=PASS; i18n VERDICT=COVERED. STILL NEXT AFTER THIS: the /model chain, whose first measurement is whether a local inference runtime can exist on this host without a host-level change.",
+  "next_action": "NEXT PHASE, NOT STARTED: the /model chain. ITS FIRST MEASUREMENT, BEFORE ANY CODE: can a local inference runtime exist on this host without a host-level change (platform law 60-64)? NOESAR_LOCAL_MODEL_RUNTIME is disabled on the container, no model artefact is on disk and no runtime binary is in the image. The honest answer decides whether that phase builds a runtime, an adapter to one the operator installs, or a declared refusal — do not start by writing code. WHAT IS TRUE NOW, VERIFIED AND LIVE: starting a model is gated by WHO said so, not only by what the bytes hash to. installedModelList carries authenticity per entry, activateModel refuses an unattested descriptor with 403 and refuses a caller that did not check at all, and the #/coden chooser draws the provenance with Use disabled and explained when the descriptor does not verify. F-MODEL-AUTH-001 is CLOSED, unblocked by the distinction between NO_SIGNATURE (a publisher placed a document and did not sign it — not started) and SYNTHESISED (the product wrote the record from its own runtime — reported and started, because refusing it would leave an installation unable to describe what it is running). Deployed as noesar-evolution:d0536-start-gate-20260818T085504Z (D-0538): byte-equal 4/4 and 3/3, running/healthy, RestartCount=0, /livez and /readyz 200 on both ports, models surfaces 401 anonymously. Predecessor kept as noesar-evolution-pre-20260818T085515Z. STILL UNVERIFIED: starting a real model end to end — this phase gates a start, it does not make one possible. OPEN PROPOSAL D-0537: a signing tool (tools/sign-model-descriptor.mjs) so the signature requirement has a door a third party can walk through — Restack, traits 2 and 6.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
