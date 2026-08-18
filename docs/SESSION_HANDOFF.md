@@ -1,14 +1,14 @@
 # SESSION HANDOFF
 
 **Last updated:** 2026-08-18 · **Phase:** `s339` — `D-0526`…`D-0534` · **INSTALLED**
-**Plan of record:** `MASTER_PROJECT/` · **Head:** `25704e1` · **Live:** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z`
+**Plan of record:** `MASTER_PROJECT/` · **Head:** `50c417b` · **Live:** `noesar-evolution:d0526-verified-acquisition-20260818T083258Z`
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
 **Nothing is pending and nothing is half-built.** The Owner authorised commit, then push and
-deploy; all three were performed — `cb01846` + `25704e1` on `origin/main`, deployed and verified
+deploy; all three were performed — `cb01846` + `25704e1` + `50c417b` on `origin/main`, deployed and verified
 live as `noesar-evolution:d0526-verified-acquisition-20260818T083258Z` (`D-0534`).
 
 **The next phase is the `/model` chain** («poi vai avanti con /model»), scoped and **not started**.
