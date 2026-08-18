@@ -365,7 +365,11 @@ const credentialVault = new CredentialVault({ keyPath:join(workspace, 'config/pr
 // be able to start or stop a model, only to route at one that is already serving.
 const providerGateway = new ProviderGateway({
   store:aiStore, vault:credentialVault, ledger,
-  activeRuntime: () => localModels.status(),
+  // `D-0541`: the read is also what keeps the reading fresh. `liveness()` never blocks — it
+  // returns what is known and refreshes in the background at most once per interval — so every
+  // reader of the provider list pays nothing and the endpoint is re-checked without a timer
+  // being the only thing that can notice. The heartbeat below covers the case where nobody reads.
+  activeRuntime: () => { localModels.liveness(); return localModels.status(); },
 });
 providerGateway.ensureDefaults();
 const fileExtractor = new FileExtractor({ blobRoot:join(workspace, 'files') });
@@ -514,8 +518,15 @@ function installedModelList() {
 function chatAnswerFrom() {
   const { profile, reason } = providerGateway.activeRuntimeProfile();
   return profile
-    ? { answers: true, providerId: profile.id, model: profile.defaultModel, evidence: profile.servingEvidence, reason: null }
-    : { answers: false, providerId: null, model: null, evidence: null, reason };
+    ? {
+      answers: true, providerId: profile.id, model: profile.defaultModel,
+      evidence: profile.servingEvidence,
+      // `D-0541`: when it was last seen. "It answers" and "it answered four minutes ago and
+      // has not been asked since" are different statements, and only one of them is a promise.
+      lastSeenAt: profile.liveness?.lastSeenAt ?? null,
+      reason: null,
+    }
+    : { answers: false, providerId: null, model: null, evidence: null, lastSeenAt: null, reason };
 }
 
 async function activateInstalledModelById(id, actor) {
@@ -582,6 +593,21 @@ const scimTokenStore = new ScimTokenStore(join(workspace, 'state/scim-tokens.jso
 // engine here would let a token minted through one door be unaccountable to the other.
 const adapterGrants = new AdapterGrantOrchestrator({ minter: capabilityMinter, events: engineEvents });
 const localModels = new LocalModelRuntime({ workspace, minter: capabilityMinter });
+// `D-0541` — the health lane. Reads keep the liveness fresh (see the gateway's thunk above), but
+// an installation where nobody has a page open still has to notice that its model died: the
+// point of this phase is that the discovery does not cost a chat message. So a heartbeat drives
+// the same non-blocking reading.
+//
+// Three properties it must have, all of them measurable: `unref()` so it can never hold the
+// process open — a test that boots this server must still exit; the call is a no-op when the
+// runtime is disabled or has no endpoint, so the default installation makes NO request because
+// of this line; and it can throw nothing, because `liveness()` swallows its own probe failure
+// deliberately (an unhandled rejection on a timer nobody awaits would end the process over a
+// dead model). `NOESAR_LOCAL_MODEL_HEARTBEAT=off` switches it off for an operator who wants the
+// reading only on demand — declared, not a hidden default.
+if (String(process.env.NOESAR_LOCAL_MODEL_HEARTBEAT ?? '').toLowerCase() !== 'off') {
+  setInterval(() => { localModels.liveness(); }, 15_000).unref();
+}
 
 // The privacy indicator is DERIVED, never stored — 01_PRODUCT/12.
 //

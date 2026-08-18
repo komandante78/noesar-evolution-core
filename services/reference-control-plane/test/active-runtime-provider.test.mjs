@@ -221,3 +221,112 @@ test('a runtime whose status call throws becomes a reason, never a broken provid
     assert.doesNotThrow(() => gateway.route({ mode: 'ASK' }));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ── 3. D-0541 · the health lane: a model that dies is reported before a message pays for it ──
+//
+// The gap this closes, measured: `lastProbe` was only ever written by `attach()`, which an
+// operator calls once. In attach mode — binding to a server somebody else started, the normal
+// case on a host with no runtime of its own — a server that died stayed `ok: true` for ever, and
+// the FIRST CHAT MESSAGE after the death was what discovered it.
+
+import { LocalModelRuntime } from '../src/local-model-runtime.mjs';
+
+function runtimeAt(port, dir) {
+  const runtime = new LocalModelRuntime({ workspace: dir, env: {} });
+  return runtime;
+}
+
+test('a runtime whose server has died is reported down WITHOUT a message being sent', async () => {
+  const { server, port } = await upstream();
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-liveness-'));
+  try {
+    const runtime = runtimeAt(port, dir);
+    await runtime.configure({ mode: 'manual', profileId: 'cpu', endpoint: `http://127.0.0.1:${port}`, model: 'test-model' });
+    await runtime.attach();
+    assert.equal(localRuntimeProfileFrom(runtime.status()).profile?.defaultModel, 'test-model', 'it must route while the server is up');
+
+    // The server dies. Nothing else happens — no chat message, no operator action.
+    await new Promise((done) => server.close(done));
+
+    // Two readings, because ONE failure must not be enough (the hysteresis below asserts the
+    // other half). `nowMs` is advanced rather than waited on: a test that sleeps 15 seconds to
+    // prove a 15-second interval is a test nobody runs.
+    let now = Date.now();
+    runtime.liveness({ nowMs: now });
+    await runtime.livenessInFlight;
+    now += 20_000;
+    runtime.liveness({ nowMs: now });
+    await runtime.livenessInFlight;
+
+    const { profile, reason } = localRuntimeProfileFrom(runtime.status());
+    assert.equal(profile, null, 'a dead model must stop being a route on its own');
+    assert.match(reason, /has stopped answering: 2 consecutive probes failed/);
+    assert.match(reason, /last seen/, 'the reason says WHEN it was last there, not merely that it is not');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('one failed probe does not move the chat to a different provider', async () => {
+  const { server, port } = await upstream();
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-liveness-flap-'));
+  try {
+    const runtime = runtimeAt(port, dir);
+    await runtime.configure({ mode: 'manual', profileId: 'cpu', endpoint: `http://127.0.0.1:${port}`, model: 'test-model' });
+    await runtime.attach();
+    // One failure, simulated at the counter the policy actually reads — the same state a single
+    // missed probe against a server mid-generation would produce.
+    runtime.consecutiveFailures = 1;
+    const still = localRuntimeProfileFrom(runtime.status());
+    assert.ok(still.profile, 'a single blip must not flip the route');
+    assert.equal(still.profile.liveness.consecutiveFailures, 1, 'and it is carried, not hidden');
+    // A success clears it, so a runtime that recovers is not left one strike down for ever.
+    let now = Date.now() + 60_000;
+    runtime.liveness({ nowMs: now });
+    await runtime.livenessInFlight;
+    assert.equal(runtime.consecutiveFailures, 0);
+  } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a disabled runtime performs no probe at all — the default installation asks nothing', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-liveness-off-'));
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (...args) => { calls += 1; return realFetch(...args); };
+  try {
+    const runtime = new LocalModelRuntime({ workspace: dir, env: { NOESAR_LOCAL_MODEL_RUNTIME: 'disabled' } });
+    await runtime.configure({ mode: 'manual', profileId: 'cpu', endpoint: 'http://127.0.0.1:9', model: 'test-model' })
+      .catch(() => { /* configure refuses while disabled on some paths; the assertion is about fetch */ });
+    for (let i = 0; i < 5; i += 1) runtime.liveness({ nowMs: Date.now() + i * 60_000 });
+    assert.equal(calls, 0, 'a disabled runtime that reaches the network is section 8 with a hole in it');
+    assert.equal(runtime.livenessReport().consecutiveFailures, 0, 'nothing was asked, so nothing is concluded');
+  } finally { globalThis.fetch = realFetch; rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the reading never blocks: the report is synchronous and the probe is not awaited', async () => {
+  const { server, port } = await upstream();
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-liveness-sync-'));
+  try {
+    const runtime = runtimeAt(port, dir);
+    await runtime.configure({ mode: 'manual', profileId: 'cpu', endpoint: `http://127.0.0.1:${port}`, model: 'test-model' });
+    const started = process.hrtime.bigint();
+    const report = runtime.liveness();
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(report && typeof report.ok === 'boolean', 'it returns knowledge, not a promise');
+    assert.ok(elapsedMs < 50, `a reader must not wait for the network (took ${elapsedMs.toFixed(1)}ms)`);
+    await runtime.livenessInFlight;
+  } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('probes are rate-limited to one per interval, however many readers ask', async () => {
+  const { server, port } = await upstream();
+  const dir = mkdtempSync(join(tmpdir(), 'noesar-liveness-rate-'));
+  try {
+    const runtime = runtimeAt(port, dir);
+    await runtime.configure({ mode: 'manual', profileId: 'cpu', endpoint: `http://127.0.0.1:${port}`, model: 'test-model' });
+    const now = Date.now();
+    for (let i = 0; i < 10; i += 1) runtime.liveness({ nowMs: now });
+    await runtime.livenessInFlight;
+    // Three tabs open on a page that polls must not become thirty probes of a server that is
+    // generating: the second reading inside the interval is served from what is already known.
+    assert.equal(runtime.lastLivenessAtMs, now, 'the window did not move for the nine that followed');
+  } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});

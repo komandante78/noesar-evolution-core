@@ -37,6 +37,13 @@ export const Backend = Object.freeze({
   CUDA: 'cuda',
 });
 
+// `D-0541`. Both are constants rather than configuration on purpose: they are a reliability
+// policy, not a preference, and an installation that could set "one failure is enough" would be
+// choosing to flap. The interval is a ceiling on how often the endpoint is asked, not a promise
+// that it is asked that often — nothing is asked while the runtime is disabled.
+const LIVENESS_INTERVAL_MS = 15_000;
+const LIVENESS_FAILURES_BEFORE_DOWN = 2;
+
 const DEFAULT_CONFIG = Object.freeze({
   mode: RuntimeMode.DISABLED,
   profileId: null,
@@ -93,6 +100,81 @@ export class LocalModelRuntime {
     this.launched = null;
     this.lastError = null;
     this.lastProbe = null;
+    // `D-0541` — the health lane. Three fields, and each answers a different question a reader
+    // has actually asked: WHEN was the endpoint last seen (`lastSeenAtMs`), how many probes have
+    // failed in a row since (`consecutiveFailures`), and is one in flight right now
+    // (`livenessInFlight`, so a page opened in three tabs does not become three probes of a
+    // server that is busy generating — the same single-flight `refreshActiveModel` uses).
+    this.lastSeenAtMs = null;
+    this.consecutiveFailures = 0;
+    this.livenessInFlight = null;
+    this.lastLivenessAtMs = null;
+  }
+
+  /**
+   * `D-0541`. Ask, cheaply and on a leash, whether the configured endpoint is still there.
+   *
+   * # Why this exists
+   *
+   * `lastProbe` was only ever written by `attach()`, which an operator calls once. In attach
+   * mode — binding to a server somebody else started, which is the normal case on a host with
+   * no runtime of its own — a server that died stayed `ok: true` forever, and the FIRST CHAT
+   * MESSAGE after the death was what discovered it. That is the wrong thing to pay with.
+   *
+   * # The three properties, none of them optional
+   *
+   * 1. **It never blocks a reader.** It returns the knowledge already held and refreshes in the
+   *    background; `status()` stays synchronous and so does everything derived from it.
+   * 2. **Two consecutive failures, not one.** A single missed probe against a server that is
+   *    mid-generation must not move the chat to a different provider — a liveness policy that
+   *    flaps does more damage than the staleness it removes. The count is reset by one success.
+   * 3. **Disabled means disabled.** With the runtime off, or with no endpoint, this performs no
+   *    fetch at all — the default installation makes no request because of this method.
+   */
+  liveness({ nowMs = Date.now(), intervalMs = LIVENESS_INTERVAL_MS, timeoutMs = 2000 } = {}) {
+    const config = this.config();
+    if (config.mode === RuntimeMode.DISABLED || !config.endpoint) {
+      // Not a failure: nothing was asked, so nothing is concluded. Clearing the counter here
+      // means switching a runtime off and on again does not start it one strike down.
+      this.consecutiveFailures = 0;
+      return this.livenessReport({ nowMs });
+    }
+    const due = this.lastLivenessAtMs === null || (nowMs - this.lastLivenessAtMs) >= intervalMs;
+    if (due && !this.livenessInFlight) {
+      this.lastLivenessAtMs = nowMs;
+      this.livenessInFlight = this.#probeLiveness({ timeoutMs })
+        .finally(() => { this.livenessInFlight = null; });
+    }
+    return this.livenessReport({ nowMs });
+  }
+
+  async #probeLiveness({ timeoutMs }) {
+    try {
+      // `attach()` is the ONE observer of the endpoint, so it is the one place that records
+      // what was observed — the counter, and the monotone "last seen". Counting again here
+      // made two failures read as four, which would have halved the hysteresis in exactly the
+      // path it was built for. Found by a test that asserted the number, not merely the state.
+      await this.attach({ timeoutMs });
+    } catch {
+      // Swallowed deliberately: a background reading that throws would become an unhandled
+      // rejection on a timer nobody awaits, and would end the process over a dead model.
+      this.#log('warn', 'local-model.liveness-failed', {
+        consecutiveFailures: this.consecutiveFailures, endpoint: this.config().endpoint,
+      });
+    }
+  }
+
+  /** What is known right now — no probe, no await, safe to call from any reader. */
+  livenessReport({ nowMs = Date.now() } = {}) {
+    const seenAt = this.lastSeenAtMs ?? (this.lastProbe?.ok ? Date.parse(this.lastProbe.at) : null);
+    return {
+      ok: this.consecutiveFailures < LIVENESS_FAILURES_BEFORE_DOWN,
+      consecutiveFailures: this.consecutiveFailures,
+      // `null` and `0` are different answers: never seen, versus seen this instant.
+      ageMs: Number.isFinite(seenAt) ? Math.max(0, nowMs - seenAt) : null,
+      lastSeenAt: Number.isFinite(seenAt) ? new Date(seenAt).toISOString() : null,
+      failuresBeforeDown: LIVENESS_FAILURES_BEFORE_DOWN,
+    };
   }
 
   #log(level, event, detail = {}) {
@@ -368,8 +450,21 @@ export class LocalModelRuntime {
         throw fail(this.lastError, 502);
       }
       this.lastError = null;
+      // `D-0541`: seeing the endpoint answer is the observation, wherever it came from — this
+      // method is the only place that makes it, so it is the only place that records it. It is
+      // MONOTONE: a later failure counts against liveness but must never erase when the model
+      // was last there, which is the one fact an operator reading "it stopped answering" needs.
+      // Found by a test: without this the reason read "it has never been seen answering" about
+      // a model that had been answering a moment earlier.
+      this.lastSeenAtMs = Date.now();
+      this.consecutiveFailures = 0;
       return { attached: true, endpoint: config.endpoint, models };
     } catch (error) {
+      // `D-0541`, the symmetric half: a failed attach is an OBSERVATION that the endpoint did
+      // not answer, so it counts against liveness exactly as a failed background probe does.
+      // Without this, the one gesture an operator performs by hand — "attach" — would be the
+      // only look at the endpoint that the health lane ignored.
+      this.consecutiveFailures += 1;
       if (error.status) throw error;
       this.lastError = `the local model endpoint is unreachable: ${error.message}`;
       this.lastProbe = { at: new Date().toISOString(), ok: false, status: 0, models: [] };
@@ -557,6 +652,10 @@ export class LocalModelRuntime {
         : null,
       lastProbe: this.lastProbe,
       lastError: this.lastError,
+      // `D-0541`: how fresh the evidence is, carried in the same payload everything else reads
+      // from — so the router, the shells and the chips cannot each hold a different opinion
+      // about whether the model is still there.
+      liveness: this.livenessReport(),
       // Stated in every status payload so no reader has to infer it: this product has no
       // in-process inference backend. Acceleration is a property of the runtime it
       // attaches to, not of this process.

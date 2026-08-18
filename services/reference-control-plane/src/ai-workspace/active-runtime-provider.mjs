@@ -98,7 +98,16 @@ function baseUrlFor(endpoint) {
  */
 function servingEvidence(status) {
   if (status.launched && !status.launched.exited) return 'a launched runtime process is running';
-  if (status.lastProbe?.ok) return `the endpoint answered at ${status.lastProbe.at}`;
+  // `D-0541`. "Was the endpoint ever seen answering" is a MONOTONE fact and is read from
+  // liveness; whether that fact has gone stale is the failure counter's decision, checked by the
+  // caller before this runs. Reading `lastProbe.ok` here instead — which is what this did — made
+  // a SINGLE failed probe wipe the evidence, so the hysteresis built to stop the route flapping
+  // was defeated by the rule beside it. Found by the e2e, not by reading: one failed attach
+  // already moved chat off the chosen model.
+  const liveness = status.liveness ?? null;
+  if (liveness?.lastSeenAt) return `the endpoint answered at ${liveness.lastSeenAt}`;
+  // A runtime whose status predates the health lane still reports the way it always did.
+  if (!liveness && status.lastProbe?.ok) return `the endpoint answered at ${status.lastProbe.at}`;
   return null;
 }
 
@@ -134,6 +143,20 @@ export function localRuntimeProfileFrom(status, { now = () => new Date().toISOSt
       reason: `\`${status.endpoint}\` is not a local http(s) endpoint — a local runtime is reached on loopback or a private address, and this one is not dialled`,
     };
   }
+  // `D-0541`. Liveness OVERRULES both kinds of evidence, and it has to: a launched child can be
+  // alive while the server inside it has stopped answering, and an attached endpoint's last
+  // successful probe can be minutes old. `ok` is already the hysteresis — the runtime reports
+  // false only after two consecutive failed probes — so acting on it here cannot flap on one
+  // missed reading against a server that is busy generating.
+  const liveness = status.liveness ?? null;
+  if (liveness && liveness.ok === false) {
+    const since = liveness.lastSeenAt ? ` — last seen ${liveness.lastSeenAt}` : ' — it has never been seen answering';
+    return {
+      profile: null,
+      reason: `\`${status.model}\` has stopped answering: ${liveness.consecutiveFailures} consecutive probes failed${since}`,
+    };
+  }
+
   const evidence = servingEvidence(status);
   if (!evidence) {
     return {
@@ -176,6 +199,10 @@ export function localRuntimeProfileFrom(status, { now = () => new Date().toISOSt
       virtual: true,
       source: 'local-model-runtime',
       servingEvidence: evidence,
+      // `D-0541`: how fresh that evidence is, carried on the profile itself so a surface that
+      // says "chat answers from X" can also say when X was last seen, without asking a second
+      // source that could disagree. `null` on a deployment whose runtime predates the field.
+      liveness: liveness ? Object.freeze({ ...liveness }) : null,
     }),
     reason: null,
   };

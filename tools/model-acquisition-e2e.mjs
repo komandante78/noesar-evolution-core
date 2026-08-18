@@ -366,6 +366,31 @@ try {
   check('and the answer is attributed to the derived provider, not to something else',
     /"providerId":"local-runtime"/.test(transcript), transcript.slice(0, 400));
 
+  // D-0541 — the health lane, through the real control plane: a model that DIES stops being
+  // the answer, and the surface says so before anyone sends a message to find out.
+  //
+  // The two probes are driven through the product's own attach route rather than by waiting for
+  // the 15-second heartbeat: a test that sleeps 30 seconds to prove a 15-second interval is a
+  // test nobody runs. That the HEARTBEAT drives the same reading, unblocking and rate-limited,
+  // is proven in active-runtime-provider.test.mjs against the real method.
+  await new Promise((done) => inference.close(done));
+  const firstMiss = await request('/api/v1/runtime/local-model/attach', { method: 'POST' });
+  check('with the server gone, attaching reports it unreachable rather than pretending',
+    firstMiss.status === 502, `${firstMiss.status} ${JSON.stringify(firstMiss.data)}`);
+  const afterOne = await request('/api/v1/models/installed');
+  check('ONE failure does not move the chat off the chosen model (hysteresis)',
+    afterOne.data.chat?.answers === true, JSON.stringify(afterOne.data.chat));
+  await request('/api/v1/runtime/local-model/attach', { method: 'POST' });
+  const afterTwo = await request('/api/v1/models/installed');
+  check('two consecutive failures DO, and the surface names when it was last seen',
+    afterTwo.data.chat?.answers === false && /stopped answering: 2 consecutive probes failed/.test(afterTwo.data.chat?.reason ?? '')
+      && /last seen/.test(afterTwo.data.chat?.reason ?? ''),
+    JSON.stringify(afterTwo.data.chat));
+  const providersDown = await request('/api/v1/providers');
+  check('and the dead model is no longer offered as a provider at all',
+    !(providersDown.data.providers ?? []).some((item) => item.id === 'local-runtime'),
+    JSON.stringify((providersDown.data.providers ?? []).map((item) => item.id)));
+
   const released = await request('/api/v1/runtime/local-model', {
     method: 'PUT', value: { mode: 'disabled' },
   });
@@ -398,6 +423,8 @@ try {
   child.kill('SIGTERM');
   await new Promise((done) => child.once('exit', done));
   await new Promise((done) => artefacts.close(done));
-  await new Promise((done) => inference.close(done));
+  // The liveness block above closes this one deliberately, mid-run; closing a closed server
+  // calls back with an error and would leave the temp workspace behind on a passing run.
+  await new Promise((done) => { if (inference.listening) inference.close(done); else done(); });
   rmSync(workspace, { recursive: true, force: true });
 }

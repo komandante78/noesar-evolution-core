@@ -12601,3 +12601,40 @@ both times. An intermittently red suite is one nobody trusts when it is genuinel
 `F-I18N-002`, whose closable count is **647, unchanged**.
 **Reversal cost.** None.
 **Status.** applied.
+
+## D-0544 · The health lane — a dead model is reported before a message pays for it — 2026-08-18
+**Decision.** `LocalModelRuntime.liveness()` re-reads the endpoint at most once per 15 s, in the
+background, never blocking a reader; `attach()` is the single observer, recording both the
+monotone "last seen" and the failure counter. The derived provider is withdrawn only after **two
+consecutive** failures, and the reason names when the model was last there. A heartbeat in
+`server.mjs` (`unref()`-ed, `NOESAR_LOCAL_MODEL_HEARTBEAT=off` to disable) drives the same reading
+so an installation with nobody watching still notices.
+**Why.** `lastProbe` was written only by `attach()`, which an operator calls once. In attach mode
+— the normal case on a host with no runtime of its own — a server that died stayed `ok: true` for
+ever, and the first chat message after the death was what discovered it.
+**Rejected.** Acting on one failed probe: a missed reading against a server mid-generation would
+move the chat to a different provider, which is worse than the staleness it removes.
+**Evidence.** 5 new unit tests, and **two real defects the tests found**: `attach()` success was
+not recording "last seen" (the reason read "never been seen answering" about a model answering a
+moment earlier), and `servingEvidence` still read `lastProbe.ok`, so a single failure wiped the
+evidence and defeated the hysteresis beside it — found by the e2e, not by reading. Then a third,
+from asserting the NUMBER and not just the state: `attach()` and the probe both counted, so two
+failures read as four. `npm test` **2650 tests / 0 fail**; `model-acquisition-e2e` **PASS 52/52**,
+including a server killed mid-run with the surface flipping on the second failure and not the
+first. Disabled runtime: **0 fetch calls**, asserted by counting `globalThis.fetch`.
+**Reversal cost.** None: nothing is written, no schema, no configuration key.
+**Status.** applied.
+
+## D-0545 · Improvement proposal — model availability as an observable signal — 2026-08-18
+**Decision.** Proposed, not built: emit model availability into the product's existing structured
+telemetry — a counter and a state change on `local-model.liveness-*` — so an operator can alert on
+"the model this installation serves has been down for five minutes" without polling a page.
+Deliberately **not** `/readyz`: the product is correct without a model, and failing readiness
+would restart a healthy container over an absent one.
+**Why.** The health lane now KNOWS the model is gone; only a human looking at a screen learns it.
+**Rejected for this phase.** It is a second surface (metrics/alerting) and this phase's claim is
+the reading itself; shipping half a metric is worse than none.
+**Funding fit.** Restack · traits 5 and 2 — measurable reliability, and an availability signal is
+reusable by anyone running the component, not only by this product's own UI.
+**Reversal cost.** n/a — not built.
+**Status.** deferred, awaiting the Owner.
