@@ -49,7 +49,7 @@ e8a3829470ba0f64d3cd549f54a342cffe998c3f1520682bb35eef0e415707ce  ./services/ref
 fd184d27ad3c4208a6a5537c11ffdebc4a0245fc699683a817d4f01e1e98401a  ./services/reference-control-plane/src/tool-catalog.mjs
 14facbaad56c1ce47308f152d41287047d7d2067dba256380e87266d68a88533  ./services/reference-control-plane/src/update-manager.mjs
 ca243850b76cefb7e6a8edf55675fe4fa048ad399865135a4cc099133e6c9d7d  ./services/reference-control-plane/src/verification.mjs
-c80df91dfea1ec9e8b6db678cb599ee96623b2f25916d1fc4cf9d094bf82e1e2  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
+a0b75b159bc4ec1b5ea62000f1120eabd35a121d13d9febbcb94b5fd76bcdda0  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
 4c444c5183051c5dcde3f92fbf861711f239157d8baad9c60fe5bba5d5f3bf8a  ./services/reference-control-plane/test/compliance-packs.test.mjs
 bdc14829381a1d8822358d2e63bc793e4cf5d3687e710ca01a242463f92c18ce  ./services/reference-control-plane/test/home-overview.test.mjs
 e3aa1d4c445c620892aee4d330ac2a4255593592536de0516276bc474184e855  ./services/reference-control-plane/test/oidc.test.mjs

@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0575 — CE-007, CE-013 and CE-015 recorded; every CRITICAL criterion now carries a verdict",
-  "phase_status": "COMPLETE — critical-unstated 3 -> 0, unstated 24 -> 21. No product code changed, so no deployment was required. production_ready stays false: 21 HIGH/MEDIUM rows and three open findings stand between a green critical matrix and a finished product.",
-  "next_phase": "Owner choice: (1) the 21 HIGH/MEDIUM criteria, (2) the three open findings, which are product work needing a deployment, or (3) D-0564",
+  "current_phase": "D-0577 — revocation becomes an act; F-REVOKE-001 closed, built, deployed and verified live",
+  "phase_status": "COMPLETE — a live capability grant can be listed and withdrawn from either shell, the withdrawal is a ledger line naming what it covered, and the change is INSTALLED (noesar-evolution:d0577-revocation-20260819T152649Z, byte-equal tree 449/449, /livez and /readyz 200 on both ports). production_ready stays false: 21 HIGH/MEDIUM acceptance rows carry no verdict and two of the three open product findings are untouched.",
+  "next_phase": "Owner choice: (1) F-AUTH-UI-001 — the authoring reason never reaches either shell, (2) the 21 HIGH/MEDIUM acceptance rows, or (3) D-0564, the signed ledger anchor",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "8ab4350",
-  "last_updated_utc": "2026-08-19T15:40:00.000Z",
+  "last_commit": "8f724b3",
+  "last_updated_utc": "2026-08-19T15:35:00.000Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -206,6 +206,20 @@
   "phase_3_started": true,
   "phase_cycle": "15 steps (HUNT AND FIX between TEST and DOCUMENT; CLEAN UP between PUSH and WRITE HANDOFF) - defects are repaired inside the phase, and every throwaway container the phase created is removed before it closes",
   "open_findings": [
+    {
+      "id": "F-MANIFEST-001",
+      "severity": "low",
+      "status": "OPEN — observed 2026-08-19 (D-0577), recorded not fixed: out of scope for a phase named revocation",
+      "summary": "MANIFEST.sha256 lists 5,898 paths against 6,685 tracked files, and it does not grow: recent commits update the hashes of paths ALREADY listed and add none. Measured on this phase's own diff — 12 changed files, 1 present in the manifest (stale, refreshed here), 11 absent, including two src/ modules and the new test file. So a checksum manifest that reads as whole is a snapshot of an older tree, and nothing in scripts/test.sh fails when an entry goes stale (the battery was green with the stale hash in it).",
+      "next_step": "decide what the manifest is FOR before regenerating it: an integrity record of the whole tree needs generation on every commit and a verifier that fails on drift; a provenance record of an import needs a name that says so. Regenerating it blindly would turn 787 unlisted files into a claim nobody has checked."
+    },
+    {
+      "id": "F-REVOKE-001",
+      "severity": "medium",
+      "status": "CLOSED 2026-08-19 (D-0577) — wired, tested, deployed and verified on the running installation",
+      "summary": "TokenMinter#revoke was correct and had zero product callers, so a capability grant issued in error could only be waited out, and nothing could list what was outstanding. Closed by POST /api/v1/capability/revoke (session + workspace.write + CSRF, ledgered), capability.grants/capability.revoke on the session protocol, /grants and /revoke in the shared command table, and the live grants rendered in the Authority panel. The grant description deliberately excludes the MAC: describing a grant is not a way to obtain one.",
+      "next_step": "none — closed. D-0578 is the remaining precision gap: spend() still refuses a revoked token with the wording it uses for one this engine never issued."
+    },
     {
       "id": "F-IMAGE-STALE-001",
       "severity": "low",
@@ -1102,7 +1116,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "EVERY CRITICAL CRITERION NOW CARRIES A VERDICT: critical-unstated 0 (was 15 when the matrix was first machine-read), unstated 21, all HIGH or MEDIUM. `node tools/verify-acceptance-matrix.mjs` holds the ratchet at 21/0. THE NEXT ACTION IS THE OWNER CHOICE AND THE THREE CANDIDATES ARE NOT EQUAL: (1) the 21 HIGH/MEDIUM rows — the same method as the last three phases at lower severity, cheap and mechanical, the tool prints them; (2) THE THREE OPEN FINDINGS, which are product work and need a build and a deployment — F-REVOKE-001 (revocation implemented and unreachable, D-0572 proposes the route), F-AUTH-UI-001 (no file under apps/ reads authoring.reason, so the reason CE-029 proves is on the API response never reaches either shell; the precedent for the repair is reasoningSummary() in coden-view-model.js), F-TOOLSCOPE-001 (scopeRequestToTool() has no caller, D-0574 proposes the wiring); (3) D-0564, still the most valuable unbuilt idea — anchor the event ledger head, signed with the owner key, because the chain protecting every grant and measurement is a hash with no key and detects an edit but not a rewrite. NOT PROVEN AND DECLARED AS SUCH: MEASUREMENT_LOST, the refusal a restart produces, has no public door a test can open (D-0576 proposes the seam). A GREEN CRITICAL MATRIX IS NOT A FINISHED PRODUCT — production_ready stays false.",
+  "next_action": "F-REVOKE-001 IS CLOSED AND LIVE: `POST /api/v1/capability/revoke` answers 401 on the running installation (the gate, not a 404), `/grants` and `/revoke` are in the one command table both shells render, and the Authority panel shows what is outstanding. THE TWO REMAINING PRODUCT FINDINGS ARE UNTOUCHED AND ARE THE HONEST NEXT CANDIDATES: F-AUTH-UI-001 (no file under apps/ reads `authoring.reason`, so the reason CE-029 proves is on the API response never reaches either shell; the precedent for the repair is `reasoningSummary()` in coden-view-model.js) and F-TOOLSCOPE-001 (`scopeRequestToTool()` still has no caller — D-0574 argues deliberately AGAINST wiring it until a route can mint for catalog tools, so that one is a design decision before it is work). ALSO OPEN: the 21 HIGH/MEDIUM matrix rows (`node tools/verify-acceptance-matrix.mjs` prints them, ratchet held at 21/0); D-0564, still the most valuable unbuilt idea — the event ledger head is a hash with no key, so it detects an edit but not a rewrite; D-0578, the proposal this phase produced — a revoked token still reads to `spend()` as an unknown one, which needs the JS engine, the Rust mirror and a conformance vector together. NOT PROVEN AND DECLARED AS SUCH: MEASUREMENT_LOST has no public door a test can open (D-0576 proposes the seam). A GREEN CRITICAL MATRIX IS NOT A FINISHED PRODUCT — production_ready stays false.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

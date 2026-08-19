@@ -13359,3 +13359,53 @@ the test that would otherwise have implied it was covered, so the absence is on 
 **Funding fit.** **Restack · trait 5** — measurable reliability: a recovery path executed at least
 once is worth more than one that has only been written.
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0577 · Revocation becomes an act — `F-REVOKE-001` closed — 2026-08-19
+**Decision.** Wire `TokenMinter#revoke` to real surfaces: `POST /api/v1/capability/revoke`
+(session + `workspace.write` + CSRF + a `capability.revoked` ledger line), `capability.grants`
+and `capability.revoke` on the session protocol, `/grants` and `/revoke` in the one command
+table both shells render, and the live grants shown in the Authority panel. `grant()`/`grants()`
+describe a grant **without its MAC**; `revoke()` keeps its boolean signature so
+`rust/crates/noesar-capability` stays a mirror rather than a fork.
+**Why.** `D-0571` measured zero callers: the only way to stop a live token was to wait out its
+expiry, and nothing could list what was outstanding. `D-0572` proposed the route; this executes it.
+**Rejected.** Changing `spend()`'s refusal so a revoked token reads differently from an unknown
+one — correct, and it needs the Rust engine and a conformance vector too. Proposed as `D-0578`,
+not smuggled into this phase.
+**Evidence.** `capability-revocation.test.mjs` **18/18** (engine · protocol · panel · shells),
+oracle **proven to fire**: loosening `capability.revoke` to `workspace.read` turned 3 red.
+`npm test` **2840 / 2839 pass / 0 fail / 1 pre-existing skip** (+21). ESLint 446 files, 0 errors.
+`scripts/test.sh` **15/15**. `seeded-defect-proof` **19/19**. Browser e2e **506 / 505 pass /
+1 declared gap (`F-I18N-002`, 647 closable — unchanged by this phase) / 0 undeclared**.
+Deployed and verified live: see `docs/INSTALLATION_LEDGER.md`.
+**Three defects found by the suites and fixed here.** The Authority panel threw a `TypeError` on
+an engine that answers without a grant list (found by `coden-shell-parity`; an unrecognised answer
+is now a stated refusal, never rendered as "none outstanding"); the two commands had no Italian
+catalogue entry; the browser view model offered them with no engine call. Two documentation
+defects too: `docs/acceptance-matrix.json`'s `CE-002` verdict and `docs/security/
+INDEPENDENT_PENTEST_SCOPE.md` both still said no route revokes.
+**`CE-002`'s closure changed claim rather than losing one.** From "nobody may call `revoke()`" to
+"only a **declared revocation surface** may", checked in both directions — the same shape as its
+`.spend(` closure. Its HTTP *revoked* case now reaches the state the way a person does; the
+foreign-engine variant is kept beside it because it proves the MAC gate, one gate earlier.
+**Reversal cost.** One route, two protocol methods, two commands, one panel block. No schema, no
+migration, no configuration key. The predecessor container is the parachute.
+**Status.** applied, installed and verified live.
+
+## D-0578 · Improvement proposal — a revoked token should not read as an unknown one — 2026-08-19
+**Decision.** Proposed, not executed. Replace the registry `delete` with a **tombstone**, so
+`spend()` refuses a withdrawn grant with *"the token was revoked"* instead of *"this engine did
+not issue that token"* — in `capability.mjs`, in `rust/crates/noesar-capability`, and pinned by a
+new row in `conformance/capability-vectors.json` so the two cannot drift.
+**Why.** After `D-0577` the ledger records the withdrawal, so the audit trail is whole; the
+*refusal message* is not. An operator chasing a failing run is told the engine never issued a
+grant it issued and then withdrew — true only if "issued" means "still holds".
+**Rejected.** Doing it in JavaScript alone: `capability.mjs` mirrors the Rust engine and neither
+is the oracle for the other, so a one-sided change is how a mirror becomes a fork.
+**Evidence.** `ce-002-…`'s `REASON.revoked` pins today's string, so the change cannot land
+without re-earning that verdict — which is the reason to do it deliberately rather than in passing.
+**Reversal cost.** One branch in each engine, one vector row, one expected string in one test.
+**Funding fit.** **Restack · traits 5 and 1** — measurable reliability (a refusal that names its
+own cause is auditable) and a delimited, reusable component: a capability engine whose refusals
+are distinguishable by kind is useful to any tool ecosystem, not only this product.
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.

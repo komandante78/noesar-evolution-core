@@ -5307,3 +5307,35 @@ first; its image stays on disk), and the superseded build tag
 or stamped network — only the stable `noesar-e2e-net` survives, as §21c requires. Containers
 **53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-project containers **50 → 50**
 (`EVIDENCE/docker_inventory_pre_cleanup_D0569_20260819T104500Z.txt`).
+
+## `d0577-revocation-20260819T152649Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0577-revocation-20260819T152649Z`, deployed 15:28Z via
+`tools/deploy/redeploy.sh --apply`, built from the canonical `oci/Dockerfile`. `D-0577`:
+revocation becomes an act — a live capability grant can be listed and withdrawn from either
+shell, and the withdrawal is a ledger line naming what it covered.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz` and `/healthz` **200** on
+**both** `http://…:8100` and `https://…:8443`. 4 children spawned (postgres, api, codev, atom),
+**0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **449/449** in preflight and again against the **running**
+image, **0** differing, **0** missing from the directory `COPY`s. The new surfaces answer on the
+live box: `GET /api/v1/capability` → **401** and `POST /api/v1/capability/revoke` → **401** — the
+auth gate, not a 404 — while `POST /api/v1/capability/nope` → **404**, so the route exists rather
+than being absorbed by a catch-all. Before `--apply`: unit **2840 (2839 pass / 0 fail / 1 skip)**,
+battery **15/15**, seeded-defect-proof **19/19**, browser suite **506 / 505 pass / 1 declared gap
+(`F-I18N-002`) / 0 undeclared**, ESLint **446 files, 0 errors**.
+**Not run, and named rather than skipped in silence.** `tools/accessibility-audit.mjs`: this phase
+changed no markup, no DOM structure and no CSS token — the two rows of the change map that reach
+it. The three catalogue strings it added are covered by `ui-language-coverage`.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T152817Z`
+(`d0569-measure-first-20260819T104500Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The workspace was backed up **with the service stopped**, 0600 in a 0700
+directory, checksum written — that archive holds credentials and is treated as one.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T094812Z` removed (`Exited` confirmed
+first; its image stays on disk, so its rollback path survives). The browser suite removed its own
+probe, runner and probe image. Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**,
+non-project containers **50 → 50**; surviving networks exactly `noesar-evolution-net` and
+`noesar-e2e-net` (`noesar-local` is NOESAR V3's and was not touched)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0577_20260819T152917Z.txt`). Health re-proved after
+cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
