@@ -13229,3 +13229,40 @@ for that exact reason — the same trap this file documents two checks above, le
 **Reversal cost.** None — one regular expression and three assertions.
 **Funding fit.** **Fits none** — an internal deployment-tool repair, written as such.
 **Status.** applied. The `D-0569` deployment is retried after it.
+
+## D-0571 · CE-002 and CE-029 closed by execution, and the two gaps the attempts exposed — 2026-08-19
+**Decision.** Record verdicts for the two CRITICAL criteria whose method could be executed without
+touching the product: `CE-002` (an exhausted, expired or revoked token is refused on **every**
+surface) and `CE-029` (an installation with no model refuses to author, saying why, without
+degrading to a silent refusal or empty content). Both ✅, both with their width declared.
+**Why.** «Ogni superficie» and «senza provider configurato» are claims a reading cannot settle.
+`CE-002` now derives the surface set **from the source at every run** — a sixth `.spend(` site
+fails the suite rather than slipping past it; `CE-029` is measured on a real listener started
+without `NOESAR_AUTHORING_ENDPOINT`, which is the criterion's own stated method.
+**Rejected.** Asserting the refusals against `TokenMinter#spend` alone: it proves the engine, not
+the five surfaces, and the criterion is about the surfaces.
+**Evidence.** `ce-002-token-refused-on-every-surface.test.mjs` **23/23** (5 surfaces × 3 states,
+3 negative controls, 2 closure tests); `ce-029-no-model-refuses-to-author.test.mjs` **12/12**
+(1 negative control). Ratchet 29→27, critical 8→6, seen to FAIL(2) one notch tighter first.
+**Two findings the attempts exposed, recorded not smoothed over.** `F-REVOKE-001`: `TokenMinter#revoke`
+has **zero** product callers — revocation is implemented and unreachable, so the HTTP surface can only
+be attacked through the branch revocation shares. `F-AUTH-UI-001`: **no file under `apps/` reads
+`authoring.reason`** — the reason `CE-029` proves is on the API response never reaches either shell.
+**Reversal cost.** None. Two test files, two verdict cells, one ratchet; no product code changed.
+**Status.** applied.
+
+## D-0572 · Improvement proposal — make revocation an act, not a latent method — 2026-08-19
+**Decision.** Proposed, not executed (`noesar-evolution-budget` §5). Wire revocation to a surface:
+`POST /api/v1/capability/revoke` (session + `workspace.write` + CSRF + a `capability.revoked`
+ledger line) and the matching CodeN address, so a grant issued in error can be withdrawn instead of
+waited out.
+**Why.** `D-0571` measured that `revoke()` has no caller. Today the only way to stop a live token is
+its own expiry — an authority that cannot be withdrawn is an authority nobody can correct.
+**Rejected.** Shortening every token's TTL instead: it makes correction faster, never possible, and
+it costs every legitimate run a re-mint.
+**Evidence.** `ce-002-token-refused-on-every-surface.test.mjs` pins the caller count at 0 and fails
+the day one appears, so this proposal cannot be forgotten silently.
+**Reversal cost.** One route and one ledger action to remove.
+**Funding fit.** **Restack · traits 5 and 3** — measurable reliability (a withdrawable authority is an
+auditable one) and autonomy (revocation is local, offline, on the installation's own engine).
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
