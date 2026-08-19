@@ -244,8 +244,18 @@ describe('the client speaks the version the bridge speaks', () => {
     // `tui-fullscreen.mjs` and `app.js` already truncate with `detailLines(result)`
     // (`DETAIL_LINES` = 10, "… N more lines"); this shell must use the same shaper, not a
     // third answer to the same question (CE-033).
-    assert.match(source, /record\('agent',\s*`\$\{turn\.command\} — ok`,\s*detailLines\(result\)\)/,
-      'the call-result branch no longer truncates with detailLines() — a large result can bury a later turn again');
+    //
+    // **Amended 2026-08-19 (`D-0579`)**, and the amendment is the point: this assertion used to
+    // pin the literal line `` record('agent', `${turn.command} — ok`, detailLines(result)) ``.
+    // That wording had to change — `— ok` was printed for a plan that wrote no file at all
+    // (`F-AUTH-UI-001`) — and a guard that pins today's WORDING makes the repair look like the
+    // regression. What `F-TERM-003` actually protects is that this shell truncates through the
+    // SAME shaper as the other two rather than inventing a third answer, so that is what is
+    // asserted now. `callResult` delegates to `detailLines`, and
+    // `authoring-reason-reaches-the-shells.test.mjs` holds it to that — including that the
+    // truncation is still VISIBLE ("… N more lines").
+    assert.match(source, /callResult\(turn\.command, ?result\)/,
+      'the call-result branch no longer goes through the shared shaper — a large result can bury a later turn again');
     assert.doesNotMatch(source, /JSON\.stringify\(result/,
       'an untruncated JSON.stringify(result) is back — see F-TERM-003');
   });

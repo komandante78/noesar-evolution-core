@@ -151,6 +151,124 @@ export function detailLines(value, limit = DETAIL_LINES) {
   return all.length <= limit ? all : [...all.slice(0, limit), `… ${all.length - limit} more lines`];
 }
 
+const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+/**
+ * What the Author did, in one line — `D-0579`, closing `F-AUTH-UI-001`.
+ *
+ * # The defect this exists to remove, measured rather than argued
+ *
+ * `CE-029` proves the engine refuses to author **saying why**: an installation with no model
+ * answers `authoring.available:false` with a reason in words, on the response. Measured
+ * 2026-08-19 with the real orchestrator: that reason is at line **88 of a 126-line** response,
+ * every shell rendered a call result as `${command} — ok` plus the first **10** lines of it, and
+ * no file under `apps/` mentioned `authoring` at all.
+ *
+ * So a plan that wrote **nothing** announced itself as *ok*, in all three shells, and the
+ * sentence explaining why was on the wire and off the screen. A criterion satisfied by the API
+ * and invisible to the person is `73`'s "capability, not element" failing at the last inch.
+ *
+ * # The rule this line follows
+ *
+ * The reason is **carried, not summarised** — the same rule `reasoningSummary` states one screen
+ * down. "unavailable" is a word this file would have chosen; the engine's sentence is the one the
+ * operator can act on, and shortening it into a status is this shell deciding what matters.
+ *
+ * Four states, and the third and fourth are different facts that must not collapse:
+ *
+ * ```text
+ * '—'                          nothing has run yet, or the answer carries no authoring block
+ * '2 files written'            a model wrote them
+ * 'nothing written — <reason>' no model, or a model that refused: the engine's own sentence
+ * 'authoring failed — <why>'   a model was there and the attempt broke
+ * ```
+ */
+export function authoringSummary(authoring) {
+  if (!authoring || typeof authoring !== 'object') return '—';
+  const reason = String(authoring.reason ?? '').trim();
+  if (authoring.failed) return `authoring failed — ${reason || 'no reason given'}`;
+  const authored = Number(authoring.authored ?? 0);
+  if (authored > 0) return `${plural(authored, 'file')} written`;
+  // Nothing was written, which is the case this whole helper exists for. An absent Author and a
+  // present one that refused are both "nothing written" to a reader — what separates them is the
+  // reason, so the reason is never dropped, and its absence is stated rather than hidden.
+  return `nothing written — ${reason || 'the engine gave no reason, which is itself worth reporting'}`;
+}
+
+/**
+ * How a shell renders the result of a command it just ran — headline and detail, decided **once**
+ * for every shell. `D-0579`.
+ *
+ * It keys on the SHAPE of the answer, not on the verb: any result carrying an `authoring` block
+ * gets the summary, so `/plan`, `/diff` and `/simulate` tell the same truth without three lists
+ * of command names to keep in step. That is the same reasoning `planTurn` is built on — two
+ * shells that each decide what an answer means will disagree, and the disagreement surfaces in
+ * whichever one is used less (`CE-033`).
+ *
+ * The full result still follows, truncated exactly as before: this adds a reading, it removes
+ * nothing an operator could see yesterday.
+ */
+/**
+ * The commands that AUTHOR, as opposed to the ones that merely report on a run that did.
+ *
+ * This distinction was missing from the first draft of `callResult` and the browser suite caught
+ * it: `/diff <run>` reads the stored run, which carries the same `authoring` block, so keying the
+ * HEADLINE on the shape of the answer turned `diff — ok` into `diff — nothing written` — a
+ * sentence about the run being inspected, printed as if it were the outcome of inspecting it.
+ * The diff wrote nothing because a diff never writes anything.
+ *
+ * So the two halves are keyed differently, on purpose: the DETAIL line follows the data (any
+ * answer carrying an authoring block gets it, and `/diff` is better for showing it), while the
+ * HEADLINE follows the verb (only the command that did the authoring reports it as its outcome).
+ *
+ * `coden-view-model.test.mjs` asserts this set is exactly the commands whose method is
+ * `workspace.plan`, so it is derived by comparison rather than hand-kept — the difference between
+ * this and a list that is only ever compared with itself.
+ */
+export const AUTHORING_COMMANDS = Object.freeze(['plan']);
+
+export function callResult(command, result) {
+  const name = String(command ?? 'call');
+  const authoring = result && typeof result === 'object' ? result.authoring : null;
+  if (!authoring || typeof authoring !== 'object') {
+    return { headline: `${name} — ok`, lines: detailLines(result) };
+  }
+
+  const summary = authoringSummary(authoring);
+  const lines = [`authoring: ${summary}`];
+
+  // A refusal names itself. `CE-029`'s own EMPTY case is the one that matters most: a model that
+  // answered with nothing must not read as a model that was never asked.
+  const refusals = Array.isArray(authoring.refusals) ? authoring.refusals : [];
+  if (refusals.length) {
+    lines.push(`  refused: ${refusals.map((entry) => [entry?.code, entry?.path].filter(Boolean).join(' ')).join(' · ')}`);
+  }
+  // `D-0312`: who actually wrote the bytes when ATOM was asked for and could not be reached. The
+  // whole of that decision is that the product carries on WITHOUT carrying on quietly, and a
+  // transcript that omitted this is exactly where "quietly" comes back.
+  const degradations = Array.isArray(authoring.degradations) ? authoring.degradations : [];
+  if (degradations.length) {
+    lines.push(`  degraded: ${degradations.map((entry) => entry?.reason ?? entry?.to ?? 'unnamed').join(' · ')}`);
+  }
+  // Rule 1 of `16` §3.2: a path the model tried to name and did not get. Reported, not merely
+  // obeyed — "it never widens the set" is a claim with a number beside it here too.
+  const discarded = Array.isArray(authoring.discarded) ? authoring.discarded : [];
+  if (discarded.length) lines.push(`  discarded: ${discarded.join(' · ')}`);
+
+  lines.push('');
+  lines.push(...detailLines(result));
+
+  // The headline carries the outcome, because `— ok` on a run that wrote nothing is the sentence
+  // this whole change exists to stop printing — but only for the verb that DID the authoring.
+  // For `/diff`, the authoring belongs to the run being read, not to the reading.
+  if (!AUTHORING_COMMANDS.includes(name)) return { headline: `${name} — ok`, lines };
+  const authored = Number(authoring.authored ?? 0);
+  const headline = authoring.failed
+    ? `${name} — authoring failed`
+    : authored > 0 ? `${name} — ${plural(authored, 'file')} written` : `${name} — nothing written`;
+  return { headline, lines };
+}
+
 export const OPENING_NOTE =
   'CodeN Evolution — attached to the live session. Type a command, or / for the list.';
 

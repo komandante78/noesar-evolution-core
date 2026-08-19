@@ -29,7 +29,7 @@ import {
 // made this file the only place that knew, and left the browser free to invent a second answer
 // when its turn came. This file keeps what it is for: raw mode, keypresses, the frame.
 import {
-  createView, say, planTurn, detailLines, gitSummary, reasoningSummary, frequencySummary,
+  createView, say, planTurn, detailLines, callResult, gitSummary, reasoningSummary, frequencySummary,
   divergenceLines, divergenceSummary, CLEARED_NOTE, startForm, fillForm,
   addressEntries, menuFrame, menuViewModel,
 } from '../apps/webui-static/coden-view-model.js';
@@ -243,7 +243,11 @@ export async function runFullScreen({
         record('note', `divergence — ${divergenceSummary(result.divergence)}`,
           divergenceLines(result.divergence).map((line) => `${line.id}: ${line.level}${line.note ? ` — ${line.note}` : ''}`));
       }
-      record('agent', `${turn.command} — ok`, detailLines(result));
+      // `D-0579`, `F-AUTH-UI-001`: the outcome is in the headline and the engine's own reason is
+      // the first detail line. `— ok` for a run that wrote no file is what this replaces, and it
+      // was printed identically by all three shells because all three shaped the answer here.
+      const shown = callResult(turn.command, result);
+      record('agent', shown.headline, shown.lines);
     } catch (error) {
       // A step that began with ATOM and lost it stops RESUMABLY rather than finishing at a
       // second quality. The checkpoint is shown, because "stopped" and "stopped with

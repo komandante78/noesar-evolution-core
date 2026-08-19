@@ -18,6 +18,7 @@ import {
 import {
   RUN, createView, say, planTurn, detailLines, gitSummary,
   TRANSCRIPT_KINDS, OPENING_NOTE, DETAIL_LINES, FORMS, addressEntries, requiresArgument, panelOwning,
+  AUTHORING_COMMANDS,
 } from '../../../apps/webui-static/coden-view-model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,18 @@ describe('the view model — what a session looks like, decided once', () => {
     const view = createView();
     assert.throws(() => say(view, 'warning', 'x'), /unknown transcript kind/);
     for (const kind of TRANSCRIPT_KINDS) assert.doesNotThrow(() => say(view, kind, 'x'));
+  });
+
+  // `D-0579`. Derived by comparison, never hand-kept: `AUTHORING_COMMANDS` decides which verb may
+  // report authoring as its own OUTCOME, and a list compared only with itself always agrees with
+  // itself — the `PANEL_NAMES` lesson this project has already paid for twice.
+  test('AUTHORING_COMMANDS is exactly the commands that reach the engine method which authors', () => {
+    const authoring = AGENT_COMMANDS.filter((command) => command.method === 'workspace.plan')
+      .map((command) => command.name).sort();
+    assert.deepEqual([...AUTHORING_COMMANDS].sort(), authoring,
+      'a command that authors and is not listed would report its outcome as a bare `— ok`; one listed '
+      + 'that does not author would announce another run\'s authoring as its own result');
+    assert.ok(authoring.length, 'no command reaches workspace.plan — the set cannot be empty by accident');
   });
 
   test('every entry in the shared registry can actually be performed', () => {

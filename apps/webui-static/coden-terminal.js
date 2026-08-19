@@ -30,7 +30,7 @@ import { Terminal } from './vendor/xterm/xterm.mjs';
 // The pure decisions live in the shared tree so the suite can import them without a browser.
 import { decodeInput, segmentInput, geometryFor, bridgeUrl } from '../shared/coden/terminal-input.mjs';
 import { SCREEN, renderFrame } from '../shared/coden/tui-screen.mjs';
-import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, detailLines } from './coden-view-model.js';
+import { createView, say, planTurn, menuFrame, menuViewModel, addressEntries, startForm, CLEARED_NOTE, callResult } from './coden-view-model.js';
 import {
   accountFromUser, menuFor, groupMenu, hiddenNote, resolveCommand, parseCommandPrompt,
 } from '../shared/coden/agent-commands.js';
@@ -458,7 +458,12 @@ export function mountCodenTerminal({
       // already names, just not yet closed here. `detailLines(result)` is the SAME shaper
       // `tui-fullscreen.mjs` and `app.js` already use for a generic call result — CE-033: the
       // two (three, counting this one) shells give the same answer, not a third one.
-      record('agent', `${turn.command} — ok`, detailLines(result));
+      // `D-0579`, `F-AUTH-UI-001`: `callResult` replaces the bare `— ok` + `detailLines`. The
+      // reason a run wrote nothing sat at line 88 of a 126-line answer and the shells showed the
+      // first ten — so `plan — ok` was printed for a plan that wrote no file at all. The shaper
+      // is shared for the reason `detailLines` already was: three shells, one answer.
+      const shown = callResult(turn.command, result);
+      record('agent', shown.headline, shown.lines);
     } catch (error) {
       // Errors are said into the transcript, never swallowed and never thrown at the console:
       // a terminal that silently does nothing is the failure mode this product has already
