@@ -12906,3 +12906,22 @@ repository mentions 1 criterion id.
 **Funding fit.** Restack · traits 5 and 6 — traceability from requirement to executed test is the
 assurance artefact, not the matrix alone.
 **Reversal cost.** n/a. **Status.** SAVED, to be executed after the project is declared finished.
+
+## D-0558 · A near-miss in the cleanup step: an unanchored pattern reached other projects — 2026-08-19
+**Decision.** Recorded as a standing caution, and the rule it confirms: in `CLAUDE10.md` §5a work,
+a target list is built with the `^noesar-evolution` anchor applied to **every** alternative of the
+expression, and is **printed and read** before anything is removed.
+**Why.** During the session close a pattern meant to find throwaway tags —
+`grep -Ei '^noesar-evolution:(webui-)?e2e|probe|sonda|tmp|test'` — lost its anchor after the first
+alternative, so `probe|sonda|tmp|test` matched anywhere. It listed **fifteen images belonging to
+other projects on this host**. It was a listing and nothing was removed, but the identical
+expression inside a removal path would have been the host-wide accident §21d exists to prevent.
+**Rejected.** Treating it as a typo not worth recording. §21d's rule — *"removal always names its
+targets"* — is exactly what turned this into a near-miss instead of an incident, and a near-miss
+that goes unrecorded is one nobody learns from.
+**Evidence.** The corrected form, `grep '^noesar-evolution:' | grep -Ei 'e2e|probe|sonda|tmp|scratch'`,
+returns **0** rows: all 28 project tags are deployment lineage with a documented rollback, kept
+under §21c. Non-project containers before and after: 50, untouched. Volumes: 65, unchanged.
+**Reversal cost.** n/a — nothing was changed.
+**Funding fit.** **Fits none** — an internal safety practice, written as such.
+**Status.** recorded. Close evidence: `EVIDENCE/session_close_20260819T054047Z.txt`.

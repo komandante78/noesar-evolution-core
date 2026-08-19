@@ -107,9 +107,30 @@ MOD  docs/DECISION_LOG.md · PROJECT_STATE.json      D-0556, D-0557
 
 ---
 
-## OPEN BLOCKERS
+## SESSION CLOSE — `CLAUDE10.md` §5a, run in full
 
-`B-002` and `B-011`, both unchanged. No new blocker. `production_ready: false` stands, correctly.
+**Nothing was removed, because nothing was created.** Containers, images and networks created
+across `s343`–`s347`: **zero** — the Python conformance probe ran `--rm --network none`, and no
+phase built an image. Evidence: `EVIDENCE/session_close_20260819T054047Z.txt`, with the full
+pre-cleanup inventory in the gitignored `EVIDENCE/docker_inventory_pre_cleanup_20260819T053927Z.txt`.
+
+```text
+containers   noesar-evolution (Up, healthy) + one rollback — exactly the two §21b allows
+             50 non-project containers, untouched
+image tags   28, all deployment lineage with a documented rollback -> KEPT (§21c)
+             throwaway-shaped tags (e2e/probe/tmp/scratch): 0
+networks     noesar-e2e-net, noesar-evolution-net — the stable unstamped ones; no per-run bridge
+             noesar-local belongs to another project and was never touched
+volumes      65, unchanged
+§21f         state=running health=healthy restarts=0 · /livez 200 · /readyz 200 · /metrics 401
+```
+
+**Two corrections made during the close, both mine:** the first health probe used `127.0.0.1` and
+reported `000` — the port is published on `192.168.178.100:8100 → 8088`, not on loopback, so that
+was my address error and not a product fault. And a `grep` written to find throwaway tags lost its
+`^noesar-evolution` anchor across the alternation and listed **other projects' images**; it was a
+listing, not a removal, but the same expression inside a removal path would have been a host-wide
+accident. Recorded as `D-0558`.
 
 ---
 
@@ -120,3 +141,9 @@ project is finished. `D-0557`: bind each criterion to the check that measures it
 reports `MEASURED_PASS` from a run instead of `RECORDED_MET` from prose. **Funding fit — Restack ·
 traits 5 and 6:** traceability from requirement to executed test is the assurance artefact, not the
 matrix alone.
+
+---
+
+## OPEN BLOCKERS
+
+`B-002` and `B-011`, both unchanged. No new blocker. `production_ready: false` stands, correctly.

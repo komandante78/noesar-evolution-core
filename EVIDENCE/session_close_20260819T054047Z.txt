@@ -1,0 +1,33 @@
+SESSION CLOSE — s343..s347, 20260819T054047Z
+
+CLEAN UP (CLAUDE10 5a / skill step 13): NOTHING WAS REMOVED, because nothing was created.
+  containers created this session : 0 (the python conformance probe ran --rm --network none)
+  images created this session     : 0
+  networks created this session   : 0
+
+== containers (exactly the two 21b allows) ==
+noesar-evolution	Up 14 hours (healthy)
+noesar-evolution-pre-20260818T160230Z	Exited (0) 14 hours ago
+  non-project containers: 50 (unchanged: none touched)
+
+== image tags: 28, all deployment lineage with a documented rollback -> KEPT per 21c ==
+  throwaway-shaped tags (e2e/probe/tmp/scratch): 0
+  running   : noesar-evolution:d0544-health-lane-20260818T160214Z
+  rollback  : noesar-evolution:d0539-model-chain-20260818T154206Z
+
+== networks: stable unstamped only; no per-run bridge left behind ==
+  noesar-e2e-net
+  noesar-evolution-net
+  noesar-local
+  (noesar-local belongs to another project and was never touched)
+
+== volumes: unchanged ==
+  count: 65
+
+== 21f — the product still works ==
+  state=running health=healthy restarts=0
+  published: 192.168.178.100:8100 -> 8088 (NOT loopback)
+  /livez    200
+  /readyz   200
+  /metrics  401
+  /metrics 401 is correct: it must refuse anonymous access
