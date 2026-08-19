@@ -169,7 +169,13 @@
       "criterion": "Un token esaurito, scaduto o revocato è rifiutato su **ogni** superficie",
       "severity": "critical",
       "howVerified": "test per superficie, più un tentativo per ciascuna",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0571"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0571`)** — `services/reference-control-plane/test/ce-002-token-refused-on-every-surface.test.mjs`, **23/23**: cinque superfici × tre stati, **un tentativo eseguito per ciascuna combinazione**, e per ognuna la prova che non è successo niente — byte dell'ombra *e* della sorgente invariati (`executor`, WRITE ed EXECUTE), nessun processo avviato (`local-model-runtime.launch()`), nessuna directory di modulo creata (`installSectorModule`), byte del workspace invariati (la promozione di `workspace-actions`), `422 capability_refused` su un listener vero con sessione owner e CSRF veri (`POST /api/v1/capability/spend`). Ogni rifiuto è verificato **per ragione**, non solo per esito. **La chiusura è la metà che conta**: ogni `.spend(` sotto `src/` è ricavato dal sorgente a ogni esecuzione e dev'essere o una superficie dichiarata e attaccata qui, o l'unico sito non-capability dichiarato (`coden-bridge.mjs`, un budget di frequenza) — una sesta superficie aggiunta domani fa fallire questa riga invece di scivolare via. Tre controlli negativi impediscono che una suite che rifiuta tutto passi per prova. **Ampiezza dichiarata:** il motore **Rust** (`noesar-capability`, `noesar-executor`) è una seconda implementazione con i suoi `#[test]` e **non** è coperto da questo file; lo stato «revocato» sulla superficie HTTP è raggiunto dal ramo in cui la revoca cade, perché **nessuna rotta revoca** — `TokenMinter#revoke` ha zero chiamanti nel prodotto, misurato e fissato da un test, registrato come `F-REVOKE-001`."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:434"
     },
     {
@@ -423,7 +429,13 @@
       "criterion": "Un'installazione senza modello **rifiuta di autorare dicendo perché**, e non degrada a un rifiuto muto né a un contenuto vuoto",
       "severity": "critical",
       "howVerified": "installazione senza provider configurato, ispezione della risposta",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0571"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0571`)** — `services/reference-control-plane/test/ce-029-no-model-refuses-to-author.test.mjs`, **12/12**, con il metodo che la riga stessa dichiara: **un listener vero avviato senza `NOESAR_AUTHORING_ENDPOINT`** — l'unica cosa che `buildAuthor()` legge per decidere che sotto non c'è niente — e **l'ispezione della risposta**. `POST /api/v1/workspace-actions/plan` risponde **201**, non un silenzio né un 503: il piano esiste, e la risposta porta `authoring.available:false`, `authored:0` e la ragione **per esteso** (`Author.NO_MODEL_REASON`), che nomina cosa manca, cosa continua a funzionare e la promessa sul contenuto vuoto. Il «contenuto vuoto» è misurato **sui byte**: `plan → measure → approve` sulla stessa installazione promuove esattamente i byte del chiamante, riletti da disco. La seconda via verso il vuoto è chiusa a parte — un modello *configurato* che risponde con un blocco vuoto è rifiutato **per nome** (`EMPTY`), `authored:0`, e il file resta quello del chiamante. Controllo negativo: un modello che risponde davvero autora, `authored:1`, e i byte su disco sono i suoi. **Ampiezza dichiarata:** questo è il metodo della riga — *la risposta*. Come le due shell **rendano** `authoring.reason` non è coperto e non è affermato: misurato in questa sessione, **nessun file sotto `apps/` legge quel campo**, quindi la ragione arriva all'API e si ferma lì — registrato come `F-AUTH-UI-001`."
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:530"
     },
     {
