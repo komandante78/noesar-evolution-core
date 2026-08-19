@@ -13068,3 +13068,25 @@ where the public half lives.
 **Funding fit.** **Restack · traits 5 and 3** — verifiable provenance that works offline, on the
 installation's own key, with no external notary.
 **Status.** proposed — the Owner's call, per §69.
+
+## D-0565 · The first installation built from the canonical recipe — 2026-08-19
+**Decision.** Deployed `noesar-evolution:d0559-provenance-20260819T084001Z`, built from
+`oci/Dockerfile` rather than from an 88th overlay, on the Owner's explicit authorisation. This
+retires the overlay chain as the deployment mechanism in practice, which is what `D-0560`
+proposed.
+**Why.** The running installation shipped the application **world-writable** and carried 9 files
+older than the tree (`F-IMAGE-STALE-001`). Both were repaired in the recipe by `D-0559` and
+neither was repaired where it mattered until this.
+**Rejected.** Waiting for a phase that "needed" a deployment. The fix existing only in the source
+while the installation kept serving the defect is precisely the outcome `CLAUDE10.md` §3a exists to
+end.
+**Evidence.** Preflight PASS with the new gate reporting **439/439** byte-equal to the tree;
+**439/439** again against the running image after the deploy; `find /opt/noesar -perm -o+w` **= 0**
+inside the running container; `model-descriptor.schema.json` present; `running`/`healthy`,
+`RestartCount=0`, four children, **0** auth-failure lines, `/livez` and `/readyz` **200** on HTTP
+and HTTPS. Ledger: `d0559-provenance-20260819T084001Z`.
+**Reversal cost.** Restart the predecessor `noesar-evolution-pre-20260819T084122Z`; its image is
+on disk. No migration, no schema change, no configuration key.
+**Funding fit.** **Restack · trait 5** — an installation whose bytes are a function of a commit is
+auditable; one whose bytes are a function of its build order is not.
+**Status.** installed and verified. `F-IMAGE-STALE-001` **closed**.

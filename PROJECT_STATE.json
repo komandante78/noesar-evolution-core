@@ -209,9 +209,9 @@
     {
       "id": "F-IMAGE-STALE-001",
       "severity": "low",
-      "status": "OPEN — measured 2026-08-19 (D-0559), not blocking",
+      "status": "CLOSED 2026-08-19 (D-0565) — the installation was rebuilt from the canonical oci/Dockerfile and is byte-equal to the tree",
       "summary": "9 files in the RUNNING image are older than the working tree, because each oci/Dockerfile.phase4-* overlay copies only the files its own phase touched and everything else keeps whatever the ancestor image had. The 9 are 8 test files plus the scripts block of package.json; every path was checked individually and NO runtime module is stale, which is why this was not deployed. It was invisible because the deploy path proved byte-equality at the scope of the overlay (3 files for d0544), never at the scope of the image.",
-      "next_step": "close it at the next deployment: build from oci/Dockerfile (D-0560) and let the new preflight gate in tools/deploy/redeploy.sh prove 436/436 before --apply."
+      "next_step": "none — closed. The provenance gate in redeploy.sh preflight is what keeps it closed."
     },
     {
       "id": "F-UNIT-FLAKE-001",

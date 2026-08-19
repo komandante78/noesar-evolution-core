@@ -5247,3 +5247,33 @@ whenever `--image` is given, and refuses a target that does not match the tree.
 **Rollback cost.** None — nothing was deployed, stopped or renamed.
 **Cleanup.** Three throwaway tags built this phase (`g02-provenance`, `g02-nocache`,
 `g02-fixed`) removed under §5a; every analysis container was `docker run --rm`.
+
+## `d0559-provenance-20260819T084001Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0559-provenance-20260819T084001Z`, deployed 08:41Z via
+`tools/deploy/redeploy.sh --apply`. **The first image ever built from the canonical
+`oci/Dockerfile`** rather than from an 88th `Dockerfile.phase4-*` overlay — `D-0559`, authorised
+by the Owner 2026-08-19.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` and `/readyz` **200** on **both**
+`http://…:8100` and `https://…:8443`. 4 children spawned (postgres, api, codev, atom), **0**
+auth-failure lines. `/healthz` 200; `/api/v1/bootstrap` 401, which is the gate answering.
+**Verification.** Byte-equal tree↔image **439/439** before deploy — measured by
+`tools/verify-image-provenance.sh` in preflight, not by hand — and **439/439** again against the
+running image afterwards. Two defects `D-0559` repaired are now live and measured **on the running
+container**: `find /opt/noesar -perm -o+w` = **0** (every previous image shipped the application
+world-writable, protected only by the read-only rootfs), and
+`/opt/noesar/schemas/model-descriptor.schema.json` **present**.
+**What this closes.** `F-IMAGE-STALE-001`: the 9 files that were older in the running image than in
+the tree are gone — the installation is now a **tree state**, not an accumulation. It is also the
+first deployment in this project's history where "the installed bytes are the repository" is a
+measured fact rather than a spot check of the files one overlay happened to copy.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T084122Z`
+(`d0544-health-lane-20260818T160214Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The workspace was backed up **with the service stopped**, 0600 in a 0700
+directory, checksum written — that archive holds credentials and is treated as one.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260818T160230Z` removed (`Exited`, confirmed
+first); its image stays on disk, so the documented rollback path survives. No probe, runner or
+overlay tag was created. Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**,
+non-project containers **50 → 50**
+(`EVIDENCE/docker_inventory_pre_cleanup_D0559_20260819T084001Z.txt`).

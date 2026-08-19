@@ -1,0 +1,12 @@
+===== IMAGE PROVENANCE =====
+root      : /mnt/cachec/NOESAR_EVOLUTION
+candidate : noesar-evolution:d0559-provenance-20260819T084001Z
+reference : <none — tree comparison only>
+
+candidate /opt/noesar: 441 files
+
+----- 4. TREE <-> IMAGE (candidate) -----
+  byte-equal to tree: 439 · differing: 0 · absent from tree: 0 · built in image: 2
+
+RESULT: candidate matches the working tree. No reference image given, so whether it
+        reproduces a deployed image is UNVERIFIED by this run.
