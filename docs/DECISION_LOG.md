@@ -13464,3 +13464,57 @@ correct setup forever.
 does not have is declared rather than discovered) and autonomy (the whole point is that a
 local-only, model-less installation is a first-class configuration that says so).
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0581 · Le quattro righe delle due shell — `CE-021`, `CE-033`, `CE-034`, `CE-036` — 2026-08-19
+**Decision.** Verdetto registrato per i quattro criteri della famiglia «le due shell non
+divergono»: `CE-021` ✅, `CE-033` ✅, `CE-034` ✅, `CE-036` **⚠️ PARZIALE** — la clausola di
+presentazione è **superata da `D-0437`**, non fallita. Tacca **21 → 17**, critical resta **0**.
+**Why.** È la famiglia che questo progetto ha già pagato: la sua stessa skill registra che *«le
+due shell non divergono in nessun punto» è scritto dal 26 luglio, mai applicato, e niente lo
+faceva fallire*. `CE-021` era il caso peggiore: `two-shells-parity.test.mjs` porta una suite
+**intitolata** `CE-021` che misura la tabella dei permessi — una pretesa diversa con il nome del
+criterio, cioè un criterio che nessuna riga misura mentre sembra misurato.
+**Rejected.** Per `CE-033`, «entrambi i file importano `renderFrame`»: è ispezione delle
+*implementazioni*, che il metodo del criterio vieta espressamente. Per `CE-034`, confrontare i tre
+insiemi calcolati: sono la stessa espressione, quindi si confronterebbe un'espressione con sé
+stessa — l'errore `PANEL_NAMES` già pagato due volte.
+**Evidence.** `ce-021-…` **4/4** (con controllo negativo: un **secondo** motore sullo stesso
+workspace **non** trova quella run), `ce-033-…` **7/7**, `ce-034-…` **4/4**, `ce-036-…` **7/7**.
+Due oracoli **visti scattare**: una `terminal.write` solo-browser fa fallire `CE-033`; togliere una
+voce all'insieme offerto dalla shell `ssh` fa fallire `CE-034`. Tacca vista **FALLIRE a 16**, una
+tacca più stretta, prima di essere messa a 17. `npm test` **2881 / 2880 pass / 0 fail / 1 skip
+preesistente**. ESLint 451 file, 0 errori. `scripts/test.sh` **15/15**. seeded-defect-proof
+**19/19**. Installato e verificato dal vivo — vedi `docs/INSTALLATION_LEDGER.md`.
+**Due difetti trovati nello strumento di questa fase stessa, riparati alla regola.** (1) Il
+classificatore del verdetto cercava il glifo `✅` **ovunque** nella cella: la prosa onesta di
+`CE-036` — *«non è un ✅ pieno»* — classificava la riga come **MET**. Lo strumento che esiste
+perché nessuno arrotondi un verdetto lo ha arrotondato lui, e nella direzione pericolosa. Ora una
+cella dichiara il verdetto **con ciò che apre**, e la prosa può nominare gli altri esiti — che è
+esattamente ciò che fa un verdetto parziale onesto. (2) Il controllo di deriva confrontava quattro
+campi e l'**enum** del verdetto, mai il **testo**, dove sta tutta l'evidenza: misurato, il testo di
+`CE-002` era **2.314** caratteri nella proiezione e **1.540** nel documento che lo possiede — un
+paragrafo che `D-0577` aveva aggiunto **alla sola proiezione** — e il controllo passava. Riparato
+all'origine (il paragrafo ora sta nel documento) e alla regola. Entrambi gli oracoli **visti
+scattare**; 5 test di regressione aggiunti.
+**Reversal cost.** Quattro file di test, quattro celle di verdetto, una tacca, due riparazioni di
+strumento con i loro test. Nessun codice di prodotto.
+**Status.** applied, installed and verified live.
+
+## D-0582 · Improvement proposal — una riga di matrice più vecchia della decisione che la governa — 2026-08-19
+**Decision.** Proposta, non eseguita. `CE-036` chiede quattro intestazioni di gruppo dentro la
+casella `/`; `D-0437` le ha tolte su istruzione diretta dell'Owner. **La riga va emendata
+dall'Owner**, non da chi la misura — e il meccanismo generale che manca è che una decisione che
+**supera** un criterio lo dichiari: un campo `supersededBy` sulla riga, controllato dal verificatore
+come già controlla la deriva.
+**Why.** Oggi l'unico posto dove la supersessione esiste è la prosa del verdetto e due test. Una
+riga superata e una riga marcia si leggono identiche fino a che qualcuno non apre il decision log.
+Con `supersededBy` il verificatore può pretendere che una riga PARZIALE nomini la decisione che la
+supera, e una riga che non la nomina torna a essere semplicemente non soddisfatta.
+**Rejected.** Riscrivere `CE-036` per farla combaciare con il prodotto: sarebbe far dire al criterio
+ciò che il codice fa — la definizione di falso PASS strutturale, e il documento non è mio.
+**Evidence.** Misurato in questa fase: 66 criteri, **1** in questo stato, e nessun campo lo esprime.
+**Reversal cost.** Un campo opzionale, un ramo nel verificatore, una riga di documento.
+**Funding fit.** **Restack · tratto 5** — affidabilità misurabile: una matrice di accettazione in cui
+«superato per decisione» è un dato e non una nota a piè di pagina è verificabile da un revisore
+esterno, che è precisamente ciò che un valutatore fa.
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.

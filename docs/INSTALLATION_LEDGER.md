@@ -5369,3 +5369,36 @@ Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-pro
 (`noesar-local` is NOESAR V3's and was not touched)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0579_20260819T155203Z.txt`). Health re-proved after
 cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
+
+## `d0581-shell-parity-20260819T161549Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0581-shell-parity-20260819T161549Z`, deployed 16:16Z via
+`tools/deploy/redeploy.sh --apply`, built from the canonical `oci/Dockerfile`. `D-0581`: the four
+shell-parity acceptance rows measured; ratchet 21 → 17.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz` and `/healthz` **200** on
+**both** `http://…:8100` and `https://…:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **454/454** against the **running** image, **0** differing,
+**0** missing from the directory `COPY`s. Before `--apply`: unit **2881 (2880 pass / 0 fail /
+1 skip)**, battery **15/15**, seeded-defect-proof **19/19**, ESLint **451 files, 0 errors**.
+**Why a deployment for a phase that changed no product code.** Measured before building: the
+running image was behind by **5 files, all under `services/reference-control-plane/test/`** (1
+differing, 4 missing) and **no runtime module** — the image `COPY`s that directory whole. On its
+own that is the low-severity shape `F-IMAGE-STALE-001` recorded and did not deploy for; but
+`D-0565` had just established that the installation **is** a tree state rather than an
+accumulation, and reopening a drift one phase after closing it costs that property for nothing.
+The rebuild is cheap and the argument disappears.
+**Not run, and named rather than skipped in silence.** `tools/run-browser-e2e.sh` and
+`tools/accessibility-audit.mjs`: this phase changed four test files and two tools, no product
+surface, no markup, no DOM, no CSS token. The tools it changed (`acceptance-matrix.mjs`,
+`verify-acceptance-matrix.mjs`) do not ship in the image at all.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T161603Z`
+(`d0579-authoring-reason-20260819T155117Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The workspace was backed up **with the service stopped**, 0600 in a 0700
+directory, checksum written — that archive holds credentials and is treated as one.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T155128Z` removed (`Exited` confirmed
+first; its image stays on disk). Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**,
+non-project containers **50 → 50**; surviving networks exactly `noesar-evolution-net` and
+`noesar-e2e-net` (`noesar-local` is NOESAR V3's and was not touched)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0581_20260819T161627Z.txt`). Health re-proved after
+cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
