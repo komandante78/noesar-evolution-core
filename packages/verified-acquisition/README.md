@@ -137,6 +137,14 @@ downstream that is indistinguishable from tampering. Its vectors carry the input
 expected string **and** its SHA-256, so an implementation in any language is measured against
 those bytes rather than against its own encoder agreeing with itself — no key material needed.
 
+**[`conformance/python/`](./conformance/python/) is a worked example of exactly that**: a second
+implementation of `VA-012`, written from the specification rather than translated from the
+JavaScript, that reads `vectors.json` as data and passes all 16 vectors plus the refusals. It is
+a conformance oracle, not a product component — and the six places where Python's defaults differ
+from these rules are listed in `SPEC.md` `VA-012`, because they are where your implementation will
+differ too. Five were handled while writing it; **the sixth was caught by the vectors**, which is
+the entire argument for having them.
+
 The conformance suite is the part of this package worth more than the code. The code is one
 implementation; the suite is the **specification made executable**, so a second implementation —
 another language, another product, another transport — can be held to the same guarantees instead

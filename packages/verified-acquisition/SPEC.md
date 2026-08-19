@@ -155,6 +155,20 @@ timestamp *(`D-0548`)*.
 SHA-256, so an implementation in any language can be measured **without a private key** and
 without agreeing with itself)*
 
+**This has been done, not only claimed** *(`D-0551`)*. `conformance/python/` is a second
+implementation of this requirement, written from these rules rather than translated from the
+JavaScript, and it passes all 16 vectors plus the refusals. It had to be made to, in six places
+where a language's defaults are silently different — and that list is the practical value of this
+requirement to anyone implementing it:
+
+| Rule | What a plain Python implementation does instead |
+|---|---|
+| 2 | `sorted()` orders by **code point**: `Z, é, Ａ, 😀`. Rule 2 requires `Z, é, 😀, Ａ` |
+| 4 | `repr(1e-7)` is `1e-07`; `repr(1.0)` is `1.0`; `repr(-0.0)` is `-0.0` |
+| 5 | `json.dumps` escapes every non-ASCII character unless `ensure_ascii=False` |
+| 5 | with `ensure_ascii=False` it then emits an unpaired surrogate **raw**, which is not valid UTF-8 |
+| — | the JSON text `-0` parses to negative zero in JavaScript and to the **integer** `0` in Python, so a vector written `-0` loses its meaning in the parser, before any encoder sees it. It is written `-0.0` |
+
 These rules coincide with **RFC 8785 (JSON Canonicalization Scheme)** over the value space above,
 which is where they come from. Full conformance to RFC 8785 is **not claimed and not tested** —
 that would be a separate requirement with its own suite, and claiming a standard one has not

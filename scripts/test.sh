@@ -88,6 +88,12 @@ step auth-smoke      node tools/auth-http-smoke.mjs
 # end-to-end test are named here, where the battery can see them.
 step package-va      node --test packages/verified-acquisition/test/*.test.mjs
 step sign-descriptor node tools/test-sign-model-descriptor.mjs
+# D-0551. The VA-012 vectors, executed by an implementation that shares no line of code with the
+# encoder that produced them. Until this step existed, "any language can be measured against these
+# bytes" was a requirement written down, never a result: every run had been the JavaScript side
+# agreeing with itself. It runs through `pyrun` like the other Python steps, so a host with
+# neither python3 nor docker gets an honest UNAVAILABLE rather than a silent skip.
+step canon-python    pyrun packages/verified-acquisition/conformance/python/run_vectors.py
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

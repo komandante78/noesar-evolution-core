@@ -2,7 +2,7 @@
   "contractVersion": "1.1.0",
   "note": "Declarative cases for the parts of the contract that are pure functions of their input. The behavioural cases (streaming, caps, redirects, signatures) live in index.mjs, because a stub server is code and pretending otherwise would make this file a fiction. Kept inside the package rather than in the repository's top-level conformance/ directory on purpose: this package must stay extractable, and a suite whose vectors live somewhere else is not.",
   "canonicalisation": {
-    "note": "D-0547. Byte-exact canonical encoding vectors — the half of VA-010 that a signer must reproduce before any signature means anything, and the only family here that needs NO key material at all. Each case carries the input value, the exact expected string and its SHA-256, so an implementation in Rust, Python or Go is measured against these bytes rather than against its own encoder agreeing with itself. `rule` points at the numbered rule in SPEC.md VA-012. `preimage: true` means the expected bytes are of the value with its `signature` member REMOVED (rule 7), which is what actually gets signed. The rejection cases (undefined, NaN, bigint, a class instance) live in index.mjs, because JSON cannot express a value JSON has no syntax for. NOTE for anyone regenerating this file with JSON.stringify: it emits -0 as 0, so the negative-zero case would silently become a vacuous pass — that literal is written by hand and test/conformance.test.mjs asserts it survived.",
+    "note": "D-0547. Byte-exact canonical encoding vectors — the half of VA-010 that a signer must reproduce before any signature means anything, and the only family here that needs NO key material at all. Each case carries the input value, the exact expected string and its SHA-256, so an implementation in Rust, Python or Go is measured against these bytes rather than against its own encoder agreeing with itself. `rule` points at the numbered rule in SPEC.md VA-012. `preimage: true` means the expected bytes are of the value with its `signature` member REMOVED (rule 7), which is what actually gets signed. The rejection cases (undefined, NaN, bigint, a class instance) live in index.mjs, because JSON cannot express a value JSON has no syntax for. NOTE for anyone regenerating this file with JSON.stringify: it emits -0 as 0, so the negative-zero case would silently become a vacuous pass — that literal is written by hand and test/conformance.test.mjs asserts it survived. It is written -0.0 and not -0 for a reason found by the Python implementation (D-0551): the JSON text -0 parses to negative zero in JavaScript but to the INTEGER 0 in Python, so the sign was lost in the parser before any encoder saw it. -0.0 preserves it in both. A vector whose meaning depends on the reader is not a cross-language vector.",
     "cases": [
       {
         "id": "empty-object",
@@ -131,7 +131,7 @@
         "id": "negative-zero-encodes-as-zero",
         "rule": 4,
         "value": {
-          "n": -0
+          "n": -0.0
         },
         "expected": "{\"n\":0}",
         "expectedSha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"

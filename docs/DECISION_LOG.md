@@ -12755,3 +12755,65 @@ the reference implementation rather than replacing it.
 fact, which is the difference the funding criteria actually score.
 **Reversal cost.** n/a — not built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0551 · The vectors are executed by a second implementation — the claim becomes a measurement — 2026-08-19
+**Decision.** `packages/verified-acquisition/conformance/python/` — a second implementation of
+`VA-012` written **from the specification, not translated from the JavaScript**, plus a runner that
+reads `vectors.json` as data and checks each case twice (exact string, and SHA-256 of the bytes).
+Wired into `scripts/test.sh` as `canon-python`, through the existing `pyrun`, so a host with
+neither `python3` nor docker declares `UNAVAILABLE` instead of skipping silently.
+**Why.** `VA-012` said an implementation in any language could be measured against these bytes.
+Every run had been the JavaScript side agreeing with itself, and the two oracle tests cripple the
+reference implementation rather than replacing it. A suite only its author has run has been shown
+to measure nothing about anyone else.
+**Rejected.** Rust, which `D-0550` proposed: `pyrun` already exists, while a new crate drags in the
+locked-build and provenance apparatus (`test-rust-build-provenance.py`) for an artefact that is a
+test oracle. Python also gets these rules wrong **by default in six places**, which is what makes it
+a real test rather than a second opinion from a similar design. The Rust variant remains open.
+**Evidence.** Measured on `python:3-slim`, offline: `sorted()` orders by code point
+(`Z, é, Ａ, 😀` against the required `Z, é, 😀, Ａ`); `repr(1e-7)`=`1e-07`; `repr(1.0)`=`1.0`;
+`repr(-0.0)`=`-0.0`; `json.dumps` escapes non-ASCII by default; with `ensure_ascii=False` it emits
+an unpaired surrogate **raw**, which is not valid UTF-8. **The vectors caught two real defects on
+first run** — the surrogate handling above, and the vector file itself (below). Now 40/40 in Python,
+39/39 in JavaScript, `scripts/test.sh` **14/14 steps**, exit 0.
+**Reversal cost.** None — removing it returns `VA-012`'s portability to being asserted.
+**Funding fit.** Restack · traits 2, 5 and 6 — it is the difference between publishing a library and
+publishing a format someone else can implement, and it is measured rather than claimed.
+**Status.** applied, committed, not deployed (a test oracle, no runtime path).
+
+## D-0552 · The negative-zero vector meant two different things in two languages — 2026-08-19
+**Decision.** The vector literal becomes `-0.0` instead of `-0`.
+**Why.** Found by `D-0551` on its first run, and it is a defect in the **artefact**, not in either
+encoder: the JSON text `-0` parses to negative zero in JavaScript and to the **integer `0`** in
+Python, so the sign was lost in the parser before any encoder saw it. The case would have reported
+a Python failure that was really a reader disagreement — and on a reader that rounded the other way
+it would have passed while testing nothing. `-0.0` preserves the sign in both (measured).
+**Rejected.** Dropping the case, or special-casing it per language — a vector whose meaning depends
+on who reads it is not a cross-language vector, which is the only thing this family is for.
+**Evidence.** `json.loads('-0')` → `0` (`int`); `json.loads('-0.0')` → `-0.0` (`float`);
+`JSON.parse('{"n":-0.0}').n` is `-0`. Both suites green after the change; the JavaScript tripwire
+asserting the sign survived still passes.
+**Reversal cost.** None. **Funding fit.** Restack · trait 5 — a test artefact that means the same
+thing to every reader is the minimum for measurable reliability.
+**Status.** applied, committed.
+
+## D-0553 · Improvement proposal — differential fuzz between the two implementations — 2026-08-19
+**Decision.** Proposed, not built: a generator that produces random JSON values — with numbers
+concentrated at the ECMAScript presentation boundaries (`1e-7`/`1e-6`, `1e20`/`1e21`, `2^53`,
+denormals, negative zero) — encodes each with **both** implementations and fails on the first
+disagreement. Offline, no key material, ~120 lines and one step.
+**Why, stated as the limitation it removes.** `VA-012` rule 4 is a general algorithm and the vector
+family measures it with **eight** numbers. `1e-6` versus `1e-7` is precisely where the exponential
+threshold flips, and neither implementation is tested there today. Sixteen hand-written vectors
+prove the two agree on sixteen documents; they do not prove the rule was implemented, and the
+difference is where a third implementer will get hurt.
+**Rejected for this phase.** It is a new instrument with its own failure modes, and this phase's
+claim is that a second implementation exists at all — shipping a fuzzer whose corpus nobody has
+reviewed alongside it would blur what was actually measured.
+**Evidence.** Measured: the `canonicalisation` family carries 8 distinct numeric values across 3
+cases; the boundary values named above appear in none of them.
+**Reversal cost.** n/a — not built.
+**Funding fit.** Restack · traits 5 and 6 — differential testing against a second implementation is
+the strongest reliability evidence a format specification can carry, and it is what a reviewer of
+an interoperability claim actually looks for.
+**Status.** deferred, awaiting the Owner.
