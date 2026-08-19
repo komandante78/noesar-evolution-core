@@ -13266,3 +13266,43 @@ the day one appears, so this proposal cannot be forgotten silently.
 **Funding fit.** **Restack · traits 5 and 3** — measurable reliability (a withdrawable authority is an
 auditable one) and autonomy (revocation is local, offline, on the installation's own engine).
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0573 · CE-003, CE-014 and CE-025 closed by execution — 2026-08-19
+**Decision.** Record ✅ for three more CRITICAL criteria, all test-only, all with their width
+declared: `CE-003` (an undeclared effect is impossible, not forbidden), `CE-014` (the engine
+builds the search query; the user's code never appears in the outgoing request) and `CE-025`
+(the Author never names a path).
+**Why.** Each turns on a distinction a reading cannot settle. `CE-003` is *impossible* vs
+*forbidden* — proven by showing `request()` has no input channel for a path at all, not merely
+that a check refuses one. `CE-014` says «ogni richiesta uscente», and there are **three**, not
+one: the intent gate, the provider, and the content gate. `CE-025` says «insieme … sottoinsieme»,
+so it is asserted on the key SET, never one path at a time.
+**Rejected.** For `CE-014`, a canary test alone: it proves no leak happened on that run. The
+structural assertion — `research.mjs` imports `node:crypto` and nothing else, and calls no
+filesystem reader — proves there is no channel to leak through on any run, and both are kept.
+**Evidence.** `ce-003-…` **10/10**, `ce-014-…` **10/10**, `ce-025-…` **7/7**. Ratchet 27→24,
+critical 6→3, seen to FAIL(2) one notch tighter first. `CE-014`'s canary oracle was **proven to
+fire**: a canary injected into the provider payload turned 3 of the 10 tests red, then restored.
+**Defect found and fixed in this session's own instrument.** `CE-003`'s closure counted a
+**comment** in `skill-catalog.mjs` as a caller of `scopeRequestToTool()`. A scan that reads prose
+as code will one day hide a real call behind an expected one. Both closures now strip trailing
+`//` comments before matching, and `D-0571`'s `CE-002` file was patched with the same rule and
+re-run green (23/23) — fixing the rule, not only the instance (`CLAUDE10.md` §40c).
+**Reversal cost.** None. Three test files, three verdict cells, one ratchet, one scan helper.
+**Status.** applied.
+
+## D-0574 · Improvement proposal — wire `scopeRequestToTool()` before the catalog can mint — 2026-08-19
+**Decision.** Proposed, not executed. `CE-003` holds today partly because catalog tools cannot
+obtain a token at all. The moment a route grants one, the intersection must already be on the
+mint path — not added afterwards.
+**Why.** `tool-catalog.mjs` calls `scopeRequestToTool()` the mechanism of this criterion and
+nothing calls it; `toolCatalogStatus().enforced` is `false` and says so. A correct helper nobody
+invokes is the shape `F-REVOKE-001` already has, one module over.
+**Rejected.** Wiring it now, before any route needs it: it would add a call site with no caller
+to exercise it, which is how an unexercised path rots.
+**Evidence.** `ce-003-undeclared-effect-impossible.test.mjs` pins the caller count at 0 and
+fails the day one appears, so the wiring cannot land silently.
+**Reversal cost.** One call site.
+**Funding fit.** **Restack · traits 5 and 1** — measurable reliability, and a delimited component
+(a declared-effect intersection) reusable by any tool ecosystem, not only this product.
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
