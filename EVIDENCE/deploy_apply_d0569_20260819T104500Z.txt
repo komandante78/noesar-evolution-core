@@ -1,0 +1,40 @@
+PREFLIGHT (read-only) — source: noesar-evolution
+  ok    tool present: docker
+  ok    tool present: awk
+  ok    tool present: sha256sum
+  ok    tool present: tar
+  ok    tool present: date
+  ok    tool present: mktemp
+  ok    randomness: openssl
+  ok    shred present
+  ok    current image: noesar-evolution:d0559-provenance-20260819T084001Z
+  ok    target image present locally: noesar-evolution:d0569-measure-first-20260819T104500Z (no pull will be attempted)
+  ok    image bytes equal the working tree: byte-equal to tree: 440 · differing: 0 · absent from tree: 0 · built in image: 2
+  ok    network exists: noesar-evolution-net
+  ok    restart=unless-stopped · read-only rootfs=true
+  ok    state: running
+  ok    health: healthy
+  ok    environment: 44 variables · ports: 3 · binds: 2
+  ok    every bind source exists on this host
+  ok    backup space: workspace 60 MiB, free 249868 MiB
+  ok    the predecessor name is free
+  ok    rollback: rename the predecessor back and start it — it carries the CURRENT configuration
+
+PREFLIGHT: PASS — nothing written, nothing generated, no container touched.
+  ok    recipe complete: image · network · 6 port flags · 4 binds · 4 tmpfs · 45 env · 4 log opts
+  ok    image will change: noesar-evolution:d0559-provenance-20260819T084001Z -> noesar-evolution:d0569-measure-first-20260819T104500Z
+  ok    clean exit confirmed
+  ok    workspace backed up with the service stopped, 0600 in a 0700 directory, checksum written
+  warn  that archive holds whatever the workspace holds, credentials included — treat it as one
+  ok    predecessor preserved as noesar-evolution-pre-20260819T094349Z
+  ok    replacement created from noesar-evolution:d0569-measure-first-20260819T104500Z
+  ok    replacement healthy
+  ok    child spawned: postgres
+  ok    child spawned: api
+  ok    child spawned: codev
+  ok    child spawned: atom
+  auth-failure lines: 2 (expected 0)
+
+ROLLBACK (automatic): the replacement logged authentication failures
+  the failed replacement was removed
+  the installation is back on its predecessor, carrying the configuration it had

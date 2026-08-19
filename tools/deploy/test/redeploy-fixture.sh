@@ -200,8 +200,27 @@ else
   fail "the rename and the creation were both found" "rename=$rename_at run=$run_at"
 fi
 grep -q 'set -eEuo pipefail' "$TOOL" && pass "the ERR trap can be inherited (-E)" || fail "-E is set" "absent"
-grep -q "grep -icE '401|unauthor|x-atom-token' || true" "$TOOL" \
+grep -q "|| true)\"" "$TOOL" \
   && pass "the zero-count grep cannot trip the ERR trap (|| true kept)" || fail "grep -c guarded" "unguarded"
+# `D-0570`. The auth-failure pattern must read the STRUCTURED field, never a bare `401`: a bare
+# one matches any UUID containing those three digits and rolled back a healthy deployment.
+grep -qE "grep -icE .\"status\": \?\(401\|403\)" "$TOOL" \
+  && pass "the auth-failure guard matches the status field, not a bare 401" \
+  || fail "auth-failure guard is field-anchored" "a bare 401 matches correlation ids"
+# And the property itself, executed rather than asserted about the text: a real log line whose
+# only `401` is inside its correlation id must NOT match. The `|| true` around the counting grep
+# is the same trap this file documents two checks above: `grep -c` exits 1 when the count is
+# ZERO, and under `pipefail` that is the pipeline exit status — the good outcome reported as a
+# failure. It was written without it here first, and it failed, which is the lesson twice.
+AUTH_PATTERN='"status": ?(401|403)|unauthorized|unauthorised|x-atom-token'
+printf '%s\n' '{"correlation_id":"cb401d04-57bb-4b59-bbcb-15ae04edf187","http":{"path":"/livez","status":200}}' \
+  | { grep -icE "$AUTH_PATTERN" || true; } | grep -qx 0 \
+  && pass "a correlation id containing 401 is not an auth failure" \
+  || fail "uuid is not an auth failure" "the pattern still matches an identifier"
+printf '%s\n' '{"http":{"path":"/api/v1/bootstrap","status":401}}' \
+  | { grep -icE "$AUTH_PATTERN" || true; } | grep -qx 1 \
+  && pass "a real 401 IS still an auth failure" \
+  || fail "real 401 still caught" "the repair blinded the guard"
 grep -qE '/mnt/(cachec|user)' "$TOOL" && fail "no host path is hardcoded (§60-64)" "found" \
   || pass "no path of any particular host is hardcoded (§60-64)"
 

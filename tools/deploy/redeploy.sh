@@ -391,7 +391,17 @@ done
 # `|| true` is load-bearing: `grep -c` exits 1 when the count is ZERO, which is the GOOD outcome.
 # Without it, under `set -e` with the ERR trap armed, a deployment that succeeded perfectly rolled
 # itself back. Found by the fixture, which is the only reason it was not found in production.
-AUTH_FAILURES="$(docker logs "$SOURCE" 2>&1 | grep -icE '401|unauthor|x-atom-token' || true)"
+# `D-0570`: this pattern was `401|unauthor|x-atom-token` — a bare substring `401`, matched
+# anywhere in the line. Every request the product logs carries a UUID `correlation_id`, and a
+# UUID contains `401` often enough that this guard rolled back a PERFECTLY HEALTHY deployment
+# on 2026-08-19: 4 children spawned, health `healthy`, and two log lines whose only sin was
+# `cb401d04-…` and `…-4401-…`. Measured on the running installation afterwards: 3 matches, of
+# which exactly ONE was a real 401 and two were UUIDs. A guard that fires on the shape of a
+# random identifier is a coin toss with a rollback attached.
+#
+# The field is structured, so the pattern reads the field. `"status": 401` cannot be produced by
+# an identifier, and `"ms":401` (a request that took 401 ms) is a different key and does not match.
+AUTH_FAILURES="$(docker logs "$SOURCE" 2>&1 | grep -icE '"status": ?(401|403)|unauthorized|unauthorised|x-atom-token' || true)"
 say "  auth-failure lines: $AUTH_FAILURES (expected 0)"
 [ "$AUTH_FAILURES" = "0" ] || fail_after_rename "the replacement logged authentication failures"
 trap - ERR

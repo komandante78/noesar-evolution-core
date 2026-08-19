@@ -13208,3 +13208,24 @@ changed. Reverting means reverting all three together.
 difference between an audit trail and an informed decision.
 **Status.** applied, committed, **NOT deployed** — deployment is a stop condition (§77) and this
 one changes a user-visible flow.
+
+## D-0570 · The deploy guard rolled back a healthy deployment because a UUID contained "401" — 2026-08-19
+**Decision.** `redeploy.sh`'s auth-failure guard now reads the **structured field**
+(`"status": ?(401|403)`) instead of matching a bare `401` anywhere in the line.
+**Why.** It rolled back the `D-0569` deployment: 4 children spawned, health `healthy`, byte-equal
+tree↔image — and 2 "auth-failure lines". Measured on the running installation immediately after:
+**3 matches, of which exactly ONE was a real 401 and two were correlation ids** — `cb401d04-…`
+and `…-4401-…`. Every request this product logs carries a UUID, so the guard was a coin toss
+with a rollback attached, and it had passed until now by luck.
+**Rejected.** Loosening the guard to a warning. The thing it protects against — the api peer
+unable to authenticate to its own peers after a deploy — is real and is worth a rollback; what
+was wrong is that it could not tell that from an identifier.
+**Evidence.** Same three log lines: old pattern **3**, new pattern **1** (the genuine 401 from an
+unauthenticated probe). Fixture **76/76**, with two new property checks that EXECUTE the pattern
+rather than describe it — a line whose only `401` is in its correlation id must not match, and a
+real `"status":401` must. Oracle seen to fire: the field-anchored assertion fails on the
+pre-repair file. The `|| true` around the counting grep was omitted at first and the check failed
+for that exact reason — the same trap this file documents two checks above, learned twice.
+**Reversal cost.** None — one regular expression and three assertions.
+**Funding fit.** **Fits none** — an internal deployment-tool repair, written as such.
+**Status.** applied. The `D-0569` deployment is retried after it.
