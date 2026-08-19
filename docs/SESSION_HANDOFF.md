@@ -1,106 +1,102 @@
 # SESSION HANDOFF
 
-**Last updated:** 2026-08-19 · **Phase:** `s345` — `D-0551`/`D-0552`/`D-0553` (after `s344`, `D-0549`) · **COMMITTED, NOT DEPLOYED**
-**Plan of record:** `MASTER_PROJECT/` · **Live:** `noesar-evolution:d0544-health-lane-20260818T160214Z` (unchanged by this phase, deliberately)
+**Last updated:** 2026-08-19 · **Phase:** `s346` — `D-0554`/`D-0555` (after `s345`, `D-0551`) · **COMMITTED, no code changed**
+**Plan of record:** `MASTER_PROJECT/` · **Live:** `noesar-evolution:d0544-health-lane-20260818T160214Z` (untouched)
 
 ---
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Nothing is pending and nothing is half-built.** The `[UNVERIFIED]` that `s344` closed with —
-*"no non-JavaScript implementation has ever run these vectors"* — is now a measurement.
+**Read [`docs/GAP_REGISTER.md`](GAP_REGISTER.md) first.** It is new, and it is now the only place
+that answers *"what remains to finish the project"* with a date and a command per row.
 
 **Three candidates, the Owner chooses:**
 
-1. **`D-0553`, differential fuzz between the two implementations** (this phase's proposal): random
-   values with numbers concentrated at the ECMAScript presentation boundaries, encoded by both and
-   compared. It removes the limitation named below, which is real and currently open.
-2. **`D-0545`, model availability as an observable signal** (open since `s342`).
-3. **`D-0550`, the Rust variant** — rejected *for now*, not abandoned; the reasoning is in `D-0551`.
+1. **`G-01`, the acceptance matrix** inside `MASTER_PROJECT/` — ids, severities, traceability, risk
+   register. `WORK_PLAN_V5_REWRITE.md` §5 declared this missing on 2026-08-03 and nobody closed it.
+   **It blocks every other row**, because without it "done" is an opinion.
+2. **`G-02`, prove `oci/Dockerfile` reproduces the live image** — 86 overlay Dockerfiles were never
+   folded back, and the delivery ZIPs have no honest provenance until this is measured.
+3. **`D-0555`, make the register measure itself** — this phase's proposal.
 
 ---
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`conformance/python/` is a second implementation of `VA-012`**, written from `SPEC.md` and **not
-translated** from the JavaScript — translating it line by line would have reproduced its
-assumptions along with its behaviour and proved nothing. It reads `vectors.json` as data and
-checks each case twice: against the exact expected string, and against the SHA-256 of the encoded
-bytes, so an implementation that cannot compare strings byte-for-byte can compare digests.
+**The Owner asked what is missing to finish, and no document could answer.** That was the finding,
+and it mattered more than any single gap: all four candidates were stale, and two said so about
+themselves.
 
-**Python gets these rules wrong by default in six places — measured on `python:3-slim`, offline,
-before the implementation was written.** That list is the practical value of `VA-012` to anyone
-implementing it, and it is now in the specification:
+| Document | Last measured | Why it could not answer |
+|---|---|---|
+| `MASTER_PROJECT/09_PIANO.md` §1 | 2026-07-26 | 4 of 15 rows measured **false** today |
+| `docs/WORK_PLAN_V5_REWRITE.md` | 2026-08-03 | self-declares *"piano storico, non stato corrente"* |
+| `docs/REMAINING_WORK.md` | 2026-07-26 | measures against the **retired V4 ruler** (`D-0219`) |
+| `PROJECT_STATE.deferred_items` | various | two entries measured **false** today |
 
-| Rule | Python's default |
-|---|---|
-| 2 | `sorted()` orders by **code point**: `Z, é, Ａ, 😀`. The rule requires `Z, é, 😀, Ａ` |
-| 4 | `repr(1e-7)` → `1e-07` · `repr(1.0)` → `1.0` · `repr(-0.0)` → `-0.0` |
-| 5 | `json.dumps` escapes every non-ASCII character unless `ensure_ascii=False` |
-| 5 | with `ensure_ascii=False` it then emits an unpaired surrogate **raw** — not valid UTF-8 |
+`REMAINING_WORK.md`'s banner said the live list "now lives in `docs/SESSION_HANDOFF.md`" — wrong in
+practice: this file is capped at 150 lines and describes the current phase, by design. Corrected.
 
-**The vectors caught two real defects on their first cross-language run.** That is the argument for
-having written them, and it is not a hypothetical:
-
-- **the implementation**: delegating strings to `json.dumps` emitted a raw lone surrogate where the
-  rule requires `\ud800`. Rule 5 is now written out by hand rather than delegated.
-- **the artefact itself** (`D-0552`): the JSON text `-0` parses to negative zero in JavaScript and
-  to the **integer `0`** in Python. The sign was lost in the *parser*, before any encoder saw it —
-  so the case would have reported a Python failure that was really a reader disagreement, and on a
-  reader rounding the other way it would have passed while testing nothing. Written `-0.0`, both
-  preserve it.
-
-**Verification, this session:**
+**Four rows of the plan's own table were false, and in the good direction** — the work exists:
 
 ```text
-python:3-slim, --network none, repo read-only     40/40 checks, CANONICAL_JSON_PYTHON: PASS
-node --test packages/.../test/                    39/39 pass
-scripts/test.sh                                   14/14 steps PASS, exit 0 (canon-python is new)
-tools/run-eslint.sh                               430 files, 0 errors, 0 warnings
+ReasoningProvider   reasoning.mjs   356 lines · 5 importers · 3 test files
+capability token    capability.mjs  264 lines · 8 importers · 18 test files
+shadow execution    shadow.mjs      433 lines · 5 importers · 5 test files
+OIDC / SCIM         oidc.mjs 144 · scim.mjs 213
 ```
+
+**Two `deferred_items` were false and are corrected in place, original text kept** so the change is
+visible: passkey/WebAuthn "absent" against `webauthn.mjs` (251 lines, imported by `auth.mjs:17`);
+`oci/Dockerfile` "no postgres, no supervisor, bare `node server.mjs`" against 31 matches and
+`ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]`.
+
+**`09_PIANO.md` was deliberately NOT edited.** Its SHA-256 still matches
+`MASTER_PROJECT/PROVENANCE.sha256` — verified this session, before and after — and that intact
+checksum is what makes it the plan **as delivered**. The correction lives in the register instead.
+
+**The first measuring instrument was wrong, and was discarded rather than published.** Matching by
+first `grep` hit, it reported `scim.mjs` as the SAML implementation — a file that names SAML only
+to explain why SAML is the one deliberately not attempted — and Emergency Stop as present on the
+strength of `safety_interlock: { emergencyStop: false }`, a hardware flag in a module catalogue.
+**Two false positives in nineteen rows**, on exactly the question the register exists to answer.
+The corrected method matches the *owning module by name* and is stated in the register so it can be
+challenged.
 
 ---
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-**The open limitation, named rather than left for a reader to find.** `VA-012` rule 4 is a general
-algorithm and the vector family measures it with **eight** numeric values across three cases.
-`1e-6` versus `1e-7` is exactly where the exponential threshold flips, and **neither implementation
-is tested there**. Sixteen hand-written vectors prove the two agree on sixteen documents; they do
-not prove the rule was implemented. That is `D-0553`, and until it runs, "the two implementations
-agree" means *on these cases*, not *in general*.
+**`G-01` is not built.** A gap register says what is missing; an acceptance matrix says what "done"
+means, with an id and a severity per row. Only the second lets a phase close controllably, and this
+phase did not build it — the Owner authorised corrections.
 
-**Rust was rejected for now, with a reason, and stays open.** `pyrun` already existed; a new crate
-would drag in the locked-build and provenance apparatus (`tools/test-rust-build-provenance.py`) for
-an artefact that is a test oracle. Python was also the *better* test here — a language whose
-defaults are wrong in six places measures more than a second implementation of similar design.
+**No code changed, so no suite was re-run beyond validating the state file parses.** Declared rather
+than implied: `node -e JSON.parse` on `PROJECT_STATE.json`, and the provenance checksum. Running the
+full battery would have measured nothing this phase touched.
 
-**Not deployed.** A conformance oracle and a test artefact; no route, no runtime path, no markup.
+**`[UNVERIFIED]`, and it is `G-02`:** whether `oci/Dockerfile` reproduces the running image. The
+three specific claims in the old record are false today; the *general* claim was never measured by
+anyone, and measuring it needs a build no phase has run.
 
-**Portability, checked before closing.** The new step runs through `pyrun`, which prefers a real
-`python3` and otherwise uses a disposable `--network none` container with the repository mounted
-read-only; where a host has neither, `scripts/test.sh` declares `UNAVAILABLE` — never a silent
-skip. Nothing presumes this host. `[VERIFIED]` on this host: no `python3`, `cargo`, `rustc` or `go`
-is installed; both `python:3-slim` and `rust:1-bookworm` images are present locally.
+**The register's own rows prove presence, reachability and the existence of tests — not
+completeness or correctness.** That limit is written into the register itself, because a table of
+green rows is exactly what a reader over-reads.
 
-**`F-UNIT-FLAKE-001` remains open**, one unexplained occurrence, not reproduced in this phase's
-battery either.
-
-**The secret scan was heuristic, and says so** — the gitleaks image is absent and pulling it is a
-network action. Manual scan of the changed set: zero credential-shaped matches, no key material.
+**Budget:** declared ~25 tool calls, spent ~50. The overrun is reported rather than hidden: the
+measurement had to be built twice after the first method was found wrong.
 
 ---
 
 ## FILES THIS PHASE CHANGED
 
 ```text
-NEW  packages/verified-acquisition/conformance/python/canonical_json.py   the second implementation
-NEW  packages/verified-acquisition/conformance/python/run_vectors.py      the vector runner
-MOD  packages/verified-acquisition/conformance/vectors.json               D-0552, -0 -> -0.0
-MOD  packages/verified-acquisition/SPEC.md                                the six divergences
-MOD  packages/verified-acquisition/README.md                              where to start
-MOD  scripts/test.sh                                                      step canon-python
-MOD  docs/DECISION_LOG.md · PROJECT_STATE.json                            D-0551, D-0552, D-0553
+NEW  docs/GAP_REGISTER.md              the live register — read this first
+MOD  docs/REMAINING_WORK.md            banner pointer corrected (content kept verbatim, rule 12)
+MOD  PROJECT_STATE.json                2 deferred_items corrected in place; phase keys
+MOD  docs/DECISION_LOG.md              D-0554, D-0555
+BAK  BACKUPS/PROJECT_STATE.json.s346_<UTC> · BACKUPS/REMAINING_WORK.md.<UTC>
+NOT  MASTER_PROJECT/09_PIANO.md        deliberately untouched — provenance checksum intact
 ```
 
 ---
@@ -109,16 +105,14 @@ MOD  docs/DECISION_LOG.md · PROJECT_STATE.json                            D-055
 
 `B-002` (stale premise: gitleaks *is* wired, the image is simply absent on this host) and `B-011`
 (git history rewritten on the Owner's authorisation, bundle backup taken) — both unchanged. No new
-blocker.
+blocker. `production_ready: false` stands, correctly.
 
 ---
 
-## THE IMPROVEMENT PROPOSAL — `D-0553`, awaiting the Owner
+## THE IMPROVEMENT PROPOSAL — `D-0555`, awaiting the Owner
 
-A differential fuzz between the two implementations: random JSON values, numbers concentrated at
-the ECMAScript presentation boundaries (`1e-7`/`1e-6`, `1e20`/`1e21`, `2^53`, denormals, negative
-zero), encoded by both and failing on the first disagreement. It is the only thing that turns
-"they agree on sixteen documents" into "the rule is implemented". **Funding fit — Restack · traits
-5 and 6:** differential testing against a second implementation is the strongest reliability
-evidence a format specification can carry, and it is what a reviewer of an interoperability claim
-actually looks for.
+`tools/measure-capabilities.mjs`: the corrected measurement as a runnable tool, plus a test that
+fails when the register's table stops matching what the tool reports. This phase repaired four
+stale rows by hand and nothing stops the fifth — every register in this project has rotted the same
+way, written once and measured never again. **Funding fit — Restack · trait 5:** self-verifying
+documentation is the only kind that survives a year.

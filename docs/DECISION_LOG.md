@@ -12817,3 +12817,48 @@ cases; the boundary values named above appear in none of them.
 the strongest reliability evidence a format specification can carry, and it is what a reviewer of
 an interoperability claim actually looks for.
 **Status.** deferred, awaiting the Owner.
+
+## D-0554 · The registers that say what remains become true, and one is created — 2026-08-19
+**Decision.** `docs/GAP_REGISTER.md`: the live, dated, measured register of what remains, with its
+measurement method declared. `PROJECT_STATE.deferred_items`: the two entries measured false today
+are corrected in place, keeping their original text so the change is visible.
+`docs/REMAINING_WORK.md`: its banner's pointer is corrected. `MASTER_PROJECT/09_PIANO.md` is
+**deliberately not edited**.
+**Why.** The Owner asked what remains and no document could answer: all four candidates were stale,
+two said so about themselves, and `REMAINING_WORK.md`'s banner pointed at
+`docs/SESSION_HANDOFF.md`, which is capped at 150 lines and describes the current phase by design.
+A stale register is worse than none — a session reads it and plans to build what is already built.
+**Rejected.** Editing `09_PIANO.md` §1 in place: its SHA-256 still matches
+`MASTER_PROJECT/PROVENANCE.sha256` (verified this session), and that intact checksum is what makes
+it the plan **as delivered**. Correcting it there would trade a provenance guarantee for a
+convenience. Also rejected: rewriting `REMAINING_WORK.md`, kept verbatim under rule 12.
+**Evidence.** Four of the 15 rows of `09_PIANO.md` §1 measured false: `ReasoningProvider`
+(`reasoning.mjs`, 356 lines, 5 importers), capability token (`capability.mjs`, 264 lines, **18**
+test files), shadow execution (`shadow.mjs`, 433 lines), OIDC/SCIM (`oidc.mjs`, `scim.mjs`). Two
+`deferred_items` false: passkey/WebAuthn "absent" against `webauthn.mjs` 251 lines imported by
+`auth.mjs:17`; `oci/Dockerfile` "no postgres, no supervisor, bare `node server.mjs`" against 31
+matches and `ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]`. **The first measuring instrument
+was itself wrong and was discarded**: matching by first `grep` hit, it reported `scim.mjs` as the
+SAML implementation — a file naming SAML only to explain why SAML is not attempted — and Emergency
+Stop as present on `safety_interlock: { emergencyStop: false }`, a hardware flag.
+**Reversal cost.** None; nothing was deleted and the backups are in `BACKUPS/`.
+**Funding fit.** **Fits none** — this is internal record hygiene. Written as such rather than
+stretched into a claim.
+**Status.** applied, committed. `G-01` (the acceptance matrix) remains **open**: a gap register
+says what is missing, a matrix says what "done" means with an id and a severity per row.
+
+## D-0555 · Improvement proposal — the register measures itself, or it rots again — 2026-08-19
+**Decision.** Proposed, not built: `tools/measure-capabilities.mjs` — the corrected measurement of
+`GAP_REGISTER.md` §1 as a runnable tool — plus a test asserting the register's table still matches
+what the tool reports. A row claiming a capability is absent while its module exists fails the
+suite.
+**Why.** This phase repaired four stale rows by hand; nothing stops the fifth. Every register in
+this project rotted the same way — written once, measured never again — and the fix that scales is
+the project's own rule: *a criterion no row measures is not closed*. Applied to the register itself.
+**Rejected for this phase.** The Owner authorised corrections, not a new tool; and a measurement
+tool whose method was wrong twice today earns review before it earns a test that trusts it.
+**Evidence.** Measured: the first method produced 2 false positives out of 19 rows before being
+discarded — an 11% error rate on the exact question the register exists to answer.
+**Funding fit.** Restack · trait 5, measurable reliability — self-verifying documentation is the
+only kind that survives a year.
+**Reversal cost.** n/a — not built. **Status.** deferred, awaiting the Owner.

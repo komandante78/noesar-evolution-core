@@ -9,6 +9,11 @@
 > `F4W-012` are reconciled there against the current ruler, not here — this file is kept
 > verbatim rather than rewritten (rule 12), and a live "what remains" now lives in
 > `docs/SESSION_HANDOFF.md`.
+>
+> **Corrected 2026-08-19 (`D-0554`):** that last pointer was wrong in practice. The handoff is
+> capped at 150 lines and describes *the current phase*, by design — so no document answered
+> "what remains" when the Owner asked. The live register is **`docs/GAP_REGISTER.md`**, measured
+> and dated. This file stays historical evidence, still verbatim below.
 
 **Purpose.** A session asked "what is left to finish the project?" and the first answer was
 wrong twice over: it measured against one instrument and presented that as the whole, and it
