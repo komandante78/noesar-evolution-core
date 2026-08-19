@@ -27,10 +27,17 @@
 import { extract, summarise, MATRIX_JSON, SOURCES } from './acceptance-matrix.mjs';
 import { readFileSync } from 'node:fs';
 
-/** Measured 2026-08-19 (`D-0556`). May be lowered, never raised without a recorded decision. */
-const MAX_UNSTATED = 36;
-/** Of those, how many are CRITICAL. The number that matters most, held separately for that reason. */
-const MAX_UNSTATED_CRITICAL = 15;
+/**
+ * Measured 2026-08-19 (`D-0556`) at 36. May be lowered, never raised without a recorded decision.
+ * Lowered to 34 the same day by `D-0561`, when `CE-001` and `CE-004` gained verdicts.
+ */
+const MAX_UNSTATED = 34;
+/**
+ * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
+ * 15 at `D-0556`, 13 at `D-0561`. Seen to fire at each new floor rather than assumed to: set one
+ * notch tighter, this refuses with `13 CRITICAL criteria have no recorded verdict, up from 12`.
+ */
+const MAX_UNSTATED_CRITICAL = 13;
 
 const KNOWN_SEVERITIES = new Set(['critical', 'high', 'medium']);
 
@@ -72,8 +79,14 @@ if (committed) {
 }
 
 // ── 2 · shape ───────────────────────────────────────────────────────────────────────────────────
+// The prefixes are DERIVED from `SOURCES`, not restated. Written out by hand as
+// `(CE|CUBE|ARCH)` they were a second list that had to be remembered, and adding two source
+// documents (`D-0561`) made all thirteen of their rows "malformed" — a check failing on
+// perfectly well-formed ids because the checker had its own private idea of the alphabet.
+const ID_SHAPE = new RegExp(`^(${[...new Set(SOURCES.map((source) => source.prefix))].join('|')})-\\d{3}$`);
+
 for (const row of live.rows) {
-  if (!/^(CE|CUBE|ARCH)-\d{3}$/.test(row.id)) fail(`${row.id}: malformed id`);
+  if (!ID_SHAPE.test(row.id)) fail(`${row.id}: malformed id (known prefixes: ${ID_SHAPE.source})`);
   if (!KNOWN_SEVERITIES.has(row.severity)) fail(`${row.id}: unknown severity "${row.severity}" — C, A and M are the scale its own header defines`);
   if (!row.criterion) fail(`${row.id}: empty criterion`);
   if (!row.howVerified) fail(`${row.id}: no stated method of verification — the matrix's own rule is that every row is verifiable by executing, not by reading`);

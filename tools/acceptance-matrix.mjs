@@ -7,14 +7,21 @@
 //
 // `docs/WORK_PLAN_V5_REWRITE.md` §5 risk 4 says the rewrite has *"zero matrici con ID e severità,
 // zero tracciabilità"*, and `docs/GAP_REGISTER.md` `G-01` repeated it. **Both are wrong**, measured
-// 2026-08-19: fifty-three criteria exist, each with an id, a severity and a stated method of
-// verification, spread across four documents of `MASTER_PROJECT/`. The matrix's own header says
+// 2026-08-19: **sixty-six** criteria exist, each with an id, a severity and a stated method of
+// verification, spread across six documents of `MASTER_PROJECT/`. The matrix's own header says
 // what it is for — *"ogni riga è verificabile eseguendo, non leggendo"*.
 //
-// What is missing is that **nothing reads them**. Fifty-three criteria in prose, in four files, in
+// What is missing is that **nothing reads them**. Sixty-six criteria in prose, in six files, in
 // two different table shapes, and one test file in the whole repository mentions one id. A matrix
 // nobody executes is the same failure as a criterion nobody measures, one level up — and this
 // project has already paid for that failure twice.
+//
+// The count itself has already been wrong once, in this file. It said fifty-three across four
+// documents, because four was the number of documents somebody listed below — not the number that
+// own criteria. `08_INSTALLAZIONE.md` (10 `INST-*`) and `01_VISIONE_E_POSIZIONE.md` (3 `SESS-*`)
+// had carried the identical five-column table all along, ten of the thirteen rows with a verdict
+// already written. Corrected 2026-08-19 (`D-0561`). A register that omits part of its own subject
+// is the failure it was built to end, one level up again.
 //
 // # What this tool does, and the one thing it refuses to do
 //
@@ -47,6 +54,15 @@ export const SOURCES = Object.freeze([
   { file: 'MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md', prefix: 'CE', owns: 'generation and access — who wrote the change, and the one door' },
   { file: 'MASTER_PROJECT/14_MEMORIA_A_CUBI.md', prefix: 'CUBE', owns: 'memory: immutability, provenance, the schema-enforced walls' },
   { file: 'MASTER_PROJECT/03_ARCHITETTURA.md', prefix: 'ARCH', owns: 'the running shape: supervisor, children, isolation' },
+  // Added 2026-08-19 (`D-0561`), and the reason is the one this tool exists for. Both documents
+  // have carried a five-column acceptance table — the same shape as the four above, verdicts
+  // already written — since before this tool was built, and neither was listed. "53 criteria"
+  // was therefore the size of the LIST, not the size of the acceptance surface, which is 66.
+  // Ten of the thirteen missing rows already stated a verdict, so the omission was not making
+  // the project look better than it is; it was making the register wrong in both directions at
+  // once, and a register nobody can quote whole is the defect `G-01` was opened for.
+  { file: 'MASTER_PROJECT/08_INSTALLAZIONE.md', prefix: 'INST', owns: 'the installation as it runs: mounts, listeners, privileges, the writable surface' },
+  { file: 'MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md', prefix: 'SESS', owns: 'the session packet and its replay — the product\'s evidence claim about itself' },
 ]);
 
 const SEVERITY = Object.freeze({ C: 'critical', A: 'high', M: 'medium' });
@@ -84,7 +100,7 @@ export function parseDocument(file) {
   const lines = readFileSync(absolute, 'utf8').split('\n');
   const rows = [];
   lines.forEach((line, index) => {
-    if (!/^\s*\|\s*`?(CE|CUBE|ARCH)-\d{3}`?\s*\|/.test(line)) return;
+    if (!/^\s*\|\s*`?(CE|CUBE|ARCH|INST|SESS)-\d{3}`?\s*\|/.test(line)) return;
     const parts = cells(line);
     const [id, criterion, severity, howVerified, status] = parts;
     rows.push({

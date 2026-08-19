@@ -428,32 +428,32 @@ Per **dipendenza**, non per importanza. Ogni passo rende possibile il successivo
 severità, quindi non esisteva un modo controllabile di dire "fatto". Ogni riga è verificabile
 eseguendo, non leggendo. Severità: **C** critico (blocca la fase), **A** alto, **M** medio.
 
-| ID | Criterio | Sev | Come si verifica |
-|---|---|---|---|
-| CE-001 | Nessun percorso muta il workspace senza spendere un token coniato da un Piano autorizzato | **C** | suite avversaria il cui unico lavoro è provare a farglielo fare |
-| CE-002 | Un token esaurito, scaduto o revocato è rifiutato su **ogni** superficie | **C** | test per superficie, più un tentativo per ciascuna |
-| CE-003 | Un effetto non dichiarato dallo strumento è impossibile, non vietato | **C** | strumento sonda che tenta un effetto non dichiarato |
-| CE-004 | Il contesto è ricostruito da stato: nessun componente può appendere testo libero | **C** | ispezione + test che rifiuta una scrittura fuori schema |
-| CE-005 | Il contesto alla chiamata *n* ha la stessa forma della chiamata 3, per *n* > 300 | **A** | compito lungo reale, misura della forma e della taglia |
-| CE-006 | Ogni chiamata al modello è rieseguibile isolata dal suo stato registrato | **A** | replay di una decisione scelta a caso da una sessione conclusa |
-| CE-007 | Il contenuto del repository e del web non può alterare istruzioni, policy o token | **C** | suite di prompt injection, zero bypass |
-| CE-008 | L'ombra precede l'autorizzazione: nessun dialogo di autorizzazione senza risultato misurato | **C** | test che tenta di autorizzare un passo mai simulato |
-| CE-009 | La copertura di proiezione è sempre presente, mai arrotondata a "completa" | **A** | test che rifiuta un rapporto senza copertura o con copertura implicita |
-| CE-010 | Il profilo di divergenza è ricalcolato dalla storia git, non configurato a mano | **A** | due repository con convenzioni opposte producono profili opposti |
-| CE-011 | Ogni fatto indotto porta evidenza, conteggio e condizione di smentita | **A** | schema + test: un fatto senza smentita non è scrivibile |
-| CE-012 | Un vettore senza il modello che l'ha prodotto non è confrontabile: **errore**, non numero | **A** | test di confronto fra due spazi diversi |
-| CE-013 | I dati di lavoro non escono e non entrano nella semantica del prodotto | **C** | canary per semantica, verificato dallo schema |
-| CE-014 | La query di ricerca è costruita dal motore; il codice dell'utente non compare mai nell'uscita | **C** | canary nel workspace, ispezione di ogni richiesta uscente |
-| CE-015 | Un risultato dal web non è applicabile finché non è stato eseguito e verificato in sandbox | **C** | test che tenta di promuovere una fonte non eseguita |
-| CE-016 | A riposo il programma ha zero strumenti caricati | **A** | misura del contesto a sessione appena aperta |
-| CE-017 | Ogni passo mutativo è preceduto da un checkpoint, e il ripristino è byte-identico | **C** | ripristino verificato con checksum su ogni classe di passo |
-| CE-018 | Il ledger è append-only, con digest concatenato che rileva una manomissione | **C** | tentativo di riscrittura, verifica della catena |
-| CE-019 | Il rapporto finale ha `NON FATTO` non vuoto senza dichiararlo | **M** | test sul formato |
-| CE-020 | Ogni capacità ha una forma da tastiera completa | **A** | ogni capacità esercitata dal TUI, senza mouse |
-| CE-021 | Le due shell mostrano la stessa sessione viva, e staccarsi non ferma il compito | **A** | avvio in una shell, distacco, aggancio dall'altra |
-| CE-022 | **Il criterio di "fatto" passa con il solo provider di riferimento, senza ATOM** | **C** | l'intera suite eseguita con ATOM disinstallato |
-| CE-023 | Con ATOM la copertura di proiezione è **misurata**, non asserita | **A** | stesso compito con e senza, delta riportato |
-| CE-024 | Il tempo di revisione umana per cambiamento accettato è misurato e riportato | **M** | strumentazione del banco di revisione |
+| ID | Criterio | Sev | Come si verifica | Verdetto |
+|---|---|---|---|---|
+| CE-001 | Nessun percorso muta il workspace senza spendere un token coniato da un Piano autorizzato | **C** | suite avversaria il cui unico lavoro è provare a farglielo fare | ✅ **verificato 2026-08-19 (`D-0561`)** — `services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs`, 20/20: nove modi di tenere qualcosa di simile a un token, e dopo ognuno i **byte** su disco invariati (non solo il rifiuto); più la **chiusura**, derivata dal sorgente a ogni esecuzione — 114 moduli, 28 scrivono, **3 soli** conoscono la radice del workspace, ciascuno dichiarato. Eccezione nominata, non nascosta: `restore()` muta il workspace **senza spendere un token** e regge su una proprietà diversa — può riscrivere solo i byte che la promozione aveva catturato — misurata qui a parte. |
+| CE-002 | Un token esaurito, scaduto o revocato è rifiutato su **ogni** superficie | **C** | test per superficie, più un tentativo per ciascuna |  |
+| CE-003 | Un effetto non dichiarato dallo strumento è impossibile, non vietato | **C** | strumento sonda che tenta un effetto non dichiarato |  |
+| CE-004 | Il contesto è ricostruito da stato: nessun componente può appendere testo libero | **C** | ispezione + test che rifiuta una scrittura fuori schema | ✅ **verificato 2026-08-19 (`D-0561`)** — i due modi che il criterio chiede, entrambi eseguiti: **ispezione** della superficie esportata di `services/reference-control-plane/src/context-projector.mjs` (`CONTEXT_SECTIONS` congelato, `validateFact`, `projectContext`, `renderProjection`, `projectionShape`, `projectionByteCeiling`: **nessuna funzione di append**, nessuna sezione a testo libero a cui puntare) e **test che rifiuta una scrittura fuori schema** — `context-projection.test.mjs` **16/16**, di cui 9 casi `CE-004`, incluso «una scrittura rifiutata lascia lo store intatto». |
+| CE-005 | Il contesto alla chiamata *n* ha la stessa forma della chiamata 3, per *n* > 300 | **A** | compito lungo reale, misura della forma e della taglia |  |
+| CE-006 | Ogni chiamata al modello è rieseguibile isolata dal suo stato registrato | **A** | replay di una decisione scelta a caso da una sessione conclusa |  |
+| CE-007 | Il contenuto del repository e del web non può alterare istruzioni, policy o token | **C** | suite di prompt injection, zero bypass |  |
+| CE-008 | L'ombra precede l'autorizzazione: nessun dialogo di autorizzazione senza risultato misurato | **C** | test che tenta di autorizzare un passo mai simulato |  |
+| CE-009 | La copertura di proiezione è sempre presente, mai arrotondata a "completa" | **A** | test che rifiuta un rapporto senza copertura o con copertura implicita |  |
+| CE-010 | Il profilo di divergenza è ricalcolato dalla storia git, non configurato a mano | **A** | due repository con convenzioni opposte producono profili opposti |  |
+| CE-011 | Ogni fatto indotto porta evidenza, conteggio e condizione di smentita | **A** | schema + test: un fatto senza smentita non è scrivibile |  |
+| CE-012 | Un vettore senza il modello che l'ha prodotto non è confrontabile: **errore**, non numero | **A** | test di confronto fra due spazi diversi |  |
+| CE-013 | I dati di lavoro non escono e non entrano nella semantica del prodotto | **C** | canary per semantica, verificato dallo schema |  |
+| CE-014 | La query di ricerca è costruita dal motore; il codice dell'utente non compare mai nell'uscita | **C** | canary nel workspace, ispezione di ogni richiesta uscente |  |
+| CE-015 | Un risultato dal web non è applicabile finché non è stato eseguito e verificato in sandbox | **C** | test che tenta di promuovere una fonte non eseguita |  |
+| CE-016 | A riposo il programma ha zero strumenti caricati | **A** | misura del contesto a sessione appena aperta |  |
+| CE-017 | Ogni passo mutativo è preceduto da un checkpoint, e il ripristino è byte-identico | **C** | ripristino verificato con checksum su ogni classe di passo |  |
+| CE-018 | Il ledger è append-only, con digest concatenato che rileva una manomissione | **C** | tentativo di riscrittura, verifica della catena |  |
+| CE-019 | Il rapporto finale ha `NON FATTO` non vuoto senza dichiararlo | **M** | test sul formato |  |
+| CE-020 | Ogni capacità ha una forma da tastiera completa | **A** | ogni capacità esercitata dal TUI, senza mouse |  |
+| CE-021 | Le due shell mostrano la stessa sessione viva, e staccarsi non ferma il compito | **A** | avvio in una shell, distacco, aggancio dall'altra |  |
+| CE-022 | **Il criterio di "fatto" passa con il solo provider di riferimento, senza ATOM** | **C** | l'intera suite eseguita con ATOM disinstallato |  |
+| CE-023 | Con ATOM la copertura di proiezione è **misurata**, non asserita | **A** | stesso compito con e senza, delta riportato |  |
+| CE-024 | Il tempo di revisione umana per cambiamento accettato è misurato e riportato | **M** | strumentazione del banco di revisione |  |
 
 **Il criterio complessivo della fase 1** resta quello di `09_PIANO.md` §3, e questa matrice ne è
 la forma eseguibile:

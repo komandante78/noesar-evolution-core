@@ -12969,3 +12969,54 @@ image came to hold what it holds, and §12 forbids it besides.
 **Funding fit.** **Restack · trait 5**, measurable reliability: an image whose contents are a
 function of a commit is auditable; one whose contents are a function of its build order is not.
 **Status.** proposed — the Owner's call, per §69.
+
+## D-0561 · CE-001 and CE-004 get verdicts, and the register turns out to be 66 rows — 2026-08-19
+**Decision.** `CE-001` — *nessun percorso muta il workspace senza spendere un token coniato da un
+Piano autorizzato* — is recorded **met**, produced by the adversarial suite it names:
+`services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs`. `CE-004` is
+recorded **met** from the two things its own method asks for, both run this session. A 5th column
+was added to `15`'s table, which had no place to record a verdict at all.
+**Why.** They were 2 of the 15 CRITICAL criteria with no verdict anywhere. What no existing suite
+measured is the word `CE-001` turns on — **nessun percorso**: every suite proves the path it drives
+refuses without a token; none proved there is no other path. Section 1 derives the writers from the
+source each run — **114 modules, 28 write, 3 know where the workspace is** — and fails when that
+set grows. Section 2 asserts the **bytes** after each refusal, because `performed:false` is a report
+and CE-001 is about mutation.
+**Rejected.** Recording CE-001 from the suites that already existed. They test nine good paths; the
+criterion is about the tenth nobody wrote.
+**Evidence.** New suite **20/20**; the positive control landed the write, and an early wrong case
+(an "expired" token that had not expired at `NOW`) **failed first**, which is the control firing
+twice. `context-projection.test.mjs` **16/16**, 9 of them `CE-004`, plus the inspection: no append
+in `context-projector.mjs`'s exported surface. Matrix now **66 criteria, 32 with a verdict (28
+met), 34 without, 13 critical** — ratchet lowered 36→34 and 15→13, **seen to fail** one notch
+tighter. Unit **2706 pass / 0 fail**.
+**Also found and fixed, at the rule not the instance.** The register measured **53 criteria in 4
+documents** while `08_INSTALLAZIONE.md` (10 `INST-*`) and `01_VISIONE_E_POSIZIONE.md` (3 `SESS-*`)
+had carried the same five-column table all along — **10 of the 13 with a verdict already written**.
+Both are now sources. The id-shape check and the guard test each restated `(CE|CUBE|ARCH)` by hand
+and failed on all thirteen well-formed ids; both now **derive** the alphabet from `SOURCES`.
+**Named, not hidden.** `restore()` mutates the workspace and spends **no token**. It is bounded by a
+different property — it can only write back bytes promotion captured — which is measured as its own
+case and stated in the verdict rather than folded into it.
+**Reversal cost.** None: a test file, a documentation column, two sources and two derived regexes.
+**Funding fit.** **Restack · traits 5 and 1** — a criterion with a derived closure and a byte-level
+assertion is measurable reliability, on a delimited component.
+**Status.** applied, committed. 13 critical criteria still carry no verdict.
+
+## D-0562 · Improvement proposal — a closure helper for the other "no path" criteria — 2026-08-19
+**Decision.** Proposed, not executed: extract the pattern `D-0561` used for `CE-001` — derive the
+candidate set from the source, compare it to a declared list where every entry carries its reason,
+fail when the derived set grows — into a small shared `tools/closure.mjs`, and give the other
+absence-shaped criteria a derived test instead of an anecdotal one: `CE-003` (an undeclared effect
+is impossible), `CE-013`/`CE-014` (work data does not leave), `CE-018` (the ledger is append-only).
+**Why.** Four of the thirteen remaining critical criteria assert that **no** route does something.
+That class cannot be closed by testing the routes somebody thought of, and writing the derivation by
+hand a fourth time is how the four end up disagreeing about what counts as a route.
+**Rejected.** Leaving each criterion its own bespoke closure. It is what produced two hand-restated
+copies of `(CE|CUBE|ARCH)` that this phase had to repair.
+**Evidence.** The `CE-001` closure is 40 lines of the 300-line suite and found its own answer:
+3 of 28 writers. Cost: one module plus a rewrite of that section.
+**Reversal cost.** None — a helper the suites may or may not import.
+**Funding fit.** **Restack · trait 2**, reusable beyond this product: "prove no other code path does
+X" is a check any audited codebase wants and almost none has.
+**Status.** proposed — the Owner's call, per §69.

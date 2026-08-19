@@ -12,17 +12,27 @@ import { extract, summarise, SOURCES, MATRIX_JSON } from '../../../tools/accepta
 describe('the acceptance matrix is read from the documents that own it — D-0556', () => {
   const matrix = extract();
 
-  test('all four owning documents are parsed, and each yields rows', () => {
-    assert.equal(SOURCES.length, 4);
+  // `D-0561`: this said `SOURCES.length === 4` and the id shape said `(CE|CUBE|ARCH)`. Both were
+  // the count and the alphabet of the day it was written, restated in a second place — so adding
+  // the two documents that had carried acceptance tables all along broke a guard that had nothing
+  // to say about them. What the guard is actually for is below, unchanged: a listed document that
+  // yields no rows, because a table that stopped parsing looks exactly like a table that was
+  // deleted. The floor on the total row count is the same guarantee for the whole set.
+  test('every owning document is parsed, and each yields rows', () => {
+    assert.ok(SOURCES.length >= 4, `only ${SOURCES.length} owning documents are listed`);
     for (const source of SOURCES) {
       const rows = matrix.rows.filter((row) => row.source.startsWith(source.file));
       assert.ok(rows.length > 0, `${source.file} yielded no criteria — a table that stopped parsing looks exactly like a table that was deleted`);
     }
+    assert.ok(matrix.rows.length >= 66,
+      `${matrix.rows.length} criteria parsed, fewer than the 66 measured on 2026-08-19 — a table stopped parsing`);
   });
+
+  const ID_SHAPE = new RegExp(`^(${[...new Set(SOURCES.map((source) => source.prefix))].join('|')})-\\d{3}$`);
 
   test('every row carries an id, a criterion, a known severity and a method of verification', () => {
     for (const row of matrix.rows) {
-      assert.match(row.id, /^(CE|CUBE|ARCH)-\d{3}$/, `${row.source}`);
+      assert.match(row.id, ID_SHAPE, `${row.source}`);
       assert.ok(row.criterion.length > 10, `${row.id}: criterion too short to be one`);
       assert.ok(['critical', 'high', 'medium'].includes(row.severity), `${row.id}: severity "${row.severity}"`);
       assert.ok(row.howVerified.length > 0, `${row.id}: no stated method of verification`);
