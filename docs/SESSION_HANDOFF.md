@@ -1,116 +1,97 @@
 # SESSION HANDOFF
 
-**Phase:** the deployment + `G-01` slice 3 — `D-0565` (install), `D-0566` (three criteria),
-`D-0568` (a defect in this session's own instrument), `D-0567` (proposal, saved not executed).
-**Commit:** `e6057f6`, pushed to `origin/main`.
-**Live installation:** **CHANGED** — now `noesar-evolution:d0559-provenance-20260819T084001Z`,
-`running`/`healthy`, `RestartCount=0`. Predecessor `noesar-evolution-pre-20260819T084122Z` kept.
+**Phase:** `D-0569` — the Owner authorised `D-0567` and it was executed whole.
+**Commit:** `02b06a0`, pushed to `origin/main`.
+**Live installation:** `noesar-evolution:d0559-provenance-20260819T084001Z`, `running`/`healthy`
+— **and it still serves the one-call flow.** This change is **not deployed**.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Six of the fifteen critical criteria are closed. Eight still carry no verdict:**
+**One decision for the Owner, then the work.**
+
+1. **Deploy `D-0569`.** It changes a user-visible flow (a second button, an Approve that is
+   disabled until the plan is measured), so §77 stops here rather than deciding for you. Until
+   it is deployed, **`CE-008` holds in the repository and not on the live box** — the register
+   records the code, and that distinction is exactly the one `D-0565` was opened to end. The
+   browser E2E and the accessibility audit should run with it: both need puppeteer, which lives
+   only in the e2e container, so neither has run against this markup yet.
+2. **Then the 8 CRITICAL criteria with no verdict:**
 
 ```text
 CE-002  CE-003  CE-007  CE-013  CE-014  CE-015  CE-025  CE-029
 ```
 
-Plus **`CE-008`, which now has a verdict and it is a `❌`** — the register's first. It is not in
-the list above because it is measured, not unknown; closing it is `D-0567`, an Owner decision.
-
 `CE-003`, `CE-013` and `CE-014` are **absence-shaped** — `D-0562` proposes the shared closure
-helper for exactly that class. `node tools/verify-acceptance-matrix.mjs` prints the list and holds
-the ratchet (**29 / 8**).
-
-Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
-build. Proposals are saved, not executed.
+helper for that class.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-### 1. The installation is a tree state, not an accumulation (`D-0565`)
+**`CE-008` was `❌` this morning and is `✅` now.** It is the only row in the register that has
+been both, and that is the register working rather than a register being edited.
 
-The first image in this project's history built from `oci/Dockerfile` rather than from an 88th
-`Dockerfile.phase4-*` overlay is **deployed**. Measured **on the running container**, not inferred:
+**The naive fix is circular, which is why the shape is what it is.** "Execute at `plan()` time"
+cannot work: `execute()` refuses without a token, a token comes only from an authorised plan, and
+an authorisation needs a human. So there are now **two authorisations of two different things**:
 
-| Measured live | Result |
-|---|---|
-| `find /opt/noesar -perm -o+w` inside the running container | **0** — every previous image shipped the application **world-writable**, with only the read-only rootfs in the way |
-| `schemas/model-descriptor.schema.json` | **present** — the recipe had never copied it |
-| byte-equal tree↔image, preflight **and** after | **439 / 439** both times |
-| health | `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines, `/livez` + `/readyz` **200** on HTTP and HTTPS |
+| Call | Authorises | Can it reach the workspace? |
+|---|---|---|
+| `measure()` | a run **in a shadow** — mints its own token, executes, compares, recomputes the declared claims | **no** |
+| `approve()` | **the change**, answered against that result — mints the second token | yes, and it never re-executes: what is promoted is what was shown |
 
-**`F-IMAGE-STALE-001` is closed.** Rollback: restart `noesar-evolution-pre-20260819T084122Z`; its
-image is on disk; no migration, no schema change, no configuration key.
+**Read off the ledger rather than the source**, which is where the criterion is actually
+checkable: `measuring → executor.ran → shadow.compared → claims_verified → measured → approved →
+promoted`, with **two** `capability.minted`.
 
-### 2. Three more criteria, and the first honest `❌` (`D-0566`)
+**A side effect that was not the goal: `CE-001` is stronger than it was this morning.** The
+workspace mutation now spends **its own token**, one use per file inside `#promote`, *before*
+each write — the same spend-before-effect order the executor keeps — instead of inheriting the
+token spent to write into the shadow.
 
-- **`CE-026` MET** — what lands in the workspace is the **shadow's** bytes, the shadow does not
-  survive the call (0 directories left behind), and a run whose verification was **contradicted**
-  promotes nothing: the real file keeps its previous bytes.
-- **`CE-022` MET, in a harder form than it asks for** — the whole battery **15/15, exit 0**, with
-  ATOM not merely uninstalled but **selected and unreachable**. The product carries on with the
-  reference provider and **declares** the degradation (`D-0312`).
-- **`CE-008` NOT MET, recorded `❌`** — its own method was executed and the attempt it says must be
-  refused **succeeds**: `approve()` promotes a run nobody simulated. Read off the **ledger**, not
-  the source, the order is `approved` → `executor.ran` → `shadow.compared`. The shadow protects the
-  **promotion**, not the **dialogue**, and `simulate()` is optional and answers `supported: false`
-  on the reference provider — so on that installation there is no measured result to approve
-  against at all. The test is green and *characterises* the gap: change the order and it fails, so
-  the verdict must be re-written rather than inherited.
+**Both shells, and the graphics.** `measure` is declared **once**, in the command registry the
+browser and the terminal share, so neither could get it without the other. The WebUI keeps
+**Approve disabled** until a measurement exists, and its title says why. Four new strings are in
+the translation catalogue; the one written at runtime is declared in `RUNTIME_ONLY` — the guard
+that noticed it was a stale catalogue entry, not a missing one.
 
-**That `CE-022` run was RED first — 13/15 — and neither failure was the product.** Three places
-read the ambient environment and broke when it differed: the `workspace-actions` fixture and its
-HTTP adversarial twin gained a `workspace_action.degraded` event that is correct behaviour, and
-`tools/auth-http-smoke.mjs` spawned the server with `process.env` and then asserted
-`mode === 'reference-node'` — measuring the shell it was launched from. All three now **pin** the
-four keys the router reads. Without that repair `CE-022` was not repeatably measurable.
-
-### 3. The session's own instrument was blind in one direction (`D-0568`)
-
-`tools/verify-image-provenance.sh` walked the **image** and asked the tree about it — so a file the
-recipe never copies was **invisible to it**, which is precisely the defect `D-0559` repaired. That
-one was caught only because a second image happened to carry the file; the deploy gate performs a
-**one-image** run and would have said `PASS`. Section `4b` now derives what every directory `COPY`
-promises and checks it is there. **Oracle seen to fire on real data**; on a fresh build:
-**440/440** byte-equal, **422** expected from directory COPYs, **0** missing.
-
-**Verification produced this session:** battery **15/15 exit 0** (twice: default, and under
-ATOM-selected-but-absent); unit **2721 pass / 0 fail / 1 skipped**; ESLint **437 files, 0 errors**;
-redeploy fixture **73/73**; matrix **PASS** — 66 criteria, 37 with a verdict (32 met), 29 without,
-8 critical. Ratchet **32 → 29** and **11 → 8**, seen to fail one notch tighter.
+**Verification produced this session:** unit **2725 pass / 0 fail**; battery `scripts/test.sh`
+**15/15, exit 0**; ESLint **437 files, 0 errors**; matrix **PASS** — 66 criteria, 37 with a
+verdict, **33 met**, 29 without, **8 critical**.
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **The running image is byte-equal to the commit it was built from, not to HEAD.** The tree has
-  advanced since by **test-only** changes (2 files differ, 1 absent). The gate therefore **refuses**
-  a redeploy of that tag — correct behaviour, not a defect. No product code changed after the
-  deploy, so §3a asks for no second deployment.
-- **`CE-008` is an open gap with a recorded verdict.** Closing it is `D-0567` and it is not small:
-  `plan()` would become stateful and the shadow's lifetime has to be designed.
-- **8 critical criteria still have no verdict.** `production_ready` stays **false**, correctly.
-- **`[UNVERIFIED]`: nothing exercised a signed-in browser session against the new installation.**
-  Live verification used health, byte-equality and unauthenticated surfaces only, because §3a 11e
-  forbids running the mutating suites against the installation.
-- **The secret scan was HEURISTIC**, declared: the `gitleaks` image is absent and rule 45 forbids
-  installing tooling to satisfy the rule. No key, token, password, archive, binary or `.env`.
-- **Dismissed with evidence:** `SC1007` on `CDPATH= cd` in the provenance tool — the idiom every
-  shipped script here uses, already recorded as a known false positive.
+- **Not deployed.** On the live installation `CE-008` does **not** hold yet. Stated plainly
+  because the opposite reading — "the criterion is closed" — is the one the register invites.
+- **`[UNVERIFIED]`: no browser has opened this markup.** The DOM change is one new button and a
+  `disabled` attribute; the i18n coverage, shell-parity and view-model suites cover the registry,
+  the strings and the call map, but `tools/browser-e2e.mjs` and `tools/accessibility-audit.mjs`
+  both need puppeteer and were not run. Named, not skipped quietly.
+- **The shadow is held in memory between `measure()` and `approve()`.** A restart loses it:
+  `approve()` refuses `MEASUREMENT_LOST` and `measure()` runs again. Proven with two
+  orchestrators over one run store — a real restart, not a simulated one.
+- **Reversal cost is real for once**: the HTTP surface gained a route, the run gained a state and
+  both shells changed. Reverting means reverting all three together.
+- **8 critical criteria still have no verdict.** `production_ready` stays **false**.
 
-## SESSION CLOSE — `CLAUDE10.md` §5a
+## FILES THIS PHASE CHANGED
 
-Inventory: `EVIDENCE/docker_inventory_pre_cleanup_D0559_20260819T084001Z.txt`. Removed: the older
-rollback `noesar-evolution-pre-20260818T160230Z` (`Exited`, confirmed first — its image stays on
-disk) and the throwaway build tag `g02check-20260819T084001Z`. Survivors are exactly the two §21b
-permits. **Containers 53 → 52 · volumes 65 → 65 · networks 10 → 10 · non-project containers
-50 → 50.** No `prune` of any kind. Product proven healthy afterwards.
+```text
+services/reference-control-plane/src/workspace-actions.mjs   measure(), approve(), #promote spends
+services/reference-control-plane/src/server.mjs              POST /workspace-actions/:id/measure
+services/reference-control-plane/src/session-protocol.mjs    workspace.measure + its permission policy
+apps/shared/coden/agent-commands.js                          the command, declared once for both shells
+apps/webui-static/{app.js,index.html,coden-view-model.js}    the flow, the button, the call map
+apps/webui-static/i18n-catalog.js                            4 strings + 1 RUNTIME_ONLY entry
+MASTER_PROJECT/15_…md                                        CE-008 ❌ → ✅
++ 9 test files updated to the two-step flow, 1 rewritten from characterising the gap to proving
+  it closed (ce-008-shadow-precedes-authorization.test.mjs, 9/9)
+```
 
-## THE IMPROVEMENT PROPOSAL — `D-0567`, **saved, not offered**
+## THE IMPROVEMENT PROPOSAL — carried, not new
 
-Move the execution-into-shadow to `plan()` time, so the approval dialogue is offered **against a
-measured result** and `approve()` promotes an outcome the approver has already seen — closing
-`CE-008` for real. **Rejected alternative:** making `simulate()` mandatory, which would make the
-core unusable without an external provider and break `CE-022` and `FOSS_CORE_DEPENDS_ON_ATOM =
-false` with it. **Funding fit: Restack · trait 5** — an authorisation shown its measured
-consequence is the difference between an audit trail and an informed decision.
+`D-0564` (anchor the ledger head outside the file, so a wholesale rewrite is detectable) remains
+the best unbuilt idea and is now the most valuable one: this phase doubled the number of
+authority events per run, and every one of them rests on a chain that is a hash, not a signature.
+**Funding fit: Restack · traits 5 and 3.**
 
 ## OPEN BLOCKERS
 
