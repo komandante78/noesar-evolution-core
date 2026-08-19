@@ -94,6 +94,11 @@ step sign-descriptor node tools/test-sign-model-descriptor.mjs
 # agreeing with itself. It runs through `pyrun` like the other Python steps, so a host with
 # neither python3 nor docker gets an honest UNAVAILABLE rather than a silent skip.
 step canon-python    pyrun packages/verified-acquisition/conformance/python/run_vectors.py
+# D-0556. The 53 acceptance criteria of MASTER_PROJECT stop being prose: this fails when a
+# document and docs/acceptance-matrix.json disagree, when a criterion states no method of
+# verification, or when the number of criteria carrying NO verdict at all gets worse. It never
+# decides that a criterion passes — status is read from the document that owns it, never inferred.
+step matrix          node tools/verify-acceptance-matrix.mjs
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

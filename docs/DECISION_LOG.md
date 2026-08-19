@@ -12862,3 +12862,47 @@ discarded — an 11% error rate on the exact question the register exists to ans
 **Funding fit.** Restack · trait 5, measurable reliability — self-verifying documentation is the
 only kind that survives a year.
 **Reversal cost.** n/a — not built. **Status.** deferred, awaiting the Owner.
+
+## D-0556 · The 53 acceptance criteria become machine-readable, and their gap becomes a number — 2026-08-19
+**Decision.** `tools/acceptance-matrix.mjs` projects the four matrices of `MASTER_PROJECT/` into
+`docs/acceptance-matrix.json`; `tools/verify-acceptance-matrix.mjs` fails on drift between the two,
+on a criterion stating no method of verification, and on the count of criteria with **no recorded
+verdict** getting worse — a ratchet that may only go down. Wired as `scripts/test.sh` step `matrix`.
+It **never decides that a criterion passes**: status is read from the document that owns it.
+**Why.** `WORK_PLAN_V5_REWRITE.md` §5 risk 4 and `G-01` both said the rewrite has *"zero matrici
+con ID e severità"*. **Both were false** — 53 criteria exist with id, severity and stated
+verification method, and their own header says *"ogni riga è verificabile eseguendo, non
+leggendo"*. What was actually missing is that nothing read them: one test file in the repository
+mentioned one id. Two wrong records in two days on the same question is why the answer is a tool
+and not a third document.
+**Rejected.** Binding each criterion to a test now — 53 bindings asserted in one pass would be the
+kind of claim this project has learned to distrust, and a wrong binding reports a criterion as
+measured when it is not. Also rejected: failing the battery on the 36 unstated verdicts, which
+would make it permanently red, and a permanently red check is one people learn to ignore.
+**Evidence.** `node tools/verify-acceptance-matrix.mjs` → 53 criteria · 17 with a recorded verdict
+(15 met, `ARCH-005` partial, `ARCH-008` other) · **36 with none, 15 of them CRITICAL** —
+`CE-001 CE-002 CE-003 CE-004 CE-007 CE-008 CE-013 CE-014 CE-015 CE-017 CE-018 CE-022 CE-025 CE-026
+CE-029`. `CE-001` is *"nessun percorso muta il workspace senza spendere un token coniato da un
+Piano autorizzato"* — the product's central security claim, with no verdict recorded anywhere.
+**Oracle seen to fire**: a criterion tampered with in the committed JSON is refused, exit 1;
+regenerating restores PASS. Battery **15/15 steps**, exit 0; unit 2646 pass; ESLint 430 files 0 errors.
+**Reversal cost.** None — the tool reads; nothing in `MASTER_PROJECT/` was modified.
+**Funding fit.** Restack · trait 5, measurable reliability — an acceptance matrix a machine checks,
+with a published gap count, is what an assessor of an interoperability or assurance claim looks for.
+**Status.** applied, committed. **The 15 critical verdicts are now the project's headline gap.**
+
+## D-0557 · Improvement proposal — bind each criterion to the check that measures it — 2026-08-19
+**Decision.** Proposed, saved for after delivery per the Owner's instruction of 2026-08-19: a
+`measuredBy` binding per criterion — test file, tool, or e2e case — so the matrix reports
+`MEASURED_PASS` from a run rather than `RECORDED_MET` from prose, and the ratchet becomes
+"criteria measured by an executable check", which is the number that actually means "done".
+**Why.** Today 17 verdicts are recorded *in prose by their author*. That is better than nothing and
+weaker than a result: `D-0554` found four such prose records false in a single session.
+**Rejected for now.** Fifty-three bindings asserted in one pass, unverified, would be exactly the
+false-confidence artefact the matrix exists to prevent. It is done criterion by criterion, each
+with the run that proves it.
+**Evidence.** Measured: 0 of 53 rows are bound to an executable check; 1 test file in the whole
+repository mentions 1 criterion id.
+**Funding fit.** Restack · traits 5 and 6 — traceability from requirement to executed test is the
+assurance artefact, not the matrix alone.
+**Reversal cost.** n/a. **Status.** SAVED, to be executed after the project is declared finished.

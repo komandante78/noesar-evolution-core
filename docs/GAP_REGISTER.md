@@ -19,11 +19,18 @@ could answer it. All four candidates were stale, and two of them said so about t
 does not: the handoff is capped at 150 lines and describes *the current phase*, by design. That
 pointer is corrected to point here.
 
-**This file is NOT the acceptance matrix.** `docs/WORK_PLAN_V5_REWRITE.md` §5 risk 4 — *"la
-riscrittura non ha apparato di accettazione: zero matrici con ID e severità, zero
-tracciabilità"* — is still open, and is row `G-01` below. A register of gaps says what is
-missing; an acceptance matrix says what "done" means, with an id and a severity per row. The
-second is the one that lets a phase be closed controllably, and it does not exist yet.
+**This file is NOT the acceptance matrix** — and the matrix exists, contrary to what this very
+paragraph said when it was written a day earlier. `docs/WORK_PLAN_V5_REWRITE.md` §5 risk 4 —
+*"la riscrittura non ha apparato di accettazione: zero matrici con ID e severità"* — and the
+first version of `G-01` repeating it were **both measured false on 2026-08-19** (`D-0556`):
+**53 criteria** with id, severity and stated verification method live in four documents of
+`MASTER_PROJECT/`, and their own header already says *"ogni riga è verificabile eseguendo, non
+leggendo"*.
+
+Two corrections in two days, on the same question, is the argument for `docs/acceptance-matrix.json`
+and `tools/verify-acceptance-matrix.mjs`: the matrix is now **read by a machine**, kept in step
+with the documents that own it, and its gap is a **number that can only improve** — 36 criteria
+with no recorded verdict, 15 of them critical.
 
 ---
 
@@ -78,7 +85,7 @@ Ordered by what unblocks what, not by severity.
 
 | id | Gap | Evidence measured 2026-08-19 | Blocks |
 |---|---|---|---|
-| **G-01** | No acceptance matrix, traceability or risk register inside `MASTER_PROJECT/` | `ls MASTER_PROJECT/` → 18 documents, none is a matrix | **saying "done" controllably** — everything below |
+| **G-01** | ~~No acceptance matrix~~ — **CORRECTED 2026-08-19 (`D-0556`), this row was wrong.** 53 criteria with id, severity and stated verification method **do exist**, in 4 documents. What was missing is that **nothing read them**, and that **36 carry no recorded verdict at all — 15 of them CRITICAL**, including `CE-001`, the product's central security claim | `node tools/verify-acceptance-matrix.mjs` → 53 criteria, 17 with a verdict, 36 without, 15 critical unstated. Now a battery step with a ratchet that may only go down | **the 15 critical verdicts** are what block saying "done" |
 | **G-02** | `oci/Dockerfile` reproducing the live image is `[UNVERIFIED]` | 86 `Dockerfile.phase*` overlays never folded back. *Corrected:* the canonical file **does** now carry postgres/supervisor and `ENTRYPOINT ["/opt/noesar/bin/noesar-supervisord"]` | reproducible build, honest provenance in the delivery ZIPs |
 | **G-03** | Legal / licence / compliance content is not in the tree | `WORK_PLAN_V5_REWRITE.md` §5 risk 5 — in the sealed archives only | phase 7, commercial posture |
 | **G-04** | `MANIFEST.sha256` covers 5,898 of 6,646 tracked files; no generator, no verifier step | `F-MANIFEST-001`, medium | integrity claims |

@@ -203,11 +203,19 @@ default · conferma con un tasto solo · un modello sempre più grande.
    di un lavoro diverso, che rende il lavoro di oggi il piano applicativo di qualcos'altro.
 3. **Il supervisore a tre figli tocca l'avvio dell'installazione viva.** Va fatto blue/green
    con rollback preservato, come il deploy di oggi.
-4. **La riscrittura non ha apparato di accettazione.** Zero matrici di accettazione con ID e
-   severità, zero tracciabilità, il registro dei rischi appena citato. Il V4 li aveva e adesso
-   non sono più nell'albero. **Vanno ricostruiti dentro la riscrittura**, o si perde il modo di
-   dire "fatto" in maniera controllabile. Non è un dettaglio: è ciò che ha permesso di scoprire
-   che un elenco precedente era sbagliato.
+4. **CORRETTO 2026-08-19 (`D-0556`) — questa riga era falsa.** Le matrici **esistono**: 53 criteri
+   con ID, severità e metodo di verifica, in `15_CODEN_EVOLUTION_DA_ZERO.md` (24), `16_…` (12),
+   `14_MEMORIA_A_CUBI.md` (9) e `03_ARCHITETTURA.md` (8). Quello che mancava è che **nessuno le
+   eseguiva**, e che **36 criteri non hanno alcun verdetto registrato — 15 dei quali CRITICI**,
+   fra cui `CE-001`. Ora `docs/acceptance-matrix.json` le proietta a macchina e
+   `tools/verify-acceptance-matrix.mjs` è uno step della batteria, con un cricchetto che può solo
+   scendere. **Resta vero** il resto della riga: nessuna riga è ancora legata a un controllo
+   eseguibile — la tracciabilità *criterio → test → risultato* è a zero — ed è il prossimo passo.
+   Testo originale, conservato: *"La riscrittura non ha apparato di accettazione. Zero matrici di
+   accettazione con ID e severità, zero tracciabilità, il registro dei rischi appena citato. Il V4
+   li aveva e adesso non sono più nell'albero. Vanno ricostruiti dentro la riscrittura, o si perde
+   il modo di dire 'fatto' in maniera controllabile. Non è un dettaglio: è ciò che ha permesso di
+   scoprire che un elenco precedente era sbagliato."*
 5. **La parte legale, licenze, conformità e confini d'uso** che la riscrittura dichiara di
    conservare **non è più nell'albero**: era nei documenti V4 `50-57`, `60-66`, `70-77`,
    `09_LEGAL_TEMPLATES`. La riscrittura la tiene **per decisione**, non **per contenuto**. La
