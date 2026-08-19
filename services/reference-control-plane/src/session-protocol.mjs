@@ -138,6 +138,19 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   'repoMap.search': { permission: 'workspace.read', bridged: true },
   'events.correlation': { permission: null, bridged: true },
   status: { permission: null, bridged: true },
+  // `D-0577`, closing `F-REVOKE-001`. Both `bridged: true`, and for the reason `skills.*` gives
+  // one screen up: this surface is new, so there is no established asymmetry to preserve, and
+  // giving one transport a method the other lacks would rebuild by omission exactly what
+  // `D-0302` closed — on the first day of the surface, the cheapest possible moment not to.
+  //
+  // The permissions are the ones the HTTP routes for the same two operations already ask
+  // (`GET /api/v1/capability` gates its grant list on `workspace.read`; `POST
+  // /api/v1/capability/revoke` asks `workspace.write`, the same as minting). Listing what an
+  // engine is holding is a read; withdrawing one of them is an act on the workspace's own
+  // authority, and the two are not collapsed into one entry for the same reason `closure.list`
+  // and `closure.record` are not.
+  'capability.grants': { permission: 'workspace.read', bridged: true },
+  'capability.revoke': { permission: 'workspace.write', bridged: true },
   'sessions.list': { permission: 'workspace.read', bridged: false },
   'sessions.get': { permission: 'workspace.read', bridged: false },
   'sessions.action': { permission: 'workspace.write', bridged: false },
@@ -332,6 +345,30 @@ export function createSessionDispatch({
       shadow: getShadowSnapshot(),
       capability: capabilityStatus(capabilityMinter),
     }),
+    // `D-0577`. The same minter instance every other surface spends through — passed into this
+    // factory, never constructed here, for the reason its own doc comment gives: a second
+    // registry would let a terminal list and withdraw grants no other shell can see, which is
+    // worse than no revocation at all.
+    'capability.grants': () => ({ grants: capabilityMinter.grants(nowUnix()) }),
+    'capability.revoke': ({ params, actor }) => {
+      const tokenId = String(params?.tokenId ?? '').trim();
+      if (!tokenId) throw new ProtocolError('INVALID_REQUEST', 'a revocation names the token it withdraws');
+      // Described before withdrawn, and the ledger line carries the description — the same
+      // order and the same details as the HTTP route, because a grant withdrawn from a terminal
+      // must leave the audit trail a grant withdrawn from a browser leaves.
+      const grant = capabilityMinter.grant(tokenId, nowUnix());
+      if (!grant) throw new ProtocolError('NOT_FOUND', `this engine holds no live grant under \`${tokenId}\``);
+      const revoked = capabilityMinter.revoke(tokenId);
+      ledger.append({
+        actor, action: 'capability.revoked', result: 'revoked',
+        details: {
+          tokenId, stepId: grant.stepId, planDigest: grant.planDigest, paths: grant.paths,
+          operations: grant.operations, usesForfeited: grant.usesRemaining,
+          hadExpired: grant.expired, transport: 'tui',
+        },
+      });
+      return { revoked, grant };
+    },
     // UI-054 (D-0268): the same SEC-003 enforcement declaration `/api/v1/bootstrap` sends
     // the WebUI's "Invariants" panel — rendered from the server's own record, never a
     // second hardcoded list that can drift from it (see path-auth.mjs's own comment on

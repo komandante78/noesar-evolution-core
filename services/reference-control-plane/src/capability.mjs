@@ -205,7 +205,21 @@ export class TokenMinter {
       limits,
     };
     token.mac = this.#sign(token);
-    this.#issued.set(id, { usesRemaining: request.uses });
+    // What the registry keeps beside the counter is exactly what a person needs to decide
+    // whether to withdraw this grant: which step it descends from, what it may touch, and
+    // when it lapses on its own. The MAC is deliberately NOT among them — the registry is
+    // read by `grants()`, which feeds a screen, and a screen that printed the MAC would turn
+    // a list of grants into a list of usable tokens.
+    this.#issued.set(id, {
+      usesRemaining: request.uses,
+      stepId: token.stepId,
+      planDigest: token.planDigest,
+      paths: [...token.paths],
+      operations: [...token.operations],
+      expiresAtUnix: token.expiresAtUnix,
+      usesGranted: token.usesGranted,
+      issuedAtUnix: nowUnix,
+    });
     return token;
   }
 
@@ -232,8 +246,55 @@ export class TokenMinter {
   }
 
   // Revocation is a first-class act, not the absence of a renewal.
+  //
+  // The signature is deliberately unchanged (`D-0577`): this class mirrors
+  // rust/crates/noesar-capability, whose `revoke(&mut self, token_id) -> bool` says the same
+  // thing, and a return type that drifted on one side would be the first crack in "neither is
+  // the oracle for the other". A caller that needs to know WHAT it withdrew reads `grant()`
+  // first — see the route in server.mjs, which does exactly that so the ledger line names the
+  // paths rather than an opaque id.
   revoke(tokenId) {
     return this.#issued.delete(tokenId);
+  }
+
+  /**
+   * One live grant, described — or `null` if this engine holds none under that id. Never
+   * returns the MAC: describing a grant must not be a way to obtain one.
+   *
+   * "Live" means unspent. An entry past its own `expiresAtUnix` is still returned, flagged,
+   * because an operator asking what this engine is holding is owed the lapsed ones too: a
+   * grant that expired on its own and a grant that was never issued are different facts, and
+   * only one of them means someone should stop worrying about it.
+   */
+  grant(tokenId, nowUnix = null) {
+    const state = this.#issued.get(String(tokenId ?? ''));
+    if (!state || state.usesRemaining <= 0) return null;
+    return {
+      tokenId: String(tokenId),
+      stepId: state.stepId,
+      planDigest: state.planDigest,
+      paths: [...(state.paths ?? [])],
+      operations: [...(state.operations ?? [])],
+      expiresAtUnix: state.expiresAtUnix,
+      usesGranted: state.usesGranted,
+      usesRemaining: state.usesRemaining,
+      issuedAtUnix: state.issuedAtUnix,
+      expired: nowUnix === null ? null : nowUnix >= state.expiresAtUnix,
+    };
+  }
+
+  /**
+   * Every live grant this engine is holding, newest last. This is what makes revocation an act
+   * a person can perform rather than an id they must already know: before this existed, the
+   * only way to name a token was to have kept the mint response or to go read the ledger.
+   */
+  grants(nowUnix = null) {
+    const listed = [];
+    for (const id of this.#issued.keys()) {
+      const grant = this.grant(id, nowUnix);
+      if (grant) listed.push(grant);
+    }
+    return listed;
   }
 
   outstanding() {
@@ -259,6 +320,12 @@ export function capabilityStatus(minter) {
     executorImplemented: true,
     executorEnforcesTokens: true,
     executorWiredToProductActions: true,
-    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. /api/v1/workspace-actions spends them through the executor to write real files in the workspace, promoted only when the shadow comparison came back clean — the trivial risk path only; DELETE and EXECUTE remain unwired.',
+    // `D-0577`. Stated as a flag and not only in the prose below, because this is the fact a
+    // shell decides what to render from: until this phase `revoke()` had no caller at all, and
+    // an authority that cannot be withdrawn is an authority nobody can correct. `false` here
+    // would be an honest answer on an installation that ever removed the route; it is not a
+    // constant dressed up as a measurement.
+    revocationReachable: true,
+    reason: 'Tokens are minted only from a plan a person approved, are bound to one step, and cannot name a path that step does not. /api/v1/workspace-actions spends them through the executor to write real files in the workspace, promoted only when the shadow comparison came back clean — the trivial risk path only; DELETE and EXECUTE remain unwired. A live grant can be listed and withdrawn before it lapses, from either shell, and the withdrawal is a ledger line naming what it covered.',
   };
 }

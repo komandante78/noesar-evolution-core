@@ -137,6 +137,11 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'search', argument: '<text>', summary: 'Literal search across the workspace', group: 'work', kind: 'call', method: 'repoMap.search', permission: 'workspace.read' },
   { name: 'events', argument: '<id>', summary: 'The causal event trail of a piece of work', group: 'work', kind: 'call', method: 'events.correlation', permission: null },
   { name: 'status', argument: '', summary: 'Engine status, authority, shadow', group: 'work', kind: 'call', method: 'status', permission: null },
+  // `D-0577`. Two verbs, not one, because listing and withdrawing are two permissions — see
+  // `SESSION_METHOD_POLICY`. Before this, the only way to name a live grant was to have kept
+  // the mint response; the only way to stop one was to wait for it to lapse.
+  { name: 'grants', argument: '', summary: 'The capability grants this engine is holding right now', group: 'work', kind: 'call', method: 'capability.grants', permission: 'workspace.read' },
+  { name: 'revoke', argument: '<token>', summary: 'Withdraw a live grant before it lapses — the ledger records what it covered', group: 'work', kind: 'call', method: 'capability.revoke', permission: 'workspace.write' },
   { name: 'sessions', argument: '[active|archived|bin]', summary: 'List sessions', group: 'work', kind: 'call', method: 'sessions.list', permission: 'workspace.read' },
   { name: 'git', argument: '', summary: 'Branch and divergence of the workspace', group: 'work', kind: 'call', method: 'coden.gitStatus', permission: 'coden.plan' },
   // Phase 3b. A FORM, not a call: `UI-036` makes a closure name what was left undone or

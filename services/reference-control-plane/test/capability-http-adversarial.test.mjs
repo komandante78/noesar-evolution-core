@@ -133,6 +133,40 @@ describe('capability HTTP adversarial — mint and spend require more than an am
     assert.equal(real.json.spent, true);
   });
 
+  // `D-0577`. Revocation is an ACT on the workspace's authority, so it sits behind the same
+  // gate as minting rather than behind the session alone. The failure mode this closes is the
+  // ordinary one for a new verb: a route added inside an authenticated block and no one asking
+  // whether the block it landed in was the guarded one.
+  test('csrf_required · a valid session cookie with no CSRF header cannot revoke a live grant', async () => {
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const plan = await realPlan('cap-csrf-revoke.txt');
+    const minted = await authed('/api/v1/capability/mint', { method: 'POST', payload: mintRequest(nowUnix, { plan, approval: approvalFor(nowUnix) }) });
+    assert.equal(minted.status, 201, `legitimate mint must succeed: ${minted.text.slice(0, 160)}`);
+
+    const forged = await raw('/api/v1/capability/revoke', {
+      method: 'POST', payload: { tokenId: minted.json.token.id }, headers: { cookie },
+    });
+    assert.equal(forged.status, 403, `an ambient cookie alone must not be enough to revoke: ${forged.text.slice(0, 160)}`);
+
+    // And the grant must still be there afterwards: a refused withdrawal that withdrew anyway
+    // would be a denial-of-service wearing the shape of a security check.
+    const spent = await authed('/api/v1/capability/spend', {
+      method: 'POST', payload: { token: minted.json.token, attempt: { path: plan.steps[0].files[0], operation: 'WRITE' } },
+    });
+    assert.equal(spent.status, 200, `the grant must survive a refused revocation: ${spent.text.slice(0, 160)}`);
+  });
+
+  test('capability_unknown_token · withdrawing a grant this engine never held is a 404, not a silent success', async () => {
+    const attempt = await authed('/api/v1/capability/revoke', {
+      method: 'POST', payload: { tokenId: 'f'.repeat(32) },
+    });
+    assert.equal(attempt.status, 404, `an unknown id must not report success: ${attempt.text.slice(0, 160)}`);
+    assert.equal(attempt.json.error, 'capability_unknown_token');
+
+    const empty = await authed('/api/v1/capability/revoke', { method: 'POST', payload: {} });
+    assert.equal(empty.status, 422, 'a revocation that names no token is refused before anything is looked up');
+  });
+
   // Negative control. A suite that also breaks the working path proves nothing.
   test('negative control · a legitimate mint and spend still work end to end with the CSRF header present', async () => {
     const nowUnix = Math.floor(Date.now() / 1000);

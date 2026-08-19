@@ -1397,6 +1397,8 @@ const it = {
   'Literal search across the workspace': 'Ricerca letterale in tutto lo spazio di lavoro',
   'The causal event trail of a piece of work': 'La traccia causale degli eventi di un lavoro',
   'Engine status, authority, shadow': 'Stato del motore, autorità, ombra',
+  'The capability grants this engine is holding right now': 'Le concessioni di capability che questo motore sta tenendo in questo momento',
+  'Withdraw a live grant before it lapses — the ledger records what it covered': 'Revoca una concessione attiva prima che scada — il registro annota che cosa copriva',
   'List sessions': 'Elenca le sessioni',
   'Branch and divergence of the workspace': 'Ramo e divergenza dello spazio di lavoro',
   'Close a piece of work — what was done, what was NOT, and the residual risk': 'Chiudi un lavoro — che cosa è stato fatto, che cosa NON lo è stato, e il rischio residuo',
@@ -1415,6 +1417,12 @@ const it = {
   // no entry for `[why]` on its own — no command shows it alone, and an entry matching no screen
   // is a claim of coverage nothing can honour, which the measurement tool refuses by name.
   '<run> [why]': '<esecuzione> [perché]',
+  // `<token>` describes what to type — the id of a live grant, read off `/grants` or the
+  // Authority panel — so it is listed rather than exempted, on the same reading as `<run>`.
+  // The Italian is the same word: "token" is the term this product's own Italian prose already
+  // uses for a capability token, and inventing a translation ("gettone") for a screen an
+  // operator matches against `/grants` output would be a worse screen, not a more Italian one.
+  '<token>': '<token>',
   '[path]': '[percorso]',
   '<text>': '<testo>',
   //

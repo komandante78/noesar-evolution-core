@@ -123,7 +123,36 @@ const ADDRESS_VIEWS = {
   // shows the same sessions.
   'coden/bench/sessions': async ({ session, state, write }) => runSessionsList(session, state, [], write),
   'settings/sessions': async ({ session, state, write }) => runSessionsList(session, state, [], write),
-  'coden/agent/authority': async ({ session, entry, write }) => printJson(write, entry.label, (await session.call('status', {})).capability),
+  // `D-0577`. The posture AND what is actually outstanding. Printing the posture alone was
+  // true and useless: it said tokens are enforced by the engine and never said which grants
+  // this engine is holding, so the panel named "Authority requests" could not show a single
+  // request. The grants come from their own method because they carry their own permission —
+  // a reader who may not see workspace paths is told so, rather than shown an empty list that
+  // reads as "nothing outstanding".
+  'coden/agent/authority': async ({ session, entry, write }) => {
+    printJson(write, entry.label, (await session.call('status', {})).capability);
+    let grants = null;
+    try {
+      const answer = await session.call('capability.grants', {});
+      grants = Array.isArray(answer?.grants) ? answer.grants : null;
+      // A payload without the field is not an empty list, and must never be rendered as one:
+      // "none outstanding" is a claim about the engine, and making it from a shape this shell
+      // did not recognise would be the panel inventing a reassurance. Found by
+      // `coden-shell-parity`, whose transport answers `{}` to a method it has not been taught —
+      // exactly what an older engine on the other end of this socket would do.
+      if (!grants) { write('  live grants — not shown: this engine did not answer with a grant list.'); return; }
+    } catch (error) {
+      write(`  live grants — not shown: ${error?.message ?? 'this account may not read the workspace'}`);
+      return;
+    }
+    if (!grants.length) { write('  live grants — none outstanding. A grant appears here between mint and its last use.'); return; }
+    write(`  live grants — ${grants.length} outstanding:`);
+    for (const grant of grants) {
+      write(`    ${grant.tokenId} · step ${grant.stepId} · ${grant.operations.join(',')} · ${grant.usesRemaining}/${grant.usesGranted} uses left${grant.expired ? ' · LAPSED' : ''}`);
+      write(`      ${grant.paths.join(', ')}`);
+    }
+    write('  `revoke <token>` withdraws one now, instead of waiting for it to lapse.');
+  },
   'coden/agent/invariants': async ({ session, write }) => {
     const { invariants } = await session.call('product.invariants', {});
     for (const entry of invariants) write(`  ${String(entry.id ?? '').replace(/_/g, ' ')} — ${entry.status === 'ACTIVE' ? `enforced here (${entry.enforcedBy})` : `enforced elsewhere (${entry.enforcedBy})`}`);

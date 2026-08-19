@@ -306,6 +306,16 @@ test('phase 3c — all 25 CodeN addresses open FROM THE PROMPT, driven one by on
       if (method === 'coden.addresses') return { addresses: book, accessFiltered: false };
       if (method === 'coden.gitStatus') return { available: true, branch: 'main' };
       if (method === 'status') return { shadow: {}, capability: {} };
+      // `D-0577`. One live grant, not an empty list: the Authority panel's own branch for
+      // "none outstanding" is a single line, and a stub that always answered empty would have
+      // let the grant rendering itself go undriven from the prompt.
+      if (method === 'capability.grants') {
+        return { grants: [{
+          tokenId: 'abc123', stepId: 'step-1', paths: ['note.txt'], operations: ['WRITE'],
+          usesGranted: 2, usesRemaining: 1, expiresAtUnix: 1_800_000_900, issuedAtUnix: 1_800_000_000,
+          expired: false,
+        }] };
+      }
       if (method === 'closure.list') return { closures: [] };
       if (method === 'sessions.list') return { place: 'active', items: [], total: 0, page: 1, pageCount: 1, from: 0, to: 0 };
       if (method === 'repoMap.scan') return { files: [] };

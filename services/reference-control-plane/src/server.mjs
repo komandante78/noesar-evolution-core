@@ -3966,10 +3966,22 @@ const requestListener = async (req, res) => {
     // approver signed, and the token can never name a path its step does not.
     if (req.method === 'GET' && url.pathname === '/api/v1/capability') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
-      return json(res, 200, capabilityStatus(capabilityMinter));
+      // `D-0577`. The posture is session-only, as it has always been — it carries counts and
+      // flags, nothing about a particular piece of work. The GRANTS are not: each one names
+      // workspace paths, so they are gated on `workspace.read`, and a caller who may not read
+      // them is told which permission they would need. A silently missing list and a forbidden
+      // one look identical, and only one of them means "nothing is outstanding".
+      const mayList = auth.hasPermission(authenticated.user, 'workspace.read');
+      return json(res, 200, {
+        ...capabilityStatus(capabilityMinter),
+        ...(mayList
+          ? { grants: capabilityMinter.grants(Math.floor(Date.now() / 1000)) }
+          : { grantsWithheld: { requiredPermission: 'workspace.read' } }),
+      });
     }
     if (req.method === 'POST' && (url.pathname === '/api/v1/capability/mint'
-      || url.pathname === '/api/v1/capability/spend')) {
+      || url.pathname === '/api/v1/capability/spend'
+      || url.pathname === '/api/v1/capability/revoke')) {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       // Holding a session is not holding the right to mint: the permission is the same one
       // that governs changing the workspace, because that is what a token licenses.
@@ -3985,6 +3997,30 @@ const requestListener = async (req, res) => {
           const token = capabilityMinter.mint(authorized, payload?.request ?? {}, nowUnix);
           ledger.append({ actor:authenticated.user.id, action:'capability.minted', result:'issued', details:{ tokenId:token.id, stepId:token.stepId, planDigest:token.planDigest, paths:token.paths, operations:token.operations } });
           return json(res, 201, { token, planDigest:authorized.digest });
+        }
+        if (url.pathname === '/api/v1/capability/revoke') {
+          // `D-0577`, closing `F-REVOKE-001`. Described BEFORE it is withdrawn: after the
+          // registry entry is gone the engine can no longer say what the grant covered, and a
+          // ledger line reading only an opaque id would record that something was withdrawn
+          // without recording what. The permission is `workspace.write` — the same one minting
+          // asks — because withdrawing a grant is an act on the workspace's authority, not a
+          // reading of it.
+          const tokenId = String(payload?.tokenId ?? '').trim();
+          if (!tokenId) {
+            return json(res, 422, { error:'capability_refused', kind:'INVALID', reason:'a revocation names the token it withdraws' });
+          }
+          const grant = capabilityMinter.grant(tokenId, nowUnix);
+          if (!grant) {
+            // Recorded, not silent: an attempt to withdraw a grant this engine does not hold is
+            // exactly the event an operator chasing a stale token wants to find later. It is
+            // also indistinguishable, by design, from an id that never existed — the registry
+            // is in memory and a restart empties it (`registryPersistsAcrossRestart: false`).
+            ledger.append({ actor:authenticated.user.id, action:'capability.revoke-refused', result:'denied', details:{ tokenId, reason:'this engine holds no live grant under that id' } });
+            return json(res, 404, { error:'capability_unknown_token', reason:'this engine holds no live grant under that id' });
+          }
+          const revoked = capabilityMinter.revoke(tokenId);
+          ledger.append({ actor:authenticated.user.id, action:'capability.revoked', result:'revoked', details:{ tokenId, stepId:grant.stepId, planDigest:grant.planDigest, paths:grant.paths, operations:grant.operations, usesForfeited:grant.usesRemaining, hadExpired:grant.expired } });
+          return json(res, 200, { revoked, grant });
         }
         const spent = capabilityMinter.spend(payload?.token ?? {}, payload?.attempt ?? {}, nowUnix);
         ledger.append({ actor:authenticated.user.id, action:'capability.spent', result:'spent', details:{ tokenId:payload?.token?.id ?? null, attempt:payload?.attempt ?? null } });

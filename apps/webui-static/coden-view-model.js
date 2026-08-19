@@ -57,6 +57,12 @@ export const RUN = {
   status: () => ['status', {}],
   sessions: (argument) => ['sessions.list', argument ? { filter: argument } : {}],
   git: () => ['coden.gitStatus', {}],
+  // `D-0577`. The two capability verbs, in the browser's own rendition of the same table the
+  // terminal walks. `revoke` trims because an id pasted from `/grants` or from the Authority
+  // panel arrives with whatever whitespace the copy took with it, and an id that fails to match
+  // over one space would read to an operator as "this engine no longer holds it".
+  grants: () => ['capability.grants', {}],
+  revoke: (argument) => ['capability.revoke', { tokenId: String(argument ?? '').trim() }],
   model: (argument) => ['model.activate', { id: argument }],
 };
 

@@ -23,10 +23,16 @@
 //     second implementation of the same rule with its own `#[test]`s, run by `cargo test
 //     --workspace --offline`. It is **not** covered by this file, which is JavaScript, and the
 //     verdict says so rather than implying one suite proves both.
-//   * The **revoked** state at the HTTP surface is reached through the branch revocation lands
-//     in (`#issued` has no entry for this id) using a token this engine never issued, because
-//     **no route revokes a token**: `TokenMinter#revoke` has zero product callers, measured by
-//     the closure below. That is recorded as a finding, not smoothed over here.
+//   * The **revoked** state at the HTTP surface was, until `D-0577`, reached through the branch
+//     revocation lands in (`#issued` has no entry for this id) using a token this engine never
+//     issued — because **no route revoked a token**: `TokenMinter#revoke` had zero product
+//     callers, and that was recorded as a finding (`F-REVOKE-001`) rather than smoothed over.
+//     `D-0577` wired revocation to `POST /api/v1/capability/revoke` and to `capability.revoke`
+//     on the session protocol, so the state is now reached **the way a person reaches it**: the
+//     token is minted by this engine, withdrawn through the route, and then attempted. The
+//     closure below moved with it — it no longer pins the caller count at zero, it pins each
+//     caller to a declared revocation surface, which is the same shape as the `.spend(` closure
+//     above and the reason a sixth surface cannot appear unnoticed.
 import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
@@ -159,25 +165,48 @@ describe('CE-002 — an exhausted, expired or revoked token is refused on every 
     }
   });
 
-  test('CE-002 closure: `revoke()` exists and no product path calls it — the finding this suite refuses to hide', () => {
-    let callers = 0;
+  /**
+   * The files allowed to withdraw a grant, and what each is. `D-0577` replaced this test's
+   * predecessor, which pinned the caller count at **zero** and said so in the verdict: the day
+   * a route revoked a token, the verdict's declared width had to be re-earned rather than
+   * inherited. That day is this one, so the closure keeps its job and changes its claim — from
+   * "nobody may call this" to "only a declared revocation surface may", which is the same shape
+   * as the `.spend(` closure above and survives the next surface instead of dying with it.
+   */
+  const REVOCATION_SURFACES = Object.freeze({
+    'server.mjs': 'POST /api/v1/capability/revoke — session + workspace.write + CSRF, ledgered',
+    'session-protocol.mjs': '`capability.revoke` — the same act over the session socket, ledgered with transport:tui',
+  });
+
+  test('CE-002 closure: every product path that revokes is a declared revocation surface', () => {
+    const callers = new Map();
     const walk = (dir) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const path = join(dir, entry.name);
         if (entry.isDirectory()) { walk(path); continue; }
         if (!entry.name.endsWith('.mjs')) continue;
-        for (const line of readFileSync(path, 'utf8').split('\n')) {
-          if (/minter\.revoke\(/i.test(code(line))) callers += 1;
-        }
+        readFileSync(path, 'utf8').split('\n').forEach((line, index) => {
+          if (/minter\.revoke\(/i.test(code(line))) {
+            const file = relative(SRC, path);
+            callers.set(file, [...(callers.get(file) ?? []), index + 1]);
+          }
+        });
       }
     };
     walk(SRC);
-    // Pinned at the measured value, not asserted to be zero forever: the day a route revokes a
-    // token this must be re-read, and the verdict's declared width re-earned rather than
-    // inherited. `TokenMinter#revoke` itself is still there and still works — proven below.
-    assert.equal(callers, 0,
-      'a product path now calls minter.revoke(): CE-002\'s verdict declares that none did, so the revoked '
-      + 'state must now be attempted through that path rather than through the branch it shares.');
+    // Both directions, like the spend closure: a new file that revokes is a surface this
+    // verdict has not been re-earned on, and a declared surface that stopped revoking means
+    // the capability was removed without this file noticing.
+    for (const file of callers.keys()) {
+      assert.ok(REVOCATION_SURFACES[file],
+        `${file} revokes a capability and is not a declared revocation surface — CE-002's verdict `
+        + 'covers the surfaces named here, so a new one must be attempted below before it is added.');
+    }
+    for (const file of Object.keys(REVOCATION_SURFACES)) {
+      assert.ok(callers.get(file)?.length,
+        `${file} is declared a revocation surface and no longer calls revoke() — revocation was `
+        + 'removed from a path this verdict says a person can reach.');
+    }
     assert.equal(typeof new TokenMinter(SECRET).revoke, 'function');
   });
 
@@ -579,12 +608,41 @@ describe('surface 5/5 · server.mjs · POST /api/v1/capability/spend', () => {
     assert.match(attemptResponse.json.reason, new RegExp(REASON.expired));
   });
 
+  test('revoked · a grant withdrawn through the route is refused on the next use, with the reason named', async () => {
+    // `D-0577`. The state is now reached the way a PERSON reaches it: this engine's own token,
+    // listed, withdrawn through `POST /api/v1/capability/revoke`, then attempted. Before that
+    // route existed this case could only be simulated with a foreign engine's token — which
+    // proved the MAC gate, not the revocation gate (that variant is kept below, deliberately).
+    const { token, attempt } = await serverToken('ce002-http-revoked-route.txt');
+
+    const listed = await authed('/api/v1/capability', { method: 'GET' });
+    assert.equal(listed.status, 200);
+    assert.ok(listed.json.grants.some((grant) => grant.tokenId === token.id),
+      'a token this engine just minted must be listed as a live grant, or nobody can name it to withdraw it');
+    assert.ok(!JSON.stringify(listed.json.grants).includes(token.mac),
+      'the grant list must never carry the MAC: describing a grant is not a way to obtain one');
+
+    const withdrawn = await authed('/api/v1/capability/revoke', { method: 'POST', payload: { tokenId: token.id } });
+    assert.equal(withdrawn.status, 200, `revocation must succeed: ${withdrawn.text.slice(0, 200)}`);
+    assert.equal(withdrawn.json.revoked, true);
+    assert.deepEqual(withdrawn.json.grant.paths, ['ce002-http-revoked-route.txt'],
+      'the withdrawal must report what it covered — an id alone records that something was revoked, not what');
+
+    const afterwards = await authed('/api/v1/capability/spend', { method: 'POST', payload: { token, attempt } });
+    assert.equal(afterwards.status, 422, `a withdrawn grant must be refused: ${afterwards.text.slice(0, 200)}`);
+    assert.equal(afterwards.json.error, 'capability_refused');
+    assert.match(afterwards.json.reason, new RegExp(REASON.revoked));
+
+    // The registry no longer holds it, so a second withdrawal is a 404 rather than a silent
+    // success: "revoked" must not become a verb that always reports victory.
+    const again = await authed('/api/v1/capability/revoke', { method: 'POST', payload: { tokenId: token.id } });
+    assert.equal(again.status, 404, `a second withdrawal must not report success: ${again.text.slice(0, 200)}`);
+  });
+
   test('revoked · a token this engine holds no grant for is refused, with the reason named', async () => {
-    // No route revokes (see the closure test above), so the state is reached the way revocation
-    // reaches it: `#issued` has no entry for this id. The token is minted by a DIFFERENT engine
-    // with a different secret, so it also proves the MAC check fires before the lookup — the
-    // refusal is `the token does not verify against this engine`, one gate earlier than the
-    // in-process revocation branch, and strictly stronger.
+    // Kept beside the route test above: this one is minted by a DIFFERENT engine with a
+    // different secret, so it proves the MAC check fires BEFORE the registry lookup — one gate
+    // earlier than the revocation branch, and strictly stronger. The two are different claims.
     const { attempt } = await serverToken('ce002-http-revoked.txt');
     const foreign = new TokenMinter(Buffer.alloc(32, 9));
     const plan = {
