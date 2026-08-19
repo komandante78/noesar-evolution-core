@@ -43,6 +43,19 @@ import { installSectorModule, SectorModuleError } from '../src/sector-modules.mj
 import { freshTempDir } from './support/workspace.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * A line with its trailing `//` comment removed, so a scan counts CODE and not PROSE. Added
+ * 2026-08-19 (`D-0573`) after `CE-003`’s twin closure counted a COMMENT mentioning
+ * `scopeRequestToTool()` as a call to it. The same flaw was latent here: a comment writing
+ * `minter.revoke(` would have raised a false alarm, and a comment writing `x.spend(` would have
+ * put a file on the found list that spends nothing. Over-counting is fail-safe — it never grants
+ * a false pass — but a false alarm costs a future session an investigation for nothing.
+ */
+const code = (line) => {
+  const comment = line.indexOf("//");
+  return comment === -1 ? line : line.slice(0, comment);
+};
 const SRC = resolve(HERE, '../src');
 const REPO_ROOT = resolve(HERE, '../../..');
 const NOW = 1_800_000_000;
@@ -92,7 +105,7 @@ function spendSitesInSource() {
       if (!entry.name.endsWith('.mjs')) continue;
       const lines = readFileSync(path, 'utf8').split('\n');
       lines.forEach((line, index) => {
-        const match = /([A-Za-z_$#][\w$#.]*)\.spend\(/.exec(line);
+        const match = /([A-Za-z_$#][\w$#.]*)\.spend\(/.exec(code(line));
         if (!match) return;
         const file = relative(SRC, path);
         if (!sites.has(file)) sites.set(file, []);
@@ -154,7 +167,7 @@ describe('CE-002 — an exhausted, expired or revoked token is refused on every 
         if (entry.isDirectory()) { walk(path); continue; }
         if (!entry.name.endsWith('.mjs')) continue;
         for (const line of readFileSync(path, 'utf8').split('\n')) {
-          if (/minter\.revoke\(/i.test(line)) callers += 1;
+          if (/minter\.revoke\(/i.test(code(line))) callers += 1;
         }
       }
     };

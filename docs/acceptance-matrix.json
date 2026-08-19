@@ -183,7 +183,13 @@
       "criterion": "Un effetto non dichiarato dallo strumento è impossibile, non vietato",
       "severity": "critical",
       "howVerified": "strumento sonda che tenta un effetto non dichiarato",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0573"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0573`)** — `services/reference-control-plane/test/ce-003-undeclared-effect-impossible.test.mjs`, **10/10**. La riga distingue due cose e il test le tiene distinte: *«vietato»* è un **controllo** (il chiamante nomina un effetto, qualcosa lo confronta con una lista e dice no — a un solo call site dimenticato dall'essere permesso); *«impossibile»* è una **forma** — non esiste un canale d'ingresso con cui nominare un effetto non dichiarato. La sonda offre tutto ciò che un chiamante può offrire (`paths`, `files`, `declaredEffects`, quattro operazioni, `../../etc/passwd`) e **nessuno di quei campi è un input**: `AdapterGrantOrchestrator.request()` legge il percorso da `ADAPTER_MANIFESTS[resource].resourcePaths[operation]`, una dichiarazione congelata in questo repository, e il token coniato porta esattamente `['adapter://sector-modules/write']` / `['WRITE']`. Il rifiuto — la metà **debole**, asserita perché il metodo chiede un tentativo — copre l'unico input che il chiamante controlla davvero: `OUT_OF_SCOPE` per un'operazione fuori manifesto, `UNKNOWN_ADAPTER` per un adapter non registrato, e i due manifesti che dichiarano **zero** operazioni non concedono nulla per costruzione. **Chiusura**: ogni `.mint(` sotto `src/` è ricavato dal sorgente a ogni esecuzione e dev'essere una delle **tre** vie dichiarate, ognuna con la fonte del proprio insieme di effetti. **Ampiezza dichiarata:** `tool-catalog.mjs::scopeRequestToTool()` — l'intersezione che il suo stesso modulo chiama il meccanismo di questo criterio — ha **zero chiamanti** nel prodotto, misurato e fissato. Non è un buco: quella superficie **non conia niente** (`toolCatalogStatus().enforced === false`, asserito) e uno strumento di catalogo non è un adapter registrato, quindi non può ottenere un token. Il giorno in cui una rotta gliene concedesse uno, la chiusura qui fallisce invece di lasciarlo passare."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:435"
     },
     {
@@ -283,7 +289,13 @@
       "criterion": "La query di ricerca è costruita dal motore; il codice dell'utente non compare mai nell'uscita",
       "severity": "critical",
       "howVerified": "canary nel workspace, ispezione di ogni richiesta uscente",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0573"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0573`)** — `services/reference-control-plane/test/ce-014-query-built-by-the-engine.test.mjs`, **10/10**, con **entrambe** le metà che la riga chiede. **Canary**: un workspace vero — sorgente, config, lock file, dotfile, modulo annidato — ognuno con il proprio canary distinto, su disco, rileggibile durante la corsa (asserito, così «non è trapelato» non è «non c'era niente»). **Ispezione di OGNI richiesta uscente**: le uscite sono **tre**, non una, ed è la parte che si dimentica — il gate d'intento **prima** che parta qualcosa, il provider, e il gate di contenuto su ciò che è tornato. Tutte e tre registrate da un solo registratore e ispezionate come un'unica traccia di rete: nessun canary compare. Il payload al provider è **esattamente** `objective` + `criteria`, chiave per chiave; il gate d'intento riceve **solo** l'echo; il gate di contenuto **solo** ciò che il provider ha risposto. Un chiamante che allega `workspaceContents`, `context`, `files`, `attachments` pieni di canary non ne porta **nessuno** sul filo: la richiesta la costruisce il motore. Un `REFUSE` all'intento non emette **niente**, nemmeno l'echo. **La metà strutturale è più forte del canary**: `research.mjs` importa `node:crypto` e nient'altro — asserito sulla lista degli import — e non contiene `readFileSync`, `readdirSync`, `createReadStream` né `process.cwd`; il canale attraverso cui il codice dell'utente potrebbe uscire **non esiste**, non è sorvegliato. **Oracolo provato, non presunto**: iniettando un canary nel payload del provider, tre dei dieci test sono stati visti fallire, poi ripristinati."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:446"
     },
     {
@@ -391,7 +403,13 @@
       "criterion": "L'Autore non nomina mai un percorso: l'insieme dei file che tocca è un sottoinsieme di quelli del passo",
       "severity": "critical",
       "howVerified": "autore sonda che tenta di scrivere fuori elenco; il tentativo è scartato e registrato",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0573"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0573`)** — `services/reference-control-plane/test/ce-025-author-never-names-a-path.test.mjs`, **7/7**, e le **due** metà che il metodo nomina, separate. **Scartato**: la sonda risponde nella voce del modello — un blocco recintato la cui prima riga è una direttiva di percorso, in **ogni** grafia che `PATH_DIRECTIVE` accetta (`path:`, `// file:`, `# filename:`, `<!-- path:`) — e i byte finiscono sotto la chiave che **il Piano** ha passato, con la direttiva rimossa anche dal contenuto: non è ignorata come percorso e lasciata dentro come testo. `../../etc/passwd` e `/etc/shadow` passano dalla stessa riga di `notes.txt`, ed è il punto: non c'è un caso speciale da sbagliare, perché nessuna rivendicazione viene onorata. **Registrato**: `discarded` porta `{path, claimed}` per **ognuna** — una pila di tre direttive produce tre righe, non una — e il conteggio `discardedPaths` è sulla risposta che l'operatore legge. Un provider che dichiara di aver già controllato **non è creduto**: `normaliseAuthored()` ri-applica la regola e la rivendicazione nascosta viene tolta di nuovo, accanto a quella che il provider dice di aver già scartato. **Il sottoinsieme è provato come INSIEME**, non file per file: tre file consegnati, quattro altri rivendicati, e l'asserzione è sulle chiavi di `contents ∪ unchanged` — un controllo per singolo percorso passerebbe mentre l'insieme cresce. **E fino al disco**: `plan → measure → approve` con la sonda attiva cambia **esattamente un file**, quello del Piano; l'elenco della directory prima e dopo è identico, `not-in-the-plan.txt` è intatto, e niente è comparso fuori dal workspace. Controllo negativo: una risposta onesta autora normalmente e scarta zero."
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:526"
     },
     {
