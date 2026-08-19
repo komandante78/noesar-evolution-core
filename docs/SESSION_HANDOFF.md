@@ -1,99 +1,100 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0581` — the four shell-parity acceptance rows measured. Ratchet **21 → 17**,
-critical still **0**. `D-0582` proposed.
-**Live installation:** **`noesar-evolution:d0581-shell-parity-20260819T161549Z`**, deployed
-16:16Z, `running`/`healthy`, byte-equal to the tree **454/454**. Predecessor kept as
-`noesar-evolution-pre-20260819T161603Z`.
+**Phase:** `D-0583` — projection coverage and the `NON FATTO` box enforced in the **report**.
+Ratchet **17 → 13**, critical still **0**. `D-0584` repaired, `D-0585` proposed.
+**Live installation:** **`noesar-evolution:d0583-coverage-and-notdone-20260819T173441Z`**,
+deployed 17:35Z, `running`/`healthy`, byte-equal to the tree **455/455**. Predecessor kept as
+`noesar-evolution-pre-20260819T173528Z`.
 
 ## ➜ LA PROSSIMA AZIONE
 
 ```text
-node tools/verify-acceptance-matrix.mjs   ->  unstated 17, critical 0
+node tools/verify-acceptance-matrix.mjs   ->  unstated 13, critical 0   (seen to FAIL at 12)
 ```
 
-**The 17 remaining rows are not all the same cost, and the next phase should say which class it
-is taking.**
+**The "cheap" class the previous handoff named is now empty — and two of its six rows were
+never cheap.** They were examined, not skipped, and here is what they actually need:
 
-**Cheap — provable against things already built:** `CE-009` (projection coverage never rounded to
-"complete") · `CE-010` (the divergence profile is recomputed from git history, not configured) ·
-`CE-011` (every induced fact carries evidence, count and refutation condition) · `CE-012` (a
-vector without its model is an **error**, not a number) · `CE-016` (zero tools loaded at rest) ·
-`CE-019` (the final report cannot leave `NON FATTO` empty without declaring it — the closure
-register already refuses one).
+- **`CE-011`** (*ogni fatto indotto porta evidenza, conteggio e condizione di smentita*) needs a
+  **migration**. `noesar_knowledge.memory_records` already has `confirmations`/`refutations`
+  (constrained to the `experience` cube) and `derived_must_cite`, but **no column holds the
+  refutation condition** and nothing makes a fact unwritable without one — and the stated method
+  is *"schema + test: un fatto senza smentita non è scrivibile"*, so a JS guard would not satisfy
+  it.
+- **`CE-012`** (*un vettore senza il suo modello è un errore, non un numero*) needs a **comparison
+  surface that does not exist**. The datum is in place — `memory_vectors` is keyed
+  `(record_id, model_id)` — but `memory-service.mjs` states no embedding pipeline is wired, so
+  there is nothing to run *"il test di confronto fra due spazi diversi"* against.
 
-**Expensive — needs product or infrastructure that may not exist:** `CE-005` (context at call
-n>300 has the shape of call 3 — a long-run harness) · `CE-006` (every model call re-runnable in
-isolation) · `CE-023` (projection coverage **measured** with ATOM) · `CE-024` (human review time
-per accepted change — probably not built at all) · `CE-027`/`CE-028`/`CE-030` (authoring fixtures,
-divergence into authoring, identical authorings counted once) · `CE-031`/`CE-032`/`CE-035` (`ssh`
-reachability and launcher portability — need a real second machine).
+Both are Postgres-shaped work, verified through **`scripts/test.sh`** (this host has no
+`python3`), not JS-shaped work like the four just closed.
 
-`CE-020` (every capability has a complete keyboard form) sits between the two: **scope it before
-picking it up.**
+**The 13 remaining:** `CE-005` `CE-006` `CE-011` `CE-012` `CE-020` `CE-023` `CE-024` `CE-027`
+`CE-028` `CE-030` `CE-031` `CE-032` `CE-035`. `CE-020` (every capability has a complete keyboard
+form) is still the one worth **scoping before** picking up. `CE-031`/`CE-032`/`CE-035` need a real
+second machine.
 
 **Also open:** `D-0564`, still the most valuable unbuilt idea — the event ledger's head is a hash
 with no key, so it detects an edit but not a rewrite. And `F-TOOLSCOPE-001`, which `D-0574` argues
 against wiring until a route can mint for catalog tools.
 
-**`production_ready` stays `false`.** 17 rows with no verdict is not a finished product.
+**`production_ready` stays `false`.** 13 rows with no verdict is not a finished product.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**The family this project had already been burned by now has verdicts.** Its own skill records
-it: *«le due shell non divergono in nessun punto» è scritto dal 26 luglio, mai applicato, e niente
-lo faceva fallire*.
+**A rule enforced only in the producer is a rule the report walks around.** `CE-009` says *"test
+che rifiuta un **rapporto** senza copertura o con copertura implicita"*. `projectionCoverage()` had
+never rounded a partial result up, and its own tests proved that — but nothing checked the report,
+and the report is what a person reads.
+
+Measured on `assembleSessionProof()` **before** the repair:
+
+| What was served | Why it is the defect |
+|---|---|
+| `{"diff":[],"risk":…,"promoted":false}` for a decided run with no coverage | `coverage: undefined` is **dropped** by `JSON.stringify` — coverage absent, not declared absent |
+| a coverage object claiming `complete:true` over **6/9** recomputed | the report asserted a complete projection of a partial one |
+| `notDone: null` on **every** promoted run | a blank `NON FATTO` box, indistinguishable from a run nobody checked — the exact thing §16 forbids |
+
+Now three outcomes where there was one: the coverage whole · a **declared** absence
+(`{measured:false, reason}`) when nothing was measured · `SessionProofRefused` when the two
+disagree. The `NON FATTO` box is composed from measured facts — every claim the verifier did not
+recompute, named with its reason — and an empty box is a **declaration**, proven after
+serialisation.
 
 | Row | Verdict | What it took |
 |---|---|---|
-| `CE-021` | ✅ | The worst case of that failure: `two-shells-parity.test.mjs` carries a suite **titled** `CE-021` that measures the permission policy — a different claim wearing the criterion's name. The unmeasured half is now measured by the criterion's own method: start through transport A, **discard A entirely**, and a transport built afterwards finds the run, measures it, approves it, and the bytes land. **Negative control:** a *second* engine over the same workspace does **not** find that run |
-| `CE-033` | ✅ | Its method forbids the easy test ("the two renderings, not the two implementations"), so: the frame has exactly three regions plus one conditional, found **inside a painted frame**; and neither shell can hold a region the other lacks because neither *composes* a frame — each writes one thing per repaint |
-| `CE-034` | ✅ | Set equality — and the sets agree **by construction**, so the closure is derived from each shell's source and the **running** `ssh` shell is driven to resolve every command |
-| `CE-036` | ⚠️ **PARTIAL** | Not met and not failed: the criterion asks for four group headings in the `/` box; the product paints a flat ranked list by **`D-0437`**, a direct Owner instruction (*«una lista piatta, stile come ha code claude»*). The supersession is **measured** — one test asserts no heading is painted, another that the groups survive where `D-0437` kept them, in `/help` |
+| `CE-009` | ✅ MET | the guard above + `ce-009-coverage-never-absent-never-implicit.test.mjs` **11/11** |
+| `CE-019` | ✅ MET | the same file, plus `ClosureRegister`'s existing refusal — **two** reports, and the second had no owner |
+| `CE-010` | ✅ MET | `divergence-profile.test.mjs` **10/10** — two real git repositories with opposite habits, the same candidate change profiled against each |
+| `CE-016` | ✅ MET | `ce-016-zero-tools-at-rest.test.mjs` **4/4** — zero tools at rest across ten catalogue sizes, 0 → 5000 |
 
-**Two oracles seen to fire:** a browser-only `terminal.write()` turns `CE-033` red; dropping one
-entry from the `ssh` shell's offered set turns `CE-034` red.
+**A defect in the measurement apparatus, found by running it from elsewhere** (`D-0584`):
+`canonical-json.test.mjs` resolved its conformance vector from the **process CWD**, so it passed
+from the repository root and threw `ENOENT` from `services/reference-control-plane/`. Every other
+vector test in that directory resolves from the file. **8/8 from three directories** now.
 
-### Two defects found in this phase's OWN instrument, repaired at the rule
-
-1. **The verdict classifier read a glyph from prose.** It tested for `✅` anywhere in a cell, so
-   `CE-036`'s honest sentence *«non è un ✅ pieno»* classified the row as **MET** — the tool that
-   exists so nobody rounds a verdict up rounded one up itself, in the dangerous direction. A cell
-   now states its verdict by **what it leads with**.
-2. **The drift check was blind to the verdict text.** It compared four fields and the verdict
-   *enum*, never the prose — where all the evidence lives. Measured: `CE-002`'s text was **2,314**
-   characters in the projection and **1,540** in the document that owns it, a paragraph `D-0577`
-   appended to the projection alone, and the check **passed**. Repaired at its source (the
-   paragraph now lives in the document) and at the rule.
-
-Both oracles seen to fire; 5 regression tests added.
-
-### Verification — all produced this session
-
-```text
-ce-021 4/4 · ce-033 7/7 · ce-034 4/4 · ce-036 7/7 · acceptance-matrix 13/13
-npm test                     2881 tests / 2880 pass / 0 fail / 1 pre-existing skip
-tools/run-eslint.sh          451 files / 0 errors / 0 warnings
-scripts/test.sh              15/15 steps, 0 unavailable
-tools/seeded-defect-proof    19/19 caught
-ratchet                      seen to FAIL at 16, one notch tighter, before being set to 17
-live                         /livez /readyz /healthz = 200 on :8100 and :8443, tree 454/454
-```
+**Verified this session:** unit **2853, 0 fail** · ESLint **452 files, 0 errors** ·
+`verify-source` PASS · matrix PASS, ratchet **seen to FAIL at 12** before being set to 13 ·
+live `/livez` `/readyz` `/healthz` **200** on 8100 **and** 8443 · `sha256` of `session-proof.mjs`
+**identical** between tree and running container.
 
 ## WHAT WAS **NOT** DONE
 
-- **13 of the 17 remaining rows were not attempted**, and the split above says why.
-- **`CE-036` is not a ✅**, and the criterion row is **older than the Owner decision governing
-  it**. Amending it is the Owner's call, not the measurer's — `D-0582` proposes the mechanism.
-- **Four proposals are open and none is executed:** `D-0578`, `D-0580`, `D-0582`, `D-0576`.
-- **The browser suite and the accessibility audit were not run**, declared not omitted: this
-  phase changed four test files and two tools — no product surface, no markup, no DOM, no CSS
-  token. The two tools it changed do not ship in the image at all.
-- **`F-MANIFEST-001`** (recorded `D-0577`) is still open: `MANIFEST.sha256` lists 5,898 paths
-  against 6,685 tracked files and does not grow.
+- **`CE-011` and `CE-012` carry no verdict**, and the previous handoff called them cheap. They are
+  not. The reason is above, and it is a measurement, not an estimate.
+- **`tools/run-browser-e2e.sh` and `tools/accessibility-audit.mjs` were not run.** This phase
+  changed one runtime module with no markup, no DOM and no CSS token, and no shell renders the
+  field it changed.
+- **`scripts/test.sh` (the full battery) was not re-run** after the unit suite went green on the
+  same tree — `noesar-evolution-verify` single-pass rule 4, declared rather than implied.
+- **`D-0585` was proposed, not built** — the coverage line is enforced but still invisible to a
+  person; no shell shows `esito.coverage`.
+- **The phase overran its declared budget** (~45 tool calls, actual ~70): the contract said no
+  install, and §3a binds a shipping source change to install and verify in the same phase.
 
 ## OPEN BLOCKERS
 
-`B-002` (stale premise: gitleaks/trufflehog — **re-measured this session, both absent from
-`PATH`**, so the secret scan was heuristic and is declared as such) and `B-011` (low, deferred:
-history rewritten on the Owner's explicit authorisation, 2026-07-30). Neither blocks work.
+- `B-002` **STALE** (`D-0257`): its premise ("neither gitleaks nor trufflehog is installed") — the
+  scan this phase ran was **heuristic and declared as such**; neither tool is on `PATH`.
+- `B-011` low/deferred (`D-0258`): git history rewritten on the Owner's explicit authorisation,
+  bundle backup taken.
