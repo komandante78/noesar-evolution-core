@@ -207,6 +207,15 @@ COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesa
 COPY --chown=10001:10001 schemas/compliance-pack.schema.json /opt/noesar/schemas/compliance-pack.schema.json
 COPY --chown=10001:10001 schemas/technology-radar-entry.schema.json /opt/noesar/schemas/technology-radar-entry.schema.json
 COPY --chown=10001:10001 schemas/tool-catalog-entry.schema.json /opt/noesar/schemas/tool-catalog-entry.schema.json
+# `D-0559`, found by `tools/verify-image-provenance.sh` and not by reading: this line was
+# MISSING while the running image carried the file. An overlay added it for `D-0521`, the fold
+# that produced this file predates that overlay, and nothing compared the two — so the recipe
+# that travels in the delivery archives shipped a product one published contract short of the
+# one deployed. It is the schema `tools/sign-model-descriptor.mjs` validates against and the
+# one `packages/verified-acquisition/test/descriptor-schema.test.mjs` reads off disk; the
+# runtime validator implements its keywords in code and does not read it, which is exactly why
+# the omission was invisible to every test and to the running container.
+COPY --chown=10001:10001 schemas/model-descriptor.schema.json /opt/noesar/schemas/model-descriptor.schema.json
 COPY --chown=10001:10001 docs/governance/technology-radar-seed.json /opt/noesar/docs/governance/technology-radar-seed.json
 
 COPY --from=rust-builder /build/rust/target/release/noesar-supervisord /opt/noesar/bin/noesar-supervisord
@@ -242,6 +251,29 @@ RUN chmod 0755 /opt/noesar/bin/atomd \
 # carry the bit (a Windows build host) would otherwise ship a launcher nobody can run.
 RUN chmod 0755 /opt/noesar/tools/coden-evolution /opt/noesar/tools/install-coden-cli.sh \
  && ln -sf /opt/noesar/tools/coden-evolution /usr/local/bin/coden_evolution
+
+# The build host stops leaking its umask into the product — `D-0559`, measured, not suspected.
+#
+# `COPY` preserves the source mode. On the machine this image has always been built on, the
+# repository lives on a share where every file is `666` and every script `777`, so the LIVE
+# image ships the application **world-writable** and two acceptance scripts world-writable AND
+# world-executable. Only the documented `--read-only` root filesystem has been standing between
+# that and a container process rewriting the product's own source; an operator who omits the
+# flag gets no such protection, and nothing anywhere said so.
+#
+# It is also why two builds of the same commit on two machines produce different images: a
+# developer with a normal `022` umask gets `644`, this host gets `666`, and the delivery
+# archives would carry whichever host happened to build them. Reproducibility is not a property
+# a recipe can claim while the answer depends on where it ran.
+#
+# The rule below keeps the one mode bit git actually tracks — the executable bit — and fixes
+# the rest: directories `0755`, executables `0755`, everything else `0644`. The explicit
+# `chmod`s above stay where they are: each sits next to the step that asserts something about
+# that file, and this one is a property of the whole tree, not of any file in it.
+RUN find /opt/noesar -type d -exec chmod 0755 {} + \
+ && find /opt/noesar -type f -perm -u+x -exec chmod 0755 {} + \
+ && find /opt/noesar -type f ! -perm -u+x -exec chmod 0644 {} + \
+ && test "$(find /opt/noesar -perm -o+w | wc -l)" = "0"
 
 ENV NODE_ENV=production \
     NOESAR_RUNTIME_ROOT=/opt/noesar \

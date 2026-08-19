@@ -12925,3 +12925,47 @@ under §21c. Non-project containers before and after: 50, untouched. Volumes: 65
 **Reversal cost.** n/a — nothing was changed.
 **Funding fit.** **Fits none** — an internal safety practice, written as such.
 **Status.** recorded. Close evidence: `EVIDENCE/session_close_20260819T054047Z.txt`.
+
+## D-0559 · The shipped recipe is proven to build the shipped product — G-02 — 2026-08-19
+**Decision.** `oci/Dockerfile` was built from scratch and measured against the tree and against
+the running image by a new instrument, `tools/verify-image-provenance.sh`, now a preflight gate
+in `tools/deploy/redeploy.sh`. Two defects it found were repaired in the recipe:
+`schemas/model-descriptor.schema.json` was never copied (the live image has it, an overlay added
+it after the fold), and file modes were inherited from the build host — this host's share gives
+`666`/`777`, so the live image ships the application **world-writable**.
+**Why.** G-02 blocked honest provenance in the delivery archives: the recipe that travels to
+installers had never been built, and the deploy path's "byte-equal tree↔image" check was done by
+hand at the overlay's scope — the `d0544` ledger entry records **3/3** because that overlay copied
+three files.
+**Rejected.** Redeploying to close the staleness. Nine files in the running image are older than
+the tree, and **all nine are test files plus a `scripts` block** — no runtime module is stale, so
+this is not a blocking defect and deployment is a stop condition (§77), not a phase's own call.
+**Evidence.** `--no-cache` build **exit 0** (27 crates compiled offline, `postgres (PostgreSQL)
+18.4` asserted inside the build); two independent builds byte-identical over **437** files
+including both Rust binaries; repaired image **436/436** byte-equal to the tree, **0**
+world-writable, the same 9 executables at `0755`; runtime configuration (Env, Entrypoint, Cmd,
+User, WorkingDir, ExposedPorts, Volumes, Healthcheck) **identical** to the live image. Gate seen
+to fire: it refuses the live image (15 differing) and passes the built one. Fixture **73/73**, its
+3 new assertions failing on the pre-change file. Unit **2686 pass / 0 fail**, `SOURCE_VERIFY=PASS`.
+**Reversal cost.** None: the two Dockerfile changes affect only images built after them, and the
+gate is skipped when no `--image` is given.
+**Funding fit.** **Restack · traits 5 and 2** — reproducibility and provenance are measurable
+reliability, and the verifier is a standalone script any container project can reuse.
+**Status.** applied, committed, **not deployed**. G-02 closes; the staleness is a new open finding.
+
+## D-0560 · Improvement proposal — fold the 87 overlays out of the tree — 2026-08-19
+**Decision.** Proposed, not executed: now that `oci/Dockerfile` is proven to build the product,
+retire the 87 `oci/Dockerfile.phase4-*` overlays as the deployment mechanism and build every
+future image from the canonical file, so an installation is a tree state rather than an
+accumulation nobody can name.
+**Why.** The overlays are why the live image drifted: each copies only the files its phase
+touched, so anything else silently keeps whatever the ancestor had. That is not a hypothesis —
+it is the nine stale files this phase measured.
+**Rejected.** Deleting the overlay files. They are the only written record of how the running
+image came to hold what it holds, and §12 forbids it besides.
+**Evidence.** Build from the canonical file: **~40 s** cold, no overlay, no flattening, no
+128-layer ceiling. Cost: one full build per deployment instead of one thin layer.
+**Reversal cost.** None — the overlays stay on disk.
+**Funding fit.** **Restack · trait 5**, measurable reliability: an image whose contents are a
+function of a commit is auditable; one whose contents are a function of its build order is not.
+**Status.** proposed — the Owner's call, per §69.

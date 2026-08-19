@@ -5226,3 +5226,24 @@ first); its image stays on disk. No probe, runner or overlay tag was created thi
 browser suite was not run, because nothing in the DOM changed. Volumes **65 → 65**, networks
 **10 → 10**, and the set of non-project containers is **identical** before and after, diffed by
 name (`EVIDENCE/docker_inventory_pre_cleanup_D-0544_20260818T160214Z.txt`).
+
+## `g02-provenance` — NOT DEPLOYED, recipe measured — 2026-08-19
+
+**Nothing was installed.** The running installation is unchanged: still
+`noesar-evolution:d0544-health-lane-20260818T160214Z`, `Up`/`healthy`, `RestartCount=0`.
+**What was measured instead.** `oci/Dockerfile` — the only recipe that travels in the delivery
+archives — was built for the first time. `--no-cache`, **exit 0**: 27 crates compiled offline
+from `rust/vendor`, `postgres (PostgreSQL) 18.4 (Debian 18.4-1.pgdg12+1)` printed inside the
+build, ~40 s cold. Two independent builds are **byte-identical over 437 files**, both Rust
+binaries included.
+**Verification.** Repaired image **436/436** byte-equal to the working tree; **0**
+world-writable paths; the 9 executables at `0755`; Env, Entrypoint, Cmd, User, WorkingDir,
+ExposedPorts, Volumes and Healthcheck **identical** to the live image.
+**What this corrects in the entries above.** "Byte-equal tree↔image 3/3" (`d0544`) measured the
+three files that overlay copied, not the image. At the whole surface, **9 files in the running
+image are older than the tree** — 8 test files and `package.json`'s `scripts` block; no runtime
+module. `tools/deploy/redeploy.sh` now runs `tools/verify-image-provenance.sh` in preflight
+whenever `--image` is given, and refuses a target that does not match the tree.
+**Rollback cost.** None — nothing was deployed, stopped or renamed.
+**Cleanup.** Three throwaway tags built this phase (`g02-provenance`, `g02-nocache`,
+`g02-fixed`) removed under §5a; every analysis container was `docker run --rm`.

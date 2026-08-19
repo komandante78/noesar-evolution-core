@@ -1,0 +1,143 @@
+===== IMAGE PROVENANCE =====
+root      : /mnt/cachec/NOESAR_EVOLUTION
+candidate : noesar-evolution:g02-fixed-20260819T063134Z
+reference : noesar-evolution:d0544-health-lane-20260818T160214Z
+
+candidate /opt/noesar: 438 files
+
+----- 4. TREE <-> IMAGE (candidate) -----
+  byte-equal to tree: 436 · differing: 0 · absent from tree: 0 · built in image: 2
+reference /opt/noesar: 429 files
+
+----- 1. APPLICATION BYTES (candidate <-> reference) -----
+  differing lines: reference-only 15 · candidate-only 24
+  --- /tmp/tmp.ACQrxtgpDJ/ref.files	2026-08-19 08:37:11.554095541 +0200
+  +++ /tmp/tmp.ACQrxtgpDJ/cand.files	2026-08-19 08:37:09.808062699 +0200
+  @@ -87,18 +87,22 @@
+   11605218ec4e0ebe9ff4e7b921a35ad19a777c8195f8ba10f740e0e8a57831b0  database/postgres/MIGRATIONS.json
+   8634767177597c1dc16d79926757a270ecbc0cd31fa990ac0f16a4be152eb153  database/postgres/README.md
+   3355490b1b7f1d1a1980391654a2a3eaeae7679a585ba7ab6b024c017fa75348  docs/governance/technology-radar-seed.json
+  -15bbb550a8cd458021b4d8a4c7ee4b63be2d8c6cb9d0840a99607edb530284a0  package.json
+  +26a8b6e72e7fbbd7f5b216b39af201d36840079da1e41302aff7fcde51b423c3  package.json
+   0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0  packages/verified-acquisition/LICENSE
+  -39c9e11359bf8d9dbc98437738f2e6a753edba3e8a410a72756be67701ba8a1d  packages/verified-acquisition/README.md
+  -fa9e28ebfaa5479a441d634bea512990bb95bd30d6ce4c4b678d8d2dc80e96f6  packages/verified-acquisition/SPEC.md
+  -e81965d68ab0d61d03e041335b027f2e81e8609327316ad8715d6409b8ed7eb5  packages/verified-acquisition/conformance/index.mjs
+  -77c5057ec2565350e19f3a2be862184a0862040635e50336ebbaa6d7c965fa5b  packages/verified-acquisition/conformance/vectors.json
+  -ed473b2aaf939dac3787d15c9f8b8e07f1c2613f98852a40f9dd95b75062bfab  packages/verified-acquisition/package.json
+  +b18a79352923bb4fe0225ca4bfe0cc557e10f73e18cc4981395692b277acb3be  packages/verified-acquisition/README.md
+  +635bd6271bff35300dffb0adf245ba54797cc2dc48a29c2280d1404455ceaf6a  packages/verified-acquisition/SPEC.md
+  +af2c7493d1e6009722b50eb2fe718f95fc5655bcd82465fb4a88388141875ae7  packages/verified-acquisition/conformance/index.mjs
+  +3a3eb2ea8e288458ac1160662d7a7a9f2e123558990e99fd3833ccb8162cb0b7  packages/verified-acquisition/conformance/python/canonical_json.py
+  +9cc40761508703bbfab635bb34745e8f18d7d2397e0a3116ceaf0413ee3b68fa  packages/verified-acquisition/conformance/python/run_vectors.py
+  +7deac46b12b9b64c856e38a30e7ab4ea4e5901bef5ad87840d624d9a16630a1e  packages/verified-acquisition/conformance/vectors.json
+  +16fa81047223da294f4ae20cd1a20d9005aa8c6b0314958ea78351bc7fdd5cc5  packages/verified-acquisition/package.json
+   970fa266ae29ab9346cf0d3ca416f86d04cdf185fab456611d60565afcb2df71  packages/verified-acquisition/src/authenticity.mjs
+  -e628bc3c0ff0a291d915091ff231b36ff53774dd65df658e59f906ea44ba536c  packages/verified-acquisition/src/canonical-json.mjs
+  -d5b907f1db3f02c09490952d76401a4073bd6f71ffe8794da282c81004c5bc6b  packages/verified-acquisition/src/index.mjs
+  +88d421886cc847c28bc330cff58a2e1f4b27554c27a18db3f857232480a6ccac  packages/verified-acquisition/src/canonical-json.mjs
+  +e1456ce99863c3326c6d847d58b6f20df33a99c48262d67b07b58d9bda22d50e  packages/verified-acquisition/src/descriptor-schema.mjs
+  +2121b4a4f98c7dbad982971f3ea8b84da592dbace1bf01f4f9ffc2a8f8b8fa80  packages/verified-acquisition/src/index.mjs
+   be61948c271b892dabc14bd04023e3c099b83c1f35379abc8b43bbd16cf132dc  packages/verified-acquisition/src/transport.mjs
+  -85157c437363f36449c0181e3b92e839d008e8b5b06dd2d324834fa826e7e7b4  packages/verified-acquisition/test/conformance.test.mjs
+  +90f3d121e62938b6045da8cafb52b95845aa5eea69f1521c29d6b84df4f48b15  packages/verified-acquisition/test/conformance.test.mjs
+  +36835d25deaab9be5fd106063bbf39b43b5e9ca947f9cc96972d948ba1f0fc5e  packages/verified-acquisition/test/descriptor-schema.test.mjs
+   4f8481dd939fbe3cf7bfd4f10b36ee374f45a1a182bbcb229bc544aeb891878d  schemas/compliance-pack.schema.json
+   5f9d398674c64bb6b5087a901e76c4f9654646a08b5d4c60dd767a3e73f81148  schemas/industry-module-manifest.schema.json
+   4b475c4045831e19bdbd78f5eb17a9a022dfce832d2dfe6d332ab38bc6cfac71  schemas/model-descriptor.schema.json
+  @@ -220,9 +224,11 @@
+   6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  services/reference-control-plane/src/webauthn.mjs
+   0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  services/reference-control-plane/src/websocket.mjs
+   bd36ec2c7d98b4fa753d88c39e4e63442b4aa675f9129275c80c9a9a40131e9c  services/reference-control-plane/src/workspace-actions.mjs
+  +ae12ef44cb54927edd14728343ccbaef4ee2b5e48ad9a9cb915ccbc5cee85c6b  services/reference-control-plane/test/acceptance-matrix.test.mjs
+   75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  services/reference-control-plane/test/account-recovery.test.mjs
+   62914deb8793bb673db805fa1a0f626c4852fbea2523d83771138e406cb5b7c7  services/reference-control-plane/test/account-security.test.mjs
+   a3f5116bc284e43b9b7101ab48dad3dd1178643e79eadb525fa9dcd0325b48e9  services/reference-control-plane/test/active-model.test.mjs
+  +8eb51d09dd1b51ad43188aeee8f366d65fadfd2aa27abe59882e7358007cfcba  services/reference-control-plane/test/active-runtime-provider.test.mjs
+   39738b01db1b088a5d7c1c34c59d1e3284f9037e053169482a1369f298b3f009  services/reference-control-plane/test/adapter-capability-http-adversarial.test.mjs
+   188b142b50cd4dd1d8e5d5850b055661158e5a16ff013fcc6eab781fd03a19e9  services/reference-control-plane/test/adapter-capability.test.mjs
+   09466f4b4e26761cfd9bbc9505b43520a21ea3dce7cee5bac3da55ec649c9373  services/reference-control-plane/test/address-guard.test.mjs
+  @@ -262,8 +268,8 @@
+   ea0a46122ad492f2f9eec5c9ed8175047cf9346ccfc84fec06de482d19288035  services/reference-control-plane/test/coden-path-authorization.test.mjs
+   0997010fa5e398bb69d1468ffd871e23347fa5dddc622c01fde2401b7e5b0542  services/reference-control-plane/test/coden-shell-parity.test.mjs
+   e2c3312fb9ba6f48b9befe2f8da962eb197e85bfaa42503cd323ae77f8b8ff45  services/reference-control-plane/test/coden-spa-catchall.test.mjs
+  -127c6cb8dd5bba3c040e6b3a95de3fdeab922cf810d1bdf9eddd72d75d00f0b2  services/reference-control-plane/test/coden-terminal-client.test.mjs
+  -8fbc234d1a51ca076e85dca7e7748a2200e33aa1ef9ca823cd829710607e083f  services/reference-control-plane/test/coden-view-model.test.mjs
+  +66ecd985ecdfb1fb61be68e6769934b020475a10f95d7409fd4dcbf3756e1806  services/reference-control-plane/test/coden-terminal-client.test.mjs
+  +1c19df641eeb6f7bb480c5c5727a58658cf13b0a0a904181ebeb6af284966d61  services/reference-control-plane/test/coden-view-model.test.mjs
+   ea34124e0b3aaa180dc942e81b56051f302ae17f129a92c098eb397f1a22179d  services/reference-control-plane/test/codev-relay.test.mjs
+   046be73ee26f5c9f2b9c08d7cfd0f4b921a6f2dccfbd41aeb0c1b0f8cfa86df9  services/reference-control-plane/test/compliance-packs.test.mjs
+   054bfb394da16242439ff8bd6531e103634fe60ed2d6b1bae6bde0ec9b395c9f  services/reference-control-plane/test/conformance.test.mjs
+  @@ -293,13 +299,16 @@
+   bab20e90e687dd7bd16b3dc91b53648e06c7c0f450fd4f3af0bdd0eea66c0791  services/reference-control-plane/test/isolation.test.mjs
+   446f6b2e6821eb398489afb64ef142d44acde494969b0105ad30dcf5a7d71145  services/reference-control-plane/test/lan-exposure.test.mjs
+   140dbe15404390b4094f57bd0b682c6fbe2e2f7df1a85b13b4e16f460684f7d3  services/reference-control-plane/test/launcher-portability.test.mjs
+  -60d7c8d5b7c3d4633901cf4938732f8319f5af2c9bffa4d8a19385f1027cf503  services/reference-control-plane/test/local-model-runtime.test.mjs
+  +37dff3ddf3d8216d60a8ea44a4371fa58eafc9093fab2e6e5318109a1ad6bc80  services/reference-control-plane/test/local-model-runtime.test.mjs
+   bc2c8ab71d5c7c3e7d1b943edf7513541c51cc3f52e76e6719a4f1b879c3c05e  services/reference-control-plane/test/logging.test.mjs
+   f7ce1a2e234f00ce243fbf1cfe9dd603b862b13915073e651636ca319e29ccf0  services/reference-control-plane/test/login-malformed-username.test.mjs
+   939f176a6c9cedc6b279007f599761b71e55de0e2156e8564376c7391c058a09  services/reference-control-plane/test/memory-compaction.test.mjs
+   5b726ae3dd1b31bac8c48519f77ef013d04a8028621edb5a44ab7f82e0e0c36e  services/reference-control-plane/test/memory-model-swap.test.mjs
+   32fc0d679f433fc19a93667aaaccdbe2efacbb214d87b688f0da8ee408fc5f5b  services/reference-control-plane/test/memory-service.test.mjs
+  -e9711c88f59f62f6aabca902724a9814e94c6cc88c5195fa4d2ac5c2e23ddc21  services/reference-control-plane/test/model-catalog.test.mjs
+  +b9b23c7403308278a3acecd922eebe34bcb9b862297639332007e43c1e1c5401  services/reference-control-plane/test/model-acquisition.test.mjs
+  +64b5e43f44abccf86bd6e2e5a952f9fb7cfa9f84020ee3dd3f5234c4eb66fc4c  services/reference-control-plane/test/model-catalog.test.mjs
+  +1f9f68eeeddd42f71ac23f5e55a500079bf02f3a1db9c4bdb0fbaa1b0047e889  services/reference-control-plane/test/model-descriptor-authenticity.test.mjs
+  +4b857a30755951fc278ccffaadcb23f16d043e338bc24cb24ed25f3497fb288f  services/reference-control-plane/test/model-transport.test.mjs
+   f80c2b8c72cf398e2f94143585cde132fec1b0195102009ef15afa3d97b7a980  services/reference-control-plane/test/module-console-proxy-catalog-integration.test.mjs
+   0dd5282d67b8d38951d20bd5c28ff8beb5960e74ff0e187fa80372acdf6149f7  services/reference-control-plane/test/module-console-proxy.test.mjs
+   7671addbbb222bbf3c54fbf3d7a8fa038922766586b4d9f8aea11a54477bf98f  services/reference-control-plane/test/module-uninstall-wiring.test.mjs
+  @@ -351,7 +360,7 @@
+   70912902970dde54bf5ce0ea01bbf620d3e3b40b2b2130af05825b0c1f8ea4b9  services/reference-control-plane/test/service-token-http-auth.test.mjs
+   e46cef2a310f9e9a5ee681f01b3481f4bd5233f2ec35e4b17b29c5f083961724  services/reference-control-plane/test/session-lifecycle.test.mjs
+   ed39044a4d2174e11e0071d381af14e9433d9f826d4c8293904b9e248163cf14  services/reference-control-plane/test/session-proof.test.mjs
+  FAIL: application bytes differ between candidate and reference
+
+----- 2. MODES AND SYMLINKS -----
+  --- /tmp/tmp.ACQrxtgpDJ/ref.modes	2026-08-19 08:37:11.699098269 +0200
+  +++ /tmp/tmp.ACQrxtgpDJ/cand.modes	2026-08-19 08:37:09.935065088 +0200
+  @@ -1,30 +1,30 @@
+  -f 666 ./apps/shared/coden/agent-commands.js 
+  -f 666 ./apps/shared/coden/coden-address-views.mjs 
+  -f 666 ./apps/shared/coden/coden-addresses.js 
+  -f 666 ./apps/shared/coden/terminal-input.mjs 
+  -f 666 ./apps/shared/coden/tui-screen.mjs 
+  -f 666 ./apps/webui-static/app.js 
+  -f 666 ./apps/webui-static/coden-terminal-frame.js 
+  -f 666 ./apps/webui-static/coden-terminal.html 
+  -f 666 ./apps/webui-static/coden-terminal.js 
+  -f 666 ./apps/webui-static/coden-view-model.js 
+  -f 666 ./apps/webui-static/colour.js 
+  -f 666 ./apps/webui-static/i18n-catalog.js 
+  +f 644 ./apps/shared/coden/agent-commands.js 
+  +f 644 ./apps/shared/coden/coden-address-views.mjs 
+  +f 644 ./apps/shared/coden/coden-addresses.js 
+  +f 644 ./apps/shared/coden/terminal-input.mjs 
+  +f 644 ./apps/shared/coden/tui-screen.mjs 
+  +f 644 ./apps/webui-static/app.js 
+  +f 644 ./apps/webui-static/coden-terminal-frame.js 
+  +f 644 ./apps/webui-static/coden-terminal.html 
+  +f 644 ./apps/webui-static/coden-terminal.js 
+  +f 644 ./apps/webui-static/coden-view-model.js 
+  +f 644 ./apps/webui-static/colour.js 
+  +f 644 ./apps/webui-static/i18n-catalog.js 
+   f 644 ./apps/webui-static/i18n.js 
+  -f 666 ./apps/webui-static/index.html 
+  -f 666 ./apps/webui-static/page-help.js 
+  -f 666 ./apps/webui-static/qr.js 
+  -f 666 ./apps/webui-static/schedule.js 
+  -f 666 ./apps/webui-static/styles.css 
+  +f 644 ./apps/webui-static/index.html 
+  +f 644 ./apps/webui-static/page-help.js 
+  +f 644 ./apps/webui-static/qr.js 
+  +f 644 ./apps/webui-static/schedule.js 
+  +f 644 ./apps/webui-static/styles.css 
+   f 644 ./apps/webui-static/vendor/xterm/LICENSE 
+  -f 666 ./apps/webui-static/vendor/xterm/PROVENANCE.md 
+  FAIL: file modes or symlinks differ between candidate and reference
+
+----- 3. RUNTIME CONFIGURATION -----
+  identical: Env, Entrypoint, Cmd, User, WorkingDir, ExposedPorts, Volumes, Healthcheck
+
+RESULT: DRIFT — 2 check(s) failed. The shipped recipe does not reproduce the
+        shipped product; see the diffs above.

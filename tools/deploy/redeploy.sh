@@ -114,6 +114,36 @@ preflight() {
   docker image inspect "$target_image" >/dev/null 2>&1 \
     && ok "target image present locally: $target_image (no pull will be attempted)" \
     || bad "target image $target_image is NOT local — this tool never pulls"
+
+  # §3a 11c's "prove the image's contents equal the repository tree", mechanically — `D-0559`.
+  #
+  # It was being done by hand, and the hand followed the overlay: the `d0544` entry in the
+  # ledger records "byte-equal tree↔image 3/3" because that overlay copied three files, so
+  # three is all anyone compared. Measured on 2026-08-19 with the whole surface instead:
+  # NINE files in the running image are older than the tree they are supposed to be, because
+  # no overlay ever refreshed them. All nine are test files and one `scripts` block — no
+  # runtime module was stale — but nothing in the deploy path could have told the difference.
+  #
+  # Only when a NEW image is being deployed. A `--rotate-secret` run redeploys the image that
+  # is already running, which was built from an older tree by construction; refusing that
+  # would block a secret rotation for a reason that has nothing to do with secrets.
+  if [ -n "$NEW_IMAGE" ]; then
+    # `|| prov_rc=$?` and not `; prov_rc=$?`: under `set -e` an assignment carries the exit
+    # status of the command substitution, so the plain form killed the script the first time
+    # the check found drift — the gate would have been silent in exactly the case it exists for.
+    local prov_out prov_rc=0
+    prov_out="$("$ROOT/tools/verify-image-provenance.sh" "$target_image" 2>&1)" || prov_rc=$?
+    # Only a MEASURED drift is a FAIL. `2` (the image cannot be read) and `3` (no docker) mean
+    # the question was not answered, and answering it falsely in either direction would be
+    # worse than saying so: the image's presence is already a `bad` of its own two lines above,
+    # so a warn here duplicates nothing and hides nothing.
+    case "$prov_rc" in
+      0) ok "image bytes equal the working tree: $(printf '%s\n' "$prov_out" | awk '/byte-equal to tree/{print $0}' | sed 's/^ *//')" ;;
+      2|3) warn "provenance UNMEASURED — $(printf '%s\n' "$prov_out" | grep -E 'UNAVAILABLE|PRECONDITION' | head -1)" ;;
+      *) bad "the target image does not match the working tree — see the drift below"
+         printf '%s\n' "$prov_out" | grep -E 'differs|not-in-tree|byte-equal to tree' | sed 's/^/      /' ;;
+    esac
+  fi
   [ -n "$network" ] && docker network inspect "$network" >/dev/null 2>&1 \
     && ok "network exists: $network" || bad "network $network is missing"
   ok "restart=$restart · read-only rootfs=$ro"

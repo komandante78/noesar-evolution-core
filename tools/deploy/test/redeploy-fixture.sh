@@ -205,6 +205,27 @@ grep -q "grep -icE '401|unauthor|x-atom-token' || true" "$TOOL" \
 grep -qE '/mnt/(cachec|user)' "$TOOL" && fail "no host path is hardcoded (§60-64)" "found" \
   || pass "no path of any particular host is hardcoded (§60-64)"
 
+echo "=== 10. PROVENANCE GATE (static, on the shipped file) — D-0559 ==="
+# §3a 11c requires the image's contents to be proven equal to the repository tree before a
+# deployment. It was done by hand, and the hand followed the overlay: the `d0544` ledger entry
+# records "3/3" because that overlay copied three files. The gate below is what replaced the
+# hand, and these three lines are what stop it from being quietly dropped again.
+grep -q 'verify-image-provenance.sh' "$TOOL" \
+  && pass "the deploy path calls the provenance verifier" \
+  || fail "provenance verifier is called" "absent — §3a 11c would be unmeasured"
+prov_at="$(grep -n 'verify-image-provenance.sh' "$TOOL" | head -1 | cut -d: -f1)"
+gate_at="$(grep -n '^\[ "\$FAIL" -eq 0 \] || { say "REFUSED: preflight failed' "$TOOL" | head -1 | cut -d: -f1)"
+[ -n "$prov_at" ] && [ -n "$gate_at" ] && [ "$prov_at" -lt "$gate_at" ] \
+  && pass "it runs in preflight, before the gate that refuses a failed preflight" \
+  || fail "provenance runs before the mutation gate" "prov=$prov_at gate=$gate_at"
+# A measured drift must be a FAIL; an unmeasurable one must not be. Both directions matter:
+# failing when docker is absent would make the tool host-coupled (§60-64), and passing when the
+# bytes differ would make the whole check decorative.
+awk '/verify-image-provenance.sh/,/esac/' "$TOOL" | grep -q '2|3) warn' \
+  && awk '/verify-image-provenance.sh/,/esac/' "$TOOL" | grep -q '\*) bad' \
+  && pass "measured drift FAILs, unmeasurable provenance only warns" \
+  || fail "drift FAILs and unmeasurable warns" "the case arms do not say both"
+
 echo
 echo "================================================================"
 echo "redeploy fixture: $PASS passed, $FAIL failed"

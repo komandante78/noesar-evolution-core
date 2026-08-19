@@ -1,0 +1,22 @@
+===== IMAGE PROVENANCE =====
+root      : /mnt/cachec/NOESAR_EVOLUTION
+candidate : noesar-evolution:g02-nocache-20260819T063134Z
+reference : noesar-evolution:g02-provenance-20260819T063134Z
+
+candidate /opt/noesar: 437 files
+
+----- 4. TREE <-> IMAGE (candidate) -----
+  byte-equal to tree: 435 · differing: 0 · absent from tree: 0 · built in image: 2
+reference /opt/noesar: 437 files
+
+----- 1. APPLICATION BYTES (candidate <-> reference) -----
+  identical: 437 files, every sha256 equal
+
+----- 2. MODES AND SYMLINKS -----
+  identical
+
+----- 3. RUNTIME CONFIGURATION -----
+  identical: Env, Entrypoint, Cmd, User, WorkingDir, ExposedPorts, Volumes, Healthcheck
+
+RESULT: oci/Dockerfile reproduces noesar-evolution:g02-provenance-20260819T063134Z — same product bytes, same modes, same
+        runtime configuration, and byte-equal to the working tree.
