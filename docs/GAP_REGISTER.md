@@ -23,14 +23,17 @@ pointer is corrected to point here.
 paragraph said when it was written a day earlier. `docs/WORK_PLAN_V5_REWRITE.md` §5 risk 4 —
 *"la riscrittura non ha apparato di accettazione: zero matrici con ID e severità"* — and the
 first version of `G-01` repeating it were **both measured false on 2026-08-19** (`D-0556`):
-**53 criteria** with id, severity and stated verification method live in four documents of
+**66 criteria** with id, severity and stated verification method live in **six** documents of
 `MASTER_PROJECT/`, and their own header already says *"ogni riga è verificabile eseguendo, non
-leggendo"*.
+leggendo"*. (It said *53 in four documents* until `D-0561` measured it again: `08_INSTALLAZIONE.md`
+and `01_VISIONE_E_POSIZIONE.md` had carried the same five-column table all along, ten of their
+thirteen rows with a verdict already written, and nothing listed them as sources.)
 
-Two corrections in two days, on the same question, is the argument for `docs/acceptance-matrix.json`
-and `tools/verify-acceptance-matrix.mjs`: the matrix is now **read by a machine**, kept in step
-with the documents that own it, and its gap is a **number that can only improve** — 36 criteria
-with no recorded verdict, 15 of them critical.
+**Three** corrections in two days, on the same question, is the argument for
+`docs/acceptance-matrix.json` and `tools/verify-acceptance-matrix.mjs`: the matrix is now **read by
+a machine**, kept in step with the documents that own it, and its gap is a **number that can only
+improve** — 36 criteria with no recorded verdict when the tool was built, **32 today, 11 of them
+critical**, each step down proved by seeing the ratchet fail one notch tighter.
 
 ---
 
@@ -85,7 +88,7 @@ Ordered by what unblocks what, not by severity.
 
 | id | Gap | Evidence measured 2026-08-19 | Blocks |
 |---|---|---|---|
-| **G-01** | ~~No acceptance matrix~~ — **CORRECTED 2026-08-19 (`D-0556`), this row was wrong**, then corrected again the same day (`D-0561`): **66** criteria, not 53, in **6** documents, not 4. What was missing is that **nothing read them**; what remains is that **34 carry no recorded verdict — 13 of them CRITICAL** | `node tools/verify-acceptance-matrix.mjs` → 66 criteria, 32 with a verdict (28 met), 34 without, 13 critical unstated. A battery step with a ratchet seen to fire at each new floor. `CE-001` and `CE-004` closed by `D-0561` | **the 13 remaining critical verdicts** are what block saying "done" |
+| **G-01** | ~~No acceptance matrix~~ — **CORRECTED 2026-08-19 (`D-0556`), this row was wrong**, then corrected again the same day (`D-0561`): **66** criteria, not 53, in **6** documents, not 4. What was missing is that **nothing read them**; what remains is that **32 carry no recorded verdict — 11 of them CRITICAL** | `node tools/verify-acceptance-matrix.mjs` → 66 criteria, 34 with a verdict (30 met), 32 without, **11** critical unstated. A battery step with a ratchet seen to fire at each new floor. `CE-001`/`CE-004` closed by `D-0561`, `CE-017`/`CE-018` by `D-0563` | **the 11 remaining critical verdicts** are what block saying "done" |
 | **G-02** | ~~`oci/Dockerfile` reproducing the live image is `[UNVERIFIED]`~~ — **CLOSED 2026-08-19 (`D-0559`)**, and the answer inverted the question: the recipe is faithful and **the running image is what drifted**. Two defects repaired in the recipe (a schema never copied; modes inherited from the build host, which is why the live image ships the application **world-writable**) | Built `--no-cache`, **exit 0**; two builds byte-identical over 437 files; **436/436** byte-equal to the tree; runtime configuration **identical** to the live image; `tools/verify-image-provenance.sh` is now a preflight gate and was seen to refuse the live image | ~~delivery ZIPs~~ — **new finding `F-IMAGE-STALE-001`** below |
 | **F-IMAGE-STALE-001** | 9 files in the **running** image are older than the tree, because each overlay copies only what its phase touched | 8 test files + `package.json`'s `scripts` block. **No runtime module is stale** — checked path by path, not assumed | nothing today; closed by the next deployment, which the gate now measures |
 | **G-03** | Legal / licence / compliance content is not in the tree | `WORK_PLAN_V5_REWRITE.md` §5 risk 5 — in the sealed archives only | phase 7, commercial posture |

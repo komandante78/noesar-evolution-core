@@ -13020,3 +13020,51 @@ copies of `(CE|CUBE|ARCH)` that this phase had to repair.
 **Funding fit.** **Restack · trait 2**, reusable beyond this product: "prove no other code path does
 X" is a check any audited codebase wants and almost none has.
 **Status.** proposed — the Owner's call, per §69.
+
+## D-0563 · CE-017 and CE-018 get verdicts, one of them with its limit written into it — 2026-08-19
+**Decision.** `CE-017` (a checkpoint precedes every mutative step; restore is byte-identical) and
+`CE-018` (the ledger is append-only, with a chained digest that detects tampering) are recorded
+**met**, by two new suites named for them. `CE-018`'s verdict carries its **bound in the cell**: the
+chain is unkeyed, so it detects an edit and not a wholesale rewrite.
+**Why.** They were 2 of the 13 remaining CRITICAL criteria with no verdict. Most of `CE-018`'s
+machinery was already tested — 4 tamper vectors, a doctored journal — and none of it was tied to
+the criterion, which is why nothing could answer whether it held.
+**Rejected.** Recording `CE-018` as plainly met. The sentence *"digest concatenato che rileva una
+manomissione"* reads as a tamper-evidence guarantee; `createHash` with no key is a weaker
+property, and a verdict that let the two be confused would be the false PASS rule 38 exists for.
+**Evidence.** `ce-017-checkpoint-precedes-mutation.test.mjs` **5/5** — sha256 of the whole tree
+before the plan and after the restore, identical as a map, across both wired classes (modify and
+create), a file the plan never named left alone, the checkpoint proven **per run**, and binary
+bytes exact. `ce-018-ledger-append-only.test.mjs` **6/6** — the already-written prefix of the
+journal unchanged byte for byte after four more events, an edited line refused with
+`CHAIN_BROKEN`, a torn final line recovered and counted, and the bound demonstrated by performing
+the attack: two different histories, two internally valid chains, distinguishable only by a head
+digest recorded elsewhere. Unit **2716 pass / 0 fail**; matrix **66 criteria, 34 with a verdict
+(30 met), 32 without, 11 critical**; ratchet 34→32 and 13→11, **seen to fail** one notch tighter.
+**Ordering, since no test can watch it happen.** "The checkpoint precedes the mutation" is measured
+by its only observable: original bytes can come back only if they were read before being
+overwritten, and a created file can be removed only if its absence was recorded before it existed.
+**Reversal cost.** None — two test files and two documentation cells.
+**Funding fit.** **Restack · trait 5**, measurable reliability: reversibility proven by checksum
+and an audit chain whose strength is stated rather than implied.
+**Status.** applied, committed. 11 critical criteria still carry no verdict.
+
+## D-0564 · Improvement proposal — anchor the ledger head outside the file — 2026-08-19
+**Decision.** Proposed, not executed: sign or externally record the event ledger's head digest, so
+that rewriting the journal is detectable and not merely inconvenient. Cheapest honest form: the
+installation's existing owner signing key (`server.mjs` already writes one) signs the head at each
+append or at intervals, and `eventsStatus()` reports the last signed head alongside `chainValid`.
+**Why.** `D-0563` measured the bound by executing the attack: `events.mjs` and `audit.mjs` both use
+`createHash` with no key, so anything that can write the journal can produce a consistent chain
+over altered facts. Today the only defence is that somebody wrote the real head down somewhere
+else, and nothing in the product does that.
+**Rejected.** Keying the chain digest itself with an HMAC. The chain would then verify only where
+the key is, which breaks the property that a third party can check an exported ledger — the reason
+`restore()` recomputes from the records rather than trusting them.
+**Evidence.** `ce-018-ledger-append-only.test.mjs`, the `CE-018 BOUND` case: two histories, both
+chains valid, different heads. Cost: a signature per head, a status field, and a decision about
+where the public half lives.
+**Reversal cost.** Low — an additive field; an installation with no signed head reports none.
+**Funding fit.** **Restack · traits 5 and 3** — verifiable provenance that works offline, on the
+installation's own key, with no external notary.
+**Status.** proposed — the Owner's call, per §69.

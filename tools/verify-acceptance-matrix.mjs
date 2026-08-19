@@ -16,11 +16,13 @@
 //
 // # Why a ratchet and not a hard failure
 //
-// Thirty-six of fifty-three rows carry no verdict anywhere, fifteen of them CRITICAL — including
-// `CE-001`, "no path mutates the workspace without spending a token coined by an authorised Plan",
-// which is the central security claim of the whole product. Failing the suite on that today would
-// make the battery permanently red, and a permanently red check is one people learn to ignore.
-// Failing when it gets WORSE turns the number into something that can only move one way.
+// Thirty-two of sixty-six rows carry no verdict anywhere, eleven of them CRITICAL — down from
+// thirty-six of fifty-three and fifteen when this was written, the same day. `CE-001` ("no path
+// mutates the workspace without spending a token coined by an authorised Plan", the central
+// security claim of the whole product) was among them and is now recorded. Failing the suite on
+// the remaining eleven would make the battery permanently red, and a permanently red check is one
+// people learn to ignore. Failing when it gets WORSE turns the number into something that can
+// only move one way.
 //
 // Lower `MAX_UNSTATED` when rows gain a verdict. Raising it is a decision to be argued for in
 // `docs/DECISION_LOG.md`, not a fix for a failing run.
@@ -29,15 +31,16 @@ import { readFileSync } from 'node:fs';
 
 /**
  * Measured 2026-08-19 (`D-0556`) at 36. May be lowered, never raised without a recorded decision.
- * Lowered to 34 the same day by `D-0561`, when `CE-001` and `CE-004` gained verdicts.
+ * 34 at `D-0561` (`CE-001`, `CE-004`), 32 at `D-0563` (`CE-017`, `CE-018`) — all the same day.
  */
-const MAX_UNSTATED = 34;
+const MAX_UNSTATED = 32;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
- * 15 at `D-0556`, 13 at `D-0561`. Seen to fire at each new floor rather than assumed to: set one
- * notch tighter, this refuses with `13 CRITICAL criteria have no recorded verdict, up from 12`.
+ * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`. Seen to fire at each new floor rather than
+ * assumed to: set one notch tighter it refuses with `N CRITICAL criteria have no recorded
+ * verdict, up from N-1`, measured at every one of those three floors.
  */
-const MAX_UNSTATED_CRITICAL = 13;
+const MAX_UNSTATED_CRITICAL = 11;
 
 const KNOWN_SEVERITIES = new Set(['critical', 'high', 'medium']);
 

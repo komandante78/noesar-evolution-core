@@ -295,7 +295,13 @@
       "criterion": "Ogni passo mutativo è preceduto da un checkpoint, e il ripristino è byte-identico",
       "severity": "critical",
       "howVerified": "ripristino verificato con checksum su ogni classe di passo",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0563"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0563`)** — `ce-017-checkpoint-precedes-mutation.test.mjs`, 5/5, con **checksum sha256 dell'intero albero** prima del piano e dopo il ripristino, identici come mappa (percorsi **e** digest). Entrambe le classi di passo cablate: **modifica** (i byte originali tornano) e **creazione** (il file sparisce) — ed è la mappa dei checksum a **essere** la prova dell'ordine, perché quei byte possono tornare solo se erano stati letti prima di essere sovrascritti. Misurati anche: un file non nominato dal piano non viene toccato dal ripristino, il checkpoint è **per run** (ripristinando il secondo si torna al primo, non all'origine) e i byte binari sopravvivono esatti. Ampiezza dichiarata, non arrotondata: il percorso cablato è **solo WRITE** — `workspaceActionsStatus()` è asserito dal test, così il giorno in cui DELETE o EXECUTE venissero cablati questo verdetto va riguadagnato."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:449"
     },
     {
@@ -303,7 +309,14 @@
       "criterion": "Il ledger è append-only, con digest concatenato che rileva una manomissione",
       "severity": "critical",
       "howVerified": "tentativo di riscrittura, verifica della catena",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0563",
+          "D-0564"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0563`), con il limite dichiarato nel verdetto** — `ce-018-ledger-append-only.test.mjs` 6/6, più i 4 vettori di manomissione di `conformance/event-vectors.json` e il journal manomesso di `durability.test.mjs`. Nuovo qui: **append-only misurato sui BYTE** (il prefisso già scritto è identico dopo altri quattro eventi), un evento modificato è rifiutato al reload con `CHAIN_BROKEN`, e l'unica riga tollerata è quella **finale** troncata (scrittura interrotta), recuperata e contata. **Il limite, misurato eseguendo l'attacco:** la catena è `createHash` senza chiave (`createHmac` **assente**, asserito da un test), quindi rileva chi modifica ma **non** chi riscrive la catena da capo — due storie diverse producono due catene entrambe valide, distinguibili solo da chi ha annotato altrove il digest di testa. `D-0564` propone l'ancora."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:450"
     },
     {
