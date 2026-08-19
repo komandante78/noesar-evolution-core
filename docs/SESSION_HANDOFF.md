@@ -1,126 +1,126 @@
 # SESSION HANDOFF
 
-**Phase:** `G-02` — `D-0559` (work), `D-0560` (proposal, saved not executed).
-**Commit:** `d07c69b`, pushed to `origin/main`. **Nothing was deployed.**
+**Phase:** `G-01` slice 1 — `D-0561` (work), `D-0562` (proposal, saved not executed).
+**Commit:** `9009b6a`, pushed to `origin/main`. **Nothing was deployed** — this phase changed a
+test, a documentation table and two tools; no runtime path exists in the diff.
 **Live installation:** unchanged — `noesar-evolution:d0544-health-lane-20260818T160214Z`,
-`running`/`healthy`, `RestartCount=0`, `/livez` and `/readyz` **200** on HTTP `:8100` and
-HTTPS `:8443`, verified after cleanup.
+`running`/`healthy`. No container, image or network was created this phase, so §5a had nothing
+to remove: containers **52 → 52**, volumes **65 → 65**, networks **10 → 10**.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The 15 CRITICAL acceptance criteria that carry no recorded verdict (`G-01`), `CE-001` first**
-— *nessun percorso muta il workspace senza spendere un token coniato da un Piano autorizzato*,
-the product's central security claim, with no verdict recorded anywhere.
+**The 13 CRITICAL criteria that still carry no verdict**, in the order the register prints them:
 
-`node tools/verify-acceptance-matrix.mjs` prints the list and holds the ratchet: 53 criteria,
-17 with a verdict, 36 without, 15 of those critical. It never decides that a criterion passes —
-status is read from the owning document. Closing one means **producing the evidence** and
-recording the verdict where the criterion lives, not editing the projection.
+```text
+CE-002  CE-003  CE-007  CE-008  CE-013  CE-014  CE-015
+CE-017  CE-018  CE-022  CE-025  CE-026  CE-029
+```
+
+`node tools/verify-acceptance-matrix.mjs` prints the list and holds the ratchet. **Four of the
+thirteen are absence-shaped** — `CE-003` (an undeclared effect is impossible), `CE-013`/`CE-014`
+(work data does not leave), `CE-018` (the ledger is append-only) — and that is the class this
+phase learned how to close: derive the candidate set from the source, declare each member with
+its reason, fail when the set grows. `D-0562` proposes extracting that into `tools/closure.mjs`
+before writing it a fourth time by hand.
 
 Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
 build. Proposals are saved, not executed.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`oci/Dockerfile` builds, and the question came back inverted: the recipe is faithful and the
-RUNNING IMAGE is what drifted.** It is the only build recipe that travels in the delivery
-archives and it had never been built once.
+**`CE-001` is met, and it is the product's central security claim** — *nessun percorso muta il
+workspace senza spendere un token coniato da un Piano autorizzato*. The suite its own method
+names now exists: `services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs`,
+**20/20**.
 
-| Measured | Result |
+| What it measures | Result |
 |---|---|
-| `docker build --no-cache -f oci/Dockerfile` | **exit 0** · 27 crates compiled offline from `rust/vendor` · `postgres (PostgreSQL) 18.4 (Debian 18.4-1.pgdg12+1)` printed **inside** the build · ~40 s cold |
-| two independent builds (cached vs `--no-cache`) | **byte-identical over 437 files**, both Rust binaries included |
-| repaired image ↔ working tree | **436 / 436** byte-equal · 0 differing · 0 absent from tree |
-| repaired image ↔ live image, runtime configuration | **identical**: Env, Entrypoint, Cmd, User, WorkingDir, ExposedPorts, Volumes, Healthcheck |
-| world-writable paths in the repaired image | **0** (was: the whole application) |
+| **the closure** — derived from the source on every run | **114** modules scanned, **28** write, **3** know where the workspace is (`workspace-actions.mjs`, `session-protocol.mjs`, `server.mjs`), each declared with the reason it is not a way to mutate authored content |
+| **the executor never learns the real workspace root** | asserted; it writes through `shadow.root` only |
+| **nine attacks**, each asserting the **bytes** on disk | no token · forged MAC · foreign minter · **foreign minter holding the same secret** · expired · exhausted · revoked · wrong path · wrong operation |
+| **three mint-side refusals** | a path the step does not name · a path leaving the workspace while the plan declares containment · a plan nobody approved |
+| **positive control** | with a real token the write **does** land — twice proven, see below |
 
-**Two defects the measurement found, repaired in the recipe:**
+**Why the closure is the new thing.** Every existing capability, executor and workspace-actions
+suite proves that *the path it drives* refuses without a token. None of them proves there is no
+**other** path, and a criterion about the absence of a route cannot be closed by testing the
+routes somebody thought of. Section 2 exists for the same reason at a smaller scale: an outcome
+saying `performed: false` is a **report**, and CE-001 is about the bytes.
 
-1. **`schemas/model-descriptor.schema.json` was never copied.** The live image has it — an
-   overlay added it after the fold — and the canonical file did not. Invisible to everything:
-   the runtime validator implements the schema's keywords in code and never reads the file, so
-   no test failed and no container misbehaved. Only comparing the two images could see it.
-2. **File modes were inherited from the build host.** `COPY` preserves the source mode, and the
-   share this project is built on gives every file `666` and every script `777` — so the **live
-   image ships the application world-writable**, and two acceptance scripts world-writable *and*
-   world-executable. The documented `--read-only` root filesystem is the only thing that has
-   been standing between that and a container process rewriting the product's own source, and
-   nothing anywhere said so. It is also why two builds of one commit on two machines produce
-   different images. Now normalised in the image (`0755` dirs, `0755` executables, `0644` the
-   rest, keeping the one bit git tracks) and asserted with `test … -perm -o+w … = 0`.
+**The control fired twice, and the second time is the useful one.** An early case written as an
+"expired token" had not actually expired at `NOW`, so the write landed and the test **failed**.
+The bench could therefore genuinely write, which is what makes nine refusals mean something.
 
-**The instrument, and the gate.** `tools/verify-image-provenance.sh` compares application bytes,
-modes and symlinks, runtime configuration, and tree↔image. `tools/deploy/redeploy.sh` now runs
-it in **preflight** whenever `--image` is given, and refuses a target that does not match the
-tree. `CLAUDE10.md` §3a 11c was being satisfied by hand **at the scope of the overlay** — the
-`d0544` ledger entry records "byte-equal tree↔image 3/3" because that overlay copied three files.
+**`CE-004` is met** from the two things its own method asks for, both run this session: the
+**inspection** of `context-projector.mjs`'s exported surface — `CONTEXT_SECTIONS` frozen,
+`validateFact`, `projectContext`, `renderProjection`, `projectionShape`, `projectionByteCeiling`,
+**no append function and no free-text section to aim at** — and `context-projection.test.mjs`
+**16/16**, 9 of them `CE-004` cases including *"a refused write leaves the store untouched"*.
 
-**Verification produced this session:** unit **2686 pass / 0 fail / 1 skipped**;
-`SOURCE_VERIFY=PASS migrations=19 baseline=12/12`; redeploy fixture **73/73**, its 3 new
-assertions **seen to fail** on the pre-change file; the provenance gate **seen to fire** (refuses
-the live image, 15 differing; passes the built one, 436/436); ESLint **433 files, 0 errors**
-(pre-commit hook); packaging/installer suites **3/3**; shellcheck via a disposable offline
-container.
+**The register is 66 rows, not 53 — found while recording the two verdicts.**
+`MASTER_PROJECT/08_INSTALLAZIONE.md` (10 `INST-*`) and `01_VISIONE_E_POSIZIONE.md` (3 `SESS-*`)
+have carried the identical five-column acceptance table all along, **ten of the thirteen with a
+verdict already written**, and neither was listed as a source. "53 criteria" was the size of the
+list, not of the acceptance surface. Both are sources now; the surface grew 24% and the debt did
+not.
+
+**Two hand-restated copies of the same alphabet, repaired at the rule.** The verifier's id-shape
+check and the guard test each wrote `(CE|CUBE|ARCH)` out by hand and so called all thirteen
+well-formed new ids *malformed*. Both now **derive** the prefixes from `SOURCES`.
+
+**The ratchet moved and was seen to hold**: unstated **36 → 34**, critical unstated **15 → 13**.
+Set one notch tighter it refuses with `13 CRITICAL criteria have no recorded verdict, up from 12`.
+
+**Verification produced this session:** battery `scripts/test.sh` **15/15, exit 0**; unit **2706
+pass / 0 fail / 1 skipped**; ESLint **434 files, 0 errors**; the acceptance matrix **PASS** at
+66 criteria, 32 with a verdict (28 met).
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Nothing was deployed.** The nine stale files in the running image are 8 test files plus the
-  `scripts` block of `package.json` — **no runtime module is stale**, path by path, so this is
-  not a blocking defect, and deployment is a stop condition (§77), not a phase's own call.
-- **`F-IMAGE-STALE-001` stays open** (new, low). It closes at the next deployment, which the new
-  gate now measures for the first time.
-- **The image was never started.** Every read of it was `docker run --rm --network none` with an
-  explicit `/bin/sh` entrypoint, so the supervisor never ran. That the **repaired** image boots
-  and serves is therefore `[UNVERIFIED]` — the deployment that closes `F-IMAGE-STALE-001` is
-  what will establish it.
-- **The secret scan was HEURISTIC**, declared as such: `tools/run-secret-scan.sh` reported
-  `SECRET_SCAN=SKIPPED reason=image-absent` for `zricethezav/gitleaks:latest`, and rule 45
-  forbids installing tooling to satisfy the rule. Pattern scan of the staged diff: no key,
-  token, password or credential-bearing string; no archive, binary, database or `.env` staged.
-- **T2/T3 were not run.** No JavaScript, no route, no DOM and no migration changed; the change
-  map's targeted tier is what ran. Declared, not implied.
-- **Dismissed with evidence during HUNT AND FIX** (scoped to the diff, 4 files): `SC1007` on
-  `CDPATH= cd` — the idiom every shipped script here uses, already named as a known false
-  positive by the phase skill; `SC2034 ROLLED_BACK` in `redeploy.sh` — a real dead assignment,
-  pre-existing and outside this diff's cause, with no behavioural effect because `rollback()`'s
-  contract is its return code. Left alone rather than edited into the rollback path for style.
-- **87 overlay files remain in `oci/`.** Retiring them as the deployment mechanism is `D-0560`,
-  proposed, not executed; deleting them is forbidden (§12) and undesirable — they are the only
-  written record of how the running image came to hold what it holds.
+- **`restore()` mutates the workspace and spends no token.** Named in the verdict, not folded
+  into it. It is bounded by a *different* property — it can only write back the bytes `#promote`
+  captured, cannot be used on a run that was never promoted, and refuses a second time — and that
+  property is measured as its own three cases. Anyone reading `CE-001` as "literally every write
+  spends a token" should read the verdict cell, which says otherwise.
+- **13 critical criteria still have no verdict.** This phase closed 2 of 15. `production_ready`
+  stays **false**, correctly.
+- **Nothing was deployed and no container was created.** The new suite runs in-process against
+  temporary directories.
+- **The secret scan was HEURISTIC**, declared: `tools/run-secret-scan.sh` reports
+  `SECRET_SCAN=SKIPPED reason=image-absent` for `zricethezav/gitleaks:latest`, and rule 45 forbids
+  installing tooling to satisfy the rule. Pattern scan of the staged diff: every hit was the word
+  *token* in prose or in capability-token code — no credential material, no archive, no binary.
+- **T3 was not run** — no image, no installation change. T2 (the battery) ran and is green.
+- **`MASTER_PROJECT/15_…md` gained a 5th column.** It is not covered by `PROVENANCE.sha256`
+  (which lists `00`–`14`), so no provenance claim was broken; `MANIFEST.sha256` was refreshed for
+  it. `01_VISIONE_E_POSIZIONE.md` and `08_INSTALLAZIONE.md` were **read only**.
+- **`F-IMAGE-STALE-001`** (previous phase) is unchanged and still open: 9 files in the running
+  image are older than the tree, all of them test files plus a `scripts` block.
 
 ## FILES THIS PHASE CHANGED
 
 ```text
-oci/Dockerfile                          + the missing schema COPY, + mode normalisation
-tools/verify-image-provenance.sh        NEW — the instrument (203 lines)
-tools/deploy/redeploy.sh                + the preflight provenance gate
-tools/deploy/test/redeploy-fixture.sh   + section 10, 3 static assertions on the gate
-MANIFEST.sha256                         oci/Dockerfile hash refreshed (line 341)
-docs/GAP_REGISTER.md                    G-02 closed; F-IMAGE-STALE-001 added
-docs/DECISION_LOG.md                    D-0559, D-0560
-docs/INSTALLATION_LEDGER.md             the NOT-DEPLOYED entry, with what it corrects above it
-PROJECT_STATE.json                      live keys + the new open finding
-EVIDENCE/g02_*.txt                       the four measurement records
+services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs   NEW, 20 tests
+services/reference-control-plane/test/acceptance-matrix.test.mjs   the guard stops restating the alphabet
+tools/acceptance-matrix.mjs                two sources added: 08_INSTALLAZIONE, 01_VISIONE
+tools/verify-acceptance-matrix.mjs         id shape derived from SOURCES; ratchet 34 / 13
+MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md   a 5th column, and the CE-001 / CE-004 verdicts
+docs/acceptance-matrix.json                regenerated: 53 -> 66 rows
+docs/GAP_REGISTER.md                       G-01 corrected a second time
+docs/DECISION_LOG.md                       D-0561, D-0562
+PROJECT_STATE.json                         live keys
 ```
 
-## SESSION CLOSE — `CLAUDE10.md` §5a, run in full
+## THE IMPROVEMENT PROPOSAL — `D-0562`, **saved, not offered**
 
-Inventory: `EVIDENCE/docker_inventory_pre_cleanup_G02_20260819T063134Z.txt`.
-Three throwaway tags created this phase (`g02-provenance`, `g02-nocache`, `g02-fixed`) removed
-by name; no target was `Up`; every analysis container was `docker run --rm`, so none survived to
-be removed. **Containers 52 → 52 · volumes 65 → 65 · networks 10 → 10.** No `prune` of any kind.
-Product proven healthy afterwards (`running`/`healthy`, four `200`s).
-
-## THE IMPROVEMENT PROPOSAL — `D-0560`, **saved, not offered**
-
-Build every future image from the canonical `oci/Dockerfile` instead of an 88th overlay, so an
-installation is a **tree state** rather than an accumulation nobody can name. It is now cheap
-(~40 s cold) and proven. Cost: a full build per deployment instead of a thin layer.
-**Funding fit: Restack · trait 5** — an image whose contents are a function of a commit is
-auditable; one whose contents are a function of its build order is not.
+Extract this phase's closure pattern into `tools/closure.mjs` and give the other absence-shaped
+criteria a derived test instead of an anecdotal one. Four of the thirteen remaining critical
+criteria are of that class, and writing the derivation by hand a fourth time is how the four end
+up disagreeing about what counts as a route — the same failure this phase repaired twice today in
+two hand-copied regexes. **Funding fit: Restack · trait 2**, reusable beyond this product:
+*"prove no other code path does X"* is a check any audited codebase wants and almost none has.
 
 ## OPEN BLOCKERS
 
 `B-002` stale-premise (the secret-scan premise is false as written) and `B-011` low-deferred
-(history rewrite, 2026-07-30, Owner-authorised, bundle backup taken). Neither blocks the next
-action. `production_ready` stays **false**, correctly.
+(history rewrite, Owner-authorised, bundle backup taken). Neither blocks the next action.
