@@ -1,124 +1,115 @@
 # SESSION HANDOFF
 
-**Phase:** `G-01` slice 1 — `D-0561` (work), `D-0562` (proposal, saved not executed).
-**Commit:** `9009b6a`, pushed to `origin/main`. **Nothing was deployed** — this phase changed a
-test, a documentation table and two tools; no runtime path exists in the diff.
+**Phase:** `G-01` slice 2 — `D-0563` (work), `D-0564` (proposal, saved not executed).
+**Commit:** `b41c647`, pushed to `origin/main`. **Nothing was deployed** — two test files and two
+documentation cells; no runtime path is in the diff.
 **Live installation:** unchanged — `noesar-evolution:d0544-health-lane-20260818T160214Z`,
-`running`/`healthy`. No container, image or network was created this phase, so §5a had nothing
-to remove: containers **52 → 52**, volumes **65 → 65**, networks **10 → 10**.
+`running`/`healthy`. No container, image or network was created, so §5a had nothing to remove.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The 13 CRITICAL criteria that still carry no verdict**, in the order the register prints them:
+**Four of the fifteen critical criteria are now closed. Eleven remain:**
 
 ```text
-CE-002  CE-003  CE-007  CE-008  CE-013  CE-014  CE-015
-CE-017  CE-018  CE-022  CE-025  CE-026  CE-029
+CE-002  CE-003  CE-007  CE-008  CE-013  CE-014  CE-015  CE-022  CE-025  CE-026  CE-029
 ```
 
-`node tools/verify-acceptance-matrix.mjs` prints the list and holds the ratchet. **Four of the
-thirteen are absence-shaped** — `CE-003` (an undeclared effect is impossible), `CE-013`/`CE-014`
-(work data does not leave), `CE-018` (the ledger is append-only) — and that is the class this
-phase learned how to close: derive the candidate set from the source, declare each member with
-its reason, fail when the set grows. `D-0562` proposes extracting that into `tools/closure.mjs`
-before writing it a fourth time by hand.
+`node tools/verify-acceptance-matrix.mjs` prints them and holds the ratchet (**32 / 11**).
+
+**Read these three warnings before picking one — each would otherwise cost a false PASS:**
+
+- **`CE-008`** (*l'ombra precede l'autorizzazione: nessun dialogo di autorizzazione senza risultato
+  misurato*) — **read `approve()` first.** `simulate()` is *optional* in the current design, and
+  the reference provider answers `supported: false`. As literally worded this criterion may be
+  **NOT MET**, and recording it met because "the shadow runs inside approve" would be reading the
+  sentence to fit the code. `CE-026` sits next to it and may well be met on the same reading.
+- **`CE-022`** (*il criterio di "fatto" passa col solo provider di riferimento, senza ATOM*) — the
+  battery already runs with no ATOM daemon reachable, so this looks free. **Verify that claim**
+  (`atom-fallback-declared.test.mjs`, the env the suites run under) before recording it: "no ATOM
+  was running" and "the suite does not need ATOM" are different statements.
+- **`CE-003`, `CE-013`, `CE-014`** are **absence-shaped** — the class `D-0562` proposes a shared
+  closure helper for. They cannot be closed by testing the routes somebody thought of.
 
 Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
 build. Proposals are saved, not executed.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`CE-001` is met, and it is the product's central security claim** — *nessun percorso muta il
-workspace senza spendere un token coniato da un Piano autorizzato*. The suite its own method
-names now exists: `services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs`,
-**20/20**.
+**`CE-017` — a checkpoint precedes every mutative step, and restore is byte-identical.**
+`services/reference-control-plane/test/ce-017-checkpoint-precedes-mutation.test.mjs`, **5/5**.
 
-| What it measures | Result |
+| Measured | How |
 |---|---|
-| **the closure** — derived from the source on every run | **114** modules scanned, **28** write, **3** know where the workspace is (`workspace-actions.mjs`, `session-protocol.mjs`, `server.mjs`), each declared with the reason it is not a way to mutate authored content |
-| **the executor never learns the real workspace root** | asserted; it writes through `shadow.root` only |
-| **nine attacks**, each asserting the **bytes** on disk | no token · forged MAC · foreign minter · **foreign minter holding the same secret** · expired · exhausted · revoked · wrong path · wrong operation |
-| **three mint-side refusals** | a path the step does not name · a path leaving the workspace while the plan declares containment · a plan nobody approved |
-| **positive control** | with a real token the write **does** land — twice proven, see below |
+| byte-identical restore | **sha256 of the whole tree** before the plan and after the restore, compared as a map — paths *and* digests |
+| both wired classes | **modify** (the original bytes come back) and **create** (the file is removed) |
+| the ordering itself | no test can stand between two statements, so the checksum map **is** the ordering claim: those bytes can only return if they were read before being overwritten |
+| blast radius of the undo | a file the plan never named is untouched — even when someone else edited it between the promotion and the restore |
+| the checkpoint is **per run** | restoring the second run returns to the **first**, not to the origin |
+| no encoding is assumed | binary bytes survive the round trip exactly |
+| scope, not rounded up | `workspaceActionsStatus()` is **asserted**: WRITE only. Wiring `DELETE` or `EXECUTE` fails this file and the verdict must be earned again on the new class |
 
-**Why the closure is the new thing.** Every existing capability, executor and workspace-actions
-suite proves that *the path it drives* refuses without a token. None of them proves there is no
-**other** path, and a criterion about the absence of a route cannot be closed by testing the
-routes somebody thought of. Section 2 exists for the same reason at a smaller scale: an outcome
-saying `performed: false` is a **report**, and CE-001 is about the bytes.
+**`CE-018` — the ledger is append-only, with a chained digest.** `ce-018-ledger-append-only.test.mjs`,
+**6/6**. The chain itself was already well tested (four tamper vectors in
+`conformance/event-vectors.json`, a doctored journal in `durability.test.mjs`) and **none of it was
+tied to the criterion**, which is why nothing could say whether it held. New here: append-only
+measured **on the bytes** — the prefix already written is unchanged after four more events — an
+edited line refused with `CHAIN_BROKEN` on reload, and a torn **final** line recovered and counted
+rather than silently dropped.
 
-**The control fired twice, and the second time is the useful one.** An early case written as an
-"expired token" had not actually expired at `NOW`, so the write landed and the test **failed**.
-The bench could therefore genuinely write, which is what makes nine refusals mean something.
+**Its verdict carries its limit, written into the cell, because the sentence promises more than the
+code delivers.** The chain is `createHash` with **no key**: it detects an edit, not a wholesale
+rewrite. The suite performs that attack — two different histories, two internally valid chains,
+distinguishable only by a head digest somebody wrote down elsewhere — and a source assertion fails
+if `createHmac` ever appears, so the verdict cannot be silently inherited through the change that
+would invalidate it. `D-0564` proposes the anchor.
 
-**`CE-004` is met** from the two things its own method asks for, both run this session: the
-**inspection** of `context-projector.mjs`'s exported surface — `CONTEXT_SECTIONS` frozen,
-`validateFact`, `projectContext`, `renderProjection`, `projectionShape`, `projectionByteCeiling`,
-**no append function and no free-text section to aim at** — and `context-projection.test.mjs`
-**16/16**, 9 of them `CE-004` cases including *"a refused write leaves the store untouched"*.
+**The ratchet moved again and was seen to hold**: unstated **34 → 32**, critical **13 → 11**. One
+notch tighter it refuses with `11 CRITICAL criteria have no recorded verdict, up from 10`.
 
-**The register is 66 rows, not 53 — found while recording the two verdicts.**
-`MASTER_PROJECT/08_INSTALLAZIONE.md` (10 `INST-*`) and `01_VISIONE_E_POSIZIONE.md` (3 `SESS-*`)
-have carried the identical five-column acceptance table all along, **ten of the thirteen with a
-verdict already written**, and neither was listed as a source. "53 criteria" was the size of the
-list, not of the acceptance surface. Both are sources now; the surface grew 24% and the debt did
-not.
-
-**Two hand-restated copies of the same alphabet, repaired at the rule.** The verifier's id-shape
-check and the guard test each wrote `(CE|CUBE|ARCH)` out by hand and so called all thirteen
-well-formed new ids *malformed*. Both now **derive** the prefixes from `SOURCES`.
-
-**The ratchet moved and was seen to hold**: unstated **36 → 34**, critical unstated **15 → 13**.
-Set one notch tighter it refuses with `13 CRITICAL criteria have no recorded verdict, up from 12`.
-
-**Verification produced this session:** battery `scripts/test.sh` **15/15, exit 0**; unit **2706
-pass / 0 fail / 1 skipped**; ESLint **434 files, 0 errors**; the acceptance matrix **PASS** at
-66 criteria, 32 with a verdict (28 met).
+**Verification produced this session:** battery `scripts/test.sh` **15/15, exit 0**; unit **2716
+pass / 0 fail / 1 skipped**; ESLint **436 files, 0 errors**; matrix **PASS** — 66 criteria, 34 with
+a verdict (30 met).
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **`restore()` mutates the workspace and spends no token.** Named in the verdict, not folded
-  into it. It is bounded by a *different* property — it can only write back the bytes `#promote`
-  captured, cannot be used on a run that was never promoted, and refuses a second time — and that
-  property is measured as its own three cases. Anyone reading `CE-001` as "literally every write
-  spends a token" should read the verdict cell, which says otherwise.
-- **13 critical criteria still have no verdict.** This phase closed 2 of 15. `production_ready`
-  stays **false**, correctly.
-- **Nothing was deployed and no container was created.** The new suite runs in-process against
-  temporary directories.
-- **The secret scan was HEURISTIC**, declared: `tools/run-secret-scan.sh` reports
-  `SECRET_SCAN=SKIPPED reason=image-absent` for `zricethezav/gitleaks:latest`, and rule 45 forbids
-  installing tooling to satisfy the rule. Pattern scan of the staged diff: every hit was the word
-  *token* in prose or in capability-token code — no credential material, no archive, no binary.
-- **T3 was not run** — no image, no installation change. T2 (the battery) ran and is green.
-- **`MASTER_PROJECT/15_…md` gained a 5th column.** It is not covered by `PROVENANCE.sha256`
-  (which lists `00`–`14`), so no provenance claim was broken; `MANIFEST.sha256` was refreshed for
-  it. `01_VISIONE_E_POSIZIONE.md` and `08_INSTALLAZIONE.md` were **read only**.
-- **`F-IMAGE-STALE-001`** (previous phase) is unchanged and still open: 9 files in the running
-  image are older than the tree, all of them test files plus a `scripts` block.
+- **11 critical criteria still have no verdict.** This session closed 4 of 15 across two phases.
+  `production_ready` stays **false**, correctly.
+- **`CE-018` is met at the strength the code has, not at the strength the sentence suggests.**
+  Anyone quoting it must quote the cell, which says *unkeyed*. Until `D-0564` is built, a party who
+  can write the journal can produce a consistent chain over altered facts.
+- **`CE-017`'s verdict covers WRITE only.** `DELETE` and `EXECUTE` are not wired, so no verdict was
+  earned for them; the suite asserts that rather than trusting this paragraph.
+- **Nothing was deployed and no container was created.**
+- **The secret scan was HEURISTIC**, declared: the `gitleaks` image is absent and rule 45 forbids
+  installing tooling to satisfy the rule. Pattern scan of the staged diff: no key, token, password
+  or credential-bearing string; no archive, binary, database or `.env` staged.
+- **T3 was not run** — no image and no installation change. T2 (the battery) ran and is green.
+- **`F-IMAGE-STALE-001`** is unchanged and still open: 9 files in the running image are older than
+  the tree, all test files plus a `scripts` block, no runtime module.
 
 ## FILES THIS PHASE CHANGED
 
 ```text
-services/reference-control-plane/test/ce-001-no-mutation-without-token.test.mjs   NEW, 20 tests
-services/reference-control-plane/test/acceptance-matrix.test.mjs   the guard stops restating the alphabet
-tools/acceptance-matrix.mjs                two sources added: 08_INSTALLAZIONE, 01_VISIONE
-tools/verify-acceptance-matrix.mjs         id shape derived from SOURCES; ratchet 34 / 13
-MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md   a 5th column, and the CE-001 / CE-004 verdicts
-docs/acceptance-matrix.json                regenerated: 53 -> 66 rows
-docs/GAP_REGISTER.md                       G-01 corrected a second time
-docs/DECISION_LOG.md                       D-0561, D-0562
-PROJECT_STATE.json                         live keys
+services/reference-control-plane/test/ce-017-checkpoint-precedes-mutation.test.mjs   NEW, 5 tests
+services/reference-control-plane/test/ce-018-ledger-append-only.test.mjs             NEW, 6 tests
+MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md   the CE-017 and CE-018 verdict cells
+tools/verify-acceptance-matrix.mjs             ratchet 32 / 11, and its prose re-measured
+docs/acceptance-matrix.json                    regenerated
+docs/GAP_REGISTER.md                           G-01 and the header paragraph re-measured
+docs/DECISION_LOG.md                           D-0563, D-0564
+MANIFEST.sha256                                the 15_… hash refreshed
+PROJECT_STATE.json                             live keys
 ```
 
-## THE IMPROVEMENT PROPOSAL — `D-0562`, **saved, not offered**
+## THE IMPROVEMENT PROPOSAL — `D-0564`, **saved, not offered**
 
-Extract this phase's closure pattern into `tools/closure.mjs` and give the other absence-shaped
-criteria a derived test instead of an anecdotal one. Four of the thirteen remaining critical
-criteria are of that class, and writing the derivation by hand a fourth time is how the four end
-up disagreeing about what counts as a route — the same failure this phase repaired twice today in
-two hand-copied regexes. **Funding fit: Restack · trait 2**, reusable beyond this product:
-*"prove no other code path does X"* is a check any audited codebase wants and almost none has.
+Anchor the event ledger's head digest outside the file — signed with the owner key `server.mjs`
+already writes — and report the last signed head beside `chainValid`. Today the only defence
+against a wholesale rewrite is that somebody wrote the real head down somewhere, and nothing in the
+product does that. **Rejected alternative:** keying the chain with an HMAC, which would make the
+ledger verifiable only where the key is and break third-party verification of an exported ledger.
+**Funding fit: Restack · traits 5 and 3** — verifiable provenance that works offline, on the
+installation's own key, with no external notary.
 
 ## OPEN BLOCKERS
 
