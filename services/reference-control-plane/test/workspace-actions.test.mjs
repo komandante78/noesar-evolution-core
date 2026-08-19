@@ -29,6 +29,13 @@ function fixture() {
   const orch = new WorkspaceActionOrchestrator({
     workspaceRoot: ws, shadowsRoot: shadows,
     minter: new TokenMinter(randomBytes(32)), events,
+    // `env: {}` and not `process.env` — `D-0566`. The orchestrator defaults to the ambient
+    // environment, so a shell that had selected an external provider made this fixture record
+    // an extra `workspace_action.degraded` event and the ledger-order test below fail, with the
+    // product behaving exactly as `D-0312` requires. A fixture whose result depends on the
+    // operator's shell is not a fixture. Tests that WANT a provider build their own orchestrator
+    // with their own env, a few hundred lines down, and are unaffected.
+    env: {},
   });
   return { ws, shadows, orch, events };
 }

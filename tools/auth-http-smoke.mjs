@@ -18,7 +18,16 @@ const child = spawn(process.execPath, ['services/reference-control-plane/src/ser
   // spawned server binds the PRODUCTION default (/run/codev-peer.sock) on whatever machine
   // runs this smoke test, and unlinks whatever was there. Guarded by
   // socket-path-isolation.test.mjs.
-  env:{ ...process.env, NOESAR_WORKSPACE:workspace, NOESAR_HOST:'127.0.0.1', NOESAR_PORT:String(port), NOESAR_SETUP_TOKEN:setupToken, NOESAR_ALLOWED_HOSTS:'127.0.0.1,localhost', NOESAR_CODEV_PEER_SOCKET_PATH:join(workspace,'codev-peer.sock') },
+  // `CE-022`, and a real failure that taught it (`D-0566`): this used to inherit the operator's
+  // reasoning configuration and then assert `mode === 'reference-node'` two hundred lines below.
+  // Run from a shell that had selected an external provider, the smoke failed while the product
+  // was behaving correctly — the check was measuring the shell. The whole point of the assertion
+  // is that **the core answers on the reference provider alone**, so the spawned server is pinned
+  // to exactly that, whatever the environment around it happens to say.
+  env:{ ...process.env,
+    NOESAR_REASONING_MODE:'reference-node',
+    NOESAR_RUST_REASONING_ENDPOINT:'', NOESAR_RUST_REASONING_TOKEN:'', NOESAR_EXTERNAL_SURFACES:'',
+    NOESAR_WORKSPACE:workspace, NOESAR_HOST:'127.0.0.1', NOESAR_PORT:String(port), NOESAR_SETUP_TOKEN:setupToken, NOESAR_ALLOWED_HOSTS:'127.0.0.1,localhost', NOESAR_CODEV_PEER_SOCKET_PATH:join(workspace,'codev-peer.sock') },
   stdio:['ignore','pipe','pipe'],
 });
 

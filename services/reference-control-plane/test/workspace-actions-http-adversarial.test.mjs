@@ -34,6 +34,16 @@ process.env.NOESAR_WORKSPACE = workspace;
 process.env.NOESAR_SETUP_TOKEN = SETUP_TOKEN;
 process.env.NOESAR_LOG_LEVEL = 'ERROR';
 process.env.NOESAR_DATA_PLANE = 'reference-json';
+// `D-0566`. This file imports the real server, which reads the ambient environment. Run from a
+// shell that had selected an external reasoning provider, every run gained a
+// `workspace_action.degraded` event — correct product behaviour (`D-0312`) — and the exact
+// causal-trail assertion below failed for a reason that has nothing to do with the invariant it
+// guards. The four keys the router reads are pinned to the reference provider here, so this
+// suite measures the surface and not the shell.
+process.env.NOESAR_REASONING_MODE = 'reference-node';
+process.env.NOESAR_RUST_REASONING_ENDPOINT = '';
+process.env.NOESAR_RUST_REASONING_TOKEN = '';
+process.env.NOESAR_EXTERNAL_SURFACES = '';
 
 const { server } = await import('../src/server.mjs');
 

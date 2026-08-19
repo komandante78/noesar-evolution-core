@@ -13090,3 +13090,59 @@ on disk. No migration, no schema change, no configuration key.
 **Funding fit.** **Restack · trait 5** — an installation whose bytes are a function of a commit is
 auditable; one whose bytes are a function of its build order is not.
 **Status.** installed and verified. `F-IMAGE-STALE-001` **closed**.
+
+## D-0566 · CE-026 and CE-022 met, CE-008 recorded NOT met, and two suites that measured the shell — 2026-08-19
+**Decision.** Three more criteria carry a verdict, and one of them is the register's **first
+`❌`**. `CE-026` (nothing authored reaches the real repository without having existed in shadow)
+and `CE-022` (the done criterion passes on the reference provider alone) are **met**. `CE-008`
+(*l'ombra precede l'autorizzazione*) is **NOT met** and says so.
+**Why `CE-008` is a no.** Its own method — *«test che tenta di autorizzare un passo mai
+simulato»* — was executed and the attempt **succeeds**: `approve()` promotes a run nobody
+simulated. Read off the ledger rather than the source, the order is `approved` → `executor.ran` →
+`shadow.compared`: the shadow protects the **promotion**, not the **dialogue**. `simulate()` is
+optional and answers `supported: false` on the reference provider, so on that installation there
+is no measured result to approve against at all.
+**Rejected.** Reading "the shadow runs inside approve()" as satisfying it. That is `CE-026`, which
+is a different, real, and separately measured guarantee — conflating them would have turned two
+criteria into one ✅ and hidden a genuine gap.
+**Also repaired, and it is a defect the criterion found rather than a criterion the defect found.**
+`CE-022`'s first run was **RED, 13/15**. Neither failure was the product: two suites read the
+ambient environment and broke when it differed — `workspace-actions.test.mjs`'s fixture (an extra
+`workspace_action.degraded` event, which is `D-0312` behaving correctly),
+`workspace-actions-http-adversarial.test.mjs` (same, through the real server), and
+`tools/auth-http-smoke.mjs`, which spawned the server with `process.env` and then asserted
+`mode === 'reference-node'` — measuring the shell it was launched from. All three now **pin** the
+four keys the router reads. Without that, `CE-022` was not repeatably measurable.
+**Evidence.** `ce-008-shadow-precedes-authorization.test.mjs` **5/5**; battery **15/15 exit 0**
+with ATOM *selected and unreachable* — harder than the criterion's "with ATOM uninstalled" — and
+green in the default configuration too; the same battery was **13/15** before the three repairs.
+Unit **2721 pass / 0 fail**. Matrix: **66 criteria, 37 with a verdict (32 met), 29 without, 8
+critical**; ratchet 32→29 and 11→8, seen to fail one notch tighter.
+**Reversal cost.** None — three test files, one smoke tool's env, three documentation cells.
+**Funding fit.** **Restack · trait 4**, no lock-in: `CE-022` is the criterion that says the core
+works without the vendor-specific reasoning provider, and it is now measured rather than asserted.
+**Status.** applied, committed. `CE-008` remains an open gap with a recorded verdict of ❌.
+
+## D-0567 · Improvement proposal — move the shadow before the approval, and close CE-008 for real — 2026-08-19
+**Decision.** Proposed, not executed: run the execution-into-shadow at `plan()` time rather than
+inside `approve()`, so the approval dialogue is offered **against a measured result** — the real
+post-execution diff and the comparison verdict — and `approve()` becomes the promotion of an
+outcome the approver has already seen.
+**Why.** `D-0566` measured `CE-008` as **not met**, and it is the only criterion in the register
+recorded `❌`. Today a person authorises a *description* of a change; the bytes are produced
+afterwards. That is also the weakest point of the product's own story: every other guarantee —
+token, shadow, comparison, ledger — exists so that a human decision is informed, and this is the
+one place where the decision precedes the information.
+**Rejected.** Making `simulate()` mandatory before `approve()`. It answers `supported: false` on
+the reference provider, so requiring it would make the core unusable without an external provider
+— breaking `CE-022`, which `D-0566` just measured as met, and `FOSS_CORE_DEPENDS_ON_ATOM = false`
+with it.
+**Evidence.** The order is already recorded in the ledger and asserted by
+`ce-008-shadow-precedes-authorization.test.mjs`, so the change has a test that flips from
+characterising the gap to proving it closed. Cost: `plan()` becomes stateful (it holds a shadow
+between plan and decision) and the shadow's lifetime and disposal have to be designed —
+non-trivial, which is why it is proposed and not slipped in.
+**Reversal cost.** Medium: the run store's shape and the WebUI's approval view both change.
+**Funding fit.** **Restack · trait 5** — an authorisation shown the measured consequence is the
+difference between an audit trail and an informed decision.
+**Status.** proposed — the Owner's call, per §69.

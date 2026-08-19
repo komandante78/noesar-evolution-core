@@ -31,16 +31,17 @@ import { readFileSync } from 'node:fs';
 
 /**
  * Measured 2026-08-19 (`D-0556`) at 36. May be lowered, never raised without a recorded decision.
- * 34 at `D-0561` (`CE-001`, `CE-004`), 32 at `D-0563` (`CE-017`, `CE-018`) — all the same day.
+ * 34 at `D-0561` (`CE-001`, `CE-004`), 32 at `D-0563` (`CE-017`, `CE-018`), 30 at `D-0566`
+ * (`CE-008` — recorded NOT met — and `CE-026`), 29 at `D-0566` with `CE-022` — all the same day.
  */
-const MAX_UNSTATED = 32;
+const MAX_UNSTATED = 29;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
- * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`. Seen to fire at each new floor rather than
+ * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`. Seen to fire at each new floor rather than
  * assumed to: set one notch tighter it refuses with `N CRITICAL criteria have no recorded
  * verdict, up from N-1`, measured at every one of those three floors.
  */
-const MAX_UNSTATED_CRITICAL = 11;
+const MAX_UNSTATED_CRITICAL = 8;
 
 const KNOWN_SEVERITIES = new Set(['critical', 'high', 'medium']);
 

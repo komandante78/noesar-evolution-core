@@ -32,8 +32,10 @@ thirteen rows with a verdict already written, and nothing listed them as sources
 **Three** corrections in two days, on the same question, is the argument for
 `docs/acceptance-matrix.json` and `tools/verify-acceptance-matrix.mjs`: the matrix is now **read by
 a machine**, kept in step with the documents that own it, and its gap is a **number that can only
-improve** — 36 criteria with no recorded verdict when the tool was built, **32 today, 11 of them
-critical**, each step down proved by seeing the ratchet fail one notch tighter.
+improve** — 36 criteria with no recorded verdict when the tool was built, **29 today, 8 of them
+critical**, each step down proved by seeing the ratchet fail one notch tighter. One of the
+verdicts recorded is a **`❌`** (`CE-008`), which is the point: a register that could only record
+successes would be a scoreboard, not a measurement.
 
 ---
 
@@ -88,7 +90,7 @@ Ordered by what unblocks what, not by severity.
 
 | id | Gap | Evidence measured 2026-08-19 | Blocks |
 |---|---|---|---|
-| **G-01** | ~~No acceptance matrix~~ — **CORRECTED 2026-08-19 (`D-0556`), this row was wrong**, then corrected again the same day (`D-0561`): **66** criteria, not 53, in **6** documents, not 4. What was missing is that **nothing read them**; what remains is that **32 carry no recorded verdict — 11 of them CRITICAL** | `node tools/verify-acceptance-matrix.mjs` → 66 criteria, 34 with a verdict (30 met), 32 without, **11** critical unstated. A battery step with a ratchet seen to fire at each new floor. `CE-001`/`CE-004` closed by `D-0561`, `CE-017`/`CE-018` by `D-0563` | **the 11 remaining critical verdicts** are what block saying "done" |
+| **G-01** | ~~No acceptance matrix~~ — **CORRECTED 2026-08-19 (`D-0556`), this row was wrong**, then corrected again the same day (`D-0561`): **66** criteria, not 53, in **6** documents, not 4. What was missing is that **nothing read them**; what remains is that **29 carry no recorded verdict — 8 of them CRITICAL** | `node tools/verify-acceptance-matrix.mjs` → 66 criteria, 37 with a verdict (32 met), 29 without, **8** critical unstated. A battery step with a ratchet seen to fire at each new floor. `CE-001`/`CE-004` by `D-0561`, `CE-017`/`CE-018` by `D-0563`, `CE-022`/`CE-026` by `D-0566` — which also recorded the register's first **❌**, `CE-008` | **the 8 remaining critical verdicts** are what block saying "done", plus `CE-008` which is recorded ❌ |
 | **G-02** | ~~`oci/Dockerfile` reproducing the live image is `[UNVERIFIED]`~~ — **CLOSED 2026-08-19 (`D-0559`)**, and the answer inverted the question: the recipe is faithful and **the running image is what drifted**. Two defects repaired in the recipe (a schema never copied; modes inherited from the build host, which is why the live image ships the application **world-writable**) | Built `--no-cache`, **exit 0**; two builds byte-identical over 437 files; **436/436** byte-equal to the tree; runtime configuration **identical** to the live image; `tools/verify-image-provenance.sh` is now a preflight gate and was seen to refuse the live image | ~~delivery ZIPs~~ — **new finding `F-IMAGE-STALE-001`** below |
 | ~~**F-IMAGE-STALE-001**~~ | **CLOSED 2026-08-19 (`D-0565`)** — the installation was rebuilt from the canonical recipe and is now byte-equal to the tree | **439/439** in preflight and again against the running image; `find /opt/noesar -perm -o+w` = **0** inside the running container | — |
 | **G-03** | Legal / licence / compliance content is not in the tree | `WORK_PLAN_V5_REWRITE.md` §5 risk 5 — in the sealed archives only | phase 7, commercial posture |

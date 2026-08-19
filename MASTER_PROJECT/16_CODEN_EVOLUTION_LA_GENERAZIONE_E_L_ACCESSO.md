@@ -470,17 +470,17 @@ impostazioni, le skill, e l'uscita dalla sessione.
 
 **Riga di matrice nuova:**
 
-| ID | Criterio | Sev | Come si verifica |
-|---|---|---|---|
-| CE-036 | `/` apre l'unico menu del prodotto: lavoro, applicazioni, configurazione, sessione — stesse voci nelle due shell, filtrate per permesso e dichiarate tali | **A** | l'insieme delle voci di ciascuna shell, per due account con permessi diversi |
+| ID | Criterio | Sev | Come si verifica | Verdetto |
+|---|---|---|---|---|
+| CE-036 | `/` apre l'unico menu del prodotto: lavoro, applicazioni, configurazione, sessione — stesse voci nelle due shell, filtrate per permesso e dichiarate tali | **A** | l'insieme delle voci di ciascuna shell, per due account con permessi diversi |  |
 
 ### 4b.5 Le righe di matrice che mancavano
 
-| ID | Criterio | Sev | Come si verifica |
-|---|---|---|---|
-| CE-033 | Le due shell hanno la **stessa struttura**: trascrizione, prompt, riga di stato — e nessuna delle due ha una regione che l'altra non ha | **A** | ispezione strutturale delle due rese, non delle due implementazioni |
-| CE-034 | Ogni cosa che si fa nel browser si fa nel terminale con lo stesso nome, e viceversa | **A** | l'insieme dei comandi e degli indirizzi delle due shell è lo **stesso insieme** |
-| CE-035 | Aprire `ssh` e scrivere `coden_evolution` avvia la sessione: nessun nome di contenitore, nessun percorso, nessun privilegio di amministratore | **A** | accesso reale da un secondo utente su un'altra macchina della rete |
+| ID | Criterio | Sev | Come si verifica | Verdetto |
+|---|---|---|---|---|
+| CE-033 | Le due shell hanno la **stessa struttura**: trascrizione, prompt, riga di stato — e nessuna delle due ha una regione che l'altra non ha | **A** | ispezione strutturale delle due rese, non delle due implementazioni |  |
+| CE-034 | Ogni cosa che si fa nel browser si fa nel terminale con lo stesso nome, e viceversa | **A** | l'insieme dei comandi e degli indirizzi delle due shell è lo **stesso insieme** |  |
+| CE-035 | Aprire `ssh` e scrivere `coden_evolution` avvia la sessione: nessun nome di contenitore, nessun percorso, nessun privilegio di amministratore | **A** | accesso reale da un secondo utente su un'altra macchina della rete |  |
 
 ---
 
@@ -521,16 +521,16 @@ coerenza si rompe anche con 200K di contesto».
 
 Si aggiungono a `CE-001…024`, con la stessa disciplina: verificabili **eseguendo**, non leggendo.
 
-| ID | Criterio | Sev | Come si verifica |
-|---|---|---|---|
-| CE-025 | L'Autore non nomina mai un percorso: l'insieme dei file che tocca è un sottoinsieme di quelli del passo | **C** | autore sonda che tenta di scrivere fuori elenco; il tentativo è scartato e registrato |
-| CE-026 | Nessun contenuto autorato raggiunge il repository vero senza essere prima esistito in ombra | **C** | test che tenta di promuovere un contenuto mai simulato |
-| CE-027 | Ogni autoratura è registrata come fixture e la sessione si riesegue producendo le stesse **decisioni** | **A** | replay di una sessione conclusa, contenuti dalle fixture, decisioni ricalcolate |
-| CE-028 | Il profilo di divergenza entra nell'autoratura, e due repository con convenzioni opposte producono contenuti diversi a parità di richiesta | **A** | lo stesso compito su due repository con convenzioni opposte |
-| CE-029 | Un'installazione senza modello **rifiuta di autorare dicendo perché**, e non degrada a un rifiuto muto né a un contenuto vuoto | **C** | installazione senza provider configurato, ispezione della risposta |
-| CE-030 | Due autorature che producono lo stesso contenuto contano come **un** tentativo | **M** | compito che induce ripetizione, conteggio del budget di novità |
-| CE-031 | La sessione è raggiungibile da un utente **non amministratore dell'host**, sull'host e da un'altra macchina | **A** | accesso reale da un secondo utente, senza privilegi sul motore di contenitori |
-| CE-032 | L'avviatore non presume sistema operativo, demone `ssh`, motore di contenitori o percorso | **A** | avvio su un'installazione da sorgenti e su una in contenitore, senza modificare l'host |
+| ID | Criterio | Sev | Come si verifica | Verdetto |
+|---|---|---|---|---|
+| CE-025 | L'Autore non nomina mai un percorso: l'insieme dei file che tocca è un sottoinsieme di quelli del passo | **C** | autore sonda che tenta di scrivere fuori elenco; il tentativo è scartato e registrato |  |
+| CE-026 | Nessun contenuto autorato raggiunge il repository vero senza essere prima esistito in ombra | **C** | test che tenta di promuovere un contenuto mai simulato | ✅ **verificato 2026-08-19 (`D-0566`)** — `ce-008-shadow-precedes-authorization.test.mjs`, 5/5. Ciò che arriva nel workspace sono i **byte dell'ombra**: `#promote` legge da `shadow.root` e non esiste un secondo scrittore (chiusura misurata in `CE-001`). Misurato in entrambe le direzioni: una run promossa registra `executor.ran` → `shadow.compared` → promozione, e l'ombra **non sopravvive** alla chiamata (0 directory residue); una run la cui verifica è **contraddetta** non promuove nulla e il file reale resta ai byte di prima. |
+| CE-027 | Ogni autoratura è registrata come fixture e la sessione si riesegue producendo le stesse **decisioni** | **A** | replay di una sessione conclusa, contenuti dalle fixture, decisioni ricalcolate |  |
+| CE-028 | Il profilo di divergenza entra nell'autoratura, e due repository con convenzioni opposte producono contenuti diversi a parità di richiesta | **A** | lo stesso compito su due repository con convenzioni opposte |  |
+| CE-029 | Un'installazione senza modello **rifiuta di autorare dicendo perché**, e non degrada a un rifiuto muto né a un contenuto vuoto | **C** | installazione senza provider configurato, ispezione della risposta |  |
+| CE-030 | Due autorature che producono lo stesso contenuto contano come **un** tentativo | **M** | compito che induce ripetizione, conteggio del budget di novità |  |
+| CE-031 | La sessione è raggiungibile da un utente **non amministratore dell'host**, sull'host e da un'altra macchina | **A** | accesso reale da un secondo utente, senza privilegi sul motore di contenitori |  |
+| CE-032 | L'avviatore non presume sistema operativo, demone `ssh`, motore di contenitori o percorso | **A** | avvio su un'installazione da sorgenti e su una in contenitore, senza modificare l'host |  |
 
 **Il criterio della fase 1 si riformula, senza cambiare** — si esplicita ciò che diceva già:
 
