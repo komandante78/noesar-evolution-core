@@ -284,7 +284,13 @@
       "criterion": "Ogni fatto indotto porta evidenza, conteggio e condizione di smentita",
       "severity": "high",
       "howVerified": "schema + test: un fatto senza smentita non è scrivibile",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0586"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0586`), nella forma che il metodo chiede — SCHEMA, non applicazione** — migrazione `0020_induced_facts_and_vector_spaces.sql` più `tools/acceptance/memory-integration.mjs` **46/46 PASS** contro un cluster PostgreSQL 18 avviato da zero, e `test/ce-011-induced-facts-are-falsifiable.test.mjs` **8/8**. Il metodo dice *«schema + test: un fatto senza smentita NON È SCRIVIBILE»*, e una guardia solo in JavaScript non lo soddisfa: un secondo scrittore — un importatore, uno script di riparazione, una migrazione futura — la aggira senza che nessuno se ne accorga. **Il fatto indotto è la riga del cubo `experience`**, e non è una scelta presa qui: `14_MEMORIA_A_CUBI.md` lo mappa (*«Esperienza · indotto · osservato n volte · un solo controesempio»*) e `0017` già vietava il bilancio conferme/smentite a ogni altro cubo. Tre vincoli separati, così che la violazione dica **quale** delle tre parti manca: `induced_fact_carries_refutation` (nuova colonna `refutation_condition`, prima non esisteva un posto dove metterla), `induced_fact_carries_evidence` (`provenance` era `NOT NULL` ma accettava `'{}'` — un fatto indotto che non cita nulla era scrivibile) e `induced_fact_carries_count` (`confirmations >= 1`: «osservato n volte» con n = 0 non è un'osservazione). Colpiti **direttamente** dalla connessione admin, scavalcando l'applicazione: `MEM-37`, `MEM-38`, `MEM-39` rifiutati dalla tabella, `MEM-40` scritto quando è completo (il vincolo rifiuta il caso mancante, non ogni caso), `MEM-41` prova che la regola riguarda l'**induzione** e non la memoria — gli altri tre cubi restano scrivibili senza condizione — e `MEM-42` end-to-end attraverso `MemoryService` e la vista tipizzata. **Le righe preesistenti sono marcate, mai inventate**: `UNDECLARED: …`, e l'applicazione rifiuta quel marcatore da un chiamante, così può significare solo «scritta prima che la regola esistesse». Misurato su questa installazione prima di scrivere la migrazione: righe `experience` = **0**, quindi qui il backfill è un no-op ed esiste per le altre installazioni."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:443"
     },
     {
@@ -292,7 +298,15 @@
       "criterion": "Un vettore senza il modello che l'ha prodotto non è confrontabile: **errore**, non numero",
       "severity": "high",
       "howVerified": "test di confronto fra due spazi diversi",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0586",
+          "D-0101",
+          "D-0103"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0586`)** — `noesar_knowledge.vector_distance()` (migrazione `0020`) più `memory-integration.mjs` **46/46 PASS** su PostgreSQL vero. **Metà del criterio era già strutturalmente vera e l'altra metà non era nemmeno esprimibile**: `memory_vectors` ha chiave primaria `(record_id, model_id)` con `model_id NOT NULL` dal `0017`, quindi un vettore senza il suo modello non è mai esistito — ma **nulla sapeva confrontare**, e ciò che non confronta non può rifiutare di confrontare. Costruire il confronto è ciò che rende reale il rifiuto. La funzione rifiuta **prima** di leggere le righe (una discordanza di spazio non è un errore di lookup e non deve dipendere dall'esistenza dei dati) e distingue tre rifiuti da un risultato: `MEM-45` due spazi diversi → `22000`, mai un numero; `MEM-46` nessun modello → rifiuto; `MEM-47` vettore assente → rifiuto, perché *«mancante»* e *«identico»* non sono la stessa risposta e restituire 0 le confonderebbe. E la guardia è una guardia, non un rifiuto di tutto: `MEM-43` dentro un solo spazio restituisce una distanza vera (`0.1696…`) e `MEM-44` un vettore contro sé stesso dà **0**. Lo stato in cui la domanda è ponibile è stato costruito apposta: due modelli popolati insieme (`test-model-b` corrente, `test-model-c` registrato e indicizzato). **Nessuna pipeline di embedding è stata inventata** — `memory-service.mjs` continua a dichiarare `vectorIndexComplete:false` finché nessun modello è corrente; ciò che si aggiunge è che, quando lo sarà, il confronto non potrà attraversare gli spazi in silenzio (`D-0101`/`D-0103`)."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:444"
     },
     {

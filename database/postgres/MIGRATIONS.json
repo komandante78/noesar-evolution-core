@@ -117,6 +117,12 @@
       "filename": "0019_memory_all_cubes_view.sql",
       "sha256": "7cf1f923b88bf3dad6892ae983236b77e27394dc5969dbc1c4cdda9a546a9cb7",
       "version": "0019"
+    },
+    {
+      "bytes": 10488,
+      "filename": "0020_induced_facts_and_vector_spaces.sql",
+      "sha256": "2c2b51f4a17a3f02995ddf1e0337ee4c21d5c6b27f405bde36a82881d9cee307",
+      "version": "0020"
     }
   ],
   "release": "0.6.0",

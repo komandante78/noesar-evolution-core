@@ -13575,3 +13575,50 @@ parità (`CE-033`/`CE-034` impongono che le due shell non divergano), ~1 fase co
 visibile è la forma verificabile di «cosa è stato davvero controllato») e tratto **2** (il rapporto
 è riusabile fuori dal prodotto: è un formato, non una schermata).
 **Status.** proposed — non eseguita in questa fase (`noesar-evolution-budget` §5).
+
+## D-0586 · Un fatto indotto senza smentita non è scrivibile, e due spazi non si confrontano — `CE-011`, `CE-012` — 2026-08-19
+**Decision.** Le due righe che `D-0583` aveva **misurato come non a buon mercato** sono chiuse, e
+chiuse dove i loro metodi dicono: nello **schema**. Migrazione `0020` — colonna
+`refutation_condition` più tre vincoli separati sul cubo `experience` (smentita, evidenza,
+conteggio) e la funzione `noesar_knowledge.vector_distance()` che **solleva** `22000` fra due
+spazi di embedding invece di restituire un numero. Ratchet **13 → 11**, critiche **0**.
+**Why.** `CE-011` dice *«schema + test: un fatto senza smentita non è scrivibile»*: una guardia
+solo in JavaScript la aggira il primo secondo scrittore (un importatore, uno script di
+riparazione, una migrazione futura). `CE-012` chiedeva un confronto che **non esisteva** — metà
+del criterio era strutturalmente vera dal `0017` (`memory_vectors` ha chiave `(record_id,
+model_id)`), l'altra metà non era nemmeno esprimibile, perché ciò che non confronta non può
+rifiutare di confrontare.
+**Rejected.** Validare solo in `MemoryService.write()` (aggirabile, e non è ciò che il metodo
+dice) e fabbricare una pipeline di embedding per avere qualcosa da confrontare (sarebbe stato un
+falso PASS: `recall()` continua a dichiarare `vectorIndexComplete:false` onestamente).
+**Evidence.** `tools/acceptance/memory-integration.mjs` **46/46 PASS** contro un cluster
+PostgreSQL 18 avviato da zero — `MEM-37/38/39` rifiutati **dalla tabella** colpendo la
+connessione admin, `MEM-40` scritto quando completo, `MEM-41` la regola resta scoped
+all'induzione, `MEM-42` end-to-end, `MEM-43/44` una distanza vera (`0.1696…`, e **0** contro sé
+stesso), `MEM-45/46/47` i tre rifiuti. Più `ce-011-…test.mjs` **8/8**, unitari **2861 / 0 fail**,
+`scripts/test.sh` **15/15**, ESLint **452 file / 0 errori**, ratchet visto **FALLIRE a 10**.
+Installato: `d0586-induced-facts-and-spaces-20260819T180231Z`, byte-equal **457/457**, e i tre
+vincoli, la colonna e la funzione **verificati presenti sul database in esecuzione**.
+**Reversal cost.** **Non nulla, ed è la prima volta in questa serie.** Tornare al predecessore
+lascia colonna e vincoli in piedi (il `0020` non ha un `down`), quindi il codice precedente —
+che non scrive `refutation_condition` — vedrebbe rifiutata ogni scrittura sul cubo `experience`.
+Misurato prima di decidere: righe `experience` sull'installazione = **0** e nessuna superficie
+del prodotto scrive quel cubo oggi, quindi il costo è reale ma **oggi non colpisce nulla**. Va
+detto, non scoperto durante un rollback.
+**Status.** applied + installed.
+
+## D-0587 · Improvement proposal — la smentita registrata non ha ancora chi la conti — 2026-08-19
+**Proposal.** `refutations` esiste come colonna dal `0017` e adesso ogni fatto indotto dichiara
+**cosa** lo smentirebbe, ma nulla nel prodotto **osserva** una smentita: nessun percorso
+incrementa quel contatore, quindi la condizione è scritta e mai valutata. Un valutatore — che
+prenda i fatti `experience` di un progetto, riesegua la condizione di smentita contro lo stato
+attuale del repository, e incrementi `refutations` o revochi il fatto — è ciò che trasforma una
+memoria falsificabile **in linea di principio** in una falsificata **di fatto**.
+**Benefit / cost.** Beneficio: è l'unica difesa contro una memoria che invecchia in silenzio, e
+`14_MEMORIA_A_CUBI.md` la nomina già (*«un solo controesempio»*). Costo: un valutatore periodico
+più il suo test; ~1 fase. Rischio dichiarato: una condizione di smentita è testo libero, quindi
+il primo passo è un **vocabolario ristretto** di condizioni eseguibili, non un parser di prosa.
+**Funding fit.** Restack · tratto **5** (affidabilità misurabile: una memoria che si smentisce da
+sola è verificabile, una che si accumula no) e tratto **2** (il meccanismo è riusabile fuori da
+questo prodotto — è un contratto sulla memoria, non una schermata).
+**Status.** proposed — non eseguita in questa fase.

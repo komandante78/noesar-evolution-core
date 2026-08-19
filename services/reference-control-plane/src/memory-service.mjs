@@ -61,7 +61,20 @@ const SQL = Object.freeze({
 });
 
 const ITEM_COLUMNS = `signature, cube, content, category, provenance, contamination,
-  promotion_state, derived, derived_from, observed_at, project_id, owner_user_id`;
+  promotion_state, derived, derived_from, observed_at, project_id, owner_user_id,
+  confirmations, refutations, refutation_condition`;
+
+/**
+ * CE-011. The three things an induced fact must carry, checked here as well as in the schema
+ * (migration `0020`), and the schema is the one that decides — see that file's header for why
+ * a JS-only guard would not satisfy the criterion's stated method ("schema + test").
+ *
+ * This layer exists for the error message, not for the guarantee: `23514 check constraint
+ * "induced_fact_carries_refutation"` tells a caller nothing about what to do next.
+ */
+const INDUCED_CUBE = 'experience';
+/** Written by `0020` onto rows that predate the rule. A caller may never send it back. */
+const UNDECLARED_REFUTATION_PREFIX = 'UNDECLARED:';
 
 function uuidArrayLiteral(ids) {
   // The hand-rolled pg client (pg-client.mjs) does not serialise a JS array into a
@@ -118,6 +131,11 @@ function rowToItem(row) {
     observedAt: row.observed_at,
     projectId: row.project_id,
     ownerUserId: row.owner_user_id,
+    // CE-011: the three parts of an induced fact travel WITH it. A reader that has to make a
+    // second query to learn what would disprove a fact will not make it.
+    confirmations: row.confirmations ?? 0,
+    refutations: row.refutations ?? 0,
+    refutationCondition: row.refutation_condition ?? null,
     score: Object.prototype.hasOwnProperty.call(row, 'score') && row.score !== null
       ? Number(row.score) : undefined,
   };
@@ -196,11 +214,40 @@ export class MemoryService {
     actorId, cube, category, content, provenance = {}, signature,
     projectId = null, promotionState = 'session', derived = false, derivedFrom = [],
     contamination = 'unverified', observedAt = null,
+    refutationCondition = null, confirmations = 0,
   }) {
     requireCube(cube);
     requireCategory(category);
     requireText(content, 'content');
     requireText(signature, 'signature', 500);
+    // CE-011, in the layer that can explain itself. The schema refuses these three anyway
+    // (migration 0020) — this is the message a caller can act on, and it names WHICH of the
+    // three is missing rather than one merged "check constraint violated".
+    if (cube === INDUCED_CUBE) {
+      const condition = typeof refutationCondition === 'string' ? refutationCondition.trim() : '';
+      if (!condition) {
+        throw Object.assign(new Error(
+          'an induced fact must state what would disprove it (refutationCondition) — a memory that cannot be falsified is superstition, not knowledge (CE-011)',
+        ), { status: 400 });
+      }
+      if (condition.startsWith(UNDECLARED_REFUTATION_PREFIX)) {
+        throw Object.assign(new Error(
+          'the UNDECLARED marker belongs to rows written before migration 0020 and may never be supplied by a caller (CE-011)',
+        ), { status: 400 });
+      }
+      const evidence = provenance && typeof provenance === 'object' && !Array.isArray(provenance)
+        ? Object.keys(provenance).length : 0;
+      if (evidence === 0) {
+        throw Object.assign(new Error(
+          'an induced fact must carry the evidence that induced it (provenance) — an empty object cites nothing (CE-011)',
+        ), { status: 400 });
+      }
+      if (!Number.isInteger(confirmations) || confirmations < 1) {
+        throw Object.assign(new Error(
+          'an induced fact must carry how many times it held (confirmations >= 1) — "observed n times" with n = 0 is not an observation (CE-011)',
+        ), { status: 400 });
+      }
+    }
     if (derived && (!Array.isArray(derivedFrom) || derivedFrom.length === 0)) {
       throw Object.assign(
         new Error('a derived record must cite at least one source (derivedFrom)'),
@@ -233,13 +280,17 @@ export class MemoryService {
         `INSERT INTO noesar_knowledge.${view}
            (id, signature, workspace_id, project_id, owner_user_id, visibility,
             category, content, provenance, contamination, promotion_state,
-            derived, derived_from, observed_at)
-         VALUES ($1,$2,$3,$4,$5,'private',$6,$7,$8::jsonb,$9,$10,$11,$12::uuid[],$13)
+            derived, derived_from, observed_at, refutation_condition, confirmations)
+         VALUES ($1,$2,$3,$4,$5,'private',$6,$7,$8::jsonb,$9,$10,$11,$12::uuid[],$13,$14,$15)
          RETURNING ${ITEM_COLUMNS}`,
         [
           id, signature, CANONICAL_WORKSPACE_ID, projectId, actorId,
           category, content, JSON.stringify(provenance ?? {}), effectiveContamination, promotionState,
           derived, uuidArrayLiteral(derivedFrom), observedAt ?? new Date().toISOString(),
+          // Null outside the experience cube, where `counters_only_for_experience` (0017) and
+          // `induced_fact_carries_refutation` (0020) both expect nothing.
+          cube === INDUCED_CUBE ? String(refutationCondition).trim() : null,
+          cube === INDUCED_CUBE ? confirmations : 0,
         ],
       ).then((result) => result.rows[0]);
     });

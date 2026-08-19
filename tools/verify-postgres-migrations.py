@@ -44,6 +44,12 @@ def main() -> int:
         "0017_memory_cubes.sql",
         "0018_memory_cube_typed_views.sql",
         "0019_memory_all_cubes_view.sql",
+        # D-0586: CE-011 (an induced fact is unwritable without evidence, count and refutation
+        # condition) and CE-012 (comparing two embedding spaces raises instead of returning a
+        # number). Listed here by hand on purpose — the same reason `acceptance-matrix.mjs`
+        # lists its source documents rather than globbing: a migration appearing in this
+        # directory must be a decision that lands in the checker, never something a glob absorbs.
+        "0020_induced_facts_and_vector_spaces.sql",
     ]
 
     if manifest.get("schemaVersion") != "4.0":

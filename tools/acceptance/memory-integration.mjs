@@ -13,7 +13,7 @@
 import fsp from 'node:fs/promises';
 import { PostgresSupervisor, PostgresSupervisorInternals } from '../../services/reference-control-plane/src/postgres-supervisor.mjs';
 import { PgConnection } from '../../services/reference-control-plane/src/pg-client.mjs';
-import { MemoryService } from '../../services/reference-control-plane/src/memory-service.mjs';
+import { MemoryService, CANONICAL_WORKSPACE_ID } from '../../services/reference-control-plane/src/memory-service.mjs';
 import { compactRun } from '../../services/reference-control-plane/src/memory-compaction.mjs';
 import { EventLedger } from '../../services/reference-control-plane/src/events.mjs';
 import { ModelSwapService } from '../../services/reference-control-plane/src/memory-model-swap.mjs';
@@ -218,8 +218,94 @@ async function main() {
   const recallAfterPurge = await memoryService.recall({}, { actorId: ownerId });
   check('MEM-35', 'recall() still reports a complete index after the old model is purged — served by the NEW current model throughout, never a gap', recallAfterPurge.coverage.vectorIndexComplete === true && recallAfterPurge.coverage.model === 'test-model-b', JSON.stringify(recallAfterPurge.coverage));
 
+  // ── CE-011 · an induced fact is UNWRITABLE without its three parts ─────────────────────
+  //
+  // Hit DIRECTLY through the admin connection, not through MemoryService: the criterion's
+  // method says *schema*, and a rule only the application enforces is a rule the next writer
+  // walks around. `ce-011-induced-facts-are-falsifiable.test.mjs` covers the application half
+  // and its error messages; these six are the guarantee.
+  const insertInduced = ({ signature, condition = null, provenance = null, confirmations = 0 }) => admin.query(
+    `INSERT INTO noesar_knowledge.memory_records
+       (id, signature, workspace_id, owner_user_id, cube, category, content, provenance,
+        promotion_state, observed_at, refutation_condition, confirmations)
+     VALUES (gen_random_uuid(), $1, $2, $3, 'experience', 'lezione', 'i test accompagnano il codice',
+             coalesce($4::jsonb, '{}'::jsonb), 'session', now(), $5, $6)`,
+    [signature, CANONICAL_WORKSPACE_ID, ownerId, provenance === null ? null : JSON.stringify(provenance), condition, confirmations],
+  );
+
+  await expectRejects('MEM-37', 'the SCHEMA refuses an induced fact with no refutation condition — not the application, the table',
+    () => insertInduced({ signature: 'ce011-no-condition', provenance: { commits: 42 }, confirmations: 42 }));
+
+  await expectRejects('MEM-38', 'the SCHEMA refuses an induced fact whose evidence is an empty object — citing nothing is not citing',
+    () => insertInduced({ signature: 'ce011-no-evidence', condition: 'un controesempio', confirmations: 42 }));
+
+  await expectRejects('MEM-39', 'the SCHEMA refuses an induced fact observed zero times — "n times" with n = 0 is not an observation',
+    () => insertInduced({ signature: 'ce011-no-count', condition: 'un controesempio', provenance: { commits: 42 }, confirmations: 0 }));
+
+  await insertInduced({
+    signature: 'ce011-complete', condition: 'un solo commit accettato che tocchi src senza toccare test',
+    provenance: { commits: 42 }, confirmations: 42,
+  });
+  const inducedRow = await admin.query(
+    `SELECT refutation_condition, confirmations, refutations, provenance
+       FROM noesar_knowledge.memory_records WHERE signature = 'ce011-complete'`);
+  check('MEM-40', 'a COMPLETE induced fact is written, and all three parts are on the row — the constraints refuse the missing case, not every case',
+    inducedRow.rows[0]?.confirmations === 42 && String(inducedRow.rows[0]?.refutation_condition ?? '').includes('senza toccare test'),
+    JSON.stringify(inducedRow.rows[0]));
+
+  const libraryWithoutCondition = await admin.query(
+    `SELECT count(*)::int AS n FROM noesar_knowledge.memory_records
+      WHERE cube <> 'experience' AND refutation_condition IS NULL`);
+  check('MEM-41', 'the rule is scoped to INDUCTION, not to memory: the other cubes carry no refutation condition and are perfectly writable',
+    libraryWithoutCondition.rows[0].n > 0, JSON.stringify(libraryWithoutCondition.rows[0]));
+
+  const throughService = await memoryService.write({
+    actorId: ownerId, cube: 'experience', category: 'lezione',
+    content: 'le due shell non divergono', signature: 'ce011-through-service',
+    provenance: { osservazioni: 7 }, confirmations: 7,
+    refutationCondition: 'una capacità raggiungibile in una shell e non nell\'altra',
+  });
+  check('MEM-42', 'end-to-end through MemoryService against real PostgreSQL: the three parts survive the typed view and come back on the item',
+    throughService.refutationCondition?.includes('non nell\'altra') && throughService.confirmations === 7 && throughService.refutations === 0,
+    JSON.stringify({ condition: throughService.refutationCondition, confirmations: throughService.confirmations }));
+
+  // ── CE-012 · two embedding spaces are incomparable, and the database says so ───────────
+  //
+  // Model B is current and indexed; model C is registered and backfilled but never activated,
+  // so two populated spaces exist at once — which is the only state in which the question can
+  // even be asked. `vector_distance()` is the comparison this criterion needs to exist before
+  // it can be refused.
+  const modelC = 'c1000000-0000-4000-8000-000000000001';
+  await modelSwap.registerModel({ id: modelC, name: 'test-model-c', dimensions: 384 });
+  await modelSwap.backfillBatch({ modelId: modelC, embed: deterministicEmbed, batchSize: 1000 });
+  const twoRecords = await admin.query(
+    `SELECT record_id FROM noesar_knowledge.memory_vectors WHERE model_id = $1 ORDER BY record_id LIMIT 2`, [modelB]);
+  const [r1, r2] = twoRecords.rows.map((row) => row.record_id);
+
+  const sameSpace = await admin.query('SELECT noesar_knowledge.vector_distance($1,$2,$3,$4) AS d', [r1, modelB, r2, modelB]);
+  check('MEM-43', 'within ONE space the comparison returns a number — the guard is a guard, not a refusal of everything',
+    typeof Number(sameSpace.rows[0].d) === 'number' && Number.isFinite(Number(sameSpace.rows[0].d)),
+    `distance=${sameSpace.rows[0].d}`);
+
+  const selfDistance = await admin.query('SELECT noesar_knowledge.vector_distance($1,$2,$1,$2) AS d', [r1, modelB]);
+  check('MEM-44', 'a vector against itself is distance 0 — the comparison is a real one, not a constant',
+    Math.abs(Number(selfDistance.rows[0].d)) < 1e-9, `distance=${selfDistance.rows[0].d}`);
+
+  await expectRejects('MEM-45', 'comparing ACROSS two spaces raises — an ERROR, never a number (CE-012)',
+    () => admin.query('SELECT noesar_knowledge.vector_distance($1,$2,$3,$4) AS d', [r1, modelB, r2, modelC]));
+
+  await expectRejects('MEM-46', 'a comparison with no model at all raises — a vector without the model that produced it is not comparable',
+    () => admin.query('SELECT noesar_knowledge.vector_distance($1,NULL,$2,NULL) AS d', [r1, r2]));
+
+  await expectRejects('MEM-47', 'an absent vector raises rather than reporting a distance of zero — "missing" and "identical" are not the same answer',
+    () => admin.query('SELECT noesar_knowledge.vector_distance($1,$2,$3,$2) AS d',
+      [r1, modelB, '00000000-0000-4000-8000-000000000000']));
+
   await admin.end();
   const stopped = await supervisor.stop();
+  // Deliberately last in EXECUTION order, and keeps its original id: the ledger's `MEM-25..36`
+  // entry refers to it, and renumbering a check to make a list look tidy breaks every reference
+  // written before today.
   check('MEM-36', 'clean shutdown after the full memory-service exercise', stopped.clean === true, JSON.stringify(stopped));
 }
 

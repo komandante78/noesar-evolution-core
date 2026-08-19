@@ -5436,3 +5436,43 @@ surviving networks exactly `noesar-evolution-net` and `noesar-e2e-net` (`noesar-
 NOESAR V3's and was not touched)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0583_20260819T173617Z.txt`). Health re-proved after
 cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
+
+## `d0586-induced-facts-and-spaces-20260819T180231Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0586-induced-facts-and-spaces-20260819T180231Z`, deployed 18:02Z via
+`tools/deploy/redeploy.sh --apply`, built from the canonical `oci/Dockerfile`
+(`docker build --pull=false`, offline). `D-0586`: migration `0020` — an induced fact is
+unwritable without evidence, count and refutation condition; two embedding spaces raise instead
+of comparing. `CE-011`, `CE-012` recorded; ratchet 13 → 11.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz` and `/healthz` **200** on
+both `http://…:8100` and `https://…:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **457/457**, **0** differing, **0** absent from tree.
+**The migration was proved APPLIED on the running database, not merely shipped**: the three
+constraints (`induced_fact_carries_refutation`/`_evidence`/`_count`), the `refutation_condition`
+column and the `vector_distance` function all present in `pg_constraint`/`information_schema`/
+`pg_proc` on the live cluster. Before `--apply`: `tools/acceptance/memory-integration.mjs`
+**46/46 PASS** against a disposable PostgreSQL 18 booted from nothing, unit **2861 (2860 pass /
+0 fail / 1 skip)**, `scripts/test.sh` **15/15**, ESLint **452 files, 0 errors**.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T180243Z`
+(`d0583-coverage-and-notdone-20260819T173441Z`).
+**Rollback cost — NOT none, and stated before it is needed (§3a 11d).** `0020` has no `down`, so
+rolling back to the predecessor leaves the column and the three constraints in place, and the
+previous code — which never writes `refutation_condition` — would have every `experience`-cube
+write refused. Measured before deciding: `experience` rows on this installation = **0**, and no
+product surface writes that cube today, so the cost is real but currently bites nothing. The
+workspace was backed up **with the service stopped**, 0600 in a 0700 directory, checksum written
+— that archive holds credentials and is treated as one.
+**Not run, and named rather than skipped in silence.** `tools/run-browser-e2e.sh` and
+`tools/accessibility-audit.mjs`: no markup, no DOM, no CSS token changed, and no shell renders
+the memory fields this phase added. Live constraint BEHAVIOUR was not exercised against the
+installation: proving it would require writing a row (§3a 11e forbids a mutating suite against
+the installation) — it was proved on the disposable cluster instead, and what is proved live is
+that the schema objects exist.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T173528Z` removed (`Exited (0)`
+confirmed first; its image stays on disk). The probe image tag
+`noesar-evolution:mem-probe-20260819T175808Z` untagged; its container was `--rm` and removed
+itself. Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-project containers
+**50 → 50**; surviving networks exactly `noesar-evolution-net` and `noesar-e2e-net`
+(`noesar-local` is NOESAR V3's and was not touched)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0586_20260819T180325Z.txt`). Health re-proved after
+cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.

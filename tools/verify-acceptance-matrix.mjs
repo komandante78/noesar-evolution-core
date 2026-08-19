@@ -42,8 +42,12 @@ import { readFileSync } from 'node:fs';
  * found by taking the method literally: `CE-009` says *"a test that refuses a REPORT"*, and the
  * rule was enforced only in the producer of the number, never in the report that carried it.
  * Seen to FAIL at 12 first, one notch tighter, before being set here.
+ * **11** at `D-0586` (`CE-011`, `CE-012`) — the two rows the previous phase had measured as NOT
+ * cheap and said so. Both were closed in the schema rather than in JavaScript, because both
+ * criteria name the schema: migration `0020`, proven against a real PostgreSQL cluster
+ * (`memory-integration.mjs` 46/46). Seen to FAIL at 10 first, one notch tighter.
  */
-const MAX_UNSTATED = 13;
+const MAX_UNSTATED = 11;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than
