@@ -351,6 +351,7 @@ test('CE-001: planning alone mutates nothing — the workspace changes only at a
     });
     // A plan exists, a shadow may exist, and the real file is untouched.
     assert.equal(readFileSync(join(fx.ws, 'src/a.txt'), 'utf8'), 'original\n');
+    fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
     assert.equal(readFileSync(join(fx.ws, 'src/a.txt'), 'utf8'), 'changed\n');
   } finally { fx.cleanup(); }
@@ -369,6 +370,7 @@ test('CE-001 named exception: restore() mutates the workspace and spends no toke
       ],
       actor: 'owner-001', nowUnix: NOW,
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
     assert.equal(readFileSync(join(fx.ws, 'src/a.txt'), 'utf8'), 'changed\n');
     assert.ok(existsSync(join(fx.ws, 'src/new.txt')));

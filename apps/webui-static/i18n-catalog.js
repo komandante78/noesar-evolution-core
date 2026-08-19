@@ -58,6 +58,11 @@ export const LANGUAGE_NAMES = Object.freeze({ en: 'English', it: 'Italiano' });
  * meaning anything.
  */
 export const RUNTIME_ONLY = Object.freeze([
+  // `D-0567`, `CE-008`. The Approve button carries one of two titles depending on whether the
+  // run has been measured; the DISABLED one is in `index.html` and covered there, this is the
+  // enabled one, which `renderPlanActions()` writes. Listed rather than tolerated, per the rule
+  // this block states about itself.
+  'Promotes exactly the shadow you were shown',
   // s336. The model chooser's rows, its counts and its refusals: `app.js` composes every one of
   // them from `GET /api/v1/models/installed`, so none can appear in `index.html`. The panel's
   // own frame — its heading, its hint, its footer — IS in the markup and is not listed here.
@@ -614,7 +619,12 @@ const it = {
   'No plan object exists yet. The Plan is the backbone\'s first object: nothing changes except by executing an authorised one.': 'Non esiste ancora alcun oggetto Piano. Il Piano è il primo oggetto della dorsale: nulla cambia se non eseguendone uno autorizzato.',
   'Runs not attached to any chat': 'Esecuzioni non legate ad alcuna chat',
   'Simulate': 'Simula',
-  'Approve — promotes if clean': 'Approva — promuove se pulito',
+  // `D-0567`, `CE-008`: two actions where there was one, and the labels carry the distinction
+  // a person cannot see — which of the two touches the workspace.
+  'Measure — runs in a shadow, changes nothing': 'Misura — gira in ombra, non cambia nulla',
+  'Approve — promotes what you were shown': 'Approva — promuove ciò che ti è stato mostrato',
+  'Measure the plan first — an approval without a measured result is what CE-008 forbids': 'Misura prima il piano — un’approvazione senza un risultato misurato è ciò che CE-008 vieta',
+  'Promotes exactly the shadow you were shown': 'Promuove esattamente l’ombra che ti è stata mostrata',
   'Reject': 'Respingi',
   'Restore (undo promotion)': 'Ripristina (annulla la promozione)',
   'Agent activity': 'Attività dell’agente',
@@ -1378,7 +1388,8 @@ const it = {
   // speech cannot reach by describing it.
   'Start a plan from a goal — the repository decides which files it may touch': 'Avvia un piano da un obiettivo — è il repository a decidere quali file può toccare',
   'Ask what a pending plan would do, executing nothing': 'Chiedi che cosa farebbe un piano in attesa, senza eseguire nulla',
-  'Approve a plan — runs in the shadow, promotes only if clean': 'Approva un piano — gira nell\'ombra, promuove solo se è pulito',
+  'Run a plan in the shadow and show what it does — nothing reaches the workspace': 'Esegui un piano nell\'ombra e mostra che cosa fa — nulla raggiunge il workspace',
+  'Approve a MEASURED plan — promotes the shadow you were shown': 'Approva un piano MISURATO — promuove l\'ombra che ti è stata mostrata',
   'Reject a pending plan': 'Rifiuta un piano in attesa',
   'Undo a promoted run': 'Annulla un\'esecuzione promossa',
   'What a run changed, against the shadow': 'Che cosa ha cambiato un\'esecuzione, a confronto con l\'ombra',

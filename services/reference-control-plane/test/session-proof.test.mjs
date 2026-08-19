@@ -50,6 +50,7 @@ test('a promoted real run has all ten fields present, each traced to its real so
       files: [{ path: 'hello.txt', contents: 'hello\n' }],
       actor: 'owner-1', nowUnix: NOW,
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner-1', nowUnix: NOW + 1 });
     const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner-1', nowUnix: NOW + 1 });
     assert.equal(approved.promoted, true);
 
@@ -80,9 +81,12 @@ test('a promoted real run has all ten fields present, each traced to its real so
     assert.ok(authority.some((e) => e.action === 'executor.ran'));
 
     const egress = proof.fields.egress.value;
-    assert.equal(egress.length, 2);
-    assert.equal(egress[0].at, 'planned');
-    assert.equal(egress[1].at, 'approved');
+    // Three samples since `D-0567`, not two: the run is now sampled where it is planned, where
+    // it is MEASURED, and where it is approved. The measurement is the point at which the
+    // engine has actually done something (it executed into a shadow), so an egress record that
+    // skipped it would leave the most consequential moment of the run unsampled.
+    assert.equal(egress.length, 3);
+    assert.deepEqual(egress.map((sample) => sample.at), ['planned', 'measuring', 'approved']);
     assert.equal(egress[0].state, 'LOCAL_ONLY_VERIFIED');
 
     const provenance = proof.fields.provenienza.value;

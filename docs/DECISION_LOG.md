@@ -13171,3 +13171,40 @@ rather than mis-answered.
 **Funding fit.** **Restack · trait 2**, reusable: "does this image contain everything its recipe
 claims to copy" is a check any container project needs and few have.
 **Status.** applied. The deploy gate now runs it on every `--image` preflight.
+
+## D-0569 · CE-008 closed for real: the shadow now precedes the authorisation — 2026-08-19
+**Decision.** Executed `D-0567` on the Owner's authorisation. `approve()` is split in two:
+`measure()` authorises a run **in a shadow** and produces the diff, the comparison and the
+recomputed claims; `approve()` authorises **the change**, against that result, and **refuses a
+run that has not been measured** (`NOT_MEASURED`). `CE-008` flips `❌` → `✅` — the register's
+only ❌, recorded and closed the same day.
+**Why the naive fix does not work, since it is the first thing anyone tries.** "Execute at
+`plan()` time" is circular: `execute()` refuses without a token, a token comes only from an
+authorised plan, and an authorisation needs a human. Two authorisations of two different things
+is the resolution, and the purpose of each is recorded on its grant so the ledger can tell them
+apart rather than inferring it from timing.
+**Rejected.** Making `simulate()` mandatory before `approve()`. It answers `supported: false` on
+the reference provider, so requiring it would make the core unusable without an external
+provider — breaking `CE-022`, measured met hours earlier, and `FOSS_CORE_DEPENDS_ON_ATOM=false`
+with it.
+**What it bought that was not the goal.** The workspace mutation now spends **its own token**,
+one use per file inside `#promote`, before each write — instead of inheriting the token spent to
+write into the shadow. `CE-001` is stronger than it was this morning, not weaker.
+**Evidence.** `ce-008-shadow-precedes-authorization.test.mjs` **9/9**, rewritten from
+characterising the gap to asserting its closure. Ledger order asserted by reading the ledger, not
+the source: `measuring → executor.ran → shadow.compared → claims_verified → measured → approved
+→ promoted`, with **two** `capability.minted`. Unit **2725 pass / 0 fail** (was 2721 + 4 net),
+battery **15/15 exit 0**, matrix **66 criteria, 37 with a verdict, 33 met**.
+**Both shells, and the graphics.** `measure` is declared once in the shared command registry, so
+the browser and the terminal get it together; the WebUI keeps **Approve disabled** until a
+measurement exists and says why in its title; all four new strings are in the translation
+catalogue, the runtime-set one declared in `RUNTIME_ONLY`.
+**Named, not hidden.** The shadow is held in memory between the two calls, so a restart loses it:
+`approve()` then refuses `MEASUREMENT_LOST` and `measure()` runs again. Proven with two
+orchestrators over one run store, not simulated.
+**Reversal cost.** Real: the HTTP surface gained a route, the run gained a state, and both shells
+changed. Reverting means reverting all three together.
+**Funding fit.** **Restack · trait 5** — an authorisation shown its measured consequence is the
+difference between an audit trail and an informed decision.
+**Status.** applied, committed, **NOT deployed** — deployment is a stop condition (§77) and this
+one changes a user-visible flow.

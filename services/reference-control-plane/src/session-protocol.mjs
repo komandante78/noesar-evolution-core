@@ -121,6 +121,10 @@ export class ProtocolError extends Error {
 export const SESSION_METHOD_POLICY = Object.freeze({
   'workspace.plan': { permission: 'workspace.write', bridged: true },
   'workspace.simulate': { permission: 'workspace.read', bridged: true },
+  // `D-0567`, `CE-008`: the same permission as approve — it mints a token and writes into a
+  // shadow, and a surface that could measure without being able to approve would be a way to
+  // make the engine work on a plan nobody may act on.
+  'workspace.measure': { permission: 'workspace.write', bridged: true },
   'workspace.approve': { permission: 'workspace.write', bridged: true },
   'workspace.reject': { permission: 'workspace.write', bridged: true },
   'workspace.restore': { permission: 'workspace.write', bridged: true },
@@ -256,6 +260,10 @@ export function createSessionDispatch({
       conversationId: null,
     }),
     'workspace.simulate': ({ params, actor }) => workspaceActions.simulate({ runId: params?.runId, actor, nowUnix: nowUnix() }),
+    // `D-0567`, `CE-008`: the terminal gets `measure` at the same moment the browser does,
+    // from the same orchestrator. A shell that could only approve would be a shell that can only
+    // authorise blind.
+    'workspace.measure': ({ params, actor }) => workspaceActions.measure({ runId: params?.runId, actor, nowUnix: nowUnix() }),
     'workspace.approve': ({ params, actor }) => workspaceActions.approve({ runId: params?.runId, approverId: actor, nowUnix: nowUnix() }),
     'workspace.reject': ({ params, actor }) => workspaceActions.reject({ runId: params?.runId, approverId: actor, reason: params?.reason ?? null, nowUnix: nowUnix() }),
     'workspace.restore': ({ params, actor }) => workspaceActions.restore({ runId: params?.runId, actor, nowUnix: nowUnix() }),

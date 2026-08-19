@@ -241,6 +241,10 @@ describe('the orchestrator across a restart — the thing an operator actually l
 
     // --- the restart ---
     const after = build(paths);
+    // `D-0567`: the reloaded run is PENDING_APPROVAL, so it is measured on the new instance —
+    // which is the point of the test. The shadow does NOT survive a restart, by design, and
+    // that is exactly why the measurement is re-taken here rather than assumed.
+    await after.measure({ runId: planned.runId, actor: 'owner', nowUnix: now + 1 });
     const approved = await after.approve({ runId: planned.runId, approverId: 'owner', nowUnix: now + 1 });
 
     assert.equal(approved.promoted, true, `the reloaded run did not promote: ${JSON.stringify(approved.result?.reason ?? approved)}`);

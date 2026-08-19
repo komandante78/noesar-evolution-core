@@ -82,6 +82,7 @@ test('a plan with no Author is exactly the plan there was before, and says the p
     // The `before` state measured in EVIDENCE/phase5-measure-before.mjs, kept as a test:
     // approve() performs its WRITEs and every byte is the byte that was already there.
     const was = sha(readFileSync(join(fx.ws, 'src/login.js'), 'utf8'));
+    orch.measure({ runId: planned.runId, actor: 'o', nowUnix: NOW + 1 });
     await orch.approve({ runId: planned.runId, approverId: 'o', nowUnix: NOW + 1 });
     assert.equal(sha(readFileSync(join(fx.ws, 'src/login.js'), 'utf8')), was);
   } finally { cleanup(fx); }
@@ -220,6 +221,7 @@ test('the bytes on disk change, and the run carries the fixtures that replay the
     assert.ok(planned.authoring.authored >= 1);
     assert.equal(planned.authoring.novelty, 'novel');
 
+    orch.measure({ runId: planned.runId, actor: 'o', nowUnix: NOW + 1 });
     await orch.approve({ runId: planned.runId, approverId: 'o', nowUnix: NOW + 1 });
     assert.notEqual(sha(readFileSync(join(fx.ws, 'src/login.js'), 'utf8')), was, 'the whole phase exists for this assertion');
     assert.match(readFileSync(join(fx.ws, 'src/login.js'), 'utf8'), /authored for src\/login\.js/);
@@ -250,6 +252,7 @@ test('a model that is down leaves the plan intact and says the product wrote not
     assert.equal(planned.status, 'PENDING_APPROVAL', 'a model being down must not destroy a plan that is otherwise correct');
     assert.equal(planned.authoring.failed, true);
     assert.match(planned.authoring.reason, /could not be reached/);
+    orch.measure({ runId: planned.runId, actor: 'o', nowUnix: NOW + 1 });
     await orch.approve({ runId: planned.runId, approverId: 'o', nowUnix: NOW + 1 });
     assert.equal(sha(readFileSync(join(fx.ws, 'src/login.js'), 'utf8')), was, 'and it must not write half a change');
   } finally { cleanup(fx); }

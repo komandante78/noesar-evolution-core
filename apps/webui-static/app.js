@@ -2832,6 +2832,9 @@ async function loadCoden(){
 let currentWorkspaceRun=null;
 let currentSimulation=null;
 let currentApproveResult=null;
+// `D-0567`. What `measure()` returned for the run on screen: the diff and the comparison the
+// approval is answered against. Cleared with the run, like every other per-run holder here.
+let currentMeasurement=null;
 let currentWorkspaceRunFiles=[];
 function planFileRowHtml(){
   return `<div class="plan-file-row"><div class="inline-form"><input class="plan-file-path" placeholder="path/to/file.txt"><button type="button" class="text-button plan-file-remove">Remove</button></div><textarea class="plan-file-contents" placeholder="New contents"></textarea></div>`;
@@ -2864,9 +2867,19 @@ function renderPlanActions(){
   box.classList.toggle('hidden',!has);
   if(!has)return;
   const status=currentWorkspaceRun.status;
+  // `D-0567`, `CE-008`. Two states are undecided now, not one: PENDING_APPROVAL (measure it)
+  // and MEASURED (approve or reject what you were shown). Approve is present in both so the
+  // sequence is legible, and DISABLED until there is a measured result behind it — a button
+  // that vanishes teaches nothing, a disabled one with a reason teaches the rule.
+  const undecided=status==='PENDING_APPROVAL'||status==='MEASURED';
   $('#planSimulateBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
-  $('#planApproveBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
-  $('#planRejectBtn').classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  $('#planMeasureBtn')?.classList.toggle('hidden',status!=='PENDING_APPROVAL');
+  $('#planApproveBtn').classList.toggle('hidden',!undecided);
+  $('#planApproveBtn').disabled=status!=='MEASURED';
+  $('#planApproveBtn').title=status==='MEASURED'
+    ?'Promotes exactly the shadow you were shown'
+    :'Measure the plan first — an approval without a measured result is what CE-008 forbids';
+  $('#planRejectBtn').classList.toggle('hidden',!undecided);
   $('#planRestoreBtn').classList.toggle('hidden',status!=='PROMOTED');
 }
 function renderPlanResult(){
@@ -3048,7 +3061,7 @@ async function submitPlanForm(event){
     // constant for the same reason — two clients reporting, as the engine's word, a state the
     // engine had never said. Phase 5 made the engine return it; nothing is added here.
     currentWorkspaceRun=planned;
-    currentSimulation=null;currentApproveResult=null;currentWorkspaceRunFiles=files;
+    currentSimulation=null;currentApproveResult=null;currentMeasurement=null;currentWorkspaceRunFiles=files;
     trackWorkspaceRunForClosure(currentWorkspaceRun);
     await renderWorkspaceRun();
     // Phase 6 (`D-0312`): the same fact, from the same field of the same answer, through the
@@ -3078,6 +3091,13 @@ async function runWorkspaceAction(kind,opts={}){
     if(kind==='simulate'){
       currentSimulation=await api(`/api/v1/workspace-actions/${runId}/simulate`,{method:'POST',body:JSON.stringify({})});
       toast('Simulated.');
+    }else if(kind==='measure'){
+      // `D-0567`, `CE-008`. Nothing reaches the workspace here; what comes back is the diff
+      // and the comparison the approval will be answered against.
+      currentMeasurement=await api(`/api/v1/workspace-actions/${runId}/measure`,{method:'POST',body:JSON.stringify({})});
+      currentWorkspaceRun.status='MEASURED';
+      currentApproveResult=currentMeasurement;
+      toast(currentMeasurement.clean?'Measured in the shadow — clean. Nothing has changed yet.':'Measured in the shadow — NOT clean. Approving will promote nothing.',{kind:currentMeasurement.clean?'info':'warn'});
     }else if(kind==='approve'){
       currentApproveResult=await api(`/api/v1/workspace-actions/${runId}/approve`,{method:'POST',body:JSON.stringify({})});
       currentWorkspaceRun.status=currentApproveResult.promoted?'PROMOTED':'REFUSED';
@@ -4040,6 +4060,7 @@ function initWorkspaceActions(){
   // one thing this field must never mean.
   renderPlanAttachment();
   $('#planSimulateBtn')?.addEventListener('click',()=>runWorkspaceAction('simulate'));
+  $('#planMeasureBtn')?.addEventListener('click',()=>runWorkspaceAction('measure'));
   $('#planApproveBtn')?.addEventListener('click',()=>runWorkspaceAction('approve'));
   $('#planRejectBtn')?.addEventListener('click',()=>runWorkspaceAction('reject'));
   $('#planRestoreBtn')?.addEventListener('click',()=>runWorkspaceAction('restore'));
@@ -5064,6 +5085,7 @@ async function runTerminalCommand(term, line){
     case 'map':method='repoMap.scan';params={path:arg||undefined};break;
     case 'search':method='repoMap.search';params={q:arg};break;
     case 'simulate':method='workspace.simulate';params={runId:arg};break;
+    case 'measure':method='workspace.measure';params={runId:arg};break;
     case 'approve':method='workspace.approve';params={runId:arg};break;
     case 'reject':{const [runId,...reasonParts]=rest;method='workspace.reject';params={runId,reason:reasonParts.join(' ')||null};break;}
     case 'restore':method='workspace.restore';params={runId:arg};break;

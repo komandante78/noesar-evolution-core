@@ -81,6 +81,7 @@ test('plan → approve promotes a real file write and modification', async () =>
     });
     assert.equal(planned.risk.overall, 'LOW');
 
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner-1', nowUnix: NOW + 1 });
     assert.equal(approved.promoted, true);
     assert.equal(approved.result.ok, true);
@@ -103,6 +104,7 @@ test('plan() answers with the run\'s status — the caller must not have to assu
     const planned = await fx.orch.plan({ request: 'status', files: [{ path: 's.txt', contents: 'x\n' }], actor: 'owner', nowUnix: NOW });
     assert.equal(planned.status, fx.orch.get(planned.runId).status);
     assert.equal(planned.status, 'PENDING_APPROVAL');
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(fx.orch.get(planned.runId).status, 'PROMOTED');
 
@@ -125,6 +127,7 @@ test('the diff shows real before/after content for every touched file', async ()
   try {
     writeFileSync(join(fx.ws, 'a.txt'), 'before\n');
     const planned = await fx.orch.plan({ request: 'edit', files: [{ path: 'a.txt', contents: 'after\n' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(approved.diff.length, 1);
     assert.equal(approved.diff[0].status, 'MODIFIED');
@@ -138,6 +141,7 @@ test('a created file diffs with before:null', async () => {
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'create', files: [{ path: 'new.txt', contents: 'x\n' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(approved.diff[0].status, 'CREATED');
     assert.equal(approved.diff[0].before, null);
@@ -157,6 +161,7 @@ test('restore writes back exactly the original bytes, and deletes a file that di
       ],
       actor: 'owner', nowUnix: NOW,
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
 
     const restored = fx.orch.restore({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 2 });
@@ -170,12 +175,21 @@ test('every step of a promoted run is recorded in the causal event ledger, chain
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     const chain = fx.events.correlation(planned.runId).map((event) => event.action);
+    // `D-0567` rewrote this order, and the order IS `CE-008`: everything the approver needs to
+    // see — the execution, the comparison, the recomputed claims — is recorded BEFORE
+    // `workspace_action.approved`, not after it. Two `capability.minted` because there are now
+    // two grants: one for the shadow run, one for the change itself.
     assert.deepEqual(chain, [
-      'workspace_action.planned', 'workspace_action.approved', 'capability.minted',
-      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified', 'workspace_action.promoted',
+      'workspace_action.planned', 'workspace_action.measuring', 'capability.minted',
+      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified',
+      'workspace_action.measured',
+      'workspace_action.approved', 'capability.minted', 'workspace_action.promoted',
     ]);
+    assert.ok(chain.indexOf('shadow.compared') < chain.indexOf('workspace_action.approved'),
+      'the shadow no longer precedes the approval — CE-008 has regressed');
     assert.equal(fx.events.verify().valid, true);
   } finally { cleanup(fx); }
 });
@@ -189,6 +203,7 @@ test('a matching claim promotes normally and reports complete coverage', async (
       request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
       claims: [{ type:'file_equals', path:'x.txt', value:'hi' }],
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(promoted, true);
     assert.equal(coverage.complete, true);
@@ -204,6 +219,7 @@ test('a CONTRADICTED claim refuses promotion even though the path comparison was
       request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
       claims: [{ type:'file_equals', path:'x.txt', value:'this is not what got written' }],
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(promoted, false);
     assert.equal(coverage.contradicted.length, 1);
@@ -218,6 +234,7 @@ test('an unrecomputable (behavioural) claim does not block promotion — a cover
       request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
       claims: [{ type:'behavioural', description:'unrecomputable on purpose' }],
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(promoted, true);
     assert.equal(coverage.complete, false);
@@ -230,6 +247,7 @@ test('no claims declared: coverage says so explicitly, still promotes', async ()
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const { promoted, coverage } = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(promoted, true);
     assert.equal(coverage.total, 0);
@@ -244,6 +262,7 @@ test('the claims_verified ledger event records the declaration even on a refused
       request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW,
       claims: [{ type:'file_equals', path:'x.txt', value:'wrong' }],
     });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     const event = fx.events.correlation(planned.runId).find((e) => e.action === 'workspace_action.claims_verified');
     assert.ok(event);
@@ -330,6 +349,7 @@ test('the same run cannot be approved twice', async () => {
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'x.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.throws(
       () => fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 2 }),
@@ -355,6 +375,9 @@ test('an approval with no approver is refused and nothing is written', async () 
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'z.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    // Measured first, or the refusal would be `NOT_MEASURED` and this test would stop
+    // measuring the thing it is named after (`D-0567`).
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     assert.throws(
       () => fx.orch.approve({ runId: planned.runId, approverId: '', nowUnix: NOW + 1 }),
       (error) => error instanceof WorkspaceActionError && error.kind === 'NO_APPROVER',
@@ -392,6 +415,7 @@ test('a promoted run cannot be restored twice', async () => {
   const fx = fixture();
   try {
     const planned = await fx.orch.plan({ request: 'write', files: [{ path: 'a.txt', contents: 'hi' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     fx.orch.restore({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 2 });
     assert.throws(
@@ -407,7 +431,9 @@ test('two independent runs against two different workspaces never cross-contamin
   try {
     const p1 = await fx1.orch.plan({ request: 'write 1', files: [{ path: 'one.txt', contents: '1' }], actor: 'owner', nowUnix: NOW });
     const p2 = await fx2.orch.plan({ request: 'write 2', files: [{ path: 'two.txt', contents: '2' }], actor: 'owner', nowUnix: NOW });
+    fx1.orch.measure({ runId: p1.runId, actor: 'owner', nowUnix: NOW + 1 });
     const a1 = fx1.orch.approve({ runId: p1.runId, approverId: 'owner', nowUnix: NOW + 1 });
+    fx2.orch.measure({ runId: p2.runId, actor: 'owner', nowUnix: NOW + 1 });
     const a2 = fx2.orch.approve({ runId: p2.runId, approverId: 'owner', nowUnix: NOW + 1 });
     assert.equal(a1.promoted, true);
     assert.equal(a2.promoted, true);
@@ -421,6 +447,7 @@ test('a write with no actual effect is refused, not silently promoted as a succe
   try {
     writeFileSync(join(fx.ws, 'nochange.txt'), 'already this');
     const planned = await fx.orch.plan({ request: 'no-op', files: [{ path: 'nochange.txt', contents: 'already this' }], actor: 'owner', nowUnix: NOW });
+    fx.orch.measure({ runId: planned.runId, actor: 'owner', nowUnix: NOW + 1 });
     const approved = fx.orch.approve({ runId: planned.runId, approverId: 'owner', nowUnix: NOW + 1 });
     // shadow.mjs treats "nothing changed" and "nothing was looked at" as the same empty set
     // (compare()'s own comment) and refuses to produce a surprise for either — surprise stays

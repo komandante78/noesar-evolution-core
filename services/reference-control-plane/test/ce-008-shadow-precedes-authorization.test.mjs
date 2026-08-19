@@ -5,35 +5,24 @@
 // verification method *«test che tenta di autorizzare un passo mai simulato»*.
 // And `CE-026` — *«Nessun contenuto autorato raggiunge il repository vero senza essere prima
 // esistito in ombra»* (`16` §11), method *«test che tenta di promuovere un contenuto mai
-// simulato»*. They are one file because they are the same question asked at two moments, and
-// **the two answers are different**.
+// simulato»*. One file, because they are the same question asked at two moments.
 //
-// # The result, stated before the tests rather than after them
+// # This file has already been two different files, and that is the record worth keeping
 //
-//   CE-026  MET     — nothing reaches the real workspace except by being copied out of a
-//                     shadow; `#promote` reads `shadow.root` and there is no second writer.
-//   CE-008  NOT MET — the shadow runs INSIDE `approve()`, after the human has authorised.
-//                     `approve()` accepts a run nobody ever simulated, which is exactly the
-//                     attempt this criterion says must be refused.
+// Written on 2026-08-19 (`D-0566`) it **characterised a gap**: `approve()` did everything in one
+// call, so the attempt `CE-008` says must be refused — authorising a step nobody simulated —
+// *succeeded*, and the criterion was recorded `❌`, the register's first. Rewritten the same day
+// (`D-0567`) it asserts the closure: the attempt is now refused by name.
 //
-// # Why a green test file records a criterion as NOT MET
+// The order is what changed, and the order IS the criterion:
 //
-// The tests below assert **what the product actually does**, including where that differs from
-// what the criterion asks. A test that asserted the desired behaviour would sit red for as long
-// as the gap lasts, and a permanently red suite is one people learn to ignore — the same
-// argument the acceptance ratchet is built on. So the gap is written into the verdict cell of
-// `15` §11 as `❌`, and characterised here so that **the day the order changes, this file fails
-// and the verdict has to be re-stated** rather than quietly inherited.
+//   measure()  the actor authorises a run IN A SHADOW; nothing can reach the workspace from it
+//   approve()  the approver authorises THE CHANGE, against the result measure() produced
 //
-// # What the current design does guarantee, so the gap is not overstated
-//
-// The authorisation is not blind: `plan()` produces the file list, the declared blast radius and
-// the diff the caller supplied. What it is not is a *measured* result — nothing has been
-// executed when the approval is asked for. `simulate()` exists for that and is **optional**: on
-// an installation running only the reference provider it answers `supported: false`, so there is
-// no measured result available before approval at all. The protection the shadow does give is
-// real and lands one step later: promotion happens only if execution and comparison came back
-// clean, which is `CE-026` below.
+// Two authorisations of two different things, because the naive fix is circular: `execute()`
+// refuses without a token, a token comes only from an authorised plan, and an authorisation
+// needs a human. What it also bought, which was not the goal: the workspace mutation now spends
+// a token of its own inside `#promote` instead of inheriting the one spent on the shadow.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,9 +30,10 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync, rmSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { WorkspaceActionOrchestrator, workspaceActionsStatus } from '../src/workspace-actions.mjs';
+import { WorkspaceActionOrchestrator, WorkspaceActionError, workspaceActionsStatus } from '../src/workspace-actions.mjs';
 import { TokenMinter } from '../src/capability.mjs';
 import { EventLedger } from '../src/events.mjs';
+import { AGENT_COMMANDS } from '../../../apps/shared/coden/agent-commands.js';
 
 const NOW = 1_800_000_000;
 
@@ -54,7 +44,7 @@ function fixture() {
   const events = new EventLedger();
   const orch = new WorkspaceActionOrchestrator({
     workspaceRoot: ws, shadowsRoot: shadows,
-    minter: new TokenMinter(randomBytes(32)), events,
+    minter: new TokenMinter(randomBytes(32)), events, env: {},
   });
   return { ws, shadows, orch, events, cleanup() {
     rmSync(ws, { recursive: true, force: true });
@@ -64,8 +54,8 @@ function fixture() {
 
 describe('CE-008 / CE-026 — the shadow, the authorisation, and which of the two comes first', () => {
 
-  // ── CE-008 · the attempt the criterion names, and what actually happens ───────────────────
-  test('CE-008 NOT MET: a step nobody ever simulated is authorised without objection', async () => {
+  // ── CE-008 · the attempt the criterion names ──────────────────────────────────────────────
+  test('CE-008: a step nobody measured cannot be authorised — the attempt is refused by name', async () => {
     const fx = fixture();
     try {
       writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
@@ -74,18 +64,16 @@ describe('CE-008 / CE-026 — the shadow, the authorisation, and which of the tw
         actor: 'owner-001', nowUnix: NOW,
       });
 
-      // `simulate()` is never called. The criterion says this authorisation must be refused.
-      const decided = fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
-
-      assert.equal(decided.promoted, true,
-        'approve() refused an unsimulated run — CE-008 may now be MET and its verdict must be re-stated');
-      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'changed\n');
+      assert.throws(
+        () => fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW }),
+        (error) => error instanceof WorkspaceActionError && error.kind === 'NOT_MEASURED',
+      );
+      // And the refusal is about the bytes, not only about the reply.
+      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'original\n');
     } finally { fx.cleanup(); }
   });
 
-  test('CE-008: the measurement exists, but it happens AFTER the approval, not before it', async () => {
-    // The order, read off the ledger rather than off the source: `approved` is recorded before
-    // `executor.ran` and `shadow.compared`. That IS the criterion, inverted.
+  test('CE-008: the measurement precedes the approval in the ledger, which is where the order is readable', async () => {
     const fx = fixture();
     try {
       writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
@@ -93,31 +81,76 @@ describe('CE-008 / CE-026 — the shadow, the authorisation, and which of the tw
         request: 'change a line', files: [{ path: 'a.txt', contents: 'changed\n' }],
         actor: 'owner-001', nowUnix: NOW,
       });
-      fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+      fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW + 1 });
 
       const actions = fx.events.correlation(planned.runId).map((event) => event.action);
-      const approvedAt = actions.indexOf('workspace_action.approved');
-      const executedAt = actions.indexOf('executor.ran');
-      const comparedAt = actions.indexOf('shadow.compared');
-
-      assert.ok(approvedAt >= 0 && executedAt >= 0 && comparedAt >= 0,
-        `the run did not record the three events: ${actions.join(', ')}`);
-      assert.ok(approvedAt < executedAt && executedAt < comparedAt,
-        'the shadow now precedes the approval — CE-008 may be MET and its verdict must be re-stated');
+      const at = (name) => actions.indexOf(name);
+      for (const name of ['workspace_action.measuring', 'executor.ran', 'shadow.compared',
+        'workspace_action.measured', 'workspace_action.approved']) {
+        assert.ok(at(name) >= 0, `${name} was not recorded: ${actions.join(', ')}`);
+      }
+      // Everything the approver needs to have seen is recorded before the approval is.
+      assert.ok(at('executor.ran') < at('workspace_action.approved'), 'the execution follows the approval again');
+      assert.ok(at('shadow.compared') < at('workspace_action.approved'), 'the comparison follows the approval again');
+      assert.ok(at('workspace_action.claims_verified') < at('workspace_action.approved'), 'the claims are recomputed after the approval again');
+      // Two mints: the shadow run and the change are separately authorised.
+      assert.equal(actions.filter((action) => action === 'capability.minted').length, 2);
+      assert.equal(fx.events.verify().valid, true);
     } finally { fx.cleanup(); }
   });
 
-  test('CE-008: on an installation with only the reference provider, simulate() offers no measured result to approve against', () => {
-    // Not an accident of configuration — the status says so, and this asserts the status
-    // rather than the comment. It is what makes the gap structural rather than local.
-    const status = workspaceActionsStatus();
-    assert.equal(status.simulationSupported, true);
-    assert.match(status.simulationSupportedReason, /reference provider answers `supported: false`/,
-      'the reference provider now predicts something — CE-008 may be closable and must be re-measured');
+  test('CE-008: measuring changes nothing in the workspace, and says what it found', async () => {
+    const fx = fixture();
+    try {
+      writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
+      const planned = await fx.orch.plan({
+        request: 'change a line', files: [{ path: 'a.txt', contents: 'changed\n' }],
+        actor: 'owner-001', nowUnix: NOW,
+      });
+      const measured = fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+
+      assert.equal(measured.status, 'MEASURED');
+      assert.equal(measured.clean, true);
+      assert.equal(measured.promoted, false);
+      assert.equal(measured.diff.length, 1);
+      assert.equal(measured.diff[0].before, 'original\n');
+      assert.equal(measured.diff[0].after, 'changed\n');
+      // The whole point: the approver has seen the real after-bytes and the file is untouched.
+      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'original\n');
+    } finally { fx.cleanup(); }
   });
 
-  // ── CE-026 · the guarantee that IS in place, one step later ───────────────────────────────
-  test('CE-026: what lands in the workspace is the shadow\'s bytes, not the caller\'s', async () => {
+  test('CE-008: a measured run can still be rejected, and the shadow goes with it', async () => {
+    const fx = fixture();
+    try {
+      writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
+      const planned = await fx.orch.plan({
+        request: 'change a line', files: [{ path: 'a.txt', contents: 'changed\n' }],
+        actor: 'owner-001', nowUnix: NOW,
+      });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+      fx.orch.reject({ runId: planned.runId, approverId: 'owner-001', reason: 'no', nowUnix: NOW + 1 });
+
+      assert.equal(fx.orch.get(planned.runId).status, 'REJECTED');
+      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'original\n');
+      assert.equal(readdirSync(fx.shadows).length, 0, 'the shadow of a rejected run survived');
+    } finally { fx.cleanup(); }
+  });
+
+  test('CE-008: both shells offer the measurement, from the one registry they share', () => {
+    // A criterion met in the engine and absent from a shell is met for nobody. The registry is
+    // the single list both the browser and the terminal read (`CE-021`), so one assertion
+    // covers both — and `two-shells-parity.test.mjs` is what keeps that true.
+    const names = AGENT_COMMANDS.map((command) => command.name);
+    assert.ok(names.includes('measure'), 'no shell can measure a plan');
+    const measure = AGENT_COMMANDS.find((command) => command.name === 'measure');
+    assert.equal(measure.method, 'workspace.measure');
+    assert.equal(measure.permission, 'workspace.write');
+  });
+
+  // ── CE-026 · the guarantee one step later ─────────────────────────────────────────────────
+  test('CE-026: what lands in the workspace is the shadow\'s bytes, and the shadow does not survive the call', async () => {
     const fx = fixture();
     try {
       writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
@@ -125,24 +158,15 @@ describe('CE-008 / CE-026 — the shadow, the authorisation, and which of the tw
         request: 'change a line', files: [{ path: 'a.txt', contents: 'promoted content\n' }],
         actor: 'owner-001', nowUnix: NOW,
       });
-      fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+      fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW + 1 });
 
-      // The shadow for this run is discarded after the call, so the proof that the bytes came
-      // through it is the ledger's own order: executed, compared, then promoted.
-      const actions = fx.events.correlation(planned.runId).map((event) => event.action);
-      assert.ok(actions.includes('executor.ran'));
-      assert.ok(actions.includes('shadow.compared'));
       assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'promoted content\n');
-      // And the scratch space did not survive the call: a shadow left behind is a second copy
-      // of the workspace nobody is accounting for.
       assert.equal(readdirSync(fx.shadows).length, 0, 'a shadow survived the call');
     } finally { fx.cleanup(); }
   });
 
-  test('CE-026: a run that was refused promotes nothing — the real workspace never sees it', async () => {
-    // The other half: existing in shadow is necessary, and a shadow whose comparison did not
-    // come back clean is not sufficient. A contradicted claim is the cheapest way to reach
-    // that state through the public surface.
+  test('CE-026: a run whose verification was contradicted promotes nothing', async () => {
     const fx = fixture();
     try {
       writeFileSync(join(fx.ws, 'a.txt'), 'original\n');
@@ -152,12 +176,72 @@ describe('CE-008 / CE-026 — the shadow, the authorisation, and which of the tw
         claims: [{ type: 'file_equals', path: 'a.txt', value: 'not what will be written' }],
         actor: 'owner-001', nowUnix: NOW,
       });
-      const decided = fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
+      // The contradiction is found at MEASURE time now, which is the improvement: the approver
+      // is told before deciding, instead of discovering it in the outcome of their own approval.
+      const measured = fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+      assert.equal(measured.clean, false);
+      assert.equal(measured.coverage.contradicted.length, 1);
 
-      assert.equal(decided.promoted, false, JSON.stringify(decided.coverage));
-      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'original\n',
-        'a run whose verification failed still reached the real workspace');
+      const decided = fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW + 1 });
+      assert.equal(decided.promoted, false);
+      assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'original\n');
       assert.equal(existsSync(join(fx.ws, 'a.txt')), true);
     } finally { fx.cleanup(); }
+  });
+
+  test('CE-008/CE-026: a measurement lost to a restart is re-taken, never promoted from memory of it', async () => {
+    // The shadow is held in memory on purpose. `approve()` must refuse rather than promote a
+    // result nobody can still look at — and `measure()` must be able to run again on that run,
+    // or a restart would strand it.
+    // A real restart, not a simulated one: a second orchestrator over the same run store, which
+    // is what `durability.test.mjs` proves an operator actually gets back.
+    const ws = mkdtempSync(join(tmpdir(), 'noesar-ce008-restart-ws-'));
+    const shadows = mkdtempSync(join(tmpdir(), 'noesar-ce008-restart-sh-'));
+    const store = mkdtempSync(join(tmpdir(), 'noesar-ce008-restart-runs-'));
+    const secret = randomBytes(32);
+    // The ledger is durable too, or the second instance would carry no memory of the first
+    // and every causation id would dangle — which is a property of THIS test, not of the
+    // product: `durability.test.mjs` shows the same shape.
+    const journalPath = join(store, 'engine-events.jsonl');
+    const build = () => new WorkspaceActionOrchestrator({
+      workspaceRoot: ws, shadowsRoot: shadows, minter: new TokenMinter(secret),
+      events: EventLedger.loadFrom(journalPath), runStoreDirectory: store, env: {},
+    });
+    try {
+      writeFileSync(join(ws, '.seed'), 'seed');
+      writeFileSync(join(ws, 'a.txt'), 'original\n');
+      const before = build();
+      const planned = await before.plan({
+        request: 'change a line', files: [{ path: 'a.txt', contents: 'changed\n' }],
+        actor: 'owner-001', nowUnix: NOW,
+      });
+      before.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
+
+      const after = build();
+      assert.equal(after.get(planned.runId).status, 'MEASURED');
+      assert.throws(
+        () => after.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW + 1 }),
+        (error) => error instanceof WorkspaceActionError && error.kind === 'MEASUREMENT_LOST',
+      );
+      assert.equal(readFileSync(join(ws, 'a.txt'), 'utf8'), 'original\n');
+
+      // …and the run is not stranded: it can be measured again and then approved.
+      assert.equal(after.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW + 1 }).status, 'MEASURED');
+      assert.equal(after.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW + 2 }).promoted, true);
+      assert.equal(readFileSync(join(ws, 'a.txt'), 'utf8'), 'changed\n');
+    } finally {
+      rmSync(ws, { recursive: true, force: true });
+      rmSync(shadows, { recursive: true, force: true });
+      rmSync(store, { recursive: true, force: true });
+    }
+  });
+
+  test('CE-008: the status still declares what simulate() is, so the two are never confused', () => {
+    // `simulate()` is the OPTIONAL provider prediction and answers `supported: false` on the
+    // reference provider. `measure()` is the mandatory execution into a shadow. The gap this
+    // criterion recorded came from expecting the first to do the second's job.
+    const status = workspaceActionsStatus();
+    assert.equal(status.simulationSupported, true);
+    assert.match(status.simulationSupportedReason, /no token is minted and nothing is executed/);
   });
 });

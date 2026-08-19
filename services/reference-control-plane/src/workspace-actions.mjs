@@ -101,6 +101,10 @@ export class WorkspaceActionOrchestrator {
   #minter;
   #events;
   #runs = new Map();
+  // `D-0567`. The shadow a `measure()` produced, held until `approve()` promotes from it or
+  // `reject()` drops it. In memory only, and deliberately so: a shadow that outlived the process
+  // that made it would be a measured result nobody can prove still matches the workspace.
+  #shadows = new Map();
   #runStore;
   #damagedRuns = [];
   #reasoningFor;
@@ -373,9 +377,11 @@ export class WorkspaceActionOrchestrator {
     try {
       const protectedRunIds = new Set();
       for (const [id, run] of this.#runs) {
-        // The only non-terminal state. A run in it is a person waiting for a decision, and
+        // The two non-terminal states. A run in either is a person waiting to decide, and
         // deleting it because it is old would answer the decision by losing the question.
-        if (run.status === 'PENDING_APPROVAL') protectedRunIds.add(id);
+        // `MEASURED` joined `PENDING_APPROVAL` with `D-0567`: it is the state where the person
+        // is looking at the measured result, which is the whole point of `CE-008`.
+        if (run.status === 'PENDING_APPROVAL' || run.status === 'MEASURED') protectedRunIds.add(id);
       }
       this.#runStore.prune({ keep: this.#runRetention, protectedRunIds });
     } catch (error) {
@@ -833,18 +839,145 @@ export class WorkspaceActionOrchestrator {
   }
 
   /**
-   * The human decision. Mints one token covering exactly the files the plan declared,
-   * materialises a whole-workspace shadow, spends the token through execute() — writing only
-   * into the shadow — and promotes to the real workspace ONLY if execute()'s own `ok` is
-   * true. The shadow is always discarded; it is scratch space, never the record.
+   * `D-0567`, closing `CE-008` — *«l'ombra precede l'autorizzazione: nessun dialogo di
+   * autorizzazione senza risultato misurato»*.
+   *
+   * # Why this exists as a separate call, and why the naive fix does not work
+   *
+   * Until now `approve()` did everything: authorise, mint, execute into a shadow, compare,
+   * promote. The person therefore authorised a *description* and the bytes were produced
+   * afterwards — measured, recorded `❌`, and the only `❌` in the acceptance register.
+   *
+   * "Just execute at plan() time" is circular: `execute()` refuses without a token, a token is
+   * minted only from an authorised plan, and an authorisation needs a human. The resolution is
+   * **two authorisations of two different things**:
+   *
+   *   measure()  the actor authorises a run IN A SHADOW. Nothing can reach the workspace from
+   *              here — `#promote` is not called and the token minted here is never handed to
+   *              it. Its purpose is recorded on the grant so the two can never be confused.
+   *   approve()  the approver authorises THE CHANGE, against the result `measure()` produced,
+   *              and mints the token whose spends `#promote` consumes file by file.
+   *
+   * This strengthens `CE-001` rather than weakening it: the workspace mutation now spends a
+   * token of its own instead of inheriting the one spent to write into the shadow.
+   *
+   * The shadow is **kept** between the two calls, in memory only. A process restart therefore
+   * loses it, which is stated rather than discovered: `approve()` refuses a run whose
+   * measurement is gone and `measure()` will run again on it.
+   */
+  measure({ runId, actor, nowUnix }) {
+    const run = this.#runs.get(runId);
+    if (!run) refuse('NOT_FOUND', `no pending run \`${runId}\``);
+    if (!String(actor ?? '').trim()) refuse('NO_ACTOR', 'a measurement with no actor names nobody accountable');
+    // Re-measuring a run whose shadow the process lost is the recovery path, not an error.
+    const remeasuring = run.status === 'MEASURED' && !this.#shadows.has(runId);
+    if (run.status !== 'PENDING_APPROVAL' && !remeasuring) {
+      refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    }
+
+    // A grant that says what it is for. `authorizePlan` does not read `purpose` — it is carried
+    // so that the ledger, and anyone reading a token's provenance, can tell a measurement from
+    // an approval without inferring it from timing.
+    const grant = { approverId: actor, grantedAtUnix: nowUnix, expiresAtUnix: nowUnix + APPROVAL_TTL_SECONDS, purpose: 'MEASUREMENT' };
+    let authorized;
+    try {
+      authorized = authorizePlan(run.plan, grant, nowUnix);
+    } catch (error) {
+      if (error instanceof CapabilityError) refuse('NOT_AUTHORIZED', error.reason);
+      throw error;
+    }
+    const measureEventId = this.#record(runId, run.planEventId, actor, 'workspace_action.measuring',
+      { actor, purpose: 'MEASUREMENT' }, nowUnix);
+
+    const step = run.plan.steps[0];
+    let token;
+    try {
+      token = this.#minter.mint(authorized, {
+        stepId: step.id, paths: step.files, operations: ['WRITE'],
+        uses: step.files.length, expiresAtUnix: grant.expiresAtUnix,
+      }, nowUnix);
+    } catch (error) {
+      if (error instanceof CapabilityError) {
+        this.#record(runId, measureEventId, actor, 'capability.denied',
+          { stepId: step.id, paths: step.files, kind: error.kind, reason: error.reason, purpose: 'MEASUREMENT' }, nowUnix);
+        refuse('MINT_REFUSED', error.reason);
+      }
+      throw error;
+    }
+    this.#record(runId, measureEventId, actor, 'capability.minted',
+      { tokenId: token.id, paths: token.paths, operations: token.operations, purpose: 'MEASUREMENT' }, nowUnix);
+    run.egressSamples.push(...[this.#sampleEgress('measuring', nowUnix)].filter(Boolean));
+
+    // Any shadow left by a previous measurement of this run goes first: two whole-workspace
+    // copies of one run under one root is scratch space nobody is accounting for.
+    this.#dropShadow(runId);
+    const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, join(this.#shadowsRoot, runId));
+    let kept = false;
+    try {
+      const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));
+      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
+      const executeEventId = this.#record(runId, measureEventId, actor, 'executor.ran',
+        { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
+      this.#record(runId, executeEventId, actor, 'shadow.compared',
+        { clean: result.surprise?.clean ?? null, unexpected: result.surprise?.unexpected ?? null }, nowUnix);
+
+      // The recompute verifier runs here, on the shadow's post-execution content, because this
+      // is where that content now exists — and its answer is part of what the approver reads.
+      const claimResults = verifyClaims(run.claims ?? [], shadow.root);
+      const coverage = projectionCoverage(claimResults);
+      this.#record(runId, executeEventId, actor, 'workspace_action.claims_verified',
+        { declaration: coverage.declaration, total: coverage.total, recomputed: coverage.recomputed, contradicted: coverage.contradicted.length }, nowUnix);
+
+      const diff = this.#diff(shadow, result);
+      const clean = result.ok && coverage.contradicted.length === 0;
+
+      run.status = 'MEASURED';
+      run.result = result;
+      run.diff = diff;
+      run.coverage = coverage;
+      run.measurement = { clean, measuredAtUnix: nowUnix, measuredBy: actor, eventId: measureEventId };
+      this.#shadows.set(runId, shadow);
+      kept = true;
+      this.#saveRun(runId);
+      this.#record(runId, executeEventId, actor, 'workspace_action.measured',
+        { clean, files: result.outcomes.filter((o) => o.performed).map((o) => o.path) }, nowUnix);
+      return { runId, status: 'MEASURED', result, diff, coverage, clean, promoted: false };
+    } finally {
+      // Discarded on any path that did not hand it to `#shadows`, so a throw cannot leave a
+      // whole-workspace copy behind.
+      if (!kept) shadow.discard();
+    }
+  }
+
+  /** Drops a kept shadow if there is one. Safe to call when there is not. */
+  #dropShadow(runId) {
+    const shadow = this.#shadows.get(runId);
+    if (!shadow) return;
+    this.#shadows.delete(runId);
+    try { shadow.discard(); } catch { /* scratch space; a failure to remove it must not mask the caller's outcome */ }
+  }
+
+  /**
+   * The human decision, taken **against a measured result** rather than against a description.
+   * Mints the token whose spends `#promote` consumes, and promotes the shadow `measure()`
+   * already produced — it never re-executes, so what is promoted is exactly what was shown.
    */
   approve({ runId, approverId, nowUnix }) {
     const run = this.#runs.get(runId);
     if (!run) refuse('NOT_FOUND', `no pending run \`${runId}\``);
-    if (run.status !== 'PENDING_APPROVAL') refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    if (run.status === 'PENDING_APPROVAL') {
+      // `CE-008`. This refusal is the criterion: an approval dialogue may not be answered on a
+      // run whose consequences nobody has measured.
+      refuse('NOT_MEASURED', `run \`${runId}\` has not been measured: call measure() first — an approval without a measured result is what CE-008 forbids`);
+    }
+    if (run.status !== 'MEASURED') refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
     if (!String(approverId ?? '').trim()) refuse('NO_APPROVER', 'an approval with no approver names nobody accountable');
+    const shadow = this.#shadows.get(runId);
+    if (!shadow) {
+      refuse('MEASUREMENT_LOST', `the shadow for run \`${runId}\` is gone (the process restarted): measure() it again — promoting a result nobody can still see would be an approval of a description`);
+    }
 
-    const approval = { approverId, grantedAtUnix: nowUnix, expiresAtUnix: nowUnix + APPROVAL_TTL_SECONDS };
+    const approval = { approverId, grantedAtUnix: nowUnix, expiresAtUnix: nowUnix + APPROVAL_TTL_SECONDS, purpose: 'CHANGE' };
     let authorized;
     try {
       authorized = authorizePlan(run.plan, approval, nowUnix);
@@ -852,8 +985,8 @@ export class WorkspaceActionOrchestrator {
       if (error instanceof CapabilityError) refuse('NOT_AUTHORIZED', error.reason);
       throw error;
     }
-    const approveEventId = this.#record(runId, run.planEventId, approverId, 'workspace_action.approved',
-      { approverId }, nowUnix);
+    const approveEventId = this.#record(runId, run.measurement?.eventId ?? run.planEventId, approverId,
+      'workspace_action.approved', { approverId, against: 'MEASURED' }, nowUnix);
 
     const step = run.plan.steps[0];
     let token;
@@ -864,83 +997,54 @@ export class WorkspaceActionOrchestrator {
       }, nowUnix);
     } catch (error) {
       if (error instanceof CapabilityError) {
-        // SESS-001 "autorità": a denial is part of the authority timeline, not only a
-        // thrown error the caller happens to see. Before this, a refused mint left no trace
-        // in the run's own event correlation — the causal chain answered "why did this run
-        // stop" with silence between `approved` and nothing.
+        // SESS-001 "autorità": a denial is part of the authority timeline, not only a thrown
+        // error the caller happens to see.
         this.#record(runId, approveEventId, approverId, 'capability.denied',
-          { stepId: step.id, paths: step.files, kind: error.kind, reason: error.reason }, nowUnix);
+          { stepId: step.id, paths: step.files, kind: error.kind, reason: error.reason, purpose: 'CHANGE' }, nowUnix);
         refuse('MINT_REFUSED', error.reason);
       }
       throw error;
     }
     this.#record(runId, approveEventId, approverId, 'capability.minted',
-      { tokenId: token.id, paths: token.paths, operations: token.operations }, nowUnix);
+      { tokenId: token.id, paths: token.paths, operations: token.operations, purpose: 'CHANGE' }, nowUnix);
     run.egressSamples.push(...[this.#sampleEgress('approved', nowUnix)].filter(Boolean));
 
-    // Discarded exactly once, in `finally`: scratch space that must not survive the call
-    // whether it finished cleanly or threw partway through.
-    const shadowRoot = join(this.#shadowsRoot, runId);
-    const shadow = ShadowWorkspace.ofWorkspace(this.#workspaceRoot, shadowRoot);
     try {
-      // Stage 9b, spent. This line used to read `contents: file.contents` — the caller's own
-      // bytes written back unchanged, which is what made `approve()` perform three WRITEs and
-      // leave every hash identical (`EVIDENCE/phase5-measure-before.mjs`). The authored bytes
-      // win where they exist; where they do not the previous behaviour is kept exactly, so an
-      // installation with no model configured is not made worse by this path existing.
-      const actions = run.files.map((file) => ({ kind: 'WRITE', path: file.path, contents: run.authoredContents?.get(file.path) ?? file.contents }));
-      const result = execute({ authorized, minter: this.#minter, tokens: [token], shadow, actions, expectation: run.expectation, tests: [], nowUnix, executeSandbox: this.#executeSandbox });
-      const executeEventId = this.#record(runId, approveEventId, approverId, 'executor.ran',
-        { performed: result.performed, refused: result.refused, ok: result.ok }, nowUnix);
-      this.#record(runId, executeEventId, approverId, 'shadow.compared',
-        { clean: result.surprise?.clean ?? null, unexpected: result.surprise?.unexpected ?? null }, nowUnix);
-
-      // Recompute verifier (CodeN Evolution construction order, step 9): claims declared
-      // at plan() time are checked against the shadow's actual post-execution content --
-      // not the path-touched comparison above, which knows only CREATED/MODIFIED/DELETED,
-      // never what a file now contains. Run BEFORE shadow.discard() in `finally`: there is
-      // nothing left to read from once this block exits.
-      const claimResults = verifyClaims(run.claims ?? [], shadow.root);
-      const coverage = projectionCoverage(claimResults);
-      this.#record(runId, executeEventId, approverId, 'workspace_action.claims_verified',
-        { declaration: coverage.declaration, total: coverage.total, recomputed: coverage.recomputed, contradicted: coverage.contradicted.length }, nowUnix);
-
-      const diff = this.#diff(shadow, result);
+      const result = run.result;
+      const coverage = run.coverage;
       let promoted = false;
       let backups = null;
-      // A clean path/test comparison is not enough on its own if a declared claim was
-      // recomputed and found false: the diff touched what the plan said it would, but the
-      // resulting content contradicts what was claimed about it. Coverage gaps
-      // (unrecomputed claims) do NOT block promotion -- CE-009 asks for the gap to be
-      // declared honestly, not for every claim to be checkable before anything can ship.
-      const clean = result.ok && coverage.contradicted.length === 0;
-      if (clean) {
-        backups = this.#promote(shadow, result);
+      // Unchanged rule, moved: a clean path/test comparison is not enough on its own if a
+      // declared claim was recomputed and found false. Coverage gaps do not block promotion.
+      if (run.measurement?.clean) {
+        backups = this.#promote(shadow, result, token, nowUnix);
         promoted = true;
-        this.#record(runId, executeEventId, approverId, 'workspace_action.promoted',
+        this.#record(runId, approveEventId, approverId, 'workspace_action.promoted',
           { files: result.outcomes.filter((o) => o.performed).map((o) => o.path) }, nowUnix);
       } else {
-        this.#record(runId, executeEventId, approverId, 'workspace_action.refused',
+        this.#record(runId, approveEventId, approverId, 'workspace_action.refused',
           { reason: result.ok ? 'a declared claim was recomputed and contradicted' : 'the run was not clean; nothing was promoted', surprise: result.surprise, contradicted: coverage.contradicted }, nowUnix);
       }
 
       run.status = promoted ? 'PROMOTED' : 'REFUSED';
-      run.result = result;
-      run.diff = diff;
-      run.coverage = coverage;
       run.backups = backups;
       run.decidedAtUnix = nowUnix;
       this.#saveRun(runId);
-      return { runId, result, diff, promoted, coverage };
+      return { runId, result, diff: run.diff, promoted, coverage };
     } finally {
-      shadow.discard();
+      this.#dropShadow(runId);
     }
   }
 
   reject({ runId, approverId, reason, nowUnix }) {
     const run = this.#runs.get(runId);
     if (!run) refuse('NOT_FOUND', `no pending run \`${runId}\``);
-    if (run.status !== 'PENDING_APPROVAL') refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    // `D-0567`: a measured run is rejectable too — that is the whole point of measuring first,
+    // and it is the case where a person has the most reason to say no. The shadow goes with it.
+    if (run.status !== 'PENDING_APPROVAL' && run.status !== 'MEASURED') {
+      refuse('ALREADY_DECIDED', `run \`${runId}\` is already ${run.status}`);
+    }
+    this.#dropShadow(runId);
     this.#record(runId, run.planEventId, approverId, 'workspace_action.rejected', { reason: reason ?? null }, nowUnix);
     run.status = 'REJECTED';
     run.decidedAtUnix = nowUnix;
@@ -971,10 +1075,17 @@ export class WorkspaceActionOrchestrator {
    * in memory, so a restore can put them back; a file that did not exist before is restored
    * by deleting it, not by writing empty content over it.
    */
-  #promote(shadow, result) {
+  // `D-0567` added `token`/`nowUnix`. Until the split, the only token this run ever spent was
+  // the one `execute()` spent to write into the SHADOW, and the promotion — the step that
+  // actually mutates the workspace — inherited it. Now the shadow write and the workspace
+  // mutation are authorised separately, and this is where the second one is spent: one use per
+  // file, BEFORE the file is written, the same spend-before-effect order `executor.mjs` keeps.
+  // A refusal here therefore stops the promotion at that file rather than reporting damage.
+  #promote(shadow, result, token, nowUnix) {
     const backups = [];
     for (const outcome of result.outcomes) {
       if (!outcome.performed) continue;
+      this.#minter.spend(token, { path: outcome.path, operation: 'WRITE' }, nowUnix);
       const realPath = contained(this.#workspaceRoot, outcome.path);
       const shadowPath = contained(shadow.root, outcome.path);
       const existedBefore = existsSync(realPath);
@@ -1019,8 +1130,14 @@ export function workspaceActionsStatus() {
     filesSuppliedBy: 'caller',
     filesSuppliedByReason: 'the reference reasoning provider has no model and cannot derive a file target from a request written in prose; it says so rather than guessing.',
     approvalRequired: true,
+    // `D-0567`, `CE-008`. Two steps where there was one, and the status says so rather than
+    // letting a shell discover it from a refusal.
+    measurementRequiredBeforeApproval: true,
+    measurementRequiredBeforeApprovalReason: 'approve() refuses a run that has not been measured (NOT_MEASURED). measure() authorises a run IN A SHADOW — it mints its own token, executes, compares and recomputes the declared claims, and nothing reaches the workspace from it. The approval is then answered against that result, and mints the SECOND token, whose uses #promote spends one per file before writing it. A shadow is held in memory between the two calls, so a restart loses it: approve() then refuses MEASUREMENT_LOST and measure() can be run again.',
     approvalTtlSeconds: APPROVAL_TTL_SECONDS,
     promotionAllOrNothing: true,
+    tokensPerRun: 2,
+    tokensPerRunReason: 'one for the shadow run (purpose MEASUREMENT) and one for the change (purpose CHANGE). Before D-0567 the workspace mutation inherited the token spent to write into the shadow; now it spends its own.',
     restoreSupported: true,
     restoreOnce: true,
     runsPersistAcrossRestart: false,

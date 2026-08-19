@@ -224,11 +224,11 @@
       "severity": "critical",
       "howVerified": "test che tenta di autorizzare un passo mai simulato",
       "status": {
-        "verdict": "RECORDED_NOT_MET",
+        "verdict": "RECORDED_MET",
         "decisions": [
-          "D-0566"
+          "D-0567"
         ],
-        "text": "❌ **NON soddisfatto, misurato 2026-08-19 (`D-0566`)** — `ce-008-shadow-precedes-authorization.test.mjs`. Il tentativo che il criterio nomina — autorizzare un passo mai simulato — **riesce**: `approve()` promuove una run che nessuno ha simulato. L'ordine reale, letto dal ledger e non dal sorgente, è `approved` → `executor.ran` → `shadow.compared`: **l'ombra segue l'autorizzazione**, e protegge la *promozione*, non il *dialogo*. `simulate()` esiste ma è **opzionale** e col solo provider di riferimento risponde `supported: false`, quindi su quell'installazione non esiste alcun risultato misurato da mostrare prima di approvare. Il test è verde e caratterizza il comportamento attuale: cambiando l'ordine fallisce, e questo verdetto va riscritto invece che ereditato."
+        "text": "✅ **verificato 2026-08-19 (`D-0567`) — questa riga era `❌` poche ore prima, ed è la ragione per cui il registro serve.** `approve()` ora **rifiuta** una run non misurata (`NOT_MEASURED`), e il tentativo che il criterio nomina — autorizzare un passo mai simulato — è respinto per nome, con i byte del file invariati. Due autorizzazioni di due cose diverse, perché la correzione ingenua è circolare: **`measure()`** autorizza una esecuzione **in ombra** (nulla può raggiungere il workspace) e **`approve()`** autorizza **il cambiamento**, contro il risultato che `measure()` ha prodotto. Ordine letto dal **ledger**, non dal sorgente: `measuring` → `executor.ran` → `shadow.compared` → `claims_verified` → `measured` → `approved` → `promoted`. Effetto collaterale che rafforza `CE-001`: la mutazione del workspace ora **spende un token suo** dentro `#promote`, uno per file, invece di ereditare quello speso per scrivere in ombra. Entrambe le shell hanno `measure` dal registro unico che condividono, e la WebUI tiene **Approve disabilitato** finché non c’è una misura, dicendo perché. Suite: `ce-008-shadow-precedes-authorization.test.mjs` 9/9, unit 2725 pass / 0 fail."
       },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:440"
     },

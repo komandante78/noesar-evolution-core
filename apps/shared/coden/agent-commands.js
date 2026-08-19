@@ -128,7 +128,8 @@ export const AGENT_COMMANDS = Object.freeze([
   // between this and `PANEL_NAMES` — a list compared only with itself always agrees.
   { name: 'plan', argument: '<goal>', summary: 'Start a plan from a goal — the repository decides which files it may touch', group: 'work', kind: 'call', method: 'workspace.plan', permission: 'workspace.write' },
   { name: 'simulate', argument: '<run>', summary: 'Ask what a pending plan would do, executing nothing', group: 'work', kind: 'call', method: 'workspace.simulate', permission: 'workspace.read' },
-  { name: 'approve', argument: '<run>', summary: 'Approve a plan — runs in the shadow, promotes only if clean', group: 'work', kind: 'call', method: 'workspace.approve', permission: 'workspace.write' },
+  { name: 'measure', argument: '<run>', summary: 'Run a plan in the shadow and show what it does — nothing reaches the workspace', group: 'work', kind: 'call', method: 'workspace.measure', permission: 'workspace.write' },
+  { name: 'approve', argument: '<run>', summary: 'Approve a MEASURED plan — promotes the shadow you were shown', group: 'work', kind: 'call', method: 'workspace.approve', permission: 'workspace.write' },
   { name: 'reject', argument: '<run> [why]', summary: 'Reject a pending plan', group: 'work', kind: 'call', method: 'workspace.reject', permission: 'workspace.write' },
   { name: 'restore', argument: '<run>', summary: 'Undo a promoted run', group: 'work', kind: 'call', method: 'workspace.restore', permission: 'workspace.write' },
   { name: 'diff', argument: '<run>', summary: 'What a run changed, against the shadow', group: 'work', kind: 'call', method: 'workspace.get', permission: null },

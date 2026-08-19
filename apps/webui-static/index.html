@@ -611,7 +611,13 @@
               </section>
               <div class="inline-form hidden" id="planActions">
                 <button class="secondary" type="button" id="planSimulateBtn">Simulate</button>
-                <button class="primary" type="button" id="planApproveBtn">Approve — promotes if clean</button>
+                <!-- `D-0567`, `CE-008`. Measure is the primary action on a pending plan and
+                     Approve is disabled until it has run: the approval must be answered against
+                     a measured result, never against a description. The labels say which of the
+                     two touches the workspace, because "runs in a shadow" is exactly the thing a
+                     person cannot see. -->
+                <button class="primary" type="button" id="planMeasureBtn">Measure — runs in a shadow, changes nothing</button>
+                <button class="primary" type="button" id="planApproveBtn" disabled title="Measure the plan first — an approval without a measured result is what CE-008 forbids">Approve — promotes what you were shown</button>
                 <button class="danger" type="button" id="planRejectBtn">Reject</button>
                 <button class="text-button hidden" type="button" id="planRestoreBtn">Restore (undo promotion)</button>
               </div>

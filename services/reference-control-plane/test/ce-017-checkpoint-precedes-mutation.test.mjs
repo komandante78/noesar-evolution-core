@@ -89,6 +89,7 @@ describe('CE-017 — a checkpoint precedes every mutative step, and restore is b
         ],
         actor: 'owner-001', nowUnix: NOW,
       });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
       fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
 
       // The mutation really happened — otherwise the restore below would prove nothing.
@@ -114,6 +115,7 @@ describe('CE-017 — a checkpoint precedes every mutative step, and restore is b
         request: 'change one file', files: [{ path: 'planned.txt', contents: 'b\n' }],
         actor: 'owner-001', nowUnix: NOW,
       });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
       fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
 
       // Someone edits an unrelated file between the promotion and the restore.
@@ -133,12 +135,14 @@ describe('CE-017 — a checkpoint precedes every mutative step, and restore is b
       const first = await fx.orch.plan({
         request: 'v2', files: [{ path: 'a.txt', contents: 'v2\n' }], actor: 'owner-001', nowUnix: NOW,
       });
+      fx.orch.measure({ runId: first.runId, actor: 'owner-001', nowUnix: NOW });
       fx.orch.approve({ runId: first.runId, approverId: 'owner-001', nowUnix: NOW });
       const afterFirst = checksums(fx.ws);
 
       const second = await fx.orch.plan({
         request: 'v3', files: [{ path: 'a.txt', contents: 'v3\n' }], actor: 'owner-001', nowUnix: NOW + 1,
       });
+      fx.orch.measure({ runId: second.runId, actor: 'owner-001', nowUnix: NOW + 1 });
       fx.orch.approve({ runId: second.runId, approverId: 'owner-001', nowUnix: NOW + 1 });
       assert.equal(readFileSync(join(fx.ws, 'a.txt'), 'utf8'), 'v3\n');
 
@@ -162,6 +166,7 @@ describe('CE-017 — a checkpoint precedes every mutative step, and restore is b
         request: 'overwrite the blob', files: [{ path: 'blob.bin', contents: 'text now\n' }],
         actor: 'owner-001', nowUnix: NOW,
       });
+      fx.orch.measure({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW });
       fx.orch.approve({ runId: planned.runId, approverId: 'owner-001', nowUnix: NOW });
       fx.orch.restore({ runId: planned.runId, actor: 'owner-001', nowUnix: NOW + 1 });
 

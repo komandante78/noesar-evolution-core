@@ -146,6 +146,7 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
 
     // The plan must still be approvable normally afterwards — a forged attempt must not
     // consume or corrupt the pending run.
+    await authed(`/api/v1/workspace-actions/${planned.json.runId}/measure`, { method: 'POST' });
     const real = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, { method: 'POST' });
     assert.equal(real.status, 200, `the legitimate approval must still work after the forged attempt: ${real.text.slice(0, 160)}`);
     assert.equal(real.json.promoted, true);
@@ -167,6 +168,7 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     });
     assert.equal(planned.status, 201);
 
+    await authed(`/api/v1/workspace-actions/${planned.json.runId}/measure`, { method: 'POST' });
     const approved = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, {
       method: 'POST', payload: { approverId: 'someone-else-entirely' },
     });
@@ -201,6 +203,7 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     // approve() takes no file list from the request at all; this proves the body is ignored
     // rather than merely unused today, so a future refactor that starts reading it would break
     // this test before it could ship.
+    await authed(`/api/v1/workspace-actions/${planned.json.runId}/measure`, { method: 'POST' });
     const approved = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, {
       method: 'POST', payload: { files: [{ path: '../../../etc/passwd', contents: 'pwned' }] },
     });
@@ -229,6 +232,7 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     assert.equal(planned.status, 201);
     assert.equal(planned.json.risk.overall, 'LOW');
 
+    await authed(`/api/v1/workspace-actions/${planned.json.runId}/measure`, { method: 'POST' });
     const approved = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, { method: 'POST' });
     assert.equal(approved.status, 200, `legitimate approval must still work: ${approved.text.slice(0, 160)}`);
     assert.equal(approved.json.promoted, true);
@@ -245,6 +249,7 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
       method: 'POST', payload: { request: 'events trail probe', files: [{ path: 'events-trail.txt', contents: 'x' }] },
     });
     assert.equal(planned.status, 201);
+    await authed(`/api/v1/workspace-actions/${planned.json.runId}/measure`, { method: 'POST' });
     const approved = await authed(`/api/v1/workspace-actions/${planned.json.runId}/approve`, { method: 'POST' });
     assert.equal(approved.status, 200);
 
@@ -252,9 +257,15 @@ describe('workspace-actions HTTP adversarial — one attempt per invariant this 
     assert.equal(trail.status, 200);
     assert.equal(trail.json.correlationId, planned.json.runId);
     const actions = trail.json.events.map((event) => event.action);
+    // `D-0567` rewrote this order at the HTTP boundary too, and the order IS `CE-008`: the
+    // execution, the comparison and the recomputed claims are all recorded BEFORE
+    // `workspace_action.approved`. Two mints, because there are two grants — one for the shadow
+    // run, one for the change.
     assert.deepEqual(actions, [
-      'workspace_action.planned', 'workspace_action.approved', 'capability.minted',
-      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified', 'workspace_action.promoted',
+      'workspace_action.planned', 'workspace_action.measuring', 'capability.minted',
+      'executor.ran', 'shadow.compared', 'workspace_action.claims_verified',
+      'workspace_action.measured',
+      'workspace_action.approved', 'capability.minted', 'workspace_action.promoted',
     ], `the trail must be this run's own events, in causal order: ${JSON.stringify(actions)}`);
 
     // An id that never correlated to anything returns an empty trail, not 404: the ledger

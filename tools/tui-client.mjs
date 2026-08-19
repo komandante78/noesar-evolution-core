@@ -541,6 +541,7 @@ export async function dispatchCommand(reader, session, line, state) {
     case 'help': console.log(HELP); return true;
     case 'plan': await runPlanFlow(reader, session, arg); return true;
     case 'simulate': printJson(console.log, 'simulation', await session.call('workspace.simulate', { runId: arg })); return true;
+    case 'measure': printJson(console.log, 'measurement', await session.call('workspace.measure', { runId: arg })); return true;
     case 'approve': printJson(console.log, 'result', await session.call('workspace.approve', { runId: arg })); return true;
     case 'reject': {
       const [runId, ...reasonParts] = rest;

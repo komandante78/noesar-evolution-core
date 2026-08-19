@@ -42,6 +42,8 @@ import { matchCommands } from '../shared/coden/agent-commands.js';
 export const RUN = {
   plan: (argument) => ['workspace.plan', { request: argument, files: [] }],
   simulate: (argument) => ['workspace.simulate', { runId: argument }],
+  // `D-0567`, `CE-008`: the step that produces the result `approve` is answered against.
+  measure: (argument) => ['workspace.measure', { runId: argument }],
   approve: (argument) => ['workspace.approve', { runId: argument }],
   reject: (argument) => {
     const [runId, ...why] = argument.split(' ');

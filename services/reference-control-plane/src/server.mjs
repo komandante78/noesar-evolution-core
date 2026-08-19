@@ -3814,7 +3814,11 @@ const requestListener = async (req, res) => {
         throw error;
       }
     }
-    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(approve|reject|restore)$/);
+    // `D-0567` added `measure`. It is the step that produces the result the approval is taken
+    // against — `CE-008` — and it carries the same permission and CSRF gate as `approve`,
+    // because it mints a token and writes into a shadow even though nothing reaches the
+    // workspace from it.
+    workspaceActionMatch = url.pathname.match(/^\/api\/v1\/workspace-actions\/([^/]+)\/(measure|approve|reject|restore)$/);
     if (workspaceActionMatch && req.method === 'POST') {
       const authenticated = requireSession(req, res); if (!authenticated) return;
       if (!auth.hasPermission(authenticated.user, 'workspace.write')) {
@@ -3825,6 +3829,11 @@ const requestListener = async (req, res) => {
       const payload = await body(req);
       const nowUnix = Math.floor(Date.now() / 1000);
       try {
+        if (verb === 'measure') {
+          // No `compactRunAfterDecision`: a measured run is not decided. It is a person
+          // looking at a diff, and the run must survive until they answer.
+          return json(res, 200, workspaceActions.measure({ runId, actor: authenticated.user.id, nowUnix }));
+        }
         if (verb === 'approve') {
           const outcome = workspaceActions.approve({ runId, approverId: authenticated.user.id, nowUnix });
           compactRunAfterDecision(runId);

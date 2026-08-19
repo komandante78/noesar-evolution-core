@@ -278,9 +278,15 @@ describe('session protocol — unix socket transport', () => {
     assert.deepEqual(status.workspaceActions.operationsSupported, ['WRITE']);
   });
 
-  test('plan -> approve -> restore over the socket reaches the same orchestrator, and the causal trail is readable back', async () => {
+  test('plan -> measure -> approve -> restore over the socket reaches the same orchestrator, and the causal trail is readable back', async () => {
     const planned = await call(authenticatedSocket, 'workspace.plan', { request: 'a socket-driven plan', files: [{ path: 'from-socket.txt', contents: 'x' }] });
     assert.equal(planned.risk.overall, 'LOW');
+
+    // `D-0567`, `CE-008`: the terminal walks the same two steps the browser does. A shell that
+    // could approve in one call would be a shell where the criterion does not hold.
+    const measured = await call(authenticatedSocket, 'workspace.measure', { runId: planned.runId });
+    assert.equal(measured.status, 'MEASURED');
+    assert.equal(measured.clean, true);
 
     const approved = await call(authenticatedSocket, 'workspace.approve', { runId: planned.runId });
     assert.equal(approved.promoted, true);
