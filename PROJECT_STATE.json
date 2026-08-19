@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0577 — revocation becomes an act; F-REVOKE-001 closed, built, deployed and verified live",
-  "phase_status": "COMPLETE — a live capability grant can be listed and withdrawn from either shell, the withdrawal is a ledger line naming what it covered, and the change is INSTALLED (noesar-evolution:d0577-revocation-20260819T152649Z, byte-equal tree 449/449, /livez and /readyz 200 on both ports). production_ready stays false: 21 HIGH/MEDIUM acceptance rows carry no verdict and two of the three open product findings are untouched.",
-  "next_phase": "Owner choice: (1) F-AUTH-UI-001 — the authoring reason never reaches either shell, (2) the 21 HIGH/MEDIUM acceptance rows, or (3) D-0564, the signed ledger anchor",
+  "current_phase": "D-0579 — the reason a run wrote nothing reaches the person; F-AUTH-UI-001 closed, deployed and verified live",
+  "phase_status": "COMPLETE — all three shells render a call result through one shaper: the engine's own sentence is the first line under the headline, and a plan that wrote no file no longer announces itself as ok. INSTALLED (noesar-evolution:d0579-authoring-reason-20260819T155117Z, byte-equal tree 450/450, the repaired shaper proven SERVED). production_ready stays false: 21 HIGH/MEDIUM acceptance rows carry no verdict.",
+  "next_phase": "Owner choice: (1) the 21 HIGH/MEDIUM acceptance rows, (2) D-0564 — the signed ledger anchor, or (3) D-0580/D-0578, the two proposals this run left",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "08223f5",
-  "last_updated_utc": "2026-08-19T15:45:00.000Z",
+  "last_commit": "bb6eef4",
+  "last_updated_utc": "2026-08-19T15:55:00.000Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -206,6 +206,13 @@
   "phase_3_started": true,
   "phase_cycle": "15 steps (HUNT AND FIX between TEST and DOCUMENT; CLEAN UP between PUSH and WRITE HANDOFF) - defects are repaired inside the phase, and every throwaway container the phase created is removed before it closes",
   "open_findings": [
+    {
+      "id": "F-AUTH-UI-001",
+      "severity": "medium",
+      "status": "CLOSED 2026-08-19 (D-0579) — repaired in all three shells, deployed, and the repaired shaper proven served by the live installation",
+      "summary": "CE-029 proves the engine refuses to author saying why, and no file under apps/ read the field: measured, the reason sits at line 88 of a 126-line plan answer while every shell printed `${command} — ok` plus the first 10 lines, so a plan that wrote no file announced itself as ok. Closed by authoringSummary()/callResult() in coden-view-model.js, rendered by app.js, coden-terminal.js and tui-fullscreen.mjs alike. The headline follows the verb and the detail follows the data — a distinction that was itself a defect in the first draft, since /diff reads a stored run carrying the same block.",
+      "next_step": "none — closed. D-0580 is the remaining surface: the status bar still cannot say an installation is unable to write until something has been run."
+    },
     {
       "id": "F-MANIFEST-001",
       "severity": "low",
@@ -1116,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "F-REVOKE-001 IS CLOSED AND LIVE: `POST /api/v1/capability/revoke` answers 401 on the running installation (the gate, not a 404), `/grants` and `/revoke` are in the one command table both shells render, and the Authority panel shows what is outstanding. THE TWO REMAINING PRODUCT FINDINGS ARE UNTOUCHED AND ARE THE HONEST NEXT CANDIDATES: F-AUTH-UI-001 (no file under apps/ reads `authoring.reason`, so the reason CE-029 proves is on the API response never reaches either shell; the precedent for the repair is `reasoningSummary()` in coden-view-model.js) and F-TOOLSCOPE-001 (`scopeRequestToTool()` still has no caller — D-0574 argues deliberately AGAINST wiring it until a route can mint for catalog tools, so that one is a design decision before it is work). ALSO OPEN: the 21 HIGH/MEDIUM matrix rows (`node tools/verify-acceptance-matrix.mjs` prints them, ratchet held at 21/0); D-0564, still the most valuable unbuilt idea — the event ledger head is a hash with no key, so it detects an edit but not a rewrite; D-0578, the proposal this phase produced — a revoked token still reads to `spend()` as an unknown one, which needs the JS engine, the Rust mirror and a conformance vector together. NOT PROVEN AND DECLARED AS SUCH: MEASUREMENT_LOST has no public door a test can open (D-0576 proposes the seam). A GREEN CRITICAL MATRIX IS NOT A FINISHED PRODUCT — production_ready stays false.",
+  "next_action": "TWO OF THE THREE PRODUCT FINDINGS ARE NOW CLOSED AND LIVE: F-REVOKE-001 (D-0577) and F-AUTH-UI-001 (D-0579). F-TOOLSCOPE-001 IS THE THIRD AND IS DELIBERATELY NOT NEXT: `scopeRequestToTool()` still has no caller, and D-0574 argues AGAINST wiring it until a route can mint for catalog tools — a call site with nothing to exercise it is how an unexercised path rots. It is a design decision to take, not a repair waiting to be done. THE HONEST CANDIDATES ARE: (1) the 21 HIGH/MEDIUM matrix rows — `node tools/verify-acceptance-matrix.mjs` prints them, ratchet held at 21 unstated / 0 critical-unstated, cheap and mechanical; (2) D-0564, still the most valuable unbuilt idea — the event ledger head is a hash with no key, so it detects an edit but not a rewrite; (3) the two proposals this run produced — D-0578 (a revoked token still reads to spend() as an unknown one; needs the JS engine, the Rust mirror and a conformance vector together) and D-0580 (the status bar should say an installation cannot write BEFORE the first plan, not after it). NOT PROVEN AND DECLARED AS SUCH: MEASUREMENT_LOST has no public door a test can open (D-0576 proposes the seam). A GREEN CRITICAL MATRIX IS NOT A FINISHED PRODUCT — production_ready stays false.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

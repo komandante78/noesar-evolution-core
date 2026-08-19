@@ -5339,3 +5339,33 @@ non-project containers **50 → 50**; surviving networks exactly `noesar-evoluti
 `noesar-e2e-net` (`noesar-local` is NOESAR V3's and was not touched)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0577_20260819T152917Z.txt`). Health re-proved after
 cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
+
+## `d0579-authoring-reason-20260819T155117Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0579-authoring-reason-20260819T155117Z`, deployed 15:51Z via
+`tools/deploy/redeploy.sh --apply`, built from the canonical `oci/Dockerfile`. `D-0579`: the
+reason a run wrote nothing reaches the person, in all three shells.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz` and `/healthz` **200** on
+**both** `http://…:8100` and `https://…:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **450/450** against the **running** image, **0** differing,
+**0** missing from the directory `COPY`s. The repaired shaper is proven **served**, not merely
+built: `GET /coden-view-model.js` → **200** and the body carries `export function callResult`.
+Before `--apply`: unit **2853 (2852 pass / 0 fail / 1 skip)**, battery **15/15**,
+seeded-defect-proof **19/19**, browser suite **506 / 505 pass / 1 declared gap / 0 undeclared**
+(including `POINT-2B /diff <run>` → `ok:true`, the real browser confirming the headline fix),
+ESLint **447 files, 0 errors**.
+**Not run, and named rather than skipped in silence.** `tools/accessibility-audit.mjs`: no markup,
+no DOM structure and no CSS token changed — the two change-map rows that reach it. The new text is
+transcript content, which the browser suite drives.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T155128Z`
+(`d0577-revocation-20260819T152649Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The workspace was backed up **with the service stopped**, 0600 in a 0700
+directory, checksum written — that archive holds credentials and is treated as one.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T152817Z` removed (`Exited` confirmed
+first; its image stays on disk). The browser suite removed its own probe, runner and probe image.
+Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-project containers
+**50 → 50**; surviving networks exactly `noesar-evolution-net` and `noesar-e2e-net`
+(`noesar-local` is NOESAR V3's and was not touched)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0579_20260819T155203Z.txt`). Health re-proved after
+cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.

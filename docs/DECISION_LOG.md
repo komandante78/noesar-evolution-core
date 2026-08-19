@@ -13409,3 +13409,58 @@ without re-earning that verdict — which is the reason to do it deliberately ra
 own cause is auditable) and a delimited, reusable component: a capability engine whose refusals
 are distinguishable by kind is useful to any tool ecosystem, not only this product.
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0579 · The reason a run wrote nothing reaches the person — `F-AUTH-UI-001` closed — 2026-08-19
+**Decision.** `authoringSummary()` and `callResult()` in `coden-view-model.js`, and all three
+shells render through them. The detail follows the **data** — any answer carrying an `authoring`
+block gets the summary, plus refusals, ATOM degradations (`D-0312`) and discarded paths when
+present. The headline follows the **verb**: only a command that authored reports it as its own
+outcome, and `AUTHORING_COMMANDS` is derived by comparison against the commands whose method is
+`workspace.plan`.
+**Why.** `CE-029` proves the engine refuses to author *saying why*. Measured here against the real
+orchestrator: that sentence is at **line 88 of a 126-line** answer, and every shell printed
+`` `${command} — ok` `` plus the first **10** lines. A plan that wrote **no file at all**
+announced itself as *ok*, in all three, because all three shaped the answer in the same place.
+**Rejected.** Summarising the reason into a status word ("unavailable"): that is the shell
+deciding what the operator may act on, and it is the rule `reasoningSummary` already states.
+Also rejected: keying the headline on the shape of the answer — see the defect below.
+**A design defect in this phase's own first draft, found and fixed before it shipped.** `/diff`
+reads the **stored run**, which carries the same `authoring` block, so a shape-keyed headline
+turned `diff — ok` into `diff — nothing written` — a sentence about the run being inspected,
+printed as the outcome of inspecting it. Found by reading the browser suite's own `POINT-2B`
+assertion before running it; the repair is the data/verb split above, and the real browser then
+confirmed it (`ok:true`).
+**A guard amended rather than weakened.** `F-TERM-003` pinned the literal `— ok` line, so a guard
+on today's **wording** made this repair look like the regression it exists to catch. It now
+asserts the property it is for: this shell truncates through the same shaper as the other two.
+**Evidence.** `authoring-reason-reaches-the-shells.test.mjs` **12/12**, asserted against a plan
+produced by the real orchestrator with no Author — including that `authoring` really is past the
+truncation, so the measurement that made this a defect is re-taken at every run rather than
+believed. Oracle **proven to fire**: reverting one shell's render site turns it red. `npm test`
+**2853 / 2852 pass / 0 fail / 1 pre-existing skip** (+2 over the count at this phase's start).
+ESLint 447 files, 0 errors. `scripts/test.sh` **15/15**. `seeded-defect-proof` **19/19**. Browser
+suite **506 / 505 pass / 1 declared gap (`F-I18N-002`, 647 closable, unchanged) / 0 undeclared**.
+Deployed and verified live — see `docs/INSTALLATION_LEDGER.md`.
+**Reversal cost.** One helper pair and three one-line render sites. No route, no schema, no
+migration, no configuration key.
+**Status.** applied, installed and verified live.
+
+## D-0580 · Improvement proposal — the status bar should say when the installation cannot write — 2026-08-19
+**Decision.** Proposed, not executed. `authoringSummary()` now tells a person why a *run* wrote
+nothing, **after** they asked for one. The status bar already carries a `reasoning` chip
+(`reasoningSummary`); it should carry an **authoring** one beside it, fed from
+`GET /api/v1/bootstrap`, so an installation that cannot write is legible **before** the first plan
+rather than after it.
+**Why.** The chip is the difference between *"my change did not happen"* and *"this installation
+was never able to make it"*. Today the second sentence is only reachable by running something and
+reading the answer — the shape of defect `F-AUTH-UI-001` was, one surface earlier.
+**Rejected.** Making it a modal or a banner: an installation deliberately run with no authoring
+model is a supported configuration (`CE-029`), not an error state, and a banner would nag a
+correct setup forever.
+**Evidence.** None yet — this is a proposal. What is measured is the precedent it copies:
+`reasoningSummary` is one function, one writer, and both shells read it (`atom-fallback-declared`).
+**Reversal cost.** One chip, one bootstrap field, one summary function.
+**Funding fit.** **Restack · traits 5 and 3** — measurable reliability (a capability the product
+does not have is declared rather than discovered) and autonomy (the whole point is that a
+local-only, model-less installation is a first-class configuration that says so).
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.

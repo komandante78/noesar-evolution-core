@@ -1,89 +1,89 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0577` — revocation becomes an act. `F-REVOKE-001` **closed**. `D-0578` proposed.
-**Live installation:** **`noesar-evolution:d0577-revocation-20260819T152649Z`**, deployed 15:28Z,
-`running`/`healthy`, byte-equal to the tree **449/449**. Predecessor kept as
-`noesar-evolution-pre-20260819T152817Z`.
+**Phase:** `D-0579` — the reason a run wrote nothing reaches the person. `F-AUTH-UI-001`
+**closed**. `D-0580` proposed.
+**Live installation:** **`noesar-evolution:d0579-authoring-reason-20260819T155117Z`**, deployed
+15:51Z, `running`/`healthy`, byte-equal to the tree **450/450**. Predecessor kept as
+`noesar-evolution-pre-20260819T155128Z`.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**The next action is the Owner's to choose. The candidates, honestly unequal:**
+**Two of the three product findings are closed and live** — `F-REVOKE-001` (`D-0577`) and
+`F-AUTH-UI-001` (`D-0579`). The third is deliberately **not** next.
 
-1. **`F-AUTH-UI-001`** — the strongest remaining product gap. `CE-029` proves the API response
-   carries `authoring.reason`, and **no file under `apps/` reads it**: the reason a change was
-   authored never reaches either shell. The precedent for the repair is `reasoningSummary()` in
-   `apps/webui-static/coden-view-model.js`. Product work; it will need a build and a deployment.
-2. **The 21 HIGH/MEDIUM acceptance rows.** `node tools/verify-acceptance-matrix.mjs` prints them;
-   the ratchet is held at **21 unstated / 0 critical-unstated**. Cheap and mechanical.
-3. **`D-0564`** — still the most valuable unbuilt idea: anchor the event ledger's head, signed
+**`F-TOOLSCOPE-001` is a decision, not a repair.** `scopeRequestToTool()` still has no caller, and
+`D-0574` argues **against** wiring it until a route can mint for catalog tools: a call site with
+nothing to exercise it is how an unexercised path rots. Take that decision before treating it as
+work.
+
+**The honest candidates:**
+
+1. **The 21 HIGH/MEDIUM acceptance rows.** `node tools/verify-acceptance-matrix.mjs` prints them;
+   the ratchet is held at **21 unstated / 0 critical-unstated**. Cheap, mechanical, and the same
+   method the last four phases used at higher severity.
+2. **`D-0564`** — still the most valuable unbuilt idea: anchor the event ledger's head, signed
    with the owner key. Every run records several grants and a measurement, and the chain
    protecting all of it is a hash with no key — it detects an edit, not a rewrite.
+3. **The two proposals this run produced.** `D-0578`: a revoked token still reads to `spend()` as
+   one this engine never issued — needs the JS engine, the Rust mirror and a conformance vector
+   **together**. `D-0580`: the status bar cannot say an installation is unable to write until
+   something has been run.
 
-**Not a candidate yet, and the reason matters:** `F-TOOLSCOPE-001` (`scopeRequestToTool()` has no
-caller). `D-0574` argues **against** wiring it until a route can mint for catalog tools — a call
-site with nothing to exercise it is how an unexercised path rots. That is a design decision to
-take before it becomes work, not a repair waiting to be done.
-
-**`production_ready` stays `false`.** A closed finding and a green CRITICAL matrix are not a
+**`production_ready` stays `false`.** Two closed findings and a green CRITICAL matrix are not a
 finished product.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**A capability grant can be withdrawn by a person.** Before this phase `TokenMinter#revoke` had
-zero product callers: the only way to stop a live token was to wait out its own expiry, and
-nothing anywhere could list which grants were outstanding.
+**A person is told what a run wrote, and why it wrote nothing.** `CE-029` proves the engine
+refuses to author *saying why*; measured against the real orchestrator, that sentence sat at
+**line 88 of a 126-line** answer while every shell printed `` `${command} — ok` `` plus the first
+**10**. A plan that wrote **no file at all** announced itself as *ok*, identically in the browser
+page, the browser terminal and the `ssh` shell.
 
-| Layer | What landed |
+| Decision | Where it lives now |
 |---|---|
-| engine | `grant()` / `grants()` describe a live grant — step, plan digest, paths, operations, uses, expiry — and **never** the MAC. `revoke()` keeps its boolean signature so `rust/crates/noesar-capability` stays a mirror, not a fork. |
-| HTTP | `POST /api/v1/capability/revoke` (session + `workspace.write` + CSRF); the grant list on `GET /api/v1/capability` gated on `workspace.read`, withheld **with the permission named** otherwise. |
-| protocol | `capability.grants` (`workspace.read`) and `capability.revoke` (`workspace.write`), both `bridged: true` so neither shell has an act the other lacks. |
-| shells | `/grants` and `/revoke <token>` in the one command table both shells render; the Authority panel lists what is outstanding and names the verb that withdraws it. |
-| audit | every withdrawal is a `capability.revoked` ledger line naming the **paths and operations** it covered — the grant is described before it is deleted, because afterwards the engine cannot say what it was. |
+| what the Author did, in one line | `authoringSummary()` — four states, and an **absent** model and a model that **refused** do not collapse: only the reason separates them, so the reason is carried whole and never summarised into a status |
+| what a shell prints for a call | `callResult()` — the **detail** follows the data (any answer with an `authoring` block, plus refusals, ATOM degradations and discarded paths when present); the **headline** follows the verb |
+| which verbs may claim authoring as their outcome | `AUTHORING_COMMANDS`, derived by comparison against the commands whose method is `workspace.plan` — never hand-kept |
 
-**`CE-002`'s closure changed claim rather than losing one** — from "nobody may call `revoke()`" to
-"only a **declared revocation surface** may", checked in both directions. Its HTTP *revoked* case
-now reaches the state the way a person does; the foreign-engine variant is kept beside it because
-it proves the MAC gate, one gate earlier. `docs/acceptance-matrix.json` records the change.
+**Two defects this phase found in its own work, both fixed before shipping.**
+`/diff` reads the **stored run**, which carries the same `authoring` block, so the first draft's
+shape-keyed headline turned `diff — ok` into `diff — nothing written` — a sentence about the run
+being inspected, printed as the outcome of inspecting it. And `F-TERM-003`'s guard pinned the
+literal `— ok` line, so a guard on today's **wording** made the repair look like the regression;
+it now asserts the property it exists for.
 
 ### Verification — all produced this session
 
 ```text
-capability-revocation.test.mjs      18/18   (engine · protocol · panel · shells)
-oracle proven to fire                       loosening capability.revoke to workspace.read -> 3 red
-npm test                          2840 tests / 2839 pass / 0 fail / 1 pre-existing skip  (+21)
-tools/run-eslint.sh                446 files / 0 errors / 0 warnings
-scripts/test.sh                    15/15 steps, 0 unavailable
-tools/seeded-defect-proof.mjs      19/19 caught
-tools/run-browser-e2e.sh           506 checks / 505 pass / 1 declared gap / 0 undeclared
-live                               /livez /readyz /healthz = 200 on :8100 and :8443
-live                               POST /api/v1/capability/revoke -> 401 (the gate, not a 404)
+authoring-reason-reaches-the-shells.test.mjs   12/12  (real orchestrator, no Author)
+oracle proven to fire                                 reverting one shell's render site -> red
+npm test                          2853 tests / 2852 pass / 0 fail / 1 pre-existing skip
+tools/run-eslint.sh               447 files / 0 errors / 0 warnings
+scripts/test.sh                   15/15 steps, 0 unavailable
+tools/seeded-defect-proof.mjs     19/19 caught
+tools/run-browser-e2e.sh          506 checks / 505 pass / 1 declared gap / 0 undeclared
+                                  incl. POINT-2B `/diff <run>` ok:true — the real browser
+                                  confirming the headline fix
+live                              /livez /readyz /healthz = 200 on :8100 and :8443
+live                              GET /coden-view-model.js = 200, body carries `callResult`
 ```
-
-### Defects found and fixed inside this phase
-
-- the Authority panel threw a `TypeError` on an engine that answers without a grant list — found
-  by `coden-shell-parity`, whose transport answers `{}` to a method it has not been taught. An
-  unrecognised answer is now a stated refusal and is **never** rendered as "none outstanding".
-- the two new commands had no Italian catalogue entry (`ui-language-coverage`);
-- the browser view model offered them with **no engine call** (`coden-view-model`);
-- two documentation defects: `docs/acceptance-matrix.json`'s `CE-002` verdict and
-  `docs/security/INDEPENDENT_PENTEST_SCOPE.md` both still said no route revokes.
 
 ## WHAT WAS **NOT** DONE
 
-- **`D-0578`, this phase's proposal, is not executed.** `spend()` still refuses a **revoked**
-  token with the wording it uses for one this engine never issued. The audit trail distinguishes
-  them; the refusal message does not. Fixing it needs the JS engine, the Rust mirror and a
-  conformance vector **together**, which is why it is proposed rather than slipped in.
-- **`F-AUTH-UI-001` and `F-TOOLSCOPE-001` are untouched.** Only one of the three findings was
-  closed.
-- **`tools/accessibility-audit.mjs` was not run**, and this is a declaration, not an omission:
-  this phase changed no markup, no DOM structure and no CSS token — the two change-map rows that
-  reach it. The three catalogue strings it added are covered by `ui-language-coverage`.
-- **`F-UNIT-FLAKE-001` did not reproduce.** The full `scripts/test.sh` output was preserved this
-  run, as that finding asks; the unit step passed.
-- **`F-I18N-002` remains red at 647 closable** — a declared gap, and **unchanged** by this phase.
+- **`D-0580` and `D-0578` are proposals, not work.** Neither was executed.
+- **`F-TOOLSCOPE-001` is untouched**, on purpose — see above. It is the one product finding left.
+- **The 21 HIGH/MEDIUM matrix rows are untouched.**
+- **`tools/accessibility-audit.mjs` was not run**, declared not omitted: no markup, no DOM
+  structure and no CSS token changed. The new text is transcript content, which the browser
+  suite drives.
+- **The new transcript strings are English and not in the translation catalogue.** That matches
+  the existing convention of these three shells (`— ok`, `Detaching this viewport.` and the
+  address views are all English) and adds no new violation class — but it is stated rather than
+  left to be discovered, and it feeds `F-I18N-002`.
+- **`F-I18N-002` remains red at 647 closable** — a declared gap, **unchanged** by this phase.
+- **`F-MANIFEST-001`** (recorded `D-0577`): `MANIFEST.sha256` lists 5,898 paths against 6,685
+  tracked files and does not grow. Not fixed — what the manifest is *for* has to be decided first.
 
 ## OPEN BLOCKERS
 
