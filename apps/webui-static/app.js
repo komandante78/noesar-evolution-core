@@ -2857,7 +2857,10 @@ function planFiles(){
     contents:row.querySelector('.plan-file-contents').value,
   })).filter((file)=>file.path);
 }
-const PLAN_STATUS_LABEL={PENDING_APPROVAL:'pending approval',PROMOTED:'promoted',REFUSED:'refused',REJECTED:'rejected',RESTORED:'restored'};
+// `D-0569`, `CE-008`: MEASURED is the state where the person is looking at the real diff and
+// has not answered yet. A status the map does not know renders as its raw enum name, which is
+// legible but says nothing about what to do next.
+const PLAN_STATUS_LABEL={PENDING_APPROVAL:'pending approval',MEASURED:'measured — nothing changed yet',PROMOTED:'promoted',REFUSED:'refused',REJECTED:'rejected',RESTORED:'restored'};
 function provenanceSummary(entries){
   return Array.isArray(entries)&&entries.length?[...new Set(entries.map((entry)=>entry.provider))].join(', '):'—';
 }

@@ -17,6 +17,11 @@ import puppeteer from 'puppeteer';
 // Resolved relative to this file, so the harness does not depend on where the
 // repository happens to be mounted inside the runner container.
 import { totpCode } from '../services/reference-control-plane/src/auth-crypto.mjs';
+// `D-0569`. The command count below was a literal — 17 — and it has now been wrong twice:
+// `D-0448` corrected it once, and adding `measure` for `CE-008` broke it again. A number that
+// describes another file belongs to that file, so it is derived from the registry both shells
+// read. The assertion still means what it meant: the whole, unfiltered command set is on screen.
+import { AGENT_COMMANDS } from '../apps/shared/coden/agent-commands.js';
 
 const BASE = process.env.NOESAR_E2E_BASE_URL;
 const SETUP_TOKEN = process.env.NOESAR_E2E_SETUP_TOKEN;
@@ -1790,8 +1795,8 @@ try {
   // group level at all. What the old assertion protected — that this gesture reaches the whole
   // product — is now that the full, unfiltered command count is on screen.
   check('phase 3c — clicking the hint opens the ONE menu, and a bare / is the flat command list',
-    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count === 17 && viaPrompt.groups === 0,
-    JSON.stringify(viaPrompt));
+    viaPrompt.focused && viaPrompt.prompt.startsWith('/') && viaPrompt.count === AGENT_COMMANDS.length && viaPrompt.groups === 0,
+    JSON.stringify({ ...viaPrompt, expected: AGENT_COMMANDS.length }));
 
   // Type, and the address space joins in — the case where you are looking for a panel by name.
   await page.keyboard.type('coden/bench/');
@@ -3304,6 +3309,22 @@ try {
   const simulated = await page.evaluate(() => document.querySelector('#shadowRunContent')?.textContent ?? '');
   check('Simulate answers through the Shadow run panel, honestly (the reference provider declares itself unsupported rather than inventing a prediction)',
     /Simulated/.test(simulated) && /not supported/.test(simulated), simulated);
+
+  // `D-0569`, `CE-008`: Approve is DISABLED until the plan has been measured, and this suite
+  // proved it in a real browser before the code was deployed — the step below failed with
+  // `#planApproveBtn: element is disabled`, which is the criterion working, not a defect.
+  await clickOrExplain(page, '#planMeasureBtn');
+  await page.waitForFunction(
+    () => document.querySelector('#planApproveBtn') && !document.querySelector('#planApproveBtn').disabled,
+    { timeout: 15000 },
+  );
+  const measuredState = await page.evaluate(() => ({
+    badge: document.querySelector('#planRunBadge')?.textContent ?? '',
+    approveEnabled: !document.querySelector('#planApproveBtn')?.disabled,
+    measureHidden: document.querySelector('#planMeasureBtn')?.classList.contains('hidden'),
+  }));
+  check('CE-008 — Approve is unusable until the plan is measured, and the measurement enables it',
+    measuredState.approveEnabled === true, JSON.stringify(measuredState));
 
   await clickOrExplain(page, '#planApproveBtn');
   await page.waitForFunction(

@@ -15,7 +15,7 @@ e259c65d9bd3c0e5a431a215b348081306d8892694a060598ab0e5853d082d6b  ./MASTER_PROJE
 5aef092f8699776537d54347bfdba1bf2f5392204b1771caa748d1f042098c67  ./MASTER_PROJECT/14_MEMORIA_A_CUBI.md
 41de8ac7801667bcf106c519cbc7a0f59fe766fdb1c5d85b8a34636f0d858b92  ./MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md
 93f455fb4e05aafaf67019cb0e48cf18da74d1afa659a5c9bf8990b4fa1be426  ./MASTER_PROJECT/PROVENANCE.sha256
-6c2d72b1348365805a21c036c1f3df48b3d6ffc41744cef78684385fb6eaf414  ./apps/webui-static/app.js
+b32aa5a5be3a7cd5d11b2b87e5ef5e47e85290a69473de2d69b0eb838d528ba9  ./apps/webui-static/app.js
 b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  ./apps/webui-static/colour.js
 a487a3b89bb14cc404ea5e539f9bd6bf97d20891265fa3a3ea213dd1c385c4dd  ./apps/webui-static/index.html
 93e098e3224f124755413ce653ced8f1f6d7f8feaaa0027c466c2fbde57dd4fa  ./apps/webui-static/schedule.js
@@ -79,7 +79,7 @@ d53ca1e465efbbd5b79440506a57524ffa66524529b315289e21371830745929  ./tools/accept
 0bd594b7f6679e290afc5f96cdded6d428185aeb439b6b0f7c7ce4b8f227987b  ./tools/acceptance/a5-recovery-and-updates.sh
 bc5a32c8067466b9c9a00f3f6c2785804b6a436853bb72f8a2999e3db4452dbd  ./tools/acceptance/client.mjs
 fcfe466f453b7e56defc1bf1ea4f6ed3c59093ae6df277c6e8e23123711fd117  ./tools/acceptance/mock-provider.mjs
-11b234cbf1924dec36d7397b7942bba4c6028fe7a5e566ff3fa6a1527bff2d34  ./tools/browser-e2e.mjs
+63cae577940117c416d20ba1412c0f08d562609b415a7d25f96572e1b36615f0  ./tools/browser-e2e.mjs
 565a208458fa387c12020398b80168ed1e66ead5e01f4fa18a0df202566932f7  ./tools/cbom.mjs
 a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-build-reproducibility.mjs
 c7666a02c2a951f4632cbbad6a2f7906fe9105222a43e09a12a15e7984e034d7  ./tools/computed-style-snapshot.mjs
