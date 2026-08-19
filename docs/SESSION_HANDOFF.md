@@ -1,117 +1,117 @@
 # SESSION HANDOFF
 
-**Phase:** `G-01` slice 2 — `D-0563` (work), `D-0564` (proposal, saved not executed).
-**Commit:** `b41c647`, pushed to `origin/main`. **Nothing was deployed** — two test files and two
-documentation cells; no runtime path is in the diff.
-**Live installation:** unchanged — `noesar-evolution:d0544-health-lane-20260818T160214Z`,
-`running`/`healthy`. No container, image or network was created, so §5a had nothing to remove.
+**Phase:** the deployment + `G-01` slice 3 — `D-0565` (install), `D-0566` (three criteria),
+`D-0568` (a defect in this session's own instrument), `D-0567` (proposal, saved not executed).
+**Commit:** `e6057f6`, pushed to `origin/main`.
+**Live installation:** **CHANGED** — now `noesar-evolution:d0559-provenance-20260819T084001Z`,
+`running`/`healthy`, `RestartCount=0`. Predecessor `noesar-evolution-pre-20260819T084122Z` kept.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Four of the fifteen critical criteria are now closed. Eleven remain:**
+**Six of the fifteen critical criteria are closed. Eight still carry no verdict:**
 
 ```text
-CE-002  CE-003  CE-007  CE-008  CE-013  CE-014  CE-015  CE-022  CE-025  CE-026  CE-029
+CE-002  CE-003  CE-007  CE-013  CE-014  CE-015  CE-025  CE-029
 ```
 
-`node tools/verify-acceptance-matrix.mjs` prints them and holds the ratchet (**32 / 11**).
+Plus **`CE-008`, which now has a verdict and it is a `❌`** — the register's first. It is not in
+the list above because it is measured, not unknown; closing it is `D-0567`, an Owner decision.
 
-**Read these three warnings before picking one — each would otherwise cost a false PASS:**
-
-- **`CE-008`** (*l'ombra precede l'autorizzazione: nessun dialogo di autorizzazione senza risultato
-  misurato*) — **read `approve()` first.** `simulate()` is *optional* in the current design, and
-  the reference provider answers `supported: false`. As literally worded this criterion may be
-  **NOT MET**, and recording it met because "the shadow runs inside approve" would be reading the
-  sentence to fit the code. `CE-026` sits next to it and may well be met on the same reading.
-- **`CE-022`** (*il criterio di "fatto" passa col solo provider di riferimento, senza ATOM*) — the
-  battery already runs with no ATOM daemon reachable, so this looks free. **Verify that claim**
-  (`atom-fallback-declared.test.mjs`, the env the suites run under) before recording it: "no ATOM
-  was running" and "the suite does not need ATOM" are different statements.
-- **`CE-003`, `CE-013`, `CE-014`** are **absence-shaped** — the class `D-0562` proposes a shared
-  closure helper for. They cannot be closed by testing the routes somebody thought of.
+`CE-003`, `CE-013` and `CE-014` are **absence-shaped** — `D-0562` proposes the shared closure
+helper for exactly that class. `node tools/verify-acceptance-matrix.mjs` prints the list and holds
+the ratchet (**29 / 8**).
 
 Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
 build. Proposals are saved, not executed.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`CE-017` — a checkpoint precedes every mutative step, and restore is byte-identical.**
-`services/reference-control-plane/test/ce-017-checkpoint-precedes-mutation.test.mjs`, **5/5**.
+### 1. The installation is a tree state, not an accumulation (`D-0565`)
 
-| Measured | How |
+The first image in this project's history built from `oci/Dockerfile` rather than from an 88th
+`Dockerfile.phase4-*` overlay is **deployed**. Measured **on the running container**, not inferred:
+
+| Measured live | Result |
 |---|---|
-| byte-identical restore | **sha256 of the whole tree** before the plan and after the restore, compared as a map — paths *and* digests |
-| both wired classes | **modify** (the original bytes come back) and **create** (the file is removed) |
-| the ordering itself | no test can stand between two statements, so the checksum map **is** the ordering claim: those bytes can only return if they were read before being overwritten |
-| blast radius of the undo | a file the plan never named is untouched — even when someone else edited it between the promotion and the restore |
-| the checkpoint is **per run** | restoring the second run returns to the **first**, not to the origin |
-| no encoding is assumed | binary bytes survive the round trip exactly |
-| scope, not rounded up | `workspaceActionsStatus()` is **asserted**: WRITE only. Wiring `DELETE` or `EXECUTE` fails this file and the verdict must be earned again on the new class |
+| `find /opt/noesar -perm -o+w` inside the running container | **0** — every previous image shipped the application **world-writable**, with only the read-only rootfs in the way |
+| `schemas/model-descriptor.schema.json` | **present** — the recipe had never copied it |
+| byte-equal tree↔image, preflight **and** after | **439 / 439** both times |
+| health | `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines, `/livez` + `/readyz` **200** on HTTP and HTTPS |
 
-**`CE-018` — the ledger is append-only, with a chained digest.** `ce-018-ledger-append-only.test.mjs`,
-**6/6**. The chain itself was already well tested (four tamper vectors in
-`conformance/event-vectors.json`, a doctored journal in `durability.test.mjs`) and **none of it was
-tied to the criterion**, which is why nothing could say whether it held. New here: append-only
-measured **on the bytes** — the prefix already written is unchanged after four more events — an
-edited line refused with `CHAIN_BROKEN` on reload, and a torn **final** line recovered and counted
-rather than silently dropped.
+**`F-IMAGE-STALE-001` is closed.** Rollback: restart `noesar-evolution-pre-20260819T084122Z`; its
+image is on disk; no migration, no schema change, no configuration key.
 
-**Its verdict carries its limit, written into the cell, because the sentence promises more than the
-code delivers.** The chain is `createHash` with **no key**: it detects an edit, not a wholesale
-rewrite. The suite performs that attack — two different histories, two internally valid chains,
-distinguishable only by a head digest somebody wrote down elsewhere — and a source assertion fails
-if `createHmac` ever appears, so the verdict cannot be silently inherited through the change that
-would invalidate it. `D-0564` proposes the anchor.
+### 2. Three more criteria, and the first honest `❌` (`D-0566`)
 
-**The ratchet moved again and was seen to hold**: unstated **34 → 32**, critical **13 → 11**. One
-notch tighter it refuses with `11 CRITICAL criteria have no recorded verdict, up from 10`.
+- **`CE-026` MET** — what lands in the workspace is the **shadow's** bytes, the shadow does not
+  survive the call (0 directories left behind), and a run whose verification was **contradicted**
+  promotes nothing: the real file keeps its previous bytes.
+- **`CE-022` MET, in a harder form than it asks for** — the whole battery **15/15, exit 0**, with
+  ATOM not merely uninstalled but **selected and unreachable**. The product carries on with the
+  reference provider and **declares** the degradation (`D-0312`).
+- **`CE-008` NOT MET, recorded `❌`** — its own method was executed and the attempt it says must be
+  refused **succeeds**: `approve()` promotes a run nobody simulated. Read off the **ledger**, not
+  the source, the order is `approved` → `executor.ran` → `shadow.compared`. The shadow protects the
+  **promotion**, not the **dialogue**, and `simulate()` is optional and answers `supported: false`
+  on the reference provider — so on that installation there is no measured result to approve
+  against at all. The test is green and *characterises* the gap: change the order and it fails, so
+  the verdict must be re-written rather than inherited.
 
-**Verification produced this session:** battery `scripts/test.sh` **15/15, exit 0**; unit **2716
-pass / 0 fail / 1 skipped**; ESLint **436 files, 0 errors**; matrix **PASS** — 66 criteria, 34 with
-a verdict (30 met).
+**That `CE-022` run was RED first — 13/15 — and neither failure was the product.** Three places
+read the ambient environment and broke when it differed: the `workspace-actions` fixture and its
+HTTP adversarial twin gained a `workspace_action.degraded` event that is correct behaviour, and
+`tools/auth-http-smoke.mjs` spawned the server with `process.env` and then asserted
+`mode === 'reference-node'` — measuring the shell it was launched from. All three now **pin** the
+four keys the router reads. Without that repair `CE-022` was not repeatably measurable.
+
+### 3. The session's own instrument was blind in one direction (`D-0568`)
+
+`tools/verify-image-provenance.sh` walked the **image** and asked the tree about it — so a file the
+recipe never copies was **invisible to it**, which is precisely the defect `D-0559` repaired. That
+one was caught only because a second image happened to carry the file; the deploy gate performs a
+**one-image** run and would have said `PASS`. Section `4b` now derives what every directory `COPY`
+promises and checks it is there. **Oracle seen to fire on real data**; on a fresh build:
+**440/440** byte-equal, **422** expected from directory COPYs, **0** missing.
+
+**Verification produced this session:** battery **15/15 exit 0** (twice: default, and under
+ATOM-selected-but-absent); unit **2721 pass / 0 fail / 1 skipped**; ESLint **437 files, 0 errors**;
+redeploy fixture **73/73**; matrix **PASS** — 66 criteria, 37 with a verdict (32 met), 29 without,
+8 critical. Ratchet **32 → 29** and **11 → 8**, seen to fail one notch tighter.
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **11 critical criteria still have no verdict.** This session closed 4 of 15 across two phases.
-  `production_ready` stays **false**, correctly.
-- **`CE-018` is met at the strength the code has, not at the strength the sentence suggests.**
-  Anyone quoting it must quote the cell, which says *unkeyed*. Until `D-0564` is built, a party who
-  can write the journal can produce a consistent chain over altered facts.
-- **`CE-017`'s verdict covers WRITE only.** `DELETE` and `EXECUTE` are not wired, so no verdict was
-  earned for them; the suite asserts that rather than trusting this paragraph.
-- **Nothing was deployed and no container was created.**
+- **The running image is byte-equal to the commit it was built from, not to HEAD.** The tree has
+  advanced since by **test-only** changes (2 files differ, 1 absent). The gate therefore **refuses**
+  a redeploy of that tag — correct behaviour, not a defect. No product code changed after the
+  deploy, so §3a asks for no second deployment.
+- **`CE-008` is an open gap with a recorded verdict.** Closing it is `D-0567` and it is not small:
+  `plan()` would become stateful and the shadow's lifetime has to be designed.
+- **8 critical criteria still have no verdict.** `production_ready` stays **false**, correctly.
+- **`[UNVERIFIED]`: nothing exercised a signed-in browser session against the new installation.**
+  Live verification used health, byte-equality and unauthenticated surfaces only, because §3a 11e
+  forbids running the mutating suites against the installation.
 - **The secret scan was HEURISTIC**, declared: the `gitleaks` image is absent and rule 45 forbids
-  installing tooling to satisfy the rule. Pattern scan of the staged diff: no key, token, password
-  or credential-bearing string; no archive, binary, database or `.env` staged.
-- **T3 was not run** — no image and no installation change. T2 (the battery) ran and is green.
-- **`F-IMAGE-STALE-001`** is unchanged and still open: 9 files in the running image are older than
-  the tree, all test files plus a `scripts` block, no runtime module.
+  installing tooling to satisfy the rule. No key, token, password, archive, binary or `.env`.
+- **Dismissed with evidence:** `SC1007` on `CDPATH= cd` in the provenance tool — the idiom every
+  shipped script here uses, already recorded as a known false positive.
 
-## FILES THIS PHASE CHANGED
+## SESSION CLOSE — `CLAUDE10.md` §5a
 
-```text
-services/reference-control-plane/test/ce-017-checkpoint-precedes-mutation.test.mjs   NEW, 5 tests
-services/reference-control-plane/test/ce-018-ledger-append-only.test.mjs             NEW, 6 tests
-MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md   the CE-017 and CE-018 verdict cells
-tools/verify-acceptance-matrix.mjs             ratchet 32 / 11, and its prose re-measured
-docs/acceptance-matrix.json                    regenerated
-docs/GAP_REGISTER.md                           G-01 and the header paragraph re-measured
-docs/DECISION_LOG.md                           D-0563, D-0564
-MANIFEST.sha256                                the 15_… hash refreshed
-PROJECT_STATE.json                             live keys
-```
+Inventory: `EVIDENCE/docker_inventory_pre_cleanup_D0559_20260819T084001Z.txt`. Removed: the older
+rollback `noesar-evolution-pre-20260818T160230Z` (`Exited`, confirmed first — its image stays on
+disk) and the throwaway build tag `g02check-20260819T084001Z`. Survivors are exactly the two §21b
+permits. **Containers 53 → 52 · volumes 65 → 65 · networks 10 → 10 · non-project containers
+50 → 50.** No `prune` of any kind. Product proven healthy afterwards.
 
-## THE IMPROVEMENT PROPOSAL — `D-0564`, **saved, not offered**
+## THE IMPROVEMENT PROPOSAL — `D-0567`, **saved, not offered**
 
-Anchor the event ledger's head digest outside the file — signed with the owner key `server.mjs`
-already writes — and report the last signed head beside `chainValid`. Today the only defence
-against a wholesale rewrite is that somebody wrote the real head down somewhere, and nothing in the
-product does that. **Rejected alternative:** keying the chain with an HMAC, which would make the
-ledger verifiable only where the key is and break third-party verification of an exported ledger.
-**Funding fit: Restack · traits 5 and 3** — verifiable provenance that works offline, on the
-installation's own key, with no external notary.
+Move the execution-into-shadow to `plan()` time, so the approval dialogue is offered **against a
+measured result** and `approve()` promotes an outcome the approver has already seen — closing
+`CE-008` for real. **Rejected alternative:** making `simulate()` mandatory, which would make the
+core unusable without an external provider and break `CE-022` and `FOSS_CORE_DEPENDS_ON_ATOM =
+false` with it. **Funding fit: Restack · trait 5** — an authorisation shown its measured
+consequence is the difference between an audit trail and an informed decision.
 
 ## OPEN BLOCKERS
 
-`B-002` stale-premise (the secret-scan premise is false as written) and `B-011` low-deferred
-(history rewrite, Owner-authorised, bundle backup taken). Neither blocks the next action.
+`B-002` stale-premise and `B-011` low-deferred. Neither blocks the next action.
