@@ -13306,3 +13306,56 @@ fails the day one appears, so the wiring cannot land silently.
 **Funding fit.** **Restack · traits 5 and 1** — measurable reliability, and a delimited component
 (a declared-effect intersection) reusable by any tool ecosystem, not only this product.
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0575 · The last three CRITICAL criteria — CE-007, CE-013, CE-015 — 2026-08-19
+**Decision.** Record ✅ for the three remaining CRITICAL rows. **Every CRITICAL criterion of the
+acceptance matrix now carries a verdict**: critical-unstated 3 → **0**, unstated 24 → 21.
+**Why.** Each names something a reading cannot settle. `CE-007` names **three** targets —
+instructions, policy, token — and a suite that proves one has proved a third; the token half is
+the one an injection suite forgets and the one where the consequence is a write to someone's disk.
+`CE-013` says *«verificato dallo schema»*, stronger than "verified by a check": a filter beside
+the write can be forgotten. `CE-015` has **two** meanings of «applicabile» — applied to the code
+(the sandbox is the shadow) and applied to the runtime (an artifact fetched over the network),
+and only the second is literally "from the web".
+**Rejected.** For `CE-007`, driving the corpus through `wrapUntrusted()` directly: that the helper
+is correct says nothing about whether the product calls it — every case goes through
+`ChatOrchestrator.compare()`, the real call site. For `CE-015`, resting on "a research report has
+no path to the workspace" alone: true and measured, but it is the *nothing-applies-anything*
+answer and stops holding the day someone wires the two, so the general rule is exercised on a
+body that IS a web result.
+**Evidence.** `ce-007-…` **10/10** (corpus of 10, count asserted against the corpus length —
+«zero bypass» is a count), `ce-013-…` **12/12**, `ce-015-…` **9/9**. `npm test` 2819 / 2818 pass /
+0 fail / 1 pre-existing skip. Ratchet seen to FAIL one notch tighter before being set; the
+CRITICAL ratchet is now at **0** and cannot be tightened further, so only the unstated ratchet was
+exercised — stated, not implied. `CE-007`'s containment oracle was **proven to fire**: routing the
+injected text into the `system` message turned 2 of its 10 tests red, then restored.
+**A defect found in this session's own suite and fixed before closing.** A `CE-015` test named
+*«a shadow that is gone»* **passed for the wrong reason** — `reject()` moves the status too, so
+`approve()` refused at the status check and never reached the shadow check; asserting only
+`instanceof WorkspaceActionError` hid it. It now asserts the `kind` and is named after what it
+measures. The genuine `MEASUREMENT_LOST` branch has **no public door** to drive it and is declared
+unproven rather than claimed.
+**Two products of the read, recorded rather than smoothed over.** `projectContext()` deliberately
+does **not** throw on a bad fact — its own comment argues that one tampered row must not brick
+every model call of a session, and the argument holds; what the criterion needs is what it does
+instead, and that is what is asserted: the fact is **excluded and counted**. And `CE-013` is
+explicitly **not a denylist**: a canary that fits a declared field **is** accepted, and saying so
+is more honest than implying the schema screens words.
+**Reversal cost.** None. Three test files, three verdict cells, one ratchet.
+**Status.** applied.
+
+## D-0576 · Improvement proposal — give the lost-shadow branch a door a test can open — 2026-08-19
+**Decision.** Proposed, not executed. `MEASUREMENT_LOST` is the refusal a **restart** produces and
+the one `CE-008` and `CE-015` both lean on; no test in this repository can reach it, because every
+public path that empties `#shadows` also decides the run.
+**Why.** A branch no test can reach is a branch nobody has seen work. This one guards the case
+where the evidence an approver would be answering is gone — the most consequential refusal in the
+promote path, and the least exercised.
+**Rejected.** Reaching into the private field from a test: it would prove the branch runs, not that
+the product can get into that state, and it would pin an implementation detail no caller has.
+**Evidence.** `ce-015-a-web-result-is-not-applicable-unexecuted.test.mjs` declares the gap inside
+the test that would otherwise have implied it was covered, so the absence is on the record.
+**Reversal cost.** One narrow test-visible seam (a restart-simulating reload, not a private poke).
+**Funding fit.** **Restack · trait 5** — measurable reliability: a recovery path executed at least
+once is worth more than one that has only been written.
+**Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.

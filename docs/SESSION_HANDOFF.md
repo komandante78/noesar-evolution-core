@@ -1,101 +1,107 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0573` — `CE-003`, `CE-014` and `CE-025` recorded by execution. `D-0574` proposed.
+**Phase:** `D-0575` — `CE-007`, `CE-013`, `CE-015` recorded. `D-0576` proposed.
 **Live installation:** unchanged — **`noesar-evolution:d0569-measure-first-20260819T104500Z`**.
 **No product code was changed**, so no build, no deployment, no container.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Three CRITICAL criteria remain, and they are the three hardest:**
+**Every CRITICAL criterion of the acceptance matrix now carries a verdict.**
 
 ```text
-CE-007   CE-013   CE-015
+critical with no verdict:  0     (was 15 when the matrix was first read by a machine)
+unstated overall:         21     (all HIGH or MEDIUM)
 ```
 
-`node tools/verify-acceptance-matrix.mjs` prints them and holds the ratchet (**24 / 3**).
-Each one's starting point was measured this session, so the next phase opens without re-reading:
+`node tools/verify-acceptance-matrix.mjs` holds the ratchet at **21 / 0**.
 
-| Criterion | Where it lives, measured | The hard part |
-|---|---|---|
-| `CE-007` — repository and web content cannot alter instructions, policy **or token** | `src/ai-workspace/untrusted-content.mjs` (132 lines: `UNTRUSTED_POLICY`, `detectInjection`, `neutralizeFence`, `wrapUntrusted`, `enforceToolScope`) + the existing `prompt-injection-containment.test.mjs` | «zero bypass» needs a real corpus, and the **token** half has no probe yet — the existing suite is about instructions, not grants |
-| `CE-013` — work data does not leave and does not enter the product's semantics | `src/context-projector.mjs` (already ✅ for `CE-004`: `CONTEXT_SECTIONS` frozen, `validateFact`, no append function) + `src/memory-service.mjs` (`CUBES`, `CATEGORIES`) | the criterion says «verificato dallo schema», so the canary must be refused **by the schema**, not by a check beside it |
-| `CE-015` — a web result is not applicable until executed and verified in a sandbox | `packages/verified-acquisition/` (`authenticity.mjs`, `descriptor-schema.mjs`, `transport.mjs`) + `src/model-acquisition.mjs` | this is the one most likely to need **product work**, not only a suite. Measure before scoping. |
+**The next action is the Owner's to choose, and the three candidates are not equal:**
 
-Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
-build. Proposals are saved, not executed.
+1. **The 21 HIGH/MEDIUM rows.** The same method as the last three phases, at lower severity.
+   `verify-acceptance-matrix.mjs` prints them. This is the cheap, mechanical continuation.
+2. **The three open findings, which are product work and need a deployment** —
+   `F-REVOKE-001` (revocation implemented and unreachable), `F-AUTH-UI-001` (no shell reads
+   `authoring.reason`), `F-TOOLSCOPE-001` (`scopeRequestToTool()` has no caller). Each has a
+   recorded proposal: `D-0572`, `D-0574`, and the repair described in `F-AUTH-UI-001` itself.
+3. **`D-0564`**, still the most valuable unbuilt idea: anchor the event ledger's head, signed
+   with the owner key. Every run now records several grants and a measurement, and the chain
+   protecting all of it is a hash with no key — it detects an edit, not a rewrite.
+
+**A CRITICAL verdict is not the same as a shipped product.** `production_ready` stays **false**:
+the matrix now says the security claims hold, which is a different sentence from "the product is
+finished". The 21 remaining rows and the three findings are what stands between the two.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-### `CE-003` — *impossible*, proven as a shape rather than as a refusal
+### `CE-007` — three targets, not one
 
-`ce-003-undeclared-effect-impossible.test.mjs`, **10/10**. The probe offers every field a caller
-can offer — `paths`, `files`, `declaredEffects`, four operations, `../../etc/passwd` — and **none
-of them is an input**: `request()` reads the path from `ADAPTER_MANIFESTS`, a frozen declaration
-in this repository, and the minted token carries exactly `['adapter://sector-modules/write']` /
-`['WRITE']`. The refusal (`OUT_OF_SCOPE`, `UNKNOWN_ADAPTER`) is asserted too and labelled the
-**weak** half, because a check is one forgotten call site from being allowed. Closure: every
-`.mint(` under `src/` must be one of three declared paths.
+`ce-007-…test.mjs`, **10/10**. The criterion names **instructions**, **policy** and **token**; an
+injection suite normally tests the first and the third is where the consequence is a write to
+someone's disk. A corpus of **10** — one per declared signal, plus a forged fence, plus a case no
+detector matches — runs against all three, and the number of cases executed is asserted against
+the corpus length, because *zero bypass* is a count. Driven through `ChatOrchestrator.compare()`,
+the **real call site**: that `wrapUntrusted()` is correct in isolation says nothing about whether
+the product uses it. The token half goes to bytes — an injection inside a repository file, with a
+model that obeys it, changes neither the plan's file set, nor the minted token's paths and
+operations (read from the ledger), nor a byte of the bystander file.
 
-### `CE-014` — three outgoing requests, not one
+### `CE-013` — refused by the schema, and explicitly not a denylist
 
-`ce-014-query-built-by-the-engine.test.mjs`, **10/10**. The forgotten egress is the **gate**:
-`research.mjs` classifies before anything leaves and again on what came back. All three are
-recorded as one wire trace; no canary appears in any of them. The provider payload is exactly
-`objective` + `criteria`, key for key; a caller attaching `workspaceContents`/`context`/`files`/
-`attachments` full of canaries gets none of them onto the wire. **The structural half is stronger
-than the canary**: `research.mjs` imports `node:crypto` and nothing else and calls no filesystem
-reader, so the channel does not exist rather than being guarded.
+`ce-013-…test.mjs`, **12/12**. Every canary is refused inside `validateFact()` with the *schema's*
+vocabulary — no such section, not a field of this section, wrong type, over the cap — never by
+anything recognising the content. Asserted both ways: the same shapes with an innocuous value are
+refused identically, and a canary that **fits** a declared field **is accepted**. Saying that
+plainly is more honest than implying the schema screens words. Closure: every field of every
+section is one of four bounded kinds, so there is nowhere free-form for work data to live. An
+over-length value is **rejected, not clipped** — clipping would be the silent failure.
 
-### `CE-025` — the subset proven as a set, and all the way to disk
+### `CE-015` — two meanings of "applicable", both covered
 
-`ce-025-author-never-names-a-path.test.mjs`, **7/7**. The probe answers in the model's own voice,
-in every spelling `PATH_DIRECTIVE` accepts. Bytes land under the **Plan's** key; the directive is
-stripped from the content too; each claim is recorded as `{path, claimed}`. A provider that says
-it already checked is not believed — the rule is re-applied. End to end, `plan → measure →
-approve` changes **exactly one file** and the directory listing is identical before and after.
+`ce-015-…test.mjs`, **9/9**. A research report has **no path** to the workspace (the store is only
+`put`/`get`/`revoke`, derived from source) — true, measured, and *not enough on its own*, because
+it is the nothing-applies-anything answer. So the attempt the method names is run on a body that
+**is** a web result: `approve()` without `measure()` → `NOT_MEASURED`, bytes unchanged; and the
+order is read from the **ledger**, `executor.ran` and `shadow.compared` before
+`workspace_action.promoted`. On the acquisition side, a descriptor **altered after signing** — the
+classic from-the-web failure — is refused `SIGNATURE_INVALID`, and with no registry nothing
+verifies: the absence of a check is never a pass.
 
-### The measurement was itself checked, twice
+### The measurement was checked, and one of my own tests was wrong
 
-- **`CE-014`'s canary oracle was proven to fire**: a canary injected into the provider payload
-  turned 3 of the 10 tests red, then was restored.
-- **A defect was found in this session's own instrument and fixed at the rule.** `CE-003`'s
-  closure counted a **comment** in `skill-catalog.mjs` as a caller. Both closures now strip
-  trailing `//` comments, and `D-0571`'s `CE-002` file was patched with the same rule and re-run
-  green (**23/23**) — `CLAUDE10.md` §40c, fix the rule and not only the instance.
-
-### The ratchet
-
-`27 → 24` unstated, `6 → 3` critical. Seen to `FAIL (2)` one notch tighter before being set.
+- **`CE-007`'s containment oracle was proven to fire**: routing the injected text into the
+  `system` message turned 2 of its 10 tests red, then restored.
+- **A `CE-015` test passed for the wrong reason and was repaired.** Named *«a shadow that is
+  gone»*, it was actually being refused by the *status* check, because `reject()` moves the status
+  too. It now asserts the `kind` and carries the name of what it measures.
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Three of the six criticals are not closed.** `CE-007`, `CE-013`, `CE-015`, above, with their
-  measured starting points. `production_ready` stays **false**.
-- **`CE-003`'s declared width:** `scopeRequestToTool()` has **zero** callers in the product. It is
-  not a hole — that surface mints nothing (`toolCatalogStatus().enforced === false`, asserted) and
-  a catalog tool is not a registered adapter, so it cannot obtain a token. `D-0574` proposes the
-  wiring for the day a route does; the closure fails if one lands without it.
-- **`F-REVOKE-001` and `F-AUTH-UI-001` (opened `D-0571`) are still open and unfixed.** Both change
-  the product and would require a deployment.
+- **`MEASUREMENT_LOST` is not proven.** The refusal a restart produces — the one `CE-008` and
+  `CE-015` both lean on — has **no public door** a test can open. Declared inside the test that
+  would otherwise have implied coverage. `D-0576` proposes the seam.
+- **21 HIGH/MEDIUM criteria still carry no verdict.** `production_ready` stays **false**.
+- **`F-REVOKE-001`, `F-AUTH-UI-001`, `F-TOOLSCOPE-001` are all still open and unfixed.** All three
+  change the product and would require a build and a deployment.
 - **`MANIFEST.sha256` was not regenerated** for the three new files. `F-MANIFEST-001` (open since
-  `D-0399`) already records it stale by ~670 entries; unchanged either way. `[UNVERIFIED]`.
+  `D-0399`) already records it stale by ~670 entries. `[UNVERIFIED]` against the new file set.
 - **No browser suite, no accessibility audit, no `scripts/test.sh` battery, no T3.** Nothing this
-  phase produced is reachable from a browser: three test files, three document cells, one constant.
+  phase produced is reachable from a browser.
+- **The CRITICAL ratchet is at its floor.** It can no longer be tightened, so this phase exercised
+  only the *unstated* ratchet one notch tighter (`FAIL (1)`), not both. Stated, not implied.
 
 ## SESSION CLOSE — `CLAUDE10.md` §5a
 
 **No container, image tag or network was created.** The only Docker use was the existing
-`tools/run-eslint.sh` disposable `--rm` linter. The two project containers are unchanged: the
-running `noesar-evolution` and its one kept rollback.
+`tools/run-eslint.sh` disposable `--rm` linter. Two project containers, unchanged: the running
+`noesar-evolution` and its one kept rollback.
 
-## THE IMPROVEMENT PROPOSAL — `D-0574`
+## THE IMPROVEMENT PROPOSAL — `D-0576`
 
-Wire `scopeRequestToTool()` onto the mint path **before** any route lets a catalog tool obtain a
-token, so the intersection is never something added afterwards.
-**Funding fit: Restack · traits 5 and 1** — measurable reliability, and a delimited
-declared-effect intersection reusable by any tool ecosystem, not only this product.
+Give the lost-shadow branch a door a test can open — a restart-simulating reload, not a poke into
+a private field. A recovery path that has been executed once is worth more than one that has only
+been written. **Funding fit: Restack · trait 5** — measurable reliability.
 
-`D-0572` (make revocation an act) and `D-0564` (anchor the ledger head) remain carried and unbuilt.
+`D-0572`, `D-0574` and `D-0564` remain carried and unbuilt.
 
 ## OPEN BLOCKERS
 
