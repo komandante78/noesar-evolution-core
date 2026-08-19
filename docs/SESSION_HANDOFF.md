@@ -1,100 +1,101 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0583` — projection coverage and the `NON FATTO` box enforced in the **report**.
-Ratchet **17 → 13**, critical still **0**. `D-0584` repaired, `D-0585` proposed.
-**Live installation:** **`noesar-evolution:d0583-coverage-and-notdone-20260819T173441Z`**,
-deployed 17:35Z, `running`/`healthy`, byte-equal to the tree **455/455**. Predecessor kept as
-`noesar-evolution-pre-20260819T173528Z`.
+**Phase:** `D-0586` — an induced fact is unwritable without evidence, count and refutation
+condition; two embedding spaces raise instead of comparing. Ratchet **13 → 11**, critical still
+**0**. `D-0587` proposed.
+**Live installation:** **`noesar-evolution:d0586-induced-facts-and-spaces-20260819T180231Z`**,
+deployed 18:02Z, `running`/`healthy`, byte-equal to the tree **457/457**. Predecessor kept as
+`noesar-evolution-pre-20260819T180243Z`.
 
 ## ➜ LA PROSSIMA AZIONE
 
 ```text
-node tools/verify-acceptance-matrix.mjs   ->  unstated 13, critical 0   (seen to FAIL at 12)
+node tools/verify-acceptance-matrix.mjs   ->  unstated 11, critical 0   (seen to FAIL at 10)
 ```
 
-**The "cheap" class the previous handoff named is now empty — and two of its six rows were
-never cheap.** They were examined, not skipped, and here is what they actually need:
+**The cheap class is gone — emptied over `D-0581`, `D-0583`, `D-0586` — and none of the 11 that
+remain is cheap. That is now measured, not guessed.** Three classes; the next phase should say
+which it takes:
 
-- **`CE-011`** (*ogni fatto indotto porta evidenza, conteggio e condizione di smentita*) needs a
-  **migration**. `noesar_knowledge.memory_records` already has `confirmations`/`refutations`
-  (constrained to the `experience` cube) and `derived_must_cite`, but **no column holds the
-  refutation condition** and nothing makes a fact unwritable without one — and the stated method
-  is *"schema + test: un fatto senza smentita non è scrivibile"*, so a JS guard would not satisfy
-  it.
-- **`CE-012`** (*un vettore senza il suo modello è un errore, non un numero*) needs a **comparison
-  surface that does not exist**. The datum is in place — `memory_vectors` is keyed
-  `(record_id, model_id)` — but `memory-service.mjs` states no embedding pipeline is wired, so
-  there is nothing to run *"il test di confronto fra due spazi diversi"* against.
+- **(a) needs a harness that does not exist** — `CE-005` (the context at call *n* > 300 has the
+  shape of call 3: a long-run harness) · `CE-006` (every model call re-runnable in isolation).
+- **(b) needs a second machine** — `CE-031` `CE-032` `CE-035` (`ssh` reachability and launcher
+  portability). These cannot be honestly closed on this host alone. **Declare that rather than
+  approximate it** — an approximated verdict on a portability row is exactly the false PASS
+  rule 38 exists for.
+- **(c) needs product that is not built** — `CE-023` (projection coverage **measured** with
+  ATOM) · `CE-024` (human review time per accepted change) · `CE-027`/`CE-028`/`CE-030`
+  (authoring fixtures, divergence into authoring, identical authorings counted once).
 
-Both are Postgres-shaped work, verified through **`scripts/test.sh`** (this host has no
-`python3`), not JS-shaped work like the four just closed.
-
-**The 13 remaining:** `CE-005` `CE-006` `CE-011` `CE-012` `CE-020` `CE-023` `CE-024` `CE-027`
-`CE-028` `CE-030` `CE-031` `CE-032` `CE-035`. `CE-020` (every capability has a complete keyboard
-form) is still the one worth **scoping before** picking up. `CE-031`/`CE-032`/`CE-035` need a real
-second machine.
+**`CE-020` sits alone** (every capability has a complete keyboard form): it is the only one whose
+parts may already exist — `tools/tui-fullscreen.mjs` and `test/ce-020-tui-fullscreen.test.mjs`
+are there. **Scope it first**: list the capabilities, check which have no keyboard path, and only
+then commit a phase to it.
 
 **Also open:** `D-0564`, still the most valuable unbuilt idea — the event ledger's head is a hash
-with no key, so it detects an edit but not a rewrite. And `F-TOOLSCOPE-001`, which `D-0574` argues
-against wiring until a route can mint for catalog tools.
+with no key, so it detects an edit but not a rewrite. And `F-TOOLSCOPE-001` (`D-0574` argues
+against wiring it until a route can mint for catalog tools).
 
-**`production_ready` stays `false`.** 13 rows with no verdict is not a finished product.
+**`production_ready` stays `false`.** 11 rows with no verdict is not a finished product.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**A rule enforced only in the producer is a rule the report walks around.** `CE-009` says *"test
-che rifiuta un **rapporto** senza copertura o con copertura implicita"*. `projectionCoverage()` had
-never rounded a partial result up, and its own tests proved that — but nothing checked the report,
-and the report is what a person reads.
+**Two phases, and the second one closed the two rows the first had measured as too expensive.**
 
-Measured on `assembleSessionProof()` **before** the repair:
+`D-0583` — **coverage and the NOT DONE box are enforced in the report, not only in the producer.**
+`CE-009` says *"a test that refuses a **report**"*. `projectionCoverage()` had never rounded a
+partial result up; nothing checked the report, which is what a person reads. Measured before the
+repair: a decided run with no coverage served JSON where the `coverage` key **vanished**
+(`undefined` is dropped by `JSON.stringify`); `complete:true` over **6/9** passed through
+untouched; every promoted run served `notDone: null`. Now: the coverage whole · a **declared**
+absence when nothing was measured · `SessionProofRefused` when the two disagree — and the NOT DONE
+box is built from measured facts, with an empty box a **declaration**.
 
-| What was served | Why it is the defect |
-|---|---|
-| `{"diff":[],"risk":…,"promoted":false}` for a decided run with no coverage | `coverage: undefined` is **dropped** by `JSON.stringify` — coverage absent, not declared absent |
-| a coverage object claiming `complete:true` over **6/9** recomputed | the report asserted a complete projection of a partial one |
-| `notDone: null` on **every** promoted run | a blank `NON FATTO` box, indistinguishable from a run nobody checked — the exact thing §16 forbids |
+`D-0586` — **the schema refuses what the schema was told to refuse.** Both `CE-011` and `CE-012`
+name the schema in their stated method, so migration `0020` carries them:
 
-Now three outcomes where there was one: the coverage whole · a **declared** absence
-(`{measured:false, reason}`) when nothing was measured · `SessionProofRefused` when the two
-disagree. The `NON FATTO` box is composed from measured facts — every claim the verifier did not
-recompute, named with its reason — and an empty box is a **declaration**, proven after
-serialisation.
-
-| Row | Verdict | What it took |
+| Row | What it took | Where the proof is |
 |---|---|---|
-| `CE-009` | ✅ MET | the guard above + `ce-009-coverage-never-absent-never-implicit.test.mjs` **11/11** |
-| `CE-019` | ✅ MET | the same file, plus `ClosureRegister`'s existing refusal — **two** reports, and the second had no owner |
-| `CE-010` | ✅ MET | `divergence-profile.test.mjs` **10/10** — two real git repositories with opposite habits, the same candidate change profiled against each |
-| `CE-016` | ✅ MET | `ce-016-zero-tools-at-rest.test.mjs` **4/4** — zero tools at rest across ten catalogue sizes, 0 → 5000 |
+| `CE-011` | `refutation_condition` + **three separate** constraints on the `experience` cube, so a violation names **which** part is missing | `MEM-37/38/39` refused **by the table** through the admin connection, `MEM-40` written when complete, `MEM-41` the rule stays scoped to induction, `MEM-42` end-to-end |
+| `CE-012` | `vector_distance()` — the comparison had to be **built** before it could refuse | `MEM-45` two spaces → `22000` · `MEM-46` null model → refused · `MEM-47` absent vector → refused ("missing" ≠ "identical") · `MEM-43/44` a real distance, and **0** against itself |
 
-**A defect in the measurement apparatus, found by running it from elsewhere** (`D-0584`):
-`canonical-json.test.mjs` resolved its conformance vector from the **process CWD**, so it passed
-from the repository root and threw `ENOENT` from `services/reference-control-plane/`. Every other
-vector test in that directory resolves from the file. **8/8 from three directories** now.
+**Nothing was invented to make them pass.** No embedding pipeline was fabricated — `recall()`
+still reports `vectorIndexComplete:false` honestly. Legacy `experience` rows are marked
+`UNDECLARED:` rather than given a fictional condition, and the application refuses that marker
+from a caller. Measured on this installation before writing the migration: `experience` rows =
+**0**, so the backfill is a no-op here and exists for other installations.
 
-**Verified this session:** unit **2853, 0 fail** · ESLint **452 files, 0 errors** ·
-`verify-source` PASS · matrix PASS, ratchet **seen to FAIL at 12** before being set to 13 ·
-live `/livez` `/readyz` `/healthz` **200** on 8100 **and** 8443 · `sha256` of `session-proof.mjs`
-**identical** between tree and running container.
+**A defect in the measurement apparatus** (`D-0584`): `canonical-json.test.mjs` resolved its
+conformance vector from the **process CWD** — it passed from the repository root and threw
+`ENOENT` from `services/reference-control-plane/`. **8/8 from three directories** now.
+
+**Verified this session:** `memory-integration` **46/46** on a real PostgreSQL 18 cluster booted
+from nothing · unit **2861, 0 fail** · `scripts/test.sh` **15/15** · ESLint **453 files, 0
+errors** · matrix PASS, ratchet seen to FAIL at 12 and again at 10 · both deployments byte-equal
+to the tree (**455/455**, **457/457**) · the three constraints, the column and the function
+proved **present on the running database**, not merely shipped.
 
 ## WHAT WAS **NOT** DONE
 
-- **`CE-011` and `CE-012` carry no verdict**, and the previous handoff called them cheap. They are
-  not. The reason is above, and it is a measurement, not an estimate.
-- **`tools/run-browser-e2e.sh` and `tools/accessibility-audit.mjs` were not run.** This phase
-  changed one runtime module with no markup, no DOM and no CSS token, and no shell renders the
-  field it changed.
-- **`scripts/test.sh` (the full battery) was not re-run** after the unit suite went green on the
-  same tree — `noesar-evolution-verify` single-pass rule 4, declared rather than implied.
-- **`D-0585` was proposed, not built** — the coverage line is enforced but still invisible to a
-  person; no shell shows `esito.coverage`.
-- **The phase overran its declared budget** (~45 tool calls, actual ~70): the contract said no
-  install, and §3a binds a shipping source change to install and verify in the same phase.
+- **`D-0586`'s rollback cost is NOT none, and this is the first in the series where that is
+  true.** `0020` has no `down`: rolling back leaves the column and constraints in place, and the
+  previous code — which never writes `refutation_condition` — would have every `experience` write
+  refused. It bites nothing today (0 rows, no surface writes that cube) and is written down
+  rather than discovered mid-rollback.
+- **Live constraint BEHAVIOUR was not exercised against the installation** — proving it would
+  require writing a row, and §3a 11e forbids a mutating suite against the installation. It was
+  proved on the disposable cluster; what is proved live is that the schema objects exist.
+- **Browser e2e and the accessibility audit were not run** in either phase: no markup, no DOM, no
+  CSS token changed, and no shell renders the fields either phase added.
+- **`D-0585` and `D-0587` were proposed, not built.** The coverage line is enforced but invisible
+  to a person; and `refutations` is now declarable but nothing in the product ever **observes** a
+  refutation, so the condition is written and never evaluated.
+- **Both phases overran their declared budgets.** Each contract said no install; §3a binds a
+  shipping change to install and verify in the same phase, and a schema change doubly so.
 
 ## OPEN BLOCKERS
 
 - `B-002` **STALE** (`D-0257`): its premise ("neither gitleaks nor trufflehog is installed") — the
-  scan this phase ran was **heuristic and declared as such**; neither tool is on `PATH`.
+  scans this session ran were **heuristic and declared as such**; neither tool is on `PATH`.
 - `B-011` low/deferred (`D-0258`): git history rewritten on the Owner's explicit authorisation,
   bundle backup taken.

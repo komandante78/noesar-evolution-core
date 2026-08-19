@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0583 — projection coverage and the NON FATTO box enforced in the report; ratchet 17 -> 13, critical still 0",
-  "phase_status": "COMPLETE — CE-009, CE-010, CE-016 and CE-019 recorded MET; a real defect found by taking CE-009 method literally (the rule lived only in the producer of the number, not in the report) repaired and installed; CE-011 and CE-012 examined and reclassified as NOT cheap, with the reason recorded.",
-  "next_phase": "Owner choice: (1) the 13 remaining rows, (2) D-0564 the signed ledger anchor, (3) one of the open proposals D-0576/D-0578/D-0580/D-0582/D-0585",
+  "current_phase": "D-0586 — an induced fact is unwritable without evidence, count and refutation condition; two embedding spaces raise instead of comparing. Ratchet 13 -> 11, critical still 0",
+  "phase_status": "COMPLETE — CE-011 and CE-012 recorded MET, both closed in the SCHEMA (migration 0020) because both criteria name the schema; proven 46/46 against a real PostgreSQL 18 cluster booted from nothing, then installed and the migration proved APPLIED on the running database.",
+  "next_phase": "Owner choice: (1) the 11 remaining rows, (2) D-0564 the signed ledger anchor, (3) one of the open proposals D-0576/D-0578/D-0580/D-0582/D-0585/D-0587",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "4dfee22",
-  "last_updated_utc": "2026-08-19T17:38:49.066Z",
+  "last_commit": "3ec06ae",
+  "last_updated_utc": "2026-08-19T18:05:43.670Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "THE RATCHET IS AT 13 UNSTATED / 0 CRITICAL — node tools/verify-acceptance-matrix.mjs prints it and holds it (seen to FAIL at 12). THE HANDOFF CLASS \"CHEAP\" IS NOW EMPTY, AND TWO OF ITS SIX ROWS WERE NEVER CHEAP: CE-011 (every induced fact carries evidence, count and refutation condition) needs a MIGRATION — noesar_knowledge.memory_records has confirmations/refutations counters and a derived_must_cite constraint, but NO column for the refutation condition and nothing making it unwritable without one, and the method says \"schema + test\"; CE-012 (a vector without its model is an ERROR, not a number) needs a COMPARISON SURFACE that does not exist — memory_vectors is keyed (record_id, model_id) so the datum is there, but memory-service.mjs states no embedding pipeline is wired, so there is nothing to run the \"test di confronto fra due spazi diversi\" against. Both are Postgres-shaped work verified through scripts/test.sh (this host has no python3), not JS-shaped work. THE 13 REMAINING: CE-005, CE-006, CE-011, CE-012, CE-020, CE-023, CE-024, CE-027, CE-028, CE-030, CE-031, CE-032, CE-035. CE-020 (every capability has a complete keyboard form) is the one still worth scoping before picking up.",
+  "next_action": "THE RATCHET IS AT 11 UNSTATED / 0 CRITICAL — node tools/verify-acceptance-matrix.mjs prints it and holds it (seen to FAIL at 10). THE 11 REMAINING: CE-005, CE-006, CE-020, CE-023, CE-024, CE-027, CE-028, CE-030, CE-031, CE-032, CE-035. NONE of them is cheap, and this is now a measured statement rather than a guess — the cheap class was emptied over D-0581/D-0583/D-0586. THREE CLASSES, AND THE NEXT PHASE SHOULD SAY WHICH IT TAKES: (a) NEEDS A HARNESS THAT DOES NOT EXIST — CE-005 (context at call n>300 has the shape of call 3: a long-run harness) and CE-006 (every model call re-runnable in isolation); (b) NEEDS A SECOND MACHINE — CE-031, CE-032, CE-035 (ssh reachability and launcher portability), which cannot be honestly closed on this host alone and should be declared as such rather than approximated; (c) NEEDS PRODUCT THAT IS NOT BUILT — CE-023 (projection coverage MEASURED with ATOM), CE-024 (human review time per accepted change), CE-027/CE-028/CE-030 (authoring fixtures, divergence into authoring, identical authorings counted once). CE-020 (every capability has a complete keyboard form) sits alone: it is the only one whose parts may already exist — tui-fullscreen.mjs and ce-020-tui-fullscreen.test.mjs are there — so SCOPE IT FIRST by listing the capabilities and checking which have no keyboard path, before committing a phase to it.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
