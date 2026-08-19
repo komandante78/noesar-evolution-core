@@ -1,97 +1,95 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0569` — the Owner authorised `D-0567` and it was executed whole.
-**Commit:** `02b06a0`, pushed to `origin/main`.
-**Live installation:** `noesar-evolution:d0559-provenance-20260819T084001Z`, `running`/`healthy`
-— **and it still serves the one-call flow.** This change is **not deployed**.
+**Phase:** `D-0569` deployed, `D-0570` (the deploy guard, repaired because it fired wrongly).
+**Commit:** `7d00c48`, pushed to `origin/main`.
+**Live installation:** **`noesar-evolution:d0569-measure-first-20260819T104500Z`**,
+`running`/`healthy`, `RestartCount=0`. Predecessor `noesar-evolution-pre-20260819T094812Z` kept.
+**`CE-008` now holds on the running box**, not only in the repository.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**One decision for the Owner, then the work.**
-
-1. **Deploy `D-0569`.** It changes a user-visible flow (a second button, an Approve that is
-   disabled until the plan is measured), so §77 stops here rather than deciding for you. Until
-   it is deployed, **`CE-008` holds in the repository and not on the live box** — the register
-   records the code, and that distinction is exactly the one `D-0565` was opened to end. The
-   browser E2E and the accessibility audit should run with it: both need puppeteer, which lives
-   only in the e2e container, so neither has run against this markup yet.
-2. **Then the 8 CRITICAL criteria with no verdict:**
+**The 8 CRITICAL criteria that still carry no verdict:**
 
 ```text
 CE-002  CE-003  CE-007  CE-013  CE-014  CE-015  CE-025  CE-029
 ```
 
 `CE-003`, `CE-013` and `CE-014` are **absence-shaped** — `D-0562` proposes the shared closure
-helper for that class.
+helper for that class. `node tools/verify-acceptance-matrix.mjs` prints the list and holds the
+ratchet (**29 / 8**).
+
+Owner instruction, 2026-08-19: proceed toward FINISHED **without asking** which improvement to
+build. Proposals are saved, not executed.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`CE-008` was `❌` this morning and is `✅` now.** It is the only row in the register that has
-been both, and that is the register working rather than a register being edited.
+### 1. The deployment (`D-0569`)
 
-**The naive fix is circular, which is why the shape is what it is.** "Execute at `plan()` time"
-cannot work: `execute()` refuses without a token, a token comes only from an authorised plan, and
-an authorisation needs a human. So there are now **two authorisations of two different things**:
+| Verified on the running box | Result |
+|---|---|
+| state | `running`/`healthy`, `RestartCount=0`, 4 children, **0** auth-failure lines |
+| health endpoints | `/livez` + `/readyz` **200** on **both** HTTP `:8100` and HTTPS `:8443` |
+| deployed bytes ↔ tree | **440 / 440**, and **0** files missing from the directory `COPY`s |
+| the new route, live | `POST /api/v1/workspace-actions/:id/measure` → **401** — the gate answering, not a 404 |
 
-| Call | Authorises | Can it reach the workspace? |
-|---|---|---|
-| `measure()` | a run **in a shadow** — mints its own token, executes, compares, recomputes the declared claims | **no** |
-| `approve()` | **the change**, answered against that result — mints the second token | yes, and it never re-executes: what is promoted is what was shown |
+Before `--apply`, against a **disposable probe** and never the installation (§3a 11e): browser
+suite **505 pass / 1 declared gap / 0 undeclared**, accessibility **27/27**, unit **2725**,
+battery **15/15**.
 
-**Read off the ledger rather than the source**, which is where the criterion is actually
-checkable: `measuring → executor.ran → shadow.compared → claims_verified → measured → approved →
-promoted`, with **two** `capability.minted`.
+### 2. The browser found two things the unit tests could not
 
-**A side effect that was not the goal: `CE-001` is stronger than it was this morning.** The
-workspace mutation now spends **its own token**, one use per file inside `#promote`, *before*
-each write — the same spend-before-effect order the executor keeps — instead of inheriting the
-token spent to write into the shadow.
+- The first e2e run **failed** with `#planApproveBtn: element is disabled`. That is `CE-008`
+  working — a real Chromium could not click Approve on an unmeasured plan — and it is the
+  strongest evidence in this phase. The suite now clicks **Measure**, waits for Approve to become
+  enabled, and asserts that transition by name.
+- The menu-count assertion was a literal **17**, already corrected once (`D-0448`), and `measure`
+  broke it again. A number that describes another file now **comes from** that file
+  (`AGENT_COMMANDS.length`).
 
-**Both shells, and the graphics.** `measure` is declared **once**, in the command registry the
-browser and the terminal share, so neither could get it without the other. The WebUI keeps
-**Approve disabled** until a measurement exists, and its title says why. Four new strings are in
-the translation catalogue; the one written at runtime is declared in `RUNTIME_ONLY` — the guard
-that noticed it was a stale catalogue entry, not a missing one.
+### 3. The deploy guard rolled back a healthy deployment (`D-0570`)
 
-**Verification produced this session:** unit **2725 pass / 0 fail**; battery `scripts/test.sh`
-**15/15, exit 0**; ESLint **437 files, 0 errors**; matrix **PASS** — 66 criteria, 37 with a
-verdict, **33 met**, 29 without, **8 critical**.
+The first `--apply` exited 4 and rolled back automatically: the replacement was healthy with all
+four children, and the guard counted **2 auth-failure lines** — which were **correlation ids**,
+`cb401d04-…` and `…-4401-…`. Measured on the running installation immediately after: the old
+pattern matched **3** lines of which exactly **one** was a real 401. Every request this product
+logs carries a UUID, so the guard was a coin toss with a rollback attached, and it had passed
+until now by luck.
+
+Repaired to read the **structured field** (`"status": ?(401|403)`), which an identifier cannot
+produce. Two new fixture checks **execute** the pattern rather than describe it; the `|| true`
+around the counting grep was omitted at first and failed for exactly the reason the same file
+documents two checks above. Fixture **76/76**, oracle seen to fire on the pre-repair file. The
+retry deployed with **0** auth-failure lines.
 
 ## WHAT WAS **NOT** DONE — deliberately, and what is `[UNVERIFIED]`
 
-- **Not deployed.** On the live installation `CE-008` does **not** hold yet. Stated plainly
-  because the opposite reading — "the criterion is closed" — is the one the register invites.
-- **`[UNVERIFIED]`: no browser has opened this markup.** The DOM change is one new button and a
-  `disabled` attribute; the i18n coverage, shell-parity and view-model suites cover the registry,
-  the strings and the call map, but `tools/browser-e2e.mjs` and `tools/accessibility-audit.mjs`
-  both need puppeteer and were not run. Named, not skipped quietly.
-- **The shadow is held in memory between `measure()` and `approve()`.** A restart loses it:
-  `approve()` refuses `MEASUREMENT_LOST` and `measure()` runs again. Proven with two
-  orchestrators over one run store — a real restart, not a simulated one.
-- **Reversal cost is real for once**: the HTTP surface gained a route, the run gained a state and
-  both shells changed. Reverting means reverting all three together.
 - **8 critical criteria still have no verdict.** `production_ready` stays **false**.
+- **`[UNVERIFIED]`: no signed-in session was driven against the *installation*.** §3a 11e forbids
+  running the mutating suites there; what was proven live is health, byte-equality and that the
+  surfaces answer. The two-step flow itself was proven in a real browser **against the probe**.
+- **The browser suite's one failure is `F-I18N-002`**, the pre-existing declared i18n gap. It is
+  declared, not new, and unrelated to this change.
+- **The shadow is held in memory between `measure()` and `approve()`.** A restart loses it:
+  `approve()` refuses `MEASUREMENT_LOST` and `measure()` runs again.
+- **`D-0564` is not built.** It is now the most valuable unbuilt idea: this phase **doubled** the
+  authority events per run, and every one rests on a chain that is a hash, not a signature.
 
-## FILES THIS PHASE CHANGED
+## SESSION CLOSE — `CLAUDE10.md` §5a
 
-```text
-services/reference-control-plane/src/workspace-actions.mjs   measure(), approve(), #promote spends
-services/reference-control-plane/src/server.mjs              POST /workspace-actions/:id/measure
-services/reference-control-plane/src/session-protocol.mjs    workspace.measure + its permission policy
-apps/shared/coden/agent-commands.js                          the command, declared once for both shells
-apps/webui-static/{app.js,index.html,coden-view-model.js}    the flow, the button, the call map
-apps/webui-static/i18n-catalog.js                            4 strings + 1 RUNTIME_ONLY entry
-MASTER_PROJECT/15_…md                                        CE-008 ❌ → ✅
-+ 9 test files updated to the two-step flow, 1 rewritten from characterising the gap to proving
-  it closed (ce-008-shadow-precedes-authorization.test.mjs, 9/9)
-```
+Inventory: `EVIDENCE/docker_inventory_pre_cleanup_D0569_20260819T104500Z.txt`. Removed: the older
+rollback `noesar-evolution-pre-20260819T084122Z` (`Exited`, confirmed first — its image stays on
+disk) and the superseded build tag `d0569-measure-first-20260819T092743Z`. The two probe runs
+left **no** container, image or stamped network; only the stable `noesar-e2e-net` survives, as
+§21c requires. **Containers 53 → 52 · volumes 65 → 65 · networks 10 → 10 · non-project
+containers 50 → 50.** No `prune` of any kind. Health proven again after cleanup.
 
-## THE IMPROVEMENT PROPOSAL — carried, not new
+## THE IMPROVEMENT PROPOSAL — `D-0564`, carried and now stronger
 
-`D-0564` (anchor the ledger head outside the file, so a wholesale rewrite is detectable) remains
-the best unbuilt idea and is now the most valuable one: this phase doubled the number of
-authority events per run, and every one of them rests on a chain that is a hash, not a signature.
-**Funding fit: Restack · traits 5 and 3.**
+Anchor the event ledger's head outside the file, signed with the owner key `server.mjs` already
+writes. Every run now records **two** grants, two mints and a measurement, and the chain
+protecting all of it is `createHash` with no key: it detects an edit, not a rewrite.
+**Funding fit: Restack · traits 5 and 3** — verifiable provenance, offline, on the installation's
+own key, with no external notary.
 
 ## OPEN BLOCKERS
 

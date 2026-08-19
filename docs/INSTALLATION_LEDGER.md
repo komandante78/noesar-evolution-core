@@ -5277,3 +5277,33 @@ first); its image stays on disk, so the documented rollback path survives. No pr
 overlay tag was created. Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**,
 non-project containers **50 → 50**
 (`EVIDENCE/docker_inventory_pre_cleanup_D0559_20260819T084001Z.txt`).
+
+## `d0569-measure-first-20260819T104500Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0569-measure-first-20260819T104500Z`, deployed 09:48Z via
+`tools/deploy/redeploy.sh --apply`, Owner-authorised. `D-0569`: the shadow precedes the
+authorisation — `approve()` refuses a run nobody measured.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez` and `/readyz` **200** on **both**
+`http://…:8100` and `https://…:8443`. 4 children spawned, **0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **440/440** in preflight and again against the running
+image, **0** files missing from the directory `COPY`s. The new route answers on the live box:
+`POST /api/v1/workspace-actions/:id/measure` → **401**, the auth gate, not a 404. Before
+`--apply`: browser suite **505 pass / 1 declared gap / 0 undeclared** against a disposable probe,
+accessibility **27/27**, unit **2725**, battery **15/15**.
+**The first attempt ROLLED BACK, and the tool was right to and wrong about why.** Exit 4: the
+replacement was healthy with all four children, and the guard counted 2 "auth-failure lines"
+that were correlation ids containing `401` (`cb401d04-…`, `…-4401-…`). The installation returned
+to its predecessor automatically and stayed healthy throughout. Repaired as `D-0570` — the guard
+now reads `"status": ?(401|403)`, which an identifier cannot produce — and the deployment was
+retried: **0** auth-failure lines.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T094812Z`
+(`d0559-provenance-20260819T084001Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The workspace was backed up with the service stopped, 0600 in a 0700
+directory, checksum written — that archive holds credentials and is treated as one.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T084122Z` removed (`Exited`, confirmed
+first; its image stays on disk), and the superseded build tag
+`d0569-measure-first-20260819T092743Z` removed. The two probe runs left **no** container, image
+or stamped network — only the stable `noesar-e2e-net` survives, as §21c requires. Containers
+**53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-project containers **50 → 50**
+(`EVIDENCE/docker_inventory_pre_cleanup_D0569_20260819T104500Z.txt`).
