@@ -76,22 +76,45 @@ const cells = (line) => line
 const strip = (text) => text.replace(/[`*]/g, '').trim();
 
 /**
+ * The markers, and the verdict each one declares. Order in this list is NOT precedence — see
+ * `readStatus`; it is only the set of things a cell can lead with.
+ */
+const VERDICT_MARKERS = Object.freeze([
+  { marker: /✅/, verdict: 'RECORDED_MET' },
+  { marker: /❌|✖/, verdict: 'RECORDED_NOT_MET' },
+  { marker: /⚠|parzial|partial/i, verdict: 'RECORDED_PARTIAL' },
+]);
+
+/**
  * A row's status is whatever its own document records — or `null`.
  *
- * `null` is the finding, not a gap in this parser: thirty-six of the fifty-three rows have no
- * status column at all, so nothing anywhere states whether they hold. That number is the point of
- * this tool, and rounding it away by inventing a default would destroy the only thing it measures.
+ * `null` is the finding, not a gap in this parser: rows with no status column at all mean nothing
+ * anywhere states whether they hold. That number is the point of this tool, and rounding it away
+ * by inventing a default would destroy the only thing it measures.
  */
-function readStatus(raw) {
+export function readStatus(raw) {
   if (!raw) return null;
   const text = raw.trim();
   if (!text) return null;
-  const verdict = /✅/.test(text) ? 'RECORDED_MET'
-    : /❌|✖/.test(text) ? 'RECORDED_NOT_MET'
-      : /⚠|parzial|partial/i.test(text) ? 'RECORDED_PARTIAL'
-        : 'RECORDED_OTHER';
+  // **Classified by the FIRST marker in the cell, not by a fixed precedence** — repaired
+  // 2026-08-19 (`D-0581`), after this tool read a verdict wrong on a row written that same hour.
+  //
+  // The previous form tested `✅` first and anywhere in the cell. `CE-036`'s verdict opens with
+  // `⚠️` and explains, in prose, that it is *«non è un ✅ pieno»* — and that mention, inside a
+  // sentence saying the opposite, classified the row as MET. A verdict decided by a glyph
+  // appearing anywhere in its own explanation is a verdict that can be flipped by describing it,
+  // and it fails in the dangerous direction: towards MET.
+  //
+  // A cell states its verdict by what it LEADS with. Everything after is prose about it, and
+  // prose is allowed to name the other outcomes — that is what an honest partial verdict does.
+  let found = null;
+  for (const { marker, verdict } of VERDICT_MARKERS) {
+    const at = text.search(marker);
+    if (at === -1) continue;
+    if (!found || at < found.at) found = { at, verdict };
+  }
   const decisions = [...text.matchAll(/\b(D-\d{4})\b/g)].map((match) => match[1]);
-  return { verdict, decisions: [...new Set(decisions)], text };
+  return { verdict: found?.verdict ?? 'RECORDED_OTHER', decisions: [...new Set(decisions)], text };
 }
 
 /** Parse one document's matrix rows. Returns `[]` for a document with no table. */

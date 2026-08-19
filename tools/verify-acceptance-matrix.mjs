@@ -33,9 +33,12 @@ import { readFileSync } from 'node:fs';
  * Measured 2026-08-19 (`D-0556`) at 36. May be lowered, never raised without a recorded decision.
  * 34 at `D-0561` (`CE-001`, `CE-004`), 32 at `D-0563` (`CE-017`, `CE-018`), 30 at `D-0566`
  * (`CE-008` — recorded NOT met — and `CE-026`), 29 at `D-0566` with `CE-022` — all the same day.
- * 27 at `D-0571` (`CE-002`, `CE-029`), 24 at `D-0573` (`CE-003`, `CE-014`, `CE-025`), 21 at `D-0575` (`CE-007`, `CE-013`, `CE-015`).
+ * 27 at `D-0571` (`CE-002`, `CE-029`), 24 at `D-0573` (`CE-003`, `CE-014`, `CE-025`), 21 at `D-0575` (`CE-007`, `CE-013`, `CE-015`),
+ * **17** at `D-0581` (`CE-021`, `CE-033`, `CE-034`, `CE-036` — the four shell-parity rows, the
+ * family this project's own skill records as the one it was already burned by). Seen to FAIL at
+ * 16 first, one notch tighter, before being set here.
  */
-const MAX_UNSTATED = 21;
+const MAX_UNSTATED = 17;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than
@@ -80,6 +83,26 @@ if (committed) {
     const liveVerdict = row.status?.verdict ?? null;
     const otherVerdict = other.status?.verdict ?? null;
     if (liveVerdict !== otherVerdict) fail(`${id} verdict changed (${otherVerdict} -> ${liveVerdict}) without regenerating`);
+    // The verdict PROSE is compared too — added `D-0581`, after it was measured diverging.
+    //
+    // Until now this compared four fields and the verdict ENUM, and never the text. The text is
+    // where every piece of evidence lives, so the one part of a verdict that carries its proof
+    // was the one part that could be edited in the projection and never in the document. Measured
+    // on the day it was found: `CE-002`'s text was 2,314 characters in `docs/acceptance-matrix.json`
+    // and 1,540 in the document that owns it — a paragraph appended by `D-0577` to the projection
+    // alone — and this check passed. A drift check blind to the field that matters is a drift
+    // check that certifies drift.
+    const liveText = row.status?.text ?? null;
+    const otherText = other.status?.text ?? null;
+    if (liveText !== otherText) {
+      fail(`${id} verdict TEXT differs between the document (${(liveText ?? '').length} chars) and the committed matrix `
+        + `(${(otherText ?? '').length} chars) — the document owns it; regenerate rather than editing the projection`);
+    }
+    const liveDecisions = JSON.stringify(row.status?.decisions ?? null);
+    const otherDecisions = JSON.stringify(other.status?.decisions ?? null);
+    if (liveDecisions !== otherDecisions) {
+      fail(`${id} verdict decisions differ (${otherDecisions} -> ${liveDecisions}) without regenerating`);
+    }
   }
 }
 

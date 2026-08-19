@@ -7,7 +7,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { extract, summarise, SOURCES, MATRIX_JSON } from '../../../tools/acceptance-matrix.mjs';
+import { extract, summarise, readStatus, SOURCES, MATRIX_JSON } from '../../../tools/acceptance-matrix.mjs';
 
 describe('the acceptance matrix is read from the documents that own it — D-0556', () => {
   const matrix = extract();
@@ -81,5 +81,50 @@ describe('the acceptance matrix is read from the documents that own it — D-055
     assert.ok(summary.total >= 53, `criteria may be added, never silently lost — found ${summary.total}`);
     // Stated as a floor rather than pinned: rows gaining a verdict must not be a test edit.
     assert.ok(summary.unstated <= 36, `${summary.unstated} criteria carry no verdict, worse than the 36 baseline`);
+  });
+});
+
+// ── the verdict classifier, repaired `D-0581` ────────────────────────────────────────────────
+//
+// A row's verdict used to be decided by testing `✅` FIRST and ANYWHERE in the cell. `CE-036`'s
+// verdict opens with `⚠️` and explains, in prose, that it is *«non è un ✅ pieno»* — and that
+// mention, inside a sentence saying the opposite, classified the row as MET. The tool that exists
+// so nobody can round a verdict up rounded one up itself, in the dangerous direction.
+//
+// The rule now: a cell states its verdict by what it LEADS with, and prose after it may name the
+// other outcomes — which is exactly what an honest partial verdict does.
+describe('a verdict is read from what the cell LEADS with — D-0581', () => {
+  test('a partial verdict may say the words "not a full ✅" without becoming one', () => {
+    const status = readStatus('⚠️ **MISURATO**: soddisfatto tranne una clausola — non è un ✅ pieno.');
+    assert.equal(status.verdict, 'RECORDED_PARTIAL');
+  });
+
+  test('a met verdict may name a refusal it proved without becoming a failure', () => {
+    const status = readStatus('✅ verificato: ogni tentativo è rifiutato, e un ❌ sarebbe stato il difetto.');
+    assert.equal(status.verdict, 'RECORDED_MET');
+  });
+
+  test('a failure that mentions what it would have taken to pass stays a failure', () => {
+    const status = readStatus('❌ non soddisfatto: servirebbe la prova che oggi darebbe ✅.');
+    assert.equal(status.verdict, 'RECORDED_NOT_MET');
+  });
+
+  test('the leading marker wins wherever the others appear after it', () => {
+    assert.equal(readStatus('⚠️ a ✅ b ❌ c').verdict, 'RECORDED_PARTIAL');
+    assert.equal(readStatus('❌ a ✅ b ⚠️ c').verdict, 'RECORDED_NOT_MET');
+    assert.equal(readStatus('✅ a ⚠️ b ❌ c').verdict, 'RECORDED_MET');
+  });
+
+  test('a cell with no marker is OTHER, and an empty one is no verdict at all', () => {
+    assert.equal(readStatus('registrato, senza glifo').verdict, 'RECORDED_OTHER');
+    assert.equal(readStatus('   '), null);
+    assert.equal(readStatus(''), null);
+    assert.equal(readStatus(null), null);
+  });
+
+  test('and the row this repair was found on now reads as what it says', () => {
+    const row = extract().rows.find((candidate) => candidate.id === 'CE-036');
+    assert.equal(row.status?.verdict, 'RECORDED_PARTIAL',
+      'CE-036 states a superseded presentation clause; a MET here is the tool grading prose');
   });
 });
