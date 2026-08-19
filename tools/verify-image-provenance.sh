@@ -147,6 +147,47 @@ echo "  byte-equal to tree: $MATCH · differing: $DIFFER · absent from tree: $N
 [ "$DIFFER" -eq 0 ] || fail "$DIFFER file(s) in the image differ from the working tree"
 [ "$NOTREE" -eq 0 ] || fail "$NOTREE file(s) in the image have no counterpart in the working tree"
 
+# ---------------------------------------------------------------------------------------------
+# 4b. THE OTHER DIRECTION — `D-0568`, found by this tool failing to find something.
+#
+# Everything above walks the IMAGE and asks the tree about it. That can never see a file the
+# recipe forgot to copy, which is precisely the defect `D-0559` repaired
+# (`schemas/model-descriptor.schema.json`) — caught then only because a second image happened to
+# have it. A one-image run would have said `PASS`.
+#
+# So: for every `COPY <dir>/ /opt/noesar/<dir>/` in the Dockerfile, every file the tree holds
+# under that directory must be in the image. Only directory copies are checked — a single-file
+# `COPY` names its own source and cannot silently omit anything, and a directory the recipe never
+# copies is not a promise it broke.
+# ---------------------------------------------------------------------------------------------
+echo
+echo "----- 4b. TREE -> IMAGE (nothing the recipe copies is missing) -----"
+DOCKERFILE="$ROOT/oci/Dockerfile"
+MISSING=0; CHECKED=0
+if [ ! -f "$DOCKERFILE" ]; then
+  echo "  UNMEASURED: oci/Dockerfile not found at $DOCKERFILE"
+else
+  awk '{ print $2 }' "$WORK/cand.files" | LC_ALL=C sort > "$WORK/cand.paths"
+  # `COPY [--chown=x:y] src/ /opt/noesar/dst/` — directory form only, and never `--from=`.
+  grep -E '^COPY ' "$DOCKERFILE" | grep -v -- '--from=' | while IFS= read -r line; do
+    src="$(printf '%s\n' "$line" | awk '{ for (i = 2; i <= NF; i++) if ($i !~ /^--/) { print $i; exit } }')"
+    dst="$(printf '%s\n' "$line" | awk '{ print $NF }')"
+    case "$src" in */) ;; *) continue ;; esac
+    case "$dst" in /opt/noesar/*) ;; *) continue ;; esac
+    [ -d "$ROOT/$src" ] || continue
+    rel="${dst#/opt/noesar/}"
+    ( cd "$ROOT/$src" && find . -type f | sed "s|^\./|${rel}|" )
+    # Sorted once, at the end: `comm` needs ONE ordered stream, and sorting each COPY's own
+    # output leaves the concatenation unordered — which `comm` reports rather than mis-answers.
+  done | LC_ALL=C sort -u > "$WORK/expected.paths"
+  CHECKED="$(wc -l < "$WORK/expected.paths" | tr -d ' ')"
+  comm -23 "$WORK/expected.paths" "$WORK/cand.paths" > "$WORK/missing.paths"
+  MISSING="$(wc -l < "$WORK/missing.paths" | tr -d ' ')"
+  echo "  expected from directory COPYs: $CHECKED · missing from the image: $MISSING"
+  [ "$MISSING" -eq 0 ] || { sed -n '1,20p' "$WORK/missing.paths" | sed 's/^/    missing: /'; }
+fi
+[ "$MISSING" -eq 0 ] || fail "$MISSING file(s) the recipe copies are absent from the image"
+
 if [ -z "$REFERENCE" ]; then
   echo
   if [ "$FAILURES" -eq 0 ]; then

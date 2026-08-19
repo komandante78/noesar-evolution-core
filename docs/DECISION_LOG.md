@@ -13146,3 +13146,28 @@ non-trivial, which is why it is proposed and not slipped in.
 **Funding fit.** **Restack · trait 5** — an authorisation shown the measured consequence is the
 difference between an audit trail and an informed decision.
 **Status.** proposed — the Owner's call, per §69.
+
+## D-0568 · The provenance verifier could not catch the defect it was built for — 2026-08-19
+**Decision.** `tools/verify-image-provenance.sh` gained a fourth check, `4b · TREE -> IMAGE`: for
+every directory `COPY` in `oci/Dockerfile`, every file the tree holds under that directory must be
+in the image.
+**Why.** Everything the tool did walked the **image** and asked the tree about it, so a file the
+recipe never copies is invisible to it — which is exactly `D-0559`'s defect
+(`schemas/model-descriptor.schema.json`). That was caught only because a second image happened to
+carry the file; a one-image run, which is what the deploy gate performs, would have said `PASS`.
+Found by the tool reporting a clean tree comparison on an image that was demonstrably missing a
+file added minutes earlier.
+**Rejected.** Requiring every tree file to be in the image. The tree holds 6,646 files and the
+image ships 440 on purpose; only what a directory `COPY` promises is a promise. Single-file
+`COPY`s are excluded for the same reason — they name their source and cannot silently omit it.
+**Evidence.** Oracle seen to fire on real data: run against the deployed image it reports
+`missing from the image: 1 — …/ce-008-shadow-precedes-authorization.test.mjs`, a file added after
+that image was built. Against a fresh build: **440/440** byte-equal, **422** expected from
+directory COPYs, **0** missing, exit 0. Two defects in the check itself were found and fixed
+before it was trusted: `cut -d' ' -f2` returned the empty field between `sha256sum`'s two spaces,
+and sorting each COPY's output separately left `comm` an unordered stream — which it reported
+rather than mis-answered.
+**Reversal cost.** None — one section of one script.
+**Funding fit.** **Restack · trait 2**, reusable: "does this image contain everything its recipe
+claims to copy" is a check any container project needs and few have.
+**Status.** applied. The deploy gate now runs it on every `--image` preflight.

@@ -1,0 +1,14 @@
+===== IMAGE PROVENANCE =====
+root      : /mnt/cachec/NOESAR_EVOLUTION
+candidate : noesar-evolution:d0559-provenance-20260819T084001Z
+reference : <none — tree comparison only>
+
+candidate /opt/noesar: 441 files
+
+----- 4. TREE <-> IMAGE (candidate) -----
+  differs: services/reference-control-plane/test/workspace-actions-http-adversarial.test.mjs  (image d968f30fd671547663130eb41feeb283bfd045f560ef725652de65be8aeffc4b != tree f4ad1c6a9e4da9f2981f6c881cdb0ef08a5cb79f27bd4050ad3fef94e2e36133)
+  differs: services/reference-control-plane/test/workspace-actions.test.mjs  (image 0fa2db5533d7b83eae2737e54f1bffd3963816b7af95c288769454373d6f8e81 != tree ce3673af313fdc47d4d924b4aec4a720eb6423f47f467aeda7279d616f54f9c4)
+  byte-equal to tree: 437 · differing: 2 · absent from tree: 0 · built in image: 2
+  FAIL: 2 file(s) in the image differ from the working tree
+
+RESULT: DRIFT — 1 check(s) failed.
