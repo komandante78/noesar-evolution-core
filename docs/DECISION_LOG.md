@@ -13518,3 +13518,60 @@ ciò che il codice fa — la definizione di falso PASS strutturale, e il documen
 «superato per decisione» è un dato e non una nota a piè di pagina è verificabile da un revisore
 esterno, che è precisamente ciò che un valutatore fa.
 **Status.** deferred — Owner's call, per `CLAUDE10.md` rule 69.
+
+## D-0583 · Copertura e `NON FATTO` nel rapporto, non solo nel produttore — `CE-009`, `CE-010`, `CE-016`, `CE-019` — 2026-08-19
+**Decision.** Le quattro righe "a buon mercato" della classe dichiarata nel handoff prendono un
+verdetto. Due erano già misurate e mancava solo la cella (`CE-010`, `CE-016`); due hanno rivelato
+un difetto vero, perché il loro metodo parla del **rapporto** e la regola era applicata solo nel
+**produttore** del numero. `assembleSessionProof()` ora rifiuta un rapporto senza copertura o con
+copertura arrotondata, dichiara l'assenza quando nulla è stato misurato, e non emette più una
+casella `NON FATTO` vuota e muta. Ratchet **17 → 13**, critiche **0**.
+**Why.** Misurato prima della riparazione: un run deciso senza copertura serviva un JSON in cui la
+chiave `coverage` **spariva** (`undefined` cade in `JSON.stringify`); un oggetto `complete:true` su
+6/9 passava intatto; ogni run promosso serviva `notDone: null` — vuoto e indistinguibile da un run
+in cui nessuno ha guardato. Una regola applicata solo nel produttore è una regola che un secondo
+produttore aggira.
+**Rejected.** Lasciare il controllo in `projectionCoverage()` e dichiarare chiuse le righe: è
+esattamente la forma «un criterio che nessuna riga misura non è chiuso», un livello più su.
+**Evidence.** `ce-009-coverage-never-absent-never-implicit.test.mjs` **11/11** (nuovo);
+`divergence-profile.test.mjs` **10/10**; `ce-016-zero-tools-at-rest.test.mjs` **4/4**;
+`product-metric.test.mjs` (chiusura muta rifiutata). Suite unitaria **2853, 0 fail**; ESLint **452
+file, 0 errori**; `verify-source` PASS; ratchet visto **FALLIRE a 12** prima di essere fissato a 13.
+Installato: `noesar-evolution:d0583-coverage-and-notdone-20260819T173441Z`, byte-equal tree↔image
+**455/455**, `/livez`+`/readyz`+`/healthz` **200** su 8100 e 8443, e lo sha256 di
+`session-proof.mjs` **identico** fra albero e container in esecuzione.
+**Reversal cost.** Nessuna oltre il riavvio del predecessore. Cambia la **forma** di
+`esito.coverage` e `esito.notDone` nel Session Proof (`notDone` da `string|null` a
+`{items, nothingLeftUndone, declaration}`): nessuna superficie del prodotto lo leggeva — le due
+shell rendono la casella di `ClosureRegister`, non questa.
+**Status.** applied + installed.
+
+## D-0584 · Difetto riparato — un vettore di conformità che passava a seconda della directory — 2026-08-19
+**Decision.** `test/canonical-json.test.mjs` risolveva `conformance/authority-vectors.json` dalla
+**CWD del processo**; ora lo risolve da sé stesso, come ogni altro test a vettori della stessa
+directory.
+**Why.** Passava lanciando la batteria dalla radice del repository e falliva con `ENOENT` lanciando
+lo stesso file da `services/reference-control-plane/` — trovato così, non per lettura. Un vettore di
+conformità che viene controllato o saltato a seconda di dove si trova chi lo lancia non è un
+controllo di conformità.
+**Rejected.** Lasciarlo: era l'unico dei sette test a vettori scritto in quel modo, quindi la
+riparazione è allineamento a un idioma già presente, non una nuova convenzione.
+**Evidence.** 8/8 da tre directory diverse — radice, `services/reference-control-plane/`, `/tmp`.
+**Reversal cost.** Nessuna.
+**Status.** applied.
+
+## D-0585 · Improvement proposal — la copertura di proiezione va dichiarata anche dove la si legge — 2026-08-19
+**Proposal.** Il Session Proof ora rifiuta una copertura assente o arrotondata, ma **nessuna
+superficie del prodotto mostra `esito.coverage` a una persona**: è servito su
+`/api/v1/workspace-actions/:id/session-proof` e letto da nessuno. Renderlo nelle due shell come una
+riga sola — *"6/9 affermazioni ricalcolate · 3 no, ed ecco quali"*, che è la frase con cui il
+documento fondativo (§3.IV) descrive un rapporto più utile di un `✅` — è ciò che trasforma una
+garanzia già applicata in una garanzia che qualcuno può usare.
+**Benefit / cost.** Beneficio: la revisione umana viene indirizzata dove serve invece che
+uniformemente; è anche la premessa di `CE-023` (copertura **misurata** con ATOM), che senza una
+superficie che la mostri resta un numero interno. Costo: una riga per shell più il suo test di
+parità (`CE-033`/`CE-034` impongono che le due shell non divergano), ~1 fase corta.
+**Funding fit.** Restack · tratto **5** (affidabilità misurabile: una copertura dichiarata e
+visibile è la forma verificabile di «cosa è stato davvero controllato») e tratto **2** (il rapporto
+è riusabile fuori dal prodotto: è un formato, non una schermata).
+**Status.** proposed — non eseguita in questa fase (`noesar-evolution-budget` §5).

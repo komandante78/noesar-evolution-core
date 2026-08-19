@@ -5402,3 +5402,37 @@ non-project containers **50 → 50**; surviving networks exactly `noesar-evoluti
 `noesar-e2e-net` (`noesar-local` is NOESAR V3's and was not touched)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0581_20260819T161627Z.txt`). Health re-proved after
 cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
+
+## `d0583-coverage-and-notdone-20260819T173441Z` — DEPLOYED and verified — 2026-08-19
+
+**Tag.** `noesar-evolution:d0583-coverage-and-notdone-20260819T173441Z`, deployed 17:35Z via
+`tools/deploy/redeploy.sh --apply`, built from the canonical `oci/Dockerfile`
+(`docker build --pull=false`, offline). `D-0583`: projection coverage and the `NON FATTO` box
+enforced in the **report**, not only in the producer; `CE-009`, `CE-010`, `CE-016`, `CE-019`
+recorded; ratchet 17 → 13.
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz` and `/healthz` **200** on
+both `http://…:8100` and `https://…:8443`. 4 children spawned (postgres, api, codev, atom),
+**0** auth-failure lines.
+**Verification.** Byte-equal tree↔image **455/455**, **0** differing, **0** absent from tree, 2
+built in image. `sha256` of the one changed runtime module, `session-proof.mjs`, **identical**
+between the working tree and the running container — the repaired report is the one serving.
+Before `--apply`: unit **2853 (2852 pass / 0 fail / 1 skip)**, ESLint **452 files, 0 errors**,
+`verify-source` PASS, acceptance matrix PASS at the tightened ratchet.
+**Predecessor preserved.** `noesar-evolution-pre-20260819T173528Z`
+(`d0581-shell-parity-20260819T161549Z`).
+**Rollback cost.** None beyond restarting the predecessor: no migration, no schema change, no
+configuration key. The Session Proof's `esito.coverage`/`esito.notDone` change shape, and no
+product surface reads them. The workspace was backed up **with the service stopped**, 0600 in a
+0700 directory, checksum written — that archive holds credentials and is treated as one.
+**Not run, and named rather than skipped in silence.** `tools/run-browser-e2e.sh` and
+`tools/accessibility-audit.mjs`: this phase changed one runtime module with no markup, no DOM and
+no CSS token, and no shell renders the field it changed. `scripts/test.sh` full battery: not
+re-run after the unit suite went green on the same tree (`noesar-evolution-verify` single-pass
+rule 4) — declared, not implied.
+**Cleanup.** Older rollback `noesar-evolution-pre-20260819T161603Z` removed (`Exited (0)`
+confirmed first; its image stays on disk, so that rollback path still works). Containers
+**53 → 52**, volumes **65 → 65**, networks **10 → 10**, non-project containers **50 → 50**;
+surviving networks exactly `noesar-evolution-net` and `noesar-e2e-net` (`noesar-local` is
+NOESAR V3's and was not touched)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0583_20260819T173617Z.txt`). Health re-proved after
+cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.

@@ -256,7 +256,13 @@
       "criterion": "La copertura di proiezione è sempre presente, mai arrotondata a \"completa\"",
       "severity": "high",
       "howVerified": "test che rifiuta un rapporto senza copertura o con copertura implicita",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0583"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0583`)** — `services/reference-control-plane/test/ce-009-coverage-never-absent-never-implicit.test.mjs`, **11/11** con `CE-019`. **Il metodo dice «rifiuta un RAPPORTO», e la regola era applicata solo nel produttore.** `verification.mjs#projectionCoverage()` non ha mai arrotondato, e `verification.test.mjs` lo prova da quando esiste — ma nessuno controllava il rapporto. Misurato prima della riparazione: un run deciso senza copertura serviva `{\"diff\":[],\"risk\":…,\"promoted\":false}` — `coverage: undefined`, quindi **`JSON.stringify` faceva sparire la chiave** e il rapporto servito non aveva copertura affatto (assente, non dichiarata assente); e un oggetto con `complete:true` su **6/9** ricalcolate passava intatto, facendo asserire al rapporto una proiezione completa di una parziale. Ora `assembleSessionProof()` ha tre esiti e quello di mezzo non esisteva: **misurato** → la copertura intera; **mai misurato** → `{measured:false, reason}`, assenza **dichiarata** (§3.IV: *«un'affermazione non misurata è dichiarata non misurata»*); **incoerente** → `SessionProofRefused`. Rifiuta anche la copertura illeggibile (senza `matched`, senza gli elenchi, senza `declaration`) — una frazione senza elenco è la copertura implicita che la riga vieta."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:441"
     },
     {
@@ -264,7 +270,13 @@
       "criterion": "Il profilo di divergenza è ricalcolato dalla storia git, non configurato a mano",
       "severity": "high",
       "howVerified": "due repository con convenzioni opposte producono profili opposti",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0583"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0583`)** — `services/reference-control-plane/test/divergence-profile.test.mjs`, **10/10**, eseguito in questa sessione. La suite fa **esattamente** ciò che la riga chiede e niente di più comodo: costruisce due repository git veri, commit per commit, con abitudini opposte — uno *disciplined* (12 commit, ognuno `src/auth.mjs` + il suo test, un solo strato) e uno *sprawling* (12 commit, cinque strati, mai un test) — e profila **lo stesso** cambiamento candidato contro entrambi. Ogni asserzione riguarda le due risposte che **discordano**: la stessa modifica a un file senza test è divergenza in uno e ordinaria nell'altro; lo stesso sprawl a cinque file è ordinario in uno e fuori scala nell'altro. È la forma che un modulo a costanti non può superare, ed è la ragione per cui la riga è scritta così. Provato anche ciò che il profilo **non** è: nessun punteggio a nessun livello, il numero di commit letti dichiarato, un file senza storia riportato come «senza storia» e mai come alta divergenza, e una directory che non è un repository → `DivergenceUnavailable`, non convenzioni vuote (che sarebbero indistinguibili da un repository disciplinato)."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:442"
     },
     {
@@ -330,7 +342,13 @@
       "criterion": "A riposo il programma ha zero strumenti caricati",
       "severity": "high",
       "howVerified": "misura del contesto a sessione appena aperta",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0583"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0583`)** — `services/reference-control-plane/test/ce-016-zero-tools-at-rest.test.mjs`, **4/4**, eseguito in questa sessione. Scritto come **misura**, non come ispezione: costruisce richieste vere attraverso `enforceToolScope()` e conta ciò che verrebbe inviato. Una sessione che non nomina alcuno strumento ne porta **zero** con 200 strumenti installati, e il costo a riposo resta zero su dieci taglie di catalogo — `0, 1, 5, 20, 50, 100, 200, 500, 1000, 5000` — perché una costante che vale a una sola taglia è una coincidenza. La proprietà è una riga di `enforceToolScope`: l'insieme ammesso è l'**intersezione** fra ciò che il chiamante ha nominato e ciò che l'installazione ha concesso, quindi nulla entra per il solo fatto di esistere. È una proprietà del codice, non un'abitudine del chiamante, ed è la ragione per cui MCP può essere ammesso come trasporto: l'obiezione pubblicata (gli schemi degli strumenti occupano fino al 72% della finestra **prima** che il lavoro cominci) vale per un prodotto che monta gli schemi all'apertura della sessione, e qui installare altri server non può cambiare il costo a riposo."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:448"
     },
     {
@@ -367,7 +385,13 @@
       "criterion": "Il rapporto finale ha `NON FATTO` non vuoto senza dichiararlo",
       "severity": "medium",
       "howVerified": "test sul formato",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0583"
+        ],
+        "text": "✅ **verificato 2026-08-19 (`D-0583`), su DUE rapporti, e il secondo non aveva nessuno che lo tenesse** — `test/product-metric.test.mjs` (`ClosureRegister`: chiusura che non elenca nulla e non dichiara nulla → **rifiutata**, e il rischio residuo obbligatorio anche quando è «nessuno») più `test/ce-009-coverage-never-absent-never-implicit.test.mjs` **11/11**. La chiusura scritta da una persona era già applicata e resa in **entrambe le shell** (`apps/webui-static/app.js`, `apps/shared/coden/coden-address-views.mjs`). Ma il Session Proof servito su `/api/v1/workspace-actions/:id/session-proof` porta una **seconda** casella `NON FATTO`, e quella era `null` su **ogni** run promosso: vuota e indistinguibile da un run in cui nessuno ha guardato — l'errore esatto che §16 vieta. Ora è composta da fatti misurati e mai inventati: ogni affermazione che il verificatore **non** ha ricalcolato è una cosa che questo run non ha fatto, nominata con la sua ragione; le affermazioni *contraddette* restano in `coverage.contradicted`, perché «verificata e fallita» è un'altra affermazione. Quando la lista è vuota il rapporto **dichiara** «nothing was left undone», e la dichiarazione è provata dopo la serializzazione — una dichiarazione che esiste solo in memoria non è nel rapporto. Tre stati distinti, non due: elencato · dichiarato vuoto · non ancora deciso (`esito: null`)."
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:451"
     },
     {

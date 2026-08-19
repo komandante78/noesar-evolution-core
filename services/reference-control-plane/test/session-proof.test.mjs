@@ -155,7 +155,16 @@ test('assembleSessionProof surfaces a capability.denied event in the authority t
     expectation: {}, files: [{ path: 'a.txt', contents: 'x' }], provenance: [],
     request: 'r', projectRules: [], constraints: [], mode: 'safe', policy: 'restrictive', claims: [],
     createdAtUnix: NOW, decidedAtUnix: NOW + 1, egressSamples: [], risk: { overall: 'LOW' },
-    result: null, diff: [], coverage: { declaration: 0, total: 0, recomputed: 0, contradicted: [] },
+    // Coverage in the shape `verification.mjs#projectionCoverage()` actually returns. It used
+    // to read `{ declaration: 0, total: 0, recomputed: 0, contradicted: [] }` — a number where
+    // the declaration goes, no `matched`, no `unrecomputed` — which no producer in this product
+    // has ever emitted. The guard added for CE-009 refuses it, correctly: a report whose
+    // coverage cannot be read is a report without coverage.
+    result: null, diff: [],
+    coverage: {
+      total: 0, recomputed: 0, matched: 0, contradicted: [], unrecomputed: [],
+      coverageFraction: null, complete: false, declaration: 'no claims were declared for this change',
+    },
   };
   const events = [{
     id: 'e1', correlationId: 'r1', causationId: null, actor: 'owner', action: 'capability.denied',

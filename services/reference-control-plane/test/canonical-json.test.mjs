@@ -2,11 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import {
   canonicalJson,
   canonicalJsonBytes,
 } from '../src/canonical-json.mjs';
+
+// Resolved from this file, not from the process CWD — the idiom every other vector test in
+// this directory already uses (`event-vectors.test.mjs`, `executor-vectors.test.mjs`, …).
+// Found 2026-08-19: this one alone said `resolve('conformance/authority-vectors.json')`, so it
+// passed when the battery was launched from the repository root and threw ENOENT when the same
+// file was run from `services/reference-control-plane/`. A conformance vector that is checked
+// or skipped depending on where the runner happens to stand is not a conformance check.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 test('object keys are sorted recursively', () => {
   assert.equal(
@@ -45,7 +54,7 @@ test('bytes are UTF-8 canonical JSON', () => {
 
 test('published HMAC conformance vector matches', () => {
   const vectors = JSON.parse(readFileSync(
-    resolve('conformance/authority-vectors.json'),
+    resolve(ROOT, 'conformance/authority-vectors.json'),
     'utf8'
   ));
   const vector = vectors.authorityHmac[0];

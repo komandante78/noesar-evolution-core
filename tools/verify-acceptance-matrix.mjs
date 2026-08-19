@@ -37,8 +37,13 @@ import { readFileSync } from 'node:fs';
  * **17** at `D-0581` (`CE-021`, `CE-033`, `CE-034`, `CE-036` — the four shell-parity rows, the
  * family this project's own skill records as the one it was already burned by). Seen to FAIL at
  * 16 first, one notch tighter, before being set here.
+ * **13** at `D-0583` (`CE-009`, `CE-010`, `CE-016`, `CE-019`). Two of the four were run-and-record
+ * — the suites already existed and only the verdict cell was empty — and two were a real defect
+ * found by taking the method literally: `CE-009` says *"a test that refuses a REPORT"*, and the
+ * rule was enforced only in the producer of the number, never in the report that carried it.
+ * Seen to FAIL at 12 first, one notch tighter, before being set here.
  */
-const MAX_UNSTATED = 17;
+const MAX_UNSTATED = 13;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than
