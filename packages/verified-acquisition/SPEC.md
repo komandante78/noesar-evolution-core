@@ -1,4 +1,4 @@
-# Verified Acquisition — specification v1.0.0
+# Verified Acquisition — specification v1.1.0
 
 What an implementation must do to call itself conformant. Written so it can be implemented in any
 language, from this document alone, and then **measured** by
@@ -22,8 +22,12 @@ publisher's signature. An implementation that verifies documents by digest is no
 ## VA-001 · Surface
 
 An implementation MUST expose: `fetchArtefact`, `fetchDocument`, `checkSource`,
-`verifyModelDescriptor`, `signModelDescriptor`, `publicKeyFingerprint`, and a frozen `REFUSALS`
-enumeration. *(cases: `surface:*`)*
+`verifyModelDescriptor`, `signModelDescriptor`, `publicKeyFingerprint`, `canonicalJson`,
+`canonicalJsonBytes`, and a frozen `REFUSALS` enumeration. *(cases: `surface:*`)*
+
+The two encoding functions are part of the surface and not an implementation detail: `VA-012` is
+the only requirement a second implementation can satisfy **before** it can produce or check a
+single signature, so it has to be reachable on its own.
 
 ## VA-002 · Origin policy
 
@@ -103,7 +107,9 @@ Refusals, each distinct:
 | `SIGNATURE_INVALID` | the key is trusted and the bytes do not verify under it — including an unsupported algorithm |
 
 The canonical encoding MUST be deterministic and MUST sort object members, so two implementations
-signing the same document produce the same bytes.
+signing the same document produce the same bytes. **`VA-012` states that encoding normatively and
+is what measures it** — this sentence alone went unmeasured from `v1.0.0` until `D-0547`, which is
+how a requirement stays open while reading as closed.
 
 **The registry is the verifier's trust store, never the document's claim about itself.** An
 implementation that looks up the publisher named *in the document* against a store built from that
@@ -117,6 +123,42 @@ material and signatures only — no private key is needed to verify, and none is
 Every `kind` an implementation can produce MUST appear in its `REFUSALS` enumeration, and that
 enumeration MUST be immutable. A refusal a caller cannot enumerate reaches a person as "something
 failed". *(cases: `refusals:*`)*
+
+## VA-012 · Canonical encoding
+
+`canonicalJson(value)` MUST produce, for every value in the space below, **exactly one** byte
+string. This is the requirement two implementations must agree on before either can sign anything:
+a signer that orders members differently produces a signature that is valid over bytes nobody else
+computes, and the failure is indistinguishable from tampering.
+
+**The value space.** `null`, booleans, **finite** numbers, strings, arrays, and **plain** objects.
+Everything else MUST be rejected, not coerced: `undefined`, `NaN`, `±Infinity`, `bigint`,
+functions, symbols, and any object with a prototype other than the object prototype or `null`. A
+class instance MUST NOT be encoded by its own enumerable properties — `new Date(0)` has none and
+would encode as `{}`, so the signer would commit to an empty object where the author wrote a
+timestamp *(`D-0548`)*.
+
+**The rules, each measured by a case:**
+
+| # | Rule |
+|---|---|
+| 1 | No insignificant whitespace anywhere. `{"a":1}`, never `{ "a": 1 }` |
+| 2 | Object members sorted ascending by their key's **UTF-16 code units** — not by code point, and not by UTF-8 bytes. `"Z"` sorts before `"😀"` (first unit `U+D83D`), which sorts before `"Ａ"` (`U+FF21`); a code-point sort puts `"😀"` last and produces different bytes |
+| 3 | Array order is data and MUST be preserved |
+| 4 | Numbers use the shortest round-tripping decimal form (ECMAScript `Number::toString`): `1.0` → `1`, `1e21` → `1e+21`, `1e-7` → `1e-7`, `-0` → `0`. Values beyond IEEE-754 double precision are already lost before encoding and MUST NOT be special-cased |
+| 5 | Strings are encoded as JSON strings with **minimal** escaping: `"` `\` and the short forms `\b \t \n \f \r`; other control characters as lowercase `\u00xx`; every other character, including non-ASCII, emitted literally as UTF-8. Unpaired surrogates are escaped, never dropped |
+| 6 | The output is UTF-8 bytes. `canonicalJsonBytes(value)` MUST be the UTF-8 encoding of `canonicalJson(value)` and is what gets signed |
+| 7 | For a descriptor, the signed pre-image is the document **with its `signature` member removed** before encoding (`VA-010`) — removal happens first, so member order cannot depend on it |
+
+*(cases: `canonicalisation:*`, driven by the `canonicalisation` vectors in
+`conformance/vectors.json` — each carries an input value, the exact expected string and its
+SHA-256, so an implementation in any language can be measured **without a private key** and
+without agreeing with itself)*
+
+These rules coincide with **RFC 8785 (JSON Canonicalization Scheme)** over the value space above,
+which is where they come from. Full conformance to RFC 8785 is **not claimed and not tested** —
+that would be a separate requirement with its own suite, and claiming a standard one has not
+measured is how a specification stops being trustworthy.
 
 ---
 
@@ -133,8 +175,11 @@ for (const entry of report.results.filter((r) => !r.ok)) {
 ```
 
 It imports no test runner and returns a plain object. In a language that is not JavaScript, the
-`origin` and `authenticity` vector arrays in `conformance/vectors.json` are executable directly:
-each carries an input, an expected verdict and, where the verdict is a refusal, the exact `kind`.
+`origin`, `authenticity` and `canonicalisation` vectors in `conformance/vectors.json` are
+executable directly: each carries an input and an expected result — a verdict and, where it is a
+refusal, the exact `kind`; or, for `canonicalisation`, the exact expected bytes and their SHA-256.
+**Begin with `canonicalisation`**: it needs no key material, no stub server and no clock, and an
+implementation that fails it cannot produce a correct signature no matter what else it gets right.
 
 **The suite is itself tested against broken implementations** — a missing function, a more
 permissive origin policy, an ignored byte ceiling. A conformance suite that has never been seen to

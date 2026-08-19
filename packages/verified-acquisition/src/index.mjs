@@ -45,7 +45,12 @@
 // `CONTRACT_VERSION` changes when the shape of an input or a returned refusal changes. A
 // consumer pinning a major version is pinning the meaning of every `kind` string below.
 
-export const CONTRACT_VERSION = '1.0.0';
+// `1.1.0` since `D-0547`: `VA-012` (canonical encoding) is a NEW requirement and `VA-001` now
+// requires two more functions on the surface, so an implementation that conformed to `1.0.0` no
+// longer conforms. Nothing already stated changed meaning — no `kind` string, no input shape, no
+// refusal — which is why this is a minor and not a major. Left at `1.0.0` it would have been a
+// silent contract change, the one thing a version number exists to prevent.
+export const CONTRACT_VERSION = '1.1.0';
 
 export {
   fetchArtefact,
@@ -66,8 +71,8 @@ export {
 
 export { canonicalJson, canonicalJsonBytes } from './canonical-json.mjs';
 
-// `D-0546`. Additive: nothing already exported changed shape, so `CONTRACT_VERSION` stays at
-// 1.0.0 — a consumer pinned to it keeps every meaning it pinned. A publisher needs this to
+// `D-0546`. Additive: nothing already exported changed shape, so this export alone did not move
+// `CONTRACT_VERSION` — the `1.1.0` above came later, with `VA-012`. A publisher needs this to
 // find out that a descriptor is malformed BEFORE signing it, rather than downstream of a
 // signature that is valid over a useless document.
 export {

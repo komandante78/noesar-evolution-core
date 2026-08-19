@@ -12690,3 +12690,68 @@ references the canonical encoder in no case.
 reusable form this component can take, and it is the difference between a library and a standard.
 **Reversal cost.** n/a — not built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0548 · The canonical encoder rejects what JSON cannot represent — 2026-08-19
+**Decision.** `canonicalJson()` now throws on an object whose prototype is neither the object
+prototype nor `null`, joining the refusals it already made for `undefined`, `bigint` and non-finite
+numbers. `SPEC.md` `VA-012` states the value space normatively and seven conformance cases measure
+the refusals.
+**Why.** `new Date(0)` has no own enumerable properties, so it encoded as `{}` — measured, not
+supposed. A publisher writing a timestamp would have signed an empty object, with a signature that
+verifies perfectly over bytes that mean nothing they intended. Silent coercion in a signing
+pre-image is the worst class of defect this package can have.
+**Rejected.** Leaving it and documenting the hazard — a hazard a caller must remember is a hazard
+that reaches production. Also rejected: encoding class instances via `toJSON()`, which would make
+the bytes depend on a method a second implementation has no way to know about.
+**Evidence.** Guard proven not to break any live caller before it was kept: all five call sites
+(`authority-protocol`, `authority-ipc-frame`, `update-manager`, `context-projector`,
+`sector-modules`) pass through the control-plane unit suite — 2639 pass / 0 fail after the change.
+Conformance 101/101; a coercing encoder is seen to FAIL the new cases.
+**Reversal cost.** A caller that today passes a class instance would go back to signing `{}`. None
+exists (measured above).
+**Funding fit.** Restack · trait 5, measurable reliability — it converts a silent wrong answer into
+a named refusal.
+**Status.** applied, committed, not deployed (no runtime behaviour changed for any existing caller).
+
+## D-0549 · `VA-012` ships, and the contract moves to 1.1.0 — 2026-08-19
+**Decision.** Executed `D-0547`: a `canonicalisation` family of **16 byte-exact vectors** in
+`conformance/vectors.json`, each carrying the input, the exact expected string and its SHA-256; a
+new normative `VA-012` in `SPEC.md` with seven numbered rules; `canonicalJson`/`canonicalJsonBytes`
+added to the required surface (`VA-001`); and `CONTRACT_VERSION` `1.0.0` → **`1.1.0`**.
+**Why the version moved.** `VA-001` now requires two more functions and `VA-012` is a new
+requirement, so an implementation that conformed to `1.0.0` no longer conforms. Nothing already
+stated changed meaning — no `kind`, no input shape — hence a minor. Leaving it at `1.0.0` would
+have been a silent contract change, which is the one thing a version number exists to prevent.
+**Rejected.** Vectors for signing rather than encoding — they would need a published private key,
+against the vector file's own stated rule that only public material is stored. Encoding is the half
+that needs no key at all, and it is the half a second implementation must get right first.
+**Evidence.** Suite **59 → 101 cases** (both measured, by running the suite at each revision),
+`VA-012` carrying 40. Oracle seen to fire: an encoder using
+insertion order instead of sorted order fails **17 of 101**, every failure attributed to `VA-012`.
+Package tests 39/39; `scripts/test.sh` 13/13 steps, exit 0. **A trap caught in the making**:
+`JSON.stringify(-0)` emits `0`, so the generated negative-zero vector was flattened and would have
+passed while measuring nothing — the literal is written by hand and a test asserts it survived.
+**Reversal cost.** Consumers pinned to `1.0.0` keep every meaning they pinned; reverting would drop
+a requirement, not change one.
+**Funding fit.** Restack · traits 2, 5 and 6 — a cross-language conformance vector set is the most
+reusable form this component takes, and it is the difference between a library and a format.
+**Status.** applied, committed, not deployed.
+
+## D-0550 · Improvement proposal — prove the vectors cross-language, do not claim it — 2026-08-19
+**Decision.** Proposed, not built: a minimal second implementation of `VA-012` in Rust, in this
+repository's existing `rust/crates/`, driven by `conformance/vectors.json` and by nothing else —
+roughly 150 lines and a test that reads the vector file.
+**Why.** `VA-012` claims an implementation in any language can be measured against these bytes.
+That claim is `[UNVERIFIED]`: every implementation that has ever run these vectors is the JavaScript
+one that produced them, so the suite has never been shown to catch a *different* encoder's mistake
+— only a deliberately crippled version of itself. UTF-16 member ordering and ECMAScript number
+formatting are exactly where a Rust or Python encoder diverges naturally, and the vectors were
+written to catch that, untested.
+**Rejected for this phase.** It is a second language and a second build path; `CLAUDE10.md` §69
+keeps that the Owner's decision, not a phase that widens itself.
+**Evidence.** Measured: 0 non-JavaScript implementations exist; the two oracle tests both cripple
+the reference implementation rather than replacing it.
+**Funding fit.** Restack · traits 2, 5 and 6 — it converts "portable" from a claim into a measured
+fact, which is the difference the funding criteria actually score.
+**Reversal cost.** n/a — not built.
+**Status.** deferred, awaiting the Owner.

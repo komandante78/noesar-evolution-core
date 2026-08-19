@@ -20,6 +20,15 @@ export function canonicalJson(value) {
   }
 
   if (typeof value === 'object') {
+    // `D-0548`. A class instance is not a JSON object, and encoding one by its own enumerable
+    // properties is silent data loss at the worst possible moment: `new Date(0)` has none, so it
+    // encoded as `{}` and a publisher would have signed an empty object where they wrote a
+    // timestamp. The signature would be valid over bytes that mean nothing they intended.
+    // `undefined` and `bigint` already threw; this closes the same hole for objects.
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError(`canonical JSON rejects ${value.constructor?.name ?? 'a non-plain object'}: only plain objects, arrays, strings, finite numbers, booleans and null are JSON values`);
+    }
     const entries = Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`);

@@ -45,6 +45,7 @@ export const REQUIREMENTS = Object.freeze({
   document: 'VA-009',
   authenticity: 'VA-010',
   refusals: 'VA-011',
+  canonicalisation: 'VA-012',
 });
 
 const VECTORS = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8'));
@@ -131,9 +132,10 @@ export async function runConformance(implementation) {
   const {
     fetchArtefact, fetchDocument, checkSource,
     verifyModelDescriptor, signModelDescriptor, publicKeyFingerprint, REFUSALS,
+    canonicalJson, canonicalJsonBytes,
   } = implementation ?? {};
 
-  for (const name of ['fetchArtefact', 'fetchDocument', 'checkSource', 'verifyModelDescriptor', 'signModelDescriptor']) {
+  for (const name of ['fetchArtefact', 'fetchDocument', 'checkSource', 'verifyModelDescriptor', 'signModelDescriptor', 'canonicalJson', 'canonicalJsonBytes']) {
     check(`surface:${name}`, typeof implementation?.[name] === 'function', `${name} is not a function`);
   }
   if (results.some((entry) => !entry.ok)) {
@@ -353,7 +355,59 @@ export async function runConformance(implementation) {
       verifyModelDescriptor({ descriptor: forged, registry }).kind === 'SIGNATURE_INVALID', 'a wrong signature must be refused');
   }
 
-  // ── 8 · every refusal an implementation can produce must be one a consumer can enumerate ────
+  // ── 8 · the canonical encoding, byte for byte — VA-012, D-0547 ──────────────────────────────
+  //
+  // The half of authenticity that needs NO key material: a signer that orders members differently
+  // produces a signature valid over bytes nobody else computes, and downstream that is
+  // indistinguishable from tampering. These are the only cases here another language can execute
+  // by reading `vectors.json` alone — the expected string AND its SHA-256 are both given, so an
+  // implementation that cannot compare strings byte-for-byte can compare digests.
+  {
+    for (const vector of VECTORS.canonicalisation.cases) {
+      // `preimage: true` means rule 7: the signature member is removed BEFORE encoding, which is
+      // what actually gets signed. Removing it after would let member order depend on it.
+      const input = vector.preimage
+        ? Object.fromEntries(Object.entries(vector.value).filter(([key]) => key !== 'signature'))
+        : vector.value;
+      let produced = null;
+      let threw = null;
+      try { produced = canonicalJson(input); } catch (error) { threw = error; }
+      check(`canonicalisation:${vector.id}`, produced === vector.expected,
+        threw ? `threw: ${threw.message}` : `expected ${JSON.stringify(vector.expected)}, got ${JSON.stringify(produced)}`);
+      check(`canonicalisation:${vector.id}:bytes-are-utf8-of-the-string`,
+        threw === null && createHash('sha256').update(canonicalJsonBytes(input)).digest('hex') === vector.expectedSha256,
+        `the SHA-256 of the encoded bytes does not match the vector — an implementation comparing digests would disagree with one comparing strings`);
+    }
+
+    // The rejections, which JSON has no syntax for and which therefore cannot live in the vector
+    // file. Each is a value that MUST NOT be silently coerced: a canonical encoder that invents a
+    // representation for something outside the value space signs a document its author never wrote.
+    for (const [id, value] of [
+      ['undefined-is-not-a-json-value', undefined],
+      ['NaN-has-no-json-representation', Number.NaN],
+      ['infinity-has-no-json-representation', Number.POSITIVE_INFINITY],
+      ['bigint-is-not-a-double', 10n],
+      ['a-function-is-not-data', () => {}],
+      // The one that was silently wrong until D-0548: `new Date(0)` has no own enumerable
+      // properties, so it encoded as `{}` — a publisher would have signed an empty object where
+      // they wrote a timestamp, with a perfectly valid signature over it.
+      ['a-class-instance-is-not-a-plain-object', new Date(0)],
+      ['a-nested-non-value-is-caught-too', { a: { b: [1, undefined] } }],
+    ]) {
+      let rejected = false;
+      try { canonicalJson(value); } catch { rejected = true; }
+      check(`canonicalisation:rejects:${id}`, rejected, 'this value must be rejected, never coerced into a representation');
+    }
+
+    // Determinism stated as an observable property rather than assumed from the sort call: the
+    // same members, built in a different insertion order, must produce identical bytes.
+    const built = { z: 1, a: { d: 4, c: 3 }, m: [1, 2] };
+    const rebuilt = { m: [1, 2], a: { c: 3, d: 4 }, z: 1 };
+    check('canonicalisation:insertion-order-cannot-change-the-bytes',
+      canonicalJson(built) === canonicalJson(rebuilt), 'two objects with the same members encoded differently');
+  }
+
+  // ── 9 · every refusal an implementation can produce must be one a consumer can enumerate ────
   {
     const declared = new Set([...(REFUSALS?.transport ?? []), ...(REFUSALS?.authenticity ?? [])]);
     const produced = results

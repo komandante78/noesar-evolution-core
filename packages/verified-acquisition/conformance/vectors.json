@@ -1,6 +1,224 @@
 {
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "note": "Declarative cases for the parts of the contract that are pure functions of their input. The behavioural cases (streaming, caps, redirects, signatures) live in index.mjs, because a stub server is code and pretending otherwise would make this file a fiction. Kept inside the package rather than in the repository's top-level conformance/ directory on purpose: this package must stay extractable, and a suite whose vectors live somewhere else is not.",
+  "canonicalisation": {
+    "note": "D-0547. Byte-exact canonical encoding vectors — the half of VA-010 that a signer must reproduce before any signature means anything, and the only family here that needs NO key material at all. Each case carries the input value, the exact expected string and its SHA-256, so an implementation in Rust, Python or Go is measured against these bytes rather than against its own encoder agreeing with itself. `rule` points at the numbered rule in SPEC.md VA-012. `preimage: true` means the expected bytes are of the value with its `signature` member REMOVED (rule 7), which is what actually gets signed. The rejection cases (undefined, NaN, bigint, a class instance) live in index.mjs, because JSON cannot express a value JSON has no syntax for. NOTE for anyone regenerating this file with JSON.stringify: it emits -0 as 0, so the negative-zero case would silently become a vacuous pass — that literal is written by hand and test/conformance.test.mjs asserts it survived.",
+    "cases": [
+      {
+        "id": "empty-object",
+        "rule": 1,
+        "value": {},
+        "expected": "{}",
+        "expectedSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      {
+        "id": "empty-array-and-empty-string",
+        "rule": 1,
+        "value": {
+          "a": [],
+          "b": ""
+        },
+        "expected": "{\"a\":[],\"b\":\"\"}",
+        "expectedSha256": "39c0baaa5b31ee45d7848dba754c7164031e563a7b2365db6b1fa0c0b789365b"
+      },
+      {
+        "id": "scalars-null-and-booleans",
+        "rule": 1,
+        "value": {
+          "f": false,
+          "n": null,
+          "t": true
+        },
+        "expected": "{\"f\":false,\"n\":null,\"t\":true}",
+        "expectedSha256": "22e00dc2f7b01420f940fbdbfbdf34fa0667cc6500186495023ba37722cbd05e"
+      },
+      {
+        "id": "no-insignificant-whitespace",
+        "rule": 1,
+        "value": {
+          "a": 1,
+          "b": [
+            1,
+            2
+          ],
+          "c": {
+            "d": 3
+          }
+        },
+        "expected": "{\"a\":1,\"b\":[1,2],\"c\":{\"d\":3}}",
+        "expectedSha256": "14ac998be0b7c8095c2fa8a894cd0c091f676acd7b0008d06d41535deecf9ea3"
+      },
+      {
+        "id": "member-order-ascii-digits-and-case",
+        "rule": 2,
+        "value": {
+          "1": 4,
+          "b": 1,
+          "A": 2,
+          "a": 3,
+          "B": 5,
+          "_": 6
+        },
+        "expected": "{\"1\":4,\"A\":2,\"B\":5,\"_\":6,\"a\":3,\"b\":1}",
+        "expectedSha256": "4480a25ec4bfb32647b7d5404d45a4f00bbdf767750dac82c13b78579c119adc"
+      },
+      {
+        "id": "member-order-is-utf16-code-units-not-code-points",
+        "rule": 2,
+        "value": {
+          "Z": 1,
+          "😀": 2,
+          "Ａ": 3,
+          "é": 4
+        },
+        "expected": "{\"Z\":1,\"é\":4,\"😀\":2,\"Ａ\":3}",
+        "expectedSha256": "151e40442d77880cccf9f7010c3b519c27b113d45c75092785d8229b7e5f48e1"
+      },
+      {
+        "id": "member-order-applies-at-every-depth",
+        "rule": 2,
+        "value": {
+          "z": {
+            "d": 1,
+            "c": {
+              "b": 1,
+              "a": 2
+            }
+          },
+          "a": 1
+        },
+        "expected": "{\"a\":1,\"z\":{\"c\":{\"a\":2,\"b\":1},\"d\":1}}",
+        "expectedSha256": "1ddccd7f6f5673cf613e816ed88bac25c4118391e936344d641abe8de2fe8bd2"
+      },
+      {
+        "id": "array-order-is-data-and-is-preserved",
+        "rule": 3,
+        "value": {
+          "list": [
+            3,
+            1,
+            2
+          ],
+          "nested": [
+            {
+              "b": 1,
+              "a": 2
+            },
+            {
+              "d": 1,
+              "c": 2
+            }
+          ]
+        },
+        "expected": "{\"list\":[3,1,2],\"nested\":[{\"a\":2,\"b\":1},{\"c\":2,\"d\":1}]}",
+        "expectedSha256": "5eb00ce912237a8afb21592b4633b43b942d1abe3b249eda1e16de0e4c226a13"
+      },
+      {
+        "id": "numbers-shortest-round-tripping-form",
+        "rule": 4,
+        "value": {
+          "a": 1,
+          "b": 1e+21,
+          "c": 1e-7,
+          "d": 100,
+          "e": -3.25,
+          "f": 0.30000000000000004
+        },
+        "expected": "{\"a\":1,\"b\":1e+21,\"c\":1e-7,\"d\":100,\"e\":-3.25,\"f\":0.30000000000000004}",
+        "expectedSha256": "4c23997a99b80496183e0b329c69cd90b1314a3828c2ce49a2b1955d70a03a0b"
+      },
+      {
+        "id": "negative-zero-encodes-as-zero",
+        "rule": 4,
+        "value": {
+          "n": -0
+        },
+        "expected": "{\"n\":0}",
+        "expectedSha256": "f3013f933b9fb80ab6d995e7ad9da36f683837ba1d81e950c943d40111eac2f0"
+      },
+      {
+        "id": "numbers-beyond-double-precision-are-already-lost",
+        "rule": 4,
+        "value": {
+          "n": 9007199254740992
+        },
+        "expected": "{\"n\":9007199254740992}",
+        "expectedSha256": "66c87d9cb3014e05a11baa97df62282d89d425f22ee15816577c84534e2ef1bb"
+      },
+      {
+        "id": "strings-use-short-escapes-and-lowercase-hex",
+        "rule": 5,
+        "value": {
+          "k": "a\"b\\c\nd\te\bf\fg\rh\u0001i\u001f"
+        },
+        "expected": "{\"k\":\"a\\\"b\\\\c\\nd\\te\\bf\\fg\\rh\\u0001i\\u001f\"}",
+        "expectedSha256": "e1b144dfb00c94ef655bbe869d368e2d54d6931c9ac09b68d6e7c0d16a4055a0"
+      },
+      {
+        "id": "non-ascii-is-emitted-literally-as-utf8",
+        "rule": 5,
+        "value": {
+          "k": "héllo — 日本語 · Ωμέγα"
+        },
+        "expected": "{\"k\":\"héllo — 日本語 · Ωμέγα\"}",
+        "expectedSha256": "7f73cf388b523da069d7c4497ebc147076a531a2b39e655d1134992cb8e5a346"
+      },
+      {
+        "id": "unpaired-surrogates-are-escaped-never-dropped",
+        "rule": 5,
+        "value": {
+          "k": "\ud800x\udfff"
+        },
+        "expected": "{\"k\":\"\\ud800x\\udfff\"}",
+        "expectedSha256": "83b960838a3e3928340578da675dc9d7b39f4592db2f324c6a61ee67033d0c52"
+      },
+      {
+        "id": "keys-are-escaped-by-the-same-rules-as-values",
+        "rule": 5,
+        "value": {
+          "a\nb": 1,
+          "é": 2
+        },
+        "expected": "{\"a\\nb\":1,\"é\":2}",
+        "expectedSha256": "74ab22893332ed44e492257b64d4ba73194f12d3026d1f7732c5d21dccbbae75"
+      },
+      {
+        "id": "descriptor-preimage-removes-its-own-signature",
+        "rule": 7,
+        "value": {
+          "id": "demo/tiny",
+          "version": "1.0.0",
+          "publisher": "demo-publisher",
+          "source": "https://models.example.invalid/tiny.gguf",
+          "license": "apache-2.0",
+          "hashes": {
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "formats": [
+            "gguf"
+          ],
+          "workloads": [
+            "chat"
+          ],
+          "resource_profiles": [
+            {
+              "name": "cpu-small",
+              "ram_gb": 8
+            }
+          ],
+          "signature": {
+            "algorithm": "ed25519",
+            "value": "AAAA",
+            "publicKeyFingerprint": "ff",
+            "signedAt": "2026-08-19T00:00:00.000Z"
+          }
+        },
+        "preimage": true,
+        "expected": "{\"formats\":[\"gguf\"],\"hashes\":{\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"id\":\"demo/tiny\",\"license\":\"apache-2.0\",\"publisher\":\"demo-publisher\",\"resource_profiles\":[{\"name\":\"cpu-small\",\"ram_gb\":8}],\"source\":\"https://models.example.invalid/tiny.gguf\",\"version\":\"1.0.0\",\"workloads\":[\"chat\"]}",
+        "expectedSha256": "d90d09f9fc22cf58a62d3973bc10e7e4209b39ce8df00a475c4d4817b06eb814"
+      }
+    ]
+  },
   "origin": [
     {
       "id": "https-is-the-transport",

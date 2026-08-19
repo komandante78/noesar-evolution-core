@@ -125,10 +125,17 @@ refusal a caller cannot enumerate reaches a person as "something failed".
 
 ## Conformance
 
-**[`SPEC.md`](./SPEC.md) is the normative document** — eleven requirements (`VA-001`…`VA-011`),
+**[`SPEC.md`](./SPEC.md) is the normative document** — twelve requirements (`VA-001`…`VA-012`),
 each naming the conformance case family that measures it. Implement from that, then run the suite.
 The mapping is enforced in both directions: a requirement no case measures, or a case naming a
 requirement that does not exist, fails the package's own tests.
+
+**Start with `VA-012`, canonical encoding.** It is the only requirement that can be satisfied
+before any key exists, and everything else in the authenticity half depends on it: a signer that
+orders object members differently produces a signature valid over bytes nobody else computes, and
+downstream that is indistinguishable from tampering. Its vectors carry the input, the exact
+expected string **and** its SHA-256, so an implementation in any language is measured against
+those bytes rather than against its own encoder agreeing with itself — no key material needed.
 
 The conformance suite is the part of this package worth more than the code. The code is one
 implementation; the suite is the **specification made executable**, so a second implementation —

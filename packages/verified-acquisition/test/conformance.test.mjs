@@ -39,6 +39,32 @@ describe('@noesar/verified-acquisition — the reference implementation conforms
     assert.ok(originFailures.length > 0, 'accepting plain http to any host must fail conformance');
   });
 
+  test('the suite fails an encoder that does not sort object members — D-0547', async () => {
+    // The defect VA-012 exists to catch, and the one a second implementation is most likely to
+    // ship: insertion order instead of sorted order. It produces valid JSON, round-trips
+    // perfectly, and yields a signature nobody else can reproduce.
+    const insertionOrder = {
+      ...implementation,
+      canonicalJson: (value) => JSON.stringify(value),
+      canonicalJsonBytes: (value) => Buffer.from(JSON.stringify(value), 'utf8'),
+    };
+    const report = await runConformance(insertionOrder);
+    const failed = report.results.filter((entry) => entry.id.startsWith('canonicalisation:') && !entry.ok);
+    assert.ok(failed.length > 0, 'an unsorted encoder must fail conformance');
+    assert.ok(failed.every((entry) => entry.requirement === 'VA-012'), 'those failures must be attributed to VA-012');
+  });
+
+  test('the suite fails an encoder that coerces a value outside the JSON space — D-0548', async () => {
+    // `JSON.stringify(new Date(0))` is a string, and `{}` for an object with no own enumerable
+    // properties: both are a representation invented for something that is not a JSON value.
+    const coercing = { ...implementation, canonicalJson: (value) => JSON.stringify(value) ?? 'null' };
+    const report = await runConformance(coercing);
+    assert.ok(
+      report.results.some((entry) => entry.id.startsWith('canonicalisation:rejects:') && !entry.ok),
+      'an encoder that coerces a non-JSON value must fail conformance',
+    );
+  });
+
   test('the suite fails an implementation that ignores the byte ceiling', async () => {
     const uncapped = {
       ...implementation,
@@ -101,5 +127,25 @@ describe('the vectors are data, and stay usable by a consumer with no JavaScript
 
   test('the vectors declare the contract version they were written against', () => {
     assert.equal(vectors.contractVersion, implementation.CONTRACT_VERSION);
+  });
+
+  test('every canonicalisation vector carries the bytes AND their digest — D-0547', () => {
+    for (const vector of vectors.canonicalisation.cases) {
+      assert.ok(vector.id, 'a vector needs an id');
+      assert.equal(typeof vector.expected, 'string', `${vector.id} needs the exact expected string`);
+      assert.match(vector.expectedSha256, /^[0-9a-f]{64}$/, `${vector.id} needs the digest of those bytes`);
+      assert.ok(Number.isInteger(vector.rule), `${vector.id} must point at a numbered rule in VA-012`);
+    }
+  });
+
+  test('the negative-zero vector still carries a negative zero', () => {
+    // Measured, not assumed: `JSON.stringify(-0)` emits `0`, so regenerating this file with a
+    // script silently flattens this case into `0 -> "0"` — which passes while testing nothing.
+    // `JSON.parse('-0')` does preserve the sign, so the literal in the file is what keeps the
+    // case real. This assertion is the tripwire on that.
+    const vector = vectors.canonicalisation.cases.find((entry) => entry.id === 'negative-zero-encodes-as-zero');
+    assert.ok(vector, 'the negative-zero case must exist');
+    assert.ok(Object.is(vector.value.n, -0), 'the vector was flattened to +0 and now proves nothing');
+    assert.equal(vector.expected, '{"n":0}');
   });
 });
