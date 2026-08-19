@@ -12638,3 +12638,55 @@ the reading itself; shipping half a metric is worse than none.
 reusable by anyone running the component, not only by this product's own UI.
 **Reversal cost.** n/a — not built.
 **Status.** deferred, awaiting the Owner.
+
+## D-0546 · The door in the wall — a publisher can now satisfy the signature requirement — 2026-08-19
+**Decision.** Executed the `D-0537` proposal, whole: `tools/sign-model-descriptor.mjs`
+(`keygen`/`sign`/`verify`), an executable validator for `schemas/model-descriptor.schema.json`
+(`descriptor-schema.mjs`, exported from the package at `CONTRACT_VERSION 1.0.0` — additive,
+nothing already exported changed shape), the publisher-facing section of the package README, and
+the two suites that prove them. `sign` validates before it signs; `verify` calls the product's own
+`verifyModelDescriptor()` through a one-key registry, so the tool cannot drift into accepting what
+an installation rejects.
+**Why.** `D-0523` made a signed descriptor required and `D-0536` made an unsigned one unstartable,
+while the only way to produce one was to reimplement the canonical encoding by hand. A requirement
+nobody outside this repository can meet is met by disabling the check.
+**Rejected.** Documenting the procedure instead of shipping it — a prose description of a canonical
+encoder gets subtly wrong, and a wrong signature is indistinguishable from a tampered document.
+**Evidence.** `node --test packages/verified-acquisition/test/*.test.mjs` 35/35 ·
+`node tools/test-sign-model-descriptor.mjs` 39/39 · `scripts/test.sh` 13/13 steps PASS (exit 0) ·
+ESLint 430 files, 0 errors · unit 2639 pass / 0 fail. **Three defects fixed at source**, each
+proven real before the guard was written: `keygen` overwrote an existing private key silently and
+`writeFileSync`'s `mode` does not apply to an existing file, so the replacement would also have
+kept mode `644` (measured); `parseArgs` throws on a flag typo, which reached the publisher as exit
+1 and a stack trace; and `packages/verified-acquisition/test/` was invoked by no runner at all —
+it existed only behind an npm script nothing calls, so these tests would have rotted like
+`http-smoke` did.
+**Reversal cost.** None on the running installation — nothing in `services/` imports the new module
+and no route changed, so this phase does not deploy. Removing it returns the requirement to being
+unsatisfiable from outside.
+**Funding fit.** Restack · traits 2 and 6 — the tool and the executable schema are what make the
+descriptor format usable by someone other than us, which is the trait that asks who else can adopt it.
+**Status.** applied, committed, **not installed** (deliberate: no runtime path changed).
+
+## D-0547 · Improvement proposal — measure the canonical bytes, the one thing a second signer must reproduce — 2026-08-19
+**Decision.** Proposed, not built: a `canonicalisation` vector family in
+`packages/verified-acquisition/conformance/` — document in, the exact canonical bytes out (as hex),
+covering key order, nested objects, arrays, unicode escaping, number forms and the removal of the
+`signature` field — so an implementation in any language can prove it agrees byte-for-byte before
+it ever produces a signature. It needs **no private key**, which is why it fits a file whose stated
+rule is that only public material is stored.
+**Why.** The suite has `origin` (15 cases) and `authenticity` (verification against fixed public
+ed25519 material) — so a third party can already prove it *verifies* correctly. Nothing measures
+that it *encodes* correctly, and that is the half a publisher must reimplement: a signer that
+orders keys differently produces a signature that is valid over bytes nobody else computes. The
+determinism check added this phase only proves this tool agrees with itself.
+**Rejected for this phase.** It is a normative artefact — `SPEC.md` maps requirements to case
+families in both directions and fails when either side is missing — so it needs its own requirement
+id, not a quiet append.
+**Evidence.** Measured this phase: `grep -c canonical
+packages/verified-acquisition/conformance/vectors.json` → **0**, and `conformance/index.mjs`
+references the canonical encoder in no case.
+**Funding fit.** Restack · traits 2, 5 and 6 — a cross-language conformance vector is the most
+reusable form this component can take, and it is the difference between a library and a standard.
+**Reversal cost.** n/a — not built.
+**Status.** deferred, awaiting the Owner.

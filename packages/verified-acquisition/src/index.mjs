@@ -66,6 +66,14 @@ export {
 
 export { canonicalJson, canonicalJsonBytes } from './canonical-json.mjs';
 
+// `D-0546`. Additive: nothing already exported changed shape, so `CONTRACT_VERSION` stays at
+// 1.0.0 — a consumer pinned to it keeps every meaning it pinned. A publisher needs this to
+// find out that a descriptor is malformed BEFORE signing it, rather than downstream of a
+// signature that is valid over a useless document.
+export {
+  validateAgainstSchema, assertSchemaSupported, formatSchemaErrors, SchemaSupportError,
+} from './descriptor-schema.mjs';
+
 /**
  * Every refusal this package can return, in one frozen list.
  *

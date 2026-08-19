@@ -1,9 +1,9 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "s342 (D-0544/D-0545)",
-  "phase_status": "COMPLETE — committed 8182f28, pushed, deployed and verified live",
-  "next_phase": "open: D-0545 (model availability as an observable signal) or D-0537 (the descriptor signing tool) — Owner chooses",
+  "current_phase": "s343 (D-0546/D-0547)",
+  "phase_status": "COMPLETE — committed, NOT deployed (deliberate: no runtime path changed; nothing in services/ imports the new module and no route changed)",
+  "next_phase": "open: D-0545 (model availability as an observable signal) or D-0547 (canonicalisation conformance vectors) — Owner chooses",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
@@ -206,6 +206,13 @@
   "phase_3_started": true,
   "phase_cycle": "15 steps (HUNT AND FIX between TEST and DOCUMENT; CLEAN UP between PUSH and WRITE HANDOFF) - defects are repaired inside the phase, and every throwaway container the phase created is removed before it closes",
   "open_findings": [
+    {
+      "id": "F-UNIT-FLAKE-001",
+      "severity": "low",
+      "status": "OPEN - seen once, NOT reproduced (s343, 2026-08-19)",
+      "summary": "the first scripts/test.sh run of s343 ended with 'FAILED: unit'. Not reproduced since: 9 further standalone runs of the unit suite and 2 further full batteries were all green (2639 pass / 0 fail, exit 0). The unit step's own output was filtered out of that first run, so the failing case is unknown. INFERRED hypothesis, unproven: `node --test` exiting non-zero with zero test failures, i.e. an uncaught error or an open handle after the run completes, which is invisible to the '# fail' counter. Not fixed: guessing at a root cause not actually found is not a repair (CLAUDE10 40a). Next time it appears, keep the full step output.",
+      "next_step": "run scripts/test.sh with the unit step's output preserved (do not filter) until it reproduces; then name the case."
+    },
     {
       "id": "F4-010",
       "severity": "low",
@@ -1085,7 +1092,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NOTHING IS PENDING. s341 built the /model chain (the chosen model is the one that answers, D-0539); s342 built its health lane (D-0544): liveness() re-reads the endpoint at most once per 15s in the background and never blocks a reader, attach() is the SINGLE observer recording the monotone last-seen and the failure counter, the derived provider is withdrawn after TWO consecutive failures (never one), and an unref-ed heartbeat drives the same reading so an installation with nobody watching still notices. NOESAR_LOCAL_MODEL_HEARTBEAT=off disables it. Three defects the tests found were fixed at source: attach() success did not record last-seen; servingEvidence still read lastProbe.ok so one failure defeated the hysteresis beside it (found by the e2e, not by reading); attach() and the probe both counted, so two failures read as four. STILL UNVERIFIED: a real model decoding tokens on this host. NOT DRAWN YET: chat.lastSeenAt is carried in the payload but no surface renders it while healthy; the death itself IS reported, through the reason the chooser already renders. NEXT, on a new instruction: D-0545 or D-0537.",
+  "next_action": "NOTHING IS PENDING. s343 executed D-0537 whole (D-0546): tools/sign-model-descriptor.mjs (keygen/sign/verify), an EXECUTABLE validator for schemas/model-descriptor.schema.json exported from @noesar/verified-acquisition (additive, CONTRACT_VERSION stays 1.0.0), the publisher section of the package README, and two suites that prove them — 35/35 package, 39/39 CLI, scripts/test.sh 13/13 steps exit 0, ESLint 430 files 0 errors, unit 2639 pass. Three defects fixed at source and each proven real first: keygen silently overwrote an existing private key (and writeFileSync's mode does not apply to an existing file, so the replacement kept 644); parseArgs threw on a flag typo, reaching the publisher as exit 1 plus a stack trace; packages/verified-acquisition/test/ was invoked by NO runner — now two named steps in scripts/test.sh. NOT DEPLOYED, deliberately: nothing in services/ imports descriptor-schema.mjs and no route changed, so the running installation's behaviour is unchanged (still d0544-health-lane). OPEN: F-UNIT-FLAKE-001, one unreproduced 'FAILED: unit' from scripts/test.sh. NEXT, on a new instruction: D-0545 or D-0547. PRIOR CONTEXT — s341 built the /model chain (the chosen model is the one that answers, D-0539); s342 built its health lane (D-0544): liveness() re-reads the endpoint at most once per 15s in the background and never blocks a reader, attach() is the SINGLE observer recording the monotone last-seen and the failure counter, the derived provider is withdrawn after TWO consecutive failures (never one), and an unref-ed heartbeat drives the same reading so an installation with nobody watching still notices. NOESAR_LOCAL_MODEL_HEARTBEAT=off disables it. Three defects the tests found were fixed at source: attach() success did not record last-seen; servingEvidence still read lastProbe.ok so one failure defeated the hysteresis beside it (found by the e2e, not by reading); attach() and the probe both counted, so two failures read as four. STILL UNVERIFIED: a real model decoding tokens on this host. NOT DRAWN YET: chat.lastSeenAt is carried in the payload but no surface renders it while healthy; the death itself IS reported, through the reason the chooser already renders. NEXT, on a new instruction: D-0545 or D-0537.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

@@ -81,6 +81,13 @@ step_tristate() {
 step unit            node --test services/reference-control-plane/test/*.test.mjs
 step source-verify   node tools/verify-source.mjs
 step auth-smoke      node tools/auth-http-smoke.mjs
+# D-0546. `packages/verified-acquisition/` is an extracted, separately-documented component with
+# its own tests, and this runner invoked none of them: they existed only behind the npm script
+# `test:conformance-package`, which nothing calls. That is the same failure the comment below
+# describes, found again one component later — so the package's suite and the signing tool's
+# end-to-end test are named here, where the battery can see them.
+step package-va      node --test packages/verified-acquisition/test/*.test.mjs
+step sign-descriptor node tools/test-sign-model-descriptor.mjs
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

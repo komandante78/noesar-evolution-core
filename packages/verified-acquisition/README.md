@@ -78,6 +78,37 @@ A refusal is always a **returned result**, never a thrown exception. Exceptions 
 programmer error — a missing `fetchImpl`, a missing sink, or attempting an artefact fetch with no
 declared digest, which is a state this package refuses to make reachable.
 
+## Publishing a descriptor a NOESAR installation will accept
+
+An installation refuses an unsigned descriptor (`NO_SIGNATURE`) and refuses to start a model from
+one. Producing a signed one by hand means reproducing the canonical JSON encoding exactly, knowing
+that the signature covers the document with its own `signature` field removed, and that the
+fingerprint is a sha256 over the SPKI DER of the public key. `tools/sign-model-descriptor.mjs` is
+that procedure, executable:
+
+```sh
+node tools/sign-model-descriptor.mjs keygen --publisher acme --out-dir ./keys
+node tools/sign-model-descriptor.mjs sign   --descriptor tiny.json --private-key ./keys/acme.private.pem --output tiny.signed.json
+node tools/sign-model-descriptor.mjs verify --descriptor tiny.signed.json --public-key ./keys/acme.pub.pem
+```
+
+**Three properties, each there for a reason a publisher can feel.** `sign` validates against
+[`schemas/model-descriptor.schema.json`](../../schemas/model-descriptor.schema.json) *first* — a
+valid signature over a malformed descriptor is refused downstream for a reason that has nothing to
+do with authenticity, and the two failures are indistinguishable from the outside. `verify` builds
+a one-key registry and calls `verifyModelDescriptor()`, the same function the server calls, so this
+tool can never drift into accepting what the product rejects. And nothing here touches the network:
+the private key is used where it was made and written nowhere else.
+
+Exit codes are part of the interface — `0` ok · `2` usage · `3` the descriptor does not match the
+schema · `4` refused. The validator is exported too (`validateAgainstSchema`, `formatSchemaErrors`),
+so a publisher's own pipeline can check shape without shelling out.
+
+The **operator**, not the publisher, completes the chain: until the public half is registered
+(`POST /api/v1/publishers/register`, Owner + recent strong reauthentication) a descriptor signed
+with that key verifies as `KEY_NOT_TRUSTED` — correctly, since the installation has never been
+told who you are.
+
 ## Refusals
 
 Every one is enumerated in `REFUSALS`, frozen, so a consumer can assert it handles all of them. A
