@@ -84,10 +84,16 @@ Clauses the matrix does not cover:
 
 - **the commercial edition integrates through frozen contracts** — `05_OPEN_SOURCE_COMMERCIAL`, untouched
 - **all V2 capabilities are traced** — `TRACEABILITY_MATRIX.csv` has 14 requirement rows; **nobody has verified they are traced**
-- **provenance and signatures exist** — `rust/BUILD_STATUS.md` states of itself
-  `RUST_BINARY_INCLUDED=false`, `PROVENANCE_SIGNED=false`
-- **five archives pass an *independent* audit** — independent by definition excludes the
-  agent that built them
+- **provenance and signatures exist** — **corrected 2026-08-20 (`D-0588`), this entry was stale
+  in a way that mattered.** It read `PROVENANCE_SIGNED=false`; `rust/BUILD_STATUS.md:12` has read
+  `true` since 2026-07-27, when `--signing-key-file` became required with no unsigned escape
+  hatch. The clause is still **not** closed, but for a sharper reason than "unsigned": the
+  algorithm is **HMAC-SHA256, symmetric**, so the same document sets `publiclyVerifiable: false`
+  — a signature only the holder of the shared key can check does not survive an *independent*
+  audit. `RUST_BINARY_INCLUDED=false` stands as written.
+- **the five archives of the delivery instance pass an *independent* audit** (`PKG-001`; the
+  five positions are enumerated in `MASTER_PROJECT/09_PIANO.md` §4a) — independent by
+  definition excludes the agent that built them
 - **ML-BOM** — absent (SBOM exists: CycloneDX 1.7 + SPDX 2.3)
 
 ## 3. Layer three — the specified architecture (89 master documents)

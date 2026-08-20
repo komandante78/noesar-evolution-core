@@ -29,8 +29,9 @@ indipendentemente costruibile, AGPL-3.0-or-later oppure licenza commerciale, Apa
 SDK e contratti, ATOM privato dietro contratto pubblico, il lavoro finanziato non può dipendere
 da repository privati, il testo sulla privacy è legato allo stato di uscita verificato, Owner
 Bypass delimitato e a scadenza, invarianti di sicurezza non aggirabili, nessuna installazione
-silenziosa, aggiornamenti firmati con rollback, un solo container come default, cinque archivi
-finali, il framework dei moduli di settore va nel core.
+silenziosa, aggiornamenti firmati con rollback, un solo container come default, i cinque archivi
+di consegna (le cinque posizioni sono enumerate in `09 §4a`), il framework dei moduli di settore
+va nel core.
 
 ## 3. Da decidere
 

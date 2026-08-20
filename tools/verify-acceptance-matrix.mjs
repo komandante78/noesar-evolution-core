@@ -5,7 +5,7 @@
 //
 // Three duties, and the third is the one that makes this more than a linter:
 //
-//   1. DRIFT      `docs/acceptance-matrix.json` must equal what the four documents say right now.
+//   1. DRIFT      `docs/acceptance-matrix.json` must equal what the source documents say right now.
 //                 The documents are the source of truth; the JSON is a projection of them. Editing
 //                 a criterion without regenerating fails here, so the two can never become two
 //                 different matrices — which is exactly how this project ended up with four stale

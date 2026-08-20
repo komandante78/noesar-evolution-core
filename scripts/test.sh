@@ -99,6 +99,12 @@ step canon-python    pyrun packages/verified-acquisition/conformance/python/run_
 # verification, or when the number of criteria carrying NO verdict at all gets worse. It never
 # decides that a criterion passes — status is read from the document that owns it, never inferred.
 step matrix          node tools/verify-acceptance-matrix.mjs
+# D-0588. "The five archives" named two different artifacts across eight places in the tree, and
+# MASTER_PROJECT enumerated them nowhere — the product's last definition-of-done clause had no
+# readable content. This holds the single canonical list, proves it still matches the five names
+# incised in the sealed archives' own filenames, and refuses a governing document that says
+# "the five archives" without saying which instance it means.
+step five-archives   node tools/verify-five-archives.mjs
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

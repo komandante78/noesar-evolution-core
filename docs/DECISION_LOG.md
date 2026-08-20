@@ -13622,3 +13622,40 @@ il primo passo è un **vocabolario ristretto** di condizioni eseguibili, non un 
 sola è verificabile, una che si accumula no) e tratto **2** (il meccanismo è riusabile fuori da
 questo prodotto — è un contratto sulla memoria, non una schermata).
 **Status.** proposed — non eseguita in questa fase.
+
+## D-0588 · «I cinque archivi» nominava due cose: una lista sola, due istanze — 2026-08-20
+**Decision.** Le cinque posizioni di consegna sono enumerate in **un solo posto**,
+`MASTER_PROJECT/09_PIANO.md` §4a, con il contenuto di ciascuna; ogni altro punto che governa dice
+**quale istanza** intende — sigillata (V4 ricevuta, fuori dal repository per la regola 34) o di
+consegna (da produrre) — oppure punta lì. Nuova riga di matrice `PKG-001`, con un ❌ onesto.
+**Why.** Otto punti dell'albero dicevano «cinque archivi»/«five ZIPs» intendendone due artefatti
+diversi, e `MASTER_PROJECT/` non li enumerava affatto: l'unica enumerazione stava nel V4, rimosso
+dal `D-0097`. L'ultima clausola del "fatto" del prodotto era una frase senza contenuto leggibile.
+**Rejected.** Dichiararle «due liste diverse», come faceva `engineering-depth` §8 passo 12:
+misurato, le due serie portano **gli stessi cinque titoli** — è una lista in due istanze, e
+chiamarle liste diverse rispondeva alla collisione con un secondo errore.
+**Evidence.** `tools/verify-five-archives.mjs` (nuovo, in `scripts/test.sh`): visto FALLIRE su 6
+difetti reali prima della correzione, e visto fallire di nuovo, apposta, rinominando la posizione
+2 — `RUNTIME_AND_DELIVERY` vs `RUNTIME_AND_DEPLOYMENT` letto dai nomi dei cinque archivi sigillati
+(`EVIDENCE/v4_removal_recovery_20260726T163433Z.txt`). Ora PASS: 25 file, 10 menzioni, 0 ambigue.
+Matrice 66 -> 67 criteri, verdetti 55 -> 56, **unstated fermo a 11, critical 0**. Unit 2860/2861
+(1 skip preesistente), ESLint 454 file 0/0/0, `SOURCE_VERIFY=PASS`.
+**Reversal cost.** nessuno — additivo. Nessuna riga esistente ha cambiato verdetto.
+**Status.** applied. **Il criterio resta ❌**: `D-0588` ha chiuso il *contenuto* del criterio, non
+il criterio — nessun archivio di consegna esiste.
+
+## D-0589 · Improvement proposal — la firma di provenienza non regge un audit indipendente — 2026-08-20
+**Decision.** Proposta, non eseguita: sostituire (o affiancare) la firma di provenienza HMAC-SHA256
+con una firma **asimmetrica** (Ed25519 / sigstore), così `publiclyVerifiable` diventa `true`.
+**Why.** Trovato riparando un difetto: `rust/BUILD_STATUS.md:12` dice `PROVENANCE_SIGNED=true`, ma
+essendo simmetrica solo chi possiede la chiave condivisa può verificarla. `PKG-001` chiede un audit
+**indipendente**, e un auditor indipendente per definizione non ha quella chiave: la posizione 5
+(«provenienza») non è chiudibile nella forma attuale, per quanto la firma esista.
+**Rejected.** Lasciare com'è e dichiararlo in nota: sposta il problema all'audit, dove costa di più.
+**Evidence.** `rust/BUILD_STATUS.md:12` e §"Signing and the Windows transport", che dichiara già
+`publiclyVerifiable: false` — la contraddizione è scritta, non dedotta.
+**Reversal cost.** [STIMA] media — cambia il formato di provenienza e chi lo verifica.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: provenienza e audit
+trail verificabili da terzi) e **tratto 2** (riusabile: una provenienza a chiave pubblica la
+verifica chiunque, non solo chi l'ha prodotta).
+**Status.** proposed — non eseguita in questa fase.

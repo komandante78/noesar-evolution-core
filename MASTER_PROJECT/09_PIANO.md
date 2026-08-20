@@ -139,11 +139,61 @@ Quello che la specifica chiede già, e che oggi non è vicino:
 - Sicurezza, privacy, licenze, backup, aggiornamenti, runtime multipiattaforma e
   accessibilità passano.
 - SBOM, ML-BOM, provenienza e firme esistono.
-- Cinque archivi finali passano un audit indipendente.
+- I cinque archivi **di consegna** passano un audit indipendente — le cinque posizioni sono
+  enumerate in **§4a**, che è l'unico posto in cui questa lista esiste.
 
 Oggi il prodotto dichiara di sé stesso, nel proprio file di stato: binario non incluso,
 provenienza non firmata, **pronto per la produzione: falso**. È una dichiarazione onesta e va
 tenuta finché non è falsa.
+
+## 4a. I cinque archivi — cinque posizioni, due istanze
+
+Fino al `D-0588` questa lista non esisteva in nessun punto del progetto di riferimento. Otto
+punti dell'albero dicevano «cinque archivi» o «five ZIPs» **intendendone due cose diverse**, e
+l'unica enumerazione stava nella documentazione V4, rimossa dall'albero dal `D-0097`. Un
+criterio di consegna il cui contenuto non si può leggere non è un criterio: è una frase.
+
+**Non sono due liste. È una lista sola, in due istanze.** Le cinque posizioni:
+
+<!-- FIVE-ARCHIVES:BEGIN — canonica. Verificata da `tools/verify-five-archives.mjs`: i cinque
+     nomi qui sotto devono coincidere con quelli incisi nei nomi degli archivi sigillati
+     (`EVIDENCE/v4_removal_recovery_*.txt`). Non modificare un nome senza leggere quel file. -->
+
+1. **Complete Product Source** — core pubblico, contratti d'integrazione, WebUI, control plane,
+   sicurezza, dati, documenti, CodeN, ragionamento di riferimento, hardware e test.
+2. **Runtime and Deployment** — OCI, Linux/Windows/macOS, air-gap, installazione, riparazione,
+   aggiornamento, backup, ripristino e rollback.
+3. **Capabilities and SDK** — App, Tool, Skill, connettori, framework dei moduli, SDK, manifest,
+   firma, quarantena e ciclo di vita.
+4. **Security and Acceptance** — modello delle minacce, red-team, privacy, licenze, sandbox,
+   catena di fornitura, test di piattaforma, accessibilità, prestazioni e ripristino.
+5. **Final Release and Operations** — rilascio installabile, documentazione completa, checksum,
+   provenienza e handoff.
+
+<!-- FIVE-ARCHIVES:END -->
+
+Tutte e cinque si riferiscono alla **stessa identità di rilascio congelata**, con gli stessi
+hash. Non si crea una sesta posizione.
+
+**Le due istanze, e come si nominano senza ambiguità:**
+
+| Istanza | Cos'è | Dove sta | Regola |
+|---|---|---|---|
+| **sigillata (sorgente)** | il pacchetto V4 **ricevuto**, già prodotto da altri | `/mnt/user/downloads/NOESAR_EVOLUTION_FINAL/`, SHA-256 in `EVIDENCE/v4_removal_recovery_*.txt` | mai dentro il repository — `CLAUDE10.md` regola 34 |
+| **di consegna** | ciò che **questo progetto deve produrre** per dirsi finito | non esiste ancora | ogni archivio con manifest, versione, checksum, SBOM, provenienza e firma |
+
+**La regola che ne discende, e che un test fa rispettare:** un documento che governa —
+`MASTER_PROJECT/`, `CLAUDE10.md`, le skill — non dice mai «i cinque archivi» senza dire **quale
+istanza**, oppure senza puntare qui. Non deve ripetere la lista: deve dire di quale delle due
+sta parlando. La forma sbagliata non è imprecisa, è **illeggibile in due modi opposti** — la
+stessa collisione che `02_ATOM.md` racconta per `L0-L8`, e che lì è costata un incidente vero.
+
+**La riga di matrice**, perché un criterio che nessuna riga misura non è chiuso.
+Severità: **C**ritica / **A**lta / **M**edia.
+
+| ID | Criterio | Sev | Verifica | Stato |
+|---|---|---|---|---|
+| `PKG-001` | I cinque archivi **di consegna** esistono, occupano le cinque posizioni di §4a, e ognuno porta manifest, versione, checksum, SBOM, provenienza e firma | **A** | audit indipendente dei cinque archivi prodotti, confrontati posizione per posizione con §4a; l'identità delle posizioni è già verificata a ogni suite da `tools/verify-five-archives.mjs` | ❌ **non soddisfatto, e non è vicino** (`D-0588`): nessun archivio di consegna è mai stato prodotto, misurato 2026-08-20, e la posizione 1 non potrebbe essere completa comunque — `rust/BUILD_STATUS.md:10` dichiara di sé `RUST_BINARY_INCLUDED=false`. Ciò che `D-0588` ha chiuso è il **contenuto** del criterio, non il criterio |
 
 ## 5. Cosa NON costruire, e perché
 

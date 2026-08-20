@@ -63,6 +63,12 @@ export const SOURCES = Object.freeze([
   // once, and a register nobody can quote whole is the defect `G-01` was opened for.
   { file: 'MASTER_PROJECT/08_INSTALLAZIONE.md', prefix: 'INST', owns: 'the installation as it runs: mounts, listeners, privileges, the writable surface' },
   { file: 'MASTER_PROJECT/01_VISIONE_E_POSIZIONE.md', prefix: 'SESS', owns: 'the session packet and its replay — the product\'s evidence claim about itself' },
+  // Added 2026-08-20 (`D-0588`). The last clause of the product's own definition of done — *"i
+  // cinque archivi di consegna passano un audit indipendente"* — had stood as prose since the
+  // rewrite, measured by nothing, and its list of five positions existed in no document of
+  // `MASTER_PROJECT/` at all. A criterion no row measures is not closed, and one whose content
+  // cannot be read is not a criterion. `PKG-001` gives it a row and an honest ❌.
+  { file: 'MASTER_PROJECT/09_PIANO.md', prefix: 'PKG', owns: 'the delivery package: the five archives, their identity, and what each must carry' },
 ]);
 
 const SEVERITY = Object.freeze({ C: 'critical', A: 'high', M: 'medium' });
@@ -123,7 +129,7 @@ export function parseDocument(file) {
   const lines = readFileSync(absolute, 'utf8').split('\n');
   const rows = [];
   lines.forEach((line, index) => {
-    if (!/^\s*\|\s*`?(CE|CUBE|ARCH|INST|SESS)-\d{3}`?\s*\|/.test(line)) return;
+    if (!/^\s*\|\s*`?(CE|CUBE|ARCH|INST|SESS|PKG)-\d{3}`?\s*\|/.test(line)) return;
     const parts = cells(line);
     const [id, criterion, severity, howVerified, status] = parts;
     rows.push({

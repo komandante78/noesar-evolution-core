@@ -46,7 +46,7 @@ Perché il V4 aveva ragione, e cambiarlo sarebbe stato solo rumore.
 - Il framework dei moduli di settore va nel core; i moduli regolati no.
 - I confini di uso previsto per medico, aerospaziale, finanziario, industriale, scientifico.
 - Accessibilità WCAG 2.2 AA, UTC + fusi IANA, inglese canonico.
-- Cinque archivi finali · SBOM · provenienza · firme.
+- I cinque archivi di consegna (`09 §4a`) · SBOM · provenienza · firme.
 
 **In pratica: tutta la parte legale, di licenza, di conformità e di confine è rimasta com'era.**
 Era la parte fatta meglio.

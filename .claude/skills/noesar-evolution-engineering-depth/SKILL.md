@@ -212,12 +212,20 @@ each phase on this path takes.
     Settled: no license key, ever, on this path. Registration is the whole mechanism.
 11. **Verify the product, not just the code**: a clean install, first start, the primary use
     path, a restart, an update and a rollback — each one actually run, not inferred.
-12. **Package exactly five final ZIPs**, each with its manifest, version and checksum. These
-    are the *delivery* ZIPs — a different five from `CLAUDE10.md` rule 34's five *source*
-    ZIPs (which stay forbidden from the repository, unrelated to this list). Naming both
-    "the five ZIPs" is a collision this project has been burned by before (the ATOM `L0-L8`
-    naming collision, `02_ATOM.md`) — never call one when the other is meant.
-13. **Compare the five ZIPs against the frozen checklist from step 2.** All criteria pass →
+12. **Package the five archives of the *delivery* instance**, each with its manifest, version,
+    checksum, SBOM, provenance and signature. **The five positions are enumerated in exactly one
+    place — `MASTER_PROJECT/09_PIANO.md` §4a — and nowhere else, this skill included.** Repeating
+    the list here is how a second, drifting copy is born; `tools/verify-five-archives.mjs` holds
+    the single copy and proves it still matches the sealed instance's own filenames.
+    **Corrected `D-0588`:** this step used to call the delivery set *"a different five, unrelated"*
+    to `CLAUDE10.md` rule 34's five *source* ZIPs. That is wrong in a way that mattered — measured,
+    the two carry the **same five titles**, because they are the same five positions in two
+    instances: the V4 package **received** and sealed (rule 34 keeps it out of the repository), and
+    the package this project must **produce**. So the disambiguation is never "which list" — there
+    is one list — it is always **which instance**, and it is stated every time. The collision this
+    project was already burned by (`L0-L8`, `02_ATOM.md`) was one vocabulary with two referents;
+    calling them unrelated lists was that same mistake being answered with a second error.
+13. **Compare the five delivery archives against the frozen checklist from step 2.** All criteria pass →
     declare the product complete and **stop** — no further phase is opened uninvited. Something
     truly indispensable still missing → name **only** the precise blocker and the exact datum
     needed to close it, nothing broader.
