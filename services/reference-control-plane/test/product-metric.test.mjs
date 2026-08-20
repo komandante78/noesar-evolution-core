@@ -52,7 +52,16 @@ describe('the product metric', () => {
       assert.equal(summary.medianSeconds, 300);
       // The left edge of the interval travels with the number, so no reader has to guess
       // what "ready" meant in the build that produced it.
-      assert.match(summary.readyDefinition, /shadow execution does not exist/);
+      //
+      // This assertion used to pin the SUBSTITUTION: `/shadow execution does not exist/`, true
+      // when it was written and false since `D-0567`, which gave `measure()` a shadow result and
+      // therefore gave `UI-070` the instant it actually asks for. A test that pins a compromise
+      // keeps the compromise alive after the reason for it is gone, so it now pins the real
+      // definition — and, in the same line, that the older samples are still disclosed rather
+      // than quietly reinterpreted as something they are not.
+      assert.match(summary.readyDefinition, /shadow result was ready for a human/);
+      assert.match(summary.readyDefinition, /pre-D-0567 samples/);
+      assert.equal(summary.readySources['approval-raised'], 1, 'this fixture records the old edge by default');
     } finally { rmSync(f.dir, { recursive:true, force:true }); }
   });
 

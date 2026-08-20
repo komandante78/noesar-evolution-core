@@ -82,8 +82,16 @@ import { readFileSync } from 'node:fs';
  * ATOM daemon in a disposable probe rather than asserted. The two rows still unstated are
  * `CE-024` (needs a human review bench that does not exist) and `CE-035` (needs a second real
  * machine), so this notch is the last one the current host can turn. Seen to FAIL at 1 first.
+ *
+ * **1** at `D-0611` (`CE-024`) — and the line above was wrong about it twice, which is worth
+ * keeping rather than editing away. The review bench was **not** missing: `ProductMetric`, the
+ * `reviewSamples` store, `/api/v1/metrics/review-time` and the Home panel all existed and were
+ * green. What was missing was the JOIN — `productMetric.record()` had a single caller, so the
+ * CodeN Evolution run lane never entered the product's own metric. And "the last notch this host
+ * can turn" was therefore premature: the host was never the constraint, an unexamined assumption
+ * was. `CE-035` genuinely does need a second machine. Seen to FAIL at 0 first.
  */
-const MAX_UNSTATED = 2;
+const MAX_UNSTATED = 1;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

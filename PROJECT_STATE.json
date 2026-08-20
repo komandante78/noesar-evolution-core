@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0606 DEPLOYATO — il debito §3a e chiuso: l installazione serve la superficie replay.* e il referencedDigests() riparato. Il deploy stesso ha dato un difetto (D-0608): redeploy.sh contava le righe dell env-dump invece delle variabili, e con zero variabili la guardia di completezza sarebbe passata avviando un sostituto senza ambiente",
-  "phase_status": "COMPLETE E INSTALLATO — nessun debito §3a aperto. Live: noesar-evolution:d0606-replay-retention-20260820T132914Z, running/healthy, RestartCount=0. Byte-uguale albero-immagine 468/468. Unit 2902 (2901 pass, 0 fail, 1 skip preesistente), fixture di deploy 80/80 con oracolo visto rosso 3 su 3, SOURCE_VERIFY=PASS",
-  "next_phase": "decisione dell Owner: CE-024 (banco di revisione, da costruire) / CE-035 (secondo nodo reale via VPS) / debito minore D-0605, D-0589, MANIFEST.sha256",
+  "current_phase": "D-0611 — CE-024 chiusa collegando la metrica che gia esisteva invece di costruirne una seconda: il lane dei run di CodeN Evolution alimenta ProductMetric col bordo sinistro measurement.measuredAtUnix, e /review in entrambe le shell restituisce lo stesso oggetto dalla stessa istanza che la Home rende",
+  "phase_status": "COMPLETE IN ALBERO, NON INSTALLATO — debito §3a APERTO e dichiarato. Unit 2922 (2921 pass, 0 fail, 1 skip preesistente), ESLint 466 file 0/0/0, SOURCE_VERIFY=PASS, ACCEPTANCE_MATRIX PASS 66/67 con verdetto (58 met), ratchet 2 -> 1 visto fallire a 0, ce-024-the-run-lane-reaches-the-metric 8/8 con oracolo visto rosso 4 su 4",
+  "next_phase": "decisione dell Owner: deployare D-0611 (chiude il debito §3a) oppure CE-035 / debito minore D-0605, D-0589, MANIFEST.sha256",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "7e85915",
-  "last_updated_utc": "2026-08-20T13:45:00Z",
+  "last_updated_utc": "2026-08-20T14:10:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NESSUN DEBITO §3a APERTO — l albero e l installazione dicono la stessa cosa, provato leggendo i byte dentro l immagine spedita (5 file su 5 identici). La prossima decisione e dell Owner e non c e piu una scelta forzata: restano due caselle senza verdetto (CE-024 chiede il tempo di revisione umana e il banco di revisione NON ESISTE, quindi chiuderla significa costruirlo; CE-035 chiede ssh + coden_evolution da un secondo nodo reale, che serve un VPS col prodotto installato SOPRA, mai questo host esposto) e il debito minore (D-0605 la guardia per passo del expect di riferimento, D-0589 la provenienza HMAC simmetrica che blocca la posizione 5 di PKG-001, MANIFEST.sha256 stale di circa 670 file dal D-0399 e nessun passo della batteria lo verifica). Nuova proposta aperta: D-0609, la fixture di deploy come passo nominato di scripts/test.sh. NOTA: /sweep non e mai stato eseguito con apply:true su dati reali, nemmeno ora che la superficie e viva.",
+  "next_action": "PRIMA COSA DA DECIDERE: il DEBITO §3a. D-0611 e in albero, provato e NON INSTALLATO — sull immagine viva productMetric.record() ha ancora UN SOLO chiamante (la coda di approvazione), quindi la Home riporta una cifra che NON contiene le decisioni di CodeN Evolution e /review non esiste in nessuna delle due shell. NESSUN RISCHIO ATTIVO: non si perde nulla, si misura di meno. Se si deploya, lo strumento c e ed e provato: tools/deploy/redeploy.sh --check prima, poi --apply --authorized-by-owner --image <tag> con l immagine costruita offline dal oci/Dockerfile canonico. NESSUNA MIGRAZIONE DI SCHEMA: readySource e additivo e i campioni che ne sono privi sono letti come approval-raised, provato da un test. Poi resta UNA SOLA casella senza verdetto, CE-035, che chiede ssh + coden_evolution da un secondo nodo reale e quindi un VPS col prodotto installato SOPRA, mai questo host esposto. NOTA: il cablaggio di server.mjs e asserito sul TESTO del file spedito, non eseguito — nessun boot del server in questa fase.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

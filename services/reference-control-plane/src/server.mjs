@@ -348,6 +348,12 @@ const workspaceActions = new WorkspaceActionOrchestrator({
   // Under `state/`, beside auth.json and ai-workspace.json, because that is already this
   // product's own state directory — not scattered into the tree the operator is editing.
   runStoreDirectory: join(workspace, 'state/runs'),
+  // `CE-024`. Every decided run becomes a sample of the ONE metric this product publishes, so
+  // the CodeN Evolution review lane finally appears in the figure Home has been rendering from
+  // the approval queue alone. Late-bound on purpose: `productMetric` is built ~870 lines below
+  // this, and a direct reference here would capture an uninitialised binding — the hazard
+  // `getClosureRegister` already carries a comment about at the dispatch.
+  recordReview: (sample) => productMetric.record(sample),
 });
 // F4-015: shadowStatus() probes the mount by writing and reflink-cloning a real file
 // (probeCopyOnWrite in shadow.mjs) — correct for measuring truth rather than assuming it,
@@ -435,6 +441,9 @@ const sessionDispatch = createSessionDispatch({
   // after this dispatch — reading the binding directly here would read it uninitialised.
   aiWorkspace,
   getClosureRegister: () => closureRegister,
+  // `CE-024`. The same instance the `/api/v1/metrics/review-time` route reads, so `/review` in
+  // either shell and the Home panel cannot drift apart.
+  getProductMetric: () => productMetric,
   // `D-0444`: the connection between the catalogue (what is present) and the runtime (how to
   // launch it), reachable identically from every shell through this one dispatch — the same
   // reason `codenAddressBook` above is a thunk rather than a value: `localModels` and

@@ -5754,3 +5754,23 @@ progetto: **esattamente due**. Salute riprovata dopo la pulizia: `running`/`heal
 **Non provato qui, e detto:** nulla che richieda una sessione autenticata. Nessuna suite mutante
 puntata sull'installazione (§3a 11e). **`/sweep` non è mai stato eseguito con `apply:true` su dati
 reali**, nemmeno adesso che la superficie è viva — cancella byte che non tornano.
+
+## 2026-08-20T14:05Z — `D-0611` (`CE-024`) costruito e provato, **NON installato**
+**Tag in esecuzione:** `noesar-evolution:d0606-replay-retention-20260820T132914Z` — invariato.
+**Debito §3a APERTO da questa fase, e dichiarato:** l'albero collega il lane dei run alla metrica
+del prodotto e ripara il `catch` muto della Home; **l'installazione viva no**. Sull'immagine
+installata `productMetric.record()` ha ancora un solo chiamante (la coda di approvazione), quindi
+la Home continua a riportare una cifra che **non contiene** le decisioni di CodeN Evolution, e
+`/review` non esiste in nessuna delle due shell. **Nessun rischio attivo** — non si perde nulla,
+si misura di meno — ma il debito è reale finché non si deploya.
+**Verificato in albero, non sul vivo:** unit **2922** (2921 pass, 0 fail, 1 skip preesistente) ·
+ESLint **466 file 0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact` ·
+`ACCEPTANCE_MATRIX: PASS` (66/67 con verdetto, 58 `met`, ratchet **2 → 1**, visto fallire a 0) ·
+`ce-024-the-run-lane-reaches-the-metric` **8/8** con oracolo **visto rosso 4 su 4**.
+**Igiene (§5a):** nessun contenitore creato da questa fase oltre a quelli usa-e-getta di
+`run-eslint.sh`, tutti `--rm`. Sopravvivono i due previsti: `noesar-evolution` (Up, healthy) e
+`noesar-evolution-pre-20260820T133034Z` (Exited).
+**Costo di rollback del deploy, se e quando avviene (§3a 11d):** nessuna migrazione di schema —
+il campo `readySource` è additivo e i campioni che ne sono privi sono letti come `approval-raised`,
+provato da un test che scrive un campione vecchio direttamente nello store. Predecessore da
+preservare con nome timestampato e backup runtime **a servizio fermo**, come sempre.

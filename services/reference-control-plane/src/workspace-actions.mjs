@@ -113,6 +113,13 @@ export class WorkspaceActionOrchestrator {
   // `reject()` drops it. In memory only, and deliberately so: a shadow that outlived the process
   // that made it would be a measured result nobody can prove still matches the workspace.
   #shadows = new Map();
+  // `CE-024`. Injected, never constructed here: a metric built inside this class would be a
+  // SECOND set of samples, invisible to the store Home reads — the "second client with its own
+  // state" this design rejects wherever it appears. Absent by default, so every existing caller
+  // and every test keeps working unchanged and simply records nothing.
+  #recordReview = null;
+  #reviewsWithoutMeasurement = 0;
+  #reviewsNotRecorded = 0;
   #runStore;
 
   #authoringReplayStore;
@@ -131,7 +138,7 @@ export class WorkspaceActionOrchestrator {
 
   #noveltyBudget;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500, noveltyBudget = 5 }) {
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500, noveltyBudget = 5, recordReview = null }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -171,6 +178,7 @@ export class WorkspaceActionOrchestrator {
         `runRetention must be a positive integer, got \`${runRetention}\``);
     }
     this.#runRetention = runRetention;
+    this.#recordReview = typeof recordReview === 'function' ? recordReview : null;
     // `CE-030`. Validated here, like `runRetention` above and for the same reason: a bad value
     // must be a startup failure, not something discovered the day a budget silently never
     // stops anything. Zero is refused deliberately — a budget of zero would mean the product
@@ -731,6 +739,58 @@ export class WorkspaceActionOrchestrator {
       removable: result.removable,
       live: live.size,
     };
+  }
+
+  /**
+   * `CE-024`, the half this orchestrator owns: hand a decided run to the product's metric.
+   *
+   * **It reports, it does not compute.** There is one metric in this product — `ProductMetric`,
+   * backed by the `reviewSamples` store — and the number it publishes is what Home and `/review`
+   * both read. An earlier draft of this work computed a second figure here, off these run
+   * records, and it would have put two different numbers behind one sentence: `CE-033`'s rule,
+   * and the `L0-L8` collision `02_ATOM.md` records as having already cost this project real
+   * confusion. So this method samples, and something else averages.
+   *
+   * **The left edge is `measurement.measuredAtUnix`**, which is what `UI-070` asks for and what
+   * `product-metric.mjs` spent this build unable to reach: the instant the result existed **in
+   * shadow** and a person had something real to look at. Not the plan instant — the person was
+   * not waiting on anything they could read yet.
+   *
+   * **A run decided without ever being measured is not sampled, and not silently swallowed.** It
+   * has no left edge, so an interval for it would be invented rather than measured; the count is
+   * returned so the caller can report it beside the figure it is not part of. Inventing one from
+   * the plan instant would be reporting a measurement nobody took, and dropping it without
+   * saying so would be the denominator-picking `UI-072` forbids.
+   */
+  #sampleReview(run, decision) {
+    if (!this.#recordReview) return;
+    const readyAtUnix = run.measurement?.measuredAtUnix;
+    if (!Number.isFinite(readyAtUnix) || !Number.isFinite(run.decidedAtUnix)) {
+      this.#reviewsWithoutMeasurement += 1;
+      return;
+    }
+    try {
+      this.#recordReview({
+        itemId: run.runId,
+        kind: 'coden-run',
+        projectId: null,
+        readyAt: new Date(readyAtUnix * 1000).toISOString(),
+        decidedAt: new Date(run.decidedAtUnix * 1000).toISOString(),
+        decision,
+        outcome: run.status,
+        actorId: run.decidedBy ?? 'system',
+        readySource: 'shadow-measured',
+      });
+    } catch {
+      // A metric that cannot be written must never be what fails a promotion that already
+      // happened. The same reasoning `#saveRun` applies to its own store.
+      this.#reviewsNotRecorded += 1;
+    }
+  }
+
+  /** What the metric could not be told, so a caller can report it rather than infer it. */
+  reviewSamplingGaps() {
+    return { decidedWithoutMeasurement: this.#reviewsWithoutMeasurement, notRecorded: this.#reviewsNotRecorded };
   }
 
   /**
@@ -1357,7 +1417,12 @@ export class WorkspaceActionOrchestrator {
       run.status = promoted ? 'PROMOTED' : 'REFUSED';
       run.backups = backups;
       run.decidedAtUnix = nowUnix;
+      run.decidedBy = approverId;
       this.#saveRun(runId);
+      // `CE-024`. The human's answer was **approve** on both paths: `REFUSED` means the engine
+      // then declined to promote an unclean result, not that the person said no. The review cost
+      // the same minutes either way, and `outcome` carries the difference.
+      this.#sampleReview(run, 'approve');
       return { runId, result, diff: run.diff, promoted, coverage };
     } finally {
       this.#dropShadow(runId);
@@ -1376,7 +1441,12 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, run.planEventId, approverId, 'workspace_action.rejected', { reason: reason ?? null }, nowUnix);
     run.status = 'REJECTED';
     run.decidedAtUnix = nowUnix;
+    run.decidedBy = approverId;
     this.#saveRun(runId);
+    // `UI-072`, and this is the call the criterion is really about: a rejected change is review
+    // time that was spent. A run rejected straight from `PENDING_APPROVAL` has no measured left
+    // edge and is counted as a gap instead of given an invented one — see `#sampleReview`.
+    this.#sampleReview(run, 'reject');
     return { runId, status: 'REJECTED' };
   }
 

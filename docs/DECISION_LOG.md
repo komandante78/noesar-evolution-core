@@ -14113,3 +14113,41 @@ tocca affatto gli script di shell, e i 18/18 passi non includono la fixture di d
 aggiornamento/rollback, che è una delle categorie di costo ammissibili di Restack).
 **Costo.** Basso: un passo nella batteria, ~10 s. **Costo di reversal.** N/A — proposta.
 **Status.** deferred — decisione dell'Owner.
+
+## D-0610 · Proposta: la metrica dichiari il *lane* di ogni campione — 2026-08-20
+**Decisione.** Proposta, non eseguita: far riportare a `summary()` la ripartizione per `kind`
+(`coden-run` contro coda di approvazione), così la Home mostra se la revisione costa
+diversamente sui due percorsi invece di mediarli in un numero solo.
+**Perché.** `D-0611` mette due lane nella stessa cifra, che è giusto — è una metrica sola — ma
+una mediana che nasconde due popolazioni diverse dice meno di due mediane accanto.
+**Rifiutato.** Due metriche separate: è ciò che `D-0611` ha appena tolto.
+**Evidence.** Il campo `kind` è già scritto su ogni campione (`coden-run` dal lane dei run);
+serve solo raggrupparlo in `summary()`. Nessuna migrazione.
+**Aderenza al finanziamento** (`noesar-evolution-funding-fit` §6.1): **Restack · tratto 5**
+(affidabilità misurabile). **Costo.** Basso.
+**Costo di reversal.** N/A — proposta. **Status.** deferred — decisione dell'Owner.
+
+## D-0611 · `CE-024` chiusa collegando la metrica che già esisteva, non costruendone una seconda — 2026-08-20
+**Decisione.** Il lane dei run di CodeN Evolution (`plan → measure → approve/reject`) alimenta
+`ProductMetric`, con bordo sinistro `measurement.measuredAtUnix`. `/review` esiste in entrambe le
+shell e restituisce **lo stesso oggetto dalla stessa istanza** che la Home rende.
+**Perché.** `CE-024` sembrava «costruire il banco di revisione». Misurato, il banco esisteva
+quasi tutto: metrica, store, rotta e pannello Home, verdi (10/10). Il buco era che
+`productMetric.record()` aveva **un solo** chiamante — la coda di approvazione — quindi il lane
+di cui parla la tesi di `15` §12 non entrava nella metrica del prodotto.
+**Rifiutato.** Il mio primo abbozzo: una **seconda** metrica calcolata sui run. Avrebbe messo due
+numeri dietro la stessa frase — `CE-033`, e la collisione `L0-L8` di `02_ATOM.md` che a questo
+progetto è già costata confusione vera. Buttato per intero; ne è sopravvissuta solo l'aritmetica
+(`review-latency.mjs`), che `ProductMetric` ora usa.
+**Evidence.** `ce-024-the-run-lane-reaches-the-metric` **8/8** su orchestratore, store su disco e
+metrica veri, con **4 difetti seminati su 4 catturati**; `review-latency` **13/13**;
+`product-metric` **10/10**; unit **2922** (2921 pass, 0 fail, 1 skip preesistente); ESLint **466
+file 0/0**; `ACCEPTANCE_MATRIX: PASS`, ratchet stretto **2 → 1** e **visto fallire** a 0.
+**Due difetti riparati chiudendo.** (1) `readyDefinition` diceva *«shadow execution does not
+exist in this build»* — vero quando fu scritto, **falso dal `D-0567`** — e un test lo **fissava**,
+tenendo in vita il compromesso dopo che la ragione era sparita; ora nomina l'ombra e i campioni
+vecchi restano dichiarati via `readySources`. (2) Il `catch{return;}` muto della Home rendeva una
+rotta caduta identica a un'installazione che non ha ancora deciso niente.
+**Costo di reversal.** Basso: `recordReview` e `getProductMetric` sono iniezioni opzionali —
+toglierle riporta la metrica alla sola coda di approvazione, senza rompere nulla.
+**Status.** applied in albero — **NON installato, debito §3a aperto e dichiarato**.

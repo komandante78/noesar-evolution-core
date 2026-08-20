@@ -18,14 +18,31 @@
 //
 //   UI-070 · the interval starts when the change was READY FOR A HUMAN, not when the
 //           request was made. In the finished design that instant is "the shadow run
-//           produced a result". Shadow execution does not exist in this build, so the
-//           left edge is the moment the approval was raised — the same instant, measured
-//           at the only place that currently knows it. This substitution is declared in
-//           `docs/DECISION_LOG.md` rather than hidden: when shadow execution lands, the
-//           left edge moves and the samples before it stay comparable, because both mean
-//           "the work was done and the product was waiting for a person".
+//           produced a result".
+//
+//           **That instant now exists, and this comment used to say it did not.** Until
+//           `D-0567` there was no shadow execution, so the left edge was the moment the
+//           approval was raised, declared as a substitution rather than hidden — with the
+//           note that "when shadow execution lands, the left edge moves and the samples
+//           before it stay comparable, because both mean *the work was done and the product
+//           was waiting for a person*". Shadow execution landed: `measure()` produces a
+//           result in a shadow and writes `measurement.measuredAtUnix`.
+//
+//           So there are now two left edges in the store, and a sample says which one it
+//           used (`readySource`). They are not silently averaged into one figure that means
+//           neither: `summary()` reports the mix, because a metric whose definition changed
+//           halfway through its own history and does not say so is worse than one that never
+//           moved.
+
+import { summariseDurations, trendDirection } from './review-latency.mjs';
 
 const DAY = 86_400_000;
+
+/**
+ * Where the left edge of an interval came from. `approval-raised` is the pre-`D-0567`
+ * substitution; `shadow-measured` is what `UI-070` actually asks for.
+ */
+export const READY_SOURCES = Object.freeze(['approval-raised', 'shadow-measured']);
 
 function seconds(fromIso, toIso) {
   const from = Date.parse(fromIso); const to = Date.parse(toIso);
@@ -46,16 +63,25 @@ export class ProductMetric {
   /**
    * One review, recorded when a human decides. Approve and reject both land here.
    */
-  record({ itemId, kind = 'unknown', projectId = null, readyAt, decidedAt = new Date().toISOString(), decision, actorId = 'system' }) {
+  record({ itemId, kind = 'unknown', projectId = null, readyAt, decidedAt = new Date().toISOString(), decision, actorId = 'system', readySource = 'approval-raised', outcome = null }) {
     if (decision !== 'approve' && decision !== 'reject') {
       throw Object.assign(new Error('A review sample needs the decision that was taken.'), { status:400 });
+    }
+    if (!READY_SOURCES.includes(readySource)) {
+      throw Object.assign(new Error('A review sample must declare which left edge it measured from.'), { status:400 });
     }
     const elapsed = seconds(readyAt, decidedAt);
     if (elapsed === null) throw Object.assign(new Error('A review sample needs both instants.'), { status:400 });
     return this.store.transact((state) => {
       const sample = {
         id:`${itemId}@${decidedAt}`, itemId:String(itemId), kind:String(kind), projectId,
-        readyAt, decidedAt, seconds:elapsed, decision, actorId,
+        readyAt, decidedAt, seconds:elapsed, decision, actorId, readySource,
+        // The engine's own terminal state, kept beside the human's answer because they are
+        // different facts: a person can approve a change the engine then refuses to promote
+        // (`REFUSED`), and that review cost the same minutes as one that landed. Folding the
+        // two together would lose the difference; dropping the sample would pick the
+        // denominator, which is the thing `UI-072` exists to forbid.
+        outcome: outcome === null ? null : String(outcome),
       };
       state.reviewSamples.push(sample);
       return sample;
@@ -94,9 +120,21 @@ export class ProductMetric {
       // the exclusion would be dishonest.
       rejected:{ count:rejected.length, medianSeconds:median(rejected.map((item) => item.seconds)) },
       rejectedIncluded:true,
+      // The richer statistics, over the SAME samples the figures above are drawn from — one
+      // number, described more fully, never a second number. `median` and `mean` are both here
+      // because on this distribution they disagree, and one of them alone would have to choose
+      // which truth to hide.
+      statistics:summariseDurations(inWindow.map((item) => item.seconds)),
       trend:[...days.entries()].sort().map(([day, values]) => ({ day, decided:values.length, medianSeconds:median(values) })),
+      // Whether review is getting cheaper, over the daily medians the trend above already
+      // computes — withheld rather than guessed when there is too little to say.
+      direction:trendDirection([...days.entries()].sort().map(([, values]) => median(values))),
       // The left edge of every interval, declared with the figure rather than in a footnote.
-      readyDefinition:'approval raised (shadow execution does not exist in this build)',
+      readyDefinition:'the shadow result was ready for a human (pre-D-0567 samples: the approval was raised)',
+      // How many samples used which left edge. A metric whose definition moved partway through
+      // its own history and does not say so is worse than one that never moved.
+      readySources:Object.fromEntries(READY_SOURCES.map((source) =>
+        [source, inWindow.filter((item) => (item.readySource ?? 'approval-raised') === source).length])),
     };
   }
 }

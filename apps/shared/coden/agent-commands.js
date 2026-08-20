@@ -148,6 +148,10 @@ export const AGENT_COMMANDS = Object.freeze([
   // read, in a shell where the previous line is one arrow key up.
   { name: 'retention', argument: '', summary: 'What a sweep of the replay store would remove — and removes nothing', group: 'work', kind: 'call', method: 'replay.retention', permission: 'workspace.read' },
   { name: 'sweep', argument: '', summary: 'Delete replay bytes no surviving run references — the ledger keeps saying the calls happened', group: 'work', kind: 'call', method: 'replay.sweep', permission: 'workspace.write' },
+  // `CE-024`, the product's own metric. No argument, for `retention`'s reason above: the number
+  // is derived from the runs this installation holds, and a window an operator could widen by
+  // typing would let the metric be chosen instead of measured.
+  { name: 'review', argument: '', summary: 'How long human review costs per change — rejections included, because excluding them would pick the denominator', group: 'work', kind: 'call', method: 'review.latency', permission: 'workspace.read' },
   { name: 'sessions', argument: '[active|archived|bin]', summary: 'List sessions', group: 'work', kind: 'call', method: 'sessions.list', permission: 'workspace.read' },
   { name: 'git', argument: '', summary: 'Branch and divergence of the workspace', group: 'work', kind: 'call', method: 'coden.gitStatus', permission: 'coden.plan' },
 

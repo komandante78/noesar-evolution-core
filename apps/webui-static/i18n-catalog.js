@@ -1403,6 +1403,7 @@ const it = {
   // what disappears is the ability to REPLAY the call, never the record that it happened.
   'What a sweep of the replay store would remove — and removes nothing': 'Che cosa rimuoverebbe una pulizia dello store di replay — e non rimuove niente',
   'Delete replay bytes no surviving run references — the ledger keeps saying the calls happened': 'Cancella i byte di replay che nessun run superstite referenzia — il registro continua a dire che le chiamate sono avvenute',
+  'How long human review costs per change — rejections included, because excluding them would pick the denominator': 'Quanto costa la revisione umana per cambiamento — rifiuti inclusi, perché escluderli sarebbe scegliere il denominatore',
   'List sessions': 'Elenca le sessioni',
   'Branch and divergence of the workspace': 'Ramo e divergenza dello spazio di lavoro',
   'Close a piece of work — what was done, what was NOT, and the residual risk': 'Chiudi un lavoro — che cosa è stato fatto, che cosa NON lo è stato, e il rischio residuo',

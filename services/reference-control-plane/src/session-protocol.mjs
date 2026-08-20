@@ -160,6 +160,9 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // `bridged: true` on both, same argument as `capability.*`: the surface is new, so there is no
   // established asymmetry to preserve, and giving one transport a method the other lacks would
   // rebuild by omission exactly what `D-0302` closed.
+  // `CE-024`. Read-only and bridged like the other reporting surfaces: the metric is derived
+  // from runs that already exist, and asking for it changes nothing.
+  'review.latency': { permission: 'workspace.read', bridged: true },
   'replay.retention': { permission: 'workspace.read', bridged: true },
   // `workspace.write` and NOT a narrower ad-hoc permission: this deletes state the workspace's
   // own runs produced, and the product already treats acting on that state as `workspace.write`.
@@ -254,6 +257,11 @@ export function createSessionDispatch({
   // closure register after it. A direct reference to the later one would read an uninitialised
   // binding at construction time.
   aiWorkspace, getClosureRegister,
+  // `CE-024`. A FUNCTION, for exactly the reason `getClosureRegister` above is one: server.mjs
+  // builds this dispatch before it builds `ProductMetric`, so a direct reference would read an
+  // uninitialised binding at construction time. Passed in rather than constructed, so the
+  // terminal and the browser report one metric and not two.
+  getProductMetric = null,
   // `/skills`. Passed in for the same reason as everything above: a registry constructed here
   // would be a SECOND set of adopted skills — in scope for the terminal, invisible to the
   // browser — the "second client with its own state" this design rejects, and it would
@@ -381,6 +389,23 @@ export function createSessionDispatch({
         },
       });
       return { revoked, grant };
+    },
+    // `CE-024` / `UI-070`, `UI-071`, `UI-072` — the product's own metric.
+    //
+    // **The same object the Home panel renders**, from the same `ProductMetric` instance, not a
+    // figure computed here. That is the whole point of routing it through `getProductMetric`
+    // rather than deriving it from `workspaceActions`: two surfaces answering "how long does
+    // review cost" with two numbers is `CE-033`, and it is the shape of collision that has
+    // already cost this project real confusion (`02_ATOM.md`, `L0-L8`).
+    //
+    // `gaps` is the run lane's own honesty: decisions the metric could not be told about,
+    // reported beside the figure they are not part of instead of being inferred from its absence.
+    'review.latency': () => {
+      const metric = getProductMetric?.();
+      if (!metric) {
+        throw new ProtocolError('UNAVAILABLE', 'this deployment did not wire the product metric, so there is no review time to report');
+      }
+      return { ...metric.summary({}), gaps: workspaceActions.reviewSamplingGaps() };
     },
     // `D-0606`. The dry run: what a sweep would remove, and nothing removed.
     //

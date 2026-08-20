@@ -4938,7 +4938,21 @@ function humanDuration(totalSeconds){
 }
 async function loadReviewMetric(){
   let summary;
-  try{summary=await api('/api/v1/metrics/review-time');}catch{return;}
+  // A silent `catch{return;}` used to live here, and it was the failure mode this panel is
+  // least able to survive: if the route stops answering, every figure keeps its em-dash and
+  // the page is indistinguishable from an installation that has simply decided nothing yet.
+  // "No data" and "the metric is unreachable" are different facts about a product, and a
+  // dashboard that renders them identically is the "decorative element hiding an unfinished
+  // function" the design rules forbid.
+  try{summary=await api('/api/v1/metrics/review-time');}
+  catch(error){
+    $('#metricWindow').textContent='unavailable';
+    for(const id of ['#metricMedian','#metricDecided','#metricRejected'])$(id).textContent='—';
+    $('#metricTrend').innerHTML='';
+    $('#metricTrend').setAttribute('aria-label','The review-time metric could not be read');
+    $('#metricDefinition').textContent=`The product metric could not be read: ${error?.message||'the request failed'}. This is not "no reviews yet" — the figure is unknown.`;
+    return;
+  }
   $('#metricWindow').textContent=`last ${summary.windowDays} days`;
   $('#metricMedian').textContent=humanDuration(summary.medianSeconds);
   $('#metricDecided').textContent=String(summary.decided);

@@ -68,6 +68,9 @@ export const RUN = {
   // widening a parameter.
   retention: () => ['replay.retention', {}],
   sweep: () => ['replay.sweep', {}],
+  // `CE-024`. Argument-free for the same reason as the pair above, and present here so the two
+  // shells answer `/review` identically — the standing rule this table exists to enforce.
+  review: () => ['review.latency', {}],
   model: (argument) => ['model.activate', { id: argument }],
   // `D-0590`, `CE-020`. The transports for the six capabilities that had no keyboard form. Built
   // here beside the other nineteen rather than in either shell, for this table's standing reason:
