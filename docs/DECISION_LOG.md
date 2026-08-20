@@ -13943,3 +13943,30 @@ prodotta **in questa** sessione, e il caso è esattamente quello per cui esiste.
 installato, con il suo token nell'ambiente e mai in un file tracciato (§7).
 **Costo di reversal.** Nessuno — nulla è stato cambiato.
 **Status.** blocked — decisione dell'Owner.
+
+## D-0603 · `CE-023`: il blocco era più piccolo di come `D-0602` lo aveva descritto — 2026-08-20
+**Decisione.** `CE-023` resta senza verdetto **e** la prossima sessione apre lì (deciso dall'Owner
+il 2026-08-20). Ciò che serve è ridotto a una riga: l'autorizzazione a **eseguire** la misura con
+ATOM attivo, non a configurare alcunché.
+**Perché.** `D-0602` diceva «serve ATOM e il suo token» e faceva sembrare mancante la
+configurazione. Misurato oggi sull'installazione viva: `NOESAR_REASONING_MODE=rust-external`,
+`NOESAR_RUST_REASONING_ENDPOINT=http://127.0.0.1:8410`, dodici superfici in
+`NOESAR_EXTERNAL_SURFACES`, `NOESAR_RUST_REASONING_TOKEN` **presente** (letto il nome, mai il
+valore). **ATOM è già selezionato.**
+**Due fatti che cambiano il piano.** (1) `tools/measure-projection-coverage.mjs` usa **solo**
+`ReasoningRouter` — niente orchestratore, niente workspace, niente token coniati, nessuna
+scrittura: **non è una suite mutante**, quindi §3a 11e non è in gioco. (2) L'endpoint è
+`127.0.0.1:8410` **dentro** il contenitore e la porta non è pubblicata: dall'host lo strumento non
+raggiunge nulla. O gira dentro l'installazione, o su una **sonda usa-e-getta costruita
+dall'immagine viva** — la seconda è da preferire, e va confermata **prima** di partire.
+**Respinta.** Chiudere la casella sull'evidenza del `D-0215` (2026-07-28, `PER_TASK better=0
+worse=0 equal=9 of 9`, `VERDICT=NO_DIFFERENCE`): la regola 38 vieta un PASS su evidenza di
+un'altra sessione, ed è esattamente il caso per cui esiste.
+**Evidenza.** `docker inspect` sulle variabili del contenitore vivo (nomi, mai valori) e lettura
+del sorgente dello strumento. Nessuna misura di copertura è stata prodotta oggi, e nessuna è
+dichiarata.
+**Atteso, e da non anticipare.** `D-0215` concluse che la differenza fra i due provider sta nella
+**forma della decomposizione**, non nella copertura — per cui esiste già
+`tools/measure-decomposition-shape.mjs`. Il verdetto andrà scritto per ciò che la misura dice.
+**Costo di reversal.** Nessuno — nulla è stato cambiato.
+**Status.** blocked → **prossima sessione**, su decisione dell'Owner.

@@ -10,16 +10,38 @@ Proposti: `D-0595`, `D-0598`. Bloccato: `D-0602` (`CE-023`).
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Restano tre righe, e nessuna è chiudibile senza una decisione dell'Owner.** Non è un elenco di
-lavoro pronto: è un elenco di cose che aspettano lui, e vale la pena dirlo per primo.
+**`CE-023`, deciso dall'Owner il 2026-08-20 — è la prossima sessione, e apre lì.** Sotto c'è tutto
+ciò che serve per non ricostruirlo da capo: misurato oggi, non ricordato.
 
-**`CE-023` — serve ATOM e il suo token.** `tools/measure-projection-coverage.mjs` **rifiuta ed
-esce 2** se nessun provider esterno è selezionato, giustamente: un delta nullo per costruzione
-sembrerebbe una misura. Selezionarne uno significa ATOM **e** la sua credenziale, che sono **due**
-condizioni di stop (`D-0602`). Serve l'autorizzazione a puntarlo sul daemon installato, col token
-nell'ambiente e **mai** in un file tracciato (§7). L'evidenza del `D-0215` (2026-07-28,
-`PER_TASK better=0 worse=0 equal=9 of 9`) **non basta**: la regola 38 vieta un PASS su evidenza di
-un'altra sessione.
+**Il punto di partenza è migliore di quanto `D-0602` lasciasse intendere.** `[VERIFIED]`
+L'installazione viva **ha già ATOM selezionato**: `NOESAR_REASONING_MODE=rust-external`,
+`NOESAR_RUST_REASONING_ENDPOINT=http://127.0.0.1:8410`, dodici superfici in
+`NOESAR_EXTERNAL_SURFACES`, e `NOESAR_RUST_REASONING_TOKEN` **presente** (letto il nome, mai il
+valore). Non c'è configurazione da inventare: c'è da **eseguire**.
+
+**Due fatti che cambiano il piano, e che costerebbero mezza sessione a riscoprire:**
+
+1. **Lo strumento NON è una suite mutante.** `[VERIFIED]`
+   `tools/measure-projection-coverage.mjs` usa **solo** `ReasoningRouter` (`plan`, `decompose`,
+   `expect`) — nessun `WorkspaceActionOrchestrator`, nessun workspace, nessun token coniato,
+   nessuna scrittura. §3a 11e non è in gioco; la cautela vera è un'altra, la 2.
+2. **L'endpoint è `127.0.0.1:8410` DENTRO il contenitore.** Il figlio `atom` gira lì e la porta
+   non è pubblicata: dall'host lo strumento non raggiunge nulla. Quindi o gira **dentro**
+   l'installazione, o gira su una **sonda usa-e-getta costruita dall'immagine viva** con lo stesso
+   ambiente — che ha il suo atomd e non tocca la produzione. La seconda è la via da preferire, ed è
+   una decisione da confermare **prima** di partire, non a metà.
+
+**Cosa resta di `D-0602`, ridotto all'osso:** l'autorizzazione a eseguire la misura con ATOM
+attivo. Il token resta nell'ambiente e **mai** in un file tracciato (§7).
+
+**E il risultato atteso non è «ATOM migliora».** `D-0215` (2026-07-28) misurò
+`PER_TASK better=0 worse=0 equal=9 of 9`, `VERDICT=NO_DIFFERENCE`, e scrisse che la differenza fra
+i due provider sta nella **forma della decomposizione**, non nella copertura — per cui esiste già
+`tools/measure-decomposition-shape.mjs`. Quella evidenza **non basta** per la casella: la regola 38
+vieta un PASS su evidenza di un'altra sessione. Va rieseguita, e il verdetto va scritto per ciò che
+la misura dice, non per ciò che ci si aspetta che dica.
+
+**Dopo `CE-023`, le altre due — e nessuna delle due è lavoro pronto.**
 
 **`CE-024` — è costruzione, non misura.** Chiede il tempo di revisione umana per cambiamento
 accettato, «strumentazione del banco di revisione». Misurato: **un banco di revisione umana non
