@@ -10,19 +10,7 @@ l'installazione portava tre fasi di ritardo e ora è pari all'albero.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**1 · Una domanda aperta all'Owner, e non l'ho decisa io.** *«attiva le skills, voglio che lavori
-con tutte le skills in automatico»* ha **due letture** che portano a lavori diversi:
-
-- **(a) le skill di Claude Code di questo repository** — le sei sotto `.claude/skills/`. Sono
-  **già tutte vincolanti a ogni fase**, via gli `@import` di `CLAUDE10.md` e i quattro hook.
-  In questa lettura non c'è nulla da attivare: è già così.
-- **(b) la superficie *skills* DEL PRODOTTO** — `skill-catalog.mjs`. Le skill si **adottano**, e
-  ogni skill adottata viene **composta nel prompt dell'Autore** (`buildAuthoringPrompt`, sopra il
-  recinto dei contenuti non fidati). *«Tutte in automatico»* significherebbe adozione automatica
-  dell'intero catalogo: cresce `contextBytes` a ogni run e si allarga la superficie di istruzioni
-  che raggiunge lo scrittore. **È una decisione di prodotto, e va chiesta prima, non dopo.**
-
-**2 · `CE-031` e `CE-035`, nell'ordine deciso con l'Owner.** Prima una **sonda-contenitore come
+**1 · `CE-031` e `CE-035`, nell'ordine deciso con l'Owner.** Prima una **sonda-contenitore come
 "altra macchina"**: namespace di rete suo, utente non privilegiato, **nessun socket Docker
 montato**, che raggiunge l'installazione solo via TCP su `noesar-e2e-net`. Chiude la parte
 *raggiungibile senza privilegi e senza conoscere percorsi*. **Non** chiude OS diverso, kernel
@@ -72,8 +60,11 @@ riuscito — nello stesso angolo del prodotto. Riparato, e provato in **entrambe
 
 ## WHAT WAS **NOT** DONE
 
-- **`attiva le skills` non è stato eseguito** — vedi LA PROSSIMA AZIONE punto 1. Due letture,
-  una delle quali cambia il prodotto: chiesta, non indovinata.
+- **`attiva le skills` — chiesto, e risolto: l'Owner intendeva le skill di Claude Code**, non la
+  superficie *skills* del prodotto. Sono **già tutte vincolanti** a ogni fase via gli `@import` di
+  `CLAUDE10.md` e i quattro hook: non c'era nulla da attivare. **L'adozione automatica dell'intero
+  catalogo nel prodotto NON è stata fatta e non era ciò che veniva chiesto** — resterebbe una
+  decisione di prodotto a sé, perché ogni skill adottata è composta nel prompt dell'Autore.
 - **`tools/accessibility-audit.mjs` non eseguito** al deploy, e dichiarato: nessun markup, nessun
   token CSS, nessuno stato visivo nuovo — le sei righe di menu usano il componente riga esistente.
 - **`CE-032` NON è un ✅ pieno, ed è registrato ⚠️.** `tools/coden-evolution.ps1` è coperto **solo
