@@ -78,6 +78,16 @@ done
 [ -n "$SOURCE" ] || { echo "REFUSED: --source is mandatory" >&2; exit 2; }
 
 say()  { printf '%s\n' "$*"; }      # prose only — a secret is never an argument to this
+
+# How many VARIABLES an env dump holds. One definition, because the count is consulted twice —
+# by the completeness guard and by the rotation's integrity check — and two spellings of "how
+# many" is how they drifted apart. Never prints a value, only a number.
+#
+# Not `wc -l`: `docker inspect --format` appends one newline to the whole rendered output, so a
+# template ending in `{{println .}}` writes N variables followed by a blank line. Not `grep -c`
+# either: it exits 1 when it counts zero, and this file's ERR trap is armed — a trip this
+# script's own header already records happening once.
+env_count() { awk 'NF{n++} END{print n+0}' "$1"; }
 FAIL=0
 ok()   { say "  ok    $*"; }
 bad()  { say "  FAIL  $*"; FAIL=1; }
@@ -250,7 +260,21 @@ RO_ROOTFS="$(docker inspect "$SOURCE" --format '{{.HostConfig.ReadonlyRootfs}}')
 WORKSPACE="$(docker inspect "$SOURCE" --format '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}')"
 docker inspect "$SOURCE" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$ENVFILE"
 chmod 0600 "$ENVFILE"
-ENV_COUNT="$(wc -l < "$ENVFILE")"
+# `docker inspect --format` appends ONE newline to the whole rendered output, so a template that
+# already ends in `{{println .}}` writes N variables followed by a blank line. `wc -l` therefore
+# reported N+1 — measured 2026-08-20 on the `D-0606` deployment: the preflight printed
+# "environment: 44 variables" and this line printed "45 env", three lines apart, for one thing.
+#
+# The wrong number was the symptom. The defect is the guard below: a source with NO variables
+# yields a file holding exactly one blank line, so `ENV_COUNT` came back as 1, `-gt 0` held, and
+# the tool went on to stop production, rename it, and start a replacement with an EMPTY
+# environment — reporting success. Driven against the fixture, that is exactly what happened
+# (exit 0, predecessor renamed). Latent by luck, because a real Docker always injects `PATH`;
+# not held back by design. The same shape as the defect `D-0606` repaired one phase earlier.
+#
+# `awk` (already required above) counts non-blank lines and exits 0 when the count is zero —
+# unlike `grep -c`, whose exit-1-on-zero tripped this file's armed ERR trap once already.
+ENV_COUNT="$(env_count "$ENVFILE")"
 mapfile -t PORT_FLAGS < <(docker inspect "$SOURCE" --format \
   '{{range $p,$v := .HostConfig.PortBindings}}{{range $v}}-p
 {{.HostIp}}:{{.HostPort}}:{{$p}}
@@ -297,7 +321,7 @@ if [ -n "$ROTATE_VARS" ]; then
     { print }
   ' "$ENVFILE" > "$ENVFILE.next"
   chmod 0600 "$ENVFILE.next"; mv -f "$ENVFILE.next" "$ENVFILE"
-  [ "$(wc -l < "$ENVFILE")" -eq "$ENV_COUNT" ] || { say "REFUSED: the rewrite changed the variable count"; exit 6; }
+  [ "$(env_count "$ENVFILE")" -eq "$ENV_COUNT" ] || { say "REFUSED: the rewrite changed the variable count"; exit 6; }
   ROTATE_VARS="$ROTATE_VARS" awk -F= '
     BEGIN { n=split(ENVIRON["ROTATE_VARS"], a, ","); for (i=1;i<=n;i++) want[a[i]]=1 }
     $1 in want { v=substr($0,index($0,"=")+1); if (seen && v!=first) bad=1; if (!seen) {first=v; seen=1} }

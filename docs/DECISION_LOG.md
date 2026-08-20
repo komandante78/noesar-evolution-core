@@ -14075,3 +14075,41 @@ verificabile su uno store indirizzato per contenuto) e **tratto 2** (riusabile: 
 qualunque store content-addressed con mark-and-sweep, non solo per questo prodotto).
 **Costo di reversal.** N/A — proposta, non eseguita.
 **Status.** deferred — decisione dell'Owner.
+
+## D-0608 · `redeploy.sh` contava le righe, non le variabili — e con zero variabili la guardia passava — 2026-08-20
+**Decisione.** Il conteggio dell'ambiente in `tools/deploy/redeploy.sh` passa da `wc -l`
+a una funzione sola, `env_count()` (`awk 'NF{n++} END{print n+0}'`), usata da **entrambi** i
+siti che lo consultano: la guardia di completezza e la verifica d'integrità della rotazione.
+**Perché.** `docker inspect --format` aggiunge una newline all'output reso, quindi un template
+che finisce in `{{println .}}` scrive N variabili **più una riga vuota**. Il numero sbagliato era
+il sintomo: con **zero** variabili il file contiene la sola riga vuota, `ENV_COUNT` tornava `1`,
+`-gt 0` reggeva, e lo strumento fermava la produzione, la rinominava e avviava un sostituto **con
+ambiente vuoto, dichiarando successo**. Latente per fortuna — Docker inietta sempre `PATH` — non
+per progetto: la stessa forma del difetto che `D-0606` ha riparato una fase prima.
+**Rifiutato.** `grep -c`: esce 1 quando conta zero e il trap `ERR` di questo file è armato — un
+inciampo che l'intestazione dello script stesso già registra come avvenuto una volta.
+**Evidence.** Trovato misurando il deploy `D-0606`: preflight `environment: 44 variables` contro
+recipe `45 env`, tre righe di distanza, per la stessa cosa. Oracolo **visto rosso 3 su 3** prima
+della riparazione (`reported '25'`; ambiente vuoto → `exit 0`, predecessore **rinominato**). Dopo:
+fixture **80/80** (76 preesistenti + 4 nuove). Riparata anche **la regola che lo nascondeva**: il
+`fake-docker` non era fedele — niente newline finale su `range .Config.Env`, `wc -l` su
+`len .Config.Env`, e `cp` invece del parser che scarta le righe vuote.
+**Costo di reversal.** Nessuno. `tools/deploy/` non è nell'immagine (il `Dockerfile` copia solo
+`tools/acceptance/`, tre `.mjs` e i client CodeN) — provato dentro l'immagine spedita, quindi
+**nessun debito §3a aperto da questa riparazione**.
+**Status.** applied — provato, non installabile perché non è codice di prodotto.
+
+## D-0609 · Proposta: un `--check` obbligatorio in CI sul fixture di deploy — 2026-08-20
+**Decisione.** Proposta, non eseguita: far girare `tools/deploy/test/redeploy-fixture.sh` come
+passo nominato di `scripts/test.sh`, invece che a mano quando qualcuno tocca il deploy.
+**Perché.** `D-0608` è stato trovato leggendo l'output di un deploy vero, non da una suite: la
+fixture esisteva, era verde, e non misurava la cosa. Un passo della batteria trasforma
+"qualcuno se ne accorge" in "la batteria lo dice".
+**Rifiutato.** Lasciarlo manuale: è esattamente la condizione in cui il difetto è sopravvissuto.
+**Evidence.** `grep -n 'shellcheck\|bash -n' scripts/test.sh` → nessun riscontro: la batteria non
+tocca affatto gli script di shell, e i 18/18 passi non includono la fixture di deploy.
+**Aderenza al finanziamento** (`noesar-evolution-funding-fit` §6.1): **Restack · tratto 5**
+(affidabilità misurabile — infrastruttura di test e prova riproducibile su un percorso di
+aggiornamento/rollback, che è una delle categorie di costo ammissibili di Restack).
+**Costo.** Basso: un passo nella batteria, ~10 s. **Costo di reversal.** N/A — proposta.
+**Status.** deferred — decisione dell'Owner.

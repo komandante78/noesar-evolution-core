@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0606 — la ritenzione del replay store e collegata (due verbi in entrambe le shell, dry-run come default, evento a ledger), e collegarla ha scoperto un difetto che avrebbe distrutto CE-006: referencedDigests() nominava answerDigest dove lo store e indicizzato da answerRecordDigest",
-  "phase_status": "COMPLETE IN ALBERO, NON INSTALLATO — debito §3a APERTO e dichiarato. Unit 2902 (2901 pass, 1 skip preesistente), ESLint 463 file 0/0/0, scripts/test.sh 18/18, difetti seminati 19/19 catturati, matrice PASS, authoring-replay-retention 7/7 con oracolo visto rosso (3 su 7)",
-  "next_phase": "decisione dell Owner: deployare D-0606 (chiude il debito §3a) oppure CE-024 / CE-035 / altro debito",
+  "current_phase": "D-0606 DEPLOYATO — il debito §3a e chiuso: l installazione serve la superficie replay.* e il referencedDigests() riparato. Il deploy stesso ha dato un difetto (D-0608): redeploy.sh contava le righe dell env-dump invece delle variabili, e con zero variabili la guardia di completezza sarebbe passata avviando un sostituto senza ambiente",
+  "phase_status": "COMPLETE E INSTALLATO — nessun debito §3a aperto. Live: noesar-evolution:d0606-replay-retention-20260820T132914Z, running/healthy, RestartCount=0. Byte-uguale albero-immagine 468/468. Unit 2902 (2901 pass, 0 fail, 1 skip preesistente), fixture di deploy 80/80 con oracolo visto rosso 3 su 3, SOURCE_VERIFY=PASS",
+  "next_phase": "decisione dell Owner: CE-024 (banco di revisione, da costruire) / CE-035 (secondo nodo reale via VPS) / debito minore D-0605, D-0589, MANIFEST.sha256",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "a82324b",
-  "last_updated_utc": "2026-08-20T11:45:00Z",
+  "last_updated_utc": "2026-08-20T13:45:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "PRIMA COSA DA DECIDERE: il DEBITO §3a. D-0606 e in albero, provato e NON INSTALLATO — l installazione viva non ha la superficie replay.* e il suo referencedDigests() nomina ancora il campo sbagliato. NESSUN RISCHIO ATTIVO: sull immagine installata sweep() non ha chiamanti, che e esattamente perche il difetto era latente; ma il debito e reale. Se si deploya, §3a 11c non e opzionale e l ordine E la salvaguardia: costruire offline, provare byte immagine == albero, fermare con grazia e LEGGERE la chiusura pulita nel log, backup runtime A SERVIZIO FERMO, preservare il predecessore con nome timestampato, ripartire con la configurazione RILETTA dal contenitore che si sostituisce, verificare sul vivo, pulire §5a. Nessuna migrazione di schema in questa fase. POI restano CE-024 (il banco di revisione umana NON ESISTE: chiuderla significa costruirlo) e CE-035 (serve un VPS col prodotto installato SOPRA, mai questo host esposto a internet; la GPU e irrilevante). ALTRO DEBITO: D-0605 (il expect di riferimento non ha una guardia per passo), D-0589 (provenienza HMAC simmetrica, blocca la posizione 5 di PKG-001), MANIFEST.sha256 stale di ~670 file dal D-0399. NON PROVATO SUL VIVO: la superficie replay.* non e installata, quindi li non esiste; e /sweep non e mai stato eseguito con apply:true su dati reali, solo su store temporanei nei test — deliberato, cancella byte che non tornano.",
+  "next_action": "NESSUN DEBITO §3a APERTO — l albero e l installazione dicono la stessa cosa, provato leggendo i byte dentro l immagine spedita (5 file su 5 identici). La prossima decisione e dell Owner e non c e piu una scelta forzata: restano due caselle senza verdetto (CE-024 chiede il tempo di revisione umana e il banco di revisione NON ESISTE, quindi chiuderla significa costruirlo; CE-035 chiede ssh + coden_evolution da un secondo nodo reale, che serve un VPS col prodotto installato SOPRA, mai questo host esposto) e il debito minore (D-0605 la guardia per passo del expect di riferimento, D-0589 la provenienza HMAC simmetrica che blocca la posizione 5 di PKG-001, MANIFEST.sha256 stale di circa 670 file dal D-0399 e nessun passo della batteria lo verifica). Nuova proposta aperta: D-0609, la fixture di deploy come passo nominato di scripts/test.sh. NOTA: /sweep non e mai stato eseguito con apply:true su dati reali, nemmeno ora che la superficie e viva.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

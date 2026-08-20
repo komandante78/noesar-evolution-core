@@ -55,11 +55,18 @@ if [ "${1:-}" = "inspect" ]; then
     *"State.Status"*)                      get "$name" status ;;
     *'eq .Destination "/workspace"'*)      echo "${FAKE_WORKSPACE:?}" ;;
     *"range .Mounts"*"println .Source"*)   printf '%s\n' "${FAKE_WORKSPACE:?}" "${FAKE_SHADOWS:-$FAKE_ROOT/shadows}" ;;
-    *"len .Config.Env"*)                   wc -l < "$C/$name/env" ;;
+    # The real client returns the LENGTH OF THE ARRAY, which is the count of variables and never
+    # counts a blank line. `wc -l` agreed with it only because this fixture's env files happen to
+    # carry no blanks — an agreement by accident is what let `D-0608` hide here.
+    *"len .Config.Env"*)                   awk 'NF{n++} END{print n+0}' "$C/$name/env" ;;
     *"len .HostConfig.PortBindings"*)      echo 3 ;;
     *"len .HostConfig.Binds"*)             echo 2 ;;
     *"len .HostConfig.Tmpfs"*)             echo 2 ;;
-    *"range .Config.Env"*)                 cat "$C/$name/env" ;;
+    # `docker inspect --format` appends ONE newline to the whole rendered output, so a template
+    # ending in `{{println .}}` emits N lines followed by a blank one. Measured against the real
+    # client on 2026-08-20 (`cat -A` shows the trailing `$`). A `cat` alone was NOT what the
+    # caller sees, and that infidelity is exactly why a `wc -l` miscount survived every run.
+    *"range .Config.Env"*)                 cat "$C/$name/env"; printf '\n' ;;
     *"PortBindings"*)
         # FAKE_EMPTY_PORT_FLAGS exercises the completeness guard specifically: the COUNT still
         # says 3 (so preflight passes) while the flags come back empty (so the recipe is
@@ -124,7 +131,11 @@ if [ "${1:-}" = "run" ]; then
   set_ "$name" exit 0
   set_ "$name" health healthy
   : > "$C/$name/born-of-run"   # marks a container this fixture created, so health faults hit only it
-  cp "$envfile" "$C/$name/env"
+  # Docker's own `--env-file` parser SKIPS blank lines, so the container that comes out carries
+  # variables and not whitespace. Verified on the real client: a 44-variable source produced a
+  # replacement with `{{len .Config.Env}}` = 44, not 45. `awk 'NF'` (never `grep -v`, which exits
+  # 1 when it filters everything — the ERR-trap trip this fixture's subject already records once).
+  awk 'NF' "$envfile" > "$C/$name/env"
   # The recipe as it was actually passed — recorded so the test can assert nothing was lost.
   printf '%s\n' "$ALL_ARGS" > "$C/$name/recipe" 2>/dev/null || true
   echo "fakecontainerid$(date +%s)"

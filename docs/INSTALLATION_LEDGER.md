@@ -5695,3 +5695,62 @@ PASS · `authoring-replay-retention` **7/7** con oracolo **visto rosso** (3 su 7
 **Costo di rollback del deploy, se e quando avviene (§3a 11d):** il predecessore va preservato
 con nome timestampato e il backup runtime va preso **a servizio fermo**; senza quel backup il
 rollback non ha uno stato coerente a cui tornare. Nessuna migrazione di schema in questa fase.
+
+## `d0606-replay-retention-20260820T132914Z` — DEPLOYATO e verificato — 2026-08-20
+
+**Tag.** `noesar-evolution:d0606-replay-retention-20260820T132914Z`, deployato 13:30Z via
+`tools/deploy/redeploy.sh --apply --authorized-by-owner`, costruito offline dal `oci/Dockerfile`
+canonico (`docker build --pull=false`, exit 0). **Chiude il debito §3a** lasciato aperto da
+`D-0606`: l'installazione ora ha la superficie `replay.*` e il `referencedDigests()` riparato.
+
+**Salute.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz`, `/healthz` **200** su
+`http://…:8100`, `/livez` **200** su `https://…:8443`. **4 figli** generati (postgres, api, codev,
+atom), **0** righe di auth-failure, **0** righe di errore nei log. Forma del cancello:
+`/api/v1/tui/command` non autenticata **401**, rotta inesistente **404**, pagina **200**.
+
+**Verifica.** Byte-uguale albero↔immagine **468/468**, differing **0**, absent-from-tree **0**,
+built-in-image 2; `expected from directory COPYs: 450, missing: 0`. **I byte di `D-0606` sono
+nell'immagine spedita**, letti da un contenitore usa-e-getta (`--rm --network none`) e confrontati
+con l'albero — **5 su 5 identici**: `authoring-replay-store.mjs` `704def32b7f8b310`,
+`session-protocol.mjs` `39fefd2e7891e86a`, `workspace-actions.mjs` `0b5bde8a78aa30db`,
+`coden-view-model.js` `9d09207e0c7d446f`, `agent-commands.js` `d6d9823e7bcc1a17`. Letti
+**dall'immagine**, non dall'albero: `referencedDigests()` nomina `answerRecordDigest` (riga 218)
+**e** `answerDigest` (riga 220), e `session-protocol.mjs` porta `replay.retention` e `replay.sweep`
+(righe 163/166, 390/405). Prima del deploy: unit **2902** (2901 pass, 0 fail, 1 skip preesistente),
+`SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1150`.
+
+**Parità di configurazione, provata e non presunta.** `{{len .Config.Env}}` **44 = 44** fra
+predecessore e sostituto, diff dei **nomi** vuoto (valori mai stampati); `restart=unless-stopped`,
+`ro rootfs=true`, `binds=2`, `tmpfs=2`, `ports=3`, `user=10001:10001` identici. `F-ROT-001`
+sopravvive **correttamente**: `NOESAR_ALLOWED_HOSTS` nomina ancora `172.22.0.5` mentre l'IP è
+`172.22.0.3` — la configurazione è **riletta** dal contenitore che si sostituisce, non reinventata.
+
+**Predecessore conservato.** `noesar-evolution-pre-20260820T133034Z`
+(`d0601-context-shape-20260820T104316Z`).
+
+**Costo di rollback — nessuno (§3a 11d).** Nessuna migrazione in questo rilascio
+(`SOURCE_VERIFY … migrations=20` invariato). Tornare indietro riporta l'installazione senza la
+superficie `replay.*` e col `referencedDigests()` che nomina il campo sbagliato — nient'altro. Il
+workspace è stato copiato **a servizio fermo**, 0600 in una directory 0700, con checksum:
+**quell'archivio contiene credenziali e va trattato come tale**.
+
+**Un difetto trovato NEL deploy, riparato (`D-0608`).** Il preflight ha stampato
+`environment: 44 variables` e il recipe `45 env`, tre righe di distanza, per la stessa cosa.
+Causa: `wc -l` sull'env-dump conta la newline finale che `--format` aggiunge — e con **zero**
+variabili avrebbe restituito `1`, facendo passare la guardia di completezza e avviando un
+sostituto **senza ambiente**. `tools/deploy/` non è nell'immagine (verificato dentro l'immagine
+spedita), quindi la riparazione **non apre un nuovo debito §3a**.
+
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260820T104529Z` rimosso
+(`Exited (0)` confermato prima; la sua immagine `d0590-keyboard-coverage-20260820T050637Z` resta
+su disco, quindi il percorso di rollback documentato regge). Nessun tag usa-e-getta e nessuna rete
+creati da questa fase. Contenitori **52 → 52** (uno creato dal deploy, uno rimosso), volumi
+**65 → 65**, reti **10 → 10**, contenitori non-di-progetto **50 → 50**; reti di progetto superstiti
+esattamente `noesar-evolution-net` e `noesar-e2e-net` (`noesar-local` è di NOESAR V3 e non è stata
+toccata) (`EVIDENCE/docker_inventory_pre_cleanup_D0606_20260820T132937Z.txt`). Superstiti di
+progetto: **esattamente due**. Salute riprovata dopo la pulizia: `running`/`healthy`, `/livez` e
+`/readyz` **200**.
+
+**Non provato qui, e detto:** nulla che richieda una sessione autenticata. Nessuna suite mutante
+puntata sull'installazione (§3a 11e). **`/sweep` non è mai stato eseguito con `apply:true` su dati
+reali**, nemmeno adesso che la superficie è viva — cancella byte che non tornano.

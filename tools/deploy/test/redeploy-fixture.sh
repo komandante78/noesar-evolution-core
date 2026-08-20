@@ -139,6 +139,31 @@ run_tool -- --apply --authorized-by-owner --image fakeimage:v9
 [ "$(code)" = "1" ] && pass "absent image: preflight refuses (exit 1)" || fail "absent image refused" "got $(code)"
 [ "$(stat_ inst)" = "running" ] && pass "absent image: nothing was stopped" || fail "absent image: pre-mutation" "$(stat_ inst)"
 
+echo "=== 5b. the environment is COUNTED, not measured by the line — D-0608 ==="
+# `docker inspect --format` appends one newline to the whole output, so the env dump the tool
+# writes is N variables followed by a blank line. Counting it with `wc -l` reports N+1 — and,
+# worse, reports 1 for a source with NO variables at all, which satisfies the completeness
+# guard on an empty environment. Latent by luck (a real Docker always injects PATH), not held
+# back by design: the same shape as the defect `D-0606` repaired one phase earlier.
+new_world envcount
+run_tool -- --apply --authorized-by-owner --image fakeimage:v2
+reported="$(sed -n 's/.*· \([0-9]*\) env ·.*/\1/p' "$FAKE_ROOT/stdout" | head -1)"
+# 24 is what `new_world` writes: PATH, NODE_ENV, SECRET_A, SECRET_B and 20 fillers.
+[ "$reported" = "24" ] && pass "env count: the recipe reports 24 variables, the number there are" \
+  || fail "env count: reported == real" "reported '$reported', there are 24"
+
+# The assertion that matters, because it is a refusal and not a number: an empty environment
+# must reach the completeness guard as ZERO and be refused before anything is stopped.
+new_world envempty
+: > "$FAKE_ROOT/c/inst/env"
+run_tool -- --apply --authorized-by-owner --image fakeimage:v2
+[ "$(code)" = "6" ] && pass "empty environment: the completeness guard refuses (exit 6)" \
+  || fail "empty environment refused" "got $(code) — a blank line was counted as a variable"
+[ "$(stat_ inst)" = "running" ] && pass "empty environment: nothing was stopped" \
+  || fail "empty environment: pre-mutation" "$(stat_ inst)"
+pred >/dev/null 2>&1 && fail "empty environment: nothing renamed" "renamed" \
+  || pass "empty environment: nothing renamed"
+
 echo "=== 6. failures BEFORE the rename leave nothing renamed ==="
 new_world stopfail
 run_tool FAKE_FAIL_STOP=1 -- --apply --authorized-by-owner --rotate-secret SECRET_A

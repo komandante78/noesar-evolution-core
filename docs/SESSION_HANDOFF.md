@@ -1,87 +1,88 @@
 # SESSION HANDOFF
 
-**Due fasi in questa sessione.** `D-0604` — `CE-023` misurata e chiusa, verdetto `DIFFERS`;
-matrice **65/67**, ratchet **3 → 2**, critical **0**. `D-0606` — la ritenzione del replay store
-è collegata, **e collegarla ha scoperto un difetto che avrebbe distrutto `CE-006`**.
-Proposto: `D-0605`. **`D-0602` è chiuso.**
-**Live installation:** `noesar-evolution:d0601-context-shape-20260820T104316Z`, `running`/
+**Una fase in questa sessione: il deploy di `D-0606`.** Il debito §3a è **chiuso** — l'albero e
+l'installazione dicono la stessa cosa, e lo dicono i byte letti dentro l'immagine spedita, non
+l'albero. Il deploy stesso ha prodotto un difetto nuovo, trovato e riparato: **`D-0608`**.
+Proposto: **`D-0609`**.
+**Live installation:** `noesar-evolution:d0606-replay-retention-20260820T132914Z`, `running`/
 `healthy`, `RestartCount=0`.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**C'È UN DEBITO §3a APERTO, ed è la prima cosa da decidere.** `D-0606` è in albero, provato, e
-**non installato**: l'installazione viva non ha la superficie `replay.*` e il suo
-`referencedDigests()` nomina ancora il campo sbagliato. **Nessun rischio attivo** — sull'immagine
-installata `sweep()` non ha chiamanti, che è esattamente perché il difetto era latente — ma il
-debito è reale. Il deploy non è stato fatto perché nessuno l'ha autorizzato in questa sessione.
+**Non c'è più una scelta forzata.** Nessun debito §3a è aperto, quindi la prossima mossa è una
+decisione dell'Owner fra tre strade, nessuna delle quali è lavoro già pronto:
 
-**Se si deploya, §3a 11c non è opzionale e l'ordine È la salvaguardia:** costruire offline →
-provare che i byte dell'immagine sono uguali all'albero → fermare con grazia e **leggere** la
-chiusura pulita nel log → backup runtime **a servizio fermo** → preservare il predecessore con
-nome timestampato → ripartire con la configurazione **riletta dal contenitore che si sostituisce**
-→ verificare sul vivo → pulire (§5a). Nessuna migrazione di schema in questa fase.
+1. **`CE-024`** — il tempo di revisione umana per cambiamento accettato. **Il banco di revisione
+   non esiste**: chiuderla significa costruirlo, non misurarlo. È la più grossa delle tre.
+2. **`CE-035`** — `ssh` + `coden_evolution` da un secondo nodo **reale**. Serve un VPS con il
+   prodotto installato **sopra**; mai questo host esposto a internet. La GPU è irrilevante
+   (`CE-020` prova che la shell risponde con zero modelli caricati).
+3. **Debito minore** — `D-0605` (il `expect` di riferimento non ha una guardia per passo),
+   `D-0589` (provenienza HMAC simmetrica, blocca la posizione 5 di `PKG-001`), `MANIFEST.sha256`
+   (stale di ~670 file dal `D-0399`, e **nessun passo della batteria lo verifica**).
 
-**Poi restano due caselle senza verdetto, e nessuna è lavoro pronto qui.** `CE-024` chiede il
-tempo di revisione umana per cambiamento accettato: **il banco di revisione non esiste**,
-chiuderla significa costruirlo. `CE-035` chiede `ssh` + `coden_evolution` da un secondo nodo
-reale: serve un VPS col prodotto installato SOPRA, mai questo host esposto a internet; la GPU è
-irrilevante (`CE-020` prova che la shell risponde con zero modelli caricati).
-
-**Altro debito, se si preferisce:** `D-0605` (il `expect` di riferimento non ha una guardia per
-passo), `D-0589` (provenienza HMAC simmetrica — blocca la posizione 5 di `PKG-001`),
-`MANIFEST.sha256` (stale di ~670 file dal `D-0399`, nessun passo della batteria lo verifica).
-
-**Anche aperti:** `D-0564` · `D-0589` · `D-0591` · `D-0593` · `D-0595` · `D-0605` ·
-`F-TOOLSCOPE-001`. **`production_ready` resta `false`.**
+**Anche aperti:** `D-0564` · `D-0589` · `D-0591` · `D-0593` · `D-0595` · `D-0605` · **`D-0609`**
+(nuovo) · `F-TOOLSCOPE-001`. **`production_ready` resta `false`.**
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`D-0604` — `CE-023` misurata, e la misura non dice quello che ci si aspettava.** Sonda
-usa-e-getta dall'immagine viva (`--rm --network none`, tree in sola lettura, `atomd` avviato
-dentro la sonda con un token generato lì): produzione non toccata, `docker exec` non usato, token
-dell'installazione mai letto. `PER_TASK better=0 worse=1 equal=8 of 9`, `VERDICT=DIFFERS`. Su `T3`
-ATOM decompone in **4** passi contro 2, due senza file, e il suo `expect` rifiuta con guardia
-**per passo**; il riferimento ha guardia **per piano** e scarta i comandi senza `test`. **Due
-contratti di rifiuto diversi**, non «ATOM copre meno». L'aggregato `-0.2615` nasce su denominatori
-10 vs 13 ed è **dichiarato artefatto**. Due difetti dello strumento riparati (un `0/n` da rifiuto
-era indistinguibile da uno da aspettativa vuota; l'avviso sul denominatore scattava solo sul ramo
-`NO_DIFFERENCE`).
+**`D-0606` è installato, e la prova non è l'albero.** Immagine costruita **offline** dal
+`oci/Dockerfile` canonico (`--pull=false`, exit 0), deployata con
+`tools/deploy/redeploy.sh --apply --authorized-by-owner`, che esegue la sequenza §3a 11c per
+intero: preflight read-only → byte immagine == albero → stop con grazia **e chiusura pulita letta
+nel log** → backup runtime **a servizio fermo** → predecessore preservato → sostituto creato con la
+configurazione **riletta dal contenitore che sostituisce** → salute → figli → auth-failure.
 
-**`D-0606` — il difetto che il collegamento ha scoperto, ed è il risultato più importante della
-sessione.** `referencedDigests()` costruiva il set vivo da `promptDigest` e **`answerDigest`**. Lo
-store contiene invece il prompt e l'**answer record** — `promptDigest` e **`answerRecordDigest`**,
-che dal `D-0597` è deliberatamente un'altra cosa. I due **coincidono per una risposta testuale e
-divergono per una strutturata**, che è la forma di un provider vero. Un `sweep()` collegato
-avrebbe cancellato **la risposta registrata di ogni chiamata strutturata** lasciando il prompt, e
-il replay avrebbe risposto `UNRESOLVABLE` mentre il ledger continuava a dirla rigiocabile.
-Riparato **nominando entrambi i campi**: le fixture pre-`D-0597` sono nominate da `answerDigest`,
-e toglierlo avrebbe scambiato una cancellazione silenziosa con un'altra.
+**Byte-uguale albero↔immagine 468/468**, differing **0**. E la prova specifica di questo rilascio,
+letta **dentro l'immagine spedita** con un contenitore usa-e-getta (`--rm --network none`): **5 file
+su 5 identici** all'albero, `referencedDigests()` che nomina `answerRecordDigest` **e**
+`answerDigest`, e `session-protocol.mjs` che porta `replay.retention` e `replay.sweep`.
 
-**Costruito sopra la riparazione:** `sweep()` con **dry-run come default**,
-`authoringReplayRetention({apply})` sull'orchestratore, due metodi di sessione **bridged**
-(`replay.retention` lettura · `replay.sweep` scrittura), due verbi in **entrambe le shell**
-(`/retention`, `/sweep`), tradotti, ed evento a ledger `authoring_replay.swept` **solo** per uno
-sweep applicato.
+**Parità di configurazione provata, non presunta:** `{{len .Config.Env}}` **44 = 44**, diff dei
+nomi vuoto (valori mai stampati), `restart`/`ro rootfs`/`binds`/`tmpfs`/`ports`/`user` identici.
+`F-ROT-001` sopravvive **correttamente** — la configurazione è riletta, non reinventata.
 
-**Verificato:** unit **2902** (2901 pass, 1 skip preesistente) · ESLint **463 file 0/0/0** ·
-`scripts/test.sh` **18/18** · difetti seminati **19/19 catturati** · matrice PASS, ratchet visto
-FALLIRE a 1 · `authoring-replay-retention` **7/7** con **oracolo visto rosso (3 su 7)** ·
-`ce-023-projection-coverage-report` **6/6**, oracolo visto rosso · sul vivo `healthy`,
-`/livez` e `/readyz` **200**.
+**`D-0608` — il difetto che il deploy ha dato, ed è il risultato più interessante della fase.**
+Il preflight ha stampato `environment: 44 variables` e il recipe `45 env`, **tre righe di
+distanza, per la stessa cosa**. Causa: `wc -l` sull'env-dump conta la newline finale che
+`docker inspect --format` aggiunge all'output reso. Il numero sbagliato era il sintomo; il difetto
+è che con **zero** variabili il file contiene la sola riga vuota → `ENV_COUNT=1` → `-gt 0` regge →
+lo strumento ferma la produzione, la rinomina e avvia un sostituto **con ambiente vuoto,
+dichiarando successo**. Latente per fortuna (Docker inietta sempre `PATH`), non per progetto: la
+**stessa forma** del difetto che `D-0606` aveva riparato una fase prima.
+
+**Riparato in un punto solo**, perché il conteggio era consultato da **due** siti — la guardia di
+completezza e la verifica d'integrità della rotazione — e la prima correzione ne ha fatti divergere
+i due (fixture da 3 rossi a **23**, che è come si è scoperto il secondo sito). Ora `env_count()`,
+una definizione sola, `awk` e mai `grep -c` (esce 1 su zero, e il trap `ERR` è armato).
+
+**Riparata anche la regola che lo nascondeva** (§40c): il `fake-docker` della fixture **non era
+fedele** — nessuna newline finale su `range .Config.Env`, `wc -l` su `len .Config.Env`, e `cp`
+invece del parser che scarta le righe vuote. La fixture era verde e non misurava la cosa.
+
+**Verificato:** unit **2902** (2901 pass, 0 fail, 1 skip preesistente) · fixture di deploy
+**80/80** (76 preesistenti + 4 nuove) con **oracolo visto rosso 3 su 3** · `SOURCE_VERIFY=PASS`
+(`migrations=20`, `baseline=12/12 intact`, `nul-free=1150`) · provenienza **468/468 dopo** la
+riparazione · `bash -n` OK sui tre file cambiati · sul vivo `healthy`, `/livez` `/readyz`
+`/healthz` **200**, TLS `/livez` **200**, gate `401`/`404`/`200`, **0** auth-failure, **0** errori.
 
 ## WHAT WAS **NOT** DONE
 
-- **`D-0606` NON è installato** — vedi sopra, è il debito §3a aperto e la prossima decisione.
-- **`CE-024` e `CE-035` non toccate.**
-- **`D-0605` proposto, non eseguito.**
-- **Nessuna prova sul vivo della nuova superficie `replay.*`**: non è installata, quindi non
-  esiste lì. Ciò che è provato è provato **in albero**.
-- **`/sweep` non è mai stato eseguito con `apply:true` su dati reali** — solo su store temporanei
-  nei test. È deliberato: cancella byte che non tornano.
-- **Perché `D-0215` (28/07) desse `equal=9 of 9` e oggi `DIFFERS` non è stato stabilito**, e
-  `atomd` girava con `simulation=true`, senza modello.
-- **HUNT AND FIX: full sweep**, non scoped al diff — un metodo di sessione nuovo è una superficie
-  nuova. Strumenti: le suite del repository, `seeded-defect-proof`, `scripts/test.sh`, lettura.
+- **`CE-024` e `CE-035` non toccate.** Restano le due caselle senza verdetto.
+- **`D-0605` e `D-0609` proposti, non eseguiti.**
+- **`/sweep` non è mai stato eseguito con `apply:true` su dati reali** — nemmeno ora che la
+  superficie è viva sull'installazione. È deliberato: cancella byte che non tornano.
+- **Nessuna prova sul vivo che richieda una sessione autenticata**, e nessuna suite mutante
+  puntata sull'installazione (§3a 11e).
+- **T2 non rieseguita per intero in questa fase.** Girate: unit, `verify-source`, fixture di
+  deploy, provenienza. **Non** girate: browser e2e, accessibilità, `scripts/test.sh` completo —
+  il codice di prodotto **non è cambiato in questa fase** (il diff è tre file sotto
+  `tools/deploy/`, che l'immagine non contiene), e la provenienza 468/468 lo dimostra invece di
+  affermarlo. Dichiarato, non implicito (`noesar-evolution-verify` §single-pass 4).
+- **HUNT AND FIX: scoped al diff** — la fase ha cambiato tre file di `tools/deploy/`, nessuna
+  superficie di prodotto nuova. Strumenti: la fixture, `bash -n`, lettura, e il deploy vero
+  (che è ciò che ha effettivamente trovato `D-0608`). **`shellcheck` assente su questo host** e la
+  batteria non lint-a affatto la shell — è la ragione di `D-0609`.
 - **`MANIFEST.sha256` non rigenerato**: stale di ~670 file dal `D-0399`.
 - **Scansione segreti euristica e dichiarata tale**: né `gitleaks` né `trufflehog` su `PATH`.
 
@@ -89,4 +90,4 @@ FALLIRE a 1 · `authoring-replay-retention` **7/7** con **oracolo visto rosso (3
 
 - `B-002` **STALE** (`D-0257`): rimisurato — né `gitleaks` né `trufflehog` sono su `PATH`.
 - `B-011` low/deferred (`D-0258`): storia git riscritta su autorizzazione esplicita dell'Owner.
-- **Debito §3a**: `D-0606` in albero, non installato.
+- **Debito §3a: CHIUSO.** Non c'è più.
