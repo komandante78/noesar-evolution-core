@@ -13905,3 +13905,41 @@ precedente; `faithful` diventa più severo, che è il punto.
 riproducibile end-to-end, con la provenienza di ogni chiamata) e **tratto 3** (autonomia: il
 replay non richiede di ricontattare alcun modello, quindi funziona offline e senza fornitore).
 **Status.** applied — non installato.
+
+## D-0601 · `CE-005`: la misura c'era, e non diceva **dove** la forma si assesta — 2026-08-20
+**Decisione.** `CE-005` registrata ✅ eseguendo la misura in questa sessione, e la sua asserzione
+è rafforzata di due righe: la forma dev'essere **assestata entro la chiamata 25** e identica a 300.
+**Perché.** Riga da *run-and-record*: le 400 chiamate contro un `ContextGraph` vero esistevano già
+e mancava solo la casella. Leggerla ha però trovato qualcosa: si confrontavano 3↔300 (nomi delle
+sezioni) e 300↔400 (forma), e **nessuno diceva dove la forma smette di muoversi**. Una regressione
+che spostasse l'assestamento dalla chiamata 25 alla 200 passerebbe entrambi i confronti.
+**Respinta.** Asserire `shape(3) === shape(300)` alla lettera: i conteggi `shown` a call 3 sono
+`plan:3|evidence:3|diff:3` contro `plan:8|evidence:6|diff:10` a 300, e non è la forma che si muove
+— sono le sezioni che si **riempiono**. A call 3 esistono tre fatti di piano, e mostrarne tre è
+l'unica cosa onesta che un cap di otto possa fare. Asserirlo renderebbe rosso il comportamento
+corretto.
+**Evidenza.** Misurato in questa sessione: call 3 **572 byte**, 25 **1143**, 100 **1151**, 300
+**1188**, 400 **1188** — identico. Rapporto 300/3 = **2,08×** contro il **81,6×** che
+`context-projector.mjs` registra come misura *prima* che il modulo esistesse. Tetto derivato dallo
+schema **15.198**, reso 12,8× sotto. 1201 fatti trattenuti, 800 messaggi; poi 800 messaggi in più
+senza un fatto e il `digest` **non si muove**. `context-projection.test.mjs` **16/16**, **oracolo
+visto rosso** puntando la riga nuova alla chiamata 3. Unit **2888/2889** (1 skip preesistente).
+**Costo di reversal.** Nessuno: due asserzioni in più su un test già verde.
+**Status.** applied — non installato.
+
+## D-0602 · `CE-023` non è chiudibile senza l'Owner, e il perché è preciso — 2026-08-20
+**Decisione.** `CE-023` resta **senza verdetto**. Non è pigrizia né scoperta: è una condizione di
+stop, due volte.
+**Perché.** `tools/measure-projection-coverage.mjs` **rifiuta ed esce 2** se nessun provider
+esterno è selezionato — giustamente, perché un delta nullo per costruzione sembrerebbe una misura.
+Selezionarne uno significa ATOM **e** il suo token: `noesar-evolution-engineering-depth` §6 ferma
+il lavoro per «ATOM» e per «credential material», ed è un elenco, non un suggerimento.
+**Respinta.** Registrare il verdetto sull'evidenza del `D-0215` (2026-07-28, `PER_TASK better=0
+worse=0 equal=9 of 9`, `VERDICT=NO_DIFFERENCE`): la regola 38 vieta un PASS senza evidenza
+prodotta **in questa** sessione, e il caso è esattamente quello per cui esiste.
+**Evidenza.** Lo strumento è stato letto, non eseguito: `routing.externalSurfaces.length === 0`
+→ `process.exit(2)`. Nessuna misura è stata prodotta oggi, e nessuna è dichiarata.
+**Ciò che serve dall'Owner, in una riga:** l'autorizzazione a puntare lo strumento sul daemon ATOM
+installato, con il suo token nell'ambiente e mai in un file tracciato (§7).
+**Costo di reversal.** Nessuno — nulla è stato cambiato.
+**Status.** blocked — decisione dell'Owner.

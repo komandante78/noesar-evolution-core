@@ -217,7 +217,13 @@
       "criterion": "Il contesto alla chiamata *n* ha la stessa forma della chiamata 3, per *n* > 300",
       "severity": "high",
       "howVerified": "compito lungo reale, misura della forma e della taglia",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0601"
+        ],
+        "text": "✅ **verificato 2026-08-20 (`D-0601`)** — `services/reference-control-plane/test/context-projection.test.mjs`, **16/16**, col metodo che la riga chiede: **un compito lungo vero** — 400 chiamate contro un `ContextGraph` reale su uno store reale, due messaggi e tre fatti per chiamata, quindi **800 messaggi e 1201 fatti** trattenuti — e la misura **della forma e della taglia** presa ai campioni 3, 25, 100, 300, 400. **Numeri misurati in questa sessione:** call 3 **572 byte**, call 25 **1143**, call 100 **1151**, call 300 **1188**, call 400 **1188** — *identico*, cento chiamate in più non aggiungono un byte. Rapporto 300/3 = **2,08×** contro il **81,6×** che l'intestazione di `context-projector.mjs` registra come misura *prima* che il modulo esistesse (da 8 voci/1044 byte a call 3 fino a 602 voci/85.190 byte a call 300). Il tetto è **derivato dallo schema**, non scritto a mano (`projectionByteCeiling()` = **15.198**), e il reso sta 12,8× sotto. **La sfumatura, nominata invece che nascosta:** i conteggi `shown` alla chiamata 3 **non** sono quelli della 300 — `plan:3|evidence:3|diff:3` contro `plan:8|evidence:6|diff:10` — e non è la forma che si muove, sono le sezioni che si **riempiono**: a call 3 esistono tre fatti di piano, e mostrarne tre è l'unica cosa onesta che un cap di otto possa fare. Ciò che il criterio riguarda davvero è che la forma **si assesta e poi non si muove più**, e **fino a `D-0601` nulla diceva dove**: è la **chiamata 25**, ora asserito — una regressione che spostasse l'assestamento a call 200 passerebbe il confronto 300↔400 e **fallirebbe** su questa riga (**oracolo visto rosso** puntandola alla chiamata 3). Elenco delle sezioni, ordine e `version` sono **identici dal primo campione**. **E la proiezione è quel che è per i fatti, non per la trascrizione:** 800 messaggi in più senza un fatto e il `digest` **non si muove**"
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:437"
     },
     {

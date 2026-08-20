@@ -268,6 +268,25 @@ test('CE-005: the context at call 300 has the shape and the size it had at call 
     assert.equal(fourHundred.shape, threeHundred.shape, 'the shape must stop changing once the caps are reached');
     assert.equal(threeHundred.version, three.version);
 
+    // WHEN it stops changing, named rather than left to be inferred — `D-0601`.
+    //
+    // The criterion says the context at call n has the same shape as at call 3. Measured, the
+    // `shown` counts at call 3 are NOT the ones at call 300 — `plan:3|evidence:3|diff:3` against
+    // `plan:8|evidence:6|diff:10` — and that difference is the sections still FILLING, not the
+    // shape moving: at call 3 there are three plan facts in existence, so showing three is the
+    // only honest thing a cap of eight can do. What the criterion is actually about is that the
+    // shape settles and then never moves again, and until this line nothing said where that
+    // happens. It is call 25, and asserting it turns "it stabilises eventually" into a fact with
+    // a number: a regression that pushed stabilisation out to call 200 would pass the 300-vs-400
+    // comparison above and fail here.
+    assert.equal(samples.get(25).shape, threeHundred.shape,
+      'the shape must be settled by call 25 and identical at 300');
+    assert.equal(samples.get(100).shape, threeHundred.shape);
+    // And the section list and the version are identical from the very first sample — those are
+    // the parts of "shape" that never had any reason to move.
+    assert.equal(fourHundred.sectionNames, three.sectionNames);
+    assert.equal(fourHundred.version, three.version);
+
     // The size: bounded, and bounded by the schema rather than by a number typed here.
     assert.ok(threeHundred.bytes <= projectionByteCeiling());
     assert.equal(fourHundred.bytes, threeHundred.bytes, 'a hundred more calls must not add a byte');

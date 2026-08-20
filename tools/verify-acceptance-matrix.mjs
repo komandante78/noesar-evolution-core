@@ -74,8 +74,12 @@ import { readFileSync } from 'node:fs';
  * has accepted `previousAttemptDigests` since it was written and its only caller in the product
  * passed neither it nor `attempts`, so `novelty` was `novel` on every run the product ever made
  * and no budget existed anywhere. Seen to FAIL at 3 first, one notch tighter.
+ * **3** at `D-0601` (`CE-005`) — run-and-record: the 400-call measurement already existed and only
+ * the verdict cell was empty. Reading it did find something worth adding: nothing said WHERE the
+ * shape settles, so a regression pushing stabilisation from call 25 out to call 200 would have
+ * passed the 300-vs-400 comparison unnoticed. Seen to FAIL at 2 first, one notch tighter.
  */
-const MAX_UNSTATED = 4;
+const MAX_UNSTATED = 3;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than
