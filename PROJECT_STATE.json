@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0592 — CE-032: la meta «in contenitore» era letta sul testo del Dockerfile, ora e eseguita dentro un contenitore vero. Registrato PARZIALE (Windows statico). Ratchet 10 -> 9, critical 0",
-  "phase_status": "COMPLETE E INSTALLATO — noesar-evolution:d0590-keyboard-coverage-20260820T050637Z, deployed 05:07Z, running/healthy, byte-equal albero-immagine 459/459, i sei comandi verificati DENTRO l'immagine spedita. Predecessore conservato: noesar-evolution-pre-20260820T050745Z. Debito §3a chiuso: l'installazione non e piu indietro di tre fasi.",
-  "next_phase": "Owner: (1) il deploy di D-0590 ancora in attesa di --authorized-by-owner, (2) la sonda-contenitore per CE-031/CE-035, poi il VPS, (3) le 9 righe senza verdetto",
+  "current_phase": "D-0594 — CE-031: da senza verdetto ad accesso reale eseguito. Una seconda macchina (namespace suo, uid 65534, nessun socket di motore) registra e GUIDA la sessione sopra il solo TCP; sull host un account non privilegiato riceve la dichiarazione della parola sola e raggiunge /livez. Registrato PARZIALE (un altro namespace non e un altro OS). Ratchet 9 -> 8, critical 0",
+  "phase_status": "COMPLETE — nessun deploy, e nessuno serviva: zero righe di codice del prodotto cambiate. scripts/test.sh 18/18, unit 2864/2865 (1 skip preesistente), ESLint 456 file 0/0, matrice 59 verdetti su 67, ratchet visto FALLIRE a 7. Installazione viva invariata e healthy dopo la pulizia",
+  "next_phase": "CE-006 — costruisce il banco di replay che CE-027 riusa, quindi va PRIMA. Poi CE-027/CE-028/CE-030 come UNA fase (l Autore, fase 5 del piano 17). CE-035 resta dell Owner: serve una macchina che non e questa",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "3494ece",
-  "last_updated_utc": "2026-08-20T06:15:40Z",
+  "last_commit": "e971110",
+  "last_updated_utc": "2026-08-20T07:06:46Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "L'INSTALLAZIONE E AGGIORNATA (d0590-keyboard-coverage-20260820T050637Z, running/healthy) e il debito §3a e chiuso. «Attiva le skills» e stato chiarito dall'Owner: intendeva le skill di Claude Code, gia tutte vincolanti via CLAUDE10.md e i quattro hook — nulla da attivare, e l'adozione automatica del catalogo DEL PRODOTTO non e stata fatta e non era la richiesta. PROSSIMO LAVORO, deciso con l'Owner: CE-031 e CE-035. Prima una sonda-contenitore come «altra macchina» (namespace di rete suo, utente non privilegiato, NESSUN socket Docker montato, solo TCP su noesar-e2e-net): chiude la parte raggiungibile-senza-privilegi, NON chiude OS diverso ne sshd reale, e questo va dichiarato. POI un VPS senza GPU con il prodotto installato SOPRA — mai questo host esposto a internet — dove il test e letteralmente ssh + coden_evolution, quindi nessuna porta pubblica oltre sshd. MATRICE A 67: unstated 9, critical 0 — CE-005, CE-006, CE-023, CE-024, CE-027, CE-028, CE-030, CE-031, CE-035. CE-027/CE-028/CE-030 sono un solo soggetto (l'Autore, fase 5 del piano 17) e vanno prese come UNA fase; CE-006 costruisce il banco di replay che CE-027 riusa, quindi va prima.",
+  "next_action": "CE-031 e chiusa come PARZIALE ed e riproducibile da chiunque cloni il repository (tools/acceptance/ce-031-second-machine.sh, step tristate di scripts/test.sh). PROSSIMO LAVORO: CE-006 per primo, perche costruisce il banco di replay che CE-027 riusa — farlo dopo significa costruirlo due volte; poi CE-027/CE-028/CE-030 come UNA fase sola, sono un solo soggetto (l Autore). CE-035 NON e chiudibile qui: chiede ssh + coden_evolution da una seconda macchina della rete, quindi il VPS senza GPU con il prodotto installato SOPRA, mai questo host esposto a internet — la GPU e irrilevante, nessuna riga nomina un modello e CE-020 prova che la shell risponde con zero modelli caricati. MATRICE A 67: verdetti 59, senza verdetto 8 (CE-005, CE-006, CE-023, CE-024, CE-027, CE-028, CE-030, CE-035), critical 0. Aperti anche: D-0564, D-0589, D-0591, D-0593, D-0595, F-TOOLSCOPE-001.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
