@@ -56,8 +56,14 @@ import { readFileSync } from 'node:fs';
  * the row the previous phase had called expensive and was wrong about: 36 rungs already executed
  * the source half. Taking the method literally found the rest — *"e su una in contenitore"* was
  * three `assert.match` calls against the TEXT of `oci/Dockerfile`. Seen to FAIL at 8 first.
+ * **8** at `D-0594` (`CE-031`, recorded ⚠️ PARTIAL — a second network namespace is not a second
+ * machine, and says so). The row had no verdict here while `docs/INSTALLATION_LEDGER.md` carried
+ * a ✅ for it, obtained by creating an account, three `sudoers` rules and an `sshd` block on the
+ * development host: a host modification the platform law forbids the product to make, and one
+ * `/etc`-in-RAM erased at the next boot. A verdict that cannot be re-run is not a verdict, which
+ * is exactly what this ratchet counts. Seen to FAIL at 7 first, one notch tighter.
  */
-const MAX_UNSTATED = 9;
+const MAX_UNSTATED = 8;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

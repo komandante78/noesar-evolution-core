@@ -38,6 +38,12 @@ const required = [
   // and still leave a Windows installation with no entrance at all.
   'tools/coden-evolution',
   'tools/coden-evolution.ps1',
+  // And the two halves of CE-031's proof, required together for the same reason (`D-0594`):
+  // the orchestrator without the remote probe raises a second machine with nothing to run on
+  // it, and the probe without the orchestrator is a file nothing invokes — which is precisely
+  // how `noesar-debuglab` became a mandatory step pointing at a tool that no longer existed.
+  'tools/acceptance/ce-031-second-machine.sh',
+  'tools/acceptance/ce-031-remote-probe.mjs',
   '.gitleaks.toml',
   'rust/crates/noesar-reasoning/src/lib.rs',
   'rust/crates/noesar-reasoning-reference/src/lib.rs',

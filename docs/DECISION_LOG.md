@@ -13735,3 +13735,48 @@ stampava i campi della sonda e usciva 0. Dopo la riparazione: 6 `FAIL` e uscita 
 è provata la capacità di fallire) e **tratto 1** (delimitato: è una regola di suite, non un
 sottosistema).
 **Status.** proposed — non eseguita in questa fase.
+
+## D-0594 · `CE-031` misurata eseguendo, e il vecchio ✅ ritirato come metro — 2026-08-20
+**Decisione.** `CE-031` passa da **senza verdetto** a **⚠️ PARZIALE**, provata da
+`tools/acceptance/ce-031-second-machine.sh` (in `scripts/test.sh`, tristate): **10/10** da una
+seconda macchina — namespace di rete suo, uid 65534, radice in sola lettura, **nessun socket di
+motore**, nessun percorso di questo host — che sopra il solo TCP raggiunge, **registra l'Owner
+con il secondo fattore** e **guida la sessione** (`status` → `noesar-tui/1`; `capability.grants`,
+che richiede `workspace.read`, → 200); e **3/3** sull'host con i privilegi **abbassati** a uid
+65534, dove la parola sola esce **3** dichiarando che il motore non le risponde e nomina il
+browser, e lo stesso account non privilegiato raggiunge `/livez` **200**.
+**Perché.** La riga è **Sev A** e non aveva verdetto, mentre `docs/INSTALLATION_LEDGER.md`
+portava un ✅ del 2026-08-07 (`D-0341`) ottenuto creando un account di sistema, tre regole
+`sudoers` e un blocco `sshd` su **questo** host: una modifica che la legge di piattaforma vieta
+al prodotto, che nessun test può rieseguire, e che il `/etc` in RAM di quell'host ha cancellato
+al riavvio successivo. Provava inoltre di raggiungere un **prompt di autenticazione**, che non è
+raggiungere una sessione.
+**Respinta.** Provarla sull'installazione viva: la registrazione del primo Owner **muta dati**,
+e §3a 11e lo vieta. Riapplicare la ricetta §12: modifica dell'host, è dell'Owner, non del prodotto.
+**Evidenza.** `CE031_SECOND_MACHINE_FAIL=0`; oracolo visto rosso in **due** direzioni — montando
+il socket Docker `CE031-1` fallisce; puntata dove non ascolta nulla la sonda riporta **7 FAIL
+misurati**, e la sua prima versione **moriva con uno stack trace** invece di riportarli (difetto
+trovato eseguendo l'oracolo, riparato). Ratchet `MAX_UNSTATED` **9 → 8**, visto **FALLIRE a 7**.
+Unit **2864/2865** (1 skip preesistente), ESLint **456 file 0/0**, `verify-source` PASS.
+**Costo di reversal.** Nessuno sul prodotto: non è stata toccata una riga di codice del prodotto.
+Tornare indietro significherebbe riportare `CE-031` a senza verdetto e rialzare il ratchet.
+**Status.** applied — non installato, perché nulla di installabile è cambiato.
+
+## D-0595 · Il difetto `set -eu` è stato trovato tre volte nello stesso angolo: proposta di renderlo impossibile — 2026-08-20
+**Decisione.** Proposta, **non eseguita**: un file `tools/lib/checks.sh` con `verify`/`equals`/
+`differs` e la cattura di stato già corretta, importato dagli script di accettazione, più una
+riga di lint che rifiuta `[ … ]` nuda e `cmd; printf "$?"` dentro una sostituzione.
+**Perché.** `D-0390` (un `grep -c` che uscì 1 e per poco annullò un deployment riuscito),
+`D-0592` (`ce-032`, che sembrava verde e non poteva riportare un FAIL) e **oggi due volte in un
+file solo**: una sostituzione che si è portata via l'intero script, e `$?` dopo `if !` che vale 0
+per costruzione e registrava `exit=0` per un processo appena uscito 3. Tre fasi, stesso angolo:
+non è distrazione, è una forma che invita l'errore.
+**Respinta.** Continuare a copiare l'idioma corretto da un file all'altro — è ciò che si è fatto
+finora, e ha prodotto la terza occorrenza.
+**Evidenza.** Le tre occorrenze sono in `ce-032-launcher-in-container.sh` (intestazione),
+`ce-031-second-machine.sh` (due commenti di riparazione) e `D-0390`.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: rende meccanica
+una classe di guasto dell'oracolo) e **tratto 2** (riusabile: la libreria vale per chiunque
+scriva accettazione in POSIX `sh`).
+**Costo di reversal.** Nessuno — non eseguita.
+**Status.** proposed — decisione dell'Owner.

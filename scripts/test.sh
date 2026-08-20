@@ -112,6 +112,15 @@ step five-archives   node tools/verify-five-archives.mjs
 # shebang. This runs the one word inside a disposable container built from the product's own
 # image, offline, removed by --rm. Tristate: a host with no Docker gets an honest UNAVAILABLE.
 step_tristate ce032-container tools/acceptance/ce-032-launcher-in-container.sh
+# D-0594. CE-031 — "the session is reachable by a user who is NOT an administrator of the host,
+# on the host and from another machine" — carried no verdict at all, while the installation
+# ledger recorded it ✅ from a 2026-08-07 run that created a system account, three sudoers rules
+# and an sshd block on THIS host: a modification the platform law forbids the product to make,
+# which /etc-in-RAM then deleted at the next boot. This raises a disposable installation, a
+# second machine with its own network namespace, an unprivileged uid and no engine socket, and
+# has it register and DRIVE the session over TCP — then asks the same of an unprivileged account
+# on the host. Tristate: a host with no engine gets an honest UNAVAILABLE.
+step_tristate ce031-second-machine tools/acceptance/ce-031-second-machine.sh
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

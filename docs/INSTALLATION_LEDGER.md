@@ -5511,3 +5511,36 @@ Contenitori **53 → 52**, volumi **65 → 65**, reti **10 → 10**, contenitori
 (`noesar-local` è di NOESAR V3 e non è stata toccata)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0590_20260820T050841Z.txt`). Salute riprovata dopo la
 pulizia: `running`/`healthy`, `/livez` e `/readyz` **200**.
+
+---
+
+## `CE-031` — la seconda macchina, eseguita (`D-0594`, 2026-08-20)
+
+**Nessun deploy, e nulla di installabile è cambiato**: questa fase non tocca una riga di codice
+del prodotto. Cambia ciò che il progetto **sa dire** di sé, e come lo prova.
+
+**Misura PRIMA:** `CE-031` (Sev **A**) senza verdetto nella matrice, mentre questo stesso file
+portava un ✅ del 2026-08-07 (`D-0341`) ottenuto con account di sistema, tre regole `sudoers` e
+un blocco `sshd` **su questo host** — irripetibile, vietato al prodotto, e cancellato dal `/etc`
+in RAM al riavvio successivo.
+
+**Misura DOPO:** una prova che chiunque cloni il repository riesegue, su qualunque host con un
+motore di contenitori, senza modificare nulla fuori da sé.
+
+| Metà | Cosa è stato eseguito | Esito |
+|---|---|---|
+| altra macchina | namespace di rete suo, uid 65534, radice in sola lettura, capability tolte, **nessun socket di motore**, nessun percorso di questo host; misura il proprio isolamento invece di presumerlo; poi TCP: `/livez` 200, bridge non autenticato 401, registrazione Owner + secondo fattore, `status` → `noesar-tui/1`, `capability.grants` (richiede `workspace.read`) → 200, `/coden-terminal.html` servito | **10/10** |
+| sull'host | privilegi **abbassati** a uid 65534 (`setpriv`; nessun account creato, nulla scritto): la parola sola esce **3** dichiarando che il motore non le risponde e nomina il browser; lo stesso account raggiunge `/livez` **200** sul lasciapassare di loopback | **3/3** |
+
+**Installazione usa-e-getta**: immagine viva, workspace **interamente su tmpfs** (cluster
+PostgreSQL compreso), pubblicata **solo su loopback** su porta scelta dal kernel — la seconda
+macchina non può usarla e resta obbligata al nome del contenitore sul bridge, che è la cosa sotto
+esame. Pronta in **1 s**, 20 migrazioni applicate, `production_ready:true`.
+
+**Pulizia (§5a):** il contenitore usa-e-getta è rimosso dal `trap`, in ogni uscita, per nome —
+`CLEANUP=removed noesar-evolution.ce031-install-<stamp>` è stampato a ogni giro. La seconda
+macchina è `--rm`. Rete `noesar-e2e-net` **riusata**, mai stampata a stampo: una bridge per giro
+consuma una sottorete dal pool finito di Docker e nulla qui può rimuovere una rete.
+
+**`MANIFEST.sha256` non è stato rigenerato**, e si dice: è già stale di ~670 file dal `D-0399`,
+nessun passo della batteria lo verifica, e ripararlo qui sarebbe un'altra fase.
