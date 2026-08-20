@@ -1,89 +1,87 @@
 # SESSION HANDOFF
 
-**Phase:** `D-0588` — «i cinque archivi» nominava due cose; una lista sola, due istanze.
-Matrice **66 → 67** criteri (`PKG-001`, verdetto ❌ onesto), **unstated fermo a 11, critical 0**.
-`D-0589` proposto.
-**Live installation:** unchanged — `noesar-evolution:d0586-induced-facts-and-spaces-20260819T180231Z`,
-`running`/`healthy`. **This phase installed nothing**: documents, one new verifier, no shipped
-code path touched.
+**Phase:** `D-0590` — `CE-020` chiude: ogni capacità del motore ha una forma da tastiera, **27/27**.
+Ratchet **11 → 10**, critical **0**. `D-0591` proposto. Fase precedente della stessa sessione:
+`D-0588` (i cinque archivi, `PKG-001`).
+**Live installation:** `noesar-evolution:d0586-induced-facts-and-spaces-20260819T180231Z`,
+`running`/`healthy`. **NON aggiornata**: l'installazione in esecuzione non ha i sei comandi nuovi.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**Il deploy di `D-0590` è in attesa di una parola dell'Owner.** Preflight già eseguito, non
+mutante:
+
 ```text
-node tools/verify-acceptance-matrix.mjs   ->  67 criteri, unstated 11, critical 0
-node tools/verify-five-archives.mjs       ->  PASS  (25 file, 10 menzioni, 0 ambigue)
+tools/deploy/redeploy.sh --source noesar-evolution --check   ->  PREFLIGHT: PASS
 ```
 
-**Le 11 righe senza verdetto sono le stesse di prima — `PKG-001` non le tocca**, perché è nata
-con un verdetto. Nessuna delle 11 è a buon mercato, e questo è misurato, non ipotizzato. Tre
-classi; la prossima fase dica quale prende:
+Immagine corrente `d0586…`, rete `noesar-evolution-net`, 44 variabili · 3 porte · 2 bind, ogni
+bind esiste, 249 GiB liberi, il nome del predecessore è libero, rollback dichiarato. `--apply`
+esige `--authorized-by-owner`, e quella parola è dell'Owner — non me la do da solo, anche se
+`CLAUDE10.md` §3a lega la fase a installare ciò che cambia. **È l'unica cosa aperta di questa
+fase.**
+
+Poi, la matrice a **67 criteri, 10 senza verdetto, 0 critici**. Le dieci:
 
 - **(a) serve un banco che non esiste** — `CE-005` (il contesto alla chiamata *n* > 300 ha la
   forma della chiamata 3) · `CE-006` (ogni chiamata al modello rieseguibile isolata).
-- **(b) serve una seconda macchina** — `CE-031` `CE-032` `CE-035` (raggiungibilità `ssh` e
-  portabilità dell'avviatore). **Non chiudibili onestamente su questo host solo**: dichiararlo
-  è la risposta giusta, approssimare un verdetto di portabilità è il falso PASS della regola 38.
-- **(c) serve prodotto non costruito** — `CE-023` · `CE-024` · `CE-027`/`CE-028`/`CE-030`.
+- **(b) serve una seconda macchina** — `CE-031` `CE-032` `CE-035`. **Non chiudibili onestamente
+  su questo host solo**: dichiararlo è la risposta giusta, approssimare un verdetto di
+  portabilità è il falso PASS della regola 38.
+- **(c) serve prodotto non costruito** — `CE-023` `CE-024` `CE-027` `CE-028` `CE-030`. È la
+  classe **più lunga e più densa**, e le cinque righe non sono indipendenti: `CE-027`, `CE-028`
+  e `CE-030` sono tutte sull'Autore (fase 5 del piano `17`).
 
-**`CE-020` sta da solo** (ogni capacità ha una forma da tastiera completa): l'unico le cui parti
-forse esistono già — `tools/tui-fullscreen.mjs`, `test/ce-020-tui-fullscreen.test.mjs`.
-**Scoparlo prima**: elencare le capacità, vedere quali non hanno percorso da tastiera.
+**`CE-020` non è più nell'elenco**: era l'unica riga le cui parti esistevano già, ed è chiusa.
 
-**Anche aperti:** `D-0564` (la testa del registro eventi è un hash senza chiave: rileva una
-modifica, non una riscrittura), `D-0589` (la provenienza è firmata **HMAC simmetrico**, quindi
-non verificabile da un auditor indipendente — blocca la posizione 5 di `PKG-001`),
-`F-TOOLSCOPE-001`.
+**Anche aperti:** `D-0564` · `D-0589` (provenienza firmata HMAC **simmetrico**: non verificabile
+da un auditor indipendente, blocca la posizione 5 di `PKG-001`) · `D-0591` · `F-TOOLSCOPE-001`.
 
-**`production_ready` resta `false`.** 11 righe senza verdetto, e `PKG-001` a ❌.
+**`production_ready` resta `false`.**
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**«I cinque archivi» era leggibile in due modi opposti, e la lista non esisteva.** Otto punti
-dell'albero dicevano *cinque archivi* / *five ZIPs* intendendo **due artefatti diversi**: il
-pacchetto V4 **ricevuto e sigillato** (fuori dal repository, regola 34) e il pacchetto che questo
-progetto deve **produrre**. `MASTER_PROJECT/` non le enumerava affatto — l'unica enumerazione era
-nella documentazione V4, rimossa dal `D-0097`. L'ultima clausola del "fatto" del prodotto era una
-frase senza contenuto leggibile.
+**Due fasi.** `D-0588`: «i cinque archivi» nominava due artefatti diversi in otto punti e
+`MASTER_PROJECT/` non li enumerava affatto; ora una lista sola in `09_PIANO.md` §4a, due istanze
+nominate, `tools/verify-five-archives.mjs` nella batteria, riga `PKG-001` con un ❌ onesto.
 
-Adesso: **una lista sola, in `MASTER_PROJECT/09_PIANO.md` §4a**, con il contenuto di ognuna delle
-cinque posizioni; ogni punto che governa dice **quale istanza** intende o punta lì; e
-`tools/verify-five-archives.mjs` — nella batteria, `scripts/test.sh` — tiene l'unica copia e
-**prova che coincide con i cinque nomi incisi nei nomi degli archivi sigillati**.
+**`D-0590`: `CE-020`.** Il criterio dice *ogni* capacità; il runner che lo copriva ne esercitava
+**una** (`repoMap.scan`) e provava il meccanismo, non la copertura. Misurato leggendo
+`SESSION_METHOD_POLICY` — il registro del motore, non una lista scritta a mano — **6 capacità su
+27** non avevano forma da tastiera nella shell che un utente `ssh` riceve davvero. Quattro da
+nessuna parte; **due (`sessions.get`, `sessions.action`) solo come verbi della shell a righe**,
+che gira soltanto con stdin da pipe — dal sorgente si leggono come coperte e non lo sono. Stessa
+forma del `D-0405`.
 
-**Correzione a una skill, non solo ai documenti.** `engineering-depth` §8 passo 12 diceva che i
-cinque di consegna erano *«a different five, unrelated»* ai cinque sorgente. Misurato: portano
-**gli stessi cinque titoli**. Rispondere a una collisione di nomi con «sono liste diverse» era un
-secondo errore sopra il primo.
+Sei comandi nella lista che **entrambe** le shell importano, quindi il browser li guadagna nello
+stesso cambiamento; quattro rotte dirette in `CODEN_UNBRIDGED` perché quei metodi sono
+`bridged:false`. **Nessun permesso allargato**: le rotte esistevano già e chiedono lo stesso
+permesso del socket. `/session-action` porta con sé il rifiuto che la shell a righe aveva già —
+`confirm` come parola digitata (`15` §13) — altrimenti la shell a schermo pieno sarebbe stata la
+via più economica per la cosa più pericolosa (`purge` non si annulla).
 
-**Verificato in questa sessione:** guard visto **FALLIRE su 6 difetti reali** prima della
-correzione, e visto fallire di nuovo apposta rinominando la posizione 2. Unit **2860/2861**
-(1 skip preesistente), ESLint **454 file 0/0/0**, `SOURCE_VERIFY=PASS`, matrice **PASS**.
+**Verificato:** oracolo nuovo visto **FALLIRE a 6/27**; unit **2864/2865** (1 skip preesistente);
+ESLint **455 file 0/0/0**; `scripts/test.sh` **16/16**; browser e2e **505/506**, l'unico rosso è
+il gap dichiarato `F-I18N-002` a **647 — identico al valore misurato il 2026-08-18**, quindi non
+cresciuto qui (`UNDECLARED=0`); `ce-020-tui-fullscreen.mjs` **CE020_FAIL=0** su 18 controlli
+contro un motore vero a tasti veri; ratchet visto **FALLIRE a 9**.
 
 ## WHAT WAS **NOT** DONE
 
-- **`PKG-001` è ❌ e resta ❌.** Questa fase ha chiuso il **contenuto** del criterio, non il
-  criterio: nessun archivio di consegna è mai stato prodotto. Non contarla come progresso verso
-  la consegna — è progresso verso il *poterla misurare*.
-- **`docs/progetto-italiano/` non è stato toccato**, e porta tre delle stesse righe ambigue. È
-  uno **specchio stantio** di `MASTER_PROJECT/` (7 file su 14 divergono, già registrato in
-  `docs/COSA_MANCA.md:167`), e `docs/DECISION_LOG.md:5992` dice che **quale dei due sia canonico
-  non è deciso**. Allinearlo qui avrebbe preso quella decisione in silenzio. Il guard lo esclude
-  **per nome, con la ragione scritta nel codice**, non per dimenticanza.
-- **Gli 80 report sotto `docs/` non sono sorvegliati dal guard**, per scelta: una regola che
-  cercasse una formulazione approvata in ogni report sorveglierebbe la prosa, non la sostanza —
-  la ragione per cui `D-0531` rifiutò un hook per la riga del finanziamento. Sorvegliato è ciò
-  che **governa**: `MASTER_PROJECT/`, `CLAUDE10.md`, le skill (25 file).
-- **`CLAUDE10.md` non è stato modificato.** La regola 34 dice già *«five **source** ZIP
-  archives»*: è già disambigua, e emendare il file d'autorità è dell'Owner, non di una fase.
-- **Nessuna suite browser/accessibilità, nessun T2, nessun T3.** Nessun markup, DOM, token CSS o
-  percorso di prodotto è cambiato. `MANIFEST.sha256` non aggiornato: è lo snapshot d'estrazione
-  della fase 1, nessun passo della batteria lo verifica, e non elenca gli strumenti recenti.
-- **`D-0589` proposto, non eseguito.**
+- **L'installazione non è stata aggiornata** — vedi LA PROSSIMA AZIONE. `CLAUDE10.md` §3a lega
+  una fase che cambia il prodotto a installarla nella stessa fase, e questa fase cambia il
+  prodotto: è un debito dichiarato, non una scelta.
+- **`tools/accessibility-audit.mjs` non eseguito**, e dichiarato: nessun markup, nessun token CSS,
+  nessuno stato visivo nuovo — le sei righe nuove usano il componente riga che già esiste.
+- **La fase ha superato il budget dichiarato** (~45 chiamate, spese ~70). La causa è nominabile:
+  la prima misura ha detto «10 capacità scoperte», e si è rivelata sbagliata — non contava le
+  viste d'indirizzo. Rifarla per bene è ciò che ha trovato il difetto vero.
+- **`D-0591` proposto, non eseguito**: l'oracolo prova che una forma da tastiera **esiste**, non
+  che le altre ventisei **rispondano**.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): rimisurato in questa sessione — **né `gitleaks` né `trufflehog`
-  sono su `PATH`**, quindi la scansione è stata **euristica e dichiarata tale**. La premessa che
-  il blocker registra come "falsa" è tornata vera; va richiuso o riscritto.
-- `B-011` low/deferred (`D-0258`): storia git riscritta su autorizzazione esplicita dell'Owner,
-  backup bundle preso.
+- `B-002` **STALE** (`D-0257`): rimisurato — né `gitleaks` né `trufflehog` sono su `PATH`, quindi
+  le scansioni di questa sessione sono state **euristiche e dichiarate tali**. Va richiuso o
+  riscritto.
+- `B-011` low/deferred (`D-0258`): storia git riscritta su autorizzazione esplicita dell'Owner.

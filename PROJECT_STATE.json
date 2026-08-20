@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0588 — «i cinque archivi» nominava due cose: una lista sola in 09_PIANO §4a, due istanze (sigillata/di consegna). Matrice 66 -> 67 con PKG-001 (❌ onesto), unstated fermo a 11, critical 0",
-  "phase_status": "COMPLETE — enumerazione canonica delle cinque posizioni con il loro contenuto, guard tools/verify-five-archives.mjs in scripts/test.sh (visto fallire su 6 difetti reali e su una posizione rinominata apposta), skill engineering-depth §8 passo 12 corretta, docs/REMAINING_WORK.md riparato. Nessuna installazione: nessun percorso di prodotto toccato.",
-  "next_phase": "Owner choice: (1) le 11 righe senza verdetto — CE-020 è la sola da scopare per prima, (2) D-0564 l'ancora firmata del registro, (3) D-0589 la provenienza asimmetrica che sblocca la posizione 5 di PKG-001",
+  "current_phase": "D-0590 — CE-020: ogni capacità ha una forma da tastiera. 6 su 27 non l'avevano nella shell che un utente ssh riceve; ora 27/27. Ratchet 11 -> 10, critical 0",
+  "phase_status": "COMPLETE IN THE TREE, NOT INSTALLED — i sei comandi (/runs /session /session-action /divergence /skills /skills-search) sono nella lista che entrambe le shell importano, con le quattro rotte dirette del browser; T2 16/16, browser e2e 505/506 (1 gap dichiarato F-I18N-002, invariato a 647). Il deploy NON e stato eseguito: redeploy.sh --apply esige --authorized-by-owner, che e parola dell'Owner.",
+  "next_phase": "Owner: (1) autorizzare il deploy di D-0590, (2) le 10 righe senza verdetto, (3) D-0589 provenienza asimmetrica o D-0591 il banco che percorre tutto il registro",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "d8b5963",
-  "last_updated_utc": "2026-08-20T01:55:19Z",
+  "last_commit": "b8abd8f",
+  "last_updated_utc": "2026-08-20T02:56:55Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "MATRICE A 67 CRITERI: unstated 11, critical 0 — PKG-001 non tocca le 11 perché nasce con un verdetto. node tools/verify-five-archives.mjs -> PASS (25 file, 10 menzioni, 0 ambigue). PKG-001 RESTA ❌: chiuso il CONTENUTO del criterio, non il criterio — nessun archivio di consegna esiste. LE 11: CE-005, CE-006, CE-020, CE-023, CE-024, CE-027, CE-028, CE-030, CE-031, CE-032, CE-035 — nessuna a buon mercato, misurato. TRE CLASSI: (a) banco che non esiste — CE-005, CE-006; (b) seconda macchina — CE-031, CE-032, CE-035, non chiudibili onestamente su questo host solo; (c) prodotto non costruito — CE-023, CE-024, CE-027, CE-028, CE-030. CE-020 sta da solo e le sue parti forse esistono già (tools/tui-fullscreen.mjs). NON TOCCATO E NON DIMENTICATO: docs/progetto-italiano/ porta tre delle stesse righe ambigue, è uno specchio stantio e quale dei due sia canonico NON è deciso (DECISION_LOG:5992).",
+  "next_action": "PRIMA COSA: il deploy di D-0590 e in attesa di una parola. tools/deploy/redeploy.sh --source noesar-evolution --check ha dato PREFLIGHT: PASS (immagine corrente d0586, rete e bind a posto, 249 GiB liberi, il nome del predecessore e libero). L'installazione in esecuzione NON ha i sei comandi nuovi. MATRICE A 67: unstated 10, critical 0. LE 10 RIMASTE: CE-005, CE-006, CE-023, CE-024, CE-027, CE-028, CE-030, CE-031, CE-032, CE-035. TRE CLASSI: (a) banco che non esiste — CE-005, CE-006; (b) seconda macchina — CE-031, CE-032, CE-035, NON chiudibili onestamente su questo host solo; (c) prodotto non costruito — CE-023, CE-024, CE-027, CE-028, CE-030, ed e la classe piu lunga e piu densa. CE-020 e chiuso: era l'unica riga le cui parti esistevano gia.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
