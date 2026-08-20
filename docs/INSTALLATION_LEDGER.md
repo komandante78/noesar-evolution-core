@@ -5600,3 +5600,60 @@ appena costruito.
 quel file era la corruzione stessa — e i tre verdetti riscritti uno per uno.
 
 **Nessun contenitore creato** oltre a quelli della batteria, che si rimuovono da sé.
+
+---
+
+## `d0601-context-shape-20260820T104316Z` — DEPLOYATO e verificato — 2026-08-20
+
+**Tag.** `noesar-evolution:d0601-context-shape-20260820T104316Z`, deployato 10:45Z via
+`tools/deploy/redeploy.sh --apply --authorized-by-owner`, costruito offline dal `oci/Dockerfile`
+canonico (`docker build --pull=false`). Porta **cinque fasi** che l'installazione non aveva:
+`D-0596` (il byte NUL), `D-0597` (`CE-006`, lo store di replay), `D-0599` (`CE-030`, il budget di
+novità), `D-0600` (`CE-027`/`CE-028`, il replay di sessione), `D-0601` (`CE-005`).
+
+**Salute.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz`, `/healthz` **200** su
+`http://…:8100`, `/livez` **200** su `https://…:8443`. **4 figli** generati (postgres, api, codev,
+atom), **0** righe di auth-failure. Le superfici rispondono e il cancello c'è: `/api/v1/tui/command`
+non autenticata **401**, una rotta inesistente **404** — è la forma della prova, non l'assenza di
+errore — e la pagina **200**.
+
+**Verifica.** Byte-uguale albero↔immagine **466/466**, 0 differenti, 0 assenti dall'albero, 2
+generati in immagine; `expected from directory COPYs: 448, missing: 0`. **I byte di questo
+rilascio sono nell'immagine spedita**, letti da un contenitore usa-e-getta e confrontati con
+l'albero: `authoring-replay-store.mjs` `5466c6066b7ec74f`, `author.mjs` `e00d738e0999170f`,
+`workspace-actions.mjs` `adef094e4b7e8614` — **tre su tre identici**. E **il NUL non c'è più**
+nell'immagine spedita (`tr -d` contro `cmp`), che è `D-0596` provato sul rilascio invece che
+sull'albero. Prima del deploy: `scripts/test.sh` **18/18**, unit **2888/2889** (1 skip
+preesistente), ESLint **461 file 0/0/0**, browser e2e **0 rossi non dichiarati** (l'unico rosso è
+il gap dichiarato `F-I18N-002`, invariato a 647), accessibilità **27/27**.
+
+**Un rifiuto della guardia, e aveva ragione.** Il primo tentativo usava
+`d0600-author-replay-20260820T084734Z`, costruita alle 08:47Z **prima** che `D-0601` aggiungesse
+due asserzioni a `context-projection.test.mjs`. Il preflight ha rifiutato: `differing: 1`. Non è
+stata concessa nessuna eccezione «è solo un file di test» — l'immagine è stata **ricostruita**. Che
+il codice di prodotto fosse invariato è stato **provato, non presunto**: confronto immagine↔immagine
+→ l'unica differenza è quel file, con modi, symlink e **configurazione runtime** (`Env`,
+`Entrypoint`, `Cmd`, `User`, `WorkingDir`, `ExposedPorts`, `Volumes`, `Healthcheck`) **identici**,
+che è la ragione misurata per cui e2e e accessibilità non sono state rieseguite.
+
+**Predecessore conservato.** `noesar-evolution-pre-20260820T104529Z`
+(`d0590-keyboard-coverage-20260820T050637Z`).
+
+**Costo di rollback — nessuno (§3a 11d).** Nessuna migrazione in questo rilascio:
+`MIGRATION_MANIFEST=CURRENT 20 migrations` invariato. Tornare indietro riporta l'installazione
+senza il NUL riparato, senza lo store di replay, senza il budget di novità e senza il replay di
+sessione — nient'altro. Il workspace è stato copiato **a servizio fermo**, 0600 in una directory
+0700, con checksum: **quell'archivio contiene credenziali e va trattato come tale**.
+
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260820T050745Z` rimosso
+(`Exited (0)` confermato prima; la sua immagine resta su disco). Tag usa-e-getta di questa fase
+`noesar-evolution:d0600-author-replay-20260820T084734Z` rimosso, dopo aver contato **0**
+contenitori che lo usano. Contenitori **53 → 52**, volumi **65 → 65**, reti **10 → 10**,
+contenitori non-di-progetto **50 → 50**; reti di progetto superstiti esattamente
+`noesar-evolution-net` e `noesar-e2e-net` (`noesar-local` è di NOESAR V3 e non è stata toccata)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0601_20260820T104655Z.txt`). Superstiti di progetto:
+**esattamente due**. Salute riprovata dopo la pulizia: `running`/`healthy`, `/livez` e `/readyz`
+**200**.
+
+**Non provato qui, e detto:** nulla che richieda una sessione autenticata. Nessuna suite mutante è
+stata puntata sull'installazione (§3a 11e).
