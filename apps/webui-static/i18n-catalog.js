@@ -1406,6 +1406,16 @@ const it = {
   'Clear the transcript on screen (the session keeps its state)': 'Pulisci la trascrizione a schermo (la sessione mantiene il suo stato)',
   'List models present on this installation, or load one by id': 'Elenca i modelli presenti su questa installazione, o caricane uno per id',
   'End this session — asks for `logout confirm`': 'Chiudi questa sessione — richiede `logout confirm`',
+  // `D-0590`, `CE-020`. The six capabilities that gained a keyboard form. They arrive here in the
+  // same change that adds them, because this catalogue is read off the registry: a command added
+  // without its Italian turns the suite red rather than shipping an English row into an Italian
+  // menu, which is what happened to thirty-three of them before that guard existed.
+  'The runs this workspace is holding, newest first': 'Le esecuzioni che questo spazio di lavoro sta tenendo, dalla più recente',
+  'Everything one session holds — its work, its branches, its state': 'Tutto ciò che una sessione contiene — il suo lavoro, i suoi rami, il suo stato',
+  'Archive, bin, purge or restore a session — asks for the word `confirm`': 'Archivia, cestina, elimina definitivamente o ripristina una sessione — richiede la parola `confirm`',
+  'How this repository writes: the conventions a change to these paths is held to': 'Come scrive questo repository: le convenzioni a cui è tenuta una modifica a questi percorsi',
+  'Which skills this installation has, and whether each one is usable': 'Quali skill ha questa installazione, e se ognuna è utilizzabile',
+  'Find a skill by what it does, not by its name': 'Trova una skill per quello che fa, non per il suo nome',
   //
   // The argument placeholders. `<goal>` describes what to type, so it is translated; `[confirm]`
   // and `[active|archived|bin]` ARE what to type, so they are not — translating a literal token
@@ -1425,6 +1435,17 @@ const it = {
   '<token>': '<token>',
   '[path]': '[percorso]',
   '<text>': '<testo>',
+  // `D-0590`. `[scope]` and `<paths>` describe what to type, so they are translated on the same
+  // reading as `<run>`. **No entry for `<id>`: one already exists above**, and a second would be
+  // dead the moment it was written — the duplicate-entry guard in `ui-language-coverage` caught
+  // exactly that here, which is the guard doing its job on the change that introduced it.
+  // The session-action line is NOT translated past its placeholders: `archive|bin|purge|restore`
+  // and `confirm` are literal words the parser matches, and printing an Italian instruction to
+  // type a word the engine rejects would be a worse screen, not a more Italian one — the same
+  // distinction the comment above draws for `[confirm]`.
+  '[scope]': '[ambito]',
+  '<paths>': '<percorsi>',
+  '<archive|bin|purge|restore> <id> confirm': '<archive|bin|purge|restore> <id> confirm',
   //
   // The seven group headings — the first thing a bare `/` paints, and therefore the first
   // thing an Italian operator saw in English.

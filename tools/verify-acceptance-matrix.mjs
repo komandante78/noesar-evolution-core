@@ -46,8 +46,14 @@ import { readFileSync } from 'node:fs';
  * cheap and said so. Both were closed in the schema rather than in JavaScript, because both
  * criteria name the schema: migration `0020`, proven against a real PostgreSQL cluster
  * (`memory-integration.mjs` 46/46). Seen to FAIL at 10 first, one notch tighter.
+ * **10** at `D-0590` (`CE-020`), the row the previous phase named as the one to scope first — and
+ * scoping it is what found the defect: 6 of the engine's 27 capabilities had no keyboard form in
+ * the shell an `ssh` user gets, two of them reachable only in the line shell, which reads as
+ * covered from the source and is not. Seen to FAIL at 9 first, one notch tighter.
+ * Note the total is 67 since `D-0588` added `PKG-001`, which arrived WITH a verdict and so never
+ * moved this number.
  */
-const MAX_UNSTATED = 11;
+const MAX_UNSTATED = 10;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

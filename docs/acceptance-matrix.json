@@ -418,7 +418,13 @@
       "criterion": "Ogni capacità ha una forma da tastiera completa",
       "severity": "high",
       "howVerified": "ogni capacità esercitata dal TUI, senza mouse",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0590"
+        ],
+        "text": "✅ **27 capacità su 27**, misurato 2026-08-20 (`D-0590`). L'insieme è letto da `SESSION_METHOD_POLICY` — il registro del motore, non una lista scritta a mano — e ogni metodo deve avere una forma da tastiera nella shell che un utente `ssh` riceve davvero: comando slash, vista d'indirizzo, o meccanica della shell a schermo pieno. I verbi della shell a righe **non contano**, ed è questa esclusione ad aver trovato il difetto: `sessions.get` e `sessions.action` erano raggiungibili solo lì. `test/ce-020-keyboard-coverage.test.mjs` visto FALLIRE a **6 su 27** prima della riparazione. Il meccanismo resta provato da `tools/acceptance/ce-020-tui-fullscreen.mjs` contro un motore vero, a tasti veri: `CE020_FAIL=0`, 18 controlli"
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:452"
     },
     {

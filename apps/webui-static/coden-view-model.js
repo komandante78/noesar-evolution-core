@@ -64,6 +64,24 @@ export const RUN = {
   grants: () => ['capability.grants', {}],
   revoke: (argument) => ['capability.revoke', { tokenId: String(argument ?? '').trim() }],
   model: (argument) => ['model.activate', { id: argument }],
+  // `D-0590`, `CE-020`. The transports for the six capabilities that had no keyboard form. Built
+  // here beside the other nineteen rather than in either shell, for this table's standing reason:
+  // two shells that each decide what a typed line means will disagree, and the disagreement
+  // surfaces in whichever one is used less.
+  runs: (argument) => ['workspace.runs', argument ? { scope: argument } : {}],
+  session: (argument) => ['sessions.get', { id: String(argument ?? '').trim() }],
+  // The confirmation word is stripped before the call — `planTurn` has already refused the line
+  // that lacks it, so by here it is punctuation, not a parameter. `ids` is a list because the
+  // engine takes a list; the prompt gives one id, which is a list of one rather than a second
+  // shape for the same method.
+  'session-action': (argument) => {
+    const [action, ...rest] = String(argument ?? '').trim().split(/\s+/);
+    const ids = rest.filter((word) => word.toLowerCase() !== 'confirm');
+    return ['sessions.action', { action, ids }];
+  },
+  divergence: (argument) => ['coden.divergence', { paths: String(argument ?? '').trim().split(/\s+/).filter(Boolean) }],
+  skills: () => ['skills.status', {}],
+  'skills-search': (argument) => ['skills.search', { q: argument }],
 };
 
 /**
@@ -731,6 +749,22 @@ export function planTurn(typed, { resolve, parse, commands, groups }) {
       };
     }
     return { kind: 'session', command: command.name, action: command.action };
+  }
+
+  // `D-0590`. A capability that cannot be undone asks for a typed WORD before it runs — the same
+  // refusal `/logout` makes just above, generalised so it is a property of the command rather
+  // than of one branch. `15` §13 is the reason it is a word and not a key: in a terminal a lone
+  // `y` is one paste away from being typed by something that is not you.
+  //
+  // Decided here so both shells refuse identically. `kind: 'confirm'` is already rendered by all
+  // three surfaces, so this adds a guarantee without adding a screen.
+  if (command.confirm && !/(^|\s)confirm$/i.test(String(argument ?? '').trim())) {
+    return {
+      kind: 'confirm',
+      command: command.name,
+      message: `\`/${command.name}\` changes what this session holds and some of it cannot be undone. `
+        + `Re-type the line ending in the word \`confirm\` to go ahead.`,
+    };
   }
 
   const build = RUN[command.name];

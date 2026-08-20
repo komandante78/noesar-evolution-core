@@ -29,6 +29,9 @@ import {
 import { buildAuthoringPrompt } from '../src/author.mjs';
 import { SESSION_METHOD_POLICY } from '../src/session-protocol.mjs';
 import { parseCodenAddressBook } from '../src/coden-address-book.mjs';
+// `D-0590`: the duplication check below reads the REGISTRY rather than its source text, so it
+// asserts what an entry IS instead of how it happens to be spelled.
+import { AGENT_COMMANDS } from '../../../apps/shared/coden/agent-commands.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -250,9 +253,20 @@ describe('one surface, two shells — §4b.4 rule 4', () => {
       list.some((a) => a.address === 'settings/skills'),
       'the address book does not derive settings/skills — the surface would be unreachable',
     );
-    const commands = readFileSync(join(repoRoot, 'apps/shared/coden/agent-commands.js'), 'utf8');
-    assert.doesNotMatch(commands, /\{ name: 'skills',/,
-      'the hand-written skills entry is back beside the derived address — that is the duplication');
+    // REWRITTEN `D-0590`, and for the third time in this file's life the reason is `D-0343`:
+    // this asserted a VALUE — that the literal string `{ name: 'skills',` does not appear —
+    // where the property is *no hand-written DESTINATION duplicating the derived address book*.
+    // The two stopped being the same thing when `CE-020` gave `skills.status` a slash command:
+    // that entry is `kind: 'call'`, it reaches a gated engine method, and it is the TERMINAL's
+    // only path to the skills surface, since `settings/skills` is a browser page and the address
+    // book serves the browser. Refusing it would have kept the letter of an anti-duplication rule
+    // by making a capability unreachable in one of the two shells — the exact failure §4b.4 rule
+    // 4 exists to prevent, arrived at from the other side.
+    //
+    // So the property, checked directly: no entry may name this address, whatever it is called.
+    const entries = AGENT_COMMANDS.filter((entry) => entry.address === 'settings/skills' || entry.kind === 'address');
+    assert.deepEqual(entries.map((entry) => `/${entry.name}`), [],
+      'a hand-written destination is back beside the derived address — that is the duplication');
   });
 
   test('the entry is written once, in the shared source, and not a second time in a shell', () => {

@@ -13659,3 +13659,41 @@ essendo simmetrica solo chi possiede la chiave condivisa può verificarla. `PKG-
 trail verificabili da terzi) e **tratto 2** (riusabile: una provenienza a chiave pubblica la
 verifica chiunque, non solo chi l'ha prodotta).
 **Status.** proposed — non eseguita in questa fase.
+
+## D-0590 · `CE-020` — sei capacità su ventisette non avevano forma da tastiera — 2026-08-20
+**Decision.** L'insieme delle capacità si legge da `SESSION_METHOD_POLICY`, e ognuna deve avere
+una forma da tastiera **nella shell che un utente `ssh` riceve davvero**: comando slash, vista
+d'indirizzo o meccanica della shell a schermo pieno. Sei non l'avevano e ora l'hanno — `/runs`,
+`/session`, `/session-action`, `/divergence`, `/skills`, `/skills-search`. `CE-020` ✅ 27/27.
+**Why.** Il criterio dice *ogni* capacità; il runner esistente ne esercitava **una**
+(`repoMap.scan`) e provava il meccanismo, non la copertura. Nessuna riga misurava quanto prodotto
+quei tasti raggiungessero.
+**Rejected.** Contare i verbi della shell a righe (`session-show`, `session-archive`): girano solo
+con stdin da pipe. Contarli avrebbe segnato `sessions.get`/`sessions.action` come coperti mentre
+la shell che un umano incontra non aveva **nessun** percorso — stessa forma del `D-0405`.
+**Evidence.** `test/ce-020-keyboard-coverage.test.mjs` (nuovo, 4 test) visto FALLIRE a **6 su 27**
+prima della riparazione. Suite unit **2864/2865** (1 skip preesistente), ESLint **455 file 0/0/0**,
+`tools/acceptance/ce-020-tui-fullscreen.mjs` **CE020_FAIL=0** su 18 controlli contro un motore vero
+a tasti veri. Matrice 56 -> 57 verdetti, **unstated 11 -> 10**, visto FALLIRE a 9.
+**Reversal cost.** nessuno — additivo. Nessun permesso è stato allargato: le quattro rotte del
+browser aggiunte a `CODEN_UNBRIDGED` esistevano già e chiedono lo stesso permesso del socket.
+**Status.** applied, **non installato**: il prodotto in esecuzione non ha ancora questi comandi.
+
+## D-0591 · Improvement proposal — «ha una forma» non è «la forma risponde» — 2026-08-20
+**Decision.** Proposta, non eseguita: estendere `tools/acceptance/ce-020-tui-fullscreen.mjs` a
+percorrere **tutto** il registro dei comandi contro il motore vero, un comando per volta, e a
+pretendere che ognuno produca una risposta del motore anziché un rifiuto di trasporto.
+**Why.** L'oracolo di `D-0590` prova che una forma da tastiera **esiste**; il runner prova che il
+meccanismo funziona su **una** capacità. Nessuno dei due prova che le altre ventisei rispondano
+davvero. È la stessa distanza fra «il pannello c'è» e «il pannello mostra qualcosa» che la fase 3b
+ha già pagato con dieci indirizzi che dicevano *no source over this transport*.
+**Rejected.** Fidarsi dei test unitari sul trasporto: provano che il costruttore restituisce il
+metodo giusto, mai che il motore risponda a quel metodo con quei parametri.
+**Evidence.** Il difetto che questa proposta anticipa è già stato visto una volta: `/divergence`
+stava per essere spedito con argomento opzionale, e **entrambi** i trasporti rifiutano una lista
+di percorsi vuota — trovato leggendo il motore, non da un test.
+**Reversal cost.** [STIMA] bassa — un ciclo dentro un runner che esiste già.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: una suite di
+conformità che percorre l'intera superficie invece di campionarla) e **tratto 1** (risultato
+delimitato: è un banco, non una promessa).
+**Status.** proposed — non eseguita in questa fase.

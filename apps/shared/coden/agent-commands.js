@@ -144,6 +144,30 @@ export const AGENT_COMMANDS = Object.freeze([
   { name: 'revoke', argument: '<token>', summary: 'Withdraw a live grant before it lapses — the ledger records what it covered', group: 'work', kind: 'call', method: 'capability.revoke', permission: 'workspace.write' },
   { name: 'sessions', argument: '[active|archived|bin]', summary: 'List sessions', group: 'work', kind: 'call', method: 'sessions.list', permission: 'workspace.read' },
   { name: 'git', argument: '', summary: 'Branch and divergence of the workspace', group: 'work', kind: 'call', method: 'coden.gitStatus', permission: 'coden.plan' },
+
+  // `D-0590`, closing `CE-020`. Six capabilities the engine exposed and gated, and that nothing
+  // in the shell an `ssh` user gets could reach. Four had no keyboard path anywhere; two —
+  // `sessions.get` and `sessions.action` — existed only as bare-word verbs in the LINE shell,
+  // which `tui-client.mjs` runs only when stdin is a pipe. That is worse than a plain gap: it
+  // reads as covered from the file, and a person at a real prompt cannot get to it. Same shape
+  // as `D-0405`'s address views, and invisible for the same reason.
+  //
+  // They go here, in the one list both shells import, so the browser gains them in the same
+  // change — `CE-034` fails on a capability one shell has and the other does not.
+  { name: 'runs', argument: '[scope]', summary: 'The runs this workspace is holding, newest first', group: 'work', kind: 'call', method: 'workspace.runs', permission: 'workspace.read' },
+  { name: 'session', argument: '<id>', summary: 'Everything one session holds — its work, its branches, its state', group: 'work', kind: 'call', method: 'sessions.get', permission: 'workspace.read' },
+  // `confirm: true`, and the reason is `15` §13: in a terminal a lone `y` is one paste away from
+  // being typed by something that is not you. The line shell already refused to archive or bin a
+  // session without a confirmation, and a slash command that skipped it would have made the
+  // full-screen shell the CHEAPER way to do the more dangerous thing. `purge` cannot be undone.
+  { name: 'session-action', argument: '<archive|bin|purge|restore> <id> confirm', summary: 'Archive, bin, purge or restore a session — asks for the word `confirm`', group: 'work', kind: 'call', method: 'sessions.action', permission: 'workspace.write', confirm: true },
+  // `<paths>` and not `[paths]`: BOTH transports refuse an empty path list by name — the socket
+  // with `INVALID`, the route with a 400 — so an optional argument here would send every bare
+  // `/divergence` to a refusal the person never asked for. `s333 point 2` again, avoided by
+  // reading what the engine actually requires instead of choosing the friendlier-looking bracket.
+  { name: 'divergence', argument: '<paths>', summary: 'How this repository writes: the conventions a change to these paths is held to', group: 'work', kind: 'call', method: 'coden.divergence', permission: 'coden.plan' },
+  { name: 'skills', argument: '', summary: 'Which skills this installation has, and whether each one is usable', group: 'work', kind: 'call', method: 'skills.status', permission: null },
+  { name: 'skills-search', argument: '<text>', summary: 'Find a skill by what it does, not by its name', group: 'work', kind: 'call', method: 'skills.search', permission: 'workspace.read' },
   // Phase 3b. A FORM, not a call: `UI-036` makes a closure name what was left undone or
   // state that nothing was, plus the residual risk, and the register refuses one that does
   // neither. Three fields with a mandatory refusal clause do not fit on a prompt line, so each

@@ -1354,9 +1354,22 @@ window.__noesarCodenOffered=codenOffered;
 // keeps `/sessions` and `/git` meaning the same thing in both shells instead of one shell
 // answering UNKNOWN_METHOD; leaving them to the bridge would have made the parity claim false
 // for two of the fourteen work commands.
+// D-0590, CE-020: four more, for the same reason and by the same rule. Each of the six
+// capabilities that gained a keyboard form is `bridged:false`, so without a route here the
+// browser would answer UNKNOWN_METHOD to a command the terminal performs — the asymmetry this
+// table exists to refuse. Every route below already existed and already asks the SAME permission
+// the socket asks (`workspace.read`, `workspace.write`, `coden.plan`): nothing was widened to
+// close CE-020, which is the only acceptable way to close it.
 const CODEN_UNBRIDGED={
   'sessions.list':(params)=>api(`/api/v1/sessions?place=${encodeURIComponent(params?.filter||'active')}`),
   'coden.gitStatus':()=>api('/api/v1/coden/git-status'),
+  'workspace.runs':(params)=>api(`/api/v1/workspace-actions/runs?scope=${encodeURIComponent(params?.scope||'all')}`),
+  // `GET /api/v1/conversations/:id` is the same `contextGraph.getConversation` the socket's
+  // `sessions.get` calls, gated on the same `workspace.read`. A session and a conversation are
+  // one object under two names here; the route kept the older word.
+  'sessions.get':(params)=>api(`/api/v1/conversations/${encodeURIComponent(params?.id||'')}`),
+  'sessions.action':(params)=>api('/api/v1/sessions/actions',{method:'POST',body:JSON.stringify({action:params?.action,ids:params?.ids??[]})}),
+  'coden.divergence':(params)=>api('/api/v1/coden/divergence',{method:'POST',body:JSON.stringify({paths:params?.paths??[]})}),
 };
 async function codenCall(method,params){
   const direct=CODEN_UNBRIDGED[method];
