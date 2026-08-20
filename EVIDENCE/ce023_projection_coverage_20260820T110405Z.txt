@@ -1,0 +1,27 @@
+=== atomd banner ===
+atomd: provider=atom version=0.1.0 contract=1.0.0 simulation=true bind=127.0.0.1:8410
+=== measure-projection-coverage (external=ATOM) ===
+routed surfaces: ["interpret","hypothesize","plan","decompose","expect","constrain","classify","confidence","evidence","cancel","fixtures","simulate"]  endpoint: http://127.0.0.1:8410
+
+task  reference(parts cov/total)   external(parts cov/total)   delta
+T1      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T2      1  1/1 = 1.00               2  2/2 = 1.00             0.00
+T3      2  2/2 = 1.00               4  0/4 = 0.00             -1.00
+T4      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T5      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T6      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T7      1  0/1 = 0.00               1  0/1 = 0.00             0.00
+T8      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T9      1  0/1 = 0.00               1  0/1 = 0.00             0.00
+
+totals  reference 8/10   external 7/13
+COVERAGE_REFERENCE=0.8000
+COVERAGE_EXTERNAL=0.5385
+COVERAGE_DELTA=-0.2615
+
+PER_TASK better=0 worse=1 equal=8 of 9
+VERDICT=DIFFERS  0 task(s) better, 1 worse under the external provider.
+
+Coverage is how much of the plan the expectation could be contradicted by, not
+whether the prediction is a good one. A provider naming everything scores 1.00
+and is useless: read this next to the part counts, never alone.

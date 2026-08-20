@@ -13970,3 +13970,52 @@ dichiarata.
 `tools/measure-decomposition-shape.mjs`. Il verdetto andrà scritto per ciò che la misura dice.
 **Costo di reversal.** Nessuno — nulla è stato cambiato.
 **Status.** blocked → **prossima sessione**, su decisione dell'Owner.
+
+## D-0604 · `CE-023` misurato — e stavolta la misura dice `DIFFERS`, non `NO_DIFFERENCE` — 2026-08-20
+**Decisione.** `CE-023` è **✅**: la copertura di proiezione è misurata e il delta pubblicato. Il ✅
+non dice che ATOM migliori — su un compito su nove peggiora, per una ragione nominata.
+**Perché.** La riga chiede *«stesso compito con e senza, delta riportato»*. Riportarlo solo quando
+è favorevole sarebbe l'asserzione che il criterio vieta.
+**Come, e cosa non è stato toccato.** Sonda usa-e-getta dall'immagine viva
+(`d0601-context-shape-20260820T104316Z`), `--rm --network none`, tree in sola lettura, `atomd`
+avviato dentro la sonda con un token generato lì: la produzione non è stata toccata, `docker exec`
+non è stato usato (§5 r16) e il token dell'installazione non è mai stato letto.
+**Evidenza.** `PER_TASK better=0 worse=1 equal=8 of 9`, `VERDICT=DIFFERS`, 12 superfici instradate,
+5 rifiuti stampati per esteso — `EVIDENCE/ce023_projection_coverage_final_20260820T110812Z.txt`.
+Su `T3` ATOM decompone in 4 passi contro 2, due senza file, e il suo `expect` rifiuta l'intera
+aspettativa con una guardia **per passo**; il riferimento non ci arriva perché la sua è **per
+piano** e scarta i comandi senza `test`. Due contratti di rifiuto diversi, non «copre meno».
+**Aggregato dichiarato inutilizzabile.** `COVERAGE_DELTA=-0.2615` nasce su denominatori 10 vs 13:
+artefatto del conteggio dei passi, e ora lo strumento lo stampa.
+**Due difetti dello strumento, trovati eseguendolo e riparati qui.** (1) un `0/n` da rifiuto era
+indistinguibile da un `0/n` da aspettativa vuota — la ragione era catturata e mai stampata;
+(2) l'avviso sul denominatore scattava **solo** sul ramo `NO_DIFFERENCE`, e la prima corsa mai
+atterrata su `DIFFERS` — proprio la condizione per cui esiste — non stampava nulla.
+`ce-023-projection-coverage-report.test.mjs` **6/6**, oracolo **visto rosso** su (2).
+**Divergenza da `D-0215`.** Il 2026-07-28 lo stesso strumento diede `equal=9 of 9`. **Quale delle
+due parti sia cambiata non è stato stabilito oggi**, e non viene affermato.
+**Ratchet.** `MAX_UNSTATED` 3 → **2**, visto FALLIRE a 1. Senza verdetto restano `CE-024` e
+`CE-035`, entrambe bloccate da qualcosa che non esiste su questa macchina.
+**Costo di reversal.** Nessuno sul prodotto: nessun file di `services/` è stato cambiato.
+**Status.** applied — nulla da installare (lo strumento e il test non sono nell'immagine).
+
+## D-0605 · Proposta: il `expect` di riferimento non ha una guardia per passo — 2026-08-20
+**Proposta.** Dare a `Reasoning.expect()` (`services/reference-control-plane/src/reasoning.mjs:222`)
+la stessa nozione **per passo** che ATOM applica: un piano la cui aspettativa lascia un passo
+incontraddicibile o viene rifiutato, o **dichiara** quali passi restano scoperti.
+**Perché.** Misurato oggi (`D-0604`): la guardia attuale è **per piano** — rifiuta solo se
+l'intero piano non nomina né file né test — e `expect` scarta i comandi che non contengono `test`.
+Un passo di solo `cargo build` senza file è quindi **incopribile per costruzione**, e il
+riferimento emette un'aspettativa che non può essere contraddetta da quel passo **senza dirlo**.
+Oggi non si vede perché il suo `decompose` non produce passi senza file; il giorno in cui li
+producesse, il silenzio sarebbe un falso senso di copertura.
+**Respinta (per ora).** Farlo in questa fase: cambia il comportamento di una superficie pubblica
+del `ReasoningProvider` e può rifiutare piani che oggi passano — decisione di prodotto, non
+riparazione (§budget 5). `CE-023` chiedeva una misura, e la misura è stata consegnata.
+**Beneficio/costo.** Beneficio: la copertura smette di dipendere da quale provider ha decomposto.
+Costo: ~mezza giornata, più i chiamanti che oggi accettano un'aspettativa parziale.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: rende il contratto
+`ReasoningProvider` verificabile allo stesso modo per ogni implementazione) **e tratto 2**
+(riusabile: è il confine pubblico, non un dettaglio di questo prodotto).
+**Costo di reversal.** N/A — proposta, non eseguita.
+**Status.** deferred — decisione dell'Owner.

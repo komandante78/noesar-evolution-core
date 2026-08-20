@@ -5657,3 +5657,24 @@ contenitori non-di-progetto **50 → 50**; reti di progetto superstiti esattamen
 
 **Non provato qui, e detto:** nulla che richieda una sessione autenticata. Nessuna suite mutante è
 stata puntata sull'installazione (§3a 11e).
+
+## 2026-08-20T11:08Z — `CE-023` misurata; **l'installazione NON è stata cambiata**
+**Tag in esecuzione:** `noesar-evolution:d0601-context-shape-20260820T104316Z` — invariato.
+**Cosa è cambiato:** nulla nell'installazione. `tools/measure-projection-coverage.mjs`,
+`tools/verify-acceptance-matrix.mjs`, la matrice e un nuovo test: nessuno dei quattro è
+nell'immagine spedita, quindi non c'è debito §3a aperto da questa fase.
+**Come è stata presa la misura, e perché non tocca la produzione:** contenitore-sonda
+usa-e-getta dall'immagine viva — `docker run --rm --network none -v "$ROOT:/repo:ro"` — con
+`atomd` avviato **dentro la sonda** su `127.0.0.1:8410` e un token generato nella sonda stessa.
+`docker exec` sul contenitore in esecuzione **non è stato usato** (§5 r16); il token
+dell'installazione **non è stato letto** (solo il nome della variabile).
+**Igiene (§5a):** tre sonde create, tre rimosse — tutte con `--rm`, zero residui misurati
+(`docker ps -a --filter name=ce023` → 0). Nessun tag d'immagine e nessuna rete creati:
+`--network none` è la rete preesistente di Docker. Inventario:
+`EVIDENCE/docker_inventory_pre_cleanup_20260820T111021Z.txt`.
+**Contenitori sopravvissuti — esattamente due, come previsto:** `noesar-evolution` (Up, healthy)
+e `noesar-evolution-pre-20260820T104529Z` (Exited, il rollback più recente).
+**Verifica sul vivo:** `running`, `health=healthy`, `RestartCount=0`; `/livez` **200**,
+`/readyz` **200** (con un `Host` ammesso — un `Host` non in lista risponde `421`, che è
+l'allowlist che funziona, non un difetto).
+**Costo di rollback:** nessuno — non c'è nulla da annullare.

@@ -78,8 +78,12 @@ import { readFileSync } from 'node:fs';
  * the verdict cell was empty. Reading it did find something worth adding: nothing said WHERE the
  * shape settles, so a regression pushing stabilisation from call 25 out to call 200 would have
  * passed the 300-vs-400 comparison unnoticed. Seen to FAIL at 2 first, one notch tighter.
+ * **2** at `D-0604` (`CE-023`) — the projection-coverage delta, measured against the installed
+ * ATOM daemon in a disposable probe rather than asserted. The two rows still unstated are
+ * `CE-024` (needs a human review bench that does not exist) and `CE-035` (needs a second real
+ * machine), so this notch is the last one the current host can turn. Seen to FAIL at 1 first.
  */
-const MAX_UNSTATED = 3;
+const MAX_UNSTATED = 2;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

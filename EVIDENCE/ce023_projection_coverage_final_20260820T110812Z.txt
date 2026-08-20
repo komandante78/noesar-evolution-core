@@ -1,0 +1,39 @@
+=== atomd ===
+atomd: provider=atom version=0.1.0 contract=1.0.0 simulation=true bind=127.0.0.1:8410
+=== image ===
+noesar-evolution:d0601-context-shape-20260820T104316Z
+routed surfaces: ["interpret","hypothesize","plan","decompose","expect","constrain","classify","confidence","evidence","cancel","fixtures","simulate"]  endpoint: http://127.0.0.1:8410
+
+task  reference(parts cov/total)   external(parts cov/total)   delta
+T1      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T2      1  1/1 = 1.00               2  2/2 = 1.00             0.00
+T3      2  2/2 = 1.00               4  0/4 = 0.00!            -1.00
+T4      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T5      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T6      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T7      1  0/1 = 0.00!              1  0/1 = 0.00!            0.00
+T8      1  1/1 = 1.00               1  1/1 = 1.00             0.00
+T9      1  0/1 = 0.00!              1  0/1 = 0.00!            0.00
+
+refusals: 5 — a refusal scores 0 of n, which is NOT the same reading as
+an expectation that was produced and happened to cover nothing. Marked `!` above.
+REFUSED external  T3: step(s) step-1.1.2, step-1.2.2 would produce nothing observable: an expectation that leaves a step uncovered cannot be surprised by it, and surprise is the only signal this surface exists to make definable
+REFUSED reference T7: the plan names no file and no test, so nothing about it could turn out to be false
+REFUSED external  T7: step(s) step-1 would produce nothing observable: an expectation that leaves a step uncovered cannot be surprised by it, and surprise is the only signal this surface exists to make definable
+REFUSED reference T9: the plan names no file and no test, so nothing about it could turn out to be false
+REFUSED external  T9: step(s) step-1 would produce nothing observable: an expectation that leaves a step uncovered cannot be surprised by it, and surprise is the only signal this surface exists to make definable
+
+totals  reference 8/10   external 7/13
+COVERAGE_REFERENCE=0.8000
+COVERAGE_EXTERNAL=0.5385
+COVERAGE_DELTA=-0.2615
+
+PER_TASK better=0 worse=1 equal=8 of 9
+VERDICT=DIFFERS  0 task(s) better, 1 worse under the external provider.
+WARNING the totals differ while the two providers produce a different number of
+        steps: that moves the denominator, and is NOT better or worse coverage.
+        Read PER_TASK. The aggregate is unsafe when the part counts disagree.
+
+Coverage is how much of the plan the expectation could be contradicted by, not
+whether the prediction is a good one. A provider naming everything scores 1.00
+and is useless: read this next to the part counts, never alone.
