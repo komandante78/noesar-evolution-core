@@ -13780,3 +13780,30 @@ una classe di guasto dell'oracolo) e **tratto 2** (riusabile: la libreria vale p
 scriva accettazione in POSIX `sh`).
 **Costo di reversal.** Nessuno — non eseguita.
 **Status.** proposed — decisione dell'Owner.
+
+## D-0596 · Un byte NUL in `author.mjs` rendeva il file invisibile a `grep` — 2026-08-20
+**Decisione.** Il separatore NUL dentro il template di `attemptDigest` si scrive come **escape
+`\0`**, non come byte grezzo; e `tools/verify-source.mjs` rifiuta d'ora in poi qualunque sorgente
+di prima parte che contenga un NUL grezzo.
+**Perché.** `grep` classifica come binario un file che contiene un NUL e **non stampa nulla**
+senza `-a`: `services/reference-control-plane/src/author.mjs` **spariva da ogni `grep -rn` su
+`services/`** — compreso il passo di lettura di HUNT AND FIX, che nomina `grep` fra gli
+strumenti — rispondendo «nessuna corrispondenza» invece di «non scandito». È la stessa classe del
+controllo che passa in silenzio. Trovato **usandolo**: un `grep` su questo file è tornato vuoto
+mentre `head` mostrava il contenuto. Il NUL come separatore è però **giusto** — è l'unico byte
+che un percorso non può contenere, e un percorso con uno spazio dentro non è ipotetico qui — per
+cui si conserva il byte e si cambia solo **come è scritto**.
+**Respinta.** Sostituirlo con uno spazio: reintrodurrebbe la collisione `a b`+digest ↔ `a`+`b`+
+digest e cambierebbe `attemptDigest` senza motivo.
+**Evidenza.** 6.698 file tracciati scanditi: **29** contengono un NUL, **28 legittimamente
+binari** (2 PNG, 1 binario vendored, 25 blob di test di crate Rust) e **uno solo di prima parte**.
+`attemptDigest` per un input fisso **identico prima e dopo** (`9150910e…c38ca891`) — misurato, non
+dedotto. `file` ora dice `Unicode text, UTF-8`; `grep` senza `-a` trova di nuovo 8 `export`.
+Guardia: `nul-free=1143 source files`, **vista FALLIRE** reintroducendo il byte grezzo, che la
+nomina con posizione e lunghezza. Unit **2864/2865** (1 skip preesistente).
+**Nota misurata, per non allargare l'allarme:** `git` **non** era colpito — la sua euristica legge
+i primi 8.000 byte e il NUL stava a 16.918, quindi `git diff` e `git grep` hanno sempre funzionato
+e la revisione della regola 44 non è mai stata cieca.
+**Costo di reversal.** Nessuno: il digest non cambia, quindi nessun dato registrato si invalida.
+**Status.** applied — non installato (l'installazione viva porta ancora il byte grezzo, che è
+inerte: il comportamento è identico).

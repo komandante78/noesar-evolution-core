@@ -316,8 +316,32 @@ export class Author {
     // Novelty is judged on what came OUT, not on what went in: two prompts that differ and
     // produce the same diff are one attempt, which is the whole point of `15` §5 — a small
     // model does not fail by stopping, it fails by repeating itself with confidence.
+    //
+    // The separator between a path and its digest is NUL, written as the escape `\0` and never
+    // as the raw byte. Both halves of that matter.
+    //
+    // NUL is the right separator: it is the one byte a path cannot contain on any system this
+    // product runs on, so `a b` + digest and `a` + `b` + digest can never collide the way they
+    // would with a space — and a path with a space in it is not hypothetical here, the
+    // cross-platform installer suite exists because of one on macOS.
+    //
+    // Writing it as a RAW byte, which is how this line stood until `D-0596`, made this file the
+    // only first-party source in the repository that is not text: 1 NUL in 25,691 bytes,
+    // measured across all 6,698 tracked files, the other 28 hits being two PNGs, one vendored
+    // binary and 25 vendored Rust test blobs. The cost was not cosmetic. `grep` classifies a
+    // file containing a NUL as binary and prints NOTHING for it without `-a`, so this file
+    // silently vanished from every `grep -rn` sweep over `services/` — including the HUNT AND
+    // FIX step's own reading pass, which names `grep` as an instrument. A file that answers
+    // "no matches" instead of "not scanned" is the same failure mode as a check that silently
+    // passes, and it is the one this project keeps finding in itself.
+    //
+    // `git` was NOT affected, and that was measured rather than assumed: its binary heuristic
+    // reads the first 8,000 bytes and this NUL sat at 16,918, so `git diff` and `git grep` both
+    // worked throughout and rule 44's diff review was never blind. The escape leaves the digest
+    // input byte-for-byte identical — verified, `attemptDigest` for a fixed input is
+    // `9150910e…c38ca891` before and after — while making the file readable by everything else.
     const attemptDigest = digest([...contents.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([path, body]) => `${path} ${digest(body)}`).join('\n'));
+      .map(([path, body]) => `${path}\0${digest(body)}`).join('\n'));
 
     // Phase 6: whatever the assembled generator had to fall back to during THIS run. A plain
     // port has no `drain` and the list is empty, which is the same answer as "nothing

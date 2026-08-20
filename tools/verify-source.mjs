@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -241,4 +242,46 @@ for (const [index, filename] of V060_BASELINE.entries()) {
   }
 }
 
-console.log(`SOURCE_VERIFY=PASS migrations=${manifest.migrations.length} baseline=${V060_BASELINE.length}/12 intact`);
+// ── No first-party source file may contain a raw NUL byte (`D-0596`) ────────────────────────
+//
+// The rule, not just the instance. `services/reference-control-plane/src/author.mjs` carried a
+// literal NUL as the separator inside a template literal — invisible in every editor, harmless
+// to node, and enough to make `grep` classify the file as binary and print NOTHING for it
+// without `-a`. It therefore vanished from every `grep -rn` sweep over `services/`, including
+// the one the HUNT AND FIX step performs, while answering "no matches" rather than "not
+// scanned". The instance is repaired at its source (the escape `\0`, same byte, file stays
+// text); this stops the class returning, because the next one would be just as invisible.
+//
+// Scope is first-party source ONLY, and the exclusions are directories rather than a list of
+// filenames on purpose: a list of allowed binary files would need editing every time a vendored
+// crate gains a test blob, and an exclusion that needs maintenance is one that gets widened.
+const BINARY_IS_EXPECTED = [
+  'rust/vendor/',          // vendored crates ship binary test vectors (.blb, .fst)
+  'oci/vendor/',           // the vendored ATOM binary
+  'PROJECT_GOVERNANCE/',   // approved design references (.png)
+  'docs/design/',          // the same references, published
+];
+const SOURCE_EXTENSIONS = ['.mjs', '.js', '.cjs', '.ts', '.rs', '.sh', '.ps1', '.py', '.json', '.md', '.sql', '.html', '.css', '.yml', '.yaml', '.toml'];
+
+const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
+  .toString('utf8').split('\0').filter(Boolean);
+const withNul = [];
+let scanned = 0;
+for (const relative of tracked) {
+  if (BINARY_IS_EXPECTED.some((prefix) => relative.startsWith(prefix))) continue;
+  if (!SOURCE_EXTENSIONS.some((extension) => relative.endsWith(extension))) continue;
+  const absolute = resolve(root, relative);
+  if (!existsSync(absolute)) continue;   // a tracked file removed in the working tree is not this check's business
+  scanned += 1;
+  const bytes = readFileSync(absolute);
+  const at = bytes.indexOf(0);
+  if (at >= 0) withNul.push(`${relative} (byte ${at} of ${bytes.length})`);
+}
+if (withNul.length > 0) {
+  throw new Error(
+    `first-party source containing a raw NUL byte, which makes grep treat it as binary and skip it silently: ${withNul.join(', ')}. `
+    + 'If the NUL is deliberate, write it as the escape \\0 — the string is identical and the file stays text.',
+  );
+}
+
+console.log(`SOURCE_VERIFY=PASS migrations=${manifest.migrations.length} baseline=${V060_BASELINE.length}/12 intact nul-free=${scanned} source files`);
