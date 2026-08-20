@@ -129,7 +129,9 @@ export class WorkspaceActionOrchestrator {
 
   #runRetention;
 
-  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500 }) {
+  #noveltyBudget;
+
+  constructor({ workspaceRoot, shadowsRoot, minter, events, reasoningFor, executeSandbox = null, privacyStateFor = null, env = process.env, groundRequest = defaultGroundRequest, author = null, profileChange = defaultProfileChange, runStoreDirectory = null, skillsFor = () => [], runRetention = 500, noveltyBudget = 5 }) {
     // Failed fast here once already, the wrong way: `workspace/shadows` looked like a
     // reasonable place to put shadows because the read-only status route already probes
     // there — but that route only writes a tiny probe file, never a whole-workspace shadow,
@@ -169,6 +171,16 @@ export class WorkspaceActionOrchestrator {
         `runRetention must be a positive integer, got \`${runRetention}\``);
     }
     this.#runRetention = runRetention;
+    // `CE-030`. Validated here, like `runRetention` above and for the same reason: a bad value
+    // must be a startup failure, not something discovered the day a budget silently never
+    // stops anything. Zero is refused deliberately — a budget of zero would mean the product
+    // can never author at all, which is a way of turning the feature off by configuration and
+    // is not what a budget is.
+    if (!Number.isInteger(noveltyBudget) || noveltyBudget < 1) {
+      throw new WorkspaceActionError('INVALID_NOVELTY_BUDGET',
+        `noveltyBudget must be a positive integer, got \`${noveltyBudget}\``);
+    }
+    this.#noveltyBudget = noveltyBudget;
     // Stage 9b (`16` §3.3): the component that writes the contents. Optional and absent by
     // default — an installation with no model configured plans exactly as it did before and
     // says so, rather than presenting empty contents as a result. It is deliberately NOT
@@ -465,9 +477,37 @@ export class WorkspaceActionOrchestrator {
         throw error;
       }
       const comparison = compareDecisions(run, recomputed);
+      // `CE-027`, `D-0600`: *"la sessione si riesegue producendo le stesse decisioni"*, and the
+      // row's method spells out how — *"contenuti dalle fixture, decisioni ricalcolate"*. Those
+      // are two different verbs on purpose and this is where both finally happen at once.
+      //
+      // The decisions above are RECOMPUTED: `#runDecisionLayer` runs again, today's code over
+      // yesterday's request. The authored contents are NOT regenerated — they are replayed from
+      // the fixtures, because a model writing fresh bytes on every replay would be reported as
+      // drift originating in this file when it is the one thing `01_VISIONE_E_POSIZIONE.md`
+      // already declares non-deterministic. That asymmetry IS the criterion, and until now the
+      // second half of it had nowhere to happen: `replay()` deliberately never reached the
+      // Author, and simply left the authoring out of the verdict entirely.
+      const authoring = this.#replayAuthoringOf(runId);
       this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
-        { method: 'LOCAL_RECOMPUTE', faithful: comparison.faithful, diffFields: comparison.diffs.map((d) => d.field) }, nowUnix);
-      return { runId, method: 'LOCAL_RECOMPUTE', ...comparison };
+        {
+          method: 'LOCAL_RECOMPUTE',
+          faithful: comparison.faithful && authoring.faithful,
+          diffFields: comparison.diffs.map((d) => d.field),
+          authoringCalls: authoring.calls, authoringFaithful: authoring.faithful,
+        }, nowUnix);
+      return {
+        runId,
+        method: 'LOCAL_RECOMPUTE',
+        ...comparison,
+        // The whole-session verdict, and it is an AND. A session whose decisions still hold but
+        // whose recorded authoring no longer reproduces has not replayed faithfully, and a
+        // `faithful: true` that only ever meant "the plan matched" would be the most expensive
+        // kind of true — the sort somebody builds an audit on.
+        faithful: comparison.faithful && authoring.faithful,
+        decisions: { faithful: comparison.faithful, diffs: comparison.diffs },
+        authoring,
+      };
     }
 
     if (!run.fixturePack) {
@@ -492,6 +532,80 @@ export class WorkspaceActionOrchestrator {
     this.#record(runId, run.planEventId, actor, 'workspace_action.replayed',
       { method: 'EXTERNAL_PACK', faithful: report.faithful }, nowUnix);
     return { runId, method: 'EXTERNAL_PACK', replayable: true, faithful: report.faithful, atomReport: report };
+  }
+
+  /**
+   * Every authored call of a run, replayed from its record — the "contenuti dalle fixture" half
+   * of `CE-027`.
+   *
+   * Reports per call rather than one boolean, because the three ways a session can fail to
+   * reproduce need different answers from whoever reads this: a call whose bytes are GONE (the
+   * run was pruned, or the store was swept) is not the same event as a call whose bytes are
+   * present and no longer produce the decision that was recorded, and neither is the same as a
+   * session that never authored at all.
+   *
+   * `faithful` is true only if every call replayed. `calls: 0` is faithful and says so — a run
+   * on an installation with no model authored nothing, and there is nothing for it to fail to
+   * reproduce. Reporting that as unfaithful would make every plan on a model-less installation
+   * look like a regression.
+   */
+  #replayAuthoringOf(runId) {
+    const fixtures = this.#events.correlation(runId)
+      .filter((event) => event.action === 'workspace_action.authored')
+      .flatMap((event) => parseEventPayload(event).fixtures ?? []);
+    if (fixtures.length === 0) return { calls: 0, faithful: true, unresolvable: 0, diverged: 0, results: [] };
+
+    const results = [];
+    let unresolvable = 0;
+    let diverged = 0;
+    for (const [index, fixture] of fixtures.entries()) {
+      const outcome = replayFromStore({ fixture, store: this.#authoringReplayStore });
+      if (outcome.kind === 'UNRESOLVABLE') unresolvable += 1;
+      else if (!outcome.faithful) diverged += 1;
+      results.push({
+        index, path: fixture.path, kind: outcome.kind, faithful: outcome.faithful,
+        reason: outcome.reason ?? null, diffs: outcome.diffs ?? [],
+      });
+    }
+    return { calls: fixtures.length, faithful: unresolvable === 0 && diverged === 0, unresolvable, diverged, results };
+  }
+
+  /**
+   * What this piece of work has already tried — `CE-030`, `15` §5.
+   *
+   * GROUPED BY CONVERSATION, and that is the design decision worth stating. A "piece of work"
+   * is a person asking for something and then asking again because the first answer was not
+   * good enough; `conversationId` is what the product already uses to tie those together
+   * (`runsFor({scope:'conversation'})`). Grouping by the goal STRING instead would merge two
+   * different people who happened to phrase a request the same way, and would come apart the
+   * moment somebody rephrased. A run with no conversation is its own piece of work and starts
+   * with a full budget — which is right: an unattached run has nothing to be a repeat of.
+   *
+   * `novelAttempts` is the count that matters and `repeatsIgnored` is the one that proves the
+   * rule is doing something: a budget where both numbers moved together would be a budget on
+   * effort, which is exactly what `15` §5 says does not work on small models.
+   */
+  #authoringHistory(conversationId) {
+    const empty = { digests: [], attempts: [], novelAttempts: 0, repeatsIgnored: 0 };
+    if (typeof conversationId !== 'string' || !conversationId.trim()) return empty;
+    const digests = [];
+    const attempts = [];
+    let novelAttempts = 0;
+    let repeatsIgnored = 0;
+    for (const run of this.#runs.values()) {
+      if (run.conversationId !== conversationId) continue;
+      if (typeof run.attemptDigest !== 'string') continue;
+      if (run.novelty === 'repeat') { repeatsIgnored += 1; continue; }
+      novelAttempts += 1;
+      digests.push(run.attemptDigest);
+      // A sentence the model can actually avoid repeating. The goal alone would be identical
+      // across every attempt of the same request — which is the point of the request — so the
+      // paths it produced are what distinguishes one approach from another.
+      const paths = Array.isArray(run.authoredPaths) && run.authoredPaths.length
+        ? run.authoredPaths.join(', ') : 'no file changed';
+      attempts.push(`${run.goal ?? 'the same request'} → ${paths}`);
+    }
+    return { digests, attempts, novelAttempts, repeatsIgnored };
   }
 
   /**
@@ -757,7 +871,32 @@ export class WorkspaceActionOrchestrator {
     let authoring = { available: false, reason: Author.NO_MODEL_REASON, authored: 0 };
     let authoringEvent = null;
     const authoredContents = new Map();
-    if (this.#author?.available) {
+    let attemptDigest = null;
+    // `CE-030` / `15` §5: *"Budget sulla novità, non sullo sforzo: un approccio ripetuto non
+    // conta come tentativo."* What this conversation has already tried, so the Author is asked
+    // WITH that in hand — and so a repeat can be recognised as one.
+    //
+    // MEASURED BEFORE `D-0599`: `author()` has accepted `previousAttemptDigests` and `attempts`
+    // since it was written, and this — its ONLY call site in the product — passed neither. So
+    // `novelty` was `'novel'` on every run the product ever made, the `'repeat'` branch was
+    // reachable only from a test, and the prompt's "approaches already tried — do not repeat
+    // them" section never once appeared in a real prompt. The mechanism `15` §5 calls "the only
+    // control that works on small models" was present, wired to nothing, and reported as
+    // working by a field that could not say anything else.
+    const history = this.#authoringHistory(conversationId);
+    if (this.#author?.available && history.novelAttempts >= this.#noveltyBudget) {
+      // Refused BEFORE the call, and it says which budget and why. Small models do not fail by
+      // stopping — they fail by repeating themselves with confidence (`15` §5), so the thing
+      // that has to stop is the asking.
+      authoring = {
+        available: true, authored: 0, exhausted: true,
+        reason: `the novelty budget for this piece of work is spent: ${history.novelAttempts} distinct approaches have been tried and the limit is ${this.#noveltyBudget}. A repeat does not consume budget; ${history.repeatsIgnored} were ignored. Start a new piece of work, or change what is being asked.`,
+        budget: { limit: this.#noveltyBudget, novelUsed: history.novelAttempts, repeatsIgnored: history.repeatsIgnored, remaining: 0 },
+      };
+      authoringEvent = ['workspace_action.authoring_budget_spent', {
+        limit: this.#noveltyBudget, novelUsed: history.novelAttempts, repeatsIgnored: history.repeatsIgnored,
+      }];
+    } else if (this.#author?.available) {
       try {
         const result = await this.#author.author({
           goal: intent.goal,
@@ -768,12 +907,28 @@ export class WorkspaceActionOrchestrator {
           profile: divergence.signals,
           // And, from `D-0345`, with the operator's adopted skills in hand as well.
           skills: composedSkills,
+          // `CE-030`, `D-0599`. Both halves, and they do different jobs: the digests let the
+          // Author RECOGNISE a repeat after the fact, the sentences let the model AVOID one
+          // before it writes. Passing only the first would count repeats accurately while doing
+          // nothing to reduce them.
+          previousAttemptDigests: history.digests,
+          attempts: history.attempts,
         });
+        attemptDigest = result.attemptDigest;
         for (const [path, body] of result.contents) authoredContents.set(path, body);
         authoring = {
           available: true, reason: null,
           ...result.summary,
           novelty: result.novelty,
+          // The budget as it stands AFTER this authoring, and a repeat leaves `novelUsed`
+          // where it was — which is the whole of `CE-030` expressed as a number an operator
+          // can read, rather than a label on one run that nothing ever adds up.
+          budget: {
+            limit: this.#noveltyBudget,
+            novelUsed: history.novelAttempts + (result.novelty === 'novel' ? 1 : 0),
+            repeatsIgnored: history.repeatsIgnored + (result.novelty === 'repeat' ? 1 : 0),
+            remaining: Math.max(0, this.#noveltyBudget - history.novelAttempts - (result.novelty === 'novel' ? 1 : 0)),
+          },
           unchangedPaths: result.unchanged,
           refusals: result.refusals,
           // Phase 6 (`D-0312`): who actually wrote these bytes when ATOM was asked for and
@@ -870,6 +1025,15 @@ export class WorkspaceActionOrchestrator {
       // Stage 9b output. The map belongs to the RUN, not to the caller: `approve()` reads it,
       // and nothing between here and there can add a key the Plan had not settled on.
       authoredContents, authoring,
+      // `CE-030`, `D-0599`. Three flat fields rather than reaching into `authoring` from
+      // `#authoringHistory`: the history is read on every plan of a conversation, and a reader
+      // that had to know the shape of `authoring` would break the day that answer is reshaped
+      // for a shell. `attemptDigest` is `null` when nothing was authored, which reads correctly
+      // as "this run is not an attempt at anything" and is skipped by the history.
+      attemptDigest,
+      novelty: authoring.novelty ?? null,
+      authoredPaths: [...authoredContents.keys()],
+      goal: intent.goal,
       egressSamples: [this.#sampleEgress('planned', nowUnix)].filter(Boolean),
       // SESS-002: the captured replay pack, `null` when capture failed or nothing routed
       // externally for `fixtures` itself — session-proof.mjs and replay() both read this.

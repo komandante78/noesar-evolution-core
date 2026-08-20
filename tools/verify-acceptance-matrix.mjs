@@ -68,8 +68,14 @@ import { readFileSync } from 'node:fs';
  * ledger stored were five digests and no bytes, so they could CHECK a call somebody re-executed
  * by other means and could not re-execute one, while `author.mjs`'s own rule 5 claimed each
  * authoring "returns a replayable record". Seen to FAIL at 6 first, one notch tighter.
+ * **4** at `D-0599`/`D-0600` (`CE-027`, `CE-028`, `CE-030`) — the three the handoff said were one
+ * subject, the Author, and taking them together is what made the third cheap: `CE-027` needed the
+ * replay bench `CE-006` had just built. `CE-030` was not a missing verdict but a HOLE — `author()`
+ * has accepted `previousAttemptDigests` since it was written and its only caller in the product
+ * passed neither it nor `attempts`, so `novelty` was `novel` on every run the product ever made
+ * and no budget existed anywhere. Seen to FAIL at 3 first, one notch tighter.
  */
-const MAX_UNSTATED = 7;
+const MAX_UNSTATED = 4;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

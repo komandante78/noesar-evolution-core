@@ -13855,3 +13855,53 @@ rigiocabile con una politica di ritenzione dichiarata) e **tratto 2** (riusabile
 indirizzato per contenuto è un mattone, non una funzione di questo prodotto).
 **Costo di reversal.** Nessuno — nulla viene cancellato.
 **Status.** proposed — decisione dell'Owner.
+
+## D-0599 · `CE-030` non era un verdetto mancante: era un buco — 2026-08-20
+**Decisione.** `plan()` passa all'Autore `previousAttemptDigests` e `attempts` raccolti dalla
+**conversazione**, e un **budget di novità** (`noveltyBudget`, default 5) che un ripetuto **non**
+consuma; a budget esaurito il modello non viene più interrogato e il piano sopravvive comunque.
+**Perché.** `Author.author()` accetta quei due parametri da quando è stato scritto e ne ricava
+`novelty`; `workspace-actions.mjs` è il **suo unico chiamante nel prodotto** e non passava né
+l'uno né l'altro. Misurato: `novelty` valeva `novel` su **ogni** run che il prodotto abbia mai
+fatto, il ramo `repeat` era raggiungibile solo da un test, la sezione «approaches already tried»
+non è mai comparsa in un prompt vero, e un budget non esisteva. `15` §5 lo chiama *«l'unico
+controllo che funziona sui modelli piccoli»*: era presente, collegato a nulla.
+**Respinta.** Raggruppare per la stringa del goal: fonderebbe due persone che hanno formulato la
+richiesta allo stesso modo, e si sfalderebbe alla prima riformulazione. `conversationId` è ciò che
+il prodotto già usa per legare insieme un pezzo di lavoro (`runsFor({scope:'conversation'})`).
+**Evidenza.** `ce-030-a-repeat-is-not-an-attempt.test.mjs` **6/6**, guidando `plan()` e non
+`Author` — un test che passasse i digest a mano proverebbe l'aritmetica e sarebbe rimasto verde per
+tutti i run descritti sopra. **Oracolo visto rosso:** rimettendo il chiamante a non passare nulla,
+**3 su 6** falliscono. Ripetuti in mezzo a due novità: se un ripetuto consumasse budget la seconda
+novità non verrebbe mai chiesta — l'ordinamento del test è costruito per prenderlo.
+**Costo di reversal.** Nessuno sui dati: i run vecchi non hanno `attemptDigest` e la storia li
+salta. Un'installazione che volesse il comportamento di prima alzerebbe `noveltyBudget`.
+**Status.** applied — non installato.
+
+## D-0600 · `CE-027` e `CE-028`: il replay diceva «fedele» senza guardare i byte — 2026-08-20
+**Decisione.** `replay()` rigioca anche **ogni chiamata autorata** dal suo record e il verdetto di
+sessione diventa un **AND** fra decisioni ricalcolate e contenuti riprodotti dalle fixture.
+`CE-028` è registrata provandola su **due repository git veri** con convenzioni opposte.
+**Perché.** Il metodo di `CE-027` nomina due verbi diversi — *«contenuti dalle fixture, decisioni
+ricalcolate»* — e solo il secondo avveniva. `replay()` non raggiunge l'Autore **per scelta**
+giusta (un modello che riscrive byte a ogni replay sarebbe letto come deriva del prodotto), ma
+nessuno rigiocava le chiamate registrate: `faithful:true` significava «il piano coincide» e taceva
+sui byte, in un metodo che si chiama replay. Il record che serviva è arrivato con `D-0597`.
+**Respinta.** Un metodo separato per il replay dell'autoratura: lascerebbe `replay()` a rispondere
+`faithful:true` per una sessione irriproducibile, che è il verdetto su cui si costruisce un audit.
+**Evidenza.** `ce-027-…test.mjs` **4/4** — il generatore del banco risponde **diverso a ogni
+chiamata**, quindi se il replay rigenerasse invece di leggere il record ogni test sarebbe rosso;
+corrompendo **un** oggetto dello store le decisioni restano fedeli e la **sessione** no.
+`ce-028-…test.mjs` **3/3** con `git init` e cinque commit per repository, `tests`/`co-change`
+`high` contro `none`, il profilo asserito **sul prompt reso** e i byte diversi a parità di
+richiesta con la riga funzionale **identica**. Oracoli visti rossi in entrambi (3/4 e 1/3).
+Matrice: verdetti 60 → **63**, senza verdetto 7 → **4**, ratchet visto FALLIRE a 3.
+`scripts/test.sh` **18/18**, unit **2884+/2885** (1 skip preesistente), ESLint **461 file 0/0**.
+**Ampiezza dichiarata (`CE-028`).** Che un modello **vivo** obbedisca alle convenzioni che gli si
+mostrano è una proprietà del modello, non del prodotto, e non è asserita.
+**Costo di reversal.** `replay()` guadagna campi (`decisions`, `authoring`) e ne conserva la forma
+precedente; `faithful` diventa più severo, che è il punto.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: una sessione
+riproducibile end-to-end, con la provenienza di ogni chiamata) e **tratto 3** (autonomia: il
+replay non richiede di ricontattare alcun modello, quindi funziona offline e senza fornitore).
+**Status.** applied — non installato.

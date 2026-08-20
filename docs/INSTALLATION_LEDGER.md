@@ -5573,3 +5573,30 @@ ledger non cresce di un byte. Una chiamata si rigioca da `{fixture, store}` e **
 **Due oracoli visti rossi:** senza persistenza dei byte 4 test cadono, senza `beforeDigest` 3.
 
 **Nessun contenitore creato**, quindi nulla da pulire per §5a in questa parte della sessione.
+
+---
+
+## L'Autore, in una fase sola: `CE-030`, `CE-028`, `CE-027` (`D-0599`/`D-0600`, 2026-08-20)
+
+**Nessun deploy.** Cambia codice del prodotto, quindi il debito §3a resta aperto e cresce: da
+questa sessione l'albero è **cinque commit di prodotto** avanti all'installazione viva.
+
+**Le tre righe erano un solo soggetto** — l'Autore, fase 5 del piano `17` — e prenderle insieme è
+ciò che ha reso la terza economica: `CE-027` aveva bisogno del banco di replay che `CE-006` aveva
+appena costruito.
+
+| Riga | Misura PRIMA | Misura DOPO |
+|---|---|---|
+| `CE-030` | `author()` accetta `previousAttemptDigests` e `attempts` dal giorno in cui è stato scritto; il **suo unico chiamante nel prodotto** non passava nessuno dei due. `novelty` valeva `novel` su **ogni run mai fatto**; nessun budget esisteva | storia per conversazione, un ripetuto **non** consuma budget, a esaurimento il modello non viene più interrogato e il piano sopravvive; esaurimento **sul ledger** |
+| `CE-028` | il profilo era calcolato e passato, e nulla lo provava **eseguendo** | due repository git **veri** con storie opposte, `tests`/`co-change` `high` contro `none`, profilo asserito **sul prompt reso**, byte diversi a parità di richiesta |
+| `CE-027` | `replay()` ricalcolava le decisioni e **lasciava l'autoratura fuori dal verdetto**: `faithful:true` voleva dire «il piano coincide» e taceva sui byte | verdetto di sessione = **AND** fra decisioni ricalcolate e contenuti riprodotti dalle fixture, riportato **per chiamata e per nome** |
+
+**Verifiche:** `scripts/test.sh` **18/18** · unit **2895/2896** (1 skip preesistente) · ESLint
+**461 file 0/0** · matrice **63 verdetti su 67**, senza verdetto **4**, ratchet visto FALLIRE a 3.
+**Tre oracoli visti rossi**, uno per riga (3/6, 1/3, 3/4).
+
+**Un errore mio, dichiarato:** uno script di sostituzione ha corrotto il **titolo** di
+`MASTER_PROJECT/16` invece delle righe. Ripristinato da git — l'unica modifica non committata di
+quel file era la corruzione stessa — e i tre verdetti riscritti uno per uno.
+
+**Nessun contenitore creato** oltre a quelli della batteria, che si rimuovono da sé.

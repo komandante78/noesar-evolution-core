@@ -511,7 +511,14 @@
       "criterion": "Ogni autoratura è registrata come fixture e la sessione si riesegue producendo le stesse **decisioni**",
       "severity": "high",
       "howVerified": "replay di una sessione conclusa, contenuti dalle fixture, decisioni ricalcolate",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0600",
+          "D-0597"
+        ],
+        "text": "✅ **verificato 2026-08-20 (`D-0600`)** — `services/reference-control-plane/test/ce-027-the-session-replays-its-decisions.test.mjs`, **4/4**. Il metodo nomina **due verbi diversi** e il test li tiene distinti: le **decisioni si RICALCOLANO** — `#runDecisionLayer` gira di nuovo, il codice di oggi sulla richiesta di ieri, quindi una sessione smette di rigiocare il giorno in cui il prodotto cambia idea — e i **contenuti vengono DALLE FIXTURE**, mai rigenerati, perché un modello che riscrive byte nuovi a ogni replay verrebbe riportato come deriva del prodotto, mentre la non-determinatezza lì è l'unica cosa che `01_VISIONE_E_POSIZIONE.md` già dichiara. **Misura PRIMA:** `replay()` ricalcolava le decisioni e **lasciava fuori dal verdetto l'autoratura per intero** — non raggiunge l'Autore per scelta, e nessuno rigiocava le chiamate registrate: `faithful:true` voleva dire «il piano coincide» senza dire nulla sui byte che la sessione aveva davvero prodotto, in un metodo che si chiama replay. **Misura DOPO:** `#replayAuthoringOf` rigioca ogni chiamata registrata dal suo record (`D-0597`) e il verdetto di sessione è un **AND** — una sessione le cui decisioni reggono ma la cui autoratura non si riproduce **non** ha rigiocato fedelmente. Il generatore del banco risponde **diverso a ogni chiamata**: se il replay rigenerasse invece di leggere il record, ogni test qui sarebbe rosso, quindi la metà «dalle fixture» non può passare per caso. Riportato **per chiamata e per nome** — una conta sola passerebbe se una terza chiamata sparisse — distinguendo `UNRESOLVABLE` (i byte non ci sono più) da una divergenza vera. `calls:0` è fedele e lo dichiara: un'installazione senza modello non autora nulla e non ha nulla da non riprodurre. **Oracolo visto rosso:** rimettendo l'autoratura fuori dal verdetto, **3 test su 4** falliscono"
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:528"
     },
     {
@@ -519,7 +526,13 @@
       "criterion": "Il profilo di divergenza entra nell'autoratura, e due repository con convenzioni opposte producono contenuti diversi a parità di richiesta",
       "severity": "high",
       "howVerified": "lo stesso compito su due repository con convenzioni opposte",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0600"
+        ],
+        "text": "✅ **verificato 2026-08-20 (`D-0600`)** — `services/reference-control-plane/test/ce-028-opposite-conventions-diverge.test.mjs`, **3/3**, con **due repository git veri** — `git init`, cinque commit ciascuno, e il `profileChange` del prodotto che ne legge la storia — non due profili scritti a mano, perché la pretesa riguarda ciò che le **modifiche accettate** insegnano. Le due storie sono opposte nei due segnali che nascono dall'abitudine: dove ogni modifica accettata porta il suo test → `tests: high` («no test changed; **100%** of accepted changes here carry one») e `co-change: high` («`src/login.js` changes with `test/login.test.js` in **100%** of its changes — not here»); dove nessuna l'ha mai portato → **`none`** per entrambi. Cinque commit e non tre perché `divergenceOf` esige `minPairSupport` prima di chiamare convenzione un'abitudine: due volte è una coincidenza. **Il profilo entra davvero nell'autoratura**, e lo si asserisce **sul prompt reso**, non sul passaggio del parametro — `author.mjs` racconta di quando quella riga leggeva `signal.signal` mentre il modulo emette `id`, e per una fase intera il modello ricevette `- undefined: high`: un prompt che sembra pieno e non dice nulla. **A parità di richiesta i byte differiscono** (digest del contenuto, non dei prompt), e la riga funzionale è **identica** nei due: ciò che le convenzioni cambiano è cosa la modifica **porta con sé**, non cosa fa — due risposte scorrelate passerebbero il test per la ragione sbagliata. **Confine dichiarato:** che un modello **vivo** obbedisca alle convenzioni che gli si mostrano è una proprietà del modello, non del prodotto, e non è asserita qui. **Oracolo visto rosso** passando `profile: []`. Un workspace senza storia **lo dichiara** (`not a git repository`), il prompt non porta **nessuna** sezione convenzioni — una vuota si leggerebbe come «questo repository non ha convenzioni», affermazione diversa e falsa — e l'autoratura avviene lo stesso"
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:529"
     },
     {
@@ -541,7 +554,13 @@
       "criterion": "Due autorature che producono lo stesso contenuto contano come **un** tentativo",
       "severity": "medium",
       "howVerified": "compito che induce ripetizione, conteggio del budget di novità",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0599"
+        ],
+        "text": "✅ **verificato 2026-08-20 (`D-0599`)** — `services/reference-control-plane/test/ce-030-a-repeat-is-not-an-attempt.test.mjs`, **6/6**, e **non era un verdetto mancante: era un buco**. `Author.author()` accetta `previousAttemptDigests` e `attempts` da quando è stato scritto e ne ricava `novelty`; `workspace-actions.mjs` è il **suo unico chiamante nel prodotto** e non passava **né l'uno né l'altro**. Quindi `novelty` valeva `novel` su **ogni** run che il prodotto abbia mai fatto, il ramo `repeat` era raggiungibile **solo da un test**, la sezione del prompt «approaches already tried — do not repeat them» non è **mai** comparsa in un prompt vero, e un **budget non esisteva affatto**. `15` §5 lo chiama «l'unico controllo che funziona sui modelli piccoli, che non falliscono fermandosi ma ripetendosi con sicurezza»: era presente, collegato a nulla, e riportato come funzionante da un campo che non poteva dire altro. **Misura DOPO:** la storia dei tentativi è raggruppata per **conversazione** — raggrupparla per la stringa del goal fonderebbe due persone che hanno formulato la richiesta allo stesso modo, e si sfalderebbe alla prima riformulazione; un **ripetuto non consuma budget**, e il rifiuto lo dice con i numeri (`novelUsed`, `repeatsIgnored`, `remaining`); a budget esaurito **il modello non viene più interrogato** — un budget che spende la chiamata e poi butta la risposta costa esattamente ciò per cui esiste — e il **piano sopravvive**: finire la novità non è una ragione per perdere il piano. Entrambe le metà, perché fanno lavori diversi: i digest fanno **riconoscere** un ripetuto, le frasi fanno **evitarlo**. `noveltyBudget` è validato alla costruzione (zero **rifiutato**: sarebbe spegnere la funzione dalla configurazione), e l'esaurimento è **sul ledger**, non solo sulla risposta. **Oracolo visto rosso:** rimettendo il chiamante a non passare nulla, **3 test su 6** falliscono"
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:531"
     },
     {
