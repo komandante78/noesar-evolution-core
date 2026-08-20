@@ -14055,3 +14055,23 @@ per cui il default è il dry-run e i verbi sono due. Il codice si annulla con un
 rigiocabile con una politica di ritenzione dichiarata e verificabile) e **tratto 3** (autonomia:
 un operatore self-hosted decide che cosa la sua macchina conserva).
 **Status.** applied — **non installato**: l'installazione viva serve ancora il difetto.
+
+## D-0607 · Proposta: rendere irrappresentabile la classe di difetto del `D-0606` — 2026-08-20
+**Proposta.** Un test di proprietà che ricava da una **sessione di authoring vera** ogni digest
+sotto cui lo store ha davvero scritto, e asserisce che `referencedDigests()` li nomina tutti —
+invece di confrontare due liste scritte a mano che possono divergere insieme.
+**Perché.** Il `D-0606` non è stato un errore di battitura: la lista nominata **può nominare un
+campo che non è quello salvato**, e nessuna delle due parti sa dell'altra. Un campo futuro
+riapre esattamente lo stesso buco, e il costo è la cancellazione silenziosa di record che il
+ledger continua a dichiarare rigiocabili. Il test di oggi copre i due campi che conosciamo; questo
+coprirebbe **quelli che non conosciamo ancora**.
+**Respinta.** Camminare l'oggetto per raccogliere ogni campo digest-simile: è la disciplina che
+`referencedDigests` rifiuta di proposito, perché renderebbe protetto per distrazione ogni campo
+futuro. La proprietà si asserisce dal **lato dello store**, che sa che cosa ha scritto.
+**Beneficio/costo.** Beneficio: la classe di difetto diventa irrappresentabile invece che
+riparata. Costo: ~2 ore, un test, nessun cambio di produzione.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: una proprietà
+verificabile su uno store indirizzato per contenuto) e **tratto 2** (riusabile: vale per
+qualunque store content-addressed con mark-and-sweep, non solo per questo prodotto).
+**Costo di reversal.** N/A — proposta, non eseguita.
+**Status.** deferred — decisione dell'Owner.
