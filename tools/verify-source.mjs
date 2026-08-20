@@ -45,6 +45,9 @@ const required = [
   // how `noesar-debuglab` became a mandatory step pointing at a tool that no longer existed.
   'tools/acceptance/ce-031-second-machine.sh',
   'tools/acceptance/ce-031-remote-probe.mjs',
+  // `CE-006` (`D-0597`): without this file the fixtures in the ledger are digests again, and
+  // the record goes back to being able to CHECK a call it cannot re-execute.
+  'services/reference-control-plane/src/authoring-replay-store.mjs',
   '.gitleaks.toml',
   'rust/crates/noesar-reasoning/src/lib.rs',
   'rust/crates/noesar-reasoning-reference/src/lib.rs',

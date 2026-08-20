@@ -130,6 +130,101 @@ function normaliseAuthored(structured, path) {
  * material (rule 3): they come from a repository, which is somebody else's text, and the
  * instruction that governs this call sits outside that fence and is not negotiable by it.
  */
+/**
+ * Re-executes ONE recorded model call, in isolation, and rebuilds the decision it produced —
+ * `CE-006`: *"ogni chiamata al modello è rieseguibile isolata dal suo stato registrato"*.
+ *
+ * It is pure. It reads no file, reaches no model, and knows nothing about a run, a session or
+ * a workspace: its whole world is the fixture plus the two recorded strings. That is the point
+ * of the criterion — if those are not enough to rebuild the decision, then the record was not
+ * sufficient, and this function is where that becomes visible instead of being assumed.
+ *
+ * THE RULES ARE NOT RE-IMPLEMENTED HERE. `extractBody` and `normaliseAuthored` are the same
+ * functions `author()` calls, invoked again over the recorded answer. A second implementation
+ * of the extraction rules would be a check that only ever agrees with itself — the failure
+ * this project has already paid for twice (`PANEL_NAMES`, and the address table compared
+ * against a list in its own test file). If a rule changes, this replay changes with it, and a
+ * historical fixture that no longer reproduces is then a REAL and reportable finding about the
+ * product's code moving, not an artefact of two copies drifting.
+ *
+ * @param {object}  fixture  the recorded call
+ * @param {?string} prompt   the bytes recorded for `fixture.promptDigest`, or null
+ * @param {?string} answer   the bytes recorded for `fixture.answerRecordDigest`, or null
+ * @returns {{kind: string, faithful: boolean, decision: ?object, diffs: object[], reason: ?string}}
+ */
+export function replayAuthoringCall({ fixture, prompt, answer }) {
+  if (!fixture || typeof fixture !== 'object') {
+    return { kind: 'UNRESOLVABLE', faithful: false, decision: null, diffs: [], reason: 'no fixture to replay' };
+  }
+  const diffs = [];
+  const unresolvable = (reason) => ({ kind: 'UNRESOLVABLE', faithful: false, decision: null, diffs, reason });
+
+  // The prompt is what makes the call RE-ISSUABLE — it is the exact bytes a model was asked.
+  // Its absence is fatal to the claim even when the decision could be rebuilt without it,
+  // because "re-executable" is the word the criterion uses.
+  if (typeof prompt !== 'string') return unresolvable('the recorded prompt is not in the store');
+  if (digest(prompt) !== fixture.promptDigest) {
+    return unresolvable(`the recorded prompt does not match its digest (store holds ${digest(prompt).slice(0, 12)}…, fixture names ${String(fixture.promptDigest).slice(0, 12)}…)`);
+  }
+
+  // A port that refused before any answer existed. There is nothing to re-apply the rules to,
+  // and saying so is the honest verdict — the decision IS the refusal, and it is reproduced
+  // from the record rather than recomputed from an answer that never happened.
+  if (fixture.answerKind === 'none' || fixture.answerRecordDigest === null) {
+    if (fixture.outcome !== 'refused' || !fixture.refusal) {
+      return unresolvable('the fixture records no answer but does not record a refusal either');
+    }
+    return {
+      kind: 'PORT_REFUSAL',
+      faithful: true,
+      decision: { outcome: 'refused', refusal: { ...fixture.refusal }, contentsDigest: null, discarded: [] },
+      diffs: [],
+      reason: null,
+    };
+  }
+
+  if (typeof answer !== 'string') return unresolvable('the recorded answer is not in the store');
+  if (digest(answer) !== fixture.answerRecordDigest) {
+    return unresolvable(`the recorded answer does not match its digest (store holds ${digest(answer).slice(0, 12)}…, fixture names ${String(fixture.answerRecordDigest).slice(0, 12)}…)`);
+  }
+
+  let rebuilt;
+  try {
+    if (fixture.answerKind === 'structured') {
+      let parsed;
+      try { parsed = JSON.parse(answer); } catch { return unresolvable('the recorded structured answer is not readable JSON'); }
+      rebuilt = normaliseAuthored(parsed, fixture.path);
+    } else {
+      rebuilt = extractBody(answer, fixture.path);
+    }
+  } catch (error) {
+    if (!(error instanceof AuthoringRefused)) throw error;
+    const decision = { outcome: 'refused', refusal: { code: error.code, reason: error.reason }, contentsDigest: null, discarded: [] };
+    if (fixture.outcome !== 'refused') diffs.push({ field: 'outcome', was: fixture.outcome, now: 'refused' });
+    else if (fixture.refusal?.code !== error.code) diffs.push({ field: 'refusal.code', was: fixture.refusal?.code ?? null, now: error.code });
+    return { kind: 'RE_APPLIED', faithful: diffs.length === 0, decision, diffs, reason: null };
+  }
+
+  // `unchanged` vs `written` is a comparison against what the file held BEFORE the call, and
+  // `beforeDigest` is the side of it the record used not to carry. A fixture written before
+  // `D-0597` has no such field: that is declared as unresolvable rather than guessed at, which
+  // is what keeps an old record from being reported as a faithful replay it cannot support.
+  if (typeof fixture.beforeDigest !== 'string') {
+    return unresolvable('the fixture predates `beforeDigest` and cannot reproduce unchanged-vs-written');
+  }
+  const contentsDigest = digest(rebuilt.body);
+  const outcome = contentsDigest === fixture.beforeDigest ? 'unchanged' : 'written';
+  const decision = { outcome, refusal: null, contentsDigest, discarded: [...rebuilt.discarded] };
+
+  if (outcome !== fixture.outcome) diffs.push({ field: 'outcome', was: fixture.outcome ?? null, now: outcome });
+  // Compared only where the original recorded one. `contentsDigest` is absent on a fixture that
+  // refused, and asserting equality against `undefined` there would invent a difference.
+  if (fixture.contentsDigest !== undefined && fixture.contentsDigest !== contentsDigest) {
+    diffs.push({ field: 'contentsDigest', was: fixture.contentsDigest, now: contentsDigest });
+  }
+  return { kind: 'RE_APPLIED', faithful: diffs.length === 0, decision, diffs, reason: null };
+}
+
 export function buildAuthoringPrompt({ goal, step, path, contents, profile = [], attempts = [], skills = [] }) {
   const lines = [
     'You are rewriting exactly one file. Answer with one fenced code block and nothing else.',
@@ -233,6 +328,15 @@ export class Author {
     const discarded = [];
     const fixtures = [];
     const refusals = [];
+    // `D-0597`. Two arrays, deliberately, and never one object carrying both.
+    //
+    // `fixtures` is what the event ledger stores: digests, outcomes, provenance — no bytes.
+    // `calls` is what the replay store persists: the prompt and the answer themselves.
+    // Keeping them apart is a PROJECTION, not a `delete`, and the difference only shows under
+    // change: if the two ever merged, the day somebody adds a field carrying content it would
+    // land in an append-only audit surface with nobody noticing. This is the same discipline
+    // `skill-catalog.mjs` uses to keep instruction bodies out of a search result.
+    const calls = [];
 
     for (const file of files) {
       const prompt = buildAuthoringPrompt({ goal, step, path: file.path, contents: file.contents, profile, attempts, skills });
@@ -257,9 +361,18 @@ export class Author {
         refusals.push({ path: file.path, code: error.code, reason: error.reason });
         fixtures.push({
           path: file.path, model: this.#model, promptDigest: digest(prompt),
-          answerDigest: null, at: new Date().toISOString(), provenance: null,
+          answerDigest: null, answerKind: 'none', answerRecordDigest: null,
+          at: new Date().toISOString(), provenance: null,
+          // `D-0597`: what the file held BEFORE the call. Without it a replay cannot tell
+          // `unchanged` from `written` — that verdict is `body === file.contents`, and a
+          // record that cannot reproduce its own verdict is not a replayable record.
+          beforeDigest: digest(file.contents ?? ''),
           outcome: 'refused', refusal: { code: error.code, reason: error.reason },
         });
+        // The bytes go to the caller, never into the ledger — see `calls` below. A port
+        // refusal has no answer, and `null` says so rather than an empty string pretending
+        // the model replied with nothing.
+        calls.push({ path: file.path, prompt, answer: null });
         continue;
       }
       // Two shapes are accepted, and the difference is who checked the answer.
@@ -273,12 +386,29 @@ export class Author {
       // `CE-007` says this output is untrusted content whoever produced it, and because the
       // string path has to keep working when ATOM is not installed at all.
       const structured = answer && typeof answer === 'object' && typeof answer.contents === 'string' ? answer : null;
+      // `D-0597`. What is KEPT is not the same thing as what is HASHED, and conflating them
+      // would have made the structured half of replay quietly wrong.
+      //
+      // `answerDigest` has always been the digest of the model's CONTENT, and it stays that —
+      // changing its meaning would invalidate every fixture already in a ledger. But rebuilding
+      // the decision for a structured answer needs `discardedPaths` as well, since that is what
+      // `normaliseAuthored` reads; storing only the content would drop it and the replay would
+      // reproduce a shorter `discarded` list while reporting itself faithful. So the record
+      // kept is the answer AS IT ARRIVED, addressed by its own separate digest, and
+      // `answerKind` says which of the two shapes to read it back as instead of leaving a
+      // replay to guess from the first character.
+      const answerRecord = structured ? JSON.stringify(structured) : (answer === null || answer === undefined ? null : String(answer));
       const fixture = {
         path: file.path,
         model: this.#model,
         promptDigest: digest(prompt),
         answerDigest: digest(structured ? structured.contents : String(answer ?? '')),
+        answerKind: structured ? 'structured' : 'text',
+        answerRecordDigest: answerRecord === null ? null : digest(answerRecord),
         at: new Date().toISOString(),
+        // `D-0597`, as above: the verdict `unchanged` vs `written` is a comparison against
+        // what was there before, so the record carries that side of the comparison too.
+        beforeDigest: digest(file.contents ?? ''),
         // What the provider had to do to produce this. `null` when the port answered with a
         // raw string, which is itself the fact that nothing checked it before this line.
         provenance: structured
@@ -311,6 +441,7 @@ export class Author {
         refusals.push({ path: file.path, code: error.code, reason: error.reason });
       }
       fixtures.push(fixture);
+      calls.push({ path: file.path, prompt, answer: answerRecord });
     }
 
     // Novelty is judged on what came OUT, not on what went in: two prompts that differ and
@@ -355,6 +486,10 @@ export class Author {
       discarded,
       refusals,
       fixtures,
+      // `D-0597`. The bytes behind `fixtures`, for the caller that owns a filesystem. This
+      // array is never put on a ledger line and `workspace-actions.mjs` hands it to
+      // `AuthoringReplayStore` instead — see the two-arrays note where `calls` is declared.
+      calls,
       degradations,
       attemptDigest,
       novelty: previousAttemptDigests.includes(attemptDigest) ? 'repeat' : 'novel',

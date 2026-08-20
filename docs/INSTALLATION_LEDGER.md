@@ -5544,3 +5544,32 @@ consuma una sottorete dal pool finito di Docker e nulla qui può rimuovere una r
 
 **`MANIFEST.sha256` non è stato rigenerato**, e si dice: è già stale di ~670 file dal `D-0399`,
 nessun passo della batteria lo verifica, e ripararlo qui sarebbe un'altra fase.
+
+---
+
+## `CE-006` — la fixture che verificava ciò che non sapeva rieseguire (`D-0597`, 2026-08-20)
+
+**Nessun deploy.** Cambia codice del prodotto (`author.mjs`, `workspace-actions.mjs`, e un
+modulo nuovo), quindi l'installazione viva **non è più pari all'albero** e va aggiornata quando
+l'Owner lo autorizza. Dichiarato qui invece di lasciarlo scoprire.
+
+**Misura PRIMA:** ogni chiamata al modello lasciava una fixture sul ledger con **cinque digest e
+zero byte**. Un digest verifica una chiamata che qualcun altro ha rieseguito; non ne riesegue
+nessuna. `author.mjs` dichiarava in testa *«each authoring returns a replayable record»*.
+
+**Misura DOPO:** `services/reference-control-plane/src/authoring-replay-store.mjs` — store
+indirizzato per contenuto, chiavi = i digest che la fixture **già** portava, quindi la riga di
+ledger non cresce di un byte. Una chiamata si rigioca da `{fixture, store}` e **basta**.
+
+| Consegnato | Cosa |
+|---|---|
+| `src/authoring-replay-store.mjs` | store `put`/`get`/`read` (`ok · absent · corrupt`)/`sweep`, e `replayFromStore` |
+| `src/author.mjs` | `beforeDigest`, `answerKind`, `answerRecordDigest`; l'array `calls` separato da `fixtures`; `replayAuthoringCall`, puro, senza `node:fs` — la regola 2 del file resta intatta |
+| `src/workspace-actions.mjs` | persiste i byte dopo aver composto l'evento; `replayAuthoredCall({runId,index})`; `authoringReplayReferences()` |
+| `test/ce-006-every-model-call-replays.test.mjs` | 11 casi |
+
+**Verifiche:** `scripts/test.sh` **18/18** · unit **2875/2876** (1 skip preesistente) · ESLint
+**458 file 0/0** · matrice **60 verdetti su 67**, senza verdetto **7**, ratchet visto FALLIRE a 6.
+**Due oracoli visti rossi:** senza persistenza dei byte 4 test cadono, senza `beforeDigest` 3.
+
+**Nessun contenitore creato**, quindi nulla da pulire per §5a in questa parte della sessione.

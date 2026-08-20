@@ -13807,3 +13807,51 @@ e la revisione della regola 44 non è mai stata cieca.
 **Costo di reversal.** Nessuno: il digest non cambia, quindi nessun dato registrato si invalida.
 **Status.** applied — non installato (l'installazione viva porta ancora il byte grezzo, che è
 inerte: il comportamento è identico).
+
+## D-0597 · `CE-006`: la fixture verificava una chiamata che non sapeva rieseguire — 2026-08-20
+**Decisione.** I digest che la fixture già portava diventano **indirizzi di contenuto** in un
+`AuthoringReplayStore` accanto ai run; la fixture guadagna `beforeDigest`, `answerKind` e
+`answerRecordDigest`; `replayAuthoringCall` rigioca **una** chiamata in isolamento riapplicando
+**le stesse** funzioni di estrazione che `author()` usa.
+**Perché.** La riga chiede *«ogni chiamata al modello è rieseguibile isolata dal suo stato
+registrato»*. Il record era `{path, model, promptDigest, answerDigest, at, provenance, outcome,
+contentsDigest}` — **cinque digest e zero byte**. Un digest **verifica** una chiamata che
+qualcun altro ha rieseguito; non ne riesegue nessuna, e i mezzi non erano registrati da nessuna
+parte. La regola 5 di `author.mjs` dichiarava *«each authoring returns a replayable record»*:
+una pretesa che il codice non aveva (regola 43). E `beforeDigest` mancava del tutto — senza di
+esso `unchanged` vs `written`, che è un confronto con i byte di **prima**, non è ricostruibile.
+**Respinta.** Mettere prompt e risposta **sulla riga di ledger**: spingerebbe il contenuto del
+repository dell'utente dentro una superficie d'audit append-only ed esportabile, e moltiplicherebbe
+ogni voce per la dimensione dei file toccati. Due array separati (`fixtures` per il ledger,
+`calls` per lo store) rendono impossibile che un campo futuro ci finisca per distrazione — è una
+**proiezione**, non una `delete`, la stessa disciplina di `skill-catalog.mjs`.
+**Evidenza.** `ce-006-every-model-call-replays.test.mjs` **11/11**: sessione conclusa a tre esiti
+diversi, una scelta **a caso** con `randomInt` e poi tutte e tre; un test rigioca aprendo lo store
+da zero **senza orchestratore, run, workspace o modello**; un test asserisce **sui byte** della
+riga di ledger che né prompt né risposta la raggiungono. **Due oracoli visti rossi:** togliendo la
+persistenza dei byte **4** falliscono, togliendo il solo `beforeDigest` **3**. Unit **2875/2876**
+(1 skip preesistente), ESLint **458 file 0/0**, `scripts/test.sh` **18/18**, ratchet **8 → 7**
+visto FALLIRE a 6.
+**Difetto trovato costruendo l'oracolo, e riparato:** lo store rispondeva `null` sia per «assente»
+sia per «corrotto» — un `null` che faceva il lavoro di due fatti opposti, e mandava chi legge a
+cercare il problema sbagliato. Ora `read()` risponde `ok · absent · corrupt`.
+**Costo di reversal.** Le fixture scritte prima di oggi restano leggibili e vengono dichiarate
+`UNRESOLVABLE` (non hanno `beforeDigest`), mai spacciate per replay fedeli.
+**Status.** applied — non installato.
+
+## D-0598 · La ritenzione dello store di replay è una decisione dell'Owner, non un default — 2026-08-20
+**Decisione.** `AuthoringReplayStore.sweep()` esiste, è provato, e **non è chiamato da nulla**
+sul percorso caldo. Lo store cresce con il ledger finché l'Owner non decide una ritenzione.
+**Perché.** Cancellare stato registrato è una decisione esplicita e separata (`CLAUDE10.md` §6
+regola 23), e il set vivo si ricava dai **run** superstiti — coerente con ciò che `RunStore.prune`
+già dichiara: *«potare un run perde la possibilità di rigiocarlo, non il record che è avvenuto»*.
+**Respinta.** Spazzare automaticamente al `prune` dei run: renderebbe irrigiocabili chiamate le
+cui righe di ledger sopravvivono, in silenzio e senza che nessuno l'abbia scelto.
+**Evidenza.** `authoringReplayReferences()` costruisce il set vivo da campi **nominati**
+(`referencedDigests`), non camminando l'oggetto: un campo futuro non diventa spazzatura per
+distrazione. Test: spazzare questa sessione rimuove **0** e conserva > 0.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: provenienza
+rigiocabile con una politica di ritenzione dichiarata) e **tratto 2** (riusabile: uno store
+indirizzato per contenuto è un mattone, non una funzione di questo prodotto).
+**Costo di reversal.** Nessuno — nulla viene cancellato.
+**Status.** proposed — decisione dell'Owner.

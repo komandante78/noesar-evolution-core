@@ -62,8 +62,14 @@ import { readFileSync } from 'node:fs';
  * development host: a host modification the platform law forbids the product to make, and one
  * `/etc`-in-RAM erased at the next boot. A verdict that cannot be re-run is not a verdict, which
  * is exactly what this ratchet counts. Seen to FAIL at 7 first, one notch tighter.
+ * **7** at `D-0597` (`CE-006`). The row the handoff named as the one to take first, because it
+ * builds the replay bench `CE-027` reuses. Taking its method literally — *"replay di una
+ * decisione scelta a caso da una sessione conclusa"* — is what found the gap: the fixtures the
+ * ledger stored were five digests and no bytes, so they could CHECK a call somebody re-executed
+ * by other means and could not re-execute one, while `author.mjs`'s own rule 5 claimed each
+ * authoring "returns a replayable record". Seen to FAIL at 6 first, one notch tighter.
  */
-const MAX_UNSTATED = 8;
+const MAX_UNSTATED = 7;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

@@ -61,6 +61,14 @@ import { verifyClaims, projectionCoverage } from './verification.mjs';
 import { assembleSessionProof } from './session-proof.mjs';
 import { compareDecisions, comparePolicyOutcome, callAtomReplay as defaultCallAtomReplay, DECISION_SURFACES } from './session-replay.mjs';
 import { RunStore } from './run-store.mjs';
+import { AuthoringReplayStore, replayFromStore, referencedDigests } from './authoring-replay-store.mjs';
+
+/** A ledger payload is a JSON string; a damaged one yields `{}` rather than taking down the
+ *  read. Same shape as `session-proof.mjs` and `reasoning-router.mjs`, which read the same
+ *  ledger — three copies of `JSON.parse(event.payload || '{}')` was two too many. */
+function parseEventPayload(event) {
+  try { return JSON.parse(event?.payload || '{}'); } catch { return {}; }
+}
 
 export const APPROVAL_TTL_SECONDS = 15 * 60;
 const MAX_DIFF_BYTES = 256 * 1024;
@@ -106,6 +114,8 @@ export class WorkspaceActionOrchestrator {
   // that made it would be a measured result nobody can prove still matches the workspace.
   #shadows = new Map();
   #runStore;
+
+  #authoringReplayStore;
   #damagedRuns = [];
   #reasoningFor;
   #executeSandbox;
@@ -177,6 +187,14 @@ export class WorkspaceActionOrchestrator {
     // reported by `status()` — losing one run to a full disk must not stop the others coming
     // back, and must not be silent either.
     this.#runStore = new RunStore(runStoreDirectory);
+    // `D-0597` / `CE-006`. The bytes behind every recorded model call, content-addressed, beside
+    // the runs and never inside them: a run file is rewritten on every state change, so putting
+    // prompts in it would rewrite megabytes to record a status. `null` where runs are not
+    // durable either — an installation that keeps no run state honestly keeps no replay state,
+    // rather than a store nothing can ever reach.
+    this.#authoringReplayStore = new AuthoringReplayStore(
+      runStoreDirectory ? join(runStoreDirectory, 'authoring-replay') : null,
+    );
     const loaded = this.#runStore.loadAll();
     for (const { runId, run } of loaded.runs) this.#runs.set(runId, run);
     this.#damagedRuns = loaded.damaged;
@@ -477,6 +495,84 @@ export class WorkspaceActionOrchestrator {
   }
 
   /**
+   * `CE-006`: replay ONE model call of a concluded run, in isolation, from its recorded state.
+   *
+   * Distinct from `replay()` above, and the difference is the whole point. `replay()` re-runs
+   * the DECISION LAYER of a run — what a request became — and deliberately never reaches the
+   * Author, because "a model writing fresh bytes on every replay would be reported as drift
+   * originating in this file". `CE-006` asks the other question: can each individual call to
+   * the model be re-executed from what was written down about it? Those are two criteria and
+   * they get two methods rather than one that quietly answers whichever is easier.
+   *
+   * The fixtures are read from the EVENT LEDGER, not from the run: the ledger is where they are
+   * written, it is append-only, and a run may already have been pruned while the record that it
+   * happened survives — `RunStore.prune`'s own note, *"pruning a run loses the ability to replay
+   * it, not the record that it happened"*, is exactly the boundary being respected here.
+   *
+   * `index` names which call of that run. It is the caller's business which one — the
+   * criterion's method is *"replay di una decisione scelta a caso"*, and choosing randomly is
+   * something a test does to this method, never something this method does to itself.
+   */
+  replayAuthoredCall({ runId, index = 0 }) {
+    const events = this.#events.correlation(runId) ?? [];
+    const authored = events.filter((event) => event.action === 'workspace_action.authored');
+    if (authored.length === 0) {
+      return { runId, replayable: false, reason: `run \`${runId}\` recorded no authoring` };
+    }
+    // Flattened across every authoring event of the run: a run may author more than once, and
+    // indexing per-event would make "call 4 of this run" mean different calls depending on how
+    // the attempts happened to be split.
+    // A ledger payload is stored as a JSON STRING, not an object — `events.mjs` keeps it that
+    // way so the hash chain covers exact bytes. Reading it as an object silently yields
+    // `undefined` and, in the first version of this method, produced "recorded an authoring
+    // with no calls in it" for a run that had recorded three. Parsed the same way
+    // `session-proof.mjs` and `reasoning-router.mjs` already do.
+    const fixtures = authored.flatMap((event) => parseEventPayload(event).fixtures ?? []);
+    if (fixtures.length === 0) {
+      return { runId, replayable: false, reason: `run \`${runId}\` recorded an authoring with no calls in it` };
+    }
+    if (!Number.isInteger(index) || index < 0 || index >= fixtures.length) {
+      return { runId, replayable: false, reason: `call ${index} is outside the ${fixtures.length} this run recorded` };
+    }
+    const fixture = fixtures[index];
+    const outcome = replayFromStore({ fixture, store: this.#authoringReplayStore });
+    return {
+      runId,
+      index,
+      calls: fixtures.length,
+      path: fixture.path,
+      replayable: outcome.kind !== 'UNRESOLVABLE',
+      ...outcome,
+    };
+  }
+
+  /**
+   * Every digest the runs this installation still holds reference — the live set a sweep of the
+   * replay store would need.
+   *
+   * Derived from the RUNS rather than from the whole ledger, and the choice is the same one
+   * `RunStore.prune` already documents: *"pruning a run loses the ability to replay it, not the
+   * record that it happened"*. A ledger line for a pruned run therefore keeps saying the call
+   * happened, and its bytes become sweepable — replaying it answers `UNRESOLVABLE`, which is
+   * the truth, rather than a faithful replay of something nobody kept.
+   *
+   * Exposed and never performed: retention is a separate and explicit decision
+   * (`CLAUDE10.md` §6 rule 23), so nothing on the hot path deletes recorded state. Until an
+   * Owner decision says otherwise the store grows with the ledger, which is stated in
+   * `docs/DECISION_LOG.md` rather than left to be discovered on a full disk.
+   */
+  authoringReplayReferences() {
+    const digests = new Set();
+    for (const runId of this.#runs.keys()) {
+      for (const event of this.#events.correlation(runId) ?? []) {
+        if (event.action !== 'workspace_action.authored') continue;
+        for (const digest of referencedDigests(parseEventPayload(event).fixtures)) digests.add(digest);
+      }
+    }
+    return digests;
+  }
+
+  /**
    * SESS-003: does the product's OWN decision code, as it exists right now, still reach the
    * same verdict a historical, externally-supplied fixture recorded? Deliberately independent
    * of any in-memory run (a historical session may predate this process entirely) and of
@@ -695,8 +791,29 @@ export class WorkspaceActionOrchestrator {
           novelty: result.novelty, digest: result.summary.digest,
           // The fixtures themselves, not a count: `CE-006` asks for the session to be
           // re-runnable, and a ledger line saying "there were three" replays nothing.
+          //
+          // `D-0597`: nor did the fixtures, until the line below existed. They carried five
+          // digests and no bytes, so they could CHECK a call somebody re-executed by other
+          // means and could not re-execute one — a verification record wearing the name of a
+          // replay record. The bytes now live in a content-addressed store keyed by the digests
+          // the fixture already carried, so this ledger line is byte-for-byte what it was and
+          // the record became resolvable. `result.calls` is a separate array precisely so that
+          // no future field of it can drift onto this line.
           fixtures: result.fixtures,
         }];
+        // Persisted after the event is composed, never before: a store write that fails must
+        // not lose the authoring itself. The failure is recorded where the operator sees it,
+        // and the fixtures stay honest about what can be replayed — `replayAuthoredCall`
+        // answers UNRESOLVABLE for a call whose bytes did not make it to disk, rather than
+        // reporting a faithful replay of something nobody kept.
+        try {
+          for (const call of result.calls ?? []) {
+            this.#authoringReplayStore.put(call.prompt ?? '');
+            if (call.answer !== null && call.answer !== undefined) this.#authoringReplayStore.put(call.answer);
+          }
+        } catch (error) {
+          this.#damagedRuns.push({ file: 'authoring-replay', reason: `could not record the model calls of ${runId}: ${error.message}` });
+        }
       } catch (error) {
         if (!(error instanceof AuthoringUnavailable) && !(error instanceof AuthoringRefused)) throw error;
         authoring = { available: true, reason: error.reason, authored: 0, failed: true };

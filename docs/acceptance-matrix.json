@@ -225,7 +225,13 @@
       "criterion": "Ogni chiamata al modello è rieseguibile isolata dal suo stato registrato",
       "severity": "high",
       "howVerified": "replay di una decisione scelta a caso da una sessione conclusa",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_MET",
+        "decisions": [
+          "D-0597"
+        ],
+        "text": "✅ **verificato 2026-08-20 (`D-0597`)** — `services/reference-control-plane/test/ce-006-every-model-call-replays.test.mjs`, **11/11**, con il metodo che la riga nomina: una sessione conclusa (tre chiamate reali a un modello finto, tre esiti diversi — `written`, `unchanged`, `refused`), **una scelta a caso** con `randomInt`, rigiocata, e poi **tutte e tre** perché un verde non sia l'esito fortunato di quale indice è uscito. **Misura PRIMA:** la fixture portava `{path, model, promptDigest, answerDigest, at, provenance, outcome, contentsDigest}` — **cinque digest e zero byte**. Un digest **verifica** una chiamata che qualcun altro ha rieseguito; non ne riesegue nessuna, e i mezzi per farlo non erano registrati da nessuna parte. La regola 5 di `author.mjs` — *«EVERY CALL IS A FIXTURE (`CE-006`). Each authoring returns a replayable record»* — era una **pretesa che il codice non aveva** (regola 43). **Misura DOPO:** i digest che la fixture già portava sono diventati **indirizzi di contenuto** in `AuthoringReplayStore`, quindi la riga di ledger **non è cresciuta di un byte** e il record è risolvibile; più il campo che mancava, `beforeDigest`, senza il quale il verdetto `unchanged` vs `written` — che è un confronto con ciò che il file conteneva **prima** — non è ricostruibile affatto. **«Isolata» è letterale:** un test rigioca aprendo lo store da zero sulla sola directory, senza orchestratore, senza run, senza workspace e senza modello; e il prompt torna indietro come **byte**, non come hash, quindi la chiamata è davvero **ri-emettibile**. **Le regole non sono riscritte:** `replayAuthoringCall` invoca `extractBody`/`normaliseAuthored`, le stesse funzioni che `author()` chiama — una seconda implementazione sarebbe d'accordo solo con sé stessa, l'errore già pagato due volte qui. **Oracoli visti rossi, due:** togliendo la persistenza dei byte (lo stato *prima* di questa fase) **4 test falliscono**; togliendo il solo `beforeDigest`, **3**. **Confine dichiarato:** il ledger conserva la fixture anche per un run potato, e in quel caso il replay risponde `UNRESOLVABLE` — non un replay fedele di ciò che nessuno ha conservato; e `sweep()` esiste, è provato, e **non è chiamato da nulla sul percorso caldo**, perché la ritenzione è una decisione esplicita e separata (`CLAUDE10.md` §6 regola 23)"
+      },
       "source": "MASTER_PROJECT/15_CODEN_EVOLUTION_DA_ZERO.md:438"
     },
     {
