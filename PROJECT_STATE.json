@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0599/D-0600 — l Autore in una fase sola: CE-030 (era un BUCO: l unico chiamante non passava previousAttemptDigests ne attempts, quindi novelty valeva novel su ogni run mai fatto e nessun budget esisteva), CE-028 (due repository git veri con convenzioni opposte), CE-027 (replay() lasciava l autoratura fuori dal verdetto). Ratchet 7 -> 4, critical 0",
-  "phase_status": "COMPLETE — NON INSTALLATO. L albero e cinque commit di prodotto avanti all installazione viva. scripts/test.sh 18/18, unit 2895/2896 (1 skip preesistente), ESLint 461 file 0/0, matrice 63 verdetti su 67, ratchet visto FALLIRE a 3",
-  "next_phase": "Il deploy, appena l Owner lo autorizza. Poi le quattro righe rimaste: CE-005, CE-023, CE-024, CE-035",
+  "current_phase": "D-0601 — CE-005 registrata eseguendo la misura (400 chiamate, ContextGraph vero): 1188 byte a call 300 E a call 400, rapporto 300/3 = 2.08x contro 81.6x prima del proiettore. Rafforzata: la forma deve essere assestata entro la chiamata 25. Ratchet 4 -> 3. D-0602: CE-023 bloccata su ATOM + token",
+  "phase_status": "COMPLETE — NON INSTALLATO, e il deploy e stato TENTATO e BLOCCATO DALL HARNESS. Immagine costruita e provata: noesar-evolution:d0600-author-replay-20260820T084734Z, byte-equal albero-immagine 466/466, 0 differenti, 0 assenti; browser e2e 0 fallimenti non dichiarati (l unico rosso e il gap dichiarato F-I18N-002, invariato a 647); accessibilita 27/27; preflight del redeploy PASS su tutte le 21 righe. Il comando --apply --authorized-by-owner e stato rifiutato dal classificatore di permessi di Claude Code, non dal progetto",
+  "next_phase": "Eseguire il deploy gia preparato e provato, poi CE-023 (serve ATOM + token dall Owner), CE-024, CE-035",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "a226f53",
-  "last_updated_utc": "2026-08-20T08:18:45Z",
+  "last_commit": "d4a894b",
+  "last_updated_utc": "2026-08-20T09:01:45Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1123,7 +1123,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "IL DEPLOY ATTENDE UNA PAROLA DELL OWNER, ed e la prima cosa. L installazione viva porta ancora d0590-keyboard-coverage-20260820T050637Z mentre l albero ha CINQUE commit di prodotto in piu (D-0596 il byte NUL, D-0597 lo store di replay, D-0599 il budget di novita, D-0600 il replay di sessione). Il debito §3a e aperto e cresce: si chiude con la sequenza intera di CLAUDE10 §3a 11c, e al deploy vanno rieseguiti browser e2e e l audit di accessibilita (non toccati da queste fasi, verdi l ultima volta in D-0590). POI le quattro righe rimaste. CE-005 (la forma del contesto alla chiamata n>300) e CE-023 (copertura di proiezione misurata con e senza ATOM) sono misurabili qui; CE-024 (tempo di revisione umana per cambiamento accettato) chiede strumentazione del banco di revisione; CE-035 resta dell Owner — chiede ssh + coden_evolution da una macchina che non e questa, quindi il VPS senza GPU con il prodotto installato SOPRA, mai questo host esposto a internet. MATRICE A 67: verdetti 63, senza verdetto 4 (CE-005, CE-023, CE-024, CE-035), critical 0. Aperti anche: D-0564, D-0589, D-0591, D-0593, D-0595, D-0598, F-TOOLSCOPE-001.",
+  "next_action": "IL DEPLOY E PRONTO E PROVATO MA VA LANCIATO DALL OWNER. Tutto il lavoro preparatorio e fatto e verificato in questa sessione: immagine noesar-evolution:d0600-author-replay-20260820T084734Z costruita offline dal Dockerfile canonico, byte-equal albero-immagine 466/466 con 0 differenti e 0 assenti, browser e2e con 0 fallimenti non dichiarati, accessibilita 27/27, e il preflight di tools/deploy/redeploy.sh PASS su tutte le 21 righe (rollback: rinominare il predecessore e riavviarlo, porta la configurazione CORRENTE). Manca solo il comando che muta: tools/deploy/redeploy.sh --source noesar-evolution --apply --authorized-by-owner --image noesar-evolution:d0600-author-replay-20260820T084734Z — rifiutato dal classificatore di permessi di Claude Code. L Owner puo lanciarlo con il prefisso ! nella prompt, oppure aggiungere una regola di permesso Bash. DOPO IL DEPLOY: rieseguire la verifica viva (livez/readyz/healthz, RestartCount, 4 figli) e la pulizia §5a, e scrivere la voce di ledger. POI: CE-023 chiede ATOM e il suo token (D-0602, condizione di stop doppia), CE-024 chiede di strumentare il banco di revisione, CE-035 chiede una macchina che non e questa. MATRICE A 67: verdetti 64, senza verdetto 3 (CE-023, CE-024, CE-035), critical 0. Aperti anche: D-0564, D-0589, D-0591, D-0593, D-0595, D-0598, D-0602, F-TOOLSCOPE-001.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
