@@ -142,6 +142,12 @@ export const AGENT_COMMANDS = Object.freeze([
   // the mint response; the only way to stop one was to wait for it to lapse.
   { name: 'grants', argument: '', summary: 'The capability grants this engine is holding right now', group: 'work', kind: 'call', method: 'capability.grants', permission: 'workspace.read' },
   { name: 'revoke', argument: '<token>', summary: 'Withdraw a live grant before it lapses — the ledger records what it covered', group: 'work', kind: 'call', method: 'capability.revoke', permission: 'workspace.write' },
+  // `D-0606`, answering `D-0598`. Same two-verb shape as `grants`/`revoke`, and for a sharper
+  // reason: `retention` shows what a sweep would delete and deletes nothing, `sweep` deletes.
+  // One verb with a `--force` flag would put a destructive act one forgotten word away from a
+  // read, in a shell where the previous line is one arrow key up.
+  { name: 'retention', argument: '', summary: 'What a sweep of the replay store would remove — and removes nothing', group: 'work', kind: 'call', method: 'replay.retention', permission: 'workspace.read' },
+  { name: 'sweep', argument: '', summary: 'Delete replay bytes no surviving run references — the ledger keeps saying the calls happened', group: 'work', kind: 'call', method: 'replay.sweep', permission: 'workspace.write' },
   { name: 'sessions', argument: '[active|archived|bin]', summary: 'List sessions', group: 'work', kind: 'call', method: 'sessions.list', permission: 'workspace.read' },
   { name: 'git', argument: '', summary: 'Branch and divergence of the workspace', group: 'work', kind: 'call', method: 'coden.gitStatus', permission: 'coden.plan' },
 

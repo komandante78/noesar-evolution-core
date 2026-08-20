@@ -151,6 +151,19 @@ export const SESSION_METHOD_POLICY = Object.freeze({
   // and `closure.record` are not.
   'capability.grants': { permission: 'workspace.read', bridged: true },
   'capability.revoke': { permission: 'workspace.write', bridged: true },
+  // `D-0606`, answering `D-0598`. Two entries, not one, for the reason `capability.grants` and
+  // `capability.revoke` are two: seeing what a sweep WOULD remove is a read, and removing it is
+  // an act that destroys recorded state. Collapsing them into one method with a boolean would
+  // put both behind the same permission and make the dry run indistinguishable from the deletion
+  // in every audit that reads method names — which is most of them.
+  //
+  // `bridged: true` on both, same argument as `capability.*`: the surface is new, so there is no
+  // established asymmetry to preserve, and giving one transport a method the other lacks would
+  // rebuild by omission exactly what `D-0302` closed.
+  'replay.retention': { permission: 'workspace.read', bridged: true },
+  // `workspace.write` and NOT a narrower ad-hoc permission: this deletes state the workspace's
+  // own runs produced, and the product already treats acting on that state as `workspace.write`.
+  'replay.sweep': { permission: 'workspace.write', bridged: true },
   'sessions.list': { permission: 'workspace.read', bridged: false },
   'sessions.get': { permission: 'workspace.read', bridged: false },
   'sessions.action': { permission: 'workspace.write', bridged: false },
@@ -368,6 +381,33 @@ export function createSessionDispatch({
         },
       });
       return { revoked, grant };
+    },
+    // `D-0606`. The dry run: what a sweep would remove, and nothing removed.
+    //
+    // `removable` is capped in what it SHOWS, never in what it counts — an operator deciding
+    // whether to delete needs the number to be the real one, and a list truncated silently at
+    // the transport would be a number that disagrees with itself two screens apart.
+    'replay.retention': () => {
+      const report = workspaceActions.authoringReplayRetention({ apply: false });
+      return {
+        durable: report.durable,
+        live: report.live,
+        kept: report.kept,
+        removableCount: report.removable.length,
+        removable: report.removable.slice(0, 50),
+        truncated: report.removable.length > 50,
+      };
+    },
+    // The act. Separate method, separate permission, and the ledger line is written by the
+    // orchestrator itself — not here — so a sweep from a terminal and a sweep from a browser
+    // leave the same entry, which is the property `capability.revoke` above had to be told
+    // explicitly and this one gets for free by putting the record next to the deletion.
+    'replay.sweep': ({ actor }) => {
+      const report = workspaceActions.authoringReplayRetention({ apply: true, actor });
+      if (!report.durable) {
+        throw new ProtocolError('NOT_FOUND', 'this installation keeps no replay store, so there is nothing to sweep');
+      }
+      return { removed: report.removed, kept: report.kept, live: report.live };
     },
     // UI-054 (D-0268): the same SEC-003 enforcement declaration `/api/v1/bootstrap` sends
     // the WebUI's "Invariants" panel — rendered from the server's own record, never a

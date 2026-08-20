@@ -120,19 +120,28 @@ export class AuthoringReplayStore {
    * wrong: it would delete a prompt another run still needs. Only a caller that can enumerate
    * every live reference may sweep, which is why this takes the whole set and never computes
    * it here.
+   *
+   * **`apply` defaults to `false`, and the default is the safeguard.** This destroys recorded
+   * state, so the caller that wants it destroyed says so — a signature whose default deletes
+   * is one typo away from an accident, and `D-0606` (the phase that wired this) found the
+   * live-set builder naming the wrong field, which is exactly the class of mistake a dry run
+   * is for. The dry run returns the same shape, plus the names it *would* have removed.
    */
-  sweep(referenced) {
-    if (!this.#directory) return { removed: 0, kept: 0 };
+  sweep(referenced, { apply = false } = {}) {
+    if (!this.#directory) return { removed: 0, kept: 0, removable: [], apply, durable: false };
     const live = referenced instanceof Set ? referenced : new Set(referenced ?? []);
+    const removable = [];
     let removed = 0;
     let kept = 0;
     for (const name of readdirSync(this.#directory)) {
       if (!NAME.test(name)) continue;          // never touch anything this file did not name
       if (live.has(name)) { kept += 1; continue; }
+      removable.push(name);
+      if (!apply) continue;
       rmSync(join(this.#directory, name), { force: true });
       removed += 1;
     }
-    return { removed, kept };
+    return { removed, kept, removable, apply, durable: true };
   }
 }
 
@@ -177,11 +186,37 @@ export function replayFromStore({ fixture, store }) {
  * digest-shaped field does not silently become garbage-collectable — the projection discipline
  * `skill-catalog.mjs` already uses, for the same reason: a `delete` leaves every future field
  * exposed, a named list leaves every future field out until someone says otherwise.
+ *
+ * # THE DEFECT THIS FUNCTION CARRIED, AND WHY IT WAS INVISIBLE (`D-0606`)
+ *
+ * A named list has a failure mode a walk does not: it can name a field that is not the one
+ * stored. This did. What the orchestrator writes into the store is the PROMPT and the ANSWER
+ * RECORD — `put(call.prompt)` and `put(call.answer)`, where `call.answer` is `answerRecord`
+ * (`author.mjs`) — so the digests that name real objects are `promptDigest` and
+ * `answerRecordDigest`. This function named `promptDigest` and **`answerDigest`**, which since
+ * `D-0597` is deliberately a different thing: the digest of the model's CONTENT, which is never
+ * stored on its own.
+ *
+ * The two coincide for a **text** answer (`answerRecord === String(answer)`), and diverge for a
+ * **structured** one — the shape a real provider produces. So the live set omitted the stored
+ * answer of every structured call, and a sweep would have deleted it while keeping the prompt,
+ * leaving `replayFromStore` to answer `UNRESOLVABLE` for calls whose ledger lines still claim
+ * they are replayable. That is `CE-006` silently destroyed by the very function meant to keep
+ * the store honest, and it stayed invisible because `sweep()` had no product caller: the bug
+ * was latent by luck, not held back by design.
+ *
+ * **Both fields are named, not just the corrected one.** Fixtures written before `D-0597` have
+ * no `answerRecordDigest` at all, and for those the stored bytes ARE named by `answerDigest`.
+ * Dropping it to "fix" the list would have made every pre-`D-0597` answer sweepable — trading
+ * one silent deletion for another. A digest that names nothing in the store costs one Set entry
+ * and protects nothing; a digest missing from the set costs the record itself.
  */
 export function referencedDigests(fixtures) {
   const digests = new Set();
   for (const fixture of fixtures ?? []) {
     if (fixture?.promptDigest) digests.add(fixture.promptDigest);
+    if (fixture?.answerRecordDigest) digests.add(fixture.answerRecordDigest);
+    // Pre-`D-0597` fixtures: back then this WAS the stored object's name. See above.
     if (fixture?.answerDigest) digests.add(fixture.answerDigest);
   }
   return digests;

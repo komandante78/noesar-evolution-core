@@ -274,7 +274,11 @@ test('sweep removes only what nothing references, and never a name it did not wr
   store.put('orphaned');
   writeFileSync(join(directory, 'NOT-A-DIGEST.txt'), 'somebody else put this here');
 
-  const result = store.sweep(new Set([kept]));
+  // `{ apply: true }` since `D-0606`: the default became the DRY RUN, because this call
+  // destroys recorded state and a signature whose default deletes is one typo from an
+  // accident. The dry run's own behaviour is asserted in `authoring-replay-retention.test.mjs`;
+  // what this test is about is unchanged — what a sweep removes and what it must never touch.
+  const result = store.sweep(new Set([kept]), { apply: true });
   assert.equal(result.removed, 1);
   assert.equal(result.kept, 1);
   assert.equal(store.get(kept), 'still referenced');

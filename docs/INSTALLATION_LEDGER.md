@@ -5678,3 +5678,20 @@ e `noesar-evolution-pre-20260820T104529Z` (Exited, il rollback più recente).
 `/readyz` **200** (con un `Host` ammesso — un `Host` non in lista risponde `421`, che è
 l'allowlist che funziona, non un difetto).
 **Costo di rollback:** nessuno — non c'è nulla da annullare.
+
+## 2026-08-20T11:35Z — `D-0606` costruito e provato, **NON installato**
+**Tag in esecuzione:** `noesar-evolution:d0601-context-shape-20260820T104316Z` — invariato.
+**Debito §3a APERTO da questa fase, e dichiarato:** l'albero contiene la riparazione di
+`referencedDigests()` e i due verbi di ritenzione; **l'installazione viva no**. La superficie
+`replay.*` non esiste sull'installazione, e il suo `referencedDigests()` nomina ancora il campo
+sbagliato. **Nessun rischio attivo**: `sweep()` non ha chiamanti sull'immagine installata, che è
+la ragione per cui il difetto era latente — ma il debito è reale finché non si deploya.
+**Verificato in albero, non sul vivo:** unit **2902** (2901 pass, 1 skip preesistente) · ESLint
+**463 file 0/0/0** · `scripts/test.sh` **18/18** · difetti seminati **19/19 catturati** · matrice
+PASS · `authoring-replay-retention` **7/7** con oracolo **visto rosso** (3 su 7).
+**Igiene (§5a):** nessun contenitore creato da questa fase oltre a quelli usa-e-getta di
+`scripts/test.sh` e `run-eslint.sh`, tutti `--rm`. Sopravvivono i due previsti:
+`noesar-evolution` (Up, healthy) e `noesar-evolution-pre-20260820T104529Z` (Exited).
+**Costo di rollback del deploy, se e quando avviene (§3a 11d):** il predecessore va preservato
+con nome timestampato e il backup runtime va preso **a servizio fermo**; senza quel backup il
+rollback non ha uno stato coerente a cui tornare. Nessuna migrazione di schema in questa fase.

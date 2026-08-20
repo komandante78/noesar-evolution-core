@@ -670,10 +670,10 @@ export class WorkspaceActionOrchestrator {
    * happened, and its bytes become sweepable — replaying it answers `UNRESOLVABLE`, which is
    * the truth, rather than a faithful replay of something nobody kept.
    *
-   * Exposed and never performed: retention is a separate and explicit decision
-   * (`CLAUDE10.md` §6 rule 23), so nothing on the hot path deletes recorded state. Until an
-   * Owner decision says otherwise the store grows with the ledger, which is stated in
-   * `docs/DECISION_LOG.md` rather than left to be discovered on a full disk.
+   * Exposed and never performed **on the hot path**: retention is a separate and explicit
+   * decision (`CLAUDE10.md` §6 rule 23). `authoringReplayRetention()` below is the operator's
+   * way to ask for it — it is never called by planning, approving, pruning or any other step,
+   * which is `D-0598`'s rejected alternative and stays rejected.
    */
   authoringReplayReferences() {
     const digests = new Set();
@@ -684,6 +684,53 @@ export class WorkspaceActionOrchestrator {
       }
     }
     return digests;
+  }
+
+  /**
+   * Retention for the replay store, as an operation an operator performs — `D-0598` answered by
+   * `D-0606`, and the answer is deliberately not a policy the product enforces by itself.
+   *
+   * **Look before you delete.** `apply` defaults to `false` and the dry run is the whole point:
+   * it returns the same shape plus the digests it *would* remove, so the destructive call is a
+   * second, separate decision made against a list somebody read. This project has already
+   * learned this the expensive way — `D-0346` — and the phase that wired this found the live-set
+   * builder naming a field that is not stored, which a dry run would have exposed in one line.
+   *
+   * **What "removable" means, stated so it cannot be read as "junk".** An object is removable
+   * when no run this installation still holds references it. Its ledger line survives: the call
+   * still happened and still says so. What is lost is the ability to REPLAY it, and afterwards
+   * `replayFromStore` answers `UNRESOLVABLE` — the truth — rather than a faithful replay of
+   * something nobody kept. That is the same trade `RunStore.prune` already documents.
+   *
+   * **Not durable, not silent.** An installation with no replay directory returns
+   * `durable: false` rather than a cheerful `removed: 0`, because "there was nothing to sweep"
+   * and "this installation keeps nothing" are different facts about a machine.
+   */
+  authoringReplayRetention({ apply = false, actor = 'system' } = {}) {
+    const store = this.#authoringReplayStore;
+    if (!store?.durable) {
+      return { durable: false, apply: false, kept: 0, removed: 0, removable: [], live: 0 };
+    }
+    const live = this.authoringReplayReferences();
+    const result = store.sweep(live, { apply: Boolean(apply) });
+    // Only an APPLIED sweep is a ledger event. A dry run changed nothing, and recording it as
+    // though it had would make the audit trail describe deletions that did not happen — the
+    // failure mode `CE-018`'s chain exists to make impossible from the outside, not one to
+    // introduce from the inside.
+    if (apply) {
+      this.#record(
+        null, null, actor, 'authoring_replay.swept',
+        { removed: result.removed, kept: result.kept, live: live.size },
+      );
+    }
+    return {
+      durable: true,
+      apply: Boolean(apply),
+      kept: result.kept,
+      removed: result.removed,
+      removable: result.removable,
+      live: live.size,
+    };
   }
 
   /**

@@ -14019,3 +14019,39 @@ Costo: ~mezza giornata, più i chiamanti che oggi accettano un'aspettativa parzi
 (riusabile: è il confine pubblico, non un dettaglio di questo prodotto).
 **Costo di reversal.** N/A — proposta, non eseguita.
 **Status.** deferred — decisione dell'Owner.
+
+## D-0606 · La ritenzione del replay store è collegata — e collegarla ha scoperto che avrebbe distrutto `CE-006` — 2026-08-20
+**Decisione.** `sweep()` diventa raggiungibile da entrambe le shell come **due** verbi —
+`/retention` (mostra, non tocca) e `/sweep` (cancella) — e il default della firma diventa il
+**dry-run**. Nulla la esegue automaticamente: l'alternativa respinta da `D-0598` resta respinta.
+**Il difetto, trovato PRIMA di collegare.** `referencedDigests()` costruiva il set vivo da
+`promptDigest` e **`answerDigest`**. Ma ciò che lo store contiene è il prompt e l'**answer
+record** (`workspace-actions.mjs:966-967`, `author.mjs:444`), cioè `promptDigest` e
+**`answerRecordDigest`** — che dal `D-0597` è deliberatamente un'altra cosa: `answerDigest` è il
+digest del **contenuto** del modello, mai salvato da solo. I due coincidono per una risposta
+**testuale** e divergono per una **strutturata**, che è la forma prodotta da un provider vero.
+Quindi un `sweep()` collegato avrebbe cancellato **la risposta registrata di ogni chiamata
+strutturata**, lasciando il prompt, e `replayFromStore` avrebbe risposto `UNRESOLVABLE` mentre la
+riga di ledger continuava a dichiarare la chiamata rigiocabile. `CE-006` distrutto in silenzio
+dalla funzione che doveva tenere onesto lo store. Era latente **per fortuna, non per progetto**:
+`sweep()` non aveva chiamanti di prodotto.
+**Riparato nominando entrambi i campi, non sostituendoli.** Le fixture precedenti al `D-0597` non
+hanno `answerRecordDigest`, e per quelle i byte salvati **sono** nominati da `answerDigest`:
+toglierlo avrebbe scambiato una cancellazione silenziosa con un'altra, sui record più vecchi.
+**Evidenza.** `authoring-replay-retention.test.mjs` **7/7**, **oracolo visto rosso**: rimettendo
+il campo sbagliato **3 test su 7** falliscono, incluso quello costruito sulla forma che il
+prodotto scrive davvero. Suite intera **2902 (2901 pass, 1 skip preesistente)**, ESLint **463
+file 0/0/0**, `scripts/test.sh` **18/18**, difetti seminati **19/19 catturati**.
+**Perché due verbi e non un flag.** Un `--force` dimenticato in una shell dove la riga precedente
+è una freccia in su mette un atto distruttivo a una parola da una lettura; e due nomi di metodo
+distinti restano distinti in ogni audit che legge i nomi dei metodi.
+**Cosa si perde davvero con uno sweep, detto e non lasciato intendere.** La possibilità di
+**rigiocare** la chiamata, mai il record che è avvenuta — lo stesso scambio che `RunStore.prune`
+già documenta. Solo uno sweep **applicato** scrive a ledger (`authoring_replay.swept`): registrare
+un dry-run come se avesse cancellato renderebbe l'audit trail falso dall'interno.
+**Costo di reversal.** I byte cancellati da uno sweep applicato **non tornano** — ed è la ragione
+per cui il default è il dry-run e i verbi sono due. Il codice si annulla con un revert.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: provenienza
+rigiocabile con una politica di ritenzione dichiarata e verificabile) e **tratto 3** (autonomia:
+un operatore self-hosted decide che cosa la sua macchina conserva).
+**Status.** applied — **non installato**: l'installazione viva serve ancora il difetto.

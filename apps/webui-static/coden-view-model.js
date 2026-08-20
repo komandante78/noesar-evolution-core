@@ -63,6 +63,11 @@ export const RUN = {
   // over one space would read to an operator as "this engine no longer holds it".
   grants: () => ['capability.grants', {}],
   revoke: (argument) => ['capability.revoke', { tokenId: String(argument ?? '').trim() }],
+  // `D-0606`. Neither takes an argument: retention is computed from the runs this installation
+  // holds, never from something an operator types, so there is no way to sweep "a bit more" by
+  // widening a parameter.
+  retention: () => ['replay.retention', {}],
+  sweep: () => ['replay.sweep', {}],
   model: (argument) => ['model.activate', { id: argument }],
   // `D-0590`, `CE-020`. The transports for the six capabilities that had no keyboard form. Built
   // here beside the other nineteen rather than in either shell, for this table's standing reason:
