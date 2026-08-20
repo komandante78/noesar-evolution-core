@@ -13697,3 +13697,41 @@ di percorsi vuota — trovato leggendo il motore, non da un test.
 conformità che percorre l'intera superficie invece di campionarla) e **tratto 1** (risultato
 delimitato: è un banco, non una promessa).
 **Status.** proposed — non eseguita in questa fase.
+
+## D-0592 · `CE-032` — la metà «in contenitore» era letta, non eseguita — 2026-08-20
+**Decision.** La parola sola si esegue **dentro** un contenitore costruito dall'immagine del
+prodotto, offline e usa-e-getta: `tools/acceptance/ce-032-launcher-in-container.sh`, dentro
+`scripts/test.sh`. `CE-032` registrato ⚠️ **PARZIALE** — Windows resta statico e lo dichiara.
+**Why.** Il metodo dichiarato dal criterio è *«avvio su un'installazione da sorgenti **e su una in
+contenitore**»*. La prima metà era eseguita 36 volte; la seconda erano tre `assert.match` sul
+**testo** di `oci/Dockerfile`. Un testo non vede una `COPY` che atterra altrove, un symlink
+oscurato più tardi nella build, un'immagine base senza `sh`, o un lanciatore che muore allo
+shebang: li riporta tutti e quattro verdi.
+**Rejected.** Registrare `CE-032` con i soli 36 test: sarebbe stato un verdetto su metà del
+metodo che il criterio stesso scrive. È la classe che `D-0583` ha già trovato una volta.
+**Evidence.** 6/6 eseguiti dentro l'immagine `d0586…`: la parola risolve su `PATH`, il symlink
+punta al file vero, è eseguibile, `--help` gira, senza sessione esce **3** dichiarandolo, e non
+perde traccia di shell. **Visto FALLIRE 6/6** contro `node:22-bookworm-slim`. `scripts/test.sh`
+**17/17**, unit **2864/2865**. Ratchet **10 → 9**, visto FALLIRE a 8.
+**Reversal cost.** nessuno — additivo, nessun contenitore del prodotto toccato (`--rm`,
+`--network none`, `--entrypoint sh`).
+**Status.** applied.
+
+## D-0593 · Improvement proposal — un oracolo che non sa fallire è peggio di nessun oracolo — 2026-08-20
+**Decision.** Proposta, non eseguita: una regola di battteria che rifiuti uno script di
+accettazione `sh` che non abbia **mai** dimostrato di uscire non-zero — per esempio un
+`--self-test` obbligatorio che esegua le proprie asserzioni contro un input noto-cattivo.
+**Why.** La prima versione di `ce-032-launcher-in-container.sh` **non poteva riportare un
+fallimento**: sotto `set -eu` una `[ … ]` nuda che è falsa termina la shell, quindi nessuna riga
+`FAIL` e **uscita 0**. Contro l'immagine giusta sembrava verde. È `D-0390` una seconda volta —
+*«`grep -c` exits 1 when it counts zero and the ERR trap was armed»*, che per poco non annullò un
+deployment perfettamente riuscito — nello stesso angolo del prodotto, una fase dopo.
+**Rejected.** Fidarsi della revisione: il difetto è invisibile alla lettura *e* a un run verde, e
+si manifesta solo quando serve davvero, cioè quando qualcosa è rotto.
+**Evidence.** Trovato eseguendo di proposito l'oracolo contro un'immagine priva del lanciatore:
+stampava i campi della sonda e usciva 0. Dopo la riparazione: 6 `FAIL` e uscita 1.
+**Reversal cost.** [STIMA] bassa — una convenzione più un controllo nel runner.
+**Aderenza al finanziamento.** **Restack · tratto 5** (affidabilità misurabile: un oracolo di cui
+è provata la capacità di fallire) e **tratto 1** (delimitato: è una regola di suite, non un
+sottosistema).
+**Status.** proposed — non eseguita in questa fase.

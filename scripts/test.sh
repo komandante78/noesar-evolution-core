@@ -105,6 +105,13 @@ step matrix          node tools/verify-acceptance-matrix.mjs
 # incised in the sealed archives' own filenames, and refuses a governing document that says
 # "the five archives" without saying which instance it means.
 step five-archives   node tools/verify-five-archives.mjs
+# D-0592. CE-032's stated method is "avvio su un'installazione da sorgenti E su una in
+# contenitore". The source half is executed thirty-six ways in launcher-portability.test.mjs;
+# the container half was three assert.match calls against the TEXT of oci/Dockerfile, which
+# cannot see a COPY that lands elsewhere, a shadowed symlink, or a launcher that dies at its
+# shebang. This runs the one word inside a disposable container built from the product's own
+# image, offline, removed by --rm. Tristate: a host with no Docker gets an honest UNAVAILABLE.
+step_tristate ce032-container tools/acceptance/ce-032-launcher-in-container.sh
 # Both of these existed, worked, and were run by nothing. http-smoke had been crashing
 # for several phases on endpoints correctly moved behind authentication, and
 # packaging-filters is the regression test .gitignore cites by name for the anchoring

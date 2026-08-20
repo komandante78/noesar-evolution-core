@@ -498,7 +498,17 @@ describe('CE-032 — presumes no operating system, no engine, no daemon, no path
   });
 });
 
-describe('the launcher is shipped — the class of defect phase 5 paid for three times', () => {
+// STRUCTURAL, and it says so since `D-0592`. Everything in this block reads `oci/Dockerfile` and
+// asserts what it SAYS. That is worth keeping — it catches a build instruction deleted or
+// reworded, cheaply, in the unit suite, with no Docker — but it is not the container half of
+// `CE-032`, and for one phase it was quietly standing in for it. A `COPY` that lands somewhere
+// else, a `chmod` on a path that moved, a symlink shadowed later in the build, a base image with
+// no `sh`, or a launcher that dies at its shebang: this block reports all five as green.
+//
+// The word is now EXECUTED inside a container built from the product's own image by
+// `tools/acceptance/ce-032-launcher-in-container.sh`, wired into `scripts/test.sh`. Read the two
+// together: this one says the recipe still contains the step, that one says the step worked.
+describe('the launcher is shipped — STRUCTURAL: the recipe, not the result', () => {
   const dockerfile = readFileSync(join(repoRoot, 'oci', 'Dockerfile'), 'utf8');
   const instructions = dockerfile
     .split('\n')
@@ -509,7 +519,7 @@ describe('the launcher is shipped — the class of defect phase 5 paid for three
     assert.match(instructions, /^COPY .*tools\/coden-evolution .*\/opt\/noesar\/tools\/coden-evolution$/m);
   });
 
-  test('the one word works inside the container too', () => {
+  test('the recipe still symlinks the one word onto PATH — that it WORKS is proved elsewhere', () => {
     assert.match(instructions, /ln -sf \/opt\/noesar\/tools\/coden-evolution \/usr\/local\/bin\/coden_evolution/);
   });
 

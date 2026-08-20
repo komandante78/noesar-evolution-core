@@ -52,8 +52,12 @@ import { readFileSync } from 'node:fs';
  * covered from the source and is not. Seen to FAIL at 9 first, one notch tighter.
  * Note the total is 67 since `D-0588` added `PKG-001`, which arrived WITH a verdict and so never
  * moved this number.
+ * **9** at `D-0592` (`CE-032`, recorded ⚠️ PARTIAL — Windows is static-only and says so). This was
+ * the row the previous phase had called expensive and was wrong about: 36 rungs already executed
+ * the source half. Taking the method literally found the rest — *"e su una in contenitore"* was
+ * three `assert.match` calls against the TEXT of `oci/Dockerfile`. Seen to FAIL at 8 first.
  */
-const MAX_UNSTATED = 10;
+const MAX_UNSTATED = 9;
 /**
  * Of those, how many are CRITICAL. The number that matters most, held separately for that reason.
  * 15 at `D-0556`, 13 at `D-0561`, 11 at `D-0563`, 8 at `D-0566`, 6 at `D-0571`, 3 at `D-0573`, **0** at `D-0575` — every CRITICAL row now carries a verdict. Seen to fire at each new floor rather than

@@ -551,7 +551,13 @@
       "criterion": "L'avviatore non presume sistema operativo, demone `ssh`, motore di contenitori o percorso",
       "severity": "high",
       "howVerified": "avvio su un'installazione da sorgenti e su una in contenitore, senza modificare l'host",
-      "status": null,
+      "status": {
+        "verdict": "RECORDED_PARTIAL",
+        "decisions": [
+          "D-0592"
+        ],
+        "text": "⚠️ **soddisfatto per le due metà dichiarate, con un limite nominato** (`D-0592`). **Da sorgenti:** `launcher-portability.test.mjs` **36/36**, eseguito — l'avviatore vero contro motori finti su un `PATH` sintetico, con l'`argv` ricevuto come asserzione: nessun motore, motore presente ma morto, motore nominato, socket che vince, symlink, ciclo di symlink, spazio nel percorso, nessun client, nessun `node`, due installazioni; e `assertHostUntouched` prova che non tocca l'host. **In contenitore:** `tools/acceptance/ce-032-launcher-in-container.sh` **6/6**, la parola eseguita dentro un contenitore usa-e-getta costruito dall'immagine del prodotto, offline — risolve su `PATH`, il symlink punta al file vero, è eseguibile, `--help` gira, e senza sessione esce **3** dichiarandolo, senza perdere traccia di shell. Visto FALLIRE 6/6 contro un'immagine priva del lanciatore. **Il limite, e non è un ✅ pieno:** `tools/coden-evolution.ps1` è coperto **solo staticamente** — su questo host non c'è PowerShell e la regola 45 vieta di installarlo. Il livello dichiarato per un'installazione Windows resta `UNVERIFIED` finché qualcuno non lo esegue su Windows vero"
+      },
       "source": "MASTER_PROJECT/16_CODEN_EVOLUTION_LA_GENERAZIONE_E_L_ACCESSO.md:533"
     },
     {
