@@ -5476,3 +5476,38 @@ itself. Containers **53 → 52**, volumes **65 → 65**, networks **10 → 10**,
 (`noesar-local` is NOESAR V3's and was not touched)
 (`EVIDENCE/docker_inventory_pre_cleanup_D0586_20260819T180325Z.txt`). Health re-proved after
 cleanup: `running`/`healthy`, `/livez` and `/readyz` **200**.
+
+## `d0590-keyboard-coverage-20260820T050637Z` — DEPLOYED and verified — 2026-08-20
+
+**Tag.** `noesar-evolution:d0590-keyboard-coverage-20260820T050637Z`, deployed 05:07Z via
+`tools/deploy/redeploy.sh --apply --authorized-by-owner`, built offline from the canonical
+`oci/Dockerfile` (`docker build --pull=false`). Carries three phases the installation was behind:
+`D-0588` (i cinque archivi, `PKG-001`), **`D-0590` (`CE-020` — sei capacità senza forma da
+tastiera, ora 27/27)**, `D-0592` (`CE-032` eseguito in contenitore).
+**Health.** `running`/`healthy`, `RestartCount=0`; `/livez`, `/readyz`, `/healthz` **200** su
+`http://…:8100`, `/livez` **200** su `https://…:8443`. 4 figli generati (postgres, api, codev,
+atom), **0** righe di auth-failure.
+**Verification.** Byte-equal albero↔immagine **459/459**, **0** differenti, **0** assenti
+dall'albero, 2 generati in immagine; `expected from directory COPYs: 441, missing: 0`. **I sei
+comandi nuovi sono nell'immagine spedita**, letti da `/opt/noesar/apps/shared/coden/agent-commands.js`
+dentro un contenitore usa-e-getta: `runs`, `session`, `session-action`, `divergence`, `skills`,
+`skills-search`. `ce-032-launcher-in-container.sh` contro **questa** immagine: **6/6**. Prima del
+deploy: `scripts/test.sh` **17/17**, unit **2864/2865** (1 skip preesistente), ESLint **455 file
+0/0/0**, browser e2e **505/506** (l'unico rosso è il gap dichiarato `F-I18N-002`, invariato a 647).
+**Predecessor preserved.** `noesar-evolution-pre-20260820T050745Z`
+(`d0586-induced-facts-and-spaces-20260819T180231Z`).
+**Rollback cost — nessuno (§3a 11d).** Nessuna migrazione in questo rilascio: `D-0588`, `D-0590` e
+`D-0592` non toccano lo schema, e `MIGRATION_MANIFEST=CURRENT 20 migrations` è invariato. Tornare
+indietro riporta l'installazione senza i sei comandi da tastiera, nient'altro. Il workspace è
+stato copiato **a servizio fermo**, 0600 in una directory 0700, con checksum — quell'archivio
+contiene credenziali e va trattato come tale.
+**Not run, and named rather than skipped in silence.** `tools/accessibility-audit.mjs`: nessun
+markup, nessun token CSS, nessuno stato visivo nuovo — le sei righe di menu usano il componente
+riga esistente. Nessuna suite mutante è stata puntata sull'installazione (§3a 11e).
+**Cleanup.** Rollback più vecchio `noesar-evolution-pre-20260819T180243Z` rimosso (`Exited (0)`
+confermato prima; la sua immagine resta su disco). Nessun tag usa-e-getta creato da questa fase.
+Contenitori **53 → 52**, volumi **65 → 65**, reti **10 → 10**, contenitori non-di-progetto
+**50 → 50**; reti di progetto superstiti esattamente `noesar-evolution-net` e `noesar-e2e-net`
+(`noesar-local` è di NOESAR V3 e non è stata toccata)
+(`EVIDENCE/docker_inventory_pre_cleanup_D0590_20260820T050841Z.txt`). Salute riprovata dopo la
+pulizia: `running`/`healthy`, `/livez` e `/readyz` **200**.

@@ -3,20 +3,24 @@
 **Phase:** `D-0592` — `CE-032` registrato **⚠️ PARZIALE**: la metà «in contenitore» era letta sul
 testo del Dockerfile, ora è **eseguita** dentro un contenitore vero. Ratchet **10 → 9**, critical
 **0**. `D-0593` proposto. Stessa sessione, prima: `D-0588` (i cinque archivi), `D-0590` (`CE-020`).
-**Live installation:** `noesar-evolution:d0586-induced-facts-and-spaces-20260819T180231Z`,
-`running`/`healthy`. **Indietro di una fase**: non ha i sei comandi da tastiera di `D-0590`.
+**Live installation:** **`noesar-evolution:d0590-keyboard-coverage-20260820T050637Z`**, deployed
+05:07Z su autorizzazione dell'Owner, `running`/`healthy`, byte-equal albero↔immagine **459/459**.
+Predecessore conservato come `noesar-evolution-pre-20260820T050745Z`. **Il debito §3a è chiuso**:
+l'installazione portava tre fasi di ritardo e ora è pari all'albero.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**1 · Il deploy di `D-0590` è ancora in attesa di una parola.** Preflight già eseguito, non
-mutante:
+**1 · Una domanda aperta all'Owner, e non l'ho decisa io.** *«attiva le skills, voglio che lavori
+con tutte le skills in automatico»* ha **due letture** che portano a lavori diversi:
 
-```text
-tools/deploy/redeploy.sh --source noesar-evolution --check   ->  PREFLIGHT: PASS
-```
-
-`--apply` esige `--authorized-by-owner`. `CLAUDE10.md` §3a lega una fase che cambia il prodotto a
-installarla; `D-0590` lo ha cambiato. **È un debito dichiarato, non una scelta.**
+- **(a) le skill di Claude Code di questo repository** — le sei sotto `.claude/skills/`. Sono
+  **già tutte vincolanti a ogni fase**, via gli `@import` di `CLAUDE10.md` e i quattro hook.
+  In questa lettura non c'è nulla da attivare: è già così.
+- **(b) la superficie *skills* DEL PRODOTTO** — `skill-catalog.mjs`. Le skill si **adottano**, e
+  ogni skill adottata viene **composta nel prompt dell'Autore** (`buildAuthoringPrompt`, sopra il
+  recinto dei contenuti non fidati). *«Tutte in automatico»* significherebbe adozione automatica
+  dell'intero catalogo: cresce `contextBytes` a ogni run e si allarga la superficie di istruzioni
+  che raggiunge lo scrittore. **È una decisione di prodotto, e va chiesta prima, non dopo.**
 
 **2 · `CE-031` e `CE-035`, nell'ordine deciso con l'Owner.** Prima una **sonda-contenitore come
 "altra macchina"**: namespace di rete suo, utente non privilegiato, **nessun socket Docker
@@ -68,7 +72,10 @@ riuscito — nello stesso angolo del prodotto. Riparato, e provato in **entrambe
 
 ## WHAT WAS **NOT** DONE
 
-- **L'installazione non è stata aggiornata**, seconda fase di fila — vedi LA PROSSIMA AZIONE.
+- **`attiva le skills` non è stato eseguito** — vedi LA PROSSIMA AZIONE punto 1. Due letture,
+  una delle quali cambia il prodotto: chiesta, non indovinata.
+- **`tools/accessibility-audit.mjs` non eseguito** al deploy, e dichiarato: nessun markup, nessun
+  token CSS, nessuno stato visivo nuovo — le sei righe di menu usano il componente riga esistente.
 - **`CE-032` NON è un ✅ pieno, ed è registrato ⚠️.** `tools/coden-evolution.ps1` è coperto **solo
   staticamente**: su questo host non c'è PowerShell e la regola 45 vieta di installarlo. Il livello
   dichiarato per un'installazione Windows resta **`UNVERIFIED`** finché non gira su Windows vero.
