@@ -13,6 +13,22 @@ Proposti: `D-0613`, `D-0617`, `D-0621`, `D-0624`.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**SI ASPETTA L'OWNER: la passata live è in corso, e viene PRIMA di `D-0621`.** L'Owner ha deciso
+il 2026-08-21 di camminare il prodotto vivo superficie per superficie e registrare cosa non
+funziona e cosa non gli piace, **prima** di qualunque altro lavoro. La scheda è
+**`docs/OWNER_REVIEW_2026-08-21.md`** — porta l'elenco completo misurato: **29 comandi** del menu
+unico (da provare in **entrambe** le shell) e **13 pannelli** WebUI, più i numeri di partenza per
+i benchmark. **Non aprire una fase nuova finché quella scheda non è riempita.**
+
+**L'ordine deciso dall'Owner, e concordato:** passata live → triage di ogni riga contro il codice
+reale (§40b: un falso positivo "riparato" è una regressione per niente) → lista dei cambiamenti
+ordinata per ciò che sblocca cosa → **un solo aggiornamento**, costruito a fette con `T0`/`T1`
+continui e un deploy solo → debug + vulnerabilità + **`T2` intero** sull'installazione nuova →
+benchmark mirati contro i numeri di partenza. **Costo dichiarato**: finché non si deploya
+l'installazione resta indietro rispetto all'albero — debito §3a **aperto e scritto**.
+
+**Quando la passata è finita, il lavoro riprende da qui:**
+
 **`D-0621` — estendere la firma pubblica ai cinque archivi.** Lo strato Ed25519 ora esiste, è
 provato ed è generico: applicarlo alle cinque posizioni di `MASTER_PROJECT/09_PIANO.md` §4a è
 **riuso, non costruzione**. È il passo che porta `PKG-001` da *chiudibile* a *chiuso* — insieme
@@ -46,10 +62,8 @@ questo host esposto a internet. **Bloccata su una risorsa che l'Owner non ha anc
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**`D-0611` è installato (`D-0612`).** Byte-uguale albero↔immagine **471/471**. La deriva verso
-l'immagine sostituita è **esattamente** `git diff 4977d54..HEAD` sui percorsi copiati: 12 file,
-nessuno inatteso. Letto **dentro l'immagine spedita**: `productMetric.record()` ha **tre** call
-site dove prima ne aveva **uno**, e `/review` è in **entrambe** le shell.
+**`D-0611` è installato (`D-0612`).** Byte-uguale albero↔immagine **471/471**, deriva esattamente
+uguale al diff di git. Dettaglio: `docs/INSTALLATION_LEDGER.md`.
 
 **`MANIFEST.sha256` diceva il falso (`D-0615`).** Misurato prima: **114 hash sbagliati**, **818**
 file tracciati non elencati, **6** voci per file non tracciati. Mantenuto a mano in 109 commit,
@@ -63,8 +77,8 @@ nel frattempo ha `signCompliancePack()` (Node `crypto` nativo), che firma già i
 **Nessuna primitiva scritta a mano.** Le due firme coprono lo **stesso payload** — il documento
 meno l'intera busta — quindi nessuna invalida l'altra.
 
-**La prova che conta è il round-trip col codice vero:** documento firmato HMAC dal **Python reale**
-in contenitore usa-e-getta, contro-firmato da Node, e **poi entrambe le firme verificano**.
+**La prova che conta è il round-trip col codice vero:** firmato HMAC dal **Python reale** in
+contenitore usa-e-getta, contro-firmato da Node, **entrambe le firme verificano** dopo.
 
 **Gli oracoli sono stati visti rossi, non dedotti.** `D-0615`: 3 volte, incluso **il gate che ha
 rifiutato un commit di quella fase stessa**. `D-0619`: 4 volte, e la più importante è che
@@ -78,14 +92,12 @@ risposta. Ciò che chiedono davvero (*"without a vendor lock-in"*, non dipendere
 chiusa, *"local-first"*) non dice **dove** tenere la chiave: dice che il prodotto **non deve
 imporlo** e che la verifica deve funzionare **offline**.
 
-**E il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)`
-pretende la chiave privata **in memoria di processo** — esattamente ciò che un HSM e una chiave
-offline esistono per evitare. Il progetto **aveva già scelto** la custodia («un file su disco») e
-chiuso fuori tutte le altre; nessuno l'aveva deciso, era la forma di una firma di funzione. Ora
-`tools/release-signing.mjs` porta **due backend veri** — `local-key` e `detached` — e il
-verificatore **non può distinguerli**, il che è ciò che rende la custodia una scelta di chi
-installa. Provato end-to-end: fase 1 esce **3** ed emette i byte senza chiave privata, la firma
-si produce fuori processo, fase 2 riattacca, `PROVENANCE_PUBLIC_VERIFY=PASS`.
+**E il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)` pretende
+la chiave privata **in memoria di processo** — ciò che un HSM e una chiave offline esistono per
+evitare: il progetto **aveva già scelto** la custodia («un file su disco») e chiuso fuori tutte le
+altre. Ora `tools/release-signing.mjs` porta **due backend veri**, `local-key` e `detached`, e il
+verificatore **non può distinguerli**. Provato end-to-end senza chiave privata nel processo.
+Ragionamento e fonti: `docs/RELEASE_SIGNING_POLICY.md`.
 
 **Quattro difetti riparati chiudendo, tutti della stessa famiglia.** `D-0614`:
 `PROJECT_STATE.json.installation` era ferma a **dieci deploy** prima. `D-0616`: la regola *«quali
