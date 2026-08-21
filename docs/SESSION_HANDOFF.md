@@ -1,96 +1,96 @@
 # SESSION HANDOFF
 
-**`D-0611` è installato — `D-0612`.** Il debito §3a aperto il 2026-08-20 è **chiuso**: la Home
-dell'installazione viva ora conta anche le decisioni di CodeN Evolution, e `/review` esiste in
-**entrambe** le shell. Proposto e non eseguito: `D-0613`.
+**Due fasi in questa sessione.** `D-0612`: `D-0611` **installato**, debito §3a chiuso.
+`D-0615`: `MANIFEST.sha256` non era *stale*, era **falso su 114 file** — rigenerato e messo
+sotto due gate. `F-MANIFEST-001` **CHIUSA**. Riparato anche un difetto latente nel codice nuovo
+prima che spedisse (`D-0616`). Proposti: `D-0613`, `D-0617`.
 **Live installation:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z`, `running`/
-`healthy`, `RestartCount=0`. **Nessun debito §3a aperto.**
+`healthy`, `RestartCount=0`. **Nessun debito §3a aperto** — misurato, non asserito.
 **Matrice: 66/67 con verdetto, 58 `met`.** Resta senza verdetto **solo `CE-035`**.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Non c'è più un debito §3a da decidere.** Albero e installazione coincidono, provato
-byte per byte (471/471, differing 0).
+**`D-0589` — provenienza HMAC simmetrica.** È il prossimo per una ragione sola: **blocca la
+posizione 5 di `PKG-001`**, quindi sta sul percorso delle cinque consegne, che è il percorso
+verso la fine. Nulla d'altro fra i debiti aperti tocca quel percorso.
 
-**Resta una sola casella della matrice senza verdetto, e non si chiude da qui.** `CE-035`
-chiede `ssh` + `coden_evolution` da un **secondo nodo reale**: serve un VPS col prodotto
-installato **sopra**, mai questo host esposto a internet. La GPU è irrilevante (`CE-020` prova
-che la shell risponde con zero modelli caricati). **È bloccata su una risorsa che l'Owner non ha
-ancora fornito** — non su lavoro mancante.
+**Poi, in ordine di valore:** `D-0617` (firmare il manifest — `D-0615` lo rende vero dentro il
+repository, ma chi altera un file **e rigenera** passa ancora ogni gate: manca `firma → manifest`,
+e lo strumento Ed25519 esiste già) · `D-0609` (`shellcheck` assente e la batteria non lint-a
+affatto la shell) · `D-0605` · `D-0613`.
 
-**Quindi la prossima fase è debito, e in quest'ordine:**
-
-1. **`MANIFEST.sha256`** — stale di ~670 file dal `D-0399` (5.898 percorsi elencati contro 6.685
-   tracciati), e **nessun passo della batteria lo verifica**: è l'unico debito dove *nessuna riga
-   di matrice misura il criterio*, esattamente la classe di errore che questo progetto ha già
-   pagato. `F-MANIFEST-001`.
-2. **`D-0589`** — provenienza HMAC simmetrica: **blocca la posizione 5 di `PKG-001`**, quindi sta
-   sul percorso delle cinque consegne.
-3. **`D-0605`** (l'`expect` di riferimento non ha una guardia per passo) · **`D-0609`**
-   (`shellcheck` assente e la batteria non lint-a affatto la shell) · **`D-0613`** (il
-   verificatore di provenienza è rosso su ogni deploy riuscito).
+**`CE-035` resta l'unica casella senza verdetto e non si chiude da qui.** Chiede `ssh` +
+`coden_evolution` da un **secondo nodo reale**: serve un VPS col prodotto installato **sopra**,
+mai questo host esposto a internet. La GPU è irrilevante (`CE-020`). **È bloccata su una risorsa
+che l'Owner non ha ancora fornito** — non su lavoro mancante.
 
 **Anche aperti:** `D-0564` · `D-0591` · `D-0593` · `D-0595` · `D-0610` · `F-TOOLSCOPE-001` ·
 `F-ROT-001` · `F-UNIT-FLAKE-001`. **`production_ready` resta `false`.**
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**Il lane dei run raggiunge la metrica sul prodotto che gira, non solo in albero.** Letto
-**dentro l'immagine spedita** con un contenitore usa-e-getta (`--rm --network none`):
-`productMetric.record()` ha **tre** call site (`server.mjs:356`, `server.mjs:4472`,
-`workspace-actions.mjs:773`) dove l'immagine precedente ne aveva **uno**; `readyAtUnix` legge
-`run.measurement.measuredAtUnix` (riga 767) con `readySource: 'shadow-measured'` (782);
-`/review` è in **entrambe** le shell sullo stesso metodo `review.latency`
-(`agent-commands.js:154`, `coden-view-model.js:73`); `review-latency.mjs` **117 righe**.
+**`D-0611` è installato (`D-0612`).** Sequenza §3a 11c per intero. Byte-uguale albero↔immagine
+**471/471**, differing **0**. La deriva fra l'immagine nuova e quella sostituita è **esattamente**
+`git diff 4977d54..HEAD` sui percorsi che il Dockerfile copia: 12 file, **nessuno inatteso**.
+Letto **dentro l'immagine spedita**: `productMetric.record()` ha **tre** call site dove prima ne
+aveva **uno**, e `/review` è in **entrambe** le shell sullo stesso metodo `review.latency`.
 
-**La deriva fra l'immagine nuova e quella che sostituisce è esattamente il diff di git.** 12
-file, confrontati uno per uno con `git diff --name-only 4977d54..HEAD` ristretto ai percorsi che
-il Dockerfile copia: **nessun file inatteso**, in nessuna delle due direzioni. `tools/deploy/`
-non è nell'immagine, quindi la riparazione `D-0608` non ci compare — coerente.
+**`MANIFEST.sha256` diceva il falso, e adesso non può tornare a dirlo in silenzio (`D-0615`).**
+Misurato prima: **114 hash sbagliati**, **818 file tracciati non elencati**, **6 voci** per file
+che git non traccia. Non era staleness — era un'attestazione di integrità falsa, mantenuta a mano
+due righe per volta in 109 commit, **mai diventata rossa perché nessuno la guardava**. Ora:
+**6.712** voci = `git ls-files` meno sé stesso, generate da `tools/generate-manifest.mjs`, con
+`--check` in `scripts/test.sh` **e** in `.githooks/pre-commit`, e 13 righe di oracolo.
+**Deciso quale istanza è** — quella che il progetto *produce*, non quella *ricevuta* nel pacchetto
+01 del V4 — e scritto in `docs/SOURCE_PROVENANCE.md` §3.2, dove la collisione poteva rinascere.
 
-**Un difetto trovato chiudendo, e riparato — `D-0614`.** `PROJECT_STATE.json.installation` era
-ferma a `d0516-model-chooser` del **2026-08-17**: **dieci** deploy successivi l'avevano lasciata
-indietro, e `rollback_containers` elencava quattro contenitori del 25 luglio che §21b vieta e che
-non esistono più. Il ledger era corretto ogni volta; la chiave no — e la chiave è **ciò che il
-digest stampa**, quindi una sessione fredda avrebbe creduto di girare su un'immagine di quattro
-giorni prima. Riparata la chiave **e la regola**: il passo `DOCUMENT` di una fase che installa
-aggiorna questa chiave, non solo il ledger. Nessuna chiave di primo livello aggiunta: 128 = 128.
+**L'oracolo è stato visto rosso prima, tre volte.** `--check` exit **1** sui numeri veri;
+il test del symlink rosso rimettendo la regola duplicata (`D-0616`); e **il gate ha fallito sulle
+modifiche di questa fase stessa** (3 hash + 1 file non elencato) prima che le rigenerassi — che è
+la prova che funziona nel flusso reale e non solo in fixture.
 
-**Il deploy è passato pulito al primo colpo.** A differenza di `D-0606`, che diede `D-0608`:
-preflight PASS, `clean exit confirmed`, backup del workspace **a servizio fermo**, predecessore
-conservato, sostituto `healthy` con 4 figli, exit 0.
+**Un difetto latente riparato prima di spedire (`D-0616`).** La regola *«quali percorsi il
+manifest può attestare»* era scritta **due volte**: un symlink tracciato avrebbe incastrato il
+gate in un fallimento che **rigenerare non ripara**. Ora è una sola definizione, `isAttestable()`.
+È la classe esatta di `D-0608` (`env_count()`).
 
-**Verificato:** unit **2922** (2921 pass, 0 fail, 1 skip preesistente) ·
-`SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1153` ·
-`ACCEPTANCE_MATRIX: PASS` (67 criteri, 66 con verdetto, 58 `met`, 0 critici senza verdetto) ·
-fixture di deploy **80/80** · byte-uguale albero↔immagine **471/471** differing **0** ·
-sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`200`,
+**Un difetto di stato riparato chiudendo `D-0612` (`D-0614`).**
+`PROJECT_STATE.json.installation` era ferma a `d0516-model-chooser` del **17 agosto**: **dieci**
+deploy l'avevano lasciata indietro, e `rollback_containers` elencava quattro contenitori del 25
+luglio che §21b vieta. Il ledger era giusto ogni volta; la chiave no — ed è la chiave che il
+**digest stampa**. Riparata la chiave **e la regola**.
+
+**Verificato:** unit **2935** (2934 pass, 0 fail, 1 skip preesistente) · ESLint **468 file
+0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155` ·
+`ACCEPTANCE_MATRIX: PASS` · fixture di deploy **80/80** · manifest **13/13** con oracolo visto
+rosso · sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`200`,
 **0** auth-failure, **0** righe di errore · env **44 = 44** con diff dei nomi vuoto.
 
 ## WHAT WAS **NOT** DONE
 
+- **`D-0615` non tocca l'installazione, e non è un'asserzione: è misurato.** Verificato dentro
+  l'immagine viva che `/opt/noesar/MANIFEST.sha256` **non esiste** e che `tools/` ne contiene 8
+  file, non `generate-manifest.mjs`. **Nessun debito §3a aperto da questa fase.**
 - **`/review` non è stato interrogato con una sessione autenticata.** Sul vivo è provato che la
-  rotta **esiste ed è protetta** (`401`, discriminata da un `404` su rotta inesistente); che
-  **restituisca il numero giusto** è provato in albero (8/8 + 13/13), non sull'installazione.
-  È una prova più debole ed è dichiarata tale, non presentata come equivalente (§3a 11e).
+  rotta esiste ed è protetta (`401`, discriminata da `404`); che restituisca il **numero giusto**
+  è provato in albero (8/8 + 13/13), non sull'installazione (§3a 11e).
 - **`CE-035` non toccata** — bloccata su un secondo nodo che non esiste.
 - **`F-ROT-001` ri-osservata e non riparata**: `NOESAR_ALLOWED_HOSTS` nomina `172.22.0.5` mentre
-  l'IP del contenitore è `172.22.0.3`. **Sopravvive correttamente** — la configurazione è riletta
-  dal contenitore che si sostituisce, non reinventata — ma resta sbagliata. Fuori dallo scope di
-  una fase di deploy: cambiarla è un cambio di configurazione, non un'installazione.
-- **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.** Deliberato: cancella byte
-  che non tornano.
-- **`MANIFEST.sha256` non rigenerato**: stale di ~670 file dal `D-0399`.
-- **HUNT AND FIX: scoped al diff.** Il diff di prodotto di questa fase è **zero file** — si è
-  installato un albero già provato. Lo strumento del caccia è stato il deploy stesso, che è ciò
-  che trovò `D-0608` la volta scorsa; questa volta non ha dato nulla. Aggiunti: fixture di
-  deploy 80/80 e il confronto immagine↔immagine↔git. **Nessuna full sweep** — nessuna superficie
-  nuova, nessun file di prodotto cambiato.
+  l'IP è `172.22.0.3`. Sopravvive **correttamente** (la config è riletta, non reinventata), ma
+  resta sbagliata. Fuori scope per una fase di deploy e per una di manifest.
+- **Il manifest non è firmato** — è `D-0617`, proposto e non eseguito. Chi altera un file **e
+  rigenera** passa ogni gate: la catena si ferma a `manifest → file`, le manca `firma → manifest`.
+- **T2 non eseguita** (browser e2e, accessibility, seeded-defect): nessun file di prodotto è
+  cambiato in `D-0615` — i due file nuovi sono uno strumento e un test, e nessuno dei due entra
+  nell'immagine. Dichiarato, non implicito.
+- **HUNT AND FIX: scoped al diff** in entrambe le fasi. `D-0612`: diff di prodotto **zero file**,
+  lo strumento del caccia è stato il deploy stesso (non ha dato nulla) più il fixture 80/80.
+  `D-0615`: 5 file, e il caccia **ha dato `D-0616`**. Strumenti: le suite del repository,
+  l'oracolo seminato a mano, `bash -n`, `git ls-files -s` per i percorsi non regolari, lettura.
+  **Nessuna full sweep** in nessuna delle due.
 - **`shellcheck` assente su questo host** e la batteria non lint-a affatto la shell — è `D-0609`.
+- **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.**
 - **Scansione segreti euristica e dichiarata tale**: né `gitleaks` né `trufflehog` su `PATH`.
-- **T2 non rieseguita** (browser e2e, accessibility, seeded-defect): il codice di prodotto non è
-  cambiato dalla fase che le ha eseguite verdi, e la prova che i byte installati sono quelli è
-  stata prodotta qui. Dichiarato, non implicito.
 
 ## OPEN BLOCKERS
 

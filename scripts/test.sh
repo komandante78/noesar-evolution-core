@@ -80,6 +80,13 @@ step_tristate() {
 
 step unit            node --test services/reference-control-plane/test/*.test.mjs
 step source-verify   node tools/verify-source.mjs
+# D-0615. MANIFEST.sha256 is the integrity manifest that ships with the product, and until this
+# step existed nothing in this battery of twenty-odd steps ever read it. It was maintained by
+# hand, two lines per commit, across 109 commits — and measured on 2026-08-21 it was wrong about
+# 114 files, silent about 818 tracked ones and listing 6 that git does not track. It never went
+# red because nothing looked. This is the step that looks; the oracle that proves it can go red
+# is manifest-integrity.test.mjs, in the unit step above.
+step manifest        node tools/generate-manifest.mjs --check
 step auth-smoke      node tools/auth-http-smoke.mjs
 # D-0546. `packages/verified-acquisition/` is an extracted, separately-documented component with
 # its own tests, and this runner invoked none of them: they existed only behind the npm script

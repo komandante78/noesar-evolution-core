@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0612 — D-0611 installato: il debito §3a e CHIUSO. L installazione viva e noesar-evolution:d0611-run-lane-metric-20260821T032222Z, byte-uguale all albero (471/471, differing 0). productMetric.record() ha tre call site dentro l immagine spedita dove prima ne aveva uno, e /review esiste in entrambe le shell sullo stesso metodo review.latency.",
-  "phase_status": "DEPLOYATO e verificato sul vivo. Unit 2922 (2921 pass, 0 fail, 1 skip preesistente), SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1153, ACCEPTANCE_MATRIX PASS (67 criteri, 66 con verdetto, 58 met, 0 critici senza verdetto), fixture di deploy 80/80, byte-uguale albero-immagine 471/471. Sul vivo: /livez /readyz /healthz 200, TLS 200, gate 401/404/200, 0 auth-failure, 0 righe di errore, env 44=44 con diff dei nomi vuoto, 4 figli. NESSUN DEBITO 3a APERTO.",
-  "next_phase": "debito, in quest ordine: MANIFEST.sha256 (F-MANIFEST-001, stale di ~670 file dal D-0399 e nessun passo della batteria lo verifica), poi D-0589 (provenienza HMAC simmetrica, blocca la posizione 5 di PKG-001), poi D-0605 / D-0609 / D-0613. CE-035 resta bloccata su un secondo nodo reale che l Owner non ha ancora fornito.",
+  "current_phase": "D-0615 — MANIFEST.sha256 non era stale, era FALSO su 114 file: rigenerato dall albero tracciato e messo sotto due gate, con oracolo visto rosso prima. F-MANIFEST-001 CHIUSA. D-0616: difetto latente riparato nel codice nuovo prima che spedisse (una regola scritta due volte avrebbe incastrato il gate su un symlink tracciato).",
+  "phase_status": "COMPLETE. NESSUN DEBITO 3a — misurato dentro l immagine viva: /opt/noesar/MANIFEST.sha256 non esiste e tools/ ne contiene 8 file, non generate-manifest.mjs. Unit 2935 (2934 pass, 0 fail, 1 skip preesistente), ESLint 468 file 0/0/0, SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155, manifest 13/13 con oracolo visto rosso 3 volte, MANIFEST=OK 6712 files complete against git, degrado senza git = exit 2 che la batteria tratta come PARTIAL mai come PASS.",
+  "next_phase": "D-0589 — provenienza HMAC simmetrica: blocca la posizione 5 di PKG-001 e sta quindi sul percorso delle cinque consegne. Poi D-0617 (firmare il manifest), D-0609 (shellcheck), D-0605, D-0613.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "b74f77f",
-  "last_updated_utc": "2026-08-21T03:36:00Z",
+  "last_updated_utc": "2026-08-21T04:40:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -213,7 +213,7 @@
     {
       "id": "F-MANIFEST-001",
       "severity": "low",
-      "status": "OPEN — observed 2026-08-19 (D-0577), recorded not fixed: out of scope for a phase named revocation",
+      "status": "CLOSED 2026-08-21 (D-0615) — rigenerato dall albero tracciato (6.712 voci = git ls-files meno se stesso) E messo sotto due gate: step manifest in scripts/test.sh e una riga in .githooks/pre-commit, con 13 righe di oracolo in manifest-integrity.test.mjs. La domanda che questo record poneva (decidere COSA sia il manifest prima di rigenerarlo) e stata risposta: e l istanza che il progetto PRODUCE, non quella RICEVUTA nel pacchetto 01 del V4, e la distinzione e scritta in docs/SOURCE_PROVENANCE.md 3.2. Misurato prima della riparazione: non era stale, era FALSO — 114 hash sbagliati, 818 file tracciati non elencati, 6 voci per file non tracciati.",
       "summary": "MANIFEST.sha256 lists 5,898 paths against 6,685 tracked files, and it does not grow: recent commits update the hashes of paths ALREADY listed and add none. Measured on this phase's own diff — 12 changed files, 1 present in the manifest (stale, refreshed here), 11 absent, including two src/ modules and the new test file. So a checksum manifest that reads as whole is a snapshot of an older tree, and nothing in scripts/test.sh fails when an entry goes stale (the battery was green with the stale hash in it).",
       "next_step": "decide what the manifest is FOR before regenerating it: an integrity record of the whole tree needs generation on every commit and a verifier that fails on drift; a provenance record of an import needs a name that says so. Regenerating it blindly would turn 787 unlisted files into a claim nobody has checked."
     },
@@ -325,7 +325,7 @@
     {
       "id": "F-MANIFEST-001",
       "severity": "medium",
-      "status": "OPEN - recorded 2026-08-12 (D-0399), not fixed: pre-existing and out of this phase scope",
+      "status": "CLOSED 2026-08-21 (D-0615) — rigenerato dall albero tracciato (6.712 voci = git ls-files meno se stesso) E messo sotto due gate: step manifest in scripts/test.sh e una riga in .githooks/pre-commit, con 13 righe di oracolo in manifest-integrity.test.mjs. La domanda che questo record poneva (decidere COSA sia il manifest prima di rigenerarlo) e stata risposta: e l istanza che il progetto PRODUCE, non quella RICEVUTA nel pacchetto 01 del V4, e la distinzione e scritta in docs/SOURCE_PROVENANCE.md 3.2. Misurato prima della riparazione: non era stale, era FALSO — 114 hash sbagliati, 818 file tracciati non elencati, 6 voci per file non tracciati.",
       "summary": "MANIFEST.sha256 has 5898 entries against 6568 tracked files and contains zero entries for files earlier phases added (apps/webui-static/voice-session.js, tools/deploy/redeploy.sh). Nothing in tools/ or the test suite verifies it, so nothing ever went red. Needs its own phase, with a checker."
     },
     {
@@ -1120,7 +1120,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "NON c e piu un debito 3a da decidere: albero e installazione coincidono, provato byte per byte. La prossima fase e debito. PRIMA: MANIFEST.sha256 — e l unico debito dove NESSUNA riga di matrice misura il criterio (5.898 percorsi elencati contro 6.685 tracciati, stale dal D-0399, e la batteria non lo verifica affatto): si rigenera E si aggiunge il passo che lo fa fallire, altrimenti fra dieci fasi sara stale di nuovo senza che nessuno se ne accorga. POI: D-0589, che blocca la posizione 5 di PKG-001 e sta quindi sul percorso delle cinque consegne. NON toccare CE-035 senza un VPS col prodotto installato sopra — mai questo host esposto a internet. NON provato sul vivo: che /review restituisca il numero giusto con una sessione autenticata (provato in albero 8/8 + 13/13; sul vivo e provato solo che la rotta esiste ed e protetta).",
+  "next_action": "D-0589. E il prossimo per una ragione sola: blocca la posizione 5 di PKG-001, quindi e l unico debito aperto che sta sul percorso delle cinque consegne. POI, in ordine di valore: D-0617 — firmare il manifest. D-0615 lo rende vero DENTRO il repository, ma chi altera un file E rigenera passa ancora ogni gate: la catena si ferma a manifest->file e le manca firma->manifest; lo strumento Ed25519 (sign-release-artifact.mjs) esiste gia ed e provato sui quattro SBOM. NON toccare CE-035 senza un VPS col prodotto installato sopra — mai questo host esposto a internet. NOTA sul flusso di lavoro cambiato da D-0615: il pre-commit ora verifica MANIFEST.sha256, quindi dopo aver modificato file tracciati si esegue node tools/generate-manifest.mjs e si ri-stage prima di committare. Il gate ha gia fallito sulle modifiche della fase che lo ha introdotto — funziona.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

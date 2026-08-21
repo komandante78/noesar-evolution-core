@@ -14207,3 +14207,58 @@ nella chiave; `deployed_utc` corretto a `2026-08-21T03:24:36Z`; `rollback_contai
 `BACKUPS/PROJECT_STATE.json.pre_d0612_20260821T032914Z`.
 **Status.** applied. **Fit di finanziamento: nessuno** — è igiene di stato interna, e dirlo vale
 più di una pretesa allargata.
+
+## D-0615 · `MANIFEST.sha256` non era stale: era **falso**, e ora un gate lo fa fallire — 2026-08-21
+**Decision.** Rigenerato dall'albero tracciato con un generatore nuovo
+(`tools/generate-manifest.mjs`, con `--check`), messo sotto **due** gate — uno step di
+`scripts/test.sh` e una riga di `.githooks/pre-commit` — e coperto da un oracolo di 13 righe.
+Deciso anche **quale istanza è**: da qui il file nell'albero è quello che questo progetto
+**produce**, non quello **ricevuto** dentro il pacchetto 01 del V4 (scritto in
+`docs/SOURCE_PROVENANCE.md` §3.2, dove la collisione poteva rinascere).
+**Why.** Misurato: **114 hash sbagliati**, **818 file tracciati non elencati**, **6 voci** per
+file che git non traccia (un `.pyc` e tre binari del vendor rust). Non è "stale": è
+un'attestazione di integrità **falsa su 114 file**, mantenuta a mano due righe per volta in 109
+commit. Non è mai diventata rossa perché **nessuno la guardava**: `scripts/test.sh` aveva venti
+passi e nessuno era questo. È `F-MANIFEST-001`, aperta dal `D-0399`.
+**Rejected.** Rigenerarlo e basta — è ciò che ha prodotto il difetto la prima volta: senza un
+passo che lo faccia fallire, fra dieci fasi sarebbe falso di nuovo e di nuovo in silenzio.
+**Evidence.** Oracolo **visto rosso prima**: `--check` exit **1** con i tre numeri sopra.
+Dopo: `MANIFEST=OK 6712 files, complete against git`, ed è `git ls-files` **meno sé stesso**,
+verificato. Il gate ha poi fallito **sulle modifiche di questa fase stessa** (3 hash + 1 file
+non elencato) prima che le rigenerassi — prova che funziona nel flusso reale, non solo in
+fixture. Unit **2935** (2934 pass, 0 fail, 1 skip), ESLint **468 file 0/0/0**, `SOURCE_VERIFY=PASS`.
+**Reversal cost.** Nessuno sul prodotto: **niente di questa fase entra nell'immagine** —
+verificato dentro l'immagine viva, `/opt/noesar/MANIFEST.sha256` non esiste e `tools/` ne
+contiene 8 file, non questo. **Nessun debito §3a aperto.** Backup:
+`BACKUPS/MANIFEST.sha256.pre_d0615_20260821T041420Z`.
+**Status.** applied. `F-MANIFEST-001` **CHIUSA**.
+
+## D-0616 · Difetto latente riparato nel codice di `D-0615`, prima che spedisse — 2026-08-21
+**Decision.** `isAttestable()` è **una** definizione condivisa da generatore e verificatore.
+**Why.** Nella prima stesura la regola *«quali percorsi tracciati il manifest può attestare»*
+era scritta **due volte**. Un symlink tracciato sarebbe stato saltato dal generatore e riportato
+dal verificatore come *«tracked but not listed»*: un fallimento che **rigenerare non avrebbe mai
+riparato** — il gate si sarebbe incastrato da solo. È la classe esatta di `D-0608`
+(`env_count()`): una regola consultata due volte e scritta due volte diverge.
+**Rejected.** Lasciarlo: questo repository ha **zero** symlink tracciati oggi, quindi la trappola
+è latente. Ma «nessuno l'ha ancora fatto» non è una proprietà su cui un gate possa contare.
+**Evidence.** Test `a tracked symlink does not wedge the gate…` **visto rosso** rimettendo la
+regola duplicata nel solo verificatore (2 fail su 13), verde dopo (13/13).
+**Reversal cost.** Nessuno.
+**Status.** applied.
+
+## D-0617 · Proposta: firmare il manifest, non solo scriverlo — 2026-08-21
+**Decision.** Proposta, **non eseguita**: legare `MANIFEST.sha256` all'insieme di artefatti già
+firmati Ed25519 da `tools/sign-release-artifact.mjs` / `verify-release-artifact.mjs`, così che un
+pacchetto consegnato porti una **firma sul manifest** e non solo il manifest.
+**Why.** `D-0615` rende vero il manifest e impedisce che torni falso *dentro questo repository*.
+Non difende il caso che conta per chi installa: chi altera un file **e rigenera il manifest**
+passa ogni gate. La catena oggi si ferma a `manifest → file`; le manca `firma → manifest`.
+**Rejected.** Un formato di firma nuovo: lo strumento Ed25519 esiste già ed è provato (SBOM).
+**Evidence.** `tools/sign-release-artifact.mjs` e `verify-release-artifact.mjs` esistono e
+verificano i quattro SBOM; `PACKAGE_METADATA.json` dichiara già `manifestFile: MANIFEST.sha256`.
+**Reversal cost.** Nessuno finché è una proposta. La chiave di rilascio durevole resta una
+decisione dell'Owner (HSM / secret manager), non inventata qui.
+**Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 5** (affidabilità misurabile:
+provenienza e verificabilità) **e tratto 2** (riusabile fuori da questo prodotto) — CodeSupply
+finanzia esattamente strumenti di supply-chain e metadati verificabili.

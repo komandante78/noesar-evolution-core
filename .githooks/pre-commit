@@ -25,6 +25,12 @@ node --test services/reference-control-plane/test/*.test.mjs packages/*/test/*.t
 echo "pre-commit: migration manifest"
 node tools/generate-migration-manifest.mjs --check
 
+# D-0615. The product manifest, in the same gate as the migration manifest and for the same
+# reason: it drifted for months precisely because no gate read it. `--check` is read-only; when
+# it fails, `node tools/generate-manifest.mjs` repairs it and the files are staged again.
+echo "pre-commit: product manifest"
+node tools/generate-manifest.mjs --check
+
 echo "pre-commit: eslint (no-undef)"
 if command -v docker > /dev/null 2>&1; then
   tools/run-eslint.sh

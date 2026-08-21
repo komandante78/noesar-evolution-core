@@ -5840,3 +5840,29 @@ Superstiti di progetto: **esattamente due**. Salute riprovata dopo la pulizia:
 `/review` **risponda** con un oggetto è provato in albero (8/8 + 13/13), sul vivo è provato che
 la rotta **esiste ed è protetta**, non che restituisce il numero giusto. Nessuna suite mutante
 puntata sull'installazione. **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.**
+
+## 2026-08-21T04:30Z — `D-0615` · `MANIFEST.sha256` riparato, **l'installazione non è stata cambiata**
+**Tag in esecuzione:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z` — invariato.
+**NESSUN DEBITO §3a, e non è un'asserzione: è misurato.** Niente di questa fase entra
+nell'immagine. Verificato **dentro l'immagine viva** con un contenitore usa-e-getta
+(`--rm --network none`): `/opt/noesar/MANIFEST.sha256` **non esiste**, e `/opt/noesar/tools/`
+contiene 8 file — `tui-client.mjs`, `tui-fullscreen.mjs`, `terminal-credential.mjs`,
+`coden-evolution`(`.ps1`), `install-coden-cli.sh`, `Install-CodenCli.ps1`, `acceptance/` — non
+`generate-manifest.mjs`. `scripts/test.sh`, `.githooks/pre-commit`, i test e `docs/` non sono
+copiati dal `oci/Dockerfile`.
+**Cosa è cambiato in albero.** `MANIFEST.sha256` da **5.898** voci (114 hash sbagliati, 818 file
+tracciati assenti, 6 voci per file non tracciati) a **6.712** = `git ls-files` meno sé stesso.
+Nuovi: `tools/generate-manifest.mjs` (+`--check`) e
+`services/reference-control-plane/test/manifest-integrity.test.mjs` (13 righe di oracolo).
+Gate: uno step `manifest` in `scripts/test.sh` e una riga in `.githooks/pre-commit`.
+**Verificato in albero.** Oracolo **visto rosso prima** (`--check` exit 1 sui tre numeri), verde
+dopo (`MANIFEST=OK 6712 files, complete against git`); il gate ha fallito **sulle modifiche di
+questa fase** prima che le rigenerassi. Unit **2935** (2934 pass, 0 fail, 1 skip preesistente) ·
+ESLint **468 file 0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact
+nul-free=1155` · degrado senza git provato: exit **2**, che la batteria tratta come `PARTIAL`,
+mai come `PASS`.
+**Igiene (§5a).** Nessun contenitore creato oltre a quelli usa-e-getta di `run-eslint.sh` e alla
+sonda di lettura dell'immagine, tutti `--rm`. Sopravvivono i due previsti: `noesar-evolution`
+(Up, healthy) e `noesar-evolution-pre-20260821T032436Z` (Exited).
+**Costo di rollback.** Nessuno — nessuna modifica al prodotto installato. Backup del manifest
+precedente: `BACKUPS/MANIFEST.sha256.pre_d0615_20260821T041420Z`.
