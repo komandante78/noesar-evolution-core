@@ -1,8 +1,8 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0628 — #/models si legge a colpo d occhio: sei modelli per pagina in griglia 3+3, riquadri con gerarchia, chip di categoria con i conteggi. Prima era UNA colonna con 24 schede. La causa: D-0625 costruito senza applicare §76 (grafica ed esperienza d uso sono di prima classe) e senza mai guardare la pagina renderizzata.",
-  "phase_status": "DEPLOYATO. Unit 2973 (2972 pass, 0 fail, 1 skip), ESLint 474 file 0/0/0, byte-uguale albero-immagine 476/476, T2 ESEGUITA (browser 506 · 505 pass · 1 fail, il solo F-I18N-002 gia dichiarato). Debito di verifica della fase precedente SALDATO. Guardare il render ha subito prodotto D-0630.",
+  "current_phase": "D-0635 (chiude D-0627) — le righe MC- del catalogo modelli sono misurabili dalla matrice di accettazione. model-catalog.mjs citava MC-001..MC-006 in una dozzina di commenti come criteri verificati, e per tredici sessioni nessuna riga di matrice lo confermava. docs/MODEL_CATALOG_DESIGN.md 8 estesa a 5 colonne, SOURCES e il parser conoscono il prefisso MC. Matrice 67 -> 73 criteri, 64 met, oracolo visto rosso togliendo una riga.",
+  "phase_status": "Sessione chiusa. Coda dichiarata tutta fatta: D-0625 (catalogo modelli) -> D-0628 (griglia leggibile) -> D-0630/D-0634 (i18n del seed, in albero non installato) -> D-0632/D-0633 (ATOM resta proprietario, D-0468 superata) -> D-0627/D-0635 (causa radice della matrice, chiusa). Unit 2974 (2973 pass, 0 fail, 1 skip), ESLint 474 file 0/0/0, ACCEPTANCE_MATRIX PASS 73 criteri. git pulito, pushato, HEAD=last_commit.",
   "next_phase": "D-0630 (descrizioni del seed in italiano fuori dal livello di traduzione, E il controllo i18n che non legge i file di dati), poi D-0635 (chiude D-0627: le righe MC nella matrice), poi la passata live dell Owner.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
@@ -10,7 +10,7 @@
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "79dbdbf",
-  "last_updated_utc": "2026-08-21T11:40:00Z",
+  "last_updated_utc": "2026-08-21T12:00:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
