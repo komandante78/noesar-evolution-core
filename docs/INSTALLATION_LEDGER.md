@@ -5774,3 +5774,69 @@ ESLint **466 file 0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 in
 il campo `readySource` è additivo e i campioni che ne sono privi sono letti come `approval-raised`,
 provato da un test che scrive un campione vecchio direttamente nello store. Predecessore da
 preservare con nome timestampato e backup runtime **a servizio fermo**, come sempre.
+
+## `d0611-run-lane-metric-20260821T032222Z` — DEPLOYATO e verificato — 2026-08-21
+
+**Tag.** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z`, deployato 03:24Z via
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`, costruito offline dal
+`oci/Dockerfile` canonico (`docker build --pull=false`, exit 0). **Chiude il debito §3a**
+aperto da `D-0611` il 2026-08-20: l'installazione ora collega il lane dei run alla metrica.
+
+**Verifica del recipe.** Byte-uguale albero↔immagine **471/471**, differing **0**,
+absent-from-tree **0**, built-in-image 2; `expected from directory COPYs: 453, missing: 0`.
+La deriva candidato↔riferimento è **esattamente** il diff di git `4977d54..HEAD` ristretto ai
+percorsi che il Dockerfile copia — **12 file**, nessuno inatteso; `tools/deploy/` e
+`tools/verify-acceptance-matrix.mjs` non sono nell'immagine, quindi `D-0608` non ci compare.
+
+**La prova letta DENTRO l'immagine spedita** (contenitore `--rm --network none`):
+`productMetric.record()` ha ora **tre** call site (`server.mjs:356`, `server.mjs:4472`,
+`workspace-actions.mjs:773`) contro **uno** prima; `readyAtUnix` legge
+`run.measurement.measuredAtUnix` (riga 767) con `readySource: 'shadow-measured'` (782);
+`/review` esiste in **entrambe** le shell e mappa allo stesso metodo `review.latency`
+(`agent-commands.js:154`, `coden-view-model.js:73`); `review-latency.mjs` **117 righe**.
+
+**Salute.** `running`/`healthy`, `RestartCount=0`; `/livez` `/readyz` `/healthz` **200** su
+`http://…:8100`, `/livez` **200** su `https://…:8443`. **4 figli** (postgres, api, codev, atom),
+**0** righe di auth-failure, **0** righe di errore. Forma del cancello: `/api/v1/tui/command`
+non autenticata **401**, `/api/v1/metrics/review-time` non autenticata **401** (esiste ed è
+protetta — discriminata da una rotta inesistente, **404**), pagina **200**.
+
+**Parità di configurazione, provata.** `{{len .Config.Env}}` **44 = 44**, diff dei **nomi**
+vuoto (valori mai stampati); `restart=unless-stopped`, `ro rootfs=true`, `binds=2`, `tmpfs=2`,
+`ports=3`, `user=10001:10001` identici. `F-ROT-001` sopravvive **correttamente** e invariata:
+`NOESAR_ALLOWED_HOSTS` nomina ancora `172.22.0.5` mentre l'IP è `172.22.0.3` — la
+configurazione è **riletta** dal contenitore che si sostituisce, non reinventata.
+
+**Prima del deploy.** Unit **2922** (2921 pass, 0 fail, 1 skip preesistente),
+`SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1153`,
+`ACCEPTANCE_MATRIX: PASS` (67 criteri, 66 con verdetto, 58 `met`, 1 senza verdetto — `CE-035` —
+0 critici senza verdetto), fixture di deploy **80/80**.
+
+**Predecessore conservato.** `noesar-evolution-pre-20260821T032436Z`
+(`d0606-replay-retention-20260820T132914Z`).
+
+**Costo di rollback — nessuno (§3a 11d).** Nessuna migrazione in questo rilascio
+(`migrations=20` invariato); `readySource` è additivo e i campioni che ne sono privi sono letti
+come `approval-raised`. Tornare indietro riporta l'installazione alla Home che riporta una cifra
+priva delle decisioni di CodeN Evolution e a `/review` assente in entrambe le shell — nient'altro.
+Il workspace è stato copiato **a servizio fermo**, 0600 in una directory 0700, con checksum:
+**quell'archivio contiene credenziali e va trattato come tale**.
+
+**Nessun difetto trovato NEL deploy.** A differenza di `D-0606` (che diede `D-0608`), la
+sequenza è passata pulita al primo colpo: preflight PASS, `clean exit confirmed`, sostituto
+`healthy`, exit 0.
+
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260820T133034Z` rimosso
+(`Exited (0)` confermato prima; la sua immagine `d0601-context-shape-20260820T104316Z` resta su
+disco, quindi il percorso di rollback documentato regge). Nessun tag usa-e-getta e nessuna rete
+creati da questa fase. Contenitori **52 → 52** (uno creato dal deploy, uno rimosso), volumi
+**65 → 65**, reti **10 → 10**, contenitori non-di-progetto **50 → 50**; reti di progetto
+superstiti esattamente `noesar-evolution-net` e `noesar-e2e-net` (`noesar-local` è di NOESAR V3
+e non è stata toccata) (`EVIDENCE/docker_inventory_pre_cleanup_D0611_20260821T032222Z.txt`).
+Superstiti di progetto: **esattamente due**. Salute riprovata dopo la pulizia:
+`running`/`healthy`, `/livez` e `/readyz` **200**.
+
+**Non provato qui, e detto:** nulla che richieda una sessione autenticata (§3a 11e) — che
+`/review` **risponda** con un oggetto è provato in albero (8/8 + 13/13), sul vivo è provato che
+la rotta **esiste ed è protetta**, non che restituisce il numero giusto. Nessuna suite mutante
+puntata sull'installazione. **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.**

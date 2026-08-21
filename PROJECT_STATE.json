@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0611 — CE-024 chiusa collegando la metrica che gia esisteva invece di costruirne una seconda: il lane dei run di CodeN Evolution alimenta ProductMetric col bordo sinistro measurement.measuredAtUnix, e /review in entrambe le shell restituisce lo stesso oggetto dalla stessa istanza che la Home rende",
-  "phase_status": "COMPLETE IN ALBERO, NON INSTALLATO — debito §3a APERTO e dichiarato. Unit 2922 (2921 pass, 0 fail, 1 skip preesistente), ESLint 466 file 0/0/0, SOURCE_VERIFY=PASS, ACCEPTANCE_MATRIX PASS 66/67 con verdetto (58 met), ratchet 2 -> 1 visto fallire a 0, ce-024-the-run-lane-reaches-the-metric 8/8 con oracolo visto rosso 4 su 4",
-  "next_phase": "decisione dell Owner: deployare D-0611 (chiude il debito §3a) oppure CE-035 / debito minore D-0605, D-0589, MANIFEST.sha256",
+  "current_phase": "D-0612 — D-0611 installato: il debito §3a e CHIUSO. L installazione viva e noesar-evolution:d0611-run-lane-metric-20260821T032222Z, byte-uguale all albero (471/471, differing 0). productMetric.record() ha tre call site dentro l immagine spedita dove prima ne aveva uno, e /review esiste in entrambe le shell sullo stesso metodo review.latency.",
+  "phase_status": "DEPLOYATO e verificato sul vivo. Unit 2922 (2921 pass, 0 fail, 1 skip preesistente), SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1153, ACCEPTANCE_MATRIX PASS (67 criteri, 66 con verdetto, 58 met, 0 critici senza verdetto), fixture di deploy 80/80, byte-uguale albero-immagine 471/471. Sul vivo: /livez /readyz /healthz 200, TLS 200, gate 401/404/200, 0 auth-failure, 0 righe di errore, env 44=44 con diff dei nomi vuoto, 4 figli. NESSUN DEBITO 3a APERTO.",
+  "next_phase": "debito, in quest ordine: MANIFEST.sha256 (F-MANIFEST-001, stale di ~670 file dal D-0399 e nessun passo della batteria lo verifica), poi D-0589 (provenienza HMAC simmetrica, blocca la posizione 5 di PKG-001), poi D-0605 / D-0609 / D-0613. CE-035 resta bloccata su un secondo nodo reale che l Owner non ha ancora fornito.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "95ccf1d",
-  "last_updated_utc": "2026-08-20T14:10:00Z",
+  "last_updated_utc": "2026-08-21T03:30:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -110,11 +110,11 @@
   "database_mutation": false,
   "network_configuration": true,
   "installation": {
-    "image": "noesar-evolution:d0516-model-chooser-20260817T155937Z",
-    "image_lineage": "node:22-bookworm-slim@sha256:6c74791e -> :phase3 -> :phase4 -> :phase4-complete -> :phase4-complete-lan -> :phase4-webui -> :phase4-service-token-auth -> :phase4-module-credentials",
-    "base_image": "noesar-evolution:d0493-password-form-fix-20260816T155232Z",
-    "dockerfile": "oci/Dockerfile.phase4-model-chooser",
-    "build_network": "none",
+    "image": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
+    "image_lineage": "CORRETTO 2026-08-21 (D-0614): questa chiave era ferma a d0516-model-chooser (2026-08-17) mentre DIECI deploy successivi (d0559, d0565, d0577, d0579, d0581, d0583, d0586, d0590, d0601, d0606) l avevano lasciata indietro. Il ledger era giusto, questa chiave no — e una sessione fredda che legge lo stato invece del ledger avrebbe creduto di girare su un immagine di quattro giorni prima. La regola riparata, non solo l istanza: il passo DOCUMENT di una fase che installa aggiorna QUESTA chiave, non solo il ledger.",
+    "base_image": "noesar-evolution:d0606-replay-retention-20260820T132914Z",
+    "dockerfile": "oci/Dockerfile (canonico — le overlay Dockerfile.phase4-* non sono piu usate dal D-0565)",
+    "build_network": "default (docker build --pull=false; i livelli apt sono venuti dalla cache, NESSUN fetch di rete osservato — non e --network=none e non si dichiara tale)",
     "container": "noesar-evolution",
     "network": "noesar-evolution-net",
     "port": "192.168.178.100:8100 -> 8088 (local network; loopback no longer answers; NOT published to the internet)",
@@ -122,19 +122,16 @@
     "bind_address": "192.168.178.100",
     "bind_scope": "lan",
     "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
-    "health": "running/healthy, RestartCount=0, /livez 200 alive and /readyz 200 ready:true on http:8088 and https:8443 — measured 2026-08-17T16:00Z",
+    "health": "running/healthy, RestartCount=0, /livez /readyz /healthz 200 su http:8088 e /livez 200 su https:8443, 4 figli, 0 auth-failure, 0 righe di errore — misurato 2026-08-21T03:26Z",
     "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
     "rollback_containers": [
-      "noesar-evolution.rollback-lan-webui-20260725T175916Z (image :phase4-complete-lan)",
-      "noesar-evolution.rollback-lan-phase4complete-20260725T153133Z (image :phase4-complete)",
-      "noesar-evolution.rollback-phase4-20260725T142301Z (image :phase4)",
-      "noesar-evolution.rollback-phase3-20260725T121648Z (image :phase3)"
+      "noesar-evolution-pre-20260821T032436Z (image d0606-replay-retention-20260820T132914Z) — l UNICO rollback che §21b permette; i predecessori piu vecchi sono rimossi ad ogni fase e le loro IMMAGINI restano su disco"
     ],
     "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z and .probe-reverify-20260725T142301Z (stopped; created by the completion gate)",
     "host_impact": "networks and volumes diff IDENTICAL against the pre-gate inventory; the 37 unrelated containers untouched and still Exited; noesar-debuglab started for HUNT AND FIX and stopped in the same phase",
     "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002.",
-    "current_tag": "noesar-evolution:d0516-model-chooser-20260817T155937Z",
-    "deployed_utc": "2026-08-17T16:00:04Z",
+    "current_tag": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
+    "deployed_utc": "2026-08-21T03:24:36Z",
     "predecessor_container": "noesar-evolution-pre-20260817T160004Z",
     "image_lineage_note": "The lineage string below is the JULY chain and is kept as history only; docs/INSTALLATION_LEDGER.md is the authority for what is deployed. D-0519 (2026-08-17) corrected image/base_image/dockerfile here because a stale value beside a fresh one is a contradiction inside a single key, not merely old news."
   },
@@ -1123,7 +1120,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "PRIMA COSA DA DECIDERE: il DEBITO §3a. D-0611 e in albero, provato e NON INSTALLATO — sull immagine viva productMetric.record() ha ancora UN SOLO chiamante (la coda di approvazione), quindi la Home riporta una cifra che NON contiene le decisioni di CodeN Evolution e /review non esiste in nessuna delle due shell. NESSUN RISCHIO ATTIVO: non si perde nulla, si misura di meno. Se si deploya, lo strumento c e ed e provato: tools/deploy/redeploy.sh --check prima, poi --apply --authorized-by-owner --image <tag> con l immagine costruita offline dal oci/Dockerfile canonico. NESSUNA MIGRAZIONE DI SCHEMA: readySource e additivo e i campioni che ne sono privi sono letti come approval-raised, provato da un test. Poi resta UNA SOLA casella senza verdetto, CE-035, che chiede ssh + coden_evolution da un secondo nodo reale e quindi un VPS col prodotto installato SOPRA, mai questo host esposto. NOTA: il cablaggio di server.mjs e asserito sul TESTO del file spedito, non eseguito — nessun boot del server in questa fase.",
+  "next_action": "NON c e piu un debito 3a da decidere: albero e installazione coincidono, provato byte per byte. La prossima fase e debito. PRIMA: MANIFEST.sha256 — e l unico debito dove NESSUNA riga di matrice misura il criterio (5.898 percorsi elencati contro 6.685 tracciati, stale dal D-0399, e la batteria non lo verifica affatto): si rigenera E si aggiunge il passo che lo fa fallire, altrimenti fra dieci fasi sara stale di nuovo senza che nessuno se ne accorga. POI: D-0589, che blocca la posizione 5 di PKG-001 e sta quindi sul percorso delle cinque consegne. NON toccare CE-035 senza un VPS col prodotto installato sopra — mai questo host esposto a internet. NON provato sul vivo: che /review restituisca il numero giusto con una sessione autenticata (provato in albero 8/8 + 13/13; sul vivo e provato solo che la rotta esiste ed e protetta).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

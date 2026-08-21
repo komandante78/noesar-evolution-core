@@ -1,0 +1,132 @@
+===== IMAGE PROVENANCE =====
+root      : /mnt/cachec/NOESAR_EVOLUTION
+candidate : noesar-evolution:d0611-run-lane-metric-20260821T032222Z
+reference : noesar-evolution:d0606-replay-retention-20260820T132914Z
+
+candidate /opt/noesar: 473 files
+
+----- 4. TREE <-> IMAGE (candidate) -----
+  byte-equal to tree: 471 · differing: 0 · absent from tree: 0 · built in image: 2
+
+----- 4b. TREE -> IMAGE (nothing the recipe copies is missing) -----
+  expected from directory COPYs: 453 · missing from the image: 0
+reference /opt/noesar: 470 files
+
+----- 1. APPLICATION BYTES (candidate <-> reference) -----
+  differing lines: reference-only 9 · candidate-only 12
+  --- /tmp/tmp.2s8UqhQcPb/ref.files	2026-08-21 05:23:20.218637715 +0200
+  +++ /tmp/tmp.2s8UqhQcPb/cand.files	2026-08-21 05:23:18.177599087 +0200
+  @@ -1,15 +1,15 @@
+  -d6d9823e7bcc1a170d274abde6f33586b5023f7d7e8f159da2882ee7388e0d59  apps/shared/coden/agent-commands.js
+  +d0da5f3bfe0a2d090bb92f9b85f87c24ac0297d71ac3f5b67b6f800af0a15901  apps/shared/coden/agent-commands.js
+   e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  apps/shared/coden/coden-address-views.mjs
+   07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  apps/shared/coden/coden-addresses.js
+   83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  apps/shared/coden/terminal-input.mjs
+   2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  apps/shared/coden/tui-screen.mjs
+  -cbacdc97247e8a7904788d3c1e25974022e32192de024ad826f1ce91d230f307  apps/webui-static/app.js
+  +7b3dc7626fff60ece6d580fa5903775ee5f85a31bc2d34f738f51a27e39182ca  apps/webui-static/app.js
+   b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  apps/webui-static/coden-terminal-frame.js
+   2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  apps/webui-static/coden-terminal.html
+   7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  apps/webui-static/coden-terminal.js
+  -9d09207e0c7d446f3d12bacd02dc89c554d8d2c66bf106b1fcd5376ad33ecb9f  apps/webui-static/coden-view-model.js
+  +3d56485d335697e35578566aac1b0a43e65be58547460765ecc564d27659714b  apps/webui-static/coden-view-model.js
+   b031cc45bb94dd70cfd368549f368f725a111f625b408b1d031226822053eb2d  apps/webui-static/colour.js
+  -4704b0e700ac3baf82ea085dbf7b0b60d440ac3ce4cc41cad24efc28f38d93e1  apps/webui-static/i18n-catalog.js
+  +fdea3b56fadc5be5ead76e3dab10926ab4e593e2bc5eec8099ecccb0ba9ea650  apps/webui-static/i18n-catalog.js
+   a36a34d3b5547acc5e4b042250bcedf37aea9776fb38ac0c15ef05f5ec372402  apps/webui-static/i18n.js
+   a487a3b89bb14cc404ea5e539f9bd6bf97d20891265fa3a3ea213dd1c385c4dd  apps/webui-static/index.html
+   13debbf6c3f51d659d61875c1c5d2186e1fe399c9d4d21ccbc35819ef1209098  apps/webui-static/page-help.js
+  @@ -185,7 +185,7 @@
+   8cfd2e60921fefdcede89e7f83739360d1af82a99546d571d3cfb767e3adaee3  services/reference-control-plane/src/postgres-repository.mjs
+   fc17fabaee235f1888e87f14c0e01a0a9e9726ced9f4b9076064a2962711d318  services/reference-control-plane/src/postgres-supervisor.mjs
+   213c8d1eecf1c131353d45cb1ce109ece978bd36ecdf206e57e0efbf3cd95982  services/reference-control-plane/src/privacy.mjs
+  -e84b47e878e45e5d1c4d20117a68fe3bfaa5a97203ef1d96478f18937601d58a  services/reference-control-plane/src/product-metric.mjs
+  +d4dd091eca05aad1b69210196951ff0a7c8748da389066b10a0f02a0ca264fcc  services/reference-control-plane/src/product-metric.mjs
+   8c3ceb675e464cafc10d367665f3cc1b70db28f5a6da19378a44c7ee0f6d55b0  services/reference-control-plane/src/production-readiness.mjs
+   11661f3c5a1bd3549f12a1e653680b9eb18a201ab6a9ea4f81b135f9e0d1f8ee  services/reference-control-plane/src/publisher-registry.mjs
+   f14bf42997db0cb520a6ba058f8a0f1be3c61162d08fd05daed13766b417d570  services/reference-control-plane/src/reasoning-router.mjs
+  @@ -197,14 +197,15 @@
+   ae110e727820bccb092780bda6f5870349c43bfc517cf423186dc5c99059133c  services/reference-control-plane/src/request-origin.mjs
+   2ff5d537cecf36ef38820ec6c436f296a53432214701244d609d61747958f35f  services/reference-control-plane/src/research-gate.mjs
+   14f98829ee25ef77cecc11eb3b1c82b12ac73f1c177d1d8b32559227bf0e9fc0  services/reference-control-plane/src/research.mjs
+  +fad555e167c93430e76ac0bbc315e20dde7abd14c497e8fcb4e830681cbae84c  services/reference-control-plane/src/review-latency.mjs
+   54c1ca7109ba9abb1a8cad335ff9ea5cb8e87ce4ead67a12361af15bd1a7ebd7  services/reference-control-plane/src/run-store.mjs
+   2793de6a4561fa732db0f3c4a83f7654a5b6da1507ab2fb69a7ad2b22813e652  services/reference-control-plane/src/sandbox-runner.mjs
+   536bbea9e3530530f58222f027d7215906f655a3f3ba1757ae0a9f8315eb5792  services/reference-control-plane/src/scim.mjs
+   ab386e6a861b75e970e43ef54c8beb39aff8a9a8099bdb463180906cbb19e51e  services/reference-control-plane/src/sector-modules.mjs
+   0ed3d6aeed9dfbd0ddc7418ce1b5582f5316e9ff1f0284e030397fb1c11157c0  services/reference-control-plane/src/secure-address.mjs
+  -0839cabcc7c3fee0c8364fa3f57277d45d76ed8122032c7c6ee3ba69319254f6  services/reference-control-plane/src/server.mjs
+  +0361ac2c9c3a650fe3d0018953a8d93c76c557cd63f70f3d1b65402ed5c3f871  services/reference-control-plane/src/server.mjs
+   34790693943a0e582b12a7771b76dd4c969219bc8c1dccd5b6984a85c0f501fa  services/reference-control-plane/src/session-proof.mjs
+  -39fefd2e7891e86a39752f00a359b215f34f82df830914136e5f9ff68f5aaafe  services/reference-control-plane/src/session-protocol.mjs
+  +6664621ee52e27eca618636107c5ec2a35c7138e7de1ee95a6be804647cfcd46  services/reference-control-plane/src/session-protocol.mjs
+   2d56768fc2e2ad7c88a882e514682d82ce20dc901ea46378190b9f640f92689b  services/reference-control-plane/src/session-replay.mjs
+   35335eb80c782f85cb0420f3a904f2c6c32754d3652706e7f54974201e5f9c15  services/reference-control-plane/src/setup-token.mjs
+   afa6e965e0bc90a03021f7821f555989fe7fd92477b3b4dda3685cd07000065b  services/reference-control-plane/src/shadow.mjs
+  @@ -225,7 +226,7 @@
+   372e40a6fc034cc4f7d376f668de00c6aa169d07078f1f1d85d7236f60667d44  services/reference-control-plane/src/watchdog.mjs
+   6119c587d8aaacff4b852ebe0291b31999c23efc350e92d809d2a2990fbd300c  services/reference-control-plane/src/webauthn.mjs
+   0c5cf5e83daa6c806593ffa696ecd9d15a4f1d5f97c53389cb5aa74b7a14bf67  services/reference-control-plane/src/websocket.mjs
+  -0b5bde8a78aa30db1bb9735b3678dc49f502b6dd4909d6dfc32d795406ef3ff7  services/reference-control-plane/src/workspace-actions.mjs
+  +f8993be580352331e0c4eabdf41e424319c943a1ecd190dc2afc945cbae7a7bb  services/reference-control-plane/src/workspace-actions.mjs
+   0a563b4c119c66c727232f4ef43e92fe96e9bdd46c7bd34a7ddfaddb7b94641e  services/reference-control-plane/test/acceptance-matrix.test.mjs
+   75dd1f16e36add439e63456133ac7bf022e76f70186f39239735879213262b21  services/reference-control-plane/test/account-recovery.test.mjs
+   62914deb8793bb673db805fa1a0f626c4852fbea2523d83771138e406cb5b7c7  services/reference-control-plane/test/account-security.test.mjs
+  @@ -278,6 +279,7 @@
+   e8b18313536a59c25e6ef6b48e7494b2c585e471476c5886d5c23467bb465d1c  services/reference-control-plane/test/ce-020-tui-fullscreen.test.mjs
+   b21bf5afdc6e4c2e5417ed88cb90e2dac9e83e5a14dc0cf40293349f5dba5cd1  services/reference-control-plane/test/ce-021-one-live-session-across-both-shells.test.mjs
+   e7268d89e47063c9e708d3306d74d552a7ba02fc9025bc8b69c55324fc1367a0  services/reference-control-plane/test/ce-023-projection-coverage-report.test.mjs
+  +ff184fd02fc7b8fbfad6ea8a30f4452c30c698afdc9f548972eaefd0bbe82177  services/reference-control-plane/test/ce-024-the-run-lane-reaches-the-metric.test.mjs
+   350b746378b16ab531644d990f5b84e7874760e98322841f1d7d956fbc8e71f8  services/reference-control-plane/test/ce-025-author-never-names-a-path.test.mjs
+   173aee0ed042b96c944575aeb92767711db3e89eb8c550ecb1ee2725bf952890  services/reference-control-plane/test/ce-027-the-session-replays-its-decisions.test.mjs
+   bfc38e9e571a70cbd713367f6b495768cba57f3d6ca9ec4ff4eeaffad3f10231  services/reference-control-plane/test/ce-028-opposite-conventions-diverge.test.mjs
+  @@ -354,7 +356,7 @@
+   e5b07ff1be0f59ff5e79d1c17fc1f5c7b81876361bbf027a873660ca8d0d43f9  services/reference-control-plane/test/plan-composes-adopted-skills.test.mjs
+   736a61afc730cda28ad3092edc87d3f131c0b5a1e4febbafa3401ee63cceb0c0  services/reference-control-plane/test/postgres-repository.test.mjs
+   52e589292d8232dd9ced57e277bb1314b0b1c2dfc43987a56500623bc71a16b4  services/reference-control-plane/test/privacy-states.test.mjs
+  -8391d8a63897302d706e95b269723485f782c8a85c370c03b725bcfac2069a8c  services/reference-control-plane/test/product-metric.test.mjs
+  +512d94a1d911ba796f14fd5bafcbb714453dd3e603216f706a212cf0b1d44613  services/reference-control-plane/test/product-metric.test.mjs
+   22e4f03cc97878ef811fd160ea6aabc53c3329f42332524fe53db7a1b8d0bcc6  services/reference-control-plane/test/production-readiness.test.mjs
+   0d61132c37fdba07ffbaf7f669d03cc9659c98727af18f20e436edf0df9ca325  services/reference-control-plane/test/prompt-injection-containment.test.mjs
+   cc7fb6475509a80da3cdfb1de277dd8aa2ac556e22027a47444a515d776243a3  services/reference-control-plane/test/provider-gateway-success-paths.test.mjs
+  @@ -376,6 +378,7 @@
+   977ef559f66f651cf18773923463e3e83611115c6fa421c2ad33492634f4cda1  services/reference-control-plane/test/research-gate-http-adversarial.test.mjs
+   e5c01db43905e4d5851037a2a3c3bc24cd775520066db77e619714071ffb768f  services/reference-control-plane/test/research-gate.test.mjs
+   f9b0babce8a7c6763b0dfd46bf4dc0db9eca36716b4584643baf787aa2f532f8  services/reference-control-plane/test/research.test.mjs
+  +797a453da8ef85e29682f7d92e55240fd33a888bb3b9ffc545b7c23d27d68954  services/reference-control-plane/test/review-latency.test.mjs
+  FAIL: application bytes differ between candidate and reference
+
+----- 2. MODES AND SYMLINKS -----
+  --- /tmp/tmp.2s8UqhQcPb/ref.modes	2026-08-21 05:23:20.339640005 +0200
+  +++ /tmp/tmp.2s8UqhQcPb/cand.modes	2026-08-21 05:23:18.307601548 +0200
+  @@ -197,6 +197,7 @@
+   f 644 ./services/reference-control-plane/src/request-origin.mjs 
+   f 644 ./services/reference-control-plane/src/research-gate.mjs 
+   f 644 ./services/reference-control-plane/src/research.mjs 
+  +f 644 ./services/reference-control-plane/src/review-latency.mjs 
+   f 644 ./services/reference-control-plane/src/run-store.mjs 
+   f 644 ./services/reference-control-plane/src/sandbox-runner.mjs 
+   f 644 ./services/reference-control-plane/src/scim.mjs 
+  @@ -278,6 +279,7 @@
+   f 644 ./services/reference-control-plane/test/ce-020-tui-fullscreen.test.mjs 
+   f 644 ./services/reference-control-plane/test/ce-021-one-live-session-across-both-shells.test.mjs 
+   f 644 ./services/reference-control-plane/test/ce-023-projection-coverage-report.test.mjs 
+  +f 644 ./services/reference-control-plane/test/ce-024-the-run-lane-reaches-the-metric.test.mjs 
+   f 644 ./services/reference-control-plane/test/ce-025-author-never-names-a-path.test.mjs 
+   f 644 ./services/reference-control-plane/test/ce-027-the-session-replays-its-decisions.test.mjs 
+   f 644 ./services/reference-control-plane/test/ce-028-opposite-conventions-diverge.test.mjs 
+  @@ -376,6 +378,7 @@
+   f 644 ./services/reference-control-plane/test/research-gate-http-adversarial.test.mjs 
+   f 644 ./services/reference-control-plane/test/research-gate.test.mjs 
+   f 644 ./services/reference-control-plane/test/research.test.mjs 
+  +f 644 ./services/reference-control-plane/test/review-latency.test.mjs 
+   f 644 ./services/reference-control-plane/test/role-permissions-surface.test.mjs 
+   f 644 ./services/reference-control-plane/test/run-retention.test.mjs 
+   f 644 ./services/reference-control-plane/test/sandbox-runner.test.mjs 
+  FAIL: file modes or symlinks differ between candidate and reference
+
+----- 3. RUNTIME CONFIGURATION -----
+  identical: Env, Entrypoint, Cmd, User, WorkingDir, ExposedPorts, Volumes, Healthcheck
+
+RESULT: DRIFT — 2 check(s) failed. The shipped recipe does not reproduce the
+        shipped product; see the diffs above.

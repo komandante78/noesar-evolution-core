@@ -14151,3 +14151,59 @@ rotta caduta identica a un'installazione che non ha ancora deciso niente.
 **Costo di reversal.** Basso: `recordReview` e `getProductMetric` sono iniezioni opzionali —
 toglierle riporta la metrica alla sola coda di approvazione, senza rompere nulla.
 **Status.** applied in albero — **NON installato, debito §3a aperto e dichiarato**.
+
+## D-0612 · `D-0611` installato: il debito §3a è chiuso — 2026-08-21
+**Decision.** L'albero provato il 2026-08-20 è stato costruito e installato come
+`d0611-run-lane-metric-20260821T032222Z`, con la sequenza `§3a 11c` per intero.
+**Why.** Finché non era installato, la Home dell'installazione viva riportava una cifra che
+**non conteneva** le decisioni di CodeN Evolution e `/review` non esisteva in nessuna delle due
+shell: `CE-024` era chiusa in albero e falsa sul prodotto che gira.
+**Rejected.** Rimandare al deploy successivo, accorpandolo a `CE-035` o al debito minore: perde
+l'unico momento in cui il diff è piccolo e interamente provato.
+**Evidence.** Byte-uguale albero↔immagine **471/471** differing **0**; deriva candidato↔
+riferimento **esattamente** `git diff 4977d54..HEAD` sui percorsi copiati (12 file);
+`productMetric.record()` **3 call site** contro 1, letti **dentro l'immagine spedita**; env
+**44 = 44** con diff dei nomi vuoto; live `/livez` `/readyz` `/healthz` **200**, TLS **200**,
+gate `401`/`404`/`200`, 0 auth-failure; unit **2922**, matrice **PASS**, fixture deploy **80/80**.
+**Reversal cost.** Nessuna migrazione (`migrations=20` invariato), `readySource` additivo;
+rollback = rinominare `noesar-evolution-pre-20260821T032436Z` e riavviarlo.
+**Status.** applied + installed. Debito §3a: **nessuno aperto**.
+
+## D-0613 · Proposta: il verificatore di provenienza distingua «più nuovo» da «derivato» — 2026-08-21
+**Decision.** Proposta, **non eseguita**: insegnare a `tools/verify-image-provenance.sh` la
+modalità a due argomenti a separare *«il candidato è il riferimento più un diff spiegato»* da
+*«deriva inspiegata»*, confrontando la lista dei file difformi con il `git diff` fra i due commit.
+**Why.** Misurato in questa fase: la forma a due argomenti stampa
+`RESULT: DRIFT — the shipped recipe does not reproduce the shipped product` ed esce **1** su un
+deploy **perfettamente riuscito**, perché il candidato *deve* differire dal predecessore. Un
+verdetto che è rosso ogni volta che il deploy funziona è un verdetto che si impara a ignorare —
+e la discriminazione l'ho dovuta fare a mano, con `git diff --name-only`, fuori dallo strumento.
+**Rejected.** Togliere la forma a due argomenti: è l'unica che confronta prodotto con prodotto.
+**Evidence.** `EVIDENCE/image_provenance_D0611_20260821T032222Z.txt` — sezione 4 (il cancello che
+`redeploy.sh` consulta davvero) **PASS**, sezioni 1 e 2 **FAIL** sui 12 file attesi.
+**Reversal cost.** Nessuno — nulla dipende oggi dall'exit code della forma a due argomenti.
+**Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 5** (affidabilità misurabile:
+riproducibilità e provenienza) **e tratto 2** (riusabile fuori da questo prodotto).
+
+## D-0614 · `PROJECT_STATE.json.installation` era ferma a dieci deploy fa — riparata — 2026-08-21
+**Decision.** La chiave `installation` di `PROJECT_STATE.json` è stata riallineata
+all'installazione reale, e la **regola** che ha prodotto il difetto con essa: il passo `DOCUMENT`
+di una fase che installa aggiorna **questa chiave**, non solo `docs/INSTALLATION_LEDGER.md`.
+**Why.** Trovata durante `D-0612`: diceva `image: d0516-model-chooser` del **2026-08-17** e
+`health: … misurato 2026-08-17T16:00Z`, mentre **dieci** deploy successivi (`d0559`, `d0565`,
+`d0577`, `d0579`, `d0581`, `d0583`, `d0586`, `d0590`, `d0601`, `d0606`) l'avevano lasciata
+indietro. Il ledger era corretto ogni volta; la chiave no. Una sessione fredda che apre lo stato
+— che è ciò che le regole 5-7 le dicono di fare **per prima** — avrebbe creduto di girare su
+un'immagine di quattro giorni prima. È la regola 43 alla lettera: un documento che descrive un
+comportamento che il sistema non ha, con la stessa gravità di un bug.
+**Rejected.** Lasciarla e fidarsi del ledger: il ledger è append-only e cresce, la chiave è
+**ciò che il digest stampa** — chi legge lo stato non arriva al ledger.
+**Evidence.** `docker inspect noesar-evolution --format '{{.Config.Image}}'` =
+`d0611-run-lane-metric-20260821T032222Z` contro `d0516-model-chooser-20260817T155937Z` scritto
+nella chiave; `deployed_utc` corretto a `2026-08-21T03:24:36Z`; `rollback_containers` elencava
+**quattro** contenitori del 2026-07-25 che §21b vieta e che non esistono più — ora ne elenca
+**uno**, quello che esiste davvero. Nessuna chiave di primo livello aggiunta: **128 = 128**.
+**Reversal cost.** Nessuno — è documentazione, e il backup è
+`BACKUPS/PROJECT_STATE.json.pre_d0612_20260821T032914Z`.
+**Status.** applied. **Fit di finanziamento: nessuno** — è igiene di stato interna, e dirlo vale
+più di una pretesa allargata.
