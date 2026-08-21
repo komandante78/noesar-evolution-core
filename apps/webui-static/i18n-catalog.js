@@ -768,9 +768,8 @@ const it = {
 
   // ——— Documents / Artifacts ———
   'VERSIONED OUTPUTS': 'RISULTATI VERSIONATI',
-  'Artifacts': 'Artefatti',
   'Create and edit documents, code, tables, charts, canvas data and application specifications.': 'Crea e modifica documenti, codice, tabelle, grafici, dati su tela e specifiche di applicazioni.',
-  'New artifact': 'Nuovo artefatto',
+  'New document': 'Nuovo documento',
   'Type': 'Tipo',
   'document': 'documento',
   'code': 'codice',
@@ -779,9 +778,9 @@ const it = {
   'canvas': 'tela',
   'application': 'applicazione',
   'Content': 'Contenuto',
-  'Create artifact': 'Crea artefatto',
+  'Create document': 'Crea documento',
   'Versioned': 'Versionato',
-  'No artifacts.': 'Nessun artefatto.',
+  'No documents.': 'Nessun documento.',
 
   // ——— Knowledge ———
   'HYBRID RETRIEVAL': 'RECUPERO IBRIDO',
