@@ -7,7 +7,9 @@ senza guardare la pagina renderizzata. `T2` eseguita: browser **506 · 505 pass 
 **Prima in questa sessione:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622`
 · `D-0625` (il catalogo modelli ha dei modelli).
 **Live installation:** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, `running`/`healthy`.
-**Nessun debito §3a aperto.** Debito di verifica **saldato**: `T2` eseguita.
+**Debito §3a APERTO e dichiarato**: `D-0634` è in albero, non installato. Il seed modelli
+sull'installazione viva mostra ancora le descrizioni in italiano (verificato dentro il
+contenitore). Nessun rischio attivo — si accoda al prossimo deploy che tocca `#/models`.
 
 ## ➜ LA PROSSIMA AZIONE
 

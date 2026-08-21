@@ -14532,9 +14532,17 @@ Un secondo giro ha trovato `parameters` (renderizzato, verificato in `app.js:577
 percorsi tracciati — aggiunto, e due valori (`~1.1T`, `14B`) hanno richiesto le loro voci.
 Suite finale: unit **2974** (2973 pass, 0 fail, 1 skip), ESLint **474 file 0/0/0**,
 `SOURCE_VERIFY=PASS`, copertura i18n **31/31 `it`, 0 voci morte**.
-**Reversal cost.** Nessuno — nessuna installazione toccata, `capabilities/model-catalog-seed.json`
-non entra nell'immagine (verificato in `D-0625`).
-**Status.** applied. `F-MODEL-SEED-I18N-001` (mai aperta formalmente, solo in `D-0630`) chiusa.
+**Reversal cost.** Nessuno sul codice. **Debito §3a APERTO e dichiarato**, a differenza di
+`D-0625`: `capabilities/model-catalog-seed.json` **entra nell'immagine** (`oci/Dockerfile`,
+riga aggiunta in `D-0625` per farcelo entrare), quindi questa modifica cambia cosa l'albero
+dice senza cambiare cosa l'installazione mostra. Verificato **dentro il contenitore vivo**:
+`grep` su `/opt/noesar/capabilities/model-catalog-seed.json` trova ancora *"Uno dei modelli…"*
+— le descrizioni in italiano sono tuttora servite. Nessun rischio attivo (il prodotto funziona,
+mostra solo la lingua sbagliata di default), ma non richiuso in questa fase: la sequenza di
+`D-0627` viene prima per ordine dell'Owner, e un deploy per una sola stringa di lingua non vale
+la sequenza §3a 11c per sé; si accoderà al prossimo deploy che tocca questa pagina.
+**Status.** applied in albero, **NON installato**. `F-MODEL-SEED-I18N-001` (mai aperta
+formalmente, solo in `D-0630`) chiusa in albero, aperta sul vivo finché non si deploya.
 
 ## D-0631 · Scadenza esterna registrata: NLnet riapre 2026-09-03, prima scadenza 2026-11-03 — 2026-08-21
 **Decision.** Registrato come fatto di progetto, non come lavoro eseguito: se si punta su
