@@ -14463,3 +14463,51 @@ errori. `noesar-evolution-budget` §2 dice di fermarsi e proporre la divisione, 
 **Reversal cost.** Nessuno — nulla è stato cambiato.
 **Status.** deferred, ed è **la prima cosa da fare** sui modelli. **Fit di finanziamento: nessuna**
 — è igiene del proprio metro, e dirlo vale più di una pretesa allargata.
+
+## D-0628 · La pagina dei modelli si legge a colpo d'occhio — riquadri 3+3, categorie a vista — 2026-08-21
+**Decision.** `pageSize` 24 → **6**; griglia dedicata `.model-grid` a **due colonne** (3 a sinistra,
+3 a destra), una sola sotto i 900px; il riquadro ha una gerarchia vera; chip di categoria con i
+conteggi. Costruito, provato, **installato**.
+**Why.** Owner, 2026-08-21: *«così non si capisce nulla, troppo statico e poco intuitivo»*. Aveva
+ragione, e la causa la nomino invece di spiegarla: ho costruito `D-0625` **senza applicare
+`CLAUDE10.md` §76** — gerarchia visiva, componenti coerenti e layout responsive sono di **prima
+classe**, non rifinitura. Sotto c'è un difetto più semplice: **ho spedito la pagina senza mai
+guardarla renderizzata**. Misurato: `.card-list{display:grid;gap:10px}` — una colonna sola,
+nessuna traccia definita; e `pageSize` 24, un numero che nessuno aveva mai visto su uno schermo.
+**Rejected.** Allargare `.card-list`: la usano altri pannelli e li avrebbe cambiati tutti — un
+effetto collaterale che nessuno aveva chiesto.
+**Evidence.** Unit **2973** (2972 pass, 0 fail, 1 skip) · ESLint **474 file 0/0/0** ·
+byte-uguale albero↔immagine **476/476** · **`T2` eseguita**: browser **506 · 505 pass · 1 fail**
+(il gap `F-I18N-002` già dichiarato) · e il riquadro **visto renderizzato** nell'output della
+suite: nome, badge di categoria, pubblicatore, descrizione.
+**Reversal cost.** Nessuna migrazione. Rollback: `noesar-evolution-pre-20260821T082532Z`.
+**Status.** applied + **installed**.
+
+## D-0629 · Tre difetti presi dalle suite, non da me — 2026-08-21
+**Decision.** Riparati dentro la fase.
+**Why.** (1) Avevo scritto `aria-label="Filtra per categoria"` **in italiano nel markup**:
+è la regola 49, e l'ha presa la suite i18n, non io. (2) `'All'` e `'source'` andavano in
+`RUNTIME_ONLY` — le compone `app.js` e nel markup non compaiono, quindi il controllo **inverso**
+le leggeva come voci stantie. (3) Un mio test leggeva solo la **prima pagina**, e con `pageSize`
+sceso a 6 gli 8 modelli si spezzano su due: la riga era diventata dipendente dall'impaginazione
+invece che dal contenuto della carta.
+**Evidence.** `ui-language-coverage` **25/25** dopo, e la sua riga *«the check can actually go
+red»* prova che l'oracolo funziona.
+**Status.** applied.
+
+## D-0630 · Le descrizioni del seed sono in italiano, fuori dal livello di traduzione — 2026-08-21
+**Decision.** **Difetto registrato, non riparato in questa fase.**
+**Why.** Trovato **guardando l'output di `T2`**, che è precisamente il passo che non avevo fatto:
+il riquadro si rende *«FLUX.1-schnell · Immagini · Black Forest Labs · non dichiarato dalla fonte ·
+Generazione…»*. Le descrizioni che ho scritto in `capabilities/model-catalog-seed.json` sono
+**stringhe visibili all'utente, in italiano, cablate fuori dal catalogo di traduzione** — la
+regola 50 alla lettera. La suite i18n non l'ha presa perché **scansiona il markup, non i file di
+dati**: un'intera classe di stringhe visibili che nessun controllo guarda.
+**Rejected.** Ripararlo adesso: avevo dichiarato un tetto di 45 chiamate per questa fase e sono
+al tetto. Sfondarlo dopo aver promesso di non farlo è peggio del difetto.
+**Evidence.** L'output della suite browser di questa sessione, verbatim sopra.
+**Reversal cost.** Nessuno — nulla è stato cambiato.
+**Status.** open. **Due cose da fare, e la seconda vale più della prima:** portare le descrizioni
+in inglese col loro italiano nel catalogo di traduzione **e** far sì che il controllo i18n legga
+anche i file di dati, altrimenti la prossima stringa cablata passa di nuovo.
+**Fit di finanziamento: nessuna** — è igiene di localizzazione.

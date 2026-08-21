@@ -1,22 +1,26 @@
 # SESSION HANDOFF
 
-**`D-0625`: la pagina dei modelli fa quello che l'Owner aveva chiesto il 2026-08-04 — e per
-tredici sessioni non l'ha fatto.** `#/models` era **vuota**: la macchina c'era (corsie, filtri,
-paginazione, trasporto), il catalogo no. Ora porta **8 modelli reali in 7 categorie**, ognuno con
-descrizione, e l'**elimina a doppia conferma** che non esisteva affatto. **Installato**, non in
-albero.
-**Prima in questa sessione:** `D-0612` (`D-0611` installato) · `D-0615` (`MANIFEST.sha256` era
-falso su 114 file, `F-MANIFEST-001` CHIUSA) · `D-0619` (provenienza Ed25519 verificabile da terzi)
-· `D-0622` (la custodia della chiave è dell'operatore).
-Riparati chiudendo: `D-0614`, `D-0616`, `D-0618`, `D-0620`, `D-0623`, `D-0626` (quattro).
-Proposti/registrati: `D-0613`, `D-0617`, `D-0621`, `D-0624`, **`D-0627`**.
-**Live installation:** `noesar-evolution:d0625-model-catalog-20260821T080244Z`, `running`/
-`healthy`. **Nessun debito §3a aperto.**
+**`D-0628`: `#/models` si legge a colpo d'occhio.** Sei modelli per pagina in griglia **3+3**,
+riquadri con gerarchia, **chip di categoria** con i conteggi. Prima era una colonna sola con 24
+schede: `.card-list{display:grid;gap:10px}`, nessuna traccia definita. **Installato.**
+**La causa, nominata e non spiegata:** `D-0625` era stato costruito **senza applicare §76** —
+grafica, esperienza d'uso e gerarchia sono di prima classe — e **senza mai guardare la pagina
+renderizzata**. `T2` eseguita adesso: browser **506 · 505 pass · 1 fail** (`F-I18N-002`, gap già
+dichiarato), e guardare il render **ha subito prodotto `D-0630`**.
+**Prima in questa sessione:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622`
+· `D-0625` (il catalogo modelli ha dei modelli).
+**Live installation:** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, `running`/`healthy`.
+**Nessun debito §3a aperto.** Debito di verifica **saldato**: `T2` eseguita.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**PRIMA DI TUTTO, `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici
-sessioni.** `model-catalog.mjs` cita `MC-002`, `MC-004`, `MC-005` e `MC-006` come criteri, e
+**`D-0630` — le descrizioni del seed sono in italiano fuori dal livello di traduzione**, cioè la
+regola 50 alla lettera, e **la suite i18n non le vede perché scansiona il markup e non i file di
+dati**. Due cose, e la seconda vale più della prima: portarle in inglese col loro italiano nel
+catalogo, **e** far leggere al controllo i18n anche i file di dati — altrimenti la prossima
+stringa cablata passa di nuovo. Trovato guardando il render, non leggendo il codice.
+
+**POI `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.** `model-catalog.mjs` cita `MC-002`, `MC-004`, `MC-005` e `MC-006` come criteri, e
 nella matrice **non esiste nemmeno una riga `MC-`** (misurato: 0 su 67). Niente misurava quella
 pagina, quindi niente è mai diventato rosso. `tools/acceptance-matrix.mjs` legge solo i documenti
 `MASTER_PROJECT/`, e `docs/MODEL_CATALOG_DESIGN.md` non è fra quelli: o la tabella MC entra in un
@@ -76,10 +80,8 @@ questo host esposto a internet. **Bloccata su una risorsa che l'Owner non ha anc
 **`D-0611` è installato (`D-0612`).** Byte-uguale albero↔immagine **471/471**, deriva esattamente
 uguale al diff di git. Dettaglio: `docs/INSTALLATION_LEDGER.md`.
 
-**`MANIFEST.sha256` diceva il falso (`D-0615`).** Misurato prima: **114 hash sbagliati**, **818**
-file tracciati non elencati, **6** voci per file non tracciati. Mantenuto a mano in 109 commit,
-**mai diventato rosso perché nessuno lo guardava**. Ora è `git ls-files` meno sé stesso — **6.717**
-voci a fine sessione — con `--check` in `scripts/test.sh` **e** nel pre-commit.
+**`D-0615`** — `MANIFEST.sha256` era falso su 114 file e taceva su 818: ora e `git ls-files`
+meno se stesso, sotto due gate. Dettaglio: `docs/DECISION_LOG.md`.
 
 **`D-0619`** — provenienza Ed25519, round-trip col Python reale, entrambe le firme verificano.
 Dettaglio: `docs/DECISION_LOG.md`, `rust/BUILD_STATUS.md`.

@@ -5938,3 +5938,22 @@ Salute riprovata dopo la pulizia: `/livez` **200**.
 RENDANO come previste è provato in albero (47/47 + 9/9), sul vivo è provato che le rotte
 esistono e sono protette. **T2 non eseguita** (browser e2e, accessibilità): il markup è cambiato,
 quindi è dovuta e **manca** — dichiarata, non implicita.
+
+## `d0628-model-tiles-20260821T082515Z` — DEPLOYATO e verificato — 2026-08-21
+**Tag.** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, costruito offline dal
+`oci/Dockerfile` canonico (exit 0), installato con la sequenza §3a 11c.
+**Cosa cambia per chi usa il prodotto.** `#/models`: **sei modelli per pagina** in griglia
+**3+3**, riquadri con nome, badge di categoria, descrizione, licenza, tipo e contesto, azioni
+allineate al fondo; **chip di categoria** con i conteggi al posto della sola tendina; una colonna
+sotto i 900px.
+**Verifica.** Byte-uguale albero↔immagine **476/476**, differing **0**. Letto **dentro l'immagine
+spedita**: `.model-grid` alla riga 1534 e la media query a 1540, `pageSize = 6` alla riga 237,
+il contenitore dei chip nel markup. **`T2` ESEGUITA** — browser **506 · 505 pass · 1 fail**, il
+solo `F-I18N-002` già dichiarato; la sonda, il runner e l'immagine di prova **rimossi da sé**.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0 auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260821T082532Z`.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260821T080318Z` rimosso.
+Contenitori **52 → 52**, volumi **65 → 65**, reti **10 → 10**. Superstiti di progetto: **due**.
+**Un difetto trovato PROPRIO guardando il render (`D-0630`), e lasciato aperto:** le descrizioni
+del seed sono in italiano fuori dal livello di traduzione (regola 50), e la suite i18n non le
+vede perché scansiona il markup e non i file di dati.

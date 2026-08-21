@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0625 — la pagina #/models fa quello che l Owner aveva chiesto il 2026-08-04 e che per tredici sessioni non ha fatto: 8 modelli reali in 7 categorie, ognuno con descrizione, pubblicatore, licenza e fonte; elimina a doppia conferma che non esisteva affatto. La macchina c era da s333, il catalogo no: /workspace/models/catalog non esiste su un installazione nuova, quindi la pagina era VUOTA. Costruito, provato e INSTALLATO nella stessa fase.",
-  "phase_status": "DEPLOYATO. Unit 2973 (2972 pass, 0 fail, 1 skip preesistente), ESLint 474 file 0/0/0, SOURCE_VERIFY=PASS nul-free=1163, byte-uguale albero-immagine 476/476, seed letto DENTRO l immagine spedita (8 modelli, 7 categorie), live /livez /readyz /healthz 200 e le tre rotte nuove 401 non autenticate / 404 su rotta inesistente, oracoli visti rossi 2 su 2. NON ESEGUITA T2 (browser e2e, accessibilita): il markup e cambiato, quindi e DOVUTA e MANCA. Fase chiusa a ~270% del budget dichiarato.",
-  "next_phase": "D-0627 (le righe MC nella matrice — la causa radice), poi T2 sul markup nuovo, poi la passata live dell Owner, poi D-0621/D-0624.",
+  "current_phase": "D-0628 — #/models si legge a colpo d occhio: sei modelli per pagina in griglia 3+3, riquadri con gerarchia, chip di categoria con i conteggi. Prima era UNA colonna con 24 schede. La causa: D-0625 costruito senza applicare §76 (grafica ed esperienza d uso sono di prima classe) e senza mai guardare la pagina renderizzata.",
+  "phase_status": "DEPLOYATO. Unit 2973 (2972 pass, 0 fail, 1 skip), ESLint 474 file 0/0/0, byte-uguale albero-immagine 476/476, T2 ESEGUITA (browser 506 · 505 pass · 1 fail, il solo F-I18N-002 gia dichiarato). Debito di verifica della fase precedente SALDATO. Guardare il render ha subito prodotto D-0630.",
+  "next_phase": "D-0630 (descrizioni del seed in italiano fuori dal livello di traduzione, E il controllo i18n che non legge i file di dati), poi D-0627 (le righe MC nella matrice), poi la passata live dell Owner.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "7ce97f0",
-  "last_updated_utc": "2026-08-21T08:15:00Z",
+  "last_updated_utc": "2026-08-21T08:40:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -110,9 +110,9 @@
   "database_mutation": false,
   "network_configuration": true,
   "installation": {
-    "image": "noesar-evolution:d0625-model-catalog-20260821T080244Z",
+    "image": "noesar-evolution:d0628-model-tiles-20260821T082515Z",
     "image_lineage": "CORRETTO 2026-08-21 (D-0614): questa chiave era ferma a d0516-model-chooser (2026-08-17) mentre DIECI deploy successivi (d0559, d0565, d0577, d0579, d0581, d0583, d0586, d0590, d0601, d0606) l avevano lasciata indietro. Il ledger era giusto, questa chiave no — e una sessione fredda che legge lo stato invece del ledger avrebbe creduto di girare su un immagine di quattro giorni prima. La regola riparata, non solo l istanza: il passo DOCUMENT di una fase che installa aggiorna QUESTA chiave, non solo il ledger.",
-    "base_image": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
+    "base_image": "noesar-evolution:d0625-model-catalog-20260821T080244Z",
     "dockerfile": "oci/Dockerfile (canonico — le overlay Dockerfile.phase4-* non sono piu usate dal D-0565)",
     "build_network": "default (docker build --pull=false; i livelli apt sono venuti dalla cache, NESSUN fetch di rete osservato — non e --network=none e non si dichiara tale)",
     "container": "noesar-evolution",
@@ -122,16 +122,16 @@
     "bind_address": "192.168.178.100",
     "bind_scope": "lan",
     "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
-    "health": "running/healthy, RestartCount=0, /livez /readyz /healthz 200, 4 figli, 0 auth-failure — misurato 2026-08-21T08:05Z",
+    "health": "running/healthy, /livez /readyz /healthz 200, 4 figli, 0 auth-failure — misurato 2026-08-21T08:35Z",
     "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
     "rollback_containers": [
-      "noesar-evolution-pre-20260821T080318Z (image d0611-run-lane-metric-20260821T032222Z) — l UNICO rollback che §21b permette"
+      "noesar-evolution-pre-20260821T082532Z (image d0625-model-catalog-20260821T080244Z)"
     ],
     "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z and .probe-reverify-20260725T142301Z (stopped; created by the completion gate)",
     "host_impact": "networks and volumes diff IDENTICAL against the pre-gate inventory; the 37 unrelated containers untouched and still Exited; noesar-debuglab started for HUNT AND FIX and stopped in the same phase",
     "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002.",
-    "current_tag": "noesar-evolution:d0625-model-catalog-20260821T080244Z",
-    "deployed_utc": "2026-08-21T08:03:18Z",
+    "current_tag": "noesar-evolution:d0628-model-tiles-20260821T082515Z",
+    "deployed_utc": "2026-08-21T08:25:32Z",
     "predecessor_container": "noesar-evolution-pre-20260817T160004Z",
     "image_lineage_note": "The lineage string below is the JULY chain and is kept as history only; docs/INSTALLATION_LEDGER.md is the authority for what is deployed. D-0519 (2026-08-17) corrected image/base_image/dockerfile here because a stale value beside a fresh one is a contradiction inside a single key, not merely old news."
   },
@@ -1120,7 +1120,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "PRIMA DI TUTTO D-0627, la causa radice per cui #/models e rimasta vuota tredici sessioni: model-catalog.mjs cita MC-002, MC-004, MC-005 e MC-006 come criteri e nella matrice NON ESISTE NEMMENO UNA RIGA MC- (misurato: 0 su 67). Niente misurava quella pagina, quindi niente e mai diventato rosso — e la regola 5 della skill dice esattamente questo: un criterio che nessuna riga di matrice misura NON e chiuso. Rimedio identificato: tools/acceptance-matrix.mjs legge solo i documenti MASTER_PROJECT/, e docs/MODEL_CATALOG_DESIGN.md non e fra quelli; o la tabella MC entra in un documento gia sorgente, o SOURCES impara a leggere quel file. E una decisione sul metro, non un dettaglio. NON riparata in D-0625 perche quella fase e finita a ~270% del budget dichiarato. SUBITO DOPO: T2 intero (browser e2e + accessibilita) — il markup di #/models e cambiato e T2 non e stata eseguita, quindi e un debito di verifica DICHIARATO. POI la passata live dell Owner (docs/OWNER_REVIEW_2026-08-21.md), che resta prima di D-0621.",
+  "next_action": "D-0630. Le descrizioni in capabilities/model-catalog-seed.json sono stringhe VISIBILI all utente scritte in italiano e cablate fuori dal catalogo di traduzione: e la regola 50 alla lettera. Trovato guardando l output di T2, non leggendo il codice. DUE COSE, e la seconda vale piu della prima: (1) portarle in inglese con la resa italiana nel catalogo; (2) far si che il controllo i18n legga ANCHE i file di dati — oggi scansiona solo il markup, quindi un intera classe di stringhe visibili non e guardata da nessun controllo e la prossima cablata passa di nuovo. POI D-0627: model-catalog.mjs cita MC-002/004/005/006 come criteri e nella matrice non esiste NEMMENO UNA riga MC- (0 su 67) — e la ragione per cui la pagina e rimasta vuota tredici sessioni senza che niente diventasse rosso. POI la passata live dell Owner (docs/OWNER_REVIEW_2026-08-21.md).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
