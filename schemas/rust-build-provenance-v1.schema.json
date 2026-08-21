@@ -73,6 +73,24 @@
     "workspacePath": {
       "minLength": 1,
       "type": "string"
+    },
+    "publiclyVerifiable": {
+      "description": "Whether a publicly verifiable signature is present. NOT trusted by any verifier: tools/verify-build-provenance.mjs recomputes the verdict from publicSignature and ignores this field in both directions (D-0589). It is here so a reader can see the claim, never so a checker can rely on it.",
+      "type": "boolean"
+    },
+    "publicSignature": {
+      "description": "Ed25519 signature (D-0589) over the document with every key of the signature envelope removed, canonical JSON. Verifiable by anyone holding the public key, which is what PKG-001 position 5's independent audit requires and what the symmetric HMAC signature can never provide.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["algorithm", "value", "publicKeyFingerprint"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "value": { "type": "string", "minLength": 1 },
+        "publicKeyFingerprint": { "pattern": "^[a-f0-9]{64}$", "type": "string" },
+        "signedAt": { "type": "string", "minLength": 1 },
+        "covers": { "type": "string", "minLength": 1 },
+        "envelopeKeys": { "type": "array", "items": { "type": "string" } }
+      }
     }
   },
   "required": [

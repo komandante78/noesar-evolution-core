@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0615 — MANIFEST.sha256 non era stale, era FALSO su 114 file: rigenerato dall albero tracciato e messo sotto due gate, con oracolo visto rosso prima. F-MANIFEST-001 CHIUSA. D-0616: difetto latente riparato nel codice nuovo prima che spedisse (una regola scritta due volte avrebbe incastrato il gate su un symlink tracciato).",
-  "phase_status": "COMPLETE. NESSUN DEBITO 3a — misurato dentro l immagine viva: /opt/noesar/MANIFEST.sha256 non esiste e tools/ ne contiene 8 file, non generate-manifest.mjs. Unit 2935 (2934 pass, 0 fail, 1 skip preesistente), ESLint 468 file 0/0/0, SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155, manifest 13/13 con oracolo visto rosso 3 volte, MANIFEST=OK 6712 files complete against git, degrado senza git = exit 2 che la batteria tratta come PARTIAL mai come PASS.",
-  "next_phase": "D-0589 — provenienza HMAC simmetrica: blocca la posizione 5 di PKG-001 e sta quindi sul percorso delle cinque consegne. Poi D-0617 (firmare il manifest), D-0609 (shellcheck), D-0605, D-0613.",
+  "current_phase": "D-0619 — D-0589 eseguito: la provenienza del build Rust porta una firma Ed25519 che un auditor indipendente verifica con la SOLA chiave pubblica, accanto all HMAC che gia c era. Le due firme coprono lo stesso payload (il documento meno l intera busta), provato con round-trip cross-linguaggio sul codice Python vero. D-0620: riparato un difetto di portabilita nel codice nuovo prima che spedisse.",
+  "phase_status": "COMPLETE. NESSUN DEBITO 3a — niente di questa fase entra nell immagine. Unit 2946 (2945 pass, 0 fail, 1 skip preesistente), ESLint 471 file 0/0/0, SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155, MANIFEST=OK 6715 files, fixture hook 71/71, Python test-rust-build-provenance 11 OK in contenitore offline, oracoli visti rossi 4 su 4 — inclusa la prova che togliendo publicSignature dalla busta Python l HMAC si rompe sul documento contro-firmato.",
+  "next_phase": "D-0621 — estendere la firma pubblica ai cinque archivi di 09_PIANO.md 4a. Lo strato esiste ed e generico: e riuso, non costruzione. Poi D-0617 (firmare MANIFEST.sha256), D-0609, D-0605, D-0613.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "565c5ef",
-  "last_updated_utc": "2026-08-21T04:47:00Z",
+  "last_updated_utc": "2026-08-21T05:15:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1120,7 +1120,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0589. E il prossimo per una ragione sola: blocca la posizione 5 di PKG-001, quindi e l unico debito aperto che sta sul percorso delle cinque consegne. POI, in ordine di valore: D-0617 — firmare il manifest. D-0615 lo rende vero DENTRO il repository, ma chi altera un file E rigenera passa ancora ogni gate: la catena si ferma a manifest->file e le manca firma->manifest; lo strumento Ed25519 (sign-release-artifact.mjs) esiste gia ed e provato sui quattro SBOM. NON toccare CE-035 senza un VPS col prodotto installato sopra — mai questo host esposto a internet. NOTA sul flusso di lavoro cambiato da D-0615: il pre-commit ora verifica MANIFEST.sha256, quindi dopo aver modificato file tracciati si esegue node tools/generate-manifest.mjs e si ri-stage prima di committare. Il gate ha gia fallito sulle modifiche della fase che lo ha introdotto — funziona.",
+  "next_action": "D-0621. ATTENZIONE AL CONFINE CHE D-0619 HA SPOSTATO: la posizione 5 di PKG-001 ora PUO chiudersi, ma NON E CHIUSA — si chiude quando un archivio di consegna esiste ed e firmato, e NESSUN archivio di consegna e mai stato prodotto (09_PIANO.md lo dice). Dirlo diversamente sarebbe un falso PASS. Quindi il lavoro vero e: produrre gli archivi, e firmarli con lo strato che ora esiste. DECISIONE DELL OWNER CHE BLOCCA IL RILASCIO, e non e tecnica: dove vive la chiave di rilascio durevole (HSM, secret manager, cold storage) — quella usata finora e di sessione e non e mai committata, stessa classe di D-0250/D-0266, non si inventa qui. NON toccare CE-035 senza un VPS col prodotto installato sopra. PROMEMORIA sul flusso: dopo aver modificato file tracciati serve node tools/generate-manifest.mjs e un re-stage, altrimenti il pre-commit blocca (D-0615).",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

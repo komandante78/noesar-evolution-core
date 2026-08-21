@@ -5866,3 +5866,27 @@ sonda di lettura dell'immagine, tutti `--rm`. Sopravvivono i due previsti: `noes
 (Up, healthy) e `noesar-evolution-pre-20260821T032436Z` (Exited).
 **Costo di rollback.** Nessuno — nessuna modifica al prodotto installato. Backup del manifest
 precedente: `BACKUPS/MANIFEST.sha256.pre_d0615_20260821T041420Z`.
+
+## 2026-08-21T05:10Z — `D-0619` · provenienza pubblicamente verificabile, **l'installazione non è stata cambiata**
+**Tag in esecuzione:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z` — invariato.
+**NESSUN DEBITO §3a.** Niente di questa fase entra nell'immagine: `tools/` nell'immagine contiene
+8 file (verificato in `D-0615`), e i due strumenti nuovi non sono fra quelli; `schemas/` copia i
+descrittori di modello e di modulo, non `rust-build-provenance-v1`; `rust/BUILD_STATUS.md`,
+`scripts/test.sh` e i test non sono copiati dal `oci/Dockerfile`.
+**Cosa è cambiato in albero.** Nuovi `tools/sign-build-provenance.mjs` e
+`tools/verify-build-provenance.mjs`; `ENVELOPE_KEYS` estesa con `publicSignature` nei due
+strumenti Python; `schemas/rust-build-provenance-v1.schema.json` descrive `publicSignature`;
+`rust/BUILD_STATUS.md` dice il vero (il paragrafo che spiegava perché Ed25519 non era stato preso
+è **conservato**, con sotto la ragione per cui non vale più); un passo `public-provenance` in
+`scripts/test.sh`; 11 righe di oracolo in `build-provenance-signature.test.mjs`.
+**Verificato.** Round-trip cross-linguaggio col codice vero: HMAC firmato dal Python reale in
+contenitore usa-e-getta, contro-firmato da Node, **entrambe** le firme verificano dopo
+(`PY_HMAC_VERIFY=PASS`, `PROVENANCE_PUBLIC_VERIFY=PASS`). Oracoli **visti rossi 4 volte su 4**.
+Unit **2946** (2945 pass, 0 fail, 1 skip preesistente) · ESLint **471 file 0/0/0** ·
+`SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155` · `MANIFEST=OK 6715 files` ·
+Python `test-rust-build-provenance.py` **11 OK** in contenitore offline.
+**Igiene (§5a).** Contenitori creati: quelli di `run-eslint.sh` e quattro `python:3-slim` per i
+test Python e il round-trip, **tutti `--rm --network none`**, rimossi per costruzione. Nessun tag
+e nessuna rete creati. Sopravvivono i due previsti: `noesar-evolution` (Up, healthy) e
+`noesar-evolution-pre-20260821T032436Z` (Exited).
+**Costo di rollback.** Nessuno — nessuna modifica al prodotto installato.

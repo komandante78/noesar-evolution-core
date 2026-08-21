@@ -9,7 +9,8 @@ LOCKED_BUILD_EXECUTED=true
 RUST_TESTS_EXECUTED=true
 RUST_BINARY_INCLUDED=false
 BUILD_PROVENANCE_ISSUED=true
-PROVENANCE_SIGNED=true                # HMAC-SHA256, symmetric — see below
+PROVENANCE_SIGNED=true                # two signatures — see below
+PROVENANCE_PUBLIC_SIGNATURE_AVAILABLE=true   # Ed25519, D-0589
 UNIX_SO_PEERCRED_SOURCE=IMPLEMENTED
 WINDOWS_NAMED_PIPE_PEER_CREDENTIALS=NOT_IMPLEMENTED_AND_REFUSED_BY_NAME
 ```
@@ -63,6 +64,43 @@ holder of the build key, not by a publicly identifiable signer. Ed25519 is the u
 and was not taken here — no vetted implementation is reachable from these tools, and
 hand-rolling the primitive is a risk this project has already paid for once.
 
+**The upgrade path was taken on 2026-08-21 (`D-0589`), and the paragraph above is kept as
+written so the reason is visible rather than tidied away.** It was accurate about the *Python*
+tools — CPython's standard library has no Ed25519 and `cryptography` is not vendored — and it
+stopped being a reason once the repository grew a vetted implementation of its own:
+`signCompliancePack()` signs canonical JSON bytes with Node's native `crypto` and already signs
+the compliance packs, the technology-radar entries and the four SBOMs. Nothing was hand-rolled.
+
+The document now carries **two** signatures, answering two different questions:
+
+```text
+HMAC-SHA256  minted by a holder of the build key?   checkable only by that holder
+Ed25519      issued by this identifiable signer?    checkable by ANYONE with the public key
+```
+
+Both cover the **same payload** — the document with the whole signature envelope
+(`signature`, `signatureAlgorithm`, `signingKeyId`, `publiclyVerifiable`, `publicSignature`)
+removed — so neither invalidates the other and each verifies on its own. That the two
+serialisations are byte-identical across the language boundary is asserted by a test, not
+assumed, and a non-ASCII document is refused rather than signed into a silent divergence.
+
+```text
+sign    node tools/sign-build-provenance.mjs   --provenance <f> --private-key <pem> --output <f>
+verify  node tools/verify-build-provenance.mjs --provenance <f> --public-key  <pem>
+```
+
+`publiclyVerifiable` is no longer a claim the document makes about itself: the verifier
+recomputes the verdict and ignores the field **in both directions** — a valid signature verifies
+even when the field says `false`, and setting it to `true` does not make an unsigned document
+verify. Both directions are asserted, because a field that is ignored only when inconvenient is
+not ignored at all.
+
+**What this does NOT settle, and it is the Owner's call, not this document's:** the durable
+release key. The signing key used to demonstrate the path is session-only and is never
+committed; where the production key lives (HSM, secrets manager, cold storage) is the same class
+of decision as `D-0250`/`D-0266` and is not invented here. `PKG-001` position 5 becomes
+*closeable* — it is not closed until a delivery archive is actually produced and signed.
+
 **The Windows transport is refused by name.** A `WindowsNamedPipe` peer satisfies
 `PeerIdentity::validate` on its SID alone and used to be rejected further down only for
 lacking a Unix uid — an accident, not a decision. `DaemonPolicy` has `allowed_uids` and no
@@ -71,8 +109,8 @@ authorised that SID against nothing. `verify_peer` now refuses the transport exp
 and a test holds the property.
 
 ```text
-PROVENANCE_SIGNATURE_ALGORITHM=HMAC-SHA256
-PROVENANCE_PUBLICLY_VERIFIABLE=false
+PROVENANCE_SIGNATURE_ALGORITHM=HMAC-SHA256+Ed25519   # symmetric AND asymmetric, D-0589
+PROVENANCE_PUBLICLY_VERIFIABLE=true                  # once counter-signed; see below
 POWERSHELL_INSTALLERS_PARSED=6/6      # real PowerShell parser, not a regular expression
 POWERSHELL_INSTALLERS_EXECUTED=false  # Windows-only cmdlets and paths
 SECRET_SCAN=PASS                      # gitleaks, 118 commits, 0 first-party findings

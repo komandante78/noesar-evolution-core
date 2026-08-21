@@ -140,6 +140,11 @@ step pg-migrations   pyrun tools/verify-postgres-migrations.py
 step pg-contract     pyrun tools/verify-postgres-contract.py
 step rust-source     pyrun tools/verify-rust-authority-source.py
 step rust-provenance pyrun tools/test-rust-build-provenance.py -q
+# D-0589. The symmetric half above needs the shared build key to verify, so it can never answer
+# PKG-001 position 5's question — an independent auditor does not hold that key and must not be
+# given it. This step exercises the Ed25519 half, which a public key alone verifies, plus the
+# rule that binds the signature envelope across the two languages that spell it.
+step public-provenance node --test services/reference-control-plane/test/build-provenance-signature.test.mjs
 # The governance suites (hooks, guards, and the rule-12 single-source alignment) were in exactly
 # the position the comment above describes: green, and invoked by nothing. Added 2026-08-17,
 # D-0511. Skipped with a declaration — never silently — where the checkout has no .claude/, since

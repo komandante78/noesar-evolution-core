@@ -11,6 +11,14 @@ from pathlib import Path
 
 SIGNATURE_ALGORITHM = "HMAC-SHA256"
 
+# The signature envelope — see the identical block in `verify-rust-build-provenance.py` for why
+# it is spelled three times across two languages and what binds the three together.
+# `publicSignature` was added by `D-0589`, so a document that has since been counter-signed with
+# Ed25519 by `tools/sign-build-provenance.mjs` still verifies against its HMAC signature.
+ENVELOPE_KEYS = frozenset(
+    {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable", "publicSignature"}
+)
+
 
 def sign_document(document: dict, key: bytes) -> dict:
     """Attach a signature over the canonical form of the unsigned document.
@@ -29,11 +37,7 @@ def sign_document(document: dict, key: bytes) -> dict:
     """
     if len(key) < 32:
         raise ValueError("provenance signing key must be at least 32 bytes")
-    unsigned = {
-        k: v
-        for k, v in document.items()
-        if k not in {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable"}
-    }
+    unsigned = {k: v for k, v in document.items() if k not in ENVELOPE_KEYS}
     payload = json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode("utf-8")
     signed = dict(unsigned)
     signed["signatureAlgorithm"] = SIGNATURE_ALGORITHM

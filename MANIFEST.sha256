@@ -353,7 +353,7 @@ f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./PROJECT_GOVE
 4328916a9322d05c80b791d4311577fc24d8396ed5c75adc874eef9addec1895  ./PROJECT_GOVERNANCE/TOOLS/README.md
 00ea8e2dd3220da40373152fa66a6fa0d8b9b0fce9767fe3edf207976092c73e  ./PROJECT_GOVERNANCE/TOOLS/verify_package.py
 aa0bff9fef13b8a9eb6eca2bac182dceb437d2356b5ab542fa8ac40dc049add7  ./PROJECT_GOVERNANCE/TRACEABILITY_MATRIX.csv
-319185108dec9765f52abce01296563180f37bc5e6b4ddbeb7a059656046de07  ./PROJECT_STATE.json
+f8a9de555cb7f39b23db71a16181f06af4d5cd605d5a27b3268e623389f3b4b0  ./PROJECT_STATE.json
 219894b2b7e66ac6d3b68eb54346ff31ed20ba7bc21db9f02da8390e4ba3dda8  ./README.md
 f4a7dd3fe9e69c46c96e87c78b69875b754885f02e938eaed0fec2d5b844275c  ./RELEASE/AI_WORKSPACE_P0_TRACEABILITY.tsv
 586c4ab42209e24d19ff0492e7cabf62b9bcf512fbeff23f344e2b330d71916b  ./RELEASE/COMPANION_ARCHIVE_CHECKSUMS.txt
@@ -561,7 +561,7 @@ bf7f89b5ea581d6dbff828cb555977a1565cbbdad5c50d09930863de1c492132  ./docs/AUTHORI
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-9e2cd46825628f8bdc41920e7742cea1d7b21f5c98484746931f899cfd21ee0d  ./docs/DECISION_LOG.md
+c3cdc80803f5a9e5d2b7ffe782fbd1b078a9e579e7d8365b8bb7cb24af8ba84b  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
@@ -573,7 +573,7 @@ f3614b3b2f6920ab897534897916f68acc9989322aee2b843e1679b465568c8f  ./docs/GPU_LOC
 7c60e13981bcc1c908363c21e9178c4789eefbd5c126d93f3ce72e37d8ac7c43  ./docs/HOST_CAPABILITY_INVENTORY.md
 cedc1946015e0b16463abf5a64e9963dee15e105a39d0ce183836f6185e3b74b  ./docs/INSTALLABLE_ARTIFACT_MAP.md
 d2a2f5638d5e065b374a672d24e68133248610f0d51e2e9a39c3048aa2fc5f6c  ./docs/INSTALLATION_DESIGN.md
-8eee9666b9f9f11c5a9ee8c1dc0f06e375bae5e87875e9ce4d691206d7055dc4  ./docs/INSTALLATION_LEDGER.md
+f9df35b470539c9e3a8a22f8f27a86f21abe9c99275b038330aad2cccb9abbeb  ./docs/INSTALLATION_LEDGER.md
 8d3ec36bd937ac3a9709ab2f9af0cf320a8a251ec91673f1355495b815b21a95  ./docs/JAVASCRIPT_STATIC_ANALYSIS.md
 943623f062694c7ed8fa2aecec55759bfe509bc3e969a49590467b2a8cef32c5  ./docs/LAN_ACCESS_CONFIGURATION.md
 599c02f59d9039a5a5719e8e7a243b3126ded56c5db7fc0cd5610029ef77f66c  ./docs/LICENSE_INVENTORY.tsv
@@ -627,7 +627,7 @@ be04cba0f1c100c99ca965e94657a90b70ed10cacda85d409b073ce6ba4c898e  ./docs/SBOM_RE
 b9aa562749772335f2badaf99d744146f096de14cf8806e539b8d53268a2f68c  ./docs/SBOM_STATUS.md
 1d91d7021b264988bed1ef50d591b470e328fbbcff42d69dc6db7ceb72dba75b  ./docs/SECURITY_IMPLEMENTATION_MATRIX.tsv
 daec00ece820d33471e70f684e0aea3a232efcfe302eeb32b9f88a4b8426bbb2  ./docs/SECURITY_TEST_REPORT.md
-00d6576c5c0a32034b064e342acc09240cbe627480d82e4de692a46193110781  ./docs/SESSION_HANDOFF.md
+a4c7a35bd70766c5bfb8b9e7e973de261a93b68bed129b31ed1599b2612c8a95  ./docs/SESSION_HANDOFF.md
 ae857f71b8faa6e1a1fda2dd25b2ee0ce48797e44629476089aba95a420b2782  ./docs/SOURCE_ARCHIVE_MAP.tsv
 4f36e5e077e82172da338b5626f36be603b9ce412048dd6b8fd9c0bac77deb8a  ./docs/SOURCE_PROVENANCE.md
 f09d2d768fc8e46e162945476b07bf168fbb9153a9296821a5462d6b81fff232  ./docs/THIRD_PARTY_NOTICES_DRAFT.md
@@ -959,7 +959,7 @@ e72fca123acb8a36860f53b4c3759305c0ef569ce85e7eecc839e604b1716665  ./provenance/p
 3621268d950164e0182a023448118cad27854b73b4261f79f8d6859abf087111  ./provenance/package-05/README.md
 4f886cbc6e324a52778c9cf8e5bc2c82c01f3328b441acc9fa4c44e43fe4879e  ./provenance/package-05/SHA256SUMS.txt
 77e9219c27274120197571fd165cbe4121963b5ad3bc0b20b383c86ef0ce6c2b  ./rust/.cargo/config.toml
-3ac11e18af836b7d92c24128a89d346c8b12c1d932e62f2fc54b0eb21634eeaf  ./rust/BUILD_STATUS.md
+ce265e0e609d3883d15a1ac335f9079a46c62dcc188dd92200c0979f2bfdd789  ./rust/BUILD_STATUS.md
 2fc6f76e61a2eb20a88a18c2fb2dfb5d875fde413955b303c6c8ed037fcd04da  ./rust/Cargo.lock
 133c4e611eb45ec540af34de6828b1690ff76aabeb093ed25a5a7608f8683fb9  ./rust/Cargo.toml
 7fac24a4df89ea2deb3504c323b59f29f7c202f2405c2a858b6fb478478a80cc  ./rust/IMPLEMENTATION_STATUS.md
@@ -6257,14 +6257,14 @@ b63011c2bd35b97e0fb8c073459e8da8639b618c8b72902982dd6de3100cee68  ./schemas/proj
 7274d274cd07afa3d92abd0133a8081e694586497e535012396e4b0b83964d82  ./schemas/publisher-record.schema.json
 523a8a3c1e89cd4baa1dc0746e9384e8386149e7fabe0f3b27f6dfb34f105662  ./schemas/revocation-list.schema.json
 f280d1f33514fb7913ae925bf17ab81466c3df4c738b83ae9fcecb98d9e46f0f  ./schemas/runtime-adapter.schema.json
-fcbc369789bcdae1d3bf8443aef43888c23fda0aa07d16d74b3dffad31030b22  ./schemas/rust-build-provenance-v1.schema.json
+18fc54e6412e2aeb53876da0cc4fbaa840445166ca1746988b815c7c1b399c9d  ./schemas/rust-build-provenance-v1.schema.json
 7b8c36f73d0f140a8d075ce2bfa3976a891342127fcbdb7a4435fe0de54fc77f  ./schemas/sandbox-attestation.schema.json
 3bea7f70ec1d59a7d3f9bc8264dda49304cff2e69700cd7586dc2c435296fa37  ./schemas/skill-catalog-entry.schema.json
 e94690d94c4f94aa8ee55959225f68ba91aa24eb442ce9946aef1d82f3ad8578  ./schemas/technology-radar-entry.schema.json
 8223aaf6fa95da40756d7e2e1c1b3388d96178202ec0ed7e1298ce93809166c6  ./schemas/tool-catalog-entry.schema.json
 f1302c6af47121dec0a1989c0c42ea5a43f5ef2131e7e0ad1f0aa504e871ef1d  ./schemas/update-metadata.schema.json
 66e948c8d497affe784ccc9506e16c2faf8e30c58222a7144e7cd745f1ee910b  ./scripts/run-reference.sh
-f8942afff351d4f526fea280e4f174d1ecb2d4f496f09f2141522ea5bdaeacb2  ./scripts/test.sh
+d002afcdaa56d6b95ae7471082b26a0841cd691545659f38e6e8053c731c59e1  ./scripts/test.sh
 f4a8b5aa48e62a3e86254917081e2cedb747d319fdfd97728d57c183312a5ab6  ./security/seccomp-noesar.json
 2649a1ebb289ac13144dd41140202838144652e208b7ffe1e3697e79c47220b2  ./services/reference-control-plane/bin/codev-child.mjs
 d81d7d9dd64e3f08bf65ecd874ec846be140bab30cae9b13693a78034bc43c69  ./services/reference-control-plane/bin/postgres-child.mjs
@@ -6414,6 +6414,7 @@ a251900909efd5b7d2eec868a58a7b07221166d5ca9f4c6649cbe67696cce8d1  ./services/ref
 0420f827bf2ffe80623b1247dd2e5a0bab5b7bae34da7bfc5f4a4d08abc8f7d9  ./services/reference-control-plane/test/authority-protocol.test.mjs
 e0ad4ac9a964432baeaf0c1fba0f8d7f1774e50af29529d9ea92d644c3732744  ./services/reference-control-plane/test/authority.test.mjs
 c195ad5c0a2e7190c9daa0f261b27ae9c64ac8ad82fa7397a7deb3a938a7d3b1  ./services/reference-control-plane/test/bootstrap-feature-claims.test.mjs
+d070b64ea88b1dfca09dc9fa183fec0c1ea9af42ff043d5342dfa2e981a3253a  ./services/reference-control-plane/test/build-provenance-signature.test.mjs
 adf8f804389293a33ee2ed70f515090e31e43907dee9ab4e6bb7d2266eed3d26  ./services/reference-control-plane/test/canonical-json.test.mjs
 a0b75b159bc4ec1b5ea62000f1120eabd35a121d13d9febbcb94b5fd76bcdda0  ./services/reference-control-plane/test/capability-http-adversarial.test.mjs
 f35aeb773da426a47b196075accbb37652d5b6f51154372dfbb5757b6e844989  ./services/reference-control-plane/test/capability-revocation.test.mjs
@@ -6649,7 +6650,7 @@ a2456f26d5741009d2dcf2033899bb42d166bc5668408180ea6a13e4e379429c  ./tools/check-
 a1df315d15d1e88dba83d8fd5383929050bfbd78b1d554d5e33d00b87d6ff0fc  ./tools/coden-evolution
 9df693011fe6357cb0da049868122bbcfac558e04e303869cb3f94b1ea125998  ./tools/coden-evolution.ps1
 c7666a02c2a951f4632cbbad6a2f7906fe9105222a43e09a12a15e7984e034d7  ./tools/computed-style-snapshot.mjs
-7acbb17a63fc2a714fba1102e1434063a88af6deda3a78b9244cc91407229d9b  ./tools/create-rust-build-provenance.py
+8bed5e305c66f2934f2af9146d78aaf63be51718d99d79cb9845509a81d813ea  ./tools/create-rust-build-provenance.py
 c5f4014c453bca3b876ce68c3a0b04c059116fd860bd1ed9023c42c83c7f1642  ./tools/deploy/redeploy.sh
 2d5992f4e64defb2e1b2208b92071a3ec6636904e33e521d5021b498dc1fe276  ./tools/deploy/test/fake-docker
 35f65595b970d43fea98270c5345eb5aa9c2bfbbd17c82d4789ddc92b459f3f5  ./tools/deploy/test/redeploy-fixture.sh
@@ -6678,6 +6679,7 @@ cd382976bc32b31112ce2e9c485a0c1e37a1fb49bea8325f5e4a0eb4a4b8a2be  ./tools/mint-s
 e4257a7e724ad94bb407707229292f674dbbcb18142209f39fbeea394cfb4de9  ./tools/run-eslint.sh
 28b6de21b77b026d9023392984ca741ff370aec50fdf523b20c30fd3a163bcf3  ./tools/run-secret-scan.sh
 b990dc1c05d6adf3f2233f8b7a25ade0b2610c7f5999e248ef9baedffddece78  ./tools/seeded-defect-proof.mjs
+3852524dc3aeb2f6124aff5dbc5e3882493ebba4fe114a785aef27fb1f647bab  ./tools/sign-build-provenance.mjs
 e3daababb9273448de1fd256b6adc35b56f6279e860d52bf7e0f1c384fe20ebd  ./tools/sign-compliance-pack.mjs
 1ad3bf8e4cc0f373c3f5bc90a07f6d1eb4d050884c57a1bf8ccb56cd57cb4a0e  ./tools/sign-model-descriptor.mjs
 ef2bf2636b6dfea572c7874d0e4ad12ab5ac13472003c68435bbfdd227f652cd  ./tools/sign-release-artifact.mjs
@@ -6695,6 +6697,7 @@ f833e096bb996a7e466f5a3b69feca311d5c13e89547726be6b32bb943bcabc3  ./tools/test-p
 8b705f7cf3340e96877aa82a7fe0ab492e4192c95e7492439e2b1b1b027c58d9  ./tools/tui-client.mjs
 298af3f64c1efd201f559c59c27033d7ff093c34f80e8e8779c118e2ddc76567  ./tools/tui-fullscreen.mjs
 27253aa5c73792baeafc944a9b6eb02a91136b6ffeb37ae56806da82d51d6836  ./tools/verify-acceptance-matrix.mjs
+2e5d4be641d0304459db1eddb8902431c36c5c0987bba20bd64ce3645af7ef40  ./tools/verify-build-provenance.mjs
 5315f9ad357094b411bfa00211789c3b883f9e9b6fb8bc6e46ca472ec764314c  ./tools/verify-compliance-pack.mjs
 4eaae5f77c94ced1515491622c4f53359695bcf4737d910c524159c9e59823a4  ./tools/verify-crate-extraction.sh
 895267f993666624294d42f7adfdccecdd053967b909f670741e2a0523946321  ./tools/verify-five-archives.mjs
@@ -6706,7 +6709,7 @@ b7bf109b81c7485b48bb982bf58cb81e50a12fe28cc4ee65f59d654271cede20  ./tools/verify
 2b877f641357d52ce97a071b0d96dd15badace76cf83b3437eb639809412ed7c  ./tools/verify-postgres-migrations.py
 a5f46af39d919b029476df467838998573e53a68db4cdc2c9c719788fa037aca  ./tools/verify-release-artifact.mjs
 8b1cca6bd5fc18c5fb472683614482efb970307df139c32e361024b0621042bd  ./tools/verify-rust-authority-source.py
-b3fcae39204c17838679f9ac0896cce2676d51cd57567f968ed15b81b93099ff  ./tools/verify-rust-build-provenance.py
+3c2fd8a3db5dd2448937f6649c57caade2e11c2804f09847e5ef10724c18d64d  ./tools/verify-rust-build-provenance.py
 a54dd58df61f7e2a914798f956d9bccaee564c4c4f264779c2a413b72ef17fcc  ./tools/verify-source.mjs
 7013d5d46e37a68770abb246efa1f5db187ba9c7f5be7875dae7144c2495c0d6  ./updates/README.md
 66a954df1cbb3fff546ea3ac3dc0887ba53e2f3f225a1ee0c3791948d4a7c3ee  ./updates/verify-offline-update.py

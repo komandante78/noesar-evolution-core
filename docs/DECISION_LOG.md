@@ -14283,3 +14283,58 @@ stesso diff e fa scattare il check 2 da solo. Il manifest non è mai l'unica tra
 cambiamento, solo la sua eco. Il fixture lo prova con la riga «a product file in the same range
 STILL blocks».
 **Status.** applied.
+
+## D-0619 · `D-0589` eseguito: la provenienza porta una firma che un auditor può verificare — 2026-08-21
+**Decision.** Il documento di provenienza porta **due** firme sullo **stesso payload**: l'HMAC-SHA256
+che c'era, e una Ed25519 nuova che chiunque verifica con la sola chiave pubblica.
+`tools/sign-build-provenance.mjs` firma, `tools/verify-build-provenance.mjs` verifica.
+**Why.** `PKG-001` posizione 5 chiede un audit **indipendente**, e un auditor indipendente non ha
+la chiave condivisa — e se ce l'avesse potrebbe falsificare il documento. La ragione scritta il
+2026-07-27 per non farlo (*«nessuna implementazione vagliata raggiungibile da questi strumenti»*)
+era vera **per gli strumenti Python** e non lo è più: `signCompliancePack()` firma byte canonici
+con `crypto` nativo di Node e firma già i pacchetti di conformità, il radar e i quattro SBOM.
+**Nessuna primitiva scritta a mano.**
+**Rejected.** Sostituire l'HMAC: le due firme rispondono a domande diverse (*«coniato da chi ha la
+chiave di build?»* e *«emesso da questo firmatario identificabile?»*) e costano una chiave in più,
+non un formato in più. Rifiutato anche il sidecar: due file legati solo dal nome.
+**Evidence.** **Round-trip cross-linguaggio col codice vero**: documento firmato HMAC dal Python
+reale in contenitore usa-e-getta, contro-firmato da Node, e **poi entrambe le firme verificano** —
+`PY_HMAC_VERIFY=PASS` e `PROVENANCE_PUBLIC_VERIFY=PASS`. Oracoli visti rossi **quattro** volte:
+manomissione di un fatto via CLI (exit 1), busta senza `publicSignature` lato Node (5 fail su 11),
+divergenza della copia Python della regola (la riga cross-linguaggio, 1 fail), e — la più
+importante — **togliendo `publicSignature` dalla busta Python l'HMAC si rompe sul documento
+contro-firmato** (`provenance signature mismatch`), che prova che quella modifica era necessaria.
+Suite: unit **2946** (2945 pass, 0 fail, 1 skip), ESLint **471 file 0/0/0**, Python
+`test-rust-build-provenance.py` **11 OK** in contenitore offline.
+**Reversal cost.** Nessuno sul prodotto installato: **niente di questo entra nell'immagine**.
+**Status.** applied. `PKG-001` posizione 5 diventa **chiudibile**, **non chiusa**: si chiude quando
+un archivio di consegna esiste davvero e viene firmato. La chiave di rilascio durevole resta una
+decisione dell'Owner (HSM / secret manager), stessa classe di `D-0250`/`D-0266`.
+
+## D-0620 · Difetto di portabilità riparato nel codice di `D-0619` — 2026-08-21
+**Decision.** I due strumenti nuovi derivano il proprio percorso con `fileURLToPath()`, non con
+`new URL(import.meta.url).pathname`.
+**Why.** `.pathname` di un `file://` URL su Windows è `/C:/…`, che non è un percorso: la guardia
+`process.argv[1] === …` non avrebbe mai fatto match e i due strumenti, invocati da riga di comando,
+**non avrebbero fatto nulla uscendo 0**. È una violazione di §62 — presumere questo host — quindi
+un **difetto**, non un miglioramento (`noesar-evolution-budget` §5).
+**Rejected.** Lasciarlo perché su Linux funziona: è esattamente il ragionamento che §60-64 vieta.
+**Evidence.** 8 strumenti del repository usano già `fileURLToPath`; dopo la correzione il
+round-trip CLI rifatto da capo dà `PROVENANCE_PUBLIC_VERIFY=PASS`.
+**Reversal cost.** Nessuno.
+**Status.** applied.
+
+## D-0621 · Proposta: legare la provenienza pubblica ai cinque archivi, non solo al binario Rust — 2026-08-21
+**Decision.** Proposta, **non eseguita**: estendere lo stesso strato Ed25519 dal documento di
+provenienza del build Rust ai **cinque archivi di consegna**, così che ogni posizione di §4a arrivi
+con manifest + firma pubblica invece che con manifest e basta.
+**Why.** `D-0619` rende verificabile da terzi **una** provenienza; `PKG-001` ne chiede cinque, e
+`D-0617` ha già osservato che `MANIFEST.sha256` è vero ma non firmato. Lo strato ora esiste, è
+provato ed è generico — applicarlo agli archivi è riuso, non costruzione.
+**Rejected.** Un formato per archivio: sarebbe la duplicazione che questo strato ha appena evitato.
+**Evidence.** `tools/sign-build-provenance.mjs` firma un qualunque documento JSON ASCII; i quattro
+SBOM usano già la stessa primitiva.
+**Reversal cost.** Nessuno finché è una proposta.
+**Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 5** (affidabilità misurabile:
+provenienza verificabile da terzi) **e tratto 2** (riusabile: una catena a chiave pubblica la
+verifica chiunque, non solo chi l'ha prodotta).

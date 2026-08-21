@@ -7,6 +7,20 @@ import hmac
 import json
 from pathlib import Path
 
+# The signature envelope: keys that describe signatures rather than facts. Neither signature
+# covers them, which is what lets the symmetric (HMAC) and asymmetric (Ed25519) signatures live
+# in one document without invalidating each other.
+#
+# `publicSignature` was added by `D-0589`. It is spelled in three places — here,
+# `create-rust-build-provenance.py`, and `ENVELOPE_KEYS` in `tools/sign-build-provenance.mjs` —
+# because they are three programs in two languages and there is no import path between them.
+# What binds them is not care: `build-provenance-signature.test.mjs` reads the text of both
+# Python files and fails if either set stops matching the JavaScript one. A rule spelled three
+# times and checked nowhere is `D-0608` waiting to happen again.
+ENVELOPE_KEYS = frozenset(
+    {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable", "publicSignature"}
+)
+
 
 def read_signing_key(path: Path) -> bytes:
     raw = path.read_bytes().strip()
@@ -28,11 +42,7 @@ def verify_signature(value: dict, key: bytes) -> None:
         raise ValueError("provenance is not signed")
     if value.get("signatureAlgorithm") != "HMAC-SHA256":
         raise ValueError("unsupported provenance signature algorithm")
-    unsigned = {
-        k: v
-        for k, v in value.items()
-        if k not in {"signature", "signatureAlgorithm", "signingKeyId", "publiclyVerifiable"}
-    }
+    unsigned = {k: v for k, v in value.items() if k not in ENVELOPE_KEYS}
     payload = json.dumps(unsigned, sort_keys=True, separators=(",", ":")).encode("utf-8")
     expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
