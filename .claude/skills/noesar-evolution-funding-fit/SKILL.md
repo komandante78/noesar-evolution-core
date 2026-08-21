@@ -36,6 +36,32 @@ programme that had in fact closed on 2026-06-01. **Nothing here is quoted to the
 re-reading its source first.** A funding criterion is not a fact about the world; it is a fact
 about a programme on a date.
 
+### 0a — THE DATE EXISTS NOW. Re-read 2026-08-21 · `[VERIFIED]`
+
+The rule above proved itself again three days later, in the other direction: what this file
+called "resume after summer 2026" with no date **now has one**.
+
+| Fact | Source, read 2026-08-21 |
+|---|---|
+| **Calls reopen 2026-09-03. First deadline 2026-11-03, 12:00 CEST.** | <https://nlnet.nl/propose/>, <https://nlnet.nl/news/2026/20260803-phaseshift.html> |
+| Today nothing is open — Restack, CodeSupply and ELFA all read "coming soon" | <https://nlnet.nl/> |
+| **NGI Zero Core is closed for good** — 8th and final call closed 2024-10-01 | <https://nlnet.nl/core/> |
+| NGI Zero Commons closed for good — 13th and final call, 2026-06-01 | <https://nlnet.nl/commonsfund/> |
+| **€5,000–50,000** per grant, all three new programmes alike | restack/, codesupply/, ELFA/ |
+| **Paid on MILESTONES, never upfront**: *"Once you reach a milestone you send in a request for payment"* | <https://nlnet.nl/restack/faq/> |
+| **An individual may apply** — *"You can apply as an individual, or as a formal or informal organisation of any type"* | restack/faq/ |
+| Review takes **3–5 months** from the deadline | restack/faq/ |
+| Support beyond money: *"accessibility and security audits, licensing advice, mentoring, packaging"* | restack/faq/ |
+| The proposal form requires **disclosure of generative AI usage** | <https://nlnet.nl/propose/> |
+
+**One discrepancy, recorded rather than resolved:** `/propose/` says decisions arrive *"within a
+few days after the deadline"* while the Restack FAQ says review takes **3–5 months**. `[UNVERIFIED]`
+which governs — most likely the first is acknowledgement of receipt. Do not quote either as the
+answer without checking again.
+
+**`[UNVERIFIED]`, and it matters for planning:** whether one project may apply to more than one of
+the three programmes in the same round. Nothing read says yes or no.
+
 ## 1 — The platforms, what they require, and whether this project can apply
 
 Every row read **2026-08-18**. `[VERIFIED]` = read from the source named. Re-read before use.
@@ -43,8 +69,8 @@ Every row read **2026-08-18**. `[VERIFIED]` = read from the source named. Re-rea
 | Platform | Funds | **Licence requirement** | Who may apply | Money · status |
 |---|---|---|---|---|
 | **Restack** (NLnet, Open Internet Stack) <br><https://nlnet.nl/restack/> | "new internet commons across the technology stack, from libre chips to middleware **without vendor lock-in**", local-first infrastructure, end-user apps | *"Project results shall always become available under a recognised free or open source license."* **Dual licensing explicitly allowed** — copyright holders "may deal with your project results under **additional** licenses, even proprietary ones". No OSI/FSF list named, no copyleft-vs-permissive preference stated. | **No categorical exclusion of anyone.** EU / Horizon-associated countries get priority on equal proposals; outside them, "a clear European dimension" is required. Minors may apply. | **€5,000–50,000** per grant, €7M to 2030 · **"Coming soon"** on 2026-08-18 |
-| **CodeSupply** (NLnet pilot) <br><https://nlnet.nl/> | software **supply-chain** tooling: correct, trusted, verified software metadata as an open, federated, sovereign catalogue | same NLnet rule: results under a recognised free/open licence | consortium pilot | launching after summer 2026 |
-| **ELFA** — Encrypted Local First Architecture (NLnet) <br><https://nlnet.nl/ELFA/> | decentralised collaboration, private workspaces, **end-to-end encrypted** app suites | same NLnet rule | 13-organisation consortium + open calls | deadline **2026-08-01** for the round read |
+| **CodeSupply** <br><https://nlnet.nl/codesupply/> <br>*riga ri-letta 2026-08-21* | *"comprehensive software metadata, including origin and licensing information, security vulnerabilities, and quality metrics"*; cybersecurity, gestione della catena di fornitura, conformita delle licenze | *"Project results shall always become available under a recognised free or open source license."* | *"independent researchers and developers and organisations"* — **non solo consorzio**, contrariamente a quanto diceva questa riga il 2026-08-18 | **€5,000–50,000** · "coming soon" il 2026-08-21 |
+| **ELFA** — Encrypted Local First Architecture <br><https://nlnet.nl/ELFA/> <br>*riga ri-letta 2026-08-21* | suite collaborativa **cifrata end-to-end** e **local-first**, piattaforma decentralizzata | same NLnet rule | consorzio + bandi aperti | **€5,000–50,000** · "coming soon" il 2026-08-21. La scadenza 2026-08-01 registrata prima **e passata** |
 | **Sovereign Tech Agency / Fund** (DE, public) <br><https://www.sovereign.tech/> | **critical open base technologies** other software depends on; also Fellowship, Resilience, Standards programmes | *All code and documentation must be licensed to be freely reusable, changeable, redistributable.* **OSI-approved or FSF Free/Libre for code**; documentation under Creative-Commons-like terms **with no `NC` and no `ND` clauses.** | maintainers of infrastructure others depend on | rolling programmes |
 | **Prototype Fund** (DE) <br><https://www.prototypefund.de/en> | early prototypes with social value; since 2025 focused on **data security and software infrastructure** | results must be published under an open source licence | **residence or company seat in Germany — hard requirement.** Individuals / teams of max 4 | application window **1 Oct – 30 Nov 2026** |
 | **EU Sovereign Tech Fund (EU-STF)** <br><https://eu-stf.openforumeurope.org/> | proposed pan-European fund for critical open digital infrastructure | not yet defined | — | **Advocacy/research phase, NOT accepting applications** on 2026-08-18. Track it; do not plan on it. |
