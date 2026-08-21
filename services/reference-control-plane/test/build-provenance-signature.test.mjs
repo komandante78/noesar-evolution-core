@@ -21,7 +21,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateKeyPairSync } from 'node:crypto';
+import crypto, { generateKeyPairSync } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -200,4 +200,173 @@ test('the envelope contains publicSignature, or the HMAC breaks the moment we co
   const { privatePem } = keypair();
   const signed = signBuildProvenance(hmacSignedDocument(), privatePem);
   assert.deepEqual(signedPayload(signed), signedPayload(hmacSignedDocument()));
+});
+
+// ── D-0622 · custody is the operator's choice, and both backends are real ──────────────────────
+//
+// The Owner was asked where the durable release key should live and answered "follow what the
+// funding programmes require". Re-read 2026-08-21: none of them prescribes key custody. What they
+// do require — no vendor lock-in, no dependency on closed technology, local-first — means the
+// product must not IMPOSE a custody model. The defect was the opposite of the expected one: the
+// signer demanded the private key in process, which locks out every operator whose key is in an
+// HSM, on a smartcard, or offline. These rows prove the lock is gone.
+
+import {
+  localKeyBackend,
+  detachedBackend,
+  fingerprint,
+  DetachedSignatureRequired,
+  ReleaseSigningError,
+} from '../../../tools/release-signing.mjs';
+import { signBuildProvenanceWith } from '../../../tools/sign-build-provenance.mjs';
+import os from 'node:os';
+
+function tmpdir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'noesar-signing-'));
+}
+
+test('local-key backend: the everywhere baseline still works', () => {
+  const { privatePem, publicPem } = keypair();
+  const signed = signBuildProvenanceWith(hmacSignedDocument(), localKeyBackend(privatePem));
+  assert.equal(signed.publicSignature.custody, 'local-key');
+  assert.equal(verifyBuildProvenance(signed, publicPem).verified, true);
+});
+
+test('detached backend: phase one emits the bytes and REFUSES to invent a signature', () => {
+  const { publicPem } = keypair();
+  const dir = tmpdir();
+  try {
+    const requestPath = path.join(dir, 'tosign.bin');
+    const backend = detachedBackend({ publicKeyPem: publicPem, requestPath });
+    assert.throws(
+      () => signBuildProvenanceWith(hmacSignedDocument(), backend),
+      (error) => error instanceof DetachedSignatureRequired && error.code === 'DETACHED_SIGNATURE_REQUIRED',
+      'phase one must stop, not produce an unsigned or self-signed document',
+    );
+    assert.ok(fs.existsSync(requestPath), 'the bytes to sign must actually be written');
+    assert.ok(fs.existsSync(`${requestPath}.sha256`), 'and their digest, so the operator can check what they signed');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('detached backend: the private key never enters this process, and the result still verifies', () => {
+  const { privatePem, publicPem } = keypair();
+  const dir = tmpdir();
+  try {
+    const requestPath = path.join(dir, 'tosign.bin');
+    const signaturePath = path.join(dir, 'tosign.sig');
+    const document = hmacSignedDocument();
+
+    // Phase one: emit.
+    assert.throws(() => signBuildProvenanceWith(document, detachedBackend({ publicKeyPem: publicPem, requestPath })));
+
+    // The operator signs, somewhere this code has no part in. Only the bytes cross the boundary.
+    const { sign: nodeSign, createPrivateKey } = crypto;
+    fs.writeFileSync(
+      signaturePath,
+      nodeSign(null, fs.readFileSync(requestPath), createPrivateKey(privatePem)).toString('base64'),
+    );
+
+    // Phase two: attach. Note what is NOT passed anywhere in this call.
+    const signed = signBuildProvenanceWith(
+      document,
+      detachedBackend({ publicKeyPem: publicPem, requestPath, signaturePath }),
+    );
+    assert.equal(signed.publicSignature.custody, 'detached');
+    assert.equal(verifyBuildProvenance(signed, publicPem).verified, true);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('ORACLE: a signature left over from a previous run is REFUSED, not attached', () => {
+  // Without this check the second run would attach a signature over yesterday's bytes and the
+  // document would verify against nothing anyone intended — the failure mode of every two-phase
+  // signing scheme, and the reason the backend re-checks rather than trusting the filename.
+  const { privatePem, publicPem } = keypair();
+  const dir = tmpdir();
+  try {
+    const requestPath = path.join(dir, 'tosign.bin');
+    const signaturePath = path.join(dir, 'tosign.sig');
+    fs.writeFileSync(
+      signaturePath,
+      crypto.sign(null, Buffer.from('some other document entirely'), crypto.createPrivateKey(privatePem)).toString('base64'),
+    );
+    assert.throws(
+      () => signBuildProvenanceWith(hmacSignedDocument(), detachedBackend({ publicKeyPem: publicPem, requestPath, signaturePath })),
+      (error) => error instanceof ReleaseSigningError && error.code === 'DETACHED_SIGNATURE_MISMATCH',
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('ORACLE: a detached signature by the wrong key is refused', () => {
+  const other = keypair();
+  const { publicPem } = keypair();
+  const dir = tmpdir();
+  try {
+    const requestPath = path.join(dir, 'tosign.bin');
+    const signaturePath = path.join(dir, 'tosign.sig');
+    assert.throws(() => signBuildProvenanceWith(hmacSignedDocument(), detachedBackend({ publicKeyPem: publicPem, requestPath })));
+    fs.writeFileSync(
+      signaturePath,
+      crypto.sign(null, fs.readFileSync(requestPath), crypto.createPrivateKey(other.privatePem)).toString('base64'),
+    );
+    assert.throws(
+      () => signBuildProvenanceWith(hmacSignedDocument(), detachedBackend({ publicKeyPem: publicPem, requestPath, signaturePath })),
+      (error) => error instanceof ReleaseSigningError && error.code === 'DETACHED_SIGNATURE_MISMATCH',
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('custody is invisible to the verifier — which is what makes it the operator\'s choice', () => {
+  // The claim being asserted is the funding one: a downstream verifier needs the public key and
+  // nothing else, so no custody backend can become a dependency of verification. If this row ever
+  // fails, the product has started imposing a custody model on the people verifying it.
+  const { privatePem, publicPem } = keypair();
+  const dir = tmpdir();
+  try {
+    const requestPath = path.join(dir, 'tosign.bin');
+    const signaturePath = path.join(dir, 'tosign.sig');
+    const local = signBuildProvenanceWith(hmacSignedDocument(), localKeyBackend(privatePem));
+    assert.throws(() => signBuildProvenanceWith(hmacSignedDocument(), detachedBackend({ publicKeyPem: publicPem, requestPath })));
+    fs.writeFileSync(
+      signaturePath,
+      crypto.sign(null, fs.readFileSync(requestPath), crypto.createPrivateKey(privatePem)).toString('base64'),
+    );
+    const remote = signBuildProvenanceWith(hmacSignedDocument(), detachedBackend({ publicKeyPem: publicPem, requestPath, signaturePath }));
+
+    assert.notEqual(local.publicSignature.custody, remote.publicSignature.custody);
+    // Same key, same payload, same Ed25519: the signature bytes themselves are identical too.
+    assert.equal(local.publicSignature.value, remote.publicSignature.value);
+    for (const document of [local, remote]) {
+      assert.equal(verifyBuildProvenance(document, publicPem).verified, true);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a non-Ed25519 release key is refused by name, not misused', () => {
+  const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  assert.throws(
+    () => localKeyBackend(rsa.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()),
+    (error) => error instanceof ReleaseSigningError && error.code === 'UNSUPPORTED_KEY_TYPE',
+  );
+});
+
+test('detached signing refuses to start without the public key to check against', () => {
+  assert.throws(
+    () => detachedBackend({ requestPath: '/nowhere' }),
+    (error) => error instanceof ReleaseSigningError && error.code === 'NO_PUBLIC_KEY',
+  );
+});
+
+test('the fingerprint is the shape docs/SBOM_REPORT.md already publishes', () => {
+  const { publicPem } = keypair();
+  assert.match(fingerprint(publicPem), /^[0-9a-f]{64}$/);
 });

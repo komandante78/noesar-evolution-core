@@ -1,13 +1,15 @@
 # SESSION HANDOFF
 
-**Tre fasi in questa sessione.** `D-0612`: `D-0611` **installato**, debito §3a chiuso.
-`D-0615`: `MANIFEST.sha256` non era *stale*, era **falso su 114 file** — rigenerato e messo sotto
-due gate; `F-MANIFEST-001` **CHIUSA**. `D-0619`: la provenienza porta ora una firma **Ed25519**
-che un auditor indipendente verifica con la sola chiave pubblica.
-Riparati chiudendo: `D-0614`, `D-0616`, `D-0618`, `D-0620`. Proposti: `D-0613`, `D-0617`, `D-0621`.
+**Quattro fasi in questa sessione.** `D-0612`: `D-0611` **installato**, debito §3a chiuso.
+`D-0615`: `MANIFEST.sha256` era **falso su 114 file** — rigenerato e messo sotto due gate;
+`F-MANIFEST-001` **CHIUSA**. `D-0619`: la provenienza porta una firma **Ed25519** verificabile
+con la sola chiave pubblica. `D-0622`: **la custodia della chiave di rilascio è dell operatore**,
+non del progetto — e il difetto era l opposto di quello atteso.
+Riparati chiudendo: `D-0614`, `D-0616`, `D-0618`, `D-0620`, `D-0623`.
+Proposti: `D-0613`, `D-0617`, `D-0621`, `D-0624`.
 **Live installation:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z`, `running`/
-`healthy`, `RestartCount=0`. **Nessun debito §3a aperto** — misurato, non asserito.
-**Matrice: 66/67 con verdetto, 58 `met`.** Resta senza verdetto **solo `CE-035`**.
+`healthy`. **Nessun debito §3a aperto** — misurato, non asserito.
+**Matrice: 66/67 con verdetto.** Resta senza verdetto **solo `CE-035`**.
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -21,12 +23,19 @@ alla cosa che manca davvero, cioè **produrre gli archivi**, che non è mai stat
 («provenienza») ora **può** chiudersi, ma **non è chiusa**. Si chiude quando un archivio di
 consegna esiste ed è firmato. Dirlo diversamente sarebbe un falso PASS.
 
-**Poi:** `D-0617` (firmare `MANIFEST.sha256` — stessa idea, altro artefatto) · `D-0609`
-(`shellcheck` assente, la batteria non lint-a affatto la shell) · `D-0605` · `D-0613`.
+**Poi:** `D-0624` (portare i backend di custodia agli **altri** firmatari — oggi solo la
+provenienza è agnostica, gli SBOM pretendono ancora il PEM su disco) · `D-0617` (firmare
+`MANIFEST.sha256`) · `D-0609` (`shellcheck` assente) · `D-0605` · `D-0613`.
 
-**Decisione dell'Owner che blocca il rilascio, e non è tecnica:** dove vive la **chiave di rilascio
-durevole** (HSM, secret manager, cold storage). Quella usata finora è di sessione e non è mai
-committata. Stessa classe di `D-0250`/`D-0266`: non si inventa qui.
+**La custodia della chiave NON è più un blocco (`D-0622`).** Era registrata qui come «decisione
+dell'Owner che blocca il rilascio»; l'Owner ha risposto di attenersi ai criteri dei finanziatori,
+e rileggendoli **nessun programma prescrive la custodia**. Il progetto quindi non la sceglie:
+firma attraverso un backend, e il percorso **staccato** non fa mai entrare la chiave privata nel
+processo — cold storage, smartcard e qualunque HSM sono lo stesso flusso da qui.
+`docs/RELEASE_SIGNING_POLICY.md`. **Cosa resta all'Owner**: generare la chiave durevole e
+scegliere dove tenerla — ora una decisione di **deployment senza conseguenze sul codice**.
+Raccomandazione: **cold storage + percorso staccato**, che non costa nulla e non richiede
+fornitori.
 
 **`CE-035` resta l'unica casella senza verdetto e non si chiude da qui.** Chiede `ssh` +
 `coden_evolution` da un **secondo nodo reale**: serve un VPS col prodotto installato **sopra**, mai
@@ -44,8 +53,8 @@ site dove prima ne aveva **uno**, e `/review` è in **entrambe** le shell.
 
 **`MANIFEST.sha256` diceva il falso (`D-0615`).** Misurato prima: **114 hash sbagliati**, **818**
 file tracciati non elencati, **6** voci per file non tracciati. Mantenuto a mano in 109 commit,
-**mai diventato rosso perché nessuno lo guardava**. Ora **6.715** voci = `git ls-files` meno sé
-stesso, con `--check` in `scripts/test.sh` **e** nel pre-commit.
+**mai diventato rosso perché nessuno lo guardava**. Ora è `git ls-files` meno sé stesso — **6.717**
+voci a fine sessione — con `--check` in `scripts/test.sh` **e** nel pre-commit.
 
 **La provenienza è verificabile da chi non ha la chiave (`D-0619`).** Prima: HMAC-SHA256, e
 `rust/BUILD_STATUS.md` lo ammetteva — *«chi può verificare questa firma può anche falsificarla»*.
@@ -62,17 +71,35 @@ rifiutato un commit di quella fase stessa**. `D-0619`: 4 volte, e la più import
 **togliendo `publicSignature` dalla busta Python l'HMAC si rompe** sul documento contro-firmato —
 che è ciò che prova che quella modifica era necessaria e non decorativa.
 
-**Tre difetti riparati chiudendo, tutti della stessa famiglia.** `D-0614`:
+**La custodia della chiave smette di essere una scelta del progetto (`D-0622`).** Riletto il
+2026-08-21: **nessun programma di finanziamento prescrive la custodia** — né Restack né la
+Sovereign Tech Agency nominano HSM, KMS o cerimonie. Quell'assenza **misurata** è metà della
+risposta. Ciò che chiedono davvero (*"without a vendor lock-in"*, non dipendere da tecnologia
+chiusa, *"local-first"*) non dice **dove** tenere la chiave: dice che il prodotto **non deve
+imporlo** e che la verifica deve funzionare **offline**.
+
+**E il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)`
+pretende la chiave privata **in memoria di processo** — esattamente ciò che un HSM e una chiave
+offline esistono per evitare. Il progetto **aveva già scelto** la custodia («un file su disco») e
+chiuso fuori tutte le altre; nessuno l'aveva deciso, era la forma di una firma di funzione. Ora
+`tools/release-signing.mjs` porta **due backend veri** — `local-key` e `detached` — e il
+verificatore **non può distinguerli**, il che è ciò che rende la custodia una scelta di chi
+installa. Provato end-to-end: fase 1 esce **3** ed emette i byte senza chiave privata, la firma
+si produce fuori processo, fase 2 riattacca, `PROVENANCE_PUBLIC_VERIFY=PASS`.
+
+**Quattro difetti riparati chiudendo, tutti della stessa famiglia.** `D-0614`:
 `PROJECT_STATE.json.installation` era ferma a **dieci deploy** prima. `D-0616`: la regola *«quali
 percorsi il manifest può attestare»* era scritta due volte e un symlink avrebbe **incastrato** il
 gate. `D-0618`: il close guard non conosceva `MANIFEST.sha256`, che `D-0615` ha reso obbligatorio
 in ogni chiusura — `F-CLOSURE-001` un artefatto più tardi. `D-0620`: portabilità, i due strumenti
 nuovi derivavano il proprio percorso in un modo che su Windows non fa mai match (§62).
+`D-0623`: due percorsi di firma assemblavano la busta ciascuno per conto suo e differivano di un
+campo — **terza volta in questa sessione** per lo stesso difetto, dopo `D-0608` e `D-0616`.
 
-**Verificato:** unit **2946** (2945 pass, 0 fail, 1 skip preesistente) · ESLint **471 file
-0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1155` ·
-`MANIFEST=OK 6715 files` · `ACCEPTANCE_MATRIX: PASS` · fixture di deploy **80/80** · fixture dei
-hook **71/71** · Python `test-rust-build-provenance.py` **11 OK** in contenitore offline ·
+**Verificato:** unit **2955** (2954 pass, 0 fail, 1 skip preesistente) · ESLint **472 file**
+**0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1160` ·
+`MANIFEST=OK 6717 files` · `ACCEPTANCE_MATRIX: PASS` · fixture di deploy **80/80** · fixture
+dei hook **71/71** · Python `test-rust-build-provenance.py` **11 OK** in contenitore offline ·
 sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`200`.
 
 ## WHAT WAS **NOT** DONE
@@ -80,8 +107,13 @@ sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`2
 - **`PKG-001` NON è chiusa, e la posizione 5 nemmeno.** `D-0619` la rende **chiudibile**: si
   chiude quando un archivio di consegna esiste ed è firmato. **Nessun archivio di consegna è mai
   stato prodotto.** Presentarlo altrimenti sarebbe un falso PASS.
-- **La chiave di rilascio durevole non esiste** — quella usata è di sessione, mai committata.
-  È una decisione dell'Owner, non inventata qui.
+- **La chiave di rilascio durevole non esiste ancora** — quelle usate per le prove sono di
+  sessione e stanno **fuori dall’albero**, mai committate. Generarla è un atto dell’Owner.
+  `D-0622` fa sì che la sua **custodia** non abbia più conseguenze sul codice, non che la
+  chiave esista.
+- **Solo la provenienza è agnostica rispetto alla custodia.** `sign-release-artifact.mjs` e la
+  firma dei quattro SBOM pretendono ancora il PEM su disco: è `D-0624`, proposto e non
+  eseguito. Metà prodotto agnostico non è una proprietà che si possa dichiarare.
 - **`D-0615` e `D-0619` non toccano l'installazione**, e non è un'asserzione: verificato dentro
   l'immagine viva che `/opt/noesar/MANIFEST.sha256` non esiste e che `tools/` ne contiene 8 file.
 - **`/review` non è stato interrogato con una sessione autenticata** (§3a 11e). Sul vivo è provato
@@ -90,10 +122,12 @@ sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`2
 - **`F-ROT-001` ri-osservata e non riparata**: `NOESAR_ALLOWED_HOSTS` nomina `172.22.0.5` mentre
   l'IP è `172.22.0.3`. Sopravvive **correttamente** (config riletta, non reinventata).
 - **T2 non eseguita** (browser e2e, accessibility, seeded-defect): nessun file di prodotto è
-  cambiato in `D-0615` né in `D-0619`. Dichiarato, non implicito.
-- **HUNT AND FIX: scoped al diff** in tutte e tre le fasi, **nessuna full sweep**. `D-0612`: diff
-  di prodotto zero file, strumento il deploy stesso (nulla) + fixture 80/80. `D-0615`: 5 file,
-  **ha dato `D-0616`**. `D-0619`: 7 file, **ha dato `D-0620`**.
+  cambiato in `D-0615`, `D-0619` né `D-0622` — tutto vive in `tools/`, `docs/` e nei test, e
+  `tools/` non entra nell’immagine. Dichiarato, non implicito.
+- **HUNT AND FIX: scoped al diff** in tutte e quattro le fasi, **nessuna full sweep**. `D-0612`:
+  diff di prodotto zero file, strumento il deploy stesso (nulla) + fixture 80/80. `D-0615`: 5
+  file, **ha dato `D-0616`**. `D-0619`: 7 file, **ha dato `D-0620`**. `D-0622`: 4 file, **ha dato
+  `D-0623`**. Ogni fase di questa sessione ha trovato un difetto nel proprio codice nuovo.
 - **`shellcheck` assente su questo host** e la batteria non lint-a affatto la shell — è `D-0609`.
 - **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.**
 - **Scansione segreti euristica e dichiarata tale**: né `gitleaks` né `trufflehog` su `PATH`.

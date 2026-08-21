@@ -88,6 +88,11 @@
         "value": { "type": "string", "minLength": 1 },
         "publicKeyFingerprint": { "pattern": "^[a-f0-9]{64}$", "type": "string" },
         "signedAt": { "type": "string", "minLength": 1 },
+        "custody": {
+          "description": "Which signing backend produced this signature (D-0622) — informational only. A verifier needs the public key and nothing else, and cannot tell one backend from another; see docs/RELEASE_SIGNING_POLICY.md for why that independence is the point.",
+          "type": "string",
+          "minLength": 1
+        },
         "covers": { "type": "string", "minLength": 1 },
         "envelopeKeys": { "type": "array", "items": { "type": "string" } }
       }

@@ -5890,3 +5890,23 @@ test Python e il round-trip, **tutti `--rm --network none`**, rimossi per costru
 e nessuna rete creati. Sopravvivono i due previsti: `noesar-evolution` (Up, healthy) e
 `noesar-evolution-pre-20260821T032436Z` (Exited).
 **Costo di rollback.** Nessuno — nessuna modifica al prodotto installato.
+
+## 2026-08-21T05:55Z — `D-0622` · custodia della chiave agnostica, **l'installazione non è stata cambiata**
+**Tag in esecuzione:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z` — invariato.
+**NESSUN DEBITO §3a.** `tools/` nell'immagine contiene 8 file (verificato in `D-0615`) e nessuno
+dei tre file nuovi è fra quelli; `docs/` e `schemas/rust-build-provenance-v1` non sono copiati.
+**Cosa è cambiato in albero.** Nuovi `tools/release-signing.mjs` (contratto + due backend veri) e
+`docs/RELEASE_SIGNING_POLICY.md` (la risposta scritta all'Owner, con fonti e date di rilettura);
+`tools/sign-build-provenance.mjs` firma attraverso un backend e offre il percorso staccato via
+CLI; `schemas/rust-build-provenance-v1.schema.json` descrive `custody`; 9 righe di test nuove.
+**Verificato.** Percorso staccato end-to-end **senza chiave privata nel processo**: fase 1 esce
+**3** ed emette i byte, firma prodotta fuori, fase 2 riattacca, `PROVENANCE_PUBLIC_VERIFY=PASS`.
+Le due vie danno **la stessa firma** e **la stessa busta** (7 chiavi identiche). Unit **2955**
+(2954 pass, 0 fail, 1 skip preesistente) · ESLint **472 file 0/0/0** ·
+`SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1160` · `MANIFEST=OK 6717 files` ·
+oracoli **visti rossi 2 su 2**.
+**Igiene (§5a).** Nessun contenitore creato oltre a quelli `--rm` di `run-eslint.sh`. Nessun tag,
+nessuna rete. Sopravvivono i due previsti: `noesar-evolution` (Up, healthy) e
+`noesar-evolution-pre-20260821T032436Z` (Exited). **Nessuna chiave privata è mai stata scritta nel
+repository**: quelle usate per le prove stanno nella scratchpad di sessione, fuori dall'albero.
+**Costo di rollback.** Nessuno — nessuna modifica al prodotto installato.

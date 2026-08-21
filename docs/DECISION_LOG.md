@@ -14338,3 +14338,68 @@ SBOM usano già la stessa primitiva.
 **Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 5** (affidabilità misurabile:
 provenienza verificabile da terzi) **e tratto 2** (riusabile: una catena a chiave pubblica la
 verifica chiunque, non solo chi l'ha prodotta).
+
+## D-0622 · La custodia della chiave di rilascio è dell'operatore, non del progetto — 2026-08-21
+**Decision.** Il progetto **non sceglie** un backend di custodia: definisce un contratto di firma
+(`tools/release-signing.mjs`) e spedisce **due implementazioni vere** — `local-key` (la chiave è un
+PEM che questo processo legge) e `detached` (**la chiave privata non entra mai in questo
+processo**). `docs/RELEASE_SIGNING_POLICY.md` è la risposta scritta, con fonti e date.
+**Why.** L'Owner, richiesto di scegliere fra HSM / secret manager / cold storage, ha risposto di
+attenersi a ciò che chiedono i finanziatori. **Riletto il 2026-08-21: nessun programma prescrive
+la custodia della chiave** — né Restack né la Sovereign Tech Agency nominano HSM, KMS o cerimonie.
+Quell'assenza **misurata** è metà della risposta, ed è la metà che sarebbe stato facile coprire:
+sceglierne una e attribuirla a un finanziatore sarebbe stato inventare un requisito (è il
+fallimento che `funding-fit` §0 esiste per impedire). Ciò che chiedono davvero — *"without a
+vendor lock-in"*, non dipendere da tecnologia chiusa, *"local-first"* — non dice **dove** tenere
+la chiave: dice che il prodotto **non deve imporlo** e che la **verifica deve funzionare offline**.
+`[INFERRED]`, etichettato come tale nel documento.
+**Il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)` pretende
+la chiave privata **in memoria di processo** — esattamente ciò che un HSM, una smartcard e una
+chiave offline esistono per evitare. Il progetto **aveva già scelto** la custodia («un file su
+disco») e chiuso fuori tutte le altre. Nessuno l'aveva deciso: era la forma di una firma di
+funzione.
+**Rejected.** Nominare un fornitore (lock-in nel punto più critico che esista, `funding-fit` §4
+tratto 4); un'interfaccia con **una sola** implementazione, che è un'interfaccia che nessuno ha
+provato (regola 73 — niente punti di estensione che sono promesse).
+**Evidence.** End-to-end sul vero: fase 1 emette i byte ed esce **3** senza chiave privata,
+l'operatore firma fuori processo, fase 2 riattacca, e il verificatore — che non sa nulla della
+custodia — dà `PROVENANCE_PUBLIC_VERIFY=PASS`. Le due vie producono **la stessa firma** e una
+busta con **le stesse chiavi**, verificato. Suite **2955** (2954 pass, 0 fail, 1 skip), ESLint
+**472 file 0/0/0**. Oracoli **visti rossi 2 su 2**: togliendo il ricontrollo della firma staccata
+(2 fail) e togliendo il rifiuto della fase 1 (4 fail).
+**Reversal cost.** Nessuno sul prodotto installato — `tools/` non entra nell'immagine.
+**Status.** applied. **Resta all'Owner**: quale custodia usare davvero (ora una decisione di
+deployment **senza conseguenze sul codice**, che è ciò che questa fase ha ottenuto) e generare la
+chiave durevole. Raccomandazione, non decisione presa qui: **cold storage + percorso staccato** —
+non costa nulla, non richiede fornitori, e soddisfa §3 del documento.
+
+## D-0623 · Due percorsi di firma producevano buste diverse — unificati — 2026-08-21
+**Decision.** `signBuildProvenance()` delega a `signBuildProvenanceWith()` invece di assemblare la
+busta per conto suo; un solo assemblatore.
+**Why.** Trovato cacciando il diff di `D-0622` **prima che spedisse**: la via con chiave locale
+montava la busta da sé e quella con backend la montava altrove, e differivano di un campo
+(`custody`). È la terza volta in questa sessione che lo stesso difetto si presenta — `D-0608`
+(`env_count()`), `D-0616` (`isAttestable()`), questo — e la regola è sempre la stessa: **una
+regola consultata due volte e scritta due volte diverge**.
+**Rejected.** Aggiungere `custody` anche all'altra copia: sarebbe stato riparare l'istanza e
+lasciare in piedi la causa (§40c).
+**Evidence.** Dopo l'unificazione le due buste hanno chiavi identiche
+(`algorithm,covers,custody,envelopeKeys,publicKeyFingerprint,signedAt,value`) e **la stessa firma**
+byte per byte. Rimosso anche l'import di `signCompliancePack` diventato inutilizzato.
+**Reversal cost.** Nessuno.
+**Status.** applied.
+
+## D-0624 · Proposta: portare i backend di custodia agli altri firmatari — 2026-08-21
+**Decision.** Proposta, **non eseguita**: far passare anche `tools/sign-release-artifact.mjs`,
+`tools/sign-compliance-pack.mjs` e la firma dei quattro SBOM attraverso i backend di
+`tools/release-signing.mjs`.
+**Why.** Oggi **solo** la provenienza è agnostica rispetto alla custodia: gli altri firmatari
+pretendono ancora il PEM su disco, quindi un operatore con la chiave in un HSM può firmare la
+provenienza e **non** l'SBOM. Metà prodotto agnostico è una proprietà che non si può dichiarare.
+**Rejected.** Rifare l'interfaccia: esiste, è provata, e questo è riuso.
+**Evidence.** `sign-release-artifact.mjs:36` e `sign-compliance-pack.mjs` chiamano
+`signCompliancePack(artifact, privateKeyPem)` con il PEM letto da file.
+**Reversal cost.** Nessuno finché è una proposta.
+**Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 4** (nessun lock-in: nessun
+fornitore di custodia diventa una dipendenza) **e tratto 2** (riusabile: il contratto di firma è
+generico e non nomina questo prodotto).
