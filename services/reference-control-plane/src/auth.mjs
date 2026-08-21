@@ -245,6 +245,21 @@ const TERMINAL_ENROLMENT_IDLE_MS = 90 * 24 * 60 * 60_000;
 // client spinning. Set low, it would lock out the legitimate operator instead.
 const TERMINAL_FAILURE_BUDGET = 20;
 
+// --- Browser sessions ----------------------------------------------------------------------
+//
+// Owner, 2026-08-21, verbatim: "fai in modo che il login rimanga molto [di piu]... altrimenti
+// devo sempre rifarlo". The previous shape had two walls: an 8-hour ABSOLUTE cap that ended
+// the session on the clock regardless of use, and a 30-minute IDLE cap that ended it on any
+// pause longer than a coffee break — the same "log out on a date the operator cannot
+// predict" failure `TERMINAL_ENROLMENT_IDLE_MS` above was already built to remove, just not
+// applied here. Idle is now measured in days, refreshed on every authenticated request (see
+// `authenticate()`), so daily or weekly use never trips it. The absolute cap is widened, not
+// removed: unlike an enrolled terminal token, which never leaves the operator's own
+// filesystem, a browser session token can leak through XSS or a shared machine, so it still
+// expires on the calendar — just measured in weeks, not hours.
+const SESSION_ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60_000; // 30 days
+const SESSION_IDLE_TTL_MS = 7 * 24 * 60 * 60_000; // 7 days, sliding
+
 /**
  * Mint recovery codes. The plaintext is returned ONCE to the caller and never stored:
  * only digests are persisted, so a copy of the state file yields no working codes.
@@ -561,8 +576,8 @@ export class AuthService {
       userId: user.id,
       createdAt: now,
       lastSeenAt: now,
-      expiresAt: now + 8 * 60 * 60_000,
-      idleExpiresAt: now + 30 * 60_000,
+      expiresAt: now + SESSION_ABSOLUTE_TTL_MS,
+      idleExpiresAt: now + SESSION_IDLE_TTL_MS,
       mfa,
       elevatedUntil: 0,
     };
@@ -854,7 +869,7 @@ export class AuthService {
       const current = next.sessions.find((item) => item.id === session.id);
       if (current) {
         current.lastSeenAt = now;
-        current.idleExpiresAt = Math.min(current.expiresAt, now + 30 * 60_000);
+        current.idleExpiresAt = Math.min(current.expiresAt, now + SESSION_IDLE_TTL_MS);
       }
     });
     return { session, user:publicUser(user), rawUser:user };
@@ -1364,9 +1379,16 @@ export class AuthService {
 
   cookieHeaders({ token, csrf }) {
     const secure = this.secureCookies ? '; Secure' : '';
+    // Same number the session record itself uses (SESSION_ABSOLUTE_TTL_MS), not a second,
+    // independently maintained one: this exact class of defect — two places assembling the
+    // same value on their own and drifting apart — has already cost this project three
+    // repairs this session alone (D-0608, D-0616, D-0623). A hardcoded 28800 here silently
+    // logged the browser out after 8 hours no matter how long the server-side session was
+    // told to live, which is the bug the Owner actually reported.
+    const maxAge = Math.floor(SESSION_ABSOLUTE_TTL_MS / 1000);
     return [
-      `noesar_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${secure}`,
-      `noesar_csrf=${csrf}; Path=/; SameSite=Strict; Max-Age=28800${secure}`,
+      `noesar_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`,
+      `noesar_csrf=${csrf}; Path=/; SameSite=Strict; Max-Age=${maxAge}${secure}`,
     ];
   }
 
