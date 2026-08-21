@@ -555,6 +555,8 @@ const it = {
   'Enter sends ·': 'Invio manda ·',
   'opens the menu · Tab completes without sending ·': 'apre il menu · Tab completa senza mandare ·',
   models: 'modelli',
+  'On a container installation, attach to the container the product runs in — there is no SSH daemon inside it, and there should not be.': "Su un'installazione a container, aggancia il container in cui gira il prodotto — non c'è un demone SSH al suo interno, e non dovrebbe esserci.",
+  'nothing typed': 'senza digitare nulla',
   'Shadow run': 'Esecuzione in ombra',
   'type': 'digita',
   'in the prompt to go elsewhere': 'nel prompt per andare altrove',
