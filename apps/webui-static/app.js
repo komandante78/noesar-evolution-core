@@ -985,7 +985,23 @@ async function selectConversation(id,rerender=true){if(!id){state.activeConversa
 // is given in `refreshWorkspace` (`D-0329`); the test asserts the order, not the presence.
 await renderChatPlan();
 await refreshMessages();}
-$('#newConversation').addEventListener('click',async()=>{if(!state.activeProjectId)return setStatus('Create or select a project first.',true);const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
+$('#newConversation').addEventListener('click',async()=>{
+  // Owner, 2026-08-21: "se clicco nuova conversazione non la creo e non appare sulla
+  // sidebar". Root cause was this line: no project meant a silent `setStatus` — a thin line
+  // of text elsewhere on the page, easy to never see — and nothing else happened. A missing
+  // project is the ordinary first-run state, not an error to report and stop at: send the
+  // person to where a project is made, in the same gesture, instead of naming a problem they
+  // then have to go solve themselves through a different button.
+  if(!state.activeProjectId){
+    if(state.projects.length){state.activeProjectId=state.projects[0].id;renderProjectOptions();}
+    else{
+      activate('projects');
+      setStatus('Create a project first — the form is right here.',true);
+      $('#projectName')?.focus();
+      return;
+    }
+  }
+  const title=prompt('Conversation title','New conversation');if(!title)return;try{const result=await api('/api/v1/conversations',{method:'POST',body:JSON.stringify({projectId:state.activeProjectId,title,mode:currentMode,providerId:$('#chatProvider').value||null,model:$('#chatModel').value||null})});state.activeConversationId=result.conversation.id;state.activeBranchId=result.branch.id;await refreshWorkspace();activate('chat');}catch(error){setStatus(error.message,true);}});
 $('#chatBranch').addEventListener('change',async(event)=>{state.activeBranchId=event.target.value;await refreshMessages();});
 async function refreshMessages(){if(!state.activeConversationId||!state.activeBranchId)return;const data=await api(`/api/v1/conversations/${state.activeConversationId}/messages?branchId=${state.activeBranchId}`);renderMessages(data.messages);await inspectContext();}
 function renderMessages(messages){$('#messageList').classList.remove('empty-state');$('#messageList').innerHTML=messages.map((message)=>`<article class="message ${escapeHtml(message.role)}" data-message-id="${message.id}"><div class="message-head"><b>${escapeHtml(message.role)}</b><small>${instantHtml(message.createdAt)}</small></div><div class="message-body">${escapeHtml(message.content).replaceAll('\n','<br>')}</div>${message.citations?.length?`<div class="citations">${message.citations.map((c)=>`Source ${escapeHtml(c.sourceId)} · ${escapeHtml(c.evidenceStatus??(c.verified?'retrieved':'attached'))} · claim ${escapeHtml(c.claimStatus??'unverified')}`).join('<br>')}</div>`:''}<div class="message-actions"><button data-edit-message="${message.id}">Edit</button><button data-fork-message="${message.id}">Fork here</button><button data-exclude-message="${message.id}">Remove from context</button>${message.role==='assistant'?`<button data-retry-message="${message.id}">Retry</button>`:''}</div></article>`).join('')||'<div class="empty-state">No messages.</div>';$('#messageList').scrollTop=$('#messageList').scrollHeight;bindMessageActions(messages);renderChatSources(messages);}

@@ -391,7 +391,7 @@ e694b9dc175bca0007abc2629e9765fef4d1e65c000efc588935b6b04a72cbe9  ./apps/shared/
 07df3d546a7a531bbd3835298952b3b186efd7a8391f7e58374b836f82e328b2  ./apps/shared/coden/coden-addresses.js
 83b069ce4f802fe39175433269fa836776cabaf341d0dc1f0a41c5435a01116f  ./apps/shared/coden/terminal-input.mjs
 2b52b3bf08af80911e350a956dbba14b6f2d507add9c772a0871d77feab86e5a  ./apps/shared/coden/tui-screen.mjs
-c603c88d62936c7a85439c4e3d349e3cfd0f710da99d9ca785db6ce04a56cde1  ./apps/webui-static/app.js
+c8e14e81d930123ef7bb17e9036506a4fa3728ce2b86af7881c4413a8f44b962  ./apps/webui-static/app.js
 b6a46a76c3b0e54eae7becbd5936f7a6371459e1e467a8ac9abaad49e9dd88f5  ./apps/webui-static/coden-terminal-frame.js
 2687f2923525cec5fe352819a596ba44c3940441c58e20aeed04b12787d142e3  ./apps/webui-static/coden-terminal.html
 7be908eae26f99ad504c918e2346e62ba6d17ac30881dc0a7e2918aa40032dd8  ./apps/webui-static/coden-terminal.js
@@ -592,7 +592,7 @@ a911329a17ded4dc8cac8b8c22f89157cae51308448f34b888c8410a3fb5d052  ./docs/MULTI_U
 9ff3fccaafa9927a5f6882a1409c37b3842993a1fcba3fa6e9d85fa03b94442e  ./docs/OWNER_BOOTSTRAP.md
 a94d4ea510d5804d3bd45cf70efee609b5a7bf07553aab42e6cc7b3a652c8729  ./docs/OWNER_CHANGE_LIST_S326.md
 163b73cc90f8f00b89d63416a936cd658561de8388e39242f9e8ef260a22449c  ./docs/OWNER_CHANGE_LIST_S333.md
-7f35e334cb4d729b6b57de4deb410ad0f3ecf2db34ccbb03cfe09bd317376a94  ./docs/OWNER_REVIEW_2026-08-21.md
+b0f93000aa4018e314c2042eecfd2c7a283fa27a197b6109b7fe444d9cde57f5  ./docs/OWNER_REVIEW_2026-08-21.md
 afed6460445e178600e8ffe8946a56236bc44c47c8d61f712a9c1c005fa227dc  ./docs/PACKAGE_CONTENT_MAPPING.tsv
 4b417503c960f83dc987632b8ed945ae12821b9ad26ed83715221d59c924374f  ./docs/PACKAGING_FILTER_SAFETY_RULES.md
 1d2f08a83900a4a61c6e3d85dffc17ba71868086c8d372a8d7e79bda61332833  ./docs/PAGES_INDEX_2026-08-16.md
