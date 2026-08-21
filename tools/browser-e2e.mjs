@@ -3025,6 +3025,61 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('#confirmScrim.hidden', { timeout: 15000 });
 
+  at('chat-slash-menu');
+  // Owner, repeated across several sessions: the chat composer's "/" menu "non è fatto come
+  // Claude Code". #codenMenu — CodeN's OWN "/" menu — is driven thoroughly above (17
+  // commands, keyboard, Enter). #chatCommands is a SEPARATE, simpler implementation on the
+  // plain chat view (app.js:1255, commandMenuState/renderCommandMenu) that this suite had
+  // never driven at all — reading the file again would not have found whatever is actually
+  // wrong, which is exactly how this project has been wrong three times already
+  // (F-COMMAND-001, F-SLASH-001, F-TERM-001: two composers, only one wired or one working).
+  await gotoIdle(`${BASE}/#/chat`);
+  await page.waitForSelector('#chatInput', { timeout: 15000 });
+  await page.evaluate(() => {
+    const input = document.querySelector('#chatInput');
+    input.value = '';
+    input.focus();
+  });
+  await page.keyboard.type('/');
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  const slashOpened = await page.evaluate(() => {
+    const box = document.querySelector('#chatCommands');
+    const options = [...box.querySelectorAll('[data-command]')];
+    return { hidden: box.classList.contains('hidden'), count: options.length };
+  });
+  check('the chat composer\'s own / menu opens on a bare /, listing every command',
+    !slashOpened.hidden && slashOpened.count > 0, JSON.stringify(slashOpened));
+
+  await page.keyboard.type('plan');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const slashFiltered = await page.evaluate(() => ({
+    names: [...document.querySelectorAll('#chatCommands [data-command]')].map((node) => node.dataset.command),
+  }));
+  check('typing narrows the list, the exact name ranked first',
+    slashFiltered.names[0] === 'plan', JSON.stringify(slashFiltered));
+
+  await page.keyboard.press('ArrowDown');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const slashAfterArrow = await page.evaluate(() => ({
+    hasActive: Boolean(document.querySelector('#chatCommands [data-command].active')),
+    focusStillInInput: document.activeElement?.id === 'chatInput',
+  }));
+  check('ArrowDown moves the highlight and leaves focus in the composer',
+    slashAfterArrow.hasActive && slashAfterArrow.focusStillInInput, JSON.stringify(slashAfterArrow));
+
+  await page.keyboard.press('Tab');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const slashAfterTab = await page.evaluate(() => ({
+    value: document.querySelector('#chatInput').value,
+  }));
+  check('Tab completes the highlighted command into the composer, without sending',
+    /^\/\S/.test(slashAfterTab.value), JSON.stringify(slashAfterTab));
+
+  await page.keyboard.press('Escape');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const slashAfterEscape = await page.evaluate(() => document.querySelector('#chatCommands').classList.contains('hidden'));
+  check('Escape closes the chat / menu', slashAfterEscape === true, String(slashAfterEscape));
+
   at('reading-controls');
   // --- text size, zoom and motion, measured rather than asserted -----------
   //
