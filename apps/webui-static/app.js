@@ -3987,7 +3987,7 @@ function ensureVoiceSession(){
 /** What each state says and whether it can be interrupted. One table, so the window, the button
  *  and the stop control cannot disagree about what the product is doing. */
 function renderVoiceTurn(state,detail){
-  const button=$('#chatDictate');const label=$('#chatDictateLabel');
+  const button=$('#chatDictate');const label=$('#chatDictateLabel');const icon=$('#chatDictateIcon');
   const stop=$('#voiceFaceStop');
   const listening=state===VoiceTurn.LISTENING;
   const speaking=state===VoiceTurn.SPEAKING;
@@ -3995,6 +3995,7 @@ function renderVoiceTurn(state,detail){
   voiceFaceState(state,detail?.caption);
   button?.setAttribute('aria-pressed',String(listening||working||speaking));
   if(label)label.textContent=listening||working||speaking?t('Stop'):t('Speak');
+  if(icon)icon.textContent=listening||working||speaking?'⏹':'🎙';
   // Interruptible exactly while the product holds the turn. Offering it at other times would be
   // a control that does nothing, which is indistinguishable from a broken one.
   if(stop)stop.disabled=!(speaking||working);
@@ -4066,6 +4067,8 @@ function initChatVoice(){
     aloud.setAttribute('aria-pressed',String(readAloud));
     const label=$('#chatReadAloudLabel');
     if(label)label.textContent=readAloud?t('Read aloud: on'):t('Read aloud: off');
+    const icon=$('#chatReadAloudIcon');
+    if(icon)icon.textContent=readAloud?'🔊':'🔇';
     // Turning it off stops what is being read RIGHT NOW — through the controller, so the
     // synthesis still in flight is abandoned too rather than arriving and speaking anyway.
     if(!readAloud){readAloudController?.abort();readAloudController=null;}
@@ -4095,6 +4098,10 @@ function forgetVoiceState(){
   if(aloud){aloud.disabled=true;aloud.setAttribute('aria-pressed','false');}
   const label=$('#chatReadAloudLabel');
   if(label)label.textContent=t('Read aloud: off');
+  const readAloudIcon=$('#chatReadAloudIcon');
+  if(readAloudIcon)readAloudIcon.textContent='🔇';
+  const dictateIcon=$('#chatDictateIcon');
+  if(dictateIcon)dictateIcon.textContent='🎙';
 }
 function initWorkspaceActions(){
   addPlanFileRow();
