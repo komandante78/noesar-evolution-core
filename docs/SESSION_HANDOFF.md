@@ -1,132 +1,109 @@
 # SESSION HANDOFF
 
-**La coda di lavoro dichiarata in questa sessione è chiusa: `D-0630`/`D-0634` e `D-0627`/`D-0635` fatte.**
-`D-0627` (chiusa da `D-0635`) — causa radice per cui `#/models` era vuota tredici sessioni: `model-catalog.mjs`
-citava `MC-001`…`MC-006` come criteri e nella matrice non esisteva **nessuna** riga `MC-`.
-Ora `docs/MODEL_CATALOG_DESIGN.md` §8 ha la tabella a 5 colonne, `SOURCES` la conosce, la
-matrice è **73 criteri** (67→73), oracolo dello strumento visto rosso togliendo una riga.
-`D-0630` — le 31 stringhe visibili del seed modelli sono inglese con resa italiana; il
-controllo i18n legge anche i file dati adesso, non solo `index.html`.
-**Prima:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622` · `D-0625`
-(catalogo modelli) · `D-0628` (griglia leggibile) · `D-0632`/`D-0633` (ATOM resta
-proprietario, `D-0468` superata) · `D-0634` (i18n del seed).
-**Live installation:** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, `running`/`healthy`.
-**Debito §3a APERTO e dichiarato**: `D-0634` è in albero, non installato — il seed modelli
-sull'installazione viva mostra ancora le descrizioni in italiano (verificato dentro il
-contenitore). Nessun rischio attivo — si accoda al prossimo deploy che tocca `#/models`.
-`D-0635` non tocca l'immagine: nessun debito da lì.
+**Sessione chiusa su richiesta dell'Owner: "fai chiusura riprendiamo domani".** Passata live
+dell'Owner su chat e CodeN Evolution, dettata in conversazione invece che scritta a mano da
+lui nella scheda — vedi §"come funziona" sotto. **12 commit, git pulito, NON pushati.**
 
 ## ➜ LA PROSSIMA AZIONE
 
-**La passata live dell'Owner, che viene prima di qualunque fase nuova.** L'Owner ha deciso
-il 2026-08-21 di camminare il prodotto vivo superficie per superficie e registrare cosa non
-funziona e cosa non gli piace, **prima** di qualunque altro lavoro. La scheda è
-**`docs/OWNER_REVIEW_2026-08-21.md`** — porta l'elenco completo misurato: **29 comandi** del menu
-unico (da provare in **entrambe** le shell) e **13 pannelli** WebUI, più i numeri di partenza per
-i benchmark. **Non aprire una fase nuova finché quella scheda non è riempita.**
+**Riprendere `docs/OWNER_REVIEW_2026-08-21.md`.** È ancora la scheda che governa tutto: non si
+apre una fase nuova finché non è finita. Righe ancora aperte in §3/§4:
 
-**L'ordine deciso dall'Owner, e concordato:** passata live → triage di ogni riga contro il codice
-reale (§40b: un falso positivo "riparato" è una regressione per niente) → lista dei cambiamenti
-ordinata per ciò che sblocca cosa → **un solo aggiornamento**, costruito a fette con `T0`/`T1`
-continui e un deploy solo → debug + vulnerabilità + **`T2` intero** sull'installazione nuova →
-benchmark mirati contro i numeri di partenza. **Costo dichiarato**: finché non si deploya
-l'installazione resta indietro rispetto all'albero — debito §3a **aperto e scritto**.
+- eliminare un progetto (con doppia conferma) — `#/projects`
+- eliminare un agente + stato chiaro attivo/inattivo — `#/agents`
+- `#/knowledge`, `#/memory`, `#/research` — "non si capisce a cosa servano", nessuna identità
+  propria; serve la visione dell'Owner su cosa ognuna DEVE essere, non solo che manca
+- creazione agenti a comando da chat/CodeN, in linguaggio naturale — capacità nuova
+- "NOESAR EVOLUTION deve essere multimodale" — non ulteriormente specificato, capacità grande
 
-**Quando la passata è finita, il lavoro riprende da qui:**
+**Poi, nell'ordine già concordato con l'Owner**: triage di ogni riga contro il codice reale →
+lista dei cambiamenti → **un solo deploy consolidato** → debug/vulnerabilità/**T2 intero**
+sull'installazione nuova → benchmark contro i numeri di partenza (§5 della scheda).
 
-**`D-0621` — estendere la firma pubblica ai cinque archivi.** Lo strato Ed25519 ora esiste, è
-provato ed è generico: applicarlo alle cinque posizioni di `MASTER_PROJECT/09_PIANO.md` §4a è
-**riuso, non costruzione**. È il passo che porta `PKG-001` da *chiudibile* a *chiuso* — insieme
-alla cosa che manca davvero, cioè **produrre gli archivi**, che non è mai stato fatto
-(`09_PIANO.md`: *«nessun archivio di consegna è mai stato prodotto»*).
+**Decisione mai chiesta esplicitamente, da chiedere appena si riprende**: se pushare i 12
+commit locali ora o aspettare il deploy. Non deciso da solo — è un'azione visibile (`git push`).
 
-**Nota:** la posizione 5 («provenienza») ora **può** chiudersi (`D-0619`), ma **non è chiusa** —
-si chiude quando un archivio di consegna esiste ed è firmato.
+## Come funziona questa sessione — cambio di modalità a metà
 
-**Poi:** `D-0624` (portare i backend di custodia agli **altri** firmatari — oggi solo la
-provenienza è agnostica, gli SBOM pretendono ancora il PEM su disco) · `D-0617` (firmare
-`MANIFEST.sha256`) · `D-0609` (`shellcheck` assente) · `D-0605` · `D-0613`.
+L'Owner ha iniziato camminando la scorecard da solo, poi è passato a **dettare le osservazioni
+in chat** ("io dico, tu scrivi") perché camminare ogni pagina a mano lo stava esaurendo
+("se continuo mi metto a piangere" — testuale). Le osservazioni sono scritte da me in
+`docs/OWNER_REVIEW_2026-08-21.md` man mano che arrivavano, **non filtrate né riordinate** —
+il triage vero resta da fare all'inizio della prossima sessione, come previsto dal file stesso.
 
-**La custodia della chiave NON è più un blocco (`D-0622`).** Firma attraverso un backend; il
-percorso staccato non fa mai entrare la chiave privata nel processo. Dettaglio:
-`docs/RELEASE_SIGNING_POLICY.md`. Resta all'Owner: generare la chiave durevole.
+`claude-in-chrome` non è collegato in questa sessione (estensione non configurata) — dove
+serviva vedere il prodotto dal vivo, ho usato lo strumento e2e di questo stesso progetto
+(`tools/run-browser-e2e.sh`, T2, container usa-e-getta) invece di leggere codice e sperare.
 
-**`CE-035` resta l'unica casella senza verdetto e non si chiude da qui.** Chiede `ssh` +
-`coden_evolution` da un **secondo nodo reale**: serve un VPS col prodotto installato **sopra**, mai
-questo host esposto a internet. **Bloccata su una risorsa che l'Owner non ha ancora fornito.**
+## WHAT IS TRUE NOW THAT WAS NOT — misurato in questa sessione
 
-**Anche aperti:** `D-0564` · `D-0591` · `D-0593` · `D-0595` · `D-0610` · `F-TOOLSCOPE-001` ·
-`F-ROT-001` · `F-UNIT-FLAKE-001`. **`production_ready` resta `false`.**
+**Il cursore vocale non è più la fila piatta di 12 barre.** Raggi disposti a cerchio + un'aura
+organica (spline chiusa sugli stessi 12 valori, mai un secondo segnale), stesso principio
+"fermo = silenzio" di prima. Trovato e corretto per strada: la pagina disegnava solo 9 barre,
+non 12 — 3 bande calcolate e mai mostrate. `apps/webui-static/{index.html,styles.css,app.js}`.
 
-## WHAT IS TRUE NOW THAT WAS NOT — measured this session
+**Il login non forza più il re-ingresso ogni poche ore.** Due cause distinte in
+`services/reference-control-plane/src/auth.mjs`: la sessione lato server (8h assolute/30min
+inattività → 30gg/7gg scorrevoli) E — trovato verificando il primo — il **cookie del browser**
+aveva un `Max-Age=28800` scritto per conto suo, indipendente dalla sessione: terza volta in
+questa sessione dello stesso difetto (due punti che assemblano lo stesso valore separatamente,
+`D-0608`/`D-0616`/`D-0623`). Scadenza assoluta allargata, non rimossa: un cookie di sessione
+può uscire via XSS, a differenza del token dei terminali che non lascia mai il filesystem.
 
-**`D-0611` è installato (`D-0612`).** Byte-uguale albero↔immagine **471/471**, deriva esattamente
-uguale al diff di git. Dettaglio: `docs/INSTALLATION_LEDGER.md`.
+**Il menu "/" della chat funziona — provato dal vivo per la prima volta.** Segnalato più volte
+dall'Owner come "non fatto come Claude Code", perfino con minaccia di abbandonare il prodotto.
+Letto il codice: sembrava corretto. Il vero problema: **non era mai stato guidato in un
+browser reale**, in nessuna sessione precedente — solo il menu "/" gemello su CodeN
+(`#codenMenu`) lo era. Scritti 5 controlli nuovi in `tools/browser-e2e.mjs` (apre su "/",
+filtra digitando, freccia giù, Tab completa, Escape chiude) — **tutti PASS**. Suite intera:
+**516 PASS, 1 FAIL** (`F-I18N-002`, gap già tracciato, non introdotto qui). Il meccanismo era
+già giusto; mancava la prova, non la correzione. Se all'Owner continua a sembrare sbagliato,
+serve un'osservazione precisa (aspetto? posizione? gesto diverso?), non un'altra ipotesi letta
+dal codice.
 
-**`D-0615`** — `MANIFEST.sha256` era falso su 114 file e taceva su 818: ora e `git ls-files`
-meno se stesso, sotto due gate. Dettaglio: `docs/DECISION_LOG.md`.
+**Altre riparazioni, tutte con test verde prima del commit:**
+- barra comandi chat: solo icone, nome accessibile conservato (`aria-label` o testo
+  `.visually-hidden`, mai perso) — corretto per strada un `span{flex:1}` che avrebbe allargato
+  anche le icone nuove.
+- selettore modelli rapido: esisteva solo su `#/coden` (chip poco visibile). Fattorizzato in
+  `createModelPicker(ids)`, una sola implementazione, due porte — chat e CodeN — sullo stesso
+  `GET /api/v1/models/installed` / `POST /api/v1/models/activate`.
+- `#/coden-tui` non dichiarava il comando `coden_evolution` (ssh + una parola) già costruito
+  (`D-0348`) — solo il percorso manuale `docker exec`. Dichiarato come percorso principale.
+- `#/documents` mostrava "Artifacts" invece di "Documents" — corretta solo l'etichetta visibile,
+  non gli `id`/l'API sottostanti.
+- "＋ Conversazione" falliva in silenzio se non esisteva ancora un progetto — ora apre la
+  pagina Progetti col modulo pronto. **Corretta anche una mia affermazione sbagliata**: la
+  sidebar "chat recenti" con archivia/elimina esiste già (`#chatNav`), provata dal vivo dal
+  test `s326` — non mancava, il vero difetto era solo il click silenzioso.
 
-**`D-0619`** — provenienza Ed25519, round-trip col Python reale, entrambe le firme verificano.
-Dettaglio: `docs/DECISION_LOG.md`, `rust/BUILD_STATUS.md`.
-
-**Gli oracoli sono stati visti rossi, non dedotti.** `D-0615`: 3 volte, incluso **il gate che ha
-rifiutato un commit di quella fase stessa**. `D-0619`: 4 volte, e la più importante è che
-**togliendo `publicSignature` dalla busta Python l'HMAC si rompe** sul documento contro-firmato —
-che è ciò che prova che quella modifica era necessaria e non decorativa.
-
-**E il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)` pretende
-la chiave privata **in memoria di processo** — ciò che un HSM e una chiave offline esistono per
-evitare: il progetto **aveva già scelto** la custodia («un file su disco») e chiuso fuori tutte le
-altre. Ora `tools/release-signing.mjs` porta **due backend veri**, `local-key` e `detached`, e il
-verificatore **non può distinguerli**. Provato end-to-end senza chiave privata nel processo.
-Ragionamento e fonti: `docs/RELEASE_SIGNING_POLICY.md`.
-
-**Quattro difetti riparati chiudendo, tutti della stessa famiglia.** `D-0614`:
-`PROJECT_STATE.json.installation` era ferma a **dieci deploy** prima. `D-0616`: la regola *«quali
-percorsi il manifest può attestare»* era scritta due volte e un symlink avrebbe **incastrato** il
-gate. `D-0618`: il close guard non conosceva `MANIFEST.sha256`, che `D-0615` ha reso obbligatorio
-in ogni chiusura — `F-CLOSURE-001` un artefatto più tardi. `D-0620`: portabilità, i due strumenti
-nuovi derivavano il proprio percorso in un modo che su Windows non fa mai match (§62).
-`D-0623`: due percorsi di firma assemblavano la busta ciascuno per conto suo e differivano di un
-campo — **terza volta in questa sessione** per lo stesso difetto, dopo `D-0608` e `D-0616`.
-
-**Verificato:** unit **2955** (2954 pass, 0 fail, 1 skip preesistente) · ESLint **472 file**
-**0/0/0** · `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1160` ·
-`MANIFEST=OK 6717 files` · `ACCEPTANCE_MATRIX: PASS` · fixture di deploy **80/80** · fixture
-dei hook **71/71** · Python `test-rust-build-provenance.py` **11 OK** in contenitore offline ·
-sul vivo `/livez` `/readyz` `/healthz` **200**, TLS **200**, gate `401`/`404`/`200`.
+**Verificato per ogni commit** (dettaglio nei singoli messaggi): unit test mirati, ESLint 474
+file 0/0/0, manifest rigenerato e coerente, copertura i18n statica `COVERED` dopo ogni
+traduzione mancante trovata e aggiunta. **Una volta**, alla fine: suite e2e intera, 516/517.
 
 ## WHAT WAS **NOT** DONE
 
-- **`PKG-001` NON è chiusa, e la posizione 5 nemmeno.** `D-0619` la rende **chiudibile**: si
-  chiude quando un archivio di consegna esiste ed è firmato. **Nessun archivio di consegna è mai
-  stato prodotto.** Presentarlo altrimenti sarebbe un falso PASS.
-- **La chiave di rilascio durevole non esiste ancora** — quelle usate per le prove sono di
-  sessione e stanno **fuori dall’albero**, mai committate. Generarla è un atto dell’Owner.
-  `D-0622` fa sì che la sua **custodia** non abbia più conseguenze sul codice, non che la
-  chiave esista.
-- **Solo la provenienza è agnostica rispetto alla custodia.** `sign-release-artifact.mjs` e la
-  firma dei quattro SBOM pretendono ancora il PEM su disco: è `D-0624`, proposto e non
-  eseguito. Metà prodotto agnostico non è una proprietà che si possa dichiarare.
-- **`D-0615` e `D-0619` non toccano l'installazione**, e non è un'asserzione: verificato dentro
-  l'immagine viva che `/opt/noesar/MANIFEST.sha256` non esiste e che `tools/` ne contiene 8 file.
-- **`/review` non è stato interrogato con una sessione autenticata** (§3a 11e). Sul vivo è provato
-  che la rotta esiste ed è protetta; il **valore** è provato in albero (8/8 + 13/13).
-- **`CE-035` non toccata** — bloccata su un secondo nodo che non esiste.
-- **`F-ROT-001` ri-osservata e non riparata**: `NOESAR_ALLOWED_HOSTS` nomina `172.22.0.5` mentre
-  l'IP è `172.22.0.3`. Sopravvive **correttamente** (config riletta, non reinventata).
-- **T2 non eseguita** (browser e2e, accessibility, seeded-defect): nessun file di prodotto è
-  cambiato in `D-0615`, `D-0619` né `D-0622` — tutto vive in `tools/`, `docs/` e nei test, e
-  `tools/` non entra nell’immagine. Dichiarato, non implicito.
-- **HUNT AND FIX: scoped al diff** in tutte e quattro le fasi, **nessuna full sweep**. `D-0612`:
-  diff di prodotto zero file, strumento il deploy stesso (nulla) + fixture 80/80. `D-0615`: 5
-  file, **ha dato `D-0616`**. `D-0619`: 7 file, **ha dato `D-0620`**. `D-0622`: 4 file, **ha dato
-  `D-0623`**. Ogni fase di questa sessione ha trovato un difetto nel proprio codice nuovo.
-- **`shellcheck` assente su questo host** e la batteria non lint-a affatto la shell — è `D-0609`.
-- **`/sweep` non è mai stato eseguito con `apply:true` su dati reali.**
-- **Scansione segreti euristica e dichiarata tale**: né `gitleaks` né `trufflehog` su `PATH`.
+- **Nessun deploy.** Tutti i 12 commit restano debito §3a dichiarato — l'installazione viva
+  gira ancora `noesar-evolution:d0628-model-tiles-20260821T082515Z`, indietro rispetto
+  all'albero. Si accoda al deploy unico già concordato con l'Owner.
+- **`git push` non eseguito** — mai chiesto esplicitamente all'Owner durante la sessione.
+  12 commit locali, `origin/main` indietro.
+- **La scorecard non è triagiata.** Ogni riga scritta durante la dettatura è **osservazione
+  grezza**, non verificata contro il codice — il triage (§40b: un falso positivo "riparato" è
+  una regressione per niente) è il primo passo della prossima sessione.
+- **Righe grandi lasciate aperte, non improvvisate**: eliminare progetti/agenti, identità di
+  Knowledge/Memory/Research, creazione agenti da chat a comando, multimodalità. Generate come
+  osservazioni, non scoperte come contratto — servono la visione dell'Owner prima di costruire.
+- **`accessibility-audit.mjs` non eseguito** su nessuna delle modifiche UI di questa sessione —
+  serve un'installazione viva, è dentro il T2 non ancora lanciato per intero su queste modifiche
+  (solo `browser-e2e.mjs` è girato, una volta, alla fine).
+- **HUNT AND FIX**: scoped al diff in ogni commit di questa sessione, nessuna full sweep — non
+  è stata toccata sicurezza/autorità/installer al di fuori di `auth.mjs` (login), e quel file è
+  stato letto per intero nell'area toccata prima di modificarlo.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): rimisurato — né `gitleaks` né `trufflehog` sono su `PATH`.
+- `B-002` **STALE** (`D-0257`): rimisurato di nuovo in chiusura — né `gitleaks` né
+  `trufflehog` sono su `PATH`; scansione euristica, dichiarata tale.
 - `B-011` low/deferred (`D-0258`): storia git riscritta su autorizzazione esplicita dell'Owner.
+- Nessun blocker nuovo aperto da questa sessione.

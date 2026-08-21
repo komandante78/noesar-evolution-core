@@ -14646,3 +14646,28 @@ Suite finale: unit **2974** (2973 pass, 0 fail, 1 skip), ESLint **474 file 0/0/0
 `tools/acceptance-matrix.mjs` entrano nell'immagine — verificato, zero righe `COPY` li nominano.
 **Status.** applied. `#/models` non può più restare vuota tredici sessioni senza che niente
 diventi rosso — è la causa radice di `D-0625`/`D-0628`, chiusa.
+
+## D-0636 · Passata live dell'Owner dettata in chat — 12 riparazioni, nessun deploy — 2026-08-21
+**Decision.** Sessione condotta come dettatura invece che camminata dall'Owner (si è fermato
+per stanchezza emotiva dichiarata). Riparati: cursore vocale (raggi+aura invece di barre
+lineari), durata sessione 8h/30min→30gg/7gg **più** un secondo difetto trovato verificando il
+primo (cookie `Max-Age` hardcoded, indipendente dalla sessione — terza istanza della stessa
+classe di `D-0608`/`D-0616`/`D-0623`), barra comandi chat a sole icone, selettore modelli
+rapido fattorizzato e aggiunto sia in chat che CodeN, istruzioni `coden_evolution` dichiarate
+su `#/coden-tui`, etichetta `#/documents` corretta, "＋ Conversazione" non fallisce più in
+silenzio, e il menu "/" della chat **provato dal vivo per la prima volta** (5 controlli nuovi,
+tutti PASS) dopo essere stato segnalato ripetutamente come rotto senza mai esserlo davvero.
+**Why.** L'Owner ha bisogno che il prodotto funzioni ("ho bisogno che funzioni sono senza
+lavoro", testuale) — priorità su correggere quanto verificabile subito, piuttosto che aspettare
+la fine della passata scorecard per iniziare a riparare.
+**Rejected.** Costruire alla cieca le richieste grandi (multimodalità, creazione agenti da
+chat, identità di Knowledge/Memory/Research) senza la visione dell'Owner — restano registrate,
+non improvvisate.
+**Evidence.** 12 commit atomici (`dd08e3b`…`8d82495`), ognuno con unit mirati + ESLint verdi
+prima del commit. Suite e2e intera lanciata una volta a chiusura: **516 PASS, 1 FAIL**
+(`F-I18N-002`, gap già tracciato). `claude-in-chrome` non disponibile in sessione — verificato
+via lo strumento e2e di questo stesso progetto invece di leggere codice e indovinare.
+**Reversal cost.** Nessuno sull'installazione viva — zero deploy in questa sessione, tutto
+resta debito §3a dichiarato in `docs/SESSION_HANDOFF.md`.
+**Status.** applied (in albero), non installato. `docs/OWNER_REVIEW_2026-08-21.md` resta
+aperta — righe grezze non triagiate, non tutte da questa sessione.
