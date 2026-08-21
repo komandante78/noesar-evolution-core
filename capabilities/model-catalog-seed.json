@@ -1,0 +1,308 @@
+{
+  "$comment": [
+    "NOESAR EVOLUTION — seed del catalogo modelli. D-0625.",
+    "",
+    "PERCHE ESISTE. Il requisito dell'Owner del 2026-08-04 (docs/MODEL_CATALOG_DESIGN.md) chiede",
+    "un catalogo di modelli per categoria, da fonti verificate, con descrizione, gli scaricati in",
+    "primo piano. La macchina per renderlo era stata costruita a s333 (model-catalog.mjs) e il",
+    "catalogo era VUOTO: /workspace/models/catalog non esiste su un'installazione nuova, quindi",
+    "l'unico modo di far comparire un modello era incollare un JSON a mano. Uno scaffale vuoto e",
+    "indistinguibile da uno rotto. Questo file e i libri.",
+    "",
+    "COSA C'E E COSA NON C'E, e perche la differenza e deliberata.",
+    "Ogni voce porta solo cio che e VERO e VERIFICABILE alla fonte citata in `sourceUrl`:",
+    "identificatore del repository, organizzazione che pubblica, licenza, taglia, a cosa serve.",
+    "NESSUNA VOCE PORTA UN HASH. Non e una dimenticanza: un checksum inventato e la violazione",
+    "piu grave che questo progetto conosca (CLAUDE10.md regola 40), e l'hash di un artefatto si",
+    "conosce quando lo si scarica, non quando lo si elenca. Il prodotto lo impara e lo verifica",
+    "all'acquisizione, con verifyArtifact() — meccanismo che esisteva gia e resta l'unico.",
+    "Conseguenza dichiarata: una voce del seed vive nella corsia `available`, mai in `downloaded`",
+    "e mai in `in-use`, finche qualcuno non la scarica davvero.",
+    "",
+    "FONTI VERIFICATE — il senso preciso, che non e quello che sembra. Si verifica il",
+    "PUBBLICATORE, non il modello (docs/MODEL_CATALOG_DESIGN.md §2): un elenco di modelli",
+    "approvati sarebbe la lista fissa che il primo requisito vieta. Questo file e un INDICE",
+    "curato di punti di partenza, non il confine di cio che si puo usare.",
+    "",
+    "COME SI AGGIORNA. Si rilegge la fonte e si ridata la voce. Una riga che cambia prende una",
+    "data nuova, mai una modifica in silenzio — la stessa regola di docs/GAP_REGISTER.md §3."
+  ],
+  "schemaVersion": "1.0",
+  "kind": "model-catalog-seed",
+  "curatedAtUtc": "2026-08-21",
+  "curatedFrom": "https://huggingface.co/blog/daya-shankar/open-source-llms",
+  "categories": [
+    {
+      "id": "code",
+      "title": "Codice",
+      "summary": "Scrivere, leggere e correggere codice; lavoro agentico su un repository."
+    },
+    {
+      "id": "writing",
+      "title": "Scrittura",
+      "summary": "Testo lungo, redazione, riscrittura, traduzione e lavoro multilingue."
+    },
+    {
+      "id": "reasoning",
+      "title": "Ragionamento",
+      "summary": "Matematica, analisi passo-passo, diagnosi di un problema."
+    },
+    {
+      "id": "long-context",
+      "title": "Contesto lungo",
+      "summary": "Leggere molto in una volta: una base di codice, un dossier, un archivio."
+    },
+    {
+      "id": "tool-use",
+      "title": "Uso di strumenti",
+      "summary": "Modelli addestrati a chiamare strumenti e a portare avanti compiti in piu passi."
+    },
+    {
+      "id": "local",
+      "title": "Esecuzione locale",
+      "summary": "Modelli pensati per girare su hardware modesto, senza inviare niente fuori."
+    },
+    {
+      "id": "image",
+      "title": "Immagini",
+      "summary": "Generazione di immagini da testo. Non sono modelli di linguaggio."
+    }
+  ],
+  "models": [
+    {
+      "id": "moonshotai/Kimi-K2.6",
+      "version": "K2.6",
+      "publisher": "moonshotai",
+      "publisherName": "Moonshot AI",
+      "license": "Modified MIT",
+      "description": "Uno dei modelli a pesi aperti piu forti del 2026 per lavoro agentico: scrittura di codice, generazione di interfacce e compiti lunghi in piu passi. Molto grande — va considerato per un server, non per un portatile.",
+      "parameters": "~1.1T",
+      "workloads": [
+        "text",
+        "code",
+        "tool-use",
+        "long-context"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "moonshotai/Kimi-K2.6"
+      },
+      "sourceUrl": "https://huggingface.co/moonshotai/Kimi-K2.6",
+      "resource_profiles": [
+        {
+          "name": "server",
+          "note": "richiede piu GPU di fascia alta"
+        }
+      ]
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B",
+      "version": "3",
+      "publisher": "Qwen",
+      "publisherName": "Alibaba Qwen",
+      "license": "Apache-2.0",
+      "description": "Mixture-of-experts: 235 miliardi di parametri totali ma 22 attivi per token, quindi costa molto meno di quanto la taglia suggerisca. Licenza Apache 2.0, quindi uso commerciale libero. La scelta piu prudente quando servono multilingua e flessibilita di licenza.",
+      "parameters": "235B totali · 22B attivi",
+      "workloads": [
+        "text",
+        "writing",
+        "reasoning",
+        "code",
+        "tool-use"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "Qwen/Qwen3-235B-A22B"
+      },
+      "sourceUrl": "https://huggingface.co/Qwen/Qwen3-235B-A22B",
+      "resource_profiles": [
+        {
+          "name": "server",
+          "note": "mixture-of-experts, memoria alta"
+        }
+      ]
+    },
+    {
+      "id": "google/gemma-4-26B-A4B-it",
+      "version": "4",
+      "publisher": "google",
+      "publisherName": "Google",
+      "license": "Apache-2.0",
+      "description": "Pensato per l'esecuzione locale e per flussi in cui i dati non devono uscire: 25 miliardi di parametri totali ma meno di 4 attivi. Buon punto di partenza per una squadra piccola che vuole tenersi tutto in casa.",
+      "parameters": "25.2B totali · 3.8B attivi",
+      "workloads": [
+        "text",
+        "local",
+        "writing",
+        "reasoning"
+      ],
+      "formats": [
+        "safetensors",
+        "gguf"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "google/gemma-4-26B-A4B-it"
+      },
+      "sourceUrl": "https://huggingface.co/google/gemma-4-26B-A4B-it",
+      "resource_profiles": [
+        {
+          "name": "workstation",
+          "note": "gira su hardware locale di fascia media"
+        }
+      ]
+    },
+    {
+      "id": "meta-llama/Llama-4-Scout-17B-16E",
+      "version": "4-Scout",
+      "publisher": "meta-llama",
+      "publisherName": "Meta",
+      "license": "Llama 4 Community License",
+      "description": "Fatto per leggere molto in una volta: analisi a contesto lungo, revisione di una base di codice intera, lavoro su dossier. La licenza NON e una licenza open source riconosciuta — e una licenza di comunita con condizioni, e va letta prima di un uso commerciale.",
+      "parameters": "109B totali · 17B attivi",
+      "workloads": [
+        "text",
+        "long-context",
+        "code",
+        "reasoning"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "meta-llama/Llama-4-Scout-17B-16E"
+      },
+      "sourceUrl": "https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E",
+      "advisories": [
+        "La licenza di comunita Llama 4 pone condizioni all'uso commerciale: leggerla."
+      ],
+      "resource_profiles": [
+        {
+          "name": "server",
+          "note": "contesto lungo, memoria alta"
+        }
+      ]
+    },
+    {
+      "id": "microsoft/Phi-4-reasoning",
+      "version": "4",
+      "publisher": "microsoft",
+      "publisherName": "Microsoft",
+      "license": "MIT",
+      "description": "Piccolo e specializzato nel ragionamento: 14 miliardi di parametri, licenza MIT, adatto a un assistente locale su una sola macchina. La scelta ragionevole quando il modello grande non entra.",
+      "parameters": "14B",
+      "workloads": [
+        "text",
+        "reasoning",
+        "local"
+      ],
+      "formats": [
+        "safetensors",
+        "gguf"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "microsoft/Phi-4-reasoning"
+      },
+      "sourceUrl": "https://huggingface.co/microsoft/Phi-4-reasoning",
+      "resource_profiles": [
+        {
+          "name": "workstation",
+          "note": "entra su una GPU singola"
+        }
+      ]
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1",
+      "version": "R1",
+      "publisher": "deepseek-ai",
+      "publisherName": "DeepSeek",
+      "license": "MIT",
+      "description": "Ragionamento esplicito su matematica, scienze e diagnosi di errori. Licenza MIT, quindi senza vincoli d'uso. Mixture-of-experts molto grande: 671 miliardi totali, 37 attivi.",
+      "parameters": "671B totali · 37B attivi",
+      "workloads": [
+        "text",
+        "reasoning",
+        "code"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "deepseek-ai/DeepSeek-R1"
+      },
+      "sourceUrl": "https://huggingface.co/deepseek-ai/DeepSeek-R1",
+      "resource_profiles": [
+        {
+          "name": "server",
+          "note": "richiede un server multi-GPU"
+        }
+      ]
+    },
+    {
+      "id": "black-forest-labs/FLUX.1-schnell",
+      "version": "1-schnell",
+      "publisher": "black-forest-labs",
+      "publisherName": "Black Forest Labs",
+      "license": "Apache-2.0",
+      "description": "Generazione di immagini da testo, ottimizzato per la velocita. Licenza Apache 2.0. NON e un modello di linguaggio: non risponde in chat e non scrive codice.",
+      "parameters": "non dichiarato dalla fonte",
+      "workloads": [
+        "image-generation",
+        "image"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "black-forest-labs/FLUX.1-schnell"
+      },
+      "sourceUrl": "https://huggingface.co/black-forest-labs/FLUX.1-schnell",
+      "resource_profiles": [
+        {
+          "name": "workstation",
+          "note": "GPU con memoria media"
+        }
+      ]
+    },
+    {
+      "id": "stabilityai/stable-diffusion-3.5-large",
+      "version": "3.5-large",
+      "publisher": "stabilityai",
+      "publisherName": "Stability AI",
+      "license": "Stability Community License",
+      "description": "Generazione di immagini con buona aderenza al prompt. La licenza NON e open source riconosciuta: e una licenza di comunita con condizioni, da leggere prima di un uso commerciale. NON e un modello di linguaggio.",
+      "parameters": "non dichiarato dalla fonte",
+      "workloads": [
+        "image-generation",
+        "image"
+      ],
+      "formats": [
+        "safetensors"
+      ],
+      "source": {
+        "kind": "huggingface",
+        "repository": "stabilityai/stable-diffusion-3.5-large"
+      },
+      "sourceUrl": "https://huggingface.co/stabilityai/stable-diffusion-3.5-large",
+      "advisories": [
+        "La Stability Community License pone condizioni all'uso commerciale: leggerla."
+      ],
+      "resource_profiles": [
+        {
+          "name": "workstation",
+          "note": "GPU con memoria alta"
+        }
+      ]
+    }
+  ]
+}

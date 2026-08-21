@@ -5744,17 +5744,45 @@ function acquireControl(item,context){
     +`${blocked||busy?' disabled':''}${blocked?` title="${escapeHtml(blocked)}"`:''}>${escapeHtml(label)}</button>`
     +(blocked?`<small translate="no">${escapeHtml(blocked)}</small>`:'')+'</p>';
 }
+// D-0625. «Su tutti i modelli sempre descrizione.» A missing description is rendered as a
+// SENTENCE and never as a blank: a blank reads as a rendering fault, "nessuna descrizione
+// dichiarata" reads as a fact about what the publisher said.
+function modelDescription(item){
+  return item.description
+    ?`<p class="model-description">${escapeHtml(item.description)}</p>`
+    :`<p class="model-description hint"><em>${escapeHtml(t('No description declared by the publisher.'))}</em></p>`;
+}
+// A licence with conditions is the thing a person needs told BEFORE downloading, not after.
+function modelAdvisories(item){
+  if(!Array.isArray(item.advisories)||item.advisories.length===0)return '';
+  return `<p class="model-advisory" role="note">⚠ ${item.advisories.map((a)=>escapeHtml(a)).join(' ')}</p>`;
+}
+// D-0625, the Owner's requirement: «pulsante elimina, tutto con doppia conferma prima di fare
+// qualcosa». Two acts that cannot both be muscle memory — press Elimina, then type the model id.
+// The button is only drawn where there is something to delete; the server refuses anyway
+// (`model-removal.mjs`), because a guard that lives only in the browser is not a guard.
+function removeControl(item){
+  if(item.lane!=='downloaded'&&item.lane!=='unverified')return '';
+  return `<p class="card-actions"><button type="button" class="danger" data-remove="${escapeHtml(item.id)}">`
+    +`${escapeHtml(t('Delete'))}</button></p>`
+    +`<div class="model-remove-confirm" data-remove-panel="${escapeHtml(item.id)}" hidden></div>`;
+}
 function modelCard(item,context={}){
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
     ?'<em>undeclared</em>':escapeHtml(String(value));
   const outside=item.outsideFilter
     ?'<small>in use &middot; outside the current filter, and shown anyway — a product that hides what it is executing is one you cannot stop</small>':'';
+  const source=item.sourceUrl
+    ?` &middot; <a href="${escapeHtml(item.sourceUrl)}" rel="noreferrer noopener" target="_blank">${escapeHtml(t('source'))}</a>`:'';
+  const size=item.parameters?` &middot; ${escapeHtml(item.parameters)}`:'';
   return `<article class="entity-card" translate="no"><h3>${escapeHtml(item.id)}</h3></article>`
     .replace('</article>',
-      `<small>${declared(item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}</small>`
+      `<small>${declared(item.publisherName??item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}${size}${source}</small>`
+      +modelDescription(item)
       +`<p>Type ${declared(item.type)} &middot; function ${item.functions.map(declared).join(', ')}`
       +`${item.contextWindow?` &middot; context ${item.contextWindow}`:' &middot; context <em>undeclared</em>'}</p>`
-      +outside+authenticityLine(item)+acquireControl(item,context)+'</article>');
+      +modelAdvisories(item)
+      +outside+authenticityLine(item)+acquireControl(item,context)+removeControl(item)+'</article>');
 }
 function renderModelLanes(catalog){
   const foreground=$('#modelForegroundLanes');
@@ -5959,6 +5987,68 @@ async function acquireModel(id){
     toast(`${t('This model was not acquired:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
   }
 }
+// ── D-0625 · eliminare un modello, con la doppia conferma ─────────────────────────────────────
+//
+// First act: press Delete. The panel then asks the server what would actually go — how many
+// bytes, and whether it can go at all — so the question is answered against a fact and not
+// against a name. Second act: type the model id. Only then is the commit button armed.
+//
+// Neither act is trusted: `model-removal.mjs` re-checks both server-side, because a
+// confirmation that lives only in the browser is a confirmation an HTTP client skips.
+function findByData(attribute,id){
+  for(const node of document.querySelectorAll(`[data-${attribute}]`)){
+    if(node.dataset[attribute.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]===id)return node;
+  }
+  return null;
+}
+function closeRemoveConfirm(id){
+  const panel=findByData('remove-panel',id);
+  if(panel){panel.hidden=true;panel.innerHTML='';}
+}
+async function openRemoveConfirm(id){
+  const panel=findByData('remove-panel',id);
+  if(!panel)return;
+  panel.hidden=false;
+  panel.innerHTML=`<p class="hint">${escapeHtml(t('Checking what would be removed…'))}</p>`;
+  try{
+    const preview=await api(`/api/v1/models/removal-preview/${encodeURIComponent(id)}`);
+    if(!preview.removable){
+      // Refused BEFORE asking for a confirmation. Asking someone to type an id and then telling
+      // them it was never possible is a worse experience than saying so first.
+      panel.innerHTML=`<p class="model-advisory" role="note">⚠ ${escapeHtml(preview.reason??t('This model cannot be removed.'))}</p>`
+        +`<p class="card-actions"><button type="button" data-remove-cancel="${escapeHtml(id)}">${escapeHtml(t('Close'))}</button></p>`;
+      return;
+    }
+    const mb=(preview.bytes/(1024*1024)).toFixed(1);
+    panel.innerHTML=`<p class="model-advisory" role="note">⚠ ${escapeHtml(t('This deletes bytes that do not come back.'))} `
+      +`${escapeHtml(t('It will free'))} <strong translate="no">${escapeHtml(mb)} MB</strong>.</p>`
+      +`<p>${escapeHtml(t('Second confirmation: type the model id to say which one.'))}</p>`
+      +`<p><input type="text" data-remove-input="${escapeHtml(id)}" autocomplete="off" spellcheck="false" `
+      +`aria-label="${escapeHtml(t('Type the model id to confirm'))}" placeholder="${escapeHtml(id)}"></p>`
+      +`<p class="card-actions">`
+      +`<button type="button" class="danger" data-remove-commit="${escapeHtml(id)}" disabled>${escapeHtml(t('Delete permanently'))}</button> `
+      +`<button type="button" data-remove-cancel="${escapeHtml(id)}">${escapeHtml(t('Cancel'))}</button></p>`;
+  }catch(error){
+    panel.innerHTML=`<p class="model-advisory" role="note">⚠ ${escapeHtml(error.value?.error??error.message)}</p>`
+      +`<p class="card-actions"><button type="button" data-remove-cancel="${escapeHtml(id)}">${escapeHtml(t('Close'))}</button></p>`;
+  }
+}
+async function commitRemove(id){
+  const typed=findByData('remove-input',id)?.value?.trim();
+  try{
+    const result=await api(`/api/v1/models/remove/${encodeURIComponent(id)}`,{
+      method:'POST',
+      body:JSON.stringify({confirm:true,confirmId:typed??null}),
+    });
+    closeRemoveConfirm(id);
+    toast(`${t('Model removed:')} ${id} — ${(result.bytesFreed/(1024*1024)).toFixed(1)} MB`,{kind:'success'});
+    await loadModelCatalogue();
+  }catch(error){
+    // The server's refusal verbatim, for the same reason acquireModel keeps it: each one names
+    // which rule stopped it, and "could not delete" throws that away.
+    toast(`${t('This model was not removed:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+}
 async function cancelAcquisition(jobId){
   try{
     await api(`/api/v1/models/acquisitions/${encodeURIComponent(jobId)}/cancel`,{method:'POST',body:'{}'});
@@ -6011,6 +6101,24 @@ function wireModelCatalogue(){
   $('#modelAcquisitionList')?.addEventListener('click',(event)=>{
     const jobId=event.target?.closest?.('[data-acquire-cancel]')?.dataset?.acquireCancel;
     if(jobId)cancelAcquisition(jobId);
+  });
+  // D-0625. The delete gesture lives on the foreground lanes, because only a model that is on
+  // disk has bytes to remove. Delegated for the same reason as the acquire handler above.
+  $('#modelForegroundLanes')?.addEventListener('click',(event)=>{
+    const start=event.target?.closest?.('[data-remove]')?.dataset?.remove;
+    if(start)return openRemoveConfirm(start);
+    const commit=event.target?.closest?.('[data-remove-commit]')?.dataset?.removeCommit;
+    if(commit)return commitRemove(commit);
+    const cancel=event.target?.closest?.('[data-remove-cancel]')?.dataset?.removeCancel;
+    if(cancel)return closeRemoveConfirm(cancel);
+  });
+  $('#modelForegroundLanes')?.addEventListener('input',(event)=>{
+    const id=event.target?.dataset?.removeInput;
+    if(!id)return;
+    // The second confirmation is only ARMED when the typed id matches. Enabling it on any input
+    // would make it a second click, which is the thing this is here to not be.
+    const button=findByData('remove-commit',id);
+    if(button)button.disabled=event.target.value.trim()!==id;
   });
   for(const id of ['#modelFilterType','#modelFilterFunction']){
     $(id)?.addEventListener('change',()=>{modelCatalogPage=1;loadModelCatalogue();});

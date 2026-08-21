@@ -21,6 +21,9 @@ import { AcquisitionManager, artefactName } from './model-acquisition.mjs';
 // D-0521: who says this model is this model. The registry that already holds revocation
 // answers it, over the signature shape `sector-modules.mjs` uses for module manifests.
 import { verifyModelDescriptor, authenticitySummary } from './model-descriptor-authenticity.mjs';
+// D-0625: removing a downloaded model, with the double confirmation the Owner asked for. The
+// rules live in the module with their own tests, never in the route.
+import { previewRemoval, removeModel } from './model-removal.mjs';
 import { fetchDocument, checkSource as checkTransportSource } from './model-transport.mjs';
 import { ActiveModelState, resolveActiveModel, activeModelReport } from './active-model.mjs';
 import { voiceRoutingFrom, voiceReadiness, transcribe, speak, VoiceEngineError } from './voice-engine.mjs';
@@ -736,6 +739,15 @@ const updateManager = new UpdateManager({
 // behalf and does not infer its fields. Descriptors live in the workspace so that an operator
 // can place them without a rebuild, which is also how a future transport will deliver them.
 const MODEL_CATALOG_DIR = join(workspace, 'models', 'catalog');
+// `D-0625`. The curated index that ships WITH the product, so a fresh installation opens
+// `#/models` on a catalogue instead of on nothing. Until this existed, `MODEL_CATALOG_DIR` was
+// the only source and it does not exist on a new install — measured on the running box: `ls`
+// said no such directory. The panel, its lanes, its filters and its pagination were all built
+// and correct, and showed zero models, which is indistinguishable from being broken.
+//
+// It is a SEED, not a boundary: an operator's own descriptors in the workspace are read too and
+// win on a clash, because the workspace is what an operator controls without a rebuild.
+const MODEL_CATALOG_SEED = join(repoRoot, 'capabilities', 'model-catalog-seed.json');
 const MODEL_ARTEFACT_DIR = join(workspace, 'models', 'artefacts');
 // Where an artefact goes when it arrives and does NOT match the digest its publisher declared,
 // or when an acquisition is interrupted. Not a bin: rule 12 forbids deleting it, and MC-004
@@ -795,17 +807,47 @@ function activeModelId() {
   return localModels.config().model ?? (activeModelSnapshot.state === ActiveModelState.LOADED ? activeModelSnapshot.id : null);
 }
 
+/**
+ * The curated seed that ships with the product — `D-0625`.
+ *
+ * Returns `[]` and says nothing when the file is absent or malformed: a missing seed is a
+ * smaller product, never a broken start-up. It carries NO hashes by design (see the file's own
+ * header): a digest is learned at acquisition and verified there, and inventing one to make a
+ * card look complete is the fabrication rule 40 forbids outright. A seeded entry therefore
+ * always lands in the `available` lane, never in `downloaded`, until someone downloads it.
+ */
+function readSeedDescriptors() {
+  try {
+    const parsed = JSON.parse(readFileSync(MODEL_CATALOG_SEED, 'utf8'));
+    if (!Array.isArray(parsed?.models)) return [];
+    return parsed.models.filter((entry) => entry?.id).map((entry) => ({ ...entry, seeded: true }));
+  } catch {
+    return [];
+  }
+}
+
 function readModelDescriptors() {
   const descriptors = [];
+  // The seed goes in FIRST so an operator's own descriptor with the same id overwrites it
+  // below: the workspace is what an operator controls without a rebuild, and a shipped default
+  // that could not be overridden would be a boundary rather than a starting point.
+  const seeded = new Map(readSeedDescriptors().map((entry) => [entry.id, entry]));
   try {
     for (const name of readdirSync(MODEL_CATALOG_DIR)) {
       if (!name.endsWith('.json')) continue;
       try {
         const parsed = JSON.parse(readFileSync(join(MODEL_CATALOG_DIR, name), 'utf8'));
-        if (parsed?.id) descriptors.push(parsed);
+        if (parsed?.id) {
+          // An operator's descriptor wins over the shipped one with the same id, and the seed
+          // entry is dropped rather than shown twice — one id, one card.
+          seeded.delete(parsed.id);
+          descriptors.push(parsed);
+        }
       } catch { /* a malformed descriptor is skipped, never guessed at */ }
     }
   } catch { /* no catalogue directory yet: an empty catalogue is a true answer */ }
+
+  for (const entry of seeded.values()) descriptors.push(entry);
 
   // The model actually running must appear even when no publisher has described it — MC-002
   // says the in-use model is visible under every filter, and a model absent from the catalogue
@@ -2183,6 +2225,48 @@ const requestListener = async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/v1/models/acquisitions') {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
       return json(res, 200, { acquisitions: acquisitions.list() });
+    }
+
+    // `D-0625`. The Owner asked for a delete button with a double confirmation, and there was no
+    // delete at all — no route, no gesture, nothing. Two routes and not one, because the first
+    // confirmation must be answered against a FACT: how many bytes, and whether it can go at all.
+    if (req.method === 'GET' && url.pathname.startsWith('/api/v1/models/removal-preview/')) {
+      const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;
+      const id = decodeURIComponent(url.pathname.slice('/api/v1/models/removal-preview/'.length));
+      try {
+        return json(res, 200, previewRemoval({ artefactDir: MODEL_ARTEFACT_DIR, id, activeModelId: activeModelId() }));
+      } catch (error) {
+        return json(res, 400, { error: error.reason ?? 'removal preview refused', kind: error.kind ?? 'ERROR' });
+      }
+    }
+    if (req.method === 'POST' && url.pathname.startsWith('/api/v1/models/remove/')) {
+      // `model.manage`: deleting bytes is not the authority to look at them.
+      const authenticated = requireSession(req, res, 'model.manage');
+      if (!authenticated || !requireCsrf(req, res, authenticated)) return;
+      const id = decodeURIComponent(url.pathname.slice('/api/v1/models/remove/'.length));
+      const payload = await body(req).catch(() => null);
+      try {
+        const result = removeModel({
+          artefactDir: MODEL_ARTEFACT_DIR,
+          id,
+          activeModelId: activeModelId(),
+          confirm: payload?.confirm === true,
+          confirmId: payload?.confirmId ?? null,
+        });
+        // The ledger records a refusal as loudly as a removal: "someone tried to delete the
+        // running model and was stopped" is exactly the line an operator needs after the fact.
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.remove', result: 'success',
+          details: { modelId: id, bytesFreed: result.bytesFreed },
+        });
+        return json(res, 200, result);
+      } catch (error) {
+        ledger.append({
+          actor: authenticated.user.id, action: 'model.remove', result: 'refused',
+          details: { modelId: id, kind: error.kind ?? 'ERROR' },
+        });
+        return json(res, 400, { error: error.reason ?? 'removal refused', kind: error.kind ?? 'ERROR' });
+      }
     }
     if (req.method === 'GET' && url.pathname.startsWith('/api/v1/models/acquisitions/')) {
       const authenticated = requireSession(req, res, 'model.read'); if (!authenticated) return;

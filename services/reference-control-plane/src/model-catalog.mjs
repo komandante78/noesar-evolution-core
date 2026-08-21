@@ -73,8 +73,22 @@ export const UNDECLARED = 'undeclared';
  * and the cost is paid the way this file pays every such cost: the model is simply not offered
  * for the job it did not declare, and says so, rather than being routed on a hunch.
  */
-export const TYPES = Object.freeze(['text', 'vision', 'embedding', 'rerank', 'speech', 'transcription']);
-export const FUNCTIONS = Object.freeze(['code', 'reasoning', 'summarisation', 'translation', 'tool-use']);
+// `image-generation` added by `D-0625`: `vision` means UNDERSTANDING an image, and a
+// text-to-image model declaring it would be a lie of vocabulary. Without a value of its own such
+// a model reads `undeclared`, which is how a careless publisher reads — the opposite of the fact.
+export const TYPES = Object.freeze(['text', 'vision', 'image-generation', 'embedding', 'rerank', 'speech', 'transcription']);
+// `D-0625`. `writing`, `long-context`, `local` and `image` were missing, and the first of them
+// is one of the two categories the Owner named when he asked for this page («questi modelli si
+// usano per coding, questi per scrittura»). A category the user asks for by name and the
+// vocabulary does not carry is a filter that silently drops every model that belongs to it.
+//
+// `image` is here for the opposite reason: to be able to say a model is NOT a language model.
+// Without it a text-to-image model reads as `undeclared` and looks like a chat model whose
+// publisher was careless.
+export const FUNCTIONS = Object.freeze([
+  'code', 'writing', 'reasoning', 'summarisation', 'translation', 'tool-use',
+  'long-context', 'local', 'image',
+]);
 
 export class ModelCatalogError extends Error {
   constructor(kind, reason) {
@@ -169,6 +183,20 @@ function card(descriptor, lane, { outsideFilter = false } = {}) {
     id: descriptor.id,
     version: descriptor.version ?? null,
     publisher: descriptor.publisher ?? null,
+    // `D-0625`, the Owner's requirement: «su tutti i modelli sempre descrizione». The field did
+    // not exist on this card at all — so it was not empty, it was absent from the contract, and
+    // no amount of catalogue data could have made a description appear. `null` when the
+    // publisher declared none, and the panel says so in words rather than leaving a blank: a
+    // blank reads as a rendering fault, "nessuna descrizione dichiarata" reads as a fact.
+    description: typeof descriptor.description === 'string' && descriptor.description.trim() !== ''
+      ? descriptor.description.trim()
+      : null,
+    publisherName: descriptor.publisherName ?? null,
+    parameters: descriptor.parameters ?? null,
+    sourceUrl: typeof descriptor.sourceUrl === 'string' ? descriptor.sourceUrl : null,
+    // Never null: an empty array means "the publisher raised no warning", which is a different
+    // statement from "there is nothing to know" and is rendered differently.
+    advisories: Array.isArray(descriptor.advisories) ? descriptor.advisories : [],
     license: descriptor.license ?? null,
     type: declaredType(descriptor),
     functions: declaredFunctions(descriptor),

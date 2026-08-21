@@ -12,7 +12,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  Lane, FOREGROUND_LANES, UNDECLARED, ModelCatalogError,
+  Lane, FOREGROUND_LANES, UNDECLARED, ModelCatalogError, FUNCTIONS, TYPES,
   declaredType, declaredFunctions, declaredDigest, verifyArtifact,
   laneOf, buildCatalog, groupingOf, acquisitionAvailability, planAcquisition, loadableModels,
 } from '../src/model-catalog.mjs';
@@ -362,3 +362,111 @@ describe('loadableModels — what `/model` with no id can offer', () => {
 function readSource() {
   return readFileSync(new URL('../src/model-catalog.mjs', import.meta.url), 'utf8');
 }
+
+// ── D-0625 · il catalogo ha dei modelli, e ogni carta ha una descrizione ───────────────────────
+//
+// Il requisito dell'Owner era registrato dal 2026-08-04 e la pagina era VUOTA: la macchina
+// c'era, il catalogo no. Queste righe misurano le tre cose che mancavano davvero — il seed, la
+// categoria che l'Owner ha nominato («scrittura»), e il campo descrizione che non esisteva nel
+// contratto della carta.
+
+import { readFileSync as readSeedFile } from 'node:fs';
+import { fileURLToPath as seedUrlToPath } from 'node:url';
+import { dirname as seedDirname, join as seedJoin } from 'node:path';
+
+const SEED_PATH = seedJoin(
+  seedDirname(seedUrlToPath(import.meta.url)), '..', '..', '..',
+  'capabilities', 'model-catalog-seed.json',
+);
+const seed = JSON.parse(readSeedFile(SEED_PATH, 'utf8'));
+
+test('D-0625: il seed esiste e non e vuoto — uno scaffale vuoto e indistinguibile da uno rotto', () => {
+  assert.ok(Array.isArray(seed.models));
+  assert.ok(seed.models.length >= 5, `il seed porta ${seed.models.length} modelli: troppo pochi per essere un catalogo`);
+});
+
+test('D-0625: ogni modello del seed ha una descrizione, sempre — era la richiesta testuale', () => {
+  for (const model of seed.models) {
+    assert.equal(typeof model.description, 'string', `${model.id} non ha descrizione`);
+    assert.ok(model.description.trim().length >= 40, `la descrizione di ${model.id} e troppo corta per dire qualcosa`);
+  }
+});
+
+test('D-0625: NESSUNA voce del seed porta un hash — un checksum inventato e la regola 40', () => {
+  // Non e una svista ed e la ragione per cui il seed vive nella corsia `available`: il digest di
+  // un artefatto si conosce scaricandolo, e verifyArtifact() lo verifica li.
+  for (const model of seed.models) {
+    assert.equal(model.hashes, undefined, `${model.id} porta un hash che nessuno ha verificato`);
+  }
+});
+
+test('D-0625: ogni modello dichiara categoria, pubblicatore, licenza e fonte controllabile', () => {
+  // `workloads` e UN solo array che porta sia il TIPO sia le FUNZIONI — declaredType() e
+  // declaredFunctions() pescano ciascuna il proprio vocabolario dallo stesso elenco. La prima
+  // versione di questa riga pretendeva che ogni valore fosse una categoria del seed, e falliva
+  // su `text`: era la riga a sbagliare, non il catalogo.
+  const categories = new Set(seed.categories.map((c) => c.id));
+  for (const model of seed.models) {
+    assert.ok(Array.isArray(model.workloads) && model.workloads.length > 0, `${model.id} senza categoria`);
+    for (const workload of model.workloads) {
+      assert.ok(
+        categories.has(workload) || TYPES.includes(workload),
+        `${model.id} dichiara "${workload}", che non e ne una categoria del seed ne un tipo noto`,
+      );
+    }
+    assert.ok(TYPES.includes(declaredType(model)), `${model.id} non dichiara un tipo: il filtro per tipo non lo vedrebbe`);
+    assert.ok(model.workloads.some((w) => categories.has(w)), `${model.id} non dichiara nessuna categoria`);
+    assert.ok(model.publisher, `${model.id} senza pubblicatore`);
+    assert.ok(model.license, `${model.id} senza licenza`);
+    assert.match(model.sourceUrl, /^https:\/\//, `${model.id} senza una fonte controllabile`);
+  }
+});
+
+test('D-0625: le due categorie che l Owner ha nominato esistono ed hanno modelli', () => {
+  // «questi modelli si usano per coding, questi si usano per scrittura». `writing` non era nel
+  // vocabolario: un filtro per una categoria che il vocabolario non porta lascia cadere in
+  // silenzio ogni modello che le appartiene.
+  for (const wanted of ['code', 'writing']) {
+    assert.ok(FUNCTIONS.includes(wanted), `la categoria "${wanted}" non e nel vocabolario del catalogo`);
+    const withIt = seed.models.filter((m) => m.workloads.includes(wanted));
+    assert.ok(withIt.length > 0, `nessun modello del seed e classificato "${wanted}"`);
+  }
+});
+
+test('D-0625: la descrizione arriva fino alla carta che il pannello rende', () => {
+  const catalog = buildCatalog({ descriptors: seed.models });
+  const cards = catalog.available.items;
+  assert.ok(cards.length > 0, 'il seed non produce nessuna carta');
+  for (const card of cards) {
+    assert.equal(typeof card.description, 'string', `la carta ${card.id} arriva senza descrizione`);
+    assert.ok(card.sourceUrl.startsWith('https://'));
+  }
+});
+
+test('D-0625: una descrizione assente diventa null, non una stringa vuota da rendere', () => {
+  // Un vuoto si legge come un difetto di rendering; `null` si rende come "nessuna descrizione
+  // dichiarata", che e un fatto.
+  const [card] = buildCatalog({ descriptors: [{ id: 'x/y', workloads: ['code'] }] }).available.items;
+  assert.equal(card.description, null);
+  const [blank] = buildCatalog({ descriptors: [{ id: 'x/y', description: '   ' }] }).available.items;
+  assert.equal(blank.description, null);
+});
+
+test('D-0625: il seed sta nella corsia `available`, mai fra gli scaricati', () => {
+  const catalog = buildCatalog({ descriptors: seed.models });
+  const foregroundIds = catalog.foreground.flatMap((lane) => lane.items.map((i) => i.id));
+  assert.deepEqual(foregroundIds, [], 'un modello mai scaricato non puo comparire fra quelli presenti');
+  assert.equal(catalog.available.total, seed.models.length);
+});
+
+test('D-0625: gli avvisi di licenza non permissiva viaggiano fino alla carta', () => {
+  // Due voci del seed hanno una licenza di comunita e NON una licenza open source riconosciuta.
+  // Dirlo sulla carta e la differenza fra un catalogo e una vetrina.
+  const risky = seed.models.filter((m) => Array.isArray(m.advisories) && m.advisories.length > 0);
+  assert.ok(risky.length > 0, 'nessuna voce avvisa di una licenza condizionata: sospetto');
+  const cards = buildCatalog({ descriptors: seed.models }).available.items;
+  for (const model of risky) {
+    const card = cards.find((c) => c.id === model.id);
+    assert.ok(card.advisories.length > 0, `l avviso di ${model.id} non arriva alla carta`);
+  }
+});

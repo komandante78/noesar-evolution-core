@@ -203,6 +203,10 @@ COPY --chown=10001:10001 deployment/container/install-coden-cli.sh /opt/noesar/t
 COPY --chown=10001:10001 deployment/container/Install-CodenCli.ps1 /opt/noesar/tools/Install-CodenCli.ps1
 COPY --chown=10001:10001 capabilities/security/trust-level-policy.json /opt/noesar/capabilities/security/trust-level-policy.json
 COPY --chown=10001:10001 capabilities/security/permission-catalog.json /opt/noesar/capabilities/security/permission-catalog.json
+# D-0625: il catalogo modelli curato che viaggia COL prodotto. Senza questa riga il file esiste
+# nel repository e non nell immagine, e la pagina #/models torna vuota su ogni installazione
+# nuova — che e esattamente il difetto che D-0625 ripara.
+COPY --chown=10001:10001 capabilities/model-catalog-seed.json /opt/noesar/capabilities/model-catalog-seed.json
 COPY --chown=10001:10001 schemas/industry-module-manifest.schema.json /opt/noesar/schemas/industry-module-manifest.schema.json
 COPY --chown=10001:10001 schemas/compliance-pack.schema.json /opt/noesar/schemas/compliance-pack.schema.json
 COPY --chown=10001:10001 schemas/technology-radar-entry.schema.json /opt/noesar/schemas/technology-radar-entry.schema.json

@@ -1497,3 +1497,33 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; min-height: 24px; padding: 0; line-height: 1;
 }
+
+/* D-0625 — la carta di un modello: descrizione sempre, avvisi di licenza, elimina a doppia
+   conferma. I token sono quelli che il tema gia definisce: un colore scritto a mano qui
+   sarebbe una nona variante che nessun tema puo cambiare, incluso quello ad alto contrasto. */
+.model-description {
+  margin: calc(var(--text-scale) * 6px) 0;
+  color: var(--state-info-text, inherit);
+  line-height: 1.45;
+}
+.model-description.hint { color: var(--state-critical-text); opacity: .75; }
+.model-advisory {
+  margin: calc(var(--text-scale) * 6px) 0;
+  padding: calc(var(--text-scale) * 6px) calc(var(--text-scale) * 8px);
+  background: var(--surface-critical-wash);
+  border: 1px solid var(--border-critical);
+  border-radius: 6px;
+  color: var(--state-critical-text);
+  font-size: calc(var(--text-scale) * 12px);
+}
+.model-remove-confirm {
+  margin-top: calc(var(--text-scale) * 6px);
+  padding: calc(var(--text-scale) * 8px);
+  background: var(--surface-critical-soft);
+  border: 1px solid var(--border-critical-strong);
+  border-radius: 6px;
+}
+.model-remove-confirm input[type="text"] { width: 100%; }
+/* The commit button is DISABLED until the id is typed back. Styling it as merely dim would make
+   an armed and an unarmed destructive button look alike, which is the one pair that must not. */
+.model-remove-confirm button[disabled] { opacity: .45; cursor: not-allowed; }
