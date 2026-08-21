@@ -277,7 +277,26 @@
             <div class="composer chat-composer">
               <div class="composer-commands hidden" id="chatCommands" role="listbox" aria-label="Slash commands"></div>
               <textarea id="chatInput" placeholder="Ask, or type / for commands…" aria-describedby="chatCommands"></textarea>
-              <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary icon-btn" type="button" title="Context" aria-label="Context">🗂</button><button id="undoHead" class="secondary icon-btn" type="button" title="Undo" aria-label="Undo">↩</button><button id="stopGeneration" class="danger icon-btn hidden" type="button" title="Stop" aria-label="Stop">⏹</button><button id="chatDictate" class="secondary icon-btn" type="button" aria-pressed="false" title="Speak instead of typing — heard by this installation, never by the browser."><span id="chatDictateIcon" aria-hidden="true">🎙</span><span id="chatDictateLabel" class="visually-hidden">Speak</span></button><label class="voice-pick" title="Which voice reads the replies. Rune and Estrela are this product's own names, bound to voices of whatever speech model is installed."><span class="visually-hidden">Voice</span><span aria-hidden="true">🗣</span><select id="chatVoice" aria-label="Voice"></select></label><button id="chatReadAloud" class="secondary icon-btn" type="button" aria-pressed="false" title="Read each reply aloud when it is complete."><span id="chatReadAloudIcon" aria-hidden="true">🔇</span><span id="chatReadAloudLabel" class="visually-hidden">Read aloud: off</span></button><button id="sendMessage" class="primary icon-btn" type="button" title="Send" aria-label="Send">➤</button></div><p class="hint hidden" id="voiceNote" role="status" aria-live="polite" translate="no"></p>
+              <div class="composer-row"><span id="chatContextSummary">No context selected</span><button id="inspectContext" class="secondary icon-btn" type="button" title="Context" aria-label="Context">🗂</button><button id="undoHead" class="secondary icon-btn" type="button" title="Undo" aria-label="Undo">↩</button><button id="stopGeneration" class="danger icon-btn hidden" type="button" title="Stop" aria-label="Stop">⏹</button><button id="chatDictate" class="secondary icon-btn" type="button" aria-pressed="false" title="Speak instead of typing — heard by this installation, never by the browser."><span id="chatDictateIcon" aria-hidden="true">🎙</span><span id="chatDictateLabel" class="visually-hidden">Speak</span></button><label class="voice-pick" title="Which voice reads the replies. Rune and Estrela are this product's own names, bound to voices of whatever speech model is installed."><span class="visually-hidden">Voice</span><span aria-hidden="true">🗣</span><select id="chatVoice" aria-label="Voice"></select></label><button type="button" class="secondary icon-btn" id="chatModelPickerOpen" aria-expanded="false" aria-controls="chatModelPicker" aria-label="Choose the model this installation uses" title="Choose the model this installation uses">🧠</button><button id="chatReadAloud" class="secondary icon-btn" type="button" aria-pressed="false" title="Read each reply aloud when it is complete."><span id="chatReadAloudIcon" aria-hidden="true">🔇</span><span id="chatReadAloudLabel" class="visually-hidden">Read aloud: off</span></button><button id="sendMessage" class="primary icon-btn" type="button" title="Send" aria-label="Send">➤</button></div>
+              <!-- Owner, 2026-08-21: "devi mettere una finestra con i modelli che sono scaricati
+                   in modo da poter caricare e cambiare subito" — reachable from chat, not only
+                   from #/coden. Deliberately NOT a second catalogue or a second decision: same
+                   markup shape, same GET /api/v1/models/installed, same POST
+                   /api/v1/models/activate as the #/coden picker (server.mjs, s336) — see
+                   createModelPicker() in app.js, the factory both instances share. -->
+              <div class="model-picker hidden" id="chatModelPicker" role="dialog" aria-modal="false" aria-labelledby="chatModelPickerTitle">
+                <div class="model-picker-head">
+                  <h3 id="chatModelPickerTitle">Model</h3>
+                  <span class="badge" id="chatModelPickerCount" translate="no">—</span>
+                  <button type="button" class="text-button" id="chatModelPickerClose" aria-label="Close">✕</button>
+                </div>
+                <p class="hint" id="chatModelPickerHint">What this installation can start. Starting one stops the model answering now.</p>
+                <div id="chatModelPickerList" class="model-picker-list" role="list" aria-busy="true" aria-live="polite">
+                  <p class="empty-state">Reading what is present…</p>
+                </div>
+                <p class="model-picker-foot"><button type="button" class="text-button" data-view-link="models">All models, and how to get more</button></p>
+              </div>
+              <p class="hint hidden" id="voiceNote" role="status" aria-live="polite" translate="no"></p>
               <!-- Shown only when this connection cannot open a microphone AND this installation
                    has a certificate to hand out. The fingerprint is delivered here, inside an
                    authenticated session, which is what makes comparing it on the phone worth

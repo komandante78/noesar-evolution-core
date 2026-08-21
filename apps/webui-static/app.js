@@ -6223,76 +6223,6 @@ function wireModelCatalogue(){
 // What it deliberately does NOT do: acquire, delete, or browse what exists elsewhere. Those live
 // on `#/models`, which the footer links to. A small menu that grows a second copy of a big page
 // is how two pages start disagreeing.
-let codenModelPending=null;
-let codenModelSnapshot=null;
-function codenModelRowMarkup(entry,activeId){
-  const inUse=entry.lane==='in-use'||(activeId!=null&&entry.id===activeId);
-  const declared=(value)=>value==null||value===''||value==='undeclared'
-    ?`<em>${escapeHtml(t('undeclared'))}</em>`:escapeHtml(String(value));
-  const facts=[
-    declared(entry.publisher),
-    `${escapeHtml(t('type'))} ${declared(entry.type)}`,
-    entry.contextWindow?`${escapeHtml(t('context'))} ${escapeHtml(String(entry.contextWindow))}`
-      :`${escapeHtml(t('context'))} <em>${escapeHtml(t('undeclared'))}</em>`,
-  ].join(' &middot; ');
-  // D-0535. Who says this is this — on the surface that STARTS a model, not only on the page
-  // that lists them. Three states, and the third is not a warning: `SYNTHESISED` means this
-  // installation wrote the record from its own runtime, so there is no signature to look for
-  // and its absence says nothing. Rendering that as "unsigned" would be a false alarm about
-  // the model the product is running.
-  const authenticity=entry.authenticity;
-  const provenance=!authenticity
-    ?''
-    :authenticity.verified
-      ?`<span class="badge badge-on">${escapeHtml(t('Signed by'))} ${escapeHtml(authenticity.signedBy??'—')}</span>`
-      :authenticity.kind==='SYNTHESISED'
-        ?`<span class="badge" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Provenance unknown'))}</span>`
-        :`<span class="badge badge-off" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Unsigned'))}</span>`;
-  // A model whose descriptor does not verify is not startable, so the gesture that would start
-  // it is drawn STOPPED with its reason rather than removed — MC-006's posture, and it is what
-  // the server would answer anyway (403).
-  const unattested=Boolean(authenticity)&&!authenticity.verified&&authenticity.kind!=='SYNTHESISED';
-  const action=inUse
-    ?`<span class="badge badge-on">${escapeHtml(t('In use'))}</span>`
-    :unattested
-      ?`<button type="button" class="secondary" disabled title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Use'))}</button>`
-      :`<button type="button" class="secondary" data-model-use="${escapeHtml(entry.id)}">${escapeHtml(t('Use'))}</button>`;
-  // The confirmation takes the row's own space rather than opening a dialog over it: what is
-  // being confirmed stays visible, in place, which a second layer does not give.
-  const confirming=codenModelPending===entry.id
-    ?`<div class="model-row-confirm"><span>${escapeHtml(t('Starting this stops the model that is answering now.'))}</span>`
-      +`<button type="button" class="primary" data-model-confirm="${escapeHtml(entry.id)}">${escapeHtml(t('Start it'))}</button>`
-      +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
-    :'';
-  return `<div class="model-row${inUse?' active':''}" role="listitem" data-model-id="${escapeHtml(entry.id)}">`
-    +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small>${provenance}</div>`
-    +`<div>${action}</div>${confirming}</div>`;
-}
-function renderCodenModelPicker(data,{loading=false,error=null}={}){
-  const list=$('#codenModelPickerList');if(!list)return;
-  const count=$('#codenModelPickerCount');
-  list.setAttribute('aria-busy',loading?'true':'false');
-  const say=(text)=>{list.innerHTML=`<p class="empty-state">${escapeHtml(text)}</p>`;};
-  if(loading){if(count)count.textContent='—';return say(t('Reading what is present…'));}
-  if(error){
-    // Declared, never blank: an unreadable list and an empty one are different statements, and
-    // rendering the second when the first happened is how a page lies quietly.
-    if(count)count.textContent='—';
-    return say(`${t('The list could not be read:')} ${error} ${t('This is not the same as having no models.')}`);
-  }
-  const models=data?.models??[];
-  const activeId=data?.activeId??null;
-  if(count){count.setAttribute('translate','no');count.textContent=`${models.length} ${t('startable')}`;}
-  if(!models.length){
-    // The "who answers" line survives an empty list on purpose: a runtime attached to a model
-    // no descriptor describes IS answering chat while nothing here is startable, and a panel
-    // that went blank in that state would hide the one fact the operator came for.
-    list.innerHTML=codenChatAnswerMarkup(data?.chat)
-      +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`;
-    return undefined;
-  }
-  list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>codenModelRowMarkup(entry,activeId)).join('');
-}
 // s341 — the sentence this chooser was missing: a model that STARTED is not yet a model that
 // ANSWERS. The panel showed "In use" beside a row while chat could still be served by
 // something else entirely, and nothing on the page said so. The field is computed once, in
@@ -6308,44 +6238,10 @@ function codenChatAnswerMarkup(chat){
   return `<p class="model-picker-chat"><span class="badge badge-off">${escapeHtml(t('Chat is not answering from a local model'))}</span> `
     +`<small translate="no">${escapeHtml(chat.reason??'')}</small></p>`;
 }
-async function loadCodenModelPicker(){
-  const list=$('#codenModelPickerList');if(!list)return;
-  renderCodenModelPicker(null,{loading:true});
-  try{
-    codenModelSnapshot=await api('/api/v1/models/installed');
-    renderCodenModelPicker(codenModelSnapshot);
-  }catch(error){
-    codenModelSnapshot=null;
-    renderCodenModelPicker(null,{error:error.value?.error??error.message});
-  }
-}
-async function activateCodenModel(id){
-  const list=$('#codenModelPickerList');if(!list)return;
-  const row=[...list.querySelectorAll('[data-model-id]')].find((node)=>node.dataset.modelId===id);
-  for(const button of row?.querySelectorAll('button')??[])button.disabled=true;
-  try{
-    await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
-    codenModelPending=null;
-    await loadCodenModelPicker();
-    await refreshCodenModelChip();
-  }catch(error){
-    // The server's own refusal, in the row that asked for it — 404 unknown, 409 present but
-    // unverified, 422 no launch command. Replacing it with "activation failed" would throw away
-    // the only part of the answer that says what to do next.
-    codenModelPending=null;
-    if(row){
-      for(const button of row.querySelectorAll('button'))button.disabled=false;
-      const note=document.createElement('p');
-      note.className='model-row-note';
-      note.setAttribute('role','status');
-      note.textContent=`${t('Refused:')} ${error.value?.error??error.message}`;
-      row.append(note);
-    }
-  }
-}
 /** The chip above the terminal, re-read from the installation after an activation — never
  *  written from the activation's own reply, which would make the chip say "loaded" while the
- *  next read of `models/active` still names the model before it. */
+ *  next read of `models/active` still names the model before it. Shared by every picker
+ *  instance: which model is active is one fact for the whole installation, not one per view. */
 async function refreshCodenModelChip(){
   const label=$('#codenModelChipLabel');if(!label)return;
   try{
@@ -6355,37 +6251,164 @@ async function refreshCodenModelChip(){
       :active?.state==='none-served'?'no model served':'none configured'}`;
   }catch{ label.textContent='model —'; }
 }
-function wireCodenModelPicker(){
-  const picker=$('#codenModelPicker');
-  const open=$('#codenModelPickerOpen');
-  if(!picker||!open)return;
-  const setOpen=(shown)=>{
-    picker.classList.toggle('hidden',!shown);
-    open.setAttribute('aria-expanded',shown?'true':'false');
-    if(shown)loadCodenModelPicker();else codenModelPending=null;
-  };
-  open.addEventListener('click',()=>setOpen(picker.classList.contains('hidden')));
-  $('#codenModelPickerClose')?.addEventListener('click',()=>{setOpen(false);open.focus();});
-  // Escape closes it and returns focus to the control that opened it — the same contract every
-  // other overlay on this page keeps.
-  picker.addEventListener('keydown',(event)=>{if(event.key==='Escape'){setOpen(false);open.focus();}});
-  $('#codenModelPickerList')?.addEventListener('click',(event)=>{
-    const use=event.target.closest('[data-model-use]');
-    const confirm=event.target.closest('[data-model-confirm]');
-    const cancel=event.target.closest('[data-model-cancel]');
-    if(use){codenModelPending=use.dataset.modelUse;return repaintCodenModelPicker();}
-    if(cancel){codenModelPending=null;return repaintCodenModelPicker();}
-    if(confirm)return activateCodenModel(confirm.dataset.modelConfirm);
-  });
+/**
+ * The model picker, as a factory rather than a page-bound singleton.
+ *
+ * Owner, 2026-08-21, on the chat composer: "devi mettere una finestra con i modelli che sono
+ * scaricati in modo da poter caricare e cambiare subito" — the same request s336 already made
+ * for #/coden. Building a second, chat-only copy of the list/render/activate logic would be
+ * exactly the defect this component's own comments already warn about twice (D-0300, D-0302,
+ * and s336's "a chooser that filtered a catalogue itself... would show a person a model the
+ * terminal would refuse to start"): two places computing the same thing, free to disagree.
+ * One factory, two instances — #/coden's chip-anchored picker and the chat composer's — each
+ * with its own open/closed and pending-confirmation state, both reading and writing through
+ * the identical `GET /api/v1/models/installed` / `POST /api/v1/models/activate` pair.
+ */
+function createModelPicker({panelId,openId,closeId,countId,listId}){
+  let pending=null;
+  let snapshot=null;
+  function rowMarkup(entry,activeId){
+    const inUse=entry.lane==='in-use'||(activeId!=null&&entry.id===activeId);
+    const declared=(value)=>value==null||value===''||value==='undeclared'
+      ?`<em>${escapeHtml(t('undeclared'))}</em>`:escapeHtml(String(value));
+    const facts=[
+      declared(entry.publisher),
+      `${escapeHtml(t('type'))} ${declared(entry.type)}`,
+      entry.contextWindow?`${escapeHtml(t('context'))} ${escapeHtml(String(entry.contextWindow))}`
+        :`${escapeHtml(t('context'))} <em>${escapeHtml(t('undeclared'))}</em>`,
+    ].join(' &middot; ');
+    // D-0535. Who says this is this — on the surface that STARTS a model, not only on the page
+    // that lists them. Three states, and the third is not a warning: `SYNTHESISED` means this
+    // installation wrote the record from its own runtime, so there is no signature to look for
+    // and its absence says nothing. Rendering that as "unsigned" would be a false alarm about
+    // the model the product is running.
+    const authenticity=entry.authenticity;
+    const provenance=!authenticity
+      ?''
+      :authenticity.verified
+        ?`<span class="badge badge-on">${escapeHtml(t('Signed by'))} ${escapeHtml(authenticity.signedBy??'—')}</span>`
+        :authenticity.kind==='SYNTHESISED'
+          ?`<span class="badge" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Provenance unknown'))}</span>`
+          :`<span class="badge badge-off" title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Unsigned'))}</span>`;
+    // A model whose descriptor does not verify is not startable, so the gesture that would start
+    // it is drawn STOPPED with its reason rather than removed — MC-006's posture, and it is what
+    // the server would answer anyway (403).
+    const unattested=Boolean(authenticity)&&!authenticity.verified&&authenticity.kind!=='SYNTHESISED';
+    const action=inUse
+      ?`<span class="badge badge-on">${escapeHtml(t('In use'))}</span>`
+      :unattested
+        ?`<button type="button" class="secondary" disabled title="${escapeHtml(authenticity.reason??'')}">${escapeHtml(t('Use'))}</button>`
+        :`<button type="button" class="secondary" data-model-use="${escapeHtml(entry.id)}">${escapeHtml(t('Use'))}</button>`;
+    // The confirmation takes the row's own space rather than opening a dialog over it: what is
+    // being confirmed stays visible, in place, which a second layer does not give.
+    const confirming=pending===entry.id
+      ?`<div class="model-row-confirm"><span>${escapeHtml(t('Starting this stops the model that is answering now.'))}</span>`
+        +`<button type="button" class="primary" data-model-confirm="${escapeHtml(entry.id)}">${escapeHtml(t('Start it'))}</button>`
+        +`<button type="button" class="text-button" data-model-cancel="1">${escapeHtml(t('Cancel'))}</button></div>`
+      :'';
+    return `<div class="model-row${inUse?' active':''}" role="listitem" data-model-id="${escapeHtml(entry.id)}">`
+      +`<div><b translate="no">${escapeHtml(entry.id)}</b><small translate="no">${facts}</small>${provenance}</div>`
+      +`<div>${action}</div>${confirming}</div>`;
+  }
+  function render(data,{loading=false,error=null}={}){
+    const list=$(listId);if(!list)return;
+    const count=$(countId);
+    list.setAttribute('aria-busy',loading?'true':'false');
+    const say=(text)=>{list.innerHTML=`<p class="empty-state">${escapeHtml(text)}</p>`;};
+    if(loading){if(count)count.textContent='—';return say(t('Reading what is present…'));}
+    if(error){
+      // Declared, never blank: an unreadable list and an empty one are different statements,
+      // and rendering the second when the first happened is how a page lies quietly.
+      if(count)count.textContent='—';
+      return say(`${t('The list could not be read:')} ${error} ${t('This is not the same as having no models.')}`);
+    }
+    const models=data?.models??[];
+    const activeId=data?.activeId??null;
+    if(count){count.setAttribute('translate','no');count.textContent=`${models.length} ${t('startable')}`;}
+    if(!models.length){
+      // The "who answers" line survives an empty list on purpose: a runtime attached to a model
+      // no descriptor describes IS answering chat while nothing here is startable, and a panel
+      // that went blank in that state would hide the one fact the operator came for.
+      list.innerHTML=codenChatAnswerMarkup(data?.chat)
+        +`<p class="empty-state">${escapeHtml(t('No model on this installation can be started. Nothing is hidden here: a model present but not matching the digest its publisher declared cannot be started, and one that declares no launch command cannot either — both are shown, with their reason, under All models.'))}</p>`;
+      return undefined;
+    }
+    list.innerHTML=codenChatAnswerMarkup(data?.chat)+models.map((entry)=>rowMarkup(entry,activeId)).join('');
+  }
+  /** Re-paint for a choice that changed nothing on the server — from the payload already held,
+   *  never from the DOM. Reading the rows back to rebuild them would make the page its own data
+   *  source, and every fact the server declared (`undeclared` included) would have to survive a
+   *  round trip through markup to stay true. No request either: opening a confirmation must not
+   *  be something the network can slow down or disagree with. */
+  function repaint(){ if(snapshot)render(snapshot); }
+  async function load(){
+    const list=$(listId);if(!list)return;
+    render(null,{loading:true});
+    try{
+      snapshot=await api('/api/v1/models/installed');
+      render(snapshot);
+    }catch(error){
+      snapshot=null;
+      render(null,{error:error.value?.error??error.message});
+    }
+  }
+  async function activate(id){
+    const list=$(listId);if(!list)return;
+    const row=[...list.querySelectorAll('[data-model-id]')].find((node)=>node.dataset.modelId===id);
+    for(const button of row?.querySelectorAll('button')??[])button.disabled=true;
+    try{
+      await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
+      pending=null;
+      await load();
+      await refreshCodenModelChip();
+    }catch(error){
+      // The server's own refusal, in the row that asked for it — 404 unknown, 409 present but
+      // unverified, 422 no launch command. Replacing it with "activation failed" would throw
+      // away the only part of the answer that says what to do next.
+      pending=null;
+      if(row){
+        for(const button of row.querySelectorAll('button'))button.disabled=false;
+        const note=document.createElement('p');
+        note.className='model-row-note';
+        note.setAttribute('role','status');
+        note.textContent=`${t('Refused:')} ${error.value?.error??error.message}`;
+        row.append(note);
+      }
+    }
+  }
+  function wire(){
+    const picker=$(panelId);
+    const open=$(openId);
+    if(!picker||!open)return;
+    const setOpen=(shown)=>{
+      picker.classList.toggle('hidden',!shown);
+      open.setAttribute('aria-expanded',shown?'true':'false');
+      if(shown)load();else pending=null;
+    };
+    open.addEventListener('click',()=>setOpen(picker.classList.contains('hidden')));
+    $(closeId)?.addEventListener('click',()=>{setOpen(false);open.focus();});
+    // Escape closes it and returns focus to the control that opened it — the same contract
+    // every other overlay on this page keeps.
+    picker.addEventListener('keydown',(event)=>{if(event.key==='Escape'){setOpen(false);open.focus();}});
+    $(listId)?.addEventListener('click',(event)=>{
+      const use=event.target.closest('[data-model-use]');
+      const confirm=event.target.closest('[data-model-confirm]');
+      const cancel=event.target.closest('[data-model-cancel]');
+      if(use){pending=use.dataset.modelUse;return repaint();}
+      if(cancel){pending=null;return repaint();}
+      if(confirm)return activate(confirm.dataset.modelConfirm);
+    });
+  }
+  return {wire};
 }
-/** Re-paint for a choice that changed nothing on the server — from the payload already held,
- *  never from the DOM. Reading the rows back to rebuild them would make the page its own data
- *  source, and every fact the server declared (`undeclared` included) would have to survive a
- *  round trip through markup to stay true. No request either: opening a confirmation must not
- *  be something the network can slow down or disagree with. */
-function repaintCodenModelPicker(){
-  if(codenModelSnapshot)renderCodenModelPicker(codenModelSnapshot);
-}
+const codenModelPicker=createModelPicker({
+  panelId:'#codenModelPicker',openId:'#codenModelPickerOpen',closeId:'#codenModelPickerClose',
+  countId:'#codenModelPickerCount',listId:'#codenModelPickerList',
+});
+const chatModelPicker=createModelPicker({
+  panelId:'#chatModelPicker',openId:'#chatModelPickerOpen',closeId:'#chatModelPickerClose',
+  countId:'#chatModelPickerCount',listId:'#chatModelPickerList',
+});
 
 
 // ── The information buttons · s333 point 3c ───────────────────────────────────────────────
@@ -6547,7 +6570,8 @@ Object.assign(SECTION_LOADERS,{
 });
 
 wireModelCatalogue();
-wireCodenModelPicker();
+codenModelPicker.wire();
+chatModelPicker.wire();
 installHelpButtons();
 initI18n();
 initAppearance();
