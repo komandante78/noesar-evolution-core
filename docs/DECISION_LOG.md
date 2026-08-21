@@ -14262,3 +14262,24 @@ decisione dell'Owner (HSM / secret manager), non inventata qui.
 **Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 5** (affidabilità misurabile:
 provenienza e verificabilità) **e tratto 2** (riusabile fuori da questo prodotto) — CodeSupply
 finanzia esattamente strumenti di supply-chain e metadati verificabili.
+
+## D-0618 · `MANIFEST.sha256` entra nel closure set del close guard — 2026-08-21
+**Decision.** `is_closure_path()` in `.claude/hooks/session-close-guard.sh` riconosce
+`MANIFEST.sha256` (solo alla radice), con due righe di prova nel fixture del hook.
+**Why.** È `F-CLOSURE-001` un artefatto più tardi, e il commento accanto alla funzione lo
+prevedeva già: *«l'omissione era invisibile finché un commit non l'ha innescata»*. `D-0615` ha
+messo il manifest sotto il gate del pre-commit, quindi un commit di chiusura che tocca
+`PROJECT_STATE.json` è **costretto** a rigenerare il manifest nello stesso commit; il guard lo
+leggeva come lavoro di prodotto e bloccava la chiusura. Misurato: ha bloccato **proprio il
+commit che ha spedito `D-0615`**.
+**Rejected.** Far avanzare `last_commit` a mano ogni volta: è esattamente la scorciatoia che il
+commento di `D-0387` dice essere il costo peggiore — un guard che si impara ad aggirare.
+**Evidence.** Fixture `71 passed, 0 failed`; oracolo **visto rosso** togliendo la sola riga dal
+guard (`70 passed, 1 failed`, e la riga che fallisce è quella nuova). La riga
+`oci/MANIFEST.sha256 → no` prova che l'esenzione è ancorata alla radice.
+**Reversal cost.** Nessuno. La tolleranza non si allarga: il manifest è **derivato** dai file
+tracciati, quindi un cambiamento di prodotto non può nascondercisi — il file di prodotto è nello
+stesso diff e fa scattare il check 2 da solo. Il manifest non è mai l'unica traccia di un
+cambiamento, solo la sua eco. Il fixture lo prova con la riga «a product file in the same range
+STILL blocks».
+**Status.** applied.

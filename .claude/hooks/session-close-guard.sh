@@ -79,9 +79,20 @@ is_closure_path() {
     .claude/settings.json) return 0 ;;
     .claude/hooks/*) return 0 ;;
     .claude/skills/*/SKILL.md) return 0 ;;
+    MANIFEST.sha256) return 0 ;;
     *) return 1 ;;
   esac
 }
+# MANIFEST.sha256 joined this set on 2026-08-21 (`D-0618`), and it is the same defect as
+# F-CLOSURE-001 one artifact later: `D-0615` put the manifest under the pre-commit gate, so a
+# closure commit that edits PROJECT_STATE.json is now FORCED to regenerate the manifest in that
+# same commit. The guard then read the manifest as project work and blocked the close — measured,
+# on the very commit that shipped D-0615.
+#
+# It is safe, and the reason is structural rather than a judgement call: the manifest is DERIVED
+# from the tracked files. A product change cannot hide inside it, because the changed product
+# file is itself in the same diff and trips check 2 on its own. The manifest can never be the
+# only record of a change — only the echo of one.
 # CLAUDE10.md and CLAUDE.md were MISSING from this set until 2026-08-11 (F-CLOSURE-001,
 # D-0387), and the omission was invisible until a commit tripped it. Every other governance
 # artifact was already here — the state files, settings.json, the hooks, the skills — while

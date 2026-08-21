@@ -287,7 +287,9 @@ closure_is 'docs/DECISION_LOG.md'                   yes "the decision log is unc
 closure_is '.claude/hooks/session-close-guard.sh'   yes "the hooks are unchanged in the set"
 closure_is '.claude/skills/noesar-evolution/SKILL.md' yes "a skill document is unchanged in the set"
 # Direction 2 — the set must not have widened. Product work is still product work.
+closure_is 'MANIFEST.sha256'                        yes "the product manifest is in the set (D-0618): D-0615's gate forces a closure commit to regenerate it"
 closure_is 'services/reference-control-plane/x.mjs' no  "product source is NOT a closure path"
+closure_is 'oci/MANIFEST.sha256'                    no  "the manifest exemption is anchored at the repository root too"
 closure_is 'BACKUPS/hooks_2026/session-close-guard.sh' no "BACKUPS/* stays out (Owner instruction, 2026-08-10)"
 closure_is 'docs/WORK_PLAN_V5_REWRITE.md'           no  "an ordinary doc is NOT a closure path"
 closure_is 'CLAUDE10.md.bak'                        no  "a lookalike filename does not inherit the exemption"

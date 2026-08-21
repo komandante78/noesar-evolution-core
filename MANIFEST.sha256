@@ -5,7 +5,7 @@ f2950c9c0402f47ef3470e4751dab9442773adbe1d7ad9c282672dfc4863d3c8  ./.claude/hook
 b07906b2487a2ce3bd23e1451c6413a4ac472a702321c7767a0761fcde3b9eae  ./.claude/hooks/lib/rule12-exceptions.json
 8bbef3a5e883286a82a3b19829ec7bb91427650741d3e840566ee50f9f6dd2fc  ./.claude/hooks/lib/tooling-inventory-baseline.json
 673a09fb1e4868cb977460186037f60026b601b4ab618cc512648899e6248e0c  ./.claude/hooks/lib/tooling-inventory.sh
-6de0889d70203a91594e14c2f1bb31a0889f71be7bbcf26cbd5d083aa26fa1ad  ./.claude/hooks/session-close-guard.sh
+86d5a03b656730d8ab573acf52bae4db005b1e96c48ab31777a2c08fcd1b8712  ./.claude/hooks/session-close-guard.sh
 807b93b2e97a81bcabd52d750bc1b662d4546fa21f428976cf7654d0da1b2cda  ./.claude/hooks/session-context.sh
 b763456952ce605e331e4c984927dcee351895a1595490ac47726a111dd240ea  ./.claude/hooks/session-end-cleanup.sh
 d5f314a91e81cdb1acf83cc12b5b5156f2816e9bb2130c2c9c4a89a33b3da92d  ./.claude/hooks/test/run-all.sh
@@ -13,7 +13,7 @@ afd8cfcc969dd3d4c6e8f75dcd5179d4bf675cd7dd5879dee94063ac2057d155  ./.claude/hook
 9c01bffd470c1935789dc2a089c66413528f8abc3d01deaa75de28f5744cc969  ./.claude/hooks/test/test-engineering-orchestrator.sh
 0a7aaf5c5b8f7489fa8632e4b14bcd3096007f96e19acab5cb34480d6ce0f2ce  ./.claude/hooks/test/test-hook-matcher-enums.sh
 c68a18a2059961883e26dc91e06cf0291d421daba13e6bbb0e635ad6110262fe  ./.claude/hooks/test/test-rule12-exceptions.sh
-e911966bdfe35c7b0944a96a2b5a526d135cb70c2d555f00dac258c429d83ea4  ./.claude/hooks/test/test-session-lifecycle.sh
+e9d2a4255fc0869e1b3fc205942d15344da88568569e700692ffc6ae7f58b946  ./.claude/hooks/test/test-session-lifecycle.sh
 e9dad7207349b9bedb34b4637fad3efb312a802dd0df66d032745fd8b8d1a377  ./.claude/hooks/test/test-tooling-inventory.sh
 46cb98d86aa8d24c1f9d62b6cc4068f26c4bfe640b8efe35a5f9f2c01b0d65ae  ./.claude/settings.json
 4f02530c86a257a2d07e13ffd0345045862621e3499f63e81f48a7b7d4dd8835  ./.claude/skills/noesar-evolution-budget/SKILL.md
@@ -561,7 +561,7 @@ bf7f89b5ea581d6dbff828cb555977a1565cbbdad5c50d09930863de1c492132  ./docs/AUTHORI
 abfa211024afd68c0c1ab05b635e73a1d8fba2e0902824d33f674877895fc31d  ./docs/COSA_MANCA.md
 15321588b6ae1bc8819806aba25a9d448545edf1de496449423a9f2ffcf227a9  ./docs/DATABASE_ACCEPTANCE.md
 20b652845f9db0d98f8f3a432e52ef5fe8d831fa412f3e94b675381d26bced67  ./docs/DEBUG_MODE_GUIDE.md
-76f51fb2a060e7aed600f624a73b6cf462cd0b6cc64db1209653df19af3b8328  ./docs/DECISION_LOG.md
+9e2cd46825628f8bdc41920e7742cea1d7b21f5c98484746931f899cfd21ee0d  ./docs/DECISION_LOG.md
 a355bcbe952e77fb860bc3b02f57a776d867d426b2f9056493016350de243f7c  ./docs/DEPLOYMENT.md
 c38e6b4a724bae0c1e1ab24f7bf4b7796c718f8af9caa4a95d1a59abb4f6317b  ./docs/DUAL_LICENSE_READINESS.md
 c21ded54e1ae9fbd70dc3e5ae0194b2c904be51f3b63cf316a02bd5990baa807  ./docs/FLAKE_STRESS_REPORT.md
