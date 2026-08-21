@@ -464,7 +464,9 @@ test('D-0625: gli avvisi di licenza non permissiva viaggiano fino alla carta', (
   // Dirlo sulla carta e la differenza fra un catalogo e una vetrina.
   const risky = seed.models.filter((m) => Array.isArray(m.advisories) && m.advisories.length > 0);
   assert.ok(risky.length > 0, 'nessuna voce avvisa di una licenza condizionata: sospetto');
-  const cards = buildCatalog({ descriptors: seed.models }).available.items;
+  // pageSize esplicito: dal D-0628 la pagina e di 6, e leggere solo la prima pagina renderebbe
+  // questa riga dipendente dall'impaginazione invece che dal contenuto della carta.
+  const cards = buildCatalog({ descriptors: seed.models, pageSize: seed.models.length }).available.items;
   for (const model of risky) {
     const card = cards.find((c) => c.id === model.id);
     assert.ok(card.advisories.length > 0, `l avviso di ${model.id} non arriva alla carta`);

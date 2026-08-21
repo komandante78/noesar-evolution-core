@@ -1527,3 +1527,77 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 /* The commit button is DISABLED until the id is typed back. Styling it as merely dim would make
    an armed and an unarmed destructive button look alike, which is the one pair that must not. */
 .model-remove-confirm button[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* D-0628 — i riquadri del catalogo modelli. Owner 2026-08-21: «a vista di riquadro, sei per
+   pagina, 3 a sinistra 3 a destra». Classe DEDICATA e non `.card-list`: quella la usano altri
+   pannelli, e allargarla li avrebbe cambiati tutti — un effetto che nessuno aveva chiesto. */
+.model-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+/* Sotto i 900px una colonna: due riquadri stretti si leggono peggio di uno largo. */
+@media (max-width: 900px) { .model-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.model-tile {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--text-scale) * 4px);
+  min-height: calc(var(--text-scale) * 210px);
+}
+.model-tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.model-tile-head h3 {
+  margin: 0;
+  font-size: calc(var(--text-scale) * 15px);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.model-badges { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.model-badge {
+  padding: 2px 7px;
+  border: 1px solid var(--border-good-soft);
+  border-radius: 999px;
+  font-size: calc(var(--text-scale) * 10px);
+  letter-spacing: .04em;
+  color: var(--green);
+  white-space: nowrap;
+}
+/* La descrizione e limitata a quattro righe: un riquadro che cresce con il testo distrugge la
+   griglia, e la descrizione intera resta leggibile alla fonte. */
+.model-tile .model-description {
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+  line-clamp: 4;
+  overflow: hidden;
+  font-size: calc(var(--text-scale) * 12px);
+  margin: 0;
+}
+.model-facts {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px; margin: calc(var(--text-scale) * 6px) 0 0;
+  font-size: calc(var(--text-scale) * 11px);
+}
+.model-facts dt { color: var(--muted); letter-spacing: .05em; }
+.model-facts dd { margin: 2px 0 0; color: var(--text-card); overflow-wrap: anywhere; }
+/* `margin-top:auto` incolla le azioni al fondo: in una griglia i bottoni allineati fra riquadri
+   di altezza diversa sono la differenza fra scorrere e cercare. */
+.model-tile-foot { margin-top: auto; padding-top: calc(var(--text-scale) * 8px); }
+.model-tile-foot .card-actions { margin-top: 0; }
+.model-source { margin: 6px 0 0; font-size: calc(var(--text-scale) * 11px); }
+
+/* I chip di categoria. */
+.model-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.model-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; border-radius: 999px;
+  font-size: calc(var(--text-scale) * 12px);
+}
+.model-chip.selected {
+  background: linear-gradient(135deg, var(--accent-fill-from), var(--accent-fill-to));
+  color: var(--text-on-accent); border-color: transparent;
+}
+.model-chip-count {
+  padding: 0 6px; border-radius: 999px;
+  background: var(--surface-inset); color: var(--muted);
+  font-size: calc(var(--text-scale) * 10px);
+}
+.model-chip.selected .model-chip-count { background: var(--surface-critical-wash); color: inherit; }

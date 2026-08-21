@@ -828,6 +828,11 @@
             <label>Search<input id="modelFilterText" placeholder="Model, publisher or declared workload"></label>
             <button id="modelFilterClear" type="button">Clear filters</button>
           </div>
+          <!-- D-0628, Owner 2026-08-21: «fai che si vedono a categoria». Le categorie stavano
+               dentro una tendina, cioe nascoste dietro un gesto: qui si vedono tutte, con quanti
+               modelli hanno, che e l'informazione che fa scegliere. Scrivono nella tendina
+               invece di tenere un secondo stato — un filtro solo, due modi di dirlo. -->
+          <div class="model-chips" id="modelCategoryChips" role="group" aria-label="Filter by category"></div>
           <p class="hint" id="modelAcquireReason">Checking whether this installation can start a model…</p>
           <!-- D-0520. Downloading a model is egress, and this is the switch that says so out
                loud. It ships OFF (rules 30-32) and it is its own consent: agreeing to send

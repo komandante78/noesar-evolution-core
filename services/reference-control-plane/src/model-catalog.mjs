@@ -231,7 +231,10 @@ export function buildCatalog({
   activeModelId = null,
   filter = null,
   page = 1,
-  pageSize = 24,
+  // 6, Owner 2026-08-21: «sei per pagina, 3 a sinistra 3 a destra». Twenty-four was a number
+  // nobody had looked at on a screen — it made the lane a scroll, which is the "troppo statico"
+  // this changed. Six fills a 2x3 grid exactly, so a page is one glance and never a search.
+  pageSize = 6,
   runtime = null,
 } = {}) {
   if (!Array.isArray(descriptors)) refuse('INVALID_DESCRIPTORS', 'descriptors must be an array');

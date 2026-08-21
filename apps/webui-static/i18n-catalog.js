@@ -118,6 +118,9 @@ export const RUNTIME_ONLY = Object.freeze([
   // `POST /api/v1/models/acquire` and `GET /api/v1/models/acquisitions`. The panel's frame —
   // its heading, its hint, its empty state — IS in the markup and is therefore not listed here.
   'Acquire',
+  // D-0628: i chip di categoria e il link alla fonte sul riquadro, composti da app.js.
+  'All',
+  'source',
   'Acquiring…',
   'Acquiring is switched off on this installation.',
   'Model downloads are not allowed yet. Turn them on above — downloading is egress.',
@@ -1172,6 +1175,9 @@ const it = {
   'Function': 'Funzione',
   'Any function': 'Qualsiasi funzione',
   'Clear filters': 'Azzera i filtri',
+  'source': 'fonte',
+  'All': 'Tutte',
+  'Filter by category': 'Filtra per categoria',
   'Checking whether this installation can start a model…': 'Verifica se questa installazione può avviare un modello…',
   'On this installation': 'Su questa installazione',
   'Available from registered publishers': 'Disponibili dai pubblicatori registrati',

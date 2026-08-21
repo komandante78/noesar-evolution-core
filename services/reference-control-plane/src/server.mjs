@@ -826,6 +826,17 @@ function readSeedDescriptors() {
   }
 }
 
+/** I titoli leggibili delle categorie, dal seed. Una fonte sola: una mappa ricopiata nel
+ * browser sarebbe una seconda risposta alla stessa domanda (`D-0300`, `D-0302`). */
+function readSeedCategories() {
+  try {
+    const parsed = JSON.parse(readFileSync(MODEL_CATALOG_SEED, 'utf8'));
+    return Array.isArray(parsed?.categories) ? parsed.categories : [];
+  } catch {
+    return [];
+  }
+}
+
 function readModelDescriptors() {
   const descriptors = [];
   // The seed goes in FIRST so an operator's own descriptor with the same id overwrites it
@@ -1987,12 +1998,12 @@ const requestListener = async (req, res) => {
       };
       const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
       try {
-        return json(res, 200, buildCatalog({
+        return json(res, 200, { categories: readSeedCategories(), ...buildCatalog({
           descriptors, present, activeModelId: activeModelId(),
           filter: Object.values(filter).some(Boolean) ? filter : null,
           page: Number.isInteger(page) && page > 0 ? page : 1,
           runtime: runtimeConfig,
-        }));
+        }) });
       } catch (error) {
         return json(res, 400, { error: error.reason ?? error.message, kind: error.kind ?? 'INVALID_REQUEST' });
       }

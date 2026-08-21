@@ -5775,16 +5775,49 @@ function modelCard(item,context={}){
   const source=item.sourceUrl
     ?` &middot; <a href="${escapeHtml(item.sourceUrl)}" rel="noreferrer noopener" target="_blank">${escapeHtml(t('source'))}</a>`:'';
   const size=item.parameters?` &middot; ${escapeHtml(item.parameters)}`:'';
-  return `<article class="entity-card" translate="no"><h3>${escapeHtml(item.id)}</h3></article>`
-    .replace('</article>',
-      `<small>${declared(item.publisherName??item.publisher)} &middot; ${escapeHtml(item.version??'—')} &middot; ${escapeHtml(item.license??'—')}${size}${source}</small>`
-      +modelDescription(item)
-      +`<p>Type ${declared(item.type)} &middot; function ${item.functions.map(declared).join(', ')}`
-      +`${item.contextWindow?` &middot; context ${item.contextWindow}`:' &middot; context <em>undeclared</em>'}</p>`
-      +modelAdvisories(item)
-      +outside+authenticityLine(item)+acquireControl(item,context)+removeControl(item)+'</article>');
+  // Il nome di un modello e `org/nome`: l'organizzazione e gia nella riga sotto, quindi il
+  // titolo mostra la parte che distingue e non ripete l'altra. Il titolo intero resta nel
+  // `title` per chi ne ha bisogno.
+  const shortName=String(item.id).includes('/')?String(item.id).split('/').slice(1).join('/'):item.id;
+  const badges=item.functions.filter((f)=>f!=='undeclared')
+    .map((f)=>`<span class="model-badge">${escapeHtml(modelCategoryTitle(f))}</span>`).join('');
+  return `<article class="entity-card model-tile" translate="no">`
+    +`<header class="model-tile-head"><h3 title="${escapeHtml(item.id)}">${escapeHtml(shortName)}</h3>`
+    +`<div class="model-badges">${badges}</div></header>`
+    +`<small>${declared(item.publisherName??item.publisher)}${size}</small>`
+    +modelDescription(item)
+    +`<dl class="model-facts">`
+    +`<div><dt>${escapeHtml(t('Licence'))}</dt><dd>${escapeHtml(item.license??'—')}</dd></div>`
+    +`<div><dt>${escapeHtml(t('Type'))}</dt><dd>${declared(item.type)}</dd></div>`
+    +`<div><dt>${escapeHtml(t('Context'))}</dt><dd>${item.contextWindow?escapeHtml(String(item.contextWindow)):'<em>undeclared</em>'}</dd></div>`
+    +`</dl>`
+    +modelAdvisories(item)
+    +outside+authenticityLine(item)
+    +`<footer class="model-tile-foot">${acquireControl(item,context)}${removeControl(item)}`
+    +(item.sourceUrl?`<p class="model-source">${source.replace(' &middot; ','')}</p>`:'')+`</footer></article>`;
+}
+let modelCategories=[];
+function modelCategoryTitle(id){
+  return modelCategories.find((c)=>c.id===id)?.title??id;
+}
+function renderCategoryChips(catalog){
+  const host=$('#modelCategoryChips');
+  if(!host)return;
+  const counts=catalog.grouping?.byFunction??{};
+  const current=$('#modelFilterFunction')?.value??'';
+  const titles=new Map((catalog.categories??modelCategories).map((c)=>[c.id,c.title]));
+  const total=catalog.available.total+catalog.foreground.reduce((n,l)=>n+l.items.length,0);
+  const chip=(id,label,count,active)=>
+    `<button type="button" class="model-chip${active?' selected':''}" data-category="${escapeHtml(id)}"`
+    +` aria-pressed="${active?'true':'false'}">${escapeHtml(label)}`
+    +`<span class="model-chip-count" translate="no">${count}</span></button>`;
+  host.innerHTML=chip('',t('All'),total,current==='')
+    +Object.entries(counts).filter(([id])=>id!=='undeclared')
+      .map(([id,count])=>chip(id,titles.get(id)??id,count,current===id)).join('');
 }
 function renderModelLanes(catalog){
+  if(Array.isArray(catalog.categories))modelCategories=catalog.categories;
+  renderCategoryChips(catalog);
   const foreground=$('#modelForegroundLanes');
   if(foreground){
     const total=catalog.foreground.reduce((sum,entry)=>sum+entry.items.length,0);
@@ -5795,7 +5828,7 @@ function renderModelLanes(catalog){
       :catalog.foreground.filter((entry)=>entry.items.length>0).map((entry)=>
         `<h4 translate="no">${escapeHtml(t(MODEL_LANE_TITLE[entry.lane]??entry.lane))} &middot; ${entry.items.length}</h4>`
         +`<p class="hint" translate="no">${escapeHtml(t(MODEL_LANE_NOTE[entry.lane]??''))} ${escapeHtml(t('Action:'))} ${escapeHtml(t(MODEL_LANE_VERB[entry.lane]??''))}.</p>`
-        +`<div class="card-list">${entry.items.map(modelCard).join('')}</div>`).join('');
+        +`<div class="card-list model-grid">${entry.items.map(modelCard).join('')}</div>`).join('');
   }
   const list=$('#modelAvailableList');
   if(list){
@@ -5803,7 +5836,7 @@ function renderModelLanes(catalog){
     list.classList.toggle('empty-state',catalog.available.items.length===0);
     list.innerHTML=catalog.available.items.length===0
       ?'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.'
-      :`<div class="card-list">${catalog.available.items.map((item)=>modelCard(item,{
+      :`<div class="card-list model-grid">${catalog.available.items.map((item)=>modelCard(item,{
         acquireOffered:catalog.acquisition.offered,
         acquireReason:catalog.acquisition.reason,
         egressConsented:modelEgress.consented,
@@ -6097,6 +6130,16 @@ function wireModelCatalogue(){
   $('#modelAvailableList')?.addEventListener('click',(event)=>{
     const id=event.target?.closest?.('[data-acquire]')?.dataset?.acquire;
     if(id)acquireModel(id);
+  });
+  $('#modelCategoryChips')?.addEventListener('click',(event)=>{
+    const node=event.target?.closest?.('[data-category]');
+    if(!node)return;
+    // Scrive nel filtro che esiste gia invece di tenere un secondo stato: due posti che dicono
+    // "quale categoria" e come si finisce con la pagina e la tendina che non sono d'accordo.
+    const select=$('#modelFilterFunction');
+    if(select)select.value=node.dataset.category??'';
+    modelCatalogPage=1;
+    loadModelCatalogue();
   });
   $('#modelAcquisitionList')?.addEventListener('click',(event)=>{
     const jobId=event.target?.closest?.('[data-acquire-cancel]')?.dataset?.acquireCancel;
