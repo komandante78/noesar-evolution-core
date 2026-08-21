@@ -14559,6 +14559,28 @@ prime righe citate verbatim nel documento nuovo. `FUNDING/` letto per intero: 19
 aggiornamento 2026-08-14.
 **Reversal cost.** Nessuno — solo documentazione, nessun codice toccato, nessun file fuori da
 `PROJECT_ROOT` modificato.
-**Status.** applied (il documento) + **open** (la discrepanza `D-0468` ↔ lo stato reale del
-repository separato, che resta finché l'Owner non sceglie e una riga in questo log non la
-dichiara risolta).
+**Status.** applied (il documento). La discrepanza è **CHIUSA da `D-0633`**, sotto.
+
+## D-0633 · ATOM resta proprietario — `D-0468` superata, `CLAUDE10.md` §14 amendato — 2026-08-21
+**Decision.** L'Owner ha scelto la strada A di `D-0632` §7: `ATOM_EVOLUTION` **resta
+proprietario**. `D-0468` (2026-08-15, "ATOM diventa AGPL") è **superata**. `CLAUDE10.md` §14 —
+il blocco citazione e le regole 53/56/57 — e `.claude/skills/noesar-evolution/SKILL.md` sono
+stati amendati per dire il vero, con lo stesso meccanismo con cui `D-0468` stessa era stata
+scritta (l'Owner amenda il file, non lo si aggira).
+**Why.** Owner, testuale: *"lasciamo atom come è adesso"*. Coerente col fatto misurato in
+`D-0632`: `D-0468` non era mai stata eseguita nel repository — la sua `LICENSE` diceva ancora
+*"proprietary, all rights reserved, not open source"* sei giorni dopo che il governo di questo
+progetto diceva il contrario. L'Owner ha scelto di allineare il governo allo stato reale
+invece del contrario, e separatamente ha deciso ATOM come candidato a monetizzazione
+commerciale diretta.
+**Rejected.** La strada B (aprire ATOM per davvero e venderlo anche con licenza doppia): più
+lavoro per lo stesso risultato economico, esplicitamente scartata dall'Owner con questa scelta.
+**Evidence.** `CLAUDE10.md` §14: blocco citazione `D-0633` aggiunto dopo quello di `D-0468`,
+regole 53/56/57 riscritte per dire "proprietario" invece di "AGPL-3.0-or-later". La skill
+`noesar-evolution` §"ATOM EVOLUTION" allineata allo stesso modo. **Non toccato**: il repository
+separato stesso — resta fuori da `PROJECT_ROOT` e fuori dall'autorità di questa sessione; la
+sua `LICENSE` già diceva il vero, è il governo di *questo* progetto che doveva raggiungerlo.
+**Reversal cost.** Nessuno sul prodotto installato — è un cambiamento di governo, zero codice.
+Se l'Owner cambia idea in futuro, si amenda di nuovo con lo stesso meccanismo, mai aggirato.
+**Status.** applied. La discrepanza di `D-0632` è chiusa: le due fonti dicono di nuovo la
+stessa cosa.

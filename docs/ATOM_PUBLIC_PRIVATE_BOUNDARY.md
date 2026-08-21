@@ -1,17 +1,21 @@
 # NOESAR EVOLUTION — ATOM Public/Private Boundary
 
-> **Status: architectural invariant, fixed at inception (Phase 0, decision D-0007),
-> amended by the Owner 2026-08-15 (`D-0468`).** The dependency invariant below is still
-> not subject to per-phase reinterpretation. What changed is ATOM's licence, not its
-> architectural separation: ATOM stays its own repository (`ATOM_EVOLUTION`), and the
-> core still must not depend on it. See `CLAUDE10.md` §14 for the full amendment.
+> **Status: architectural invariant, fixed at inception (Phase 0, decision D-0007).**
+> `D-0468` (2026-08-15) amended ATOM's licence to AGPL; `D-0633` (2026-08-21) superseded
+> that amendment — ATOM stays proprietary, because `D-0468` was never executed in the
+> repository it named and the Owner chose to align this project's record with the state
+> that was actually true, plus a separate decision to keep ATOM a commercial-monetisation
+> candidate. The dependency invariant below was never a function of ATOM's licence and is
+> still not subject to per-phase reinterpretation: ATOM stays its own repository
+> (`ATOM_EVOLUTION`), and the core still must not depend on it either way. See
+> `CLAUDE10.md` §14 for the full amendment.
 
 ---
 
 ## The parameters
 
 ```text
-ATOM_IMPLEMENTATION       = open (AGPL-3.0-or-later) and separate — its own repository
+ATOM_IMPLEMENTATION       = proprietary and separate — its own repository (`D-0633`)
 FOSS_CORE_DEPENDS_ON_ATOM = false
 ```
 

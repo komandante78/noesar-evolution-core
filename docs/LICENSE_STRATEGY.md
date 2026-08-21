@@ -12,7 +12,7 @@
 ```text
 OPEN_CORE_PROPOSED_LICENSE   = AGPL-3.0-or-later
 ADDITIONAL_COMMERCIAL_LICENSE = planned
-ATOM_IMPLEMENTATION           = open (AGPL-3.0-or-later) and separate — its own repository
+ATOM_IMPLEMENTATION           = proprietary and separate — its own repository (`D-0633`, 2026-08-21, superseding `D-0468`)
 FOSS_CORE_DEPENDS_ON_ATOM     = false
 FUNDED_WORK_MUST_BE_FOSS      = true
 PRODUCT_ACCESS_CONTROL        = registration only, no licence key

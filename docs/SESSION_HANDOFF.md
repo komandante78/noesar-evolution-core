@@ -13,10 +13,9 @@ senza guardare la pagina renderizzata. `T2` eseguita: browser **506 · 505 pass 
 
 **`docs/PRESENTAZIONE_PROGETTO_E_FINANZIAMENTO_2026-08-21.md` scritto (`D-0632`)** — cos'è il
 prodotto, come funziona, la richiesta (CodeSupply raccomandato), il piano dei moduli a
-pagamento. **Aperto: una discrepanza su ATOM.** `CLAUDE10.md` registra `D-0468` (2026-08-15,
-ATOM diventa AGPL) ma il repository separato ha ancora la licenza proprietaria — mai eseguita.
-**L'Owner deve scegliere** (§7 del documento) e farlo dichiarare con una riga in questo log; la
-raccomandazione è lasciarlo proprietario, formalizzando lo stato reale.
+pagamento. **La discrepanza su ATOM è CHIUSA (`D-0633`):** l'Owner ha scelto di lasciarlo
+proprietario. `CLAUDE10.md` §14 e la skill `noesar-evolution` sono stati amendati per dire il
+vero — `D-0468` (2026-08-15) è superata.
 
 **Scadenza esterna: bandi NLnet riaprono 2026-09-03, prima scadenza 2026-11-03 12:00 CEST.**
 Se si punta su CodeSupply, abstract + milestone + confronto con l'esistente vanno pronti prima.

@@ -152,13 +152,18 @@ Il "seam" ATOM per NOESAR EVOLUTION (passo 11 dell'ordine di costruzione,
 **separato**, creato il 2026-07-28: **`/mnt/cachec/ATOM_EVOLUTION`** — nato **vuoto**,
 zero commit alla creazione, deliberatamente.
 
-**Licenza, deciso dall'Owner il 2026-08-15 (`D-0468`)**: `ATOM_EVOLUTION` è **aperto**,
-AGPL-3.0-or-later come il core — non più proprietario. Resta comunque un repository **suo**,
-separato: la separazione è ciò che rende verificabile che il core non dipende da ATOM
-(`CLAUDE10.md` §14), e non cambia per il cambio di licenza. Aprire `ATOM_EVOLUTION` **non**
-allenta di una virgola la regola sotto — anzi la rende più importante da dichiarare
-esplicitamente: aprire la licenza del progetto NUOVO non è permesso a copiarci dentro IP dei
-quattro percorsi VECCHI e ancora chiusi elencati sotto.
+**Licenza, `D-0468` (2026-08-15) SUPERATA dall'Owner il 2026-08-21 (`D-0633`)**:
+`ATOM_EVOLUTION` **resta proprietario**. `D-0468` non era mai stata eseguita nel repository
+stesso — misurato il 21/08, la sua `LICENSE` diceva ancora *"proprietary, all rights reserved,
+not open source"* sei giorni dopo che questo governo diceva il contrario — e l'Owner, messo di
+fronte alla discrepanza, ha scelto di allineare il governo allo stato reale invece del
+contrario, oltre a decidere ATOM come candidato a monetizzazione commerciale diretta
+(`docs/PRESENTAZIONE_PROGETTO_E_FINANZIAMENTO_2026-08-21.md` §7). Resta comunque un repository
+**suo**, separato: la separazione è ciò che rende verificabile che il core non dipende da ATOM
+(`CLAUDE10.md` §14), e non è mai dipesa dalla licenza. La regola sotto resta piena — anzi torna
+alla sua forma originale: `ATOM_EVOLUTION` è di nuovo materiale proprietario esso stesso, quindi
+non può mai entrare in questo repository, esattamente come i quattro percorsi VECCHI elencati
+sotto.
 
 **Non copiare, non importare, non "riprendere" dentro `ATOM_EVOLUTION` nulla da:**
 
