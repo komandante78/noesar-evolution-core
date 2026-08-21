@@ -34,38 +34,38 @@
   "categories": [
     {
       "id": "code",
-      "title": "Codice",
-      "summary": "Scrivere, leggere e correggere codice; lavoro agentico su un repository."
+      "title": "Coding",
+      "summary": "Writing, reading and fixing code; agentic work on a repository."
     },
     {
       "id": "writing",
-      "title": "Scrittura",
-      "summary": "Testo lungo, redazione, riscrittura, traduzione e lavoro multilingue."
+      "title": "Writing",
+      "summary": "Long-form text, drafting, rewriting, translation and multilingual work."
     },
     {
       "id": "reasoning",
-      "title": "Ragionamento",
-      "summary": "Matematica, analisi passo-passo, diagnosi di un problema."
+      "title": "Reasoning",
+      "summary": "Mathematics, step-by-step analysis, diagnosing a problem."
     },
     {
       "id": "long-context",
-      "title": "Contesto lungo",
-      "summary": "Leggere molto in una volta: una base di codice, un dossier, un archivio."
+      "title": "Long context",
+      "summary": "Reading a lot at once: a codebase, a dossier, an archive."
     },
     {
       "id": "tool-use",
-      "title": "Uso di strumenti",
-      "summary": "Modelli addestrati a chiamare strumenti e a portare avanti compiti in piu passi."
+      "title": "Tool use",
+      "summary": "Models trained to call tools and carry out multi-step tasks."
     },
     {
       "id": "local",
-      "title": "Esecuzione locale",
-      "summary": "Modelli pensati per girare su hardware modesto, senza inviare niente fuori."
+      "title": "Local execution",
+      "summary": "Models built to run on modest hardware, without sending anything out."
     },
     {
       "id": "image",
-      "title": "Immagini",
-      "summary": "Generazione di immagini da testo. Non sono modelli di linguaggio."
+      "title": "Images",
+      "summary": "Text-to-image generation. These are not language models."
     }
   ],
   "models": [
@@ -75,7 +75,7 @@
       "publisher": "moonshotai",
       "publisherName": "Moonshot AI",
       "license": "Modified MIT",
-      "description": "Uno dei modelli a pesi aperti piu forti del 2026 per lavoro agentico: scrittura di codice, generazione di interfacce e compiti lunghi in piu passi. Molto grande — va considerato per un server, non per un portatile.",
+      "description": "One of the strongest open-weight models of 2026 for agentic work: writing code, generating interfaces and long multi-step tasks. Very large — suited to a server, not a laptop.",
       "parameters": "~1.1T",
       "workloads": [
         "text",
@@ -94,7 +94,7 @@
       "resource_profiles": [
         {
           "name": "server",
-          "note": "richiede piu GPU di fascia alta"
+          "note": "needs multiple high-end GPUs"
         }
       ]
     },
@@ -104,8 +104,8 @@
       "publisher": "Qwen",
       "publisherName": "Alibaba Qwen",
       "license": "Apache-2.0",
-      "description": "Mixture-of-experts: 235 miliardi di parametri totali ma 22 attivi per token, quindi costa molto meno di quanto la taglia suggerisca. Licenza Apache 2.0, quindi uso commerciale libero. La scelta piu prudente quando servono multilingua e flessibilita di licenza.",
-      "parameters": "235B totali · 22B attivi",
+      "description": "Mixture-of-experts: 235 billion total parameters but only 22 billion active per token, so it costs far less to run than its size suggests. Apache 2.0 licence, so commercial use is unrestricted. The safest choice when you need multilingual support and licensing flexibility.",
+      "parameters": "235B total · 22B active",
       "workloads": [
         "text",
         "writing",
@@ -124,7 +124,7 @@
       "resource_profiles": [
         {
           "name": "server",
-          "note": "mixture-of-experts, memoria alta"
+          "note": "mixture-of-experts, high memory"
         }
       ]
     },
@@ -134,8 +134,8 @@
       "publisher": "google",
       "publisherName": "Google",
       "license": "Apache-2.0",
-      "description": "Pensato per l'esecuzione locale e per flussi in cui i dati non devono uscire: 25 miliardi di parametri totali ma meno di 4 attivi. Buon punto di partenza per una squadra piccola che vuole tenersi tutto in casa.",
-      "parameters": "25.2B totali · 3.8B attivi",
+      "description": "Built for local execution and workflows where data must never leave the premises: 25 billion total parameters but fewer than 4 active. A good starting point for a small team that wants to keep everything in-house.",
+      "parameters": "25.2B total · 3.8B active",
       "workloads": [
         "text",
         "local",
@@ -154,7 +154,7 @@
       "resource_profiles": [
         {
           "name": "workstation",
-          "note": "gira su hardware locale di fascia media"
+          "note": "runs on mid-range local hardware"
         }
       ]
     },
@@ -164,8 +164,8 @@
       "publisher": "meta-llama",
       "publisherName": "Meta",
       "license": "Llama 4 Community License",
-      "description": "Fatto per leggere molto in una volta: analisi a contesto lungo, revisione di una base di codice intera, lavoro su dossier. La licenza NON e una licenza open source riconosciuta — e una licenza di comunita con condizioni, e va letta prima di un uso commerciale.",
-      "parameters": "109B totali · 17B attivi",
+      "description": "Built for reading a lot at once: long-context analysis, reviewing an entire codebase, working through a large dossier. The licence is NOT a recognised open-source licence — it is a community licence with conditions, and must be read before any commercial use.",
+      "parameters": "109B total · 17B active",
       "workloads": [
         "text",
         "long-context",
@@ -181,12 +181,12 @@
       },
       "sourceUrl": "https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E",
       "advisories": [
-        "La licenza di comunita Llama 4 pone condizioni all'uso commerciale: leggerla."
+        "The Llama 4 community licence places conditions on commercial use: read it."
       ],
       "resource_profiles": [
         {
           "name": "server",
-          "note": "contesto lungo, memoria alta"
+          "note": "long context, high memory"
         }
       ]
     },
@@ -196,7 +196,7 @@
       "publisher": "microsoft",
       "publisherName": "Microsoft",
       "license": "MIT",
-      "description": "Piccolo e specializzato nel ragionamento: 14 miliardi di parametri, licenza MIT, adatto a un assistente locale su una sola macchina. La scelta ragionevole quando il modello grande non entra.",
+      "description": "Small and specialised in reasoning: 14 billion parameters, MIT licence, suited to a local assistant on a single machine. The sensible choice when the large model does not fit.",
       "parameters": "14B",
       "workloads": [
         "text",
@@ -215,7 +215,7 @@
       "resource_profiles": [
         {
           "name": "workstation",
-          "note": "entra su una GPU singola"
+          "note": "fits on a single GPU"
         }
       ]
     },
@@ -225,8 +225,8 @@
       "publisher": "deepseek-ai",
       "publisherName": "DeepSeek",
       "license": "MIT",
-      "description": "Ragionamento esplicito su matematica, scienze e diagnosi di errori. Licenza MIT, quindi senza vincoli d'uso. Mixture-of-experts molto grande: 671 miliardi totali, 37 attivi.",
-      "parameters": "671B totali · 37B attivi",
+      "description": "Explicit reasoning over mathematics, science and error diagnosis. MIT licence, so no usage restrictions. A very large mixture-of-experts model: 671 billion total, 37 billion active.",
+      "parameters": "671B total · 37B active",
       "workloads": [
         "text",
         "reasoning",
@@ -243,7 +243,7 @@
       "resource_profiles": [
         {
           "name": "server",
-          "note": "richiede un server multi-GPU"
+          "note": "needs a multi-GPU server"
         }
       ]
     },
@@ -253,8 +253,8 @@
       "publisher": "black-forest-labs",
       "publisherName": "Black Forest Labs",
       "license": "Apache-2.0",
-      "description": "Generazione di immagini da testo, ottimizzato per la velocita. Licenza Apache 2.0. NON e un modello di linguaggio: non risponde in chat e non scrive codice.",
-      "parameters": "non dichiarato dalla fonte",
+      "description": "Text-to-image generation, optimised for speed. Apache 2.0 licence. NOT a language model: it does not answer in chat and does not write code.",
+      "parameters": "not disclosed by the source",
       "workloads": [
         "image-generation",
         "image"
@@ -270,7 +270,7 @@
       "resource_profiles": [
         {
           "name": "workstation",
-          "note": "GPU con memoria media"
+          "note": "GPU with mid-range memory"
         }
       ]
     },
@@ -280,8 +280,8 @@
       "publisher": "stabilityai",
       "publisherName": "Stability AI",
       "license": "Stability Community License",
-      "description": "Generazione di immagini con buona aderenza al prompt. La licenza NON e open source riconosciuta: e una licenza di comunita con condizioni, da leggere prima di un uso commerciale. NON e un modello di linguaggio.",
-      "parameters": "non dichiarato dalla fonte",
+      "description": "Image generation with good prompt adherence. The licence is NOT a recognised open-source licence: it is a community licence with conditions, to be read before any commercial use. NOT a language model.",
+      "parameters": "not disclosed by the source",
       "workloads": [
         "image-generation",
         "image"
@@ -295,12 +295,12 @@
       },
       "sourceUrl": "https://huggingface.co/stabilityai/stable-diffusion-3.5-large",
       "advisories": [
-        "La Stability Community License pone condizioni all'uso commerciale: leggerla."
+        "The Stability Community License places conditions on commercial use: read it."
       ],
       "resource_profiles": [
         {
           "name": "workstation",
-          "note": "GPU con memoria alta"
+          "note": "GPU with high memory"
         }
       ]
     }

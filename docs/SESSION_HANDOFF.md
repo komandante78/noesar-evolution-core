@@ -21,13 +21,11 @@ vero — `D-0468` (2026-08-15) è superata.
 Se si punta su CodeSupply, abstract + milestone + confronto con l'esistente vanno pronti prima.
 Non apre un contratto da sola.
 
-**`D-0630` — le descrizioni del seed sono in italiano fuori dal livello di traduzione**, cioè la
-regola 50 alla lettera, e **la suite i18n non le vede perché scansiona il markup e non i file di
-dati**. Due cose, e la seconda vale più della prima: portarle in inglese col loro italiano nel
-catalogo, **e** far leggere al controllo i18n anche i file di dati — altrimenti la prossima
-stringa cablata passa di nuovo. Trovato guardando il render, non leggendo il codice.
+**`D-0630` CHIUSA (`D-0634`).** Le 31 stringhe visibili del seed modelli sono in inglese, con
+resa italiana nel catalogo; `tools/measure-ui-language-coverage.mjs` legge anche i file dati
+adesso, non solo `index.html`. Oracolo visto rosso 2 volte. Dettaglio: `docs/DECISION_LOG.md`.
 
-**POI `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.**
+**ORA `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.**
 `model-catalog.mjs` cita `MC-002/004/005/006` come criteri, e nella matrice **non esiste
 nemmeno una riga `MC-`** (0 su 67). Niente misurava quella pagina, quindi niente diventava
 rosso. Dettaglio e rimedio identificato: `docs/DECISION_LOG.md`.

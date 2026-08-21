@@ -18,6 +18,12 @@
 // touches, and the same `SCRIPT/STYLE/CODE/PRE` exclusions it applies. Reading the exclusions
 // from anywhere but the translator would let the two drift, so they are imported from it.
 //
+// Also every user-visible string in the data files named in `DATA_FILES` (`D-0630`) — JSON
+// this product ships and renders on screen without ever passing through `index.html`'s markup.
+// The model catalogue seed is the first: a string typed straight into that file is exactly as
+// visible to a user as one typed into the HTML, and until this existed it was invisible to
+// this tool's own report.
+//
 // # What it does NOT measure, stated so the number cannot be read as more than it is
 //
 // Strings that only exist once JavaScript has painted something. This file reads markup; it
@@ -43,6 +49,70 @@ import { CATALOGS, SOURCE_LANGUAGE, UNTRANSLATED_TAGS, RUNTIME_ONLY } from '../a
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
 const HTML = join(repoRoot, 'apps/webui-static/index.html');
+
+/**
+ * Data files that ship user-visible strings outside the markup — `D-0630`.
+ *
+ * Until this existed, a string could be typed straight into a JSON file the server reads at
+ * runtime, render on screen exactly like any markup string, and never be seen by this tool at
+ * all: the model catalogue seed's eight descriptions and seven category names were written in
+ * Italian, cabled outside the translation catalogue entirely, and this file's own coverage
+ * report stayed green throughout — it only scans `index.html`. A scanner that cannot see a
+ * whole class of visible strings is not a gap in its report, it is a gap in what it looks at.
+ *
+ * Each entry names the JSON paths (dot-notation, `[]` for "every array element") whose string
+ * values are user-visible text. Adding a new data file with visible strings means adding one
+ * entry here — the alternative is this defect recurring under a different file name.
+ */
+const DATA_FILES = [
+  {
+    id: 'data:model-catalog-seed.json',
+    path: join(repoRoot, 'capabilities/model-catalog-seed.json'),
+    // `resource_profiles[].note` is deliberately absent: `model-catalog.mjs`'s `card()` does
+    // not read it and `app.js` never renders it, so it is not a user-visible string today —
+    // adding it here would claim coverage for a screen that does not exist, the same defect
+    // `no catalogue entry claims coverage of a screen that does not exist` already guards
+    // against. Add it the day something actually renders it, not before.
+    stringPaths: ['categories[].title', 'categories[].summary', 'models[].description', 'models[].advisories[]', 'models[].parameters'],
+  },
+];
+
+function readAtPath(root, pathSpec) {
+  const segments = pathSpec.split('.');
+  let nodes = [root];
+  for (const segment of segments) {
+    const isArray = segment.endsWith('[]');
+    const key = isArray ? segment.slice(0, -2) : segment;
+    const next = [];
+    for (const node of nodes) {
+      const value = key ? node?.[key] : node;
+      if (isArray) {
+        if (Array.isArray(value)) next.push(...value);
+      } else if (value !== undefined) {
+        next.push(value);
+      }
+    }
+    nodes = next;
+  }
+  return nodes.filter((v) => typeof v === 'string');
+}
+
+function dataFileVisibleStrings(file) {
+  const found = new Set();
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(file.path, 'utf8'));
+  } catch {
+    return found; // absent/malformed data is a build defect elsewhere, not an i18n gap
+  }
+  for (const spec of file.stringPaths) {
+    for (const value of readAtPath(parsed, spec)) {
+      const text = value.trim();
+      if (text && /\p{L}/u.test(text)) found.add(text);
+    }
+  }
+  return found;
+}
 
 /** Attributes `translateNode` reads. Kept in one place so the tool cannot measure a different set. */
 const TRANSLATED_ATTRIBUTES = ['placeholder', 'title', 'aria-label'];
@@ -137,6 +207,11 @@ function visibleStrings(body) {
 
 const html = readFileSync(HTML, 'utf8');
 const pages = pagesOf(html).map((page) => ({ ...page, strings: visibleStrings(page.body) }));
+// Data-file strings join the SAME `pages` list, as their own "page" — they flow through
+// exactly the same coverage and dead-entry logic below rather than a second copy of it.
+for (const file of DATA_FILES) {
+  pages.push({ id: file.id, strings: dataFileVisibleStrings(file) });
+}
 const targets = Object.keys(CATALOGS).filter((code) => code !== SOURCE_LANGUAGE);
 
 // Published so a test can ask the SAME question this file asks, instead of approximating it

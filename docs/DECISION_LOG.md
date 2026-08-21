@@ -14507,10 +14507,34 @@ dati**: un'intera classe di stringhe visibili che nessun controllo guarda.
 al tetto. Sfondarlo dopo aver promesso di non farlo è peggio del difetto.
 **Evidence.** L'output della suite browser di questa sessione, verbatim sopra.
 **Reversal cost.** Nessuno — nulla è stato cambiato.
-**Status.** open. **Due cose da fare, e la seconda vale più della prima:** portare le descrizioni
-in inglese col loro italiano nel catalogo di traduzione **e** far sì che il controllo i18n legga
-anche i file di dati, altrimenti la prossima stringa cablata passa di nuovo.
-**Fit di finanziamento: nessuna** — è igiene di localizzazione.
+**Status.** **CHIUSA — `D-0634`, sotto.**
+
+## D-0634 · `D-0630` chiusa: le stringhe del catalogo modelli sono inglese, il controllo legge i dati — 2026-08-21
+**Decision.** Le **31** stringhe visibili di `capabilities/model-catalog-seed.json` (8
+descrizioni, 7 titolo+sommario di categoria, 2 avvisi di licenza, 8 taglie in `parameters`,
+più due valori numerici con lettera) sono ora in inglese, con la resa italiana in
+`apps/webui-static/i18n-catalog.js`. `tools/measure-ui-language-coverage.mjs` impara a
+leggere anche i file dati, non solo `index.html` — un `DATA_FILES` dichiarativo, un percorso
+per file, così un secondo file dati con stringhe visibili costa una riga, non una riscrittura.
+**Why.** Era la parte che *«vale più della prima»* nella diagnosi di `D-0630`: senza di questa
+il difetto poteva ripresentarsi identico sotto un altro nome di file, e nessuno strumento
+esistente lo avrebbe visto — lo strumento scansionava solo il markup.
+**Rejected.** Tracciare `resource_profiles[].note` insieme al resto: **non è renderizzato da
+nessuna parte** (verificato, né `model-catalog.mjs` né `app.js` lo leggono), e dichiararlo
+coperto sarebbe stata la stessa violazione che il controllo esiste per impedire —
+*«un'entrata di catalogo che non copre nessuno schermo»*. Tradotto comunque in inglese per
+igiene del file (regola 49), ma escluso dal tracciamento con la ragione scritta nel codice.
+**Evidence.** Oracolo **visto rosso due volte**: (1) rimettendo una stringa italiana nel seed —
+il controllo la marca non coperta **e** marca la vecchia traduzione come voce morta, lo stesso
+schema esatto del difetto originale; (2) test dedicato che riproduce questo contro il seed vero
+e richiede l'uscita non-zero, così il fixture non può smettere di essere eseguito in silenzio.
+Un secondo giro ha trovato `parameters` (renderizzato, verificato in `app.js:5777`) fuori dai
+percorsi tracciati — aggiunto, e due valori (`~1.1T`, `14B`) hanno richiesto le loro voci.
+Suite finale: unit **2974** (2973 pass, 0 fail, 1 skip), ESLint **474 file 0/0/0**,
+`SOURCE_VERIFY=PASS`, copertura i18n **31/31 `it`, 0 voci morte**.
+**Reversal cost.** Nessuno — nessuna installazione toccata, `capabilities/model-catalog-seed.json`
+non entra nell'immagine (verificato in `D-0625`).
+**Status.** applied. `F-MODEL-SEED-I18N-001` (mai aperta formalmente, solo in `D-0630`) chiusa.
 
 ## D-0631 · Scadenza esterna registrata: NLnet riapre 2026-09-03, prima scadenza 2026-11-03 — 2026-08-21
 **Decision.** Registrato come fatto di progetto, non come lavoro eseguito: se si punta su

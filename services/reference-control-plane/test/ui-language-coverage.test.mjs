@@ -82,6 +82,28 @@ describe('every visible string in the markup is translatable', () => {
     }
     assert.equal(exitCode, 1, 'removing a catalogue entry must make the coverage check fail');
   });
+
+  test('D-0630 ORACLE: a visible string typed straight into a data file is caught, not invisible', () => {
+    // This is the exact defect that shipped in D-0625 and went unnoticed through the whole
+    // phase: the model catalogue seed's descriptions were written in Italian, and this tool
+    // scanned only index.html — a data file's own strings were invisible to it by construction.
+    // Reproduced here against the real seed and asserted to fail, so the fix (DATA_FILES in
+    // tools/measure-ui-language-coverage.mjs) cannot silently stop being exercised.
+    const seedPath = join(repoRoot, 'capabilities/model-catalog-seed.json');
+    const original = readFileSync(seedPath, 'utf8');
+    const seed = JSON.parse(original);
+    seed.models[0].description = 'Questa e una descrizione scritta per errore in italiano.';
+    let exitCode = 0;
+    try {
+      writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+      execFileSync('node', ['tools/measure-ui-language-coverage.mjs'], { cwd: repoRoot, maxBuffer: 1e8 });
+    } catch (error) {
+      exitCode = error.status ?? 1;
+    } finally {
+      writeFileSync(seedPath, original);
+    }
+    assert.equal(exitCode, 1, 'a data-file string outside the translation catalogue must make the coverage check fail');
+  });
 });
 
 describe('the source language is a source, not a translation', () => {
