@@ -11,12 +11,16 @@ senza guardare la pagina renderizzata. `T2` eseguita: browser **506 · 505 pass 
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Scadenza esterna registrata 2026-08-21, non negoziabile come le altre:** i bandi NLnet
-riaprono **2026-09-03**, prima scadenza **2026-11-03 12:00 CEST**. Se si punta su CodeSupply
-(raccomandato, `.claude/skills/noesar-evolution-funding-fit/SKILL.md` §0a) l'abstract, il
-budget a milestone e il confronto con l'esistente vanno pronti **prima** di quella data — non
-è un lavoro che si può comprimere all'ultimo giorno. Non apre un contratto da sola: apre
-quando l'Owner decide di prepararla.
+**`docs/PRESENTAZIONE_PROGETTO_E_FINANZIAMENTO_2026-08-21.md` scritto (`D-0632`)** — cos'è il
+prodotto, come funziona, la richiesta (CodeSupply raccomandato), il piano dei moduli a
+pagamento. **Aperto: una discrepanza su ATOM.** `CLAUDE10.md` registra `D-0468` (2026-08-15,
+ATOM diventa AGPL) ma il repository separato ha ancora la licenza proprietaria — mai eseguita.
+**L'Owner deve scegliere** (§7 del documento) e farlo dichiarare con una riga in questo log; la
+raccomandazione è lasciarlo proprietario, formalizzando lo stato reale.
+
+**Scadenza esterna: bandi NLnet riaprono 2026-09-03, prima scadenza 2026-11-03 12:00 CEST.**
+Se si punta su CodeSupply, abstract + milestone + confronto con l'esistente vanno pronti prima.
+Non apre un contratto da sola.
 
 **`D-0630` — le descrizioni del seed sono in italiano fuori dal livello di traduzione**, cioè la
 regola 50 alla lettera, e **la suite i18n non le vede perché scansiona il markup e non i file di
@@ -51,23 +55,16 @@ provato ed è generico: applicarlo alle cinque posizioni di `MASTER_PROJECT/09_P
 alla cosa che manca davvero, cioè **produrre gli archivi**, che non è mai stato fatto
 (`09_PIANO.md`: *«nessun archivio di consegna è mai stato prodotto»*).
 
-**Attenzione a non confondere due cose, perché `D-0619` sposta il confine:** la posizione 5
-(«provenienza») ora **può** chiudersi, ma **non è chiusa**. Si chiude quando un archivio di
-consegna esiste ed è firmato. Dirlo diversamente sarebbe un falso PASS.
+**Nota:** la posizione 5 («provenienza») ora **può** chiudersi (`D-0619`), ma **non è chiusa** —
+si chiude quando un archivio di consegna esiste ed è firmato.
 
 **Poi:** `D-0624` (portare i backend di custodia agli **altri** firmatari — oggi solo la
 provenienza è agnostica, gli SBOM pretendono ancora il PEM su disco) · `D-0617` (firmare
 `MANIFEST.sha256`) · `D-0609` (`shellcheck` assente) · `D-0605` · `D-0613`.
 
-**La custodia della chiave NON è più un blocco (`D-0622`).** Era registrata qui come «decisione
-dell'Owner che blocca il rilascio»; l'Owner ha risposto di attenersi ai criteri dei finanziatori,
-e rileggendoli **nessun programma prescrive la custodia**. Il progetto quindi non la sceglie:
-firma attraverso un backend, e il percorso **staccato** non fa mai entrare la chiave privata nel
-processo — cold storage, smartcard e qualunque HSM sono lo stesso flusso da qui.
-`docs/RELEASE_SIGNING_POLICY.md`. **Cosa resta all'Owner**: generare la chiave durevole e
-scegliere dove tenerla — ora una decisione di **deployment senza conseguenze sul codice**.
-Raccomandazione: **cold storage + percorso staccato**, che non costa nulla e non richiede
-fornitori.
+**La custodia della chiave NON è più un blocco (`D-0622`).** Firma attraverso un backend; il
+percorso staccato non fa mai entrare la chiave privata nel processo. Dettaglio:
+`docs/RELEASE_SIGNING_POLICY.md`. Resta all'Owner: generare la chiave durevole.
 
 **`CE-035` resta l'unica casella senza verdetto e non si chiude da qui.** Chiede `ssh` +
 `coden_evolution` da un **secondo nodo reale**: serve un VPS col prodotto installato **sopra**, mai

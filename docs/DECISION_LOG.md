@@ -14533,3 +14533,32 @@ letti chiedono un componente delimitato con milestone, non un contributo alle sp
 externalspending/`, tutte lette 2026-08-21.
 **Reversal cost.** Nessuno — nessun impegno preso.
 **Status.** open, con scadenza. La preparazione della proposta non è iniziata.
+
+## D-0632 · Documento di presentazione + richiesta finanziamento, e una discrepanza trovata su ATOM — 2026-08-21
+**Decision.** Scritto `docs/PRESENTAZIONE_PROGETTO_E_FINANZIAMENTO_2026-08-21.md`: cos'è il
+prodotto, come funziona, le applicazioni, lo stato reale, la richiesta di finanziamento
+(CodeSupply raccomandato, i meccanismi verificati di milestone/pagamento), il piano dei moduli a
+pagamento con licenza doppia. **Non riscritto** `FUNDING/` (19 file, 2026-08-14): letto per
+intero prima di scrivere, è tecnicamente solido, e il documento nuovo lo cita e lo aggiorna dove
+serve invece di duplicarlo.
+**Why.** L'Owner ha chiesto un documento di presentazione con dentro la richiesta di
+finanziamento e il piano dei moduli — incluso *"a questo punto anche atom lo metteremo a
+pagamento"*. Controllando lo stato reale prima di scrivere quella frase come piano, il file di
+licenza del repository separato `ATOM_EVOLUTION` dice ancora testualmente *"proprietary. All
+rights reserved. Not open source"*, mentre `CLAUDE10.md` registra `D-0468` (2026-08-15) come la
+decisione dell'Owner che ATOM diventa AGPL-3.0-or-later. `D-0468` non è mai stata eseguita in
+quel repository — è rimasta scritta solo qui.
+**Rejected.** Decidere per l'Owner quale delle due letture ("resta proprietario, si formalizza"
+vs "si apre davvero e si vende anche con licenza doppia") applicare — non è una scelta di questa
+sessione, e nessuna delle due tocca il repository separato, fuori dall'autorità di questo
+progetto. Raccomandata, non decisa, la prima: meno lavoro per lo stesso risultato economico, e
+`FUNDING/04_FOSS_SCOPE_AND_PROPRIETARY_BOUNDARIES.md` già esclude ATOM dalla richiesta in
+entrambi i casi.
+**Evidence.** Lettura del file di licenza del repository separato (nessuna scrittura) — le
+prime righe citate verbatim nel documento nuovo. `FUNDING/` letto per intero: 19 file, ultimo
+aggiornamento 2026-08-14.
+**Reversal cost.** Nessuno — solo documentazione, nessun codice toccato, nessun file fuori da
+`PROJECT_ROOT` modificato.
+**Status.** applied (il documento) + **open** (la discrepanza `D-0468` ↔ lo stato reale del
+repository separato, che resta finché l'Owner non sceglie e una riga in questo log non la
+dichiara risolta).
