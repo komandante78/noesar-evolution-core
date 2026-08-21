@@ -1,19 +1,30 @@
 # SESSION HANDOFF
 
-**Quattro fasi in questa sessione.** `D-0612`: `D-0611` **installato**, debito §3a chiuso.
-`D-0615`: `MANIFEST.sha256` era **falso su 114 file** — rigenerato e messo sotto due gate;
-`F-MANIFEST-001` **CHIUSA**. `D-0619`: la provenienza porta una firma **Ed25519** verificabile
-con la sola chiave pubblica. `D-0622`: **la custodia della chiave di rilascio è dell operatore**,
-non del progetto — e il difetto era l opposto di quello atteso.
-Riparati chiudendo: `D-0614`, `D-0616`, `D-0618`, `D-0620`, `D-0623`.
-Proposti: `D-0613`, `D-0617`, `D-0621`, `D-0624`.
-**Live installation:** `noesar-evolution:d0611-run-lane-metric-20260821T032222Z`, `running`/
-`healthy`. **Nessun debito §3a aperto** — misurato, non asserito.
-**Matrice: 66/67 con verdetto.** Resta senza verdetto **solo `CE-035`**.
+**`D-0625`: la pagina dei modelli fa quello che l'Owner aveva chiesto il 2026-08-04 — e per
+tredici sessioni non l'ha fatto.** `#/models` era **vuota**: la macchina c'era (corsie, filtri,
+paginazione, trasporto), il catalogo no. Ora porta **8 modelli reali in 7 categorie**, ognuno con
+descrizione, e l'**elimina a doppia conferma** che non esisteva affatto. **Installato**, non in
+albero.
+**Prima in questa sessione:** `D-0612` (`D-0611` installato) · `D-0615` (`MANIFEST.sha256` era
+falso su 114 file, `F-MANIFEST-001` CHIUSA) · `D-0619` (provenienza Ed25519 verificabile da terzi)
+· `D-0622` (la custodia della chiave è dell'operatore).
+Riparati chiudendo: `D-0614`, `D-0616`, `D-0618`, `D-0620`, `D-0623`, `D-0626` (quattro).
+Proposti/registrati: `D-0613`, `D-0617`, `D-0621`, `D-0624`, **`D-0627`**.
+**Live installation:** `noesar-evolution:d0625-model-catalog-20260821T080244Z`, `running`/
+`healthy`. **Nessun debito §3a aperto.**
 
 ## ➜ LA PROSSIMA AZIONE
 
-**SI ASPETTA L'OWNER: la passata live è in corso, e viene PRIMA di `D-0621`.** L'Owner ha deciso
+**PRIMA DI TUTTO, `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici
+sessioni.** `model-catalog.mjs` cita `MC-002`, `MC-004`, `MC-005` e `MC-006` come criteri, e
+nella matrice **non esiste nemmeno una riga `MC-`** (misurato: 0 su 67). Niente misurava quella
+pagina, quindi niente è mai diventato rosso. `tools/acceptance-matrix.mjs` legge solo i documenti
+`MASTER_PROJECT/`, e `docs/MODEL_CATALOG_DESIGN.md` non è fra quelli: o la tabella MC entra in un
+documento già sorgente, o `SOURCES` impara a leggere quel file. **È una decisione sul metro.**
+**Non riparata in `D-0625` perché quella fase è finita a ~270% del budget dichiarato**, e
+cambiare l'elenco delle fonti della matrice a budget sfondato è come si introducono gli errori.
+
+**POI: la passata live dell'Owner, che resta PRIMA di `D-0621`.** L'Owner ha deciso
 il 2026-08-21 di camminare il prodotto vivo superficie per superficie e registrare cosa non
 funziona e cosa non gli piace, **prima** di qualunque altro lavoro. La scheda è
 **`docs/OWNER_REVIEW_2026-08-21.md`** — porta l'elenco completo misurato: **29 comandi** del menu
@@ -70,27 +81,13 @@ file tracciati non elencati, **6** voci per file non tracciati. Mantenuto a mano
 **mai diventato rosso perché nessuno lo guardava**. Ora è `git ls-files` meno sé stesso — **6.717**
 voci a fine sessione — con `--check` in `scripts/test.sh` **e** nel pre-commit.
 
-**La provenienza è verificabile da chi non ha la chiave (`D-0619`).** Prima: HMAC-SHA256, e
-`rust/BUILD_STATUS.md` lo ammetteva — *«chi può verificare questa firma può anche falsificarla»*.
-La ragione del 2026-07-27 per non fare Ed25519 valeva **per gli strumenti Python**; il repository
-nel frattempo ha `signCompliancePack()` (Node `crypto` nativo), che firma già i quattro SBOM.
-**Nessuna primitiva scritta a mano.** Le due firme coprono lo **stesso payload** — il documento
-meno l'intera busta — quindi nessuna invalida l'altra.
-
-**La prova che conta è il round-trip col codice vero:** firmato HMAC dal **Python reale** in
-contenitore usa-e-getta, contro-firmato da Node, **entrambe le firme verificano** dopo.
+**`D-0619`** — provenienza Ed25519, round-trip col Python reale, entrambe le firme verificano.
+Dettaglio: `docs/DECISION_LOG.md`, `rust/BUILD_STATUS.md`.
 
 **Gli oracoli sono stati visti rossi, non dedotti.** `D-0615`: 3 volte, incluso **il gate che ha
 rifiutato un commit di quella fase stessa**. `D-0619`: 4 volte, e la più importante è che
 **togliendo `publicSignature` dalla busta Python l'HMAC si rompe** sul documento contro-firmato —
 che è ciò che prova che quella modifica era necessaria e non decorativa.
-
-**La custodia della chiave smette di essere una scelta del progetto (`D-0622`).** Riletto il
-2026-08-21: **nessun programma di finanziamento prescrive la custodia** — né Restack né la
-Sovereign Tech Agency nominano HSM, KMS o cerimonie. Quell'assenza **misurata** è metà della
-risposta. Ciò che chiedono davvero (*"without a vendor lock-in"*, non dipendere da tecnologia
-chiusa, *"local-first"*) non dice **dove** tenere la chiave: dice che il prodotto **non deve
-imporlo** e che la verifica deve funzionare **offline**.
 
 **E il difetto era l'opposto di quello atteso.** `signCompliancePack(pack, privateKeyPem)` pretende
 la chiave privata **in memoria di processo** — ciò che un HSM e una chiave offline esistono per

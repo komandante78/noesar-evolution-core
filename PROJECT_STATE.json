@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0622 — la custodia della chiave di rilascio e dell OPERATORE, non del progetto. Riletti i criteri dei finanziatori il 2026-08-21: NESSUN programma prescrive la custodia. Il difetto era l opposto di quello atteso — signCompliancePack pretendeva la chiave privata in memoria di processo, quindi il progetto aveva gia scelto la custodia (un file su disco) e chiuso fuori HSM, smartcard e chiavi offline. tools/release-signing.mjs porta due backend VERI, local-key e detached, e il verificatore non puo distinguerli. D-0623: unificati due percorsi di firma che assemblavano buste diverse.",
-  "phase_status": "COMPLETE. NESSUN DEBITO 3a — tools/ e docs/ non entrano nell immagine. Unit 2955 (2954 pass, 0 fail, 1 skip preesistente), ESLint 472 file 0/0/0, SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1160, MANIFEST=OK 6717 files, ACCEPTANCE_MATRIX PASS, fixture hook 71/71, fixture deploy 80/80, oracoli visti rossi 2 su 2. Percorso staccato provato end-to-end: fase 1 esce 3 ed emette i byte SENZA chiave privata nel processo, firma prodotta fuori, fase 2 riattacca, PROVENANCE_PUBLIC_VERIFY=PASS. Le due vie danno la stessa firma e la stessa busta.",
-  "next_phase": "la passata live dell Owner (docs/OWNER_REVIEW_2026-08-21.md), poi triage e lista dei cambiamenti, poi un solo aggiornamento, poi debug/vulnerabilita/T2, poi benchmark. D-0621 e D-0624 vengono dopo.",
+  "current_phase": "D-0625 — la pagina #/models fa quello che l Owner aveva chiesto il 2026-08-04 e che per tredici sessioni non ha fatto: 8 modelli reali in 7 categorie, ognuno con descrizione, pubblicatore, licenza e fonte; elimina a doppia conferma che non esisteva affatto. La macchina c era da s333, il catalogo no: /workspace/models/catalog non esiste su un installazione nuova, quindi la pagina era VUOTA. Costruito, provato e INSTALLATO nella stessa fase.",
+  "phase_status": "DEPLOYATO. Unit 2973 (2972 pass, 0 fail, 1 skip preesistente), ESLint 474 file 0/0/0, SOURCE_VERIFY=PASS nul-free=1163, byte-uguale albero-immagine 476/476, seed letto DENTRO l immagine spedita (8 modelli, 7 categorie), live /livez /readyz /healthz 200 e le tre rotte nuove 401 non autenticate / 404 su rotta inesistente, oracoli visti rossi 2 su 2. NON ESEGUITA T2 (browser e2e, accessibilita): il markup e cambiato, quindi e DOVUTA e MANCA. Fase chiusa a ~270% del budget dichiarato.",
+  "next_phase": "D-0627 (le righe MC nella matrice — la causa radice), poi T2 sul markup nuovo, poi la passata live dell Owner, poi D-0621/D-0624.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
   "last_commit": "6633015",
-  "last_updated_utc": "2026-08-21T07:55:00Z",
+  "last_updated_utc": "2026-08-21T08:15:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -110,9 +110,9 @@
   "database_mutation": false,
   "network_configuration": true,
   "installation": {
-    "image": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
+    "image": "noesar-evolution:d0625-model-catalog-20260821T080244Z",
     "image_lineage": "CORRETTO 2026-08-21 (D-0614): questa chiave era ferma a d0516-model-chooser (2026-08-17) mentre DIECI deploy successivi (d0559, d0565, d0577, d0579, d0581, d0583, d0586, d0590, d0601, d0606) l avevano lasciata indietro. Il ledger era giusto, questa chiave no — e una sessione fredda che legge lo stato invece del ledger avrebbe creduto di girare su un immagine di quattro giorni prima. La regola riparata, non solo l istanza: il passo DOCUMENT di una fase che installa aggiorna QUESTA chiave, non solo il ledger.",
-    "base_image": "noesar-evolution:d0606-replay-retention-20260820T132914Z",
+    "base_image": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
     "dockerfile": "oci/Dockerfile (canonico — le overlay Dockerfile.phase4-* non sono piu usate dal D-0565)",
     "build_network": "default (docker build --pull=false; i livelli apt sono venuti dalla cache, NESSUN fetch di rete osservato — non e --network=none e non si dichiara tale)",
     "container": "noesar-evolution",
@@ -122,16 +122,16 @@
     "bind_address": "192.168.178.100",
     "bind_scope": "lan",
     "runtime_root": "/mnt/cachec/NOESAR_EVOLUTION_RUNTIME",
-    "health": "running/healthy, RestartCount=0, /livez /readyz /healthz 200 su http:8088 e /livez 200 su https:8443, 4 figli, 0 auth-failure, 0 righe di errore — misurato 2026-08-21T03:26Z",
+    "health": "running/healthy, RestartCount=0, /livez /readyz /healthz 200, 4 figli, 0 auth-failure — misurato 2026-08-21T08:05Z",
     "owner_account": "CREATED — Owner bootstrapped since the last handoff, outside this session (auth/status: initialized true)",
     "rollback_containers": [
-      "noesar-evolution-pre-20260821T032436Z (image d0606-replay-retention-20260820T132914Z) — l UNICO rollback che §21b permette; i predecessori piu vecchi sono rimossi ad ogni fase e le loro IMMAGINI restano su disco"
+      "noesar-evolution-pre-20260821T080318Z (image d0611-run-lane-metric-20260821T032222Z) — l UNICO rollback che §21b permette"
     ],
     "probe_container": "noesar-evolution.probe-phase4c-20260725T142301Z and .probe-reverify-20260725T142301Z (stopped; created by the completion gate)",
     "host_impact": "networks and volumes diff IDENTICAL against the pre-gate inventory; the 37 unrelated containers untouched and still Exited; noesar-debuglab started for HUNT AND FIX and stopped in the same phase",
     "image_id_correction": "PROJECT_STATE.json previously recorded sha256:ec2ac8bd for phase4-complete. That digest exists on this host but is untagged: the tag was moved to sha256:52987fbb at 14:22 UTC and the container created from it at 14:23, after the state file had been written. See F4L-002.",
-    "current_tag": "noesar-evolution:d0611-run-lane-metric-20260821T032222Z",
-    "deployed_utc": "2026-08-21T03:24:36Z",
+    "current_tag": "noesar-evolution:d0625-model-catalog-20260821T080244Z",
+    "deployed_utc": "2026-08-21T08:03:18Z",
     "predecessor_container": "noesar-evolution-pre-20260817T160004Z",
     "image_lineage_note": "The lineage string below is the JULY chain and is kept as history only; docs/INSTALLATION_LEDGER.md is the authority for what is deployed. D-0519 (2026-08-17) corrected image/base_image/dockerfile here because a stale value beside a fresh one is a contradiction inside a single key, not merely old news."
   },
@@ -1120,7 +1120,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "SI ASPETTA L OWNER — la passata live viene PRIMA di qualunque fase nuova. La scheda e docs/OWNER_REVIEW_2026-08-21.md e porta l elenco completo misurato: 29 comandi del menu unico da provare in ENTRAMBE le shell e 13 pannelli WebUI, piu i numeri di partenza per i benchmark. NON aprire una fase nuova finche quella scheda non e riempita. ORDINE DECISO DALL OWNER, concordato: passata live -> triage di ogni riga contro il codice reale (40b: un falso positivo riparato e una regressione per niente) -> lista dei cambiamenti ordinata per cio che sblocca cosa -> UN SOLO aggiornamento costruito a fette con T0/T1 continui e un deploy solo -> debug + vulnerabilita + T2 intero sull installazione nuova -> benchmark mirati contro i numeri di partenza. COSTO DICHIARATO: finche non si deploya l installazione resta indietro rispetto all albero, debito 3a aperto e scritto. QUANDO LA PASSATA E FINITA il lavoro riprende da D-0621 (firmare i cinque archivi) — ma il collo di bottiglia vero e che NESSUN archivio di consegna e mai stato prodotto: non si firma cio che non esiste.",
+  "next_action": "PRIMA DI TUTTO D-0627, la causa radice per cui #/models e rimasta vuota tredici sessioni: model-catalog.mjs cita MC-002, MC-004, MC-005 e MC-006 come criteri e nella matrice NON ESISTE NEMMENO UNA RIGA MC- (misurato: 0 su 67). Niente misurava quella pagina, quindi niente e mai diventato rosso — e la regola 5 della skill dice esattamente questo: un criterio che nessuna riga di matrice misura NON e chiuso. Rimedio identificato: tools/acceptance-matrix.mjs legge solo i documenti MASTER_PROJECT/, e docs/MODEL_CATALOG_DESIGN.md non e fra quelli; o la tabella MC entra in un documento gia sorgente, o SOURCES impara a leggere quel file. E una decisione sul metro, non un dettaglio. NON riparata in D-0625 perche quella fase e finita a ~270% del budget dichiarato. SUBITO DOPO: T2 intero (browser e2e + accessibilita) — il markup di #/models e cambiato e T2 non e stata eseguita, quindi e un debito di verifica DICHIARATO. POI la passata live dell Owner (docs/OWNER_REVIEW_2026-08-21.md), che resta prima di D-0621.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

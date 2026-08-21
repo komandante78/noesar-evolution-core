@@ -5910,3 +5910,31 @@ nessuna rete. Sopravvivono i due previsti: `noesar-evolution` (Up, healthy) e
 `noesar-evolution-pre-20260821T032436Z` (Exited). **Nessuna chiave privata è mai stata scritta nel
 repository**: quelle usate per le prove stanno nella scratchpad di sessione, fuori dall'albero.
 **Costo di rollback.** Nessuno — nessuna modifica al prodotto installato.
+
+## `d0625-model-catalog-20260821T080244Z` — DEPLOYATO e verificato — 2026-08-21
+**Tag.** `noesar-evolution:d0625-model-catalog-20260821T080244Z`, costruito offline dal
+`oci/Dockerfile` canonico (`docker build --pull=false`, exit 0), installato via
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia per chi usa il prodotto.** `#/models` non è più vuota: 8 modelli reali in 7
+categorie (`code`, `writing`, `reasoning`, `long-context`, `tool-use`, `local`, `image`), ognuno
+con descrizione, pubblicatore, licenza, taglia e link alla fonte; avviso in evidenza sulle due
+licenze **non** open source riconosciute; elimina a doppia conferma sui modelli scaricati.
+**Verifica.** Byte-uguale albero↔immagine **476/476**, differing **0**; `expected from directory
+COPYs: 457, missing: 0`. Il seed letto **dentro l'immagine spedita** con un contenitore
+usa-e-getta: `/opt/noesar/capabilities/model-catalog-seed.json`, **8 modelli, 7 categorie**.
+**Salute.** `running`/`healthy`; `/livez` `/readyz` `/healthz` **200**; 4 figli; **0**
+auth-failure. Forma del cancello sulle rotte nuove: `/api/v1/models/catalog`,
+`/removal-preview/*` e `/remove/*` **401** non autenticate, rotta inesistente **404**.
+**Prima del deploy.** Unit **2973** (2972 pass, 0 fail, 1 skip preesistente), ESLint **474 file
+0/0/0**, `SOURCE_VERIFY=PASS migrations=20 baseline=12/12 intact nul-free=1163`.
+**Predecessore conservato.** `noesar-evolution-pre-20260821T080318Z`
+(`d0611-run-lane-metric-20260821T032222Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione. Tornare indietro riporta `#/models` vuota.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260821T032436Z` rimosso
+(`Exited (0)` confermato; la sua immagine resta su disco). Contenitori **52 → 52**, volumi
+**65 → 65**, reti **10 → 10**, non-di-progetto **50 → 50**. Superstiti di progetto: **due**.
+Salute riprovata dopo la pulizia: `/livez` **200**.
+**Non provato qui, e detto:** nulla che richieda una sessione autenticata — che le carte si
+RENDANO come previste è provato in albero (47/47 + 9/9), sul vivo è provato che le rotte
+esistono e sono protette. **T2 non eseguita** (browser e2e, accessibilità): il markup è cambiato,
+quindi è dovuta e **manca** — dichiarata, non implicita.

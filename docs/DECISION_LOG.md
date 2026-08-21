@@ -14403,3 +14403,63 @@ provenienza e **non** l'SBOM. Metà prodotto agnostico è una proprietà che non
 **Status.** deferred. **Fit di finanziamento: CodeSupply · tratto 4** (nessun lock-in: nessun
 fornitore di custodia diventa una dipendenza) **e tratto 2** (riusabile: il contratto di firma è
 generico e non nomina questo prodotto).
+
+## D-0625 · Il catalogo modelli ha dei modelli — categorie, descrizioni, elimina a doppia conferma — 2026-08-21
+**Decision.** `#/models` mostra un catalogo curato di 8 modelli reali per categoria, ognuno con
+descrizione, pubblicatore, licenza e URL di fonte; elimina a **doppia conferma** vera; costruito,
+provato e **installato** nella stessa fase.
+**Why.** Il requisito era registrato dal **2026-08-04** (`docs/MODEL_CATALOG_DESIGN.md`, ripetuto
+a s333) e la pagina era **vuota**. A s333 avevo costruito la macchina — `model-catalog.mjs`, 396
+righe: corsie, scaricati-per-primi, filtri, paginazione, trasporto — e **mai il catalogo**.
+Misurato sul vivo: `/workspace/models/catalog` **non esiste**, quindi zero modelli, e l'unico
+modo di farne comparire uno era incollare un JSON a mano. **Uno scaffale vuoto è indistinguibile
+da uno rotto**: è la regola 73, un'interfaccia senza contenuto vero dietro non è "fatto".
+**Cosa mancava, misurato prima di toccare.** Nessun modello; `writing` **non era nel vocabolario**
+pur essendo una delle due categorie che l'Owner ha nominato; il campo `description` **non esisteva
+in `card()`** — non era vuoto, era assente dal contratto; l'elimina non esisteva affatto (zero
+rotte, zero bottoni).
+**Rejected.** Inventare gli hash per far sembrare complete le carte: è la regola 40, e il digest
+si conosce scaricando. Conseguenza dichiarata e provata da un test: una voce del seed vive nella
+corsia `available` finché qualcuno non la scarica davvero.
+**Evidence.** Unit **2973** (2972 pass, 0 fail, 1 skip) · ESLint **474 file 0/0/0** ·
+`SOURCE_VERIFY=PASS` · byte-uguale albero↔immagine **476/476** · seed letto **dentro l'immagine
+spedita**: 8 modelli, 7 categorie · sul vivo `/livez` `/readyz` `/healthz` **200**, le tre rotte
+nuove **401** non autenticate e **404** su rotta inesistente · oracoli **visti rossi 2 su 2**.
+**Reversal cost.** Nessuna migrazione. Rollback: `noesar-evolution-pre-20260821T080318Z`.
+**Status.** applied + **installed**. Debito §3a: **nessuno**.
+
+## D-0626 · Quattro difetti trovati cacciando il proprio diff, prima di spedire — 2026-08-21
+**Decision.** Riparati tutti e quattro dentro la fase.
+**Why.** (1) Il seed stava in `capabilities/models/`, che **`.gitignore:64` ignora** (`models/`):
+non sarebbe mai stato committato né spedito, e la pagina sarebbe tornata vuota — **lo stesso
+difetto che la fase stava riparando, un livello più in là**. Spostato in
+`capabilities/model-catalog-seed.json` invece di bucare la regola, che esiste per tenere fuori i
+pesi dei modelli. (2) La rotta di eliminazione chiamava `readJson()`, **che non esiste**: 500 alla
+prima eliminazione. (3) `readSeedCategories()` scritta e mai chiamata. (4) `CSS.escape` su id che
+contengono `/` — selettore rotto e globale non dichiarata.
+**Rejected.** Aggiungere un'eccezione a `.gitignore` per `models/`: quella riga tiene fuori i pesi
+dei modelli ed è più preziosa della comodità di un percorso.
+**Evidence.** (2), (3) e (4) trovati da **ESLint**, non da me — 6 errori prima, 0 dopo. (1) trovato
+da `git status` che non mostrava il file appena creato.
+**Reversal cost.** Nessuno.
+**Status.** applied. Aggiunta anche la riga al `oci/Dockerfile`: senza, il file esiste nel
+repository e non nell'immagine — stessa classe, un livello ancora più in là.
+
+## D-0627 · La causa radice: nessuna riga di matrice misura la pagina dei modelli — 2026-08-21
+**Decision.** Registrata, **non riparata in questa fase**, con il rimedio già identificato.
+**Why.** `model-catalog.mjs` cita `MC-002`, `MC-004`, `MC-005` e `MC-006` come se fossero criteri
+di accettazione. **Nella matrice non esiste nemmeno una riga `MC-`** — misurato: 0 su 67. Quindi
+per **tredici sessioni** niente ha mai chiesto se quella pagina avesse contenuto, e niente è
+diventato rosso. È letteralmente la regola 5 della skill di questo progetto: *«un criterio che
+nessuna riga di matrice misura NON è chiuso»*, e la stessa ragione per cui il buco della
+generazione era passato inosservato.
+**Rimedio identificato.** `tools/acceptance-matrix.mjs` legge le tabelle di accettazione dai soli
+documenti `MASTER_PROJECT/`. `docs/MODEL_CATALOG_DESIGN.md` non è fra quelli, quindi le sue MC non
+sono mai state misurabili: o la tabella MC entra in un documento già sorgente, o `SOURCES` impara
+a leggere anche quel file — ed è una decisione sul metro, non un dettaglio.
+**Rejected.** Aggiungerlo adesso: questa fase è a **~270% del budget dichiarato**, e cambiare
+l'elenco delle fonti della matrice al terzo giro di un budget sfondato è come si introducono gli
+errori. `noesar-evolution-budget` §2 dice di fermarsi e proporre la divisione, e questo è farlo.
+**Reversal cost.** Nessuno — nulla è stato cambiato.
+**Status.** deferred, ed è **la prima cosa da fare** sui modelli. **Fit di finanziamento: nessuna**
+— è igiene del proprio metro, e dirlo vale più di una pretesa allargata.
