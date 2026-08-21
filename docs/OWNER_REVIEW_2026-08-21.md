@@ -119,6 +119,12 @@ scrivilo: metà prova non è una prova.
 
 | # | dove | shell | cosa succede | cosa ti aspettavi |
 |---|---|---|---|---|
+| 1 | modelCatalogPanel (`#/models`) | web | lingua impostata su italiano, ma il testo è misto — non tutto tradotto | tutta la pagina in italiano, coerente |
+| 2 | modelCatalogPanel (`#/models`) | web | mostra solo 1 modello come scaricato/pronto all'uso | tutti i modelli scaricati e pronti all'uso, mostrati |
+| 3 | modelCatalogPanel (`#/models`) | web | manca il pulsante "carica in VRAM" e la richiesta di conferma per caricare in RAM | un pulsante per caricare il modello e una domanda di conferma prima di caricarlo in memoria |
+| 4 | modelCatalogPanel (`#/models`) | web | la pagina mostra 9 modelli "selezionati" ma non è chiaro cosa sono gli altri / dov'è il resto del catalogo | chiarezza su cosa significa "selezionato" e dove sono gli altri modelli disponibili |
+| 5 | voiceFace (voce, `#/chat`) | web | a voce: "verifica se il modello è carico" → scrive solo `/models`, non fa altro | che capisca l'intento e risponda/agisca davvero, non solo componga un comando slash |
+| 6 | voiceFace (voce, `#/chat`) | web | la voce si interrompe/blocca durante l'uso, invece di restare attiva | resti attiva finché non la fermo io, ed esegua tutto quello che chiedo nel programma |
 | | | | | |
 
 ## 4. NON MI PIACE — le direzioni di prodotto
@@ -127,6 +133,11 @@ scrivilo: metà prova non è una prova.
 
 | # | dove | cosa non va | come lo vorresti |
 |---|---|---|---|
+| 1 | modelCatalogPanel (`#/models`) | la lista mostra solo un sottoinsieme di modelli, sembra limitata | tutti i modelli disponibili elencati (o un modo per vederli tutti), non solo una selezione ristretta |
+| 2 | modelCatalogPanel (`#/models`) | manca un'icona informativa ("i") con spiegazione di come caricare/usare un modello | un'icona "i" con una spiegazione chiara del procedimento |
+| 3 | chatWorkPanel — menu "Progetto" (`#/chat`) | menu con: Nessun progetto · Conversazione · Debug Evolution · ＋ Conversazione · Ramo (main) · Ramifica · Confronta i rami · Unisci · Fornitore/instradamento · Instradamento automatico · Modello · ID del modello o valore predefinito del fornitore · Confronta i modelli — non si capisce nulla, non è per niente intuitivo | un menu comprensibile, con voci chiare o spiegate |
+| 4 | voiceFace (voce, `#/chat`) | la voce (sintesi) è orribile, non sembra umana | una voce naturale, umana |
+| 5 | voiceFace (voce, `#/chat`) | la schermata della voce è statica, non sembra intelligenza artificiale, sembra un gioco per bambini | un'interfaccia con vera interazione, non statica |
 | | | | |
 
 ## 5. Numeri di partenza per i benchmark

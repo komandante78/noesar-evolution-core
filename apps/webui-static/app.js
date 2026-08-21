@@ -3536,20 +3536,41 @@ function voiceFaceShow(on){
 /**
  * Draw the product's voice.
  *
- * Twelve bars across a spectrum, not one pulsing circle: a single amplitude tells you only "loud
- * or quiet", which is why the first version read as decoration. A spectrum has SHAPE — vowels sit
- * low and wide, consonants flick the high bars — so the thing on screen is recognisably the voice
- * that is speaking rather than a meter that happens to move.
+ * Twelve spokes around a full circle, not a left-right row: a bar chart borrowed the shape of a
+ * media-player equaliser, which is why the first version read as decoration despite being driven
+ * by real data underneath. A spectrum has SHAPE — vowels sit low and wide, consonants flick the
+ * high bands — so arranging the same twelve bands radially, tips traced by one soft aura, reads
+ * as a single living thing reacting from its centre, not a chart glued to a circle.
  *
- * Bars are mirrored around the centre so the figure reads as one object instead of a chart, and
- * they settle back with a fall-off rather than snapping, because audio frames are noisy and an
+ * The aura is the same twelve numbers, not a second signal: a closed Catmull-Rom spline through
+ * the bar tips, so the organic silhouette can never show something the bars themselves do not.
+ * Bars settle back with a fall-off rather than snapping, because audio frames are noisy and an
  * unsmoothed bar jitters in a way that looks broken.
  *
  * Nothing here is animated on a timer. A still figure means silence — never "the animation
- * stopped" — which is the only reason it can be trusted to report anything at all.
+ * stopped" — which is the only reason it can be trusted to report anything at all. (The breathing
+ * ring on `listening`/`thinking` is a separate, deliberate exception: CSS-timed, and it exists
+ * precisely because there is no amplitude to show in those states — see styles.css.)
  */
 const VOICE_FACE_BARS=12;
 const voiceBarHeights=new Float32Array(VOICE_FACE_BARS);
+const VOICE_FACE_INNER_RADIUS=32;
+/** A closed Catmull-Rom spline through N points spaced evenly on a circle, as cubic beziers. */
+function voiceFaceAuraPath(radii){
+  const n=radii.length;
+  const points=radii.map((radius,index)=>{
+    const angle=(index/n)*Math.PI*2-Math.PI/2;
+    return[60+radius*Math.cos(angle),60+radius*Math.sin(angle)];
+  });
+  let d=`M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
+  for(let index=0;index<n;index+=1){
+    const p0=points[(index-1+n)%n],p1=points[index],p2=points[(index+1)%n],p3=points[(index+2)%n];
+    const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
+    const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+=`C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return`${d}Z`;
+}
 function paintVoiceFace(){
   const spectrum=voiceFaceSpectrum;
   for(let index=0;index<VOICE_FACE_BARS;index+=1){
@@ -3566,14 +3587,18 @@ function paintVoiceFace(){
     const previous=voiceBarHeights[index];
     voiceBarHeights[index]=target>previous?target:previous*0.86+target*0.14;
   }
+  // Rounded to whole pixels so identical frames do not rewrite attributes sixty times a second.
+  const lengths=Array.from(voiceBarHeights,(value)=>Math.max(3,Math.round(value*24)));
   const bars=$$('.voice-face-bar');
   bars.forEach((bar,index)=>{
-    const value=voiceBarHeights[index%VOICE_FACE_BARS]??0;
-    const height=Math.max(3,Math.round(value*46));
-    // Rounded to whole pixels so identical frames do not rewrite attributes sixty times a second.
-    bar.setAttribute('height',String(height));
-    bar.setAttribute('y',String(Math.round(60-height/2)));
+    const length=lengths[index%VOICE_FACE_BARS]??3;
+    bar.setAttribute('height',String(length));
+    bar.setAttribute('y',String(60-VOICE_FACE_INNER_RADIUS-length));
   });
+  const aura=$('#voiceFaceAura');
+  if(aura){
+    aura.setAttribute('d',voiceFaceAuraPath(lengths.map((length)=>VOICE_FACE_INNER_RADIUS+length)));
+  }
   const halo=$('#voiceFaceHalo');
   if(halo){
     const loudest=voiceBarHeights.reduce((a,b)=>a>b?a:b,0);

@@ -1336,21 +1336,32 @@
           <stop offset="55%" stop-color="currentColor" stop-opacity="0" />
           <stop offset="100%" stop-color="currentColor" stop-opacity="0.55" />
         </radialGradient>
+        <radialGradient id="voiceFaceAuraGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="currentColor" stop-opacity=".45" />
+          <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+        </radialGradient>
+        <filter id="voiceFaceGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2.2" />
+        </filter>
       </defs>
       <circle id="voiceFaceHalo" cx="60" cy="60" r="52" class="voice-face-halo" opacity="0.18" />
-      <circle cx="60" cy="60" r="44" class="voice-face-disc" />
+      <path id="voiceFaceAura" class="voice-face-aura" />
+      <circle cx="60" cy="60" r="30" class="voice-face-disc" />
+      <circle id="voiceFacePulse" cx="60" cy="60" r="34" class="voice-face-pulse" />
       <g class="voice-face-bars">
-        <rect class="voice-face-bar" x="24" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="32" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="40" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="48" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="56" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="64" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="72" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="80" y="57" width="4" height="6" rx="2" />
-        <rect class="voice-face-bar" x="88" y="57" width="4" height="6" rx="2" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(0 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(30 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(60 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(90 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(120 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(150 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(180 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(210 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(240 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(270 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(300 60 60)" />
+        <rect class="voice-face-bar" x="58" y="25" width="4" height="3" rx="2" transform="rotate(330 60 60)" />
       </g>
-      <circle id="voiceFacePulse" cx="60" cy="60" r="44" class="voice-face-pulse" />
     </svg>
     <p id="voiceFaceCaption" class="voice-face-caption" translate="no" aria-live="polite"></p>
   </section>

@@ -1313,10 +1313,15 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .voice-face-close{border:0;background:transparent;color:var(--muted);padding:0 2px;line-height:1;font-size:calc(var(--text-scale)*17px)}
 .voice-face-art{display:block;width:100%;height:auto;margin:8px 0 2px;color:var(--blue)}
 .voice-face-halo{fill:url(#voiceFaceHaloGrad)}
+/* The aura is the same spectrum as the bars, redrawn as a soft closed silhouette behind them — an
+   organic reading of the identical data, not a second, decorative signal. */
+.voice-face-aura{fill:url(#voiceFaceAuraGrad);filter:url(#voiceFaceGlow)}
 .voice-face-disc{fill:url(#voiceFaceGrad);stroke:var(--line);stroke-width:1}
 .voice-face-grad-from{stop-color:var(--surface-elevated)}
 .voice-face-grad-to{stop-color:var(--surface-card)}
-/* The bars ARE the voice: height comes from the reply's spectrum, never from a keyframe. */
+/* The bars ARE the voice: length comes from the reply's spectrum, never from a keyframe. Arranged
+   radially (a full circle of 12, not a left-right row) so the figure reads as one living thing
+   reacting from its centre, not an equaliser borrowed from a media player. */
 .voice-face-bar{fill:var(--muted)}
 .voice-face-pulse{fill:none;stroke:transparent;stroke-width:2}
 .voice-face-caption{margin:6px 0 0;min-height:2.6em;max-height:5.2em;overflow:auto;color:var(--muted);font-size:calc(var(--text-scale)*11px);line-height:1.45;word-break:break-word}
@@ -1357,7 +1362,7 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
 .voice-face-stop{margin-inline-start:6px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:2px 9px;line-height:1.4;font-size:calc(var(--text-scale)*10px);cursor:pointer}
 .voice-face-stop:disabled{opacity:.4;cursor:default}
 .voice-face-stop:not(:disabled):hover{border-color:var(--red);color:var(--red)}
-@keyframes voice-breathe{0%,100%{opacity:.15;r:42}50%{opacity:.7;r:47}}
+@keyframes voice-breathe{0%,100%{opacity:.15;r:34}50%{opacity:.7;r:39}}
 @media(prefers-reduced-motion:reduce){.voice-face-pulse{animation:none!important}}
 
 /* --- D-0404 slice 3 · CodeN Evolution, the terminal in its own region ---------------------
