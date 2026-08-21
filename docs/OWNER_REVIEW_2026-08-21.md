@@ -125,6 +125,12 @@ scrivilo: metà prova non è una prova.
 | 4 | modelCatalogPanel (`#/models`) | web | la pagina mostra 9 modelli "selezionati" ma non è chiaro cosa sono gli altri / dov'è il resto del catalogo | chiarezza su cosa significa "selezionato" e dove sono gli altri modelli disponibili |
 | 5 | voiceFace (voce, `#/chat`) | web | a voce: "verifica se il modello è carico" → scrive solo `/models`, non fa altro | che capisca l'intento e risponda/agisca davvero, non solo componga un comando slash |
 | 6 | voiceFace (voce, `#/chat`) | web | la voce si interrompe/blocca durante l'uso, invece di restare attiva | resti attiva finché non la fermo io, ed esegua tutto quello che chiedo nel programma |
+| 7 | `#/documents` | web | **RIPARATO in questa sessione (commit `063d0b9`)** — cliccando appariva "Artifacts" invece di "Documents" | corretto: intestazione, pulsanti e stato vuoto dicono ora "Documents/documento" |
+| 8 | `#/coden-tui` | web | **RIPARATO in questa sessione (commit `4e98494`)** — non dichiarava il comando `coden_evolution` (ssh + una parola) già costruito | dichiarato come percorso principale, il comando manuale resta come alternativa |
+| 9 | projectsPanel (`#/projects`) | web | creo un progetto, appare in "progetti disponibili", ma non c'è modo di eliminarlo | un modo per eliminare un progetto, con doppia conferma |
+| 10 | `＋ Conversazione` (`#/chat`) | web | se nessun progetto esiste ancora, il click fallisce in silenzio (solo una riga di stato facile da perdere) — **causa trovata**: `apps/webui-static/app.js:988` | un percorso chiaro per creare il primo progetto, poi la conversazione; la nuova chat deve comparire subito in una lista "chat recenti" nella sidebar, con archivia/elimina |
+| 11 | `#/agents` | web | creo agenti ma non li posso eliminare, e non si capisce se sono davvero attivi/funzionanti | poter eliminare un agente; uno stato chiaro (attivo/inattivo) |
+| 12 | menu `/` (chat e CodeN, web e tui) | entrambe | segnalato più volte dall'Owner come "non fatto come Claude Code" — letto il codice, sembra corretto (`isCommandPrompt`/`matchCommands`), **non verificato dal vivo**: possibile che due caselle di testo diverse abbiano il menu cablato solo su una (già successo: `F-COMMAND-001`, `F-SLASH-001`, `F-TERM-001`) | **richiede una sessione col browser vero — in attesa di conferma dell'Owner per usare `claude-in-chrome`** |
 | | | | | |
 
 ## 4. NON MI PIACE — le direzioni di prodotto
@@ -138,6 +144,11 @@ scrivilo: metà prova non è una prova.
 | 3 | chatWorkPanel — menu "Progetto" (`#/chat`) | menu con: Nessun progetto · Conversazione · Debug Evolution · ＋ Conversazione · Ramo (main) · Ramifica · Confronta i rami · Unisci · Fornitore/instradamento · Instradamento automatico · Modello · ID del modello o valore predefinito del fornitore · Confronta i modelli — non si capisce nulla, non è per niente intuitivo | un menu comprensibile, con voci chiare o spiegate |
 | 4 | voiceFace (voce, `#/chat`) | la voce (sintesi) è orribile, non sembra umana | una voce naturale, umana |
 | 5 | voiceFace (voce, `#/chat`) | la schermata della voce è statica, non sembra intelligenza artificiale, sembra un gioco per bambini | un'interfaccia con vera interazione, non statica |
+| 6 | `#/knowledge` | non si capisce a cosa serva né se funziona — "come le altre, non ha personalità" | un'identità e uno scopo chiari (in attesa: cosa vuole l'Owner che questa pagina dica di sé) |
+| 7 | `#/memory` | stesso problema di Knowledge — non si capisce se deve starci e cosa deve fare | un'identità e uno scopo chiari (stesso, in attesa della visione dell'Owner) |
+| 8 | `#/research` | nessun fornitore di ricerca configurabile, non si capisce come funzioni — "senz'anima, senza evoluzione" | fornitori configurabili + un'identità chiara |
+| 9 | chat / CodeN Evolution (capacità generale) | se scrivo di creare un agente, deve crearlo — "non voglio storie" | creazione agenti guidata dal linguaggio naturale, in chat e in CodeN |
+| 10 | NOESAR EVOLUTION (capacità generale) | — | il prodotto deve essere multimodale |
 | | | | |
 
 ## 5. Numeri di partenza per i benchmark
