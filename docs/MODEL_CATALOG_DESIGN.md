@@ -126,11 +126,26 @@ Elencate perché il piano sia controllabile, non perché siano già decise nel d
 
 ## 8. Criteri di accettazione
 
-| ID | Criterio | Come si verifica |
-|---|---|---|
-| MC-001 | Nessun download da un'origine non registrata, né da una revocata dopo la registrazione | tentativo con pubblicatore revocato fra registrazione e download |
-| MC-002 | Il modello in uso è visibile sotto ogni filtro e ogni pagina | enumerazione di tutti i filtri con un modello attivo escluso da ciascuno |
-| MC-003 | Tipo e funzione non sono mai dedotti | un modello con nome fortemente suggestivo e dichiarazione assente resta in `non dichiarato` |
-| MC-004 | Un artefatto la cui impronta non corrisponde non è avviabile | download manomesso |
-| MC-005 | Il catalogo a riposo non fa richieste di rete | conteggio delle richieste uscenti all'apertura del pannello |
-| MC-006 | Con il runtime disabilitato il pannello dichiara il perché invece di nascondere il gesto | ispezione con `NOESAR_LOCAL_MODEL_RUNTIME=disabled` |
+**Diventate misurabili dalla matrice il 2026-08-21 (`D-0627`).** Fino a quel giorno queste sei
+righe erano prosa a tre colonne: nessuna severità, nessuno stato, e nessuno strumento le
+leggeva — `tools/acceptance-matrix.mjs` conosceva solo sei documenti di `MASTER_PROJECT/`, e
+questo non era fra quelli. `model-catalog.mjs` cita `MC-001`…`MC-006` in una dozzina di
+commenti come se fossero criteri verificati, e per tredici sessioni **nessuna riga di matrice
+lo confermava** — la stessa classe d'errore già nominata in questo progetto: *«un criterio che
+nessuna riga di matrice misura non è chiuso»*. La pagina `#/models` è rimasta vuota per tutto
+quel tempo senza che niente diventasse rosso, proprio perché non c'era niente a guardarla.
+
+| ID | Criterio | Severità | Come si verifica | Stato |
+|---|---|---|---|---|
+| MC-001 | Nessun download da un'origine non registrata, né da una revocata dopo la registrazione | A | `services/reference-control-plane/test/model-catalog.test.mjs` — `describe('MC-001 — no download from an unregistered origin, nor one revoked since')`, inclusi i due casi limite (revoca fra registrazione e download; una chiave revocata fra chiavi vive non revoca il pubblicatore) | ✅ **misurato 2026-08-21** — 60/60 nella suite che copre MC-001…MC-006 |
+| MC-002 | Il modello in uso è visibile sotto ogni filtro e ogni pagina | C | `describe('MC-002 — the model in use is visible under every filter and every page')` | ✅ **misurato 2026-08-21** |
+| MC-003 | Tipo e funzione non sono mai dedotti | A | `describe('MC-003 — type and function are never inferred')` | ✅ **misurato 2026-08-21** |
+| MC-004 | Un artefatto la cui impronta non corrisponde non è avviabile | C | `describe('MC-004 — an artefact whose digest does not match is not startable')` e `model-acquisition.test.mjs` `describe('MC-004 on disk — a mismatch never becomes a model you have')` | ✅ **misurato 2026-08-21** |
+| MC-005 | Il catalogo a riposo non fa richieste di rete | A | `describe('MC-005 — the catalogue at rest reaches no network')` | ✅ **misurato 2026-08-21** |
+| MC-006 | Con il runtime disabilitato il pannello dichiara il perché invece di nascondere il gesto | M | `describe('MC-006 — a disabled runtime is declared, never hidden')` | ✅ **misurato 2026-08-21** |
+
+**Cosa questa tabella NON copre**, dichiarato invece di lasciato intendere: la doppia conferma
+dell'elimina (`D-0625`) e la griglia a riquadri con le categorie a vista (`D-0628`) sono più
+recenti di questo elenco e non hanno un proprio ID — la traccia della loro prova sta nel
+decision log (`D-0625`, `D-0628`), non qui. Estendere questa tabella con nuove righe è lavoro
+per una fase che tocchi di nuovo il catalogo, non un'aggiunta silenziosa fatta qui.

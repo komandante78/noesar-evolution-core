@@ -69,6 +69,15 @@ export const SOURCES = Object.freeze([
   // `MASTER_PROJECT/` at all. A criterion no row measures is not closed, and one whose content
   // cannot be read is not a criterion. `PKG-001` gives it a row and an honest ❌.
   { file: 'MASTER_PROJECT/09_PIANO.md', prefix: 'PKG', owns: 'the delivery package: the five archives, their identity, and what each must carry' },
+  // Added 2026-08-21 (`D-0627`). `model-catalog.mjs` had cited `MC-001`..`MC-006` in a dozen
+  // comments as verified criteria for thirteen sessions, and no row of this matrix ever
+  // measured them — the exact failure `CLAUDE10.md`'s own rule 5 names: a criterion no row
+  // measures is not closed. Unlike the six sources above, this one is not in `MASTER_PROJECT/`
+  // — it is the design document that already owned these six ids, extended to the shape this
+  // tool reads rather than duplicated into a new document. `SOURCES` was never MASTER_PROJECT-
+  // only by construction; it is an explicit list of documents that own criteria, wherever they
+  // live, and burying that in a glob is the discovery risk this list exists to remove.
+  { file: 'docs/MODEL_CATALOG_DESIGN.md', prefix: 'MC', owns: 'the model catalogue: verified publishers, declared-not-inferred metadata, network posture at rest' },
 ]);
 
 const SEVERITY = Object.freeze({ C: 'critical', A: 'high', M: 'medium' });
@@ -129,7 +138,7 @@ export function parseDocument(file) {
   const lines = readFileSync(absolute, 'utf8').split('\n');
   const rows = [];
   lines.forEach((line, index) => {
-    if (!/^\s*\|\s*`?(CE|CUBE|ARCH|INST|SESS|PKG)-\d{3}`?\s*\|/.test(line)) return;
+    if (!/^\s*\|\s*`?(CE|CUBE|ARCH|INST|SESS|PKG|MC)-\d{3}`?\s*\|/.test(line)) return;
     const parts = cells(line);
     const [id, criterion, severity, howVerified, status] = parts;
     rows.push({

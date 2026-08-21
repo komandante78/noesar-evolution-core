@@ -14461,8 +14461,7 @@ a leggere anche quel file — ed è una decisione sul metro, non un dettaglio.
 l'elenco delle fonti della matrice al terzo giro di un budget sfondato è come si introducono gli
 errori. `noesar-evolution-budget` §2 dice di fermarsi e proporre la divisione, e questo è farlo.
 **Reversal cost.** Nessuno — nulla è stato cambiato.
-**Status.** deferred, ed è **la prima cosa da fare** sui modelli. **Fit di finanziamento: nessuna**
-— è igiene del proprio metro, e dirlo vale più di una pretesa allargata.
+**Status.** **CHIUSA — `D-0635`.** Fit di finanziamento: nessuna — è igiene del proprio metro.
 
 ## D-0628 · La pagina dei modelli si legge a colpo d'occhio — riquadri 3+3, categorie a vista — 2026-08-21
 **Decision.** `pageSize` 24 → **6**; griglia dedicata `.model-grid` a **due colonne** (3 a sinistra,
@@ -14616,3 +14615,34 @@ sua `LICENSE` già diceva il vero, è il governo di *questo* progetto che doveva
 Se l'Owner cambia idea in futuro, si amenda di nuovo con lo stesso meccanismo, mai aggirato.
 **Status.** applied. La discrepanza di `D-0632` è chiusa: le due fonti dicono di nuovo la
 stessa cosa.
+
+## D-0635 · Le righe `MC-` diventano misurabili dalla matrice — chiude `D-0627` — 2026-08-21
+**Decision.** `docs/MODEL_CATALOG_DESIGN.md` §8 — già a sei righe `MC-001`…`MC-006`, tre
+colonne — estesa alla forma a cinque colonne (severità + stato) che `tools/acceptance-matrix.mjs`
+sa leggere. Il file aggiunto a `SOURCES`, il prefisso `MC` aggiunto al regex del parser. La
+matrice passa da **67 a 73** criteri.
+**Why.** `model-catalog.mjs` cita `MC-001`…`MC-006` in una dozzina di commenti come criteri
+verificati, e per **tredici sessioni** nessuna riga di matrice lo confermava — la matrice
+conosceva solo sei documenti, tutti in `MASTER_PROJECT/`, e questo non era fra quelli. È
+esattamente la regola 5 della skill di questo progetto: *«un criterio che nessuna riga di
+matrice misura non è chiuso»* — e la stessa ragione per cui il buco della generazione era
+passato inosservato la prima volta.
+**Rejected.** Creare una tabella duplicata dentro `MASTER_PROJECT/`: `docs/MODEL_CATALOG_DESIGN.md`
+possiede già questi sei id, e `SOURCES` non è mai stato *MASTER_PROJECT*-only per costruzione —
+il suo stesso commento dice *"a new matrix appearing in a fifth document"*, non *"in un
+documento di MASTER_PROJECT/"*. Duplicare sarebbe stata la stessa collisione di vocabolario
+già pagata una volta (`L0-L8`, `02_ATOM.md`).
+**Evidence.** Ogni verdetto è **misurato**, non asserito: `node --test model-catalog.test.mjs
+model-acquisition.test.mjs` → **60/60**, con un `describe()` nominato per ciascuna delle sei
+righe. Oracolo dello strumento **visto rosso**: tolta la riga `MC-006` dal documento,
+`tools/verify-acceptance-matrix.mjs` passa da **73 a 72 criteri** e **FAIL (1)**; rimessa,
+torna **PASS**. Un difetto trovato cacciando: `services/reference-control-plane/test/
+acceptance-matrix.test.mjs` presumeva `MASTER_PROJECT/` nel percorso di ogni riga — un
+invariante mai dichiarato da `SOURCES`, mascherato finché tutte le fonti erano lì per caso.
+Corretto per controllare contro l'elenco vero di `SOURCES`, non un prefisso indovinato.
+Suite finale: unit **2974** (2973 pass, 0 fail, 1 skip), ESLint **474 file 0/0/0**,
+`SOURCE_VERIFY=PASS`, matrice **73 criteri, 72 con verdetto, 64 `met`, 0 critici senza verdetto**.
+**Reversal cost.** Nessuno. **Nessun debito §3a**: né `docs/MODEL_CATALOG_DESIGN.md` né
+`tools/acceptance-matrix.mjs` entrano nell'immagine — verificato, zero righe `COPY` li nominano.
+**Status.** applied. `#/models` non può più restare vuota tredici sessioni senza che niente
+diventi rosso — è la causa radice di `D-0625`/`D-0628`, chiusa.

@@ -30,13 +30,21 @@ describe('the acceptance matrix is read from the documents that own it — D-055
 
   const ID_SHAPE = new RegExp(`^(${[...new Set(SOURCES.map((source) => source.prefix))].join('|')})-\\d{3}$`);
 
+  // `D-0627`: this used to hard-code `MASTER_PROJECT/` here, which was never an invariant
+  // `SOURCES` itself declares — its own header comment says an owning document is listed
+  // "wherever it lives". The six `MASTER_PROJECT/` files made the assumption look load-bearing
+  // until `docs/MODEL_CATALOG_DESIGN.md` joined the list and this line rejected every one of
+  // its rows for being real. Checked against the actual file list instead of a guessed prefix.
+  const SOURCE_FILES = new Set(SOURCES.map((s) => s.file));
   test('every row carries an id, a criterion, a known severity and a method of verification', () => {
     for (const row of matrix.rows) {
       assert.match(row.id, ID_SHAPE, `${row.source}`);
       assert.ok(row.criterion.length > 10, `${row.id}: criterion too short to be one`);
       assert.ok(['critical', 'high', 'medium'].includes(row.severity), `${row.id}: severity "${row.severity}"`);
       assert.ok(row.howVerified.length > 0, `${row.id}: no stated method of verification`);
-      assert.match(row.source, /^MASTER_PROJECT\/.+\.md:\d+$/, `${row.id}: source must locate the row`);
+      const [file, line] = row.source.split(':');
+      assert.ok(SOURCE_FILES.has(file), `${row.id}: source "${file}" is not in SOURCES`);
+      assert.match(line, /^\d+$/, `${row.id}: source must locate the row with a line number`);
     }
   });
 

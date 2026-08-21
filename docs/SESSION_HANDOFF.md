@@ -1,38 +1,24 @@
 # SESSION HANDOFF
 
-**`D-0628`: `#/models` si legge a colpo d'occhio.** Sei modelli per pagina in griglia **3+3**,
-riquadri con gerarchia, **chip di categoria**. Causa nominata: `D-0625` senza applicare §76 e
-senza guardare la pagina renderizzata. `T2` eseguita: browser **506 · 505 pass · 1 fail**
-(`F-I18N-002`, gap già dichiarato); guardare il render **ha subito prodotto `D-0630`**.
-**Prima in questa sessione:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622`
-· `D-0625` (il catalogo modelli ha dei modelli).
+**La coda di lavoro dichiarata in questa sessione è chiusa: `D-0630`/`D-0634` e `D-0627`/`D-0635` fatte.**
+`D-0627` (chiusa da `D-0635`) — causa radice per cui `#/models` era vuota tredici sessioni: `model-catalog.mjs`
+citava `MC-001`…`MC-006` come criteri e nella matrice non esisteva **nessuna** riga `MC-`.
+Ora `docs/MODEL_CATALOG_DESIGN.md` §8 ha la tabella a 5 colonne, `SOURCES` la conosce, la
+matrice è **73 criteri** (67→73), oracolo dello strumento visto rosso togliendo una riga.
+`D-0630` — le 31 stringhe visibili del seed modelli sono inglese con resa italiana; il
+controllo i18n legge anche i file dati adesso, non solo `index.html`.
+**Prima:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622` · `D-0625`
+(catalogo modelli) · `D-0628` (griglia leggibile) · `D-0632`/`D-0633` (ATOM resta
+proprietario, `D-0468` superata) · `D-0634` (i18n del seed).
 **Live installation:** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, `running`/`healthy`.
-**Debito §3a APERTO e dichiarato**: `D-0634` è in albero, non installato. Il seed modelli
+**Debito §3a APERTO e dichiarato**: `D-0634` è in albero, non installato — il seed modelli
 sull'installazione viva mostra ancora le descrizioni in italiano (verificato dentro il
 contenitore). Nessun rischio attivo — si accoda al prossimo deploy che tocca `#/models`.
+`D-0635` non tocca l'immagine: nessun debito da lì.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**`docs/PRESENTAZIONE_PROGETTO_E_FINANZIAMENTO_2026-08-21.md` scritto (`D-0632`)** — cos'è il
-prodotto, come funziona, la richiesta (CodeSupply raccomandato), il piano dei moduli a
-pagamento. **La discrepanza su ATOM è CHIUSA (`D-0633`):** l'Owner ha scelto di lasciarlo
-proprietario. `CLAUDE10.md` §14 e la skill `noesar-evolution` sono stati amendati per dire il
-vero — `D-0468` (2026-08-15) è superata.
-
-**Scadenza esterna: bandi NLnet riaprono 2026-09-03, prima scadenza 2026-11-03 12:00 CEST.**
-Se si punta su CodeSupply, abstract + milestone + confronto con l'esistente vanno pronti prima.
-Non apre un contratto da sola.
-
-**`D-0630` CHIUSA (`D-0634`).** Le 31 stringhe visibili del seed modelli sono in inglese, con
-resa italiana nel catalogo; `tools/measure-ui-language-coverage.mjs` legge anche i file dati
-adesso, non solo `index.html`. Oracolo visto rosso 2 volte. Dettaglio: `docs/DECISION_LOG.md`.
-
-**ORA `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.**
-`model-catalog.mjs` cita `MC-002/004/005/006` come criteri, e nella matrice **non esiste
-nemmeno una riga `MC-`** (0 su 67). Niente misurava quella pagina, quindi niente diventava
-rosso. Dettaglio e rimedio identificato: `docs/DECISION_LOG.md`.
-
-**POI: la passata live dell'Owner, che resta PRIMA di `D-0621`.** L'Owner ha deciso
+**La passata live dell'Owner, che viene prima di qualunque fase nuova.** L'Owner ha deciso
 il 2026-08-21 di camminare il prodotto vivo superficie per superficie e registrare cosa non
 funziona e cosa non gli piace, **prima** di qualunque altro lavoro. La scheda è
 **`docs/OWNER_REVIEW_2026-08-21.md`** — porta l'elenco completo misurato: **29 comandi** del menu
