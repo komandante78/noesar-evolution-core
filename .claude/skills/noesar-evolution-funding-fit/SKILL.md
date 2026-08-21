@@ -52,6 +52,8 @@ called "resume after summer 2026" with no date **now has one**.
 | **An individual may apply** — *"You can apply as an individual, or as a formal or informal organisation of any type"* | restack/faq/ |
 | Review takes **3–5 months** from the deadline | restack/faq/ |
 | Support beyond money: *"accessibility and security audits, licensing advice, mentoring, packaging"* | restack/faq/ |
+| **The applicant's OWN hours ARE a fundable cost — this is real personal income, not only project reimbursement.** *"As a philanthropy, NLnet does not pay commercial rates — it provides a cost-recovery based mechanism."* Indicative rates used by others: ~€25/h documentation, ~€45/h development; an absolute ceiling near €65/h exists but using it hurts competitiveness. Budget must itemise deliverables, not read *"it will cover my living expenses"*. | propose/, [community search 2026-08-21] |
+| Hardware: fundable only if specific to the project (never routine laptops/desktops/phones); a for-profit entity returns residual value at project end; an individual under 2/3 of the max rate may keep it. | foundation/policies/externalspending/ |
 | The proposal form requires **disclosure of generative AI usage** | <https://nlnet.nl/propose/> |
 
 **One discrepancy, recorded rather than resolved:** `/propose/` says decisions arrive *"within a
