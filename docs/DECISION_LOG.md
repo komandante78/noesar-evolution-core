@@ -14511,3 +14511,25 @@ al tetto. Sfondarlo dopo aver promesso di non farlo è peggio del difetto.
 in inglese col loro italiano nel catalogo di traduzione **e** far sì che il controllo i18n legga
 anche i file di dati, altrimenti la prossima stringa cablata passa di nuovo.
 **Fit di finanziamento: nessuna** — è igiene di localizzazione.
+
+## D-0631 · Scadenza esterna registrata: NLnet riapre 2026-09-03, prima scadenza 2026-11-03 — 2026-08-21
+**Decision.** Registrato come fatto di progetto, non come lavoro eseguito: se si punta su
+CodeSupply (raccomandato da `.claude/skills/noesar-evolution-funding-fit/SKILL.md` §0a),
+l'abstract, il budget a milestone e il confronto con l'esistente vanno pronti prima del
+2026-11-03 12:00 CEST.
+**Why.** L'Owner ha chiesto i meccanismi del finanziamento — hardware, pagamenti ricorrenti,
+cosa succede dopo la richiesta. Riletto oggi: **pagamento a milestone, mai anticipato**
+(*«Once you reach a milestone you send in a request for payment»*, `restack/faq/`); **niente
+mensile** — è una sovvenzione a progetto, non uno stipendio; **hardware ammesso solo se
+necessario al progetto specifico**, mai per costi operativi di base (*«NLnet does not allocate
+grant money to basic operational IT cost, such as regular laptops, desktops/workstations»*,
+`foundation/policies/externalspending/`), e un'entità for-profit deve **restituire il valore
+residuo** dell'hardware a fine progetto; **i costi operativi correnti (hosting, server) non
+sono coperti** — nessuna fonte letta li menziona come ammissibili, a differenza dei costi di
+sviluppo, audit, documentazione e infrastruttura specifica al progetto.
+**Rejected.** Presentare una richiesta generica di "sostegno all'hardware corrente": i criteri
+letti chiedono un componente delimitato con milestone, non un contributo alle spese correnti.
+**Evidence.** `nlnet.nl/propose/`, `nlnet.nl/restack/faq/`, `nlnet.nl/foundation/policies/
+externalspending/`, tutte lette 2026-08-21.
+**Reversal cost.** Nessuno — nessun impegno preso.
+**Status.** open, con scadenza. La preparazione della proposta non è iniziata.

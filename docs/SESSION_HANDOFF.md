@@ -1,12 +1,9 @@
 # SESSION HANDOFF
 
 **`D-0628`: `#/models` si legge a colpo d'occhio.** Sei modelli per pagina in griglia **3+3**,
-riquadri con gerarchia, **chip di categoria** con i conteggi. Prima era una colonna sola con 24
-schede: `.card-list{display:grid;gap:10px}`, nessuna traccia definita. **Installato.**
-**La causa, nominata e non spiegata:** `D-0625` era stato costruito **senza applicare §76** —
-grafica, esperienza d'uso e gerarchia sono di prima classe — e **senza mai guardare la pagina
-renderizzata**. `T2` eseguita adesso: browser **506 · 505 pass · 1 fail** (`F-I18N-002`, gap già
-dichiarato), e guardare il render **ha subito prodotto `D-0630`**.
+riquadri con gerarchia, **chip di categoria**. Causa nominata: `D-0625` senza applicare §76 e
+senza guardare la pagina renderizzata. `T2` eseguita: browser **506 · 505 pass · 1 fail**
+(`F-I18N-002`, gap già dichiarato); guardare il render **ha subito prodotto `D-0630`**.
 **Prima in questa sessione:** `D-0612` · `D-0615` (`F-MANIFEST-001` CHIUSA) · `D-0619` · `D-0622`
 · `D-0625` (il catalogo modelli ha dei modelli).
 **Live installation:** `noesar-evolution:d0628-model-tiles-20260821T082515Z`, `running`/`healthy`.
@@ -14,19 +11,23 @@ dichiarato), e guardare il render **ha subito prodotto `D-0630`**.
 
 ## ➜ LA PROSSIMA AZIONE
 
+**Scadenza esterna registrata 2026-08-21, non negoziabile come le altre:** i bandi NLnet
+riaprono **2026-09-03**, prima scadenza **2026-11-03 12:00 CEST**. Se si punta su CodeSupply
+(raccomandato, `.claude/skills/noesar-evolution-funding-fit/SKILL.md` §0a) l'abstract, il
+budget a milestone e il confronto con l'esistente vanno pronti **prima** di quella data — non
+è un lavoro che si può comprimere all'ultimo giorno. Non apre un contratto da sola: apre
+quando l'Owner decide di prepararla.
+
 **`D-0630` — le descrizioni del seed sono in italiano fuori dal livello di traduzione**, cioè la
 regola 50 alla lettera, e **la suite i18n non le vede perché scansiona il markup e non i file di
 dati**. Due cose, e la seconda vale più della prima: portarle in inglese col loro italiano nel
 catalogo, **e** far leggere al controllo i18n anche i file di dati — altrimenti la prossima
 stringa cablata passa di nuovo. Trovato guardando il render, non leggendo il codice.
 
-**POI `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.** `model-catalog.mjs` cita `MC-002`, `MC-004`, `MC-005` e `MC-006` come criteri, e
-nella matrice **non esiste nemmeno una riga `MC-`** (misurato: 0 su 67). Niente misurava quella
-pagina, quindi niente è mai diventato rosso. `tools/acceptance-matrix.mjs` legge solo i documenti
-`MASTER_PROJECT/`, e `docs/MODEL_CATALOG_DESIGN.md` non è fra quelli: o la tabella MC entra in un
-documento già sorgente, o `SOURCES` impara a leggere quel file. **È una decisione sul metro.**
-**Non riparata in `D-0625` perché quella fase è finita a ~270% del budget dichiarato**, e
-cambiare l'elenco delle fonti della matrice a budget sfondato è come si introducono gli errori.
+**POI `D-0627` — la causa radice per cui `#/models` è rimasta vuota tredici sessioni.**
+`model-catalog.mjs` cita `MC-002/004/005/006` come criteri, e nella matrice **non esiste
+nemmeno una riga `MC-`** (0 su 67). Niente misurava quella pagina, quindi niente diventava
+rosso. Dettaglio e rimedio identificato: `docs/DECISION_LOG.md`.
 
 **POI: la passata live dell'Owner, che resta PRIMA di `D-0621`.** L'Owner ha deciso
 il 2026-08-21 di camminare il prodotto vivo superficie per superficie e registrare cosa non
