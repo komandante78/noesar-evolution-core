@@ -6572,6 +6572,13 @@ Object.assign(SECTION_LOADERS,{
 wireModelCatalogue();
 codenModelPicker.wire();
 chatModelPicker.wire();
+// Owner, 2026-08-21: "su coden evolution fai come chat per poter mettere i modelli
+// velocemente" — the picker already existed here (s336), reachable only from a small "▾" on
+// the model chip up in `.coden-bar`. Not a second picker: a second door onto the SAME one,
+// right where the prompt is, matching the icon the chat composer now has for the identical
+// gesture. Delegates to the existing open button rather than wiring `codenModelPicker` a
+// second time — one picker, one `wire()` call, two ways in.
+$('#codenPromptModelOpen')?.addEventListener('click',()=>$('#codenModelPickerOpen')?.click());
 installHelpButtons();
 initI18n();
 initAppearance();
