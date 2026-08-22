@@ -107,4 +107,9 @@ directly: `POINT-2B` (chat/CodeN command parity) PASS, `AGENTS-1` (archive + car
   session's secret scan was heuristic (`git diff` grepped for key/token/password/PEM markers,
   clean) and is declared as heuristic, not a `gitleaks` run.
 - `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
+- **New, this session, still open**: `B-013` — `git push origin main` refused, no GitHub
+  credential stored in this container (by design, `B-001`: no token is ever persisted). 15
+  commits ahead of `origin/main` (13 from the prior session + `e417aef`/`c91b647` from this
+  one). Local repository is complete and correct — only the push needs the Owner's token or a
+  push from their own machine.
 - No other new blocker.

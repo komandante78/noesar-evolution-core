@@ -83,6 +83,17 @@
       "code": "E2E_FINDINGS=RESOLVED_ALL_THREE_CLOSED",
       "summary": "CLOSED 2026-08-17 (D-0514): all three named findings (F-COMMAND-001, F-INTENT-001, F-PANEL-001) are closed; D-0502 recorded that this entry still sat in blockers unmarked, as a string rather than an object, which is why a type-safe filter is needed to read this array. Converted to an object and marked resolved so no future session reads it as live. ORIGINAL TEXT PRESERVED VERBATIM: B-012: F-COMMAND-001/F-INTENT-001/F-PANEL-001 (D-0449, 2026-08-14) -- closing D-0435s E2E crash let the suite run 158 more checks than any run since D-0435 shipped (386 vs 228), and three of the newly-reached checks fail for reasons unrelated to D-0435/D-0437. Each needs its own dedicated investigation phase before an effort estimate is meaningful.",
       "blocks_next_phase": false
+    },
+    {
+      "id": "B-013",
+      "severity": "low-deferred",
+      "code": "GIT_PUSH=UNAUTHENTICATED",
+      "summary": "2026-08-22: git push origin main refused - no GitHub credential stored in this container (by design, B-001/rules 25-26: no token is ever persisted). 15 commits ahead of origin/main after this session (13 from the prior session + 2 from this one, e417aef and c91b647). Local repository is complete and correct; only the push is blocked.",
+      "blocks_next_phase": false,
+      "resolution_options": [
+        "The Owner supplies a fresh token (fine-grained, scoped to this repo) in a future session for a one-time ad-hoc push, never persisted, matching B-001s resolved precedent.",
+        "The Owner pushes directly from their own authenticated machine."
+      ]
     }
   ],
   "project_root": "/mnt/cachec/NOESAR_EVOLUTION",
