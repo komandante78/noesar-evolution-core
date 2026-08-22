@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0648 — §4#9 done: a chat message that unambiguously asks to create an agent creates it, no form, no confirmation, via a tagged fence in the model's own answer (agent-directive.mjs) parsed server-side and executed through the existing AgentService.createAgent(). Refused (not executed) when this turn's injection detector fired. Checked it does not collide with CodeN Evolution's own 8-phase plan. Deployed d0648-agent-directive-20260822T163425Z, verified live.",
-  "phase_status": "Verified this session: unit 3022/3023 (1 pre-existing skip, 8 new), ESLint 477/0/0, browser-e2e 510/511 (F-I18N-002 only, 0 undeclared), bytes-equal tree<->image 478/478, live health 200/200/200. Two containers survive.",
-  "next_phase": "Owner said 'finiamo il progetto' (NLnet calls reopen 2026-09-03). Two D-0645 items remain, each its own phase: (1) Kokoro TTS -> GPU move (infrastructure, needs its own scoping since it touches a non-noesar-evolution container), (2) §4#10 multimodality (docs/images/audio priority) — large enough to need its own decomposition into sub-phases before implementation. Proceeding to scope the next one without re-asking, per standing authorization.",
+  "current_phase": "D-0649 — §4#10 multimodality decomposed: documents (PDF/Office/ZIP/text) confirmed ALREADY complete (cited existing test proof, no gap); images and audio each scoped as their own future phase (vision-caption fallback extractor; audio-transcription via the already-running noesar-voice-hear). No code changed this entry — docs-only scoping phase.",
+  "phase_status": "Verified this session across the whole session's work: unit 3022/3023 (1 pre-existing skip), ESLint 477/0/0, browser-e2e 510/511 (F-I18N-002 only), bytes-equal 478/478, live health 200/200/200. This entry itself: docs-only, no rebuild needed.",
+  "next_phase": "Two D-0645/D-0649 items remain, each its own phase: (1) images — vision-caption fallback extractor when OCR finds no text and a vision-capable provider is configured (needs a new capability-detection concept in provider-gateway.mjs, not yet designed); (2) audio — call noesar-voice-hear from file-extractors.mjs for uploaded audio/video (needs the currently-synchronous extractor to support an async transcription step). Kokoro->GPU move still deferred, needs explicit separate authorization (touches a non-noesar-evolution container). NLnet calls reopen 2026-09-03.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "e0e54e0cf91a5278e13e3cde815312a8322bb3d3",
-  "last_updated_utc": "2026-08-22T16:55:47Z",
+  "last_commit": "4c054cac301c0fbcc3ce7578cb1c3232380e0e53",
+  "last_updated_utc": "2026-08-22T16:59:57Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1135,7 +1135,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Owner said 'finiamo il progetto' (NLnet calls reopen 2026-09-03). Two D-0645 items remain, each its own phase: (1) Kokoro TTS -> GPU move (infrastructure, needs its own scoping since it touches a non-noesar-evolution container), (2) §4#10 multimodality (docs/images/audio priority) — large enough to need its own decomposition into sub-phases before implementation. Proceeding to scope the next one without re-asking, per standing authorization.",
+  "next_action": "Two D-0645/D-0649 items remain, each its own phase: (1) images — vision-caption fallback extractor when OCR finds no text and a vision-capable provider is configured (needs a new capability-detection concept in provider-gateway.mjs, not yet designed); (2) audio — call noesar-voice-hear from file-extractors.mjs for uploaded audio/video (needs the currently-synchronous extractor to support an async transcription step). Kokoro->GPU move still deferred, needs explicit separate authorization (touches a non-noesar-evolution container). NLnet calls reopen 2026-09-03.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
