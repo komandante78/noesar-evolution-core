@@ -14802,3 +14802,26 @@ triage scope; recorded per `noesar-evolution-budget` §5.
 file already proves the property in isolation (`VOICE_SUBJECT` env var, two subjects).
 **Reversal cost.** None — proposal only.
 **Status.** proposed, not scheduled.
+
+## D-0644 · §4#4 corrected with measured facts, not the earlier guess — 2026-08-22
+**Decision.** `D-0642`'s "recommendation" (bind an unspecified self-hosted model) was written
+before checking what is actually running. Measured (`docker inspect`, read-only, no container
+touched): `noesar-voice-speak` already runs `ghcr.io/remsky/kokoro-fastapi-cpu` — Kokoro-82M,
+the exact model `D-0642` was about to suggest — with `USE_GPU=false`/`DEVICE=cpu`. The host
+has an idle-for-this-purpose NVIDIA RTX 3060 (12 GiB): `noesar-voice-hear` already uses it
+(`speaches:latest-cuda`, transcription) but `noesar-voice-speak` does not.
+**Why.** Kokoro is an 82M-parameter model chosen for speed on CPU, not for the most human
+timbre available; running it, plus running it on CPU, are both real, separate reasons the
+Owner's "orribile, non sembra umana" is an accurate description, not a taste mismatch.
+**Rejected.** Changing the container myself — touching a running non-`noesar-evolution`
+container is outside this project's authority (`CLAUDE10.md` rule 16) and a model swap is a
+runtime/dependency decision (rule 77 stop condition), Owner's to make either way.
+**Evidence.** `docker inspect noesar-voice-speak --format '{{.Config.Image}}'` →
+`kokoro-fastapi-cpu:latest`; `{{range .Config.Env}}` → `USE_GPU=false`, `DEVICE=cpu`;
+`nvidia-smi` → `RTX 3060, 12288 MiB`; `noesar-voice-hear` inspect shows a live GPU device
+request, `noesar-voice-speak` shows none.
+**Reversal cost.** None — read-only inspection, no container state changed.
+**Status.** applied (corrects `D-0642`'s recommendation) — put to the Owner as two concrete,
+independent options: move the existing Kokoro container to the idle GPU (fast, same voice,
+likely still not "human"), or bind a larger, more natural open model such as Chatterbox-TTS
+or XTTS-v2 to the RTX 3060 (slower to set up, closer to what was asked for).
