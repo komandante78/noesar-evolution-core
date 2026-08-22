@@ -1,109 +1,110 @@
 # SESSION HANDOFF
 
-**Sessione chiusa su richiesta dell'Owner: "fai chiusura riprendiamo domani".** Passata live
-dell'Owner su chat e CodeN Evolution, dettata in conversazione invece che scritta a mano da
-lui nella scheda — vedi §"come funziona" sotto. **12 commit, git pulito, NON pushati.**
+**Triage of `docs/OWNER_REVIEW_2026-08-21.md` — in progress, not finished.** Six of its open
+rows fixed and verified this session (`D-0637`/`D-0638`/`D-0639`); four are left, and all four
+need the Owner's decision, not more code. **No deploy in this session** — 13 commits ahead of
+`origin/main`, all §3a debt, still queued for the one consolidated deploy already agreed.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Riprendere `docs/OWNER_REVIEW_2026-08-21.md`.** È ancora la scheda che governa tutto: non si
-apre una fase nuova finché non è finita. Righe ancora aperte in §3/§4:
+**Two things need the Owner directly, nothing else is blocked on him:**
 
-- eliminare un progetto (con doppia conferma) — `#/projects`
-- eliminare un agente + stato chiaro attivo/inattivo — `#/agents`
-- `#/knowledge`, `#/memory`, `#/research` — "non si capisce a cosa servano", nessuna identità
-  propria; serve la visione dell'Owner su cosa ognuna DEVE essere, non solo che manca
-- creazione agenti a comando da chat/CodeN, in linguaggio naturale — capacità nuova
-- "NOESAR EVOLUTION deve essere multimodale" — non ulteriormente specificato, capacità grande
+1. **Knowledge/Memory pages (`#/knowledge`, `#/memory`)** — `§4#6/#7`. Checked this session:
+   both already carry real, specific purpose text in their headers (`index.html:760,770`), not
+   generic copy. The gap is visual/experiential distinctiveness ("come le altre, non ha
+   personalità") — a design decision, and the file itself already says it is waiting on the
+   Owner's own vision, not on more prose.
+2. **NL agent creation + multimodality** — `§4#9/#10`. Both are undefined-scope,
+   architecture-changing capabilities (CLAUDE10 rule 77 stop condition), not implementation gaps.
 
-**Poi, nell'ordine già concordato con l'Owner**: triage di ogni riga contro il codice reale →
-lista dei cambiamenti → **un solo deploy consolidato** → debug/vulnerabilità/**T2 intero**
-sull'installazione nuova → benchmark contro i numeri di partenza (§5 della scheda).
+**Then**: `§3#6` (voice interrupts/blocks during use) — root cause NOT investigated this session
+(`VoiceSession`, ~900 lines, untouched). Needs its own read before a fix is attempted.
 
-**Decisione mai chiesta esplicitamente, da chiedere appena si riprende**: se pushare i 12
-commit locali ora o aspettare il deploy. Non deciso da solo — è un'azione visibile (`git push`).
+**Once those are resolved or scoped**: the sequence already agreed with the Owner runs —
+**one consolidated deploy** (13 commits now queued) → full `T2` on the new installation →
+benchmark against `docs/OWNER_REVIEW_2026-08-21.md` §5's baseline numbers.
 
-## Come funziona questa sessione — cambio di modalità a metà
+## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-L'Owner ha iniziato camminando la scorecard da solo, poi è passato a **dettare le osservazioni
-in chat** ("io dico, tu scrivi") perché camminare ogni pagina a mano lo stava esaurendo
-("se continuo mi metto a piangere" — testuale). Le osservazioni sono scritte da me in
-`docs/OWNER_REVIEW_2026-08-21.md` man mano che arrivavano, **non filtrate né riordinate** —
-il triage vero resta da fare all'inizio della prossima sessione, come previsto dal file stesso.
+**Root cause of `§3#5` found and fixed — the actual reason voice "only wrote `/models`".** The
+CHAT panel had **no command-execution path at all**: `/api/v1/chat/stream` never parsed a
+leading `/`, and `sendChat()` always sent the literal text to the model as prose — true for
+typed AND spoken commands, in every prior session including the one that declared the chat `/`
+menu "CHIUSO" (that session verified the menu opens/filters/completes, never that Enter ran
+anything). Fixed (`D-0637`): chat's Enter, on a `/` line, now runs `planTurn`+`codenCall` — the
+identical registry and transport CodeN's own prompt already uses, not a second engine — and
+persists the line and its result as real `role:'user'`/`role:'tool'` messages so they survive
+`refreshMessages()`. Chat's own `/` typeahead widened to `codenOffered()` (was `AGENT_COMMANDS`
+only, missing the address book — the same class of gap `F-INTENT-001` already fixed in CodeN).
 
-`claude-in-chrome` non è collegato in questa sessione (estensione non configurata) — dove
-serviva vedere il prodotto dal vivo, ho usato lo strumento e2e di questo stesso progetto
-(`tools/run-browser-e2e.sh`, T2, container usa-e-getta) invece di leggere codice e sperare.
+**Voice may now run a command by itself — only the provably safe half (`D-0638`).** A spoken
+utterance resolving to a non-navigate command auto-runs through the fix above ONLY when the
+registry marks it `permission: null|*.read` and no `confirm` flag — `/sweep` (deletes replay
+bytes, no `confirm:true` in the data) is the concrete reason a blanket "voice may run anything
+resolved" was rejected. Everything else still only composes into the box, exactly as before.
 
-## WHAT IS TRUE NOW THAT WAS NOT — misurato in questa sessione
+**Four more `§3` defects, triaged and fixed (`D-0639`):**
+- `§3#9` — Projects had no removal at all. Backend already supported it (`archived`, already
+  filtered out of `listProjects`) from the same pattern D-0397 gave agents; only the button was
+  missing. Added: Delete, double confirmation (type the project's name to arm it) — same shape
+  D-0625 already proved for model removal.
+- `§3#11` — Agents: "eliminare" was already solved (Archive, D-0397, genuinely removes from
+  every list). What was missing was a status. Added: a badge derived from `state.agentRuns`
+  (not yet run / working / failing / in progress) — no new field invented.
+- `§3#1` — Two model-catalog empty-state strings were already IN `i18n-catalog.js`, registered
+  and translated, and never once passed through `t()` in the render code. Wrapped them; removed
+  the duplicate catalogue entries I mistakenly added before finding the pre-existing ones.
+- `§3#3` — The `downloaded` lane declared its action as "Use" in prose and drew no control for
+  it at all. Added a "Load into memory" button + one confirmation (replaces what answers now).
 
-**Il cursore vocale non è più la fila piatta di 12 barre.** Raggi disposti a cerchio + un'aura
-organica (spline chiusa sugli stessi 12 valori, mai un secondo segnale), stesso principio
-"fermo = silenzio" di prima. Trovato e corretto per strada: la pagina disegnava solo 9 barre,
-non 12 — 3 bande calcolate e mai mostrate. `apps/webui-static/{index.html,styles.css,app.js}`.
+**`§3#2/#4` triaged, not a defect.** Checked the live installation's own mount directly
+(`/mnt/cachec/NOESAR_EVOLUTION_RUNTIME/models/` does not exist) — this installation has
+downloaded zero models through its own acquisition path. The catalogue was reporting the truth.
 
-**Il login non forza più il re-ingresso ogni poche ore.** Due cause distinte in
-`services/reference-control-plane/src/auth.mjs`: la sessione lato server (8h assolute/30min
-inattività → 30gg/7gg scorrevoli) E — trovato verificando il primo — il **cookie del browser**
-aveva un `Max-Age=28800` scritto per conto suo, indipendente dalla sessione: terza volta in
-questa sessione dello stesso difetto (due punti che assemblano lo stesso valore separatamente,
-`D-0608`/`D-0616`/`D-0623`). Scadenza assoluta allargata, non rimossa: un cookie di sessione
-può uscire via XSS, a differenza del token dei terminali che non lascia mai il filesystem.
+**`§4#8` (research provider) fixed.** The picker was real and functional but silently useless
+whenever zero external tools were registered — a disabled `<select>` with an inert placeholder
+`<option>`, no path to the one action ("register a tool in Agents") that unblocks it. Added a
+direct link.
 
-**Il menu "/" della chat funziona — provato dal vivo per la prima volta.** Segnalato più volte
-dall'Owner come "non fatto come Claude Code", perfino con minaccia di abbandonare il prodotto.
-Letto il codice: sembrava corretto. Il vero problema: **non era mai stato guidato in un
-browser reale**, in nessuna sessione precedente — solo il menu "/" gemello su CodeN
-(`#codenMenu`) lo era. Scritti 5 controlli nuovi in `tools/browser-e2e.mjs` (apre su "/",
-filtra digitando, freccia giù, Tab completa, Escape chiude) — **tutti PASS**. Suite intera:
-**516 PASS, 1 FAIL** (`F-I18N-002`, gap già tracciato, non introdotto qui). Il meccanismo era
-già giusto; mancava la prova, non la correzione. Se all'Owner continua a sembrare sbagliato,
-serve un'osservazione precisa (aspetto? posizione? gesto diverso?), non un'altra ipotesi letta
-dal codice.
-
-**Altre riparazioni, tutte con test verde prima del commit:**
-- barra comandi chat: solo icone, nome accessibile conservato (`aria-label` o testo
-  `.visually-hidden`, mai perso) — corretto per strada un `span{flex:1}` che avrebbe allargato
-  anche le icone nuove.
-- selettore modelli rapido: esisteva solo su `#/coden` (chip poco visibile). Fattorizzato in
-  `createModelPicker(ids)`, una sola implementazione, due porte — chat e CodeN — sullo stesso
-  `GET /api/v1/models/installed` / `POST /api/v1/models/activate`.
-- `#/coden-tui` non dichiarava il comando `coden_evolution` (ssh + una parola) già costruito
-  (`D-0348`) — solo il percorso manuale `docker exec`. Dichiarato come percorso principale.
-- `#/documents` mostrava "Artifacts" invece di "Documents" — corretta solo l'etichetta visibile,
-  non gli `id`/l'API sottostanti.
-- "＋ Conversazione" falliva in silenzio se non esisteva ancora un progetto — ora apre la
-  pagina Progetti col modulo pronto. **Corretta anche una mia affermazione sbagliata**: la
-  sidebar "chat recenti" con archivia/elimina esiste già (`#chatNav`), provata dal vivo dal
-  test `s326` — non mancava, il vero difetto era solo il click silenzioso.
-
-**Verificato per ogni commit** (dettaglio nei singoli messaggi): unit test mirati, ESLint 474
-file 0/0/0, manifest rigenerato e coerente, copertura i18n statica `COVERED` dopo ogni
-traduzione mancante trovata e aggiunta. **Una volta**, alla fine: suite e2e intera, 516/517.
+**Verified, not asserted:** unit 2973/2974 (1 pre-existing skip, 0 new failures after fixing
+two self-introduced ones — manifest staleness and an i18n duplicate key), ESLint 474/0/0,
+`measure-ui-language-coverage.mjs` VERDICT=COVERED, manifest regenerated (6724 files). Full
+`tools/run-browser-e2e.sh` (T2) run **once**: **510 PASS / 1 FAIL** — the one FAIL is
+`F-I18N-002`, already a declared measurement artefact (the recorder keys on rendered text, not
+the source string — confirmed again: the two new "misses" were the correctly-rendered Italian
+words "Usa il progetto"/"Elimina", not untranslated English). The log shows the new capabilities
+directly: `POINT-2B` (chat/CodeN command parity) PASS, `AGENTS-1` (archive + card) PASS,
+`POINT-5` (model catalog incl. the two newly-translated empty states) PASS.
 
 ## WHAT WAS **NOT** DONE
 
-- **Nessun deploy.** Tutti i 12 commit restano debito §3a dichiarato — l'installazione viva
-  gira ancora `noesar-evolution:d0628-model-tiles-20260821T082515Z`, indietro rispetto
-  all'albero. Si accoda al deploy unico già concordato con l'Owner.
-- **`git push` non eseguito** — mai chiesto esplicitamente all'Owner durante la sessione.
-  12 commit locali, `origin/main` indietro.
-- **La scorecard non è triagiata.** Ogni riga scritta durante la dettatura è **osservazione
-  grezza**, non verificata contro il codice — il triage (§40b: un falso positivo "riparato" è
-  una regressione per niente) è il primo passo della prossima sessione.
-- **Righe grandi lasciate aperte, non improvvisate**: eliminare progetti/agenti, identità di
-  Knowledge/Memory/Research, creazione agenti da chat a comando, multimodalità. Generate come
-  osservazioni, non scoperte come contratto — servono la visione dell'Owner prima di costruire.
-- **`accessibility-audit.mjs` non eseguito** su nessuna delle modifiche UI di questa sessione —
-  serve un'installazione viva, è dentro il T2 non ancora lanciato per intero su queste modifiche
-  (solo `browser-e2e.mjs` è girato, una volta, alla fine).
-- **HUNT AND FIX**: scoped al diff in ogni commit di questa sessione, nessuna full sweep — non
-  è stata toccata sicurezza/autorità/installer al di fuori di `auth.mjs` (login), e quel file è
-  stato letto per intero nell'area toccata prima di modificarlo.
+- **No deploy.** 13 commits ahead of `origin/main` after this session's own commit — queued for
+  the single consolidated deploy already agreed with the Owner, not done piecemeal.
+- **No dedicated NEW browser-e2e checks** for the four capabilities this session built (chat
+  command execution, project delete, agent status badge, model load button). The EXISTING suite
+  ran clean around them (510/511, no regression), but no check specifically drives "type
+  `/status` in chat, see it execute" the way `POINT-2B` does for CodeN — writing one is the
+  honest next step before calling any of the four `PRODUCTION_GRADE`.
+- **`§3#6`, voice session drop/block** — not investigated. `VoiceSession` (~900 lines) untouched.
+- **`§4#6/#7/#9/#10`** — not built. All four need the Owner's decision (see next action above),
+  not more implementation; building them blind risked exactly the kind of shallow/wrong
+  placeholder rule 73 forbids presenting as done.
+- **HUNT AND FIX** — scoped to this session's diff (5 files: `app.js`, `i18n-catalog.js`,
+  `index.html`, `styles.css`, plus the two doc files), not a full first-party sweep. No new
+  surface introduced, security/authority/installers untouched — a full sweep is not owed here.
+- **`accessibility-audit.mjs`** — not run this session. The UI changes are additive (new
+  buttons/badges reusing existing, already-audited component classes: `.danger`, `.badge`,
+  `.card-actions`), but that is an inference, not a measurement — declared `[UNVERIFIED]`.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): rimisurato di nuovo in chiusura — né `gitleaks` né
-  `trufflehog` sono su `PATH`; scansione euristica, dichiarata tale.
-- `B-011` low/deferred (`D-0258`): storia git riscritta su autorizzazione esplicita dell'Owner.
-- Nessun blocker nuovo aperto da questa sessione.
+- **New, this session, resolved before close**: git refused every operation ("dubious
+  ownership", repo owned by `nobody:users`, session runs as root). Owner explicitly authorised
+  `git config --global --add safe.directory /mnt/cachec/NOESAR_EVOLUTION` — a read-only trust
+  declaration, no identity/signing/remote change. Applied; git works for the rest of the
+  session and will for the next one on this same container unless the container is replaced.
+- `B-002` **STALE** (`D-0257`): still neither `gitleaks` nor `trufflehog` on `PATH`; this
+  session's secret scan was heuristic (`git diff` grepped for key/token/password/PEM markers,
+  clean) and is declared as heuristic, not a `gitleaks` run.
+- `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
+- No other new blocker.

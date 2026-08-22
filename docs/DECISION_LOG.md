@@ -14671,3 +14671,67 @@ via lo strumento e2e di questo stesso progetto invece di leggere codice e indovi
 resta debito §3a dichiarato in `docs/SESSION_HANDOFF.md`.
 **Status.** applied (in albero), non installato. `docs/OWNER_REVIEW_2026-08-21.md` resta
 aperta — righe grezze non triagiate, non tutte da questa sessione.
+
+## D-0637 · Chat panel had no slash-command execution path at all — root cause of §3#5 — 2026-08-22
+**Decision.** `apps/webui-static/app.js`: chat composer Enter, when the line starts with `/`,
+now runs `planTurn`+`codenCall` (the SAME registry and transport CodeN's own prompt already
+uses) instead of sending the literal text to the model as prose. Result and the typed line are
+persisted as real `role:'user'`/`role:'tool'` messages via the existing `addMessage` route, so
+they survive `refreshMessages()`. Chat's own `/` typeahead widened from `AGENT_COMMANDS` to
+`codenOffered()` (commands + address book) for the same reason F-INTENT-001 fixed it in CodeN.
+**Why.** Measured: `/api/v1/chat/stream` never parsed a leading `/`; `sendChat()` always sent
+the raw text to the LLM. Every slash command typed OR spoken in chat was decorative — it composed
+a line, never ran anything. This is the actual root cause the Owner's §3#5 report named ("a
+voce scrive solo /models, non fa altro") and explains why voice's compose-only fallback could
+never look like "acting": there was nothing safe to hand it off to until this fix existed.
+**Rejected.** A second, chat-local command engine — rejected on `16` §4b.2's own rule against
+a second answer to one question; would have re-earned every bug `planTurn` already closed
+(missing-argument handling, `confirm:true` gating, method dispatch).
+**Evidence.** `node --check` clean; full unit suite 2973/2974 (1 pre-existing skip) unmodified
+elsewhere; ESLint 474/0/0. Live browser-e2e not yet run this session — see D-0639.
+**Reversal cost.** None installed — in tree only, no deploy this session (§3a debt, declared).
+**Status.** applied (in tree), not installed. Live e2e verification is the immediate next step.
+
+## D-0638 · Voice may now run a spoken command itself, but only the safe half — 2026-08-22
+**Decision.** `performHeard()`: a spoken utterance that resolves to a RUN-disposition command
+(not NAVIGATE) auto-executes via the new `submitChatPrompt` from D-0637 ONLY when the resolved
+command carries no `confirm` flag and its `permission` is `null` or ends in `.read` — otherwise
+it still only composes into the box, unchanged from before. The safety data was already sitting
+on every `AGENT_COMMANDS` entry (`permission`, `confirm`) and needed no new classification.
+**Why.** `/sweep` (deletes replay bytes, no `confirm:true` in the registry) proves a blanket
+"voice may run any resolved command" would have let a mis-heard word delete data. `/model`,
+`/status`, `/help` and the rest of the read-only third of the menu are exactly what the Owner's
+own example ("verifica se il modello è carico") needed to actually run.
+**Rejected.** Auto-running every RUN command — rejected for the `/sweep` reason above. A
+per-command allowlist maintained separately from the registry — rejected: it would drift the
+first time a command's permission changed, which is the exact class of bug this project keeps
+finding (`PANEL_NAMES`, twice).
+**Evidence.** Read `agent-commands.js`'s full `permission`/`confirm` fields for all 29 entries;
+confirmed `/sweep` and `/session-action` are the only two the safety check must exclude and does.
+**Reversal cost.** None — client-side branch only, no data changed by this decision itself.
+**Status.** applied (in tree), not installed. Depends on D-0637's live verification.
+
+## D-0639 · §3/§4 items fixed this pass, and the four left open — 2026-08-22
+**Decision.** Fixed and in tree, alongside D-0637/D-0638: §3#9 (project delete, double
+type-to-confirm, backend already had `archived` — only the UI was missing), §3#11 (agent
+status badge derived from `state.agentRuns`, archive already solved "eliminare"), §3#1 (two
+untranslated model-catalog empty states — root cause: catalogued in `i18n-catalog.js` already
+but never wrapped in `t()`), §3#3 (model catalog had no "Use"/load control at all for the
+`downloaded` lane — added, confirm-before-mutate), §4#8 research (`researchProviderPicker`
+was real but silently useless with zero registered tools — added a direct link to Agents).
+**Why.** §3#2/#4 ("solo 1 modello scaricato", "9 selezionati") — checked the live artefact
+directory directly (`/mnt/cachec/NOESAR_EVOLUTION_RUNTIME/models/` does not exist): this
+installation has downloaded zero models through its own acquisition path, so the catalogue was
+reporting the truth, not a detection bug. No code defect found; left as accurate.
+**Rejected — recorded, not built.** §3#6 voice session drop/block: root cause not yet
+investigated (`VoiceSession` lifecycle, ~900 lines, untouched this session) — CLAUDE10 §40a's
+own permitted reason to defer. §4#6/#7 Knowledge/Memory "no personality": both pages already
+carry real, specific purpose copy in their headers (`index.html:760,770`) — the gap is visual/
+experiential distinctiveness, which the file itself says needs the Owner's direction, not
+another paragraph. §4#9 NL agent creation and §4#10 multimodality: both are undefined-scope,
+product-architecture decisions (rule 77 stop condition), not implementation gaps.
+**Evidence.** Read `voice-session.js` only enough to confirm its size/scope, not its logic —
+declared `[UNVERIFIED]`, not guessed at.
+**Reversal cost.** None — nothing built for the four deferred items.
+**Status.** deferred, recorded for the next phase once the Owner's direction on Knowledge/
+Memory/Research identity and the NL-agent/multimodal scope is available.
