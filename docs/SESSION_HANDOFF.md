@@ -1,65 +1,67 @@
 # SESSION HANDOFF
 
-**`#/knowledge` and `#/memory` now have a distinct, verified-live identity.** Owner
-delegated `§4#6/#7` directly ("scrivile te fai una ricerca e implementa"); researched,
-screenshotted the real render first, fixed a real terminology collision and a real
-layout bug found in the process, and deployed. Three of four `D-0645` decisions remain.
+**`§4#9` done and verified live**: a chat message that unambiguously asks to create an
+agent creates it, no form, no confirmation. Owner said "finiamo il progetto" (NLnet
+calls reopen 2026-09-03) — proceeding through the remaining `D-0645` backlog, one phase
+at a time, without stopping to re-ask which item is next.
 
 ## ➜ LA PROSSIMA AZIONE
 
-Pick one of the three remaining `D-0645` decisions to open the next phase (each is its
-own phase, rule 9):
-1. **TTS**: move the already-running Kokoro-82M container (`noesar-voice-speak`) to the
-   idle RTX 3060 GPU — infrastructure action, outside this project's own container
-   authority, needs its own explicit scoping before it can be executed.
-2. **`§4#9`**: chat/CodeN natural-language agent creation should create directly, no
-   confirmation step.
-3. **`§4#10`**: multimodality, in priority order — documents/files, images, audio.
+Two `D-0645` items remain, each its own phase (rule 9):
+1. **Kokoro TTS → GPU move** — infrastructure action on `noesar-voice-speak`, a
+   non-`noesar-evolution` container. Needs explicit scoping before execution (outside
+   this project's own container authority, `CLAUDE10.md` rule 16).
+2. **`§4#10` multimodality** (documents/files, images, audio priority) — large enough
+   that it needs decomposition into sub-phases before any implementation; not a single
+   vertical slice like `§4#9` was.
+
+Continuing to the next scoping/implementation phase directly.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
-**`D-0647`, deployed and verified live** (`d0645-knowledge-memory-identity-…`).
-Screenshotted both pages live first, with a new reusable instrument
-(`tools/page-screenshot.mjs` — signs in a throwaway Owner on the disposable e2e probe,
-screenshots any route, prints base64 PNGs) instead of judging from markup. Found:
-- The Knowledge page's hand-written "Notes" block used **"memory" vocabulary
-  throughout** (`#memoryForm`, "Add memory", "Save memory") while its own header
-  already said "separate from the Memory destination" — the controls contradicted
-  their own disambiguating sentence. Renamed to `note*` ids/labels/JS
-  (`renderNotes`, "Add note", "Visible notes"); backend route `/api/v1/memories`
-  unchanged, DOM-facing vocabulary only.
-- A **real, reproducible layout bug**: `#/memory`'s search input rendered at 24px
-  wide — unusable. Root cause: a sibling `<select>`'s generic `width:100%` competed
-  for flex space; the Knowledge search row never hits this because it has no
-  `<select>`. Fixed with `.search-row select{flex:0 0 auto;width:auto}`.
-- Both pages shared one generic panel/form template with zero visual distinction.
-  Added a `.section-icon` badge echoing each page's own nav glyph (◈/✦); enriched
-  every bare-text empty state with a one-sentence explanation.
+**`D-0648`, deployed and verified live** (`d0648-agent-directive-…`). Checked first that
+this does not collide with CodeN Evolution's own 8-phase plan (`MASTER_PROJECT/17_...`):
+the WebUI's "Agents" feature (chat-persona: name+instructions) is unrelated to "L'Autore"
+(CodeN's code-generation agent) — confirmed by grep, zero overlap.
 
-Researched first (WebSearch, cited in `D-0647`): 2026 ChatGPT splits "saved memories"
-(explicit) from "reference chat history" (implicit) — confirming this product's real
-Notes-vs-Memory split needed disambiguation, not a redesign; dashboard convention is
-icon+one-sentence empty states.
+Mechanism: the chat system prompt (new `agent-directive.mjs`) instructs the bound model
+to emit exactly one tagged fence, `` ```agent-create ``, only when a request is
+unambiguous — mirrors `author.mjs`'s established "one fence or refuse, never guess"
+shape. Server-side, `chat-orchestrator.mjs` parses the completed answer, calls the SAME
+`AgentService.createAgent()` the manual form already uses with zero confirmation, strips
+the fence from the stored/shown text, surfaces `agentCreated` on the SSE `complete`
+event — the client's existing `refreshWorkspace()` shows the new agent with no extra
+plumbing.
 
-**Verified, not asserted:** unit 2976/2977 (1 pre-existing skip), ESLint 475/0/0,
-browser-e2e 510/511 (`F-I18N-002` only, 0 undeclared), accessibility **27/27**,
-`measure-ui-language-coverage.mjs` VERDICT=COVERED, bytes-equal tree↔image 476/476,
-live `/livez` `/readyz` `/healthz` 200, two containers survive.
+**Security checked, not assumed**: the directive is read from the model's own answer,
+which untrusted retrieved content could try to manipulate via prompt injection into
+emitting a forged fence. Refused — parsed and stripped for display, never executed —
+whenever this turn's injection detector already fired. Proven with a hostile-document
+fixture, not asserted.
 
-**Improvement proposal, `D-0647`:** `tools/page-screenshot.mjs` is worth keeping as a
-standing instrument for "does this page actually look right" questions. **Funding fit:
-none** — depends on this product's own auth-bootstrap flow.
+**Verified, not asserted:** 8 new tests against the real `ChatOrchestrator` through a
+fake upstream (same harness `prompt-injection-containment.test.mjs` uses): unambiguous
+directive creates the agent and is stripped from shown text; no directive creates
+nothing; missing name / malformed JSON / two fences (ambiguous) each create nothing; the
+injection-refusal path has a real ledger entry. Full suite 3022/3023 (1 pre-existing
+skip), ESLint 477/0/0, browser-e2e 510/511 (`F-I18N-002` only), bytes-equal 478/478,
+live health 200/200/200.
+
+**Improvement proposal, `D-0648`:** the same tagged-fence pattern generalises to any
+other zero-confirmation product action a chat message could name directly (projects,
+notes, documents). **Funding fit: Restack, trait 1** (delimited, realisable component)
+**and trait 5** (measurable — same red/green fixture shape).
 
 ## WHAT WAS **NOT** DONE
 
-- Kokoro→GPU move, `§4#9` direct NL agent creation, `§4#10` multimodality — scoped in
-  `D-0645`, not built. Each needs its own phase contract.
+- Kokoro→GPU move, `§4#10` multimodality — scoped in `D-0645`, not built.
+- **Not proven against a live model** — `§4#9` is proven end-to-end against a scripted
+  upstream, not against a real signed-in session with a real model attached. Declared,
+  not implicit.
+- No `toolIds` binding from chat — the directive only carries name+instructions; binding
+  tools is a stated extension point, not built.
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged). Commits are complete and correct locally.
-- No dedicated regression test added for the `.search-row select` flex bug
-  specifically — the accessibility/browser suites already exercise `#/memory`'s
-  render and would have caught a full regression; a pixel-width assertion for this
-  one selector was judged not worth a new permanent check.
 
 ## OPEN BLOCKERS
 
