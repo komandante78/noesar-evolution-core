@@ -417,12 +417,54 @@ describe('the state machine itself', { skip: SUBJECT !== 'v1' }, () => {
   });
 
   test('hearing nothing ends the turn instead of transcribing silence', async () => {
-    const world = makeSession({ world: { spoke: false } });
+    const world = makeSession({ continuous: false, world: { spoke: false } });
     await world.session.start();
     world.stages.listen.release();
     await settle(10);
     assert.equal(world.calls.transcribe, 0, 'silence was sent to the transcription engine');
     assert.equal(world.session.state, machine.VoiceTurn.IDLE);
+  });
+
+  test('§3#6: hands-free mode keeps listening through silence instead of stopping', async () => {
+    // Owner, verbatim: "la voce si interrompe/blocca durante l'uso, invece di restare attiva" /
+    // "resti attiva finché non la fermo io". Root cause: only the SPOKEN-REPLY path restarted the
+    // microphone; a silent room (6s, `NO_SPEECH_GIVE_UP_MS`) ended the session instead.
+    const world = makeSession({ world: { spoke: false } }); // continuous: true (default)
+    await world.session.start();
+    world.stages.listen.release();
+    await settle(10);
+    assert.equal(world.calls.transcribe, 0, 'silence was sent to the transcription engine');
+    assert.equal(world.session.state, machine.VoiceTurn.LISTENING,
+      'hands-free mode must reopen the microphone instead of stopping on silence');
+    assert.equal(world.calls.listen, 2, 'a second turn must have started on its own');
+  });
+
+  test('§3#6: hands-free mode keeps listening after an unclear utterance', async () => {
+    const world = makeSession({ world: { heard: '' } }); // heardSomething: false
+    await world.session.start();
+    world.stages.listen.release();
+    await settle();
+    world.stages.transcribe.release();
+    await settle(10);
+    assert.equal(world.calls.converse, 0, 'an unclear utterance was sent to the model');
+    assert.equal(world.session.state, machine.VoiceTurn.LISTENING,
+      'hands-free mode must reopen the microphone after "not understood" too');
+    assert.equal(world.calls.listen, 2, 'a second turn must have started on its own');
+  });
+
+  test('§3#6: hands-free mode keeps listening after a command with nothing to say', async () => {
+    const world = makeSession({ world: { reply: '' } }); // e.g. a navigation, performed elsewhere
+    await world.session.start();
+    world.stages.listen.release();
+    await settle();
+    world.stages.transcribe.release();
+    await settle();
+    world.stages.converse.release();
+    await settle(10);
+    assert.equal(world.calls.synthesize, 0, 'an empty reply was sent to synthesis');
+    assert.equal(world.session.state, machine.VoiceTurn.LISTENING,
+      'hands-free mode must reopen the microphone after a silent command too');
+    assert.equal(world.calls.listen, 2, 'a second turn must have started on its own');
   });
 
   test('every generation gets its own controller, and a stale one cannot abort the live turn',

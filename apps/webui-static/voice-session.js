@@ -269,6 +269,10 @@ export class VoiceSession {
       if (!captured?.spoke) {
         this.#note({ kind: 'nothing-heard' });
         this.#to(VoiceTurn.IDLE, { reason: 'nothing-heard' });
+        // Owner, `§3#6`: "resti attiva finché non la fermo io" — a silent room is not a reason to
+        // stop hands-free mode, only the success path used to restart it, so a single 6s pause
+        // (`NO_SPEECH_GIVE_UP_MS`) was enough to silently end the session.
+        if (this.#continuous) this.#begin('after-nothing-heard');
         return;
       }
 
@@ -280,6 +284,7 @@ export class VoiceSession {
       if (!heard?.heardSomething) {
         this.#note({ kind: 'not-understood', reason: heard?.reason ?? null });
         this.#to(VoiceTurn.IDLE, { reason: 'not-understood' });
+        if (this.#continuous) this.#begin('after-not-understood');
         return;
       }
       this.#note({ kind: 'heard', text: heard.text });
@@ -290,8 +295,10 @@ export class VoiceSession {
       const reply = String(answered?.reply ?? '').trim();
       if (!reply) {
         // A turn that produced no words is finished, not broken: the utterance may have been a
-        // navigation, which the shell performs itself and reports.
+        // navigation, which the shell performs itself and reports. Hands-free mode still keeps
+        // listening after it — the same restart the spoken-reply path already gets below.
         this.#to(VoiceTurn.IDLE, { reason: answered?.reason ?? 'nothing-to-say' });
+        if (this.#continuous) this.#begin('after-command');
         return;
       }
 

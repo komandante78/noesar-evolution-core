@@ -14735,3 +14735,70 @@ declared `[UNVERIFIED]`, not guessed at.
 **Reversal cost.** None — nothing built for the four deferred items.
 **Status.** deferred, recorded for the next phase once the Owner's direction on Knowledge/
 Memory/Research identity and the NL-agent/multimodal scope is available.
+
+## D-0640 · §3#6 root cause: hands-free voice stopped on silence or an unclear turn — 2026-08-22
+**Decision.** `VoiceSession#run()` only restarted listening (`this.#begin(...)`) after a fully
+successful spoken reply; the three early-exit paths (silence for 6s, unclear transcription,
+a command with nothing to say) always went to `IDLE` regardless of `continuous`. Fixed: all
+three now restart the same way the success path already did, guarded by `this.#continuous`.
+**Why.** Owner, verbatim: "la voce si interrompe/blocca durante l'uso, invece di restare
+attiva" / "resti attiva finché non la fermo io". A 6s pause was enough to silently end
+hands-free mode — the exact symptom reported, reproduced by reading the state machine.
+**Rejected.** Auto-restarting after `ERROR` too — left alone: a failed turn must be told to
+the person, not looped over silently (existing design intent, unchanged).
+**Evidence.** 3 new regression tests in `voice-session.test.mjs` (each seen red against the
+pre-fix code, green after); full suite 2976/2977 (1 pre-existing skip); ESLint 474/0/0.
+**Reversal cost.** None — pure logic fix in a headless-tested module, no schema/API change.
+**Status.** applied (in tree), not installed — queued for the consolidated deploy.
+
+## D-0641 · §4#1/#2/#3: three low-risk UX gaps closed without needing product vision — 2026-08-22
+**Decision.** §4#1 (model list "feels limited"): added an opt-in "Show all on one page"
+toggle (server `pageSize` override, capped at 500) — the 6/page default from `D-0628` is
+untouched. §4#2 (no explanation of how to load a model): added an info disclosure in
+`modelCatalogPanel`. §4#3 (chat toolbar "non si capisce nulla"): the flat 8-control row is
+now three named, titled groups (Where / Version / Model).
+**Why.** All three are concrete missing affordances, not aesthetic judgment calls — unlike
+§4#6/#7/#9/#10 (`D-0639`), nothing here required guessing the Owner's taste.
+**Rejected.** Raising the default page size — that is a stated Owner instruction (`D-0628`,
+"sei per pagina"), not a bug; changing it would contradict a decision, not fix one.
+**Evidence.** `measure-ui-language-coverage.mjs` VERDICT=COVERED (12 new IT strings); full
+suite 2976/2977 (1 pre-existing skip); ESLint 474/0/0.
+**Reversal cost.** None — additive markup/CSS/JS, no control removed or renamed.
+**Status.** applied (in tree), not installed — queued for the consolidated deploy.
+
+## D-0642 · §4#4/#5 triaged: one already fixed pending deploy, one is not a code defect — 2026-08-22
+**Decision.** §4#5 (voice window "statica... gioco per bambini") was already repaired by
+`dd08e3b` this same review session (radial 12-band spectrum + Catmull-Rom aura + breathing
+ring) — built, unit/lint/manifest-verified, never deployed. No further animation added on
+top of an already-delivered fix the Owner has not yet seen live. §4#4 (TTS "orribile, non
+sembra umana") is not reachable in this repository at all: `voice-engine.mjs` is a thin
+OpenAI-shaped adapter (`POST /v1/audio/speech`); the timbre is entirely a property of
+whichever external model is bound via `NOESAR_VOICE_SPEAK_ENDPOINT`/`NOESAR_VOICE_RUNE`/
+`NOESAR_VOICE_ESTRELA` — code has no say over it.
+**Why.** Building UI polish on top of an unverified fix, or picking a TTS model for the
+Owner, are both guesses at a judgment only the Owner or a live listen can settle.
+**Rejected.** Installing a new TTS backend unasked — a new external dependency, disk and
+possibly GPU cost, exactly the class of decision `CLAUDE10.md` rule 77 stops for.
+**Evidence.** `git show dd08e3b` (already-applied fix, matching commit); `voice-engine.mjs`
+read end to end — zero synthesis logic, routing only.
+**Reversal cost.** None — no code change in this entry.
+**Status.** §4#5 pending live verification after deploy. §4#4 recommendation put to the
+Owner: bind a self-hosted OpenAI-API-compatible TTS server (e.g. Kokoro-82M, Apache-2.0,
+CPU-capable) to `NOESAR_VOICE_RUNE`/`ESTRELA` — an installation choice, not a code change.
+
+## D-0643 · Improvement proposal — extract `VoiceSession` as a standalone library — 2026-08-22
+**Decision.** Not built, proposed only. `apps/webui-static/voice-session.js` is already a
+pure, adapter-injected, headless-testable state machine (no DOM, no fetch) for a
+cancellable/interruptible spoken-turn lifecycle over any OpenAI-shaped speech API — the
+exact shape of a reusable component this product does not need to keep to itself.
+**Why.** It already meets the bar: delimited, dependency-free, 22 headless tests, useful to
+any web app wanting real voice-turn cancellation instead of the common "await play() and
+hope" bug this file's own header documents fixing (V-001/V-002).
+**Funding fit.** Restack · trait 2 (reusable beyond this product) and trait 4 (reduces
+lock-in — works with any `/v1/audio/*`-shaped server, not one vendor).
+**Rejected (for now).** Extracting it this phase — would widen this phase past its §3/§4
+triage scope; recorded per `noesar-evolution-budget` §5.
+**Evidence.** `voice-session.js` imports nothing beyond the language itself; its own test
+file already proves the property in isolation (`VOICE_SUBJECT` env var, two subjects).
+**Reversal cost.** None — proposal only.
+**Status.** proposed, not scheduled.

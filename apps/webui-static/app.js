@@ -5873,6 +5873,11 @@ async function loadResearchDestination(){
 // same route, and a browser that computed its own lanes would be a second answer to the same
 // question — which is the shape this project has paid for twice (`D-0300`, `D-0302`).
 let modelCatalogPage=1;
+// §4#1, OWNER_REVIEW_2026-08-21: an explicit escape hatch from the 6-per-page grid (D-0628),
+// not a new default. Off on every load — the compact grid the Owner asked for stays what a
+// person sees first.
+let modelShowAll=false;
+const MODEL_SHOW_ALL_PAGE_SIZE=500;
 function modelFilterQuery(){
   const params=new URLSearchParams();
   const type=$('#modelFilterType')?.value??'';
@@ -5882,6 +5887,7 @@ function modelFilterQuery(){
   if(fn)params.set('fn',fn);
   if(text)params.set('q',text);
   params.set('page',String(modelCatalogPage));
+  if(modelShowAll)params.set('pageSize',String(MODEL_SHOW_ALL_PAGE_SIZE));
   return params.toString();
 }
 const MODEL_LANE_TITLE={'in-use':'In use','downloaded':'Downloaded','unverified':'On disk, not verified'};
@@ -6035,8 +6041,9 @@ function renderModelLanes(catalog){
         busy:acquiringModelIds(),
       })).join('')}</div>`;
     $('#modelPageLabel').setAttribute('translate','no');$('#modelPageLabel').textContent=`${t('Page')} ${catalog.available.page} ${t('of')} ${catalog.available.pages}`;
-    $('#modelPagePrev').disabled=catalog.available.page<=1;
-    $('#modelPageNext').disabled=catalog.available.page>=catalog.available.pages;
+    $('#modelPagePrev').disabled=modelShowAll||catalog.available.page<=1;
+    $('#modelPageNext').disabled=modelShowAll||catalog.available.page>=catalog.available.pages;
+    $('#modelPageLabel').classList.toggle('hidden',modelShowAll);
   }
   // MC-006. The gesture is drawn and switched OFF with its reason, never removed: a missing
   // button teaches nothing, a stopped one teaches where it starts.
@@ -6384,6 +6391,20 @@ function wireModelCatalogue(){
   });
   $('#modelPagePrev')?.addEventListener('click',()=>{modelCatalogPage=Math.max(1,modelCatalogPage-1);loadModelCatalogue();});
   $('#modelPageNext')?.addEventListener('click',()=>{modelCatalogPage+=1;loadModelCatalogue();});
+  $('#modelShowAll')?.addEventListener('change',(event)=>{
+    modelShowAll=Boolean(event.target.checked);
+    modelCatalogPage=1;
+    loadModelCatalogue();
+  });
+  // §4#2. A <details>-shaped disclosure driven by hand rather than <details> itself, so the
+  // panel-title layout (h2 + badge on one line) does not have to change shape to hold it.
+  $('#modelCatalogInfo')?.addEventListener('click',()=>{
+    const button=$('#modelCatalogInfo');const help=$('#modelCatalogHelp');
+    if(!button||!help)return;
+    const open=help.hidden;
+    help.hidden=!open;
+    button.setAttribute('aria-expanded',String(open));
+  });
 }
 
 // ── s336 · the model chooser on the CodeN page ────────────────────────────────────────────

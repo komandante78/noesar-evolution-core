@@ -1997,11 +1997,18 @@ const requestListener = async (req, res) => {
         text: url.searchParams.get('q'), publisherId: url.searchParams.get('publisher'),
       };
       const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+      // §4#1, OWNER_REVIEW_2026-08-21: «tutti i modelli disponibili elencati, o un modo per
+      // vederli tutti». The default stays 6 (D-0628, same-day Owner instruction: «sei per
+      // pagina») — this is an explicit opt-in override, not a new default, capped so "show all"
+      // cannot be used to force an unbounded response.
+      const rawPageSize = url.searchParams.get('pageSize');
+      const pageSize = rawPageSize === null ? undefined : Number.parseInt(rawPageSize, 10);
       try {
         return json(res, 200, { categories: readSeedCategories(), ...buildCatalog({
           descriptors, present, activeModelId: activeModelId(),
           filter: Object.values(filter).some(Boolean) ? filter : null,
           page: Number.isInteger(page) && page > 0 ? page : 1,
+          ...(Number.isInteger(pageSize) && pageSize > 0 ? { pageSize: Math.min(pageSize, 500) } : {}),
           runtime: runtimeConfig,
         }) });
       } catch (error) {

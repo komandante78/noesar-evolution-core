@@ -1478,6 +1478,22 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   background: var(--surface-popover); color: var(--text-popover);
   box-shadow: 0 24px 80px var(--shadow-overlay); padding: 12px;
 }
+/* §4#1/§4#2, OWNER_REVIEW_2026-08-21. The info toggle matches `.hint-key`'s 24x24 floor
+   (WCAG 2.5.8, F-A11Y-003) so it is a real target, not a decoration next to the title. */
+.icon-info{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;margin-inline-start:6px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface-raised);color:var(--accent-brand);font-size:calc(var(--text-scale) * 13px);line-height:1;cursor:pointer}
+.icon-info:hover,.icon-info[aria-expanded="true"]{border-color:var(--border-accent-hover)}
+.model-catalog-help{padding:11px;margin:4px 0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised)}
+.model-catalog-help p{margin:0 0 6px;color:var(--text-card);line-height:1.5;font-size:calc(var(--text-scale) * 12px)}
+.model-catalog-help p:last-child{margin-bottom:0;color:var(--muted)}
+.model-show-all{display:inline-flex!important;align-items:center;gap:6px;margin-inline-start:auto;width:auto;color:var(--muted);font-size:calc(var(--text-scale) * 12px)}
+.model-show-all input{width:auto}
+/* §4#3, OWNER_REVIEW_2026-08-21. Three named groups instead of one flat 8-control row: the
+   group label is the explanation, not a tooltip nobody hovers. Wraps on narrow screens exactly
+   as the flat toolbar already did — only the visual grouping is new, no control moved. */
+.chat-toolbar{align-items:flex-start;flex-wrap:wrap}
+.toolbar-group{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-inline-end:14px;border-inline-end:1px solid var(--line)}
+.toolbar-group:last-child{padding-inline-end:0;border-inline-end:0}
+.toolbar-group-label{align-self:center;color:var(--text-label);font-size:calc(var(--text-scale) * 10px);letter-spacing:.08em;text-transform:uppercase}
 .model-picker-head { display: flex; align-items: center; gap: 10px; }
 .model-picker-head h3 { margin: 0; font-size: calc(var(--text-scale) * 14px); }
 .model-picker-head .text-button { margin-inline-start: auto; }

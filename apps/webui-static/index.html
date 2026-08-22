@@ -261,15 +261,30 @@
 
       <section class="view" id="view-chat">
         <div class="section-header compact"><div><p class="eyebrow">VERSIONED CONTEXT GRAPH</p><h1>AI Workspace</h1></div><div class="mode-switch" id="chatModes"><button class="selected" data-chat-mode="ASK">Ask</button><button data-chat-mode="CREATE">Create</button><button data-chat-mode="ACT">Act</button></div></div>
+        <!-- §4#3, OWNER_REVIEW_2026-08-21: «non si capisce nulla, non è per niente intuitivo» —
+             the same 8 controls, now in three named groups instead of one flat row, each
+             ambiguous one carrying a plain-language `title` (i18n translates `title`, see the
+             voice-access note above for why that attribute is safe to rely on in this file). -->
         <div class="chat-toolbar">
-          <label>Project<select id="chatProject"></select></label>
-          <label>Conversation<select id="chatConversation"></select></label>
-          <button id="newConversation">＋ Conversation</button>
-          <label>Branch<select id="chatBranch"></select></label>
-          <button id="forkBranch">Fork</button><button id="compareBranches">Compare branches</button><button id="mergeBranch">Merge</button>
-          <label>Provider / route<select id="chatProvider"></select></label>
-          <label>Model<input id="chatModel" placeholder="Model ID or provider default"></label>
-          <button id="compareModels">Compare models</button>
+          <div class="toolbar-group" title="Where this conversation lives">
+            <span class="toolbar-group-label">Where</span>
+            <label>Project<select id="chatProject"></select></label>
+            <label>Conversation<select id="chatConversation"></select></label>
+            <button id="newConversation" title="Start a new conversation in the selected project">＋ Conversation</button>
+          </div>
+          <div class="toolbar-group" title="Branches let you try an approach without changing the conversation everyone else sees">
+            <span class="toolbar-group-label">Version</span>
+            <label>Branch<select id="chatBranch"></select></label>
+            <button id="forkBranch" title="Copy this branch so you can try something without changing the original">Fork</button>
+            <button id="compareBranches" title="Show two branches side by side">Compare branches</button>
+            <button id="mergeBranch" title="Bring a branch's changes back into the one you started it from">Merge</button>
+          </div>
+          <div class="toolbar-group" title="Which AI answers, and how">
+            <span class="toolbar-group-label">Model</span>
+            <label>Provider / route<select id="chatProvider" title="Which external or local AI service answers this conversation"></select></label>
+            <label>Model<input id="chatModel" placeholder="Model ID or provider default" title="Leave blank to use the provider's default model"></label>
+            <button id="compareModels" title="Ask the same prompt to more than one model at once, to compare the answers">Compare models</button>
+          </div>
         </div>
         <div class="chat-grid">
           <section class="panel chat-panel">
@@ -837,7 +852,19 @@
              of its own: two places to revoke is worse than one, because revoking in one of them
              looks like it worked. -->
         <section class="panel" id="modelCatalogPanel">
-          <div class="panel-title"><h2>Catalogue</h2><span class="badge badge-off" id="modelAcquireState">Checking…</span></div>
+          <div class="panel-title"><h2>Catalogue</h2>
+            <!-- §4#2, OWNER_REVIEW_2026-08-21: «manca un'icona informativa ("i") con spiegazione
+                 di come caricare/usare un modello». A collapsed <details> rather than a tooltip:
+                 the explanation survives a touch screen and a screen reader alike, neither of
+                 which has a hover. -->
+            <button type="button" id="modelCatalogInfo" class="icon-info" aria-expanded="false" aria-controls="modelCatalogHelp" title="How this catalogue works">ⓘ</button>
+            <span class="badge badge-off" id="modelAcquireState">Checking…</span>
+          </div>
+          <div id="modelCatalogHelp" class="hint model-catalog-help" hidden>
+            <p><strong>On this installation</strong> lists what is already here. Downloaded models have a Load into memory button — pressing it is what makes a model answer.</p>
+            <p><strong>Available from registered publishers</strong> lists what a publisher declared but this installation has not fetched yet. Acquire downloads it (network, disk and time); once acquired it moves up to Downloaded and can then be loaded.</p>
+            <p>Nothing downloads and nothing loads on its own — both are one deliberate click, ever.</p>
+          </div>
           <!-- Type and function are DECLARED by the publisher and reported. Nothing here is
                inferred from a model name, and nothing is discovered by interrogating a model:
                a guess rendered on a card looks exactly like a fact. What a publisher did not
@@ -889,7 +916,17 @@
         <section class="panel">
           <div class="panel-title"><h2>Available from registered publishers</h2><span class="chip" id="modelAvailableCount">—</span></div>
           <div id="modelAvailableList" class="empty-state">Loading…</div>
-          <div class="inline-form" id="modelPager"><button id="modelPagePrev" type="button">Previous page</button><span id="modelPageLabel">—</span><button id="modelPageNext" type="button">Next page</button></div>
+          <!-- §4#1, OWNER_REVIEW_2026-08-21: «la lista mostra solo un sottoinsieme … tutti i
+               modelli disponibili elencati, o un modo per vederli tutti». The 6-per-page grid
+               (D-0628, same day: «sei per pagina, 3 a sinistra 3 a destra») is kept as the
+               default — it is a stated Owner decision, not a bug — and this is the "way to see
+               them all" the same review line asks for, one click away rather than a redesign. -->
+          <div class="inline-form" id="modelPager">
+            <button id="modelPagePrev" type="button">Previous page</button>
+            <span id="modelPageLabel">—</span>
+            <button id="modelPageNext" type="button">Next page</button>
+            <label class="model-show-all"><input type="checkbox" id="modelShowAll"> Show all on one page</label>
+          </div>
         </section>
         <!-- D-0520. A download of several gigabytes is not an HTTP request, it is a job — so it
              has a place where it can be watched and stopped. What is shown is what the server

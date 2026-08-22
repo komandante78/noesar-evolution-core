@@ -1,115 +1,98 @@
 # SESSION HANDOFF
 
-**Triage of `docs/OWNER_REVIEW_2026-08-21.md` — in progress, not finished.** Six of its open
-rows fixed and verified this session (`D-0637`/`D-0638`/`D-0639`); four are left, and all four
-need the Owner's decision, not more code. **No deploy in this session** — 13 commits ahead of
-`origin/main`, all §3a debt, still queued for the one consolidated deploy already agreed.
+**`docs/OWNER_REVIEW_2026-08-21.md` triage continues — one real defect fixed, three UX gaps
+closed, two items confirmed as already-handled, and the Owner asked directly for the four
+that remain genuine product-vision decisions.** Still **no deploy** — commits keep queuing
+for the one consolidated deploy already agreed with the Owner.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Two things need the Owner directly, nothing else is blocked on him:**
+**Waiting on the Owner's answer to this session's question** (asked via `AskUserQuestion`):
+visual identity for `#/knowledge` and `#/memory` (§4#6/#7), scope of NL-driven agent creation
+in chat/CodeN (§4#9), scope of multimodality (§4#10), and whether to bind a recommended
+self-hosted TTS model (§4#4, Kokoro-82M suggested — see `D-0642`).
 
-1. **Knowledge/Memory pages (`#/knowledge`, `#/memory`)** — `§4#6/#7`. Checked this session:
-   both already carry real, specific purpose text in their headers (`index.html:760,770`), not
-   generic copy. The gap is visual/experiential distinctiveness ("come le altre, non ha
-   personalità") — a design decision, and the file itself already says it is waiting on the
-   Owner's own vision, not on more prose.
-2. **NL agent creation + multimodality** — `§4#9/#10`. Both are undefined-scope,
-   architecture-changing capabilities (CLAUDE10 rule 77 stop condition), not implementation gaps.
+**Once answered or explicitly deferred**: the sequence already agreed runs — **one
+consolidated deploy** (this session's own commits plus the prior queue) → full `T2`
+(`tools/run-browser-e2e.sh` + `tools/accessibility-audit.mjs`, neither run standalone this
+session — both need the disposable image build) → benchmark against `docs/
+OWNER_REVIEW_2026-08-21.md` §5's baseline numbers.
 
-**Then**: `§3#6` (voice interrupts/blocks during use) — root cause NOT investigated this session
-(`VoiceSession`, ~900 lines, untouched). Needs its own read before a fix is attempted.
-
-**Once those are resolved or scoped**: the sequence already agreed with the Owner runs —
-**one consolidated deploy** (13 commits now queued) → full `T2` on the new installation →
-benchmark against `docs/OWNER_REVIEW_2026-08-21.md` §5's baseline numbers.
+**`§3#6` is now fixed**, not open — see below. Nothing else in `§3` is open.
 
 ## WHAT IS TRUE NOW THAT WAS NOT — measured this session
 
-**Root cause of `§3#5` found and fixed — the actual reason voice "only wrote `/models`".** The
-CHAT panel had **no command-execution path at all**: `/api/v1/chat/stream` never parsed a
-leading `/`, and `sendChat()` always sent the literal text to the model as prose — true for
-typed AND spoken commands, in every prior session including the one that declared the chat `/`
-menu "CHIUSO" (that session verified the menu opens/filters/completes, never that Enter ran
-anything). Fixed (`D-0637`): chat's Enter, on a `/` line, now runs `planTurn`+`codenCall` — the
-identical registry and transport CodeN's own prompt already uses, not a second engine — and
-persists the line and its result as real `role:'user'`/`role:'tool'` messages so they survive
-`refreshMessages()`. Chat's own `/` typeahead widened to `codenOffered()` (was `AGENT_COMMANDS`
-only, missing the address book — the same class of gap `F-INTENT-001` already fixed in CodeN).
+**Root cause of `§3#6` found and fixed.** Owner, verbatim: *"la voce si interrompe/blocca
+durante l'uso, invece di restare attiva"* / *"resti attiva finché non la fermo io"*.
+`VoiceSession#run()` (`apps/webui-static/voice-session.js`) only restarted listening after a
+FULLY successful spoken reply — the three early-exit paths (silence for 6s, an unclear
+utterance, a command with nothing to say) always dropped to `IDLE` regardless of
+`this.#continuous`. A single 6-second pause was enough to silently end hands-free mode.
+Fixed (`D-0640`): all three paths now restart exactly as the success path already did, still
+gated on `continuous` and still NOT auto-restarting after a real `ERROR` (unchanged — a
+failure must be told to the person, not looped over). 3 new regression tests, each seen red
+against the pre-fix code.
 
-**Voice may now run a command by itself — only the provably safe half (`D-0638`).** A spoken
-utterance resolving to a non-navigate command auto-runs through the fix above ONLY when the
-registry marks it `permission: null|*.read` and no `confirm` flag — `/sweep` (deletes replay
-bytes, no `confirm:true` in the data) is the concrete reason a blanket "voice may run anything
-resolved" was rejected. Everything else still only composes into the box, exactly as before.
+**Three §4 UX gaps closed, none requiring guesswork about the Owner's taste (`D-0641`):**
+- `§4#1` — model list "feels limited": added an opt-in **Show all on one page** toggle
+  (`GET /api/v1/models/catalog?pageSize=`, server-capped at 500). The 6/page default
+  (`D-0628`, Owner's own instruction) is untouched — this is the "way to see them all" the
+  same review line asked for, not a change to the default.
+- `§4#2` — no explanation of the catalogue: added an **ⓘ** disclosure in `modelCatalogPanel`
+  explaining the three lanes and what Acquire/Load do.
+- `§4#3` — chat toolbar "non si capisce nulla": the flat 8-control row is now three named,
+  titled groups (**Where** / **Version** / **Model**) — no control moved or renamed.
 
-**Four more `§3` defects, triaged and fixed (`D-0639`):**
-- `§3#9` — Projects had no removal at all. Backend already supported it (`archived`, already
-  filtered out of `listProjects`) from the same pattern D-0397 gave agents; only the button was
-  missing. Added: Delete, double confirmation (type the project's name to arm it) — same shape
-  D-0625 already proved for model removal.
-- `§3#11` — Agents: "eliminare" was already solved (Archive, D-0397, genuinely removes from
-  every list). What was missing was a status. Added: a badge derived from `state.agentRuns`
-  (not yet run / working / failing / in progress) — no new field invented.
-- `§3#1` — Two model-catalog empty-state strings were already IN `i18n-catalog.js`, registered
-  and translated, and never once passed through `t()` in the render code. Wrapped them; removed
-  the duplicate catalogue entries I mistakenly added before finding the pre-existing ones.
-- `§3#3` — The `downloaded` lane declared its action as "Use" in prose and drew no control for
-  it at all. Added a "Load into memory" button + one confirmation (replaces what answers now).
+**Two more §4 items triaged, not built (`D-0642`):**
+- `§4#5` (voice window "statica... gioco per bambini") was **already repaired** by `dd08e3b`
+  earlier in this same review session (radial 12-band spectrum + Catmull-Rom aura + breathing
+  ring) — built, unit/lint/manifest-verified, **never deployed**. No further animation added
+  on top of a fix the Owner has not seen live yet.
+- `§4#4` (TTS "orribile, non sembra umana") is **not reachable in this repository**:
+  `voice-engine.mjs` is a thin `POST /v1/audio/speech` adapter with zero synthesis logic —
+  the voice's timbre is entirely a property of whichever external model is bound via
+  `NOESAR_VOICE_SPEAK_ENDPOINT`/`NOESAR_VOICE_RUNE`/`NOESAR_VOICE_ESTRELA`. Recommendation put
+  to the Owner rather than guessed at: a self-hosted, OpenAI-API-compatible TTS server such as
+  Kokoro-82M (Apache-2.0, CPU-capable) bound to those variables — an installation choice.
 
-**`§3#2/#4` triaged, not a defect.** Checked the live installation's own mount directly
-(`/mnt/cachec/NOESAR_EVOLUTION_RUNTIME/models/` does not exist) — this installation has
-downloaded zero models through its own acquisition path. The catalogue was reporting the truth.
+**Improvement proposal, `D-0643`** (recorded, not built): `voice-session.js` is already a
+pure, adapter-injected, headless-testable lifecycle with no DOM/fetch dependency — a genuine
+candidate to extract as a standalone library for cancellable/interruptible voice turns over
+any OpenAI-shaped speech API. Funding fit: Restack, traits 2 (reusable beyond this product)
+and 4 (no vendor lock-in).
 
-**`§4#8` (research provider) fixed.** The picker was real and functional but silently useless
-whenever zero external tools were registered — a disabled `<select>` with an inert placeholder
-`<option>`, no path to the one action ("register a tool in Agents") that unblocks it. Added a
-direct link.
-
-**Verified, not asserted:** unit 2973/2974 (1 pre-existing skip, 0 new failures after fixing
-two self-introduced ones — manifest staleness and an i18n duplicate key), ESLint 474/0/0,
-`measure-ui-language-coverage.mjs` VERDICT=COVERED, manifest regenerated (6724 files). Full
-`tools/run-browser-e2e.sh` (T2) run **once**: **510 PASS / 1 FAIL** — the one FAIL is
-`F-I18N-002`, already a declared measurement artefact (the recorder keys on rendered text, not
-the source string — confirmed again: the two new "misses" were the correctly-rendered Italian
-words "Usa il progetto"/"Elimina", not untranslated English). The log shows the new capabilities
-directly: `POINT-2B` (chat/CodeN command parity) PASS, `AGENTS-1` (archive + card) PASS,
-`POINT-5` (model catalog incl. the two newly-translated empty states) PASS.
+**Verified, not asserted:** unit 2976/2977 (1 pre-existing skip, 0 new failures), ESLint
+474/0/0, `measure-ui-language-coverage.mjs` VERDICT=COVERED (12 new Italian strings added and
+checked), manifest regenerated (6724 files, `MANIFEST=WRITTEN`).
 
 ## WHAT WAS **NOT** DONE
 
-- **No deploy.** 13 commits ahead of `origin/main` after this session's own commit — queued for
-  the single consolidated deploy already agreed with the Owner, not done piecemeal.
-- **No dedicated NEW browser-e2e checks** for the four capabilities this session built (chat
-  command execution, project delete, agent status badge, model load button). The EXISTING suite
-  ran clean around them (510/511, no regression), but no check specifically drives "type
-  `/status` in chat, see it execute" the way `POINT-2B` does for CodeN — writing one is the
-  honest next step before calling any of the four `PRODUCTION_GRADE`.
-- **`§3#6`, voice session drop/block** — not investigated. `VoiceSession` (~900 lines) untouched.
-- **`§4#6/#7/#9/#10`** — not built. All four need the Owner's decision (see next action above),
-  not more implementation; building them blind risked exactly the kind of shallow/wrong
-  placeholder rule 73 forbids presenting as done.
-- **HUNT AND FIX** — scoped to this session's diff (5 files: `app.js`, `i18n-catalog.js`,
-  `index.html`, `styles.css`, plus the two doc files), not a full first-party sweep. No new
-  surface introduced, security/authority/installers untouched — a full sweep is not owed here.
-- **`accessibility-audit.mjs`** — not run this session. The UI changes are additive (new
-  buttons/badges reusing existing, already-audited component classes: `.danger`, `.badge`,
-  `.card-actions`), but that is an inference, not a measurement — declared `[UNVERIFIED]`.
+- **No deploy.** Commits keep queuing for the single consolidated deploy already agreed —
+  now includes this session's `voice-session.js` fix and the three UX additions.
+- **`accessibility-audit.mjs` and `tools/run-browser-e2e.sh` (T2) not run standalone** —
+  `accessibility-audit.mjs` needs `puppeteer`, which this environment does not have outside
+  the disposable image build; both are deferred to the consolidated deploy, the same declared
+  pattern `dd08e3b` already used this session. Declared `[UNVERIFIED]` live, not claimed.
+- **`§4#6/#7/#9/#10` still not built** — asked of the Owner this session, not implemented
+  blind. Building them without an answer risks exactly the shallow/wrong placeholder rule 73
+  forbids presenting as done.
+- **No dedicated new browser-e2e checks** for `§3#6`'s fix or the three `§4` UX additions —
+  the headless `voice-session.test.mjs` suite proves the state-machine property directly
+  (no browser needed for that part); a live check that hands-free mode survives a real pause
+  is still owed before calling the fix `PRODUCTION_GRADE` on the installation, not just in
+  the state machine.
+- **HUNT AND FIX** — scoped to this session's diff (`voice-session.js`,
+  `voice-session.test.mjs`, `app.js`, `index.html`, `styles.css`, `i18n-catalog.js`,
+  `server.mjs`, plus doc files). No new surface introduced, security/authority/installers
+  untouched — a full sweep is not owed here.
 
 ## OPEN BLOCKERS
 
-- **New, this session, resolved before close**: git refused every operation ("dubious
-  ownership", repo owned by `nobody:users`, session runs as root). Owner explicitly authorised
-  `git config --global --add safe.directory /mnt/cachec/NOESAR_EVOLUTION` — a read-only trust
-  declaration, no identity/signing/remote change. Applied; git works for the rest of the
-  session and will for the next one on this same container unless the container is replaced.
 - `B-002` **STALE** (`D-0257`): still neither `gitleaks` nor `trufflehog` on `PATH`; this
-  session's secret scan was heuristic (`git diff` grepped for key/token/password/PEM markers,
-  clean) and is declared as heuristic, not a `gitleaks` run.
+  session's own diff review was a heuristic grep for key/token/password/PEM markers, clean,
+  declared as heuristic.
 - `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
-- **New, this session, still open**: `B-013` — `git push origin main` refused, no GitHub
-  credential stored in this container (by design, `B-001`: no token is ever persisted). 15
-  commits ahead of `origin/main` (13 from the prior session + `e417aef`/`c91b647` from this
-  one). Local repository is complete and correct — only the push needs the Owner's token or a
-  push from their own machine.
+- `B-013` **still open**: `git push origin main` refused, no GitHub credential stored in this
+  container (by design, `B-001`). Commits keep queuing locally, correct and complete — only
+  the push needs the Owner's token or a push from their own machine.
 - No other new blocker.
