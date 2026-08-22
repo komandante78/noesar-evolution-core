@@ -1230,6 +1230,7 @@ async function sendChat(spoken=null,{signal=null}={}){
   $('#sendMessage').disabled=true;
   let assistantText='';
   let article=null;
+  let agentCreatedName=null;
   try{
     const response=await fetch('/api/v1/chat/stream',{
       method:'POST',
@@ -1281,11 +1282,16 @@ async function sendChat(spoken=null,{signal=null}={}){
         }else if(event==='stopped'){
           setStatus('Generation stopped.');
           announceEvent('Generation stopped');
+        }else if(event==='complete'&&data.agentCreated){
+          // §4#9 (D-0648): the model itself asked to create an agent, and the server already
+          // did it — refreshWorkspace() below picks up the new row via renderAgents(); this
+          // is only the confirmation a person would otherwise have gotten from the form.
+          agentCreatedName=data.agentCreated.name;
         }
       }
     }
     await refreshWorkspace();
-    setStatus('Response completed.');
+    setStatus(agentCreatedName?`Created the agent "${agentCreatedName}".`:'Response completed.');
     // One summary, once, when the event is over.
     announceEvent(`Reply complete, ${assistantText.length} characters`);
     // …and the reply itself, if the person asked for it. Here for the same reason the live

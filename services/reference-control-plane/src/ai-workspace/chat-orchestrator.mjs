@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { randomUUID } from 'node:crypto';
 import { wrapUntrusted, enforceToolScope } from './untrusted-content.mjs';
+import { AGENT_DIRECTIVE_INSTRUCTION, extractAgentDirective } from './agent-directive.mjs';
 
 function instructionForMode(mode){
   if(mode==='CREATE')return 'You are in CREATE mode. Produce a concrete editable artifact. State assumptions. Cite retrieved passages using their exact [source:<id>#<passage>] labels.';
@@ -13,7 +14,7 @@ function dataClassesFor({history,projectInstructions,memoryText,evidence,tools})
 }
 
 export class ChatOrchestrator{
-  constructor({graph,workspace,providers,store,ledger}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.active=new Map();}
+  constructor({graph,workspace,providers,store,ledger,agentService=null}){this.graph=graph;this.workspace=workspace;this.providers=providers;this.store=store;this.ledger=ledger;this.agentService=agentService;this.active=new Map();}
   stop(runId,actorId='system'){const active=this.active.get(runId);if(!active)return false;active.controller.abort();this.ledger?.append({actor:actorId,action:'chat.stop',result:'stopped',details:{runId}});return true;}
   #buildContext({conversationId,branchId,content,mode,sourceIds=[],toolIds=[]}){
     const inspection=this.workspace.contextInspection({conversationId,branchId});
@@ -27,7 +28,7 @@ export class ChatOrchestrator{
     // the role that carries this runtime's own instructions.
     const untrusted=wrapUntrusted(evidence,{label:'retrieved source passages'});
     const messages=[
-      {role:'system',content:[instructionForMode(selectedMode),projectInstructions,memoryText].filter(Boolean).join('\n\n')},
+      {role:'system',content:[instructionForMode(selectedMode),this.agentService&&AGENT_DIRECTIVE_INSTRUCTION,projectInstructions,memoryText].filter(Boolean).join('\n\n')},
       ...(untrusted?[{role:'user',content:untrusted.text,untrusted:true}]:[]),
       ...inspection.messages.map((item)=>({role:item.role,content:item.content})),
       {role:'user',content:String(content)}
@@ -80,8 +81,33 @@ export class ChatOrchestrator{
         selectedProvider=event.providerId;answer+=event.delta;if(event.usage)usage=event.usage;sse(res,'delta',{runId,providerId:event.providerId,text:event.delta});
       }
       const citations=this.#citations(built.evidence);
-      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:answer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage},citations});
-      sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations,usage});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
+      // §4#9 (D-0648): a tagged fence in the model's own answer, and nothing else, may create
+      // an agent — see agent-directive.mjs for why this is the only channel and why an
+      // ambiguous or malformed block is silently the same as no block. Already-flushed
+      // `delta` events cannot be un-sent; only the PERSISTED message is cleaned, a declared
+      // limitation of doing this after a stream rather than buffering the whole answer first.
+      let agentCreated=null;let cleanAnswer=answer;
+      if(this.agentService){
+        const{cleanedText,directive}=extractAgentDirective(answer);
+        cleanAnswer=cleanedText;
+        // Parsed and stripped either way — a fence is never shown to the person — but only
+        // EXECUTED when this turn's retrieved content did not already trip the injection
+        // detector. The directive is read from the MODEL's own answer, and an answer shaped
+        // by content the detector already distrusts is not a basis to create anything.
+        if(directive&&!built.injectionDetections.length){
+          try{
+            const created=this.agentService.createAgent({projectId:built.inspection.conversation.projectId,name:directive.name,instructions:directive.instructions},actorId);
+            agentCreated={id:created.id,name:created.name};
+            this.ledger?.append({actor:actorId,action:'agent.created-from-chat',result:'success',details:{runId,conversationId,agentId:created.id}});
+          }catch(error){
+            this.ledger?.append({actor:actorId,action:'agent.created-from-chat',result:'error',details:{runId,conversationId,message:error.message}});
+          }
+        }else if(directive){
+          this.ledger?.append({actor:actorId,action:'agent.created-from-chat',result:'refused',details:{runId,conversationId,reason:'injection-detected-this-turn'}});
+        }
+      }
+      const assistant=this.graph.addMessage({conversationId,branchId:branchId??initial.branchId,role:'assistant',content:cleanAnswer||'[Provider returned no text]',metadata:{runId,providerId:selectedProvider,providerRoute,model,mode:selectedMode,usage,agentCreated},citations});
+      sse(res,'complete',{runId,message:assistant,providerId:selectedProvider,citations,usage,agentCreated});this.ledger?.append({actor:actorId,action:'chat.complete',result:'success',details:{runId,conversationId,providerId:selectedProvider,providerRoute}});
     }catch(error){const stopped=error.name==='AbortError'||controller.signal.aborted;sse(res,stopped?'stopped':'error',{runId,error:stopped?'Generation stopped.':error.message});this.ledger?.append({actor:actorId,action:'chat.complete',result:stopped?'stopped':'error',details:{runId,message:error.message}});
     }finally{this.active.delete(runId);res.end();}
   }

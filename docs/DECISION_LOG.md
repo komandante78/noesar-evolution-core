@@ -14908,3 +14908,46 @@ keeping as a standing instrument: any future "does this page actually look right
 question can now be answered without touching a real installation or the operator's
 browser. **Funding fit: none** — it depends on this product's own auth-bootstrap flow,
 not reusable outside this codebase.
+
+## D-0648 · `§4#9` — a chat message can create a real agent, no form, no confirmation — 2026-08-22
+**Decision.** Owner authorized this session (`AskUserQuestion`): "creazione diretta" — no
+confirmation step. Checked first that this does not collide with CodeN Evolution's own
+8-phase plan (`MASTER_PROJECT/17_...`) — grepped for `agentForm`/`/api/v1/agents`, zero
+hits; "L'Autore" (Fase 5) is a completely different "agent" (code-generation, heavily
+gated), not this one (a chat-persona: name + instructions). Implemented: the chat system
+prompt (new `agent-directive.mjs`) instructs the bound model to emit exactly one tagged
+fence, `` ```agent-create ``, containing `{"name","instructions"}`, only when a request is
+unambiguous — mirrors `author.mjs`'s established "one fence or refuse, never guess"
+shape, and `voice-intent.js`/`D-0123`'s "resolve clearly or ask" posture. Server-side,
+after the stream completes, `chat-orchestrator.mjs` parses it, calls the SAME
+`AgentService.createAgent()` the manual form already uses with zero confirmation, strips
+the fence from the stored/shown text, and surfaces `agentCreated` on the SSE `complete`
+event so the client's existing `refreshWorkspace()` shows it with no extra plumbing.
+**Why.** This is the exact zero-confirmation risk class the manual Agents form already
+has — not a new mutation category granted to free text.
+**Rejected.** Real OpenAI-style `tool_calls` execution — the control plane declares a
+`tools` array to the model already but never processes a response's `tool_calls`
+anywhere (grepped, confirmed absent); building that plumbing for one action is a much
+larger surface than one tagged fence.
+**Security check performed, not assumed.** The directive is read from the MODEL's own
+answer, which untrusted retrieved content could try to manipulate (prompt injection) into
+emitting a forged fence. Mitigated: the directive is refused — parsed and stripped for
+display, but never executed — whenever this turn's `injectionDetections` is non-empty.
+Proven with a hostile-document fixture (`chat-agent-directive.test.mjs`), not asserted.
+**Evidence.** 8 new tests, all seen passing against the real `ChatOrchestrator` driven
+through a fake upstream (same harness `prompt-injection-containment.test.mjs` already
+uses): unambiguous directive creates the agent and is stripped from the shown text; no
+directive creates nothing; missing name, malformed JSON, and two fences (ambiguous) each
+create nothing; the injection-refusal path is proven with a real ledger entry. Full suite
+3022/3023 (1 pre-existing skip), ESLint 477/0/0, browser-e2e 510/511 (`F-I18N-002` only),
+bytes-equal tree↔image 478/478, live health 200/200/200.
+**Reversal cost.** None — additive; no schema change; `toolIds`-from-chat is a stated
+extension point, not built, so nothing here narrows it later.
+**Status.** applied, deployed (`d0648-agent-directive-…`), verified live.
+
+**Improvement proposal (recorded, not built).** The same tagged-fence pattern
+(`agent-directive.mjs`) generalises to any other zero-confirmation product action a chat
+message could name directly — projects, notes, documents — without building real
+function-calling. **Funding fit: Restack, trait 1** (a delimited, realisable component:
+"resolve free text to one of a declared set of already-safe actions, or ask") **and
+trait 5** (measurable: the same red/green fixture shape this decision's own tests use).

@@ -399,7 +399,7 @@ const remoteTargetRegistry = new RemoteTargetRegistry({ store:aiStore, vault:cre
 // third place to keep one.
 const apiTargetRegistry = new ApiTargetRegistry({ store:aiStore, vault:credentialVault, ledger });
 const workflowService = new WorkflowService({ store:aiStore, ledger, executor:toolExecutor });
-const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger });
+const chatOrchestrator = new ChatOrchestrator({ graph:contextGraph, workspace:aiWorkspace, providers:providerGateway, store:aiStore, ledger, agentService });
 const hardware = discoverHardware();
 // The bootstrap token is resolved from a 0600 runtime file, not from the
 // environment: an environment variable is visible in `docker inspect` and in

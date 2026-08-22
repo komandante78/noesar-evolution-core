@@ -6008,3 +6008,27 @@ auth-failure.
 è invariato.
 **Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T131449Z` rimosso
 (`Exited (0)` confermato). Superstiti di progetto: **due**.
+
+## `d0648-agent-directive-20260822T163425Z` — DEPLOYATO e verificato — 2026-08-22
+**Tag.** Costruito offline (exit 0), installato con `tools/deploy/redeploy.sh --apply
+--authorized-by-owner --image`.
+**Cosa cambia.** `§4#9` (D-0648): un messaggio in chat che chiede senza ambiguità di
+creare un agente lo crea davvero — nessun form, nessuna conferma — tramite una direttiva
+recintata nella risposta del modello, eseguita lato server sullo stesso `AgentService.
+createAgent()` già usato dal form manuale. Rifiutata (non eseguita, solo ripulita dal
+testo mostrato) quando il turno ha già rilevato segnali di prompt injection nel contenuto
+recuperato — provato con un fixture ostile dedicato.
+**Verifica.** Byte-uguale albero↔immagine **478/478**, differing **0**. Unit
+**3022/3023** (1 skip preesistente, **8 nuovi test** sulla direttiva), ESLint
+**477/0/0**, browser-e2e **511·510pass·1** (`F-I18N-002` dichiarato, 0 non dichiarati).
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0
+auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260822T165007Z` (era
+`d0645-knowledge-memory-identity-20260822T141720Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione, nessun cambio di schema.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T142418Z` rimosso
+(`Exited (0)` confermato). Superstiti di progetto: **due**.
+**Non provato qui, e detto:** nessuna sessione autenticata con un modello vivo ha
+effettivamente scritto "crea un agente che fa X" in chat — provato end-to-end contro un
+upstream scriptato (stesso harness di `prompt-injection-containment.test.mjs`), non
+contro un modello reale collegato all'installazione.
