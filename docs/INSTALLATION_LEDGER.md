@@ -5984,3 +5984,27 @@ di progetto: **due**. Inventario pre-pulizia in `EVIDENCE/docker_inventory_pre_c
 20260822T124725Z.txt`.
 **Non provato qui, e detto:** `§4#6/#7/#9/#10` restano fuori da questa fase (`D-0645`) —
 Owner ha scelto di consolidare il deploy in coda prima di aprirle.
+
+## `d0645-knowledge-memory-identity-20260822T141720Z` — DEPLOYATO e verificato — 2026-08-22
+**Tag.** Costruito offline (`docker build --pull=false`, exit 0), installato con
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** `§4#6/#7` (D-0647): `#/knowledge` e `#/memory` ricevono un badge icona
+che riprende il proprio glifo di navigazione (◈/✦); il blocco "Notes" dentro Knowledge
+non usa più il vocabolario "memory" (collideva con la pagina Memory reale); riparato un
+difetto di layout reale — il campo di ricerca su `#/memory` era largo 24px, inutilizzabile,
+per una `<select>` sorella che competeva per lo spazio flex; stati vuoti arricchiti con
+una frase invece del solo testo secco.
+**Verifica.** Byte-uguale albero↔immagine **476/476**, differing **0**. Unit
+**2976/2977** (1 skip preesistente), ESLint **475/0/0**, browser-e2e **511·510pass·1**
+(`F-I18N-002` dichiarato, 0 non dichiarati), accessibilità **27/27**, `measure-ui-
+language-coverage.mjs` VERDICT=COVERED. Screenshot prima/dopo catturati dal vivo con un
+nuovo strumento riusabile (`tools/page-screenshot.mjs`) prima di dichiarare la modifica
+fatta — non dedotta dal markup.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0
+auth-failure.
+**Predecessore conservato.** `noesar-evolution-pre-20260822T142418Z` (era
+`d0640-voice-hunt-and-ux-20260822T131226Z`).
+**Costo di rollback — nessuno.** Nessuna migrazione; l'endpoint backend `/api/v1/memories`
+è invariato.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T131449Z` rimosso
+(`Exited (0)` confermato). Superstiti di progetto: **due**.

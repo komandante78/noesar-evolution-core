@@ -14863,3 +14863,48 @@ seeded-defect-proof 19/19, `browser-e2e` 510/511 (the one fail is the pre-declar
 step) would catch this class of defect at commit time instead of at the accessibility
 gate, where it depends on someone remembering to run T2. **Funding fit: none** — this is
 internal tooling specific to this codebase's own CSS conventions, not reusable beyond it.
+
+## D-0647 · `#/knowledge` and `#/memory` given a distinct identity — Owner delegated, researched — 2026-08-22
+**Decision.** Owner delegated `§4#6/#7` directly: *"scrivile te fai una ricerca e
+implementa"*. Screenshotted both pages live first (new `tools/page-screenshot.mjs`,
+reusing the disposable-probe apparatus `tools/run-browser-e2e.sh` already owns) rather
+than judging from markup — both already had working forms/search/lists wired to real
+APIs; the actual defect was IA/terminology, not missing function. Found: (1) Knowledge's
+hand-written "Notes" sub-block used "memory" vocabulary throughout (`#memoryForm`, "Add
+memory", "Save memory") while its own header already said "separate from the Memory
+destination" — the controls contradicted their own disambiguating sentence; (2) the
+`#/memory` search input rendered at **24px wide** (unusable) — a `<select>` sibling's
+generic `width:100%` competed for flex space, a bug the Knowledge search row never
+hits because it has no `<select>`; (3) every page, these two included, shares one
+generic panel/form template with zero visual distinction ("non ha personalità").
+Researched (WebSearch, cited): ChatGPT 2026 splits "saved memories" (explicit,
+user-editable) from "reference chat history" (implicit) — the same real split this
+product already has between Notes (user-authored) and Memory (product-inferred),
+confirming disambiguation was the right fix, not a redesign; dashboard convention is
+icon+one-sentence empty states, which this product's bare-text empty states lacked.
+**Why.** `CLAUDE10.md` §18 rule 73: a working form is not "done" if a user cannot tell
+what it is for — that is the Owner's own complaint, verified by rendering, not assumed.
+**Implemented.** Renamed the Notes block's ids/labels/JS (`renderMemories`→`renderNotes`,
+`#noteForm`/`#noteList`/etc., "Add note"/"Visible notes") — backend route
+`/api/v1/memories` unchanged, only the DOM-facing vocabulary. Fixed the `.search-row
+select` flex bug. Added a `.section-icon` badge echoing each page's own nav glyph (◈/✦)
+for cheap, targeted visual identity without a bespoke layout. Enriched every empty
+state with a one-sentence explanation of what will appear there. Updated
+`i18n-catalog.js` for every changed/new string; `measure-ui-language-coverage.mjs`
+VERDICT=COVERED.
+**Rejected.** Renaming the backend `/api/v1/memories` route or the `state.memories`
+field — no product reason to touch a working API for a UI-only defect; would have
+widened the blast radius for no benefit.
+**Evidence.** Before/after screenshots (scratchpad, this session). Unit 2976/2977 (1
+pre-existing skip), ESLint 475/0/0, `browser-e2e` 510/511 (`F-I18N-002` only, 0
+undeclared), accessibility **27/27**, bytes-equal tree↔image 476/476.
+**Reversal cost.** None — copy/id/CSS changes, no schema or route change.
+**Status.** applied, rebuilt (`d0645-knowledge-memory-identity-…`), redeployed,
+verified live (`/livez` `/readyz` `/healthz` 200, two containers survive).
+
+**Improvement proposal (recorded, not built).** `tools/page-screenshot.mjs` — a
+disposable-probe screenshot driver reusing the existing e2e apparatus — is itself worth
+keeping as a standing instrument: any future "does this page actually look right"
+question can now be answered without touching a real installation or the operator's
+browser. **Funding fit: none** — it depends on this product's own auth-bootstrap flow,
+not reusable outside this codebase.
