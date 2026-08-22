@@ -14951,3 +14951,39 @@ message could name directly — projects, notes, documents — without building 
 function-calling. **Funding fit: Restack, trait 1** (a delimited, realisable component:
 "resolve free text to one of a declared set of already-safe actions, or ask") **and
 trait 5** (measurable: the same red/green fixture shape this decision's own tests use).
+
+## D-0649 · `§4#10` multimodality — read the real state, decomposed into three phases — 2026-08-22
+**Decision.** Owner's priority order: documents/files, images, audio. Read
+`file-extractors.mjs` end to end before proposing anything, rather than assuming a gap:
+- **Documents (PDF/Office/ZIP/text): already done.** `extract()` already routes each to
+  `pdftotext`/`office-xml`/`safe-zip-text`, the extracted text is already indexed and
+  already reaches chat as retrieved evidence through `#buildContext`'s
+  `knowledgeContext()` call. **Not inferred** — `prompt-injection-containment.test.mjs`
+  already ingests a source and asserts its text reaches the model's messages. No new
+  phase needed here; this priority item is met.
+- **Images: real gap, one phase.** Today an image only gets `tesseract-ocr` — text
+  printed IN the image. A photo with no printed text extracts nothing. Proposed Phase
+  (not built): when OCR yields little/no text AND a vision-capable provider is
+  configured, fall back to a caption/description call, stored as the extracted text —
+  same shape as every other extractor, reuses the RAG pipeline unchanged. A SEPARATE,
+  larger phase — inline image attachment in the chat composer, multipart `messages` all
+  the way to the provider adapters — is a natural follow-up, not conflated with this one.
+- **Audio (uploaded files, not live voice): real gap, one phase.** Today `ffprobe` reads
+  only metadata; the extractor's own warning already names the fix: "Configure a local
+  speech tool". `noesar-voice-hear` (`speaches-ai`, Whisper-compatible) is **already
+  running on this installation** for live voice — no new container, unlike the Kokoro
+  question. Proposed Phase (not built): call it from the extractor for audio/video
+  sources, same pattern as the image phase.
+**Why.** `noesar-evolution` rule 1 of the five CodeN Evolution rules applies here too:
+write the six-line contract (or in this case, the phase breakdown) before touching a
+file, or the phase is not scoped — it is a hope. Multimodality was too broad for one
+contract; it decomposes into three, one of which is already met.
+**Rejected.** Building images+audio in this same phase — each needs its own FILES/TIER/
+BUDGET/STOP per `noesar-evolution-budget` §1, and conflating them is how a 25-call phase
+becomes a 250-call one.
+**Evidence.** `file-extractors.mjs` read in full; `prompt-injection-containment.test.mjs`
+cited for the documents claim; `docker inspect noesar-voice-hear` (read-only, this
+session) confirms it is running and GPU-attached.
+**Reversal cost.** None — decomposition only, no code changed this entry.
+**Status.** documents: closed, already met. Images and audio: proposed, not scheduled —
+each opens its own future phase.
