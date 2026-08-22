@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0640/D-0641/D-0642/D-0643 — §3#6 root cause fixed (VoiceSession#run(): silence/unclear-turn/no-reply early-exits now honour continuous, restarting listening exactly like the success path already did — Owner: \"resti attiva finché non la fermo io\"). §4#1 (show-all toggle, pageSize capped 500), §4#2 (info disclosure) and §4#3 (toolbar grouped Where/Version/Model) closed — concrete missing affordances, not taste calls. §4#5 confirmed already fixed by dd08e3b this same review session, pending deploy. §4#4 triaged: not a code defect — voice-engine.mjs has zero synthesis logic, timbre is 100% the bound external TTS model.",
-  "phase_status": "Verified this session: unit 2976/2977 (1 pre-existing skip), ESLint 474/0/0, measure-ui-language-coverage.mjs VERDICT=COVERED (12 new IT strings), manifest regenerated (6724 files), 3 new voice-session regression tests (seen red pre-fix). accessibility-audit.mjs/browser-e2e.mjs (T2) NOT run standalone — puppeteer needs the disposable image build, deferred to the single consolidated deploy per existing D-0634/dd08e3b pattern. No deploy this session.",
-  "next_phase": "Owner asked this session (AskUserQuestion): visual-identity direction for #/knowledge and #/memory (§4#6/#7), scope of NL agent creation in chat/CodeN (§4#9), scope of multimodality (§4#10), and the TTS-model recommendation for §4#4. Once answered or deferred: single consolidated deploy (commits now further ahead of origin/main) → full T2 on the new installation → benchmark against §5 baseline numbers.",
+  "current_phase": "D-0644/D-0645/D-0646 — consolidated deploy done and verified live (voice hands-free fix + §4#1/#2/#3 UX, tag d0640-voice-hunt-and-ux-20260822T131226Z). T2 run twice clean (browser 511·510pass·1declaredfail, a11y 26/27→27/27 after fixing a real WCAG 2.5.8 regression found in #modelShowAll). Owner scoped 4 future decisions (D-0645): Kokoro→GPU move, direct NL agent creation (§4#9), multimodality priority docs/images/audio (§4#10), knowledge/memory identity (§4#6/7, one-liner still owed by Owner).",
+  "phase_status": "Verified this session: unit 2976/2977 (1 pre-existing skip), ESLint 474/0/0, seeded-defect 19/19, browser-e2e 510/511 (F-I18N-002 only), accessibility 27/27, live health 200/200/200. Bytes-equal tree<->image both builds. Exactly two containers survive (noesar-evolution + one rollback).",
+  "next_phase": "Owner picks one of: (1) supply the #/knowledge and #/memory one-liner (D-0645 §4#6/7), (2) scope the Kokoro GPU move as its own phase, (3) scope §4#9 direct NL agent creation, (4) scope §4#10 multimodality. External deadline unchanged: NLnet calls reopen 2026-09-03, first deadline 2026-11-03 12:00 CEST.",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "5e9ca7b",
-  "last_updated_utc": "2026-08-22T08:13:48Z",
+  "last_commit": "9d7f79440d2e7c3db87dcaa728e629630ca30d38",
+  "last_updated_utc": "2026-08-22T13:25:13Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -1135,7 +1135,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "Awaiting the Owner's answer to this session's question. If deferred, proceed straight to the consolidated deploy + T2 + benchmark sequence already agreed. External deadline unchanged: NLnet calls reopen 2026-09-03, first deadline 2026-11-03 12:00 CEST.",
+  "next_action": "Owner picks one of: (1) supply the #/knowledge and #/memory one-liner (D-0645 §4#6/7), (2) scope the Kokoro GPU move as its own phase, (3) scope §4#9 direct NL agent creation, (4) scope §4#10 multimodality. External deadline unchanged: NLnet calls reopen 2026-09-03, first deadline 2026-11-03 12:00 CEST.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",

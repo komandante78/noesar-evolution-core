@@ -1,98 +1,74 @@
 # SESSION HANDOFF
 
-**`docs/OWNER_REVIEW_2026-08-21.md` triage continues — one real defect fixed, three UX gaps
-closed, two items confirmed as already-handled, and the Owner asked directly for the four
-that remain genuine product-vision decisions.** Still **no deploy** — commits keep queuing
-for the one consolidated deploy already agreed with the Owner.
+**Consolidated deploy done and verified live.** The commits that were queued (§3#6 voice
+hands-free root-cause fix, §4#1/#2/#3 UX gaps) are now running in production, T2 is clean,
+and a real WCAG regression T2 found in the new UI was fixed in the same phase before close.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Waiting on the Owner's answer to this session's question** (asked via `AskUserQuestion`):
-visual identity for `#/knowledge` and `#/memory` (§4#6/#7), scope of NL-driven agent creation
-in chat/CodeN (§4#9), scope of multimodality (§4#10), and whether to bind a recommended
-self-hosted TTS model (§4#4, Kokoro-82M suggested — see `D-0642`).
+**Owner still owes one thing**: a one-line definition of what `#/knowledge` and `#/memory`
+should do/say (`§4#6/#7`) — Owner chose to write it directly rather than have a direction
+proposed.
 
-**Once answered or explicitly deferred**: the sequence already agreed runs — **one
-consolidated deploy** (this session's own commits plus the prior queue) → full `T2`
-(`tools/run-browser-e2e.sh` + `tools/accessibility-audit.mjs`, neither run standalone this
-session — both need the disposable image build) → benchmark against `docs/
-OWNER_REVIEW_2026-08-21.md` §5's baseline numbers.
+**Four product decisions were made this session (`D-0645`), none built yet — each is its own
+future phase, one at a time (rule 9):**
+1. TTS: move the already-running Kokoro-82M container (`noesar-voice-speak`) to the idle
+   RTX 3060 GPU — infrastructure action, outside this project's own container authority
+   (`CLAUDE10.md` rule 16), needs its own explicit scoping.
+2. `§4#9` — chat/CodeN: natural-language agent creation should create directly, no
+   confirmation step.
+3. `§4#10` — multimodality priority order: documents/files, images, audio.
+4. `§4#6/#7` — knowledge/memory page identity: waiting on the Owner's one-liner above.
 
-**`§3#6` is now fixed**, not open — see below. Nothing else in `§3` is open.
+**Pick one of the four (or the knowledge/memory answer) to open the next phase.**
 
-## WHAT IS TRUE NOW THAT WAS NOT — measured this session
+## WHAT IS TRUE NOW THAT WAS NOT
 
-**Root cause of `§3#6` found and fixed.** Owner, verbatim: *"la voce si interrompe/blocca
-durante l'uso, invece di restare attiva"* / *"resti attiva finché non la fermo io"*.
-`VoiceSession#run()` (`apps/webui-static/voice-session.js`) only restarted listening after a
-FULLY successful spoken reply — the three early-exit paths (silence for 6s, an unclear
-utterance, a command with nothing to say) always dropped to `IDLE` regardless of
-`this.#continuous`. A single 6-second pause was enough to silently end hands-free mode.
-Fixed (`D-0640`): all three paths now restart exactly as the success path already did, still
-gated on `continuous` and still NOT auto-restarting after a real `ERROR` (unchanged — a
-failure must be told to the person, not looped over). 3 new regression tests, each seen red
-against the pre-fix code.
+**Deployed and verified (`d0640-voice-hunt-and-ux-20260822T131226Z`).** Byte-equal
+tree↔image both builds (476/476). Live: `running`/`healthy`, `/livez` `/readyz` `/healthz`
+200, 4 children, 0 auth-failures. Full detail: `docs/INSTALLATION_LEDGER.md` tail.
 
-**Three §4 UX gaps closed, none requiring guesswork about the Owner's taste (`D-0641`):**
-- `§4#1` — model list "feels limited": added an opt-in **Show all on one page** toggle
-  (`GET /api/v1/models/catalog?pageSize=`, server-capped at 500). The 6/page default
-  (`D-0628`, Owner's own instruction) is untouched — this is the "way to see them all" the
-  same review line asked for, not a change to the default.
-- `§4#2` — no explanation of the catalogue: added an **ⓘ** disclosure in `modelCatalogPanel`
-  explaining the three lanes and what Acquire/Load do.
-- `§4#3` — chat toolbar "non si capisce nulla": the flat 8-control row is now three named,
-  titled groups (**Where** / **Version** / **Model**) — no control moved or renamed.
+**T2 run twice, clean.** Browser e2e **511 · 510 pass · 1 fail** (pre-declared `F-I18N-002`
+only) — stable across both builds. Accessibility **26/27 → 27/27** after the fix below.
+Unit **2976/2977** (1 pre-existing skip), ESLint **474/0/0**, seeded-defect **19/19**.
 
-**Two more §4 items triaged, not built (`D-0642`):**
-- `§4#5` (voice window "statica... gioco per bambini") was **already repaired** by `dd08e3b`
-  earlier in this same review session (radial 12-band spectrum + Catmull-Rom aura + breathing
-  ring) — built, unit/lint/manifest-verified, **never deployed**. No further animation added
-  on top of a fix the Owner has not seen live yet.
-- `§4#4` (TTS "orribile, non sembra umana") is **not reachable in this repository**:
-  `voice-engine.mjs` is a thin `POST /v1/audio/speech` adapter with zero synthesis logic —
-  the voice's timbre is entirely a property of whichever external model is bound via
-  `NOESAR_VOICE_SPEAK_ENDPOINT`/`NOESAR_VOICE_RUNE`/`NOESAR_VOICE_ESTRELA`. Recommendation put
-  to the Owner rather than guessed at: a self-hosted, OpenAI-API-compatible TTS server such as
-  Kokoro-82M (Apache-2.0, CPU-capable) bound to those variables — an installation choice.
+**HUNT AND FIX found and repaired a real defect (`D-0646`):** T2's own accessibility audit
+caught `#modelShowAll` (this phase's own §4#1 toggle) at 13×13 CSS px, under the WCAG 2.2
+SC 2.5.8 24×24 minimum — same class of defect already fixed once for `.check` inputs, missed
+here because the new control used a different label class. Fixed with one CSS selector,
+rebuilt, redeployed, reverified 27/27.
 
-**Improvement proposal, `D-0643`** (recorded, not built): `voice-session.js` is already a
-pure, adapter-injected, headless-testable lifecycle with no DOM/fetch dependency — a genuine
-candidate to extract as a standalone library for cancellable/interruptible voice turns over
-any OpenAI-shaped speech API. Funding fit: Restack, traits 2 (reusable beyond this product)
-and 4 (no vendor lock-in).
+**Environment/hygiene, this session:**
+- Container litter from the interrupted prior session cleaned up: an orphaned older rollback
+  (`…-pre-20260821T082532Z`) removed; exactly two survivors confirmed throughout.
+- `.claude/settings.local.json` (personal permission mode) added to `.gitignore` — it was
+  never meant to be tracked and was tripping the close-guard's diff check.
+- `git config --global --add safe.directory` applied (container ownership mismatch,
+  environment-level, not a project config change) — required for any git command to run.
+- Owner set `permissions.defaultMode: bypassPermissions` for this operator's own sessions
+  (local, gitignored file) — CLAUDE10.md's `deny` list and `destructive-command-guard.sh`
+  stay active regardless of permission mode.
 
-**Verified, not asserted:** unit 2976/2977 (1 pre-existing skip, 0 new failures), ESLint
-474/0/0, `measure-ui-language-coverage.mjs` VERDICT=COVERED (12 new Italian strings added and
-checked), manifest regenerated (6724 files, `MANIFEST=WRITTEN`).
+**Improvement proposal, `D-0646`'s closing note:** a stylelint rule enforcing 24×24 minimum
+target size on new checkbox/radio controls, to catch this class of defect at commit time.
+**Funding fit: none** — internal tooling, not reusable beyond this codebase.
 
 ## WHAT WAS **NOT** DONE
 
-- **No deploy.** Commits keep queuing for the single consolidated deploy already agreed —
-  now includes this session's `voice-session.js` fix and the three UX additions.
-- **`accessibility-audit.mjs` and `tools/run-browser-e2e.sh` (T2) not run standalone** —
-  `accessibility-audit.mjs` needs `puppeteer`, which this environment does not have outside
-  the disposable image build; both are deferred to the consolidated deploy, the same declared
-  pattern `dd08e3b` already used this session. Declared `[UNVERIFIED]` live, not claimed.
-- **`§4#6/#7/#9/#10` still not built** — asked of the Owner this session, not implemented
-  blind. Building them without an answer risks exactly the shallow/wrong placeholder rule 73
-  forbids presenting as done.
-- **No dedicated new browser-e2e checks** for `§3#6`'s fix or the three `§4` UX additions —
-  the headless `voice-session.test.mjs` suite proves the state-machine property directly
-  (no browser needed for that part); a live check that hands-free mode survives a real pause
-  is still owed before calling the fix `PRODUCTION_GRADE` on the installation, not just in
-  the state machine.
-- **HUNT AND FIX** — scoped to this session's diff (`voice-session.js`,
-  `voice-session.test.mjs`, `app.js`, `index.html`, `styles.css`, `i18n-catalog.js`,
-  `server.mjs`, plus doc files). No new surface introduced, security/authority/installers
-  untouched — a full sweep is not owed here.
+- The four `D-0645` decisions (TTS→GPU, direct NL agent creation, multimodality, knowledge/
+  memory identity) — scoped and recorded, not built. Each needs its own phase contract.
+- Knowledge/memory one-liner — still owed by the Owner, not yet supplied.
+- **No push** — `git push origin main` still fails, no GitHub credential in this container
+  (`B-013`, unchanged). Commits are complete and correct locally; only the push is blocked.
+- No new browser-e2e case added for the WCAG fix specifically — the accessibility audit's
+  existing 2.5.8 check already proves the property directly; a dedicated regression case
+  would duplicate it for a one-line CSS fix.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): still neither `gitleaks` nor `trufflehog` on `PATH`; this
-  session's own diff review was a heuristic grep for key/token/password/PEM markers, clean,
-  declared as heuristic.
+- `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; this session's
+  diff review was a heuristic grep, clean, declared as heuristic.
 - `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
 - `B-013` **still open**: `git push origin main` refused, no GitHub credential stored in this
-  container (by design, `B-001`). Commits keep queuing locally, correct and complete — only
-  the push needs the Owner's token or a push from their own machine.
+  container. Commits keep queuing locally, correct and complete.
 - No other new blocker.
