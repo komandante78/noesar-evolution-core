@@ -217,7 +217,7 @@ button[data-busy]{opacity:.65;cursor:progress}
 /* 2.5.8 Target Size (Minimum), new in WCAG 2.2 — 24x24 CSS px.
    The audit measured `.text-button` at 19px high and the two checkboxes at 13x13. */
 .text-button{min-height:24px;min-width:24px;padding:2px 6px}
-.check input[type=checkbox],.check input[type=radio]{width:24px;height:24px;min-width:24px;min-height:24px}
+.check input[type=checkbox],.check input[type=radio],.model-show-all input[type=checkbox]{width:24px;height:24px;min-width:24px;min-height:24px}
 .toast-close{min-width:24px;min-height:24px}
 
 /* 1.4.3 Contrast (Minimum). White text on the old `.primary` gradient measured 4.19:1

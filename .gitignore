@@ -142,5 +142,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Personal Claude Code settings (permission mode, local allowlist) — machine/operator-specific,
+# never a project-wide policy CLAUDE10.md governs. .claude/settings.json (shared) stays tracked.
+.claude/settings.local.json
+
 # Compiled WebAssembly modules (see docs/INSTALLABLE_ARTIFACT_MAP.md for restore)
 *.wasm

@@ -14825,3 +14825,41 @@ request, `noesar-voice-speak` shows none.
 independent options: move the existing Kokoro container to the idle GPU (fast, same voice,
 likely still not "human"), or bind a larger, more natural open model such as Chatterbox-TTS
 or XTTS-v2 to the RTX 3060 (slower to set up, closer to what was asked for).
+
+## D-0645 · Owner scoped four pending product decisions — none built this phase — 2026-08-22
+**Decision.** Owner answered, via `AskUserQuestion`: (1) TTS — move the already-running
+Kokoro-82M container to the idle RTX 3060, not replace it; (2) `§4#9` NL agent creation in
+chat/CodeN — direct creation, no confirmation step; (3) `§4#10` multimodality priority —
+documents/files, images, audio; (4) `§4#6/#7` knowledge/memory page identity — Owner defines
+it directly, one-liner still owed.
+**Why.** These are product-vision decisions `CLAUDE10.md` rule 77 stops for; resolved this
+session so a later phase can start each without re-asking.
+**Rejected.** Starting any of the three now — Owner chose "deploy the already-queued work
+first" over opening a new capability mid-phase (`noesar-evolution-budget` §5).
+**Evidence.** `AskUserQuestion` transcript, this session, both rounds (initial + corrected).
+**Reversal cost.** None — scope decisions only, no code changed.
+**Status.** recorded, none scheduled. Each is its own future phase. Knowledge/memory
+one-liner remains open, owed by the Owner.
+
+## D-0646 · WCAG 2.5.8 regression found live by T2, fixed before close — 2026-08-22
+**Decision.** `tools/accessibility-audit.mjs`, run as this phase's T2, found `#modelShowAll`
+(`§4#1`'s new toggle, in the same commit queue as this deploy) at **13×13 CSS px** — under
+the 24×24 WCAG 2.2 SC 2.5.8 minimum. Same defect class already fixed once for `.check`
+inputs; the new control used a different label class (`.model-show-all`) that never
+inherited that rule. Fixed: extended the existing selector to cover it too.
+**Why.** `CLAUDE10.md` §40a HUNT AND FIX requires repair, not a log entry, for an in-scope,
+understood, test-provable defect — which this is: one CSS selector, one line.
+**Rejected.** Nothing — no alternative fix considered for a one-line, already-established
+pattern.
+**Evidence.** `accessibility-audit.mjs` before: 26/27 (1 undeclared FAIL, target-size).
+After rebuild+redeploy: **27/27**. Unit 2976/2977 (1 pre-existing skip), ESLint 474/0/0,
+seeded-defect-proof 19/19, `browser-e2e` 510/511 (the one fail is the pre-declared
+`F-I18N-002` gap, unrelated).
+**Reversal cost.** None — additive CSS selector, nothing removed.
+**Status.** applied, rebuilt, redeployed, verified live.
+
+**Improvement proposal (recorded, not built).** A stylelint rule enforcing a minimum
+24×24 target size on any new `input[type=checkbox]`/`radio` (or an equivalent CSS lint
+step) would catch this class of defect at commit time instead of at the accessibility
+gate, where it depends on someone remembering to run T2. **Funding fit: none** — this is
+internal tooling specific to this codebase's own CSS conventions, not reusable beyond it.

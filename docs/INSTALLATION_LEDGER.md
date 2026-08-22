@@ -5957,3 +5957,30 @@ Contenitori **52 → 52**, volumi **65 → 65**, reti **10 → 10**. Superstiti 
 **Un difetto trovato PROPRIO guardando il render (`D-0630`), e lasciato aperto:** le descrizioni
 del seed sono in italiano fuori dal livello di traduzione (regola 50), e la suite i18n non le
 vede perché scansiona il markup e non i file di dati.
+
+## `d0640-voice-hunt-and-ux-20260822T131226Z` — DEPLOYATO e verificato — 2026-08-22
+**Tag.** Costruito offline due volte: `…T103831Z` (commit in coda) poi `…T131226Z` (con la
+correzione WCAG trovata da T2), entrambe `docker build --pull=false` exit 0, installate con
+`tools/deploy/redeploy.sh --apply --authorized-by-owner --image`.
+**Cosa cambia.** Consolida i commit già in coda: `§3#6` root cause voce hands-free (riparte
+sempre in `continuous`, anche dopo silenzio/turno non chiaro/nessuna risposta), `§4#1`
+toggle "Show all" nel catalogo modelli, `§4#2` disclosure informativa, `§4#3` toolbar chat
+raggruppata Where/Version/Model.
+**Verifica.** Byte-uguale albero↔immagine **476/476**, differing **0**, entrambe le build.
+Unit **2976/2977** (1 skip preesistente), ESLint **474/0/0**, `seeded-defect` **19/19**.
+**`T2` ESEGUITA due volte** (prima e dopo la correzione): browser **511 · 510 pass · 1 fail**
+(`F-I18N-002`, già dichiarato) stabile su entrambe; accessibilità **26/27 → 27/27** dopo la
+correzione (vedi sotto). Sonde, runner e immagini di prova rimossi da sé in entrambe le run.
+**Salute.** `running`/`healthy`, `/livez` `/readyz` `/healthz` **200**, 4 figli, 0 auth-failure.
+**Difetto trovato da T2 e riparato in questa stessa fase (`D-0646`):** `#modelShowAll` a
+13×13px, sotto il minimo WCAG 2.2 SC 2.5.8 (24×24) — corretto estendendo la regola CSS già
+esistente per `.check`, ricostruito, ridistribuito, riverificato.
+**Predecessore conservato.** `noesar-evolution-pre-20260822T131449Z` (era
+`d0628-model-tiles-20260821T082515Z`, la produzione prima di questa fase).
+**Costo di rollback — nessuno.** Nessuna migrazione.
+**Pulizia (§5a).** Rollback più vecchio `noesar-evolution-pre-20260822T115847Z` rimosso
+(intermedio, dalla prima delle due build di questa fase; `Exited (0)` confermato). Superstiti
+di progetto: **due**. Inventario pre-pulizia in `EVIDENCE/docker_inventory_pre_cleanup_
+20260822T124725Z.txt`.
+**Non provato qui, e detto:** `§4#6/#7/#9/#10` restano fuori da questa fase (`D-0645`) —
+Owner ha scelto di consolidare il deploy in coda prima di aprirle.
