@@ -975,7 +975,59 @@ async function refreshWorkspace(){await refreshWorkspaceData();if(!state.activeC
 function renderAll(){renderProjectOptions();renderHome();renderProjects();renderTasks();renderMemories();renderArtifacts();renderSources();renderProviders();renderAgents();updatePrivacyFromProvider();$('#retentionDays').value=state.settings?.retentionDays??365;}
 function renderProjectOptions(){for(const id of ['#chatProject','#artifactProject','#sourceProject','#memoryProject','#taskProject','#workflowProject']){const select=$(id);if(!select)continue;const selected=id==='#chatProject'?state.activeProjectId:select.value||state.activeProjectId;select.innerHTML=optionList(state.projects,{empty:'No project',selected});}$('#memoryConversation').innerHTML=optionList(state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId),{empty:'Select conversation',label:(item)=>item.title,selected:state.activeConversationId});$('#projectChip').textContent=`Project: ${state.projects.find((item)=>item.id===state.activeProjectId)?.name??'none'}`;const conversations=state.conversations.filter((item)=>!state.activeProjectId||item.projectId===state.activeProjectId);$('#chatConversation').innerHTML=optionList(conversations,{empty:'No conversation',label:(item)=>item.title,selected:state.activeConversationId});}
 function renderHome(){$('#homeProjects').innerHTML=state.projects.slice(0,5).map((item)=>`<article><div><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.description||'No description')}</small></div></article>`).join('')||'No projects yet.';$('#homeConversations').innerHTML=state.conversations.slice(-5).reverse().map((item)=>`<article><div><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.mode)}</small></div></article>`).join('')||'No conversations yet.';}
-function renderProjects(){$('#projectCount').textContent=state.projects.length;$('#projectList').innerHTML=state.projects.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.tags.join(' · '))}</small><button data-select-project="${item.id}">Use project</button></article>`).join('')||'No projects.';$$('[data-select-project]').forEach((button)=>button.addEventListener('click',async()=>{state.activeProjectId=button.dataset.selectProject;state.activeConversationId=null;renderProjectOptions();activate('chat');await refreshWorkspace();}));}
+// §3#9, OWNER_REVIEW_2026-08-21: created a project, no way to remove it. The backend already
+// had the whole mechanism (`updateProject` accepts `archived`, `listProjects` already filters
+// `!archived`) from the same non-destructive pattern D-0397 gave agents — CLAUDE10 §4 refuses a
+// hard delete, and this project's own precedent is Archive, not Destroy. What was missing was
+// only the button. Double confirmation, same shape D-0625 already proved for model removal
+// (`findByData`/`openRemoveConfirm` below): typing the project's own name is the second act, and
+// it is the only thing that arms the button — a second click is muscle memory, typing a name is not.
+function renderProjects(){
+  $('#projectCount').textContent=state.projects.length;
+  $('#projectList').innerHTML=state.projects.map((item)=>`<article class="entity-card"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description)}</p><small>${escapeHtml(item.tags.join(' · '))}</small><div class="card-actions"><button data-select-project="${escapeHtml(item.id)}">${escapeHtml(t('Use project'))}</button> <button type="button" class="danger" data-delete-project="${escapeHtml(item.id)}">${escapeHtml(t('Delete'))}</button></div><div class="project-delete-confirm" data-delete-project-panel="${escapeHtml(item.id)}" hidden></div></article>`).join('')||t('No projects.');
+  $$('[data-select-project]').forEach((button)=>button.addEventListener('click',async()=>{state.activeProjectId=button.dataset.selectProject;state.activeConversationId=null;renderProjectOptions();activate('chat');await refreshWorkspace();}));
+}
+function openProjectDeleteConfirm(id){
+  const project=state.projects.find((item)=>item.id===id);
+  const panel=findByData('delete-project-panel',id);
+  if(!panel||!project)return;
+  panel.hidden=false;
+  panel.innerHTML=`<p class="model-advisory" role="note">⚠ ${escapeHtml(t('This removes the project from every list — chats and files already in it are not destroyed, only the record is kept.'))}</p>`
+    +`<p>${escapeHtml(t('Second confirmation: type the project name to say which one.'))}</p>`
+    +`<p><input type="text" data-delete-project-input="${escapeHtml(id)}" autocomplete="off" spellcheck="false" aria-label="${escapeHtml(t('Type the project name to confirm'))}" placeholder="${escapeHtml(project.name)}"></p>`
+    +`<p class="card-actions"><button type="button" class="danger" data-delete-project-commit="${escapeHtml(id)}" disabled>${escapeHtml(t('Delete project'))}</button> `
+    +`<button type="button" data-delete-project-cancel="${escapeHtml(id)}">${escapeHtml(t('Cancel'))}</button></p>`;
+}
+function closeProjectDeleteConfirm(id){
+  const panel=findByData('delete-project-panel',id);
+  if(panel){panel.hidden=true;panel.innerHTML='';}
+}
+async function commitProjectDelete(id){
+  try{
+    await api(`/api/v1/projects/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({archived:true})});
+    closeProjectDeleteConfirm(id);
+    toast(t('Project deleted.'),{kind:'success'});
+    if(state.activeProjectId===id)state.activeProjectId=null;
+    await refreshWorkspace();
+  }catch(error){
+    toast(`${t('This project was not deleted:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+  }
+}
+$('#projectList')?.addEventListener('click',(event)=>{
+  const start=event.target?.closest?.('[data-delete-project]')?.dataset?.deleteProject;
+  if(start)return openProjectDeleteConfirm(start);
+  const commit=event.target?.closest?.('[data-delete-project-commit]')?.dataset?.deleteProjectCommit;
+  if(commit)return commitProjectDelete(commit);
+  const cancel=event.target?.closest?.('[data-delete-project-cancel]')?.dataset?.deleteProjectCancel;
+  if(cancel)return closeProjectDeleteConfirm(cancel);
+});
+$('#projectList')?.addEventListener('input',(event)=>{
+  const id=event.target?.dataset?.deleteProjectInput;
+  if(!id)return;
+  const project=state.projects.find((item)=>item.id===id);
+  const button=findByData('delete-project-commit',id);
+  if(button&&project)button.disabled=event.target.value.trim()!==project.name;
+});
 $('#projectForm').addEventListener('submit',async(event)=>{event.preventDefault();try{const project=await api('/api/v1/projects',{method:'POST',body:JSON.stringify({name:$('#projectName').value,description:$('#projectDescription').value,instructions:$('#projectInstructions').value,tags:$('#projectTags').value.split(',').map((v)=>v.trim()).filter(Boolean),knowledgePolicy:{mode:$('#projectKnowledgeMode').value,limit:Number($('#projectKnowledgeLimit').value),maxCharacters:60000}})});state.activeProjectId=project.id;event.target.reset();await refreshWorkspace();setStatus('Project created.');}catch(error){setStatus(error.message,true);}});
 $('#chatProject').addEventListener('change',async(event)=>{state.activeProjectId=event.target.value||null;state.activeConversationId=null;await refreshWorkspace();});
 $('#chatConversation').addEventListener('change',async(event)=>selectConversation(event.target.value));
@@ -1272,7 +1324,10 @@ let commandMenuIndex=0;
 function commandMenuState(){
   const typed=$('#chatInput')?.value??'';
   const parsed=parseCommandPrompt(typed);
-  return parsed?{parsed,hits:matchCommands(parsed.word)}:null;
+  // `codenOffered()`, not the bare command list: CodeN's own `/` menu already includes the
+  // served address book (F-INTENT-001 fixed the same gap there). Two menus off two different
+  // lists is the divergence this project keeps finding between the shells.
+  return parsed?{parsed,hits:matchCommands(parsed.word,codenOffered())}:null;
 }
 function renderCommandMenu(){
   const box=$('#chatCommands');if(!box)return;
@@ -1311,9 +1366,50 @@ $('#chatInput').addEventListener('keydown',(event)=>{
     if(event.key==='Tab'){event.preventDefault();return completeCommand(menu.hits[commandMenuIndex].name);}
     if(event.key==='Escape'){event.preventDefault();$('#chatCommands')?.classList.add('hidden');return undefined;}
   }
-  if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();$('#chatCommands')?.classList.add('hidden');sendChat();}
+  if(event.key==='Enter'&&!event.shiftKey){
+    event.preventDefault();$('#chatCommands')?.classList.add('hidden');
+    const typed=$('#chatInput').value.trim();
+    // A line starting with `/` used to reach here and go straight into `sendChat()` — sent as
+    // ORDINARY PROSE to the model, which is not what typing `/model` means anywhere else in
+    // this product. The menu above already composes the same line CodeN's prompt would; this
+    // is the other half CodeN already has and chat never did: actually running it.
+    if(typed.startsWith('/')){$('#chatInput').value='';void submitChatPrompt(typed);}
+    else sendChat();
+  }
   return undefined;
 });
+/**
+ * A `/` line typed (or spoken) into the chat composer, run the same way CodeN's own prompt
+ * runs one — `planTurn` off the same registry, `codenCall` for the transport — because a
+ * second command engine for this shell is the exact duplication `16` §4b.2 exists to prevent.
+ * Chat has no local transcript to write into (CodeN's `codenView` is a client-side scratch
+ * pad); a command's line and its result are therefore persisted as real messages on the
+ * active branch — a `tool`-role message, never claimed as something the model said — so they
+ * survive the next `refreshMessages()` instead of vanishing under it.
+ */
+async function submitChatPrompt(typed){
+  if(!state.activeConversationId){setStatus('Create a conversation first.',true);return;}
+  const branchId=state.activeBranchId;
+  const record=(role,content)=>api(`/api/v1/conversations/${state.activeConversationId}/messages`,{method:'POST',body:JSON.stringify({branchId,role,content})});
+  await record('user',typed);
+  const offered=codenOffered();
+  const turn=planTurn(typed,{resolve:(text)=>resolveCommand(text,offered),parse:parseCommandPrompt,commands:offered,groups:groupMenu});
+  if(turn.kind==='help'){await record('tool',turn.lines.join('\n'));return refreshMessages();}
+  if(turn.kind==='clear')return refreshMessages();
+  if(turn.kind==='unknown'||turn.kind==='confirm'||turn.kind==='needs-argument'){await record('tool',turn.message);return refreshMessages();}
+  if(turn.kind==='form'){await record('tool',`→ /${turn.command}. Opening the panel that runs it.`);await refreshMessages();jumpTo(turn.address);return undefined;}
+  if(turn.kind==='session'){await record('tool','Ending the session…');await refreshMessages();return $('#logoutButton')?.click();}
+  if(turn.kind==='navigate'){await record('tool',turn.because?`→ /${turn.command}. ${turn.because}`:`→ /${turn.command}`);await refreshMessages();jumpTo(turn.address);return undefined;}
+  if(turn.kind!=='call')return refreshMessages();
+  try{
+    const result=await codenCall(turn.method,turn.params);
+    const shown=callResult(turn.command,result);
+    await record('tool',shown.lines?.length?`${shown.headline}\n${shown.lines.join('\n')}`:shown.headline);
+  }catch(error){
+    await record('tool',`/${turn.command} refused: ${error.value?.error?.reason??error.value?.error??error.message}`);
+  }
+  return refreshMessages();
+}
 // --- the agent shell, in the browser · phase 3a -------------------------------------------
 //
 // `16` §4b.2: the canonical form is the terminal's, and this renders it. Four regions — the
@@ -1694,6 +1790,20 @@ async function capturedBlobToInput(blob,name){const file=new File([blob],name,{t
 $('#captureCamera').addEventListener('click',async()=>{try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const video=document.createElement('video');video.srcObject=stream;await video.play();await new Promise((r)=>setTimeout(r,500));const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);stream.getTracks().forEach((track)=>track.stop());canvas.toBlob((blob)=>capturedBlobToInput(blob,`camera-${Date.now()}.png`),'image/png');}catch(error){setStatus(error.message,true);}});
 $('#captureScreen').addEventListener('click',async()=>{try{const stream=await navigator.mediaDevices.getDisplayMedia({video:true});const video=document.createElement('video');video.srcObject=stream;await video.play();await new Promise((r)=>setTimeout(r,500));const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);stream.getTracks().forEach((track)=>track.stop());canvas.toBlob((blob)=>capturedBlobToInput(blob,`screen-${Date.now()}.png`),'image/png');}catch(error){setStatus(error.message,true);}});
 let voiceRecorder=null;let voiceChunks=[];$('#recordAudio').addEventListener('click',async()=>{try{if(voiceRecorder?.state==='recording'){voiceRecorder.stop();$('#recordAudio').textContent='Record voice';return;}const stream=await navigator.mediaDevices.getUserMedia({audio:true});voiceChunks=[];voiceRecorder=new MediaRecorder(stream);voiceRecorder.ondataavailable=(event)=>voiceChunks.push(event.data);voiceRecorder.onstop=async()=>{stream.getTracks().forEach((track)=>track.stop());await capturedBlobToInput(new Blob(voiceChunks,{type:voiceRecorder.mimeType}),`voice-${Date.now()}.webm`);};voiceRecorder.start();$('#recordAudio').textContent='Stop recording';}catch(error){setStatus(error.message,true);}});
+// §3#11, OWNER_REVIEW_2026-08-21: «non si capisce se sono davvero attivi/funzionanti». Archive
+// already removes an agent from every surface (D-0397, `!item.archived` filtered server-side) —
+// that half of the report was already answered before this session; what the card never showed
+// is whether an agent DOES anything. Derived from `state.agentRuns`, the same record `Test` and
+// `Plan run` already write — not a new field invented for the badge, so it cannot say something
+// the rest of the page disagrees with.
+function agentStatusBadge(agentId){
+  const runs=(state.agentRuns??[]).filter((run)=>run.agentId===agentId);
+  if(!runs.length)return `<p><span class="badge">${escapeHtml(t('Not yet run'))}</span></p>`;
+  const last=runs.reduce((latest,run)=>!latest||run.createdAt>latest.createdAt?run:latest,null);
+  if(last.status==='completed')return `<p><span class="badge badge-on">${escapeHtml(t('Working — last run succeeded'))}</span></p>`;
+  if(last.status==='failed')return `<p><span class="badge badge-off">${escapeHtml(t('Failing — last run errored'))}</span></p>`;
+  return `<p><span class="badge">${escapeHtml(t('Run in progress'))}</span></p>`;
+}
 function renderAgents(){
   $('#agentTools').innerHTML=state.tools.map((item)=>`<option value="${item.id}">${escapeHtml(item.name)}${item.mutative?' · mutative':''}</option>`).join('');
   $('#runAgent').innerHTML=optionList(state.agents,{empty:'Select agent'});
@@ -1704,7 +1814,7 @@ function renderAgents(){
   $('#agentList').innerHTML=(state.agents??[]).map((agent)=>{
     const tools=state.tools.filter((tool)=>(agent.toolIds??[]).includes(tool.id));
     const instructions=(agent.instructions??'').trim();
-    return `<article class="entity-card"><h3>${escapeHtml(agent.name)}</h3><p>${instructions?escapeHtml(instructions.length>240?`${instructions.slice(0,240)}…`:instructions):'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.'}</p><small>${tools.length?tools.map((tool)=>`${escapeHtml(tool.name)}${tool.mutative?' · mutative':''}`).join(' · '):'No tool'}</small><div class="inline-form"><input data-agent-goal="${agent.id}" placeholder="One sentence to test this agent with" aria-label="One sentence to test this agent with" title="Sent to the model as the goal of a single, non-mutative turn."><button data-test-agent="${agent.id}" title="Runs one turn now: this agent's instructions plus this sentence. No tool is called and nothing is written.">Test</button><button data-archive-agent="${agent.id}" title="Removes this agent from the list and from Plan run. The record is kept, not destroyed.">Archive agent</button></div><div data-agent-answer="${agent.id}"></div></article>`;
+    return `<article class="entity-card"><h3>${escapeHtml(agent.name)}</h3>${agentStatusBadge(agent.id)}<p>${instructions?escapeHtml(instructions.length>240?`${instructions.slice(0,240)}…`:instructions):'No instructions of its own — this agent is told to answer directly and to declare what it cannot know.'}</p><small>${tools.length?tools.map((tool)=>`${escapeHtml(tool.name)}${tool.mutative?' · mutative':''}`).join(' · '):'No tool'}</small><div class="inline-form"><input data-agent-goal="${agent.id}" placeholder="One sentence to test this agent with" aria-label="One sentence to test this agent with" title="Sent to the model as the goal of a single, non-mutative turn."><button data-test-agent="${agent.id}" title="Runs one turn now: this agent's instructions plus this sentence. No tool is called and nothing is written.">Test</button><button data-archive-agent="${agent.id}" title="Removes this agent from the list and from Plan run. The record is kept, not destroyed.">Archive agent</button></div><div data-agent-answer="${agent.id}"></div></article>`;
   }).join('')||'No agent yet. Create one on the left — it needs a name and nothing else.';
   // `step.toolId` is no longer required to offer Execute: a step without a tool is answered by
   // the model (`D-0397`). While that condition stood, the `Analyze goal` step this very screen
@@ -3334,6 +3444,17 @@ function performHeard(result){
   const box=$('#chatInput');
   if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.NAVIGATE){
     return jumpTo(result.entry.address??result.entry.name);
+  }
+  // Owner, s344: a spoken read-only question ("verifica se il modello è carico") only ever
+  // composed `/model` into the box and stopped — the chat composer had no run path at all
+  // until `submitChatPrompt` above gave it one. Now that it does, a command may run itself
+  // from voice ONLY when nothing it could do needs a second look: no declared `confirm` and a
+  // read-only (or unscoped) permission. A command that writes, or one the registry itself
+  // marks undoable-cost, still only fills the box — a misheard word must never reach `/sweep`.
+  if(result.kind===VoiceIntent.INTENT&&result.disposition===VoiceDisposition.RUN){
+    const entry=result.entry;
+    const safe=entry&&!entry.confirm&&(entry.permission==null||/\.read$/.test(entry.permission));
+    if(safe){void submitChatPrompt(result.line);return undefined;}
   }
   if(!box)return undefined;
   if(result.kind===VoiceIntent.INTENT){box.value=result.line;box.focus();return undefined;}
@@ -5646,16 +5767,28 @@ async function loadResearchProviderStatus(){
   const picker=$('#researchProviderPicker');
   try{
     const info=await api('/api/v1/settings/research');
-    status.textContent=info.consented?'Configured and consented':info.configured?'Configured, awaiting consent':'Not configured';
+    status.textContent=info.consented?t('Configured and consented'):info.configured?t('Configured, awaiting consent'):t('Not configured');
     status.className=`badge ${info.consented?'badge-on':'badge-off'}`;
     if(currentPermissions.includes('provider.manage')){
       picker.classList.remove('hidden');
-      $('#researchProviderSelect').innerHTML=info.eligibleTools.length
-        ?info.eligibleTools.map((tool)=>`<option value="${escapeHtml(tool.id)}" ${tool.id===info.toolId?'selected':''}>${escapeHtml(tool.name)}${tool.consented?'':' (not yet consented)'}</option>`).join('')
-        :'<option value="">No external tools registered yet — register one in Agents</option>';
+      const select=$('#researchProviderSelect');
+      // §4#8, OWNER_REVIEW_2026-08-21: «nessun fornitore di ricerca configurabile». The picker
+      // was always here — what was missing sat one page away: a research provider IS an
+      // external tool (Agents → Tools), and an empty catalogue left this select showing an
+      // unclickable placeholder OPTION as its only word on the subject. A person reading this
+      // panel alone had no way to tell "go register one" from "this is broken".
+      if(info.eligibleTools.length){
+        select.disabled=false;
+        select.innerHTML=info.eligibleTools.map((tool)=>`<option value="${escapeHtml(tool.id)}" ${tool.id===info.toolId?'selected':''}>${escapeHtml(tool.name)}${tool.consented?'':` (${escapeHtml(t('not yet consented'))})`}</option>`).join('');
+      }else{
+        select.disabled=true;
+        select.innerHTML=`<option value="">${escapeHtml(t('No external tools registered yet'))}</option>`;
+      }
+      const hint=$('#researchProviderRegisterHint');
+      if(hint)hint.hidden=info.eligibleTools.length>0;
     }else picker.classList.add('hidden');
   }catch{
-    status.textContent='Could not read provider status';status.className='badge badge-off';
+    status.textContent=t('Could not read provider status');status.className='badge badge-off';
   }
 }
 $('#researchProviderSave').addEventListener('click',(event)=>withBusy(event.currentTarget,async()=>{
@@ -5815,6 +5948,17 @@ function removeControl(item){
     +`${escapeHtml(t('Delete'))}</button></p>`
     +`<div class="model-remove-confirm" data-remove-panel="${escapeHtml(item.id)}" hidden></div>`;
 }
+// §3#3, OWNER_REVIEW_2026-08-21: «manca il pulsante "carica in VRAM" e la richiesta di
+// conferma». The `downloaded` lane's own note already named the verb — `MODEL_LANE_VERB.
+// downloaded === 'Use'` — but nothing on the card ever performed it; the chip picker
+// (`createModelPicker`, chat/CodeN) was the only door to `POST /api/v1/models/activate`. Same
+// route, same confirm-before-mutate shape this file already uses everywhere else (`archiveAgent`,
+// project delete): one question, because loading a model REPLACES what is answering now.
+function loadControl(item){
+  if(item.lane!=='downloaded')return '';
+  return `<p class="card-actions"><button type="button" data-load-model="${escapeHtml(item.id)}">`
+    +`${escapeHtml(t('Load into memory'))}</button></p>`;
+}
 function modelCard(item,context={}){
   const declared=(value)=>value==='undeclared'||value===null||value===undefined
     ?'<em>undeclared</em>':escapeHtml(String(value));
@@ -5841,7 +5985,7 @@ function modelCard(item,context={}){
     +`</dl>`
     +modelAdvisories(item)
     +outside+authenticityLine(item)
-    +`<footer class="model-tile-foot">${acquireControl(item,context)}${removeControl(item)}`
+    +`<footer class="model-tile-foot">${acquireControl(item,context)}${loadControl(item)}${removeControl(item)}`
     +(item.sourceUrl?`<p class="model-source">${source.replace(' &middot; ','')}</p>`:'')+`</footer></article>`;
 }
 let modelCategories=[];
@@ -5872,7 +6016,7 @@ function renderModelLanes(catalog){
     $('#modelForegroundCount').setAttribute('translate','no');$('#modelForegroundCount').textContent=`${total} ${t('on this installation')}`;
     foreground.classList.toggle('empty-state',total===0);
     foreground.innerHTML=total===0
-      ?'No model is running and none is on disk. Nothing is hidden here — this installation has none.'
+      ?escapeHtml(t('No model is running and none is on disk. Nothing is hidden here — this installation has none.'))
       :catalog.foreground.filter((entry)=>entry.items.length>0).map((entry)=>
         `<h4 translate="no">${escapeHtml(t(MODEL_LANE_TITLE[entry.lane]??entry.lane))} &middot; ${entry.items.length}</h4>`
         +`<p class="hint" translate="no">${escapeHtml(t(MODEL_LANE_NOTE[entry.lane]??''))} ${escapeHtml(t('Action:'))} ${escapeHtml(t(MODEL_LANE_VERB[entry.lane]??''))}.</p>`
@@ -5883,7 +6027,7 @@ function renderModelLanes(catalog){
     $('#modelAvailableCount').setAttribute('translate','no');$('#modelAvailableCount').textContent=`${catalog.available.total} ${t('known')}`;
     list.classList.toggle('empty-state',catalog.available.items.length===0);
     list.innerHTML=catalog.available.items.length===0
-      ?'No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.'
+      ?escapeHtml(t('No publisher registered on this installation has declared a model that is not already here. This is the live registry, not an empty list standing in for one.'))
       :`<div class="card-list model-grid">${catalog.available.items.map((item)=>modelCard(item,{
         acquireOffered:catalog.acquisition.offered,
         acquireReason:catalog.acquisition.reason,
@@ -6086,6 +6230,20 @@ function closeRemoveConfirm(id){
   const panel=findByData('remove-panel',id);
   if(panel){panel.hidden=true;panel.innerHTML='';}
 }
+async function loadModel(id){
+  if(!confirm(t('Loading a model into memory replaces whatever is answering now and takes a moment. Load this one?')))return;
+  const button=findByData('load-model',id);
+  if(button)button.disabled=true;
+  try{
+    await api('/api/v1/models/activate',{method:'POST',body:JSON.stringify({id})});
+    toast(t('Loaded — this is what answers now.'),{kind:'success'});
+    await loadModelCatalogue();
+    await refreshCodenModelChip();
+  }catch(error){
+    toast(`${t('This model could not be loaded:')} ${error.value?.error??error.message}`,{kind:'error',correlationId:error.correlationId});
+    if(button)button.disabled=false;
+  }
+}
 async function openRemoveConfirm(id){
   const panel=findByData('remove-panel',id);
   if(!panel)return;
@@ -6196,6 +6354,8 @@ function wireModelCatalogue(){
   // D-0625. The delete gesture lives on the foreground lanes, because only a model that is on
   // disk has bytes to remove. Delegated for the same reason as the acquire handler above.
   $('#modelForegroundLanes')?.addEventListener('click',(event)=>{
+    const load=event.target?.closest?.('[data-load-model]')?.dataset?.loadModel;
+    if(load)return loadModel(load);
     const start=event.target?.closest?.('[data-remove]')?.dataset?.remove;
     if(start)return openRemoveConfirm(start);
     const commit=event.target?.closest?.('[data-remove-commit]')?.dataset?.removeCommit;

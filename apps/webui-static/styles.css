@@ -1529,17 +1529,18 @@ body{zoom:var(--ui-zoom);font-size:calc(var(--text-scale)*16px)}
   color: var(--state-critical-text);
   font-size: calc(var(--text-scale) * 12px);
 }
-.model-remove-confirm {
+.model-remove-confirm, .project-delete-confirm {
   margin-top: calc(var(--text-scale) * 6px);
   padding: calc(var(--text-scale) * 8px);
   background: var(--surface-critical-soft);
   border: 1px solid var(--border-critical-strong);
   border-radius: 6px;
 }
-.model-remove-confirm input[type="text"] { width: 100%; }
-/* The commit button is DISABLED until the id is typed back. Styling it as merely dim would make
-   an armed and an unarmed destructive button look alike, which is the one pair that must not. */
-.model-remove-confirm button[disabled] { opacity: .45; cursor: not-allowed; }
+.model-remove-confirm input[type="text"], .project-delete-confirm input[type="text"] { width: 100%; }
+/* The commit button is DISABLED until the id (or name) is typed back. Styling it as merely dim
+   would make an armed and an unarmed destructive button look alike, which is the one pair that
+   must not. */
+.model-remove-confirm button[disabled], .project-delete-confirm button[disabled] { opacity: .45; cursor: not-allowed; }
 
 /* D-0628 — i riquadri del catalogo modelli. Owner 2026-08-21: «a vista di riquadro, sei per
    pagina, 3 a sinistra 3 a destra». Classe DEDICATA e non `.card-list`: quella la usano altri
