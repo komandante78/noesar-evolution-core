@@ -1,74 +1,71 @@
 # SESSION HANDOFF
 
-**Consolidated deploy done and verified live.** The commits that were queued (§3#6 voice
-hands-free root-cause fix, §4#1/#2/#3 UX gaps) are now running in production, T2 is clean,
-and a real WCAG regression T2 found in the new UI was fixed in the same phase before close.
+**`#/knowledge` and `#/memory` now have a distinct, verified-live identity.** Owner
+delegated `§4#6/#7` directly ("scrivile te fai una ricerca e implementa"); researched,
+screenshotted the real render first, fixed a real terminology collision and a real
+layout bug found in the process, and deployed. Three of four `D-0645` decisions remain.
 
 ## ➜ LA PROSSIMA AZIONE
 
-**Owner still owes one thing**: a one-line definition of what `#/knowledge` and `#/memory`
-should do/say (`§4#6/#7`) — Owner chose to write it directly rather than have a direction
-proposed.
-
-**Four product decisions were made this session (`D-0645`), none built yet — each is its own
-future phase, one at a time (rule 9):**
-1. TTS: move the already-running Kokoro-82M container (`noesar-voice-speak`) to the idle
-   RTX 3060 GPU — infrastructure action, outside this project's own container authority
-   (`CLAUDE10.md` rule 16), needs its own explicit scoping.
-2. `§4#9` — chat/CodeN: natural-language agent creation should create directly, no
+Pick one of the three remaining `D-0645` decisions to open the next phase (each is its
+own phase, rule 9):
+1. **TTS**: move the already-running Kokoro-82M container (`noesar-voice-speak`) to the
+   idle RTX 3060 GPU — infrastructure action, outside this project's own container
+   authority, needs its own explicit scoping before it can be executed.
+2. **`§4#9`**: chat/CodeN natural-language agent creation should create directly, no
    confirmation step.
-3. `§4#10` — multimodality priority order: documents/files, images, audio.
-4. `§4#6/#7` — knowledge/memory page identity: waiting on the Owner's one-liner above.
-
-**Pick one of the four (or the knowledge/memory answer) to open the next phase.**
+3. **`§4#10`**: multimodality, in priority order — documents/files, images, audio.
 
 ## WHAT IS TRUE NOW THAT WAS NOT
 
-**Deployed and verified (`d0640-voice-hunt-and-ux-20260822T131226Z`).** Byte-equal
-tree↔image both builds (476/476). Live: `running`/`healthy`, `/livez` `/readyz` `/healthz`
-200, 4 children, 0 auth-failures. Full detail: `docs/INSTALLATION_LEDGER.md` tail.
+**`D-0647`, deployed and verified live** (`d0645-knowledge-memory-identity-…`).
+Screenshotted both pages live first, with a new reusable instrument
+(`tools/page-screenshot.mjs` — signs in a throwaway Owner on the disposable e2e probe,
+screenshots any route, prints base64 PNGs) instead of judging from markup. Found:
+- The Knowledge page's hand-written "Notes" block used **"memory" vocabulary
+  throughout** (`#memoryForm`, "Add memory", "Save memory") while its own header
+  already said "separate from the Memory destination" — the controls contradicted
+  their own disambiguating sentence. Renamed to `note*` ids/labels/JS
+  (`renderNotes`, "Add note", "Visible notes"); backend route `/api/v1/memories`
+  unchanged, DOM-facing vocabulary only.
+- A **real, reproducible layout bug**: `#/memory`'s search input rendered at 24px
+  wide — unusable. Root cause: a sibling `<select>`'s generic `width:100%` competed
+  for flex space; the Knowledge search row never hits this because it has no
+  `<select>`. Fixed with `.search-row select{flex:0 0 auto;width:auto}`.
+- Both pages shared one generic panel/form template with zero visual distinction.
+  Added a `.section-icon` badge echoing each page's own nav glyph (◈/✦); enriched
+  every bare-text empty state with a one-sentence explanation.
 
-**T2 run twice, clean.** Browser e2e **511 · 510 pass · 1 fail** (pre-declared `F-I18N-002`
-only) — stable across both builds. Accessibility **26/27 → 27/27** after the fix below.
-Unit **2976/2977** (1 pre-existing skip), ESLint **474/0/0**, seeded-defect **19/19**.
+Researched first (WebSearch, cited in `D-0647`): 2026 ChatGPT splits "saved memories"
+(explicit) from "reference chat history" (implicit) — confirming this product's real
+Notes-vs-Memory split needed disambiguation, not a redesign; dashboard convention is
+icon+one-sentence empty states.
 
-**HUNT AND FIX found and repaired a real defect (`D-0646`):** T2's own accessibility audit
-caught `#modelShowAll` (this phase's own §4#1 toggle) at 13×13 CSS px, under the WCAG 2.2
-SC 2.5.8 24×24 minimum — same class of defect already fixed once for `.check` inputs, missed
-here because the new control used a different label class. Fixed with one CSS selector,
-rebuilt, redeployed, reverified 27/27.
+**Verified, not asserted:** unit 2976/2977 (1 pre-existing skip), ESLint 475/0/0,
+browser-e2e 510/511 (`F-I18N-002` only, 0 undeclared), accessibility **27/27**,
+`measure-ui-language-coverage.mjs` VERDICT=COVERED, bytes-equal tree↔image 476/476,
+live `/livez` `/readyz` `/healthz` 200, two containers survive.
 
-**Environment/hygiene, this session:**
-- Container litter from the interrupted prior session cleaned up: an orphaned older rollback
-  (`…-pre-20260821T082532Z`) removed; exactly two survivors confirmed throughout.
-- `.claude/settings.local.json` (personal permission mode) added to `.gitignore` — it was
-  never meant to be tracked and was tripping the close-guard's diff check.
-- `git config --global --add safe.directory` applied (container ownership mismatch,
-  environment-level, not a project config change) — required for any git command to run.
-- Owner set `permissions.defaultMode: bypassPermissions` for this operator's own sessions
-  (local, gitignored file) — CLAUDE10.md's `deny` list and `destructive-command-guard.sh`
-  stay active regardless of permission mode.
-
-**Improvement proposal, `D-0646`'s closing note:** a stylelint rule enforcing 24×24 minimum
-target size on new checkbox/radio controls, to catch this class of defect at commit time.
-**Funding fit: none** — internal tooling, not reusable beyond this codebase.
+**Improvement proposal, `D-0647`:** `tools/page-screenshot.mjs` is worth keeping as a
+standing instrument for "does this page actually look right" questions. **Funding fit:
+none** — depends on this product's own auth-bootstrap flow.
 
 ## WHAT WAS **NOT** DONE
 
-- The four `D-0645` decisions (TTS→GPU, direct NL agent creation, multimodality, knowledge/
-  memory identity) — scoped and recorded, not built. Each needs its own phase contract.
-- Knowledge/memory one-liner — still owed by the Owner, not yet supplied.
-- **No push** — `git push origin main` still fails, no GitHub credential in this container
-  (`B-013`, unchanged). Commits are complete and correct locally; only the push is blocked.
-- No new browser-e2e case added for the WCAG fix specifically — the accessibility audit's
-  existing 2.5.8 check already proves the property directly; a dedicated regression case
-  would duplicate it for a one-line CSS fix.
+- Kokoro→GPU move, `§4#9` direct NL agent creation, `§4#10` multimodality — scoped in
+  `D-0645`, not built. Each needs its own phase contract.
+- **No push** — `git push origin main` still fails, no GitHub credential in this
+  container (`B-013`, unchanged). Commits are complete and correct locally.
+- No dedicated regression test added for the `.search-row select` flex bug
+  specifically — the accessibility/browser suites already exercise `#/memory`'s
+  render and would have caught a full regression; a pixel-width assertion for this
+  one selector was judged not worth a new permanent check.
 
 ## OPEN BLOCKERS
 
-- `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; this session's
-  diff review was a heuristic grep, clean, declared as heuristic.
+- `B-002` **STALE** (`D-0257`): neither `gitleaks` nor `trufflehog` on `PATH`; this
+  session's diff review was a heuristic grep, clean, declared as heuristic.
 - `B-011` low/deferred (`D-0258`): git history rewritten on Owner's explicit authorisation.
-- `B-013` **still open**: `git push origin main` refused, no GitHub credential stored in this
-  container. Commits keep queuing locally, correct and complete.
+- `B-013` **still open**: `git push origin main` refused, no GitHub credential stored in
+  this container. Commits keep queuing locally, correct and complete.
 - No other new blocker.
