@@ -14,7 +14,8 @@ found and fixed a real `.gitignore` gap that had let host-wide evidence files si
 containment property to `packages/authority-containment/` (`D-0657`). Owner said keep going
 without stopping between phases: picked up `F-RUST-001` and gave `noesar-auth` its first real
 tests, 0 → 13, including an independent RFC 6238 vector (`D-0658`), then `noesar-audit-ledger`,
-0 → 6, finding and fixing a real hash-chain delimiter-collision weakness (`D-0659`).
+0 → 6, finding and fixing a real hash-chain delimiter-collision weakness (`D-0659`), then
+`noesar-hardware-orchestrator`'s memory-sizing formula, 0 → 7 (`D-0660`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -41,11 +42,11 @@ prerequisite. The actual next action for the deadline is writing the CodeSupply
 abstract/milestones/budget (`D-0631`, not started) once the application form publishes
 (~3 Sep 2026).
 
-**Tracked findings (`F-RUST-001`):** `noesar-auth` (`D-0658`) and `noesar-audit-ledger`
-(`D-0659`, +1 real defect fixed) now tested. Still open: 6/20 Rust crates carry zero tests
-(`noesar-authority-protocol`, `noesar-authority-transport`, `noesar-contracts`,
-`noesar-control-plane`, `noesar-data-plane`, `noesar-hardware-orchestrator`) and 3 of those
-compile but reach no `oci/*.Dockerfile` — a reasonable next bounded slice, same shape.
+**Tracked findings (`F-RUST-001`):** `noesar-auth` (`D-0658`), `noesar-audit-ledger` (`D-0659`,
++1 real defect fixed) and `noesar-hardware-orchestrator` (`D-0660`) now tested.
+`noesar-contracts` reclassified not-applicable (pure data shapes, no logic). Still open: 4
+crates with real logic (`noesar-authority-protocol`, `noesar-authority-transport`,
+`noesar-control-plane`, `noesar-data-plane`) — a reasonable next bounded slice, same shape.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -100,6 +101,12 @@ field's own content contains `|` (confirmed against the pre-fix formula, not ass
 with the same length-delimited feed this project already uses elsewhere (`CT-002`). Zero
 dependents in the workspace — zero reversal cost, and exactly why now was the safe time to fix
 the format.
+
+**`D-0660`:** `rust/crates/noesar-hardware-orchestrator`'s `recommend()` — the only real logic
+in a crate otherwise made of data shapes — had zero tests for its memory-sizing formula. Added
+7, including the estimate checked against the formula recomputed independently in the test.
+Skipped `noesar-contracts`: pure enums/structs, no behaviour beyond serde's own derive macros —
+testing it would prove nothing this project needs proven.
 
 ## WHAT WAS **NOT** DONE
 
