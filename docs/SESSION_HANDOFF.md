@@ -9,6 +9,10 @@ crates with zero tests) to closure across `D-0658`–`D-0662` — `noesar-auth`,
 ledger` (+1 real defect fixed), `noesar-hardware-orchestrator`, `noesar-data-plane`,
 `noesar-authority-protocol`, `noesar-authority-transport`, `noesar-control-plane` all tested;
 `noesar-contracts` reclassified not-applicable. `cargo test --workspace --offline`: 144 → 218.
+Owner then, more emphatically, "NON DEVI FERMARTI!! ... VAI AVANTI A FINIRE": closed
+`F-TOOLS2-001` (socket dispatch tests for `/reject`/`/simulate`/`/git`, `D-0663`) and
+investigated `F-RUST-002`, finding its own premise undercounted — corrected rather than
+"fixed" on a false basis (`D-0664`).
 
 ## ➜ LA PROSSIMA AZIONE
 
@@ -23,12 +27,14 @@ NLnet deadline (3 Nov 2026). Actual next action for the deadline: CodeSupply
 abstract/milestones/budget (`D-0631`, not started) once the application form publishes
 (~3 Sep 2026).
 
-**Tracked findings:** `F-RUST-001` **CLOSED** (`D-0662`) — all 8 originally zero-test Rust
-crates resolved: 7 tested (`noesar-auth`, `noesar-audit-ledger` +1 real defect fixed,
-`noesar-hardware-orchestrator`, `noesar-data-plane`, `noesar-authority-protocol`,
-`noesar-authority-transport`, `noesar-control-plane`), 1 not applicable (`noesar-contracts`,
-pure data shapes). Its packaging observation split out as new, narrower `F-RUST-002` (3 crates
-compile but reach no `oci/*.Dockerfile`) — open, not investigated this session.
+**Tracked findings:** `F-RUST-001` **CLOSED** (`D-0662`, detail above). `F-TOOLS2-001`
+**CLOSED** (`D-0663`): `workspace.reject`/`workspace.simulate`/`coden.gitStatus` dispatch routes
+now have their own tests, the real `gitStatus` wired in (not a stub) — `session-protocol.
+test.mjs` 32/32. `F-RUST-002` **OPEN, corrected** (`D-0664`): its own premise was wrong — not
+"3 crates unpackaged" but 17 of 20, and of those only `noesar-control-plane` is actually a
+standalone binary (the rest are libraries, for which "no Dockerfile entry" was never a
+meaningful gap). Left open as an Owner-level architecture question (which control-plane
+implementation ships), not closed on the false premise and not decided unilaterally.
 
 No further action on Kokoro→GPU unless the Owner amends `CLAUDE10.md` with a named exception.
 
@@ -53,8 +59,13 @@ had a real delimiter-collision defect, found and fixed (zero reversal cost, zero
 and IPC-framing boundary and now carry 33 tests between them (replay, clock skew, binding
 mismatches, oversized/malformed/non-object frames); `noesar-control-plane`'s release gate is
 proven to block a `production` channel start against the still-reference authority/data-plane
-status. `noesar-contracts` reclassified not-applicable. New, narrower `F-RUST-002` opened for
-the split-out packaging observation.
+status. `noesar-contracts` reclassified not-applicable.
+
+**`D-0663`/`D-0664`:** full detail in `docs/DECISION_LOG.md`. `F-TOOLS2-001` closed with 3 new
+dispatch-level tests. `F-RUST-002` corrected, not closed: `oci/Dockerfile` ships exactly 2 Rust
+binaries (`noesar-supervisor`, `noesar-sandbox`); `rust/build-authority-release.sh` separately
+builds+provenance-seals `noesar-authority-daemon`; `noesar-control-plane` is the one real
+orphaned binary (health endpoint says so itself: `authorityDaemon:source-present-not-built`).
 
 ## WHAT WAS **NOT** DONE
 
@@ -63,8 +74,8 @@ the split-out packaging observation.
   — real architecture change to security-critical code, deliberately left as an open
   decision rather than taken inside this phase (`D-0653`).
 - FUNDING Phases F/G — not started, and not due before the deadline (see above).
-- `F-RUST-002` (3 crates compiled but never packaged into an `oci/*.Dockerfile`) — opened,
-  not investigated.
+- `F-RUST-002` — corrected, still open. Deciding whether/how `noesar-control-plane` or
+  `noesar-authority-daemon` ever ships is an Owner architecture decision, not taken here.
 - **No push** — `git push origin main` still fails, no GitHub credential in this
   container (`B-013`, unchanged all session). Commits are complete and correct locally.
 

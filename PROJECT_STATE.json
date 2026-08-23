@@ -1,16 +1,16 @@
 {
   "project": "NOESAR EVOLUTION",
   "total_phases": 6,
-  "current_phase": "D-0662 — F-RUST-001 CLOSED. Tested the last 3 originally zero-test Rust crates: noesar-authority-protocol (0->19, HMAC envelope signing/replay/clock-skew/bindings), noesar-authority-transport (0->14, length-prefixed IPC frame codec), noesar-control-plane (0->1, release gate). Split the packaging observation out as new finding F-RUST-002.",
-  "phase_status": "Verified this session: cargo test -p noesar-authority-protocol --offline = 19/19, -p noesar-authority-transport = 14/14, -p noesar-control-plane = 1/1 (disposable rust:1-bookworm, --network none, vendored). cargo test --workspace --offline -> 218 tests, 218 pass, 0 fail (was 184 at D-0661, +34), 0 new warnings.",
-  "next_phase": "F-RUST-001 fully closed. F-RUST-002 (packaging: 3 crates never reach an oci/*.Dockerfile) opened, not yet investigated. FUNDING work-plan items remain blocked/not-due (see D-0657): Phase F needs a second host class, Phase G needs an external tester, CodeSupply's form is unpublished until ~3 Sep 2026.",
+  "current_phase": "D-0663/D-0664 — Closed F-TOOLS2-001 (3 new socket-dispatch tests: workspace.reject, workspace.simulate, coden.gitStatus; the real gitStatus wired in, not a stub). Investigated and corrected F-RUST-002: its own premise undercounted -- 17 of 20 Rust crates are unpackaged, not 3, and only noesar-control-plane is actually a standalone binary among them. Left OPEN as an Owner-level architecture question, not closed on the false premise.",
+  "phase_status": "Verified this session: node --test services/reference-control-plane/test/session-protocol.test.mjs -> 32/32 (was 29/29). Full suite -> 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail (manifest regenerated). ESLint 491/0.",
+  "next_phase": "F-TOOLS2-001 closed. F-RUST-002 open, correctly scoped, needs an Owner architecture decision (not a code fix) to actually close. Remaining open findings not yet reviewed this pass: F-ROT-001 (stale allowlist IP, low, needs deploy-tooling change -- out of this pass's safe scope), F4-012/F4-013 (informational), F7-001 (out of scope, named), F-CAP4-001 (reference material, low), F-MODEL-001 (awaiting Owner choice).",
   "canonical_repository_constructed": true,
   "installation_complete": true,
   "production_ready": false,
   "repository_private": true,
   "source_zip_count": 5,
-  "last_commit": "54e835e5a20bff0e34188690256dce9ba08348ae",
-  "last_updated_utc": "2026-08-23T15:30:00Z",
+  "last_commit": "47b2795f7376ce354a17b29eb3833f80e310bbee",
+  "last_updated_utc": "2026-08-23T16:00:00Z",
   "last_commit_note": "771b6464ab5753e3fc3520bb93de8bd996b570a6 = \"feat(deploy): the section 3a sequence becomes a tool the repository owns\" (D-0393, 2026-08-12), 8 files, +880/-20. tools/deploy/redeploy.sh with two modes (--rotate-secret VAR[,VAR...] and --image TAG), its fake-Docker fixture at 70/70 over 9 scenarios, docs/DEPLOYMENT.md and the npm run test:redeploy wiring. Five properties each with a test that can fail: every read of the source before the first mutation (asserted statically against the shipped file), the recipe proven complete before anything is stopped, automatic rollback from the rename onwards with distinct exit codes, no secret in stdout/stderr/argv and no length or hash either, and no host path presumed (section 60-64). Oracle: a copy carrying the incident defect fails 26 assertions. No deployment was performed by it. Preceded by 0ba49a6 (rotation closure, D-0390/D-0391), 67369cf (close guard, D-0392), b3037ac and 20ed5b9 (Voice V1, D-0388/D-0389).",
   "blockers": [
     {
@@ -444,7 +444,7 @@
     {
       "id": "F-TOOLS2-001",
       "severity": "low",
-      "status": "OPEN - recorded 2026-08-17 (D-0497), not fixed. TOOLS_MODULES_INDEX §2 deep review: the underlying engine logic is unit-tested (orch.reject()/orch.simulate() in workspace-actions.test.mjs, gitStatus() in git-status.test.mjs), but the session-protocol.mjs dispatch handlers workspace.reject/workspace.simulate/coden.gitStatus are never called by any test the way sibling methods workspace.approve/workspace.restore are (session-protocol.test.mjs), and tools/browser-e2e.mjs drives none of the three commands either.",
+      "status": "CLOSED 2026-08-23 (D-0663): added 3 dispatch-level tests to session-protocol.test.mjs (workspace.reject, workspace.simulate, coden.gitStatus), the real gitStatus wired into the test harness (not a stub). Session-protocol.test.mjs now 32/32 (was 29/29). Full suite 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail.",
       "summary": "3 of 17 CodeN slash commands (/reject, /simulate, /git) have their engine method tested but not the socket-protocol dispatch layer a keystroke actually goes through, and no e2e covers them."
     },
     {
@@ -493,8 +493,8 @@
     {
       "id": "F-RUST-002",
       "severity": "low",
-      "status": "OPEN - split out of F-RUST-001 at its closure, 2026-08-23 (D-0662), so the observation is not lost inside a finding that is otherwise done. Not investigated further this session.",
-      "summary": "3 of 20 Rust crates (noesar-control-plane, noesar-hardware-orchestrator, noesar-audit-ledger) compile under cargo build --workspace but appear in no oci/*.Dockerfile, so nothing installed by this project actually runs them."
+      "status": "CORRECTED 2026-08-23 (D-0664): the finding's own premise undercounted by an order of magnitude. Measured: oci/Dockerfile ships exactly 2 Rust binaries (noesar-supervisor, noesar-sandbox); rust/build-authority-release.sh separately builds+provenance-seals noesar-authority-daemon (deliberately outside the product image, its own heavier verification chain). That leaves 17 of 20 crates unpackaged, not 3 -- and of those, only noesar-control-plane is actually a standalone binary (the rest are libraries with no [[bin]] target, so 'not in a Dockerfile' was never a meaningful criterion for them). Left OPEN, correctly scoped, as an Owner-level architecture question (which control-plane implementation ships) rather than closed on a false premise.",
+      "summary": "noesar-control-plane is a real, standalone Rust binary (health() literally says authorityDaemon:source-present-not-built) that compiles under cargo build --workspace but ships in neither oci/Dockerfile (JS control plane ships instead) nor rust/build-authority-release.sh (which ships noesar-authority-daemon). Whether/when a Rust control-plane or authority-daemon replaces the JS one is an architecture decision, not a packaging bug."
     }
   ],
   "resolved_findings": [
@@ -747,7 +747,8 @@
     "d0659_noesar_audit_ledger_2026-08-23": "VERIFIED this session: rust/crates/noesar-audit-ledger +6 tests (was 0), hash-chain formula hardened (length-delimited feed, fixes a real delimiter-injection collision) -> cargo test -p noesar-audit-ledger --offline = 6/6. cargo test --workspace --offline = 168 tests, 168 pass, 0 fail (+6 over D-0658).",
     "d0660_noesar_hardware_orchestrator_2026-08-23": "VERIFIED this session: rust/crates/noesar-hardware-orchestrator +7 tests (was 0) -> cargo test -p noesar-hardware-orchestrator --offline = 7/7. cargo test --workspace --offline = 175 tests, 175 pass, 0 fail (+7 over D-0659).",
     "d0661_noesar_data_plane_2026-08-23": "VERIFIED this session: rust/crates/noesar-data-plane +9 tests (was 0), incl. 13-way mutation coverage on RepositoryHealth::production_ready() -> cargo test -p noesar-data-plane --offline = 9/9. cargo test --workspace --offline = 184 tests, 184 pass, 0 fail (+9 over D-0660).",
-    "d0662_frust001_closed_2026-08-23": "VERIFIED this session: noesar-authority-protocol +19 tests, noesar-authority-transport +14 tests, noesar-control-plane +1 test (all were 0). cargo test --workspace --offline = 218 tests, 218 pass, 0 fail (+34 over D-0661). F-RUST-001 CLOSED, F-RUST-002 opened for the packaging observation."
+    "d0662_frust001_closed_2026-08-23": "VERIFIED this session: noesar-authority-protocol +19 tests, noesar-authority-transport +14 tests, noesar-control-plane +1 test (all were 0). cargo test --workspace --offline = 218 tests, 218 pass, 0 fail (+34 over D-0661). F-RUST-001 CLOSED, F-RUST-002 opened for the packaging observation.",
+    "d0663_socket_dispatch_coverage_2026-08-23": "VERIFIED this session: session-protocol.test.mjs +3 tests (workspace.reject/simulate, coden.gitStatus dispatch routes) -> 32/32. Full suite 3093 tests, 3092 pass, 1 pre-existing skip, 0 fail."
   },
   "session_closed": "2026-07-27 — progettazione dell interfaccia COMPLETA E AUTORIZZATA (v3 impianto, v4 gli otto buchi chiusi, v5 la destinazione Ricerca). D-0117..D-0136, criteri UI-001..UI-096. Nessuna riga di prodotto modificata, nessun container toccato, nessun deploy.",
   "state_location_note": "All state for this project lives in this repository (PROJECT_STATE.json, docs/SESSION_HANDOFF.md, docs/INSTALLATION_LEDGER.md, docs/DECISION_LOG.md). It is deliberately NOT mirrored into the NOESAR or CodeN Ultra memory files - separate products, separate governance (CLAUDE10.md sections 1-4).",
@@ -1152,7 +1153,7 @@
     ],
     "reconciled": "2026-07-29 (D-0219) — v1 field was stale: it recorded the rejected v1 and never followed the design forward to v3, which was built and installed in the sessions after it was written."
   },
-  "next_action": "D-0662 closed: F-RUST-001 fully resolved (7 crates tested, 1 N/A), committed. Session's Rust-hardening thread (D-0656..D-0662, 7 phases) is at a natural stop -- no further unblocked, well-scoped item identified without the Owner naming one.",
+  "next_action": "D-0663/D-0664 closed, committed. Continuing per Owner's explicit non-stop instruction to look at the remaining open findings.",
   "coden_evolution_design": {
     "status": "PROPOSED_AWAITING_OWNER_DISCUSSION",
     "document": "docs/CODEN_EVOLUTION_DESIGN_V1.md",
